@@ -350,7 +350,7 @@ agent:
     # Values: OFF, SHADOW or LIVE. Recommended: SHADOW for the first week so the model's intent and confidence are logged next to the regex result without changing behaviour; LIVE only after thresholds were tuned on that log.
     # Purpose: Controls whether TypeSafe System One (Jev) judges companion chat that none of the deterministic command classifiers matched, and whether that judgment may act.
     # Technical: OFF skips the request entirely; SHADOW asks and logs but always returns unhandled; LIVE re-dispatches the canonical command when confidence reaches the judge's ACT threshold and asks the player when it reaches the ASK threshold. Requires TYPESAFE_API_KEY in the environment.
-    AGENT_TYPESAFE_CHAT_INTENT_MODE: OFF
+    AGENT_TYPESAFE_CHAT_INTENT_MODE: SHADOW
     # Values: true or false. Recommended: false until TYPESAFE_API_KEY is configured and the Director panel has been exercised with the fallback still available.
     # Purpose: Lets the Director panel rank operator requests against executable actions and training-map candidates with typed TypeSafe judgments instead of parsing local LLM text.
     # Technical: When true and the client is configured, the TypeSafe provider answers first and the configured Ollama provider only runs when TypeSafe is unavailable, unconfident, or returns no usable selection.
@@ -358,11 +358,11 @@ agent:
     # Values: OFF, SHADOW or LIVE. Recommended: SHADOW first, then LIVE once shadow logs show the yes-probability threshold separates real questions from banter.
     # Purpose: Lets party-quest Agents understand human questions (for example how many coupons are needed) that the deterministic word-set policy did not match.
     # Technical: Runs only after the deterministic policy returned false; LIVE answers through the existing stage dialogue path, SHADOW logs the probabilities, and the cooldown and phase gates of the stage runtime still apply.
-    AGENT_TYPESAFE_PARTY_QUEST_DIALOGUE_MODE: OFF
+    AGENT_TYPESAFE_PARTY_QUEST_DIALOGUE_MODE: SHADOW
     # Values: OFF, SHADOW or LIVE. Recommended: SHADOW first; LIVE once accept and decline classifications match the regex outcomes on logged replies.
     # Purpose: Lets an Agent with a pending item offer understand free-form accept or decline replies that the yes/no regexes did not match.
     # Technical: Runs only when the speaker is the pending offer recipient and the regexes missed; LIVE re-dispatches the canonical yes or no reply through the existing offer service, SHADOW logs only.
-    AGENT_TYPESAFE_TRADE_REPLY_MODE: OFF
+    AGENT_TYPESAFE_TRADE_REPLY_MODE: SHADOW
 # Strict runtime/algorithm tuning. Keys mirror declaring classes for traceability.
 tuning:
     # Values: a positive integer; unit: milliseconds. Recommended: 15000-60000; 30000 allows one bounded plan step to settle without making ownership replacement unbounded.
