@@ -47,7 +47,7 @@ function action(mode, type, selection) {
         }
 
         cm.completeQuest(20718, 1103003);
-        cm.gainExp(4000 * cm.getPlayer().getExpRate());
+        cm.gainExp(4000);
 
         cm.dispose();
 

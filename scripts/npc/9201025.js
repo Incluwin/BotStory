@@ -118,7 +118,7 @@ function action(mode, type, selection) {
                     cm.sendAcceptDecline("Did you lost the #k#t4031367##k I gave to you? Well, I can share another one with you, but you will need to redo the favor I asked last time, is that ok? I need you to bring me #r50 #t" + questItems[nanaLoc] + "#'s.#k");
                 } else if (cm.isQuestStarted(100401 + nanaLoc)) {
                     if (processNanaQuest()) {
-                        cm.gainExp(questExp[nanaLoc] * cm.getPlayer().getExpRate());
+                        cm.gainExp(questExp[nanaLoc]);
                         cm.completeQuest(100401 + nanaLoc);
                     }
 

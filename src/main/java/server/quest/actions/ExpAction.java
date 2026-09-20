@@ -52,9 +52,9 @@ public class ExpAction extends AbstractQuestAction {
 
     public static void runAction(Character chr, int gain) {
         if (!YamlConfig.config.server.USE_QUEST_RATE) {
-            chr.gainExp(gain * chr.getExpRate(), true, true);
+            chr.gainExpRateScaled(gain, true, true);
         } else {
-            chr.gainExp(gain * chr.getQuestExpRate(), true, true);
+            chr.gainQuestExpRateScaled(gain, true, true);
         }
     }
 } 

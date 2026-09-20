@@ -26,6 +26,7 @@ package client.command.commands.gm3;
 import client.Character;
 import client.Client;
 import client.command.Command;
+import client.command.CommandTargetPolicy;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -44,6 +45,17 @@ public class UnBanCommand extends Command {
             return;
         }
 
+        try {
+            if (CommandTargetPolicy.isActiveAgentName(params[0])) {
+                player.yellowMessage("GM4/GM5 commands cannot alter Agent backing accounts.");
+                return;
+            }
+        } catch (Exception exception) {
+            monitoring.RuntimeFailureLogger.log(exception);
+            player.message("Failed to verify " + params[0] + "; unban refused.");
+            return;
+        }
+
         try (Connection con = DatabaseConnection.getConnection()) {
             int aid = Character.getAccountIdByName(params[0]);
 
@@ -59,7 +71,7 @@ public class UnBanCommand extends Command {
                 p.executeUpdate();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
             player.message("Failed to unban " + params[0]);
             return;
         }

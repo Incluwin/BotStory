@@ -131,8 +131,8 @@ function getWeddingPreparationStatus(player, partner) {
 function giveCoupleBlessings(eim, player, partner) {
     var blessCount = eim.gridSize();
 
-    player.gainExp(blessCount * weddingBlessingExp);
-    partner.gainExp(blessCount * weddingBlessingExp);
+    player.gainExpRateScaled(blessCount * weddingBlessingExp, true, true);
+    partner.gainExpRateScaled(blessCount * weddingBlessingExp, true, true);
 }
 
 function start() {

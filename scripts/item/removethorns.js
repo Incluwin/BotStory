@@ -45,7 +45,7 @@ function action(mode, type, selection) {
 
                 var portal = im.getMap().getPortal("right00");
                 if (portal != null && portal.getPosition().distance(player.getPosition()) < 210) {
-                    player.gainExp(3300 * player.getExpRate());
+                    player.gainExpRateScaled(3300, true, true);
 
                     im.forceCompleteQuest(2324);
                     im.removeAll(2430015);

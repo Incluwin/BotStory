@@ -2305,6 +2305,32 @@ public class PacketCreator {
         return p;
     }
 
+    public static Packet moveMonster(int oid, int rawActivity, Point startPos,
+                                     List<LifeMovementFragment> movements) {
+        return moveMonster(oid, rawActivity, 0, 0, startPos, movements);
+    }
+
+    public static Packet moveMonster(int oid, int rawActivity, int skillId, int skillLevel,
+                                     Point startPos, List<LifeMovementFragment> movements) {
+        return moveMonster(oid, rawActivity, skillId, skillLevel, 0, startPos, movements);
+    }
+
+    public static Packet moveMonster(int oid, int rawActivity, int skillId, int skillLevel,
+                                     int pOption, Point startPos,
+                                     List<LifeMovementFragment> movements) {
+        final OutPacket p = OutPacket.create(SendOpcode.MOVE_MONSTER);
+        p.writeInt(oid);
+        p.writeByte(0);
+        p.writeBool(false);
+        p.writeByte(rawActivity);
+        p.writeByte(skillId);
+        p.writeByte(skillLevel);
+        p.writeShort(pOption);
+        p.writePos(startPos);
+        serializeMovementList(p, movements);
+        return p;
+    }
+
     public static Packet summonAttack(int cid, int summonOid, byte direction, List<SummonAttackTarget> targets) {
         OutPacket p = OutPacket.create(SendOpcode.SUMMON_ATTACK);
         //b2 00 29 f7 00 00 9a a3 04 00 c8 04 01 94 a3 04 00 06 ff 2b 00
@@ -2396,8 +2422,11 @@ public class PacketCreator {
                 if (skill == ChiefBandit.MESO_EXPLOSION) {
                     p.writeByte(value.damageLines().size());
                 }
-                for (Integer damageLine : value.damageLines()) {
-                    p.writeInt(damageLine);
+                List<Integer> lines = value.damageLines();
+                Set<Integer> crits = value.critLineIndices();
+                for (int i = 0; i < lines.size(); i++) {
+                    int encoded = crits.contains(i) ? (lines.get(i) | 0x80000000) : lines.get(i);
+                    p.writeInt(encoded);
                 }
             }
         }
@@ -4991,7 +5020,17 @@ public class PacketCreator {
         return p;
     }
 
-    public static Packet getFredrick(Character chr) {
+    public static Packet getFredrick(Character chr) throws SQLException {
+        List<Pair<Item, InventoryType>> items = ItemFactory.MERCHANT.loadItems(chr.getId(), false);
+        return getFredrick(chr, items);
+    }
+
+    public static Packet getFredrick(Character chr, List<Pair<Item, InventoryType>> items) {
+        return getFredrick(chr, items, (packet, item) -> addItemInfo(packet, item, true));
+    }
+
+    static Packet getFredrick(Character chr, List<Pair<Item, InventoryType>> items,
+                              FredrickItemPacketWriter itemWriter) {
         final OutPacket p = OutPacket.create(SendOpcode.FREDRICK);
         p.writeByte(0x23);
         p.writeInt(NpcId.FREDRICK);
@@ -4999,18 +5038,18 @@ public class PacketCreator {
         p.skip(5);
         p.writeInt(chr.getMerchantNetMeso());
         p.writeByte(0);
-        try {
-            List<Pair<Item, InventoryType>> items = ItemFactory.MERCHANT.loadItems(chr.getId(), false);
-            p.writeByte(items.size());
+        p.writeByte(items.size());
 
-            for (Pair<Item, InventoryType> item : items) {
-                addItemInfo(p, item.getLeft(), true);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        for (Pair<Item, InventoryType> item : items) {
+            itemWriter.write(p, item.getLeft());
         }
         p.skip(3);
         return p;
+    }
+
+    @FunctionalInterface
+    interface FredrickItemPacketWriter {
+        void write(OutPacket packet, Item item);
     }
 
     public static Packet addOmokBox(Character chr, int amount, int type) {
@@ -7456,6 +7495,149 @@ public class PacketCreator {
         //8 or 16 = "You have reached the round of %n by default." | Encodes nState as %n ?!
         p.writeByte(nState);
 
+        return p;
+    }
+
+    // ===== Android/bot equip window — added for the Kaentake androidequip.cpp feature =====
+    // ---- Android/bot equip window (Kaentake LP_BotEquip) ---------------------
+    // RESP_SNAPSHOT: one bot's worn gear + per-tab inventory, each item serialized
+    // as the standard GW_ItemSlot block via addItemInfo so the Kaentake client can
+    // decode real item objects for native hover tooltips. The slot is the RAW
+    // position (negative = worn; cash worn <= -100) and zeroPosition=true so
+    // addItemInfo skips its own position prefix.
+    public static Packet botEquipSnapshot(int botIndex, client.Character bot) {
+        OutPacket p = OutPacket.create(SendOpcode.BOT_EQUIP);
+        p.writeByte(1);                 // RESP_SNAPSHOT
+        p.writeByte(botIndex);          // 1..5
+        java.util.List<Item> worn =
+                new java.util.ArrayList<>(bot.getInventory(client.inventory.InventoryType.EQUIPPED).list());
+        p.writeByte(worn.size());
+        for (Item it : worn) {
+            p.writeShort(it.getPosition());
+            addItemInfo(p, it, true);
+        }
+        client.inventory.InventoryType[] tabs = {
+                client.inventory.InventoryType.EQUIP, client.inventory.InventoryType.USE,
+                client.inventory.InventoryType.SETUP, client.inventory.InventoryType.ETC,
+                client.inventory.InventoryType.CASH
+        };
+        p.writeByte(tabs.length);       // 5 tabs
+        // Snapshot each tab once and reuse for both the item block and the trailing qty block
+        // (avoids a second per-tab Inventory.list() copy and a possible mid-build inventory drift).
+        @SuppressWarnings("unchecked")
+        java.util.List<Item>[] tabSnapshots = new java.util.List[tabs.length];
+        for (int t = 0; t < tabs.length; t++) {
+            tabSnapshots[t] = new java.util.ArrayList<>(bot.getInventory(tabs[t]).list());
+        }
+        for (int t = 0; t < tabs.length; t++) {
+            p.writeByte(t + 1);         // tabId 1..5
+            java.util.List<Item> items = tabSnapshots[t];
+            p.writeByte(items.size());
+            for (Item it : items) {
+                p.writeShort(it.getPosition());
+                addItemInfo(p, it, true);
+            }
+        }
+        p.writeInt(bot.getMeso());       // client reads trailing 4-byte LE int (canRead(4) -> readInt) first
+        // Trailing stack-count block (after meso): short count, then {byte tab, short
+        // slotPos, short qty} per inventory item -> the client draws the per-slot stack
+        // count. Backward compatible: an older client ignores these trailing bytes.
+        java.util.List<int[]> qtys = new java.util.ArrayList<>();
+        for (int t = 0; t < tabs.length; t++) {
+            for (Item it : tabSnapshots[t]) {
+                qtys.add(new int[]{ t + 1, it.getPosition(), it.getQuantity() });
+            }
+        }
+        p.writeShort(qtys.size());
+        for (int[] q : qtys) {
+            p.writeByte(q[0]);
+            p.writeShort(q[1]);
+            p.writeShort(q[2]);
+        }
+        return p;
+    }
+
+    // RESP_LIST: how many bots the player owns (gates the client's 1..5 buttons).
+    public static Packet botEquipList(int botCount) {
+        OutPacket p = OutPacket.create(SendOpcode.BOT_EQUIP);
+        p.writeByte(0);                 // RESP_LIST
+        p.writeByte(botCount);
+        return p;
+    }
+
+    public static Packet observerCharacters(
+            List<server.observer.ObserverCharacterDirectory.Entry> characters) {
+        OutPacket p = OutPacket.create(SendOpcode.OBSERVER_CHARACTERS);
+        p.writeShort(characters.size());
+        for (server.observer.ObserverCharacterDirectory.Entry character : characters) {
+            p.writeInt(character.id());
+            p.writeInt(character.mapId());
+            p.writeByte(character.channel());
+            p.writeString(character.name());
+        }
+        return p;
+    }
+
+    public static Packet observerNavGraphChunk(int status,
+                                               int requestId,
+                                               int mapId,
+                                               int graphVersion,
+                                               int speed,
+                                               int jump,
+                                               int chunkIndex,
+                                               int chunkCount,
+                                               int totalLength,
+                                               int checksum,
+                                               byte[] payload) {
+        OutPacket p = OutPacket.create(SendOpcode.OBSERVER_NAV_GRAPH);
+        p.writeByte(server.observer.protocol.ObserverProtocol.VERSION);
+        p.writeByte(status);
+        p.writeInt(requestId);
+        p.writeInt(mapId);
+        p.writeInt(graphVersion);
+        p.writeShort(speed);
+        p.writeShort(jump);
+        p.writeShort(chunkIndex);
+        p.writeShort(chunkCount);
+        p.writeInt(totalLength);
+        p.writeInt(checksum);
+        p.writeShort(payload.length);
+        p.writeBytes(payload);
+        return p;
+    }
+
+    public static Packet observerInterestEvents(
+            long latestSequence,
+            List<server.observer.ObserverInterestService.Event> events) {
+        OutPacket p = OutPacket.create(SendOpcode.OBSERVER_INTEREST);
+        p.writeByte(1);
+        p.writeLong(latestSequence);
+        p.writeShort(events.size());
+        for (server.observer.ObserverInterestService.Event event : events) {
+            p.writeLong(event.sequence());
+            p.writeLong(event.timestamp());
+            p.writeInt(event.characterId());
+            p.writeInt(event.mapId());
+            p.writeByte(event.type().code());
+            p.writeShort(event.score());
+            p.writeString(event.characterName());
+            p.writeString(event.detail());
+        }
+        return p;
+    }
+
+    public static Packet observerActionResult(
+            int action,
+            int requestId,
+            server.observer.ObserverWarpService.Result result) {
+        OutPacket p = OutPacket.create(SendOpcode.OBSERVER_ACTION_RESULT);
+        p.writeByte(server.observer.protocol.ObserverActionProtocol.VERSION);
+        p.writeByte(action);
+        p.writeInt(requestId);
+        p.writeByte(result.status());
+        p.writeInt(result.mapId());
+        p.writeInt(result.characterId());
+        p.writeString(result.message());
         return p;
     }
 

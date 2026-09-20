@@ -1,0 +1,132 @@
+package server.agents.progression;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+final class AgentVictoriaQuestHuntIndexRepository {
+    private static final String RESOURCE =
+            "/agents/catalogs/adaptive/victoria-quest-hunt-index.json";
+    private static final AgentVictoriaQuestHuntIndexRepository DEFAULT = load();
+
+    private final AgentVictoriaQuestHuntIndex index;
+    private final Map<Integer, AgentVictoriaQuestHuntIndex.Entry> byQuestId;
+    private final Map<Integer, AgentVictoriaQuestHuntIndex.MobEntry> byMobId;
+
+    AgentVictoriaQuestHuntIndexRepository(AgentVictoriaQuestHuntIndex index) {
+        this.index = index;
+        Map<Integer, AgentVictoriaQuestHuntIndex.Entry> entries = new HashMap<>();
+        for (AgentVictoriaQuestHuntIndex.Entry entry : index.entries()) {
+            if (entries.putIfAbsent(entry.questId(), entry) != null) {
+                throw new IllegalArgumentException("duplicate adaptive quest " + entry.questId());
+            }
+        }
+        byQuestId = Map.copyOf(entries);
+        Map<Integer, AgentVictoriaQuestHuntIndex.MobEntry> mobs = new HashMap<>();
+        for (AgentVictoriaQuestHuntIndex.MobEntry entry : index.mobEntries()) {
+            if (mobs.putIfAbsent(entry.mobId(), entry) != null) {
+                throw new IllegalArgumentException("duplicate adaptive hunt mob " + entry.mobId());
+            }
+        }
+        byMobId = Map.copyOf(mobs);
+    }
+
+    List<AgentVictoriaQuestHuntIndex.Candidate> findCandidatesForMobs(
+            Set<Integer> mobIds) {
+        if (mobIds == null || mobIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, AgentVictoriaQuestHuntIndex.Candidate> byMapId = new HashMap<>();
+        for (int mobId : mobIds) {
+            AgentVictoriaQuestHuntIndex.MobEntry entry = byMobId.get(mobId);
+            if (entry == null) {
+                continue;
+            }
+            for (AgentVictoriaQuestHuntIndex.Candidate candidate : entry.candidates()) {
+                byMapId.merge(candidate.mapId(), candidate,
+                        (left, right) -> left.score() >= right.score() ? left : right);
+            }
+        }
+        return byMapId.values().stream()
+                .sorted(java.util.Comparator.comparingLong(
+                        AgentVictoriaQuestHuntIndex.Candidate::score).reversed()
+                        .thenComparingInt(AgentVictoriaQuestHuntIndex.Candidate::mapId))
+                .toList();
+    }
+
+    static AgentVictoriaQuestHuntIndexRepository defaultRepository() {
+        return DEFAULT;
+    }
+
+    AgentVictoriaQuestHuntIndex index() {
+        return index;
+    }
+
+    Optional<AgentVictoriaQuestHuntIndex.Objective> findObjective(
+            int questId,
+            String objectiveId) {
+        AgentVictoriaQuestHuntIndex.Entry entry = byQuestId.get(questId);
+        if (entry == null) {
+            return Optional.empty();
+        }
+        return entry.objectives().stream()
+                .filter(objective -> objective.objectiveId().equals(objectiveId))
+                .findFirst();
+    }
+
+    List<ObjectiveReference> findObjectivesForTarget(
+            Set<Integer> questIds,
+            int targetId) {
+        if (questIds == null || questIds.isEmpty() || targetId <= 0) {
+            return List.of();
+        }
+        return questIds.stream()
+                .sorted()
+                .map(byQuestId::get)
+                .filter(java.util.Objects::nonNull)
+                .flatMap(entry -> entry.objectives().stream()
+                        .filter(objective -> objective.targetId() == targetId)
+                        .map(objective -> new ObjectiveReference(entry.questId(), objective)))
+                .toList();
+    }
+
+    List<ObjectiveReference> findObjectivesForQuests(Set<Integer> questIds) {
+        if (questIds == null || questIds.isEmpty()) {
+            return List.of();
+        }
+        return questIds.stream()
+                .sorted()
+                .map(byQuestId::get)
+                .filter(java.util.Objects::nonNull)
+                .flatMap(entry -> entry.objectives().stream()
+                        .map(objective -> new ObjectiveReference(entry.questId(), objective)))
+                .toList();
+    }
+
+    record ObjectiveReference(
+            int questId,
+            AgentVictoriaQuestHuntIndex.Objective objective) {
+    }
+
+    private static AgentVictoriaQuestHuntIndexRepository load() {
+        ObjectMapper mapper = new ObjectMapper()
+                .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        try (InputStream input = AgentVictoriaQuestHuntIndexRepository.class
+                .getResourceAsStream(RESOURCE)) {
+            if (input == null) {
+                throw new IllegalStateException("missing adaptive quest hunt index: " + RESOURCE);
+            }
+            return new AgentVictoriaQuestHuntIndexRepository(
+                    mapper.readValue(input, AgentVictoriaQuestHuntIndex.class));
+        } catch (IOException failure) {
+            throw new IllegalStateException("could not load adaptive quest hunt index", failure);
+        }
+    }
+}

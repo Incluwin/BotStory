@@ -1,0 +1,35 @@
+package server.agents.commands;
+
+import client.Character;
+import server.agents.capabilities.movement.AgentFormationCommandService;
+import server.agents.capabilities.movement.AgentFormationService;
+import server.agents.integration.AgentDialogueTransportRuntime;
+
+public final class AgentFormationCommandCoordinator {
+    private AgentFormationCommandCoordinator() {
+    }
+
+    public static boolean handleFormationCommand(Character leader,
+                                                 String message,
+                                                 AgentFormationCommandService.EntriesByLeader entriesByLeader,
+                                                 AgentFormationService.FormationState defaultFormation,
+                                                 int defaultFollowStaggerPx,
+                                                 int defaultSnapRangePx) {
+        return AgentFormationCommandService.handleFormationCommand(
+                leader,
+                message,
+                new AgentFormationCommandService.Hooks(
+                        entriesByLeader,
+                        (leaderCharId, fallbackFormation) -> AgentFormationService.stateForLeader(
+                                AgentFormationService.formationsByLeaderId(),
+                                leaderCharId,
+                                fallbackFormation),
+                        AgentFormationService.formationsByLeaderId()::put,
+                        AgentFormationService::applyOffsets,
+                        AgentDialogueTransportRuntime::queueReply,
+                        Character::yellowMessage,
+                        defaultFormation,
+                        defaultFollowStaggerPx,
+                        defaultSnapRangePx));
+    }
+}

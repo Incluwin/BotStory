@@ -353,7 +353,12 @@ public enum SendOpcode {
     MAPLELIFE_RESULT(0x15D),
     MAPLELIFE_ERROR(0x15E),
     VICIOUS_HAMMER(0x162),
-    VEGA_SCROLL(0x166);
+    VEGA_SCROLL(0x166),
+    BOT_EQUIP(0x175),               // Android/bot equip window (Kaentake client LP_BotEquip)
+    OBSERVER_CHARACTERS(0x176),
+    OBSERVER_NAV_GRAPH(0x177),
+    OBSERVER_INTEREST(0x178),
+    OBSERVER_ACTION_RESULT(0x179);
     private int code = -2;
 
     SendOpcode(int code) {

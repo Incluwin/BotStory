@@ -23,6 +23,7 @@ package net;
 
 import net.netty.LoginServer;
 import net.opcodes.RecvOpcode;
+import server.observer.ObserverFeature;
 import net.server.channel.handlers.AcceptFamilyHandler;
 import net.server.channel.handlers.AdminChatHandler;
 import net.server.channel.handlers.AdminCommandHandler;
@@ -232,11 +233,14 @@ public final class PacketProcessor {
     }
 
     public PacketHandler getHandler(short packetId) {
-        if (packetId > handlers.length) {
+        if (!isPacketIdInRange(packetId)) {
             return null;
         }
-        PacketHandler handler = handlers[packetId];
-        return handler;
+        return handlers[packetId];
+    }
+
+    public boolean isPacketIdInRange(short packetId) {
+        return packetId >= 0 && packetId < handlers.length;
     }
 
     public void registerHandler(RecvOpcode code, PacketHandler handler) {
@@ -267,6 +271,8 @@ public final class PacketProcessor {
             registerLoginHandlers();
         } else {
             registerChannelHandlers();
+            log.info("[observer] protocol handlers registered channel={} enabled={} navgraphEnabled={}",
+                    channel, ObserverFeature.enabled(), ObserverFeature.navGraphEnabled());
         }
     }
 
@@ -448,5 +454,20 @@ public final class PacketProcessor {
         registerHandler(RecvOpcode.OPEN_ITEMUI, new RaiseUIStateHandler());
         registerHandler(RecvOpcode.USE_ITEMUI, new RaiseIncExpHandler());
         registerHandler(RecvOpcode.CHANGE_QUICKSLOT, new QuickslotKeyMappedModifiedHandler());
+        registerHandler(RecvOpcode.BOT_EQUIP, new net.server.channel.handlers.AgentEquipHandler());
+        // Keep the protocol surface registered regardless of configuration.
+        // Each observer handler performs its own feature and authorization
+        // checks, so a disabled observer suite remains inert. Registering the
+        // handlers here unconditionally also avoids constructing a channel
+        // packet processor before the observer configuration is available and
+        // then silently dropping every observer opcode for that channel.
+        registerHandler(RecvOpcode.OBSERVER_CHARACTERS,
+                new net.server.channel.handlers.ObserverCharactersHandler());
+        registerHandler(RecvOpcode.OBSERVER_NAV_GRAPH,
+                new net.server.channel.handlers.ObserverNavGraphHandler());
+        registerHandler(RecvOpcode.OBSERVER_INTEREST,
+                new net.server.channel.handlers.ObserverInterestHandler());
+        registerHandler(RecvOpcode.OBSERVER_ACTION,
+                new net.server.channel.handlers.ObserverActionHandler());
     }
 }

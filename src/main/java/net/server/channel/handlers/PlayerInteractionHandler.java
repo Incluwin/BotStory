@@ -38,21 +38,27 @@ import net.packet.InPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.ItemRestrictionPolicy;
 import server.Trade;
+import server.agents.auth.AgentAuthorityService;
+import server.agents.integration.AgentCharacterGatewayRuntime;
+import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.FieldLimit;
 import server.maps.HiredMerchant;
 import server.maps.MapObject;
-import server.maps.MapObjectType;
 import server.maps.MiniGame;
 import server.maps.MiniGame.MiniGameType;
 import server.maps.PlayerShop;
 import server.maps.PlayerShopItem;
-import server.maps.Portal;
+import server.maps.reservation.CharacterSpaceReservation;
+import server.maps.reservation.FreeMarketStorePlacementService;
+import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.PacketCreator;
 
-import java.awt.*;
 import java.sql.SQLException;
-import java.util.Arrays;
+import java.util.Optional;
 
 /**
  * @author Matze
@@ -244,10 +250,6 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                         return;
                     }
 
-                    if (!canPlaceStore(chr)) {
-                        return;
-                    }
-
                     String desc = p.readString();
                     p.skip(3);
                     int itemId = p.readInt();
@@ -257,17 +259,46 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                     }
 
                     if (ItemConstants.isPlayerShop(itemId)) {
+                        Optional<CharacterSpaceReservation> placement = reserveStorePlacement(chr);
+                        if (placement.isEmpty()) {
+                            return;
+                        }
                         PlayerShop shop = new PlayerShop(chr, desc, itemId);
+                        shop.setPosition(placement.get().position());
                         chr.setPlayerShop(shop);
                         chr.getMap().addMapObject(shop);
                         shop.sendShop(c);
                         c.getWorldServer().registerPlayerShop(shop);
                         //c.sendPacket(PacketCreator.getPlayerShopRemoveVisitor(1));
                     } else if (ItemConstants.isHiredMerchant(itemId)) {
+                        if (chr.getHiredMerchant() != null || chr.hasMerchant()
+                                || c.getWorldServer().getHiredMerchant(chr.getId()) != null
+                                || c.getChannelServer().getHiredMerchants().containsKey(chr.getId())) {
+                            chr.dropMessage(1, "You already have a hired merchant open.");
+                            chr.sendPacket(PacketCreator.enableActions());
+                            return;
+                        }
+
+                        Optional<CharacterSpaceReservation> placement = reserveStorePlacement(chr);
+                        if (placement.isEmpty()) {
+                            return;
+                        }
                         HiredMerchant merchant = new HiredMerchant(chr, desc, itemId);
+                        merchant.setPosition(placement.get().position());
+                        if (!c.getWorldServer().tryRegisterHiredMerchant(merchant)) {
+                            FreeMarketStorePlacementService.release(chr);
+                            chr.dropMessage(1, "You already have a hired merchant open.");
+                            chr.sendPacket(PacketCreator.enableActions());
+                            return;
+                        }
+                        if (!chr.getClient().getChannelServer().tryAddHiredMerchant(chr.getId(), merchant)) {
+                            c.getWorldServer().unregisterHiredMerchant(merchant);
+                            FreeMarketStorePlacementService.release(chr);
+                            chr.dropMessage(1, "You already have a hired merchant open.");
+                            chr.sendPacket(PacketCreator.enableActions());
+                            return;
+                        }
                         chr.setHiredMerchant(merchant);
-                        c.getWorldServer().registerHiredMerchant(merchant);
-                        chr.getClient().getChannelServer().addHiredMerchant(chr.getId(), merchant);
                         chr.sendPacket(PacketCreator.getHiredMerchant(chr, merchant, true));
                     }
                 }
@@ -276,6 +307,16 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                 Character other = chr.getMap().getCharacterById(otherCid);
                 if (other == null || chr.getId() == other.getId()) {
                     return;
+                }
+
+                if (AgentCharacterGatewayRuntime.characters().isHeadlessControlled(other)
+                        && !AgentCharacterGatewayRuntime.characters().isHeadlessControlled(chr)) {
+                    if (!AgentAuthorityService.isTrustedTradePlayer(chr)) {
+                        chr.dropMessage(1, "That Agent is not configured to accept your trade requests.");
+                        return;
+                    }
+                    AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(other.getId());
+                    AgentRelationshipRuntime.setInteractionTarget(entry, chr);
                 }
 
                 Trade.inviteTrade(chr, other);
@@ -367,7 +408,9 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                     c.sendPacket(PacketCreator.hiredMerchantOwnerMaintenanceLeave());
                 }
 
-                if (!canPlaceStore(chr)) {    // thanks Ari for noticing player shops overlapping on opening time
+                if (FreeMarketStorePlacementService.reservation(chr).isEmpty()) {
+                    chr.sendPacket(PacketCreator.getMiniRoomError(13));
+                    chr.dropMessage(5, "Your reserved Free Market store spot is no longer available.");
                     return;
                 }
 
@@ -524,7 +567,7 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                 Trade trade = chr.getTrade();
                 if (trade != null) {
                     if ((quantity <= item.getQuantity() && quantity >= 0) || ItemConstants.isRechargeable(item.getItemId())) {
-                        if (ii.isDropRestricted(item.getItemId())) { // ensure that undroppable items do not make it to the trade window
+                        if (ii.isDropRestricted(item.getItemId()) && !ItemRestrictionPolicy.allowsUntradeable(chr, item.getItemId())) { // ensure that undroppable items do not make it to the trade window
                             if (!KarmaManipulator.hasKarmaFlag(item)) {
                                 c.sendPacket(PacketCreator.serverNotice(1, "That item is untradeable."));
                                 c.sendPacket(PacketCreator.enableActions());
@@ -577,7 +620,7 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                 short bundles = p.readShort();
                 Item ivItem = chr.getInventory(ivType).getItem(slot);
 
-                if (ivItem == null || ivItem.isUntradeable()) {
+                if (ivItem == null || (ivItem.isUntradeable() && !ItemRestrictionPolicy.allowsUntradeable(chr, ivItem.getItemId()))) {
                     c.sendPacket(PacketCreator.serverNotice(1, "Could not perform shop operation with that item."));
                     c.sendPacket(PacketCreator.enableActions());
                     return;
@@ -652,13 +695,13 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
                     c.sendPacket(PacketCreator.updateHiredMerchant(merchant, chr));
 
                     if (YamlConfig.config.server.USE_ENFORCE_MERCHANT_SAVE) {
-                        chr.saveCharToDB(false);
+                        chr.saveCharToDB(false, SaveReason.MERCHANT);
                     }
 
                     try {
                         merchant.saveItems(false);   // thanks Masterrulax for realizing yet another dupe with merchants/Fredrick
                     } catch (SQLException ex) {
-                        ex.printStackTrace();
+                        monitoring.RuntimeFailureLogger.log(ex);
                     }
                 } else {
                     c.sendPacket(PacketCreator.serverNotice(1, "You can't sell without owning a shop."));
@@ -852,35 +895,12 @@ public final class PlayerInteractionHandler extends AbstractPacketHandler {
         return false;
     }
 
-    private static boolean canPlaceStore(Character chr) {
-        try {
-            for (MapObject mmo : chr.getMap().getMapObjectsInRange(chr.getPosition(), 23000, Arrays.asList(MapObjectType.HIRED_MERCHANT, MapObjectType.PLAYER))) {
-                if (mmo instanceof Character mc) {
-                    if (mc.getId() == chr.getId()) {
-                        continue;
-                    }
-
-                    PlayerShop shop = mc.getPlayerShop();
-                    if (shop != null && shop.isOwner(mc)) {
-                        chr.sendPacket(PacketCreator.getMiniRoomError(13));
-                        return false;
-                    }
-                } else {
-                    chr.sendPacket(PacketCreator.getMiniRoomError(13));
-                    return false;
-                }
-            }
-
-            Point cpos = chr.getPosition();
-            Portal portal = chr.getMap().findClosestTeleportPortal(cpos);
-            if (portal != null && portal.getPosition().distance(cpos) < 120.0) {
-                chr.sendPacket(PacketCreator.getMiniRoomError(10));
-                return false;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+    private static Optional<CharacterSpaceReservation> reserveStorePlacement(Character chr) {
+        Optional<CharacterSpaceReservation> placement = FreeMarketStorePlacementService.reserveNearest(chr);
+        if (placement.isEmpty()) {
+            chr.sendPacket(PacketCreator.getMiniRoomError(13));
+            chr.dropMessage(5, "No designated Free Market store spot is available nearby.");
         }
-
-        return true;
+        return placement;
     }
 }

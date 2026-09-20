@@ -1,0 +1,40 @@
+package server.agents.capabilities.movement;
+
+import client.Character;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.runtime.AgentRuntimeEntry;
+
+import java.awt.Point;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+
+class AgentMovementTickCoordinatorTest {
+    @Test
+    void configBoundOverloadDelegatesToMovementTickService() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(mock(Character.class), mock(Character.class), null);
+        Point target = new Point(10, 20);
+
+        try (MockedStatic<AgentMovementTickService> service = mockStatic(AgentMovementTickService.class)) {
+            service.when(() -> AgentMovementTickService.stepMovementCore(
+                            eq(entry),
+                            eq(target),
+                            eq(true),
+                            eq(1),
+                            any(AgentMovementTickService.MovementTickHooks.class)))
+                    .thenAnswer(invocation -> null);
+
+            AgentMovementTickCoordinator.stepMovementCore(entry, target, true);
+
+            service.verify(() -> AgentMovementTickService.stepMovementCore(
+                    eq(entry),
+                    eq(target),
+                    eq(true),
+                    eq(1),
+                    any(AgentMovementTickService.MovementTickHooks.class)));
+        }
+    }
+}

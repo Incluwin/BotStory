@@ -1,0 +1,99 @@
+package server.agents.capabilities.movement;
+
+import client.Character;
+import server.agents.capabilities.navigation.AgentNavigationPatrolRegionService;
+import server.agents.capabilities.shop.AgentShopService;
+import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.commands.AgentCommandModeService;
+import server.agents.runtime.AgentModeService;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.plans.AgentScriptTaskQueueService;
+import server.maps.MapleMap;
+
+import java.awt.Point;
+
+/**
+ * Agent-owned movement command facade. Live identity lookup and visible reply
+ * delivery remain temporary integration seams.
+ */
+public final class AgentMovementCommandRuntime {
+    private AgentMovementCommandRuntime() {
+    }
+
+    /** @deprecated Use the configured follow target or pass an explicit target. */
+    @Deprecated
+    public static void followOwner(AgentRuntimeEntry entry) {
+        followConfiguredTarget(entry);
+    }
+
+    public static void followConfiguredTarget(AgentRuntimeEntry entry) {
+        Character target = AgentRelationshipRuntime.followTarget(entry);
+        if (target == null) {
+            stop(entry);
+            return;
+        }
+        follow(entry, target);
+    }
+
+    public static void follow(AgentRuntimeEntry entry, Character target) {
+        AgentCommandModeService.runPreparedModeCommand(
+                entry,
+                () -> AgentScriptTaskQueueService.clearTasks(entry),
+                () -> AgentShopService.cancelShopVisit(entry),
+                () -> AgentModeService.startFollow(entry, target));
+    }
+
+    public static void stop(AgentRuntimeEntry entry) {
+        AgentCommandModeService.runPreparedModeCommand(
+                entry,
+                () -> AgentScriptTaskQueueService.clearTasks(entry),
+                () -> AgentShopService.cancelShopVisit(entry),
+                () -> AgentModeService.startStop(entry));
+    }
+
+    public static void moveTo(AgentRuntimeEntry entry, Point dest, boolean precise) {
+        AgentCommandModeService.runPreparedModeCommand(
+                entry,
+                () -> dest != null,
+                () -> AgentScriptTaskQueueService.clearTasks(entry),
+                () -> AgentShopService.cancelShopVisit(entry),
+                () -> AgentModeService.startMoveTo(entry, dest, precise));
+    }
+
+    public static void farmHere(AgentRuntimeEntry entry, Point dest) {
+        AgentCommandModeService.runPreparedModeCommand(
+                entry,
+                () -> dest != null && AgentRuntimeIdentityRuntime.hasBot(entry),
+                () -> AgentScriptTaskQueueService.clearTasks(entry),
+                () -> AgentShopService.cancelShopVisit(entry),
+                () -> AgentModeService.startFarmHere(entry, dest, AgentMovementStateResetService::clearNavigationState));
+    }
+
+    public static void patrol(AgentRuntimeEntry entry, Point ownerPos) {
+        if (entry == null || ownerPos == null || !AgentRuntimeIdentityRuntime.hasBot(entry)) {
+            return;
+        }
+        MapleMap map = AgentRuntimeIdentityRuntime.botMap(entry);
+        int regionId = AgentNavigationPatrolRegionService.resolveRegionId(
+                map, ownerPos, AgentMovementStateRuntime.movementProfile(entry));
+        if (regionId < 0) {
+            AgentDialogueTransportRuntime.replyNow(entry, "can't find a patrol region here");
+            return;
+        }
+        AgentCommandModeService.runPreparedModeCommand(
+                entry,
+                () -> AgentScriptTaskQueueService.clearTasks(entry),
+                () -> AgentShopService.cancelShopVisit(entry),
+                () -> AgentModeService.startPatrol(entry, regionId, AgentMovementStateResetService::clearNavigationState));
+    }
+
+    public static void grind(AgentRuntimeEntry entry) {
+        AgentCommandModeService.runPreparedModeCommand(
+                entry,
+                () -> AgentScriptTaskQueueService.clearTasks(entry),
+                () -> AgentShopService.cancelShopVisit(entry),
+                () -> AgentModeService.startGrind(entry, AgentMovementStateResetService::clearNavigationState));
+    }
+}

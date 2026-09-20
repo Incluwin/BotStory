@@ -1,0 +1,114 @@
+package server.agents.capabilities.build;
+
+import client.Character;
+import client.Job;
+import client.inventory.Inventory;
+import client.inventory.InventoryType;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.integration.InventoryGateway;
+import server.agents.capabilities.build.AgentBuildStatusRuntime;
+import server.agents.capabilities.build.AgentBuildService;
+import server.agents.capabilities.build.profiles.BuildStep;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.capabilities.equipment.AgentEquipmentService;
+
+import java.util.List;
+import java.util.concurrent.ScheduledFuture;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class AgentStarterKitServiceTest {
+    @Test
+    void shouldExposeExplorerFirstJobStarterKits() {
+        assertEquals(List.of(new AgentStarterItemGrant(1302077, (short) 1)),
+                AgentStarterKitService.starterKitFor(Job.WARRIOR));
+        assertEquals(List.of(new AgentStarterItemGrant(1372043, (short) 1)),
+                AgentStarterKitService.starterKitFor(Job.MAGICIAN));
+        assertEquals(List.of(
+                        new AgentStarterItemGrant(1452051, (short) 1),
+                        new AgentStarterItemGrant(2060000, (short) 1000)),
+                AgentStarterKitService.starterKitFor(Job.BOWMAN));
+        assertEquals(List.of(
+                        new AgentStarterItemGrant(1472061, (short) 1),
+                        new AgentStarterItemGrant(1332063, (short) 1),
+                        new AgentStarterItemGrant(2070015, (short) 500)),
+                AgentStarterKitService.starterKitFor(Job.THIEF));
+        assertEquals(List.of(
+                        new AgentStarterItemGrant(1492000, (short) 1),
+                        new AgentStarterItemGrant(1482000, (short) 1),
+                        new AgentStarterItemGrant(2330000, (short) 1000)),
+                AgentStarterKitService.starterKitFor(Job.PIRATE));
+    }
+
+    @Test
+    void shouldOnlyGrantKitsForBeginnerToFirstJobAdvancements() {
+        assertTrue(AgentStarterKitService.isFirstJobAdvancement(Job.BEGINNER, Job.WARRIOR));
+        assertTrue(AgentStarterKitService.isFirstJobAdvancement(Job.BEGINNER, Job.MAGICIAN));
+        assertFalse(AgentStarterKitService.isFirstJobAdvancement(Job.WARRIOR, Job.FIGHTER));
+        assertFalse(AgentStarterKitService.isFirstJobAdvancement(Job.BEGINNER, Job.FIGHTER));
+    }
+
+    @Test
+    void firstJobStarterKitGrantsItemsThroughInventoryGateway() {
+        Character bot = mock(Character.class);
+        Inventory equip = mock(Inventory.class);
+        InventoryGateway inventory = mock(InventoryGateway.class);
+        when(bot.getInventory(InventoryType.EQUIP)).thenReturn(equip);
+        when(equip.getNumFreeSlot()).thenReturn((short) 1);
+        when(inventory.addItem(bot, 1302077, (short) 1)).thenReturn(true);
+
+        AgentStarterKitService.grantStarterKitIfEligible(bot, Job.BEGINNER, Job.WARRIOR, inventory);
+
+        verify(inventory).addItem(bot, 1302077, (short) 1);
+    }
+
+    @Test
+    void advanceJobAlwaysReevaluatesAutoEquip() {
+        Character bot = mock(Character.class);
+        Character owner = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, owner, mock(ScheduledFuture.class));
+
+        when(bot.getJob()).thenReturn(Job.BOWMAN);
+        when(bot.changeJob(Job.HUNTER)).thenReturn(true);
+
+        try (MockedStatic<AgentBuildService> buildManager = mockStatic(AgentBuildService.class);
+             MockedStatic<AgentBuildStatusRuntime> statusRuntime = mockStatic(AgentBuildStatusRuntime.class);
+             MockedStatic<AgentEquipmentService> equipManager = mockStatic(AgentEquipmentService.class)) {
+            AgentStarterKitService.advanceJob(entry, Job.HUNTER);
+
+            verify(bot).changeJob(Job.HUNTER);
+            buildManager.verify(() -> AgentBuildService.handleJobAdvance(entry, bot, Job.BOWMAN, Job.HUNTER));
+            equipManager.verify(() -> AgentEquipmentService.autoEquip(bot, null, null));
+            statusRuntime.verify(() -> AgentBuildStatusRuntime.checkBuildStatus(entry, bot));
+        }
+    }
+
+    @Test
+    void advanceJobCanUseAnExplicitFixtureSpBuild() {
+        Character bot = mock(Character.class);
+        Character owner = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, owner, mock(ScheduledFuture.class));
+        List<BuildStep> steps = List.of(new BuildStep(3110000, 20));
+        when(bot.getJob()).thenReturn(Job.BOWMAN);
+        when(bot.changeJob(Job.HUNTER)).thenReturn(true);
+
+        try (MockedStatic<AgentBuildService> buildManager = mockStatic(AgentBuildService.class);
+             MockedStatic<AgentBuildStatusRuntime> statusRuntime = mockStatic(AgentBuildStatusRuntime.class);
+             MockedStatic<AgentEquipmentService> equipManager = mockStatic(AgentEquipmentService.class)) {
+            AgentStarterKitService.advanceJob(entry, Job.HUNTER, steps);
+
+            verify(bot).changeJob(Job.HUNTER);
+            buildManager.verify(() -> AgentBuildService.handleJobAdvance(
+                    entry, bot, Job.BOWMAN, Job.HUNTER, steps));
+            equipManager.verify(() -> AgentEquipmentService.autoEquip(bot, null, null));
+            statusRuntime.verify(() -> AgentBuildStatusRuntime.checkBuildStatus(entry, bot));
+        }
+    }
+}

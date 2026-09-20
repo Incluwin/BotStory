@@ -1,0 +1,36 @@
+package server.agents.capabilities.shop;
+
+import server.agents.runtime.AgentRuntimeEntry;
+
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.runtime.AgentSchedulerRuntime;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+
+class AgentShopRuntimeTest {
+    @Test
+    void shopBridgeMethodsDelegateToBroadAgentRuntimes() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        Runnable action = mock(Runnable.class);
+
+        try (MockedStatic<AgentDialogueTransportRuntime> replies = mockStatic(AgentDialogueTransportRuntime.class);
+             MockedStatic<AgentSchedulerRuntime> scheduler = mockStatic(AgentSchedulerRuntime.class)) {
+            scheduler.when(() -> AgentSchedulerRuntime.randomDelayMs(2000, 4001)).thenReturn(2500L);
+
+            AgentShopRuntime.replyNow(entry, "reply");
+            AgentShopRuntime.sayMapNow(null, "shop");
+            AgentShopRuntime.afterDelay(entry, 500L, action);
+            long delay = AgentShopRuntime.randomDelayMs(2000, 4001);
+
+            replies.verify(() -> AgentDialogueTransportRuntime.replyNow(entry, "reply"));
+            replies.verify(() -> AgentDialogueTransportRuntime.sayMapNow(null, "shop"));
+            scheduler.verify(() -> AgentSchedulerRuntime.afterDelay(entry, 500L, action));
+            scheduler.verify(() -> AgentSchedulerRuntime.randomDelayMs(2000, 4001));
+            assertEquals(2500L, delay);
+        }
+    }
+}

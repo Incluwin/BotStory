@@ -32,7 +32,9 @@ import net.PacketHandler;
 import net.PacketProcessor;
 import net.netty.InvalidPacketHeaderException;
 import net.packet.InPacket;
+import net.packet.MalformedPacketTracker;
 import net.packet.Packet;
+import net.packet.PacketRateLimiter;
 import net.packet.logging.LoggingUtil;
 import net.packet.logging.MonitoredChrLogger;
 import net.server.Server;
@@ -61,10 +63,20 @@ import scripting.quest.QuestScriptManager;
 import server.MapleLeafLogger;
 import server.ThreadManager;
 import server.TimerManager;
+import server.agents.diagnostics.MobReactionCaptureRuntime;
+import server.agents.diagnostics.MapTransitionPacketTraceRuntime;
+import server.agents.runtime.AgentRuntimeCleanupService;
 import server.life.Monster;
+import server.life.autonomy.BossClientSimulationCapability;
 import server.maps.FieldLimit;
 import server.maps.MapleMap;
 import server.maps.MiniDungeonInfo;
+import server.monitoring.CharacterSaveDiagnostics.SaveReason;
+import server.monitoring.SlowOperationLogger;
+import server.monitoring.ThrottledLogger;
+import server.security.SecurityEventRuntime;
+import server.security.SecurityEventType;
+import server.security.SecuritySeverity;
 import tools.BCrypt;
 import tools.DatabaseConnection;
 import tools.HexTool;
@@ -102,6 +114,9 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Client extends ChannelInboundHandlerAdapter {
     private static final Logger log = LoggerFactory.getLogger(Client.class);
+    private static final int PACKET_PREVIEW_BYTES = 256;
+    private static final short OBSERVER_OPCODE_FIRST = 0x113;
+    private static final short OBSERVER_OPCODE_LAST = 0x116;
 
     public static final int LOGIN_NOTLOGGEDIN = 0;
     public static final int LOGIN_SERVER_TRANSITION = 1;
@@ -127,6 +142,7 @@ public class Client extends ChannelInboundHandlerAdapter {
     private volatile long lastPong;
     private int gmlevel;
     private Set<String> macs = new HashSet<>();
+    private final Set<Short> observedObserverOpcodes = new HashSet<>();
     private Map<String, ScriptEngine> engines = new HashMap<>();
     private byte characterSlots = 3;
     private byte loginattempt = 0;
@@ -148,11 +164,26 @@ public class Client extends ChannelInboundHandlerAdapter {
     private int visibleWorlds;
     private long lastNpcClick;
     private long lastPacket = System.currentTimeMillis();
+    private final MalformedPacketTracker malformedPacketTracker = new MalformedPacketTracker();
+    private final PacketRateLimiter packetRateLimiter;
     private int lang = 0;
+    private volatile BossClientSimulationCapability bossSimulationCapability =
+            BossClientSimulationCapability.NATIVE_MOB_SIMULATION;
 
     public enum Type {
         LOGIN,
         CHANNEL
+    }
+
+    public BossClientSimulationCapability getBossSimulationCapability() {
+        return bossSimulationCapability;
+    }
+
+    public void setBossSimulationCapability(
+            BossClientSimulationCapability bossSimulationCapability) {
+        this.bossSimulationCapability = bossSimulationCapability == null
+                ? BossClientSimulationCapability.RENDER_ONLY
+                : bossSimulationCapability;
     }
 
     public Client(Type type, long sessionId, String remoteAddress, PacketProcessor packetProcessor, int world, int channel) {
@@ -160,6 +191,7 @@ public class Client extends ChannelInboundHandlerAdapter {
         this.sessionId = sessionId;
         this.remoteAddress = remoteAddress;
         this.packetProcessor = packetProcessor;
+        this.packetRateLimiter = PacketRateLimiter.fromConfig();
         this.world = world;
         this.channel = channel;
     }
@@ -208,11 +240,53 @@ public class Client extends ChannelInboundHandlerAdapter {
             return;
         }
 
+        if (packet.available() < Short.BYTES) {
+            handleMalformedPacket("missing-opcode", (short) -1, packet, null);
+            return;
+        }
+
         short opcode = packet.readShort();
+        if (!packetProcessor.isPacketIdInRange(opcode)) {
+            handleMalformedPacket("invalid-opcode", opcode, packet, null);
+            return;
+        }
+        PacketRateLimiter.Decision rateDecision = packetRateLimiter.allow(opcode, System.currentTimeMillis());
+        if (!rateDecision.allowed()) {
+            SecurityEventRuntime.record(this, SecurityEventType.PACKET_RATE_LIMIT,
+                    rateDecision.disconnect() ? SecuritySeverity.CRITICAL : SecuritySeverity.WARNING,
+                    Map.of(
+                            "opcode", Short.toUnsignedInt(opcode) + "",
+                            "family", rateDecision.family().name(),
+                            "globalCount", rateDecision.globalCount() + "",
+                            "familyCount", rateDecision.familyCount() + "",
+                            "familyLimit", rateDecision.familyLimit() + ""));
+            if (rateDecision.disconnect()) {
+                SessionCoordinator.getInstance().closeSession(this, true);
+            }
+            return;
+        }
         final PacketHandler handler = packetProcessor.getHandler(opcode);
+
+        if (opcode >= OBSERVER_OPCODE_FIRST
+                && opcode <= OBSERVER_OPCODE_LAST
+                && observedObserverOpcodes.add(opcode)) {
+            log.info("[observer] first inbound opcode={} payloadBytes={} handler={} loggedIn={} account={} player={}",
+                    opcode,
+                    packet.available(),
+                    handler == null ? "none" : handler.getClass().getSimpleName(),
+                    isLoggedIn(),
+                    getAccountName(),
+                    player == null ? "?" : player.getName());
+        }
 
         if (YamlConfig.config.server.USE_DEBUG_SHOW_RCVD_PACKET && !LoggingUtil.isIgnoredRecvPacket(opcode)) {
             log.debug("Received packet id {}", opcode);
+        }
+
+        try {
+            MobReactionCaptureRuntime.recordInbound(this, opcode, packet);
+        } catch (RuntimeException captureFailure) {
+            log.warn("Mob reaction capture could not retain inbound opcode {}", opcode, captureFailure);
         }
 
         if (handler != null && handler.validateState(this)) {
@@ -221,9 +295,8 @@ public class Client extends ChannelInboundHandlerAdapter {
                 handler.handlePacket(packet, this);
             } catch (final Throwable t) {
                 final String chrInfo = player != null ? player.getName() + " on map " + player.getMapId() : "?";
-                log.warn("Error in packet handler {}. Chr {}, account {}. Packet: {}", handler.getClass().getSimpleName(),
-                        chrInfo, getAccountName(), packet, t);
-                //client.sendPacket(PacketCreator.enableActions());//bugs sometimes
+                handleMalformedPacket("handler:" + handler.getClass().getSimpleName(), opcode, packet, t,
+                        "Chr " + chrInfo + ", account " + getAccountName());
             }
         }
 
@@ -239,6 +312,8 @@ public class Client extends ChannelInboundHandlerAdapter {
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        MapTransitionPacketTraceRuntime.disconnected(this,
+                "pipeline exception=" + cause.getClass().getName() + " message=" + cause.getMessage());
         if (player != null) {
             log.warn("Exception caught by {}", player, cause);
         }
@@ -247,11 +322,38 @@ public class Client extends ChannelInboundHandlerAdapter {
             SessionCoordinator.getInstance().closeSession(this, true);
         } else if (cause instanceof IOException) {
             closeMapleSession();
+        } else {
+            ThrottledLogger.warn("client-pipeline:" + cause.getClass().getName(), log,
+                    "Closing session after unexpected pipeline exception", cause);
+            closeMapleSession();
         }
+    }
+
+    private void handleMalformedPacket(String reason, short opcode, InPacket packet, Throwable cause) {
+        handleMalformedPacket(reason, opcode, packet, cause, "account " + getAccountName());
+    }
+
+    private void handleMalformedPacket(String reason, short opcode, InPacket packet, Throwable cause, String context) {
+        int length = packet.getPosition() + packet.available();
+        String preview = HexTool.toHexString(packet.getBytes(PACKET_PREVIEW_BYTES));
+        ThrottledLogger.warn("packet:" + reason, log,
+                "Malformed packet reason={} opcode={} length={} preview={} context={}", cause,
+                reason, opcode, length, preview, context);
+        SecurityEventRuntime.record(this, SecurityEventType.MALFORMED_PACKET, SecuritySeverity.WARNING,
+                Map.of("reason", reason, "opcode", Short.toUnsignedInt(opcode) + "", "length", length + ""));
+        if (malformedPacketTracker.record(System.currentTimeMillis())) {
+            SessionCoordinator.getInstance().closeSession(this, true);
+        }
+    }
+
+    static String packetPreview(byte[] content) {
+        int previewLength = Math.min(content.length, PACKET_PREVIEW_BYTES);
+        return HexTool.toHexString(Arrays.copyOf(content, previewLength));
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
+        MapTransitionPacketTraceRuntime.disconnected(this, "channel inactive");
         closeMapleSession();
     }
 
@@ -332,7 +434,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 chars.add(Character.loadCharFromDB(cni.id, this, false));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to load characters accId={} world={}", accId, serverId, e);
         }
         return chars;
     }
@@ -358,7 +460,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to load character list accId={} world={}", accId, worldId, e);
         }
         return chars;
     }
@@ -379,7 +481,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to check banned IP remote={}", remoteAddress, e);
         }
         return ret;
     }
@@ -434,7 +536,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to check banned HWID accId={}", accId, e);
         }
 
         return ret;
@@ -468,7 +570,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to check banned MACs accId={}", accId, e);
         }
 
         return ret;
@@ -518,7 +620,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 ps.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to ban HWID accId={}", accId, e);
         }
     }
 
@@ -553,7 +655,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to ban MACs accId={}", accId, e);
         }
     }
 
@@ -580,7 +682,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to set PIN accId={}", accId, e);
         }
     }
 
@@ -613,7 +715,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to set PIC accId={}", accId, e);
         }
     }
 
@@ -639,90 +741,89 @@ public class Client extends ChannelInboundHandlerAdapter {
     }
 
     public int login(String login, String pwd, Hwid hwid) {
+        long loginStartedNs = SlowOperationLogger.start();
         int loginok = 5;
 
-        loginattempt++;
-        if (loginattempt > 4) {
-            loggedIn = false;
-            SessionCoordinator.getInstance().closeSession(this, false);
-            return 6;   // thanks Survival_Project for finding out an issue with AUTOMATIC_REGISTER here
-        }
-
-        try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT id, password, gender, banned, pin, pic, characterslots, tos, language FROM accounts WHERE name = ?")) {
-            ps.setString(1, login);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                accId = -2;
-                if (rs.next()) {
-                    accId = rs.getInt("id");
-                    if (accId <= 0) {
-                        log.warn("Tried to log in with accId {}", accId);
-                        return 15;
-                    }
-
-                    boolean banned = (rs.getByte("banned") == 1);
-                    gmlevel = 0;
-                    pin = rs.getString("pin");
-                    pic = rs.getString("pic");
-                    gender = rs.getByte("gender");
-                    characterSlots = rs.getByte("characterslots");
-                    lang = rs.getInt("language");
-                    String passhash = rs.getString("password");
-                    byte tos = rs.getByte("tos");
-
-                    if (banned) {
-                        return 3;
-                    }
-
-                    if (getLoginState() > LOGIN_NOTLOGGEDIN) { // already loggedin
-                        loggedIn = false;
-                        loginok = 7;
-                    } else if (passhash.charAt(0) == '$' && passhash.charAt(1) == '2' && BCrypt.checkpw(pwd, passhash)) {
-                        loginok = (tos == 0) ? 23 : 0;
-                    } else if (pwd.equals(passhash) || checkHash(passhash, "SHA-1", pwd) || checkHash(passhash, "SHA-512", pwd)) {
-                        // thanks GabrielSin for detecting some no-bcrypt inconsistencies here
-                        loginok = (tos == 0) ? (!YamlConfig.config.server.BCRYPT_MIGRATION ? 23 : -23) : (!YamlConfig.config.server.BCRYPT_MIGRATION ? 0 : -10); // migrate to bcrypt
-                    } else {
-                        loggedIn = false;
-                        loginok = 4;
-                    }
-                } else {
-                    accId = -3;
-                }
+        try {
+            loginattempt++;
+            if (loginattempt > 4) {
+                loggedIn = false;
+                SessionCoordinator.getInstance().closeSession(this, false);
+                return 6;   // thanks Survival_Project for finding out an issue with AUTOMATIC_REGISTER here
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
 
-        if (loginok == 0 || loginok == 4) {
-            AntiMulticlientResult res = SessionCoordinator.getInstance().attemptLoginSession(this, hwid, accId, loginok == 4);
+            try (Connection con = DatabaseConnection.getConnection();
+                 PreparedStatement ps = con.prepareStatement("SELECT id, password, gender, banned, pin, pic, characterslots, tos, language FROM accounts WHERE name = ?")) {
+                ps.setString(1, login);
 
-            switch (res) {
-                case SUCCESS:
+                try (ResultSet rs = ps.executeQuery()) {
+                    accId = -2;
+                    if (rs.next()) {
+                        accId = rs.getInt("id");
+                        if (accId <= 0) {
+                            log.warn("Tried to log in with accId {}", accId);
+                            return 15;
+                        }
+
+                        boolean banned = (rs.getByte("banned") == 1);
+                        gmlevel = 0;
+                        pin = rs.getString("pin");
+                        pic = rs.getString("pic");
+                        gender = rs.getByte("gender");
+                        characterSlots = rs.getByte("characterslots");
+                        lang = rs.getInt("language");
+                        String passhash = rs.getString("password");
+                        byte tos = rs.getByte("tos");
+
+                        if (banned) {
+                            return 3;
+                        }
+
+                        if (getLoginState() > LOGIN_NOTLOGGEDIN) { // already loggedin
+                            loggedIn = false;
+                            loginok = 7;
+                        } else if (passhash.charAt(0) == '$' && passhash.charAt(1) == '2' && BCrypt.checkpw(pwd, passhash)) {
+                            loginok = (tos == 0) ? 23 : 0;
+                        } else if (pwd.equals(passhash) || checkHash(passhash, "SHA-1", pwd) || checkHash(passhash, "SHA-512", pwd)) {
+                            // thanks GabrielSin for detecting some no-bcrypt inconsistencies here
+                            loginok = (tos == 0) ? (!YamlConfig.config.server.BCRYPT_MIGRATION ? 23 : -23) : (!YamlConfig.config.server.BCRYPT_MIGRATION ? 0 : -10); // migrate to bcrypt
+                        } else {
+                            loggedIn = false;
+                            loginok = 4;
+                        }
+                    } else {
+                        accId = -3;
+                    }
+                }
+            } catch (SQLException e) {
+                log.error("Login DB lookup failed", e);
+            }
+
+            if (loginok == 0 || loginok == 4) {
+                AntiMulticlientResult res = SessionCoordinator.getInstance().attemptLoginSession(this, hwid, accId, loginok == 4);
+
+                if (res == AntiMulticlientResult.SUCCESS) {
                     if (loginok == 0) {
                         loginattempt = 0;
                     }
 
                     return loginok;
-
-                case REMOTE_LOGGEDIN:
+                } else if (res == AntiMulticlientResult.REMOTE_LOGGEDIN) {
                     return 17;
-
-                case REMOTE_REACHED_LIMIT:
+                } else if (res == AntiMulticlientResult.REMOTE_REACHED_LIMIT) {
                     return 13;
-
-                case REMOTE_PROCESSING:
+                } else if (res == AntiMulticlientResult.REMOTE_PROCESSING) {
                     return 10;
-
-                case MANY_ACCOUNT_ATTEMPTS:
+                } else if (res == AntiMulticlientResult.MANY_ACCOUNT_ATTEMPTS) {
                     return 16;
-
-                default:
+                } else {
                     return 8;
+                }
+            } else {
+                return loginok;
             }
-        } else {
-            return loginok;
+        } finally {
+            SlowOperationLogger.warnIfSlow("client-login accId=" + accId, loginStartedNs, 1_000);
         }
     }
 
@@ -749,7 +850,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             tempBanCalendar = lTempban;
             return lTempban;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to load temp ban accId={}", accId, e);
         }
 
         return null;//why oh why!?!
@@ -785,7 +886,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to update HWID accId={}", accId, e);
         }
     }
 
@@ -807,7 +908,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to update MACs accId={}", accId, e);
         }
     }
 
@@ -820,6 +921,7 @@ public class Client extends ChannelInboundHandlerAdapter {
     }
 
     public void updateLoginState(int newState) {
+        long startedNs = SlowOperationLogger.start();
         // rules out possibility of multiple account entries
         if (newState == LOGIN_LOGGEDIN) {
             SessionCoordinator.getInstance().updateOnlineClient(this);
@@ -834,7 +936,10 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(3, getAccID());
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to update login state accId={} newState={}", getAccID(), newState, e);
+        } finally {
+            SlowOperationLogger.warnIfSlow("update-login-state accId=" + getAccID() + " newState=" + newState,
+                    startedNs, 1_000);
         }
 
         if (newState == LOGIN_NOTLOGGEDIN) {
@@ -848,6 +953,7 @@ public class Client extends ChannelInboundHandlerAdapter {
     }
 
     public int getLoginState() {  // 0 = LOGIN_NOTLOGGEDIN, 1= LOGIN_SERVER_TRANSITION, 2 = LOGIN_LOGGEDIN
+        long startedNs = SlowOperationLogger.start();
         try (Connection con = DatabaseConnection.getConnection()) {
             int state;
             try (PreparedStatement ps = con.prepareStatement("SELECT loggedin, lastlogin, birthday FROM accounts WHERE id = ?")) {
@@ -888,8 +994,10 @@ public class Client extends ChannelInboundHandlerAdapter {
             return state;
         } catch (SQLException e) {
             loggedIn = false;
-            e.printStackTrace();
+            log.error("Failed to get login state accId={}", getAccID(), e);
             throw new RuntimeException("login state");
+        } finally {
+            SlowOperationLogger.warnIfSlow("get-login-state accId=" + getAccID(), startedNs, 1_000);
         }
     }
 
@@ -966,7 +1074,7 @@ public class Client extends ChannelInboundHandlerAdapter {
 
     public final void disconnect(final boolean shutdown, final boolean cashshop) {
         if (canDisconnect()) {
-            ThreadManager.getInstance().newTask(() -> disconnectInternal(shutdown, cashshop));
+            ThreadManager.getInstance().newDatabaseTask(() -> disconnectInternal(shutdown, cashshop));
         }
     }
 
@@ -986,6 +1094,17 @@ public class Client extends ChannelInboundHandlerAdapter {
     }
 
     private void disconnectInternal(boolean shutdown, boolean cashshop) {//once per Client instance
+        if (player != null) {
+            try {
+                MobReactionCaptureRuntime.stopIfOwned(player);
+            } catch (RuntimeException captureFailure) {
+                log.warn("Unable to finalize mob reaction capture during disconnect", captureFailure);
+            }
+        }
+        if (this instanceof BotClient && player != null) {
+            AgentRuntimeCleanupService.cleanupAgentRuntimeState(player);
+        }
+
         if (player != null && player.isLoggedin() && player.getClient() != null) {
             final int messengerid = player.getMessenger() == null ? 0 : player.getMessenger().getId();
             //final int fid = player.getFamilyId();
@@ -1044,7 +1163,7 @@ public class Client extends ChannelInboundHandlerAdapter {
 
                     player.saveCooldowns();
                     player.cancelAllDebuffs();
-                    player.saveCharToDB(true);
+                    player.saveCharToDB(true, SaveReason.LOGOUT);
 
                     player.logOff();
                     if (YamlConfig.config.server.INSTANT_NAME_CHANGE) {
@@ -1056,7 +1175,7 @@ public class Client extends ChannelInboundHandlerAdapter {
 
                     player.saveCooldowns();
                     player.cancelAllDebuffs();
-                    player.saveCharToDB();
+                    player.saveCharToDB(true, SaveReason.SERVER_TRANSITION);
                 }
             }
         }
@@ -1079,6 +1198,7 @@ public class Client extends ChannelInboundHandlerAdapter {
     private void clear() {
         // player hard reference removal thanks to Steve (kaito1410)
         if (this.player != null) {
+            clearScriptRuntimeState();
             this.player.empty(true); // clears schedules and stuff
         }
 
@@ -1090,6 +1210,26 @@ public class Client extends ChannelInboundHandlerAdapter {
         this.birthday = null;
         this.engines = null;
         this.player = null;
+    }
+
+    private void clearScriptRuntimeState() {
+        try {
+            NPCScriptManager.getInstance().dispose(this);
+        } catch (Throwable t) {
+            log.warn("Failed to dispose NPC script state during client cleanup accId={} chr={}",
+                    accId, player == null ? null : player.getId(), t);
+        }
+
+        try {
+            QuestScriptManager.getInstance().dispose(this);
+        } catch (Throwable t) {
+            log.warn("Failed to dispose quest script state during client cleanup accId={} chr={}",
+                    accId, player == null ? null : player.getId(), t);
+        }
+
+        if (player != null) {
+            AbstractPlayerInteraction.clearPendingCharacterRuntimeState(player.getId());
+        }
     }
 
     public void setCharacterOnSessionTransitionState(int cid) {
@@ -1115,26 +1255,7 @@ public class Client extends ChannelInboundHandlerAdapter {
     }
 
     public boolean deleteCharacter(int cid, int senderAccId) {
-        try {
-            Character chr = Character.loadCharFromDB(cid, this, false);
-
-            Integer partyid = chr.getWorldServer().getCharacterPartyid(cid);
-            if (partyid != null) {
-                this.setPlayer(chr);
-
-                Party party = chr.getWorldServer().getParty(partyid);
-                chr.setParty(party);
-                chr.getMPC();
-                chr.leaveParty();   // thanks Vcoc for pointing out deleted characters would still stay in a party
-
-                this.setPlayer(null);
-            }
-
-            return Character.deleteCharFromDB(chr, senderAccId);
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            return false;
-        }
+        return CharacterDeletionService.deleteCharacter(cid, senderAccId).isSuccess();
     }
 
     public String getAccountName() {
@@ -1174,9 +1295,9 @@ public class Client extends ChannelInboundHandlerAdapter {
                     }
                 }
             } catch (NullPointerException e) {
-                e.printStackTrace();
+                log.warn("Idle check skipped because client state was already cleared remote={}", remoteAddress, e);
             }
-        }, SECONDS.toMillis(15));
+        }, SECONDS.toMillis(15000));
     }
 
     public Set<String> getMacs() {
@@ -1235,25 +1356,30 @@ public class Client extends ChannelInboundHandlerAdapter {
                 ps.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to accept ToS accId={}", accId, e);
         }
         return disconnect;
     }
 
-    public void checkChar(int accid) {  /// issue with multiple chars from same account login found by shavit, resinate
+    public int checkChar(int accid) {  /// issue with multiple chars from same account login found by shavit, resinate
         if (!YamlConfig.config.server.USE_CHARACTER_ACCOUNT_CHECK) {
-            return;
+            return 0;
         }
 
+        int disconnectedBots = 0;
         for (World w : Server.getInstance().getWorlds()) {
             for (Character chr : w.getPlayerStorage().getAllCharacters()) {
                 if (accid == chr.getAccountID()) {
                     log.warn("Chr {} has been removed from world {}. Possible Dupe attempt.", chr.getName(), GameConstants.WORLD_NAMES[w.getId()]);
+                    if (chr.getClient() instanceof BotClient) {
+                        disconnectedBots++;
+                    }
                     chr.getClient().forceDisconnect();
                     w.getPlayerStorage().removePlayer(chr.getId());
                 }
             }
         }
+        return disconnectedBots;
     }
 
     public int getVotePoints() {
@@ -1268,7 +1394,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to load vote points accId={}", accId, e);
         }
         votePoints = points;
         return votePoints;
@@ -1296,7 +1422,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to save vote points accId={}", accId, e);
         }
     }
 
@@ -1391,7 +1517,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 ps.executeUpdate();
 
             } catch (SQLException e) {
-                e.printStackTrace();
+                log.error("Failed to gain character slot accId={}", accId, e);
             }
             return true;
         }
@@ -1409,7 +1535,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to load account ban reason accId={}", accId, e);
         }
         return 0;
     }
@@ -1427,7 +1553,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to set gender accId={}", accId, e);
         }
     }
 
@@ -1465,6 +1591,16 @@ public class Client extends ChannelInboundHandlerAdapter {
     public void sendPacket(Packet packet) {
         announcerLock.lock();
         try {
+            try {
+                MapTransitionPacketTraceRuntime.recordOutbound(this, packet);
+            } catch (RuntimeException captureFailure) {
+                log.warn("Map transition trace could not retain an outbound packet", captureFailure);
+            }
+            try {
+                MobReactionCaptureRuntime.recordOutbound(this, packet);
+            } catch (RuntimeException captureFailure) {
+                log.warn("Mob reaction capture could not retain an outbound packet", captureFailure);
+            }
             ioChannel.writeAndFlush(packet);
         } finally {
             announcerLock.unlock();
@@ -1520,13 +1656,13 @@ public class Client extends ChannelInboundHandlerAdapter {
         player.getMap().removePlayer(player);
         player.getClient().getChannelServer().removePlayer(player);
 
-        player.saveCharToDB();
+        player.saveCharToDB(SaveReason.SERVER_TRANSITION);
 
         player.setSessionTransitionState();
         try {
             sendPacket(PacketCreator.getChannelChange(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1])));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Failed to send channel change packet accId={} target={}:{}", accId, socket[0], socket[1], e);
         }
     }
 

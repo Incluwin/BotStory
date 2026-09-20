@@ -1,0 +1,138 @@
+package server.agents.capabilities.supplies;
+
+import client.Character;
+import client.inventory.WeaponType;
+import config.YamlConfig;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.capabilities.combat.AgentAttackExecutionProvider;
+import server.agents.capabilities.dialogue.AgentChatSupplyRequestFlow;
+import server.agents.capabilities.trade.AgentOfferService;
+import server.agents.commands.AgentMessageQueueStateRuntime;
+import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.integration.InventoryGateway;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentSchedulerRuntime;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+
+class AgentSupplyRuntimeTest {
+    private boolean previousDialogueTransport;
+
+    @BeforeEach
+    void enableDialogueTransportForQueueBehaviorTests() {
+        previousDialogueTransport = config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = true;
+    }
+
+    @AfterEach
+    void restoreDialogueTransportSetting() {
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = previousDialogueTransport;
+    }
+
+    @Test
+    void requestUpgradeFallsBackToBestGearWhenNoSupplyRequestIsMade() {
+        Character bot = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+
+        try (MockedStatic<AgentOfferService> offers = mockStatic(AgentOfferService.class);
+             MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class)) {
+            potions.when(() -> AgentPotionService.requestLowSuppliesFromOwnerAsk(
+                    eq(entry),
+                    eq(bot),
+                    any(InventoryGateway.class))).thenReturn(false);
+
+            AgentSupplyRuntime.handleRequestUpgradeCommand(entry, bot);
+
+            offers.verify(() -> AgentOfferService.clearPendingOfferForOwnerAsk(entry));
+            offers.verify(() -> AgentOfferService.requestBestUpgradeFromOwner(entry, bot));
+        }
+    }
+
+    @Test
+    void potionRequestQueuesNoDonorReply() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentMessageQueueStateRuntime.setSending(entry, true);
+
+        try (MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class)) {
+            potions.when(() -> AgentPotionService.offerPotShareToOwner(entry, true))
+                    .thenReturn(AgentPotionService.OwnerPotShareResult.NO_DONOR);
+
+            AgentSupplyRuntime.handleNeedPotionCommand(entry, true);
+
+            assertTrue(AgentMessageQueueStateRuntime.peek(entry).text().contains("hp"));
+        }
+    }
+
+    @Test
+    void potionRequestQueuesReplyThroughReplyRuntime() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+
+        try (MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class);
+             MockedStatic<AgentDialogueTransportRuntime> replies = mockStatic(AgentDialogueTransportRuntime.class)) {
+            potions.when(() -> AgentPotionService.offerPotShareToOwner(entry, true))
+                    .thenReturn(AgentPotionService.OwnerPotShareResult.NO_DONOR);
+
+            AgentSupplyRuntime.handleNeedPotionCommand(entry, true);
+
+            replies.verify(() -> AgentDialogueTransportRuntime.queueReply(eq(entry), any(String.class)));
+        }
+    }
+
+    @Test
+    void ammoRequestQueuesNotNeededReplyForNonBowOwner() {
+        Character owner = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, owner, null);
+        AgentMessageQueueStateRuntime.setSending(entry, true);
+
+        try (MockedStatic<AgentAttackExecutionProvider> attacks = mockStatic(AgentAttackExecutionProvider.class)) {
+            attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(owner))
+                    .thenReturn(WeaponType.SWORD1H);
+
+            AgentSupplyRuntime.handleNeedAmmoCommand(entry);
+
+            String reply = AgentMessageQueueStateRuntime.peek(entry).text();
+            assertTrue(reply.contains("ammo") || reply.contains("arrows") || reply.contains("bolts"));
+        }
+    }
+
+    @Test
+    void ammoRequestQueuesReplyThroughReplyRuntime() {
+        Character owner = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, owner, null);
+
+        try (MockedStatic<AgentAttackExecutionProvider> attacks = mockStatic(AgentAttackExecutionProvider.class);
+             MockedStatic<AgentDialogueTransportRuntime> replies = mockStatic(AgentDialogueTransportRuntime.class)) {
+            attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(owner))
+                    .thenReturn(WeaponType.SWORD1H);
+
+            AgentSupplyRuntime.handleNeedAmmoCommand(entry);
+
+            replies.verify(() -> AgentDialogueTransportRuntime.queueReply(eq(entry), any(String.class)));
+        }
+    }
+
+    @Test
+    void supplyRequestCallbacksScheduleThroughSchedulerRuntime() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentChatSupplyRequestFlow.SupplyRequestCallbacks callbacks = AgentSupplyRuntime.supplyRequestCallbacks(entry);
+
+        try (MockedStatic<AgentSchedulerRuntime> scheduler =
+                     mockStatic(AgentSchedulerRuntime.class)) {
+            callbacks.requestPotion(true);
+            callbacks.requestAnyPotion();
+            callbacks.requestAmmo();
+
+            scheduler.verify(
+                    () -> AgentSchedulerRuntime.afterRandomDelay(eq(entry), eq(500), eq(700), any(Runnable.class)),
+                    times(3));
+        }
+    }
+}

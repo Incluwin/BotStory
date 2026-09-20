@@ -1,0 +1,668 @@
+package server.agents.capabilities.navigation;
+
+import client.Character;
+import constants.skills.Hermit;
+import org.junit.jupiter.api.Test;
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
+import server.agents.capabilities.movement.AgentMovementProfile;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.life.Monster;
+import server.maps.MapleMap;
+import server.maps.Foothold;
+import server.maps.FootholdTree;
+import server.maps.Portal;
+
+import java.awt.Point;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+class AgentNavigationPathServiceTest {
+    @Test
+    void intraRegionTravelCostUsesWalkVelocityForGroundRegion() {
+        AgentNavigationGraph graph = graphWithRegion(
+                new AgentNavigationGraph.Region(1, List.of(new AgentNavigationGraph.Segment(
+                        new Foothold(new Point(0, 100), new Point(100, 100), 1)))));
+
+        int expected = Math.max(0, (int) Math.round((50 * 1000.0) / Math.max(1.0, graph.movementProfile.walkVelocityPxs())));
+
+        assertEquals(expected, AgentNavigationPathService.intraRegionTravelCost(graph, 1, new Point(0, 100), new Point(50, 100)));
+        assertEquals(expected, AgentNavigationPathService.heuristic(graph, new Point(0, 100), new Point(50, 100)));
+    }
+
+    @Test
+    void intraRegionTravelCostUsesClimbSpeedForRopeRegion() {
+        AgentNavigationGraph graph = graphWithRegion(new AgentNavigationGraph.Region(1, 100, 50, 250, false));
+        int expected = Math.max(0, (int) Math.round((75 * 1000.0) / Math.max(1, AgentMovementPhysicsConfig.configuredClimbSpeedPxs())));
+
+        assertEquals(expected, AgentNavigationPathService.intraRegionTravelCost(graph, 1, new Point(100, 50), new Point(100, 125)));
+    }
+
+    @Test
+    void collapseLeadingWalkEdgesPromotesFirstActionableEdge() {
+        AgentNavigationGraph.Edge collapsed = AgentNavigationPathService.collapseLeadingWalkEdges(List.of(
+                edge(1, 2, AgentNavigationGraph.EdgeType.WALK, new Point(528, -914), new Point(528, -914), 50),
+                edge(2, 3, AgentNavigationGraph.EdgeType.WALK, new Point(528, -914), new Point(528, -914), 50),
+                edge(3, 4, AgentNavigationGraph.EdgeType.JUMP, new Point(540, -914), new Point(612, -980), 300)
+        ));
+
+        assertNotNull(collapsed);
+        assertEquals(AgentNavigationGraph.EdgeType.JUMP, collapsed.type);
+        assertEquals(1, collapsed.fromRegionId);
+        assertEquals(4, collapsed.toRegionId);
+        assertEquals(400, collapsed.cost);
+    }
+
+    @Test
+    void collapseLeadingWalkEdgesReturnsNullWhenAllLeadingWalksConsumeNoMovement() {
+        assertNull(AgentNavigationPathService.collapseLeadingWalkEdges(List.of(
+                edge(1, 2, AgentNavigationGraph.EdgeType.WALK, new Point(10, 10), new Point(10, 10), 50),
+                edge(2, 3, AgentNavigationGraph.EdgeType.WALK, new Point(10, 10), new Point(10, 10), 50)
+        )));
+    }
+
+    @Test
+    void preciseWalkTargetRequiresRealWalkMovement() {
+        AgentNavigationGraph.Edge walkHandoff = edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                new Point(28, -1167), new Point(13, -1170), 100);
+        AgentNavigationGraph.Edge noMoveWalk = edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                new Point(28, -1167), new Point(28, -1167), 50);
+
+        assertTrue(AgentNavigationPathService.shouldUsePreciseWalkTarget(walkHandoff));
+        assertFalse(AgentNavigationPathService.shouldUsePreciseWalkTarget(noMoveWalk));
+        assertFalse(AgentNavigationPathService.shouldUsePreciseWalkTarget(null));
+    }
+
+    @Test
+    void edgeUsabilityAllowsNonPortalEdgesAndRequiresOpenPortal() {
+        MapleMap map = new MapleMap(910000001, 0, 0, 910000001, 1.0f);
+        AgentNavigationGraph graph = graphWithRegion(new AgentNavigationGraph.Region(1, List.of(new AgentNavigationGraph.Segment(
+                new Foothold(new Point(0, 100), new Point(100, 100), 1)))));
+
+        assertTrue(AgentNavigationPathService.isEdgeUsable(graph, map,
+                edge(1, 2, AgentNavigationGraph.EdgeType.WALK, new Point(0, 100), new Point(10, 100), 10)));
+        assertFalse(AgentNavigationPathService.isEdgeUsable(graph, map,
+                new AgentNavigationGraph.Edge(1, 2, AgentNavigationGraph.EdgeType.PORTAL,
+                        new Point(0, 100), new Point(10, 100), 0, 0, 0, 42, 0, 10)));
+    }
+
+    @Test
+    void findPathRunsAgentOwnedSearch() {
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 100),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(
+                        1, List.of(
+                                edge(1, 2, AgentNavigationGraph.EdgeType.WALK, new Point(0, 100), new Point(100, 100), 10),
+                                edge(1, 3, AgentNavigationGraph.EdgeType.WALK, new Point(0, 100), new Point(300, 100), 1_000)),
+                        2, List.of(edge(2, 3, AgentNavigationGraph.EdgeType.WALK, new Point(100, 100), new Point(200, 100), 10))));
+
+        List<AgentNavigationGraph.Edge> path = AgentNavigationPathService.findPath(
+                graph, null, new Point(0, 100), 1, 3, new Point(200, 100));
+
+        assertEquals(2, path.size());
+        assertEquals(2, path.get(0).toRegionId);
+        assertEquals(3, path.get(1).toRegionId);
+    }
+
+    @Test
+    void findNextEdgeCollapsesNoMovementLeadingWalks() {
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 100),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(
+                        1, List.of(edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                                new Point(0, 100), new Point(0, 100), 10)),
+                        2, List.of(edge(2, 3, AgentNavigationGraph.EdgeType.JUMP,
+                                new Point(0, 100), new Point(200, 100), 20))));
+        Character bot = mock(Character.class);
+        when(bot.getMap()).thenReturn(null);
+        when(bot.getPosition()).thenReturn(new Point(0, 100));
+
+        AgentNavigationGraph.Edge next = AgentNavigationPathService.findNextEdge(
+                graph, bot, 1, 3, new Point(200, 100));
+
+        assertNotNull(next);
+        assertEquals(1, next.fromRegionId);
+        assertEquals(3, next.toRegionId);
+        assertEquals(AgentNavigationGraph.EdgeType.JUMP, next.type);
+        assertEquals(30, next.cost);
+    }
+
+    @Test
+    void findNextEdgePrefersClearDetourOverCrowdedShortRoute() {
+        AgentNavigationGraph.Edge crowdedFirst = edge(1, 2, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(50, 100), new Point(150, 100), 100);
+        AgentNavigationGraph.Edge crowdedSecond = edge(2, 4, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(150, 100), new Point(350, 100), 100);
+        AgentNavigationGraph.Edge clearFirst = edge(1, 3, AgentNavigationGraph.EdgeType.DROP,
+                new Point(50, 100), new Point(150, 200), 300);
+        AgentNavigationGraph.Edge clearSecond = edge(3, 4, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(150, 200), new Point(350, 100), 300);
+        List<AgentNavigationGraph.Region> regions = List.of(
+                groundRegion(1, 0, 100, 100),
+                groundRegion(2, 100, 200, 100),
+                groundRegion(3, 100, 200, 200),
+                groundRegion(4, 300, 400, 100));
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(regions, Map.of(
+                1, List.of(crowdedFirst, clearFirst),
+                2, List.of(crowdedSecond),
+                3, List.of(clearSecond)));
+
+        FootholdTree footholds = new FootholdTree(new Point(-1000, -1000), new Point(1000, 1000));
+        for (AgentNavigationGraph.Region region : regions) {
+            AgentNavigationGraph.Segment segment = region.segments.getFirst();
+            footholds.insert(new Foothold(
+                    new Point(segment.x1, segment.y1), new Point(segment.x2, segment.y2), segment.footholdId));
+        }
+        MapleMap map = mock(MapleMap.class);
+        when(map.getFootholds()).thenReturn(footholds);
+        Monster monster = mock(Monster.class);
+        when(monster.isAlive()).thenReturn(true);
+        when(monster.getPosition()).thenReturn(new Point(150, 100));
+        when(map.getAllMonsters()).thenReturn(List.of(monster));
+        Character bot = mock(Character.class);
+        when(bot.getMap()).thenReturn(map);
+        when(bot.getPosition()).thenReturn(new Point(50, 100));
+
+        AgentNavigationGraph.Edge selected = AgentNavigationPathService.findNextEdge(
+                graph, bot, 1, 4, new Point(350, 100));
+
+        assertEquals(clearFirst, selected,
+                "a populated intermediate platform should lose to a reasonably longer clear route");
+    }
+
+    @Test
+    void seededVariationCanChooseBoundedReachableAlternativeAndIsStable() {
+        AgentNavigationGraph.Edge viaFirst = edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                new Point(0, 100), new Point(100, 100), 100);
+        AgentNavigationGraph.Edge viaSecond = edge(2, 3, AgentNavigationGraph.EdgeType.WALK,
+                new Point(100, 100), new Point(200, 100), 100);
+        AgentNavigationGraph.Edge direct = edge(1, 3, AgentNavigationGraph.EdgeType.WALK,
+                new Point(0, 100), new Point(200, 100), 210);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 100),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(1, List.of(viaFirst, direct), 2, List.of(viaSecond)));
+        Character bot = mock(Character.class);
+        when(bot.getMap()).thenReturn(null);
+        when(bot.getPosition()).thenReturn(new Point(0, 100));
+
+        AgentNavigationGraph.Edge selected = null;
+        long selectedSeed = -1L;
+        for (long seed = 0L; seed < 10_000L; seed++) {
+            AgentTravelVariationRuntime.RouteVariation variation =
+                    new AgentTravelVariationRuntime.RouteVariation(seed, 2.0d);
+            AgentNavigationGraph.Edge candidate = AgentNavigationPathService.findNextEdgeVaried(
+                    graph, bot, 1, 3, new Point(200, 100), variation);
+            if (candidate == direct) {
+                selected = candidate;
+                selectedSeed = seed;
+                break;
+            }
+        }
+
+        assertEquals(direct, selected);
+        assertTrue(direct.cost <= Math.ceil((viaFirst.cost + viaSecond.cost) * 2.0d));
+        assertEquals(direct, AgentNavigationPathService.findNextEdgeVaried(
+                graph, bot, 1, 3, new Point(200, 100),
+                new AgentTravelVariationRuntime.RouteVariation(selectedSeed, 2.0d)));
+    }
+
+    @Test
+    void transitionVariationIsNeverCheaperAndHonorsStretchBound() {
+        AgentNavigationGraph.Edge edge = edge(1, 2, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(10, 100), new Point(80, 60), 250);
+        AgentTravelVariationRuntime.RouteVariation variation =
+                new AgentTravelVariationRuntime.RouteVariation(123L, 1.2d);
+
+        int varied = AgentNavigationPathService.variedTransitionCost(250, edge, variation);
+
+        assertTrue(varied >= 250);
+        assertTrue(varied <= 300);
+    }
+
+    @Test
+    void edgeFilterSelectsAlternateReachableRoute() {
+        AgentNavigationGraph.Edge direct = edge(1, 3, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(0, 100), new Point(200, 100), 10);
+        AgentNavigationGraph.Edge alternateFirst = edge(1, 2, AgentNavigationGraph.EdgeType.DROP,
+                new Point(0, 100), new Point(100, 200), 20);
+        AgentNavigationGraph.Edge alternateSecond = edge(2, 3, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(100, 200), new Point(200, 100), 20);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 200),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(1, List.of(direct, alternateFirst), 2, List.of(alternateSecond)));
+        Character bot = mock(Character.class);
+        when(bot.getMap()).thenReturn(null);
+
+        AgentNavigationGraph.Edge selected = AgentNavigationPathService.findNextEdgeVaried(
+                graph, bot, new Point(0, 100), 1, 3, new Point(200, 100), null,
+                edge -> edge != direct);
+
+        assertEquals(alternateFirst, selected);
+    }
+
+    @Test
+    void measureOptimalityRunsAgentOwnedSearch() {
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 100)),
+                Map.of(1, List.of(edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                        new Point(0, 100), new Point(100, 100), 10))));
+
+        AgentNavigationPathService.PathOptimality optimality = AgentNavigationPathService.measureOptimality(
+                graph, null, new Point(0, 100), 1, 2, new Point(100, 100));
+
+        assertTrue(optimality.reachable());
+        assertFalse(optimality.suboptimal());
+        assertEquals(0, optimality.costDelta());
+    }
+
+    @Test
+    void cappedMovementSearchReturnsClosestReachedFrontier() {
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 100),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(
+                        1, List.of(edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                                new Point(0, 100), new Point(100, 100), 10)),
+                        2, List.of(edge(2, 3, AgentNavigationGraph.EdgeType.WALK,
+                                new Point(100, 100), new Point(200, 100), 10))));
+
+        AgentNavigationPathService.SearchOutcome outcome = AgentNavigationPathService.runSearch(
+                graph, null, new Point(0, 100), 1, 3, new Point(200, 100),
+                "committed", true, false, 1);
+
+        assertTrue(outcome.capped());
+        assertTrue(outcome.bestEffort());
+        assertFalse(outcome.reached());
+        assertEquals(AgentNavigationPathService.RouteCompleteness.PARTIAL,
+                outcome.completeness());
+        assertEquals(1, outcome.path().size());
+        assertEquals(2, outcome.finalRegionId());
+    }
+
+    @Test
+    void cappedScoringSearchDoesNotReturnPartialRoute() {
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 100),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(
+                        1, List.of(edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                                new Point(0, 100), new Point(100, 100), 10)),
+                        2, List.of(edge(2, 3, AgentNavigationGraph.EdgeType.WALK,
+                                new Point(100, 100), new Point(200, 100), 10))));
+
+        AgentNavigationPathService.SearchOutcome outcome = AgentNavigationPathService.runSearch(
+                graph, null, new Point(0, 100), 1, 3, new Point(200, 100),
+                "target-score", true, false, 1);
+
+        assertTrue(outcome.capped());
+        assertFalse(outcome.bestEffort());
+        assertTrue(outcome.path().isEmpty());
+        assertEquals(AgentNavigationPathService.RouteCompleteness.UNREACHABLE,
+                outcome.completeness());
+    }
+
+    @Test
+    void completeAndSameRegionSearchesExposeCompleteContract() {
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(groundRegion(1, 0, 100, 100), groundRegion(2, 100, 200, 100)),
+                Map.of(1, List.of(edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                        new Point(0, 100), new Point(100, 100), 10))));
+
+        AgentNavigationPathService.SearchOutcome remote = AgentNavigationPathService.runSearch(
+                graph, null, new Point(0, 100), 1, 2, new Point(150, 100),
+                "target-score", true, false);
+        AgentNavigationPathService.SearchOutcome sameRegion = AgentNavigationPathService.runSearch(
+                graph, null, new Point(0, 100), 1, 1, new Point(50, 100),
+                "target-score", true, false);
+
+        assertEquals(AgentNavigationPathService.RouteCompleteness.COMPLETE,
+                remote.completeness());
+        assertEquals(AgentNavigationPathService.RouteCompleteness.COMPLETE,
+                sameRegion.completeness());
+        assertTrue(sameRegion.path().isEmpty());
+    }
+
+    @Test
+    void sameRegionSearchCanPreferSelfLoopPortalOverDirectWalk() {
+        AgentNavigationGraph.Edge portalEdge = new AgentNavigationGraph.Edge(
+                1, 1, AgentNavigationGraph.EdgeType.PORTAL,
+                new Point(10, 100), new Point(190, 100),
+                0, 0, 0, 7, 0, 0, 0, 0);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(groundRegion(1, 0, 200, 100)),
+                Map.of(1, List.of(portalEdge)));
+        MapleMap map = mock(MapleMap.class);
+        Portal portal = mock(Portal.class);
+        when(map.getPortal(7)).thenReturn(portal);
+        when(portal.getPortalStatus()).thenReturn(true);
+
+        AgentNavigationPathService.SearchOutcome outcome = AgentNavigationPathService.runSearch(
+                graph, map, new Point(0, 100), 1, 1, new Point(200, 100),
+                "target-score", true, false);
+
+        assertEquals(AgentNavigationPathService.RouteCompleteness.COMPLETE,
+                outcome.completeness());
+        assertEquals(List.of(portalEdge), outcome.path());
+        assertTrue(outcome.cost()
+                < AgentNavigationPathService.intraRegionTravelCost(
+                graph, 1, new Point(0, 100), new Point(200, 100)));
+    }
+
+    @Test
+    void perAgentEdgePenaltyCanFavorLongerReliableRoute() {
+        AgentNavigationGraph.Edge riskyDirect = edge(1, 3, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(0, 100), new Point(200, 100), 10);
+        AgentNavigationGraph.Edge reliableFirst = edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                new Point(0, 100), new Point(100, 100), 30);
+        AgentNavigationGraph.Edge reliableSecond = edge(2, 3, AgentNavigationGraph.EdgeType.WALK,
+                new Point(100, 100), new Point(200, 100), 30);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 100),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(1, List.of(riskyDirect, reliableFirst),
+                        2, List.of(reliableSecond)));
+        Character bot = mock(Character.class);
+        when(bot.getMap()).thenReturn(null);
+
+        AgentNavigationPathService.MovementPathSelection selection =
+                AgentNavigationPathService.findNextEdgeSelectionVaried(
+                        graph, bot, new Point(0, 100), 1, 3,
+                        new Point(200, 100), null, edge -> true,
+                        edge -> edge == riskyDirect ? 1_000 : 0);
+
+        assertEquals(reliableFirst, selection.activeEdge());
+        assertEquals(AgentNavigationPathService.RouteCompleteness.COMPLETE,
+                selection.completeness());
+    }
+
+    @Test
+    void perAgentSuppressionSelectsAlternativeWithoutChangingSharedGraph() {
+        AgentNavigationGraph.Edge direct = edge(1, 3, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(0, 100), new Point(200, 100), 10);
+        AgentNavigationGraph.Edge alternateFirst = edge(1, 2, AgentNavigationGraph.EdgeType.DROP,
+                new Point(0, 100), new Point(100, 200), 20);
+        AgentNavigationGraph.Edge alternateSecond = edge(2, 3, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(100, 200), new Point(200, 100), 20);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 200),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(1, List.of(direct, alternateFirst), 2, List.of(alternateSecond)));
+        Character bot = mock(Character.class);
+        when(bot.getMap()).thenReturn(null);
+        AgentRuntimeEntry affected = new AgentRuntimeEntry(null, null, null);
+        AgentRuntimeEntry unaffected = new AgentRuntimeEntry(null, null, null);
+        AgentNavigationEdgeReliabilityState reliability = affected.capabilityStates()
+                .require(AgentNavigationEdgeReliabilityState.STATE_KEY);
+        for (int failure = 0; failure < AgentNavigationReliabilityConfig.failureThreshold(); failure++) {
+            reliability.recordFailure(graph.mapId, direct, 1_000 + failure,
+                    AgentNavigationReliabilityConfig.failureThreshold(),
+                    AgentNavigationReliabilityConfig.suppressionMs(),
+                    AgentNavigationReliabilityConfig.failureRetentionMs(),
+                    AgentNavigationReliabilityConfig.maxTrackedEdges());
+        }
+
+        AgentNavigationPathService.MovementPathSelection rerouted =
+                AgentNavigationPathService.findNextEdgeSelectionVaried(
+                        graph, bot, new Point(0, 100), 1, 3,
+                        new Point(200, 100), null,
+                        AgentNavigationEdgeReliabilityRuntime.edgeFilter(
+                                affected, graph.mapId, 2_000), edge -> 0);
+        AgentNavigationPathService.MovementPathSelection normal =
+                AgentNavigationPathService.findNextEdgeSelectionVaried(
+                        graph, bot, new Point(0, 100), 1, 3,
+                        new Point(200, 100), null,
+                        AgentNavigationEdgeReliabilityRuntime.edgeFilter(
+                                unaffected, graph.mapId, 2_000), edge -> 0);
+
+        assertEquals(alternateFirst, rerouted.activeEdge());
+        assertEquals(direct, normal.activeEdge());
+        assertTrue(graph.getOutgoing(1).contains(direct),
+                "per-Agent suppression must not mutate shared graph topology");
+    }
+
+    @Test
+    void movementSearchRetriesWhenBoundedSearchCannotMoveCloserFirst() {
+        AgentNavigationGraph.Edge awayFromTarget = edge(
+                1, 2, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(100, 100), new Point(200, 100), 10);
+        AgentNavigationGraph.Edge backTowardTarget = edge(
+                2, 3, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(200, 100), new Point(0, 100), 10);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 50, 150, 100),
+                        groundRegion(2, 150, 250, 100),
+                        groundRegion(3, -50, 50, 100)),
+                Map.of(1, List.of(awayFromTarget), 2, List.of(backTowardTarget)));
+
+        List<AgentNavigationGraph.Edge> path = AgentNavigationPathService.movementPath(
+                graph, null, new Point(100, 100), 1, 3, new Point(0, 100),
+                null, 1, 10, false);
+
+        assertEquals(List.of(awayFromTarget, backTowardTarget), path);
+    }
+
+    @Test
+    void movementSearchRetriesWhenBoundedSearchReturnsOnlyACloserFragment() {
+        AgentNavigationGraph.Edge first = edge(
+                1, 2, AgentNavigationGraph.EdgeType.WALK,
+                new Point(0, 100), new Point(100, 100), 10);
+        AgentNavigationGraph.Edge second = edge(
+                2, 3, AgentNavigationGraph.EdgeType.WALK,
+                new Point(100, 100), new Point(200, 100), 10);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, -50, 50, 100),
+                        groundRegion(2, 50, 150, 100),
+                        groundRegion(3, 150, 250, 100)),
+                Map.of(1, List.of(first), 2, List.of(second)));
+
+        List<AgentNavigationGraph.Edge> path = AgentNavigationPathService.movementPath(
+                graph, null, new Point(0, 100), 1, 3, new Point(200, 100),
+                null, 1, 10, false);
+
+        assertEquals(List.of(first, second), path);
+    }
+
+    @Test
+    void kerningRightPlatformCanReachUpperEastPortalWithoutEmptyRecoveryLoop() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000000);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map);
+        Point start = new Point(2490, 99);
+        Point target = new Point(2512, -204);
+        int startRegionId = graph.findRegionId(map, start);
+        int targetRegionId = graph.findRegionId(map, target);
+
+        List<AgentNavigationGraph.Edge> path = AgentNavigationPathService.movementPath(
+                graph, map, start, startRegionId, targetRegionId, target,
+                null, AgentNavigationPathService.MOVEMENT_MAX_EDGE_CHECKS,
+                AgentNavigationPathService.MAX_EDGE_CHECKS, false);
+
+        assertFalse(path.isEmpty());
+        AgentNavigationGraph.Edge first = path.getFirst();
+        assertEquals(AgentNavigationGraph.EdgeType.JUMP, first.type);
+        assertEquals(-6, first.launchStepX);
+        assertEquals(new Point(2413, 126), first.endPoint);
+        assertEquals(targetRegionId, path.getLast().toRegionId);
+    }
+
+    @Test
+    void kerningMainPlatformUsesEastExitCorridorWithoutRegion143Loop() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000000);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map);
+        Point start = new Point(2490, 156);
+        Point target = new Point(2512, -204);
+        int startRegionId = graph.findRegionId(map, start);
+        int targetRegionId = graph.findRegionId(map, target);
+
+        List<AgentNavigationGraph.Edge> path = AgentNavigationPathService.movementPath(
+                graph, map, start, startRegionId, targetRegionId, target,
+                null, AgentNavigationPathService.MOVEMENT_MAX_EDGE_CHECKS,
+                AgentNavigationPathService.MAX_EDGE_CHECKS, false);
+
+        assertEquals(148, startRegionId);
+        assertEquals(104, targetRegionId);
+        assertEquals(List.of(127, 122, 109, 104),
+                path.stream().map(edge -> edge.toRegionId).toList());
+        assertTrue(path.stream().noneMatch(edge -> edge.toRegionId == 143));
+    }
+
+    @Test
+    void kerningNellaPlatformUsesUpperCorridorToReachAlex() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000000);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map);
+        Point start = new Point(71, -60);
+        Point target = new Point(1005, -511);
+        int startRegionId = graph.findRegionId(map, start);
+        int targetRegionId = graph.findRegionId(map, target);
+
+        List<AgentNavigationGraph.Edge> path = AgentNavigationPathService.movementPath(
+                graph, map, start, startRegionId, targetRegionId, target,
+                null, AgentNavigationPathService.MOVEMENT_MAX_EDGE_CHECKS,
+                AgentNavigationPathService.MAX_EDGE_CHECKS, false);
+
+        assertEquals(126, startRegionId);
+        assertEquals(39, targetRegionId);
+        assertEquals(List.of(132, 118, 107, 98, 91, 74, 46, 39),
+                path.stream().map(edge -> edge.toRegionId).toList());
+        assertTrue(path.stream().noneMatch(edge -> edge.toRegionId == 111));
+    }
+
+    @Test
+    void disconnectedComponentsExitWithoutSearch() {
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(groundRegion(1, 0, 100, 100), groundRegion(2, 200, 300, 100)),
+                Map.of());
+
+        AgentNavigationPathService.SearchOutcome outcome = AgentNavigationPathService.runSearch(
+                graph, null, new Point(0, 100), 1, 2, new Point(200, 100),
+                "committed", true, false);
+
+        assertFalse(outcome.reached());
+        assertFalse(outcome.capped());
+        assertEquals(0, outcome.expandedNodes());
+    }
+
+    @Test
+    void movementSkillEdgesRemainInvisibleWhileTheMovementSkillRolloutIsOff() {
+        AgentNavigationGraph.Edge flashJump = edge(
+                1, 2, AgentNavigationGraph.EdgeType.FLASH_JUMP,
+                new Point(50, 100), new Point(250, 100), 150);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(groundRegion(1, 0, 100, 100), groundRegion(2, 200, 300, 100)),
+                Map.of(1, List.of(flashJump)));
+        MapleMap map = mock(MapleMap.class);
+
+        List<AgentNavigationGraph.Edge> basePath = AgentNavigationPathService.movementPath(
+                graph, map, new Point(50, 100), 1, 2, new Point(250, 100),
+                null, 100, 100, false);
+
+        Character hermit = mock(Character.class);
+        when(hermit.getMap()).thenReturn(map);
+        when(hermit.getSkillLevel(Hermit.FLASH_JUMP)).thenReturn(1);
+        List<AgentNavigationGraph.Edge> shadowPath =
+                AgentNavigationPathService.findShadowSkillPath(
+                        graph, hermit, new Point(50, 100), 1, 2, new Point(250, 100));
+
+        assertTrue(basePath.isEmpty());
+        assertTrue(shadowPath.isEmpty());
+    }
+
+    @Test
+    void retreatProbeKeepsOptimalRouteCost() {
+        AgentNavigationGraph.Edge first = edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                new Point(0, 100), new Point(100, 100), 100);
+        AgentNavigationGraph.Edge second = edge(2, 3, AgentNavigationGraph.EdgeType.WALK,
+                new Point(100, 100), new Point(200, 100), 100);
+        AgentNavigationGraph.Edge direct = edge(1, 3, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(0, 100), new Point(200, 100), 250);
+        AgentNavigationGraph graph = graphWithRegionsAndEdges(
+                List.of(
+                        groundRegion(1, 0, 100, 100),
+                        groundRegion(2, 100, 200, 100),
+                        groundRegion(3, 200, 300, 100)),
+                Map.of(1, List.of(direct, first), 2, List.of(second)));
+
+        List<AgentNavigationGraph.Edge> path = AgentNavigationPathService.findPathForRetreatProbe(
+                graph, null, new Point(0, 100), 1, 3, new Point(200, 100));
+
+        assertEquals(List.of(first, second), path);
+        assertEquals(200, path.stream().mapToInt(edge -> edge.cost).sum());
+    }
+
+    private static AgentNavigationGraph graphWithRegion(AgentNavigationGraph.Region region) {
+        return new AgentNavigationGraph(
+                1,
+                1,
+                AgentMovementProfile.base(),
+                List.of(region),
+                Map.of(region.id, region),
+                Map.of(),
+                Map.of(),
+                Set.of());
+    }
+
+    private static AgentNavigationGraph graphWithRegionsAndEdges(List<AgentNavigationGraph.Region> regions,
+                                                                  Map<Integer, List<AgentNavigationGraph.Edge>> outgoingByRegionId) {
+        Map<Integer, AgentNavigationGraph.Region> regionsById = new java.util.HashMap<>();
+        Map<Integer, Integer> regionIdByFootholdId = new java.util.HashMap<>();
+        for (AgentNavigationGraph.Region region : regions) {
+            regionsById.put(region.id, region);
+            for (AgentNavigationGraph.Segment segment : region.segments) {
+                regionIdByFootholdId.put(segment.footholdId, region.id);
+            }
+        }
+        return new AgentNavigationGraph(
+                1,
+                1,
+                AgentMovementProfile.base(),
+                regions,
+                regionsById,
+                regionIdByFootholdId,
+                outgoingByRegionId,
+                Set.of());
+    }
+
+    private static AgentNavigationGraph.Region groundRegion(int id, int x1, int x2, int y) {
+        return new AgentNavigationGraph.Region(id, List.of(new AgentNavigationGraph.Segment(
+                new Foothold(new Point(x1, y), new Point(x2, y), id))));
+    }
+
+    private static AgentNavigationGraph.Edge edge(int fromRegionId,
+                                                  int toRegionId,
+                                                  AgentNavigationGraph.EdgeType type,
+                                                  Point start,
+                                                  Point end,
+                                                  int cost) {
+        return new AgentNavigationGraph.Edge(fromRegionId, toRegionId, type,
+                start, end, 0, 0, 0, 0, 0, cost);
+    }
+}

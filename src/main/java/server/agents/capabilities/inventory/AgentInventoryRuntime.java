@@ -1,0 +1,24 @@
+package server.agents.capabilities.inventory;
+
+import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.runtime.AgentSchedulerRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+
+/** Connects inventory capability replies and delayed actions to shared Agent services. */
+public final class AgentInventoryRuntime {
+    private AgentInventoryRuntime() {
+    }
+
+    public static void replyNow(AgentRuntimeEntry entry, String message) {
+        AgentDialogueTransportRuntime.replyNow(entry, message);
+    }
+
+    public static void visibleSayNow(AgentRuntimeEntry entry, String message) {
+        AgentDialogueTransportRuntime.visibleSayNow(entry, message);
+    }
+
+    public static void afterDelay(AgentRuntimeEntry entry, long delayMs, Runnable action) {
+        AgentSchedulerRuntime.afterDelay(entry, delayMs, action);
+    }
+
+}

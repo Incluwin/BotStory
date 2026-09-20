@@ -1,0 +1,106 @@
+package server.agents.capabilities.build;
+
+import client.Character;
+import client.Job;
+import client.inventory.InventoryType;
+import constants.inventory.ItemConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import server.agents.capabilities.build.AgentBuildStatusRuntime;
+import server.agents.integration.AgentInventoryGatewayRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.capabilities.build.AgentBuildService;
+import server.agents.integration.InventoryGateway;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.capabilities.equipment.AgentEquipmentService;
+import server.agents.capabilities.build.profiles.BuildStep;
+
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+
+public final class AgentStarterKitService {
+    private static final Logger log = LoggerFactory.getLogger(AgentStarterKitService.class);
+
+    public static void advanceJob(AgentRuntimeEntry entry, Job newJob) {
+        Character bot = AgentRuntimeIdentityRuntime.bot(entry);
+        Job oldJob = bot.getJob();
+        if (!bot.changeJob(newJob)) {
+            log.warn("Rejected Agent job advancement for '{}' from {} to {}", bot.getName(), oldJob, newJob);
+            return;
+        }
+        AgentBuildService.handleJobAdvance(entry, bot, oldJob, newJob);
+        grantStarterKitIfEligible(bot, oldJob, newJob, AgentInventoryGatewayRuntime.inventory());
+        AgentEquipmentService.autoEquip(bot, null, null);
+        AgentBuildStatusRuntime.checkBuildStatus(entry, bot);
+    }
+
+    public static void advanceJob(AgentRuntimeEntry entry, Job newJob, List<BuildStep> spBuild) {
+        if (spBuild == null) {
+            advanceJob(entry, newJob);
+            return;
+        }
+        Character bot = AgentRuntimeIdentityRuntime.bot(entry);
+        Job oldJob = bot.getJob();
+        if (!bot.changeJob(newJob)) {
+            log.warn("Rejected Agent job advancement for '{}' from {} to {}", bot.getName(), oldJob, newJob);
+            return;
+        }
+        AgentBuildService.handleJobAdvance(entry, bot, oldJob, newJob, spBuild);
+        grantStarterKitIfEligible(bot, oldJob, newJob, AgentInventoryGatewayRuntime.inventory());
+        AgentEquipmentService.autoEquip(bot, null, null);
+        AgentBuildStatusRuntime.checkBuildStatus(entry, bot);
+    }
+
+    public static List<AgentStarterItemGrant> starterKitFor(Job job) {
+        return AgentStarterKitCatalog.firstJobKitFor(job);
+    }
+
+    public static boolean isFirstJobAdvancement(Job oldJob, Job newJob) {
+        return AgentStarterKitCatalog.isFirstJobAdvancement(oldJob, newJob);
+    }
+
+    static void grantStarterKitIfEligible(Character bot, Job oldJob, Job newJob, InventoryGateway inventory) {
+        if (!isFirstJobAdvancement(oldJob, newJob)) {
+            return;
+        }
+
+        List<AgentStarterItemGrant> starterKit = starterKitFor(newJob);
+        if (starterKit.isEmpty()) {
+            return;
+        }
+        if (!canHoldStarterKit(bot, starterKit)) {
+            log.warn("Bot '{}' could not receive {} starter kit due to inventory space", bot.getName(), newJob);
+            return;
+        }
+
+        for (AgentStarterItemGrant grant : starterKit) {
+            if (!inventory.addItem(bot, grant.itemId(), grant.quantity())) {
+                log.warn("Bot '{}' failed to receive starter item {} x{} for job {}",
+                        bot.getName(), grant.itemId(), grant.quantity(), newJob);
+            }
+        }
+    }
+
+    private static boolean canHoldStarterKit(Character bot, List<AgentStarterItemGrant> starterKit) {
+        Map<InventoryType, Integer> requiredSlots = new EnumMap<>(InventoryType.class);
+        for (AgentStarterItemGrant grant : starterKit) {
+            InventoryType inventoryType = ItemConstants.getInventoryType(grant.itemId());
+            if (inventoryType == InventoryType.EQUIP) {
+                requiredSlots.merge(InventoryType.EQUIP, 1, Integer::sum);
+                continue;
+            }
+            if (!bot.canHold(grant.itemId(), grant.quantity())) {
+                return false;
+            }
+        }
+
+        for (Map.Entry<InventoryType, Integer> requirement : requiredSlots.entrySet()) {
+            if (bot.getInventory(requirement.getKey()).getNumFreeSlot() < requirement.getValue()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+}

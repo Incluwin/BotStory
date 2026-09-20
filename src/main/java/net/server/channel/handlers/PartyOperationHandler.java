@@ -21,9 +21,9 @@
 */
 package net.server.channel.handlers;
 
+import client.BotClient;
 import client.Character;
 import client.Client;
-import config.YamlConfig;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import net.server.coordinator.world.InviteCoordinator;
@@ -34,6 +34,9 @@ import net.server.world.Party;
 import net.server.world.PartyCharacter;
 import net.server.world.PartyOperation;
 import net.server.world.World;
+import server.agents.runtime.AgentInteractionRuntime;
+import server.agents.runtime.AgentLifecycleService;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
 import tools.PacketCreator;
 
 import java.util.List;
@@ -76,16 +79,12 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
             case 4: { // invite
                 String name = p.readString();
                 Character invited = world.getPlayerStorage().getCharacterByName(name);
+                if (invited == null) {
+                    AgentLifecycleService.AgentSpawnResult spawnResult =
+                            AgentInteractionRuntime.spawnAgentForLeader(player, name);
+                    if (spawnResult.success()) invited = spawnResult.agent();
+                }
                 if (invited != null) {
-                    if (invited.getLevel() < 10 && (!YamlConfig.config.server.USE_PARTY_FOR_STARTERS || player.getLevel() >= 10)) { //min requirement is level 10
-                        c.sendPacket(PacketCreator.serverNotice(5, "The player you have invited does not meet the requirements."));
-                        return;
-                    }
-                    if (YamlConfig.config.server.USE_PARTY_FOR_STARTERS && invited.getLevel() >= 10 && player.getLevel() < 10) {    //trying to invite high level
-                        c.sendPacket(PacketCreator.serverNotice(5, "The player you have invited does not meet the requirements."));
-                        return;
-                    }
-
                     if (invited.getParty() == null) {
                         if (party == null) {
                             if (!Party.createParty(player, false)) {
@@ -97,6 +96,24 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                         if (party.getMembers().size() < 6) {
                             if (InviteCoordinator.createInvite(InviteType.PARTY, player, party.getId(), invited.getId())) {
                                 invited.sendPacket(PacketCreator.partyInvite(player));
+                                if (invited.getClient() instanceof BotClient) {
+                                    AgentPartyQuestLobbyRuntime.InviteDecision decision =
+                                            AgentPartyQuestLobbyRuntime.decidePartyInvite(invited, player);
+                                    if (decision == AgentPartyQuestLobbyRuntime.InviteDecision.DELAY_ACCEPT
+                                            && AgentPartyQuestLobbyRuntime.schedulePartyInviteResponse(
+                                            invited, player, party.getId())) {
+                                        break;
+                                    }
+                                    boolean accept = decision != AgentPartyQuestLobbyRuntime.InviteDecision.REJECT;
+                                    InviteCoordinator.answerInvite(InviteType.PARTY,
+                                            invited.getId(), party.getId(), accept);
+                                    if (accept) {
+                                        Party.joinParty(invited, party.getId(), false);
+                                    } else {
+                                        player.dropMessage(5,
+                                                AgentPartyQuestLobbyRuntime.inviteRejectionMessage(invited));
+                                    }
+                                }
                             } else {
                                 c.sendPacket(PacketCreator.partyStatusMessage(22, invited.getName()));
                             }
@@ -104,7 +121,13 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                             c.sendPacket(PacketCreator.partyStatusMessage(17));
                         }
                     } else {
-                        c.sendPacket(PacketCreator.partyStatusMessage(16));
+                        // Suppress "already in party" noise when a bot was just force-joined by spawnBotForOwner
+                        boolean botAlreadyJoined = invited.getClient() instanceof BotClient
+                                && player.getParty() != null
+                                && invited.getParty().getId() == player.getParty().getId();
+                        if (!botAlreadyJoined) {
+                            c.sendPacket(PacketCreator.partyStatusMessage(16));
+                        }
                     }
                 } else {
                     c.sendPacket(PacketCreator.partyStatusMessage(19));

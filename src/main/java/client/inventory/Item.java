@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 package client.inventory;
 
 import client.inventory.manipulator.KarmaManipulator;
+import config.YamlConfig;
 import constants.inventory.ItemConstants;
 import server.ItemInformationProvider;
 
@@ -29,6 +30,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Objects;
 
 public class Item implements Comparable<Item> {
 
@@ -46,6 +48,18 @@ public class Item implements Comparable<Item> {
     private short flag;
     private long expiration = -1;
     private String giftFrom = "";
+    private Runnable persistenceDirtyMarker = () -> { };
+
+    public void setPersistenceDirtyMarker(Runnable persistenceDirtyMarker) {
+        this.persistenceDirtyMarker = Objects.requireNonNull(persistenceDirtyMarker);
+        if (pet != null) {
+            pet.setPersistenceDirtyMarker(persistenceDirtyMarker);
+        }
+    }
+
+    protected final void markPersistenceDirty() {
+        persistenceDirtyMarker.run();
+    }
 
     public Item(int id, short position, short quantity) {
         this.id = id;
@@ -71,23 +85,39 @@ public class Item implements Comparable<Item> {
     }
 
     public Item copy() {
-        Item ret = new Item(id, position, quantity, petid);
-        ret.flag = flag;
-        ret.owner = owner;
-        ret.expiration = expiration;
-        ret.itemLog = new LinkedList<>(itemLog);
+        Item ret = new Item(id, position, quantity);
+        copyStateTo(ret);
         return ret;
     }
 
+    protected final void copyStateTo(Item ret) {
+        ret.flag = flag;
+        ret.owner = owner;
+        ret.expiration = expiration;
+        ret.giftFrom = giftFrom;
+        ret.sn = sn;
+        ret.cashId = cashId;
+        ret.petid = petid;
+        ret.pet = pet == null ? null : pet.persistenceSnapshot().restore(id, position);
+        ret.itemLog = new LinkedList<>(itemLog);
+    }
+
     public void setPosition(short position) {
+        boolean changed = this.position != position;
         this.position = position;
+        if (changed) {
+            markPersistenceDirty();
+        }
         if (this.pet != null) {
             this.pet.setPosition(position);
         }
     }
 
     public void setQuantity(short quantity) {
-        this.quantity = quantity;
+        if (this.quantity != quantity) {
+            this.quantity = quantity;
+            markPersistenceDirty();
+        }
     }
 
     public int getItemId() {
@@ -125,7 +155,10 @@ public class Item implements Comparable<Item> {
     }
 
     public void setOwner(String owner) {
-        this.owner = owner;
+        if (!Objects.equals(this.owner, owner)) {
+            this.owner = owner;
+            markPersistenceDirty();
+        }
     }
 
     public int getPetId() {
@@ -161,7 +194,10 @@ public class Item implements Comparable<Item> {
             b |= ItemConstants.ACCOUNT_SHARING; // thanks Shinigami15 for noticing ACCOUNT_SHARING flag not being applied properly to items server-side
         }
 
-        this.flag = b;
+        if (this.flag != b) {
+            this.flag = b;
+            markPersistenceDirty();
+        }
     }
 
     public long getExpiration() {
@@ -169,7 +205,16 @@ public class Item implements Comparable<Item> {
     }
 
     public void setExpiration(long expire) {
-        this.expiration = !ItemConstants.isPermanentItem(id) ? expire : ItemConstants.isPet(id) ? Long.MAX_VALUE : -1;
+        long updated = expire;
+        if (ItemConstants.isPet(id) && YamlConfig.config.server.PETS_NEVER_EXPIRE) {
+            updated = Long.MAX_VALUE;
+        } else if (YamlConfig.config.server.ITEMS_NEVER_EXPIRE) {
+            updated = -1;
+        }
+        if (this.expiration != updated) {
+            this.expiration = updated;
+            markPersistenceDirty();
+        }
     }
 
     public int getSN() {
@@ -185,7 +230,10 @@ public class Item implements Comparable<Item> {
     }
 
     public void setGiftFrom(String giftFrom) {
-        this.giftFrom = giftFrom;
+        if (!Objects.equals(this.giftFrom, giftFrom)) {
+            this.giftFrom = giftFrom;
+            markPersistenceDirty();
+        }
     }
 
     public Pet getPet() {

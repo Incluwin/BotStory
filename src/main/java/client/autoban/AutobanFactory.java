@@ -28,10 +28,14 @@ import net.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.PacketCreator;
+import server.security.SecurityEventRuntime;
+import server.security.SecurityEventType;
+import server.security.SecuritySeverity;
 
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -61,7 +65,7 @@ public enum AutobanFactory {
     MPCON(25, SECONDS.toMillis(30));
 
     private static final Logger log = LoggerFactory.getLogger(AutobanFactory.class);
-    private static final Set<Integer> ignoredChrIds = new HashSet<>();
+    private static final Set<Integer> ignoredChrIds = ConcurrentHashMap.newKeySet();
 
     private final int points;
     private final long expiretime;
@@ -93,6 +97,8 @@ public enum AutobanFactory {
     }
 
     public void alert(Character chr, String reason) {
+        SecurityEventRuntime.record(chr, SecurityEventType.AUTOBAN_SIGNAL, SecuritySeverity.WARNING,
+                Map.of("signal", name(), "action", "ALERT", "reason", reason));
         if (YamlConfig.config.server.USE_AUTOBAN) {
             if (chr != null && isIgnored(chr.getId())) {
                 return;
@@ -106,6 +112,8 @@ public enum AutobanFactory {
     }
 
     public void autoban(Character chr, String value) {
+        SecurityEventRuntime.record(chr, SecurityEventType.AUTOBAN_SIGNAL, SecuritySeverity.CRITICAL,
+                Map.of("signal", name(), "action", "AUTOBAN", "reason", value));
         if (YamlConfig.config.server.USE_AUTOBAN) {
             chr.autoban("Autobanned for (" + this.name() + ": " + value + ")");
             //chr.sendPolice("You will be disconnected for (" + this.name() + ": " + value + ")");
@@ -119,13 +127,10 @@ public enum AutobanFactory {
      * @return new status. true if the chrId is now ignored, otherwise false.
      */
     public static boolean toggleIgnored(int chrId) {
-        if (ignoredChrIds.contains(chrId)) {
-            ignoredChrIds.remove(chrId);
+        if (ignoredChrIds.remove(chrId)) {
             return false;
-        } else {
-            ignoredChrIds.add(chrId);
-            return true;
         }
+        return ignoredChrIds.add(chrId);
     }
 
     private static boolean isIgnored(int chrId) {
@@ -133,6 +138,6 @@ public enum AutobanFactory {
     }
 
     public static Collection<Integer> getIgnoredChrIds() {
-        return ignoredChrIds;
+        return Set.copyOf(ignoredChrIds);
     }
 }

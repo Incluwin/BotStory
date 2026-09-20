@@ -2,7 +2,18 @@
 .idea/*
 !.idea/codeStyles/
 *.iml
+wz_victoria/*
+/wz_victoria/*
+/wz_victoria
+/wz/
 /target
+database-console/api/target/
+database-console/web/.next/
+database-console/web/node_modules/
+database-console/web/tsconfig.tsbuildinfo
+database-console/.runtime/
+database-console/.m2/
+database-console/*.log
 
 # build files
 /build/
@@ -11,6 +22,7 @@
 /.settings
 /out
 *.onetoc2
+hs_err_pid*.log
 
 # Eclipse m2e generated files
 # Eclipse Core
@@ -21,6 +33,30 @@
 # Database
 database/docker-db-data
 database/docker-pg-db-data
+economy-database/docker-db-data
+.env
 
 # macOS files
 .DS_Store
+cache/
+tmp/
+.runtime/
+.qwen/
+models/
+.m2/
+
+# Local client repack experiments and their external MapleLib dependency.
+/tools/client-repack/
+
+# LLM bot chat memory (per-bot plain-text JSONL + summaries)
+bots/llm-memory/
+
+nul
+
+# Local diagnostics, generated graph renders, and .NET helper build products.
+/docker-wsl-feature-status.txt
+/exports/
+/tools/WzToNxBatch/bin/
+/tools/WzToNxBatch/obj/
+/tools/string-cleanup/ServerXmlToImg/bin/
+/tools/string-cleanup/ServerXmlToImg/obj/

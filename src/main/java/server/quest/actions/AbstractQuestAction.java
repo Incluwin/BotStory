@@ -41,6 +41,10 @@ public abstract class AbstractQuestAction {
     public abstract void run(Character chr, Integer extSelection);
     public abstract void processData(Data data);
 
+    public void forceRun(Character chr, Integer extSelection) {
+        run(chr, extSelection);
+    }
+
     public boolean check(Character chr, Integer extSelection) {
         return true;
     }

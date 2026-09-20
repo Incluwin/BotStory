@@ -35,6 +35,9 @@ import net.server.coordinator.world.InviteCoordinator.InviteResultType;
 import net.server.coordinator.world.InviteCoordinator.InviteType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.trade.AgentOwnerItemNotificationService;
+import server.economy.EconomyOperationKind;
+import server.economy.EconomyTransactionCoordinator;
 import tools.PacketCreator;
 import tools.Pair;
 
@@ -42,6 +45,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -80,10 +84,15 @@ public class Trade {
     private final Character chr;
     private final byte number;
     private boolean fullTrade = false;
+    private String settlementId = "trade:" + UUID.randomUUID();
 
     public Trade(byte number, Character chr) {
         this.chr = chr;
         this.number = number;
+    }
+
+    public byte getNumber() {
+        return number;
     }
 
     public static int getFee(long meso) {
@@ -123,6 +132,7 @@ public class Trade {
         for (Item item : exchangeItems) {
             KarmaManipulator.toggleKarmaFlagToUntradeable(item);
             InventoryManipulator.addFromDrop(chr.getClient(), item, show);
+            AgentOwnerItemNotificationService.notifyOwnerGainedTradeItem(chr, item, partner.getChr());
         }
 
         if (exchangeMeso > 0) {
@@ -197,8 +207,11 @@ public class Trade {
     }
 
     public boolean addItem(Item item) {
+        if (locked.get()) {
+            return false;
+        }
         synchronized (items) {
-            if (items.size() > 9) {
+            if (locked.get() || items.size() >= 9) {
                 return false;
             }
             for (Item it : items) {
@@ -229,6 +242,11 @@ public class Trade {
             return;
         }
         this.partner = partner;
+        if (number == 1) {
+            settlementId = partner.settlementId;
+        } else {
+            partner.settlementId = settlementId;
+        }
     }
 
     public Character getChr() {
@@ -237,6 +255,10 @@ public class Trade {
 
     public List<Item> getItems() {
         return new LinkedList<>(items);
+    }
+
+    public boolean hasAnyOffer() {
+        return meso > 0 || !items.isEmpty();
     }
 
     public int getExchangeMesos() {
@@ -333,31 +355,40 @@ public class Trade {
                 return;
             }
 
+            if (!withinLowLevelTradeLimit(local) || !withinLowLevelTradeLimit(partner)) {
+                Trade blocked = !withinLowLevelTradeLimit(local) ? local : partner;
+                cancelTrade(blocked.getChr(), TradeResult.NO_RESPONSE);
+                blocked.getChr().sendPacket(PacketCreator.serverNotice(1,
+                        "Characters under level 15 may not trade more than 1 million mesos per day."));
+                return;
+            }
             if (local.getChr().getLevel() < 15) {
-                if (local.getChr().getMesosTraded() + local.exchangeMeso > 1000000) {
-                    cancelTrade(local.getChr(), TradeResult.NO_RESPONSE);
-                    local.getChr().sendPacket(PacketCreator.serverNotice(1, "Characters under level 15 may not trade more than 1 million mesos per day."));
-                    return;
-                } else {
-                    local.getChr().addMesosTraded(local.exchangeMeso);
-                }
-            } else if (partner.getChr().getLevel() < 15) {
-                if (partner.getChr().getMesosTraded() + partner.exchangeMeso > 1000000) {
-                    cancelTrade(partner.getChr(), TradeResult.NO_RESPONSE);
-                    partner.getChr().sendPacket(PacketCreator.serverNotice(1, "Characters under level 15 may not trade more than 1 million mesos per day."));
-                    return;
-                } else {
-                    partner.getChr().addMesosTraded(partner.exchangeMeso);
-                }
+                local.getChr().addMesosTraded(local.exchangeMeso);
+            }
+            if (partner.getChr().getLevel() < 15) {
+                partner.getChr().addMesosTraded(partner.exchangeMeso);
             }
 
             logTrade(local, partner);
-            local.completeTrade();
-            partner.completeTrade();
+            String summary = "firstMesos=" + local.getExchangeMesos() + " secondMesos="
+                    + partner.getExchangeMesos() + " firstItems=" + local.exchangeItems.size()
+                    + " secondItems=" + partner.exchangeItems.size();
+            EconomyTransactionCoordinator.execute(local.settlementId, local.getChr(), partner.getChr(),
+                    EconomyOperationKind.PLAYER_TRADE, summary, () -> {
+                        local.completeTrade();
+                        partner.completeTrade();
+                    });
 
             partner.getChr().setTrade(null);
             chr.setTrade(null);
         }
+    }
+
+    private static boolean withinLowLevelTradeLimit(Trade trade) {
+        if (trade.getChr().getLevel() >= 15) {
+            return true;
+        }
+        return (long) trade.getChr().getMesosTraded() + trade.exchangeMeso <= 1_000_000L;
     }
 
     private static void cancelTradeInternal(Character chr, byte selfResult, byte partnerResult) {
@@ -433,6 +464,18 @@ public class Trade {
         if (chr.getTrade() == null) {
             chr.setTrade(new Trade((byte) 0, chr));
         }
+    }
+
+    public static void startTrade(Character chr, String settlementId) {
+        startTrade(chr);
+        if (chr.getTrade() != null && chr.getTrade().partner == null
+                && chr.getTrade().items.isEmpty() && chr.getTrade().meso == 0) {
+            chr.getTrade().settlementId = settlementId;
+        }
+    }
+
+    public int getOfferedMesos() {
+        return meso;
     }
 
     private static boolean hasTradeInviteBack(Character c1, Character c2) {
@@ -537,6 +580,11 @@ public class Trade {
 
     public void setFullTrade(boolean fullTrade) {
         this.fullTrade = fullTrade;
+    }
+
+    /** Returns true once the partner has clicked OK (locked their side). */
+    public boolean isPartnerConfirmed() {
+        return partner != null && partner.isLocked();
     }
 
     private static void logTrade(Trade trade1, Trade trade2) {

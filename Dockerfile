@@ -32,17 +32,18 @@ FROM amazoncorretto:21
 # Host the server in a location that won't have permissions issues.
 WORKDIR /opt/server
 # Copy the wizet files first since they're so big and won't change often.
-COPY wz ./wz
+COPY wz_victoria ./wz
 # Copy the JAR we build earlier.
 COPY --from=jar /opt/cosmic/target/Cosmic.jar ./Server.jar
 # Scripts are sourced on server startup, so you can mount over them for quicker redeploy.
 COPY scripts ./scripts/
 # Config is read on server startup, so you can mount over it for quicker redeploy.
 COPY config.yaml ./
+RUN mkdir -p ./logs/gc ./logs/heapdumps ./logs/crash
 # Default exposure, although not required if using docker compose.
 # This exposes the login server, and channels.
 # Format for channels: WWCC, where WW is 75 plus the world number and CC is 75 plus the channel number (both zero indexed).
 EXPOSE 8484 7575 7576 7577
-ENTRYPOINT ["java", "-jar", "./Server.jar"]
+ENTRYPOINT ["java", "-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=./logs/heapdumps", "-XX:+ExitOnOutOfMemoryError", "-XX:ErrorFile=./logs/crash/hs_err_pid%p.log", "-Xlog:gc*,safepoint:file=./logs/gc/gc.log:time,uptime,level,tags:filecount=10,filesize=20M", "-jar", "./Server.jar"]
 
 

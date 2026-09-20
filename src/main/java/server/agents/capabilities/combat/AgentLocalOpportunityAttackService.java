@@ -1,0 +1,207 @@
+package server.agents.capabilities.combat;
+
+import client.Character;
+import client.inventory.WeaponType;
+import server.agents.capabilities.movement.AgentMovementProfile;
+import server.agents.capabilities.supplies.AgentAmmoStateRuntime;
+import server.agents.capabilities.combat.AgentCombatAttackRuntime;
+import server.agents.capabilities.combat.AgentCombatTargetRuntime;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.life.Monster;
+
+import java.awt.Point;
+
+public final class AgentLocalOpportunityAttackService {
+    private AgentLocalOpportunityAttackService() {
+    }
+
+    public record Result(boolean consumedTick, Point targetPos) {
+    }
+
+    public record Hooks(GrindNavigationTargetSelector grindNavigationTargetSelector,
+                        JumpHeightCalculator jumpHeightCalculator,
+                        JumpInitiator jumpInitiator,
+                        LocalAttackMoveWindowSetter localAttackMoveWindowSetter,
+                        AttackExecutor attackExecutor) {
+    }
+
+    @FunctionalInterface
+    public interface GrindNavigationTargetSelector {
+        Point select(AgentRuntimeEntry entry, Point botPos, Point combatTargetPos);
+    }
+
+    @FunctionalInterface
+    public interface JumpHeightCalculator {
+        float calculate(AgentMovementProfile movementProfile);
+    }
+
+    @FunctionalInterface
+    public interface JumpInitiator {
+        void initiate(AgentRuntimeEntry entry, Character agent, int dx);
+    }
+
+    @FunctionalInterface
+    public interface LocalAttackMoveWindowSetter {
+        void set(AgentRuntimeEntry entry, Point agentPos, Point referencePos);
+    }
+
+    @FunctionalInterface
+    public interface AttackExecutor {
+        AgentAttackTransactionResult attack(
+                AgentRuntimeEntry entry,
+                Character agent,
+                AgentAttackPlan attackPlan);
+    }
+
+    public static Result tryLocalOpportunityAttack(AgentRuntimeEntry entry,
+                                                   Character agent,
+                                                   Point agentPos,
+                                                   Point movementTargetPos,
+                                                   Point moveWindowReferencePos,
+                                                   boolean allowCombatMovement,
+                                                   boolean allowJumpTowardTarget,
+                                                   Hooks hooks) {
+        return tryOpportunityAttack(entry, agent, agentPos, movementTargetPos,
+                moveWindowReferencePos, allowCombatMovement, allowJumpTowardTarget,
+                false, hooks);
+    }
+
+    public static Result tryAnchoredOpportunityAttack(AgentRuntimeEntry entry,
+                                                      Character agent,
+                                                      Point agentPos,
+                                                      Point anchor,
+                                                      Hooks hooks) {
+        return tryOpportunityAttack(entry, agent, agentPos, anchor, anchor,
+                false, false, true, hooks);
+    }
+
+    private static Result tryOpportunityAttack(AgentRuntimeEntry entry,
+                                               Character agent,
+                                               Point agentPos,
+                                               Point movementTargetPos,
+                                               Point moveWindowReferencePos,
+                                               boolean allowCombatMovement,
+                                               boolean allowJumpTowardTarget,
+                                               boolean anchored,
+                                               Hooks hooks) {
+        Point targetPos = movementTargetPos;
+        if (AgentAmmoStateRuntime.noAmmo(entry) || agent == null || agentPos == null) {
+            return new Result(false, targetPos);
+        }
+
+        Monster localTarget = anchored
+                ? AgentCombatTargetRuntime.findAnchoredAttackTarget(
+                        entry, agent, AgentCombatConfig.cfg)
+                : movementTargetPos == null
+                ? AgentCombatTargetRuntime.findFollowAttackTarget(entry, agent, AgentCombatConfig.cfg)
+                : AgentCombatTargetRuntime.findRouteBlockerTarget(
+                        entry, agent, movementTargetPos, AgentCombatConfig.cfg);
+        if (localTarget == null) {
+            return new Result(false, targetPos);
+        }
+
+        Point localTargetPos = localTarget.getPosition();
+        WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(agent);
+        boolean shouldRetreat = allowCombatMovement
+                && (AgentDegenerateAttackStateRuntime.degenAttackDone(entry)
+                || AgentAttackExecutionProvider.shouldRetreatFromNearbyTarget(weaponType, agentPos, localTargetPos)
+                || AgentAttackExecutionProvider.isAnyMobNearerThanTarget(agent, agentPos, localTargetPos));
+        if (shouldRetreat) {
+            AgentDegenerateAttackStateRuntime.clear(entry);
+            return new Result(
+                    false, hooks.grindNavigationTargetSelector().select(entry, agentPos, localTargetPos));
+        }
+
+        AgentAttackPlan attackPlan = AgentCombatPlanRuntime.planAttack(entry, agent, localTarget, AgentCombatConfig.cfg);
+        if (attackPlan == null) {
+            // A close-range blocker can be vertically reachable by a jump before any current
+            // weapon hitbox intersects it. Requiring an attack plan first leaves melee Agents
+            // unable to clear mobs standing on steep ramps: contact knockback repeatedly sends
+            // them back down the same walk region. Let movement close that last vertical gap;
+            // the normal airborne branch will attack once a real plan becomes executable.
+            if (shouldJumpTowardUnplannableCloseTarget(
+                    allowJumpTowardTarget,
+                    AgentMovementStateRuntime.inAir(entry),
+                    weaponType,
+                    movementProfile(entry),
+                    agentPos,
+                    localTargetPos,
+                    hooks.jumpHeightCalculator().calculate(movementProfile(entry)))) {
+                hooks.jumpInitiator().initiate(entry, agent, localTargetPos.x - agentPos.x);
+                return new Result(true, targetPos);
+            }
+            return new Result(false, targetPos);
+        }
+        if (AgentMovementStateRuntime.inAir(entry)) {
+            if (AgentCombatRangePolicy.canUseAttackPlanNow(
+                    AgentMovementStateRuntime.grounded(entry), weaponType, attackPlan.route)
+                    && AgentCombatRangePolicy.isTargetInAttackRange(attackPlan, agent, localTarget)) {
+                AgentAttackTransactionResult attackResult =
+                        hooks.attackExecutor().attack(entry, agent, attackPlan);
+                if (committed(attackResult) && allowCombatMovement && attackPlan.isCloseRangeRoute()
+                        && AgentCombatAmmoCounter.isRangedAmmoWeapon(weaponType)) {
+                    AgentDegenerateAttackStateRuntime.markDegenAttackDone(entry);
+                }
+            }
+            return new Result(false, targetPos);
+        }
+
+        if (allowJumpTowardTarget
+                && weaponType != WeaponType.BOW && weaponType != WeaponType.CROSSBOW
+                && weaponType != WeaponType.WAND && weaponType != WeaponType.STAFF
+                && AgentCombatRangePolicy.isTargetJumpable(
+                        movementProfile(entry),
+                        true,
+                        agentPos,
+                        localTargetPos,
+                        hooks.jumpHeightCalculator().calculate(movementProfile(entry)))) {
+            hooks.jumpInitiator().initiate(entry, agent, localTargetPos.x - agentPos.x);
+            return new Result(true, targetPos);
+        }
+
+        if (!AgentCombatCooldownStateRuntime.hasMoveWindow(entry)
+                && AgentCombatRangePolicy.isTargetInAttackRange(attackPlan, agent, localTarget)) {
+            AgentAttackTransactionResult attackResult =
+                    hooks.attackExecutor().attack(entry, agent, attackPlan);
+            if (!committed(attackResult)) {
+                return new Result(false, targetPos);
+            }
+            hooks.localAttackMoveWindowSetter().set(entry, agentPos, moveWindowReferencePos);
+            if (allowCombatMovement && attackPlan.isCloseRangeRoute()
+                    && AgentCombatAmmoCounter.isRangedAmmoWeapon(weaponType)) {
+                AgentDegenerateAttackStateRuntime.markDegenAttackDone(entry);
+            }
+            return new Result(!AgentMovementStateRuntime.inAir(entry), targetPos);
+        }
+
+        return new Result(false, targetPos);
+    }
+
+    static boolean committed(AgentAttackTransactionResult result) {
+        return result != null && result.committed();
+    }
+
+    static boolean shouldJumpTowardUnplannableCloseTarget(boolean allowJumpTowardTarget,
+                                                           boolean inAir,
+                                                           WeaponType weaponType,
+                                                           AgentMovementProfile movementProfile,
+                                                           Point agentPos,
+                                                           Point targetPos,
+                                                           double maxJumpHeightPx) {
+        return allowJumpTowardTarget
+                && !inAir
+                && AgentAttackExecutionProvider.determineBasicWeaponRoute(weaponType)
+                == AgentAttackRoute.CLOSE
+                && AgentCombatRangePolicy.isTargetJumpable(
+                movementProfile,
+                true,
+                agentPos,
+                targetPos,
+                maxJumpHeightPx);
+    }
+
+    private static AgentMovementProfile movementProfile(AgentRuntimeEntry entry) {
+        return AgentMovementStateRuntime.movementProfile(entry);
+    }
+}

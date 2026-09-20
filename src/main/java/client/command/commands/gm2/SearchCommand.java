@@ -40,7 +40,6 @@ public class SearchCommand extends Command {
     private static Data npcStringData;
     private static Data mobStringData;
     private static Data skillStringData;
-    private static Data mapStringData;
 
     {
         setDescription("Search String.wz.");
@@ -49,7 +48,6 @@ public class SearchCommand extends Command {
         npcStringData = dataProvider.getData("Npc.img");
         mobStringData = dataProvider.getData("Mob.img");
         skillStringData = dataProvider.getData("Skill.img");
-        mapStringData = dataProvider.getData("Map.img");
     }
 
     @Override
@@ -74,15 +72,19 @@ public class SearchCommand extends Command {
             } else if (params[0].equalsIgnoreCase("SKILL")) {
                 data = skillStringData;
             } else if (params[0].equalsIgnoreCase("MAP")) {
-                data = mapStringData;
                 searchType = 1;
             } else if (params[0].equalsIgnoreCase("QUEST")) {
-                data = mapStringData;
                 searchType = 2;
             } else {
                 sb.append("#bInvalid search.\r\nSyntax: '!search [type] [name]', where [type] is MAP, QUEST, NPC, ITEM, MOB, or SKILL.");
             }
-            if (data != null) {
+            if (searchType == 1) {
+                for (MapSearchHelper.MapMatch match : MapSearchHelper.findMaps(search)) {
+                    sb.append("#b").append(match.mapId()).append("#k - #r")
+                            .append(match.streetName()).append(" - ")
+                            .append(match.mapName()).append("\r\n");
+                }
+            } else if (data != null) {
                 String name;
 
                 if (searchType == 0) {
@@ -90,19 +92,6 @@ public class SearchCommand extends Command {
                         name = DataTool.getString(searchData.getChildByPath("name"), "NO-NAME");
                         if (name.toLowerCase().contains(search.toLowerCase())) {
                             sb.append("#b").append(Integer.parseInt(searchData.getName())).append("#k - #r").append(name).append("\r\n");
-                        }
-                    }
-                } else if (searchType == 1) {
-                    String mapName, streetName;
-
-                    for (Data searchDataDir : data.getChildren()) {
-                        for (Data searchData : searchDataDir.getChildren()) {
-                            mapName = DataTool.getString(searchData.getChildByPath("mapName"), "NO-NAME");
-                            streetName = DataTool.getString(searchData.getChildByPath("streetName"), "NO-NAME");
-
-                            if (mapName.toLowerCase().contains(search.toLowerCase()) || streetName.toLowerCase().contains(search.toLowerCase())) {
-                                sb.append("#b").append(Integer.parseInt(searchData.getName())).append("#k - #r").append(streetName).append(" - ").append(mapName).append("\r\n");
-                            }
                         }
                     }
                 } else {
@@ -121,7 +110,7 @@ public class SearchCommand extends Command {
             for (Pair<Integer, String> itemPair : ItemInformationProvider.getInstance().getAllItems()) {
                 if (sb.length() < 32654) {//ohlol
                     if (itemPair.getRight().toLowerCase().contains(search.toLowerCase())) {
-                        sb.append("#b").append(itemPair.getLeft()).append("#k - #r").append(itemPair.getRight()).append("\r\n");
+                        sb.append("#b").append(itemPair.getLeft()).append("#k - #z").append(itemPair.getLeft()).append("#\r\n");
                     }
                 } else {
                     sb.append("#bCouldn't load all items, there are too many results.\r\n");

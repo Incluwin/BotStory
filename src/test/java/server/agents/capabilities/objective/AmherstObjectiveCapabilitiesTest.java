@@ -1,0 +1,787 @@
+package server.agents.capabilities.objective;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import server.agents.capabilities.AgentCapabilityStatus;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.plans.amherst.MapleIslandRelaxerSpotCatalog;
+import server.agents.plans.amherst.MapleIslandRelaxerSpotReservationRuntime;
+import server.agents.plans.amherst.MapleIslandPlanCompletionBehavior;
+import server.agents.capabilities.navigation.AgentPortalRoutePolicy;
+import server.agents.capabilities.quest.AmherstScopePolicy;
+import server.agents.capabilities.runtime.AgentCapabilityCommand;
+import server.agents.capabilities.runtime.AgentCapabilityInvocation;
+import server.agents.capabilities.runtime.AgentCapabilityContext;
+import server.agents.capabilities.runtime.AgentCapabilityMemory;
+import server.agents.capabilities.runtime.AgentCapabilityReasonCode;
+import server.agents.capabilities.runtime.AgentCapabilityRuntime;
+import server.agents.capabilities.runtime.AgentCapabilityStep;
+import server.agents.capabilities.runtime.AgentExecutableCapability;
+import server.agents.testing.MutablePrimitiveGatewayFixture;
+import server.agents.plans.mapleisland.MapleIslandNpcInteractionAnchorCatalog;
+import server.agents.plans.mapleisland.MapleIslandNpcInteractionPlacementPolicy;
+import server.maps.MapleMap;
+import server.maps.Rope;
+
+import java.awt.Point;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.atLeastOnce;
+
+class AmherstObjectiveCapabilitiesTest {
+    @AfterEach
+    void releaseRelaxerSpot() {
+        MapleIslandRelaxerSpotReservationRuntime.release(77);
+    }
+
+    @Test
+    void combatChildAllowsTimeForNormalTenMobHunt() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        var support = new AmherstObjectiveCapabilitySupport(fixture.gateway);
+
+        AgentCapabilityInvocation<?> invocation = support.combat(1037, Map.of(100100, 10));
+
+        assertEquals(180_000L, invocation.timeoutMs());
+    }
+
+    @Test
+    void cohortCombatCanUseTheFullConfiguredObjectiveWindow() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1010000);
+        fixture.quests.put(1039, 1);
+        AgentCapabilityMemory memory = new AgentCapabilityMemory();
+        memory.putInt("phase", 1);
+        var capability = new CombatQuestObjectiveCapability(
+                fixture.gateway, AmherstScopePolicy.fullMapleIsland(),
+                AgentPortalRoutePolicy.DIRECT, 900_000L);
+        var command = new CombatQuestObjectiveCapability.Command(
+                "q1039-kills", 1010000, 1039,
+                Map.of(100101, 10, 120100, 10));
+
+        AgentCapabilityStep step = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 100L, 0L, 0, null, memory), command);
+
+        assertEquals(AgentCapabilityStatus.WAITING_CHILD, step.status());
+        assertEquals("combat", step.child().capabilityId());
+        assertEquals(900_000L, step.child().timeoutMs());
+    }
+
+    @Test
+    void npcInteractionFacesTargetAndHonorsConfiguredPause() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        var capability = new NpcQuestObjectiveCapability(fixture.gateway, () -> 500L);
+        var command = new NpcQuestObjectiveCapability.Command("q1031-start", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2101, 2100, 1)), false);
+        AgentCapabilityMemory memory = new AgentCapabilityMemory();
+
+        AgentCapabilityStep waiting = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 100L, 0L, 0, null, memory), command);
+        assertEquals(AgentCapabilityStatus.RUNNING, waiting.status());
+        verify(fixture.gateway).facePosition(fixture.agent, new Point(20, 0));
+
+        AgentCapabilityStep stillWaiting = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 599L, 499L, 0, null, memory), command);
+        assertEquals(AgentCapabilityStatus.RUNNING, stillWaiting.status());
+
+        AgentCapabilityStep ready = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 600L, 500L, 0, null, memory), command);
+        assertEquals(AgentCapabilityStatus.WAITING_CHILD, ready.status());
+        assertEquals("npc-interaction", ready.child().capabilityId());
+    }
+
+    @Test
+    void controlledRunDelaysQuestStartAndCompletionAsSeparateInteractions() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        var support = new AmherstObjectiveCapabilitySupport(
+                fixture.gateway, AmherstScopePolicy.fullMapleIsland(), () -> 500L);
+        MapleIslandObjectiveRandomnessRuntime.configure(fixture.entry,
+                new MapleIslandObjectiveRandomnessSettings(
+                        true, 9L, null, null, false, false, false));
+        AgentCapabilityMemory memory = new AgentCapabilityMemory();
+
+        assertTrue(support.waitForNpcInteraction(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 100L, 0L, 0, null, memory), 0, 1, true));
+        assertFalse(support.waitForNpcInteraction(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 600L, 500L, 0, null, memory), 0, 1, true));
+        assertTrue(support.waitForNpcInteraction(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 601L, 1L, 0, null, memory), 0, 2, true));
+        assertFalse(support.waitForNpcInteraction(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 1_101L, 500L, 0, null, memory), 0, 2, true));
+    }
+
+    @Test
+    void controlledRunFallsBackToDirectNpcWhenUpdatedCircleExcludesLegacyAnchors() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        when(fixture.gateway.npcPosition(any(), eq(2101))).thenReturn(new Point(130, 293));
+        MapleIslandObjectiveRandomnessRuntime.configure(fixture.entry,
+                new MapleIslandObjectiveRandomnessSettings(
+                        true, 123L,
+                        new server.agents.profiles.AgentBehaviorProfile.DelayRange(0, 0),
+                        new server.agents.profiles.AgentBehaviorProfile.DelayRange(0, 0),
+                        true,
+                        true,
+                        true));
+        var command = new NpcQuestObjectiveCapability.Command("q1031-start", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2101, 2100, 1,
+                        MapleIslandNpcInteractionPlacementPolicy.data(fixture.entry, 10000, 2101, 250),
+                        MapleIslandNpcInteractionPlacementPolicy.data(fixture.entry, 10000, 2100, 250))), false);
+
+        assign(fixture, new NpcQuestObjectiveCapability(
+                        fixture.gateway, AmherstScopePolicy.fullMapleIsland(),
+                        AmherstNpcInteractionDelay.profile(fixture.entry)),
+                command, 10_000L);
+        run(fixture, 1L, 40, 100L);
+
+        assertEquals(new Point(0, 0), fixture.position);
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void controlledRunFallsBackToDirectNpcWhenNoAnchorPassesLiveRangeFilter() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        Point displacedNpc = new Point(5_000, 0);
+        when(fixture.gateway.npcPosition(any(), eq(2101))).thenReturn(displacedNpc);
+        MapleIslandObjectiveRandomnessRuntime.configure(
+                fixture.entry, MapleIslandObjectiveRandomnessSettings.cohort(456L));
+        var command = new NpcQuestObjectiveCapability.Command("q1031-start", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2101, 2100, 1,
+                        MapleIslandNpcInteractionPlacementPolicy.data(fixture.entry, 10000, 2101, 250),
+                        MapleIslandNpcInteractionPlacementPolicy.data(fixture.entry, 10000, 2100, 250))), false);
+
+        assign(fixture, new NpcQuestObjectiveCapability(
+                        fixture.gateway, AmherstScopePolicy.fullMapleIsland(),
+                        AmherstNpcInteractionDelay.NONE),
+                command, 10_000L);
+        run(fixture, 1L, 40, 100L);
+
+        assertEquals(displacedNpc, fixture.position);
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void npcSpreadAnchorUsesOneSlotOfArrivalTolerance() {
+        assertEquals(24, AmherstObjectiveCapabilitySupport.NPC_ANCHOR_ARRIVAL_RANGE_PX);
+    }
+
+    @Test
+    void reachedLadderAnchorCanProceedAfterNavigationClearsTransientClimbState() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        MapleMap map = new MapleMap(1000000, 0, 0, 1000000, 1.0f);
+        Point ladderAnchor = new Point(100, 150);
+        map.addRope(new Rope(100, 50, 250, true));
+        when(fixture.agent.getMap()).thenReturn(map);
+        fixture.mapId.set(1000000);
+        fixture.position = new Point(ladderAnchor);
+        fixture.quests.put(1037, 1);
+        when(fixture.gateway.grounded(fixture.agent)).thenReturn(false);
+        when(fixture.gateway.npcPosition(fixture.agent, 2103)).thenReturn(new Point(120, 150));
+        MapleIslandObjectiveRandomnessRuntime.configure(
+                fixture.entry, MapleIslandObjectiveRandomnessSettings.cohort(77L));
+        var placement = new AgentNpcInteractionPlacementData(
+                300, List.of(ladderAnchor), List.of(), null, false, false,
+                new Point(), 300);
+        var command = new NpcQuestObjectiveCapability.Command("q1037-complete", 1000000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(
+                        1037, 2005, 2103, 2, placement, placement)), false);
+
+        AgentCapabilityStep step = new NpcQuestObjectiveCapability(
+                fixture.gateway, AmherstScopePolicy.fullMapleIsland(), AmherstNpcInteractionDelay.NONE)
+                .tick(new AgentCapabilityContext(fixture.entry, fixture.agent,
+                        100L, 0L, 0, null, new AgentCapabilityMemory()), command);
+
+        assertEquals(AgentCapabilityStatus.WAITING_CHILD, step.status());
+        assertEquals("npc-interaction", step.child().capabilityId());
+    }
+
+    @Test
+    void npcQuest1031SuspendsForChildrenAndCompletesNormally() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        var command = new NpcQuestObjectiveCapability.Command("q1031", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2101, 2100, 2)), false);
+
+        assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 10_000L);
+        assertTrue(AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L));
+        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
+        run(fixture, 2L, 40);
+
+        assertEquals(2, fixture.quests.get(1031));
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void forceCompleteQuestApproachesYoonaAndBypassesMissingShoppingGuide() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1010000);
+        MapleIslandObjectiveRandomnessRuntime.configure(
+                fixture.entry, MapleIslandObjectiveRandomnessSettings.cohort(8020L));
+        var command = new ForceCompleteQuestObjectiveCapability.Command(
+                "q8020-force-complete", 1010000, 8020, 20100,
+                new ForceCompleteQuestObjectiveCapability.FieldAbsence(
+                        2L, 2_000L, 3_000L, "Cash Shop"),
+                MapleIslandNpcInteractionPlacementPolicy.data(fixture.entry, 1010000, 20100, 250));
+
+        assign(fixture, new ForceCompleteQuestObjectiveCapability(
+                        fixture.gateway, AmherstScopePolicy.southperry(), AmherstNpcInteractionDelay.NONE),
+                command, 10_000L);
+        run(fixture, 1L, 80, 100L);
+
+        assertEquals(2, fixture.quests.get(8020));
+        verify(fixture.gateway).beginFieldAbsence(fixture.agent, 2_002L);
+        verify(fixture.gateway).endFieldAbsence(fixture.agent);
+        verify(fixture.gateway).forceCompleteQuest(fixture.agent, 8020, 20100);
+        assertTrue(MapleIslandNpcInteractionAnchorCatalog.anchors(1010000, 20100)
+                .contains(fixture.position));
+        verify(fixture.gateway, atLeastOnce()).facePosition(fixture.agent, new Point(-188, 85));
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void yoonaShoppingGuideRequiresContinuousRuntimeGroundingAndPostReturnDelay() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1010000);
+        when(fixture.gateway.grounded(fixture.agent)).thenReturn(true);
+        var capability = new ForceCompleteQuestObjectiveCapability(
+                fixture.gateway, AmherstScopePolicy.southperry(), () -> 500L);
+        var command = new ForceCompleteQuestObjectiveCapability.Command(
+                "q8020-force-complete", 1010000, 8020, 20100,
+                new ForceCompleteQuestObjectiveCapability.FieldAbsence(
+                        2L, 2_000L, 3_000L, "Cash Shop"));
+        AgentCapabilityMemory memory = new AgentCapabilityMemory();
+        memory.putInt("phase", 2);
+        memory.putLong("returnAtMs", 100L);
+        AgentMovementStateRuntime.setInAir(fixture.entry, true);
+
+        AgentCapabilityStep returned = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 100L, 0L, 0, null, memory), command);
+        assertEquals(AgentCapabilityStatus.RUNNING, returned.status());
+        verify(fixture.gateway).endFieldAbsence(fixture.agent);
+        verify(fixture.gateway, never()).forceCompleteQuest(fixture.agent, 8020, 20100);
+
+        capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 101L, 1L, 0, null, memory), command);
+        verify(fixture.gateway, never()).forceCompleteQuest(fixture.agent, 8020, 20100);
+
+        AgentMovementStateRuntime.setInAir(fixture.entry, false);
+        capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 200L, 99L, 0, null, memory), command);
+        capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 3_699L, 3_499L, 0, null, memory), command);
+        verify(fixture.gateway, never()).forceCompleteQuest(fixture.agent, 8020, 20100);
+
+        AgentMovementStateRuntime.setInAir(fixture.entry, true);
+        capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 3_700L, 1L, 0, null, memory), command);
+        verify(fixture.gateway, never()).forceCompleteQuest(fixture.agent, 8020, 20100);
+
+        AgentMovementStateRuntime.setInAir(fixture.entry, false);
+        capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 4_000L, 300L, 0, null, memory), command);
+        capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 7_499L, 3_499L, 0, null, memory), command);
+        verify(fixture.gateway, never()).forceCompleteQuest(fixture.agent, 8020, 20100);
+
+        AgentCapabilityStep settled = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 7_500L, 1L, 0, null, memory), command);
+        assertEquals(AgentCapabilityStatus.RUNNING, settled.status());
+        verify(fixture.gateway).forceCompleteQuest(fixture.agent, 8020, 20100);
+    }
+
+    @Test
+    void forceCompleteYoonaQuizThreeDoesNotSimulateAnotherCashShopVisit() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1010000);
+        var command = new ForceCompleteQuestObjectiveCapability.Command(
+                "q8023-force-complete", 1010000, 8023, 20100);
+
+        assign(fixture, new ForceCompleteQuestObjectiveCapability(
+                        fixture.gateway, AmherstScopePolicy.southperry(), AmherstNpcInteractionDelay.NONE),
+                command, 10_000L);
+        run(fixture, 1L, 30, 1L);
+
+        assertEquals(2, fixture.quests.get(8023));
+        verify(fixture.gateway, never()).beginFieldAbsence(any(), anyLong());
+        verify(fixture.gateway, never()).endFieldAbsence(any());
+        verify(fixture.gateway).forceCompleteQuest(fixture.agent, 8023, 20100);
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void consecutiveObjectivesAtSameNpcReuseTheValidInteractionPosition() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1010000);
+        fixture.position = new Point(-200, 200);
+        when(fixture.gateway.npcPosition(fixture.agent, 20100)).thenReturn(new Point(-188, 85));
+        var support = new AmherstObjectiveCapabilitySupport(
+                fixture.gateway, AmherstScopePolicy.southperry(), AmherstNpcInteractionDelay.NONE);
+        var firstPlacement = new AgentNpcInteractionPlacementData(
+                330, List.of(new Point(-200, 200)), List.of(), null,
+                false, true, new Point(-30, 145), 180);
+        var nextPlacement = new AgentNpcInteractionPlacementData(
+                330, List.of(new Point(-100, 200)), List.of(), null,
+                false, true, new Point(-30, 145), 180);
+
+        AgentCapabilityStep first = support.approachNpc(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 100L, 0L, 0, null,
+                new AgentCapabilityMemory()), 1010000, 20100, firstPlacement);
+        AgentCapabilityStep next = support.approachNpc(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 200L, 100L, 0, null,
+                new AgentCapabilityMemory()), 1010000, 20100, nextPlacement);
+
+        assertNull(first);
+        assertNull(next);
+        assertEquals(new Point(-200, 200), fixture.position);
+        verify(fixture.gateway, org.mockito.Mockito.times(2))
+                .facePosition(fixture.agent, new Point(-188, 85));
+    }
+
+    @Test
+    void inventoryUse1021InspectsUsesAndVerifies() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.quests.put(1021, 1);
+        fixture.items.put(2010007, 1);
+
+        assign(fixture, new InventoryUseObjectiveCapability(fixture.gateway),
+                new InventoryUseObjectiveCapability.Command("q1021-use", 1021, 2010007), 10_000L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
+        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
+        run(fixture, 2L, 30);
+
+        assertEquals(0, fixture.items.get(2010007));
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void combat1037DelegatesKillsAndVerifiesProgress() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.quests.put(1037, 1);
+        fixture.combatQuestId = 1037;
+
+        assign(fixture, new CombatQuestObjectiveCapability(fixture.gateway),
+                new CombatQuestObjectiveCapability.Command("q1037-kills", 50000, 1037,
+                        Map.of(100100, 10)), 10_000L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
+        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
+        run(fixture, 2L, 40);
+
+        assertTrue(fixture.progress.get(MutablePrimitiveGatewayFixture.key(1037, 100100)) >= 10);
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void combat1035KillsTutorialSentinelAndCollectsShellpiece() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(40000);
+        fixture.quests.put(1035, 1);
+        fixture.combatQuestId = 1035;
+        fixture.lootRewards.put(4031802, 1);
+
+        assign(fixture, new CombatQuestObjectiveCapability(fixture.gateway),
+                new CombatQuestObjectiveCapability.Command("q1035-kill-loot", 40000, 1035,
+                        Map.of(9300018, 1), Map.of(4031802, 1)), 10_000L);
+        run(fixture, 1L, 60);
+
+        assertTrue(fixture.progress.get(MutablePrimitiveGatewayFixture.key(1035, 9300018)) >= 1);
+        assertEquals(1, fixture.items.get(4031802));
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void npcObjectiveTraversesEachInScopePortalHopBeforeInteraction() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(30001);
+        fixture.directPortalEdges.addAll(Set.of(
+                "30001:30000", "30000:40000", "40000:50000"));
+
+        var command = new NpcQuestObjectiveCapability.Command("q1037-start", 50000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1037, 2005, 2103, 1)), false);
+        assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 300_000L);
+        run(fixture, 1L, 120);
+
+        assertEquals(50000, fixture.mapId.get());
+        assertEquals(1, fixture.quests.get(1037));
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void questItemDelivery1038UsesNormalCompletionAndChecksConsumption() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+        fixture.quests.put(1038, 1);
+        fixture.items.put(4031800, 1);
+
+        assign(fixture, new QuestItemDeliveryObjectiveCapability(fixture.gateway),
+                new QuestItemDeliveryObjectiveCapability.Command(
+                        "q1038-delivery", 1000000, 1038, 12000, Map.of(4031800, 1)), 10_000L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
+        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
+        run(fixture, 2L, 50);
+
+        assertEquals(2, fixture.quests.get(1038));
+        assertEquals(0, fixture.items.get(4031800));
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void quiz1009RunsDeterministicNormalQuestPath() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+
+        assign(fixture, new QuizObjectiveCapability(fixture.gateway),
+                new QuizObjectiveCapability.Command("q1009-quiz", 1000000, 1009, 12101), 10_000L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
+        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
+        run(fixture, 2L, 50);
+
+        assertEquals(2, fixture.quests.get(1009));
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void reactor1008NavigatesHitsLootsAndInspects() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+        fixture.position = new Point(-100, 0);
+        fixture.quests.put(1008, 1);
+        fixture.reactorHitsRequired = 4;
+        fixture.reactorRewards.put(4031161, 1);
+        fixture.reactorRewards.put(4031162, 1);
+
+        assign(fixture, new ReactorLootObjectiveCapability(fixture.gateway),
+                new ReactorLootObjectiveCapability.Command("q1008-reactor", 1000000, 1008,
+                        null, null, Map.of(4031161, 1, 4031162, 1), null), 10_000L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
+        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
+        run(fixture, 2L, 80, 100L);
+
+        assertEquals(4, fixture.reactorHits.get());
+        assertEquals(new Point(30, 0), fixture.position);
+        assertEquals(1, fixture.items.get(4031161));
+        assertEquals(1, fixture.items.get(4031162));
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void reactorObjectiveWaitsForRespawnInsteadOfFailingWhenAllReactorsAreReserved() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+        fixture.quests.put(1008, 1);
+        when(fixture.gateway.reactors(any())).thenReturn(List.of());
+        AgentCapabilityMemory memory = new AgentCapabilityMemory();
+        memory.putInt("phase", 1);
+        var capability = new ReactorLootObjectiveCapability(fixture.gateway);
+        var command = new ReactorLootObjectiveCapability.Command(
+                "q1008-reactor", 1000000, 1008,
+                null, null, Map.of(4031161, 1), null);
+
+        AgentCapabilityStep step = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 100L, 0L, 0, null, memory), command);
+
+        assertEquals(AgentCapabilityStatus.RUNNING, step.status());
+        assertTrue(step.result().message().contains("active reactor"));
+    }
+
+    @Test
+    void planStopVerifiesFinalScope() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+        fixture.items.put(3010000, 1);
+
+        assign(fixture, planStop(fixture, MapleIslandRelaxerSpotCatalog.Pool.AMHERST),
+                new PlanStopObjectiveCapability.Command(
+                        "stop", 1000000, Set.of(1028), "stop in Amherst"),
+                10_000L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
+        assertEquals(2, fixture.entry.capabilityRuntimeState().frameCount());
+        run(fixture, 2L, 20, 100L);
+
+        verify(fixture.gateway).sitChair(fixture.agent, 3010000);
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void planStopConsumesTickWhileChairAnimationIsBeingVerified() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+        fixture.items.put(3010000, 1);
+        AgentCapabilityMemory memory = new AgentCapabilityMemory();
+        memory.putInt("phase", 1);
+        var capability = planStop(fixture, null);
+        var command = new PlanStopObjectiveCapability.Command(
+                "stop", 1000000, Set.of(1028), "stop in Amherst");
+
+        AgentCapabilityStep sitting = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 1L, 0L, 0, null, memory), command);
+
+        assertTrue(sitting.consumedTick());
+        verify(fixture.gateway).sitChair(fixture.agent, 3010000);
+    }
+
+    @Test
+    void planStopDoesNotBroadcastStandingFacingWhileVerifyingChair() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+        fixture.items.put(3010000, 1);
+        fixture.chairItemId.set(3010000);
+        AgentCapabilityMemory memory = new AgentCapabilityMemory();
+        memory.putInt("phase", 1);
+        memory.putBoolean("restTargetSelected", true);
+        memory.putInt("restTargetX", fixture.position.x);
+        memory.putInt("restTargetY", fixture.position.y);
+        memory.putBoolean("restSettleStarted", true);
+        memory.putLong("restSettleReadyAtMs", 0L);
+        memory.putBoolean("chairSitIssued", true);
+        memory.putLong("chairVerifyAtMs", 0L);
+        var capability = planStop(fixture, MapleIslandRelaxerSpotCatalog.Pool.AMHERST);
+        var command = new PlanStopObjectiveCapability.Command(
+                "stop", 1000000, Map.of(), Set.of(1028), "stop in Amherst");
+
+        AgentCapabilityStep verified = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 1L, 0L, 0, null, memory), command);
+
+        assertEquals(AgentCapabilityStatus.SUCCESS, verified.result().status());
+        verify(fixture.gateway, never()).facePosition(any(), any());
+    }
+
+    @Test
+    void amherstPlanStopUsesAReservedCatalogSpotBeforeSitting() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+        fixture.items.put(3010000, 1);
+
+        assign(fixture, planStop(fixture, MapleIslandRelaxerSpotCatalog.Pool.AMHERST),
+                new PlanStopObjectiveCapability.Command(
+                        "stop", 1000000, Map.of(), Set.of(1028), "stop in Amherst"),
+                10_000L);
+        run(fixture, 1L, 30, 100L);
+
+        assertTrue(MapleIslandRelaxerSpotCatalog.spots(MapleIslandRelaxerSpotCatalog.Pool.AMHERST).stream()
+                .anyMatch(spot -> spot.x() == fixture.position.x && spot.y() == fixture.position.y));
+        assertTrue(MapleIslandRelaxerSpotReservationRuntime.reservedSpot(77).isPresent());
+        verify(fixture.gateway).sitChair(fixture.agent, 3010000);
+        assertSuccess(fixture);
+    }
+
+    @Test
+    void planStopFallsBackToStandingWhenEveryRelaxerSpotIsReserved() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(1000000);
+        fixture.items.put(3010000, 1);
+        fixture.position = new Point(100_000, 100_000);
+        var pool = MapleIslandRelaxerSpotCatalog.Pool.AMHERST;
+        List<Integer> reservationOwners = new java.util.ArrayList<>();
+        try {
+            for (int index = 0; index < MapleIslandRelaxerSpotCatalog.spots(pool).size(); index++) {
+                int ownerId = 10_000 + index;
+                assertTrue(MapleIslandRelaxerSpotReservationRuntime.reserveRandom(ownerId, pool).isPresent());
+                reservationOwners.add(ownerId);
+            }
+            AgentCapabilityMemory memory = new AgentCapabilityMemory();
+            var behavior = new MapleIslandPlanCompletionBehavior(fixture.gateway, 3010000, pool);
+
+            AgentCapabilityStep navigating = behavior.tick(new AgentCapabilityContext(
+                    fixture.entry, fixture.agent, 1L, 0L, 0, null, memory),
+                    "stop", "stop in Amherst");
+
+            assertEquals(AgentCapabilityStatus.WAITING_CHILD, navigating.status());
+            assertTrue(memory.booleanValue("restStandingFallback", false));
+            fixture.position = new Point(memory.intValue("restTargetX", 0),
+                    memory.intValue("restTargetY", 0));
+
+            AgentCapabilityStep completed = behavior.tick(new AgentCapabilityContext(
+                    fixture.entry, fixture.agent, 2L, 0L, 0, null, memory),
+                    "stop", "stop in Amherst");
+
+            assertEquals(AgentCapabilityStatus.SUCCESS, completed.status());
+            assertTrue(completed.result().message().contains("resting while standing nearby"));
+            assertTrue(MapleIslandRelaxerSpotReservationRuntime.reservedSpot(77).isEmpty());
+            verify(fixture.gateway).stop(fixture.entry);
+            verify(fixture.gateway, never()).sitChair(any(), anyInt());
+        } finally {
+            reservationOwners.forEach(MapleIslandRelaxerSpotReservationRuntime::release);
+        }
+    }
+
+    @Test
+    void cohortSouthperryIdleEndingFacesRandomDirectionWithoutSitting() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.mapId.set(2000000);
+        fixture.items.put(3010000, 1);
+        long seed = 0L;
+        do {
+            MapleIslandObjectiveRandomnessRuntime.configure(
+                    fixture.entry, MapleIslandObjectiveRandomnessSettings.cohort(seed++));
+        } while (MapleIslandObjectiveRandomnessRuntime.selectPostPlanBehavior(
+                fixture.entry, 2000000) != AgentPlanCompletionMode.IDLE);
+        AgentCapabilityMemory memory = new AgentCapabilityMemory();
+        memory.putInt("phase", 1);
+        memory.putBoolean("restTargetSelected", true);
+        memory.putInt("restTargetX", fixture.position.x);
+        memory.putInt("restTargetY", fixture.position.y);
+        memory.putInt("restFacingDirection", -1);
+        var capability = planStop(fixture, MapleIslandRelaxerSpotCatalog.Pool.SOUTHPERRY_RIGHT);
+        var command = new PlanStopObjectiveCapability.Command(
+                "stop", 2000000, Map.of(), Set.of(1028), "stop in Southperry");
+
+        AgentCapabilityStep result = capability.tick(new AgentCapabilityContext(
+                fixture.entry, fixture.agent, 1L, 0L, 0, null, memory), command);
+
+        assertEquals(AgentCapabilityStatus.SUCCESS, result.status());
+        verify(fixture.gateway).facePosition(fixture.agent, new Point(-1, 0));
+        verify(fixture.gateway).stop(fixture.entry);
+        verify(fixture.gateway, never()).sitChair(any(), anyInt());
+    }
+
+    @Test
+    void childRetryExhaustionPropagatesToParent() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        when(fixture.gateway.interactNpc(any(), anyInt(), any(), any())).thenReturn(false);
+        var command = new NpcQuestObjectiveCapability.Command("retry", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2101, 2100, 1)), false);
+        assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 10_000L);
+
+        run(fixture, 1L, 30);
+
+        assertEquals(AgentCapabilityReasonCode.RETRIES_EXHAUSTED,
+                fixture.entry.capabilityRuntimeState().lastResult().reasonCode());
+    }
+
+    @Test
+    void cancellationClearsParentAndChildAndLeavesStructuredResult() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        var command = new NpcQuestObjectiveCapability.Command("cancel", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2101, 2100, 1)), false);
+        assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 10_000L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 1L);
+
+        AgentCapabilityRuntime.requestCancellation(fixture.entry);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 2L);
+
+        assertFalse(fixture.entry.capabilityRuntimeState().hasActiveCapability());
+        assertEquals(AgentCapabilityStatus.CANCELLED,
+                fixture.entry.capabilityRuntimeState().lastResult().status());
+    }
+
+    @Test
+    void parentDeadlineTimesOutAStalledNavigationChild() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.position = new Point(0, 0);
+        when(fixture.gateway.npcPosition(any(), anyInt())).thenReturn(new Point(1000, 0));
+        doNothing().when(fixture.gateway).navigate(any(), any(), any(Boolean.class));
+        var command = new NpcQuestObjectiveCapability.Command("timeout", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2100, 2100, 1)), false);
+        assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 20L);
+
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 100L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 110L);
+        AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, 120L);
+
+        assertEquals(AgentCapabilityStatus.TIMED_OUT,
+                fixture.entry.capabilityRuntimeState().lastResult().status());
+    }
+
+    @Test
+    void npcWithinDefaultClickRangeInteractsWithoutNavigation() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        fixture.position = new Point(-93, 450);
+        when(fixture.gateway.npcPosition(any(), anyInt())).thenReturn(new Point(130, 293));
+        var command = new NpcQuestObjectiveCapability.Command("q1031-start", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2101, 2100, 1)), false);
+        assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 10_000L);
+
+        run(fixture, 1L, 30);
+
+        assertEquals(1, fixture.quests.get(1031));
+        assertSuccess(fixture);
+        verify(fixture.gateway, never()).navigate(any(), any(), any(Boolean.class));
+    }
+
+    @Test
+    void directObjectiveConstructionStillBlocksExcludedQuest() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        var command = new NpcQuestObjectiveCapability.Command("excluded", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1028, 2101, 2100, 1)), false);
+        assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 10_000L);
+
+        run(fixture, 1L, 20);
+
+        assertEquals(AgentCapabilityStatus.BLOCKED_BY_SCOPE,
+                fixture.entry.capabilityRuntimeState().lastResult().status());
+    }
+
+    @Test
+    void directObjectiveConstructionBlocksTrainingCenterAndOffIslandMaps() {
+        for (int mapId : List.of(1010000, 999999999)) {
+            var fixture = new MutablePrimitiveGatewayFixture();
+            var command = new NpcQuestObjectiveCapability.Command("map-" + mapId, mapId,
+                    List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 2101, 2100, 1)), false);
+            assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 10_000L);
+
+            run(fixture, 1L, 10);
+
+            assertEquals(AgentCapabilityStatus.BLOCKED_FORBIDDEN_MAP,
+                    fixture.entry.capabilityRuntimeState().lastResult().status());
+        }
+    }
+
+    @Test
+    void directObjectiveConstructionBlocksShanksNpc() {
+        var fixture = new MutablePrimitiveGatewayFixture();
+        var command = new NpcQuestObjectiveCapability.Command("shanks", 10000,
+                List.of(new NpcQuestObjectiveCapability.QuestOperation(1031, 22000, 22000, 1)), false);
+        assign(fixture, new NpcQuestObjectiveCapability(fixture.gateway), command, 10_000L);
+
+        run(fixture, 1L, 10);
+
+        assertEquals(AgentCapabilityStatus.BLOCKED_FORBIDDEN_NPC,
+                fixture.entry.capabilityRuntimeState().lastResult().status());
+    }
+
+    private static <C extends AgentCapabilityCommand> void assign(
+            MutablePrimitiveGatewayFixture fixture,
+            AgentExecutableCapability<C> capability,
+            C command,
+            long timeoutMs) {
+        assertTrue(AgentCapabilityRuntime.assign(fixture.entry,
+                new AgentCapabilityInvocation<>(capability, command, timeoutMs, 1)));
+    }
+
+    private static PlanStopObjectiveCapability planStop(
+            MutablePrimitiveGatewayFixture fixture, MapleIslandRelaxerSpotCatalog.Pool pool) {
+        return new PlanStopObjectiveCapability(fixture.gateway, new AmherstScopePolicy(),
+                new MapleIslandPlanCompletionBehavior(fixture.gateway, 3010000, pool),
+                AgentPortalRoutePolicy.DIRECT);
+    }
+
+    private static void run(MutablePrimitiveGatewayFixture fixture, long nowMs, int maxTicks) {
+        run(fixture, nowMs, maxTicks, 100L);
+    }
+
+    private static void run(MutablePrimitiveGatewayFixture fixture,
+                            long nowMs,
+                            int maxTicks,
+                            long tickStepMs) {
+        for (int i = 0; i < maxTicks && fixture.entry.capabilityRuntimeState().hasActiveCapability(); i++) {
+            AgentCapabilityRuntime.tick(fixture.entry, fixture.agent, nowMs + i * tickStepMs);
+        }
+        assertFalse(fixture.entry.capabilityRuntimeState().hasActiveCapability(), "capability did not terminate");
+    }
+
+    private static void assertSuccess(MutablePrimitiveGatewayFixture fixture) {
+        assertEquals(AgentCapabilityStatus.SUCCESS,
+                fixture.entry.capabilityRuntimeState().lastResult().status());
+    }
+}

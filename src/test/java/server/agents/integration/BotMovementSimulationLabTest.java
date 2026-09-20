@@ -1,0 +1,431 @@
+package server.agents.integration;
+
+import server.agents.runtime.AgentRuntimeEntry;
+
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
+
+import server.agents.capabilities.movement.AgentMovementPhysicsStateRuntime;
+
+
+import server.agents.runtime.AgentModeStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationGraphService;
+import server.agents.capabilities.movement.AgentGroundCollisionService;
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
+
+import server.agents.capabilities.navigation.AgentNavigationGraph;
+
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
+
+import org.junit.jupiter.api.Test;
+import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.capabilities.movement.AgentFormationService;
+import server.maps.Foothold;
+import server.maps.MapleMap;
+import server.maps.Rope;
+
+import java.awt.*;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class BotMovementSimulationLabTest {
+    @Test
+    void shouldReachMoveTargetOnFlatGround() {
+        MapleMap map = createFlatMap(910000101, 0, 600, 100);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        AgentRuntimeEntry entry = lab.spawnBot("SLASH", 1, map, new Point(100, 100));
+
+        lab.setMoveTarget("SLASH", new Point(320, 100), true);
+        lab.step(80);
+
+        Point finalPos = lab.position("SLASH");
+        assertTrue(Math.abs(finalPos.x - 320) <= 8,
+                () -> "bot should arrive at precise move target, stopped at " + finalPos
+                        + ":\n" + String.join("\n", lab.formatRecentTrace("SLASH", 20)));
+        assertNull(AgentMoveTargetStateRuntime.moveTarget(entry), "move target should clear after arrival");
+    }
+
+    @Test
+    void shouldFollowOwnerUsingFormationOffsetOnFlatGround() {
+        MapleMap map = createFlatMap(910000102, 0, 800, 100);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        lab.spawnActor("OWNER", 10, map, new Point(400, 100));
+        AgentRuntimeEntry entry = lab.spawnBot("CRASH", 11, map, new Point(120, 100));
+
+        lab.setFollow("CRASH", "OWNER");
+        lab.setFormation("OWNER", AgentFormationService.FormationType.LEFT, 120, 200);
+        lab.step(100);
+
+        Point finalPos = lab.position("CRASH");
+        int expectedX = 280;
+        assertTrue(Math.abs(finalPos.x - expectedX) <= AgentMovementPhysicsConfig.configuredStopDist(),
+                () -> "bot should settle near owner + formation offset, stopped at " + finalPos
+                        + ":\n" + String.join("\n", lab.formatRecentTrace("CRASH", 20)));
+        assertTrue(AgentModeStateRuntime.following(entry));
+        assertNotNull(lab.describeCurrentState("CRASH"));
+    }
+
+    @Test
+    void shouldReproduceIntermediateBumpLandingScenarioFromMovementManagerTest() {
+        MapleMap map = new MapleMap(910000103, 0, 0, 910000103, 1.0f);
+        server.maps.FootholdTree footholds = new server.maps.FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
+        footholds.insert(new Foothold(new Point(0, 110), new Point(20, 110), 1));
+        footholds.insert(new Foothold(new Point(4, 102), new Point(6, 102), 2));
+        map.setFootholds(footholds);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        AgentRuntimeEntry entry = lab.spawnBot("BUMP", 12, map, new Point(0, 100));
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentMovementPhysicsStateRuntime.setPhysicsX(entry, 0);
+        AgentMovementPhysicsStateRuntime.setPhysicsY(entry, 100);
+        AgentMovementPhysicsStateRuntime.setVerticalVelocity(entry, 0f);
+        AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, 8);
+
+        lab.stepRaw("BUMP", new Point(20, 110), false);
+
+        Foothold landedFoothold = map.getFootholds().findBelow(lab.position("BUMP"));
+        assertNotNull(landedFoothold);
+        assertEquals(2, landedFoothold.getId(), "bot should land on the authored intermediate bump foothold");
+        assertTrue(!AgentMovementStateRuntime.inAir(entry), "bot should land on the intermediate bump");
+    }
+
+    @Test
+    void shouldReproduceDropPastWallMomentumScenarioFromMovementManagerTest() {
+        MapleMap map = new MapleMap(910000104, 0, 0, 910000104, 1.0f);
+        server.maps.FootholdTree footholds = new server.maps.FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
+        footholds.insert(new Foothold(new Point(0, 0), new Point(20, 0), 1));
+        footholds.insert(new Foothold(new Point(0, 0), new Point(0, 80), 2));
+        map.setFootholds(footholds);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        AgentRuntimeEntry entry = lab.spawnBot("DROP", 13, map, new Point(0, 0));
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentMovementPhysicsStateRuntime.setPhysicsX(entry, 0);
+        AgentMovementPhysicsStateRuntime.setPhysicsY(entry, 0);
+        AgentMovementPhysicsStateRuntime.setVerticalVelocity(entry, 0f);
+        AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, -8);
+
+        lab.stepRaw("DROP", new Point(-50, 80), false);
+
+        assertTrue(lab.position("DROP").x < 0, "bot should keep horizontal motion past the wall endpoint");
+        assertEquals(-8, AgentMovementPhysicsStateRuntime.airVelocityX(entry));
+    }
+
+    @Test
+    void shouldResolveSlashRopeOscillationDumpByExecutingCommittedExit() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000000);
+        AgentNavigationGraphService.rebuildGraph(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        lab.spawnActor("OWNER", 20, map, new Point(-69, 156));
+        AgentRuntimeEntry entry = lab.spawnBot("SLASH", 21, map, new Point(366, -117));
+        lab.setFollow("SLASH", "OWNER");
+        lab.setFollowOffset("SLASH", -60);
+        lab.setAiAccumulator("SLASH", 50);
+        Rope rope = map.getRopes().stream()
+                .filter(candidate -> candidate.x() == 366 && candidate.topY() == -358 && candidate.bottomY() == -111)
+                .findFirst()
+                .orElseThrow();
+        lab.attachBotToRope("SLASH", rope, -117);
+        lab.setNavState("SLASH", new AgentNavigationGraph.Edge(
+                160, 116, AgentNavigationGraph.EdgeType.CLIMB,
+                new Point(366, -118), new Point(427, -101),
+                8, 0, 366, -358, -111, 400
+        ), 148, true);
+
+        lab.step(10);
+
+        List<String> trace = lab.formatRecentTrace("SLASH", 10);
+
+        // The staged rightward exit is now executable directly: the Agent climb snap policy
+        // snaps the bot to startPoint.y when within one climbStep — including at rope.bottomY()
+        // (pathlog-Leroy/John fix). The bot reaches the anchor exactly, the strict gate's
+        // botPos.y == edge.startPoint.y bypass passes, and the launch fires before any
+        // oscillation, so the previous "AI replan to a different destination" path is no longer
+        // exercised.
+        assertTrue(trace.stream().anyMatch(line -> line.contains("nav=exec") && line.contains("edge=CLIMB r160->")),
+                "bot should execute a rope exit from r160 instead of oscillating on the rope");
+        assertTrue(trace.stream().noneMatch(line -> line.contains("bot=(366,-117)") && line.contains("edge=CLIMB r160->r116") && line.contains("nav=reuse") && line.contains("+1000ms")),
+                "stale rope exit should not keep the bot oscillating for a full second");
+    }
+
+    @Test
+    void shouldResolveBashRopeOscillationDumpByExecutingImmediatelyFromRopeAnchorWindow() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000800);
+        AgentNavigationGraphService.rebuildGraph(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        lab.spawnActor("OWNER", 30, map, new Point(-437, -859));
+        lab.spawnBot("BASH", 31, map, new Point(-437, -1142));
+        lab.setMoveTarget("BASH", new Point(-241, -899), true);
+        lab.setAiAccumulator("BASH", 50);
+        Rope rope = map.getRopes().stream()
+                .filter(candidate -> candidate.x() == -437 && candidate.topY() == -1471 && candidate.bottomY() == 84)
+                .findFirst()
+                .orElseThrow();
+        lab.attachBotToRope("BASH", rope, -1142);
+        lab.setNavState("BASH", new AgentNavigationGraph.Edge(
+                25, 2, AgentNavigationGraph.EdgeType.CLIMB,
+                new Point(-437, -1141), new Point(-477, -1166),
+                -8, 0, -437, -1471, 84, 250
+        ), 6, true);
+
+        lab.step(8);
+
+        List<String> trace = lab.formatRecentTrace("BASH", 8);
+
+        assertTrue(trace.stream().anyMatch(line -> line.contains("nav=exec") && line.contains("edge=CLIMB r25->r2")),
+                "bot should execute the rope exit immediately once it is inside the authored launch window");
+        assertTrue(trace.stream().noneMatch(line -> line.contains("bot=(-437,-1137)")),
+                "bot should not oscillate around the rope anchor before the exit jump");
+    }
+
+    @Test
+    void shouldLeaveThievesHideoutAfterFirstJobAdvancement() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000003);
+        AgentNavigationGraphService.rebuildGraph(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        lab.spawnBot("ROGUE", 35, map, new Point(113, 128));
+        lab.setMoveTarget("ROGUE", new Point(201, -266), true);
+        lab.setAiAccumulator("ROGUE", 50);
+
+        lab.step(1_200);
+
+        Point finalPosition = lab.position("ROGUE");
+        assertTrue(finalPosition.distanceSq(new Point(201, -266)) <= 45 * 45,
+                () -> "Rogue should navigate from Dark Lord to the hideout exit, but stopped at "
+                        + finalPosition + ":\n"
+                        + String.join("\n", lab.formatRecentTrace("ROGUE", 80)));
+    }
+
+    @Test
+    void shouldCommitJohnSecondJumpOnTheNextAiTickAfterLanding() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(101020001);
+        AgentNavigationGraphService.rebuildGraph(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        lab.spawnActor("OWNER", 50, map, new Point(115, -1521));
+        lab.spawnBot("JOHN", 51, map, new Point(114, -1091));
+        lab.setFollow("JOHN", "OWNER");
+        lab.setFormation("OWNER", AgentFormationService.FormationType.STAGGER, 60, 200);
+        lab.setFollowOffset("JOHN", 180);
+        lab.setAiAccumulator("JOHN", 50);
+        lab.setNavState("JOHN", new AgentNavigationGraph.Edge(
+                28, 27, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(148, -1098), new Point(148, -1150),
+                0, 0, 0, 0, 0, 400
+        ), 19, true);
+
+        lab.step(22);
+
+        List<String> trace = lab.formatRecentTrace("JOHN", 22);
+
+        assertTrue(trace.stream().anyMatch(line -> line.contains("nav=exec")
+                        && line.contains("edge=JUMP r28->r27")),
+                "seeded jump edge should execute once the bot reaches its launch point");
+        int landingFrame = -1;
+        boolean seededJumpExecuted = false;
+        boolean airborneAfterSeededJump = false;
+        for (int i = 0; i < trace.size(); i++) {
+            String line = trace.get(i);
+            if (line.contains("nav=exec") && line.contains("edge=JUMP r28->r27")) {
+                seededJumpExecuted = true;
+            }
+            if (seededJumpExecuted && line.contains("phys=AIR")) {
+                airborneAfterSeededJump = true;
+            } else if (airborneAfterSeededJump && line.contains("phys=GND")) {
+                landingFrame = i;
+                break;
+            }
+        }
+        int nextAiFrame = -1;
+        for (int i = landingFrame + 1; i < trace.size(); i++) {
+            if (trace.get(i).contains("ai=Y")) {
+                nextAiFrame = i;
+                break;
+            }
+        }
+        assertTrue(landingFrame >= 0 && nextAiFrame >= 0
+                        && (trace.get(nextAiFrame).contains("nav=new")
+                        || trace.get(nextAiFrame).contains("nav=exec"))
+                        && trace.get(nextAiFrame).contains("edge=JUMP r27->r"),
+                () -> "after landing, the next AI tick should commit the next authored jump from the new region:\n"
+                        + String.join("\n", trace));
+        assertTrue(trace.subList(landingFrame + 1, nextAiFrame + 1).stream()
+                        .noneMatch(line -> line.contains("phys=AIR") && line.contains("edge=none")),
+                "bot should not enter an uncommitted fall after landing and before the chained jump");
+    }
+
+    @Test
+    void shouldUsePetWalkingRoadLocalWalkOffDrop() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(100000202);
+        AgentNavigationGraphService.rebuildGraph(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        lab.spawnActor("OWNER", 40, map, new Point(-1799, -926));
+        lab.spawnBot("JOHN", 41, map, new Point(-1366, -664));
+        lab.setFollow("JOHN", "OWNER");
+        lab.setFormation("OWNER", AgentFormationService.FormationType.STAGGER, 60, 200);
+        lab.setFollowOffset("JOHN", 180);
+        lab.setAiAccumulator("JOHN", 50);
+        lab.primeMapState("JOHN");
+
+        lab.step(17);
+
+        List<String> trace = lab.formatRecentTrace("JOHN", 17);
+        assertTrue(trace.stream().anyMatch(line -> line.contains("phys=GND") && line.contains("edge=DROP")),
+                "bot should commit a local drop edge while approaching the ledge");
+        assertTrue(trace.stream().anyMatch(line -> line.contains("phys=AIR")),
+                "bot should eventually leave the ledge and fall through normal physics");
+        assertFalse(trace.stream().anyMatch(line -> line.contains("nav=exec") && line.contains("edge=DROP")),
+                "walk-off drops should not require an explicit DROP execution step");
+        assertFalse(trace.stream().anyMatch(line -> line.contains("graph-warmup")),
+                "simulation uses a prebuilt graph and should not pause on graph warmup");
+    }
+
+    @Test
+    void shouldWalkOffLedgeDropsViaGroundPhysicsWithoutExplicitDropExec() {
+        MapleMap map = createWalkOffDropMap(910000401);
+        AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
+        LedgeDropScenario scenario = findLedgeDropScenario(graph, map);
+
+        assertNotNull(scenario, "Expected at least one walk-off drop with a still-grounded start point");
+
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        lab.spawnBot("DROPPER", 60, map, scenario.startPoint());
+        lab.setMoveTarget("DROPPER", scenario.edge().endPoint, true);
+        lab.setNavState("DROPPER", scenario.edge(), scenario.edge().toRegionId, false);
+        lab.setAiAccumulator("DROPPER", 50);
+
+        lab.step(40);
+
+        List<String> trace = lab.formatRecentTrace("DROPPER", 40);
+        String edgeToken = String.format("edge=DROP r%d->r%d", scenario.edge().fromRegionId, scenario.edge().toRegionId);
+
+        assertTrue(trace.stream().anyMatch(line -> line.contains("phys=GND") && line.contains(edgeToken)),
+                "bot should follow the authored drop edge while walking toward the ledge");
+        assertTrue(trace.stream().anyMatch(line -> line.contains("phys=AIR")),
+                "bot should leave the ledge and fall through physics");
+        assertFalse(trace.stream().anyMatch(line -> line.contains("nav=exec") && line.contains(edgeToken)),
+                "walk-off drops should not require an explicit DROP execution step");
+        assertEquals(scenario.edge().toRegionId, graph.findRegionId(map, lab.position("DROPPER")),
+                "bot should land in the destination region after walking off the ledge");
+    }
+
+    @Test
+    void shouldCommitForestEastRegion38DirectionalDrop() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(100030000);
+        AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
+        AgentNavigationGraph.Edge edge = graph.getOutgoing(38).stream()
+                .filter(candidate -> candidate.type == AgentNavigationGraph.EdgeType.DROP
+                        && candidate.toRegionId == 42
+                        && candidate.launchStepX > 0)
+                .findFirst()
+                .orElseThrow();
+
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        AgentRuntimeEntry entry = lab.spawnBot("KIWI", 61, map, edge.startPoint);
+        lab.setMoveTarget("KIWI", edge.endPoint, true);
+        lab.setNavState("KIWI", edge, edge.toRegionId, false);
+        lab.setAiAccumulator("KIWI", 50);
+
+        lab.step(200);
+
+        List<String> trace = lab.formatRecentTrace("KIWI", 200);
+        assertTrue(trace.stream().anyMatch(line -> line.contains("phys=AIR")),
+                () -> "Forest East region 38 directional drop must leave its ledge:\n"
+                        + String.join("\n", trace));
+        assertEquals(edge.toRegionId, graph.findRegionId(map, lab.position("KIWI")),
+                () -> "Forest East region 38 directional drop must land in region 42:\n"
+                        + String.join("\n", trace));
+        assertFalse(AgentMovementStateRuntime.inAir(entry));
+    }
+
+    @Test
+    void shouldNotOscillateBetweenForestEastRegion39BranchEdges() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(100030000);
+        AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
+        Point target = new Point(-3368, -506);
+
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        lab.spawnBot("KIWI", 62, map, new Point(-3869, -265));
+        lab.setMoveTarget("KIWI", target, true);
+        lab.setAiAccumulator("KIWI", 50);
+
+        lab.step(800);
+
+        List<String> trace = lab.formatRecentTrace("KIWI", 800);
+        assertEquals(30, graph.findRegionId(map, lab.position("KIWI")),
+                () -> "Forest East route from region 39 must commit one branch and reach region 30:\n"
+                        + String.join("\n", trace));
+    }
+
+    private static MapleMap createFlatMap(int mapId, int x1, int x2, int y) {
+        MapleMap map = new MapleMap(mapId, 0, 0, mapId, 1.0f);
+        server.maps.FootholdTree footholds = new server.maps.FootholdTree(
+                new Point(x1 - 200, y - 200),
+                new Point(x2 + 200, y + 200));
+        footholds.insert(new Foothold(new Point(x1, y), new Point(x2, y), 1));
+        map.setFootholds(footholds);
+        return map;
+    }
+
+    private static MapleMap createWalkOffDropMap(int mapId) {
+        MapleMap map = new MapleMap(mapId, 0, 0, mapId, 1.0f);
+        server.maps.FootholdTree footholds = new server.maps.FootholdTree(
+                new Point(-200, -200),
+                new Point(400, 400));
+        footholds.insert(new Foothold(new Point(0, 0), new Point(100, 0), 1));
+        footholds.insert(new Foothold(new Point(100, 120), new Point(220, 120), 2));
+        map.setFootholds(footholds);
+        return map;
+    }
+
+    private static LedgeDropScenario findLedgeDropScenario(AgentNavigationGraph graph, MapleMap map) {
+        for (AgentNavigationGraph.Region region : graph.regions) {
+            for (AgentNavigationGraph.Edge edge : graph.getOutgoing(region.id)) {
+                if (edge.type != AgentNavigationGraph.EdgeType.DROP || edge.launchStepX == 0) {
+                    continue;
+                }
+
+                Point startPoint = findWalkableStartBeforeLedge(graph, map, edge);
+                if (startPoint != null) {
+                    return new LedgeDropScenario(edge, startPoint);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Point findWalkableStartBeforeLedge(AgentNavigationGraph graph,
+                                                      MapleMap map,
+                                                      AgentNavigationGraph.Edge edge) {
+        AgentNavigationGraph.Region region = graph.getRegion(edge.fromRegionId);
+        if (region == null) {
+            return null;
+        }
+
+        int direction = Integer.signum(edge.launchStepX);
+        if (direction == 0) {
+            return null;
+        }
+
+        for (int delta = 6; delta <= 18; delta += 2) {
+            int candidateX = edge.startPoint.x - (direction * delta);
+            if (candidateX < region.minX || candidateX > region.maxX) {
+                continue;
+            }
+
+            Point candidate = region.pointAt(candidateX);
+            if (candidate == null || graph.findRegionId(map, candidate) != edge.fromRegionId) {
+                continue;
+            }
+            if (AgentGroundCollisionService.canWalkGroundStep(map, candidate, edge.launchStepX)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private record LedgeDropScenario(AgentNavigationGraph.Edge edge, Point startPoint) {
+    }
+
+}

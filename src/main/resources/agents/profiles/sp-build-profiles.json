@@ -1,0 +1,1808 @@
+{
+  "schemaVersion": 1,
+  "skills": {
+    "1000000": {
+      "name": "Improved HP Recovery",
+      "maxLevel": 16,
+      "requirements": []
+    },
+    "1000001": {
+      "name": "Improved MaxHP Increase",
+      "maxLevel": 10,
+      "requirements": [
+        {
+          "skillId": 1000000,
+          "level": 5
+        }
+      ]
+    },
+    "1000002": {
+      "name": "Endure",
+      "maxLevel": 8,
+      "requirements": [
+        {
+          "skillId": 1000001,
+          "level": 3
+        }
+      ]
+    },
+    "1001003": {
+      "name": "Iron Body",
+      "maxLevel": 20,
+      "requirements": [
+        {
+          "skillId": 1000002,
+          "level": 3
+        }
+      ]
+    },
+    "1001004": {
+      "name": "Power Strike",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "1001005": {
+      "name": "Slash Blast",
+      "maxLevel": 20,
+      "requirements": [
+        {
+          "skillId": 1001004,
+          "level": 1
+        }
+      ]
+    },
+    "2000000": {
+      "name": "Improved MP Recovery",
+      "maxLevel": 16,
+      "requirements": []
+    },
+    "2000001": {
+      "name": "Improved MaxMP Increase",
+      "maxLevel": 10,
+      "requirements": [
+        {
+          "skillId": 2000000,
+          "level": 5
+        }
+      ]
+    },
+    "2001002": {
+      "name": "Magic Guard",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "2001003": {
+      "name": "Magic Armor",
+      "maxLevel": 20,
+      "requirements": [
+        {
+          "skillId": 2001002,
+          "level": 3
+        }
+      ]
+    },
+    "2001004": {
+      "name": "Energy Bolt",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "2001005": {
+      "name": "Magic Claw",
+      "maxLevel": 20,
+      "requirements": [
+        {
+          "skillId": 2001004,
+          "level": 1
+        }
+      ]
+    },
+    "3000000": {
+      "name": "The Blessing of Amazon",
+      "maxLevel": 16,
+      "requirements": []
+    },
+    "3000001": {
+      "name": "Critical Shot",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "3000002": {
+      "name": "The Eye of Amazon",
+      "maxLevel": 8,
+      "requirements": [
+        {
+          "skillId": 3000000,
+          "level": 3
+        }
+      ]
+    },
+    "3001003": {
+      "name": "Focus",
+      "maxLevel": 20,
+      "requirements": [
+        {
+          "skillId": 3000000,
+          "level": 3
+        }
+      ]
+    },
+    "3001004": {
+      "name": "Arrow Blow",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "3001005": {
+      "name": "Double Shot",
+      "maxLevel": 20,
+      "requirements": [
+        {
+          "skillId": 3001004,
+          "level": 1
+        }
+      ]
+    },
+    "4000000": {
+      "name": "Nimble Body",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "4000001": {
+      "name": "Keen Eyes",
+      "maxLevel": 8,
+      "requirements": [
+        {
+          "skillId": 4000000,
+          "level": 3
+        }
+      ]
+    },
+    "4001002": {
+      "name": "Disorder",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "4001003": {
+      "name": "Dark Sight",
+      "maxLevel": 20,
+      "requirements": [
+        {
+          "skillId": 4001002,
+          "level": 3
+        }
+      ]
+    },
+    "4001334": {
+      "name": "Double Stab",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "4001344": {
+      "name": "Lucky Seven",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "5000000": {
+      "name": "Bullet Time",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "5001001": {
+      "name": "Flash Fist",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "5001002": {
+      "name": "Sommersault Kick",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "5001003": {
+      "name": "Double Shot",
+      "maxLevel": 20,
+      "requirements": []
+    },
+    "5001005": {
+      "name": "Dash",
+      "maxLevel": 10,
+      "requirements": []
+    },
+    "1100000": { "name": "Sword Mastery", "maxLevel": 20, "requirements": [] },
+    "1200000": { "name": "Sword Mastery", "maxLevel": 20, "requirements": [] },
+    "1300000": { "name": "Spear Mastery", "maxLevel": 20, "requirements": [] },
+    "1300001": { "name": "Polearm Mastery", "maxLevel": 20, "requirements": [] },
+    "1300002": { "name": "Final Attack: Spear", "maxLevel": 30, "requirements": [{ "skillId": 1300000, "level": 3 }] },
+    "1300003": { "name": "Final Attack: Polearm", "maxLevel": 30, "requirements": [{ "skillId": 1300001, "level": 3 }] },
+    "1301004": { "name": "Spear Booster", "maxLevel": 20, "requirements": [{ "skillId": 1300000, "level": 5 }] },
+    "1301005": { "name": "Polearm Booster", "maxLevel": 20, "requirements": [{ "skillId": 1300001, "level": 5 }] },
+    "1301006": { "name": "Iron Will", "maxLevel": 20, "requirements": [] },
+    "1301007": { "name": "Hyper Body", "maxLevel": 30, "requirements": [{ "skillId": 1301006, "level": 3 }] },
+    "2100000": { "name": "MP Eater", "maxLevel": 20, "requirements": [] },
+    "2200000": { "name": "MP Eater", "maxLevel": 20, "requirements": [] },
+    "2300000": { "name": "MP Eater", "maxLevel": 20, "requirements": [] },
+    "3100000": { "name": "Bow Mastery", "maxLevel": 20, "requirements": [] },
+    "3200000": { "name": "Crossbow Mastery", "maxLevel": 20, "requirements": [] },
+    "4100000": { "name": "Claw Mastery", "maxLevel": 20, "requirements": [] },
+    "4100001": { "name": "Critical Throw", "maxLevel": 30, "requirements": [{ "skillId": 4100000, "level": 3 }] },
+    "4100002": { "name": "Endure", "maxLevel": 20, "requirements": [] },
+    "4101003": { "name": "Claw Booster", "maxLevel": 20, "requirements": [{ "skillId": 4100000, "level": 5 }] },
+    "4101004": { "name": "Haste", "maxLevel": 20, "requirements": [] },
+    "4101005": { "name": "Drain", "maxLevel": 30, "requirements": [{ "skillId": 4100002, "level": 3 }] },
+    "4200000": { "name": "Dagger Mastery", "maxLevel": 20, "requirements": [] },
+    "5100000": { "name": "Improve MaxHP", "maxLevel": 10, "requirements": [] },
+    "5200000": { "name": "Gun Mastery", "maxLevel": 20, "requirements": [] }
+  },
+  "profiles": [
+    {
+      "profileId": "warrior-first-job-lv30-v1",
+      "profileVersion": 1,
+      "jobFamily": "WARRIOR",
+      "supportedThroughLevel": 30,
+      "levels": [
+        {
+          "level": 10,
+          "allocations": [
+            {
+              "skillId": 1001004,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 11,
+          "allocations": [
+            {
+              "skillId": 1000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 12,
+          "allocations": [
+            {
+              "skillId": 1000000,
+              "points": 2
+            },
+            {
+              "skillId": 1000001,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 13,
+          "allocations": [
+            {
+              "skillId": 1000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 14,
+          "allocations": [
+            {
+              "skillId": 1000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 15,
+          "allocations": [
+            {
+              "skillId": 1000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 16,
+          "allocations": [
+            {
+              "skillId": 1001004,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 17,
+          "allocations": [
+            {
+              "skillId": 1001004,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 18,
+          "allocations": [
+            {
+              "skillId": 1001004,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 19,
+          "allocations": [
+            {
+              "skillId": 1001004,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 20,
+          "allocations": [
+            {
+              "skillId": 1001004,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 21,
+          "allocations": [
+            {
+              "skillId": 1001004,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 22,
+          "allocations": [
+            {
+              "skillId": 1001004,
+              "points": 1
+            },
+            {
+              "skillId": 1001005,
+              "points": 2
+            }
+          ]
+        },
+        {
+          "level": 23,
+          "allocations": [
+            {
+              "skillId": 1001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 24,
+          "allocations": [
+            {
+              "skillId": 1001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 25,
+          "allocations": [
+            {
+              "skillId": 1001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 26,
+          "allocations": [
+            {
+              "skillId": 1001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 27,
+          "allocations": [
+            {
+              "skillId": 1001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 28,
+          "allocations": [
+            {
+              "skillId": 1001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 29,
+          "allocations": [
+            {
+              "skillId": 1000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 30,
+          "allocations": [
+            {
+              "skillId": 1000000,
+              "points": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "profileId": "bowman-first-job-lv30-v1",
+      "profileVersion": 1,
+      "jobFamily": "BOWMAN",
+      "supportedThroughLevel": 30,
+      "levels": [
+        {
+          "level": 10,
+          "allocations": [
+            {
+              "skillId": 3001004,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 11,
+          "allocations": [
+            {
+              "skillId": 3000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 12,
+          "allocations": [
+            {
+              "skillId": 3000002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 13,
+          "allocations": [
+            {
+              "skillId": 3000002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 14,
+          "allocations": [
+            {
+              "skillId": 3000002,
+              "points": 2
+            },
+            {
+              "skillId": 3000001,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 15,
+          "allocations": [
+            {
+              "skillId": 3000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 16,
+          "allocations": [
+            {
+              "skillId": 3000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 17,
+          "allocations": [
+            {
+              "skillId": 3000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 18,
+          "allocations": [
+            {
+              "skillId": 3000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 19,
+          "allocations": [
+            {
+              "skillId": 3000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 20,
+          "allocations": [
+            {
+              "skillId": 3000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 21,
+          "allocations": [
+            {
+              "skillId": 3000001,
+              "points": 1
+            },
+            {
+              "skillId": 3001005,
+              "points": 2
+            }
+          ]
+        },
+        {
+          "level": 22,
+          "allocations": [
+            {
+              "skillId": 3001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 23,
+          "allocations": [
+            {
+              "skillId": 3001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 24,
+          "allocations": [
+            {
+              "skillId": 3001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 25,
+          "allocations": [
+            {
+              "skillId": 3001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 26,
+          "allocations": [
+            {
+              "skillId": 3001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 27,
+          "allocations": [
+            {
+              "skillId": 3001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 28,
+          "allocations": [
+            {
+              "skillId": 3001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 29,
+          "allocations": [
+            {
+              "skillId": 3001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 30,
+          "allocations": [
+            {
+              "skillId": 3001003,
+              "points": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "profileId": "magician-first-job-lv30-v1",
+      "profileVersion": 1,
+      "jobFamily": "MAGICIAN",
+      "supportedThroughLevel": 30,
+      "levels": [
+        {
+          "level": 8,
+          "allocations": [
+            {
+              "skillId": 2001004,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 9,
+          "allocations": [
+            {
+              "skillId": 2000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 10,
+          "allocations": [
+            {
+              "skillId": 2000000,
+              "points": 2
+            },
+            {
+              "skillId": 2000001,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 11,
+          "allocations": [
+            {
+              "skillId": 2000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 12,
+          "allocations": [
+            {
+              "skillId": 2000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 13,
+          "allocations": [
+            {
+              "skillId": 2000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 14,
+          "allocations": [
+            {
+              "skillId": 2000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 15,
+          "allocations": [
+            {
+              "skillId": 2000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 16,
+          "allocations": [
+            {
+              "skillId": 2000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 17,
+          "allocations": [
+            {
+              "skillId": 2000000,
+              "points": 2
+            },
+            {
+              "skillId": 2001005,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 18,
+          "allocations": [
+            {
+              "skillId": 2001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 19,
+          "allocations": [
+            {
+              "skillId": 2001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 20,
+          "allocations": [
+            {
+              "skillId": 2001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 21,
+          "allocations": [
+            {
+              "skillId": 2001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 22,
+          "allocations": [
+            {
+              "skillId": 2001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 23,
+          "allocations": [
+            {
+              "skillId": 2001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 24,
+          "allocations": [
+            {
+              "skillId": 2001005,
+              "points": 1
+            },
+            {
+              "skillId": 2001002,
+              "points": 2
+            }
+          ]
+        },
+        {
+          "level": 25,
+          "allocations": [
+            {
+              "skillId": 2001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 26,
+          "allocations": [
+            {
+              "skillId": 2001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 27,
+          "allocations": [
+            {
+              "skillId": 2001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 28,
+          "allocations": [
+            {
+              "skillId": 2001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 29,
+          "allocations": [
+            {
+              "skillId": 2001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 30,
+          "allocations": [
+            {
+              "skillId": 2001002,
+              "points": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "profileId": "thief-claw-first-job-lv30-v1",
+      "profileVersion": 1,
+      "jobFamily": "THIEF",
+      "supportedThroughLevel": 30,
+      "levels": [
+        {
+          "level": 10,
+          "allocations": [
+            {
+              "skillId": 4001344,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 11,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 12,
+          "allocations": [
+            {
+              "skillId": 4000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 13,
+          "allocations": [
+            {
+              "skillId": 4000001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 14,
+          "allocations": [
+            {
+              "skillId": 4000001,
+              "points": 2
+            },
+            {
+              "skillId": 4001344,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 15,
+          "allocations": [
+            {
+              "skillId": 4001344,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 16,
+          "allocations": [
+            {
+              "skillId": 4001344,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 17,
+          "allocations": [
+            {
+              "skillId": 4001344,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 18,
+          "allocations": [
+            {
+              "skillId": 4001344,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 19,
+          "allocations": [
+            {
+              "skillId": 4001344,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 20,
+          "allocations": [
+            {
+              "skillId": 4001344,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 21,
+          "allocations": [
+            {
+              "skillId": 4001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 22,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 23,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 24,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 25,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 26,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 27,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 28,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 2
+            },
+            {
+              "skillId": 4000000,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 29,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 30,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "profileId": "thief-dagger-first-job-lv30-v1",
+      "profileVersion": 1,
+      "jobFamily": "THIEF",
+      "supportedThroughLevel": 30,
+      "levels": [
+        {
+          "level": 10,
+          "allocations": [
+            {
+              "skillId": 4001334,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 11,
+          "allocations": [
+            {
+              "skillId": 4001334,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 12,
+          "allocations": [
+            {
+              "skillId": 4001334,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 13,
+          "allocations": [
+            {
+              "skillId": 4001334,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 14,
+          "allocations": [
+            {
+              "skillId": 4001334,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 15,
+          "allocations": [
+            {
+              "skillId": 4001334,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 16,
+          "allocations": [
+            {
+              "skillId": 4001334,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 17,
+          "allocations": [
+            {
+              "skillId": 4001334,
+              "points": 1
+            },
+            {
+              "skillId": 4000000,
+              "points": 2
+            }
+          ]
+        },
+        {
+          "level": 18,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 19,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 20,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 21,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 22,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 23,
+          "allocations": [
+            {
+              "skillId": 4000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 24,
+          "allocations": [
+            {
+              "skillId": 4001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 25,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 26,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 27,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 28,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 29,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 30,
+          "allocations": [
+            {
+              "skillId": 4001003,
+              "points": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "profileId": "pirate-gun-first-job-lv30-v1",
+      "profileVersion": 1,
+      "jobFamily": "PIRATE",
+      "supportedThroughLevel": 30,
+      "levels": [
+        {
+          "level": 10,
+          "allocations": [
+            {
+              "skillId": 5001003,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 11,
+          "allocations": [
+            {
+              "skillId": 5001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 12,
+          "allocations": [
+            {
+              "skillId": 5001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 13,
+          "allocations": [
+            {
+              "skillId": 5001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 14,
+          "allocations": [
+            {
+              "skillId": 5001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 15,
+          "allocations": [
+            {
+              "skillId": 5001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 16,
+          "allocations": [
+            {
+              "skillId": 5001003,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 17,
+          "allocations": [
+            {
+              "skillId": 5001003,
+              "points": 1
+            },
+            {
+              "skillId": 5001005,
+              "points": 2
+            }
+          ]
+        },
+        {
+          "level": 18,
+          "allocations": [
+            {
+              "skillId": 5001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 19,
+          "allocations": [
+            {
+              "skillId": 5001005,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 20,
+          "allocations": [
+            {
+              "skillId": 5001005,
+              "points": 2
+            },
+            {
+              "skillId": 5000000,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 21,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 22,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 23,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 24,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 25,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 26,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 27,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 1
+            },
+            {
+              "skillId": 5001002,
+              "points": 2
+            }
+          ]
+        },
+        {
+          "level": 28,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 29,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 30,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "profileId": "pirate-knuckle-first-job-lv30-v1",
+      "profileVersion": 1,
+      "jobFamily": "PIRATE",
+      "supportedThroughLevel": 30,
+      "levels": [
+        {
+          "level": 10,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 11,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 12,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 13,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 14,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 15,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 16,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 17,
+          "allocations": [
+            {
+              "skillId": 5001002,
+              "points": 1
+            },
+            {
+              "skillId": 5001005,
+              "points": 1
+            },
+            {
+              "skillId": 5000000,
+              "points": 1
+            }
+          ]
+        },
+        {
+          "level": 18,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 19,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 20,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 21,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 22,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 23,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 24,
+          "allocations": [
+            {
+              "skillId": 5000000,
+              "points": 1
+            },
+            {
+              "skillId": 5001001,
+              "points": 2
+            }
+          ]
+        },
+        {
+          "level": 25,
+          "allocations": [
+            {
+              "skillId": 5001001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 26,
+          "allocations": [
+            {
+              "skillId": 5001001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 27,
+          "allocations": [
+            {
+              "skillId": 5001001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 28,
+          "allocations": [
+            {
+              "skillId": 5001001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 29,
+          "allocations": [
+            {
+              "skillId": 5001001,
+              "points": 3
+            }
+          ]
+        },
+        {
+          "level": 30,
+          "allocations": [
+            {
+              "skillId": 5001001,
+              "points": 3
+            }
+          ]
+        }
+      ]
+    },
+    { "profileId": "fighter-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "WARRIOR", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 1100000, "points": 1 }] }] },
+    { "profileId": "page-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "WARRIOR", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 1200000, "points": 1 }] }] },
+    { "profileId": "spearman-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "WARRIOR", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 1300000, "points": 1 }] }] },
+    {
+      "profileId": "spearman-second-job-lv70-v1",
+      "profileVersion": 1,
+      "jobFamily": "WARRIOR",
+      "inheritedSkillLevels": { "1000001": 10 },
+      "supportedThroughLevel": 70,
+      "levels": [
+        { "level": 30, "allocations": [{ "skillId": 1300001, "points": 1 }] },
+        { "level": 31, "allocations": [{ "skillId": 1300001, "points": 3 }] },
+        { "level": 32, "allocations": [{ "skillId": 1300001, "points": 3 }] },
+        { "level": 33, "allocations": [{ "skillId": 1300001, "points": 3 }] },
+        { "level": 34, "allocations": [{ "skillId": 1300001, "points": 3 }] },
+        { "level": 35, "allocations": [{ "skillId": 1300001, "points": 3 }] },
+        { "level": 36, "allocations": [{ "skillId": 1300001, "points": 3 }] },
+        { "level": 37, "allocations": [{ "skillId": 1300001, "points": 1 }, { "skillId": 1301005, "points": 2 }] },
+        { "level": 38, "allocations": [{ "skillId": 1301005, "points": 3 }] },
+        { "level": 39, "allocations": [{ "skillId": 1301005, "points": 1 }, { "skillId": 1301006, "points": 2 }] },
+        { "level": 40, "allocations": [{ "skillId": 1301006, "points": 3 }] },
+        { "level": 41, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 42, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 43, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 44, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 45, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 46, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 47, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 48, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 49, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 50, "allocations": [{ "skillId": 1301007, "points": 3 }] },
+        { "level": 51, "allocations": [{ "skillId": 1301005, "points": 3 }] },
+        { "level": 52, "allocations": [{ "skillId": 1301005, "points": 3 }] },
+        { "level": 53, "allocations": [{ "skillId": 1301005, "points": 3 }] },
+        { "level": 54, "allocations": [{ "skillId": 1301005, "points": 3 }] },
+        { "level": 55, "allocations": [{ "skillId": 1301005, "points": 2 }, { "skillId": 1300000, "points": 1 }] },
+        { "level": 56, "allocations": [{ "skillId": 1300000, "points": 3 }] },
+        { "level": 57, "allocations": [{ "skillId": 1300000, "points": 3 }] },
+        { "level": 58, "allocations": [{ "skillId": 1300000, "points": 3 }] },
+        { "level": 59, "allocations": [{ "skillId": 1300000, "points": 3 }] },
+        { "level": 60, "allocations": [{ "skillId": 1300000, "points": 3 }] },
+        { "level": 61, "allocations": [{ "skillId": 1300000, "points": 3 }] },
+        { "level": 62, "allocations": [{ "skillId": 1300000, "points": 1 }, { "skillId": 1301004, "points": 2 }] },
+        { "level": 63, "allocations": [{ "skillId": 1301004, "points": 3 }] },
+        { "level": 64, "allocations": [{ "skillId": 1301004, "points": 3 }] },
+        { "level": 65, "allocations": [{ "skillId": 1301004, "points": 3 }] },
+        { "level": 66, "allocations": [{ "skillId": 1301004, "points": 3 }] },
+        { "level": 67, "allocations": [{ "skillId": 1301004, "points": 3 }] },
+        { "level": 68, "allocations": [{ "skillId": 1301004, "points": 3 }] },
+        { "level": 69, "allocations": [{ "skillId": 1000002, "points": 2 }, { "skillId": 1301006, "points": 1 }] },
+        { "level": 70, "allocations": [{ "skillId": 1301006, "points": 3 }] }
+      ]
+    },
+    { "profileId": "fp-wizard-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "MAGICIAN", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 2100000, "points": 1 }] }] },
+    { "profileId": "il-wizard-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "MAGICIAN", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 2200000, "points": 1 }] }] },
+    { "profileId": "cleric-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "MAGICIAN", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 2300000, "points": 1 }] }] },
+    { "profileId": "hunter-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "BOWMAN", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 3100000, "points": 1 }] }] },
+    { "profileId": "crossbowman-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "BOWMAN", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 3200000, "points": 1 }] }] },
+    { "profileId": "assassin-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "THIEF", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 4100000, "points": 1 }] }] },
+    {
+      "profileId": "assassin-second-job-lv70-v1",
+      "profileVersion": 1,
+      "jobFamily": "THIEF",
+      "supportedThroughLevel": 70,
+      "levels": [
+        { "level": 30, "allocations": [{ "skillId": 4100000, "points": 1 }] },
+        { "level": 31, "allocations": [{ "skillId": 4100000, "points": 3 }] },
+        { "level": 32, "allocations": [{ "skillId": 4100000, "points": 1 }, { "skillId": 4101003, "points": 2 }] },
+        { "level": 33, "allocations": [{ "skillId": 4101003, "points": 3 }] },
+        { "level": 34, "allocations": [{ "skillId": 4101003, "points": 1 }, { "skillId": 4100001, "points": 2 }] },
+        { "level": 35, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 36, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 37, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 38, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 39, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 40, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 41, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 42, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 43, "allocations": [{ "skillId": 4100001, "points": 3 }] },
+        { "level": 44, "allocations": [{ "skillId": 4100001, "points": 1 }, { "skillId": 4101004, "points": 2 }] },
+        { "level": 45, "allocations": [{ "skillId": 4101004, "points": 3 }] },
+        { "level": 46, "allocations": [{ "skillId": 4101004, "points": 3 }] },
+        { "level": 47, "allocations": [{ "skillId": 4101004, "points": 3 }] },
+        { "level": 48, "allocations": [{ "skillId": 4101004, "points": 3 }] },
+        { "level": 49, "allocations": [{ "skillId": 4101004, "points": 3 }] },
+        { "level": 50, "allocations": [{ "skillId": 4101004, "points": 3 }] },
+        { "level": 51, "allocations": [{ "skillId": 4101003, "points": 3 }] },
+        { "level": 52, "allocations": [{ "skillId": 4101003, "points": 3 }] },
+        { "level": 53, "allocations": [{ "skillId": 4101003, "points": 3 }] },
+        { "level": 54, "allocations": [{ "skillId": 4101003, "points": 3 }] },
+        { "level": 55, "allocations": [{ "skillId": 4101003, "points": 2 }, { "skillId": 4100000, "points": 1 }] },
+        { "level": 56, "allocations": [{ "skillId": 4100000, "points": 3 }] },
+        { "level": 57, "allocations": [{ "skillId": 4100000, "points": 3 }] },
+        { "level": 58, "allocations": [{ "skillId": 4100000, "points": 3 }] },
+        { "level": 59, "allocations": [{ "skillId": 4100000, "points": 3 }] },
+        { "level": 60, "allocations": [{ "skillId": 4100000, "points": 2 }, { "skillId": 4100002, "points": 1 }] },
+        { "level": 61, "allocations": [{ "skillId": 4100002, "points": 2 }, { "skillId": 4101005, "points": 1 }] },
+        { "level": 62, "allocations": [{ "skillId": 4101005, "points": 3 }] },
+        { "level": 63, "allocations": [{ "skillId": 4101005, "points": 3 }] },
+        { "level": 64, "allocations": [{ "skillId": 4101005, "points": 3 }] },
+        { "level": 65, "allocations": [{ "skillId": 4101005, "points": 3 }] },
+        { "level": 66, "allocations": [{ "skillId": 4101005, "points": 3 }] },
+        { "level": 67, "allocations": [{ "skillId": 4101005, "points": 3 }] },
+        { "level": 68, "allocations": [{ "skillId": 4101005, "points": 3 }] },
+        { "level": 69, "allocations": [{ "skillId": 4101005, "points": 3 }] },
+        { "level": 70, "allocations": [{ "skillId": 4101005, "points": 3 }] }
+      ]
+    },
+    { "profileId": "bandit-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "THIEF", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 4200000, "points": 1 }] }] },
+    { "profileId": "brawler-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "PIRATE", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 5100000, "points": 1 }] }] },
+    { "profileId": "gunslinger-second-job-lv30-v1", "profileVersion": 1, "jobFamily": "PIRATE", "supportedThroughLevel": 30, "levels": [{ "level": 30, "allocations": [{ "skillId": 5200000, "points": 1 }] }] }
+  ]
+}

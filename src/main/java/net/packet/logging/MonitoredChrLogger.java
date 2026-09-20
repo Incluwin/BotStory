@@ -22,26 +22,25 @@ package net.packet.logging;
 
 import client.Character;
 import client.Client;
-import net.jcip.annotations.NotThreadSafe;
 import net.opcodes.RecvOpcode;
+import net.opcodes.SendOpcode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.HexTool;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Logs packets from monitored characters to a file.
  *
  * @author Alan (SharpAceX)
  */
-@NotThreadSafe
 public class MonitoredChrLogger {
     private static final Logger log = LoggerFactory.getLogger(MonitoredChrLogger.class);
-    private static final Set<Integer> monitoredChrIds = new HashSet<>();
+    private static final Set<Integer> monitoredChrIds = ConcurrentHashMap.newKeySet();
 
     /**
      * Toggle monitored status for a character id
@@ -49,17 +48,22 @@ public class MonitoredChrLogger {
      * @return new status. true if the chrId is now monitored, otherwise false.
      */
     public static boolean toggleMonitored(int chrId) {
-        if (monitoredChrIds.contains(chrId)) {
-            monitoredChrIds.remove(chrId);
+        if (monitoredChrIds.remove(chrId)) {
             return false;
-        } else {
-            monitoredChrIds.add(chrId);
-            return true;
         }
+        return monitoredChrIds.add(chrId);
     }
 
     public static Collection<Integer> getMonitoredChrIds() {
-        return monitoredChrIds;
+        return Set.copyOf(monitoredChrIds);
+    }
+
+    public static boolean hasMonitoredCharacters() {
+        return !monitoredChrIds.isEmpty();
+    }
+
+    public static int monitoredCharacterCount() {
+        return monitoredChrIds.size();
     }
 
     public static void logPacketIfMonitored(Client c, short packetId, byte[] packetContent) {
@@ -70,24 +74,79 @@ public class MonitoredChrLogger {
         if (!monitoredChrIds.contains(chr.getId())) {
             return;
         }
-        RecvOpcode op = getOpcodeFromValue(packetId);
+        RecvOpcode op = getOpcodeFromValue(Short.toUnsignedInt(packetId));
         if (isRecvBlocked(op)) {
             return;
         }
 
         String packet = packetContent.length > 0 ? HexTool.toHexString(packetContent) : "<empty>";
-        log.info("{}-{} {}-{}", c.getAccountName(), chr.getName(), packetId, packet);
+        log.info("{}-{} {}-{}", c.getAccountName(), chr.getName(), formatPacketId(packetId), packet);
+    }
+
+    static String formatPacketId(short packetId) {
+        int unsignedPacketId = Short.toUnsignedInt(packetId);
+        return "%d(0x%X)".formatted(unsignedPacketId, unsignedPacketId);
+    }
+
+    /**
+     * Logs an outbound broadcast packet whose source is a monitored character.
+     * Called from MapleMap.broadcastMessage so samples collected here are
+     * broadcasts that the monitored player triggered (attacks, stance changes,
+     * face expressions, buffs, etc.).
+     */
+    public static void logBroadcastIfMonitored(Character source, byte[] packetContent) {
+        // Fast path: called from MapleMap.broadcastMessage on every map broadcast, so
+        // short-circuit before hashing when no character is being monitored at all.
+        if (monitoredChrIds.isEmpty()) {
+            return;
+        }
+        if (source == null || packetContent == null || packetContent.length < 2) {
+            return;
+        }
+        if (!monitoredChrIds.contains(source.getId())) {
+            return;
+        }
+        int opcodeVal = (packetContent[0] & 0xFF) | ((packetContent[1] & 0xFF) << 8);
+        SendOpcode op = getSendOpcodeFromValue(opcodeVal);
+        if (isSendBlocked(op)) {
+            return;
+        }
+        byte[] body = new byte[packetContent.length - 2];
+        System.arraycopy(packetContent, 2, body, 0, body.length);
+        String packet = body.length > 0 ? HexTool.toHexString(body) : "<empty>";
+        String opStr = "%d(0x%X)".formatted(opcodeVal, opcodeVal);
+        log.info("[OUT] {} {}-{}", source.getName(), opStr, packet);
     }
 
     private static boolean isRecvBlocked(RecvOpcode op) {
+        if (op == null) {
+            return false;
+        }
         return switch (op) {
-            case MOVE_PLAYER, GENERAL_CHAT, TAKE_DAMAGE, MOVE_PET, MOVE_LIFE, NPC_ACTION, FACE_EXPRESSION -> true;
+            case GENERAL_CHAT, MOVE_PLAYER, TAKE_DAMAGE, MOVE_PET, MOVE_LIFE, NPC_ACTION, FACE_EXPRESSION -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean isSendBlocked(SendOpcode op) {
+        if (op == null) {
+            return false;
+        }
+        return switch (op) {
+            case MOVE_PLAYER, MOVE_SUMMON, MOVE_PET, MOVE_MONSTER, SPAWN_PLAYER -> true;
             default -> false;
         };
     }
 
     private static RecvOpcode getOpcodeFromValue(int value) {
         return Arrays.stream(RecvOpcode.values())
+                .filter(opcode -> value == opcode.getValue())
+                .findAny()
+                .orElse(null);
+    }
+
+    private static SendOpcode getSendOpcodeFromValue(int value) {
+        return Arrays.stream(SendOpcode.values())
                 .filter(opcode -> value == opcode.getValue())
                 .findAny()
                 .orElse(null);

@@ -1,0 +1,142 @@
+# Agent Runtime Classification
+
+Status: current for `reconstruction/source-master-agent-base` after the command,
+monitoring, offline-load, and session-command ownership extractions.
+
+The runtime package is limited to live session state, lifecycle, scheduling,
+tick orchestration, and cross-capability coordination. Reusable gameplay behavior
+belongs in capabilities; objective workflows belong in plans; external requests
+belong in commands; and operational Cosmic calls belong in integration adapters.
+
+Classifications:
+
+- `LEGITIMATE_RUNTIME_ORCHESTRATION`: coordinates lifecycle or tick phases across
+  multiple runtime services/capabilities.
+- `RUNTIME_SERVICE`: focused lifecycle, session, scheduling, or tick service.
+- `RUNTIME_STATE`: live mutable session state, registry, configuration, or state
+  access contract.
+- `RUNTIME_ADAPTER`: adapts `AgentRuntimeEntry` or runtime registries to a focused
+  capability/integration contract without owning reusable gameplay behavior.
+
+| Runtime class | Classification | Responsibility and retention reason |
+| --- | --- | --- |
+| `AgentActionMailbox` | `RUNTIME_STATE` | Stores bounded FIFO external actions for one live Agent session. |
+| `AgentBehaviorRoutingRuntime` | `RUNTIME_ADAPTER` | Routes behavior-mode requests through the live entry without owning the capability implementation. |
+| `AgentBoundedExecutorFactory` | `RUNTIME_SERVICE` | Creates bounded daemon executors for Agent-owned background work. |
+| `AgentChatOrchestratorContext` | `RUNTIME_ADAPTER` | Adapts one live runtime entry to the dialogue orchestrator callback contract. |
+| `AgentCommonTickRuntime` | `RUNTIME_ADAPTER` | Wires common-tick service hooks to capability and integration implementations. |
+| `AgentCommonTickService` | `RUNTIME_SERVICE` | Preserves ordered execution of systems shared by every live Agent tick. |
+| `AgentEventDispatchRuntime` | `RUNTIME_ADAPTER` | Exposes session-scoped operational event dispatch through the runtime entry. |
+| `AgentEventRolloutConfig` | `RUNTIME_STATE` | Holds validated rollout gates for optional Agent event consumers. |
+| `AgentCommerceControlRuntime` | `RUNTIME_SERVICE` | Compatibility lease for Commerce roster control and economy attribution; Activity Host admission remains authoritative. |
+| `AgentFollowTargetSessionService` | `RUNTIME_SERVICE` | Refreshes an optional live follow relationship without making it an ownership requirement. |
+| `AgentForegroundPauseRuntime` | `RUNTIME_ADAPTER` | Applies named foreground pause leases without transferring objective ownership. |
+| `AgentForegroundPauseState` | `RUNTIME_STATE` | Stores active named foreground pauses for one Agent session. |
+| `AgentHeartbeatService` | `RUNTIME_SERVICE` | Applies runtime heartbeat cadence without owning client mutation. |
+| `AgentIdleModeTickService` | `RUNTIME_SERVICE` | Dispatches the idle tick branch and reports whether the tick was consumed. |
+| `AgentInteractionRuntime` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Public server entry point coordinating registration, spawn, chat, relogin, and tick dispatch. |
+| `AgentLeaderSafetyCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Coordinates inactive-leader recovery across sessions and recovery capabilities. |
+| `AgentLeaderSessionResolver` | `RUNTIME_SERVICE` | Resolves the current live leader for a scheduled Agent tick. |
+| `AgentLeaderSessionService` | `RUNTIME_SERVICE` | Implements leader-session selection rules independently of server lookup. |
+| `AgentLeaderStateRuntime` | `RUNTIME_ADAPTER` | Adapts live entry identity storage to leader read/write operations. |
+| `AgentLifecyclePhase` | `RUNTIME_STATE` | Enumerates owner-free live session lifecycle phases. |
+| `AgentLifecycleService` | `RUNTIME_SERVICE` | Owns spawn, registration, relogin, dismissal, and removal sequencing through hooks. |
+| `AgentLifecycleState` | `RUNTIME_STATE` | Stores the current lifecycle phase and transition reason for one Agent session. |
+| `AgentLifecycleStateRuntime` | `RUNTIME_ADAPTER` | Exposes lifecycle state transitions held by a live runtime entry. |
+| `AgentLifecycleStatusCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Schedules lifecycle status checks against the live session. |
+| `AgentLifecycleTransitionService` | `RUNTIME_SERVICE` | Validates and records transitions between live session lifecycle phases. |
+| `AgentLiveModeTickRuntime` | `RUNTIME_ADAPTER` | Wires live-mode phase hooks to movement, combat, shop, loot, and navigation capabilities. |
+| `AgentLiveModeTickService` | `RUNTIME_SERVICE` | Preserves ordered live-mode branch dispatch and tick-consumption semantics. |
+| `AgentLiveTickContextRuntime` | `RUNTIME_ADAPTER` | Builds a live tick context from runtime identity and target snapshots. |
+| `AgentLiveTickContextService` | `RUNTIME_SERVICE` | Validates and assembles immutable inputs for one live tick. |
+| `AgentLiveTickGateRuntime` | `RUNTIME_ADAPTER` | Wires live tick gates to capability implementations and instrumentation. |
+| `AgentLiveTickGateService` | `RUNTIME_SERVICE` | Applies trade, idle, and map-change gates before active mode execution. |
+| `AgentMailboxAction` | `RUNTIME_STATE` | Immutable action contract consumed by a live session mailbox. |
+| `AgentMailboxRuntime` | `RUNTIME_ADAPTER` | Exposes mailbox submission, bounded draining, and lifecycle closure for live entries. |
+| `AgentMapTransitionRuntime` | `RUNTIME_ADAPTER` | Connects tracked map transitions to grounding and movement reset capabilities. |
+| `AgentModeService` | `RUNTIME_SERVICE` | Coordinates mutually exclusive follow, grind, move, farm, and patrol runtime modes. |
+| `AgentModeState` | `RUNTIME_STATE` | Stores cross-capability active mode and follow-target identity. |
+| `AgentModeStateRuntime` | `RUNTIME_ADAPTER` | Exposes mode state held by the live runtime entry. |
+| `AgentMovementOnlyModeCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Coordinates movement-only dispatch when normal live AI phases are unavailable. |
+| `AgentMovementOnlyTickCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Runs one movement-only tick through lifecycle, movement, and map-transition seams. |
+| `AgentPersonalityRuntime` | `RUNTIME_ADAPTER` | Exposes personality state initialization and lookup for the live session. |
+| `AgentPresentationTickRuntime` | `RUNTIME_ADAPTER` | Routes presentation-only cadence work without owning gameplay policy. |
+| `AgentRandom` | `RUNTIME_SERVICE` | Supplies shared nondeterministic delay selection used by runtime and capabilities. |
+| `AgentRegistrationCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Connects manual/spawned registration to scheduler, lifecycle, and initial mode setup. |
+| `AgentRelationshipState` | `RUNTIME_STATE` | Stores optional follow/interaction relationships and cohort/formation identities without ownership semantics. |
+| `AgentReloginRequest` | `RUNTIME_STATE` | Carries immutable owner-free placement and relationship context for relogin. |
+| `AgentRuntimeCleanupService` | `RUNTIME_SERVICE` | Removes sessions and clears their scheduled/capability state in legacy order. |
+| `AgentRuntimeConfig` | `RUNTIME_STATE` | Holds runtime tick and failure configuration used by scheduling infrastructure. |
+| `AgentRuntimeEntry` | `RUNTIME_STATE` | Live mutable Agent session container composed from capability-specific state objects. |
+| `AgentRuntimeHandle` | `RUNTIME_STATE` | Minimal runtime identity contract used by generic lifecycle services. |
+| `AgentRuntimeIdentityState` | `RUNTIME_STATE` | Stores the live Agent character and current leader reference. |
+| `AgentRuntimeRegistry` | `RUNTIME_STATE` | Owns active session registration and leader/Agent lookup indexes. |
+| `AgentRuntimeShutdownCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Quiesces registrations, schedulers, asynchronous work, and live sessions during process shutdown. |
+| `AgentScheduledTaskRuntime` | `RUNTIME_ADAPTER` | Exposes scheduled-task cancellation on a live runtime entry. |
+| `AgentScheduledTaskScope` | `RUNTIME_STATE` | Tracks and cancels delayed callbacks belonging to one live session generation. |
+| `AgentScheduledTaskState` | `RUNTIME_STATE` | Stores and cancels the scheduled tick handle for one session. |
+| `runtime.scheduler.AgentScheduler` | `RUNTIME_SERVICE` | Stable lifecycle-facing facade selecting a validated scheduler mode. |
+| `runtime.scheduler.AgentSchedulerConfig` | `RUNTIME_STATE` | Immutable validated scheduler mode, cadence, cap, and slow-tick configuration. |
+| `runtime.scheduler.AgentSchedulerMode` | `RUNTIME_STATE` | Identifies legacy, central-sequential, and reserved central-sharded modes. |
+| `runtime.scheduler.AgentSessionId` | `RUNTIME_STATE` | Typed Agent character and session-generation registration identity. |
+| `runtime.scheduler.AgentScheduleHandle` | `RUNTIME_STATE` | Generation-bound scheduler lifecycle handle. |
+| `AgentSchedulerRuntime` | `RUNTIME_SERVICE` | Shared delayed-callback facade preserving existing random delay behavior. |
+| `AgentSession` | `RUNTIME_STATE` | Stable public session identity contract for future entry-state replacement. |
+| `AgentSessionCleanupService` | `RUNTIME_SERVICE` | Cancels session-scoped tasks and releases lifecycle resources during cleanup. |
+| `AgentSessionEventRuntime` | `RUNTIME_ADAPTER` | Publishes typed session events through the entry-owned event runtime. |
+| `AgentSessionEventWiringRuntime` | `RUNTIME_ADAPTER` | Registers and closes the production event consumers belonging to one session. |
+| `AgentSessionEventWiringState` | `RUNTIME_STATE` | Stores event subscriptions so they are installed once and closed with the session. |
+| `AgentSessionLifecycleRuntime` | `RUNTIME_ADAPTER` | Provides live session lookup and lifecycle dispatch to capabilities and commands. |
+| `AgentSpawnPlacementCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Wires spawned-session normalization to movement, death, party, and map tracking services. |
+| `AgentSpawnPlacementService` | `RUNTIME_SERVICE` | Preserves spawn normalization/reset ordering through explicit hooks. |
+| `AgentSpawnPositionService` | `RUNTIME_SERVICE` | Resolves lifecycle spawn grounding with the movement grounding capability. |
+| `AgentTargetSnapshotCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Captures the current follow/combat/navigation target snapshot for tick dispatch. |
+| `AgentTickCadenceStateRuntime` | `RUNTIME_ADAPTER` | Exposes movement/AI cadence counters held by the runtime tick state. |
+| `AgentTickCoreRuntime` | `RUNTIME_ADAPTER` | Wires core tick service hooks to plans, capabilities, and monitoring. |
+| `AgentTickCoreService` | `RUNTIME_SERVICE` | Preserves top-level one-Agent tick phase ordering and early-return behavior. |
+| `AgentTickFailurePolicy` | `RUNTIME_SERVICE` | Converts repeated tick failures into per-session idle/disable decisions. |
+| `AgentTickFailureRuntime` | `RUNTIME_ADAPTER` | Applies failure decisions to live session and capability state through gateways. |
+| `AgentTickFailureState` | `RUNTIME_STATE` | Stores the per-session failure count and failure-window timestamp. |
+| `AgentTickFailureStateRuntime` | `RUNTIME_ADAPTER` | Exposes failure state held by the live runtime entry. |
+| `AgentTickFrame` | `RUNTIME_STATE` | Contract for resumable slices belonging to one logical Agent update. |
+| `AgentTickNextRunHint` | `RUNTIME_STATE` | Communicates whether a completed slice resumes immediately or at normal cadence. |
+| `AgentTickOrchestrator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Executes one guarded Agent update and isolates failure handling per session. |
+| `AgentTickPreflightRuntime` | `RUNTIME_ADAPTER` | Wires preflight checks to identity, lifecycle, and heartbeat integrations. |
+| `AgentTickPreflightService` | `RUNTIME_SERVICE` | Validates session/character readiness and determines AI cadence eligibility. |
+| `AgentTickRuntime` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Public callback target connecting scheduled sessions to the core tick runtime. |
+| `AgentTickSliceKind` | `RUNTIME_STATE` | Identifies the bounded phase represented by a resumable tick slice. |
+| `AgentTickSliceResult` | `RUNTIME_STATE` | Immutable result describing slice completion and next-run cadence. |
+| `AgentTickSliceRuntime` | `RUNTIME_ADAPTER` | Connects slice execution and metrics to the live runtime entry. |
+| `AgentTickSliceState` | `RUNTIME_STATE` | Stores the resumable frame and continuation count for one session. |
+| `AgentTickSlicingService` | `RUNTIME_SERVICE` | Executes bounded slices while preserving logical tick ordering and continuation limits. |
+| `runtime.scheduler.AgentTickScheduler` | `RUNTIME_SERVICE` | Optional central-sequential due-time dispatcher with stable ordering and isolated Agent updates. |
+| `runtime.townlife.AgentTownLifeVisitLeaseCheckpoint` | `RUNTIME_STATE` | Durable representation of an externally owned TownLife visit deadline. |
+| `runtime.townlife.AgentTownLifeVisitLeaseCheckpointRuntime` | `RUNTIME_SERVICE` | Persists and restores external visit deadlines separately from TownLife local intent. |
+| `runtime.townlife.AgentTownLifeVisitLeaseRequest` | `RUNTIME_STATE` | Immutable external schedule and graceful-exit policy for one local TownLife visit. |
+| `runtime.townlife.AgentTownLifeVisitLeaseRuntime` | `RUNTIME_ADAPTER` | Watches an external visit deadline while TownLife owns foreground execution and requests correlated graceful exit. |
+| `runtime.townlife.AgentTownLifeVisitLeaseState` | `RUNTIME_STATE` | Stores the active external visit lease for one live Agent session. |
+| `AgentTickSchedulingService` | `RUNTIME_SERVICE` | Selects legacy or central tick registration without changing lifecycle callers. |
+| `AgentTickState` | `RUNTIME_STATE` | Stores tick timestamps, heartbeat, follow-idle, and cadence counters. |
+| `AgentTickStateRuntime` | `RUNTIME_ADAPTER` | Exposes tick state held by the live runtime entry. |
+| `AgentTrackedMapChangeTickService` | `RUNTIME_SERVICE` | Detects map changes and dispatches the runtime map-transition handler once. |
+
+## Extracted Ownership
+
+- Recruitment coordination: `server.agents.commands.AgentRecruitService`.
+- Session request coordination: `server.agents.commands.AgentSessionCommandCoordinator`.
+- Performance aggregation: `server.agents.monitoring.AgentPerformanceMonitor`.
+- Offline character loading: `server.agents.integration.cosmic.CosmicAgentOfflineLoadService`.
+- Persistence, spawn, and relogin operations: Cosmic integration gateways/coordinators.
+- One-shot and repeating scheduling: runtime policy over
+  `integration.SchedulerGateway`, implemented by `CosmicSchedulerGateway`.
+- Script objectives: `server.agents.plans.AgentScriptTaskCoordinator`.
+- Movement, combat, recovery, follow, loot, supplies, dialogue, and other reusable
+  gameplay behavior: their corresponding capability packages.
+
+`AgentRuntime` and `AgentRuntimeSnapshot` were unused placeholders and have been
+deleted. This inventory is checked by `AgentRuntimeClassificationTest`; adding or
+removing a runtime class requires updating this document.
+
+Remaining intentional Cosmic domain-model dependencies are inventoried in
+`AGENT_COSMIC_COUPLING.md` and operational boundaries are enforced by
+`AgentCosmicBoundaryAuditTest`.

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Original v83 EPQ Concentrated Poison drop rate: 200000 (20%). -->
+    <changeSet id="2026-09-05-epq-poison-bottle-chance-60" author="codex">
+        <update tableName="drop_data">
+            <column name="chance" valueNumeric="600000"/>
+            <where>dropperid = 9300173 AND itemid = 4001161</where>
+        </update>
+        <rollback>
+            <update tableName="drop_data">
+                <column name="chance" valueNumeric="200000"/>
+                <where>dropperid = 9300173 AND itemid = 4001161</where>
+            </update>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

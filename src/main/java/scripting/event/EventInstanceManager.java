@@ -37,6 +37,7 @@ import server.ItemInformationProvider;
 import server.StatEffect;
 import server.ThreadManager;
 import server.TimerManager;
+import server.monitoring.ThrottledLogger;
 import server.expeditions.Expedition;
 import server.life.LifeFactory;
 import server.life.Monster;
@@ -78,7 +79,7 @@ public class EventInstanceManager {
     private final Map<String, Object> objectProps = new HashMap<>();
     private long timeStarted = 0;
     private long eventTime = 0;
-    private Expedition expedition = null;
+    private volatile Expedition expedition = null;
     private final List<Integer> mapIds = new LinkedList<>();
 
     private final Lock readLock;
@@ -188,12 +189,12 @@ public class EventInstanceManager {
 
         if (mapId == -1) {
             for (Character mc : players) {
-                mc.gainExp(gain * mc.getExpRate(), true, true);
+                mc.gainExpRateScaled(gain, true, true);
             }
         } else {
             for (Character mc : players) {
                 if (mc.getMapId() == mapId) {
-                    mc.gainExp(gain * mc.getExpRate(), true, true);
+                    mc.gainExpRateScaled(gain, true, true);
                 }
             }
         }
@@ -257,7 +258,7 @@ public class EventInstanceManager {
             try {
                 invokeScriptFunction("playerEntry", EventInstanceManager.this, chr);
             } catch (ScriptException | NoSuchMethodException ex) {
-                ex.printStackTrace();
+                monitoring.RuntimeFailureLogger.log(ex);
             }
         }
     }
@@ -272,7 +273,8 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("playerExit", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            ThrottledLogger.error("event-monster-killed:" + name, log,
+                    "Event {} monsterKilled script failed", ex, name);
         }
     }
 
@@ -432,6 +434,10 @@ public class EventInstanceManager {
         }
     }
 
+    public Expedition getExpedition() {
+        return expedition;
+    }
+
     private List<Character> getPlayerList() {
         readLock.lock();
         try {
@@ -451,7 +457,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("moveMap", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -473,7 +479,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("changedLeader", EventInstanceManager.this, ldr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
 
         leaderId = ldr.getId();
@@ -501,14 +507,14 @@ public class EventInstanceManager {
             try {
                 invokeScriptFunction("monsterKilled", mob, EventInstanceManager.this, hasKiller);
             } catch (ScriptException | NoSuchMethodException ex) {
-                ex.printStackTrace();
+                monitoring.RuntimeFailureLogger.log(ex);
             }
 
             if (scriptResult > 1) {
                 try {
                     invokeScriptFunction("allMonstersDead", EventInstanceManager.this, hasKiller);
                 } catch (ScriptException | NoSuchMethodException ex) {
-                    ex.printStackTrace();
+                    monitoring.RuntimeFailureLogger.log(ex);
                 }
             }
         }
@@ -536,7 +542,7 @@ public class EventInstanceManager {
     }
 
     public void playerKilled(final Character chr) {
-        ThreadManager.getInstance().newTask(() -> {
+        ThreadManager.getInstance().newBlockingTask(() -> {
             try {
                 invokeScriptFunction("playerDead", EventInstanceManager.this, chr);
             } catch (ScriptException | NoSuchMethodException ex) {
@@ -567,7 +573,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("playerDisconnected", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
 
         EventRecallCoordinator.getInstance().storeEventInstance(chr.getId(), this);
@@ -590,7 +596,7 @@ public class EventInstanceManager {
                 }
             }
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -620,14 +626,24 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("dispose", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            ThrottledLogger.error("event-dispose:" + name, log,
+                    "Event {} dispose script failed", ex, name);
         }
         disposed = true;
 
         ess.dispose();
 
+        int retainedChars;
+        int retainedMobs;
+        int retainedKillCounts;
+        int retainedMaps;
+        int retainedProps;
+        int retainedObjectProps;
+
         writeLock.lock();
         try {
+            retainedChars = chars.size();
+            retainedMobs = mobs.size();
             for (Character chr : chars.values()) {
                 chr.setEventInstance(null);
             }
@@ -637,6 +653,11 @@ public class EventInstanceManager {
         } finally {
             writeLock.unlock();
         }
+
+        retainedKillCounts = killCount.size();
+        retainedMaps = mapIds.size();
+        retainedProps = props.size();
+        retainedObjectProps = objectProps.size();
 
         if (event_schedule != null) {
             event_schedule.cancel(false);
@@ -649,6 +670,12 @@ public class EventInstanceManager {
         objectProps.clear();
 
         disposeExpedition();
+
+        if (retainedChars > 0 || retainedMobs > 0 || retainedKillCounts > 0 || retainedMaps > 0
+                || retainedProps > 0 || retainedObjectProps > 0) {
+            log.debug("Disposed event {} retainedBeforeClear chars={} mobs={} killCounts={} mapIds={} props={} objectProps={}",
+                    name, retainedChars, retainedMobs, retainedKillCounts, retainedMaps, retainedProps, retainedObjectProps);
+        }
 
         scriptLock.lock();
         try {
@@ -683,7 +710,8 @@ public class EventInstanceManager {
                     try {
                         invokeScriptFunction(methodName, EventInstanceManager.this);
                     } catch (ScriptException | NoSuchMethodException ex) {
-                        ex.printStackTrace();
+                        ThrottledLogger.error("event-schedule:" + name + ":" + methodName, log,
+                                "Event {} scheduled method {} failed", ex, name, methodName);
                     }
                 };
 
@@ -781,7 +809,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("leftParty", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -789,7 +817,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("disbandParty", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -797,7 +825,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("clearPQ", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -805,7 +833,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("playerExit", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -857,7 +885,7 @@ public class EventInstanceManager {
                 return true;
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
 
         return false;
@@ -1048,7 +1076,7 @@ public class EventInstanceManager {
 
         if (rewardsSet == null || rewardsSet.isEmpty()) {
             if (rewardExp > 0) {
-                player.gainExp(rewardExp);
+                player.gainExpRateScaled(rewardExp, true, true);
             }
             return true;
         }
@@ -1060,10 +1088,15 @@ public class EventInstanceManager {
         AbstractPlayerInteraction api = player.getAbstractPlayerInteraction();
         int rnd = (int) Math.floor(Math.random() * rewardsSet.size());
 
-        api.gainItem(rewardsSet.get(rnd), rewardsQty.get(rnd).shortValue());
+        int rewardItemId = rewardsSet.get(rnd);
+        int rewardQuantity = rewardsQty.get(rnd);
+        api.gainItem(rewardItemId, (short) rewardQuantity);
         if (rewardExp > 0) {
-            player.gainExp(rewardExp);
+            player.gainExpRateScaled(rewardExp, true, true);
         }
+        log.info("Event reward granted: event={} instance={} player={}({}) item={} quantity={} exp={}",
+                em.getName(), name, player.getName(), player.getId(), rewardItemId,
+                rewardQuantity, rewardExp);
         return true;
     }
 
@@ -1088,7 +1121,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("afterSetup", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 

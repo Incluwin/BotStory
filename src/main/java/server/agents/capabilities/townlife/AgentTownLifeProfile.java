@@ -1,0 +1,384 @@
+package server.agents.capabilities.townlife;
+
+import java.awt.Point;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+/** Read-only, per-town tuning data consumed by the town-agnostic TownLife engine. */
+public record AgentTownLifeProfile(
+        int schemaVersion,
+        String profileId,
+        int mapId,
+        Admission admission,
+        Geometry geometry,
+        Distribution distribution,
+        Extensions extensions,
+        Map<AgentTownLifeState.Activity, Integer> activityWeights,
+        List<ArrivalPortal> arrivalPortals,
+        List<RestSpot> restSpots,
+        List<PointSpec> roamFallbackSpots,
+        List<NpcSpot> npcSpots,
+        List<TrafficZone> trafficZones,
+        List<PlatformPolicy> platformPolicies,
+        List<Facility> facilities,
+        List<Hotspot> hotspots,
+        List<Venue> venues) {
+
+    public AgentTownLifeProfile {
+        if (schemaVersion != 2 || profileId == null || profileId.isBlank() || mapId <= 0
+                || geometry == null || distribution == null
+                || arrivalPortals == null || arrivalPortals.isEmpty()) {
+            throw new IllegalArgumentException("town-life profile schema v2 identity and geometry are required");
+        }
+        admission = admission == null ? Admission.manualOnly() : admission;
+        extensions = extensions == null ? Extensions.generic() : extensions;
+        activityWeights = Map.copyOf(activityWeights == null ? Map.of() : activityWeights);
+        arrivalPortals = List.copyOf(arrivalPortals);
+        restSpots = List.copyOf(restSpots == null ? List.of() : restSpots);
+        roamFallbackSpots = List.copyOf(roamFallbackSpots == null ? List.of() : roamFallbackSpots);
+        npcSpots = List.copyOf(npcSpots == null ? List.of() : npcSpots);
+        trafficZones = List.copyOf(trafficZones == null ? List.of() : trafficZones);
+        platformPolicies = List.copyOf(platformPolicies == null ? List.of() : platformPolicies);
+        facilities = List.copyOf(facilities == null ? List.of() : facilities);
+        hotspots = List.copyOf(hotspots == null ? List.of() : hotspots);
+        venues = List.copyOf(venues == null ? List.of() : venues);
+        long uniqueVenueIds = venues.stream().map(Venue::id).distinct().count();
+        if (uniqueVenueIds != venues.size()) {
+            throw new IllegalArgumentException("town-life venue ids must be unique");
+        }
+    }
+
+    public record Admission(AgentTownLifeAdmissionMode mode,
+                            int maxAmbientAgents,
+                            long minVisitMs,
+                            long maxVisitMs,
+                            long revisitCooldownMs) {
+        public Admission {
+            mode = mode == null ? AgentTownLifeAdmissionMode.MANUAL_ONLY : mode;
+            if (maxAmbientAgents < 0 || minVisitMs < 0L || maxVisitMs < minVisitMs
+                    || revisitCooldownMs < 0L) {
+                throw new IllegalArgumentException("town-life admission policy is invalid");
+            }
+        }
+
+        static Admission manualOnly() {
+            return new Admission(AgentTownLifeAdmissionMode.MANUAL_ONLY, 0, 0L, 0L, 0L);
+        }
+    }
+
+    public record Extensions(List<String> activityHandlers) {
+        public Extensions {
+            activityHandlers = List.copyOf(activityHandlers == null ? List.of() : activityHandlers);
+        }
+
+        static Extensions generic() {
+            return new Extensions(List.of());
+        }
+    }
+
+    public List<Point> restPoints() {
+        return restSpots.stream().map(RestSpot::point).toList();
+    }
+
+    public List<Point> roamFallbackPoints() {
+        return roamFallbackSpots.stream().map(PointSpec::point).toList();
+    }
+
+    public int mapSeatId(Point point) {
+        if (point == null) {
+            return -1;
+        }
+        int authoredSeat = restSpots.stream()
+                .filter(spot -> spot.seatId() >= 0 && spot.x() == point.x && spot.y() == point.y)
+                .mapToInt(RestSpot::seatId)
+                .findFirst()
+                .orElse(-1);
+        if (authoredSeat >= 0) {
+            return authoredSeat;
+        }
+        return venues.stream()
+                .flatMap(venue -> venue.spots().stream())
+                .filter(spot -> spot.seatId() >= 0 && spot.x() == point.x && spot.y() == point.y)
+                .mapToInt(VenueSpot::seatId)
+                .findFirst()
+                .orElse(-1);
+    }
+
+    public Optional<Venue> venue(String venueId) {
+        if (venueId == null || venueId.isBlank()) {
+            return Optional.empty();
+        }
+        return venues.stream().filter(candidate -> candidate.id().equals(venueId)).findFirst();
+    }
+
+    public Optional<Hotspot> hotspotForVenue(String venueId) {
+        return hotspots.stream().filter(hotspot -> hotspot.venueId().equals(venueId)).findFirst();
+    }
+
+    public List<Venue> venuesFor(AgentTownLifeState.Activity activity) {
+        if (activity == null || activity == AgentTownLifeState.Activity.NONE) {
+            return List.of();
+        }
+        Affordance affordance = Affordance.forActivity(activity);
+        return affordance == null ? List.of() : venues.stream()
+                .filter(venue -> venue.affordances().contains(affordance))
+                .toList();
+    }
+
+    public boolean allowsOccupancy(Point point) {
+        return point != null && trafficZones.stream()
+                .noneMatch(zone -> zone.excludesOccupancy() && zone.contains(point));
+    }
+
+    public Optional<PlatformPolicy> platformPolicy(Point point) {
+        if (point == null) {
+            return Optional.empty();
+        }
+        return platformPolicies.stream().filter(policy -> policy.contains(point)).findFirst();
+    }
+
+    public AgentTownLifeState.District classify(Point point) {
+        if (point == null) {
+            return AgentTownLifeState.District.ANY;
+        }
+        if (point.y <= geometry.upperMaxY()) {
+            return AgentTownLifeState.District.UPPER;
+        }
+        return point.y <= geometry.middleMaxY()
+                ? AgentTownLifeState.District.MIDDLE : AgentTownLifeState.District.LOWER;
+    }
+
+    public AgentTownLifeState.PlatformKind classifyPlatform(int width) {
+        return width <= geometry.miniPlatformMaxWidth()
+                ? AgentTownLifeState.PlatformKind.MINI : AgentTownLifeState.PlatformKind.MAIN;
+    }
+
+    public String arrivalPortal(int identitySeed) {
+        int total = arrivalPortals.stream().mapToInt(ArrivalPortal::weight).sum();
+        int roll = Math.floorMod(identitySeed, Math.max(1, total));
+        for (ArrivalPortal portal : arrivalPortals) {
+            if (roll < portal.weight()) {
+                return portal.name();
+            }
+            roll -= portal.weight();
+        }
+        return arrivalPortals.getLast().name();
+    }
+
+    public record Geometry(int upperMaxY,
+                           int middleMaxY,
+                           int miniPlatformMaxWidth,
+                           int minimumPlatformWidth,
+                           int edgeInsetPx,
+                           int slotSpacingPx,
+                           int maxSlotsPerPlatform) {
+        public Geometry {
+            if (middleMaxY < upperMaxY || miniPlatformMaxWidth <= 0
+                    || minimumPlatformWidth <= 0 || edgeInsetPx < 0
+                    || slotSpacingPx <= 0 || maxSlotsPerPlatform <= 0) {
+                throw new IllegalArgumentException("town-life geometry is invalid");
+            }
+        }
+    }
+
+    public record Distribution(int upperWeight,
+                               int middleWeight,
+                               int lowerWeight,
+                               int anyWeight,
+                               int miniPlatformPercent,
+                               int crossDistrictEveryActivities) {
+        public Distribution {
+            if (upperWeight < 0 || middleWeight < 0 || lowerWeight < 0 || anyWeight < 0
+                    || upperWeight + middleWeight + lowerWeight + anyWeight <= 0
+                    || miniPlatformPercent < 0 || miniPlatformPercent > 100
+                    || crossDistrictEveryActivities <= 0) {
+                throw new IllegalArgumentException("town-life distribution is invalid");
+            }
+        }
+    }
+
+    public record PointSpec(int x, int y) {
+        public Point point() {
+            return new Point(x, y);
+        }
+    }
+
+    public record RestSpot(int x, int y, int seatId) {
+        public Point point() {
+            return new Point(x, y);
+        }
+    }
+
+    public record NpcSpot(int npcId, int offsetX) {
+    }
+
+    public enum TrafficZoneType {
+        PORTAL,
+        DOOR,
+        LADDER,
+        NPC_LANE
+    }
+
+    /** Authored rectangle kept clear for transit and NPC interaction. */
+    public record TrafficZone(String id,
+                              TrafficZoneType type,
+                              int minX,
+                              int minY,
+                              int maxX,
+                              int maxY,
+                              boolean excludesOccupancy) {
+        public TrafficZone {
+            if (id == null || id.isBlank() || type == null || minX > maxX || minY > maxY) {
+                throw new IllegalArgumentException("town-life traffic zone is invalid");
+            }
+        }
+
+        public boolean contains(Point point) {
+            return point != null && point.x >= minX && point.x <= maxX
+                    && point.y >= minY && point.y <= maxY;
+        }
+    }
+
+    public record ArrivalPortal(String name, int weight) {
+        public ArrivalPortal {
+            if (name == null || name.isBlank() || weight <= 0) {
+                throw new IllegalArgumentException("town-life arrival portal is invalid");
+            }
+        }
+    }
+
+    /**
+     * Bounded policy for an unusual but valid platform. It controls capacity, travel time,
+     * dwell duration, and per-Agent revisit cooldown without special-casing a town in code.
+     */
+    public record PlatformPolicy(String id,
+                                 int minX,
+                                 int minY,
+                                 int maxX,
+                                 int maxY,
+                                 int capacity,
+                                 long navigationTimeoutMs,
+                                 int dwellMinMs,
+                                 int dwellMaxExclusiveMs,
+                                 long successCooldownMs,
+                                 long failureCooldownMs) {
+        public PlatformPolicy {
+            if (id == null || id.isBlank() || minX > maxX || minY > maxY
+                    || capacity <= 0 || navigationTimeoutMs <= 0L
+                    || dwellMinMs < 0 || dwellMaxExclusiveMs <= dwellMinMs
+                    || successCooldownMs < 0L || failureCooldownMs < 0L) {
+                throw new IllegalArgumentException("town-life platform policy is invalid");
+            }
+            id = id.trim();
+        }
+
+        public boolean contains(Point point) {
+            return point != null && point.x >= minX && point.x <= maxX
+                    && point.y >= minY && point.y <= maxY;
+        }
+
+        public String destinationKey() {
+            return "platform:" + id;
+        }
+    }
+
+    /** Semantic action supported by a venue. Coordinates remain town profile data. */
+    public enum Affordance {
+        REST,
+        SOCIALIZE,
+        LINGER,
+        STROLL,
+        BROWSE,
+        SHOW_OFF,
+        LOCAL_ACTIVITY;
+
+        static Affordance forActivity(AgentTownLifeState.Activity activity) {
+            try {
+                return valueOf(activity.name());
+            } catch (IllegalArgumentException ignored) {
+                return null;
+            }
+        }
+    }
+
+    /** A named, capacity-bounded place that future controllers may select safely. */
+    public record Venue(String id,
+                        String label,
+                        AgentTownLifeState.District district,
+                        AgentTownLifeState.PlatformKind platformKind,
+                        int capacity,
+                        List<Affordance> affordances,
+                        List<VenueSpot> spots) {
+        public Venue {
+            if (id == null || id.isBlank() || capacity <= 0) {
+                throw new IllegalArgumentException("town-life venue identity and capacity are required");
+            }
+            id = id.trim();
+            label = label == null || label.isBlank() ? id : label.trim();
+            district = district == null ? AgentTownLifeState.District.ANY : district;
+            platformKind = platformKind == null ? AgentTownLifeState.PlatformKind.ANY : platformKind;
+            affordances = List.copyOf(affordances == null ? List.of() : affordances);
+            spots = List.copyOf(spots == null ? List.of() : spots);
+            if (affordances.isEmpty() || spots.isEmpty() || capacity > spots.size()) {
+                throw new IllegalArgumentException("town-life venue affordances, spots, and capacity are invalid");
+            }
+        }
+
+        public boolean supports(AgentTownLifeState.Activity activity) {
+            Affordance affordance = Affordance.forActivity(activity);
+            return affordance != null && affordances.contains(affordance);
+        }
+    }
+
+    public record VenueSpot(int x, int y, int seatId) {
+        public Point point() {
+            return new Point(x, y);
+        }
+    }
+
+    public enum FacilityType {
+        GENERAL_SHOP,
+        WEAPON_SHOP,
+        ARMOR_SHOP,
+        POTION_SHOP,
+        STORAGE,
+        TAXI,
+        FREE_MARKET,
+        JOB_INSTRUCTOR,
+        PARTY_QUEST,
+        EVENT,
+        OTHER
+    }
+
+    /** Discoverable local service metadata. TownLife may browse here but never executes the service. */
+    public record Facility(String id,
+                           FacilityType type,
+                           int npcId,
+                           int destinationMapId,
+                           List<PointSpec> approachPoints,
+                           List<String> services) {
+        public Facility {
+            if (id == null || id.isBlank() || type == null) {
+                throw new IllegalArgumentException("town-life facility identity is required");
+            }
+            approachPoints = List.copyOf(approachPoints == null ? List.of() : approachPoints);
+            services = List.copyOf(services == null ? List.of() : services);
+        }
+    }
+
+    /** Occupancy tuning layered over a semantic venue without adding town-specific Java. */
+    public record Hotspot(String id,
+                          String venueId,
+                          int attractionWeight,
+                          int softCapacity,
+                          int hardCapacity) {
+        public Hotspot {
+            if (id == null || id.isBlank() || venueId == null || venueId.isBlank()
+                    || attractionWeight < 0 || softCapacity < 0 || hardCapacity <= 0
+                    || softCapacity > hardCapacity) {
+                throw new IllegalArgumentException("town-life hotspot is invalid");
+            }
+        }
+    }
+}

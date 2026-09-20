@@ -101,8 +101,9 @@ public class Fishing {
                     rewardStr = mesoAward + " mesos.";
                     break;
                 case 1:
-                    int expAward = (int) (645.0 * Math.random() + 620.0) * chr.getExpRate() + (15 * chr.getLevel() / 4);
-                    chr.gainExp(expAward, true, true);
+                    int expAwardBase = (int) (645.0 * Math.random() + 620.0) + (15 * chr.getLevel() / 4);
+                    int expAward = chr.getRateScaledExpGain(expAwardBase);
+                    chr.gainExpRateScaled(expAwardBase, true, true);
 
                     rewardStr = expAward + " EXP.";
                     break;

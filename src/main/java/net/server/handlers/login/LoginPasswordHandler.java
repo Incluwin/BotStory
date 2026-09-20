@@ -92,7 +92,7 @@ public final class LoginPasswordHandler implements PacketHandler {
                 }
             } catch (SQLException | NoSuchAlgorithmException | UnsupportedEncodingException e) {
                 c.setAccID(-1);
-                e.printStackTrace();
+                monitoring.RuntimeFailureLogger.log(e);
             } finally {
                 loginok = c.login(login, pwd, hwid);
             }
@@ -105,7 +105,7 @@ public final class LoginPasswordHandler implements PacketHandler {
                 ps.setString(2, login);
                 ps.executeUpdate();
             } catch (SQLException e) {
-                e.printStackTrace();
+                monitoring.RuntimeFailureLogger.log(e);
             } finally {
                 loginok = (loginok == -10) ? 0 : 23;
             }
@@ -130,15 +130,20 @@ public final class LoginPasswordHandler implements PacketHandler {
             return;
         }
         if (c.finishLogin() == 0) {
-            c.checkChar(c.getAccID());
-            login(c);
+            int disconnectedBots = c.checkChar(c.getAccID());
+            login(c, disconnectedBots);
         } else {
             c.sendPacket(PacketCreator.getLoginFailed(7));
         }
     }
 
-    private static void login(Client c) {
+    private static void login(Client c, int disconnectedBots) {
         c.sendPacket(PacketCreator.getAuthSuccess(c));//why the fk did I do c.getAccountName()?
+        if (disconnectedBots > 0) {
+            String suffix = disconnectedBots == 1 ? "" : "s";
+            c.sendPacket(PacketCreator.serverNotice(5,
+                    "Disconnected " + disconnectedBots + " active bot" + suffix + " from this account."));
+        }
         Server.getInstance().registerLoginState(c);
     }
 }

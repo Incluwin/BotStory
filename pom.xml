@@ -65,10 +65,13 @@
         <jcip-annotations.version>1.0</jcip-annotations.version> <!-- Annotations for concurrency documentation -->
         <HikariCP.version>6.3.0</HikariCP.version> <!-- Database connection pool -->
         <mysql-connector-j.version>9.3.0</mysql-connector-j.version> <!-- MySQL JDBC driver -->
+        <postgresql.version>42.7.7</postgresql.version> <!-- Separate economy evidence database -->
         <jdbi-version>3.49.5</jdbi-version> <!-- Convenience wrapper around JDBC -->
         <liquibase-core.version>4.32.0</liquibase-core.version> <!-- Database migrations -->
+        <jackson.version>2.19.0</jackson.version> <!-- JSON for internal admin bridge -->
         <junit.version>5.13.1</junit.version> <!-- Unit test -->
         <mockito.version>5.18.0</mockito.version> <!-- Unit test -->
+        <argLine></argLine>
     </properties>
 
     <dependencies>
@@ -95,6 +98,11 @@
             <version>${mysql-connector-j.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>${postgresql.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.jdbi</groupId>
             <artifactId>jdbi3-core</artifactId>
             <version>${jdbi-version}</version>
@@ -103,6 +111,11 @@
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
             <version>${liquibase-core.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
         </dependency>
 
         <!-- Networking -->
@@ -214,6 +227,13 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <!-- Mockito's inline mock maker must be attached explicitly on modern JDKs. -->
+                    <argLine>@{argLine} -javaagent:&quot;${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar&quot;</argLine>
+                    <systemPropertyVariables>
+                        <agents.navigation.cacheDir>${project.build.directory}/agent-nav-test-cache</agents.navigation.cacheDir>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
 
             <!-- Enable assembling jar that includes all dependencies -->

@@ -1,0 +1,148 @@
+package server.agents.capabilities.navigation;
+
+import server.agents.runtime.AgentRuntimeEntry;
+
+import java.awt.Point;
+
+/** Provides navigation capabilities with typed access to live navigation and path-log state. */
+public final class AgentNavigationDebugStateRuntime {
+    private AgentNavigationDebugStateRuntime() {
+    }
+
+    public static String lastDecision(AgentRuntimeEntry entry) {
+        return entry.navigationDebugState().lastDecision();
+    }
+
+    public static void setLastDecision(AgentRuntimeEntry entry, String decision) {
+        entry.navigationDebugState().setLastDecision(decision);
+    }
+
+    public static String lastEdgeBlockReason(AgentRuntimeEntry entry) {
+        return entry.navigationDebugState().lastEdgeBlockReason();
+    }
+
+    public static void setLastEdgeBlockReason(AgentRuntimeEntry entry, String reason) {
+        entry.navigationDebugState().setLastEdgeBlockReason(reason);
+    }
+
+    public static void clearLastEdgeBlockReason(AgentRuntimeEntry entry) {
+        entry.navigationDebugState().setLastEdgeBlockReason(null);
+    }
+
+    public static String decisionWithBlockReason(AgentRuntimeEntry entry) {
+        String reason = lastEdgeBlockReason(entry);
+        return reason == null ? lastDecision(entry) : lastDecision(entry) + "[" + reason + "]";
+    }
+
+    public static boolean graphWarmupFallback(AgentRuntimeEntry entry) {
+        return entry.navigationDebugState().graphWarmupFallback();
+    }
+
+    public static void setGraphWarmupFallback(AgentRuntimeEntry entry, boolean fallback) {
+        entry.navigationDebugState().setGraphWarmupFallback(fallback);
+    }
+
+    public static void clearGraphWarmupFallback(AgentRuntimeEntry entry) {
+        entry.navigationDebugState().setGraphWarmupFallback(false);
+    }
+
+    public static Point navTargetPosition(AgentRuntimeEntry entry) {
+        return entry.navigationTargetState().position();
+    }
+
+    public static boolean hasNavTargetPosition(AgentRuntimeEntry entry) {
+        return entry.navigationTargetState().hasPosition();
+    }
+
+    public static void setNavTargetPosition(AgentRuntimeEntry entry, Point position) {
+        entry.navigationTargetState().setPosition(position);
+    }
+
+    public static void clearNavTargetPosition(AgentRuntimeEntry entry) {
+        entry.navigationTargetState().setPosition(null);
+    }
+
+    public static int navTargetRegionId(AgentRuntimeEntry entry) {
+        return entry.navigationTargetState().regionId();
+    }
+
+    public static void setNavTargetRegionId(AgentRuntimeEntry entry, int regionId) {
+        entry.navigationTargetState().setRegionId(regionId);
+    }
+
+    public static boolean navPreciseTarget(AgentRuntimeEntry entry) {
+        return entry.navigationTargetState().precise();
+    }
+
+    public static void setNavPreciseTarget(AgentRuntimeEntry entry, boolean precise) {
+        entry.navigationTargetState().setPrecise(precise);
+    }
+
+    public static void clearNavTarget(AgentRuntimeEntry entry) {
+        clearNavTargetPosition(entry);
+        setNavTargetRegionId(entry, -1);
+        setNavPreciseTarget(entry, false);
+    }
+
+    public static void setNavWaypoint(AgentRuntimeEntry entry, Point position, boolean precise) {
+        setNavTargetPosition(entry, position);
+        setNavPreciseTarget(entry, precise);
+    }
+
+    public static boolean portalUseOnCooldown(AgentRuntimeEntry entry, long nowMs) {
+        return entry.portalCooldownState().onCooldown(nowMs);
+    }
+
+    public static long portalUseCooldownUntilMs(AgentRuntimeEntry entry) {
+        return entry.portalCooldownState().useCooldownUntilMs();
+    }
+
+    public static void setPortalUseCooldownUntilMs(AgentRuntimeEntry entry, long cooldownUntilMs) {
+        entry.portalCooldownState().setUseCooldownUntilMs(cooldownUntilMs);
+    }
+
+    public static boolean hasNavJumpLaunchEdge(AgentRuntimeEntry entry) {
+        return entry.navigationEdgeState().hasJumpLaunchEdge();
+    }
+
+    public static boolean hasActiveNavigationEdge(AgentRuntimeEntry entry) {
+        return entry.navigationEdgeState().hasActiveEdge();
+    }
+
+    public static Object activeNavigationEdge(AgentRuntimeEntry entry) {
+        return entry.navigationEdgeState().activeEdge();
+    }
+
+    public static void setActiveNavigationEdge(AgentRuntimeEntry entry, Object edge) {
+        entry.navigationEdgeState().setActiveEdge(edge);
+    }
+
+    public static Point plannedNavigationTargetPosition(AgentRuntimeEntry entry) {
+        return entry.navigationEdgeState().plannedTargetPosition();
+    }
+
+    public static void setPlannedNavigationTargetPosition(AgentRuntimeEntry entry, Point position) {
+        entry.navigationEdgeState().setPlannedTargetPosition(position);
+    }
+
+    public static void clearActiveNavigationEdge(AgentRuntimeEntry entry) {
+        entry.navigationEdgeState().clearActiveEdge();
+    }
+
+    public static int navJumpLaunchX(AgentRuntimeEntry entry) {
+        return entry.navigationEdgeState().jumpLaunchX();
+    }
+
+    public static boolean matchesNavJumpLaunchEdge(AgentRuntimeEntry entry, Object edge) {
+        return entry.navigationEdgeState().matchesJumpLaunchEdge(edge);
+    }
+
+    public static void rememberNavJumpLaunch(AgentRuntimeEntry entry, Object edge, int launchX) {
+        entry.navigationEdgeState().setJumpLaunch(edge, launchX);
+    }
+
+    public static void clearNavJumpLaunch(AgentRuntimeEntry entry) {
+        rememberNavJumpLaunch(entry, null, Integer.MIN_VALUE);
+    }
+
+}

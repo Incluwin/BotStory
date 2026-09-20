@@ -1,0 +1,94 @@
+package server.agents.capabilities.navigation;
+
+import java.awt.Point;
+
+public final class AgentNavigationEdgeState {
+    private AgentNavigationGraph.Edge activeEdge = null;
+    private Point plannedTargetPosition = null;
+    private AgentNavigationGraph.Edge footholdDetourEdge = null;
+    private Point footholdDetourTarget = null;
+    private AgentNavigationGraph.Edge jumpLaunchEdge = null;
+    private int jumpLaunchX = Integer.MIN_VALUE;
+
+    public boolean hasActiveEdge() {
+        return activeEdge != null;
+    }
+
+    public AgentNavigationGraph.Edge activeEdge() {
+        return activeEdge;
+    }
+
+    public void setActiveEdge(Object edge) {
+        activeEdge = edge instanceof AgentNavigationGraph.Edge navEdge ? navEdge : null;
+    }
+
+    public void clearActiveEdge() {
+        activeEdge = null;
+        plannedTargetPosition = null;
+        clearFootholdDetour();
+    }
+
+    public Point plannedTargetPosition() {
+        return plannedTargetPosition == null ? null : new Point(plannedTargetPosition);
+    }
+
+    public void setPlannedTargetPosition(Point position) {
+        plannedTargetPosition = position == null ? null : new Point(position);
+    }
+
+    public Point footholdDetourTarget() {
+        return footholdDetourTarget == null ? null : new Point(footholdDetourTarget);
+    }
+
+    public boolean hasFootholdDetour() {
+        return footholdDetourTarget != null;
+    }
+
+    public boolean footholdDetourMatches(AgentNavigationGraph.Edge edge) {
+        return sameEdge(footholdDetourEdge, edge);
+    }
+
+    public void setFootholdDetour(AgentNavigationGraph.Edge edge, Point target) {
+        footholdDetourEdge = edge;
+        footholdDetourTarget = target == null ? null : new Point(target);
+    }
+
+    public void clearFootholdDetour() {
+        footholdDetourEdge = null;
+        footholdDetourTarget = null;
+    }
+
+    public boolean hasJumpLaunchEdge() {
+        return jumpLaunchEdge != null;
+    }
+
+    public int jumpLaunchX() {
+        return jumpLaunchX;
+    }
+
+    public void setJumpLaunch(Object edge, int launchX) {
+        jumpLaunchEdge = edge instanceof AgentNavigationGraph.Edge navEdge ? navEdge : null;
+        jumpLaunchX = launchX;
+    }
+
+    public boolean matchesJumpLaunchEdge(Object edge) {
+        return edge instanceof AgentNavigationGraph.Edge navEdge && sameEdge(jumpLaunchEdge, navEdge);
+    }
+
+    private static boolean sameEdge(AgentNavigationGraph.Edge a, AgentNavigationGraph.Edge b) {
+        if (a == b) {
+            return true;
+        }
+        if (a == null || b == null) {
+            return false;
+        }
+        return a.type == b.type
+                && a.fromRegionId == b.fromRegionId
+                && a.toRegionId == b.toRegionId
+                && a.startPoint.equals(b.startPoint)
+                && a.endPoint.equals(b.endPoint)
+                && a.portalId == b.portalId
+                && a.launchMinX == b.launchMinX
+                && a.launchMaxX == b.launchMaxX;
+    }
+}

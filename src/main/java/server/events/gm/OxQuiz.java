@@ -79,7 +79,7 @@ public final class OxQuiz {
                     if (!isCorrectAnswer(chr, getOXAnswer(round, question)) && !chr.isGM()) {
                         chr.changeMap(chr.getMap().getReturnMap());
                     } else {
-                        chr.gainExp(expGain, true, true);
+                        chr.gainExpRateScaled(expGain, true, true);
                     }
                 }
             }

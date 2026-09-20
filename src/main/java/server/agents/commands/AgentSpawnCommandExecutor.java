@@ -1,0 +1,170 @@
+package server.agents.commands;
+
+import client.Character;
+import client.Client;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import server.agents.registry.AgentResolvedCharacter;
+import server.agents.integration.AgentClientGatewayRuntime;
+import server.agents.integration.AgentAccountResolution;
+import server.agents.integration.AgentPersistenceGatewayRuntime;
+import server.agents.integration.AgentBackingAccountSecurityRuntime;
+import server.agents.integration.AgentIdentityGatewayRuntime;
+import server.agents.integration.AgentIdentityOrigin;
+import server.agents.runtime.AgentInteractionRuntime;
+import server.agents.runtime.AgentLifecycleService;
+import server.agents.capabilities.party.AgentPartyLifecycleService;
+import server.agents.auth.AgentAuthorityService;
+import server.agents.auth.AgentControlService;
+import server.agents.auth.AgentProvisioningPolicy;
+import java.sql.SQLException;
+
+/** Translates the retained spawn command into Agent account, lifecycle, and party operations. */
+public final class AgentSpawnCommandExecutor {
+    private static final Logger log = LoggerFactory.getLogger(AgentSpawnCommandExecutor.class);
+    private static final AgentProvisioningPolicy PROVISIONING_POLICY = new AgentProvisioningPolicy();
+
+    public void execute(Client c, String[] params) {
+        Character player = c.getPlayer();
+        AgentControlService controlService = AgentControlService.getInstance();
+        if (!AgentAuthorityService.mayOperate(player)) {
+            player.yellowMessage("You are not configured as an Agent operator.");
+            return;
+        }
+        if (params.length < 1) {
+            player.yellowMessage("Syntax: @spawnbot <name> [confirm]");
+            return;
+        }
+
+        String[] rawArgs = player.getLastCommandMessage().trim().split("[ ]", 2);
+        String botName = rawArgs[0];
+        boolean createRequested = params.length >= 2 && params[1].equals("confirm");
+
+        AgentResolvedCharacter bot = controlService.resolveCharacterByName(botName);
+        if (bot == null) {
+            if (!createRequested) {
+                player.yellowMessage("Bot '" + botName + "' does not exist. Run: @spawnbot " + botName + " confirm  to create it.");
+                return;
+            }
+
+            String denial = validateProvisioning(player);
+            if (denial != null) {
+                player.yellowMessage(denial);
+                return;
+            }
+
+            AgentAccountResolution account = resolveAgentAccount(botName);
+            if (!account.isSuccess()) {
+                player.yellowMessage(account.failureMessage());
+                return;
+            }
+            if (!lockAgentBackingAccount(account.accountId())) {
+                player.yellowMessage("Failed to secure the Agent-only backing account for '" + botName + "'.");
+                return;
+            }
+
+            Client creationClient = AgentClientGatewayRuntime.clients()
+                    .createHeadlessClient(c.getWorld(), c.getChannel());
+            creationClient.setAccID(account.accountId());
+            creationClient.setAccountName(botName);
+
+            int createdCharId = AgentClientGatewayRuntime.clients().createBackingCharacter(creationClient, botName);
+            if (createdCharId == -1) {
+                player.yellowMessage("Failed to create bot character '" + botName + "'. Name may be invalid or already taken.");
+                return;
+            }
+            if (!registerAgentIdentity(createdCharId, botName)) {
+                player.yellowMessage("Bot character '" + botName
+                        + "' was created, but its Agent identity could not be registered. It was not spawned.");
+                return;
+            }
+
+            bot = controlService.resolveCharacterByName(botName);
+            if (account.created()) {
+                player.yellowMessage("Bot '" + botName + "' created with an Agent-only backing account.");
+            } else {
+                player.yellowMessage("Bot '" + botName + "' created on the existing empty account '" + botName + "'.");
+            }
+        }
+
+        AgentLifecycleService.AgentSpawnResult result = AgentInteractionRuntime.spawnAgentForLeader(player, botName);
+        if (!result.success()) {
+            player.yellowMessage(result.errorMessage());
+            return;
+        }
+        AgentPartyLifecycleService.joinAgentToLeaderParty(player, result.agent());
+        player.yellowMessage("Agent '" + result.agent().getName() + "' spawned. Say 'follow me' or 'stop' to direct it.");
+    }
+
+    /** Creates a named Agent-only backing character for a GM harness, if missing. */
+    public String ensureBackingCharacter(Character operator, String agentName) {
+        if (operator == null || agentName == null || agentName.isBlank()) {
+            return "An operator and Agent name are required.";
+        }
+        AgentControlService controlService = AgentControlService.getInstance();
+        AgentResolvedCharacter existing = controlService.resolveCharacterByName(agentName);
+        if (existing != null) {
+            try {
+                return AgentIdentityGatewayRuntime.identities().isActiveAgent(existing.id())
+                        ? null
+                        : "Character '" + agentName + "' exists but is not registered as an active Agent.";
+            } catch (SQLException failure) {
+                return "Could not verify the Agent identity for '" + agentName + "'.";
+            }
+        }
+        String denial = validateProvisioning(operator);
+        if (denial != null) return denial;
+        AgentAccountResolution account = resolveAgentAccount(agentName);
+        if (!account.isSuccess()) return account.failureMessage();
+        if (!lockAgentBackingAccount(account.accountId())) {
+            return "Failed to secure the Agent-only backing account for '" + agentName + "'.";
+        }
+        Client creationClient = AgentClientGatewayRuntime.clients().createHeadlessClient(
+                operator.getWorld(), AgentClientGatewayRuntime.clients().channel(operator));
+        creationClient.setAccID(account.accountId());
+        creationClient.setAccountName(agentName);
+        int characterId = AgentClientGatewayRuntime.clients().createBackingCharacter(creationClient, agentName);
+        if (characterId == -1) {
+            return "Failed to create Agent backing character '" + agentName + "'.";
+        }
+        return registerAgentIdentity(characterId, agentName)
+                ? null
+                : "Agent backing character '" + agentName
+                        + "' was created, but its Agent identity could not be registered.";
+    }
+
+    private String validateProvisioning(Character player) {
+        return PROVISIONING_POLICY.validateAndRecordAttempt(
+                player.getId(), player.gmLevel(), 0);
+    }
+
+    private AgentAccountResolution resolveAgentAccount(String name) {
+        try {
+            return AgentPersistenceGatewayRuntime.persistence().resolveOrCreateAgentAccount(name);
+        } catch (SQLException e) {
+            log.warn("Failed to create or reuse bot account '{}'", name, e);
+        }
+        return AgentAccountResolution.failure("Failed to create or reuse the bot account for '" + name + "'.");
+    }
+
+    private boolean lockAgentBackingAccount(int accountId) {
+        try {
+            return AgentBackingAccountSecurityRuntime.lockInteractiveLogin(accountId);
+        } catch (SQLException e) {
+            log.warn("Failed to lock interactive login for Agent backing account {}", accountId, e);
+            return false;
+        }
+    }
+
+    private boolean registerAgentIdentity(int characterId, String name) {
+        try {
+            AgentIdentityGatewayRuntime.identities().register(
+                    characterId, AgentIdentityOrigin.PROVISIONED, false);
+            return true;
+        } catch (SQLException failure) {
+            log.warn("Failed to register durable Agent identity for '{}' ({})",
+                    name, characterId, failure);
+            return false;
+        }
+    }
+}

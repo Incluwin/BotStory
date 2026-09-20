@@ -37,6 +37,9 @@ import constants.inventory.ItemConstants;
 import constants.net.OpcodeConstants;
 import constants.net.ServerConstants;
 import database.DatabaseMigrations;
+import server.economy.EconomyTransactionCoordinator;
+import server.security.SecurityEventRuntime;
+import server.security.SecurityEventReviewService;
 import database.note.NoteDao;
 import net.ChannelDependencies;
 import net.PacketProcessor;
@@ -49,6 +52,7 @@ import net.server.guild.Alliance;
 import net.server.guild.Guild;
 import net.server.guild.GuildCharacter;
 import net.server.task.BossLogTask;
+import net.server.task.CharacterAutosaverTask;
 import net.server.task.CharacterDiseaseTask;
 import net.server.task.CouponTask;
 import net.server.task.DueyFredrickTask;
@@ -60,20 +64,40 @@ import net.server.task.RankingCommandTask;
 import net.server.task.RankingLoginTask;
 import net.server.task.RespawnTask;
 import net.server.world.World;
+import net.server.admin.DatabaseConsoleBridgeServer;
+import net.server.admin.AgentDirectorBridgeServer;
 import org.apache.logging.log4j.LogManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import provider.DressingRoom;
 import server.CashShop.CashItemFactory;
+import server.ExpLogger;
 import server.SkillbookInformationProvider;
 import server.ThreadManager;
 import server.TimerManager;
+import server.agents.catalog.decision.AgentDecisionCatalogRuntime;
+import server.agents.capabilities.navigation.AgentMapGraphWebServer;
+import server.agents.capabilities.navigation.AgentNavigationGraphService;
+import server.agents.population.AgentPopulationRuntime;
+import server.agents.runtime.AgentRuntimeShutdownCoordinator;
 import server.expeditions.ExpeditionBossLog;
 import server.life.PlayerNPC;
+import server.monitoring.CharacterSaveDiagnostics;
+import server.monitoring.DiskSpaceMonitor;
+import server.monitoring.JvmGuardrailVerifier;
+import server.monitoring.MapBroadcastDiagnostics;
+import server.monitoring.ServerLoadMonitor;
+import server.monitoring.ServerMetricsSnapshot;
+import server.monitoring.SlowOperationLogger;
 import server.quest.Quest;
+import scripting.AbstractPlayerInteraction;
+import scripting.npc.NPCScriptManager;
+import scripting.quest.QuestScriptManager;
 import service.NoteService;
 import tools.DatabaseConnection;
 import tools.Pair;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -94,9 +118,13 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -110,6 +138,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Server {
     private static final Logger log = LoggerFactory.getLogger(Server.class);
+    private static final String DATABASE_CONSOLE_BRIDGE_ENABLED_ENV = "COSMIC_DATABASE_CONSOLE_BRIDGE_ENABLED";
+    private static final long CHANNEL_SHUTDOWN_TIMEOUT_MS = SECONDS.toMillis(60);
     private static Server instance = null;
 
     public static Server getInstance() {
@@ -119,12 +149,15 @@ public class Server {
         return instance;
     }
 
-    private static final Set<Integer> activeFly = new HashSet<>();
-    private static final Map<Integer, Integer> couponRates = new HashMap<>(30);
+    private static final Set<Integer> activeFly = ConcurrentHashMap.newKeySet();
+    private static final Map<Integer, Integer> couponRates = new ConcurrentHashMap<>(30);
     private static final List<Integer> activeCoupons = new LinkedList<>();
     private static ChannelDependencies channelDependencies;
 
     private LoginServer loginServer;
+    private DatabaseConsoleBridgeServer databaseConsoleBridgeServer;
+    private AgentDirectorBridgeServer agentDirectorBridgeServer;
+    private AgentMapGraphWebServer agentMapGraphWebServer;
     private final List<Map<Integer, String>> channels = new LinkedList<>();
     private final List<World> worlds = new ArrayList<>();
     private final Properties subnetInfo = new Properties();
@@ -138,7 +171,7 @@ public class Server {
 
     private final PlayerBuffStorage buffStorage = new PlayerBuffStorage();
     private final Map<Integer, Alliance> alliances = new HashMap<>(100);
-    private final Map<Integer, NewYearCardRecord> newyears = new HashMap<>();
+    private final Map<Integer, NewYearCardRecord> newyears = new ConcurrentHashMap<>();
     private final List<Client> processDiseaseAnnouncePlayers = new LinkedList<>();
     private final List<Client> registeredDiseaseAnnouncePlayers = new LinkedList<>();
 
@@ -159,6 +192,7 @@ public class Server {
     private volatile boolean availableDeveloperRoom = false;
     private boolean online = false;
     public static long uptime = System.currentTimeMillis();
+    private int loadedMapHighWatermark = 0;
 
     private Server() {
         ReadWriteLock worldLock = new ReentrantReadWriteLock(true);
@@ -210,6 +244,10 @@ public class Server {
         return newyears.remove(cardid);
     }
 
+    public int newYearCardRuntimeCount() {
+        return newyears.size();
+    }
+
     public void setAvailableDeveloperRoom() {
         availableDeveloperRoom = true;
     }
@@ -237,7 +275,7 @@ public class Server {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -324,6 +362,8 @@ public class Server {
         String[] hostAddress = getIP(world, channel).split(":");
         if (IpAddresses.isLocalAddress(remoteIp)) {
             hostAddress[0] = YamlConfig.config.server.LOCALHOST;
+        } else if (IpAddresses.isTailscaleAddress(remoteIp)) {
+            hostAddress[0] = YamlConfig.config.server.TAILSCALEHOST;
         } else if (IpAddresses.isLanAddress(remoteIp)) {
             hostAddress[0] = YamlConfig.config.server.LANHOST;
         }
@@ -376,7 +416,7 @@ public class Server {
         }
 
         Channel channel = new Channel(worldid, channelid, getCurrentTime());
-        channel.setServerMessage(YamlConfig.config.worlds.get(worldid).why_am_i_recommended);
+        channel.setServerMessage("");
 
         if (world.addChannel(channel)) {
             wldWLock.lock();
@@ -428,30 +468,35 @@ public class Server {
         log.info("Starting world {}", i);
 
         int exprate = YamlConfig.config.worlds.get(i).exp_rate;
+        float mobrate = YamlConfig.config.worlds.get(i).mob_rate;
+        int mobperspawnpoint = YamlConfig.config.worlds.get(i).max_mob_per_spawnpoint;
         int mesorate = YamlConfig.config.worlds.get(i).meso_rate;
         int droprate = YamlConfig.config.worlds.get(i).drop_rate;
         int bossdroprate = YamlConfig.config.worlds.get(i).boss_drop_rate;
         int questrate = YamlConfig.config.worlds.get(i).quest_rate;
         int travelrate = YamlConfig.config.worlds.get(i).travel_rate;
         int fishingrate = YamlConfig.config.worlds.get(i).fishing_rate;
-
+        List<config.MobSpawnOverrideConfig> mobSpawnOverrides = YamlConfig.config.worlds.get(i).mob_spawn_overrides;
         int flag = YamlConfig.config.worlds.get(i).flag;
         String event_message = YamlConfig.config.worlds.get(i).event_message;
         String why_am_i_recommended = YamlConfig.config.worlds.get(i).why_am_i_recommended;
 
-        World world = new World(i,
-                flag,
-                event_message,
-                exprate, droprate, bossdroprate, mesorate, questrate, travelrate, fishingrate);
+        World world = new World(i, flag, event_message, exprate, droprate, bossdroprate, mesorate, questrate,
+                travelrate, fishingrate, mobrate, mobperspawnpoint, mobSpawnOverrides);
 
         Map<Integer, String> channelInfo = new HashMap<>();
         long bootTime = getCurrentTime();
-        for (int j = 1; j <= YamlConfig.config.worlds.get(i).channels; j++) {
-            int channelid = j;
-            Channel channel = new Channel(i, channelid, bootTime);
+        try {
+            for (int j = 1; j <= YamlConfig.config.worlds.get(i).channels; j++) {
+                int channelid = j;
+                Channel channel = new Channel(i, channelid, bootTime);
 
-            world.addChannel(channel);
-            channelInfo.put(channelid, channel.getIP());
+                world.addChannel(channel);
+                channelInfo.put(channelid, channel.getIP());
+            }
+        } catch (RuntimeException startupFailure) {
+            world.shutdownWorldResources();
+            throw startupFailure;
         }
 
         boolean canDeploy;
@@ -469,8 +514,6 @@ public class Server {
         }
 
         if (canDeploy) {
-            world.setServerMessage(YamlConfig.config.worlds.get(i).server_message);
-
             log.info("Finished loading world {}", i);
             return i;
         } else {
@@ -579,7 +622,7 @@ public class Server {
     }
 
     public Map<Integer, Integer> getCouponRates() {
-        return couponRates;
+        return Collections.unmodifiableMap(new HashMap<>(couponRates));
     }
 
     public static void cleanNxcodeCoupons(Connection con) throws SQLException {
@@ -626,7 +669,7 @@ public class Server {
 
     public List<Integer> getActiveCoupons() {
         synchronized (activeCoupons) {
-            return activeCoupons;
+            return Collections.unmodifiableList(new ArrayList<>(activeCoupons));
         }
     }
 
@@ -852,7 +895,7 @@ public class Server {
                 }
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
 
         return rankSystem;
@@ -861,6 +904,12 @@ public class Server {
     public void init() {
         Instant beforeInit = Instant.now();
         log.info("Cosmic v{} starting up.", ServerConstants.VERSION);
+
+        validateDeploymentSecurityProfile();
+        AgentRuntimeShutdownCoordinator.start();
+        AgentDecisionCatalogRuntime.start();
+        AgentNavigationGraphService.startAsyncWarmups();
+        warnRiskyRuntimeFeatures();
 
         if (YamlConfig.config.server.SHUTDOWNHOOK) {
             Runtime.getRuntime().addShutdownHook(new Thread(shutdown(false)));
@@ -871,6 +920,7 @@ public class Server {
         }
 
         DatabaseMigrations.runDatabaseMigrations();
+        EconomyTransactionCoordinator.initializePersistentJournal();
 
         channelDependencies = registerChannelDependencies();
 
@@ -886,6 +936,7 @@ public class Server {
         TimeZone.setDefault(TimeZone.getTimeZone(YamlConfig.config.server.TIMEZONE));
 
         final int worldCount = Math.min(GameConstants.WORLD_NAMES.length, YamlConfig.config.server.WORLDS);
+        long startupDbStartedNs = SlowOperationLogger.start();
         try (Connection con = DatabaseConnection.getConnection()) {
             setAllLoggedOut(con);
             setAllMerchantsInactive(con);
@@ -900,9 +951,12 @@ public class Server {
         } catch (SQLException sqle) {
             log.error("Failed to run all startup-bound database tasks", sqle);
             throw new IllegalStateException(sqle);
+        } finally {
+            SlowOperationLogger.warnIfSlow("startup-db-bound-tasks", startupDbStartedNs, 5_000);
         }
 
         ThreadManager.getInstance().start();
+        SecurityEventRuntime.initializePersistentStore();
         initializeTimelyTasks(channelDependencies);    // aggregated method for timely tasks thanks to lxconan
 
         try {
@@ -919,7 +973,7 @@ public class Server {
                 }
             }
         } catch (Exception e) {
-            log.error("[SEVERE] Syntax error in 'world.ini'.", e); //For those who get errors
+            log.error("Failed to initialize world/channel runtime", e);
             System.exit(0);
         }
 
@@ -941,11 +995,74 @@ public class Server {
         Duration initDuration = Duration.between(beforeInit, Instant.now());
         log.info("Cosmic is now online after {} ms.", initDuration.toMillis());
 
+        if (YamlConfig.config.server.DRESSING_ROOM_ENABLED) {
+            DressingRoom.load();
+        }
+
         OpcodeConstants.generateOpcodeNames();
         CommandsExecutor.getInstance();
 
         for (Channel ch : this.getAllChannels()) {
             ch.reloadEventScriptManager();
+        }
+
+        AgentPopulationRuntime.start();
+        startDatabaseConsoleBridge();
+        startAgentDirectorBridge();
+        startAgentMapGraphViewer();
+    }
+
+    private void startDatabaseConsoleBridge() {
+        if (!isDatabaseConsoleBridgeEnabled()) {
+            log.info("Database Console bridge disabled. Set {}=true to enable it.", DATABASE_CONSOLE_BRIDGE_ENABLED_ENV);
+            return;
+        }
+
+        try {
+            databaseConsoleBridgeServer = new DatabaseConsoleBridgeServer();
+            databaseConsoleBridgeServer.start();
+            log.info("Database Console bridge listening on 127.0.0.1:{}", System.getenv().getOrDefault("COSMIC_BRIDGE_PORT", "8787"));
+        } catch (IOException e) {
+            log.warn("Database Console bridge did not start", e);
+        }
+    }
+
+    private boolean isDatabaseConsoleBridgeEnabled() {
+        String value = System.getenv(DATABASE_CONSOLE_BRIDGE_ENABLED_ENV);
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        return !("false".equalsIgnoreCase(value) || "0".equals(value) || "no".equalsIgnoreCase(value));
+    }
+
+    private void startAgentDirectorBridge() {
+        if (!AgentDirectorBridgeServer.enabled()) {
+            log.info("Agent Director panel bridge disabled. Set {}=true to enable it.",
+                    AgentDirectorBridgeServer.ENABLED_ENV);
+            return;
+        }
+        try {
+            agentDirectorBridgeServer = new AgentDirectorBridgeServer();
+            agentDirectorBridgeServer.start();
+            log.info("Agent Director panel bridge listening on 127.0.0.1:{}",
+                    System.getenv().getOrDefault("COSMIC_DIRECTOR_PORT", "8790"));
+        } catch (IOException | IllegalStateException failure) {
+            log.warn("Agent Director panel bridge did not start", failure);
+        }
+    }
+
+    private void startAgentMapGraphViewer() {
+        if (!AgentMapGraphWebServer.enabled()) {
+            log.info("Agent map-graph viewer disabled. Set {}=true to enable it.",
+                    AgentMapGraphWebServer.ENABLED_ENV);
+            return;
+        }
+
+        try {
+            agentMapGraphWebServer = new AgentMapGraphWebServer();
+            agentMapGraphWebServer.start();
+        } catch (IOException e) {
+            log.warn("Agent map-graph viewer did not start", e);
         }
     }
 
@@ -963,6 +1080,57 @@ public class Server {
         LoginServer loginServer = new LoginServer(port);
         loginServer.start();
         return loginServer;
+    }
+
+    private void warnRiskyRuntimeFeatures() {
+        if (YamlConfig.config.server.SCROLL_SUCCESS_BONUS_ENABLED) {
+            log.warn("Runtime feature enabled: scroll success bonus +{}%. Review before production parity runs.",
+                    YamlConfig.config.server.SCROLL_SUCCESS_BONUS);
+        }
+        if (YamlConfig.config.server.GODLY_STATS_ENABLED) {
+            log.warn("Runtime feature enabled: godly stats on drops chance={} scaling={} hpmpScaling={}",
+                    YamlConfig.config.server.GODLY_STATS_DROP_CHANCE,
+                    YamlConfig.config.server.GODLY_STATS_BONUS_SCALING,
+                    YamlConfig.config.server.GODLY_STATS_HPMP_SCALING);
+        }
+        if (YamlConfig.config.server.GODLY_STATS_MAKER_ENABLED) {
+            log.warn("Runtime feature enabled: godly stats on Maker rewards chance={}.",
+                    YamlConfig.config.server.GODLY_STATS_MAKER_CHANCE);
+        }
+        if (YamlConfig.config.server.GODLY_STATS_QUEST_ENABLED) {
+            log.warn("Runtime feature enabled: godly stats on quest rewards chance={}.",
+                    YamlConfig.config.server.GODLY_STATS_QUEST_CHANCE);
+        }
+        if (YamlConfig.config.server.GODLY_STATS_NPC_ENABLED) {
+            log.warn("Runtime feature enabled: godly stats on NPC/event rewards chance={}.",
+                    YamlConfig.config.server.GODLY_STATS_NPC_CHANCE);
+        }
+        if (YamlConfig.config.worlds.stream().anyMatch(world -> world.allow_all_untradeable_items
+                || world.untradeable_item_allowlist != null && !world.untradeable_item_allowlist.isEmpty())) {
+            log.warn("Runtime feature enabled: at least one world permits selected untradeable items.");
+        }
+        if (YamlConfig.config.worlds.stream().anyMatch(world -> world.allow_multiple_one_of_a_kind_items
+                || world.multiple_one_of_a_kind_item_allowlist != null && !world.multiple_one_of_a_kind_item_allowlist.isEmpty())) {
+            log.warn("Runtime feature enabled: at least one world permits selected one-of-a-kind duplicates.");
+        }
+        if (YamlConfig.config.server.ALLOW_DROPS_ON_DROP_LIMIT_MAPS) {
+            log.warn("Runtime feature enabled: drops are allowed on DROP_LIMIT maps.");
+        }
+        if (YamlConfig.config.server.ALWAYS_MAX_INVENTORY_SLOTS) {
+            log.warn("Runtime feature enabled: characters normalize to max inventory slots.");
+        }
+    }
+
+    private void validateDeploymentSecurityProfile() {
+        DeploymentSecurityPolicy.validate(
+                YamlConfig.config.server.DEPLOYMENT_PROFILE,
+                YamlConfig.config.server.ENABLE_PIN,
+                YamlConfig.config.server.ENABLE_PIC,
+                YamlConfig.config.server.ALLOW_INSECURE_PRODUCTION_AUTH,
+                YamlConfig.config.server.AUTOMATIC_REGISTER,
+                DatabaseConnection.configuredUsername(),
+                DatabaseConnection.configuredPassword(),
+                YamlConfig.config.server.USE_MTS);
     }
 
     private static void setAllLoggedOut(Connection con) throws SQLException {
@@ -986,18 +1154,142 @@ public class Server {
         long timeLeft = getTimeLeftForNextHour();
         tMan.register(new CharacterDiseaseTask(), YamlConfig.config.server.UPDATE_INTERVAL, YamlConfig.config.server.UPDATE_INTERVAL);
         tMan.register(new CouponTask(), YamlConfig.config.server.COUPON_INTERVAL, timeLeft);
-        tMan.register(new RankingCommandTask(), MINUTES.toMillis(5), MINUTES.toMillis(5));
-        tMan.register(new RankingLoginTask(), YamlConfig.config.server.RANKING_INTERVAL, timeLeft);
+        tMan.register(TimerManager.SchedulerLane.LOW_PRIORITY, new RankingCommandTask(), MINUTES.toMillis(5), MINUTES.toMillis(5));
+        tMan.register(TimerManager.SchedulerLane.LOW_PRIORITY, new RankingLoginTask(), YamlConfig.config.server.RANKING_INTERVAL, timeLeft);
         tMan.register(new LoginCoordinatorTask(), HOURS.toMillis(1), timeLeft);
         tMan.register(new EventRecallCoordinatorTask(), HOURS.toMillis(1), timeLeft);
-        tMan.register(new LoginStorageTask(), MINUTES.toMillis(2), MINUTES.toMillis(2));
-        tMan.register(new DueyFredrickTask(channelDependencies.fredrickProcessor()), HOURS.toMillis(1), timeLeft);
-        tMan.register(new InvitationTask(), SECONDS.toMillis(30), SECONDS.toMillis(30));
-        tMan.register(new RespawnTask(), YamlConfig.config.server.RESPAWN_INTERVAL, YamlConfig.config.server.RESPAWN_INTERVAL);
+        tMan.register(TimerManager.SchedulerLane.SAVE, new LoginStorageTask(), MINUTES.toMillis(2), MINUTES.toMillis(2));
+        tMan.register(TimerManager.SchedulerLane.SAVE, new DueyFredrickTask(channelDependencies.fredrickProcessor()), HOURS.toMillis(1), timeLeft);
+        tMan.register(TimerManager.SchedulerLane.EVENT, new InvitationTask(), SECONDS.toMillis(30), SECONDS.toMillis(30));
+        tMan.register(TimerManager.SchedulerLane.MAP, new RespawnTask(), YamlConfig.config.server.RESPAWN_INTERVAL, YamlConfig.config.server.RESPAWN_INTERVAL);
+        tMan.register(TimerManager.SchedulerLane.LOW_PRIORITY, this::logScaleHealth, MINUTES.toMillis(5), MINUTES.toMillis(5));
+        JvmGuardrailVerifier.warnIfIncomplete();
+        DiskSpaceMonitor.checkNow();
+        tMan.register(TimerManager.SchedulerLane.LOW_PRIORITY, DiskSpaceMonitor::checkNow,
+                MINUTES.toMillis(5), MINUTES.toMillis(5));
+        tMan.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> SecurityEventReviewService.applyRetention(
+                        java.time.Duration.ofDays(Math.max(1,
+                                YamlConfig.config.server.SECURITY_EVENT_RETENTION_DAYS))),
+                DAYS.toMillis(1), getTimeLeftForNextDay());
 
         timeLeft = getTimeLeftForNextDay();
         ExpeditionBossLog.resetBossLogTable();
-        tMan.register(new BossLogTask(), DAYS.toMillis(1), timeLeft);
+        tMan.register(TimerManager.SchedulerLane.SAVE, new BossLogTask(), DAYS.toMillis(1), timeLeft);
+    }
+
+    private void logScaleHealth() {
+        ServerMetricsSnapshot snapshot = buildMetricsSnapshot();
+        int previousHighWatermark = loadedMapHighWatermark;
+        loadedMapHighWatermark = Math.max(loadedMapHighWatermark, snapshot.loadedMaps());
+
+        SessionCoordinator sessionCoordinator = SessionCoordinator.getInstance();
+        log.info("Scale health {} monitoredChr={} npcPendingRuntime={} npcConversations={} npcScripts={} questActions={} questScripts={} loginAttemptAccounts={} loginBypass={} newYearCards={} inLoginState={} loadedMapHighWatermark={} {} {}",
+                snapshot.compact(),
+                net.packet.logging.MonitoredChrLogger.monitoredCharacterCount(),
+                AbstractPlayerInteraction.pendingCharacterRuntimeStateCount(),
+                NPCScriptManager.getInstance().activeConversationCount(),
+                NPCScriptManager.getInstance().activeScriptCount(),
+                QuestScriptManager.getInstance().activeQuestActionCount(),
+                QuestScriptManager.getInstance().activeScriptCount(),
+                sessionCoordinator.trackedLoginAttemptAccountCount(),
+                sessionCoordinator.activeLoginBypassCount(),
+                newYearCardRuntimeCount(),
+                loginStateCount(),
+                loadedMapHighWatermark,
+                CharacterSaveDiagnostics.diagnostics(),
+                MapBroadcastDiagnostics.diagnostics());
+
+        if (snapshot.idleMapCandidates() > 0 || snapshot.loadedMaps() >= previousHighWatermark + 100) {
+            log.warn("Scale health map growth watch loaded={} active={} idleCandidates={} previousHighWatermark={} highWatermark={}",
+                    snapshot.loadedMaps(), snapshot.activeMaps(), snapshot.idleMapCandidates(), previousHighWatermark, loadedMapHighWatermark);
+        }
+    }
+
+    public List<String> diagnosticLines() {
+        ServerMetricsSnapshot snapshot = buildMetricsSnapshot();
+        SessionCoordinator sessionCoordinator = SessionCoordinator.getInstance();
+        List<String> lines = new ArrayList<>();
+        long skippedDormantMapUpdates = 0;
+        long unloadedMaps = 0;
+        for (World world : getWorlds()) {
+            for (Channel channel : world.getChannels()) {
+                skippedDormantMapUpdates += channel.skippedDormantMapUpdateCount();
+                unloadedMaps += channel.unloadedMapCount();
+            }
+        }
+
+        lines.add("Server health: " + snapshot.compact());
+        lines.add("Runtime caches: monitoredChr=" + net.packet.logging.MonitoredChrLogger.monitoredCharacterCount()
+                + " npcPendingRuntime=" + AbstractPlayerInteraction.pendingCharacterRuntimeStateCount()
+                + " npcConversations=" + NPCScriptManager.getInstance().activeConversationCount()
+                + " npcScripts=" + NPCScriptManager.getInstance().activeScriptCount()
+                + " questActions=" + QuestScriptManager.getInstance().activeQuestActionCount()
+                + " questScripts=" + QuestScriptManager.getInstance().activeScriptCount()
+                + " transitionBuffs={" + buffStorage.diagnostics() + "}");
+        for (World world : getWorlds()) {
+            lines.add("World caches: " + world.runtimeCacheDiagnostics());
+        }
+        lines.add("Login runtime: attempts=" + sessionCoordinator.trackedLoginAttemptAccountCount()
+                + " bypass=" + sessionCoordinator.activeLoginBypassCount()
+                + " newYearCards=" + newYearCardRuntimeCount()
+                + " inLoginState=" + loginStateCount());
+        lines.add("Map runtime: loaded=" + snapshot.loadedMaps()
+                + " active=" + snapshot.activeMaps()
+                + " idleCandidates=" + snapshot.idleMapCandidates()
+                + " highWatermark=" + loadedMapHighWatermark
+                + " dormantTicksSkipped=" + skippedDormantMapUpdates
+                + " unloaded=" + unloadedMaps);
+        lines.add("Save pressure: " + CharacterSaveDiagnostics.diagnostics());
+        lines.add("Autosave queue: " + CharacterAutosaverTask.runtimeDiagnostics());
+        lines.add("Save reasons: " + CharacterSaveDiagnostics.reasonDiagnostics());
+        lines.add("Save sections: " + CharacterSaveDiagnostics.sectionDiagnostics());
+        lines.add("Broadcast pressure: " + MapBroadcastDiagnostics.diagnostics());
+        lines.add("DB: " + DatabaseConnection.poolStats());
+        lines.add("Threads: " + ThreadManager.getInstance().diagnostics());
+        lines.add("JVM guardrails: " + JvmGuardrailVerifier.currentStatus().compact());
+        lines.add("EXP logs: " + ExpLogger.diagnostics());
+        lines.add("Runtime failure keys: " + monitoring.RuntimeFailureLogger.trackedFailureKeyCount());
+        lines.add("Timers: " + TimerManager.getInstance().diagnostics());
+        lines.add("Slow operations: " + SlowOperationLogger.diagnostics());
+        lines.add("Load level: " + ServerLoadMonitor.currentLevel());
+
+        return lines;
+    }
+
+    public ServerMetricsSnapshot buildMetricsSnapshot() {
+        Runtime runtime = Runtime.getRuntime();
+        long usedHeapMb = (runtime.totalMemory() - runtime.freeMemory()) / 1024 / 1024;
+        long maxHeapMb = runtime.maxMemory() / 1024 / 1024;
+
+        int onlinePlayers = 0;
+        int onlineAgents = 0;
+        int loadedMaps = 0;
+        int activeMaps = 0;
+        int idleMapCandidates = 0;
+        for (World world : getWorlds()) {
+            onlinePlayers += world.getPlayerStorage().getRealPlayerCount();
+            onlineAgents += world.getPlayerStorage().getAgentCount();
+            for (Channel channel : world.getChannels()) {
+                loadedMaps += channel.loadedMapCount();
+                activeMaps += channel.activeMapCount();
+                idleMapCandidates += channel.idleMapCandidateCount();
+            }
+        }
+
+        return new ServerMetricsSnapshot(
+                onlinePlayers,
+                onlineAgents,
+                loadedMaps,
+                activeMaps,
+                idleMapCandidates,
+                usedHeapMb,
+                maxHeapMb,
+                DiskSpaceMonitor.latest().compact(),
+                DatabaseConnection.poolStats(),
+                ThreadManager.getInstance().diagnostics(),
+                TimerManager.getInstance().diagnostics(),
+                ServerLoadMonitor.currentLevel());
     }
 
     public static void main(String[] args) {
@@ -1324,7 +1616,7 @@ public class Server {
 
     public boolean isGmOnline(int world) {
         for (Channel ch : getChannelsFromWorld(world)) {
-            for (Character player : ch.getPlayerStorage().getAllCharacters()) {
+            for (Character player : ch.getPlayerStorage().getNetworkRecipients()) {
                 if (player.isGM()) {
                     return true;
                 }
@@ -1359,9 +1651,28 @@ public class Server {
         lgnRLock.lock();
         try {
             Set<Integer> accChars = accountChars.get(accountid);
-            return accChars.contains(chrid);
+            return accChars != null && accChars.contains(chrid);
         } finally {
             lgnRLock.unlock();
+        }
+    }
+
+    public boolean validateCharacterOwnership(Integer accountid, Integer chrid) {
+        if (haveCharacterEntry(accountid, chrid)) {
+            return true;
+        }
+
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT 1 FROM characters WHERE accountid = ? AND id = ?")) {
+            ps.setInt(1, accountid);
+            ps.setInt(2, chrid);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            log.error("Failed to validate ownership for accId {} chrId {}", accountid, chrid, e);
+            return false;
         }
     }
 
@@ -1440,10 +1751,15 @@ public class Server {
     public void deleteCharacterEntry(Integer accountid, Integer chrid) {
         lgnWLock.lock();
         try {
-            accountCharacterCount.put(accountid, (short) (accountCharacterCount.get(accountid) - 1));
+            Short characterCount = accountCharacterCount.get(accountid);
+            if (characterCount != null) {
+                accountCharacterCount.put(accountid, (short) (characterCount - 1));
+            }
 
             Set<Integer> accChars = accountChars.get(accountid);
-            accChars.remove(chrid);
+            if (accChars != null) {
+                accChars.remove(chrid);
+            }
 
             Integer world = worldChars.remove(chrid);
             if (world != null) {
@@ -1480,7 +1796,7 @@ public class Server {
             lgnWLock.unlock();
         }
     }
-    
+
     /*
     public void deleteAccountEntry(Integer accountid) { is this even a thing?
         lgnWLock.lock();
@@ -1490,7 +1806,7 @@ public class Server {
         } finally {
             lgnWLock.unlock();
         }
-    
+
         for (World wserv : this.getWorlds()) {
             wserv.clearAccountCharacterView(accountid);
             wserv.unregisterAccountStorage(accountid);
@@ -1578,7 +1894,7 @@ public class Server {
 
             wchars.add(curWorld, chars);
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return new Pair<>(characterCount, wchars);
@@ -1596,7 +1912,7 @@ public class Server {
                 }
             }
         } catch (SQLException se) {
-            se.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(se);
         }
     }
 
@@ -1880,6 +2196,15 @@ public class Server {
         }
     }
 
+    private int loginStateCount() {
+        srvLock.lock();
+        try {
+            return inLoginState.size();
+        } finally {
+            srvLock.unlock();
+        }
+    }
+
     private void disconnectIdlesOnLoginState() {
         List<Client> toDisconnect = new LinkedList<>();
 
@@ -1922,49 +2247,57 @@ public class Server {
         if (getWorlds() == null) {
             return;//already shutdown
         }
-        for (World w : getWorlds()) {
-            w.shutdown();
-        }
-
-        /*for (World w : getWorlds()) {
-            while (w.getPlayerStorage().getAllCharacters().size() > 0) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ie) {
-                    System.err.println("FUCK MY LIFE");
-                }
-            }
-        }
-        for (Channel ch : getAllChannels()) {
-            while (ch.getConnectedClients() > 0) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ie) {
-                    System.err.println("FUCK MY LIFE");
-                }
-            }
-        }*/
-
+        List<World> shuttingWorlds = new ArrayList<>(getWorlds());
         List<Channel> allChannels = getAllChannels();
-
-        for (Channel ch : allChannels) {
-            while (!ch.finishedShutdown()) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ie) {
-                    log.error("Error during shutdown sleep", ie);
-                }
-            }
+        AgentRuntimeShutdownCoordinator.beginShutdown();
+        AgentPopulationRuntime.stop();
+        AgentDecisionCatalogRuntime.stop();
+        AgentNavigationGraphService.shutdownAsyncWarmups();
+        AgentRuntimeShutdownCoordinator.Report agentShutdown = AgentRuntimeShutdownCoordinator.shutdown();
+        log.info("Agent runtime shutdown: sessions={} cancellations={} pendingAsync={} remaining={} "
+                        + "asyncExecutors={} queuedCancelled={} unterminated={} elapsedMs={} timedOut={}",
+                agentShutdown.sessionsObserved(),
+                agentShutdown.scheduleCancellationsRequested(),
+                agentShutdown.pendingAsyncRequestsCleared(),
+                agentShutdown.schedulerRegistrationsRemaining(),
+                agentShutdown.asyncExecutorsStopped(),
+                agentShutdown.queuedAsyncTasksCancelled(),
+                agentShutdown.unterminatedAsyncExecutors(),
+                agentShutdown.elapsedMs(),
+                agentShutdown.timedOut());
+        if (!agentShutdown.failedSessionIds().isEmpty()) {
+            log.warn("Agent sessions failed to cancel during shutdown: {}", agentShutdown.failedSessionIds());
+        }
+        log.info("Final Agent scheduler snapshot: {}", agentShutdown.finalSchedulerSnapshot());
+        shutdownChannelsBounded(allChannels);
+        for (World world : shuttingWorlds) {
+            world.shutdownWorldResources();
+        }
+        if (databaseConsoleBridgeServer != null) {
+            databaseConsoleBridgeServer.stop();
+            databaseConsoleBridgeServer = null;
+        }
+        if (agentDirectorBridgeServer != null) {
+            agentDirectorBridgeServer.stop();
+            agentDirectorBridgeServer = null;
+        }
+        if (agentMapGraphWebServer != null) {
+            agentMapGraphWebServer.stop();
+            agentMapGraphWebServer = null;
         }
 
         resetServerWorlds();
 
+        ExpLogger.shutdown();
         ThreadManager.getInstance().stop();
         TimerManager.getInstance().purge();
         TimerManager.getInstance().stop();
 
         log.info("Worlds and channels are offline.");
-        loginServer.stop();
+        if (loginServer != null) {
+            loginServer.stop();
+            loginServer = null;
+        }
         if (!restart) {  // shutdown hook deadlocks if System.exit() method is used within its body chores, thanks MIKE for pointing that out
             // We disabled log4j's shutdown hook in the config file, so we have to manually shut it down here,
             // after our last log statement.
@@ -1976,5 +2309,55 @@ public class Server {
             instance = null;
             getInstance().init();//DID I DO EVERYTHING?! D:
         }
+    }
+
+    private void shutdownChannelsBounded(List<Channel> channels) {
+        if (channels.isEmpty()) {
+            return;
+        }
+        ExecutorService shutdownExecutor = Executors.newThreadPerTaskExecutor(
+                Thread.ofVirtual().name("cosmic-channel-shutdown-", 0).factory());
+        Map<Channel, Future<?>> shutdownTasks = new HashMap<>();
+        for (Channel channel : channels) {
+            shutdownTasks.put(channel, shutdownExecutor.submit(channel::shutdown));
+        }
+
+        long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(CHANNEL_SHUTDOWN_TIMEOUT_MS);
+        boolean interrupted = false;
+        for (Map.Entry<Channel, Future<?>> entry : shutdownTasks.entrySet()) {
+            Channel channel = entry.getKey();
+            Future<?> task = entry.getValue();
+            long remainingNanos = deadlineNanos - System.nanoTime();
+            try {
+                if (remainingNanos <= 0) {
+                    throw new TimeoutException("channel shutdown deadline elapsed");
+                }
+                task.get(remainingNanos, TimeUnit.NANOSECONDS);
+            } catch (TimeoutException e) {
+                log.error("Timed out waiting for channel {} in world {} to finish shutdown",
+                        channel.getId(), channel.getWorld(), e);
+                task.cancel(true);
+                channel.forceShutdownTerminalState();
+            } catch (ExecutionException e) {
+                log.error("Channel {} in world {} failed during shutdown", channel.getId(), channel.getWorld(),
+                        e.getCause());
+                channel.forceShutdownTerminalState();
+            } catch (InterruptedException e) {
+                interrupted = true;
+                task.cancel(true);
+                channel.forceShutdownTerminalState();
+                break;
+            }
+        }
+        if (interrupted) {
+            shutdownTasks.forEach((channel, task) -> {
+                if (!task.isDone()) {
+                    task.cancel(true);
+                    channel.forceShutdownTerminalState();
+                }
+            });
+            Thread.currentThread().interrupt();
+        }
+        shutdownExecutor.shutdownNow();
     }
 }

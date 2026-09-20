@@ -5,6 +5,7 @@ public class MobId {
     public static final int GIANT_CAKE = 9400606;
     public static final int TRANSPARENT_ITEM = 9300216;
 
+    public static final int ORANGE_MUSHROOM = 1210102;
     public static final int GREEN_MUSHROOM = 1110100;
     public static final int DEJECTED_GREEN_MUSHROOM = 1110130;
     public static final int GREEN_MUSHROOM_QUEST = 9101000;

@@ -109,7 +109,7 @@ public class DueyProcessor {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return ids;
@@ -131,7 +131,7 @@ public class DueyProcessor {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -139,15 +139,35 @@ public class DueyProcessor {
         ItemFactory.DUEY.saveItems(new LinkedList<>(), packageId, con);
     }
 
-    private static void removePackageFromDB(int packageId) {
+    private static boolean removePackageFromDB(int packageId, Integer receiverId) {
+        String sql = receiverId == null
+                ? "DELETE FROM dueypackages WHERE PackageId = ?"
+                : "DELETE FROM dueypackages WHERE PackageId = ? AND ReceiverId = ?";
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("DELETE FROM dueypackages WHERE PackageId = ?")) {
-            ps.setInt(1, packageId);
-            ps.executeUpdate();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            con.setAutoCommit(false);
+            try {
+                ps.setInt(1, packageId);
+                if (receiverId != null) {
+                    ps.setInt(2, receiverId);
+                }
+                if (ps.executeUpdate() != 1) {
+                    con.rollback();
+                    return false;
+                }
 
-            deletePackageFromInventoryDB(con, packageId);
+                deletePackageFromInventoryDB(con, packageId);
+                con.commit();
+                return true;
+            } catch (SQLException e) {
+                con.rollback();
+                throw e;
+            } finally {
+                con.setAutoCommit(true);
+            }
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
+            return false;
         }
     }
 
@@ -171,7 +191,7 @@ public class DueyProcessor {
 
             return dueypack;
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(sqle);
             return null;
         }
     }
@@ -194,7 +214,7 @@ public class DueyProcessor {
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return packages;
@@ -228,7 +248,7 @@ public class DueyProcessor {
 
             return packageId;
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return -1;
@@ -240,7 +260,7 @@ public class DueyProcessor {
             ItemFactory.DUEY.saveItems(Collections.singletonList(dueyItem), packageId, con);
             return true;
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return false;
@@ -384,8 +404,13 @@ public class DueyProcessor {
     public static void dueyRemovePackage(Client c, int packageid, boolean playerRemove) {
         if (c.tryacquireClient()) {
             try {
-                removePackageFromDB(packageid);
-                c.sendPacket(PacketCreator.removeItemFromDuey(playerRemove, packageid));
+                if (removePackageFromDB(packageid, c.getPlayer().getId())) {
+                    c.sendPacket(PacketCreator.removeItemFromDuey(playerRemove, packageid));
+                } else {
+                    c.sendPacket(PacketCreator.sendDueyMSG(Actions.TOCLIENT_RECV_UNKNOWN_ERROR.getCode()));
+                    log.warn("Chr {} tried to remove unavailable Duey package id {}",
+                            c.getPlayer().getName(), packageid);
+                }
             } finally {
                 c.releaseClient();
             }
@@ -398,8 +423,10 @@ public class DueyProcessor {
                 try {
                     DueyPackage dp = null;
                     try (Connection con = DatabaseConnection.getConnection();
-                         PreparedStatement ps = con.prepareStatement("SELECT * FROM dueypackages dp WHERE PackageId = ?")) {
+                         PreparedStatement ps = con.prepareStatement(
+                                 "SELECT * FROM dueypackages dp WHERE PackageId = ? AND ReceiverId = ?")) {
                         ps.setInt(1, packageId);
+                        ps.setInt(2, c.getPlayer().getId());
 
                         try (ResultSet rs = ps.executeQuery()) {
                             if (rs.next()) {
@@ -419,32 +446,36 @@ public class DueyProcessor {
                         return;
                     }
 
+                    if (!c.getPlayer().canHoldMeso(dp.getMesos())) {
+                        c.sendPacket(PacketCreator.sendDueyMSG(Actions.TOCLIENT_RECV_UNKNOWN_ERROR.getCode()));
+                        return;
+                    }
+
                     Item dpItem = dp.getItem();
                     if (dpItem != null) {
-                        if (!c.getPlayer().canHoldMeso(dp.getMesos())) {
-                            c.sendPacket(PacketCreator.sendDueyMSG(Actions.TOCLIENT_RECV_UNKNOWN_ERROR.getCode()));
-                            return;
-                        }
-
                         if (!InventoryManipulator.checkSpace(c, dpItem.getItemId(), dpItem.getQuantity(), dpItem.getOwner())) {
                             int itemid = dpItem.getItemId();
-                            if (ItemInformationProvider.getInstance().isPickupRestricted(itemid) && c.getPlayer().getInventory(ItemConstants.getInventoryType(itemid)).findById(itemid) != null) {
+                            if (ItemInformationProvider.getInstance().isPickupRestricted(itemid, c.getPlayer()) && c.getPlayer().getInventory(ItemConstants.getInventoryType(itemid)).findById(itemid) != null) {
                                 c.sendPacket(PacketCreator.sendDueyMSG(Actions.TOCLIENT_RECV_RECEIVER_WITH_UNIQUE.getCode()));
                             } else {
                                 c.sendPacket(PacketCreator.sendDueyMSG(Actions.TOCLIENT_RECV_NO_FREE_SLOTS.getCode()));
                             }
-
                             return;
-                        } else {
-                            InventoryManipulator.addFromDrop(c, dpItem, false);
                         }
                     }
 
-                    c.getPlayer().gainMeso(dp.getMesos(), false);
+                    if (!removePackageFromDB(packageId, c.getPlayer().getId())) {
+                        c.sendPacket(PacketCreator.sendDueyMSG(Actions.TOCLIENT_RECV_UNKNOWN_ERROR.getCode()));
+                        return;
+                    }
 
-                    dueyRemovePackage(c, packageId, false);
+                    if (dpItem != null) {
+                        InventoryManipulator.addFromDrop(c, dpItem, false);
+                    }
+                    c.getPlayer().gainMeso(dp.getMesos(), false);
+                    c.sendPacket(PacketCreator.removeItemFromDuey(false, packageId));
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    monitoring.RuntimeFailureLogger.log(e);
                 }
             } finally {
                 c.releaseClient();
@@ -498,7 +529,7 @@ public class DueyProcessor {
             }
 
             for (Integer pid : toRemove) {
-                removePackageFromDB(pid);
+                removePackageFromDB(pid, null);
             }
 
             try (PreparedStatement ps = con.prepareStatement("DELETE FROM dueypackages WHERE `TimeStamp` < ?")) {
@@ -506,7 +537,7 @@ public class DueyProcessor {
                 ps.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 }

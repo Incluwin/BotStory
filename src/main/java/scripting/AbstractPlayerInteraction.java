@@ -377,7 +377,7 @@ public class AbstractPlayerInteraction {
         try {
             return getQuestStat(id) == QuestStatus.Status.COMPLETED;
         } catch (NullPointerException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
             return false;
         }
     }
@@ -390,7 +390,7 @@ public class AbstractPlayerInteraction {
         try {
             return getQuestStat(id) == QuestStatus.Status.STARTED;
         } catch (NullPointerException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
             return false;
         }
     }
@@ -506,7 +506,7 @@ public class AbstractPlayerInteraction {
         try {
             return Quest.getInstance(id).forceStart(getPlayer(), npc);
         } catch (NullPointerException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
             return false;
         }
     }
@@ -515,7 +515,7 @@ public class AbstractPlayerInteraction {
         try {
             return Quest.getInstance(id).forceComplete(getPlayer(), npc);
         } catch (NullPointerException ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
             return false;
         }
     }
@@ -562,7 +562,7 @@ public class AbstractPlayerInteraction {
     }
 
     public void gainItem(int id, short quantity) {
-        gainItem(id, quantity, false, true);
+        gainItem(id, quantity, true, true);
     }
 
     public void gainItem(int id, short quantity, boolean show) {//this will fk randomStats equip :P
@@ -647,11 +647,16 @@ public class AbstractPlayerInteraction {
                 return null;
             }
             if (ItemConstants.getInventoryType(id) == InventoryType.EQUIP) {
-                if (randomStats) {
-                    InventoryManipulator.addFromDrop(c, ii.randomizeStats((Equip) item), false, petId);
-                } else {
-                    InventoryManipulator.addFromDrop(c, item, false, petId);
+                Equip eqp = randomStats ? ii.randomizeStats((Equip) item, false) : (Equip) item;
+                if (YamlConfig.config.server.GODLY_STATS_NPC_ENABLED &&
+                        ItemInformationProvider.rollSuccessChance(YamlConfig.config.server.GODLY_STATS_NPC_CHANCE)) {
+                    ii.randomizeGodlyStats(eqp,
+                            YamlConfig.config.server.GODLY_STATS_NPC_BONUS_SCALING,
+                            YamlConfig.config.server.GODLY_STATS_NPC_MIN_BONUS,
+                            YamlConfig.config.server.GODLY_STATS_NPC_HPMP_SCALING,
+                            YamlConfig.config.server.GODLY_STATS_NPC_MIN_HPMP_BONUS);
                 }
+                InventoryManipulator.addFromDrop(c, eqp, false, petId);
             } else {
                 InventoryManipulator.addFromDrop(c, item, false, petId);
             }
@@ -729,7 +734,7 @@ public class AbstractPlayerInteraction {
         try {
             return Server.getInstance().getGuild(getPlayer().getGuildId(), getPlayer().getWorld(), null);
         } catch (Exception e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return null;
     }
@@ -796,7 +801,7 @@ public class AbstractPlayerInteraction {
     }
 
     public void giveCharacterExp(int amount, Character chr) {
-        chr.gainExp((amount * chr.getExpRate()), true, true);
+        chr.gainExpRateScaled(amount, true, true);
     }
 
     public void givePartyExp(int amount, List<Character> party) {
@@ -846,9 +851,9 @@ public class AbstractPlayerInteraction {
             }
             int base = PartyQuest.getExp(PQ, player.getLevel());
             int exp = base * bonus / 100;
-            player.gainExp(exp, true, true);
+            player.gainExpRateScaled(exp, true, true);
             if (YamlConfig.config.server.PQ_BONUS_EXP_RATE > 0 && System.currentTimeMillis() <= YamlConfig.config.server.EVENT_END_TIMESTAMP) {
-                player.gainExp((int) (exp * YamlConfig.config.server.PQ_BONUS_EXP_RATE), true, true);
+                player.gainExpRateScaled((int) (exp * YamlConfig.config.server.PQ_BONUS_EXP_RATE), true, true);
             }
         }
     }
@@ -890,7 +895,8 @@ public class AbstractPlayerInteraction {
     }
 
     public int getPlayerCount(int mapid) {
-        return c.getChannelServer().getMapFactory().getMap(mapid).getCharacters().size();
+        MapleMap map = c.getChannelServer().getMapFactory().getLoadedMap(mapid);
+        return map != null ? map.getCharacterCount() : 0;
     }
 
     public void showInstruction(String msg, int width, int height) {
@@ -1191,8 +1197,77 @@ public class AbstractPlayerInteraction {
         return null;
     }
 
+    // Keyed by characterId — stores the pending list dialog text for the dressingroom script
+    private static final java.util.concurrent.ConcurrentHashMap<Integer, String> pendingNpcTalkMessages =
+            new java.util.concurrent.ConcurrentHashMap<>();
+    private static final java.util.concurrent.ConcurrentHashMap<Integer, Boolean> pendingDressingRoomSelections =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Returns and removes the stored dialog text for the given character, or null if none. */
+    public static String pollNpcTalkMessage(int characterId) {
+        return pendingNpcTalkMessages.remove(characterId);
+    }
+
+    public static boolean pollDressingRoomSelection(int characterId) {
+        return pendingDressingRoomSelections.remove(characterId) != null;
+    }
+
+    public static void clearPendingCharacterRuntimeState(int characterId) {
+        pendingNpcTalkMessages.remove(characterId);
+        pendingDressingRoomSelections.remove(characterId);
+    }
+
+    public static int pendingCharacterRuntimeStateCount() {
+        return pendingNpcTalkMessages.size() + pendingDressingRoomSelections.size();
+    }
+
     public void npcTalk(int npcid, String message) {
-        c.sendPacket(PacketCreator.getNPCTalk(npcid, (byte) 0, message, "00 00", (byte) 0));
+        pendingNpcTalkMessages.put(c.getPlayer().getId(), message);
+        pendingDressingRoomSelections.remove(c.getPlayer().getId());
+        NPCScriptManager.getInstance().dispose(c);
+        NPCScriptManager.getInstance().start(c, npcid, "dressingroom", null);
+    }
+
+    public void npcTalkDressingRoom(int npcid, String message) {
+        if (!canUseDressingRoom()) {
+            getPlayer().dropMessage(5, "The dressing room is disabled for this deployment.");
+            return;
+        }
+        pendingNpcTalkMessages.put(c.getPlayer().getId(), message);
+        pendingDressingRoomSelections.put(c.getPlayer().getId(), true);
+        NPCScriptManager.getInstance().dispose(c);
+        NPCScriptManager.getInstance().start(c, npcid, "dressingroom", null);
+    }
+
+    public boolean spawnDressingRoomItem(int id, boolean randomStats) {
+        if (!canUseDressingRoom()) {
+            return false;
+        }
+        ItemInformationProvider ii = ItemInformationProvider.getInstance();
+        if (ii.getName(id) == null || !ii.hasData(id)) {
+            getPlayer().dropMessage(5, "The item you selected doesn't exist.");
+            return false;
+        }
+
+        Item toDrop;
+        if (ItemConstants.getInventoryType(id) == InventoryType.EQUIP) {
+            Equip equip = (Equip) ii.getEquipById(id);
+            if (equip == null) {
+                getPlayer().dropMessage(5, "The item you selected doesn't exist.");
+                return false;
+            }
+            toDrop = randomStats ? ii.randomizeStats(equip) : equip;
+        } else {
+            toDrop = new Item(id, (short) 0, (short) 1);
+        }
+
+        getPlayer().getMap().spawnItemDrop(getPlayer(), getPlayer(), toDrop, getPlayer().getPosition(), true, true);
+        return true;
+    }
+
+    private boolean canUseDressingRoom() {
+        return YamlConfig.config.server.DRESSING_ROOM_ENABLED
+                && getPlayer().gmLevel() >= YamlConfig.config.server.DRESSING_ROOM_MIN_GM_LEVEL;
     }
 
     public long getCurrentTime() {

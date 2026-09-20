@@ -1,0 +1,124 @@
+package server.agents.capabilities.combat;
+
+import client.Character;
+import client.Skill;
+import constants.skills.Archer;
+import constants.skills.NightWalker;
+import constants.skills.Rogue;
+import constants.skills.WindArcher;
+import server.StatEffect;
+import server.agents.integration.AgentSkillGatewayRuntime;
+import server.agents.integration.SkillGateway;
+
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.List;
+import java.util.Map;
+
+public final class AgentProjectileHitbox {
+    // Journey client CharStats::get_range() returns Rectangle(-projectilerange, -5, -50, 50).
+    public static final int CLIENT_PROJECTILE_BASE_RANGE = 400;
+    private static final int CLIENT_PROJECTILE_NEAR_INSET = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentProjectileHitbox.CLIENT_PROJECTILE_NEAR_INSET");
+    private static final int CLIENT_PROJECTILE_TOP = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentProjectileHitbox.CLIENT_PROJECTILE_TOP");
+    private static final int CLIENT_PROJECTILE_BOTTOM = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentProjectileHitbox.CLIENT_PROJECTILE_BOTTOM");
+
+    private static final List<Integer> PASSIVE_PROJECTILE_RANGE_SKILL_IDS = List.of(
+            Archer.EYE_OF_AMAZON,
+            Rogue.KEEN_EYES,
+            WindArcher.EYE_OF_AMAZON,
+            NightWalker.KEEN_EYES
+    );
+
+    private AgentProjectileHitbox() {
+    }
+
+    static int clientProjectileTop() {
+        return CLIENT_PROJECTILE_TOP;
+    }
+
+    public static Rectangle clientProjectileHitBox(Character agent, boolean facingLeft, float horizontalScale) {
+        return clientProjectileHitBox(agent, facingLeft, horizontalScale,
+                CLIENT_PROJECTILE_TOP, CLIENT_PROJECTILE_BOTTOM);
+    }
+
+    public static Rectangle clientProjectileHitBox(Character agent, boolean facingLeft, float horizontalScale,
+                                                   SkillGateway skills) {
+        return clientProjectileHitBox(agent, facingLeft, horizontalScale,
+                CLIENT_PROJECTILE_TOP, CLIENT_PROJECTILE_BOTTOM, skills);
+    }
+
+    // Vertical extents are signed offsets from the character feet (origin.y):
+    //   yAboveOrigin >  0 -> box top is yAboveOrigin px above feet.
+    //   yBelowOrigin >  0 -> box bottom is yBelowOrigin px below feet.
+    //   yBelowOrigin <  0 -> box bottom is |yBelowOrigin| px above feet.
+    public static Rectangle clientProjectileHitBox(Character agent, boolean facingLeft, float horizontalScale,
+                                                   int yAboveOrigin, int yBelowOrigin) {
+        return clientProjectileHitBox(agent, facingLeft, horizontalScale, yAboveOrigin, yBelowOrigin,
+                AgentSkillGatewayRuntime.skills());
+    }
+
+    public static Rectangle clientProjectileHitBox(Character agent, boolean facingLeft, float horizontalScale,
+                                                   int yAboveOrigin, int yBelowOrigin, SkillGateway skills) {
+        if (agent == null || agent.getPosition() == null) {
+            return null;
+        }
+
+        Point origin = agent.getPosition();
+        int projectileRange = CLIENT_PROJECTILE_BASE_RANGE + passiveProjectileRangeBonus(agent, skills);
+        int farEdge = Math.max(CLIENT_PROJECTILE_NEAR_INSET, Math.round(projectileRange * Math.max(0f, horizontalScale)));
+        int left = facingLeft ? origin.x - farEdge : origin.x + CLIENT_PROJECTILE_NEAR_INSET;
+        int right = facingLeft ? origin.x - CLIENT_PROJECTILE_NEAR_INSET : origin.x + farEdge;
+        int top = origin.y - yAboveOrigin;
+        int height = Math.max(1, yAboveOrigin + yBelowOrigin);
+        return new Rectangle(left, top, right - left, height);
+    }
+
+    public static float projectileRangeScale(StatEffect effect) {
+        // WZ attack-skill `range` is an absolute pixel reach (for example,
+        // Pirate Double Shot starts at 215), not a percentage of the client's
+        // 400 px basic-projectile range. Treating 215 as 215% produced an
+        // 860 px hit box and server-side distance-hack alerts.
+        return effect != null && effect.getRange() > 0
+                ? effect.getRange() / (float) CLIENT_PROJECTILE_BASE_RANGE
+                : 1.0f;
+    }
+
+    public static int passiveProjectileRangeBonus(Character agent) {
+        return passiveProjectileRangeBonus(agent, AgentSkillGatewayRuntime.skills());
+    }
+
+    static int passiveProjectileRangeBonus(Character agent, SkillGateway skills) {
+        if (agent == null) {
+            return 0;
+        }
+
+        int bonus = 0;
+        for (int skillId : PASSIVE_PROJECTILE_RANGE_SKILL_IDS) {
+            Skill skill = resolveLearnedSkill(agent, skillId, skills);
+            if (skill == null) {
+                continue;
+            }
+
+            int level = agent.getSkillLevel(skill);
+            if (level <= 0) {
+                continue;
+            }
+
+            bonus += Math.max(0, skill.getEffect(level).getRange());
+        }
+        return bonus;
+    }
+
+    private static Skill resolveLearnedSkill(Character agent, int skillId, SkillGateway skillsGateway) {
+        Map<Skill, Character.SkillEntry> learnedSkills = agent.getSkills();
+        if (learnedSkills != null) {
+            for (Skill learned : learnedSkills.keySet()) {
+                if (learned != null && learned.getId() == skillId) {
+                    return learned;
+                }
+            }
+        }
+
+        return skillsGateway.getSkill(skillId);
+    }
+}

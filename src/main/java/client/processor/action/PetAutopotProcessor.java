@@ -30,6 +30,7 @@ import client.inventory.manipulator.InventoryManipulator;
 import config.YamlConfig;
 import server.ItemInformationProvider;
 import server.StatEffect;
+import server.agents.integration.cosmic.CosmicAgentPotionCheckRequestBridge;
 import tools.PacketCreator;
 
 import java.util.List;
@@ -69,6 +70,9 @@ public class PetAutopotProcessor {
                 }
             }
 
+            if (chr.getClient() instanceof client.BotClient) {
+                CosmicAgentPotionCheckRequestBridge.requestPotionCheckSoon(chr);
+            }
             return false;
         }
 
@@ -131,21 +135,21 @@ public class PetAutopotProcessor {
 
                     if (YamlConfig.config.server.USE_COMPULSORY_AUTOPOT) {
                         if (hasHpGain) {
-                            double hpRatio = (YamlConfig.config.server.PET_AUTOHP_RATIO * maxHp) - curHp;
+                            double hpRatio = (c.getPlayer().getAutopotHpAlert() * maxHp) - curHp;
                             if (hpRatio > 0.0) {
                                 qtyCount = (int) Math.ceil(hpRatio / incHp);
                             }
                         }
 
                         if (hasMpGain) {
-                            double mpRatio = ((YamlConfig.config.server.PET_AUTOMP_RATIO * maxMp) - curMp);
+                            double mpRatio = (c.getPlayer().getAutopotMpAlert() * maxMp) - curMp;
                             if (mpRatio > 0.0) {
                                 qtyCount = Math.max(qtyCount, (int) Math.ceil(mpRatio / incMp));
                             }
                         }
 
-                        if (qtyCount < 0) { // thanks Flint, Kevs for noticing an issue where negative counts were getting achieved
-                            qtyCount = 0;
+                        if (qtyCount < 1) { // thanks Flint, Kevs for noticing an issue where negative counts were getting achieved
+                            qtyCount = 1;
                         }
                     } else {
                         qtyCount = 1;   // non-compulsory autopot concept thanks to marcuswoon
@@ -189,6 +193,10 @@ public class PetAutopotProcessor {
     public static void runAutopotAction(Client c, short slot, int itemid) {
         AutopotAction action = new AutopotAction(c, slot, itemid);
         action.run();
+    }
+
+    public static void triggerAutopotAction(Client c, short slot, int itemId) {
+        runAutopotAction(c, slot, itemId);
     }
 
 }

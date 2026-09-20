@@ -1,0 +1,55 @@
+package server.agents.capabilities.quest;
+
+import client.Character;
+import server.agents.capabilities.behavior.AgentPioRelaxerInterludeRuntime;
+import server.agents.capabilities.combat.AgentCombatCooldownState;
+import server.agents.capabilities.combat.AgentCombatObjectiveTargetStateRuntime;
+import server.agents.capabilities.dialogue.AgentPendingActionStateRuntime;
+import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
+import server.agents.capabilities.movement.AgentMovementStateResetService;
+import server.agents.plans.amherst.MapleIslandRelaxerSpotReservationRuntime;
+import server.agents.capabilities.runtime.AgentCapabilityRuntime;
+import server.agents.capabilities.trade.AgentTradeStateService;
+import server.agents.runtime.AgentForegroundPauseRuntime;
+import server.agents.plans.AgentScriptTaskStateRuntime;
+import server.agents.runtime.AgentModeService;
+import server.agents.runtime.AgentRuntimeEntry;
+
+/** Clears transient state only for an explicitly guarded Amherst test fixture. */
+public final class AmherstTestRuntimeResetService {
+    private AmherstTestRuntimeResetService() {
+    }
+
+    public static void reset(AgentRuntimeEntry entry, Character agent, long nowMs) {
+        AgentPioRelaxerInterludeRuntime.cancel(entry, agent, nowMs);
+        AgentForegroundPauseRuntime.reset(entry);
+        AgentCapabilityRuntime.cancelNow(entry, agent, nowMs);
+        MapleIslandRelaxerSpotReservationRuntime.release(agent.getId());
+        AgentModeService.startStop(entry);
+        AgentMovementStateResetService.resetEntryState(entry);
+        AgentCombatObjectiveTargetStateRuntime.clear(entry);
+        AgentGrindLootStateRuntime.clearGrindLootTarget(entry);
+        AgentGrindLootStateRuntime.clearRetrySuppression(entry);
+
+        entry.capabilityStates().require(AgentCombatCooldownState.STATE_KEY).clearAttackCooldown();
+        entry.capabilityStates().require(AgentCombatCooldownState.STATE_KEY).clearMoveWindow();
+        entry.capabilityStates().require(AgentCombatCooldownState.STATE_KEY).setMobHitCooldownMs(0);
+        entry.capabilityStates().require(AgentCombatCooldownState.STATE_KEY).setAlertedUntilMs(0L);
+        entry.capabilityStates().require(AgentCombatCooldownState.STATE_KEY).setAlertResetScheduled(false);
+        entry.inventoryCooldownState().setLootInhibitMs(0);
+        entry.inventoryCooldownState().setInventoryFullWarnCooldownMs(0);
+        entry.portalCooldownState().setUseCooldownUntilMs(0L);
+
+        AgentPendingActionStateRuntime.clearPendingAction(entry);
+        AgentPendingActionStateRuntime.clearPendingDropCategory(entry);
+        AgentScriptTaskStateRuntime.clearTasksAndBumpEpoch(entry);
+        AgentScriptTaskStateRuntime.resetScript(entry, null);
+        entry.actionMailbox().discardPending("Amherst test fixture reset");
+        entry.messageQueueState().clear();
+        entry.pendingLootOfferState().clear();
+        entry.tradeRetryState().takeRetry();
+        entry.tradeRetryState().setDelayMs(0);
+        entry.manualTradeState().clear();
+        AgentTradeStateService.clearSequence(entry);
+    }
+}

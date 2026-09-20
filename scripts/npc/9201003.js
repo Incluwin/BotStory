@@ -83,7 +83,7 @@ function action(mode, type, selection) {
                 cm.sendOk("Mom... Dad... Thanks a lot for your tender support!!!", 2);
 
                 cm.completeQuest(100400);
-                cm.gainExp(20000 * cm.getPlayer().getExpRate());
+                cm.gainExp(20000);
                 for (var i = 4031367; i <= 4031372; i++) {
                     cm.removeAll(i);
                 }

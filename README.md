@@ -1,52 +1,62 @@
-﻿# Cosmic
-Cosmic is a server emulator for Global MapleStory (GMS) version 83.
+# Cosmic Agents
 
-## Introduction
+Cosmic Agents is a Global MapleStory v83 server project built on top of
+[P0nk/Cosmic](https://github.com/P0nk/Cosmic). It extends Cosmic with a modular,
+server-validated Agent platform for autonomous characters that remain normal
+Cosmic characters and obey server-side gameplay rules.
 
-Cosmic launched on March 2021. It is based on code from a long line of server emulators spanning over a decade - starting with OdinMS (2008) and ending with HeavenMS (2019).
+## Credits And Upstream Lineage
 
-This is mainly a Java based project, but there are also a bunch of scripts written in JavaScript.
+- [P0nk/Cosmic](https://github.com/P0nk/Cosmic) is the upstream v83 server base.
+  Cosmic was created and maintained by P0nk with contributions from the wider
+  Cosmic community.
+- [nutnnut/Cosmic](https://github.com/nutnnut/Cosmic) provided the companion
+  behavior from which the reconstructed Agent runtime was derived.
+- Cosmic itself descends from the OdinMS and HeavenMS emulator lineage.
 
-Head developer and maintainer: __Ponk__.\
-Contributors: a lot of people over the years, and hopefully more to come. Big thanks to everyone who has contributed so far!
+This repository is not the official Cosmic project.
 
-Join the Discord server where most of the discussions take place: https://discord.gg/JU5aQapVZK
+## Current State
 
-### Goals
-What we are working towards.
-* __Vanilla gameplay__ - stay as close to the original game as possible (within reason).
-* __Ease of use__ - getting started should be frictionless and contributing to the project straightforward.
-* __Reduce technical debt__ - making changes should be easy without causing unintended side effects.
-* __Modern tools & technologies__ - stay appealing by continuously improving the code and the project as a whole. 
+The Agent implementation is divided into explicit ownership areas:
 
-### Non-goals
-Explicitly excluded from the scope of the project.
-* __Custom gameplay features__ - existing custom features will be removed over time and new ones are unlikely to be added.
-* __Client development__ - this project is focused on the server. Please go elsewhere for client related questions.
-* __Public server__ - there will not be an official Cosmic server open to the public. Feel free to launch your own server __at your own risk__. No support will be provided.
+- `server.agents.runtime` owns live sessions, lifecycle, state, tick
+  orchestration, scheduling, and registries.
+- `server.agents.capabilities` owns movement, navigation, combat, loot,
+  supplies, inventory, equipment, trade, shops, builds, dialogue, social,
+  quest, NPC, and reactor behavior.
+- `server.agents.commands` owns command parsing and coordination.
+- `server.agents.plans` contains plan models and retained script execution.
+- `server.agents.integration` defines server-facing gateways.
+- `server.agents.integration.cosmic` contains Cosmic-specific adapters.
+- `server.agents.monitoring` exposes runtime, scheduler, parity, and queue
+  diagnostics.
 
-## Project setup
+Agent runtime hardening includes bounded asynchronous queues, session-scoped
+callbacks, lifecycle cleanup, safe navigation-cache persistence, weighted graph
+cache eviction, concurrent combat-profile caching, secure backing-account
+provisioning, per-Agent mailbox support, and a central scheduler implementation.
+The mailbox and central scheduler remain disabled by default; the established
+compatibility paths remain active.
 
-### Contribute
-You may contribute to the project in various ways, mainly through GitHub:
-* Providing improvements to the code through a [Pull Request](https://github.com/P0nk/Cosmic/pulls) from your own fork. 
-* Reporting a bug by creating an [Issue](https://github.com/P0nk/Cosmic/issues).
-* Providing information to existing issues or reviewing pull requests that others have made.
-* ...and in other ways that I haven't thought of!
+The repository also contains read-only game-data catalog tooling and a Database
+Console for administrative game-data access. The Database Console should not be
+exposed publicly without authentication and network hardening.
 
-### Continuous integration
-A GitHub Actions pipeline is set up to run the build automatically when a new pull request is opened or commits are pushed to an existing one. This ensures that the code compiles and all the tests pass.
+## Validation Status
 
-Once a pull request is merged, a tag with the new version is automatically created.
+- Full Maven suite: 4,392 tests passed with no failures, errors, or skips.
+- Maven package build: passed.
+- Production and test `server.bots` directories: absent.
+- Production `server.bots` imports and runtime dependencies: absent.
+- Automated scheduler parity and deterministic 500-session scheduler soak:
+  passed.
+- Live-client parity and long-duration production soak: not yet recorded.
 
-### Discord integration
-Most GitHub activity is pushed to a Discord channel for visibility. This works by leveraging a webhook. The activity includes (but is not limited to): merged commits, created PRs, comments, and new tags.
+## Original Cosmic Setup Notes
 
-### Versioning
-The project follows the [semantic versioning](https://semver.org/) scheme using git tags.
-* *Bug fixes* are treated as PATCH: 1.2.__3__ -> 1.2.__4__
-* *General changes or improvements* are treated as MINOR: 1.__2__.3 -> 1.__3.0__
-* *Major changes* are treated as MAJOR: __1__.2.3 -> __2.0.0__
+The setup notes below are inherited from P0nk/Cosmic and remain useful for
+running the base server locally.
 
 ## Getting started
 Follow along as I go through the steps to play the game on your local computer from start to finish. I won't go into extreme detail, so if you don't have prior experience with Java or git, you might struggle.

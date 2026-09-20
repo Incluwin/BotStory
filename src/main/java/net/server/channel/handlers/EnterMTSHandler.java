@@ -32,6 +32,7 @@ import net.server.Server;
 import server.MTSItemInfo;
 import server.maps.FieldLimit;
 import server.maps.MiniDungeonInfo;
+import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 
@@ -101,14 +102,14 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
         chr.forfeitExpirableQuests();
         chr.cancelQuestExpirationTask();
 
-        chr.saveCharToDB();
+        chr.saveCharToDB(true, SaveReason.MTS);
 
         c.getChannelServer().removePlayer(chr);
         chr.getMap().removePlayer(c.getPlayer());
         try {
             c.sendPacket(PacketCreator.openCashShop(c, true));
         } catch (Exception ex) {
-            ex.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(ex);
         }
         chr.getCashShop().open(true);// xD
         c.enableCSActions();
@@ -165,7 +166,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
         c.sendPacket(PacketCreator.sendMTS(items, 1, 0, 0, pages));
         c.sendPacket(PacketCreator.transferInventory(getTransfer(chr.getId())));
@@ -217,7 +218,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return items;
     }
@@ -267,7 +268,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return items;
     }

@@ -21,6 +21,7 @@
  */
 package server.life;
 
+import client.BotClient;
 import client.BuffStat;
 import client.Character;
 import client.Client;
@@ -47,7 +48,9 @@ import net.server.coordinator.world.MonsterAggroCoordinator;
 import net.server.services.task.channel.MobAnimationService;
 import net.server.services.task.channel.MobClearSkillService;
 import net.server.services.task.channel.MobStatusService;
+import net.server.services.task.channel.MobPhysicsService;
 import net.server.services.task.channel.OverallService;
+import net.server.services.task.channel.ServerMobAutonomyService;
 import net.server.services.type.ChannelServices;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
@@ -56,6 +59,11 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.StatEffect;
 import server.TimerManager;
+import server.agents.capabilities.quest.AgentQuestKillCreditPolicy;
+import server.integration.AgentPresence;
+import server.life.simulation.MobControlAuthority;
+import server.life.simulation.MobMovementSnapshot;
+import server.life.autonomy.balrog.EasyBalrogEncounterService;
 import server.loot.LootManager;
 import server.maps.AbstractAnimatedMapObject;
 import server.maps.MapObjectType;
@@ -80,6 +88,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -87,6 +96,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class Monster extends AbstractLoadedLife {
     private static final Logger log = LoggerFactory.getLogger(Monster.class);
+    private static final int SERVER_BOSS_CONTROLLER_PIN = Integer.MIN_VALUE;
 
     private ChangeableStats ostats = null;  //unused, v83 WZs offers no support for changeable stats.
     private MonsterStats stats;
@@ -95,6 +105,11 @@ public class Monster extends AbstractLoadedLife {
     private int mp;
     private WeakReference<Character> controller = new WeakReference<>(null);
     private boolean controllerHasAggro, controllerKnowsAboutAggro, controllerHasPuppet;
+    private long controllerAssignmentHoldUntilNanos;
+    private volatile int pinnedBossControllerId;
+    private volatile MobControlAuthority controlAuthority = MobControlAuthority.NONE;
+    private volatile MobMovementSnapshot lastClientMovement;
+    private volatile long agentPhysicsAggroTimeoutOverrideMs;
     private final Collection<MonsterListener> listeners = new LinkedList<>();
     private final EnumMap<MonsterStatus, MonsterStatusEffect> stati = new EnumMap<>(MonsterStatus.class);
     private final ArrayList<MonsterStatus> alreadyBuffed = new ArrayList<>();
@@ -102,6 +117,7 @@ public class Monster extends AbstractLoadedLife {
     private int VenomMultiplier = 0;
     private boolean fake = false;
     private boolean dropsDisabled = false;
+    private volatile boolean revivesSuppressed;
     private final Set<MobSkillId> usedSkills = new HashSet<>();
     private final Set<Integer> usedAttacks = new HashSet<>();
     private Set<Integer> calledMobOids = null;
@@ -169,6 +185,10 @@ public class Monster extends AbstractLoadedLife {
     }
 
     public void setMap(MapleMap map) {
+        if (this.map != null && this.map != map) {
+            MobPhysicsService.releaseMonsterInstances(
+                    this, MobPhysicsService.ReleaseReason.MAP_CHANGE);
+        }
         this.map = map;
     }
 
@@ -385,8 +405,10 @@ public class Monster extends AbstractLoadedLife {
 
     public void broadcastMobHpBar(Character from) {
         if (hasBossHPBar()) {
-            from.setPlayerAggro(this.hashCode());
-            from.getMap().broadcastBossHpMessage(this, this.hashCode(), makeBossHPBarPacket(), getPosition());
+            int hpBarHash = bossHpBarHash();
+            from.setPlayerAggro(hpBarHash);
+            from.getMap().broadcastBossHpMessage(
+                    this, hpBarHash, makeBossHPBarPacket(), getPosition());
         } else if (!isBoss()) {
             int remainingHP = (int) Math.max(1, hp.get() * 100f / getMaxHp());
             Packet packet = PacketCreator.showMonsterHP(getObjectId(), remainingHP);
@@ -436,7 +458,9 @@ public class Monster extends AbstractLoadedLife {
             */
 
             if (damage > 0) {
-                this.applyDamage(attacker, damage, stayAlive, false);
+                this.applyDamage(attacker, damage,
+                        stayAlive || EpqPoisonFlowerCaptureService.preserveForAgentCapture(attacker, this)
+                                || EpqPoisonFlowerCaptureService.preserveForAgentLure(attacker, this), false);
                 if (!this.isAlive()) {  // monster just died
                     lastHit = true;
                 }
@@ -532,7 +556,9 @@ public class Monster extends AbstractLoadedLife {
         return avgExpReward + Math.sqrt(varExpReward);
     }
 
-    private void distributePlayerExperience(Character chr, float exp, float partyBonusMod, int totalPartyLevel, boolean highestPartyDamager, boolean whiteExpGain, boolean hasPartySharers) {
+    private void distributePlayerExperience(Character chr, float exp, float partyBonusMod, int totalPartyLevel,
+                                            boolean highestPartyDamager, boolean whiteExpGain,
+                                            boolean hasPartySharers, int questCreditAgentId) {
         float playerExp = (YamlConfig.config.server.EXP_SPLIT_COMMON_MOD * chr.getLevel()) / totalPartyLevel;
         if (highestPartyDamager) {
             playerExp += YamlConfig.config.server.EXP_SPLIT_MVP_MOD;
@@ -541,11 +567,14 @@ public class Monster extends AbstractLoadedLife {
         playerExp *= exp;
         float bonusExp = partyBonusMod * playerExp;
 
-        this.giveExpToCharacter(chr, playerExp, bonusExp, whiteExpGain, hasPartySharers);
+        this.giveExpToCharacter(chr, playerExp, bonusExp, whiteExpGain, hasPartySharers,
+                questCreditAgentId);
         giveFamilyRep(chr.getFamilyEntry());
     }
 
-    private void distributePartyExperience(Map<Character, Long> partyParticipation, float expPerDmg, Set<Character> underleveled, Map<Integer, Float> personalRatio, double sdevRatio) {
+    private void distributePartyExperience(Map<Character, Long> partyParticipation, float expPerDmg,
+                                           Set<Character> underleveled, Map<Integer, Float> personalRatio,
+                                           double sdevRatio, int questCreditAgentId) {
         IntervalBuilder leechInterval = new IntervalBuilder();
         leechInterval.addInterval(this.getLevel() - YamlConfig.config.server.EXP_SPLIT_LEVEL_INTERVAL, this.getLevel() + YamlConfig.config.server.EXP_SPLIT_LEVEL_INTERVAL);
 
@@ -594,7 +623,9 @@ public class Monster extends AbstractLoadedLife {
         float partyBonusMod = hasPartySharers ? 0.05f * membersSize : 0.0f;
 
         for (Character mc : expMembers) {
-            distributePlayerExperience(mc, participationExp, partyBonusMod, totalPartyLevel, mc == participationMvp, isWhiteExpGain(mc, personalRatio, sdevRatio), hasPartySharers);
+            distributePlayerExperience(mc, participationExp, partyBonusMod, totalPartyLevel,
+                    mc == participationMvp, isWhiteExpGain(mc, personalRatio, sdevRatio),
+                    hasPartySharers, questCreditAgentId);
             giveFamilyRep(mc.getFamilyEntry());
         }
     }
@@ -608,6 +639,7 @@ public class Monster extends AbstractLoadedLife {
         Map<Character, Long> soloExpDist = new HashMap<>();
 
         Map<Integer, Character> mapPlayers = map.getMapAllPlayers();
+        int questCreditAgentId = highestAgentDamagerId(mapPlayers);
 
         int totalEntries = 0;   // counts "participant parties", players who no longer are available in the map is an "independent party"
         for (Entry<Integer, AtomicLong> e : takenDamage.entrySet()) {
@@ -668,11 +700,13 @@ public class Monster extends AbstractLoadedLife {
             float exp = chrParticipation.getValue() * expPerDmg;
             Character chr = chrParticipation.getKey();
 
-            distributePlayerExperience(chr, exp, 0.0f, chr.getLevel(), true, isWhiteExpGain(chr, personalRatio, sdevRatio), false);
+            distributePlayerExperience(chr, exp, 0.0f, chr.getLevel(), true,
+                    isWhiteExpGain(chr, personalRatio, sdevRatio), false, questCreditAgentId);
         }
 
         for (Map<Character, Long> partyParticipation : partyExpDist.values()) {
-            distributePartyExperience(partyParticipation, expPerDmg, underleveled, personalRatio, sdevRatio);
+            distributePartyExperience(partyParticipation, expPerDmg, underleveled, personalRatio,
+                    sdevRatio, questCreditAgentId);
         }
 
         EventInstanceManager eim = getMap().getEventInstance();
@@ -725,7 +759,8 @@ public class Monster extends AbstractLoadedLife {
         return (int) Math.round(exp);    // operations on float point are not point-precise... thanks IxianMace for noticing -1 EXP gains
     }
 
-    private void giveExpToCharacter(Character attacker, Float personalExp, Float partyExp, boolean white, boolean hasPartySharers) {
+    private void giveExpToCharacter(Character attacker, Float personalExp, Float partyExp, boolean white,
+                                    boolean hasPartySharers, int questCreditAgentId) {
         if (attacker.isAlive()) {
             if (personalExp != null) {
                 personalExp *= getStatusExpMultiplier(attacker, hasPartySharers);
@@ -753,8 +788,27 @@ public class Monster extends AbstractLoadedLife {
 
             attacker.gainExp(_personalExp, _partyExp, true, false, white);
             attacker.increaseEquipExp(_personalExp);
-            attacker.raiseQuestMobCount(getId());
+            if (!AgentPresence.isAgent(attacker) || attacker.getId() == questCreditAgentId) {
+                attacker.raiseQuestMobCount(getId());
+            }
         }
+    }
+
+    /**
+     * Agent party members still receive normal EXP, but only the Agent that contributed the most
+     * exact damage receives quest kill credit. Human-player quest behaviour remains unchanged.
+     */
+    private int highestAgentDamagerId(Map<Integer, Character> mapPlayers) {
+        return AgentQuestKillCreditPolicy.highestDamageAgentId(
+                takenDamage.keySet(),
+                attackerId -> {
+                    Character candidate = mapPlayers.get(attackerId);
+                    return candidate != null && AgentPresence.isAgent(candidate);
+                },
+                attackerId -> {
+                    AtomicLong damage = takenDamage.get(attackerId);
+                    return damage == null ? 0L : damage.longValue();
+                });
     }
 
     public List<MonsterDropEntry> retrieveRelevantDrops() {
@@ -779,7 +833,7 @@ public class Monster extends AbstractLoadedLife {
         distributeExperience(killer != null ? killer.getId() : 0);
 
         final Pair<Character, Boolean> lastController = aggroRemoveController();
-        final List<Integer> toSpawn = this.getRevives();
+        final List<Integer> toSpawn = revivesSuppressed ? List.of() : this.getRevives();
         if (toSpawn != null) {
             final MapleMap reviveMap = map;
             if (toSpawn.contains(MobId.TRANSPARENT_ITEM) && reviveMap.getId() > 925000000 && reviveMap.getId() < 926000000) {
@@ -882,11 +936,13 @@ public class Monster extends AbstractLoadedLife {
             Map<Integer, Character> mapChars = map.getMapPlayers();
             if (!mapChars.isEmpty()) {
                 int mobid = getId();
+                int questCreditAgentId = highestAgentDamagerId(mapChars);
 
                 for (Integer chrid : attackerChrids) {
                     Character chr = mapChars.get(chrid);
 
-                    if (chr != null && chr.isLoggedinWorld()) {
+                    if (chr != null && chr.isLoggedinWorld()
+                            && (!AgentPresence.isAgent(chr) || chr.getId() == questCreditAgentId)) {
                         chr.raiseQuestMobCount(mobid);
                     }
                 }
@@ -1004,6 +1060,134 @@ public class Monster extends AbstractLoadedLife {
         return controller.get();
     }
 
+    public void pinBossController(Character controller) {
+        pinnedBossControllerId = controller == null ? 0 : controller.getId();
+    }
+
+    /** Prevents ordinary client-controller selection while the server owns boss actions. */
+    public void pinServerBossController() {
+        pinnedBossControllerId = SERVER_BOSS_CONTROLLER_PIN;
+    }
+
+    public void clearBossControllerPin() {
+        pinnedBossControllerId = 0;
+    }
+
+    public int getPinnedBossControllerId() {
+        return pinnedBossControllerId;
+    }
+
+    public void suppressRevives() {
+        revivesSuppressed = true;
+    }
+
+    public MobControlAuthority getControlAuthority() {
+        return controlAuthority;
+    }
+
+    /** Optional instance-local Agent pursuit lease; zero retains the server default. */
+    public long getAgentPhysicsAggroTimeoutOverrideMs() {
+        return agentPhysicsAggroTimeoutOverrideMs;
+    }
+
+    public void setAgentPhysicsAggroTimeoutOverrideMs(long timeoutMs) {
+        agentPhysicsAggroTimeoutOverrideMs = Math.max(0L, timeoutMs);
+    }
+
+    public MobMovementSnapshot getLastClientMovement() {
+        return lastClientMovement;
+    }
+
+    public void recordClientMovement(double x, double y, double velocityX, double velocityY,
+                                     int footholdId, int stance, long capturedAtNanos) {
+        lastClientMovement = new MobMovementSnapshot(
+                x, y, velocityX, velocityY, footholdId, stance, capturedAtNanos);
+    }
+
+    /**
+     * Atomically transfers logical control to a headless Agent. Lock order is
+     * monsterLock (caller, when needed), then aggroUpdateLock, then Character's
+     * controlled-monster lock through the public collection methods.
+     */
+    public boolean aggroAcquireAgentPhysics(Character agent) {
+        if (agent == null || !(agent.getClient() instanceof BotClient)) {
+            return false;
+        }
+        aggroUpdateLock.lock();
+        try {
+            if (!isAlive() || map == null || agent.getMap() != map) {
+                return false;
+            }
+            Character previous = getController();
+            if (previous != null && previous != agent) {
+                if (!isFake()) {
+                    previous.sendPacket(PacketCreator.stopControllingMonster(getObjectId()));
+                }
+                previous.stopControllingMonster(this);
+            }
+            if (previous != agent) {
+                setController(agent);
+                agent.controlMonster(this);
+            }
+            setControllerHasAggro(true);
+            setControllerKnowsAboutAggro(false);
+            setControllerHasPuppet(false);
+            controllerAssignmentHoldUntilNanos = 0L;
+            controlAuthority = MobControlAuthority.AGENT_PHYSICS;
+            return true;
+        } finally {
+            aggroUpdateLock.unlock();
+        }
+    }
+
+    /** Releases Agent authority; ordinary client selection resumes from current server state. */
+    public boolean aggroReleaseAgentPhysics(Character expectedAgent, boolean selectRealController) {
+        return aggroReleaseAgentPhysics(expectedAgent, selectRealController, true);
+    }
+
+    /**
+     * Releases Agent authority and optionally assigns a real client. A timed-out Agent aggro
+     * lease uses {@code immediateAggro=false} so the client resumes ordinary wandering.
+     */
+    public boolean aggroReleaseAgentPhysics(Character expectedAgent, boolean selectRealController,
+                                            boolean immediateAggro) {
+        Character agent;
+        aggroUpdateLock.lock();
+        try {
+            if (controlAuthority != MobControlAuthority.AGENT_PHYSICS) {
+                return false;
+            }
+            agent = getController();
+            if (expectedAgent != null && agent != expectedAgent) {
+                return false;
+            }
+            setController(null);
+            setControllerHasAggro(false);
+            setControllerKnowsAboutAggro(false);
+            setControllerHasPuppet(false);
+            controlAuthority = MobControlAuthority.NONE;
+        } finally {
+            aggroUpdateLock.unlock();
+        }
+        if (agent != null) {
+            agent.stopControllingMonster(this);
+        }
+        if (selectRealController && map != null && isAlive()) {
+            Character candidate = null;
+            for (Character chr : map.getCharacters()) {
+                if (!(chr.getClient() instanceof BotClient) && chr.isLoggedinWorld()
+                        && chr.getMap() == map && chr.isAlive()) {
+                    candidate = chr;
+                    break;
+                }
+            }
+            if (candidate != null) {
+                aggroSwitchController(candidate, immediateAggro);
+            }
+        }
+        return true;
+    }
+
     private void setController(Character controller) {
         this.controller = new WeakReference<>(controller);
     }
@@ -1033,11 +1217,25 @@ public class Monster extends AbstractLoadedLife {
     }
 
     public Packet makeBossHPBarPacket() {
+        var aggregate = EasyBalrogEncounterService.hpBarSnapshot(this);
+        if (aggregate.isPresent()) {
+            EasyBalrogEncounterService.HpBarSnapshot hpBar = aggregate.get();
+            return PacketCreator.showBossHP(
+                    hpBar.mobId(), hpBar.currentHp(), hpBar.maxHp(),
+                    hpBar.tagColor(), hpBar.tagBackgroundColor());
+        }
         return PacketCreator.showBossHP(getId(), getHp(), getMaxHp(), getTagColor(), getTagBgColor());
     }
 
     public boolean hasBossHPBar() {
-        return isBoss() && getTagColor() > 0;
+        return EasyBalrogEncounterService.hpBarSnapshot(this).isPresent()
+                || !isFake() && isBoss() && getTagColor() > 0;
+    }
+
+    public int bossHpBarHash() {
+        return EasyBalrogEncounterService.hpBarSnapshot(this)
+                .map(EasyBalrogEncounterService.HpBarSnapshot::identityHash)
+                .orElseGet(this::hashCode);
     }
 
     @Override
@@ -1052,7 +1250,7 @@ public class Monster extends AbstractLoadedLife {
         }
 
         if (hasBossHPBar()) {
-            client.announceBossHpBar(this, this.hashCode(), makeBossHPBarPacket());
+            client.announceBossHpBar(this, bossHpBarHash(), makeBossHPBarPacket());
         }
     }
 
@@ -1419,6 +1617,23 @@ public class Monster extends AbstractLoadedLife {
         }
     }
 
+    public boolean hasActiveRuntimeState() {
+        monsterLock.lock();
+        try {
+            if (monsterItemDrop != null || removeAfterAction != null || !usedSkills.isEmpty() || !usedAttacks.isEmpty()) {
+                return true;
+            }
+        } finally {
+            monsterLock.unlock();
+        }
+        statiLock.lock();
+        try {
+            return !stati.isEmpty();
+        } finally {
+            statiLock.unlock();
+        }
+    }
+
     public void setFake(boolean fake) {
         monsterLock.lock();
         try {
@@ -1608,6 +1823,17 @@ public class Monster extends AbstractLoadedLife {
         return this.stats.getBuffToGive();
     }
 
+    public void buff(double multiplier) {
+        setStartingHp((int) (stats.getHp() * multiplier));
+//        stats.setExp((int) (stats.getExp() * multiplier));
+//
+//        double sqrtMultiplier = Math.sqrt(multiplier);
+//        stats.setPADamage((int) (stats.getPADamage() * sqrtMultiplier));
+//        stats.setMADamage((int) (stats.getMADamage() * sqrtMultiplier));
+//        stats.setPDDamage((int) (stats.getPDDamage() * sqrtMultiplier));
+//        stats.setMDDamage((int) (stats.getMDDamage() * sqrtMultiplier));
+    }
+
     private final class DamageTask implements Runnable {
 
         private final int dealDamage;
@@ -1722,6 +1948,26 @@ public class Monster extends AbstractLoadedLife {
 
     public int getPADamage() {
         return stats.getPADamage();
+    }
+
+    public int getMADamage() {
+        return stats.getMADamage();
+    }
+
+    public int getAccuracy() {
+        return stats.getAccuracy();
+    }
+
+    public int getAvoidability() {
+        return stats.getAvoidability();
+    }
+
+    public int getWdef() {
+        return stats.getPDDamage();
+    }
+
+    public int getMdef() {
+        return stats.getMDDamage();
     }
 
     public Map<MonsterStatus, MonsterStatusEffect> getStati() {
@@ -1840,8 +2086,13 @@ public class Monster extends AbstractLoadedLife {
 
         Character newControllerWithPuppet = null;
 
+        boolean allowHiddenController = getMap().hasAgentCharacter()
+                && !getMap().hasVisibleNonAgentControllerCandidate();
+
         for (Character chr : getMap().getAllPlayers()) {
-            if (!chr.isHidden()) {
+            if ((!chr.isHidden() || allowHiddenController)
+                    && !AgentPresence.isAgent(chr)
+                    && !(chr.getClient() instanceof BotClient)) {
                 int ctrlMonsSize = chr.getNumControlledMonsters();
 
                 if (isCharacterPuppetInVicinity(chr)) {
@@ -1874,23 +2125,97 @@ public class Monster extends AbstractLoadedLife {
      * Removes controllability status from the current controller of this mob.
      */
     public Pair<Character, Boolean> aggroRemoveController() {
+        return aggroRemoveController(false);
+    }
+
+    /**
+     * Atomically removes a missing or BotClient controller while preserving a
+     * real client that may have taken authority concurrently.
+     */
+    public Pair<Character, Boolean> aggroRemoveControllerIfHeadless() {
+        return aggroRemoveController(true);
+    }
+
+    /** Temporarily makes this monster server-driven for a synthetic reaction. */
+    public Pair<Character, Boolean> aggroSuspendControllerForSyntheticReaction(
+            long controllerHoldMs) {
+        aggroUpdateLock.lock();
+        try {
+            Pair<Character, Boolean> removedController = aggroRemoveController(false);
+            holdControllerAssignment(controllerHoldMs);
+            return removedController;
+        } finally {
+            aggroUpdateLock.unlock();
+        }
+    }
+
+    /**
+     * Commits synthetic movement only while no real client owns the monster.
+     */
+    public Pair<Character, Boolean> aggroCommitIfHeadless(
+            long controllerHoldMs, Runnable commit) {
+        aggroUpdateLock.lock();
+        try {
+            Pair<Character, Boolean> removedController = aggroRemoveController(true);
+            if (removedController == null) {
+                return null;
+            }
+            holdControllerAssignment(controllerHoldMs);
+            commit.run();
+            return removedController;
+        } finally {
+            aggroUpdateLock.unlock();
+        }
+    }
+
+    private void holdControllerAssignment(long durationMs) {
+        if (durationMs <= 0) {
+            return;
+        }
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(durationMs);
+        if (controllerAssignmentHoldUntilNanos == 0L
+                || deadline - controllerAssignmentHoldUntilNanos > 0L) {
+            controllerAssignmentHoldUntilNanos = deadline;
+        }
+    }
+
+    public void aggroReleaseControllerAssignmentHold() {
+        aggroUpdateLock.lock();
+        try {
+            controllerAssignmentHoldUntilNanos = 0L;
+        } finally {
+            aggroUpdateLock.unlock();
+        }
+    }
+
+    private Pair<Character, Boolean> aggroRemoveController(
+            boolean preserveRealClientController) {
         Character chrController;
         boolean hadAggro;
 
         aggroUpdateLock.lock();
         try {
             chrController = getActiveController();
+            if (preserveRealClientController && chrController != null
+                    && !(chrController.getClient() instanceof BotClient)) {
+                return null;
+            }
             hadAggro = isControllerHasAggro();
 
             this.setController(null);
             this.setControllerHasAggro(false);
             this.setControllerKnowsAboutAggro(false);
+            this.controlAuthority = MobControlAuthority.NONE;
         } finally {
             aggroUpdateLock.unlock();
         }
 
         if (chrController != null) { // this can/should only happen when a hidden gm attacks the monster
-            if (!this.isFake()) {
+            // SET_FIELD already discards the departing client's old controller table.
+            // Sending STOP_CONTROLLING_MONSTER after SET_FIELD is especially unsafe for
+            // a same-map warp because the destination immediately reuses the same OIDs.
+            // Server-side ownership bookkeeping must still be cleared below.
+            if (!this.isFake() && !chrController.isChangingMaps()) {
                 chrController.sendPacket(PacketCreator.stopControllingMonster(this.getObjectId()));
             }
             chrController.stopControllingMonster(this);
@@ -1906,6 +2231,24 @@ public class Monster extends AbstractLoadedLife {
     public void aggroSwitchController(Character newController, boolean immediateAggro) {
         if (aggroUpdateLock.tryLock()) {
             try {
+                if (newController != null && pinnedBossControllerId != 0
+                        && newController.getId() != pinnedBossControllerId) {
+                    return;
+                }
+                if (controlAuthority == MobControlAuthority.AGENT_PHYSICS
+                        && newController != getController()) {
+                    return;
+                }
+                long now = System.nanoTime();
+                if (controllerAssignmentHoldUntilNanos != 0L
+                        && controllerAssignmentHoldUntilNanos - now > 0L) {
+                    if (newController != null) {
+                        return;
+                    }
+                } else {
+                    controllerAssignmentHoldUntilNanos = 0L;
+                }
+
                 Character prevController = getController();
                 if (prevController == newController) {
                     return;
@@ -1920,6 +2263,7 @@ public class Monster extends AbstractLoadedLife {
                 this.setControllerHasAggro(immediateAggro);
                 this.setControllerKnowsAboutAggro(false);
                 this.setControllerHasPuppet(false);
+                this.controlAuthority = MobControlAuthority.CLIENT;
             } finally {
                 aggroUpdateLock.unlock();
             }
@@ -1957,6 +2301,10 @@ public class Monster extends AbstractLoadedLife {
      * on the map it is from...
      */
     public void aggroUpdateController() {
+        aggroUpdateController(false);
+    }
+
+    public void aggroUpdateController(boolean immediateAggro) {
         Character chrController = this.getActiveController();
         if (chrController != null && chrController.isAlive()) {
             return;
@@ -1967,7 +2315,7 @@ public class Monster extends AbstractLoadedLife {
             return;
         }
 
-        this.aggroSwitchController(newController, false);
+        this.aggroSwitchController(newController, immediateAggro);
     }
 
     /**
@@ -2028,8 +2376,19 @@ public class Monster extends AbstractLoadedLife {
      * fetches for any player on the map to start controlling in place.
      */
     public void aggroRedirectController() {
-        this.aggroRemoveController();   // don't care if new controller not found, at least remove current controller
-        this.aggroUpdateController();
+        aggroUpdateLock.lock();
+        try {
+            // Agent physics has an explicit channel-owned lifecycle. Legacy
+            // headless-controller cleanup must not revoke it between its caller's
+            // authority check and this redirect operation.
+            if (controlAuthority == MobControlAuthority.AGENT_PHYSICS) {
+                return;
+            }
+            this.aggroRemoveController();   // don't care if new controller not found, at least remove current controller
+            this.aggroUpdateController();
+        } finally {
+            aggroUpdateLock.unlock();
+        }
     }
 
     /**
@@ -2037,6 +2396,9 @@ public class Monster extends AbstractLoadedLife {
      * specified player is currently not this mob's controller.
      */
     public Boolean aggroMoveLifeUpdate(Character player) {
+        if (controlAuthority == MobControlAuthority.AGENT_PHYSICS) {
+            return null;
+        }
         Character chrController = getController();
         if (chrController != null && player.getId() == chrController.getId()) {
             boolean aggro = this.isControllerHasAggro();
@@ -2055,6 +2417,9 @@ public class Monster extends AbstractLoadedLife {
      * there is already an active controller for this mob.
      */
     public void aggroAutoAggroUpdate(Character player) {
+        if (controlAuthority == MobControlAuthority.AGENT_PHYSICS) {
+            return;
+        }
         Character chrController = this.getActiveController();
 
         if (chrController == null) {
@@ -2076,6 +2441,18 @@ public class Monster extends AbstractLoadedLife {
         mmac.addAggroDamage(this, attacker.getId(), damage);
 
         Character chrController = this.getController();    // aggro based on DPS rather than first-come-first-served, now live after suggestions thanks to MedicOP, Thora, Vcoc
+        if (controlAuthority == MobControlAuthority.AGENT_PHYSICS) {
+            setControllerHasAggro(true);
+            return;
+        }
+        // A BotClient cannot answer MOVE_LIFE. Do not briefly steal control from a
+        // real client here; PHYSICS mode acquires explicit Agent authority later in
+        // MapleMap.damageMonster, after damage has been accepted. If that acquisition
+        // is blocked during map warm-up, the existing real controller stays stable.
+        if (attacker.getClient() instanceof BotClient) {
+            setControllerHasAggro(true);
+            return;
+        }
         if (chrController != attacker) {
             if (this.getMapAggroCoordinator().isLeadingCharacterAggro(this, attacker)) {
                 this.aggroSwitchController(attacker, true);
@@ -2191,6 +2568,9 @@ public class Monster extends AbstractLoadedLife {
     }
 
     public void dispose() {
+        MobPhysicsService.releaseMonsterInstances(
+                this, MobPhysicsService.ReleaseReason.MONSTER_GONE);
+        ServerMobAutonomyService.releaseMonsterInstances(this);
         if (monsterItemDrop != null) {
             monsterItemDrop.cancel(false);
         }

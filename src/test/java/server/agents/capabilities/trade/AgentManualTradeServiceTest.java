@@ -1,0 +1,134 @@
+package server.agents.capabilities.trade;
+
+import client.Character;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.Trade;
+import server.agents.integration.cosmic.CosmicAgentTradeWindow;
+import server.agents.runtime.AgentRuntimeEntry;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+class AgentManualTradeServiceTest {
+    @Test
+    void beginsManualTradeStateForNewTradeWindow() {
+        Character bot = mock(Character.class);
+        Trade trade = mock(Trade.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+
+        boolean cancelled = AgentManualTradeService.beginOrTickTimeout(
+                entry, bot, CosmicAgentTradeWindow.wrap(trade), 60_000, value -> value);
+
+        assertFalse(cancelled);
+        assertSame(trade, AgentManualTradeStateRuntime.tradeRef(entry));
+        assertEquals(60_000, AgentManualTradeStateRuntime.timeoutMs(entry));
+    }
+
+    @Test
+    void defaultManualTradeTimeoutMatchesLegacyDuration() {
+        Character bot = mock(Character.class);
+        Trade trade = mock(Trade.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+
+        boolean cancelled = AgentManualTradeService.beginOrTickTimeout(
+                entry, bot, CosmicAgentTradeWindow.wrap(trade), value -> value);
+
+        assertFalse(cancelled);
+        assertSame(trade, AgentManualTradeStateRuntime.tradeRef(entry));
+        assertEquals(60_000, AgentManualTradeStateRuntime.timeoutMs(entry));
+    }
+
+    @Test
+    void cancelsAndClearsManualTradeWhenTimeoutExpires() {
+        Character bot = mock(Character.class);
+        when(bot.getId()).thenReturn(88);
+        Trade trade = mock(Trade.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        AgentManualTradeStateRuntime.beginTrade(entry, trade, 100);
+
+        try (MockedStatic<Trade> trades = mockStatic(Trade.class)) {
+            boolean cancelled = AgentManualTradeService.beginOrTickTimeout(
+                    entry, bot, CosmicAgentTradeWindow.wrap(trade), 60_000, value -> 0);
+
+            assertTrue(cancelled);
+            trades.verify(() -> Trade.cancelTrade(bot, Trade.TradeResult.NO_RESPONSE));
+            assertNull(AgentManualTradeStateRuntime.tradeRef(entry));
+            assertEquals(0, AgentManualTradeStateRuntime.timeoutMs(entry));
+        }
+    }
+
+    @Test
+    void sendsManualTradeGreetingOnlyOnceUntilCleared() {
+        Character bot = mock(Character.class);
+        when(bot.getId()).thenReturn(99);
+        Trade trade = mock(Trade.class);
+
+        AgentManualTradeService.clearGreeting(bot);
+        AgentManualTradeService.sendGreetingOnce(bot, CosmicAgentTradeWindow.wrap(trade), () -> "hi");
+        AgentManualTradeService.sendGreetingOnce(bot, CosmicAgentTradeWindow.wrap(trade), () -> "hi again");
+
+        verify(trade, times(1)).chat("hi");
+
+        AgentManualTradeService.clearGreeting(bot);
+        AgentManualTradeService.sendGreetingOnce(bot, CosmicAgentTradeWindow.wrap(trade), () -> "hi after clear");
+
+        verify(trade).chat("hi after clear");
+    }
+
+    @Test
+    void waitsBeforeAcceptingManualTradeInvite() {
+        Character bot = mock(Character.class);
+        Character inviter = mock(Character.class);
+        Trade trade = mock(Trade.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        when(trade.getNumber()).thenReturn((byte) 1);
+
+        AgentTradeWindow result = AgentManualTradeService.acceptInviteWhenReady(
+                entry,
+                bot,
+                inviter,
+                CosmicAgentTradeWindow.wrap(trade),
+                600,
+                value -> 100,
+                tradeOwner -> CosmicAgentTradeWindow.wrap(tradeOwner.getTrade()));
+
+        assertSame(trade, result.identity());
+        assertEquals(100, AgentManualTradeStateRuntime.acceptDelayMs(entry));
+    }
+
+    @Test
+    void acceptsManualTradeInviteAfterDelayExpires() {
+        Character bot = mock(Character.class);
+        Character inviter = mock(Character.class);
+        Trade trade = mock(Trade.class);
+        Trade joinedTrade = mock(Trade.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        when(trade.getNumber()).thenReturn((byte) 1);
+        when(bot.getTrade()).thenReturn(joinedTrade);
+        when(joinedTrade.isFullTrade()).thenReturn(true);
+
+        try (MockedStatic<Trade> trades = mockStatic(Trade.class)) {
+            AgentTradeWindow result = AgentManualTradeService.acceptInviteWhenReady(
+                    entry,
+                    bot,
+                    inviter,
+                    CosmicAgentTradeWindow.wrap(trade),
+                    600,
+                    value -> 0,
+                    tradeOwner -> CosmicAgentTradeWindow.wrap(tradeOwner.getTrade()));
+
+            trades.verify(() -> Trade.visitTrade(bot, inviter));
+            assertSame(joinedTrade, result.identity());
+        }
+    }
+}
+

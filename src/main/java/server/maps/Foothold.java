@@ -31,6 +31,9 @@ public class Foothold implements Comparable<Foothold> {
     private final Point p2;
     private final int id;
     private int next, prev;
+    private boolean forbidFallDown;
+    private int layer = -1;
+    private int zMass = -1;
 
     public Foothold(Point p1, Point p2, int id) {
         this.p1 = p1;
@@ -56,6 +59,13 @@ public class Foothold implements Comparable<Foothold> {
 
     public int getY2() {
         return p2.y;
+    }
+
+    public double slope() {
+        if (isWall()) {
+            return 0.0;
+        }
+        return (double) (p2.y - p1.y) / (double) (p2.x - p1.x);
     }
 
     // XXX may need more precision
@@ -98,5 +108,29 @@ public class Foothold implements Comparable<Foothold> {
 
     public void setPrev(int prev) {
         this.prev = prev;
+    }
+
+    public boolean isForbidFallDown() {
+        return forbidFallDown;
+    }
+
+    public void setForbidFallDown(boolean forbidFallDown) {
+        this.forbidFallDown = forbidFallDown;
+    }
+
+    public int getLayer() {
+        return layer;
+    }
+
+    public void setLayer(int layer) {
+        this.layer = layer;
+    }
+
+    public int getZMass() {
+        return zMass;
+    }
+
+    public void setZMass(int zMass) {
+        this.zMass = zMass;
     }
 }

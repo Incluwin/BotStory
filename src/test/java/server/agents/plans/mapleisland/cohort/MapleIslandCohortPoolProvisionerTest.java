@@ -1,0 +1,183 @@
+package server.agents.plans.mapleisland.cohort;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class MapleIslandCohortPoolProvisionerTest {
+    @Test
+    void expandsOnlyRecordedDedicatedAccountAndUsesAllFifteenSlotsBeforeAddingOne() throws Exception {
+        MemoryStore store = new MemoryStore();
+        MapleIslandCohortPoolRegistry registry = new MapleIslandCohortPoolRegistry(store);
+        MapleIslandCohortPoolSnapshot.Account first = new MapleIslandCohortPoolSnapshot.Account(
+                10, "MIQuest0001", 99, 3, 1_000L);
+        registry.addAccount(first);
+        FakeHooks hooks = new FakeHooks();
+        hooks.accounts.put(10, new FakeAccount("MIQuest0001", 3));
+        MapleIslandCohortPoolProvisioner provisioner =
+                new MapleIslandCohortPoolProvisioner(registry, hooks);
+
+        assertEquals(16, provisioner.ensureLeaseCandidates(
+                16, 99, 0, 1, Set.of(), ignored -> false));
+
+        assertEquals(2, registry.snapshot().accounts().size());
+        assertEquals(16, registry.snapshot().agents().size());
+        assertEquals(15, hooks.accounts.get(10).slots);
+        assertEquals(15, hooks.accounts.get(10).count);
+        assertEquals(16, hooks.templateOrdinals.size());
+        assertEquals(16, registry.snapshot().agents().stream()
+                .map(MapleIslandCohortPoolSnapshot.Agent::characterTemplateOrdinal)
+                .distinct().count());
+        assertTrue(registry.snapshot().accounts().stream()
+                .allMatch(account -> account.characterSlots() == 15));
+        assertEquals(0, provisioner.ensureLeaseCandidates(
+                16, 99, 0, 1, Set.of(), ignored -> false));
+    }
+
+    @Test
+    void neverUsesMoreThanFifteenSlotsEvenIfDatabaseReportsMore() throws Exception {
+        MemoryStore store = new MemoryStore();
+        MapleIslandCohortPoolRegistry registry = new MapleIslandCohortPoolRegistry(store);
+        registry.addAccount(new MapleIslandCohortPoolSnapshot.Account(
+                10, "MIQuest0001", 99, 20, 1_000L));
+        FakeHooks hooks = new FakeHooks();
+        hooks.preserveExistingSlotCount = true;
+        hooks.accounts.put(10, new FakeAccount("MIQuest0001", 20));
+        MapleIslandCohortPoolProvisioner provisioner =
+                new MapleIslandCohortPoolProvisioner(registry, hooks);
+
+        provisioner.ensureLeaseCandidates(16, 99, 0, 1, Set.of(), ignored -> false);
+
+        assertEquals(15, hooks.accounts.get(10).count);
+        assertEquals(15, registry.snapshot().accounts().stream()
+                .filter(account -> account.accountId() == 10)
+                .findFirst().orElseThrow().characterSlots());
+        assertEquals(2, registry.snapshot().accounts().size());
+    }
+
+    @Test
+    void expandsLegacySinglePrefixPoolAndLeasesAVisiblyMixedCohort() throws Exception {
+        MemoryStore store = new MemoryStore();
+        MapleIslandCohortPoolRegistry registry = new MapleIslandCohortPoolRegistry(store);
+        MapleIslandCohortPoolSnapshot.Account account = new MapleIslandCohortPoolSnapshot.Account(
+                10, "MIQuest0001", 99, 15, 1_000L);
+        registry.addAccount(account);
+        FakeHooks hooks = new FakeHooks();
+        FakeAccount fakeAccount = new FakeAccount("MIQuest0001", 15);
+        fakeAccount.count = 10;
+        hooks.accounts.put(10, fakeAccount);
+        for (int index = 0; index < 10; index++) {
+            registry.addAgent(MapleIslandCohortPoolSnapshot.Agent.available(
+                    20 + index, "BlueA%02d".formatted(index), account, 99, 0));
+        }
+        MapleIslandCohortPoolProvisioner provisioner =
+                new MapleIslandCohortPoolProvisioner(registry, hooks);
+
+        assertEquals(8, provisioner.ensureLeaseCandidates(
+                10, 99, 0, 1, Set.of(), ignored -> false));
+        List<MapleIslandCohortPoolSnapshot.Agent> leased = registry.leaseAvailable(
+                10, "mixed", 99, 2_000L, 0, Set.of(), ignored -> false);
+
+        assertEquals(10, leased.size());
+        assertTrue(leased.stream().filter(agent -> agent.name().startsWith("Blue")).count() <= 2);
+        assertTrue(leased.stream().limit(5)
+                .filter(agent -> agent.name().startsWith("Blue")).count() <= 1,
+                () -> "first wave was not name-diverse: "
+                        + leased.stream().limit(5).map(MapleIslandCohortPoolSnapshot.Agent::name).toList());
+        assertTrue(leased.stream().map(agent -> agent.name().substring(0, 1)).distinct().count() >= 6);
+    }
+
+    private static final class FakeHooks implements MapleIslandCohortPoolProvisioner.Hooks {
+        private final Map<Integer, FakeAccount> accounts = new HashMap<>();
+        private int nextAccountId = 11;
+        private int nextCharacterId = 100;
+        private boolean preserveExistingSlotCount;
+        private final Set<Integer> templateOrdinals = new HashSet<>();
+
+        @Override
+        public boolean accountNameExists(String accountName) {
+            return accounts.values().stream().anyMatch(account -> account.name.equalsIgnoreCase(accountName));
+        }
+
+        @Override
+        public MapleIslandCohortPoolProvisioner.CreatedAccount createDedicatedAccount(String accountName) {
+            int id = nextAccountId++;
+            accounts.put(id, new FakeAccount(accountName, 15));
+            return new MapleIslandCohortPoolProvisioner.CreatedAccount(id, accountName, 15);
+        }
+
+        @Override
+        public boolean isDedicatedAgentAccount(int accountId) {
+            return accounts.containsKey(accountId);
+        }
+
+        @Override
+        public MapleIslandCohortPoolProvisioner.AccountCapacity ensureDedicatedAccountCapacity(int accountId) {
+            FakeAccount account = accounts.get(accountId);
+            if (!preserveExistingSlotCount) {
+                account.slots = 15;
+            }
+            return new MapleIslandCohortPoolProvisioner.AccountCapacity(account.slots, account.count);
+        }
+
+        @Override
+        public MapleIslandCohortPoolProvisioner.AccountCapacity accountCapacity(int accountId) {
+            FakeAccount account = accounts.get(accountId);
+            return new MapleIslandCohortPoolProvisioner.AccountCapacity(account.slots, account.count);
+        }
+
+        @Override
+        public boolean characterNameExists(String characterName) {
+            return false;
+        }
+
+        @Override
+        public int createCharacter(int accountId,
+                                   String accountName,
+                                   String characterName,
+                                   int world,
+                                   int channel,
+                                   MapleIslandCohortCharacterTemplate characterTemplate) {
+            FakeAccount account = accounts.get(accountId);
+            if (account.count >= account.slots) {
+                throw new AssertionError("Provisioner overfilled account " + accountName);
+            }
+            assertTrue(templateOrdinals.add(characterTemplate.ordinal()),
+                    "Provisioner repeated character template " + characterTemplate.ordinal());
+            account.count++;
+            return nextCharacterId++;
+        }
+    }
+
+    private static final class FakeAccount {
+        private final String name;
+        private int slots;
+        private int count;
+
+        private FakeAccount(String name, int slots) {
+            this.name = name;
+            this.slots = slots;
+        }
+    }
+
+    private static final class MemoryStore implements MapleIslandCohortPoolStore {
+        private MapleIslandCohortPoolSnapshot snapshot = MapleIslandCohortPoolSnapshot.EMPTY;
+
+        @Override
+        public MapleIslandCohortPoolSnapshot load() {
+            return snapshot;
+        }
+
+        @Override
+        public void save(MapleIslandCohortPoolSnapshot snapshot) {
+            this.snapshot = snapshot;
+        }
+    }
+}

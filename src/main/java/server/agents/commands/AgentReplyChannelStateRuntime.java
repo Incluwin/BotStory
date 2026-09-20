@@ -1,0 +1,27 @@
+package server.agents.commands;
+
+import server.agents.runtime.AgentRuntimeEntry;
+
+/**
+ * Agent-owned adapter for AgentRuntimeEntry-backed reply-channel state.
+ */
+public final class AgentReplyChannelStateRuntime {
+    private AgentReplyChannelStateRuntime() {
+    }
+
+    public static AgentReplyChannel replyChannel(AgentRuntimeEntry entry) {
+        return state(entry).channel();
+    }
+
+    public static void setReplyChannel(AgentRuntimeEntry entry, AgentReplyChannel channel) {
+        state(entry).setChannel(channel);
+    }
+
+    public static void setWhisper(AgentRuntimeEntry entry) {
+        state(entry).setWhisper();
+    }
+
+    private static AgentReplyChannelState state(AgentRuntimeEntry entry) {
+        return entry.replyChannelState();
+    }
+}
