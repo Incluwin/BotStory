@@ -185,9 +185,11 @@ Step types (all deterministic, all fed by existing server events):
 `TALK`, `KILL_MOBS(mobIds,count,mapIds?)`, `COLLECT_ITEM`, `DELIVER(to persona|npc)`,
 `VISIT_MAP`, `TALK_TO(persona)` (cross-persona, unlocks hidden lines),
 `HEAR_RUMOR(rumorId)`, `ESCORT(persona, fromMap, toMap)` (persona follows player as a
-temporary Adventurer with no contract), `PAY(meso)`, `GIVE_ITEM`, `REACH_LEVEL`, `WAIT(hours)`,
-`PARTY_QUEST_CLEAR(kpq|lpq|...)`, `KILL_BOSS`. Each step type maps to one listener in the
-ledger runtime (section 5.3).
+temporary Adventurer with no contract), `HUNT_WITH(persona, mobIds, count)` (kills count only
+while that Persona is active in the party - the quest giver fighting beside you),
+`PAY(meso)`, `GIVE_ITEM`, `REACH_LEVEL`, `WAIT(hours)`, `PARTY_QUEST_CLEAR(kpq|lpq|...)`,
+`KILL_BOSS`. Any kill/collect step also accepts `with: <persona>` as a presence requirement.
+Each step type maps to one listener in the ledger runtime (section 5.3).
 
 ### 4.3 Contract
 
@@ -320,14 +322,19 @@ New `server.living.quest` (FriendServer package, server-side, no WZ dependency):
   TALK_TO / DELIVER via the Resident dialogue layer), rumor performance (HEAR_RUMOR).
   Each event is matched against active steps of that player only (indexed by type), so cost
   is O(active steps of online players).
-- **No self-service.** A Persona never contributes to its own quests, benched or in the
-  party: `KILL_MOBS` steps of Persona X's quests ignore kills made by X; `COLLECT_ITEM` and
-  `DELIVER` steps of X's quests ignore items that arrived from X's haul (the ledger keeps a
-  24 h provenance record of haul transfers per persona and item); `GATHER` and `FARM_ITEM`
-  skip or refuse X's own targets. Contributions from *other* companions count normally: a
-  party kill by Leroy credits Garrick's boar cull, and Leroy can gather Garrick's badge. The
-  quest giver being in the owner's party changes nothing else - it still offers, comments on
-  and grades its quests, it just will not do them for you.
+- **No bench self-service.** A Persona never works its own quests *from the bench*: the
+  offline ledger and background sessions of Persona X credit nothing to X's quests; `GATHER`
+  and `FARM_ITEM` skip or refuse X's own targets; `COLLECT_ITEM` and `DELIVER` steps of X's
+  quests ignore items that arrived from X's haul (the ledger keeps a 24 h provenance record
+  of haul transfers per persona and item). What X does **in the owner's active party** does
+  count - kills it lands beside the player credit its own `KILL_MOBS` step like any party
+  member's - so a Persona can hand out a quest it then helps with. Authors can make that the
+  point: a step with `with: <persona>` (or the `HUNT_WITH` step type) only advances while that
+  Persona is active in the party at the moment of the kill or pickup ("come cull the boars
+  with me, I want to see it done"). Other companions contribute normally either way: Leroy's
+  party kill credits Garrick's boar cull, and Leroy can gather Garrick's badge from the bench.
+  The quest giver being in the owner's party changes nothing else - it still offers, comments
+  on and grades its quests.
 - Rewards through existing APIs (`gainMeso`, `gainExp`, `InventoryManipulator.addById`,
   fame). Custom temporary drops (`dropFrom`) are added as a per-step drop overlay checked in
   the drop path only while the step is active for a player in the map.
@@ -638,7 +645,7 @@ Companions are not only levelling on the bench; the owner can put them to work. 
 | `TRAIN` | fights at the camp for EXP (11.4) | EXP up to the pace target, incidental drops |
 | `FARM_MESO` | hunts the best meso-per-hour mobs for its level near the camp | meso |
 | `FARM_ITEM <item> [n]` | hunts mobs that drop the item (real drop tables) until `n` or told to stop | the item, other drops |
-| `GATHER` | farms whatever the owner's *active Persona quests* need (`COLLECT_ITEM` steps), except quests given by this Persona itself (see "no self-service" in 5.3) | quest items |
+| `GATHER` | farms whatever the owner's *active Persona quests* need (`COLLECT_ITEM` steps), except quests given by this Persona itself (see "no bench self-service" in 5.3) | quest items |
 | `SELL` | walks to a town, sells the haul's junk at NPC prices, banks the meso | meso |
 | `STALL` | sets up a Free Market stall (existing `AgentFreeMarketStallCapability`) and sells the haul at market prices | meso, slowly, more of it |
 | `REST` | does nothing; no upkeep, no gain | - |
