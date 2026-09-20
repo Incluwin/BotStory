@@ -186,7 +186,7 @@ Step types (all deterministic, all fed by existing server events):
 `VISIT_MAP`, `TALK_TO(persona)` (cross-persona, unlocks hidden lines),
 `HEAR_RUMOR(rumorId)`, `ESCORT(persona, fromMap, toMap)` (persona follows player as a
 temporary Adventurer with no contract), `HUNT_WITH(persona, mobIds, count)` (kills count only
-while that Persona is active in the party - the quest giver fighting beside you),
+while that Persona is co-present: in the party and on the player's map),
 `PAY(meso)`, `GIVE_ITEM`, `REACH_LEVEL`, `WAIT(hours)`, `PARTY_QUEST_CLEAR(kpq|lpq|...)`,
 `KILL_BOSS`. Any kill/collect step also accepts `with: <persona>` as a presence requirement.
 Each step type maps to one listener in the ledger runtime (section 5.3).
@@ -322,19 +322,21 @@ New `server.living.quest` (FriendServer package, server-side, no WZ dependency):
   TALK_TO / DELIVER via the Resident dialogue layer), rumor performance (HEAR_RUMOR).
   Each event is matched against active steps of that player only (indexed by type), so cost
   is O(active steps of online players).
-- **No bench self-service.** A Persona never works its own quests *from the bench*: the
-  offline ledger and background sessions of Persona X credit nothing to X's quests; `GATHER`
-  and `FARM_ITEM` skip or refuse X's own targets; `COLLECT_ITEM` and `DELIVER` steps of X's
-  quests ignore items that arrived from X's haul (the ledger keeps a 24 h provenance record
-  of haul transfers per persona and item). What X does **in the owner's active party** does
-  count - kills it lands beside the player credit its own `KILL_MOBS` step like any party
-  member's - so a Persona can hand out a quest it then helps with. Authors can make that the
-  point: a step with `with: <persona>` (or the `HUNT_WITH` step type) only advances while that
-  Persona is active in the party at the moment of the kill or pickup ("come cull the boars
-  with me, I want to see it done"). Other companions contribute normally either way: Leroy's
-  party kill credits Garrick's boar cull, and Leroy can gather Garrick's badge from the bench.
-  The quest giver being in the owner's party changes nothing else - it still offers, comments
-  on and grades its quests.
+- **Own quests need the giver beside you.** A Persona's work credits its *own* quests only
+  when it is **co-present**: in the owner's party *and* on the owner's map at the moment of
+  the kill or pickup (the same condition MapleStory uses for party EXP). Being in the party is
+  not enough, because an active companion can be delegated to farm on another map (`go farm
+  boars at pig beach`) - that is remote work and follows the bench rules below. So: kills X
+  lands beside the player credit X's own `KILL_MOBS` step like any party member's, and a
+  Persona can hand out a quest it then helps with; kills X makes elsewhere, the offline
+  ledger, background sessions, `GATHER` and `FARM_ITEM` on X's own targets, and items that
+  arrived from X's haul (24 h provenance record per persona and item) credit nothing to X's
+  quests. Authors can make co-presence the point: a step with `with: <persona>` (or the
+  `HUNT_WITH` step type) only advances while that Persona is co-present ("come cull the boars
+  with me, I want to see it done"). Other companions contribute normally from anywhere:
+  Leroy's remote farming or bench gathering credits Garrick's boar cull and badge. The quest
+  giver being in the owner's party changes nothing else - it still offers, comments on and
+  grades its quests.
 - Rewards through existing APIs (`gainMeso`, `gainExp`, `InventoryManipulator.addById`,
   fame). Custom temporary drops (`dropFrom`) are added as a per-step drop overlay checked in
   the drop path only while the step is active for a player in the map.
@@ -576,6 +578,14 @@ Slot accounting lives in `AgentRosterService`: `freeSlots = 6 - humans - activeB
 with no free slot is refused with the reason in the companion's voice, unless the owner names
 who to swap.
 
+**Delegated remote work.** An active companion can be sent to work on another map without
+being benched (`go farm boars at pig beach`, `go sell and come back`): it keeps its party slot
+because the owner chose to spend it that way, travels with the same realistic movement as a
+recall, and while it is off the owner's map its work is governed exactly like bench work
+(materialized when players can see it, abstract otherwise, same efficiency factor, same haul,
+same own-quest exclusion in 5.3). MapleStory already gives no party EXP across maps, so this
+costs the owner nothing they would otherwise have had. `come back` / `call` returns it.
+
 ### 11.3 Recall and travel
 
 Realistic by default: a called companion travels from its camp with the existing travel and
@@ -645,7 +655,7 @@ Companions are not only levelling on the bench; the owner can put them to work. 
 | `TRAIN` | fights at the camp for EXP (11.4) | EXP up to the pace target, incidental drops |
 | `FARM_MESO` | hunts the best meso-per-hour mobs for its level near the camp | meso |
 | `FARM_ITEM <item> [n]` | hunts mobs that drop the item (real drop tables) until `n` or told to stop | the item, other drops |
-| `GATHER` | farms whatever the owner's *active Persona quests* need (`COLLECT_ITEM` steps), except quests given by this Persona itself (see "no bench self-service" in 5.3) | quest items |
+| `GATHER` | farms whatever the owner's *active Persona quests* need (`COLLECT_ITEM` steps), except quests given by this Persona itself (own quests need the giver co-present, 5.3) | quest items |
 | `SELL` | walks to a town, sells the haul's junk at NPC prices, banks the meso | meso |
 | `STALL` | sets up a Free Market stall (existing `AgentFreeMarketStallCapability`) and sells the haul at market prices | meso, slowly, more of it |
 | `REST` | does nothing; no upkeep, no gain | - |
