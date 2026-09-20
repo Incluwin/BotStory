@@ -118,12 +118,14 @@ public class SkillFactory {
         Skill ret = new Skill(id);
         boolean isBuff = false;
         int skillType = DataTool.getInt("skillType", data, -1);
+        ret.setSkillType(skillType);
         String elem = DataTool.getString("elemAttr", data, null);
         if (elem != null) {
             ret.setElement(Element.getFromChar(elem.charAt(0)));
         } else {
             ret.setElement(Element.NEUTRAL);
         }
+        boolean hasExplicitAction = loadExplicitSkillActions(ret, data);
         Data effect = data.getChildByPath("effect");
         if (skillType != -1) {
             if (skillType == 2) {
@@ -146,6 +148,7 @@ public class SkillFactory {
             } else {
                 action = true;
             }
+            action |= hasExplicitAction;
             ret.setAction(action);
             Data hit = data.getChildByPath("hit");
             Data ball = data.getChildByPath("ball");
@@ -378,6 +381,9 @@ public class SkillFactory {
             lvlEffect.setLevel(lvlIdx++);
             ret.addLevelEffect(lvlEffect);
         }
+        if (hasExplicitAction && !ret.getAction()) {
+            ret.setAction(true);
+        }
         ret.setAnimationTime(0);
         if (effect != null) {
             for (Data effectEntry : effect) {
@@ -385,6 +391,46 @@ public class SkillFactory {
             }
         }
         return ret;
+    }
+
+    private static boolean loadExplicitSkillActions(Skill skill, Data data) {
+        boolean hasExplicitAction = false;
+        Data actionData = data.getChildByPath("action");
+        if (actionData != null) {
+            String action0 = DataTool.getString("0", actionData, null);
+            String action1 = DataTool.getString("1", actionData, null);
+            if (action0 != null && !action0.isBlank()) {
+                skill.setAction0(action0);
+                hasExplicitAction = true;
+            }
+            if (action1 != null && !action1.isBlank()) {
+                skill.setAction1(action1);
+                hasExplicitAction = true;
+            }
+            if (action0 != null && !action0.isBlank()) {
+                return true;
+            }
+        }
+
+        Data levelData = data.getChildByPath("level");
+        if (levelData == null) {
+            return hasExplicitAction;
+        }
+
+        for (Data level : levelData) {
+            String action = DataTool.getString("action", level, null);
+            if (action == null || action.isBlank()) {
+                continue;
+            }
+
+            try {
+                skill.addLevelAction(Integer.parseInt(level.getName()), action);
+                hasExplicitAction = true;
+            } catch (NumberFormatException ignored) {
+                // Ignore unexpected non-numeric level entries.
+            }
+        }
+        return hasExplicitAction;
     }
 
     public static String getSkillName(int skillid) {

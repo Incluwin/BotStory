@@ -1,0 +1,107 @@
+# NPC Catalog Exporter
+
+This toolkit prepares offline NPC catalog data from the extracted Cosmic assets.
+It does not modify or wire into runtime code.
+
+## Run
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\npc-catalog\Export-NpcCatalog.ps1
+```
+
+The full export parses map footholds and can take several minutes.
+
+When map/NPC placement WZ data is unchanged and only joined metadata or output
+schemas changed, reuse the last validated approach-point file to avoid a second
+full foothold pass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\npc-catalog\Export-NpcCatalog.ps1 -ReuseExistingApproach
+```
+
+The verifier still checks placement and interaction-spot coverage after reuse.
+
+Machine-readable compact export summary:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\npc-catalog\Export-NpcCatalog.ps1 -SummaryOnly -Json
+```
+
+The exporter JSON includes `summaryOnly`, `rowsOmitted`, `outputFileCount`,
+`returnedOutputFileCount`, compact NPC `counts`, and compact `reviewCounts`
+for missing names, missing approach candidates, no-placement quest/shop NPCs,
+do-not-auto-use NPCs, high-placement NPCs, and inferred interaction types.
+Summary mode omits detailed output file rows while still writing the same generated NPC catalog artifacts.
+
+## Verify
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\npc-catalog\Test-NpcCatalog.ps1
+powershell -ExecutionPolicy Bypass -File tools\npc-catalog\Test-NpcCatalog.ps1 -SummaryOnly -Json
+```
+
+The verifier checks generated NPC files, JSON validity, row shapes, NPC
+cross-references, generated approach candidates, dialogue timing rows, fast
+indexes, review gates, and Maple Island route NPC placement coverage.
+Compact JSON sets `summaryOnly`, `rowsOmitted`, `checkCount`, `passCount`,
+`warningIds`, `failureIds`, and `returnedCheckCount`, preserves catalog
+`counts`, and omits detailed check rows.
+
+## Outputs
+
+Generated files are written to `tmp/npc-catalog/`:
+
+- `generated_npc_catalog.json`
+- `generated_npc_placements.json`
+- `generated_npc_approach_points.json`
+- `generated_quest_dialogue_timing.json`
+- `generated_npc_action_catalog.json`
+- `generated_npc_dialogue_options.json`
+- `generated_npc_services.json`
+- `generated_npc_reward_choices.json`
+- `generated_npc_shop_inventory.json`
+- `generated_npc_interaction_spot_catalog.json`
+- `generated_quest_npc_interaction_catalog.json`
+- `generated_npc_fast_indexes.json`
+- `generated_map_npc_summary.json`
+- `NPC_CATALOG_SUMMARY.md`
+- `NPC_CATALOG_VALIDATION.md`
+
+## Sources
+
+- `wz/Map.wz/Map`
+- `wz/String.wz/Npc.img.xml`
+- `wz/String.wz/Map.img.xml`
+- `wz/Quest.wz/Check.img.xml`
+- `wz/Quest.wz/Say.img.xml`
+- `wz/Quest.wz/Act.img.xml`
+- `scripts/npc`
+- `src/main/resources/db/data/101-shops-data.sql`
+- `src/main/resources/db/data/102-shopitems-data.sql`
+
+## Notes
+
+Approach points are generated from a default box and raw foothold samples. They
+are preparation data, not final runtime truth. Future Agent integration should
+still validate live NPC presence, interaction range, and navigation reachability.
+
+Interaction types, confidence, and do-not-auto-use flags are generated review
+hints. They should gate future automation until a runtime validator and manual
+override path exist.
+
+`generated_npc_interaction_spot_catalog.json` is the placement-centric joined
+view: every known NPC placement carries its interaction labels, shop/service
+links, quest IDs, interaction box, and ranked foothold candidates. NPCs known
+only through scripts, shops, or quests remain present as explicit
+`missing-placement` rows.
+
+`generated_quest_npc_interaction_catalog.json` is the quest-centric joined
+view: every Quest.wz check row resolves its start and completion NPC to the
+available placements and candidate-count summary. Non-NPC-driven phases and
+missing WZ placements are represented as statuses, never silently omitted.
+
+The expanded target also needs service classification, dialogue-option
+classification, and reward-choice metadata. Quest requirements and rewards are
+canonical in the broader game catalog, while this NPC catalog emits compact
+NPC-facing quest action rows and fast reverse indexes for runtime lookup. Agent
+tick paths should query prebuilt indexes instead of scanning raw catalog arrays.

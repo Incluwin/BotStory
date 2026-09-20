@@ -1,0 +1,139 @@
+package server.agents.runtime;
+
+import server.agents.capabilities.recovery.AgentLeaderSafetyService;
+import server.agents.plans.AgentScriptTaskQueueService;
+import server.agents.capabilities.movement.AgentFormationService;
+import server.agents.capabilities.supplies.AgentReturnScrollService;
+
+import server.agents.capabilities.movement.AgentMovementStateResetService;
+
+import server.agents.capabilities.movement.AgentMovementBroadcastService;
+import server.agents.capabilities.movement.AgentGroundingService;
+import server.agents.capabilities.movement.AgentMovementPoseService;
+
+import client.Character;
+import server.agents.capabilities.shop.AgentShopService;
+import server.agents.capabilities.dialogue.AgentChatStatusOrchestrator;
+import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.integration.AgentRelationshipRuntime;
+import server.maps.MapleMap;
+
+import java.awt.Point;
+import java.util.List;
+
+/**
+ * Coordinates inactive-leader recovery across plans, shop, mode, movement,
+ * formation, map transition, and runtime registry boundaries.
+ */
+public final class AgentLeaderSafetyCoordinator {
+    private static final int PLATFORM_EDGE_INSET_PX = config.AgentTuning.intValue("server.agents.runtime.AgentLeaderSafetyCoordinator.PLATFORM_EDGE_INSET_PX");
+
+    private AgentLeaderSafetyCoordinator() {
+    }
+
+    public static boolean handleInactiveLeaderTick(AgentRuntimeEntry entry,
+                                                   Character agent,
+                                                   Character leader,
+                                                   long nowMs,
+                                                   int leaderCharId) {
+        return handleInactiveLeaderTick(
+                entry,
+                agent,
+                leader,
+                nowMs,
+                leaderCharId,
+                AgentRuntimeConfig.cfg.OWNER_INACTIVE_TOWN_RETURN_MS);
+    }
+
+    public static boolean handleInactiveLeaderTick(AgentRuntimeEntry entry,
+                                                   Character agent,
+                                                   Character leader,
+                                                   long nowMs,
+                                                   int leaderCharId,
+                                                   long inactiveTownReturnMs) {
+        if (entry == null || agent == null
+                || (AgentRelationshipRuntime.followTarget(entry) == null && agent.getParty() == null)) {
+            return false;
+        }
+        return AgentLeaderSafetyService.handleInactiveLeaderTick(
+                entry,
+                leader,
+                nowMs,
+                new AgentLeaderSafetyService.InactiveLeaderTickHooks(
+                        activeEntry -> AgentLeaderSafetyService.handleActiveLeaderReturn(
+                                activeEntry,
+                                () -> AgentMoveTargetStateRuntime.clearMoveTarget(activeEntry),
+                                () -> AgentLeaderSafetyService.townClusterAnchorsByLeaderId().remove(leaderCharId),
+                                () -> AgentChatStatusOrchestrator.announceOwnerReturnedFromOffline(activeEntry)),
+                        AgentLeaderSafetyCoordinator::shouldTownWarpForInactiveEntry,
+                        (inactiveEntry, town) -> enterInactiveSafeMode(inactiveEntry, agent, leaderCharId, town),
+                        inactiveTownReturnMs));
+    }
+
+    public static boolean shouldTownWarpForInactiveEntry(AgentRuntimeEntry entry) {
+        MapleMap currentMap = AgentRuntimeIdentityRuntime.botMap(entry);
+        return AgentLeaderSafetyService.shouldTownWarpForInactiveLeader(currentMap);
+    }
+
+    private static boolean enterInactiveSafeMode(AgentRuntimeEntry entry, Character agent, int leaderCharId, boolean town) {
+        return AgentLeaderSafetyService.enterInactiveSafeMode(
+                () -> prepareInactiveIdle(entry),
+                town,
+                () -> scrollAgentToTown(entry, agent, leaderCharId),
+                () -> AgentLeaderSafetyService.idleInactiveAgentInPlace(
+                        entry,
+                        () -> AgentMovementPoseService.idleOnGround(entry, agent),
+                        () -> AgentMovementBroadcastService.broadcastMovement(entry)));
+    }
+
+    private static void prepareInactiveIdle(AgentRuntimeEntry entry) {
+        AgentLeaderSafetyService.prepareInactiveIdle(
+                entry,
+                () -> AgentScriptTaskQueueService.clearTasks(entry),
+                () -> AgentShopService.cancelShopVisit(entry),
+                () -> AgentModeService.clearMode(entry));
+    }
+
+    private static boolean scrollAgentToTown(AgentRuntimeEntry entry, Character agent, int leaderCharId) {
+        return AgentLeaderSafetyService.scrollInactiveAgentToTown(
+                entry,
+                new AgentLeaderSafetyService.TownScrollHooks(
+                        agent::getMap,
+                        () -> AgentLeaderSafetyService.markInactiveTownReturnHandled(entry),
+                        () -> AgentMovementPoseService.idleOnGround(entry, agent),
+                        () -> AgentReturnScrollService.tryUseNearestTownReturnScroll(agent),
+                        agent::changeMap,
+                        () -> AgentMapTransitionRuntime.groundAfterMapChange(entry, agent),
+                        agent::getPosition,
+                        post -> AgentLeaderSafetyService.townClusterAnchorsByLeaderId()
+                                .putIfAbsent(leaderCharId, post),
+                        (returnMap, anchor) -> resolveTownClusterTarget(entry, leaderCharId, returnMap, anchor),
+                        () -> AgentMovementStateResetService.resetEntryState(entry),
+                        target -> AgentModeService.startMoveTo(entry, target, true)));
+    }
+
+    private static Point resolveTownClusterTarget(AgentRuntimeEntry entry, int leaderCharId, MapleMap map, Point anchor) {
+        List<AgentRuntimeEntry> entries = AgentRuntimeRegistry.agentEntriesForLeader(leaderCharId);
+        AgentFormationService.FormationState formation =
+                AgentFormationService.stateForLeader(
+                        AgentFormationService.formationsByLeaderId(),
+                        leaderCharId,
+                        defaultFormationState());
+        return AgentLeaderSafetyService.resolveTownClusterTarget(
+                entry,
+                map,
+                anchor,
+                entries,
+                formation,
+                PLATFORM_EDGE_INSET_PX,
+                AgentGroundingService::findGroundPoint);
+    }
+
+    private static AgentFormationService.FormationState defaultFormationState() {
+        return new AgentFormationService.FormationState(
+                AgentFormationService.FormationType.STAGGER,
+                AgentRuntimeConfig.cfg.FOLLOW_STAGGER,
+                0);
+    }
+}

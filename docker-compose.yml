@@ -1,7 +1,7 @@
-version: '3'
 services:
   maplestory:
     build: .
+    restart: unless-stopped
     depends_on:
       - db
     ports:
@@ -17,6 +17,7 @@ services:
       - ./config.yaml:/opt/server/config.yaml
       - ./scripts:/opt/server/scripts
       - ./wz:/opt/server/wz
+      - ./logs:/opt/server/logs
     environment:
       DB_HOST: "db" ## Remember if this is present it will OVERRIDE the host in the config.yaml, if you put here anything other than db, you'll need to change the config.yaml jdbc string to port 3307, and not port 3306
       DB_USER: "${DB_USER:-root}"
@@ -28,6 +29,18 @@ services:
       MYSQL_DATABASE: "cosmic"
       MYSQL_ROOT_PASSWORD: "${DB_PASS:?DB_PASS is required - copy .env.example to .env and set a value}"
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
       - ./database/docker-db-data:/var/lib/mysql
+
+  economy-db:
+    image: postgres:16.4
+    environment:
+      POSTGRES_DB: "${ECONOMY_DB_NAME:-cosmic_economy}"
+      POSTGRES_USER: "${ECONOMY_DB_USER:-economy}"
+      POSTGRES_PASSWORD: "${ECONOMY_DB_PASSWORD:?Set ECONOMY_DB_PASSWORD in .env}"
+    ports:
+      - "127.0.0.1:${ECONOMY_DB_PORT:-5433}:5432"
+    volumes:
+      - ./economy-database/docker-db-data:/var/lib/postgresql/data
+      - ./economy-database/migrations:/docker-entrypoint-initdb.d:ro

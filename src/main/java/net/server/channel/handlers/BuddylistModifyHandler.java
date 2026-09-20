@@ -40,12 +40,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import static client.BuddyList.BuddyOperation.ADDED;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class BuddylistModifyHandler extends AbstractPacketHandler {
-    private static final Logger log = LoggerFactory.getLogger(BuddylistModifyHandler.class);
-
     private static class CharacterIdNameBuddyCapacity extends CharacterNameAndId {
         private final int buddyCapacity;
 
@@ -166,7 +162,7 @@ public class BuddylistModifyHandler extends AbstractPacketHandler {
                         c.sendPacket(PacketCreator.serverNotice(1, "A character called \"" + addName + "\" does not exist"));
                     }
                 } catch (SQLException e) {
-                    log.error("unhandled exception", e);
+                    monitoring.RuntimeFailureLogger.log(e);
                 }
             } else {
                 ble.changeGroup(group);
@@ -199,7 +195,7 @@ public class BuddylistModifyHandler extends AbstractPacketHandler {
                         notifyRemoteChannel(c, channel, otherCid, ADDED);
                     }
                 } catch (SQLException e) {
-                    log.error("unhandled exception", e);
+                    monitoring.RuntimeFailureLogger.log(e);
                 }
             }
             nextPendingRequest(c);

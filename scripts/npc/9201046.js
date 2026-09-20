@@ -65,13 +65,13 @@ function action(mode, type, selection) {
 
                     cm.sendNext("Bravo! You are the first to claim the prize for fetching 35 #t4031597#. Take this cape as merit for your feat.");
                     cm.gainItem(4031597, -35);
-                    cm.gainExp(4000 * cm.getPlayer().getExpRate());
+                    cm.gainExp(4000);
                 } else if (eim.getIntProperty("marriedGroup") == 0) {
                     cm.sendNext("Check if you have a slot available before talking about receiving prizes!");
                 } else {
                     cm.sendNext("35 #t4031597#. Nicely done, too bad someone took the prize first. Hurry up to get the last moments of the bonus stage!");
                     cm.gainItem(4031597, -35);
-                    cm.gainExp(4000 * cm.getPlayer().getExpRate());
+                    cm.gainExp(4000);
                 }
             } else {
                 cm.sendNext("To claim a prize here, get to me 35 #t4031597# from the mobs spawned from the boxes. Only the #rfirst player can claim the big prize#k, although others can still claim an EXP boost from this feat. Alternatively, one can choose to #bskip this bonus stage#k and go for the usual one by passing #bthrough the portals#k.");

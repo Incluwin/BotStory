@@ -53,7 +53,7 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
     @Override
     public final void handlePacket(InPacket p, Client c) {
         Character chr = c.getPlayer();
-        
+
         /*long timeElapsed = currentServerTime() - chr.getAutobanManager().getLastSpam(8);
         if(timeElapsed < 300) {
                 AutobanFactory.FAST_ATTACK.alert(chr, "Time: " + timeElapsed);
@@ -78,6 +78,16 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
             c.sendPacket(PacketCreator.getEnergy("energy", chr.getDojoEnergy()));
         }
 
+        applyCloseRangeEffects(attack, chr, c);
+    }
+
+    /**
+     * Applies close-range attack effects: animation broadcast, combo orbs, skill
+     * cooldowns, and damage pipeline. For bots, pass {@link client.BotClient} —
+     * its {@code sendPacket} is a no-op so UI feedback is silently skipped while
+     * all game-state changes (orb consume, aggro, damage, drops) still apply.
+     */
+    public static boolean applyCloseRangeEffects(AttackInfo attack, Character chr, Client c) {
         chr.getMap().broadcastMessage(chr, PacketCreator.closeRangeAttack(chr, attack.skill, attack.skilllevel,
                 attack.stance, attack.numAttackedAndDamage, attack.targets, attack.speed, attack.direction,
                 attack.display), false, true);
@@ -86,8 +96,8 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
         if (GameConstants.isFinisherSkill(attack.skill)) {
             if (comboBuff != null) {
                 numFinisherOrbs = comboBuff - 1;
+                chr.handleOrbconsume();
             }
-            chr.handleOrbconsume();
         } else if (attack.numAttacked > 0) {
             if (attack.skill != 1111008 && comboBuff != null) {
                 int orbcount = chr.getBuffedValue(BuffStat.COMBO);
@@ -163,11 +173,11 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
             attackCount = attack.getAttackEffect(chr, null).getAttackCount();
         }
         if (numFinisherOrbs == 0 && GameConstants.isFinisherSkill(attack.skill)) {
-            return;
+            return false;
         }
         if (attack.skill % 10000000 == 1009) { // bamboo
             if (chr.getDojoEnergy() < 10000) { // PE hacking or maybe just lagging
-                return;
+                return false;
             }
 
             chr.setDojoEnergy(0);
@@ -178,7 +188,7 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
             StatEffect effect_ = skill.getEffect(chr.getSkillLevel(skill));
             if (effect_.getCooldown() > 0) {
                 if (chr.skillIsCooling(attack.skill)) {
-                    return;
+                    return false;
                 } else {
                     c.sendPacket(PacketCreator.skillCooldown(attack.skill, effect_.getCooldown()));
                     chr.addCooldown(attack.skill, currentServerTime(), SECONDS.toMillis(effect_.getCooldown()));
@@ -193,6 +203,6 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
             chr.cancelBuffStats(BuffStat.WIND_WALK);
         }
 
-        applyAttack(attack, chr, attackCount);
+        return applyAttack(attack, chr, attackCount);
     }
 }

@@ -36,7 +36,9 @@ var maxMapId = 103000805;
 
 var eventTime = 30;     // 30 minutes
 
-const maxLobbies = 1;
+const AgentKpqLobbyPolicy = Java.type('server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy');
+const AgentKpqSessionRegistry = Java.type('server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry');
+const maxLobbies = AgentKpqLobbyPolicy.maxLobbies();
 
 function init() {
     setEventRequirements();
@@ -139,7 +141,9 @@ function scheduledTimeout(eim) {
     end(eim);
 }
 
-function playerUnregistered(eim, player) {}
+function playerUnregistered(eim, player) {
+    AgentKpqSessionRegistry.forfeitUnclaimedReward(player);
+}
 
 function playerExit(eim, player) {
     eim.unregisterPlayer(player);

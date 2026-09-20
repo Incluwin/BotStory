@@ -59,15 +59,7 @@ public final class ItemMoveHandler extends AbstractPacketHandler {
             return;
         }
 
-        if (src < 0 && action > 0) {
-            InventoryManipulator.unequip(c, src, action);
-        } else if (action < 0) {
-            InventoryManipulator.equip(c, src, action);
-        } else if (action == 0) {
-            InventoryManipulator.drop(c, type, src, quantity);
-        } else {
-            InventoryManipulator.move(c, type, src, action);
-        }
+        InventoryManipulator.handleItemMove(c, type, src, action, quantity);
 
         c.getPlayer().getAutobanManager().spam(6);
     }

@@ -1,0 +1,255 @@
+MapleStory Formula Compilation
+
+Technolink posted this in SW awhile back, but it didn’t quite catch on… (Source from SouthPerry Forum)
+Order of Operations
+
+For the uninitiated: integer simply means “whole number”. The order in which damage is calculated is as follows:
+	
+1.) Calculate min and max damage from the appropriate damage formula (see Weapon/Special Damage Formulas).
+2.) Multiply by any applicable skill modifiers (see Modifiers), including elemental bonuses.
+3.) Calculate defense (see Defense Reduction).
+4.) Select a random number from the damage range (not necessarily integer). Call this X, set it aside for a couple of steps.
+5.) Find the appropriate damage multiplier (typically expressed as a percentage in the skill description, which should be converted to decimal). Default attack and spell-based skills count as 100%, or 1.
+6.) Add any applicable critical bonuses (typically expressed as a percentage in the critical skill description, which should be converted to decimal). Sharp Eyes on physical attacks adds an additional 100% or 1; when combined with Stun Mastery, a further 100% or 1 (totalling to Stun Mastery + Sharp Eyes + 200%; yes, it's true). Also, add Corsairs' Elemental Boost if applicable (max level adds 2).
+7.) Take that value and multiply it with X, the number selected in Step 4.
+8.) Check if the damage is within the range of [1, 99999] and if not, restrict them to 1 or 99999 respectively.
+9.) Multiply by any After-Modifiers (see Modifiers). Most of these apply to skills where each successive hit deals more/less damage than the last.
+10.) Take the integer part of the result.
+Weapon Damage Formulas
+
+(credit to HS.net, though it’s probably general knowledge by now)
+	
+General Formula
+MAX = (Primary Stat + Secondary Stat) * Weapon Attack / 100
+MIN = (Primary Stat * 0.9 * Skill Mastery + Secondary Stat) * Weapon Attack / 100
+ 
+Stats and Multipliers:
+ 
+One Handed Sword
+Primary: STR * 4.0
+Secondary: DEX
+ 
+One Handed Axe/BW/Wand/Staff (Swinging)
+Primary: STR * 4.4
+Secondary: DEX
+ 
+One Handed Axe/BW/Wand/Staff (Stabbing)
+Primary: STR * 3.2
+Secondary: DEX
+ 
+Two Handed Sword
+Primary: STR * 4.6
+Secondary: DEX
+ 
+Two Handed Axe/BW (Swinging)
+Primary: STR * 4.8
+Secondary: DEX
+ 
+Two Handed Axe/BW (Stabbing)
+Primary: STR * 3.4
+Secondary: DEX
+ 
+Spear (Swinging)
+Primary: STR * 3.0
+Secondary: DEX
+ 
+Spear (Stabbing)
+Primary: STR * 5.0
+Secondary: DEX
+ 
+Polearm (Swinging)
+Primary: STR * 5.0
+Secondary: DEX
+ 
+Polearm (Stabbing)
+Primary: STR * 3.0
+Secondary: DEX
+ 
+Dagger (Non-Thieves)
+Primary: STR * 4.0
+Secondary: DEX
+ 
+Dagger/Throwing Stars (Thieves)
+Primary: LUK * 3.6
+Secondary: STR + DEX
+ 
+Bow
+Primary: DEX * 3.4
+Secondary: STR
+ 
+Crossbow
+Primary: DEX * 3.6
+Secondary: STR
+ 
+Knuckle
+Primary: STR * 4.8
+Secondary: DEX
+ 
+Gun
+Primary: DEX * 3.6
+Secondary: STR
+Special Damage Formulas
+
+Note: Formulas for skills with a damage percentage list the skill’s base damage,
+i.e. before the damage percentage is applied.
+	
+Spell Damage:
+MAX = ((Magic²/1000 + Magic)/30 + INT/200) * Spell Attack
+MIN = ((Magic²/1000 + Magic * Mastery * 0.9)/30 + INT/200) * Spell Attack
+ 
+Lucky Seven/Triple Throw (credit to HS.net / LazyBui for recent verification):
+MAX = (LUK * 5.0) * Weapon Attack / 100
+MIN = (LUK * 2.5) * Weapon Attack / 100
+ 
+Venom (damage per second, credit to Joe Tang):
+MAX = (18.5 * [STR + LUK] + DEX * 2) / 100 * Basic Attack
+MIN = (8.0 * [STR + LUK] + DEX * 2) / 100 * Basic Attack
+ 
+Ninja Ambush (credit to Fiel):
+Damage per second tick = 2 * [STR + LUK] * Skill Damage Percentage
+ 
+Shadow Web (credit to LazyBui):
+Damage per 3-sec tick = Monster HP / (50 - Skill Level)
+ 
+Shadow Meso:
+Damage = 10 * Number of mesos thrown (in skill description)
+Normal critical does not apply, instead it has its own built-in critical listed in skill description
+ 
+Assaulter ignores defense if at or above the monster’s level
+ 
+Dragon Roar (credit to Stereo):
+MAX = (STR * 4.0 + DEX) * Weapon Attack / 100
+MIN = (STR * 4.0 * Skill Mastery * 0.9 + DEX) * Weapon Attack / 100
+ 
+Power Knock Back (both weapons, credit to AGF/Fiel):
+MAX = (DEX * 3.4 + STR) * Weapon Attack / 150
+MIN = (DEX * 3.4 * Mastery * 0.9 + STR) * Weapon Attack / 150
+Mastery is 0.1 at all levels
+ 
+Claw (punching):
+MAX = (LUK * 1.0 + STR + DEX) * Weapon Attack / 150
+MIN = (LUK * 0.1 + STR + DEX) * Weapon Attack / 150
+ 
+Blank Shot:
+Speculated to be calculated without bullet attack or Gun Mastery
+ 
+Bare Hands:
+MAX = (STR * J + DEX) * Weapon Attack / 100
+MIN = (STR * J * 0.1 * 0.9 + DEX) * Weapon Attack / 100
+ATT equals floor((2*level+31)/3) and is capped at 31.
+J equals 3.0 for Pirates and 4.2 for all 2nd+ job Pirates.
+ 
+Flamethrower (credit to blitzkrieg):
+Damage per second tick: Damage of initial hit * (5% + Amp Bullet Damage %)
+ 
+Heal Damage (credit to Russt//Devil's Sunrise for Target Multiplier function):
+MAX = (INT * 1.2 + LUK) * Magic / 1000 * Target Multiplier
+MIN = (INT * 0.3 + LUK) * Magic / 1000 * Target Multiplier
+The % listed in the skill description (300% at max) acts as the skill percent (see Order of Operations above).
+ 
+Heal Recovery
+MAX = something * Magic * Heal Level * Target Multiplier
+MIN = something * Magic * Heal Level * Target Multiplier
+ 
+old formula (credit to Nekonecat):
+MAX = (1.132682429*10^-7*luk^2 + 3.368846366*10^-6*luk + 1.97124794*10^-3) * magic * int * healSkillLevel * multiplier
+MIN = MAX*0.8
+ 
+Heal Target Multiplier: 1.5 + 5/(number of targets including yourself)
+For reference-
+1 - 6.5
+2 - 4.0
+3 - 3.166
+4 - 2.75
+5 - 2.5
+6 - 2.333
+ 
+Poison Brace/Poison Mist/Fire Demon/Ice Demon:
+Damage per second tick = Monster HP / (70 - Skill Level)
+ 
+Phoenix/Frostprey/Octopus/Gaviota (credit to Sybaris/KaidaTan):
+MAX = (DEX * 2.5 + STR) * Attack Rate / 100
+MIN = (DEX * 2.5 * 0.7 + STR) * Attack Rate / 100
+Ignores defense
+Defense Reduction
+	
+Weapon Defense - credit to AGF/Stereo
+MAX damage = (MAX before defense) * (1 - 0.01*D) - WDEF*.5
+MIN damage = (MIN before defense) * (1 - 0.01*D) - WDEF*.6
+where D is (monster level - player level) if (monster level) > (player level), and 0 otherwise.
+ 
+Magic Defense - credit to Russt/Paracelsus
+MAX damage = (MAX before defense) - MDEF*.5 * (1 + 0.01*D)
+MIN damage = (MIN before defense) - MDEF*.6 * (1 + 0.01*D)
+Modifiers
+	
+Skill Modifiers
+ 
+Combo Attack (credit to RFSurg):
+Combo Multiplier, 1-5 orbs = [Advanced] Combo Attack % + floor((orbs - 1) * (Combo level / 6)%)
+Combo Multiplier, 6-10 orbs = [Advanced] Combo Attack % + 20% + (orbs - 5) * 4%
+Finishers = Skill Description % * Combo Multiplier * Orb multiplier
+The orb multipliers are:
+1 orb = 100%
+2 orbs = 120%
+3 orbs = 154%
+4 orbs = 200%
+5 - 10 orbs = 250%
+ 
+Fire/Ice/Lightning Charge element:
+Advantage = Base damage * (105% + Charge level * 1.5%)
+Disadvantage = Base damage * (95% - Charge level * 1.5%)
+ 
+Holy Charge element:
+Advantage = Base damage * (120% + Charge level * 1.5%)
+Disadvantage = Base damage *(80% - Charge level * 1.5%)
+ 
+Inferno/Blizzard element::
+Advantage = Base damage * (110% + Skill level * 0.5%)
+Disadvantage = Base damage * (90% - Skill level * 0.5%)
+ 
+Arrow Bomb:
+Impact Hit = 50% damage * Critical Multiplier
+Splash Hits = Skill damage * Critical Multiplier
+(Arrow Bomb's critical replaces the standard critical bonus, which is normally inserted into the skill damage %, as shown in Order of Operations above. It still uses the same value for critical, however.)
+ 
+Charge/tap damages for Big Bang/Pierce/Screw Punch:
+Needing this. We think it's somewhere between 10-15% with no charge
+ 
+After-Modifiers
+ 
+'Ordinal number of hit' refers to, e.g., 1 for the first hit, 2 for the second, etc.
+ 
+Slash Blast FA (credit to Devil's Sunrise): 2 * (1/3) ^ (ordinal number of hit - 1)
+Cumulative damage = 3 * (1 - (1/3) ^ (total number of hits))
+ 
+Iron Arrow (credit to AGF): 0.9 ^ (ordinal number of hit - 1)
+Cumulative damage = 10 * (1 - 0.9 ^ (total number of hits))
+ 
+Pierce (credit to AGF, and Truemark for 100% corfirmation): 1.2 ^ (ordinal number of hit - 1)
+Cumulative damage = 5 * (-1 + 1.2 ^ (total number of hits))
+ 
+Chain Lightning: 0.7 ^ (ordinal number of hit - 1)
+Cumulative damage = 3.333 * (1 - 0.7 ^ (total number of hits))
+ 
+Energy Orb: 2/3 ^ (ordinal number of hit - 1)
+Cumulative damage = 3 * (1 - (2/3) ^ (total number of hits))
+ 
+Barrage, last 2 hits only (credit to Fiel): 2 ^ (ordinal number of hit - 4)
+Total damage multiplier: 10
+
+
+added
+If you add Sharp Eyes +40% critical damage to your existing critical throw then that works like
+
+(562 ~ 1003) * 1.6 for drain
++ ((562 ~ 1003) * 1.4) for critical
+
+If you didn't have Critical Throw and it was only Sharp Eyes,
+
+(562 ~ 1003) * 1.6 for drain
++ ((562 ~ 1003) * 0.4) for critical
+Hope this helps
+Also the critical damage can apply for each line of a skill with multiple lines.
+
+So for example in the case of an archer third job using Strafe you can get the +100% critical damage up to four times.

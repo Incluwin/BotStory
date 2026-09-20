@@ -92,7 +92,7 @@ public final class ViewAllCharRegisterPicHandler extends AbstractPacketHandler {
         try {
             c.sendPacket(PacketCreator.getServerIP(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1]), charId));
         } catch (UnknownHostException e) {
-            log.error("Failed to send server IP packet for charId {}", charId, e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 }

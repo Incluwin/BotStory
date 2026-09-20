@@ -43,6 +43,7 @@ public class SpawnPoint {
     private int mobInterval = 5000;
     private final AtomicInteger spawnedMonsters = new AtomicInteger(0);
     private final boolean immobile;
+    private final boolean boss;
     private final int maxConcurrent;
     private boolean denySpawn = false;
 
@@ -57,7 +58,8 @@ public class SpawnPoint {
         this.mobInterval = mobInterval;
         this.nextPossibleSpawn = Server.getInstance().getCurrentTime();
         // Bosses and immobile mobs keep the original 1-per-point cap to avoid duplicated bosses / visual stacking.
-        this.maxConcurrent = (monster.isBoss() || immobile) ? 1 : MAX_PER_NONBOSS_POINT;
+        this.boss = monster.isBoss();
+        this.maxConcurrent = (boss || immobile) ? 1 : MAX_PER_NONBOSS_POINT;
     }
 
     public int getSpawned() {
@@ -73,7 +75,13 @@ public class SpawnPoint {
     }
 
     public boolean shouldSpawn() {
-        if (denySpawn || mobTime < 0 || spawnedMonsters.get() >= maxConcurrent) {
+        return shouldSpawn(maxConcurrent);
+    }
+
+    public boolean shouldSpawn(int maxSpawnedMonsters) {
+        // Bosses and immobile mobs keep the original 1-per-point cap regardless of the configured density.
+        int max = (boss || immobile) ? 1 : maxSpawnedMonsters;
+        if (denySpawn || mobTime < 0 || spawnedMonsters.get() >= max) {
             return false;
         }
         return nextPossibleSpawn <= Server.getInstance().getCurrentTime();

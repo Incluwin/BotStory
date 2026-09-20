@@ -1,0 +1,57 @@
+package server.agents.plans.mapleisland.cohort;
+
+import client.Character;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class MapleIslandCohortNameCatalogTest {
+    @Test
+    void earlyCandidatesSpreadAcrossRootFamiliesBeforeUsingDeeperVariants() {
+        assertEquals(List.of(
+                        "Aeri", "Bambi", "Dori", "Jae", "Leya",
+                        "Nami", "Reni", "Taro", "Mushie", "Starry"),
+                MapleIslandCohortNameCatalog.candidates().subList(0, 10));
+
+        Set<java.lang.Character> initials = new HashSet<>();
+        MapleIslandCohortNameCatalog.candidates().subList(0, 10)
+                .forEach(name -> initials.add(name.charAt(0)));
+        assertEquals(10, initials.size());
+        assertEquals("DaggerKid", MapleIslandCohortNameCatalog.candidate(99));
+        assertEquals("LilAeri", MapleIslandCohortNameCatalog.candidate(100));
+    }
+
+    @Test
+    void allThirtyThousandNamesAreUniqueAndAcceptedByCharacterPolicy() {
+        Set<String> normalized = new HashSet<>();
+        java.util.List<String> rejected = new java.util.ArrayList<>();
+
+        for (String candidate : MapleIslandCohortNameCatalog.candidates()) {
+            if (!Character.isValidCharacterNameSyntax(candidate)) {
+                rejected.add(candidate);
+            }
+            assertTrue(normalized.add(candidate.toLowerCase(Locale.ROOT)),
+                    () -> "Duplicate generated name: " + candidate);
+        }
+
+        assertTrue(rejected.isEmpty(), () -> "Rejected generated names: " + rejected);
+        assertEquals(MapleIslandCohortNameCatalog.CANDIDATE_COUNT, normalized.size());
+    }
+
+    @Test
+    void accountCandidatesFitTheLegacyAccountColumnAndAreUnique() {
+        Set<String> names = new HashSet<>();
+        for (int ordinal = 1; ordinal <= MapleIslandCohortNameCatalog.CANDIDATE_COUNT; ordinal++) {
+            String candidate = MapleIslandCohortNameCatalog.accountCandidate(ordinal);
+            assertTrue(candidate.length() <= 13, candidate);
+            assertTrue(names.add(candidate.toLowerCase(Locale.ROOT)), candidate);
+        }
+        assertEquals(MapleIslandCohortNameCatalog.CANDIDATE_COUNT, names.size());
+    }
+}

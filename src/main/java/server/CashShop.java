@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -63,7 +64,6 @@ import org.slf4j.LoggerFactory;
  * @author Ponk
  */
 public class CashShop {
-    private static final Logger log = LoggerFactory.getLogger(CashShop.class);
 
     public static final int NX_CREDIT = 1;
     public static final int MAPLE_POINT = 2;
@@ -80,6 +80,13 @@ public class CashShop {
     private final List<Integer> wishList = new ArrayList<>();
     private int notes = 0;
     private final Lock lock = new ReentrantLock();
+    private Runnable persistenceDirtyMarker = () -> {};
+
+    CashShop(int accountId, int characterId) {
+        this.accountId = accountId;
+        this.characterId = characterId;
+        this.factory = ItemFactory.CASH_OVERALL;
+    }
 
     public CashShop(int accountId, int characterId, int jobType) throws SQLException {
         this.accountId = accountId;
@@ -274,7 +281,7 @@ public class CashShop {
                     loadedSpecialItems.add(new SpecialCashItem(rs.getInt("sn"), rs.getInt("modifier"), rs.getByte("info")));
                 }
             } catch (SQLException ex) {
-                log.error("unhandled exception", ex);
+                monitoring.RuntimeFailureLogger.log(ex);
             }
             CashItemFactory.specialcashitems = loadedSpecialItems;
         }
@@ -322,20 +329,52 @@ public class CashShop {
     }
 
     public int getCash(int type) {
-        return switch (type) {
-            case NX_CREDIT -> nxCredit;
-            case MAPLE_POINT -> maplePoint;
-            case NX_PREPAID -> nxPrepaid;
-            default -> 0;
-        };
+        lock.lock();
+        try {
+            return switch (type) {
+                case NX_CREDIT -> nxCredit;
+                case MAPLE_POINT -> maplePoint;
+                case NX_PREPAID -> nxPrepaid;
+                default -> 0;
+            };
+        } finally {
+            lock.unlock();
+        }
+    }
 
+    public void setPersistenceDirtyMarker(Runnable persistenceDirtyMarker) {
+        Runnable marker = Objects.requireNonNull(persistenceDirtyMarker);
+        lock.lock();
+        try {
+            this.persistenceDirtyMarker = marker;
+            inventory.forEach(item -> item.setPersistenceDirtyMarker(marker));
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void gainCash(int type, int cash) {
-        switch (type) {
-            case NX_CREDIT -> nxCredit += cash;
-            case MAPLE_POINT -> maplePoint += cash;
-            case NX_PREPAID -> nxPrepaid += cash;
+        if (cash == 0) {
+            return;
+        }
+        lock.lock();
+        try {
+            switch (type) {
+                case NX_CREDIT -> {
+                    nxCredit += cash;
+                    persistenceDirtyMarker.run();
+                }
+                case MAPLE_POINT -> {
+                    maplePoint += cash;
+                    persistenceDirtyMarker.run();
+                }
+                case NX_PREPAID -> {
+                    nxPrepaid += cash;
+                    persistenceDirtyMarker.run();
+                }
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -357,7 +396,7 @@ public class CashShop {
     public List<Item> getInventory() {
         lock.lock();
         try {
-            return Collections.unmodifiableList(inventory);
+            return Collections.unmodifiableList(new ArrayList<>(inventory));
         } finally {
             lock.unlock();
         }
@@ -385,7 +424,9 @@ public class CashShop {
     public void addToInventory(Item item) {
         lock.lock();
         try {
+            item.setPersistenceDirtyMarker(persistenceDirtyMarker);
             inventory.add(item);
+            persistenceDirtyMarker.run();
         } finally {
             lock.unlock();
         }
@@ -394,22 +435,44 @@ public class CashShop {
     public void removeFromInventory(Item item) {
         lock.lock();
         try {
-            inventory.remove(item);
+            if (inventory.remove(item)) {
+                item.setPersistenceDirtyMarker(() -> {});
+                persistenceDirtyMarker.run();
+            }
         } finally {
             lock.unlock();
         }
     }
 
     public List<Integer> getWishList() {
-        return wishList;
+        lock.lock();
+        try {
+            return Collections.unmodifiableList(new ArrayList<>(wishList));
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void clearWishList() {
-        wishList.clear();
+        lock.lock();
+        try {
+            if (!wishList.isEmpty()) {
+                wishList.clear();
+                persistenceDirtyMarker.run();
+            }
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void addToWishList(int sn) {
-        wishList.add(sn);
+        lock.lock();
+        try {
+            wishList.add(sn);
+            persistenceDirtyMarker.run();
+        } finally {
+            lock.unlock();
+        }
     }
 
     public void gift(int recipient, String from, String message, int sn) {
@@ -426,7 +489,7 @@ public class CashShop {
             ps.setInt(5, ringid);
             ps.executeUpdate();
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
     }
 
@@ -470,7 +533,7 @@ public class CashShop {
                 ps.executeUpdate();
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return gifts;
@@ -485,19 +548,32 @@ public class CashShop {
     }
 
     public void save(Connection con) throws SQLException {
-        try (PreparedStatement ps = con.prepareStatement("UPDATE `accounts` SET `nxCredit` = ?, `maplePoint` = ?, `nxPrepaid` = ? WHERE `id` = ?")) {
-            ps.setInt(1, nxCredit);
-            ps.setInt(2, maplePoint);
-            ps.setInt(3, nxPrepaid);
-            ps.setInt(4, accountId);
-            ps.executeUpdate();
+        int savedNxCredit;
+        int savedMaplePoint;
+        int savedNxPrepaid;
+        List<Pair<Item, InventoryType>> itemsWithType = new ArrayList<>();
+        List<Integer> wishListSnapshot;
+        lock.lock();
+        try {
+            savedNxCredit = nxCredit;
+            savedMaplePoint = maplePoint;
+            savedNxPrepaid = nxPrepaid;
+            for (Item item : inventory) {
+                itemsWithType.add(new Pair<>(item.copy(), item.getInventoryType()));
+            }
+            wishListSnapshot = List.copyOf(wishList);
+        } finally {
+            lock.unlock();
         }
 
-        List<Pair<Item, InventoryType>> itemsWithType = new ArrayList<>();
-
-        List<Item> inv = getInventory();
-        for (Item item : inv) {
-            itemsWithType.add(new Pair<>(item, item.getInventoryType()));
+        try (PreparedStatement ps = con.prepareStatement("UPDATE `accounts` SET `nxCredit` = ?, `maplePoint` = ?, `nxPrepaid` = ? WHERE `id` = ?")) {
+            ps.setInt(1, savedNxCredit);
+            ps.setInt(2, savedMaplePoint);
+            ps.setInt(3, savedNxPrepaid);
+            ps.setInt(4, accountId);
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("Cash Shop account row not found for accountId " + accountId);
+            }
         }
 
         factory.saveItems(itemsWithType, accountId, con);
@@ -510,7 +586,7 @@ public class CashShop {
         try (PreparedStatement ps = con.prepareStatement("INSERT INTO `wishlists` VALUES (DEFAULT, ?, ?)")) {
             ps.setInt(1, characterId);
 
-            for (int sn : wishList) {
+            for (int sn : wishListSnapshot) {
                 // TODO: batch insert
                 ps.setInt(2, sn);
                 ps.executeUpdate();

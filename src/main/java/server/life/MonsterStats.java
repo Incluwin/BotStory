@@ -25,8 +25,7 @@ import server.life.LifeFactory.loseItem;
 import server.life.LifeFactory.selfDestruction;
 import tools.Pair;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,17 +33,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Frz
  */
 public class MonsterStats {
-    private static final Logger log = LoggerFactory.getLogger(MonsterStats.class);
 
     public boolean changeable;
-    public int exp, mp, level, PADamage, PDDamage, MADamage, MDDamage, dropPeriod, cp, buffToGive = -1, removeAfter;
+    public int exp, mp, level, PADamage, PDDamage, MADamage, MDDamage, accuracy, avoidability, dropPeriod, cp, buffToGive = -1, removeAfter;
     public long hp;
     public boolean boss, undead, ffaLoot, isExplosiveReward, firstAttack, removeOnMiss;
     public String name;
@@ -59,6 +55,12 @@ public class MonsterStats {
     public selfDestruction selfDestruction = null;
     public int fixedStance = 0;
     public boolean friendly;
+    private int rawSpeed;
+    private int rawFlySpeed;
+    private int pushed;
+    private boolean physicsMobile;
+    private boolean physicsFlying;
+    private boolean canJump;
 
     public void setChange(boolean change) {
         this.changeable = change;
@@ -147,6 +149,23 @@ public class MonsterStats {
     public boolean isMobile() {
         return animationTimes.containsKey("move") || animationTimes.containsKey("fly");
     }
+
+    public boolean isFlying() {
+        return animationTimes.containsKey("fly");
+    }
+
+    public int getRawSpeed() { return rawSpeed; }
+    public void setRawSpeed(int rawSpeed) { this.rawSpeed = rawSpeed; }
+    public int getRawFlySpeed() { return rawFlySpeed; }
+    public void setRawFlySpeed(int rawFlySpeed) { this.rawFlySpeed = rawFlySpeed; }
+    public int getPushed() { return pushed; }
+    public void setPushed(int pushed) { this.pushed = pushed; }
+    public boolean isPhysicsMobile() { return physicsMobile; }
+    public void setPhysicsMobile(boolean physicsMobile) { this.physicsMobile = physicsMobile; }
+    public boolean isPhysicsFlying() { return physicsFlying; }
+    public void setPhysicsFlying(boolean physicsFlying) { this.physicsFlying = physicsFlying; }
+    public boolean canJump() { return canJump; }
+    public void setCanJump(boolean canJump) { this.canJump = canJump; }
 
     public List<Integer> getRevives() {
         return revives;
@@ -266,6 +285,22 @@ public class MonsterStats {
         this.cp = cp;
     }
 
+    public int getAccuracy() {
+        return accuracy;
+    }
+
+    public void setAccuracy(int accuracy) {
+        this.accuracy = accuracy;
+    }
+
+    public int getAvoidability() {
+        return avoidability;
+    }
+
+    public void setAvoidability(int avoidability) {
+        this.avoidability = avoidability;
+    }
+
     public List<loseItem> loseItem() {
         return loseItem;
     }
@@ -351,43 +386,46 @@ public class MonsterStats {
 
     public MonsterStats copy() {
         MonsterStats copy = new MonsterStats();
-        try {
-            FieldCopyUtil.setFields(this, copy);
-        } catch (Exception e) {
-            log.error("unhandled exception", e);
-            try {
-                Thread.sleep(10000);
-            } catch (Exception ex) {
-
-            }
-
-        }
-
+        copy.changeable = changeable;
+        copy.exp = exp;
+        copy.hp = hp;
+        copy.mp = mp;
+        copy.level = level;
+        copy.PADamage = PADamage;
+        copy.PDDamage = PDDamage;
+        copy.MADamage = MADamage;
+        copy.MDDamage = MDDamage;
+        copy.accuracy = accuracy;
+        copy.avoidability = avoidability;
+        copy.dropPeriod = dropPeriod;
+        copy.cp = cp;
+        copy.buffToGive = buffToGive;
+        copy.removeAfter = removeAfter;
+        copy.boss = boss;
+        copy.undead = undead;
+        copy.ffaLoot = ffaLoot;
+        copy.isExplosiveReward = isExplosiveReward;
+        copy.firstAttack = firstAttack;
+        copy.removeOnMiss = removeOnMiss;
+        copy.name = name;
+        copy.animationTimes = new HashMap<>(animationTimes);
+        copy.resistance = new HashMap<>(resistance);
+        copy.revives = new ArrayList<>(revives);
+        copy.tagColor = tagColor;
+        copy.tagBgColor = tagBgColor;
+        copy.skills = new HashSet<>(skills);
+        copy.cool = cool;
+        copy.banish = banish;
+        copy.loseItem = loseItem == null ? null : new ArrayList<>(loseItem);
+        copy.selfDestruction = selfDestruction;
+        copy.fixedStance = fixedStance;
+        copy.friendly = friendly;
+        copy.rawSpeed = rawSpeed;
+        copy.rawFlySpeed = rawFlySpeed;
+        copy.pushed = pushed;
+        copy.physicsMobile = physicsMobile;
+        copy.physicsFlying = physicsFlying;
+        copy.canJump = canJump;
         return copy;
-    }
-
-    // FieldCopyUtil src: http://www.codesenior.com/en/tutorial/Java-Copy-Fields-From-One-Object-to-Another-Object-with-Reflection
-    private static class FieldCopyUtil { // thanks to Codesenior dev team
-        private static void setFields(Object from, Object to) {
-            Field[] fields = from.getClass().getDeclaredFields();
-            for (Field field : fields) {
-                // Static fields (e.g. the class logger) share a slot across all instances
-                // and are often final — JDK 17+ disallows reflective writes to final fields,
-                // which produced a loud IllegalAccessException on every copy().
-                if (Modifier.isStatic(field.getModifiers())) {
-                    continue;
-                }
-                try {
-                    Field fieldFrom = from.getClass().getDeclaredField(field.getName());
-                    Object value = fieldFrom.get(from);
-                    to.getClass().getDeclaredField(field.getName()).set(to, value);
-
-                } catch (IllegalAccessException e) {
-                    log.error("unhandled exception", e);
-                } catch (NoSuchFieldException e) {
-                    log.error("unhandled exception", e);
-                }
-            }
-        }
     }
 }

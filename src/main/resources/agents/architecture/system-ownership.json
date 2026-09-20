@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 2,
+  "systems": [
+    {
+      "id": "town-life",
+      "role": "PRIMARY",
+      "activityKind": "TOWN_LIFE",
+      "sourceRoots": [
+        "server/agents/capabilities/townlife",
+        "server/agents/runtime/townlife",
+        "server/agents/commands/townlife"
+      ],
+      "entryPoints": [
+        "server/agents/capabilities/townlife/AgentTownLifeRuntime.java"
+      ],
+      "responsibilities": [
+        "town visit lifecycle",
+        "town-local activity selection",
+        "graceful town exit"
+      ],
+      "collaborators": [
+        "inventory",
+        "socials",
+        "agent-context",
+        "agent-platform"
+      ]
+    },
+    {
+      "id": "hunting",
+      "role": "PRIMARY",
+      "activityKind": "HUNTING",
+      "sourceRoots": [
+        "server/agents/field",
+        "server/agents/runtime/field"
+      ],
+      "entryPoints": [
+        "server/agents/runtime/field/AgentFieldActivityRuntime.java"
+      ],
+      "responsibilities": [
+        "field visit lifecycle",
+        "station and crowd allocation",
+        "map-local hunting intent"
+      ],
+      "collaborators": [
+        "inventory",
+        "socials",
+        "agent-context",
+        "agent-platform"
+      ]
+    },
+    {
+      "id": "questing",
+      "role": "PRIMARY",
+      "activityKind": "QUESTING",
+      "sourceRoots": [
+        "server/agents/plans",
+        "server/agents/progression",
+        "server/agents/objectives"
+      ],
+      "entryPoints": [
+        "server/agents/plans/AgentUniversalPlanRuntime.java"
+      ],
+      "responsibilities": [
+        "quest and plan lifecycle",
+        "quest objective debt",
+        "quest suspension and resume cursor"
+      ],
+      "collaborators": [
+        "hunting",
+        "inventory",
+        "socials",
+        "agent-context",
+        "agent-platform"
+      ]
+    },
+    {
+      "id": "commerce",
+      "role": "PRIMARY",
+      "activityKind": "COMMERCE",
+      "sourceRoots": [
+        "server/agents/economy",
+        "server/agents/runtime/commerce"
+      ],
+      "entryPoints": [
+        "server/agents/economy/session/EconomySessionPort.java",
+        "server/agents/runtime/commerce/AgentCommerceSessionRuntime.java"
+      ],
+      "responsibilities": [
+        "commerce visit lifecycle",
+        "market participation",
+        "trade and stall settlement"
+      ],
+      "collaborators": [
+        "inventory",
+        "socials",
+        "agent-context",
+        "agent-platform"
+      ]
+    },
+    {
+      "id": "party-quest",
+      "role": "PRIMARY",
+      "activityKind": "PARTY_QUEST",
+      "sourceRoots": [
+        "server/agents/capabilities/partyquest"
+      ],
+      "entryPoints": [
+        "server/agents/capabilities/partyquest/AgentPartyQuestLifecycleRuntime.java"
+      ],
+      "responsibilities": [
+        "party-quest lifecycle",
+        "party admission and stage coordination",
+        "party-quest reward and recovery"
+      ],
+      "collaborators": [
+        "inventory",
+        "socials",
+        "agent-context",
+        "agent-platform"
+      ]
+    },
+    {
+      "id": "commerce-observation",
+      "role": "OBSERVATION",
+      "sourceRoots": [
+        "server/agents/observation/commerce"
+      ],
+      "entryPoints": [
+        "server/agents/observation/commerce/CommerceObservationRuntime.java"
+      ],
+      "responsibilities": [
+        "commerce scenario observation"
+      ],
+      "collaborators": [
+        "commerce",
+        "agent-context"
+      ]
+    },
+    {
+      "id": "inventory",
+      "role": "SUPPORT",
+      "sourceRoots": [
+        "server/agents/inventory",
+        "server/agents/capabilities/inventory",
+        "server/agents/capabilities/equipment",
+        "server/agents/capabilities/supplies",
+        "server/agents/capabilities/shop",
+        "server/agents/resources"
+      ],
+      "entryPoints": [
+        "server/agents/inventory/AgentInventorySystem.java"
+      ],
+      "responsibilities": [
+        "item ownership",
+        "equipment and supply workflows",
+        "inventory readiness evidence"
+      ],
+      "collaborators": [
+        "agent-context",
+        "agent-platform"
+      ]
+    },
+    {
+      "id": "socials",
+      "role": "SUPPORT",
+      "sourceRoots": [
+        "server/agents/socials",
+        "server/agents/capabilities/social",
+        "server/agents/capabilities/dialogue",
+        "server/agents/capabilities/trade",
+        "server/agents/runtime/interaction"
+      ],
+      "entryPoints": [
+        "server/agents/socials/AgentSocialsSystem.java"
+      ],
+      "responsibilities": [
+        "social interaction leases",
+        "agent relationship and dialogue state"
+      ],
+      "collaborators": [
+        "agent-context",
+        "agent-platform"
+      ]
+    },
+    {
+      "id": "agent-context",
+      "role": "CONTEXT",
+      "sourceRoots": [
+        "server/agents/context",
+        "server/agents/memory",
+        "server/agents/personality",
+        "server/agents/model",
+        "server/agents/profiles"
+      ],
+      "entryPoints": [
+        "server/agents/context/AgentContextRuntime.java"
+      ],
+      "responsibilities": [
+        "immutable agent context",
+        "memory and personality facts"
+      ],
+      "collaborators": [
+        "agent-platform"
+      ]
+    },
+    {
+      "id": "agent-platform",
+      "role": "PLATFORM",
+      "sourceRoots": [
+        "server/agents"
+      ],
+      "entryPoints": [
+        "server/agents/runtime/AgentTickRuntime.java",
+        "server/agents/runtime/activity/session/AgentActivityHandoffCoordinator.java"
+      ],
+      "responsibilities": [
+        "agent scheduling",
+        "foreground activity ownership",
+        "activity admission and handoff"
+      ],
+      "collaborators": [
+        "agent-context"
+      ]
+    }
+  ]
+}

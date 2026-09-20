@@ -28,6 +28,9 @@ import org.slf4j.LoggerFactory;
 import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.lang.management.ManagementFactory;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
@@ -40,66 +43,161 @@ public class TimerManager implements TimerManagerMBean {
     private static final Logger log = LoggerFactory.getLogger(TimerManager.class);
     private static final TimerManager instance = new TimerManager();
 
+    public enum SchedulerLane {
+        CORE,
+        SAVE,
+        MAP,
+        EVENT,
+        LOW_PRIORITY
+    }
+
     public static TimerManager getInstance() {
         return instance;
     }
 
-    private ScheduledThreadPoolExecutor ses;
+    private ScheduledThreadPoolExecutor coreExecutor;
+    private ScheduledThreadPoolExecutor saveExecutor;
+    private ScheduledThreadPoolExecutor mapExecutor;
+    private ScheduledThreadPoolExecutor eventExecutor;
+    private ScheduledThreadPoolExecutor lowPriorityExecutor;
 
     private TimerManager() {
         MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
         try {
-            mBeanServer.registerMBean(this, new ObjectName("server:type=TimerManger"));
+            mBeanServer.registerMBean(this, new ObjectName("server:type=TimerManager"));
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            log.warn("Failed to register TimerManager MBean", e);
         }
     }
 
     public void start() {
-        if (ses != null && !ses.isShutdown() && !ses.isTerminated()) {
+        if (coreExecutor != null && !coreExecutor.isShutdown() && !coreExecutor.isTerminated()) {
             return;
         }
-        ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(4, new ThreadFactory() {
+
+        coreExecutor = newExecutor("TimerManager-Core", threadCount("cosmic.timer.coreThreads", "COSMIC_TIMER_CORE_THREADS", 4));
+        saveExecutor = newExecutor("TimerManager-Save", threadCount("cosmic.timer.saveThreads", "COSMIC_TIMER_SAVE_THREADS", 2));
+        mapExecutor = newExecutor("TimerManager-Map", threadCount("cosmic.timer.mapThreads", "COSMIC_TIMER_MAP_THREADS", 2));
+        eventExecutor = newExecutor("TimerManager-Event", threadCount("cosmic.timer.eventThreads", "COSMIC_TIMER_EVENT_THREADS", 2));
+        lowPriorityExecutor = newExecutor("TimerManager-Low", threadCount("cosmic.timer.lowPriorityThreads", "COSMIC_TIMER_LOW_PRIORITY_THREADS", 1));
+    }
+
+    private int threadCount(String propertyName, String environmentName, int defaultValue) {
+        String propertyValue = System.getProperty(propertyName);
+        String rawValue = propertyValue != null ? propertyValue : System.getenv(environmentName);
+        if (rawValue == null || rawValue.isBlank()) {
+            return defaultValue;
+        }
+
+        try {
+            int parsed = Integer.parseInt(rawValue.trim());
+            if (parsed > 0) {
+                return parsed;
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Ignoring invalid timer thread setting {} / {}='{}'", propertyName, environmentName, rawValue);
+        }
+        return defaultValue;
+    }
+
+    private ScheduledThreadPoolExecutor newExecutor(String name, int threads) {
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(threads, new ThreadFactory() {
             private final AtomicInteger threadNumber = new AtomicInteger(1);
 
             @Override
             public Thread newThread(Runnable r) {
                 Thread t = new Thread(r);
-                t.setName("TimerManager-Worker-" + threadNumber.getAndIncrement());
+                t.setName(name + "-" + threadNumber.getAndIncrement());
                 return t;
             }
         });
-        //this is a no-no, it actually does nothing..then why the fuck are you doing it?
-        stpe.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
-        stpe.setRemoveOnCancelPolicy(true);
-
-        stpe.setKeepAliveTime(5, MINUTES);
-        stpe.allowCoreThreadTimeOut(true);
-
-        ses = stpe;
+        executor.setContinueExistingPeriodicTasksAfterShutdownPolicy(false);
+        executor.setRemoveOnCancelPolicy(true);
+        executor.setKeepAliveTime(5, MINUTES);
+        executor.allowCoreThreadTimeOut(true);
+        return executor;
     }
 
     public void stop() {
-        ses.shutdownNow();
+        List<ScheduledThreadPoolExecutor> executors = new ArrayList<>(5);
+        addIfPresent(executors, coreExecutor);
+        addIfPresent(executors, saveExecutor);
+        addIfPresent(executors, mapExecutor);
+        addIfPresent(executors, eventExecutor);
+        addIfPresent(executors, lowPriorityExecutor);
+        executors.forEach(this::shutdownNow);
+
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        boolean interrupted = false;
+        for (ScheduledThreadPoolExecutor executor : executors) {
+            long remaining = deadline - System.nanoTime();
+            if (remaining <= 0) {
+                log.warn("Timed out waiting for timer executors to terminate");
+                break;
+            }
+            try {
+                if (!executor.awaitTermination(remaining, TimeUnit.NANOSECONDS)) {
+                    log.warn("Timed out waiting for timer executors to terminate");
+                    break;
+                }
+            } catch (InterruptedException e) {
+                interrupted = true;
+                break;
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
-    public Runnable purge() {//Yay?
+    private static void addIfPresent(List<ScheduledThreadPoolExecutor> executors,
+                                     ScheduledThreadPoolExecutor executor) {
+        if (executor != null) {
+            executors.add(executor);
+        }
+    }
+
+    private void shutdownNow(ScheduledThreadPoolExecutor executor) {
+        if (executor != null) {
+            executor.shutdownNow();
+        }
+    }
+
+    public Runnable purge() {
         return () -> {
             Server.getInstance().forceUpdateCurrentTime();
-            ses.purge();
+            purge(coreExecutor);
+            purge(saveExecutor);
+            purge(mapExecutor);
+            purge(eventExecutor);
+            purge(lowPriorityExecutor);
         };
     }
 
+    private void purge(ScheduledThreadPoolExecutor executor) {
+        if (executor != null) {
+            executor.purge();
+        }
+    }
+
     public ScheduledFuture<?> register(Runnable r, long repeatTime, long delay) {
-        return ses.scheduleAtFixedRate(new LoggingSaveRunnable(r), delay, repeatTime, MILLISECONDS);
+        return register(SchedulerLane.CORE, r, repeatTime, delay);
     }
 
     public ScheduledFuture<?> register(Runnable r, long repeatTime) {
-        return ses.scheduleAtFixedRate(new LoggingSaveRunnable(r), 0, repeatTime, MILLISECONDS);
+        return register(SchedulerLane.CORE, r, repeatTime, 0);
+    }
+
+    public ScheduledFuture<?> register(SchedulerLane lane, Runnable r, long repeatTime, long delay) {
+        return executor(lane).scheduleAtFixedRate(new LoggingSaveRunnable(lane, r), delay, repeatTime, MILLISECONDS);
     }
 
     public ScheduledFuture<?> schedule(Runnable r, long delay) {
-        return ses.schedule(new LoggingSaveRunnable(r), delay, MILLISECONDS);
+        return schedule(SchedulerLane.CORE, r, delay);
+    }
+
+    public ScheduledFuture<?> schedule(SchedulerLane lane, Runnable r, long delay) {
+        return executor(lane).schedule(new LoggingSaveRunnable(lane, r), delay, MILLISECONDS);
     }
 
     public ScheduledFuture<?> scheduleAtTimestamp(Runnable r, long timestamp) {
@@ -108,39 +206,98 @@ public class TimerManager implements TimerManagerMBean {
 
     @Override
     public long getActiveCount() {
-        return ses.getActiveCount();
+        return activeCount(coreExecutor) + activeCount(saveExecutor) + activeCount(mapExecutor)
+                + activeCount(eventExecutor) + activeCount(lowPriorityExecutor);
     }
 
     @Override
     public long getCompletedTaskCount() {
-        return ses.getCompletedTaskCount();
+        return completedTaskCount(coreExecutor) + completedTaskCount(saveExecutor) + completedTaskCount(mapExecutor)
+                + completedTaskCount(eventExecutor) + completedTaskCount(lowPriorityExecutor);
     }
 
     @Override
     public int getQueuedTasks() {
-        return ses.getQueue().toArray().length;
+        return queuedTasks(coreExecutor) + queuedTasks(saveExecutor) + queuedTasks(mapExecutor)
+                + queuedTasks(eventExecutor) + queuedTasks(lowPriorityExecutor);
     }
 
     @Override
     public long getTaskCount() {
-        return ses.getTaskCount();
+        return taskCount(coreExecutor) + taskCount(saveExecutor) + taskCount(mapExecutor)
+                + taskCount(eventExecutor) + taskCount(lowPriorityExecutor);
     }
 
     @Override
     public boolean isShutdown() {
-        return ses.isShutdown();
+        return isShutdown(coreExecutor) && isShutdown(saveExecutor) && isShutdown(mapExecutor)
+                && isShutdown(eventExecutor) && isShutdown(lowPriorityExecutor);
     }
 
     @Override
     public boolean isTerminated() {
-        return ses.isTerminated();
+        return isTerminated(coreExecutor) && isTerminated(saveExecutor) && isTerminated(mapExecutor)
+                && isTerminated(eventExecutor) && isTerminated(lowPriorityExecutor);
     }
 
+    public String diagnostics() {
+        return "timers core=" + executorStats(coreExecutor)
+                + " save=" + executorStats(saveExecutor)
+                + " map=" + executorStats(mapExecutor)
+                + " event=" + executorStats(eventExecutor)
+                + " low=" + executorStats(lowPriorityExecutor);
+    }
+
+    private ScheduledThreadPoolExecutor executor(SchedulerLane lane) {
+        return switch (lane) {
+            case CORE -> coreExecutor;
+            case SAVE -> saveExecutor;
+            case MAP -> mapExecutor;
+            case EVENT -> eventExecutor;
+            case LOW_PRIORITY -> lowPriorityExecutor;
+        };
+    }
+
+    private static long activeCount(ScheduledThreadPoolExecutor executor) {
+        return executor == null ? 0 : executor.getActiveCount();
+    }
+
+    private static long completedTaskCount(ScheduledThreadPoolExecutor executor) {
+        return executor == null ? 0 : executor.getCompletedTaskCount();
+    }
+
+    private static int queuedTasks(ScheduledThreadPoolExecutor executor) {
+        return executor == null ? 0 : executor.getQueue().size();
+    }
+
+    private static long taskCount(ScheduledThreadPoolExecutor executor) {
+        return executor == null ? 0 : executor.getTaskCount();
+    }
+
+    private static boolean isShutdown(ScheduledThreadPoolExecutor executor) {
+        return executor == null || executor.isShutdown();
+    }
+
+    private static boolean isTerminated(ScheduledThreadPoolExecutor executor) {
+        return executor == null || executor.isTerminated();
+    }
+
+    private static String executorStats(ScheduledThreadPoolExecutor executor) {
+        if (executor == null) {
+            return "stopped";
+        }
+        return "active:" + executor.getActiveCount()
+                + ",queued:" + executor.getQueue().size()
+                + ",completed:" + executor.getCompletedTaskCount()
+                + ",threads:" + executor.getCorePoolSize();
+    }
 
     private static class LoggingSaveRunnable implements Runnable {
-        Runnable r;
+        private final SchedulerLane lane;
+        private final Runnable r;
 
-        public LoggingSaveRunnable(Runnable r) {
+        public LoggingSaveRunnable(SchedulerLane lane, Runnable r) {
+            this.lane = lane;
             this.r = r;
         }
 
@@ -149,7 +306,7 @@ public class TimerManager implements TimerManagerMBean {
             try {
                 r.run();
             } catch (Throwable t) {
-                log.error("Error in scheduled task", t);
+                log.error("Error in scheduled task lane={}", lane, t);
             }
         }
     }

@@ -181,7 +181,7 @@ public class SkillbookInformationProvider {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return loadedSkillbooks;
@@ -202,7 +202,7 @@ public class SkillbookInformationProvider {
             }
         } catch (IOException e) {
             // TODO Auto-generated catch block
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 

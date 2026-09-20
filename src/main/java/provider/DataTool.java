@@ -24,12 +24,8 @@ package provider;
 import provider.wz.DataType;
 
 import java.awt.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DataTool {
-    private static final Logger log = LoggerFactory.getLogger(DataTool.class);
-
     public static String getString(Data data) {
         return ((String) data.getData());
     }
@@ -62,7 +58,16 @@ public class DataTool {
         if (data == null || data.getData() == null) {
             return 0;// DEF?
         }
-        return (Integer) data.getData();
+
+        Object value = data.getData();
+
+        if (value instanceof Integer) {
+            return (Integer) value;
+        } else if (value instanceof Short) {
+            return ((Short) value).intValue(); // Convert Short to Integer
+        } else {
+            throw new IllegalArgumentException("Unsupported data type: " + value.getClass());
+        }
     }
 
     public static int getInt(String path, Data data) {
@@ -133,7 +138,7 @@ public class DataTool {
             try {
                 return Integer.parseInt(getString(d));
             } catch (NumberFormatException nfe) {
-                log.error("unhandled exception", nfe);
+                monitoring.RuntimeFailureLogger.log(nfe);
                 return def;
             }
         } else {

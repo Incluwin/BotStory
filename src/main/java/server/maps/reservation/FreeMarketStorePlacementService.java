@@ -1,0 +1,112 @@
+package server.maps.reservation;
+
+import client.Character;
+import server.maps.MapObjectType;
+import server.maps.Portal;
+
+import java.awt.Point;
+import java.util.List;
+import java.util.Optional;
+import java.util.Comparator;
+
+public final class FreeMarketStorePlacementService {
+    public static final int MAXIMUM_SNAP_DISTANCE_PX = 125;
+    private static final int LEGACY_STORE_CLEARANCE_PX = 80;
+    private static final int PORTAL_CLEARANCE_PX = 120;
+
+    private FreeMarketStorePlacementService() {
+    }
+
+    public static Optional<CharacterSpaceReservation> reserveNearest(Character character) {
+        if (character == null || character.getClient() == null
+                || !FreeMarketCharacterSpaceCatalog.isRoom(character.getMapId())) {
+            return Optional.empty();
+        }
+        CharacterSpaceScope scope = scope(character);
+        return CharacterSpaceReservationRuntime.reserveNearestLeftOrRight(
+                scope,
+                CharacterSpaceOwner.character(character.getId()),
+                FreeMarketCharacterSpaceCatalog.spaces(character.getMapId()),
+                character.getPosition(),
+                MAXIMUM_SNAP_DISTANCE_PX,
+                1,
+                position -> placementIsClear(character, position));
+    }
+
+    /**
+     * Autonomous sellers may enter a room far from every authored stall spot.
+     * Reserve the nearest legitimate spot without applying the interactive
+     * player's snap radius; the stall capability will physically walk there.
+     */
+    public static Optional<CharacterSpaceReservation> reserveNearestForWalking(Character character) {
+        if (character == null || character.getClient() == null
+                || !FreeMarketCharacterSpaceCatalog.isRoom(character.getMapId())) {
+            return Optional.empty();
+        }
+        Optional<CharacterSpaceReservation> existing = reservation(character);
+        if (existing.isPresent()) return existing;
+        Point origin = roomEntrance(character).orElse(character.getPosition());
+        List<CharacterSpace> spaces = FreeMarketCharacterSpaceCatalog.spaces(character.getMapId());
+        List<CharacterSpace> candidates = spaces.stream()
+                .sorted(Comparator.comparingDouble(space -> space.position().distanceSq(origin)))
+                .toList();
+        for (CharacterSpace candidate : candidates) {
+            Optional<CharacterSpaceReservation> reserved = CharacterSpaceReservationRuntime.reserveExact(
+                    scope(character), CharacterSpaceOwner.character(character.getId()),
+                    spaces, candidate, 1, position -> placementIsClear(character, position));
+            if (reserved.isPresent()) return reserved;
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<Point> roomEntrance(Character character) {
+        return character.getMap().getPortals().stream()
+                .filter(portal -> portal.getTargetMapId() == 910000000)
+                .min(Comparator.comparingInt(Portal::getId))
+                .map(Portal::getPosition);
+    }
+
+    public static Optional<CharacterSpaceReservation> reservation(Character character) {
+        if (character == null) {
+            return Optional.empty();
+        }
+        return CharacterSpaceReservationRuntime.reservation(CharacterSpaceOwner.character(character.getId()))
+                .filter(reservation -> reservation.scope().equals(scope(character)));
+    }
+
+    public static boolean hasAvailablePlacement(Character character) {
+        if (reservation(character).isPresent()) {
+            return true;
+        }
+        Optional<CharacterSpaceReservation> probe = reserveNearest(character);
+        if (probe.isEmpty()) {
+            return false;
+        }
+        release(character);
+        return true;
+    }
+
+    public static void release(Character character) {
+        if (character != null && character.getId() > 0) {
+            CharacterSpaceReservationRuntime.release(CharacterSpaceOwner.character(character.getId()));
+        }
+    }
+
+    public static CharacterSpaceScope scope(Character character) {
+        return new CharacterSpaceScope(
+                character.getWorld(), character.getClient().getChannel(), character.getMapId());
+    }
+
+    private static boolean placementIsClear(Character character, Point position) {
+        Portal portal = character.getMap().findClosestTeleportPortal(position);
+        if (portal != null && portal.getPosition().distance(position) < PORTAL_CLEARANCE_PX) {
+            return false;
+        }
+        long clearanceSquared = (long) LEGACY_STORE_CLEARANCE_PX * LEGACY_STORE_CLEARANCE_PX;
+        return character.getMap().getMapObjectsInRange(
+                        position,
+                        clearanceSquared,
+                        List.of(MapObjectType.HIRED_MERCHANT, MapObjectType.SHOP))
+                .isEmpty();
+    }
+}

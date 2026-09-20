@@ -24,6 +24,9 @@ package net.server.channel.handlers;
 import client.Character;
 import client.Client;
 import net.AbstractPacketHandler;
+import server.agents.runtime.AgentInteractionRuntime;
+import server.agents.runtime.AgentLifecycleService;
+import server.agents.capabilities.party.AgentPartyLifecycleService;
 import net.packet.InPacket;
 import net.server.coordinator.world.InviteCoordinator;
 import net.server.coordinator.world.InviteCoordinator.InviteResult;
@@ -101,7 +104,13 @@ public final class MessengerHandler extends AbstractPacketHandler {
                                 if (world.find(input) > -1) {
                                     world.messengerInvite(c.getPlayer().getName(), messenger.getId(), input, c.getChannel());
                                 } else {
-                                    c.sendPacket(PacketCreator.messengerNote(input, 4, 0));
+                                    AgentLifecycleService.AgentSpawnResult spawnResult =
+                                            AgentInteractionRuntime.spawnAgentForLeader(player, input);
+                                    if (spawnResult.success()) {
+                                        AgentPartyLifecycleService.joinAgentToLeaderParty(player, spawnResult.agent());
+                                    } else {
+                                        c.sendPacket(PacketCreator.messengerNote(input, 4, 0));
+                                    }
                                 }
                             }
                         } else {

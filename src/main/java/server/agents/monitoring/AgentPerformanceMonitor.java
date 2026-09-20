@@ -1,0 +1,317 @@
+package server.agents.monitoring;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+public final class AgentPerformanceMonitor {
+    static final class Config {
+        public boolean ENABLED = config.AgentTuning.booleanValue("server.agents.monitoring.AgentPerformanceMonitor.ENABLED");
+        public int LOG_INTERVAL_MS = config.AgentTuning.intValue("server.agents.monitoring.AgentPerformanceMonitor.LOG_INTERVAL_MS");
+        public double SLOW_SAMPLE_MS = config.AgentTuning.doubleValue("server.agents.monitoring.AgentPerformanceMonitor.SLOW_SAMPLE_MS");
+        public double REPORT_MAX_MS = config.AgentTuning.doubleValue("server.agents.monitoring.AgentPerformanceMonitor.REPORT_MAX_MS");
+    }
+
+    private static final class Stat {
+        long count = 0;
+        long totalNs = 0;
+        long maxNs = 0;
+        long slowCount = 0;
+        long slowTotalNs = 0;
+    }
+
+    /** Immutable snapshot of one section's stats — returned by {@link #snapshot()}. */
+    public record SectionSnapshot(String section,
+                                  long count,
+                                  long totalNs,
+                                  long maxNs,
+                                  long slowCount,
+                                  long slowTotalNs) {
+        public double avgMs() {
+            return totalNs / (double) Math.max(1L, count) / 1_000_000.0;
+        }
+        public double maxMs() {
+            return maxNs / 1_000_000.0;
+        }
+        public double slowAvgMs() {
+            return slowTotalNs / (double) Math.max(1L, slowCount) / 1_000_000.0;
+        }
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(AgentPerformanceMonitor.class);
+    private static final Object LOCK = new Object();
+    private static final int MAX_LOGGED_SECTIONS = config.AgentTuning.intValue("server.agents.monitoring.AgentPerformanceMonitor.MAX_LOGGED_SECTIONS");
+    static Config cfg = new Config();
+    private static volatile boolean enabled = cfg.ENABLED;
+
+    private static long lastLogAtMs = System.currentTimeMillis();
+    private static long nextLogAtMs = lastLogAtMs + cfg.LOG_INTERVAL_MS;
+    private static final Map<String, Stat> statsBySection = new LinkedHashMap<>();
+    private static final Map<String, String> SECTION_NOTES;
+    static {
+        Map<String, String> notes = new LinkedHashMap<>();
+        notes.put("tick-total", "complete bot tick, including common systems, AI, combat, navigation, and movement");
+        notes.put("move-ground", "ground physics, foothold collision, fallback steering, and movement packet sync");
+        notes.put("move-air", "air physics, foothold landing checks, and air steering");
+        notes.put("move-climb", "rope/ladder attachment, climb movement, and dismount checks");
+        notes.put("move-swim", "swim physics, vertical hold selection, and movement packet sync");
+        notes.put("nav-resolve", "region lookup, graph/path selection, edge reuse, and waypoint selection");
+        notes.put("pathfind", "A* search over the current bot navigation graph");
+        notes.put("pathfind-target-score", "A* called while ranking grind target regions");
+        notes.put("combat-target-search", "monster scan, distance filtering, foothold lookup, and candidate sorting");
+        notes.put("combat-plan", "skill/basic attack route selection and hitbox construction");
+        // Common tick systems (run every tick, instrumented through AgentCommonTickRuntime)
+        notes.put("common-mob-damage", "AgentCombatDamageRuntime.tickMobDamage (mob damage decay timers)");
+        notes.put("common-release-mob", "AgentMonsterControlService.releaseControlledMonsters (release stale controlled mobs)");
+        notes.put("common-passive-loot", "AgentPassiveLootRuntimeService.tickPassiveLoot (scan drops + pickup + autoEquip)");
+        notes.put("common-potion-check", "AgentPotionService.tickPotionCheck (HP/MP potion request)");
+        notes.put("potion-autopot", "AgentPotionService.setupAutopotForBot (scan USE bag + choose HP/MP autopot bindings)");
+        notes.put("potion-ammo-check", "AgentCombatAmmoCheckRuntime.tickAmmoCheck invoked from potion check");
+        notes.put("potion-ammo-share", "AgentAmmoService.tickAmmoShareCheck invoked from potion check");
+        notes.put("potion-count", "AgentPotionService.countPotions for the active bot");
+        notes.put("potion-recovery-scan", "AgentPotionService.recoveryPotions (USE inventory scan + recovery classification)");
+        notes.put("potion-recovery-count", "AgentPotionService.countPotions second pass over recovery items");
+        notes.put("potion-share-hp", "HP low-pot branch including donor search / scheduling");
+        notes.put("potion-share-mp", "MP low-pot branch including donor search / scheduling");
+        notes.put("potion-grind-stop", "low-pot grind-stop branch (follow owner + emote)");
+        notes.put("potion-request", "AgentPotionService.requestPotShare total");
+        notes.put("potion-donor-select", "AgentPotionService.selectPotDonor sibling scan");
+        notes.put("common-passive-recovery", "AgentPotionService.tickPassiveRecovery (regen / mana recovery)");
+        notes.put("common-build-levelup", "AgentBuildService.checkLevelUp (skill point allocation)");
+        notes.put("common-afk-check", "AgentChatStatusOrchestrator.tickAfkCheck (owner-AFK detection)");
+        notes.put("common-trade", "AgentTradeTickRuntimeService.tickTrade (in-progress agent trade state machine)");
+        notes.put("common-manual-trade", "AgentManualTradeRuntimeService.tickManualTrade (manual agent/player trade)");
+        notes.put("common-pq-hooks", "AgentPartyQuestHooks.tick (KPQ / OPQ / LPQ state machines)");
+        notes.put("common-script-tasks", "tickScriptTasks (AgentScriptRunner)");
+        notes.put("common-action-lock", "AgentCombatActionLockRuntime.tickActionLock (attack/move cooldown decay)");
+        notes.put("common-skill-cache", "AgentCombatSkillCacheRuntime.rebuildSkillCacheIfNeeded");
+        notes.put("common-support-heal", "AgentCombatHealRuntime.tickSupportHealing (cleric heal)");
+        notes.put("common-combat-buffs", "AgentCombatBuffRuntime.tickBuffs (player skill rebuff)");
+        notes.put("common-buff-pots", "AgentBuffService.tick (consumable buff pots)");
+        // Dispatch buckets
+        notes.put("tick-idle", "tickIdleEntry physics-only idle dispatch");
+        notes.put("tick-trade-physics", "tickTradePhysicsOnly (trade-window safe physics)");
+        notes.put("tick-shop-visit", "AgentShopService.tickShopVisit");
+        notes.put("tick-anchored-farm", "tickAnchoredFarm dispatch");
+        notes.put("tick-standalone-move", "tickStandaloneMoveTarget (owner-offline move)");
+        notes.put("tick-grind-dispatch", "grind mode dispatch in tickCore");
+        notes.put("tick-map-change", "map change handler (rebuild footholds, regrounding)");
+        notes.put("step-movement-core", "stepMovementCore wrapper (nav resolve + movement phase)");
+        notes.put("opportunity-attack", "tryLocalOpportunityAttack");
+        notes.put("broadcast-move", "AgentMovementBroadcastService.broadcastMovement (packet build + map broadcast)");
+        notes.put("stuck-detect", "tickStuckDetection");
+        notes.put("grind-loot-scan", "AgentPassiveLootRuntimeService grind loot target selection");
+        notes.put("auto-equip", "AgentEquipmentService.autoEquip (Pareto DP) triggered on equip pickup");
+        SECTION_NOTES = notes;
+    }
+
+    private AgentPerformanceMonitor() {
+    }
+
+    public static boolean enabled() {
+        return enabled;
+    }
+
+    public static void setEnabled(boolean enabledValue) {
+        cfg.ENABLED = enabledValue;
+        enabled = enabledValue;
+        reset();
+    }
+
+    public static boolean toggleEnabled() {
+        boolean next = !enabled;
+        setEnabled(next);
+        return next;
+    }
+
+    /** Returns a start timestamp suitable for {@link #recordSince}, or 0 if monitoring is disabled. */
+    public static long start() {
+        return enabled ? System.nanoTime() : 0L;
+    }
+
+    /** Records elapsed time since the matching {@link #start} call. No-op when start returned 0. */
+    public static void recordSince(String section, long startedAtNs) {
+        if (startedAtNs != 0L) {
+            record(section, System.nanoTime() - startedAtNs);
+        }
+    }
+
+    public static void record(String section, long elapsedNs) {
+        if (!enabled || elapsedNs < 0) {
+            return;
+        }
+
+        synchronized (LOCK) {
+            Stat stat = statsBySection.computeIfAbsent(section, ignored -> new Stat());
+            stat.count++;
+            stat.totalNs += elapsedNs;
+            stat.maxNs = Math.max(stat.maxNs, elapsedNs);
+            if (elapsedNs >= slowThresholdNs()) {
+                stat.slowCount++;
+                stat.slowTotalNs += elapsedNs;
+            }
+            maybeLog();
+        }
+    }
+
+    /** Clears all accumulated stats. Used by perf harnesses to start a clean window. */
+    public static void reset() {
+        synchronized (LOCK) {
+            statsBySection.clear();
+            lastLogAtMs = System.currentTimeMillis();
+            nextLogAtMs = lastLogAtMs + cfg.LOG_INTERVAL_MS;
+        }
+    }
+
+    /** Returns an immutable per-section snapshot of current stats. */
+    public static List<SectionSnapshot> snapshot() {
+        synchronized (LOCK) {
+            List<SectionSnapshot> snapshots = new ArrayList<>(statsBySection.size());
+            for (Map.Entry<String, Stat> entry : statsBySection.entrySet()) {
+                Stat s = entry.getValue();
+                snapshots.add(new SectionSnapshot(entry.getKey(), s.count, s.totalNs, s.maxNs, s.slowCount, s.slowTotalNs));
+            }
+            return snapshots;
+        }
+    }
+
+    public static void recordPathfind(long elapsedNs) {
+        record("pathfind", elapsedNs);
+    }
+
+    public static void recordPathfind(String caller, long elapsedNs) {
+        if (caller == null || caller.isBlank()) {
+            recordPathfind(elapsedNs);
+            return;
+        }
+        record("pathfind-" + caller, elapsedNs);
+    }
+
+    private static void maybeLog() {
+        long now = System.currentTimeMillis();
+        if (now < nextLogAtMs || statsBySection.isEmpty()) {
+            return;
+        }
+
+        double intervalSeconds = Math.max(0.001, (now - lastLogAtMs) / 1000.0);
+        List<Map.Entry<String, Stat>> reportSections = new ArrayList<>();
+        for (Map.Entry<String, Stat> entry : statsBySection.entrySet()) {
+            if (entry.getValue().maxNs >= reportThresholdNs()) {
+                reportSections.add(entry);
+            }
+        }
+        reportSections.sort(Comparator.comparingLong((Map.Entry<String, Stat> entry) -> entry.getValue().maxNs).reversed());
+
+        if (reportSections.isEmpty()) {
+            statsBySection.clear();
+            lastLogAtMs = now;
+            nextLogAtMs = now + cfg.LOG_INTERVAL_MS;
+            return;
+        }
+
+        StringBuilder line = new StringBuilder("bot-perf report>=")
+                .append(formatMs(cfg.REPORT_MAX_MS))
+                .append("ms")
+                .append(" slow>=")
+                .append(formatMs(cfg.SLOW_SAMPLE_MS))
+                .append("ms ");
+        boolean first = true;
+        int loggedSections = 0;
+        for (Map.Entry<String, Stat> entry : reportSections) {
+            Stat stat = entry.getValue();
+            if (loggedSections >= MAX_LOGGED_SECTIONS) {
+                break;
+            }
+            if (!first) {
+                line.append(" | ");
+            }
+            first = false;
+            loggedSections++;
+
+            double averageMs = stat.totalNs / (double) Math.max(1L, stat.count) / 1_000_000.0;
+            double totalMs = stat.totalNs / 1_000_000.0;
+            double cpuMsPerSec = totalMs / intervalSeconds;
+            double cpuCore = cpuMsPerSec / 1000.0;
+            double maxMs = stat.maxNs / 1_000_000.0;
+            double slowAverageMs = stat.slowTotalNs / (double) Math.max(1L, stat.slowCount) / 1_000_000.0;
+            double slowPct = stat.slowCount * 100.0 / Math.max(1L, stat.count);
+            line.append(entry.getKey())
+                    .append(" avg=")
+                    .append(formatMs(averageMs))
+                    .append("ms")
+                    .append(" cps=")
+                    .append(String.format(Locale.ROOT, "%.1f", stat.count / intervalSeconds))
+                    .append(" cpu=")
+                    .append(formatMs(cpuMsPerSec))
+                    .append("ms/s")
+                    .append(" core=")
+                    .append(formatCore(cpuCore))
+                    .append(" max=")
+                    .append(formatMs(maxMs))
+                    .append("ms")
+                    .append(" n=")
+                    .append(stat.count)
+                    .append(" slow=")
+                    .append(stat.slowCount)
+                    .append("/")
+                    .append(stat.count)
+                    .append(" slow%=")
+                    .append(formatPct(slowPct))
+                    .append("%")
+                    .append(" slowAvg=")
+                    .append(formatMs(slowAverageMs))
+                    .append("ms")
+                    .append(" note=")
+                    .append(noteFor(entry.getKey()));
+        }
+        if (reportSections.size() > loggedSections) {
+            line.append(" | omitted=")
+                    .append(reportSections.size() - loggedSections)
+                    .append(" lower-max report sections");
+        }
+
+        if (!first) {
+            log.info(line.toString());
+        }
+        statsBySection.clear();
+        lastLogAtMs = now;
+        nextLogAtMs = now + cfg.LOG_INTERVAL_MS;
+    }
+
+    private static String noteFor(String section) {
+        String note = SECTION_NOTES.get(section);
+        if (note != null) {
+            return note;
+        }
+        if (section != null && section.startsWith("pathfind-")) {
+            return "A* search over the current bot navigation graph";
+        }
+        return "instrumented bot subsystem";
+    }
+
+    private static long slowThresholdNs() {
+        return (long) (Math.max(0.0, cfg.SLOW_SAMPLE_MS) * 1_000_000.0);
+    }
+
+    private static long reportThresholdNs() {
+        return (long) (Math.max(cfg.SLOW_SAMPLE_MS, cfg.REPORT_MAX_MS) * 1_000_000.0);
+    }
+
+    private static String formatMs(double value) {
+        return String.format(Locale.ROOT, "%.3f", value);
+    }
+
+    private static String formatPct(double value) {
+        return String.format(Locale.ROOT, "%.1f", value);
+    }
+
+    private static String formatCore(double value) {
+        return String.format(Locale.ROOT, "%.3f", value);
+    }
+}

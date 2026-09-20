@@ -50,7 +50,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MapFactory {
-    private static final Logger log = LoggerFactory.getLogger(MapFactory.class);
 
     private static final Data nameData;
     private static final DataProvider mapSource;
@@ -113,7 +112,7 @@ public class MapFactory {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
     }
 
@@ -161,7 +160,8 @@ public class MapFactory {
         map.setOnUserEnter(onEnter.equals("") ? String.valueOf(mapid) : onEnter);
 
         map.setFieldLimit(DataTool.getInt(infoData.getChildByPath("fieldLimit"), 0));
-        map.setMobInterval((short) DataTool.getInt(infoData.getChildByPath("createMobInterval"), 2000));
+        map.setSwim(DataTool.getInt(infoData.getChildByPath("swim"), 0) != 0);
+        map.setMobInterval((short) DataTool.getInt(infoData.getChildByPath("createMobInterval"), 2000)); // FriendServer: faster default respawn (upstream 5000)
         PortalFactory portalFactory = new PortalFactory();
         for (Data portal : mapData.getChildByPath("portal")) {
             map.addPortal(portalFactory.makePortal(DataTool.getInt(portal.getChildByPath("pt")), portal));
@@ -208,6 +208,9 @@ public class MapFactory {
                     Foothold fh = new Foothold(new Point(x1, y1), new Point(x2, y2), Integer.parseInt(footHold.getName()));
                     fh.setPrev(DataTool.getInt(footHold.getChildByPath("prev")));
                     fh.setNext(DataTool.getInt(footHold.getChildByPath("next")));
+                    fh.setForbidFallDown(DataTool.getInt(footHold.getChildByPath("forbidFallDown"), 0) != 0);
+                    fh.setLayer(parseFootholdGroupId(footRoot.getName()));
+                    fh.setZMass(parseFootholdGroupId(footCat.getName()));
                     if (fh.getX1() < lBound.x) {
                         lBound.x = fh.getX1();
                     }
@@ -229,6 +232,15 @@ public class MapFactory {
             fTree.insert(fh);
         }
         map.setFootholds(fTree);
+        if (mapData.getChildByPath("ladderRope") != null) {
+            for (Data ropeData : mapData.getChildByPath("ladderRope")) {
+                int rx = DataTool.getInt(ropeData.getChildByPath("x"));
+                int ry1 = DataTool.getInt(ropeData.getChildByPath("y1"));
+                int ry2 = DataTool.getInt(ropeData.getChildByPath("y2"));
+                int l = DataTool.getInt(ropeData.getChildByPath("l"), 0); // 0=rope, 1=ladder
+                map.addRope(new Rope(rx, ry1, ry2, l == 1));
+            }
+        }
         if (mapData.getChildByPath("area") != null) {
             for (Data area : mapData.getChildByPath("area")) {
                 int x1 = DataTool.getInt(area.getChildByPath("x1"));
@@ -254,7 +266,7 @@ public class MapFactory {
                     }
                 }
             } catch (SQLException e) {
-                log.error("unhandled exception", e);
+                monitoring.RuntimeFailureLogger.log(e);
             }
         }
 
@@ -307,6 +319,10 @@ public class MapFactory {
         map.setClock(mapData.getChildByPath("clock") != null);
         map.setEverlast(DataTool.getIntConvert("everlast", infoData, 0) != 0); // thanks davidlafriniere for noticing value 0 accounting as true
         map.setTown(DataTool.getIntConvert("town", infoData, 0) != 0);
+        Data footholdSpeedData = infoData.getChildByPath("fs");
+        if (footholdSpeedData != null) {
+            map.setFootholdSpeed(DataTool.getFloat(footholdSpeedData));
+        }
         map.setHPDec(DataTool.getIntConvert("decHP", infoData, 0));
         map.setHPDecProtect(DataTool.getIntConvert("protectItem", infoData, 0));
         map.setForcedReturnMap(DataTool.getInt(infoData.getChildByPath("forcedReturn"), MapId.NONE));
@@ -329,7 +345,7 @@ public class MapFactory {
                 backTypes.put(layerNum, btype);
             }
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
             // swallow cause I'm cool
         }
 
@@ -337,6 +353,14 @@ public class MapFactory {
         map.generateMapDropRangeCache();
 
         return map;
+    }
+
+    private static int parseFootholdGroupId(String name) {
+        try {
+            return Integer.parseInt(name);
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     private static AbstractLoadedLife loadLife(int id, String type, int cy, int f, int fh, int rx0, int rx1, int x, int y, int hide) {

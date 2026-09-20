@@ -181,10 +181,12 @@ public class StatEffect {
     private boolean skill;
     private List<Pair<BuffStat, Integer>> statups;
     private Map<MonsterStatus, Integer> monsterStatus;
-    private int x, y, mobCount, moneyCon, cooldown, morphId = 0, ghost, fatigue, berserk, booster;
+    private int x, y, mastery, range, mobCount, moneyCon, cooldown, morphId = 0, ghost, fatigue, berserk, booster;
     private double prop;
     private int itemCon, itemConNo;
     private int damage, attackCount, fixdamage;
+    private boolean hasDamage;
+    private boolean hasMatk;
     private Point lt, rb;
     private short bulletCount, bulletConsume;
     private byte mapProtection;
@@ -308,6 +310,7 @@ public class StatEffect {
         ret.cureDebuffs = cure;
         ret.nuffSkill = DataTool.getInt("nuffSkill", source, 0);
 
+        ret.range = DataTool.getInt("range", source, 0);
         ret.mobCount = DataTool.getInt("mobCount", source, 1);
         ret.cooldown = DataTool.getInt("cooltime", source, 0);
         ret.morphId = DataTool.getInt("morph", source, 0);
@@ -344,6 +347,7 @@ public class StatEffect {
         ArrayList<Pair<BuffStat, Integer>> statups = new ArrayList<>();
         ret.watk = (short) DataTool.getInt("pad", source, 0);
         ret.wdef = (short) DataTool.getInt("pdd", source, 0);
+        ret.hasMatk = source.getChildByPath("mad") != null;
         ret.matk = (short) DataTool.getInt("mad", source, 0);
         ret.mdef = (short) DataTool.getInt("mdd", source, 0);
         ret.acc = (short) DataTool.getIntConvert("acc", source, 0);
@@ -487,6 +491,7 @@ public class StatEffect {
                 } else if ((sourceid == Beginner.NIMBLE_FEET || sourceid == Noblesse.NIMBLE_FEET || sourceid == Evan.NIMBLE_FEET || sourceid == Legend.AGILE_BODY) && YamlConfig.config.server.USE_ULTRA_NIMBLE_FEET == true) {
                     ret.jump = (short) (ret.speed * 4);
                     ret.speed *= 15;
+                    ret.speed = (short) Math.min(ret.speed, 100);
                 }
             }
 
@@ -518,7 +523,9 @@ public class StatEffect {
         }
         ret.x = x;
         ret.y = DataTool.getInt("y", source, 0);
+        ret.mastery = DataTool.getInt("mastery", source, 0);
 
+        ret.hasDamage = source.getChildByPath("damage") != null;
         ret.damage = DataTool.getIntConvert("damage", source, 100);
         ret.fixdamage = DataTool.getIntConvert("fixdamage", source, -1);
         ret.attackCount = DataTool.getIntConvert("attackCount", source, 1);
@@ -678,7 +685,7 @@ public class StatEffect {
                     break;
                 case WindArcher.WIND_WALK:
                     statups.add(new Pair<>(BuffStat.WIND_WALK, x));
-                    //break;    thanks Vcoc for noticing WW not showing for other players when changing maps
+                    break;    //thanks Vcoc for noticing WW not showing for other players when changing maps
                 case Rogue.DARK_SIGHT:
                 case NightWalker.DARK_SIGHT:
                     statups.add(new Pair<>(BuffStat.DARKSIGHT, x));
@@ -1248,7 +1255,11 @@ public class StatEffect {
         }
     }
 
-    private Rectangle calculateBoundingBox(Point posFrom, boolean facingLeft) {
+    public boolean hasBoundingBox() {
+        return lt != null && rb != null;
+    }
+
+    public Rectangle calculateBoundingBox(Point posFrom, boolean facingLeft) {
         Point mylt;
         Point myrb;
         if (facingLeft) {
@@ -1887,6 +1898,18 @@ public class StatEffect {
         return prop == 1.0 || Math.random() < prop;
     }
 
+    public boolean canPaySkillCost(Character chr) {
+        if (!skill || chr == null) {
+            return true;
+        }
+
+        if (chr.getMp() < mpCon) {
+            return false;
+        }
+
+        return hpCon <= 0 || chr.getHp() > hpCon || chr.isGM();
+    }
+
     /*
      private static class CancelEffectAction implements Runnable {
 
@@ -1909,6 +1932,10 @@ public class StatEffect {
      }
      }
      */
+    public boolean curesDisease(Disease disease) {
+        return disease != null && cureDebuffs != null && cureDebuffs.contains(disease);
+    }
+
     public short getHp() {
         return hp;
     }
@@ -1957,8 +1984,16 @@ public class StatEffect {
         return watk;
     }
 
+    public short getAcc() {
+        return acc;
+    }
+
     public int getDuration() {
         return duration;
+    }
+
+    public boolean isOverTime() {
+        return overTime;
     }
 
     public List<Pair<BuffStat, Integer>> getStatups() {
@@ -1973,12 +2008,52 @@ public class StatEffect {
         return x;
     }
 
+    /** Returns the skill's proc/crit chance in [0.0, 1.0] (WZ {@code prop} field ÷ 100). */
+    public double getProp() {
+        return prop;
+    }
+
     public int getY() {
         return y;
     }
 
+    public int getMastery() {
+        return mastery;
+    }
+
+    public int getRange() {
+        return range;
+    }
+
     public int getDamage() {
         return damage;
+    }
+
+    // True iff the WZ source explicitly declared a "damage" attribute. Physical
+    // attack skills always declare it; utility skills (Teleport, Magic Guard) omit it
+    // and read getDamage() == 100 only because of the loader default.
+    public boolean hasDamage() {
+        return hasDamage;
+    }
+
+    // True iff the WZ source explicitly declared a "mad" (magic attack) attribute.
+    // Magic attack skills (Magic Claw, Cold Beam, Energy Bolt, Thunder Bolt, ...) declare
+    // it instead of "damage". Some buffs also declare it for an MATK statup — gate with
+    // isOverTime() when using this to identify attack skills.
+    public boolean hasMatk() {
+        return hasMatk;
+    }
+
+    // Damage percentage to apply to the attacker's base damage. Most attack skills declare
+    // "damage" (returned as-is). Bomb/explosion skills like Hunter.ARROW_BOMB declare "x"
+    // instead — they have no "damage" key so getDamage() would default to 100, which would
+    // skip the skill's intended multiplier. Callers in the damage formula must use this
+    // method instead of getDamage() so bomb-family skills score correctly.
+    public int getDamagePercent() {
+        if (hasDamage) {
+            return damage;
+        }
+        return x > 0 ? x : damage;
     }
 
     public int getAttackCount() {

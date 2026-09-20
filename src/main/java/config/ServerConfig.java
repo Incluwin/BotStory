@@ -13,6 +13,8 @@ public class ServerConfig {
     public int INIT_CONNECTION_POOL_TIMEOUT;
 
     //Login Configuration
+    public String DEPLOYMENT_PROFILE;
+    public boolean ALLOW_INSECURE_PRODUCTION_AUTH;
     public int WORLDS;
     public int WLDLIST_SIZE;
     public int CHANNEL_SIZE;
@@ -47,12 +49,14 @@ public class ServerConfig {
     public String HOST;
     public String LANHOST;
     public String LOCALHOST;
+    public String TAILSCALEHOST;
     public boolean GMSERVER;
 
     //Other configuration
     public boolean SHUTDOWNHOOK;
 
     //Server Flags
+    public ObserverConfig observer = new ObserverConfig();
     public boolean USE_CUSTOM_KEYSET;
     public boolean USE_DEBUG;
     public boolean USE_DEBUG_SHOW_INFO_EQPEXP;
@@ -81,6 +85,15 @@ public class ServerConfig {
     public boolean USE_STARTING_AP_4;
     public boolean USE_AUTOBAN;
     public boolean USE_AUTOBAN_LOG;
+    public int PACKET_MAX_FRAME_BYTES;
+    public int PACKET_GLOBAL_RATE_PER_SECOND;
+    public int PACKET_GLOBAL_BURST;
+    public int PACKET_MOVEMENT_RATE_PER_SECOND;
+    public int PACKET_COMBAT_RATE_PER_SECOND;
+    public int PACKET_CHAT_RATE_PER_SECOND;
+    public int PACKET_ECONOMY_RATE_PER_SECOND;
+    public int PACKET_OTHER_RATE_PER_SECOND;
+    public int PACKET_RATE_LIMIT_VIOLATIONS_BEFORE_DISCONNECT;
     public boolean USE_EXP_GAIN_LOG;
     public boolean USE_AUTOSAVE;
     public int AUTOSAVE_INTERVAL_MINUTES = 10;
@@ -105,11 +118,16 @@ public class ServerConfig {
     public boolean USE_BUFF_MOST_SIGNIFICANT;
     public boolean USE_BUFF_EVERLASTING;
     public boolean USE_MULTIPLE_SAME_EQUIP_DROP;
+    public boolean USE_GACHA_V2;
     public boolean USE_ENABLE_FULL_RESPAWN;
     public boolean USE_ENABLE_CHAT_LOG;
     public boolean USE_MAP_OWNERSHIP_SYSTEM;
     public boolean USE_FISHING_SYSTEM;
     public boolean USE_NPCS_SCRIPTABLE;
+    public int MOB_RESPAWN_TIME_OVERRIDE_SECONDS;
+    public int REACTOR_RESPAWN_TIME_OVERRIDE_SECONDS;
+    public int MAPLE_ISLAND_MOB_RESPAWN_TIME_OVERRIDE_SECONDS;
+    public int MAPLE_ISLAND_REACTOR_RESPAWN_TIME_OVERRIDE_SECONDS;
 
     //Events/PQs Configuration
     public boolean USE_OLD_GMS_STYLED_PQ_NPCS;
@@ -135,6 +153,8 @@ public class ServerConfig {
     //Commands Configuration
     public boolean BLOCK_GENERATE_CASH_ITEM;
     public boolean USE_WHOLE_SERVER_RANKING;
+    public boolean DRESSING_ROOM_ENABLED;
+    public int DRESSING_ROOM_MIN_GM_LEVEL;
 
     public double EQUIP_EXP_RATE;
     public double PQ_BONUS_EXP_RATE;
@@ -152,6 +172,7 @@ public class ServerConfig {
     public boolean USE_UNITPRICE_WITH_COMMA;
     public byte MAX_MONITORED_BUFFSTATS;
     public int MAX_AP;
+    public int PLAYER_HP_MP_CAP = 30000;
     public int MAX_EVENT_LEVELS;
     public long BLOCK_NPC_RACE_CONDT;
     public int TOT_MOB_QUEST_REQUIREMENT;
@@ -166,6 +187,8 @@ public class ServerConfig {
     public int KITE_EXPIRE_TIME;
     public int ITEM_MONITOR_TIME;
     public int LOCK_MONITOR_TIME;
+    public boolean ITEMS_NEVER_EXPIRE;
+    public boolean PETS_NEVER_EXPIRE;
 
     //Map Monitor Configuration
     public int ITEM_EXPIRE_CHECK;
@@ -191,6 +214,39 @@ public class ServerConfig {
     public int CHSCROLL_STAT_RATE;
     public int CHSCROLL_STAT_RANGE;
 
+    // NuTNNuT's Custom Features
+    // Scroll Success Bonus
+    public boolean SCROLL_SUCCESS_BONUS_ENABLED;
+    public int SCROLL_SUCCESS_BONUS;
+    // Maker Skills
+    public boolean MAKER_CRYSTAL_ONLY_IMPROVE;
+    // Godly Stats on Equip Drops/Rewards
+    public boolean GODLY_STATS_ENABLED;
+    public int GODLY_STATS_DROP_CHANCE;
+    public boolean GODLY_STATS_MAKER_ENABLED;
+    public int GODLY_STATS_MAKER_CHANCE;
+    public double GODLY_STATS_MAKER_BONUS_SCALING;
+    public int GODLY_STATS_MAKER_MIN_BONUS;
+    public double GODLY_STATS_MAKER_HPMP_SCALING;
+    public int GODLY_STATS_MAKER_MIN_HPMP_BONUS;
+    public boolean GODLY_STATS_QUEST_ENABLED;
+    public int GODLY_STATS_QUEST_CHANCE;
+    public double GODLY_STATS_QUEST_BONUS_SCALING;
+    public int GODLY_STATS_QUEST_MIN_BONUS;
+    public double GODLY_STATS_QUEST_HPMP_SCALING;
+    public int GODLY_STATS_QUEST_MIN_HPMP_BONUS;
+    public boolean GODLY_STATS_NPC_ENABLED;
+    public int GODLY_STATS_NPC_CHANCE;
+    public double GODLY_STATS_NPC_BONUS_SCALING;
+    public int GODLY_STATS_NPC_MIN_BONUS;
+    public double GODLY_STATS_NPC_HPMP_SCALING;
+    public int GODLY_STATS_NPC_MIN_HPMP_BONUS;
+    public double GODLY_STATS_BONUS_SCALING;
+    public int GODLY_STATS_MIN_BONUS;
+    public double GODLY_STATS_HPMP_SCALING;
+    public int GODLY_STATS_MIN_HPMP_BONUS;
+    public boolean ALLOW_DROPS_ON_DROP_LIMIT_MAPS;
+
     //Beginner Skills Configuration
     public boolean USE_ULTRA_NIMBLE_FEET;
     public boolean USE_ULTRA_RECOVERY;
@@ -204,6 +260,7 @@ public class ServerConfig {
     public boolean USE_FULL_HOLY_SYMBOL;
 
     //Character Configuration
+    public boolean ALWAYS_MAX_INVENTORY_SLOTS;
     public boolean USE_ADD_SLOTS_BY_LEVEL;
     public boolean USE_ADD_RATES_BY_LEVEL;
     public boolean USE_STACK_COUPON_RATES;
@@ -297,6 +354,10 @@ public class ServerConfig {
     public int MINIMUM_GM_LEVEL_TO_USE_STORAGE;
     public int MINIMUM_GM_LEVEL_TO_USE_DUEY;
     public int MINIMUM_GM_LEVEL_TO_DROP;
+    public boolean GM_NO_FAME_COOLDOWN;
+
+    // Security evidence retention
+    public int SECURITY_EVENT_RETENTION_DAYS = 90;
 
     //Custom NPC overrides. List of NPC IDs.
     public Map<String, String> NPCS_SCRIPTABLE = new HashMap<>();

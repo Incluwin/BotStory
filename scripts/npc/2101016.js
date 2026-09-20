@@ -41,7 +41,7 @@ function action(mode, type, selection) {
             arena.clearAriantScore(cm.getPlayer());
             cm.removeAll(4031868);
 
-            cm.getPlayer().gainExp(92.7 * cm.getPlayer().getExpRate() * copns, true, true);
+            cm.getPlayer().gainExpRateScaled(92.7 * copns, true, true);
             cm.getPlayer().gainAriantPoints(copns);
             cm.sendOk("Alright! Make me more jewels next time! Ahahahahah!");
             cm.dispose();

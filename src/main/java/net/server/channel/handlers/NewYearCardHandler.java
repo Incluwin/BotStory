@@ -35,8 +35,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Ronan
@@ -44,8 +42,6 @@ import org.slf4j.LoggerFactory;
  * Header layout thanks to Eric
  */
 public final class NewYearCardHandler extends AbstractPacketHandler {
-    private static final Logger log = LoggerFactory.getLogger(NewYearCardHandler.class);
-
 
     @Override
     public final void handlePacket(InPacket p, Client c) {
@@ -145,7 +141,7 @@ public final class NewYearCardHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return -1;

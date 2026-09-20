@@ -37,16 +37,12 @@ import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Lerk
  * @author Ronan
  */
 public class Reactor extends AbstractMapObject {
-    private static final Logger log = LoggerFactory.getLogger(Reactor.class);
-
     private final int rid;
     private final ReactorStats stats;
     private byte state;
@@ -160,6 +156,15 @@ public class Reactor extends AbstractMapObject {
 
     public boolean isActive() {
         return alive && stats.getType(state) != -1;
+    }
+
+    public boolean hasPendingRuntimeAction() {
+        reactorLock.lock();
+        try {
+            return state != 0 || !alive || timeoutTask != null || delayedRespawnRun != null;
+        } finally {
+            reactorLock.unlock();
+        }
     }
 
     public void setAlive(boolean alive) {
@@ -324,7 +329,7 @@ public class Reactor extends AbstractMapObject {
                 }
             }
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 

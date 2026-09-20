@@ -37,6 +37,7 @@ import net.packet.Packet;
 import net.server.Server;
 import server.ItemInformationProvider;
 import server.Trade;
+import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 import tools.Pair;
@@ -64,7 +65,6 @@ import org.slf4j.LoggerFactory;
  * @author Ronan - concurrency protection
  */
 public class HiredMerchant extends AbstractMapObject {
-    private static final Logger log = LoggerFactory.getLogger(HiredMerchant.class);
 
     private static final int VISITOR_HISTORY_LIMIT = 10;
     private static final int BLACKLIST_LIMIT = 20;
@@ -297,7 +297,7 @@ public class HiredMerchant extends AbstractMapObject {
             }
 
             if (YamlConfig.config.server.USE_ENFORCE_MERCHANT_SAVE) {
-                chr.saveCharToDB(false);
+                chr.saveCharToDB(false, SaveReason.MERCHANT);
             }
         }
     }
@@ -337,13 +337,19 @@ public class HiredMerchant extends AbstractMapObject {
             KarmaManipulator.toggleKarmaFlagToUntradeable(newItem);
 
             int price = (int) Math.min((float) pItem.getPrice() * quantity, Integer.MAX_VALUE);
+            int proceeds = price - Trade.getFee(price);
             if (c.getPlayer().getMeso() >= price) {
+                if (!canOwnerHoldMerchantMesos(proceeds)) {
+                    c.getPlayer().dropMessage(1, "Transaction failed since the shop owner can't hold any more mesos.");
+                    c.sendPacket(PacketCreator.enableActions());
+                    return;
+                }
+
                 if (canBuy(c, newItem)) {
                     c.getPlayer().gainMeso(-price, false);
-                    price -= Trade.getFee(price);  // thanks BHB for pointing out trade fees not applying here
 
                     synchronized (sold) {
-                        sold.add(new SoldItem(c.getPlayer().getName(), pItem.getItem().getItemId(), newItem.getQuantity(), price));
+                        sold.add(new SoldItem(c.getPlayer().getName(), pItem.getItem().getItemId(), newItem.getQuantity(), proceeds));
                     }
 
                     pItem.setBundles((short) (pItem.getBundles() - quantity));
@@ -352,12 +358,12 @@ public class HiredMerchant extends AbstractMapObject {
                     }
 
                     if (YamlConfig.config.server.USE_ANNOUNCE_SHOPITEMSOLD) {   // idea thanks to Vcoc
-                        announceItemSold(newItem, price, getQuantityLeft(pItem.getItem().getItemId()));
+                        announceItemSold(newItem, proceeds, getQuantityLeft(pItem.getItem().getItemId()));
                     }
 
                     Character owner = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterByName(ownerName);
                     if (owner != null) {
-                        owner.addMerchantMesos(price);
+                        owner.addMerchantMesos(proceeds);
                     } else {
                         try (Connection con = DatabaseConnection.getConnection()) {
                             long merchantMesos = 0;
@@ -369,15 +375,15 @@ public class HiredMerchant extends AbstractMapObject {
                                     }
                                 }
                             }
-                            merchantMesos += price;
+                            merchantMesos += proceeds;
 
                             try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET MerchantMesos = ? WHERE id = ?", PreparedStatement.RETURN_GENERATED_KEYS)) {
-                                ps.setInt(1, (int) Math.min(merchantMesos, Integer.MAX_VALUE));
+                                ps.setInt(1, (int) merchantMesos);
                                 ps.setInt(2, ownerId);
                                 ps.executeUpdate();
                             }
                         } catch (Exception e) {
-                            log.error("unhandled exception", e);
+                            monitoring.RuntimeFailureLogger.log(e);
                         }
                     }
                 } else {
@@ -393,9 +399,31 @@ public class HiredMerchant extends AbstractMapObject {
             try {
                 this.saveItems(false);
             } catch (Exception e) {
-                log.error("unhandled exception", e);
+                monitoring.RuntimeFailureLogger.log(e);
             }
         }
+    }
+
+    private boolean canOwnerHoldMerchantMesos(int proceeds) {
+        Character owner = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterByName(ownerName);
+        if (owner != null) {
+            return canHoldMerchantMesos(owner.getMerchantMeso(), proceeds);
+        }
+
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT MerchantMesos FROM characters WHERE id = ?")) {
+            ps.setInt(1, ownerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && canHoldMerchantMesos(rs.getInt(1), proceeds);
+            }
+        } catch (SQLException e) {
+            monitoring.RuntimeFailureLogger.log(e);
+            return false;
+        }
+    }
+
+    static boolean canHoldMerchantMesos(int currentMesos, int proceeds) {
+        return proceeds >= 0 && (long) currentMesos + proceeds <= Integer.MAX_VALUE;
     }
 
     private void announceItemSold(Item item, int mesos, int inStore) {
@@ -408,7 +436,7 @@ public class HiredMerchant extends AbstractMapObject {
     }
 
     public void forceClose() {
-        //Server.getInstance().getChannel(world, channel).removeHiredMerchant(ownerId);
+        Server.getInstance().getChannel(world, channel).removeHiredMerchant(ownerId, this);
         map.broadcastMessage(PacketCreator.removeHiredMerchantBox(getOwnerId()));
         map.removeMapObject(this);
 
@@ -434,7 +462,7 @@ public class HiredMerchant extends AbstractMapObject {
                 items.clear();
             }
         } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
         }
 
         Character player = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(ownerId);
@@ -446,7 +474,7 @@ public class HiredMerchant extends AbstractMapObject {
                 ps.setInt(1, ownerId);
                 ps.executeUpdate();
             } catch (SQLException ex) {
-                log.error("unhandled exception", ex);
+                monitoring.RuntimeFailureLogger.log(ex);
             }
         }
 
@@ -463,7 +491,7 @@ public class HiredMerchant extends AbstractMapObject {
     private void closeShop(Client c, boolean timeout) {
         map.removeMapObject(this);
         map.broadcastMessage(PacketCreator.removeHiredMerchantBox(ownerId));
-        c.getChannelServer().removeHiredMerchant(ownerId);
+        c.getChannelServer().removeHiredMerchant(ownerId, this);
 
         this.removeAllVisitors();
         this.removeOwner(c.getPlayer());
@@ -489,7 +517,7 @@ public class HiredMerchant extends AbstractMapObject {
             try {
                 this.saveItems(timeout);
             } catch (Exception e) {
-                log.error("unhandled exception", e);
+                monitoring.RuntimeFailureLogger.log(e);
             }
 
             // thanks Rohenn for noticing a possible dupe scenario on closing shop
@@ -505,14 +533,14 @@ public class HiredMerchant extends AbstractMapObject {
             }
 
             if (YamlConfig.config.server.USE_ENFORCE_MERCHANT_SAVE) {
-                c.getPlayer().saveCharToDB(false);
+                c.getPlayer().saveCharToDB(false, SaveReason.MERCHANT);
             }
 
             synchronized (items) {
                 items.clear();
             }
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         Server.getInstance().getWorld(world).unregisterHiredMerchant(this);
@@ -581,7 +609,7 @@ public class HiredMerchant extends AbstractMapObject {
 
     public List<PlayerShopItem> getItems() {
         synchronized (items) {
-            return Collections.unmodifiableList(items);
+            return Collections.unmodifiableList(new ArrayList<>(items));
         }
     }
 
@@ -617,7 +645,7 @@ public class HiredMerchant extends AbstractMapObject {
             try {
                 this.saveItems(false);
             } catch (SQLException ex) {
-                log.error("unhandled exception", ex);
+                monitoring.RuntimeFailureLogger.log(ex);
             }
         }
     }
@@ -628,7 +656,7 @@ public class HiredMerchant extends AbstractMapObject {
         try {
             this.saveItems(false);
         } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -716,10 +744,16 @@ public class HiredMerchant extends AbstractMapObject {
         }
 
         try (Connection con = DatabaseConnection.getConnection()) {
-            ItemFactory.MERCHANT.saveItems(itemsWithType, bundles, this.ownerId, con);
+            con.setAutoCommit(false);
+            try {
+                ItemFactory.MERCHANT.saveItems(itemsWithType, bundles, this.ownerId, con);
+                FredrickProcessor.insertFredrickLog(con, this.ownerId);
+                con.commit();
+            } catch (SQLException | RuntimeException failure) {
+                con.rollback();
+                throw failure;
+            }
         }
-
-        FredrickProcessor.insertFredrickLog(this.ownerId);
     }
 
     private static boolean check(Character chr, List<PlayerShopItem> items) {
@@ -762,7 +796,12 @@ public class HiredMerchant extends AbstractMapObject {
     }
 
     public List<PastVisitor> getVisitorHistory() {
-        return Collections.unmodifiableList(visitorHistory);
+        visitorLock.lock();
+        try {
+            return Collections.unmodifiableList(new ArrayList<>(visitorHistory));
+        } finally {
+            visitorLock.unlock();
+        }
     }
 
     public void addToBlacklist(String chrName) {
@@ -787,7 +826,12 @@ public class HiredMerchant extends AbstractMapObject {
     }
 
     public Set<String> getBlacklist() {
-        return Collections.unmodifiableSet(blacklist);
+        visitorLock.lock();
+        try {
+            return Collections.unmodifiableSet(new LinkedHashSet<>(blacklist));
+        } finally {
+            visitorLock.unlock();
+        }
     }
 
     private boolean isBlacklisted(String chrName) {
@@ -809,7 +853,7 @@ public class HiredMerchant extends AbstractMapObject {
 
     public List<SoldItem> getSold() {
         synchronized (sold) {
-            return Collections.unmodifiableList(sold);
+            return Collections.unmodifiableList(new ArrayList<>(sold));
         }
     }
 

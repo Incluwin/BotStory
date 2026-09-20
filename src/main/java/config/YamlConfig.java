@@ -31,9 +31,9 @@ public class YamlConfig {
             config.bot_economy.validate();
             return config;
         } catch (FileNotFoundException e) {
-            throw new RuntimeException("Could not read config file " + YamlConfig.CONFIG_FILE_NAME + ": " + e.getMessage());
+            throw new RuntimeException("Could not read config file " + YamlConfig.CONFIG_FILE_NAME + ": " + e.getMessage(), e);
         } catch (IOException e) {
-            throw new RuntimeException("Could not successfully parse config file " + YamlConfig.CONFIG_FILE_NAME + ": " + e.getMessage());
+            throw new RuntimeException("Could not successfully parse config file " + YamlConfig.CONFIG_FILE_NAME + ": " + e.getMessage(), e);
         }
     }
 }

@@ -1,0 +1,117 @@
+package server.agents.runtime.activity.world;
+
+import server.agents.runtime.activity.session.AgentActivityKind;
+
+import java.util.Map;
+
+/** Durable per-Agent Director state. Preparation never advances it into an owning phase. */
+public record AgentWorldDirectorSession(
+        int schemaVersion,
+        int agentId,
+        String goalId,
+        AgentWorldDirectorMode mode,
+        AgentWorldDirectorPhase phase,
+        AgentActivityKind observedActivityKind,
+        String observedSessionId,
+        String selectedProposalId,
+        String activeHandoffId,
+        Map<String, Long> cooldownUntilMs,
+        long startedAtMs,
+        long updatedAtMs,
+        long observationCount,
+        String lastReason) {
+
+    public AgentWorldDirectorSession {
+        if (schemaVersion != 1 || agentId <= 0 || mode == null || phase == null
+                || startedAtMs < 0L || updatedAtMs < startedAtMs || observationCount < 0L) {
+            throw new IllegalArgumentException("valid World Director session state is required");
+        }
+        goalId = normalize(goalId);
+        observedSessionId = normalize(observedSessionId);
+        selectedProposalId = normalize(selectedProposalId);
+        activeHandoffId = normalize(activeHandoffId);
+        lastReason = normalize(lastReason);
+        cooldownUntilMs = Map.copyOf(cooldownUntilMs == null ? Map.of() : cooldownUntilMs);
+    }
+
+    public static AgentWorldDirectorSession shadow(int agentId, long nowMs) {
+        return new AgentWorldDirectorSession(1, agentId, "observe-level-30-readiness",
+                AgentWorldDirectorMode.SHADOW, AgentWorldDirectorPhase.OBSERVING,
+                null, "", "", "", Map.of(), nowMs, nowMs, 0L,
+                "shadow observation explicitly enabled; live control remains disabled");
+    }
+
+    public static AgentWorldDirectorSession create(
+            int agentId, AgentWorldDirectorMode mode, long nowMs) {
+        AgentWorldDirectorSession disabled = new AgentWorldDirectorSession(
+                1, agentId, "operator-directed-world-lifecycle",
+                AgentWorldDirectorMode.DISABLED, AgentWorldDirectorPhase.DISABLED,
+                null, "", "", "", Map.of(), nowMs, nowMs, 0L,
+                "World Director session created");
+        return disabled.withMode(mode, "World Director mode initialized", nowMs);
+    }
+
+    public AgentWorldDirectorSession observe(
+            AgentWorldActivityDecision decision, AgentWorldContext context, long nowMs) {
+        if (!mode.isObservationOnly() || phase != AgentWorldDirectorPhase.OBSERVING) {
+            throw new IllegalStateException("only an observing Director session accepts samples");
+        }
+        return new AgentWorldDirectorSession(schemaVersion, agentId, goalId, mode, phase,
+                context.currentActivityKind(), context.currentSessionId(),
+                decision == null ? "" : decision.proposalId(), "", cooldownUntilMs,
+                startedAtMs, nowMs, observationCount + 1L,
+                decision == null ? "no shadow decision" : decision.evidence());
+    }
+
+    public AgentWorldDirectorSession pause(String reason, long nowMs) {
+        return new AgentWorldDirectorSession(schemaVersion, agentId, goalId, mode,
+                AgentWorldDirectorPhase.PAUSED, observedActivityKind, observedSessionId,
+                selectedProposalId, activeHandoffId, cooldownUntilMs, startedAtMs, nowMs,
+                observationCount, reason);
+    }
+
+    public AgentWorldDirectorSession withMode(AgentWorldDirectorMode nextMode, String reason, long nowMs) {
+        if (nextMode == null || nowMs < updatedAtMs) {
+            throw new IllegalArgumentException("a valid mode transition is required");
+        }
+        AgentWorldDirectorPhase nextPhase = switch (nextMode) {
+            case DISABLED -> AgentWorldDirectorPhase.DISABLED;
+            case SHADOW, OBSERVE -> AgentWorldDirectorPhase.OBSERVING;
+            case EMERGENCY_HOLD -> AgentWorldDirectorPhase.PAUSED;
+            case MANUAL, CONTROLLED, ASSISTED, AUTONOMOUS ->
+                    phase == AgentWorldDirectorPhase.RUNNING
+                            || phase == AgentWorldDirectorPhase.HANDOFF
+                            || phase == AgentWorldDirectorPhase.PAUSED
+                            ? phase : AgentWorldDirectorPhase.WAITING;
+        };
+        return new AgentWorldDirectorSession(schemaVersion, agentId, goalId, nextMode,
+                nextPhase, observedActivityKind, observedSessionId, selectedProposalId,
+                activeHandoffId, cooldownUntilMs, startedAtMs, nowMs, observationCount, reason);
+    }
+
+    public AgentWorldDirectorSession transition(
+            AgentWorldDirectorPhase nextPhase,
+            AgentActivityKind activityKind,
+            String activitySessionId,
+            String handoffId,
+            String reason,
+            long nowMs) {
+        if (nextPhase == null || nowMs < updatedAtMs) {
+            throw new IllegalArgumentException("a valid Director phase transition is required");
+        }
+        return new AgentWorldDirectorSession(schemaVersion, agentId, goalId, mode, nextPhase,
+                activityKind, activitySessionId, selectedProposalId, handoffId,
+                cooldownUntilMs, startedAtMs, nowMs, observationCount, reason);
+    }
+
+    public boolean mayOwnActivity() {
+        return mode.acceptsOperatorDirectives()
+                && (phase == AgentWorldDirectorPhase.STARTING
+                || phase == AgentWorldDirectorPhase.RUNNING
+                || phase == AgentWorldDirectorPhase.HANDOFF);
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value.trim();
+    }
+}

@@ -21,6 +21,8 @@ package client.newyear;
 
 import client.Character;
 import net.server.Server;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.TimerManager;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
@@ -34,8 +36,6 @@ import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 
 import static java.util.concurrent.TimeUnit.HOURS;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Ronan - credits to Eric for showing the New Year opcodes and handler layout
@@ -160,7 +160,7 @@ public class NewYearCardRecord {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            log.error("Failed to save New Year card sender={} receiver={}", newyear.senderId, newyear.receiverId, sqle);
         }
     }
 
@@ -176,7 +176,7 @@ public class NewYearCardRecord {
                 ps.executeUpdate();
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            log.error("Failed to update New Year card id={}", newyear.id, sqle);
         }
     }
 
@@ -200,7 +200,7 @@ public class NewYearCardRecord {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            log.error("Failed to load New Year card id={}", cardid, sqle);
         }
 
         return null;
@@ -221,7 +221,7 @@ public class NewYearCardRecord {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            log.error("Failed to load New Year cards for chr={}", chr.getId(), sqle);
         }
     }
 
@@ -254,19 +254,22 @@ public class NewYearCardRecord {
         }
 
         sendTask = TimerManager.getInstance().register(() -> {
-            Server server = Server.getInstance();
+            try {
+                Server server = Server.getInstance();
 
-            int world = server.getCharacterWorld(receiverId);
-            if (world == -1) {
-                sendTask.cancel(false);
-                sendTask = null;
+                int world = server.getCharacterWorld(receiverId);
+                if (world == -1) {
+                    stopNewYearCardTask();
 
-                return;
-            }
+                    return;
+                }
 
-            Character target = server.getWorld(world).getPlayerStorage().getCharacterById(receiverId);
-            if (target != null && target.isLoggedinWorld()) {
-                target.sendPacket(PacketCreator.onNewYearCardRes(target, NewYearCardRecord.this, 0xC, 0));
+                Character target = server.getWorld(world).getPlayerStorage().getCharacterById(receiverId);
+                if (target != null && target.isLoggedinWorld()) {
+                    target.sendPacket(PacketCreator.onNewYearCardRes(target, NewYearCardRecord.this, 0xC, 0));
+                }
+            } catch (Throwable t) {
+                log.error("Error while notifying pending New Year card id={} receiver={}", id, receiverId, t);
             }
         }, HOURS.toMillis(1));
     }
@@ -279,7 +282,10 @@ public class NewYearCardRecord {
     }
 
     private static void deleteNewYearCard(int id) {
-        Server.getInstance().removeNewYearCard(id);
+        NewYearCardRecord removed = Server.getInstance().removeNewYearCard(id);
+        if (removed != null) {
+            removed.stopNewYearCardTask();
+        }
 
         try (Connection con = DatabaseConnection.getConnection()) {
             try (PreparedStatement ps = con.prepareStatement("DELETE FROM newyear WHERE id = ?")) {
@@ -287,7 +293,7 @@ public class NewYearCardRecord {
                 ps.executeUpdate();
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            log.error("Failed to delete New Year card id={}", id, sqle);
         }
     }
 
@@ -303,7 +309,7 @@ public class NewYearCardRecord {
                 ps.executeUpdate();
             }
         } catch(SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            log.error("Failed to remove New Year cards for chr={} send={}", cid, send, sqle);
         }
         */
 

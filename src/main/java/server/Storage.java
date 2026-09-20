@@ -19,6 +19,8 @@
 package server;
 
 import client.Client;
+import client.Character;
+import client.inventory.Equip;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.ItemFactory;
@@ -44,16 +46,18 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.lang.ref.WeakReference;
 
 /**
  * @author Matze
  */
 public class Storage {
     private static final Logger log = LoggerFactory.getLogger(Storage.class);
-    private static final Map<Integer, Integer> trunkGetCache = new HashMap<>();
-    private static final Map<Integer, Integer> trunkPutCache = new HashMap<>();
+    private static final Map<Integer, Integer> trunkGetCache = new ConcurrentHashMap<>();
+    private static final Map<Integer, Integer> trunkPutCache = new ConcurrentHashMap<>();
 
     private final int id;
     private int currentNpcid;
@@ -62,6 +66,26 @@ public class Storage {
     private final Map<InventoryType, List<Item>> typeItems = new HashMap<>();
     private List<Item> items = new LinkedList<>();
     private final Lock lock = new ReentrantLock(true);
+    private WeakReference<Character> persistenceOwner = new WeakReference<>(null);
+
+    public void attachPersistenceOwner(Character owner) {
+        persistenceOwner = new WeakReference<>(owner);
+        lock.lock();
+        try {
+            for (Item item : items) {
+                attachPersistenceOwner(item);
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private void markPersistenceDirty() {
+        Character owner = persistenceOwner.get();
+        if (owner != null) {
+            owner.setUsedStorage();
+        }
+    }
 
     private Storage(int id, byte slots, int meso) {
         this.id = id;
@@ -120,6 +144,7 @@ public class Storage {
             if (canGainSlots(slots)) {
                 slots += this.slots;
                 this.slots = (byte) slots;
+                markPersistenceDirty();
                 return true;
             }
 
@@ -129,24 +154,44 @@ public class Storage {
         }
     }
 
-    public void saveToDB(Connection con) {
+    public void saveToDB(Connection con) throws SQLException {
+        PersistenceSnapshot snapshot = persistenceSnapshot();
+        try (PreparedStatement ps = con.prepareStatement("UPDATE storages SET slots = ?, meso = ? WHERE storageid = ?")) {
+            ps.setInt(1, snapshot.slots());
+            ps.setInt(2, snapshot.meso());
+            ps.setInt(3, snapshot.id());
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("Storage row not found for storageId " + snapshot.id());
+            }
+        }
+        ItemFactory.STORAGE.saveItems(snapshot.items(), snapshot.id(), con);
+    }
+
+    public PersistenceSnapshot persistenceSnapshot() {
+        lock.lock();
         try {
-            try (PreparedStatement ps = con.prepareStatement("UPDATE storages SET slots = ?, meso = ? WHERE storageid = ?")) {
-                ps.setInt(1, slots);
-                ps.setInt(2, meso);
-                ps.setInt(3, id);
-                ps.executeUpdate();
+            List<Pair<Item, InventoryType>> itemSnapshot = new ArrayList<>(items.size());
+            for (Item item : items) {
+                itemSnapshot.add(new Pair<>(item.copy(), item.getInventoryType()));
             }
-            List<Pair<Item, InventoryType>> itemsWithType = new ArrayList<>();
+            return new PersistenceSnapshot(id, slots, meso, itemSnapshot);
+        } finally {
+            lock.unlock();
+        }
+    }
 
-            List<Item> list = getItems();
-            for (Item item : list) {
-                itemsWithType.add(new Pair<>(item, item.getInventoryType()));
-            }
+    static Storage fromPersistenceSnapshot(PersistenceSnapshot snapshot) {
+        Storage restored = new Storage(snapshot.id(), snapshot.slots(), snapshot.meso());
+        for (Pair<Item, InventoryType> item : snapshot.items()) {
+            restored.items.add(item.getLeft().copy());
+        }
+        return restored;
+    }
 
-            ItemFactory.STORAGE.saveItems(itemsWithType, id, con);
-        } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+    public record PersistenceSnapshot(int id, byte slots, int meso,
+                                      List<Pair<Item, InventoryType>> items) {
+        public PersistenceSnapshot {
+            items = Collections.unmodifiableList(new ArrayList<>(items));
         }
     }
 
@@ -164,8 +209,16 @@ public class Storage {
         try {
             boolean ret = items.remove(item);
 
+            if (ret) {
+                item.setPersistenceDirtyMarker(() -> { });
+            }
+
             InventoryType type = item.getInventoryType();
             typeItems.put(type, new ArrayList<>(filterItems(type)));
+
+            if (ret) {
+                markPersistenceDirty();
+            }
 
             return ret;
         } finally {
@@ -180,10 +233,13 @@ public class Storage {
                 return false;
             }
 
+            attachPersistenceOwner(item);
             items.add(item);
 
             InventoryType type = item.getInventoryType();
             typeItems.put(type, new ArrayList<>(filterItems(type)));
+
+            markPersistenceDirty();
 
             return true;
         } finally {
@@ -191,10 +247,136 @@ public class Storage {
         }
     }
 
+    public void upsertFromDatabaseConsole(Short sourcePosition, Integer expectedItemId, Item replacement) {
+        lock.lock();
+        try {
+            short targetPosition = replacement.getPosition();
+            if (targetPosition < 1 || targetPosition > slots) {
+                throw new IllegalArgumentException("Storage slot is outside the available range");
+            }
+
+            Item source = sourcePosition == null ? null : findByPosition(sourcePosition);
+            if (sourcePosition != null && (source == null || expectedItemId != null && source.getItemId() != expectedItemId)) {
+                throw new IllegalStateException("Storage item changed before the edit was applied");
+            }
+            Item target = findByPosition(targetPosition);
+            if (target != null && target != source) {
+                throw new IllegalStateException("Target storage slot is occupied");
+            }
+            if (source == null && items.size() >= slots) {
+                throw new IllegalStateException("Storage is full");
+            }
+            if (source != null && source.getPetId() > -1) {
+                throw new IllegalStateException("Linked pet items cannot be edited while online");
+            }
+            if (source instanceof Equip sourceEquip && sourceEquip.getRingId() > -1) {
+                if (!(replacement instanceof Equip replacementEquip)
+                        || replacement.getItemId() != source.getItemId()) {
+                    throw new IllegalStateException("Linked ring equipment cannot be replaced while online");
+                }
+                replacementEquip.setRingId(sourceEquip.getRingId());
+            }
+
+            if (source != null) {
+                items.remove(source);
+                source.setPersistenceDirtyMarker(() -> { });
+            }
+            attachPersistenceOwner(replacement);
+            items.add(replacement);
+            rebuildTypeItems();
+            markPersistenceDirty();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public Item deleteFromDatabaseConsole(short position, int expectedItemId) {
+        lock.lock();
+        try {
+            Item item = findByPosition(position);
+            if (item == null || item.getItemId() != expectedItemId) {
+                throw new IllegalStateException("Storage item changed before the delete was applied");
+            }
+            items.remove(item);
+            item.setPersistenceDirtyMarker(() -> { });
+            rebuildTypeItems();
+            markPersistenceDirty();
+            return item;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void swapFromDatabaseConsole(short firstPosition, int firstItemId,
+                                        short secondPosition, int secondItemId) {
+        lock.lock();
+        try {
+            Item first = findByPosition(firstPosition);
+            Item second = findByPosition(secondPosition);
+            if (first == null || first.getItemId() != firstItemId
+                    || second == null || second.getItemId() != secondItemId) {
+                throw new IllegalStateException("Storage items changed before the swap was applied");
+            }
+            first.setPosition(secondPosition);
+            second.setPosition(firstPosition);
+            rebuildTypeItems();
+            markPersistenceDirty();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void updateFromDatabaseConsole(int newSlots, int newMeso) {
+        lock.lock();
+        try {
+            if (newSlots < 4 || newSlots > 48 || newMeso < 0) {
+                throw new IllegalArgumentException("Invalid storage slots or meso value");
+            }
+            if (items.size() > newSlots || items.stream().anyMatch(item -> item.getPosition() > newSlots)) {
+                throw new IllegalStateException("Storage contains items outside the requested slot limit");
+            }
+            slots = (byte) newSlots;
+            meso = newMeso;
+            markPersistenceDirty();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void refreshDatabaseConsoleView(Client c) {
+        lock.lock();
+        try {
+            if (currentNpcid > 0) {
+                c.sendPacket(PacketCreator.getStorage(currentNpcid, slots, getItems(), meso));
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    private Item findByPosition(short position) {
+        for (Item item : items) {
+            if (item.getPosition() == position) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private void rebuildTypeItems() {
+        for (InventoryType type : InventoryType.values()) {
+            typeItems.put(type, new ArrayList<>(filterItems(type)));
+        }
+    }
+
+    private void attachPersistenceOwner(Item item) {
+        item.setPersistenceDirtyMarker(this::markPersistenceDirty);
+    }
+
     public List<Item> getItems() {
         lock.lock();
         try {
-            return Collections.unmodifiableList(items);
+            return Collections.unmodifiableList(new ArrayList<>(items));
         } finally {
             lock.unlock();
         }
@@ -289,6 +471,7 @@ public class Storage {
             }
 
             c.sendPacket(PacketCreator.arrangeStorage(slots, items));
+            markPersistenceDirty();
         } finally {
             lock.unlock();
         }
@@ -302,7 +485,10 @@ public class Storage {
         if (meso < 0) {
             throw new RuntimeException();
         }
-        this.meso = meso;
+        if (this.meso != meso) {
+            this.meso = meso;
+            markPersistenceDirty();
+        }
     }
 
     public void sendMeso(Client c) {
@@ -358,9 +544,14 @@ public class Storage {
         lock.lock();
         try {
             typeItems.clear();
+            currentNpcid = 0;
         } finally {
             lock.unlock();
         }
+    }
+
+    public boolean isOpen() {
+        return currentNpcid > 0;
     }
 
 }

@@ -40,7 +40,9 @@ import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import net.server.services.task.channel.ServerMobAutonomyService;
 import server.StatEffect;
+import server.combat.PhysicalContactDamagePolicy;
 import server.life.LifeFactory.loseItem;
 import server.life.MobAttackInfo;
 import server.life.MobAttackInfoFactory;
@@ -91,8 +93,19 @@ public final class TakeDamageHandler extends AbstractPacketHandler {
                 }
 
                 if (attacker != null) {
+                    if (damagefrom >= 0 && ServerMobAutonomyService.isActiveInstance(attacker)) {
+                        return;
+                    }
                     if (attacker.isBuffed(MonsterStatus.NEUTRALISE)) {
                         return;
+                    }
+
+                    // Dark Sight is authoritative protection from physical contact. A normal
+                    // client suppresses this report, but validate it server-side as well so a
+                    // delayed or synthetic client packet cannot kill or eject a protected player.
+                    if (PhysicalContactDamagePolicy.isNegated(damagefrom,
+                            chr.getBuffedValue(BuffStat.DARKSIGHT) != null)) {
+                        damage = 0;
                     }
 
                     List<loseItem> loseItems;

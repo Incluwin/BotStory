@@ -1,0 +1,88 @@
+package server.agents.plans.mapleisland;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import server.agents.capabilities.objective.AmherstNpcInteractionDelay;
+import server.agents.capabilities.quest.AmherstScopePolicy;
+import server.agents.plans.amherst.AmherstQuestCatalog;
+import server.agents.plans.amherst.AmherstObjectiveHandlerRegistry;
+import server.agents.plans.amherst.AmherstPlanCard;
+import server.agents.plans.amherst.AmherstPlanCardLoader;
+import server.agents.plans.amherst.AmherstPlanObjectiveKind;
+import server.agents.plans.amherst.AmherstPlanValidator;
+import server.agents.plans.amherst.MapleIslandSouthperryQuestCatalog;
+import server.agents.testing.MutablePrimitiveGatewayFixture;
+
+import java.nio.file.Path;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class MapleIslandFullPlanTest {
+    private static final Path CARD = Path.of(
+            "docs", "agents", "plans", "maple-island-full-mvp.plan.json");
+
+    @Test
+    void planCombinesBothVerifiedSegmentsAndEndsRestingNearShanks() throws Exception {
+        AmherstPlanCard card = new AmherstPlanCardLoader(
+                new ObjectMapper(), AmherstPlanValidator.fullMapleIsland()).load(CARD);
+        Set<Integer> expectedQuests = new HashSet<>(AmherstQuestCatalog.requiredQuestIdSet());
+        expectedQuests.addAll(MapleIslandSouthperryQuestCatalog.requiredQuestIdSet());
+
+        assertEquals("maple-island-full-mvp", card.planId());
+        assertEquals(10000, card.entryCriteria().requiredStartMapId());
+        assertEquals(2000000, card.exitCriteria().finalMapId());
+        assertEquals(expectedQuests, card.requiredQuestIds());
+        assertEquals(Set.of(1046), card.exitCriteria().startOnlyQuestIds());
+        assertTrue(index(card, AmherstPlanObjectiveKind.QUEST_CHAIN, 1015)
+                < index(card, AmherstPlanObjectiveKind.QUEST_START, 1008));
+        assertTrue(index(card, AmherstPlanObjectiveKind.QUEST_START, 1008)
+                < index(card, AmherstPlanObjectiveKind.REACTOR_HIT, 1008));
+        assertTrue(index(card, AmherstPlanObjectiveKind.REACTOR_HIT, 1008)
+                < index(card, AmherstPlanObjectiveKind.REACTOR_BOX_ITEMS, 1008));
+        assertTrue(index(card, AmherstPlanObjectiveKind.REACTOR_BOX_ITEMS, 1008)
+                < index(card, AmherstPlanObjectiveKind.QUEST_COMPLETE, 1008));
+        assertTrue(index(card, AmherstPlanObjectiveKind.QUEST_COMPLETE, 1008)
+                < index(card, AmherstPlanObjectiveKind.QUEST_CHAIN, 1020));
+        assertTrue(index(card, AmherstPlanObjectiveKind.QUEST_CHAIN, 1020)
+                < index(card, AmherstPlanObjectiveKind.QUEST_COMPLETE, 1037));
+        assertTrue(index(card, AmherstPlanObjectiveKind.QUEST_COMPLETE, 1037)
+                < index(card, AmherstPlanObjectiveKind.QUEST_CHAIN, 1038));
+        assertTrue(index(card, AmherstPlanObjectiveKind.QUEST_CHAIN, 1038)
+                < index(card, AmherstPlanObjectiveKind.QUEST_START, 1040));
+        assertEquals(List.of(1009, 1010, 1011, 1012, 1013, 1014, 1015),
+                card.objectives().stream()
+                .filter(objective -> objective.kind() == AmherstPlanObjectiveKind.QUEST_CHAIN)
+                .filter(objective -> objective.npcId() != null && objective.npcId() == 12101)
+                .map(objective -> objective.questIds().getFirst())
+                .toList());
+        assertTrue(card.objectives().stream()
+                .flatMap(objective -> objective.allQuestIds().stream())
+                .noneMatch(questId -> questId >= 8020 && questId <= 8025));
+        assertTrue(index(card, AmherstPlanObjectiveKind.QUEST_COMPLETE, 1039)
+                < index(card, AmherstPlanObjectiveKind.QUEST_START, 1041));
+        assertEquals("southperry-right-relaxer", card.objectives().getLast().mode());
+        assertEquals(1L, card.objectives().stream()
+                .filter(objective -> objective.kind() == AmherstPlanObjectiveKind.STOP_PLAN)
+                .count());
+
+        MutablePrimitiveGatewayFixture fixture = new MutablePrimitiveGatewayFixture();
+        AmherstObjectiveHandlerRegistry handlers = new AmherstObjectiveHandlerRegistry(
+                fixture.gateway, AmherstNpcInteractionDelay.NONE, AmherstScopePolicy.fullMapleIsland());
+        card.objectives().forEach(objective -> assertNotNull(handlers.create(card, objective)));
+    }
+
+    private static int index(AmherstPlanCard card, AmherstPlanObjectiveKind kind, int questId) {
+        for (int index = 0; index < card.objectives().size(); index++) {
+            var objective = card.objectives().get(index);
+            if (objective.kind() == kind && objective.allQuestIds().contains(questId)) {
+                return index;
+            }
+        }
+        return Integer.MAX_VALUE;
+    }
+}

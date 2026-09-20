@@ -202,7 +202,12 @@ public enum RecvOpcode {
     USE_ITEMUI(0xEE),
     MTS_OPERATION(0xFD),
     USE_MAPLELIFE(0x100),
-    USE_HAMMER(0x104);
+    USE_HAMMER(0x104),
+    BOT_EQUIP(0x112),               // Android/bot equip window (Kaentake client CP_BotEquip)
+    OBSERVER_CHARACTERS(0x113),
+    OBSERVER_NAV_GRAPH(0x114),
+    OBSERVER_INTEREST(0x115),
+    OBSERVER_ACTION(0x116);
 
     private int code = -2;
 

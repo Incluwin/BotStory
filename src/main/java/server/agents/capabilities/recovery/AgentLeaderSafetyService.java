@@ -1,0 +1,281 @@
+package server.agents.capabilities.recovery;
+
+import client.Character;
+import server.agents.capabilities.movement.AgentFormationService;
+import server.agents.capabilities.navigation.AgentNavigationGraph;
+import server.agents.capabilities.navigation.AgentNavigationGraphService;
+import server.agents.capabilities.follow.AgentActivityStateRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.capabilities.combat.AgentBuffStateRuntime;
+import server.agents.capabilities.combat.AgentDegenerateAttackStateRuntime;
+import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.maps.MapleMap;
+import server.life.Monster;
+
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+public final class AgentLeaderSafetyService {
+    private static final Map<Integer, Point> townClusterAnchorsByLeaderId = new ConcurrentHashMap<>();
+
+    public record TownScrollHooks(Supplier<MapleMap> currentMap,
+                                  Runnable markReturnHandled,
+                                  Runnable idleOnGround,
+                                  BooleanSupplier tryUseReturnScroll,
+                                  Consumer<MapleMap> changeMap,
+                                  Runnable groundAfterMapChange,
+                                  Supplier<Point> currentPosition,
+                                  Function<Point, Point> putTownClusterAnchorIfAbsent,
+                                  BiFunction<MapleMap, Point, Point> resolveClusterTarget,
+                                  Runnable resetEntryState,
+                                  Consumer<Point> startPreciseMoveToClusterTarget) {
+    }
+
+    public record InactiveLeaderTickHooks(ActiveLeaderReturnHandler activeLeaderReturnHandler,
+                                          InactiveTownWarpPolicy inactiveTownWarpPolicy,
+                                          InactiveSafeModeEntry inactiveSafeModeEntry,
+                                          long inactiveTownReturnMs) {
+    }
+
+    @FunctionalInterface
+    public interface ActiveLeaderReturnHandler {
+        void handle(AgentRuntimeEntry entry);
+    }
+
+    @FunctionalInterface
+    public interface InactiveTownWarpPolicy {
+        boolean shouldTownWarp(AgentRuntimeEntry entry);
+    }
+
+    @FunctionalInterface
+    public interface InactiveSafeModeEntry {
+        boolean enter(AgentRuntimeEntry entry, boolean town);
+    }
+
+    private AgentLeaderSafetyService() {
+    }
+
+    public static Map<Integer, Point> townClusterAnchorsByLeaderId() {
+        return townClusterAnchorsByLeaderId;
+    }
+
+    public static boolean shouldTownWarpForInactiveLeader(MapleMap currentMap) {
+        return currentMap != null
+                && server.agents.perception.AgentMapPerception.monsters(currentMap).stream().anyMatch(Monster::isAlive)
+                && canReturnToDifferentMap(currentMap);
+    }
+
+    public static boolean canReturnToDifferentMap(MapleMap currentMap) {
+        if (currentMap == null) {
+            return false;
+        }
+        MapleMap returnMap = currentMap.getReturnMap();
+        return returnMap != null && returnMap.getId() != currentMap.getId();
+    }
+
+    public static void prepareInactiveIdle(AgentRuntimeEntry entry,
+                                           Runnable clearScriptTasks,
+                                           Runnable cancelShopVisit,
+                                           Runnable clearMode) {
+        clearScriptTasks.run();
+        cancelShopVisit.run();
+        clearMode.run();
+        AgentMoveTargetStateRuntime.clearMoveTarget(entry);
+        AgentGrindTargetStateRuntime.clear(entry);
+        AgentDegenerateAttackStateRuntime.clear(entry);
+        AgentBuffStateRuntime.disable(entry);
+        AgentActivityStateRuntime.setOwnerAwaySafeMode(entry, true);
+    }
+
+    public static void handleActiveLeaderReturn(AgentRuntimeEntry entry,
+                                                Runnable clearMoveTarget,
+                                                Supplier<Point> removeTownClusterAnchor,
+                                                Runnable announceReturnedFromTown) {
+        if (AgentActivityStateRuntime.ownerAwaySafeMode(entry)
+                && !AgentActivityStateRuntime.ownerInactiveTimerStarted(entry)) {
+            return;
+        }
+        if (!AgentActivityStateRuntime.ownerInactiveTimerStarted(entry)
+                && !AgentActivityStateRuntime.ownerReturnedToTown(entry)) {
+            return;
+        }
+
+        boolean justReturnedFromTown = AgentActivityStateRuntime.ownerReturnedToTown(entry);
+        AgentActivityStateRuntime.clearOwnerInactiveState(entry);
+        clearMoveTarget.run();
+        Point removedAnchor = removeTownClusterAnchor.get();
+        if (justReturnedFromTown && removedAnchor != null) {
+            announceReturnedFromTown.run();
+        }
+    }
+
+    public static boolean shouldEnterInactiveSafeMode(AgentRuntimeEntry entry, long nowMs, long inactiveTownReturnMs) {
+        if (AgentActivityStateRuntime.ownerReturnedToTown(entry)) {
+            if (AgentActivityStateRuntime.ownerAwaySafeMode(entry)
+                    && !AgentActivityStateRuntime.ownerInactiveTimerStarted(entry)) {
+                AgentActivityStateRuntime.startOwnerInactiveTimer(entry, nowMs);
+            }
+            return false;
+        }
+
+        if (!AgentActivityStateRuntime.ownerInactiveTimerStarted(entry)) {
+            AgentActivityStateRuntime.startOwnerInactiveTimer(entry, nowMs);
+            return false;
+        }
+
+        return nowMs - AgentActivityStateRuntime.ownerOfflineOrDeadSinceMs(entry) >= inactiveTownReturnMs;
+    }
+
+    public static boolean handleInactiveLeaderTick(AgentRuntimeEntry entry,
+                                                   Character leader,
+                                                   long nowMs,
+                                                   InactiveLeaderTickHooks hooks) {
+        boolean inactive = leader == null || leader.getHp() <= 0;
+
+        if (!inactive) {
+            hooks.activeLeaderReturnHandler().handle(entry);
+            return false;
+        }
+
+        if (!shouldEnterInactiveSafeMode(entry, nowMs, hooks.inactiveTownReturnMs())) {
+            return false;
+        }
+
+        return hooks.inactiveSafeModeEntry().enter(entry, hooks.inactiveTownWarpPolicy().shouldTownWarp(entry));
+    }
+
+    public static void idleInactiveAgentInPlace(AgentRuntimeEntry entry,
+                                                Runnable idleOnGround,
+                                                Runnable broadcastMovement) {
+        idleOnGround.run();
+        broadcastMovement.run();
+        AgentActivityStateRuntime.setOwnerReturnedToTown(entry, true);
+    }
+
+    public static Point resolveTownClusterTarget(AgentRuntimeEntry entry,
+                                                 MapleMap map,
+                                                 Point anchor,
+                                                 List<? extends AgentRuntimeEntry> leaderEntries,
+                                                 AgentFormationService.FormationState formation,
+                                                 int platformEdgeInsetPx,
+                                                 BiFunction<MapleMap, Point, Point> groundPointResolver) {
+        Point base = anchor != null ? new Point(anchor) : new Point(AgentRuntimeIdentityRuntime.botPosition(entry));
+        if (entry == null || !AgentRuntimeIdentityRuntime.hasBot(entry) || map == null) {
+            return base;
+        }
+
+        int idx = 0;
+        for (int i = 0; i < leaderEntries.size(); i++) {
+            if (leaderEntries.get(i) == entry) {
+                idx = i;
+                break;
+            }
+        }
+
+        int offsetX = formation.offsetFor(idx, Math.max(1, leaderEntries.size()));
+        int targetX = base.x + offsetX;
+
+        AgentNavigationGraph graph = AgentNavigationGraphService.peekGraph(
+                map, AgentMovementStateRuntime.movementProfile(entry));
+        if (graph != null) {
+            int anchorRegionId = graph.findRegionId(map, base);
+            AgentNavigationGraph.Region anchorRegion = graph.getRegion(anchorRegionId);
+            if (anchorRegion != null && !anchorRegion.isRopeRegion) {
+                int minX = anchorRegion.minX;
+                int maxX = anchorRegion.maxX;
+                if (maxX - minX > 2 * platformEdgeInsetPx) {
+                    minX += platformEdgeInsetPx;
+                    maxX -= platformEdgeInsetPx;
+                }
+                int clampedX = Math.max(minX, Math.min(maxX, targetX));
+                return anchorRegion.pointAt(clampedX);
+            }
+        }
+
+        Rectangle area = map.getMapArea();
+        int minX = area != null ? area.x : targetX;
+        int maxX = area != null ? area.x + area.width : targetX;
+        if (map.getFootholds() != null && map.getFootholds().getMinDropX() < map.getFootholds().getMaxDropX()) {
+            minX = map.getFootholds().getMinDropX();
+            maxX = map.getFootholds().getMaxDropX();
+        }
+
+        int clampedX = Math.max(minX, Math.min(maxX, targetX));
+        Point ground = groundPointResolver.apply(map, new Point(clampedX, base.y - 1));
+        if (ground != null) {
+            return ground;
+        }
+
+        Point anchorGround = groundPointResolver.apply(map, new Point(base.x, base.y - 1));
+        return anchorGround != null ? anchorGround : base;
+    }
+
+    public static void markInactiveTownReturnHandled(AgentRuntimeEntry entry) {
+        AgentActivityStateRuntime.setOwnerReturnedToTown(entry, true);
+    }
+
+    public static void startInactiveTownClusterMove(AgentRuntimeEntry entry,
+                                                    Runnable resetEntryState,
+                                                    Runnable startPreciseMoveToClusterTarget) {
+        resetEntryState.run();
+        startPreciseMoveToClusterTarget.run();
+        markInactiveTownReturnHandled(entry);
+    }
+
+    public static boolean enterInactiveSafeMode(Runnable prepareInactiveIdle,
+                                                boolean town,
+                                                BooleanSupplier scrollToTown,
+                                                Runnable idleInPlace) {
+        prepareInactiveIdle.run();
+        if (town) {
+            return scrollToTown.getAsBoolean();
+        }
+
+        idleInPlace.run();
+        return false;
+    }
+
+    public static boolean scrollInactiveAgentToTown(AgentRuntimeEntry entry, TownScrollHooks hooks) {
+        MapleMap currentMap = hooks.currentMap().get();
+        if (currentMap == null) {
+            return false;
+        }
+
+        MapleMap returnMap = currentMap.getReturnMap();
+        if (returnMap == null || returnMap.getId() == currentMap.getId()) {
+            hooks.markReturnHandled().run();
+            return false;
+        }
+
+        hooks.idleOnGround().run();
+        if (!hooks.tryUseReturnScroll().getAsBoolean()) {
+            hooks.changeMap().accept(returnMap);
+        }
+        hooks.groundAfterMapChange().run();
+
+        Point post = new Point(hooks.currentPosition().get());
+        Point anchor = hooks.putTownClusterAnchorIfAbsent().apply(post);
+        if (anchor == null) {
+            anchor = post;
+        }
+        Point target = hooks.resolveClusterTarget().apply(returnMap, anchor);
+
+        startInactiveTownClusterMove(
+                entry,
+                hooks.resetEntryState(),
+                () -> hooks.startPreciseMoveToClusterTarget().accept(target));
+        return true;
+    }
+
+}

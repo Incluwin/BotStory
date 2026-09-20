@@ -23,6 +23,7 @@
 package client;
 
 import client.autoban.AutobanManager;
+import client.command.StatResetCalculator;
 import client.creator.CharacterFactoryRecipe;
 import client.inventory.Equip;
 import client.inventory.EvolvingRing;
@@ -113,7 +114,16 @@ import org.slf4j.LoggerFactory;
 import scripting.AbstractPlayerInteraction;
 import scripting.event.EventInstanceManager;
 import scripting.item.ItemScriptManager;
+import server.agents.capabilities.quest.AgentPartyQuestSyncService;
+import server.agents.capabilities.quest.MapleIslandSouthperryBaseline;
+import server.agents.progression.events.AgentQuestProgressMilestonePublisher;
+import server.agents.progression.VictoriaCheckpointBaseline;
+import server.agents.capabilities.trade.AgentOwnerItemNotificationService;
+import server.agents.integration.cosmic.CosmicAgentPotionCheckRequestBridge;
+import server.agents.diagnostics.MapTransitionPacketTraceRuntime;
+import server.agents.runtime.AgentRuntimeCleanupService;
 import server.CashShop;
+import server.DeathPenaltyService;
 import server.ExpLogger;
 import server.ExpLogger.ExpLogRecord;
 import server.ItemInformationProvider;
@@ -158,11 +168,16 @@ import server.maps.Portal;
 import server.maps.SavedLocation;
 import server.maps.SavedLocationType;
 import server.maps.Summon;
+import server.monitoring.CharacterSaveDiagnostics;
+import server.monitoring.CharacterSaveDiagnostics.SaveReason;
+import server.monitoring.SlowOperationLogger;
 import server.minigame.RockPaperScissor;
 import server.partyquest.AriantColiseum;
 import server.partyquest.MonsterCarnival;
 import server.partyquest.MonsterCarnivalParty;
 import server.partyquest.PartyQuest;
+import server.persistence.DirtySectionTracker;
+import server.persistence.DirtySectionTracker.SavePlan;
 import server.quest.Quest;
 import tools.DatabaseConnection;
 import tools.LongTool;
@@ -210,6 +225,28 @@ import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Character extends AbstractCharacterObject {
+    public enum PersistenceSection {
+        STATS,
+        INVENTORY,
+        SKILLS,
+        QUESTS,
+        SOCIAL,
+        KEYMAP,
+        LOCATIONS,
+        PETS,
+        RELATED
+    }
+
+    private static final byte MAX_INVENTORY_SLOTS = 96;
+    private static final int DIRTY_FULL_CHECKPOINT_AUTOSAVES =
+            Math.max(1, Integer.getInteger("cosmic.persistence.fullCheckpointAutosaves", 6));
+    private static final InventoryType[] STANDARD_INVENTORY_TYPES = {
+            InventoryType.EQUIP,
+            InventoryType.USE,
+            InventoryType.SETUP,
+            InventoryType.ETC
+    };
+
     private static final Logger log = LoggerFactory.getLogger(Character.class);
     // ------------------------------------------------------------------
     // Growing Quest Ring: +1 to every stat per completed quest.
@@ -285,19 +322,20 @@ public class Character extends AbstractCharacterObject {
     private int omokwins, omokties, omoklosses, matchcardwins, matchcardties, matchcardlosses;
     private int owlSearch;
     private long lastfametime, lastUsedCashItem, lastExpression = 0, lastHealed, lastDeathtime, jailExpiration = -1;
-    private transient int localstr, localdex, localluk, localint_, localmagic, localwatk;
-    private transient int equipmaxhp, equipmaxmp, equipstr, equipdex, equipluk, equipint_, equipmagic, equipwatk, localchairhp, localchairmp;
+    private transient int localstr, localdex, localluk, localint_, localmagic, localwatk, localwdef, localmdef;
+    private transient int equipmaxhp, equipmaxmp, equipstr, equipdex, equipluk, equipint_, equipmagic, equipwatk, equipwdef, equipmdef, localchairhp, localchairmp;
     private transient int equipMaxedEliteCount;  // # equipped pieces qualifying for the +1% all-stat maxed bonus
     private transient SetBonusTotal setBonus;  // recomputed inside recalcEquipStats; null until first recalc
     private int localchairrate;
     private boolean hidden, equipchanged = true, berserk, hasMerchant, hasSandboxItem = false, whiteChat = false, canRecvPartySearchInvite = true;
     private boolean equippedMesoMagnet = false, equippedItemPouch = false, equippedPetItemIgnore = false;
+    private transient volatile int agentMushroomYetiPityVariant;
     private boolean usedSafetyCharm = false;
     private float autopotHpAlert, autopotMpAlert;
     private int linkedLevel = 0;
     private String linkedName = null;
     private boolean finishedDojoTutorial;
-    private boolean usedStorage = false;
+    private final AtomicBoolean usedStorage = new AtomicBoolean(false);
     private String name;
     private String chalktext;
     private String commandtext;
@@ -305,10 +343,13 @@ public class Character extends AbstractCharacterObject {
     private String search = null;
     private final AtomicBoolean mapTransitioning = new AtomicBoolean(true);  // player client is currently trying to change maps or log in the game map
     private final AtomicBoolean awayFromWorld = new AtomicBoolean(true);  // player is online, but on cash shop or mts
+    private final AtomicBoolean pendingHpDeath = new AtomicBoolean(false);
     private final AtomicInteger exp = new AtomicInteger();
     private final AtomicInteger gachaexp = new AtomicInteger();
     private final AtomicInteger meso = new AtomicInteger();
     private final AtomicInteger chair = new AtomicInteger(-1);
+    private final DirtySectionTracker<PersistenceSection> persistenceDirty =
+            new DirtySectionTracker<>(PersistenceSection.class, DIRTY_FULL_CHECKPOINT_AUTOSAVES);
     private long totalExpGained = 0;
     private int merchantmeso;
     private BuddyList buddylist;
@@ -350,7 +391,7 @@ public class Character extends AbstractCharacterObject {
     private final Map<Disease, Long> diseaseExpires = new LinkedHashMap<>();
     private final Map<Integer, Map<BuffStat, BuffStatValueHolder>> buffEffects = new LinkedHashMap<>(); // non-overriding buffs thanks to Ronan
     private final Map<Integer, Long> buffExpires = new LinkedHashMap<>();
-    private final Map<Integer, KeyBinding> keymap = new LinkedHashMap<>();
+    private final Map<Integer, KeyBinding> keymap = Collections.synchronizedMap(new LinkedHashMap<>());
     private final Map<Integer, Summon> summons = new LinkedHashMap<>();
     private final Map<Integer, CooldownValueHolder> coolDowns = new LinkedHashMap<>();
     private final EnumMap<Disease, Pair<DiseaseValueHolder, MobSkill>> diseases = new EnumMap<>(Disease.class);
@@ -393,7 +434,7 @@ public class Character extends AbstractCharacterObject {
     private byte pendantExp = 0, lastmobcount = 0, doorSlot = -1;
     private final List<Integer> trockmaps = new ArrayList<>();
     private final List<Integer> viptrockmaps = new ArrayList<>();
-    private Map<String, Events> events = new LinkedHashMap<>();
+    private final Map<String, Events> events = Collections.synchronizedMap(new LinkedHashMap<>());
     private PartyQuest partyQuest = null;
     private final List<Pair<DelayedQuestUpdate, Object[]>> npcUpdateQuests = new LinkedList<>();
     private Dragon dragon = null;
@@ -422,11 +463,13 @@ public class Character extends AbstractCharacterObject {
         super.setListener(new AbstractCharacterListener() {
             @Override
             public void onHpChanged(int oldHp) {
+                markPersistenceDirty(PersistenceSection.STATS);
                 hpChangeAction(oldHp);
             }
 
             @Override
             public void onHpmpPoolUpdate() {
+                markPersistenceDirty(PersistenceSection.STATS);
                 List<Pair<Stat, Integer>> hpmpupdate = recalcLocalStats();
                 for (Pair<Stat, Integer> p : hpmpupdate) {
                     statUpdates.put(p.getLeft(), p.getRight());
@@ -445,6 +488,7 @@ public class Character extends AbstractCharacterObject {
 
             @Override
             public void onStatUpdate() {
+                markPersistenceDirty(PersistenceSection.STATS);
                 recalcLocalStats();
             }
 
@@ -452,7 +496,9 @@ public class Character extends AbstractCharacterObject {
             public void onAnnounceStatPoolUpdate() {
                 List<Pair<Stat, Integer>> statup = new ArrayList<>(8);
                 for (Map.Entry<Stat, Integer> s : statUpdates.entrySet()) {
-                    statup.add(new Pair<>(s.getKey(), s.getValue()));
+                    Stat stat = s.getKey();
+                    Integer value = s.getValue();
+                    statup.add(new Pair<>(stat, value));
                 }
 
                 sendPacket(PacketCreator.updatePlayerStats(statup, true, Character.this));
@@ -532,11 +578,9 @@ public class Character extends AbstractCharacterObject {
         ret.level = 1;
         ret.accountid = c.getAccID();
         ret.buddylist = new BuddyList(20);
+        ret.attachPersistenceChildren();
         ret.maplemount = null;
-        ret.getInventory(InventoryType.EQUIP).setSlotLimit(24);
-        ret.getInventory(InventoryType.USE).setSlotLimit(24);
-        ret.getInventory(InventoryType.SETUP).setSlotLimit(24);
-        ret.getInventory(InventoryType.ETC).setSlotLimit(24);
+        applyInitialInventorySlotLimits(ret);
 
         // Select a keybinding method
         int[] selectedKey;
@@ -567,6 +611,45 @@ public class Character extends AbstractCharacterObject {
         }
 
         return ret;
+    }
+
+    private static void applyInitialInventorySlotLimits(Character chr) {
+        if (YamlConfig.config.server.ALWAYS_MAX_INVENTORY_SLOTS) {
+            setStandardInventorySlotLimits(chr, MAX_INVENTORY_SLOTS);
+        }
+    }
+
+    private static boolean normalizeInventorySlotLimits(Character chr) {
+        if (!YamlConfig.config.server.ALWAYS_MAX_INVENTORY_SLOTS) {
+            return false;
+        }
+
+        boolean changed = false;
+        for (InventoryType type : STANDARD_INVENTORY_TYPES) {
+            if (chr.getInventory(type).getSlotLimit() != MAX_INVENTORY_SLOTS) {
+                chr.getInventory(type).setSlotLimit(MAX_INVENTORY_SLOTS);
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    private static void setStandardInventorySlotLimits(Character chr, int slotLimit) {
+        for (InventoryType type : STANDARD_INVENTORY_TYPES) {
+            chr.getInventory(type).setSlotLimit(slotLimit);
+        }
+    }
+
+    private static void persistInventorySlotLimits(Connection con, Character chr) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET equipslots = ?, useslots = ?, setupslots = ?, etcslots = ? WHERE id = ?")) {
+            ps.setByte(1, chr.getInventory(InventoryType.EQUIP).getSlotLimit());
+            ps.setByte(2, chr.getInventory(InventoryType.USE).getSlotLimit());
+            ps.setByte(3, chr.getInventory(InventoryType.SETUP).getSlotLimit());
+            ps.setByte(4, chr.getInventory(InventoryType.ETC).getSlotLimit());
+            ps.setInt(5, chr.getId());
+            ps.executeUpdate();
+        }
     }
 
     public boolean isLoggedinWorld() {
@@ -618,6 +701,7 @@ public class Character extends AbstractCharacterObject {
 
     public boolean toggleRecvPartySearchInvite() {
         canRecvPartySearchInvite = !canRecvPartySearchInvite;
+        markPersistenceDirty(PersistenceSection.STATS);
 
         if (canRecvPartySearchInvite) {
             updatePartySearchAvailability(getParty() == null);
@@ -684,7 +768,9 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void addCrushRing(Ring r) {
-        crushRings.add(r);
+        synchronized (crushRings) {
+            crushRings.add(r);
+        }
     }
 
     public Ring getRingById(int id) {
@@ -714,6 +800,7 @@ public class Character extends AbstractCharacterObject {
 
     public void setMarriageItemId(int itemid) {
         marriageItemid = itemid;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public int getPartnerId() {
@@ -722,6 +809,7 @@ public class Character extends AbstractCharacterObject {
 
     public void setPartnerId(int partnerid) {
         partnerId = partnerid;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public int getRelationshipId() {
@@ -754,16 +842,20 @@ public class Character extends AbstractCharacterObject {
                 pts++;
             }
             this.dojoPoints += pts;
+            markPersistenceDirty(PersistenceSection.STATS);
         }
         return pts;
     }
 
     public void addFame(int famechange) {
         this.fame += famechange;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void addFriendshipRing(Ring r) {
-        friendshipRings.add(r);
+        synchronized (friendshipRings) {
+            friendshipRings.add(r);
+        }
     }
 
     public void addMarriageRing(Ring r) {
@@ -780,6 +872,7 @@ public class Character extends AbstractCharacterObject {
             for (int i = 0; i < 3; i++) {
                 if (pets[i] == null) {
                     pets[i] = pet;
+                    markPersistenceDirty(PersistenceSection.PETS);
                     return;
                 }
             }
@@ -808,7 +901,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, accountid);
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -846,7 +939,7 @@ public class Character extends AbstractCharacterObject {
             }
             return ret;
         } catch (SQLException ex) {
-            log.error("Character error", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
         }
         return false;
     }
@@ -868,6 +961,43 @@ public class Character extends AbstractCharacterObject {
             secondarystat = localdex;
         }
         return (int) Math.ceil(((weapon.getMaxDamageMultiplier() * mainstat + secondarystat) / 100.0) * watk);
+    }
+
+    /**
+     * Minimum base damage for a basic attack.
+     * Formula: (multiplier * mainStat * 0.9 * mastery + secondaryStat) / 100 * watk
+     * Uses mastery=0.1 (no mastery skill); callers may pass a higher value if the
+     * character has a mastery skill active.
+     */
+    public int calculateMinBaseDamage(int watk) {
+        return calculateMinBaseDamage(watk, 0.1);
+    }
+
+    public int calculateMinBaseDamage(int watk, double mastery) {
+        Item weapon_item = getInventory(InventoryType.EQUIPPED).getItem((short) -11);
+        if (weapon_item == null) {
+            return 1;
+        }
+        return calculateMinBaseDamage(watk, mastery,
+                ItemInformationProvider.getInstance().getWeaponType(weapon_item.getItemId()));
+    }
+
+    public int calculateMinBaseDamage(int watk, double mastery, WeaponType weapon) {
+        if (getJob().isA(Job.THIEF) && weapon == WeaponType.DAGGER_OTHER) {
+            weapon = WeaponType.DAGGER_THIEVES;
+        }
+        int mainstat, secondarystat;
+        if (weapon == WeaponType.BOW || weapon == WeaponType.CROSSBOW || weapon == WeaponType.GUN) {
+            mainstat = localdex;
+            secondarystat = localstr;
+        } else if (weapon == WeaponType.CLAW || weapon == WeaponType.DAGGER_THIEVES) {
+            mainstat = localluk;
+            secondarystat = localdex + localstr;
+        } else {
+            mainstat = localstr;
+            secondarystat = localdex;
+        }
+        return (int) Math.ceil((weapon.getMaxDamageMultiplier() * mainstat * 0.9 * mastery + secondarystat) / 100.0 * watk);
     }
 
     public int calculateMaxBaseDamage(int watk) {
@@ -958,10 +1088,17 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void newClient(Client c) {
+        newClient(c, c.getChannelServer().getMapFactory().getMap(getMapId()));
+    }
+
+    public void newClient(Client c, MapleMap targetMap) {
         this.loggedIn = true;
+        if (this.client instanceof BotClient && !(c instanceof BotClient)) {
+            AgentRuntimeCleanupService.cleanupAgentRuntimeState(this);
+        }
         c.setAccountName(this.client.getAccountName());//No null's for accountName
         this.setClient(c);
-        this.map = c.getChannelServer().getMapFactory().getMap(getMapId());
+        this.map = targetMap;
         Portal portal = map.findClosestPlayerSpawnpoint(getPosition());
         if (portal == null) {
             portal = map.getPortal(0);
@@ -1044,13 +1181,21 @@ public class Character extends AbstractCharacterObject {
     }
 
     public static boolean canCreateChar(String name) {
+        return isValidCharacterNameSyntax(name) && getIdByName(name) < 0;
+    }
+
+    /** Pure character-name policy check, separated from the database uniqueness lookup. */
+    public static boolean isValidCharacterNameSyntax(String name) {
+        if (name == null) {
+            return false;
+        }
         String lname = name.toLowerCase();
         for (String nameTest : BLOCKED_NAMES) {
-            if (lname.contains(nameTest)) {
+            if (lname.contains(nameTest.toLowerCase())) {
                 return false;
             }
         }
-        return getIdByName(name) < 0 && Pattern.compile("[a-zA-Z0-9]{3,12}").matcher(name).matches();
+        return Pattern.compile("[a-zA-Z0-9]{3,12}").matcher(name).matches();
     }
 
     public boolean canDoor() {
@@ -1088,7 +1233,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     public FameStatus canGiveFame(Character from) {
-        if (this.isGM()) {
+        if (this.isGM() && YamlConfig.config.server.GM_NO_FAME_COOLDOWN) {
             return FameStatus.OK;
         } else if (lastfametime >= System.currentTimeMillis() - 3600000 * 24) {
             return FameStatus.NOT_TODAY;
@@ -1183,7 +1328,8 @@ public class Character extends AbstractCharacterObject {
     }
 
     private void broadcastChangeJob() {
-        for (Character chr : map.getAllPlayers()) {
+        MapleMap advancementMap = map;
+        for (Character chr : advancementMap.getAllPlayers()) {
             Client chrC = chr.getClient();
 
             if (chrC != null) {     // propagate new job 3rd-person effects (FJ, Aran 1st strike, etc)
@@ -1196,20 +1342,38 @@ public class Character extends AbstractCharacterObject {
             @Override
             public void run() {
                 Character thisChr = Character.this;
-                MapleMap map = thisChr.getMap();
+                MapleMap currentMap = thisChr.getMap();
 
-                if (map != null) {
-                    map.broadcastMessage(thisChr, PacketCreator.showForeignEffect(thisChr.getId(), 8), false);
+                // Do not let the delayed advancement effect follow a character through a portal.
+                // Fixture-driven PQ agents advance in an off-screen staging map before entering the lobby.
+                if (currentMap == advancementMap) {
+                    advancementMap.broadcastMessage(
+                            thisChr, PacketCreator.showForeignEffect(thisChr.getId(), 8), false);
                 }
             }
         }, 777);
     }
 
-    public synchronized void changeJob(Job newJob) {
-        if (newJob == null) {
-            return;//the fuck you doing idiot!
+    public synchronized boolean changeJob(Job newJob) {
+        Job oldJob = this.job;
+        if (!JobProgressionPolicy.isLegalAdvancement(oldJob, newJob, level)) {
+            log.warn("Rejected illegal or replayed job advancement for character {}: {} -> {} at level {}",
+                    id, oldJob, newJob, level);
+            return false;
         }
+        return changeJobInternal(newJob, true);
+    }
 
+    /** Administrative override that rebuilds formula HP/MP without AP, SP, or slot rewards. */
+    public synchronized boolean forceChangeJobForAdmin(Job newJob) {
+        if (!isGM() || newJob == null) {
+            return false;
+        }
+        return changeJobInternal(newJob, false);
+    }
+
+    private boolean changeJobInternal(Job newJob, boolean grantAdvancementRewards) {
+        Job oldJob = this.job;
         if (canRecvPartySearchInvite && getParty() == null) {
             this.updatePartySearchAvailability(false);
             this.job = newJob;
@@ -1217,81 +1381,63 @@ public class Character extends AbstractCharacterObject {
         } else {
             this.job = newJob;
         }
+        markPersistenceDirty(PersistenceSection.STATS);
 
-        int spGain = 1;
-        if (GameConstants.hasSPTable(newJob)) {
-            spGain += 2;
-        } else {
-            if (newJob.getId() % 10 == 2) {
+        if (grantAdvancementRewards) {
+            int spGain = 1;
+            if (GameConstants.hasSPTable(newJob)) {
                 spGain += 2;
-            }
-
-            if (YamlConfig.config.server.USE_ENFORCE_JOB_SP_RANGE) {
-                spGain = getChangedJobSp(newJob);
-            }
-        }
-
-        if (spGain > 0) {
-            gainSp(spGain, GameConstants.getSkillBook(newJob.getId()), true);
-        }
-
-        // thanks xinyifly for finding out missing AP awards (AP Reset can be used as a compass)
-        if (newJob.getId() % 100 >= 1) {
-            if (this.isCygnus()) {
-                gainAp(7, true);
             } else {
-                if (YamlConfig.config.server.USE_STARTING_AP_4 || newJob.getId() % 10 >= 1) {
-                    gainAp(5, true);
+                if (newJob.getId() % 10 == 2) {
+                    spGain += 2;
+                }
+
+                if (YamlConfig.config.server.USE_ENFORCE_JOB_SP_RANGE) {
+                    spGain = getChangedJobSp(newJob);
                 }
             }
-        } else {    // thanks Periwinks for noticing an AP shortage from lower levels
-            if (YamlConfig.config.server.USE_STARTING_AP_4 && newJob.getId() % 1000 >= 1) {
-                gainAp(4, true);
+
+            if (spGain > 0) {
+                gainSp(spGain, GameConstants.getSkillBook(newJob.getId()), true);
+            }
+
+            // thanks xinyifly for finding out missing AP awards (AP Reset can be used as a compass)
+            if (newJob.getId() % 100 >= 1) {
+                if (this.isCygnus()) {
+                    gainAp(7, true);
+                } else {
+                    if (YamlConfig.config.server.USE_STARTING_AP_4 || newJob.getId() % 10 >= 1) {
+                        gainAp(5, true);
+                    }
+                }
+            } else {    // thanks Periwinks for noticing an AP shortage from lower levels
+                if (YamlConfig.config.server.USE_STARTING_AP_4 && newJob.getId() % 1000 >= 1) {
+                    gainAp(4, true);
+                }
+            }
+
+            if (!isGM()) {
+                for (byte i = 1; i < 5; i++) {
+                    gainSlots(i, 4, true);
+                }
             }
         }
 
-        if (!isGM()) {
-            for (byte i = 1; i < 5; i++) {
-                gainSlots(i, 4, true);
-            }
-        }
-
-        int addhp = 0, addmp = 0;
-        int job_ = job.getId() % 1000; // lame temp "fix"
-        if (job_ == 100) {                      // 1st warrior
-            addhp += Randomizer.rand(200, 250);
-        } else if (job_ == 200) {               // 1st mage
-            addmp += Randomizer.rand(100, 150);
-        } else if (job_ % 100 == 0) {           // 1st others
-            addhp += Randomizer.rand(100, 150);
-            addmp += Randomizer.rand(25, 50);
-        } else if (job_ > 0 && job_ < 200) {    // 2nd~4th warrior
-            addhp += Randomizer.rand(300, 350);
-        } else if (job_ < 300) {                // 2nd~4th mage
-            addmp += Randomizer.rand(450, 500);
-        } else if (job_ > 0) {                  // 2nd~4th others
-            addhp += Randomizer.rand(300, 350);
-            addmp += Randomizer.rand(150, 200);
-        }
-        
-        /*
-        //aran perks?
-        int newJobId = newJob.getId();
-        if(newJobId == 2100) {          // become aran1
-            addhp += 275;
-            addmp += 15;
-        } else if(newJobId == 2110) {   // become aran2
-            addmp += 275;
-        } else if(newJobId == 2111) {   // become aran3
-            addhp += 275;
-            addmp += 275;
-        }
-        */
+        HpMpGrowthPolicy.Growth hpMpChange = grantAdvancementRewards
+                ? HpMpGrowthPolicy.jobAdvancementGain(oldJob, newJob, level)
+                : HpMpGrowthPolicy.baseForJobAtLevel(newJob, level).plus(totalRetroactivePassiveBonus(level));
 
         effLock.lock();
         statWlock.lock();
         try {
-            addMaxMPMaxHP(addhp, addmp, true);
+            if (grantAdvancementRewards) {
+                addMaxMPMaxHP(hpMpChange.hp(), hpMpChange.mp(), true);
+            } else {
+                setMaxHp(hpMpChange.hp());
+                setMaxMp(hpMpChange.mp());
+                setHp(Math.min(hp, maxhp));
+                setMp(Math.min(mp, maxmp));
+            }
             recalcLocalStats();
 
             List<Pair<Stat, Integer>> statup = new ArrayList<>(7);
@@ -1343,6 +1489,13 @@ public class Character extends AbstractCharacterObject {
 
         // Job advancement is once-per-tier and grants AP/SP/HP/MP. A rollback here would put the player back to a lower job with skill points already spent in the new tree.
         saveCharToDB();
+        server.observer.ObserverInterestService.publish(
+                this,
+                server.observer.ObserverInterestService.Type.JOB_ADVANCE,
+                95,
+                (grantAdvancementRewards ? "Advanced to " : "Admin changed job to ")
+                        + GameConstants.getJobName(newJob.getId()));
+        return true;
     }
 
     public void broadcastAcquaintances(int type, String message) {
@@ -1370,15 +1523,19 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void changeKeybinding(int key, KeyBinding keybinding) {
-        if (keybinding.getType() != 0) {
-            keymap.put(Integer.valueOf(key), keybinding);
-        } else {
-            keymap.remove(Integer.valueOf(key));
+        synchronized (keymap) {
+            if (keybinding.getType() != 0) {
+                keymap.put(Integer.valueOf(key), keybinding);
+            } else {
+                keymap.remove(Integer.valueOf(key));
+            }
         }
+        markPersistenceDirty(PersistenceSection.KEYMAP);
     }
 
     public void changeQuickslotKeybinding(byte[] aQuickslotKeyMapped) {
         this.m_pQuickslotKeyMapped = new QuickslotBinding(aQuickslotKeyMapped);
+        markPersistenceDirty(PersistenceSection.KEYMAP);
     }
 
     public void broadcastStance(int newStance) {
@@ -1810,6 +1967,7 @@ public class Character extends AbstractCharacterObject {
         }
 
         this.mapTransitioning.set(true);
+        MapTransitionPacketTraceRuntime.begin(client, map == null ? -1 : map.getId(), to.getId());
 
         this.unregisterChairBuff();
         Trade.cancelTrade(this, Trade.TradeResult.UNSUCCESSFUL_ANOTHER_MAP);
@@ -1825,6 +1983,7 @@ public class Character extends AbstractCharacterObject {
         map.removePlayer(this);
         if (client.getChannelServer().getPlayerStorage().getCharacterById(getId()) != null) {
             map = to;
+            markPersistenceDirty(PersistenceSection.STATS);
             setPosition(pos);
             map.addPlayer(this);
             visitMap(map);
@@ -1868,6 +2027,12 @@ public class Character extends AbstractCharacterObject {
             // if this map has obstacle components moving, make it do so for this client
             sendPacket(PacketCreator.environmentMoveList(map.getEnvironment().entrySet()));
         }
+
+        // Headless Agents have no socket that can send PLAYER_MAP_TRANSFER. Their
+        // placement above is already authoritative, so complete the transition here.
+        if (client instanceof BotClient) {
+            setMapTransitionComplete();
+        }
     }
 
     public boolean isChangingMaps() {
@@ -1882,9 +2047,37 @@ public class Character extends AbstractCharacterObject {
         this.currentPage = page;
     }
 
-    public void changeSkillLevel(Skill skill, byte newLevel, int newMasterlevel, long expiration) {
+    public boolean changeSkillLevel(Skill skill, byte newLevel, int newMasterlevel, long expiration) {
+        if (skill == null || newLevel < -1 || newLevel > skill.getMaxLevel()) {
+            return false;
+        }
+        int oldLevel = getSkillLevel(skill);
+        if (newLevel > oldLevel && HpMpGrowthPolicy.isRetroactivePassive(skill.getId())
+                && (!GameConstants.isInJobTree(skill.getId(), job.getId())
+                || !HpMpGrowthPolicy.hasPassivePrerequisite(this, skill.getId()))) {
+            return false;
+        }
+        HpMpGrowthPolicy.Growth oldPassiveBonus = retroactivePassiveBonus(skill, oldLevel, level);
+        chrLock.lock();
+        try {
+            if (newLevel > -1) {
+                skills.put(skill, new SkillEntry(newLevel, newMasterlevel, expiration));
+            } else {
+                skills.remove(skill);
+            }
+        } finally {
+            chrLock.unlock();
+        }
+        markPersistenceDirty(PersistenceSection.SKILLS);
+
+        int effectiveNewLevel = Math.max(0, newLevel);
+        HpMpGrowthPolicy.Growth newPassiveBonus = retroactivePassiveBonus(skill, effectiveNewLevel, level);
+        HpMpGrowthPolicy.Growth passiveDelta = newPassiveBonus.minus(oldPassiveBonus);
+        if (passiveDelta.hp() != 0 || passiveDelta.mp() != 0) {
+            addMaxMPMaxHP(passiveDelta.hp(), passiveDelta.mp(), false);
+        }
+
         if (newLevel > -1) {
-            skills.put(skill, new SkillEntry(newLevel, newMasterlevel, expiration));
             if (!GameConstants.isHiddenSkills(skill.getId())) {
                 sendPacket(PacketCreator.updateSkill(skill.getId(), newLevel, newMasterlevel, expiration));
             }
@@ -1895,7 +2088,6 @@ public class Character extends AbstractCharacterObject {
                 }
             }
         } else {
-            skills.remove(skill);
             sendPacket(PacketCreator.updateSkill(skill.getId(), newLevel, newMasterlevel, -1)); //Shouldn't use expiration anymore :)
             try (Connection con = DatabaseConnection.getConnection();
                  PreparedStatement ps = con.prepareStatement("DELETE FROM skills WHERE skillid = ? AND characterid = ?")) {
@@ -1903,9 +2095,35 @@ public class Character extends AbstractCharacterObject {
                 ps.setInt(2, id);
                 ps.executeUpdate();
             } catch (SQLException ex) {
-                log.error("Character error", ex);
+                monitoring.RuntimeFailureLogger.log(ex);
             }
         }
+        return true;
+    }
+
+    private static HpMpGrowthPolicy.Growth retroactivePassiveBonus(Skill skill, int skillLevel, int characterLevel) {
+        if (skill == null || skillLevel <= 0) {
+            return HpMpGrowthPolicy.Growth.ZERO;
+        }
+        return HpMpGrowthPolicy.retroactivePassiveBonus(
+                skill.getId(), skill.getEffect(skillLevel).getX(), characterLevel);
+    }
+
+    private HpMpGrowthPolicy.Growth totalRetroactivePassiveBonus(int characterLevel) {
+        HpMpGrowthPolicy.Growth total = HpMpGrowthPolicy.Growth.ZERO;
+        int[] passiveSkillIds = {
+                Warrior.IMPROVED_MAXHP,
+                Magician.IMPROVED_MAX_MP_INCREASE,
+                Brawler.IMPROVE_MAX_HP
+        };
+        for (int skillId : passiveSkillIds) {
+            if (!GameConstants.isInJobTree(skillId, job.getId())) {
+                continue;
+            }
+            Skill skill = SkillFactory.getSkill(skillId);
+            total = total.plus(retroactivePassiveBonus(skill, getSkillLevel(skill), characterLevel));
+        }
+        return total;
     }
 
     // Booster skill -> item categories (from (itemId / 10000) % 100) that the booster buffs.
@@ -2042,22 +2260,20 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void controlMonster(Monster monster) {
-        if (cpnLock.tryLock()) {
-            try {
-                controlled.add(monster);
-            } finally {
-                cpnLock.unlock();
-            }
+        cpnLock.lock();
+        try {
+            controlled.add(monster);
+        } finally {
+            cpnLock.unlock();
         }
     }
 
     public void stopControllingMonster(Monster monster) {
-        if (cpnLock.tryLock()) {
-            try {
-                controlled.remove(monster);
-            } finally {
-                cpnLock.unlock();
-            }
+        cpnLock.lock();
+        try {
+            controlled.remove(monster);
+        } finally {
+            cpnLock.unlock();
         }
     }
 
@@ -2144,6 +2360,11 @@ public class Character extends AbstractCharacterObject {
         }
 
         if (ob instanceof MapItem mapitem) {
+            if (server.life.EpqConcentratedPoisonPolicy.blocksPickup(this, mapitem)) {
+                sendPacket(PacketCreator.showItemUnavailable());
+                sendPacket(PacketCreator.enableActions());
+                return;
+            }
             if (System.currentTimeMillis() - mapitem.getDropTime() < 400 || !mapitem.canBePickedBy(this)) {
                 sendPacket(PacketCreator.enableActions());
                 return;
@@ -2167,6 +2388,7 @@ public class Character extends AbstractCharacterObject {
                 final Packet pickupPacket = PacketCreator.removeItemFromMap(mapitem.getObjectId(), (isPet) ? 5 : 2, this.getId(), isPet, petIndex);
 
                 Item mItem = mapitem.getItem();
+                int previousItemQuantity = mItem == null ? 0 : countItem(mItem.getItemId());
                 boolean hasSpaceInventory = true;
                 ItemInformationProvider ii = ItemInformationProvider.getInstance();
                 if (ItemId.isNxCard(mapitem.getItemId()) || mapitem.getMeso() > 0 || ii.isConsumeOnPickup(mapitem.getItemId()) || (hasSpaceInventory = InventoryManipulator.checkSpace(client, mapitem.getItemId(), mItem.getQuantity(), mItem.getOwner()))) {
@@ -2198,6 +2420,7 @@ public class Character extends AbstractCharacterObject {
 
                                 this.getMap().pickItemDrop(pickupPacket, mapitem);
                             } else if (InventoryManipulator.addFromDrop(client, mItem, true)) {
+                                publishQuestItemProgress(mItem.getItemId(), previousItemQuantity);
                                 this.getMap().pickItemDrop(pickupPacket, mapitem);
                             } else {
                                 sendPacket(PacketCreator.enableActions());
@@ -2238,6 +2461,7 @@ public class Character extends AbstractCharacterObject {
                                 sendPacket(PacketCreator.enableActions());
                                 return;
                             }
+                            publishQuestItemProgress(mItem.getItemId(), previousItemQuantity);
                         }
                     } else if (ItemId.isNxCard(mapitem.getItemId())) {
                         // Add NX to account, show effect and make item disappear
@@ -2249,8 +2473,14 @@ public class Character extends AbstractCharacterObject {
                         }
                     } else if (applyConsumeOnPickup(mItem.getItemId())) {
                     } else if (InventoryManipulator.addFromDrop(client, mItem, true)) {
+                        publishQuestItemProgress(mItem.getItemId(), previousItemQuantity);
                         if (mItem.getItemId() == ItemId.ARPQ_SPIRIT_JEWEL) {
                             updateAriantScore();
+                        }
+                        try {
+                            AgentOwnerItemNotificationService.notifyOwnerGainedItem(this, mItem);
+                        } catch (Exception e) {
+                            log.warn("Bot notification failed on item pickup (item {})", mItem.getItemId(), e);
                         }
                     } else {
                         sendPacket(PacketCreator.enableActions());
@@ -2274,6 +2504,23 @@ public class Character extends AbstractCharacterObject {
         sendPacket(PacketCreator.enableActions());
     }
 
+    private void publishQuestItemProgress(int itemId, int previousCount) {
+        int currentCount = countItem(itemId);
+        synchronized (quests) {
+            for (QuestStatus status : getQuests()) {
+                if (status.getStatus() != QuestStatus.Status.STARTED) {
+                    continue;
+                }
+                int requiredCount = status.getQuest().getCompleteItemAmountNeeded(itemId);
+                if (requiredCount > 0 && requiredCount != Integer.MAX_VALUE) {
+                    AgentQuestProgressMilestonePublisher.publishItemProgress(
+                            this, status.getQuest().getId(), itemId, previousCount,
+                            currentCount, requiredCount);
+                }
+            }
+        }
+    }
+
     public int countItem(int itemid) {
         return inventory[ItemConstants.getInventoryType(itemid).ordinal()].countById(itemid);
     }
@@ -2289,7 +2536,7 @@ public class Character extends AbstractCharacterObject {
     public boolean canHoldUniques(List<Integer> itemids) {
         ItemInformationProvider ii = ItemInformationProvider.getInstance();
         for (Integer itemid : itemids) {
-            if (ii.isPickupRestricted(itemid) && this.haveItem(itemid)) {
+            if (ii.isPickupRestricted(itemid, this) && this.haveItem(itemid)) {
                 return false;
             }
         }
@@ -2336,7 +2583,7 @@ public class Character extends AbstractCharacterObject {
                 ps.executeUpdate();
             }
         } catch (SQLException ex) {
-            log.error("Character error", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -2367,191 +2614,173 @@ public class Character extends AbstractCharacterObject {
 
     public static boolean deleteCharFromDB(Character player, int senderAccId) {
         int cid = player.getId();
-        if (!Server.getInstance().haveCharacterEntry(senderAccId, cid)) {    // thanks zera (EpiphanyMS) for pointing a critical exploit with non-authed character deletion request
+        if (!Server.getInstance().validateCharacterOwnership(senderAccId, cid)) {    // thanks zera (EpiphanyMS) for pointing a critical exploit with non-authed character deletion request
             return false;
         }
 
-        final int accId = senderAccId;
-        int world = 0;
         try (Connection con = DatabaseConnection.getConnection()) {
-            try (PreparedStatement ps = con.prepareStatement("SELECT world FROM characters WHERE id = ?")) {
-                ps.setInt(1, cid);
+            CharacterDeletionContext context = runDeletionTransaction(con,
+                    () -> deleteCharacterRows(con, player, cid, senderAccId));
+            try {
+                completeCharacterDeletion(context, cid, senderAccId);
+            } catch (RuntimeException cleanupFailure) {
+                log.error("Character rows were deleted but post-commit cleanup failed for chrId={} accountId={}",
+                        cid, senderAccId, cleanupFailure);
+            }
+            return true;
+        } catch (SQLException e) {
+            log.error("Failed transactional deletion for chrId={} accountId={}", cid, senderAccId, e);
+            return false;
+        }
+    }
 
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        world = rs.getInt("world");
-                    }
+    @FunctionalInterface
+    interface SqlTransactionWork<T> {
+        T execute() throws SQLException;
+    }
+
+    static <T> T runDeletionTransaction(Connection con, SqlTransactionWork<T> work) throws SQLException {
+        con.setAutoCommit(false);
+        try {
+            T result = work.execute();
+            con.commit();
+            return result;
+        } catch (SQLException | RuntimeException failure) {
+            try {
+                con.rollback();
+            } catch (SQLException rollbackFailure) {
+                failure.addSuppressed(rollbackFailure);
+            }
+            throw failure;
+        }
+    }
+
+    private static CharacterDeletionContext deleteCharacterRows(Connection con, Character player, int cid, int accId) throws SQLException {
+        int world;
+        GuildCharacter guildCharacter = null;
+        List<Integer> buddyIds = new ArrayList<>();
+        List<Integer> cashIds = new ArrayList<>();
+
+        try (PreparedStatement ps = con.prepareStatement("SELECT world, guildid, guildrank, name, allianceRank FROM characters WHERE id = ? AND accountid = ?")) {
+            ps.setInt(1, cid);
+            ps.setInt(2, accId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    throw new SQLException("Character disappeared before deletion");
+                }
+                world = rs.getInt("world");
+                if (rs.getInt("guildid") > 0) {
+                    guildCharacter = new GuildCharacter(player, cid, 0, rs.getString("name"), (byte) -1, (byte) -1,
+                            0, rs.getInt("guildrank"), rs.getInt("guildid"), false, rs.getInt("allianceRank"));
                 }
             }
+        }
 
-            try (PreparedStatement ps = con.prepareStatement("SELECT buddyid FROM buddies WHERE characterid = ?")) {
-                ps.setInt(1, cid);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        int buddyid = rs.getInt("buddyid");
-                        Character buddy = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(buddyid);
-
-                        if (buddy != null) {
-                            buddy.deleteBuddy(cid);
-                        }
-                    }
+        try (PreparedStatement ps = con.prepareStatement("SELECT buddyid FROM buddies WHERE characterid = ?")) {
+            ps.setInt(1, cid);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    buddyIds.add(rs.getInt("buddyid"));
                 }
             }
+        }
+        deleteWhereCharacterId(con, "DELETE FROM buddies WHERE characterid = ?", cid);
 
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM buddies WHERE characterid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("SELECT threadid FROM bbs_threads WHERE postercid = ?")) {
-                ps.setInt(1, cid);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        int threadId = rs.getInt("threadid");
-
-                        try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM bbs_replies WHERE threadid = ?")) {
-                            ps2.setInt(1, threadId);
-                            ps2.executeUpdate();
-                        }
-                    }
+        try (PreparedStatement ps = con.prepareStatement("SELECT threadid FROM bbs_threads WHERE postercid = ?")) {
+            ps.setInt(1, cid);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    deleteWhereCharacterId(con, "DELETE FROM bbs_replies WHERE threadid = ?", rs.getInt("threadid"));
                 }
             }
+        }
+        deleteWhereCharacterId(con, "DELETE FROM bbs_threads WHERE postercid = ?", cid);
 
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM bbs_threads WHERE postercid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
+        String[] charIdTables = {"wishlists", "cooldowns", "playerdiseases", "area_info", "monsterbook"};
+        for (String table : charIdTables) {
+            deleteWhereCharacterId(con, "DELETE FROM `" + table + "` WHERE charid = ?", cid);
+        }
+        deleteWhereCharacterId(con, "DELETE FROM family_character WHERE cid = ?", cid);
+        deleteWhereCharacterId(con, "DELETE FROM famelog WHERE characterid_to = ?", cid);
 
-            try (PreparedStatement ps = con.prepareStatement("SELECT id, guildid, guildrank, name, allianceRank FROM characters WHERE id = ? AND accountid = ?")) {
-                ps.setInt(1, cid);
-                ps.setInt(2, accId);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next() && rs.getInt("guildid") > 0) {
-                        Server.getInstance().deleteGuildCharacter(new GuildCharacter(player, cid, 0, rs.getString("name"), (byte) -1, (byte) -1, 0, rs.getInt("guildrank"), rs.getInt("guildid"), false, rs.getInt("allianceRank")));
-                    }
-                }
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM wishlists WHERE charid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM cooldowns WHERE charid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM playerdiseases WHERE charid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM area_info WHERE charid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM monsterbook WHERE charid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM characters WHERE id = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM family_character WHERE cid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM famelog WHERE characterid_to = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("SELECT inventoryitemid, petid FROM inventoryitems WHERE characterid = ?")) {
-                ps.setInt(1, cid);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        int inventoryitemid = rs.getInt("inventoryitemid");
-
-                        try (PreparedStatement ps2 = con.prepareStatement("SELECT ringid FROM inventoryequipment WHERE inventoryitemid = ?")) {
-                            ps2.setInt(1, inventoryitemid);
-
-                            try (ResultSet rs2 = ps2.executeQuery()) {
-                                while (rs2.next()) {
-                                    final int ringid = rs2.getInt("ringid");
-
-                                    if (ringid > -1) {
-                                        try (PreparedStatement ps3 = con.prepareStatement("DELETE FROM rings WHERE id = ?")) {
-                                            ps3.setInt(1, ringid);
-                                            ps3.executeUpdate();
-                                        }
-
-                                        CashIdGenerator.freeCashId(ringid);
-                                    }
+        try (PreparedStatement ps = con.prepareStatement("SELECT inventoryitemid, petid FROM inventoryitems WHERE characterid = ?")) {
+            ps.setInt(1, cid);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int inventoryItemId = rs.getInt("inventoryitemid");
+                    try (PreparedStatement ringQuery = con.prepareStatement("SELECT ringid FROM inventoryequipment WHERE inventoryitemid = ?")) {
+                        ringQuery.setInt(1, inventoryItemId);
+                        try (ResultSet rings = ringQuery.executeQuery()) {
+                            while (rings.next()) {
+                                int ringId = rings.getInt("ringid");
+                                if (ringId > -1) {
+                                    deleteWhereCharacterId(con, "DELETE FROM rings WHERE id = ?", ringId);
+                                    cashIds.add(ringId);
                                 }
                             }
                         }
+                    }
+                    deleteWhereCharacterId(con, "DELETE FROM inventoryequipment WHERE inventoryitemid = ?", inventoryItemId);
 
-                        try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM inventoryequipment WHERE inventoryitemid = ?")) {
-                            ps2.setInt(1, inventoryitemid);
-                            ps2.executeUpdate();
-                        }
-
-                        final int petid = rs.getInt("petid");
-                        if (!rs.wasNull()) {
-                            try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM pets WHERE petid = ?")) {
-                                ps2.setInt(1, petid);
-                                ps2.executeUpdate();
-                            }
-                            CashIdGenerator.freeCashId(petid);
-                        }
+                    int petId = rs.getInt("petid");
+                    if (!rs.wasNull()) {
+                        Pet.deleteFromDb(con, petId);
+                        cashIds.add(petId);
                     }
                 }
             }
-
-            deleteQuestProgressWhereCharacterId(con, cid);
-            FredrickProcessor.removeFredrickLog(cid);   // thanks maple006 for pointing out the player's Fredrick items are not being deleted at character deletion
-
-            try (PreparedStatement ps = con.prepareStatement("SELECT id FROM mts_cart WHERE cid = ?")) {
-                ps.setInt(1, cid);
-
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        final int mtsid = rs.getInt("id");
-
-                        try (PreparedStatement ps2 = con.prepareStatement("DELETE FROM mts_items WHERE id = ?")) {
-                            ps2.setInt(1, mtsid);
-                            ps2.executeUpdate();
-                        }
-                    }
-                }
-            }
-
-            try (PreparedStatement ps = con.prepareStatement("DELETE FROM mts_cart WHERE cid = ?")) {
-                ps.setInt(1, cid);
-                ps.executeUpdate();
-            }
-
-            String[] toDel = {"famelog", "inventoryitems", "keymap", "queststatus", "savedlocations", "trocklocations", "skillmacros", "skills", "eventstats" };
-            for (String s : toDel) {
-                Character.deleteWhereCharacterId(con, "DELETE FROM `" + s + "` WHERE characterid = ?", cid);
-            }
-
-            Server.getInstance().deleteCharacterEntry(accId, cid);
-            return true;
-        } catch (SQLException e) {
-            log.error("Character error", e);
-            return false;
         }
+
+        deleteQuestProgressWhereCharacterId(con, cid);
+        FredrickProcessor.removeFredrickLog(con, cid);
+
+        try (PreparedStatement ps = con.prepareStatement("SELECT id FROM mts_cart WHERE cid = ?")) {
+            ps.setInt(1, cid);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    deleteWhereCharacterId(con, "DELETE FROM mts_items WHERE id = ?", rs.getInt("id"));
+                }
+            }
+        }
+        deleteWhereCharacterId(con, "DELETE FROM mts_cart WHERE cid = ?", cid);
+
+        String[] characterIdTables = {"famelog", "inventoryitems", "keymap", "savedlocations", "trocklocations", "skillmacros", "skills", "eventstats"};
+        for (String table : characterIdTables) {
+            deleteWhereCharacterId(con, "DELETE FROM `" + table + "` WHERE characterid = ?", cid);
+        }
+
+        try (PreparedStatement ps = con.prepareStatement("DELETE FROM characters WHERE id = ? AND accountid = ?")) {
+            ps.setInt(1, cid);
+            ps.setInt(2, accId);
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("Character row was not deleted");
+            }
+        }
+        return new CharacterDeletionContext(world, buddyIds, cashIds, guildCharacter);
+    }
+
+    private static void completeCharacterDeletion(CharacterDeletionContext context, int cid, int accId) {
+        Server server = Server.getInstance();
+        World world = server.getWorld(context.world());
+        if (world != null) {
+            for (int buddyId : context.buddyIds()) {
+                Character buddy = world.getPlayerStorage().getCharacterById(buddyId);
+                if (buddy != null) {
+                    buddy.deleteBuddy(cid);
+                }
+            }
+        }
+        if (context.guildCharacter() != null) {
+            server.deleteGuildCharacter(context.guildCharacter());
+        }
+        for (int cashId : context.cashIds()) {
+            CashIdGenerator.freeCashId(cashId);
+        }
+        server.deleteCharacterEntry(accId, cid);
+    }
+
+    private record CharacterDeletionContext(int world, List<Integer> buddyIds, List<Integer> cashIds,
+                                            GuildCharacter guildCharacter) {
     }
 
     private static void deleteQuestProgressWhereCharacterId(Connection con, int cid) throws SQLException {
@@ -2751,7 +2980,7 @@ public class Character extends AbstractCharacterObject {
         try {
             Server.getInstance().disbandGuild(guildid);
         } catch (Exception e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -3611,7 +3840,7 @@ public class Character extends AbstractCharacterObject {
         } else {
             expgain = this.gachaexp.getAndSet(0);
         }
-        gainExp(expgain, false, true);
+        gainExp(expgain, 0, false, true, true);
         updateSingleStat(Stat.GACHAEXP, this.gachaexp.get());
     }
 
@@ -3657,6 +3886,30 @@ public class Character extends AbstractCharacterObject {
         int equip = (int) Math.min((long) (gain / 10) * pendantExp, Integer.MAX_VALUE);
 
         gainExpInternal(gain, equip, party, show, inChat, white);
+    }
+
+    public int getRateScaledExpGain(int gain) {
+        return ExperienceRateScaler.scale(gain, getExpRate());
+    }
+
+    public int getQuestRateScaledExpGain(int gain) {
+        return ExperienceRateScaler.scale(gain, getQuestExpRate());
+    }
+
+    public void gainExpRateScaled(int gain, boolean show, boolean inChat) {
+        gainExp(ExperienceRateScaler.scale(gain, getExpRate()), show, inChat);
+    }
+
+    public void gainExpRateScaled(double gain, boolean show, boolean inChat) {
+        gainExp(ExperienceRateScaler.scale(gain, getExpRate()), show, inChat);
+    }
+
+    public void gainExpRateScaled(int gain, boolean show, boolean inChat, boolean white) {
+        gainExp(ExperienceRateScaler.scale(gain, getExpRate()), show, inChat, white);
+    }
+
+    public void gainQuestExpRateScaled(int gain, boolean show, boolean inChat) {
+        gainExp(ExperienceRateScaler.scale(gain, getQuestExpRate()), show, inChat);
     }
 
     public void loseExp(int loss, boolean show, boolean inChat) {
@@ -3711,6 +3964,7 @@ public class Character extends AbstractCharacterObject {
                 gainExpInternal(leftover, equip, party, false, inChat, white);
             } else {
                 lastExpGainTime = System.currentTimeMillis();
+                markPersistenceDirty(PersistenceSection.STATS);
 
                 if (YamlConfig.config.server.USE_EXP_GAIN_LOG) {
                     ExpLogRecord expLogRecord = new ExpLogger.ExpLogRecord(
@@ -3891,7 +4145,7 @@ public class Character extends AbstractCharacterObject {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("Character error", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return character;
@@ -5326,10 +5580,24 @@ public class Character extends AbstractCharacterObject {
         return client.getAbstractPlayerInteraction();
     }
 
+    // Membership snapshot for kill-time quest scans. QuestStatus objects remain live; only map
+    // insert/remove/replace operations invalidate this immutable list.
+    private List<QuestStatus> questStatusSnapshot;
+
     private List<QuestStatus> getQuests() {
         synchronized (quests) {
-            return new ArrayList<>(quests.values());
+            List<QuestStatus> snapshot = questStatusSnapshot;
+            if (snapshot == null) {
+                snapshot = List.copyOf(quests.values());
+                questStatusSnapshot = snapshot;
+            }
+            return snapshot;
         }
+    }
+
+    /** Immutable membership snapshot for read-only integrations and diagnostics. */
+    public final List<QuestStatus> getQuestStatusesSnapshot() {
+        return getQuests();
     }
 
     public final List<QuestStatus> getCompletedQuests() {
@@ -5344,8 +5612,11 @@ public class Character extends AbstractCharacterObject {
     }
 
     public List<Ring> getCrushRings() {
-        Collections.sort(crushRings);
-        return crushRings;
+        synchronized (crushRings) {
+            List<Ring> copy = new ArrayList<>(crushRings);
+            Collections.sort(copy);
+            return copy;
+        }
     }
 
     public int getCurrentCI() {
@@ -5474,26 +5745,36 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void resetExcluded(int petId) {
+        boolean changed;
         chrLock.lock();
         try {
             Set<Integer> petExclude = excluded.get(petId);
 
             if (petExclude != null) {
+                changed = !petExclude.isEmpty();
                 petExclude.clear();
             } else {
                 excluded.put(petId, new LinkedHashSet<Integer>());
+                changed = false;
             }
         } finally {
             chrLock.unlock();
         }
+        if (changed) {
+            markPersistenceDirty(PersistenceSection.PETS);
+        }
     }
 
     public void addExcluded(int petId, int x) {
+        boolean changed;
         chrLock.lock();
         try {
-            excluded.get(petId).add(x);
+            changed = excluded.get(petId).add(x);
         } finally {
             chrLock.unlock();
+        }
+        if (changed) {
+            markPersistenceDirty(PersistenceSection.PETS);
         }
     }
 
@@ -5547,7 +5828,11 @@ public class Character extends AbstractCharacterObject {
     public Map<Integer, Set<Integer>> getExcluded() {
         chrLock.lock();
         try {
-            return Collections.unmodifiableMap(excluded);
+            Map<Integer, Set<Integer>> snapshot = new LinkedHashMap<>();
+            for (Entry<Integer, Set<Integer>> entry : excluded.entrySet()) {
+                snapshot.put(entry.getKey(), Collections.unmodifiableSet(new LinkedHashSet<>(entry.getValue())));
+            }
+            return Collections.unmodifiableMap(snapshot);
         } finally {
             chrLock.unlock();
         }
@@ -5556,7 +5841,7 @@ public class Character extends AbstractCharacterObject {
     public Set<Integer> getExcludedItems() {
         chrLock.lock();
         try {
-            return Collections.unmodifiableSet(excludedItems);
+            return Collections.unmodifiableSet(new LinkedHashSet<>(excludedItems));
         } finally {
             chrLock.unlock();
         }
@@ -5574,9 +5859,17 @@ public class Character extends AbstractCharacterObject {
         return YamlConfig.config.server.USE_ENFORCE_NOVICE_EXPRATE && isBeginnerJob() && level < 11;
     }
 
+    public boolean hasFirstJobExpRate() {
+        return level < 30;
+    }
+
     public int getExpRate() {
-        if (hasNoviceExpRate()) {   // base exp rate 1x for early levels idea thanks to Vcoc
-            return 1;
+        World w = getWorldServer();
+        if (hasNoviceExpRate()) {
+            return Math.min(w.getExpRate(), 5);
+        }
+        if (hasFirstJobExpRate()) {
+            return Math.min(w.getExpRate(), 5);
         }
 
         return expRate;
@@ -5620,11 +5913,14 @@ public class Character extends AbstractCharacterObject {
     }
 
     public int getQuestExpRate() {
+        World w = getWorldServer();
         if (hasNoviceExpRate()) {
-            return 1;
+            return Math.min(w.getExpRate(), 2);
+        }
+        if (hasFirstJobExpRate()) {
+            return Math.min(w.getExpRate(), 5) * w.getQuestRate();
         }
 
-        World w = getWorldServer();
         return w.getExpRate() * w.getQuestRate();
     }
 
@@ -5687,12 +5983,16 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void setUsedStorage() {
-        usedStorage = true;
+        usedStorage.set(true);
+        markPersistenceDirty(PersistenceSection.RELATED);
     }
 
     public List<Ring> getFriendshipRings() {
-        Collections.sort(friendshipRings);
-        return friendshipRings;
+        synchronized (friendshipRings) {
+            List<Ring> copy = new ArrayList<>(friendshipRings);
+            Collections.sort(copy);
+            return copy;
+        }
     }
 
     public int getGender() {
@@ -5707,7 +6007,7 @@ public class Character extends AbstractCharacterObject {
         try {
             return Server.getInstance().getGuild(getGuildId(), getWorld(), this);
         } catch (Exception ex) {
-            log.error("Character error", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
             return null;
         }
     }
@@ -5717,7 +6017,7 @@ public class Character extends AbstractCharacterObject {
             try {
                 return Server.getInstance().getAlliance(getGuild().getAllianceId());
             } catch (Exception ex) {
-                log.error("Character error", ex);
+                monitoring.RuntimeFailureLogger.log(ex);
             }
         }
 
@@ -5757,7 +6057,7 @@ public class Character extends AbstractCharacterObject {
             }
             return id;
         } catch (Exception e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return -1;
     }
@@ -5775,7 +6075,7 @@ public class Character extends AbstractCharacterObject {
             }
             return id;
         } catch (Exception e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return -1;
     }
@@ -5793,7 +6093,7 @@ public class Character extends AbstractCharacterObject {
             }
             return name;
         } catch (Exception e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return null;
     }
@@ -5804,6 +6104,18 @@ public class Character extends AbstractCharacterObject {
 
     public Inventory getInventory(InventoryType type) {
         return inventory[type.ordinal()];
+    }
+
+    /**
+     * Returns whether this character still owns its live inventory state.
+     *
+     * <p>Disconnected characters release their inventories after the bounded
+     * logout grace period. Optional observers and Agent presentation features
+     * may retain a character reference across that boundary and must defer
+     * inventory reads until the relationship is rebound to a live character.</p>
+     */
+    public boolean hasInventoryState() {
+        return inventory != null;
     }
 
     public int getItemEffect() {
@@ -5897,6 +6209,17 @@ public class Character extends AbstractCharacterObject {
         return mapid;
     }
 
+    /** One-shot Agent recovery hint consumed by the King Pepe instance script. */
+    public void requestAgentMushroomYetiPityVariant(int mobId) {
+        agentMushroomYetiPityVariant = mobId >= 3_300_005 && mobId <= 3_300_007 ? mobId : 0;
+    }
+
+    public int consumeAgentMushroomYetiPityVariant() {
+        int requested = agentMushroomYetiPityVariant;
+        agentMushroomYetiPityVariant = 0;
+        return requested;
+    }
+
     public Ring getMarriageRing() {
         return partnerId > 0 ? marriageRing : null;
     }
@@ -5940,8 +6263,54 @@ public class Character extends AbstractCharacterObject {
         return localwatk;
     }
 
+    /**
+     * Returns the effective Maple movement-speed stat (base 100 plus equip and active SPEED buffs).
+     * Bot movement uses this as a multiplier over its current physics baseline.
+     */
+    public int getTotalMoveSpeedStat() {
+        int total = 100;
+        for (Item item : getInventory(InventoryType.EQUIPPED)) {
+            if (item instanceof Equip equip) {
+                total += equip.getSpeed();
+            }
+        }
+
+        Integer speedBuff = getBuffedValue(BuffStat.SPEED);
+        if (speedBuff != null) {
+            total += speedBuff;
+        }
+        return Math.max(1, total);
+    }
+
+    /**
+     * Returns the effective Maple jump stat (base 100 plus equip and active JUMP buffs).
+     * Bot jump height uses this as a multiplier over its current physics baseline.
+     */
+    public int getTotalJumpStat() {
+        int total = 100;
+        for (Item item : getInventory(InventoryType.EQUIPPED)) {
+            if (item instanceof Equip equip) {
+                total += equip.getJump();
+            }
+        }
+
+        Integer jumpBuff = getBuffedValue(BuffStat.JUMP);
+        if (jumpBuff != null) {
+            total += jumpBuff;
+        }
+        return Math.max(1, total);
+    }
+
+    public int getTotalWdef() {
+        return localwdef;
+    }
+
+    public int getTotalMdef() {
+        return localmdef;
+    }
+
     public int getMaxClassLevel() {
-        return isCygnus() ? 120 : 200;
+        return JobProgressionPolicy.classLevelCap(job, isGM());
     }
 
     public int getMaxLevel() {
@@ -5973,7 +6342,7 @@ public class Character extends AbstractCharacterObject {
                 }
             }
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         if (elapsedDays > 100) {
@@ -6157,7 +6526,11 @@ public class Character extends AbstractCharacterObject {
 
     public List<Character> getPartyMembersOnSameMap() {
         List<Character> list = new LinkedList<>();
-        int thisMapHash = this.getMap().hashCode();
+        MapleMap currentMap = this.getMap();
+        if (currentMap == null) {
+            return list;
+        }
+        int thisMapHash = currentMap.hashCode();
 
         prtLock.lock();
         try {
@@ -6209,6 +6582,7 @@ public class Character extends AbstractCharacterObject {
         this.gmLevel = Math.max(level, 0);
 
         whiteChat = gmLevel >= 4;   // thanks ozanrijen for suggesting default white chat
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void closePartySearchInteractions() {
@@ -6240,6 +6614,10 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void closePlayerShop() {
+        closePlayerShop("CLIENT_CLOSED");
+    }
+
+    public void closePlayerShop(String closeReason) {
         PlayerShop mps = this.getPlayerShop();
         if (mps == null) {
             return;
@@ -6249,13 +6627,15 @@ public class Character extends AbstractCharacterObject {
             mps.setOpen(false);
             getWorldServer().unregisterPlayerShop(mps);
 
-            for (PlayerShopItem mpsi : mps.getItems()) {
-                if (mpsi.getBundles() >= 2) {
-                    Item iItem = mpsi.getItem().copy();
-                    iItem.setQuantity((short) (mpsi.getBundles() * iItem.getQuantity()));
-                    InventoryManipulator.addFromDrop(this.getClient(), iItem, false);
-                } else if (mpsi.isExist()) {
-                    InventoryManipulator.addFromDrop(this.getClient(), mpsi.getItem(), true);
+            if (!mps.returnEscrowToOwner(this, closeReason)) {
+                for (PlayerShopItem mpsi : mps.getItems()) {
+                    if (mpsi.getBundles() >= 2) {
+                        Item iItem = mpsi.getItem().copy();
+                        iItem.setQuantity((short) (mpsi.getBundles() * iItem.getQuantity()));
+                        InventoryManipulator.addFromDrop(this.getClient(), iItem, false);
+                    } else if (mpsi.isExist()) {
+                        InventoryManipulator.addFromDrop(this.getClient(), mpsi.getItem(), true);
+                    }
                 }
             }
             mps.closeShop();
@@ -6398,7 +6778,9 @@ public class Character extends AbstractCharacterObject {
             QuestStatus qs = quests.get(questid);
             if (qs == null) {
                 qs = new QuestStatus(quest, QuestStatus.Status.NOT_STARTED);
+                attachQuestStatus(qs);
                 quests.put(questid, qs);
+                questStatusSnapshot = null;
             }
             return qs;
         }
@@ -6411,7 +6793,10 @@ public class Character extends AbstractCharacterObject {
             if (!quests.containsKey(quest.getId())) {
                 final QuestStatus stat = new QuestStatus(quest, QuestStatus.Status.getById(status));
                 stat.setCustomData(customData);
+                attachQuestStatus(stat);
                 quests.put(quest.getId(), stat);
+                questStatusSnapshot = null;
+                markPersistenceDirty(PersistenceSection.QUESTS);
             }
         }
     }
@@ -6420,7 +6805,9 @@ public class Character extends AbstractCharacterObject {
         synchronized (quests) {
             if (!quests.containsKey(quest.getId())) {
                 final QuestStatus status = new QuestStatus(quest, QuestStatus.Status.NOT_STARTED);
+                attachQuestStatus(status);
                 quests.put(quest.getId(), status);
+                questStatusSnapshot = null;
                 return status;
             }
             return quests.get(quest.getId());
@@ -6435,7 +6822,13 @@ public class Character extends AbstractCharacterObject {
 
     public final QuestStatus getQuestRemove(final Quest quest) {
         synchronized (quests) {
-            return quests.remove(quest.getId());
+            QuestStatus removed = quests.remove(quest.getId());
+            if (removed != null) {
+                questStatusSnapshot = null;
+                removed.setPersistenceDirtyMarker(() -> {});
+                markPersistenceDirty(PersistenceSection.QUESTS);
+            }
+            return removed;
         }
     }
 
@@ -6473,15 +6866,27 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void clearSavedLocation(SavedLocationType type) {
-        savedLocations[type.ordinal()] = null;
+        boolean changed;
+        chrLock.lock();
+        try {
+            changed = savedLocations[type.ordinal()] != null;
+            savedLocations[type.ordinal()] = null;
+        } finally {
+            chrLock.unlock();
+        }
+        if (changed) {
+            markPersistenceDirty(PersistenceSection.LOCATIONS);
+        }
     }
 
     public int peekSavedLocation(String type) {
-        SavedLocation sl = savedLocations[SavedLocationType.fromString(type).ordinal()];
-        if (sl == null) {
-            return -1;
+        chrLock.lock();
+        try {
+            SavedLocation sl = savedLocations[SavedLocationType.fromString(type).ordinal()];
+            return sl == null ? -1 : sl.getMapId();
+        } finally {
+            chrLock.unlock();
         }
-        return sl.getMapId();
     }
 
     public int getSavedLocation(String type) {
@@ -6500,7 +6905,12 @@ public class Character extends AbstractCharacterObject {
     }
 
     public Map<Skill, SkillEntry> getSkills() {
-        return Collections.unmodifiableMap(skills);
+        chrLock.lock();
+        try {
+            return Collections.unmodifiableMap(new LinkedHashMap<>(skills));
+        } finally {
+            chrLock.unlock();
+        }
     }
 
     public int getSkillLevel(int skill) {
@@ -6571,7 +6981,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     public Collection<Summon> getSummonsValues() {
-        return summons.values();
+        return new ArrayList<>(summons.values());
     }
 
     public void clearSummons() {
@@ -6645,7 +7055,7 @@ public class Character extends AbstractCharacterObject {
                 Server.getInstance().allianceMessage(allianceId, GuildPackets.updateAllianceJobLevel(this), getId(), -1);
             }
         } catch (Exception e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -6738,7 +7148,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, to.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -6942,11 +7352,10 @@ public class Character extends AbstractCharacterObject {
     }
 
     public synchronized void levelUp(boolean takeexp) {
-        Skill improvingMaxHP = null;
-        Skill improvingMaxMP = null;
-        int improvingMaxHPLevel = 0;
-        int improvingMaxMPLevel = 0;
-
+        if (level >= getMaxLevel()) {
+            exp.set(0);
+            return;
+        }
         boolean isBeginner = isBeginnerJob();
         // Auto-assign for any Beginner (job == 0) regardless of level. The
         // v83 client hard-codes a "Please use your AP" popup whenever a
@@ -7023,57 +7432,12 @@ public class Character extends AbstractCharacterObject {
             gainAp(remainingAp, true);
         }
 
-        int addhp = 0, addmp = 0;
-        if (isBeginner) {
-            addhp += Randomizer.rand(12, 16);
-            addmp += Randomizer.rand(10, 12);
-        } else if (job.isA(Job.WARRIOR) || job.isA(Job.DAWNWARRIOR1)) {
-            improvingMaxHP = isCygnus() ? SkillFactory.getSkill(DawnWarrior.MAX_HP_INCREASE) : SkillFactory.getSkill(Warrior.IMPROVED_MAXHP);
-            if (job.isA(Job.CRUSADER)) {
-                improvingMaxMP = SkillFactory.getSkill(1210000);
-            } else if (job.isA(Job.DAWNWARRIOR2)) {
-                improvingMaxMP = SkillFactory.getSkill(11110000);
-            }
-            improvingMaxHPLevel = getSkillLevel(improvingMaxHP);
-            addhp += Randomizer.rand(24, 28);
-            addmp += Randomizer.rand(4, 6);
-        } else if (job.isA(Job.MAGICIAN) || job.isA(Job.BLAZEWIZARD1)) {
-            improvingMaxMP = isCygnus() ? SkillFactory.getSkill(BlazeWizard.INCREASING_MAX_MP) : SkillFactory.getSkill(Magician.IMPROVED_MAX_MP_INCREASE);
-            improvingMaxMPLevel = getSkillLevel(improvingMaxMP);
-            addhp += Randomizer.rand(10, 14);
-            addmp += Randomizer.rand(22, 24);
-        } else if (job.isA(Job.BOWMAN) || job.isA(Job.THIEF) || (job.getId() > 1299 && job.getId() < 1500)) {
-            addhp += Randomizer.rand(20, 24);
-            addmp += Randomizer.rand(14, 16);
-        } else if (job.isA(Job.GM)) {
-            addhp += 30000;
-            addmp += 30000;
-        } else if (job.isA(Job.PIRATE) || job.isA(Job.THUNDERBREAKER1)) {
-            improvingMaxHP = isCygnus() ? SkillFactory.getSkill(ThunderBreaker.IMPROVE_MAX_HP) : SkillFactory.getSkill(Brawler.IMPROVE_MAX_HP);
-            improvingMaxHPLevel = getSkillLevel(improvingMaxHP);
-            addhp += Randomizer.rand(22, 28);
-            addmp += Randomizer.rand(18, 23);
-        } else if (job.isA(Job.ARAN1)) {
-            addhp += Randomizer.rand(44, 48);
-            int aids = Randomizer.rand(4, 8);
-            addmp += aids + Math.floor(aids * 0.1);
-        }
-        if (improvingMaxHPLevel > 0 && (job.isA(Job.WARRIOR) || job.isA(Job.PIRATE) || job.isA(Job.DAWNWARRIOR1) || job.isA(Job.THUNDERBREAKER1))) {
-            addhp += improvingMaxHP.getEffect(improvingMaxHPLevel).getX();
-        }
-        if (improvingMaxMPLevel > 0 && (job.isA(Job.MAGICIAN) || job.isA(Job.CRUSADER) || job.isA(Job.BLAZEWIZARD1))) {
-            addmp += improvingMaxMP.getEffect(improvingMaxMPLevel).getX();
-        }
-
-        if (YamlConfig.config.server.USE_RANDOMIZE_HPMP_GAIN) {
-            if (getJobStyle() == Job.MAGICIAN) {
-                addmp += localint_ / 20;
-            } else {
-                addmp += localint_ / 10;
-            }
-        }
-
-        addMaxMPMaxHP(addhp, addmp, true);
+        HpMpGrowthPolicy.Growth levelGrowth = HpMpGrowthPolicy.levelGain(job);
+        HpMpGrowthPolicy.Growth oldPassiveBonus = totalRetroactivePassiveBonus(level);
+        HpMpGrowthPolicy.Growth newPassiveBonus = totalRetroactivePassiveBonus(level + 1);
+        HpMpGrowthPolicy.Growth passiveGrowth = newPassiveBonus.minus(oldPassiveBonus);
+        HpMpGrowthPolicy.Growth totalGrowth = levelGrowth.plus(passiveGrowth);
+        addMaxMPMaxHP(totalGrowth.hp(), totalGrowth.mp(), true);
 
         if (takeexp) {
             exp.addAndGet(-ExpTable.getExpNeededForLevel(level));
@@ -7133,6 +7497,11 @@ public class Character extends AbstractCharacterObject {
         }
 
         getMap().broadcastMessage(this, PacketCreator.showForeignEffect(getId(), 0), false);
+        server.observer.ObserverInterestService.publish(
+                this,
+                server.observer.ObserverInterestService.Type.LEVEL_UP,
+                90,
+                "Reached level " + level);
         setMPC(new PartyCharacter(this));
         silentPartyUpdate();
 
@@ -7422,7 +7791,7 @@ public class Character extends AbstractCharacterObject {
     public Set<Integer> getActiveCoupons() {
         chrLock.lock();
         try {
-            return Collections.unmodifiableSet(activeCoupons.keySet());
+            return Collections.unmodifiableSet(new LinkedHashSet<>(activeCoupons.keySet()));
         } finally {
             chrLock.unlock();
         }
@@ -7484,7 +7853,7 @@ public class Character extends AbstractCharacterObject {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("Character error", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return ret;
@@ -7510,9 +7879,9 @@ public class Character extends AbstractCharacterObject {
         ret.int_ = this.getInt();
         ret.luk = this.getLuk();
         ret.hp = this.getHp();
-        ret.setMaxHp(this.getMaxHp());
+        ret.setMaxHp(this.getRawMaxHp());
         ret.mp = this.getMp();
-        ret.setMaxMp(this.getMaxMp());
+        ret.setMaxMp(this.getRawMaxMp());
         ret.remainingAp = this.getRemainingAp();
         ret.setRemainingSp(this.getRemainingSps());
         ret.exp.set(this.getExp());
@@ -7551,6 +7920,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     public static Character loadCharFromDB(final int charid, Client client, boolean channelserver) throws SQLException {
+        long loadStartedNs = SlowOperationLogger.start();
         Character ret = new Character();
         ret.client = client;
         ret.id = charid;
@@ -7640,6 +8010,10 @@ public class Character extends AbstractCharacterObject {
                     ret.getInventory(InventoryType.USE).setSlotLimit(rs.getByte("useslots"));
                     ret.getInventory(InventoryType.SETUP).setSlotLimit(rs.getByte("setupslots"));
                     ret.getInventory(InventoryType.ETC).setSlotLimit(rs.getByte("etcslots"));
+
+                    if (normalizeInventorySlotLimits(ret)) {
+                        persistInventorySlotLimits(con, ret);
+                    }
 
                     short sandboxCheck = 0x0;
                     for (Pair<Item, InventoryType> item : ItemFactory.INVENTORY.loadItems(ret.id, !channelserver)) {
@@ -7855,6 +8229,7 @@ public class Character extends AbstractCharacterObject {
                             status.setForfeited(rs.getInt("forfeited"));
                             status.setCompleted(rs.getInt("completed"));
                             ret.quests.put(q.getId(), status);
+                            ret.questStatusSnapshot = null;
                             loadedQuestStatus.put(rs.getInt("queststatusid"), status);
                         }
                     }
@@ -8021,6 +8396,7 @@ public class Character extends AbstractCharacterObject {
                     wserv.loadAccountStorage(ret.accountid);
                     ret.storage = wserv.getAccountStorage(ret.accountid);
                 }
+                ret.attachPersistenceChildren();
                 
                 int startHp = ret.hp, startMp = ret.mp;
                 ret.reapplyLocalStats();
@@ -8038,6 +8414,7 @@ public class Character extends AbstractCharacterObject {
             ret.maplemount.setLevel(mountlevel);
             ret.maplemount.setTiredness(mounttiredness);
             ret.maplemount.setActive(false);
+            ret.attachMount();
 
             // Quickslot key config
             try (final PreparedStatement pSelectQuickslotKeyMapped = con.prepareStatement("SELECT keymap FROM quickslotkeymapped WHERE accountid = ?;")) {
@@ -8053,7 +8430,10 @@ public class Character extends AbstractCharacterObject {
 
             return ret;
         } catch (SQLException | RuntimeException e) {
-            log.error("Character error", e);
+            log.error("Failed to load character charId={} channelserver={}", charid, channelserver, e);
+        } finally {
+            SlowOperationLogger.warnIfSlow("load-character charId=" + charid + " channelserver=" + channelserver,
+                    loadStartedNs, 5_000);
         }
         return null;
     }
@@ -8133,11 +8513,23 @@ public class Character extends AbstractCharacterObject {
                         continue;
                     }
 
+                    String previousProgressText = qs.getProgress(id);
+                    if (previousProgressText == null || previousProgressText.isBlank()) {
+                        continue;
+                    }
+                    int previousProgress = Integer.parseInt(previousProgressText);
                     if (qs.progress(id)) {
+                        int currentProgress = Integer.parseInt(qs.getProgress(id));
+                        AgentQuestProgressMilestonePublisher.publishMobProgress(
+                                this, qs.getQuest().getId(), id, previousProgress,
+                                currentProgress, qs.getQuest().getMobAmountNeeded(id));
                         announceUpdateQuest(DelayedQuestUpdate.UPDATE, qs, false);
                         if (qs.getInfoNumber() > 0) {
                             announceUpdateQuest(DelayedQuestUpdate.UPDATE, qs, true);
                         }
+                        AgentPartyQuestSyncService.syncPartyAgentsQuestProgress(this, qs.getQuest().getId(), id, qs.getProgress(id));
+                        AgentPartyQuestSyncService.syncKingPepeYetiPartyProgress(
+                                this, qs.getQuest().getId(), id, qs.getProgress(id));
                     }
                 }
             }
@@ -8164,50 +8556,32 @@ public class Character extends AbstractCharacterObject {
             return;
         }
 
+        applyStandardDeathConsequences(getMap(), Server.getInstance().getCurrentTime(), true);
+    }
+
+    /** Applies the ordinary non-CPQ death state using an explicit logical activity map. */
+    public DeathPenaltyService.Result applyLogicalDeathConsequences(MapleMap deathMap, long occurredAtMs) {
+        if (deathMap == null || deathMap.isCPQMap())
+            throw new IllegalArgumentException("logical death requires a non-CPQ map");
+        return applyStandardDeathConsequences(deathMap, occurredAtMs, false);
+    }
+
+    private DeathPenaltyService.Result applyStandardDeathConsequences(
+            MapleMap deathMap, long occurredAtMs, boolean notifyEventInstance) {
+
         cancelAllBuffs(false);
         dispelDebuffs();
         applyAllPassiveSkills();
-        lastDeathtime = Server.getInstance().getCurrentTime();
+        lastDeathtime = occurredAtMs;
 
-        EventInstanceManager eim = getEventInstance();
+        EventInstanceManager eim = notifyEventInstance ? getEventInstance() : null;
         if (eim != null) {
             eim.playerKilled(this);
         }
-        int[] charmID = {ItemId.SAFETY_CHARM, ItemId.EASTER_BASKET, ItemId.EASTER_CHARM};
-        int possesed = 0;
-        int i;
-        for (i = 0; i < charmID.length; i++) {
-            int quantity = getItemQuantity(charmID[i], false);
-            if (possesed == 0 && quantity > 0) {
-                possesed = quantity;
-                break;
-            }
-        }
-        if (possesed > 0 && !MapId.isDojo(getMapId())) {
+        DeathPenaltyService.Result deathPenalty = DeathPenaltyService.apply(this, deathMap);
+        if (deathPenalty.prevented()) {
             message("You have used a safety charm, so your EXP points have not been decreased.");
-            InventoryManipulator.removeById(client, ItemConstants.getInventoryType(charmID[i]), charmID[i], 1, true, false);
             usedSafetyCharm = true;
-        } else if (getJob() != Job.BEGINNER) { //Hmm...
-            if (!FieldLimit.NO_EXP_DECREASE.check(getMap().getFieldLimit())) {  // thanks Conrad for noticing missing FieldLimit check
-                int XPdummy = ExpTable.getExpNeededForLevel(getLevel());
-
-                if (getMap().isTown()) {    // thanks MindLove, SIayerMonkey, HaItsNotOver for noting players only lose 1% on town maps
-                    XPdummy /= 100;
-                } else {
-                    if (getLuk() < 50) {    // thanks Taiketo, Quit, Fishanelli for noting player EXP loss are fixed, 50-LUK threshold
-                        XPdummy /= 10;
-                    } else {
-                        XPdummy /= 20;
-                    }
-                }
-
-                int curExp = getExp();
-                if (curExp > XPdummy) {
-                    loseExp(XPdummy, false, false);
-                } else {
-                    loseExp(curExp, false, false);
-                }
-            }
         }
 
         if (getBuffedValue(BuffStat.MORPH) != null) {
@@ -8220,6 +8594,7 @@ public class Character extends AbstractCharacterObject {
 
         unsitChairInternal();
         sendPacket(PacketCreator.enableActions());
+        return deathPenalty;
     }
 
     private void unsitChairInternal() {
@@ -8317,9 +8692,12 @@ public class Character extends AbstractCharacterObject {
             equipmagic = 0;
             equipwatk = 0;
             equipMaxedEliteCount = 0;
+            equipwdef = 0;
+            equipmdef = 0;
             //equipspeed = 0;
             //equipjump = 0;
 
+            ItemInformationProvider iip = ItemInformationProvider.getInstance();
             for (Item item : getInventory(InventoryType.EQUIPPED)) {
                 Equip equip = (Equip) item;
                 equipmaxhp += equip.getHp();
@@ -8330,6 +8708,8 @@ public class Character extends AbstractCharacterObject {
                 equipluk += equip.getLuk();
                 equipmagic += equip.getMatk() + equip.getInt();
                 equipwatk += equip.getWatk();
+                equipwdef += equip.getWdef();
+                equipmdef += equip.getMdef();
                 //equipspeed += equip.getSpeed();
                 //equipjump += equip.getJump();
                 if (equip.qualifiesForMaxedAllStatBonus()) {
@@ -8361,6 +8741,8 @@ public class Character extends AbstractCharacterObject {
         localluk += equipluk;
         localmagic += equipmagic;
         localwatk += equipwatk;
+        localwdef += equipwdef;
+        localmdef += equipmdef;
 
         // Maxed-elite all-stat bonus: each equipped tier-3/4 piece at item-level cap (and the
         // Fully Evolved Ring, which is terminal) grants +1% STR/DEX/INT/LUK on the (base+equip)
@@ -8388,6 +8770,8 @@ public class Character extends AbstractCharacterObject {
             localluk = getLuk();
             localmagic = localint_;
             localwatk = 0;
+            localwdef = 0;
+            localmdef = 0;
             localchairrate = -1;
 
             recalcEquipStats();
@@ -8403,8 +8787,9 @@ public class Character extends AbstractCharacterObject {
                 localmaxmp += (hbmp.doubleValue() / 100) * localmaxmp;
             }
 
-            localmaxhp = Math.min(30000, localmaxhp);
-            localmaxmp = Math.min(30000, localmaxmp);
+            int hpMpCap = GameConstants.getPlayerHpMpCap();
+            localmaxhp = Math.min(hpMpCap, localmaxhp);
+            localmaxmp = Math.min(hpMpCap, localmaxmp);
 
             StatEffect combo = getBuffEffect(BuffStat.ARAN_COMBO);
             if (combo != null) {
@@ -8449,6 +8834,14 @@ public class Character extends AbstractCharacterObject {
             int matkBuffStacked = getStackedBuffedValue(BuffStat.MATK);
             if (matkBuffStacked != 0) {
                 localmagic += matkBuffStacked;
+            }
+            Integer wdefbuff = getBuffedValue(BuffStat.WDEF);
+            if (wdefbuff != null) {
+                localwdef += wdefbuff.intValue();
+            }
+            Integer mdefbuff = getBuffedValue(BuffStat.MDEF);
+            if (mdefbuff != null) {
+                localmdef += mdefbuff.intValue();
             }
 
             /*
@@ -8503,7 +8896,7 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
-    private List<Pair<Stat, Integer>> recalcLocalStats() {
+    public List<Pair<Stat, Integer>> recalcLocalStats() {
         effLock.lock();
         chrLock.lock();
         statWlock.lock();
@@ -8620,6 +9013,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void removePet(Pet pet, boolean shift_left) {
+        boolean changed = false;
         petLock.lock();
         try {
             int slot = -1;
@@ -8628,6 +9022,7 @@ public class Character extends AbstractCharacterObject {
                     if (pets[i].getUniqueId() == pet.getUniqueId()) {
                         pets[i] = null;
                         slot = i;
+                        changed = true;
                         break;
                     }
                 }
@@ -8645,6 +9040,9 @@ public class Character extends AbstractCharacterObject {
             }
         } finally {
             petLock.unlock();
+        }
+        if (changed) {
+            markPersistenceDirty(PersistenceSection.PETS);
         }
     }
 
@@ -8705,6 +9103,37 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
+    /**
+     * Returns all normally earned AP to the unassigned pool while preserving AP
+     * already spent on HP/MP. This is intentionally independent of the starter
+     * auto-assignment setting so staff resets always produce a legal pool.
+     */
+    public synchronized int resetAbilityPointsForCurrentLevel() {
+        int availableAp = StatResetCalculator.availableAp(
+                job, level, getHpMpApUsed(), YamlConfig.config.server.USE_STARTING_AP_4);
+        updateStrDexIntLuk(4, 4, 4, 4, availableAp);
+        return availableAp;
+    }
+
+    /**
+     * Clears learned job skills and rebuilds the unassigned SP pools from the
+     * character's current level and advancement. Beginner/event skills remain.
+     */
+    public synchronized int resetSkillPointsForCurrentLevel() {
+        for (Skill skill : new ArrayList<>(getSkills().keySet())) {
+            if (!skill.isBeginnerSkill() && Job.getById(skill.getId() / 10000) != null) {
+                changeSkillLevel(skill, (byte) -1, 0, -1);
+            }
+        }
+
+        int[] rebuilt = StatResetCalculator.availableSp(job, level);
+
+        setRemainingSp(rebuilt);
+        int currentBook = GameConstants.getSkillBook(job.getId());
+        updateRemainingSp(rebuilt[currentBook], currentBook);
+        return Arrays.stream(rebuilt).sum();
+    }
+
     public void resetBattleshipHp() {
         int bshipLevel = Math.max(getLevel() - 120, 0);  // thanks alex12 for noticing battleship HP issues for low-level players
         this.battleshipHp = 400 * getSkillLevel(SkillFactory.getSkill(Corsair.BATTLE_SHIP)) + (bshipLevel * 200);
@@ -8743,7 +9172,7 @@ public class Character extends AbstractCharacterObject {
                     ps.executeBatch();
                 }
             } catch (SQLException se) {
-                log.error("Character error", se);
+                monitoring.RuntimeFailureLogger.log(se);
             }
         }
 
@@ -8768,7 +9197,7 @@ public class Character extends AbstractCharacterObject {
                     ps.executeBatch();
                 }
             } catch (SQLException se) {
-                log.error("Character error", se);
+                monitoring.RuntimeFailureLogger.log(se);
             }
         }
     }
@@ -8782,7 +9211,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(4, id);
             ps.executeUpdate();
         } catch (SQLException se) {
-            log.error("Character error", se);
+            monitoring.RuntimeFailureLogger.log(se);
         }
     }
 
@@ -8790,16 +9219,29 @@ public class Character extends AbstractCharacterObject {
         Portal closest = map.findClosestPortal(getPosition());
         int curMapid = getMapId();
 
-        for (int i = 0; i < savedLocations.length; i++) {
-            if (savedLocations[i] == null) {
-                savedLocations[i] = new SavedLocation(curMapid, closest != null ? closest.getId() : 0);
+        chrLock.lock();
+        try {
+            for (int i = 0; i < savedLocations.length; i++) {
+                if (savedLocations[i] == null) {
+                    savedLocations[i] = new SavedLocation(curMapid, closest != null ? closest.getId() : 0);
+                }
             }
+        } finally {
+            chrLock.unlock();
         }
+        markPersistenceDirty(PersistenceSection.LOCATIONS);
     }
 
     public void saveLocation(String type) {
         Portal closest = map.findClosestPortal(getPosition());
-        savedLocations[SavedLocationType.fromString(type).ordinal()] = new SavedLocation(getMapId(), closest != null ? closest.getId() : 0);
+        chrLock.lock();
+        try {
+            savedLocations[SavedLocationType.fromString(type).ordinal()] =
+                    new SavedLocation(getMapId(), closest != null ? closest.getId() : 0);
+        } finally {
+            chrLock.unlock();
+        }
+        markPersistenceDirty(PersistenceSection.LOCATIONS);
     }
 
     public final boolean insertNewChar(CharacterFactoryRecipe recipe) {
@@ -8828,7 +9270,10 @@ public class Character extends AbstractCharacterObject {
             this.getInventory(itEntry.getRight()).addItem(itEntry.getLeft());
         }
 
-        this.events.put("rescueGaga", new RescueGaga(0));
+        Events rescueGaga = new RescueGaga(0);
+        attachEvent(rescueGaga);
+        this.events.put("rescueGaga", rescueGaga);
+        markPersistenceDirty(PersistenceSection.RELATED);
 
 
         try (Connection con = DatabaseConnection.getConnection()) {
@@ -8837,7 +9282,7 @@ public class Character extends AbstractCharacterObject {
 
             try {
                 // Character info
-                try (PreparedStatement ps = con.prepareStatement("INSERT INTO characters (str, dex, luk, `int`, gm, skincolor, gender, job, hair, face, map, meso, spawnpoint, accountid, name, world, hp, mp, maxhp, maxmp, level, ap, sp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
+                try (PreparedStatement ps = con.prepareStatement("INSERT INTO characters (str, dex, luk, `int`, gm, skincolor, gender, job, hair, face, map, meso, spawnpoint, accountid, name, world, hp, mp, maxhp, maxmp, level, ap, sp, equipslots, useslots, setupslots, etcslots) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS)) {
                     ps.setInt(1, str);
                     ps.setInt(2, dex);
                     ps.setInt(3, luk);
@@ -8856,8 +9301,8 @@ public class Character extends AbstractCharacterObject {
                     ps.setInt(16, world);
                     ps.setInt(17, hp);
                     ps.setInt(18, mp);
-                    ps.setInt(19, maxhp);
-                    ps.setInt(20, maxmp);
+                    ps.setInt(19, rawmaxhp);
+                    ps.setInt(20, rawmaxmp);
                     ps.setInt(21, level);
                     ps.setInt(22, remainingAp);
 
@@ -8868,6 +9313,10 @@ public class Character extends AbstractCharacterObject {
                     }
                     String sp = sps.toString();
                     ps.setString(23, sp.substring(0, sp.length() - 1));
+                    ps.setByte(24, getInventory(InventoryType.EQUIP).getSlotLimit());
+                    ps.setByte(25, getInventory(InventoryType.USE).getSlotLimit());
+                    ps.setByte(26, getInventory(InventoryType.SETUP).getSlotLimit());
+                    ps.setByte(27, getInventory(InventoryType.ETC).getSlotLimit());
 
                     int updateRows = ps.executeUpdate();
                     if (updateRows < 1) {
@@ -8966,27 +9415,196 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void saveCharToDB() {
+        saveCharToDB(SaveReason.FULL_SAVE);
+    }
+
+    public void saveCharToDB(SaveReason saveReason) {
         if (YamlConfig.config.server.USE_AUTOSAVE) {
             Runnable r = new Runnable() {
                 @Override
                 public void run() {
-                    saveCharToDB(true);
+                    saveCharToDB(true, saveReason);
                 }
             };
 
             CharacterSaveService service = (CharacterSaveService) getWorldServer().getServiceAccess(WorldServices.SAVE_CHARACTER);
             service.registerSaveCharacter(this.getId(), r);
         } else {
-            saveCharToDB(true);
+            saveCharToDB(true, saveReason);
         }
     }
 
     //ItemFactory saveItems and monsterbook.saveCards are the most time consuming here.
-    public synchronized void saveCharToDB(boolean notAutosave) {
+    public void saveCharToDB(boolean notAutosave) {
+        saveCharToDB(notAutosave, notAutosave ? SaveReason.FULL_SAVE : SaveReason.AUTO_SAVE);
+    }
+
+    public void markPersistenceDirty(PersistenceSection section) {
+        persistenceDirty.mark(section);
+    }
+
+    private void attachQuestStatus(QuestStatus status) {
+        status.setPersistenceDirtyMarker(() -> markPersistenceDirty(PersistenceSection.QUESTS));
+    }
+
+    private void attachEvent(Events event) {
+        event.setPersistenceDirtyMarker(() -> markPersistenceDirty(PersistenceSection.RELATED));
+    }
+
+    private void attachMount() {
+        if (maplemount != null) {
+            maplemount.setPersistenceDirtyMarker(() -> markPersistenceDirty(PersistenceSection.STATS));
+        }
+    }
+
+    private void attachMacro(SkillMacro macro) {
+        if (macro != null) {
+            macro.setPersistenceDirtyMarker(() -> markPersistenceDirty(PersistenceSection.KEYMAP));
+        }
+    }
+
+    private void attachPersistenceChildren() {
+        if (buddylist != null) {
+            buddylist.setPersistenceDirtyMarker(() -> markPersistenceDirty(PersistenceSection.SOCIAL));
+        }
+        if (monsterbook != null) {
+            monsterbook.setPersistenceDirtyMarker(() -> markPersistenceDirty(PersistenceSection.STATS));
+        }
+        if (storage != null) {
+            storage.attachPersistenceOwner(this);
+        }
+        if (cashshop != null) {
+            cashshop.setPersistenceDirtyMarker(() -> markPersistenceDirty(PersistenceSection.RELATED));
+        }
+        attachMount();
+        for (SkillMacro macro : skillMacros) {
+            attachMacro(macro);
+        }
+        synchronized (events) {
+            for (Events event : events.values()) {
+                attachEvent(event);
+            }
+        }
+        synchronized (quests) {
+            for (QuestStatus status : quests.values()) {
+                attachQuestStatus(status);
+            }
+        }
+    }
+
+    record LocationPersistenceSnapshot(SavedLocation[] savedLocations,
+                                       List<Integer> regularTrockMaps,
+                                       List<Integer> vipTrockMaps) {
+        LocationPersistenceSnapshot {
+            savedLocations = Arrays.copyOf(savedLocations, savedLocations.length);
+            regularTrockMaps = List.copyOf(regularTrockMaps);
+            vipTrockMaps = List.copyOf(vipTrockMaps);
+        }
+
+        SavedLocation savedLocation(SavedLocationType type) {
+            return savedLocations[type.ordinal()];
+        }
+
+        @Override
+        public SavedLocation[] savedLocations() {
+            return Arrays.copyOf(savedLocations, savedLocations.length);
+        }
+    }
+
+    //ItemFactory saveItems and monsterbook.saveCards are the most time consuming here.
+    public synchronized void saveCharToDB(boolean notAutosave, SaveReason saveReason) {
         if (!loggedIn) {
             return;
         }
 
+        SavePlan<PersistenceSection> savePlan = persistenceDirty.plan(notAutosave);
+        if (savePlan.isEmpty()) {
+            persistenceDirty.complete(savePlan);
+            CharacterSaveDiagnostics.recordSkipped(id, name, saveReason);
+            return;
+        }
+
+        List<Pet.PersistenceSnapshot> petSnapshot = new ArrayList<>();
+        if (savePlan.includes(PersistenceSection.PETS)) {
+            petLock.lock();
+            try {
+                for (Pet pet : pets) {
+                    if (pet != null) {
+                        petSnapshot.add(pet.persistenceSnapshot());
+                    }
+                }
+            } finally {
+                petLock.unlock();
+            }
+        }
+        Map<Integer, Set<Integer>> excludedSnapshot = savePlan.includes(PersistenceSection.PETS)
+                ? getExcluded() : Map.of();
+        Map<Integer, KeyBinding> keymapSnapshot;
+        synchronized (keymap) {
+            keymapSnapshot = savePlan.includes(PersistenceSection.KEYMAP)
+                    ? new LinkedHashMap<>(keymap) : Map.of();
+        }
+        SkillMacro[] macroSnapshot = new SkillMacro[savePlan.includes(PersistenceSection.KEYMAP)
+                ? skillMacros.length : 0];
+        for (int i = 0; i < macroSnapshot.length; i++) {
+            SkillMacro macro = skillMacros[i];
+            if (macro != null) {
+                macroSnapshot[i] = new SkillMacro(macro.getSkill1(), macro.getSkill2(), macro.getSkill3(),
+                        macro.getName(), macro.getShout(), macro.getPosition());
+            }
+        }
+        List<Pair<Item, InventoryType>> inventorySnapshot = new ArrayList<>();
+        if (savePlan.includes(PersistenceSection.INVENTORY)) {
+            for (Inventory iv : inventory) {
+                for (Item item : iv.list()) {
+                    inventorySnapshot.add(new Pair<>(item.copy(), iv.getType()));
+                }
+            }
+        }
+        Map<Skill, SkillEntry> skillsSnapshot = new LinkedHashMap<>();
+        if (savePlan.includes(PersistenceSection.SKILLS)) {
+            getSkills().forEach((skill, entry) -> skillsSnapshot.put(skill, entry.persistenceCopy()));
+        }
+        LocationPersistenceSnapshot locationSnapshot;
+        chrLock.lock();
+        try {
+            locationSnapshot = savePlan.includes(PersistenceSection.LOCATIONS)
+                    ? new LocationPersistenceSnapshot(savedLocations, trockmaps, viptrockmaps)
+                    : new LocationPersistenceSnapshot(new SavedLocation[SavedLocationType.values().length],
+                            List.of(), List.of());
+        } finally {
+            chrLock.unlock();
+        }
+        BuddyList.PersistenceSnapshot buddySnapshot = savePlan.includes(PersistenceSection.SOCIAL)
+                ? buddylist.persistenceSnapshot() : new BuddyList.PersistenceSnapshot(0, List.of());
+        Map<Short, String> areaSnapshot;
+        chrLock.lock();
+        try {
+            areaSnapshot = savePlan.includes(PersistenceSection.RELATED)
+                    ? new LinkedHashMap<>(area_info) : Map.of();
+        } finally {
+            chrLock.unlock();
+        }
+        Map<String, Integer> eventSnapshot = new LinkedHashMap<>();
+        if (savePlan.includes(PersistenceSection.RELATED) && events != null) {
+            synchronized (events) {
+                events.forEach((name, event) -> eventSnapshot.put(name, event.getInfo()));
+            }
+        }
+        List<QuestStatus.PersistenceSnapshot> questSnapshot = savePlan.includes(PersistenceSection.QUESTS)
+                ? getQuests().stream()
+                        .map(QuestStatus::persistenceSnapshot)
+                        .filter(QuestStatus.PersistenceSnapshot::shouldPersist)
+                        .toList()
+                : List.of();
+        Mount.PersistenceSnapshot mountSnapshot = savePlan.includes(PersistenceSection.STATS) && maplemount != null
+                ? maplemount.persistenceSnapshot() : new Mount.PersistenceSnapshot(0, 1, 0);
+        boolean saveStorage = (savePlan.includes(PersistenceSection.SOCIAL)
+                || savePlan.includes(PersistenceSection.RELATED))
+                && storage != null && usedStorage.getAndSet(false);
+        Map<FamilyEntry, Long> savedFamilyEntries = new LinkedHashMap<>();
+
+        long saveStartedNs = SlowOperationLogger.start();
         Calendar c = Calendar.getInstance();
         log.debug("Attempting to {} chr {}", notAutosave ? "save" : "autosave", name);
 
@@ -8997,6 +9615,8 @@ public class Character extends AbstractCharacterObject {
             con.setTransactionIsolation(Connection.TRANSACTION_READ_UNCOMMITTED);
 
             try {
+                if (savePlan.includes(PersistenceSection.STATS)) {
+                long sectionStartedNs = SlowOperationLogger.start();
                 try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET level = ?, fame = ?, str = ?, dex = ?, luk = ?, `int` = ?, exp = ?, gachaexp = ?, hp = ?, mp = ?, maxhp = ?, maxmp = ?, sp = ?, ap = ?, gm = ?, skincolor = ?, gender = ?, job = ?, hair = ?, face = ?, map = ?, meso = ?, hpMpUsed = ?, spawnpoint = ?, party = ?, buddyCapacity = ?, messengerid = ?, messengerposition = ?, mountlevel = ?, mountexp = ?, mounttiredness= ?, equipslots = ?, useslots = ?, setupslots = ?, etcslots = ?,  monsterbookcover = ?, vanquisherStage = ?, dojoPoints = ?, lastDojoStage = ?, finishedDojoTutorial = ?, vanquisherKills = ?, matchcardwins = ?, matchcardlosses = ?, matchcardties = ?, omokwins = ?, omoklosses = ?, omokties = ?, dataString = ?, fquest = ?, jailexpire = ?, partnerId = ?, marriageItemId = ?, lastExpGainTime = ?, ariantPoints = ?, partySearch = ? WHERE id = ?", Statement.RETURN_GENERATED_KEYS)) {
                     ps.setInt(1, level);    // thanks CanIGetaPR for noticing an unnecessary "level" limitation when persisting DB data
                     ps.setInt(2, fame);
@@ -9012,8 +9632,8 @@ public class Character extends AbstractCharacterObject {
                         ps.setInt(8, Math.abs(gachaexp.get()));
                         ps.setInt(9, hp);
                         ps.setInt(10, mp);
-                        ps.setInt(11, maxhp);
-                        ps.setInt(12, maxmp);
+                        ps.setInt(11, rawmaxhp);
+                        ps.setInt(12, rawmaxmp);
 
                         StringBuilder sps = new StringBuilder();
                         for (int j : remainingSp) {
@@ -9076,15 +9696,9 @@ public class Character extends AbstractCharacterObject {
                         ps.setInt(27, 0);
                         ps.setInt(28, 4);
                     }
-                    if (maplemount != null) {
-                        ps.setInt(29, maplemount.getLevel());
-                        ps.setInt(30, maplemount.getExp());
-                        ps.setInt(31, maplemount.getTiredness());
-                    } else {
-                        ps.setInt(29, 1);
-                        ps.setInt(30, 0);
-                        ps.setInt(31, 0);
-                    }
+                    ps.setInt(29, mountSnapshot.level());
+                    ps.setInt(30, mountSnapshot.exp());
+                    ps.setInt(31, mountSnapshot.tiredness());
                     for (int i = 1; i < 5; i++) {
                         ps.setInt(i + 31, getSlots(i));
                     }
@@ -9118,24 +9732,16 @@ public class Character extends AbstractCharacterObject {
                         throw new RuntimeException("Character not in database (" + id + ")");
                     }
                 }
-
-                List<Pet> petList = new LinkedList<>();
-                petLock.lock();
-                try {
-                    for (int i = 0; i < 3; i++) {
-                        if (pets[i] != null) {
-                            petList.add(pets[i]);
-                        }
-                    }
-                } finally {
-                    petLock.unlock();
+                CharacterSaveDiagnostics.recordSection("character-row", sectionStartedNs);
                 }
 
-                for (Pet pet : petList) {
-                    pet.saveToDb();
+                if (savePlan.includes(PersistenceSection.PETS)) {
+                long sectionStartedNs = SlowOperationLogger.start();
+                for (Pet.PersistenceSnapshot pet : petSnapshot) {
+                    pet.saveToDb(con);
                 }
 
-                for (Entry<Integer, Set<Integer>> es : getExcluded().entrySet()) {    // this set is already protected
+                for (Entry<Integer, Set<Integer>> es : excludedSnapshot.entrySet()) {
                     try (PreparedStatement psIgnore = con.prepareStatement("DELETE FROM petignores WHERE petid=?")) {
                         psIgnore.setInt(1, es.getKey());
                         psIgnore.executeUpdate();
@@ -9150,14 +9756,17 @@ public class Character extends AbstractCharacterObject {
                         psIgnore.executeBatch();
                     }
                 }
+                CharacterSaveDiagnostics.recordSection("pets", sectionStartedNs);
+                }
 
+                if (savePlan.includes(PersistenceSection.KEYMAP)) {
+                long sectionStartedNs = SlowOperationLogger.start();
                 // Key config
                 deleteWhereCharacterId(con, "DELETE FROM keymap WHERE characterid = ?");
                 try (PreparedStatement psKey = con.prepareStatement("INSERT INTO keymap (characterid, `key`, `type`, `action`) VALUES (?, ?, ?, ?)")) {
                     psKey.setInt(1, id);
 
-                    Set<Entry<Integer, KeyBinding>> keybindingItems = Collections.unmodifiableSet(keymap.entrySet());
-                    for (Entry<Integer, KeyBinding> keybinding : keybindingItems) {
+                    for (Entry<Integer, KeyBinding> keybinding : keymapSnapshot.entrySet()) {
                         psKey.setInt(2, keybinding.getKey());
                         psKey.setInt(3, keybinding.getValue().getType());
                         psKey.setInt(4, keybinding.getValue().getAction());
@@ -9178,13 +9787,15 @@ public class Character extends AbstractCharacterObject {
                         psQuick.executeUpdate();
                     }
                 }
+                CharacterSaveDiagnostics.recordSection("keymap", sectionStartedNs);
 
+                sectionStartedNs = SlowOperationLogger.start();
                 // Skill macros
                 deleteWhereCharacterId(con, "DELETE FROM skillmacros WHERE characterid = ?");
                 try (PreparedStatement psMacro = con.prepareStatement("INSERT INTO skillmacros (characterid, skill1, skill2, skill3, name, shout, position) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
                     psMacro.setInt(1, getId());
-                    for (int i = 0; i < 5; i++) {
-                        SkillMacro macro = skillMacros[i];
+                    for (int i = 0; i < macroSnapshot.length; i++) {
+                        SkillMacro macro = macroSnapshot[i];
                         if (macro != null) {
                             psMacro.setInt(2, macro.getSkill1());
                             psMacro.setInt(3, macro.getSkill2());
@@ -9197,21 +9808,23 @@ public class Character extends AbstractCharacterObject {
                     }
                     psMacro.executeBatch();
                 }
-
-                List<Pair<Item, InventoryType>> itemsWithType = new ArrayList<>();
-                for (Inventory iv : inventory) {
-                    for (Item item : iv.list()) {
-                        itemsWithType.add(new Pair<>(item, iv.getType()));
-                    }
+                CharacterSaveDiagnostics.recordSection("skill-macros", sectionStartedNs);
                 }
 
+                if (savePlan.includes(PersistenceSection.INVENTORY)) {
+                long sectionStartedNs = SlowOperationLogger.start();
                 // Items
-                ItemFactory.INVENTORY.saveItems(itemsWithType, id, con);
+                ItemFactory.INVENTORY.saveItems(inventorySnapshot, id, con);
+                CharacterSaveDiagnostics.recordSection("inventory", sectionStartedNs);
+                }
 
+                if (savePlan.includes(PersistenceSection.SKILLS)) {
+                long sectionStartedNs = SlowOperationLogger.start();
                 // Skills
-                try (PreparedStatement psSkill = con.prepareStatement("REPLACE INTO skills (characterid, skillid, skilllevel, masterlevel, expiration) VALUES (?, ?, ?, ?, ?)")) {
+                deleteWhereCharacterId(con, "DELETE FROM skills WHERE characterid = ?");
+                try (PreparedStatement psSkill = con.prepareStatement("INSERT INTO skills (characterid, skillid, skilllevel, masterlevel, expiration) VALUES (?, ?, ?, ?, ?)")) {
                     psSkill.setInt(1, id);
-                    for (Entry<Skill, SkillEntry> skill : skills.entrySet()) {
+                    for (Entry<Skill, SkillEntry> skill : skillsSnapshot.entrySet()) {
                         psSkill.setInt(2, skill.getKey().getId());
                         psSkill.setInt(3, skill.getValue().skillevel);
                         psSkill.setInt(4, skill.getValue().masterlevel);
@@ -9220,16 +9833,21 @@ public class Character extends AbstractCharacterObject {
                     }
                     psSkill.executeBatch();
                 }
+                CharacterSaveDiagnostics.recordSection("skills", sectionStartedNs);
+                }
 
+                if (savePlan.includes(PersistenceSection.LOCATIONS)) {
+                long sectionStartedNs = SlowOperationLogger.start();
                 // Saved locations
                 deleteWhereCharacterId(con, "DELETE FROM savedlocations WHERE characterid = ?");
                 try (PreparedStatement psLoc = con.prepareStatement("INSERT INTO savedlocations (characterid, `locationtype`, `map`, `portal`) VALUES (?, ?, ?, ?)")) {
                     psLoc.setInt(1, id);
                     for (SavedLocationType savedLocationType : SavedLocationType.values()) {
-                        if (savedLocations[savedLocationType.ordinal()] != null) {
+                        SavedLocation savedLocation = locationSnapshot.savedLocation(savedLocationType);
+                        if (savedLocation != null) {
                             psLoc.setString(2, savedLocationType.name());
-                            psLoc.setInt(3, savedLocations[savedLocationType.ordinal()].getMapId());
-                            psLoc.setInt(4, savedLocations[savedLocationType.ordinal()].getPortal());
+                            psLoc.setInt(3, savedLocation.getMapId());
+                            psLoc.setInt(4, savedLocation.getPortal());
                             psLoc.addBatch();
                         }
                     }
@@ -9238,51 +9856,65 @@ public class Character extends AbstractCharacterObject {
 
                 deleteWhereCharacterId(con, "DELETE FROM trocklocations WHERE characterid = ?");
 
-                // Vip teleport rocks
+                // Regular teleport rocks
                 try (PreparedStatement psVip = con.prepareStatement("INSERT INTO trocklocations(characterid, mapid, vip) VALUES (?, ?, 0)")) {
-                    for (int i = 0; i < getTrockSize(); i++) {
-                        if (trockmaps.get(i) != MapId.NONE) {
+                    for (int i = 0; i < locationSnapshot.regularTrockMaps().size(); i++) {
+                        if (locationSnapshot.regularTrockMaps().get(i) != MapId.NONE) {
                             psVip.setInt(1, getId());
-                            psVip.setInt(2, trockmaps.get(i));
+                            psVip.setInt(2, locationSnapshot.regularTrockMaps().get(i));
                             psVip.addBatch();
                         }
                     }
                     psVip.executeBatch();
                 }
 
-                // Regular teleport rocks
+                // Vip teleport rocks
                 try (PreparedStatement psReg = con.prepareStatement("INSERT INTO trocklocations(characterid, mapid, vip) VALUES (?, ?, 1)")) {
-                    for (int i = 0; i < getVipTrockSize(); i++) {
-                        if (viptrockmaps.get(i) != MapId.NONE) {
+                    for (int i = 0; i < locationSnapshot.vipTrockMaps().size(); i++) {
+                        if (locationSnapshot.vipTrockMaps().get(i) != MapId.NONE) {
                             psReg.setInt(1, getId());
-                            psReg.setInt(2, viptrockmaps.get(i));
+                            psReg.setInt(2, locationSnapshot.vipTrockMaps().get(i));
                             psReg.addBatch();
                         }
                     }
                     psReg.executeBatch();
                 }
+                CharacterSaveDiagnostics.recordSection("locations", sectionStartedNs);
+                }
 
+                if (savePlan.includes(PersistenceSection.SOCIAL)) {
+                long sectionStartedNs = SlowOperationLogger.start();
+                try (PreparedStatement psCapacity = con.prepareStatement(
+                        "UPDATE characters SET buddyCapacity = ? WHERE id = ?")) {
+                    psCapacity.setInt(1, buddySnapshot.capacity());
+                    psCapacity.setInt(2, id);
+                    psCapacity.executeUpdate();
+                }
                 // Buddy
                 deleteWhereCharacterId(con, "DELETE FROM buddies WHERE characterid = ? AND pending = 0");
                 try (PreparedStatement psBuddy = con.prepareStatement("INSERT INTO buddies (characterid, `buddyid`, `pending`, `group`) VALUES (?, ?, 0, ?)")) {
                     psBuddy.setInt(1, id);
 
-                    for (BuddylistEntry entry : buddylist.getBuddies()) {
-                        if (entry.isVisible()) {
-                            psBuddy.setInt(2, entry.getCharacterId());
-                            psBuddy.setString(3, entry.getGroup());
+                    for (BuddyList.PersistedEntry entry : buddySnapshot.entries()) {
+                        if (entry.visible()) {
+                            psBuddy.setInt(2, entry.characterId());
+                            psBuddy.setString(3, entry.group());
                             psBuddy.addBatch();
                         }
                     }
                     psBuddy.executeBatch();
                 }
+                CharacterSaveDiagnostics.recordSection("buddies", sectionStartedNs);
+                }
 
+                if (savePlan.includes(PersistenceSection.RELATED)) {
+                long sectionStartedNs = SlowOperationLogger.start();
                 // Area info
                 deleteWhereCharacterId(con, "DELETE FROM area_info WHERE charid = ?");
                 try (PreparedStatement psArea = con.prepareStatement("INSERT INTO area_info (id, charid, area, info) VALUES (DEFAULT, ?, ?, ?)")) {
                     psArea.setInt(1, id);
 
-                    for (Entry<Short, String> area : area_info.entrySet()) {
+                    for (Entry<Short, String> area : areaSnapshot.entrySet()) {
                         psArea.setInt(2, area.getKey());
                         psArea.setString(3, area.getValue());
                         psArea.addBatch();
@@ -9295,15 +9927,19 @@ public class Character extends AbstractCharacterObject {
                 try (PreparedStatement psEvent = con.prepareStatement("INSERT INTO eventstats (characterid, name, info) VALUES (?, ?, ?)")) {
                     psEvent.setInt(1, id);
 
-                    for (Map.Entry<String, Events> entry : events.entrySet()) {
+                    for (Map.Entry<String, Integer> entry : eventSnapshot.entrySet()) {
                         psEvent.setString(2, entry.getKey());
-                        psEvent.setInt(3, entry.getValue().getInfo());
+                        psEvent.setInt(3, entry.getValue());
                         psEvent.addBatch();
                     }
 
                     psEvent.executeBatch();
                 }
+                CharacterSaveDiagnostics.recordSection("area-event", sectionStartedNs);
+                }
 
+                if (savePlan.includes(PersistenceSection.QUESTS)) {
+                long sectionStartedNs = SlowOperationLogger.start();
                 deleteQuestProgressWhereCharacterId(con, id);
 
                 // Quests and medals
@@ -9312,52 +9948,65 @@ public class Character extends AbstractCharacterObject {
                      PreparedStatement psMedal = con.prepareStatement("INSERT INTO medalmaps VALUES (DEFAULT, ?, ?, ?)")) {
                     psStatus.setInt(1, id);
 
-                    for (QuestStatus qs : getQuests()) {
-                        psStatus.setInt(2, qs.getQuest().getId());
-                        psStatus.setInt(3, qs.getStatus().getId());
-                        psStatus.setInt(4, (int) (qs.getCompletionTime() / 1000));
-                        psStatus.setLong(5, qs.getExpirationTime());
-                        psStatus.setInt(6, qs.getForfeited());
-                        psStatus.setInt(7, qs.getCompleted());
+                    for (QuestStatus.PersistenceSnapshot qs : questSnapshot) {
+                        psStatus.setInt(2, qs.questId());
+                        psStatus.setInt(3, qs.status());
+                        psStatus.setInt(4, (int) (qs.completionTime() / 1000));
+                        psStatus.setLong(5, qs.expirationTime());
+                        psStatus.setInt(6, qs.forfeited());
+                        psStatus.setInt(7, qs.completed());
                         psStatus.executeUpdate();
 
                         try (ResultSet rs = psStatus.getGeneratedKeys()) {
                             rs.next();
-                            for (int mob : qs.getProgress().keySet()) {
+                            for (Entry<Integer, String> progress : qs.progress().entrySet()) {
                                 psProgress.setInt(1, id);
                                 psProgress.setInt(2, rs.getInt(1));
-                                psProgress.setInt(3, mob);
-                                psProgress.setString(4, qs.getProgress(mob));
+                                psProgress.setInt(3, progress.getKey());
+                                psProgress.setString(4, progress.getValue());
                                 psProgress.addBatch();
                             }
                             psProgress.executeBatch();
 
-                            for (int i = 0; i < qs.getMedalMaps().size(); i++) {
+                            for (Integer medalMap : qs.medalMaps()) {
                                 psMedal.setInt(1, id);
                                 psMedal.setInt(2, rs.getInt(1));
-                                psMedal.setInt(3, qs.getMedalMaps().get(i));
+                                psMedal.setInt(3, medalMap);
                                 psMedal.addBatch();
                             }
                             psMedal.executeBatch();
                         }
                     }
                 }
+                CharacterSaveDiagnostics.recordSection("quests", sectionStartedNs);
+                }
 
+                if (savePlan.includes(PersistenceSection.SOCIAL) || savePlan.includes(PersistenceSection.RELATED)) {
+                long sectionStartedNs = SlowOperationLogger.start();
                 FamilyEntry familyEntry = getFamilyEntry(); //save family rep
                 if (familyEntry != null) {
-                    if (familyEntry.saveReputation(con)) {
-                        familyEntry.savedSuccessfully();
+                    long familyVersion = familyEntry.getReputationVersion();
+                    if (!familyEntry.saveReputation(con)) {
+                        throw new SQLException("Failed to save family reputation for character "
+                                + familyEntry.getChrId());
                     }
+                    savedFamilyEntries.put(familyEntry, familyVersion);
                     FamilyEntry senior = familyEntry.getSenior();
                     if (senior != null && senior.getChr() == null) { //only save for offline family members
-                        if (senior.saveReputation(con)) {
-                            senior.savedSuccessfully();
+                        long seniorVersion = senior.getReputationVersion();
+                        if (!senior.saveReputation(con)) {
+                            throw new SQLException("Failed to save family reputation for character "
+                                    + senior.getChrId());
                         }
+                        savedFamilyEntries.put(senior, seniorVersion);
                         senior = senior.getSenior(); //save one level up as well
                         if (senior != null && senior.getChr() == null) {
-                            if (senior.saveReputation(con)) {
-                                senior.savedSuccessfully();
+                            seniorVersion = senior.getReputationVersion();
+                            if (!senior.saveReputation(con)) {
+                                throw new SQLException("Failed to save family reputation for character "
+                                        + senior.getChrId());
                             }
+                            savedFamilyEntries.put(senior, seniorVersion);
                         }
                     }
 
@@ -9367,12 +10016,16 @@ public class Character extends AbstractCharacterObject {
                     cashshop.save(con);
                 }
 
-                if (storage != null && usedStorage) {
+                if (saveStorage) {
                     storage.saveToDB(con);
-                    usedStorage = false;
+                }
+                CharacterSaveDiagnostics.recordSection("family-cash-storage", sectionStartedNs);
                 }
 
                 con.commit();
+                savedFamilyEntries.forEach(FamilyEntry::savedSuccessfully);
+                persistenceDirty.complete(savePlan);
+                CharacterSaveDiagnostics.recordSuccess(id, name, notAutosave, saveReason, saveStartedNs);
             } catch (Exception e) {
                 con.rollback();
                 throw e;
@@ -9381,7 +10034,13 @@ public class Character extends AbstractCharacterObject {
                 con.setAutoCommit(true);
             }
         } catch (Exception e) {
+            if (saveStorage) {
+                usedStorage.set(true);
+            }
+            CharacterSaveDiagnostics.recordFailure(id, name, notAutosave, saveReason, saveStartedNs);
             log.error("Error saving chr {}, level: {}, job: {}", name, level, job.getId(), e);
+        } finally {
+            SlowOperationLogger.warnIfSlow("character-save chr=" + id + " reason=" + saveReason + " autosave=" + !notAutosave, saveStartedNs, 1000);
         }
     }
 
@@ -9436,7 +10095,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     public SkillMacro[] getMacros() {
-        return skillMacros;
+        return Arrays.copyOf(skillMacros, skillMacros.length);
     }
 
     public static void setAriantRoomLeader(int room, String charname) {
@@ -9481,10 +10140,12 @@ public class Character extends AbstractCharacterObject {
 
     public void setDojoPoints(int x) {
         this.dojoPoints = x;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setDojoStage(int x) {
         this.dojoStage = x;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setEnergyBar(int set) {
@@ -9502,18 +10163,178 @@ public class Character extends AbstractCharacterObject {
 
     public void setExp(int amount) {
         this.exp.set(amount);
+        markPersistenceDirty(PersistenceSection.STATS);
+    }
+
+    /** Small complete snapshot of fields mutated by EXP/level-up settlement. */
+    public record EconomyProgressionSnapshot(int level, int experience, int str, int dex, int intelligence,
+                                             int luk, int hp, int mp, int maxHp, int maxMp,
+                                             int remainingAp, int[] remainingSp, long lastExpGainTime,
+                                             int fame, int questFame, Map<Integer, SkillEntry> skills) {
+        public EconomyProgressionSnapshot {
+            remainingSp = Arrays.copyOf(remainingSp, remainingSp.length);
+            Map<Integer, SkillEntry> copy = new LinkedHashMap<>();
+            skills.forEach((id, entry) -> copy.put(id, entry.persistenceCopy()));
+            skills = Collections.unmodifiableMap(copy);
+        }
+        @Override public int[] remainingSp() { return Arrays.copyOf(remainingSp, remainingSp.length); }
+        @Override public Map<Integer, SkillEntry> skills() {
+            Map<Integer, SkillEntry> copy = new LinkedHashMap<>();
+            skills.forEach((id, entry) -> copy.put(id, entry.persistenceCopy()));
+            return Collections.unmodifiableMap(copy);
+        }
+    }
+
+    public EconomyProgressionSnapshot captureEconomyProgression() {
+        effLock.lock();
+        statRlock.lock();
+        try {
+            Map<Integer, SkillEntry> skillCopy = new LinkedHashMap<>();
+            skills.forEach((skill, entry) -> skillCopy.put(skill.getId(), entry.persistenceCopy()));
+            return new EconomyProgressionSnapshot(level, exp.get(), str, dex, int_, luk, hp, mp,
+                    rawmaxhp, rawmaxmp, remainingAp, remainingSp, lastExpGainTime,
+                    fame, quest_fame, skillCopy);
+        } finally {
+            statRlock.unlock();
+            effLock.unlock();
+        }
+    }
+
+    public void restoreEconomyProgression(EconomyProgressionSnapshot snapshot) {
+        effLock.lock();
+        statWlock.lock();
+        try {
+            level = snapshot.level(); exp.set(snapshot.experience()); str = snapshot.str();
+            dex = snapshot.dex(); int_ = snapshot.intelligence(); luk = snapshot.luk();
+            setMaxHp(snapshot.maxHp()); setMaxMp(snapshot.maxMp());
+            hp = Math.min(snapshot.hp(), maxhp); mp = Math.min(snapshot.mp(), maxmp);
+            remainingAp = snapshot.remainingAp(); remainingSp = snapshot.remainingSp();
+            lastExpGainTime = snapshot.lastExpGainTime();
+            fame = snapshot.fame(); quest_fame = snapshot.questFame();
+            skills.clear();
+            snapshot.skills().forEach((skillId, entry) ->
+                    skills.put(SkillFactory.getSkill(skillId), entry.persistenceCopy()));
+        } finally {
+            statWlock.unlock();
+            effLock.unlock();
+        }
+        recalcLocalStats();
+    }
+
+    public void persistEconomyProgression(Connection connection, EconomyProgressionSnapshot snapshot)
+            throws SQLException {
+        persistEconomyProgression(connection, snapshot, true);
+    }
+
+    public void persistEconomyProgression(Connection connection, EconomyProgressionSnapshot snapshot,
+                                           boolean persistSkills) throws SQLException {
+        String sql = "UPDATE characters SET level = ?, exp = ?, str = ?, dex = ?, `int` = ?, luk = ?, "
+                + "hp = ?, mp = ?, maxhp = ?, maxmp = ?, ap = ?, sp = ?, lastExpGainTime = ?, "
+                + "fame = ?, fquest = ? WHERE id = ?";
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setInt(1, snapshot.level()); statement.setInt(2, snapshot.experience());
+            statement.setInt(3, snapshot.str()); statement.setInt(4, snapshot.dex());
+            statement.setInt(5, snapshot.intelligence()); statement.setInt(6, snapshot.luk());
+            statement.setInt(7, snapshot.hp()); statement.setInt(8, snapshot.mp());
+            statement.setInt(9, snapshot.maxHp()); statement.setInt(10, snapshot.maxMp());
+            statement.setInt(11, snapshot.remainingAp());
+            statement.setString(12, Arrays.stream(snapshot.remainingSp()).mapToObj(Integer::toString)
+                    .collect(Collectors.joining(",")));
+            statement.setTimestamp(13, new Timestamp(snapshot.lastExpGainTime()));
+            statement.setInt(14, snapshot.fame()); statement.setInt(15, snapshot.questFame());
+            statement.setInt(16, id);
+            if (statement.executeUpdate() != 1) throw new SQLException("Economy participant no longer exists: " + id);
+        }
+        if (!persistSkills) return;
+        deleteWhereCharacterId(connection, "DELETE FROM skills WHERE characterid = ?");
+        try (PreparedStatement statement = connection.prepareStatement(
+                "INSERT INTO skills (characterid, skillid, skilllevel, masterlevel, expiration) "
+                        + "VALUES (?, ?, ?, ?, ?)")) {
+            for (Map.Entry<Integer, SkillEntry> skill : snapshot.skills().entrySet()) {
+                statement.setInt(1, id); statement.setInt(2, skill.getKey());
+                statement.setInt(3, skill.getValue().skillevel);
+                statement.setInt(4, skill.getValue().masterlevel);
+                statement.setLong(5, skill.getValue().expiration); statement.addBatch();
+            }
+            statement.executeBatch();
+        }
+    }
+
+    public record EconomyQuestSnapshot(List<QuestStatus.PersistenceSnapshot> quests) {
+        public EconomyQuestSnapshot { quests = List.copyOf(quests); }
+    }
+
+    public EconomyQuestSnapshot captureEconomyQuests() {
+        synchronized (quests) {
+            return new EconomyQuestSnapshot(quests.values().stream()
+                    .map(QuestStatus::persistenceSnapshot).toList());
+        }
+    }
+
+    public void restoreEconomyQuests(EconomyQuestSnapshot snapshot) {
+        synchronized (quests) {
+            quests.values().forEach(status -> status.setPersistenceDirtyMarker(() -> { }));
+            quests.clear();
+            for (QuestStatus.PersistenceSnapshot value : snapshot.quests()) {
+                QuestStatus status = QuestStatus.fromPersistenceSnapshot(
+                        Quest.getInstance(value.questId()), value);
+                attachQuestStatus(status);
+                quests.put(value.questId(), status);
+            }
+            questStatusSnapshot = null;
+        }
+        markPersistenceDirty(PersistenceSection.QUESTS);
+    }
+
+    public void persistEconomyQuests(Connection connection, EconomyQuestSnapshot snapshot)
+            throws SQLException {
+        deleteQuestProgressWhereCharacterId(connection, id);
+        try (PreparedStatement status = connection.prepareStatement(
+                "INSERT INTO queststatus (`queststatusid`, `characterid`, `quest`, `status`, `time`, "
+                        + "`expires`, `forfeited`, `completed`) VALUES (DEFAULT, ?, ?, ?, ?, ?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS);
+             PreparedStatement progress = connection.prepareStatement(
+                     "INSERT INTO questprogress VALUES (DEFAULT, ?, ?, ?, ?)");
+             PreparedStatement medal = connection.prepareStatement(
+                     "INSERT INTO medalmaps VALUES (DEFAULT, ?, ?, ?)")) {
+            for (QuestStatus.PersistenceSnapshot quest : snapshot.quests()) {
+                if (!quest.shouldPersist()) continue;
+                status.setInt(1, id); status.setInt(2, quest.questId()); status.setInt(3, quest.status());
+                status.setInt(4, (int) (quest.completionTime() / 1000));
+                status.setLong(5, quest.expirationTime()); status.setInt(6, quest.forfeited());
+                status.setInt(7, quest.completed()); status.executeUpdate();
+                try (ResultSet keys = status.getGeneratedKeys()) {
+                    if (!keys.next()) throw new SQLException("quest status key was not generated");
+                    int statusId = keys.getInt(1);
+                    for (Map.Entry<Integer, String> entry : quest.progress().entrySet()) {
+                        progress.setInt(1, id); progress.setInt(2, statusId);
+                        progress.setInt(3, entry.getKey()); progress.setString(4, entry.getValue());
+                        progress.addBatch();
+                    }
+                    progress.executeBatch();
+                    for (Integer mapId : quest.medalMaps()) {
+                        medal.setInt(1, id); medal.setInt(2, statusId); medal.setInt(3, mapId);
+                        medal.addBatch();
+                    }
+                    medal.executeBatch();
+                }
+            }
+        }
     }
 
     public void setGachaExp(int amount) {
         this.gachaexp.set(amount);
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setFace(int face) {
         this.face = face;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setFame(int fame) {
         this.fame = fame;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setFamilyId(int familyId) {
@@ -9522,14 +10343,17 @@ public class Character extends AbstractCharacterObject {
 
     public void setFinishedDojoTutorial() {
         this.finishedDojoTutorial = true;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setGender(int gender) {
         this.gender = gender;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setGM(int level) {
         this.gmLevel = level;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setGuildId(int _id) {
@@ -9546,6 +10370,7 @@ public class Character extends AbstractCharacterObject {
 
     public void setHair(int hair) {
         this.hair = hair;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setHasMerchant(boolean set) {
@@ -9555,7 +10380,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
         hasMerchant = set;
     }
@@ -9569,7 +10394,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             return;
         }
         merchantmeso = newAmount;
@@ -9582,7 +10407,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             return;
         }
         merchantmeso = set;
@@ -9629,21 +10454,32 @@ public class Character extends AbstractCharacterObject {
             }
         }
 
-        final boolean chrDied = playerDied;
-        Runnable r = new Runnable() {
-            @Override
-            public void run() {
-                updatePartyMemberHP();    // thanks BHB (BHB88) for detecting a deadlock case within player stats.
-
-                if (chrDied) {
-                    playerDead();
-                } else {
-                    checkBerserk(isHidden());
-                }
-            }
-        };
+        if (playerDied) {
+            pendingHpDeath.set(true);
+        }
         if (map != null) {
-            map.registerCharacterStatUpdate(r);
+            map.registerCharacterStatUpdate(id, this::runPendingHpChangeAction);
+        }
+    }
+
+    public void applyCommittedMerchantRetrieval(int settledMeso) {
+        petLock.lock();
+        try {
+            meso.set(settledMeso);
+            merchantmeso = 0;
+        } finally {
+            petLock.unlock();
+        }
+        updateSingleStat(Stat.MESO, settledMeso);
+        markPersistenceDirty(PersistenceSection.STATS);
+    }
+
+    private void runPendingHpChangeAction() {
+        updatePartyMemberHP();    // thanks BHB (BHB88) for detecting a deadlock case within player stats.
+        if (pendingHpDeath.getAndSet(false)) {
+            playerDead();
+        } else {
+            checkBerserk(isHidden());
         }
     }
 
@@ -9680,7 +10516,7 @@ public class Character extends AbstractCharacterObject {
 
     private int calcHpRatioUpdate(int curpoint, int maxpoint, int diffpoint) {
         int curMax = maxpoint;
-        int nextMax = Math.min(30000, maxpoint + diffpoint);
+        int nextMax = Math.min(GameConstants.getPlayerHpMpCap(), maxpoint + diffpoint);
 
         float temp = curpoint * nextMax;
         int ret = (int) Math.ceil(temp / curMax);
@@ -9691,7 +10527,7 @@ public class Character extends AbstractCharacterObject {
 
     private int calcMpRatioUpdate(int curpoint, int maxpoint, int diffpoint) {
         int curMax = maxpoint;
-        int nextMax = Math.min(30000, maxpoint + diffpoint);
+        int nextMax = Math.min(GameConstants.getPlayerHpMpCap(), maxpoint + diffpoint);
 
         float temp = curpoint * nextMax;
         int ret = (int) Math.ceil(temp / curMax);
@@ -9726,17 +10562,37 @@ public class Character extends AbstractCharacterObject {
             effLock.unlock();
         }
 
-        // autopot on HPMP deplete... thanks shavit for finding out D. Roar doesn't trigger autopot request
+        triggerAutopotAfterStatLoss(hpchange, mpchange);
+        return true;
+    }
+
+    public void addMPHPAndTriggerAutopot(int hpDelta, int mpDelta) {
+        addMPHP(hpDelta, mpDelta);
+        triggerAutopotAfterStatLoss(hpDelta, mpDelta);
+    }
+
+    private void triggerAutopotAfterStatLoss(int hpchange, int mpchange) {
+        // Autopot is keyed off stat loss, not off a manager tick, so both normal
+        // skill/effect depletion and bot-only server-side damage share one path.
         if (hpchange < 0) {
             KeyBinding autohpPot = this.getKeymap().get(91);
             if (autohpPot != null) {
                 int autohpItemid = autohpPot.getAction();
                 float autohpAlert = this.getAutopotHpAlert();
-                if (((float) this.getHp()) / this.getCurrentMaxHp() <= autohpAlert) { // try within user settings... thanks Lame, Optimist, Stealth2800
-                    Item autohpItem = this.getInventory(InventoryType.USE).findById(autohpItemid);
-                    if (autohpItem != null) {
-                        this.setAutopotHpAlert(0.9f * autohpAlert);
-                        PetAutopotProcessor.runAutopotAction(client, autohpItem.getPosition(), autohpItemid);
+                if (((float) this.getHp()) / this.getCurrentMaxHp() <= autohpAlert) {
+                    boolean agent = this.client instanceof BotClient;
+                    var agentChoice = agent
+                            ? CosmicAgentPotionCheckRequestBridge.selectAutopotForCurrentDeficit(this, true)
+                            : null;
+                    Item autohpItem = !agent
+                            ? this.getInventory(InventoryType.USE).findById(autohpItemid)
+                            : null;
+                    if (agentChoice != null) {
+                        runAutopotAction(agentChoice.position(), agentChoice.itemId());
+                    } else if (autohpItem != null) {
+                        runAutopotAction(autohpItem.getPosition(), autohpItemid);
+                    } else if (agent) {
+                        CosmicAgentPotionCheckRequestBridge.requestPotionCheckSoon(this);
                     }
                 }
             }
@@ -9748,20 +10604,42 @@ public class Character extends AbstractCharacterObject {
                 int autompItemid = autompPot.getAction();
                 float autompAlert = this.getAutopotMpAlert();
                 if (((float) this.getMp()) / this.getCurrentMaxMp() <= autompAlert) {
-                    Item autompItem = this.getInventory(InventoryType.USE).findById(autompItemid);
-                    if (autompItem != null) {
+                    boolean agent = this.client instanceof BotClient;
+                    var agentChoice = agent
+                            ? CosmicAgentPotionCheckRequestBridge.selectAutopotForCurrentDeficit(this, false)
+                            : null;
+                    Item autompItem = !agent
+                            ? this.getInventory(InventoryType.USE).findById(autompItemid)
+                            : null;
+                    if (agentChoice != null) {
+                        runAutopotAction(agentChoice.position(), agentChoice.itemId());
+                    } else if (autompItem != null) {
                         this.setAutopotMpAlert(0.9f * autompAlert); // autoMP would stick to using pots at every depletion in some cases... thanks Rohenn
-                        PetAutopotProcessor.runAutopotAction(client, autompItem.getPosition(), autompItemid);
+                        runAutopotAction(autompItem.getPosition(), autompItemid);
+                    } else if (agent) {
+                        CosmicAgentPotionCheckRequestBridge.requestPotionCheckSoon(this);
                     }
                 }
             }
         }
+    }
 
-        return true;
+    private void runAutopotAction(short slot, int itemId) {
+        PetAutopotProcessor.runAutopotAction(client, slot, itemId);
     }
 
     public void setInventory(InventoryType type, Inventory inv) {
+        Inventory previous = inventory[type.ordinal()];
+        if (previous == inv) {
+            return;
+        }
+        if (previous != null) {
+            previous.dispose();
+        }
+        inv.attachPersistenceOwner(this);
         inventory[type.ordinal()] = inv;
+        markPersistenceDirty(PersistenceSection.INVENTORY);
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setItemEffect(int itemEffect) {
@@ -9770,6 +10648,7 @@ public class Character extends AbstractCharacterObject {
 
     public void setJob(Job job) {
         this.job = job;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setLastHealed(long time) {
@@ -9782,18 +10661,303 @@ public class Character extends AbstractCharacterObject {
 
     public void setLevel(int level) {
         this.level = level;
+        markPersistenceDirty(PersistenceSection.STATS);
+    }
+
+    /** Test-fixture mutation used only behind the guarded Amherst reset gateway. */
+    public synchronized void resetAmherstTestBaseline() {
+        sitChair(-1);
+        List<Item> baselineEquipment = getInventory(InventoryType.EQUIPPED).list().stream()
+                .map(Item::copy)
+                .toList();
+        cancelAllBuffs(false);
+        dispelDebuffs();
+        effLock.lock();
+        statWlock.lock();
+        try {
+            job = Job.BEGINNER;
+            level = 1;
+            exp.set(0);
+            allowExpGain = true;
+            gachaexp.set(0);
+            str = 12;
+            dex = 5;
+            int_ = 4;
+            luk = 4;
+            remainingAp = 0;
+            Arrays.fill(remainingSp, 0);
+            setMaxHp(50);
+            setMaxMp(5);
+            hp = maxhp;
+            mp = maxmp;
+            meso.set(0);
+            skills.clear();
+            removeAllCooldownsExcept(-1, false);
+
+            for (InventoryType type : InventoryType.values()) {
+                if (type == InventoryType.UNDEFINED || type == InventoryType.CANHOLD) {
+                    continue;
+                }
+                Inventory current = getInventory(type);
+                setInventory(type, new Inventory(this, type, current.getSlotLimit()));
+            }
+
+            Inventory equipped = getInventory(InventoryType.EQUIPPED);
+            for (Item item : baselineEquipment) {
+                equipped.addItemFromDB(item);
+            }
+            recalcLocalStats();
+            markPersistenceDirty(PersistenceSection.STATS);
+            markPersistenceDirty(PersistenceSection.SKILLS);
+            markPersistenceDirty(PersistenceSection.INVENTORY);
+        } finally {
+            statWlock.unlock();
+            effLock.unlock();
+        }
+    }
+
+    /** Test-fixture mutation for a real Lith Harbor first-job journey. */
+    public synchronized void resetVictoriaFirstJobTestBaseline(int firstJobId) {
+        resetVictoriaFirstJobTestBaseline(firstJobId, 10, 0);
+    }
+
+    /** Test-fixture mutation for the level-9 and level-10 Lith Harbor entry variants. */
+    public synchronized void resetVictoriaFirstJobTestBaseline(int firstJobId, int startLevel, int startExp) {
+        resetVictoriaFirstJobTestBaseline(firstJobId, startLevel, startExp, 5_000);
+    }
+
+    /** Test-fixture mutation with the starting mesos supplied by the active progression contract. */
+    public synchronized void resetVictoriaFirstJobTestBaseline(
+            int firstJobId, int startLevel, int startExp, int startingMesos) {
+        if (startLevel < 8 || startLevel > 10 || startExp < 0
+                || startExp >= ExpTable.getExpNeededForLevel(startLevel) || startingMesos < 0) {
+            throw new IllegalArgumentException("Victoria test start must be level 8-10 with valid EXP");
+        }
+        int requiredStr = firstJobId == 100 ? 35 : 4;
+        int requiredDex = switch (firstJobId) {
+            case 300, 400 -> 25;
+            case 500 -> 20;
+            case 100, 200 -> 4;
+            default -> throw new IllegalArgumentException("unsupported first job " + firstJobId);
+        };
+        int requiredInt = firstJobId == 200 ? 20 : 4;
+        int requiredLuk = 4;
+        int totalStatPoints = 20 + (5 * startLevel);
+        int availableAp = totalStatPoints - requiredStr - requiredDex - requiredInt - requiredLuk;
+        if (availableAp < 0) {
+            throw new IllegalArgumentException("start level cannot satisfy first-job stat baseline");
+        }
+
+        sitChair(-1);
+        cancelAllBuffs(false);
+        dispelDebuffs();
+        effLock.lock();
+        statWlock.lock();
+        try {
+            job = Job.BEGINNER;
+            level = startLevel;
+            exp.set(startExp);
+            allowExpGain = true;
+            gachaexp.set(0);
+            str = requiredStr;
+            dex = requiredDex;
+            int_ = requiredInt;
+            luk = requiredLuk;
+            remainingAp = availableAp;
+            Arrays.fill(remainingSp, 0);
+            hpMpApUsed = 0;
+            setMaxHp(140 - ((10 - startLevel) * 14));
+            setMaxMp(50 - ((10 - startLevel) * 11));
+            hp = maxhp;
+            mp = maxmp;
+            meso.set(startingMesos);
+            skills.clear();
+            removeAllCooldownsExcept(-1, false);
+
+            for (InventoryType type : InventoryType.values()) {
+                if (type == InventoryType.UNDEFINED || type == InventoryType.CANHOLD) {
+                    continue;
+                }
+                Inventory current = getInventory(type);
+                setInventory(type, new Inventory(this, type, current.getSlotLimit()));
+            }
+
+            recalcLocalStats();
+            markPersistenceDirty(PersistenceSection.STATS);
+            markPersistenceDirty(PersistenceSection.SKILLS);
+            markPersistenceDirty(PersistenceSection.INVENTORY);
+        } finally {
+            statWlock.unlock();
+            effLock.unlock();
+        }
+    }
+
+    /** Restores a captured or explicitly predicted post-instructor/post-shopping checkpoint-2 fixture. */
+    public synchronized void resetVictoriaCheckpoint2Baseline(String bundleId) {
+        resetVictoriaCheckpointBaseline(VictoriaCheckpointBaseline.require(bundleId));
+    }
+
+    /** Restores an explicit captured or predicted Victoria progression fixture. */
+    public synchronized void resetVictoriaCheckpointBaseline(
+            VictoriaCheckpointBaseline.Snapshot baseline) {
+        VictoriaCheckpointBaseline.CharacterState state = baseline.character();
+        sitChair(-1);
+        cancelAllBuffs(false);
+        dispelDebuffs();
+        effLock.lock();
+        statWlock.lock();
+        try {
+            job = Job.getById(state.jobId());
+            level = state.level();
+            exp.set(state.exp());
+            allowExpGain = true;
+            gachaexp.set(0);
+            str = state.str();
+            dex = state.dex();
+            int_ = state.intelligence();
+            luk = state.luk();
+            remainingAp = state.remainingAp();
+            Arrays.fill(remainingSp, 0);
+            int[] baselineSp = state.remainingSp();
+            System.arraycopy(baselineSp, 0, remainingSp, 0,
+                    Math.min(baselineSp.length, remainingSp.length));
+            hpMpApUsed = 0;
+            setMaxHp(state.maxHp());
+            setMaxMp(state.maxMp());
+            hp = Math.min(state.hp(), maxhp);
+            mp = Math.min(state.mp(), maxmp);
+            meso.set(state.mesos());
+            skills.clear();
+            removeAllCooldownsExcept(-1, false);
+
+            for (InventoryType type : InventoryType.values()) {
+                if (type == InventoryType.UNDEFINED || type == InventoryType.CANHOLD) {
+                    continue;
+                }
+                Inventory current = getInventory(type);
+                setInventory(type, new Inventory(this, type, current.getSlotLimit()));
+            }
+            for (VictoriaCheckpointBaseline.ItemState itemState : baseline.items()) {
+                InventoryType inventoryType = InventoryType.valueOf(itemState.inventoryType());
+                Item item;
+                if (ItemConstants.isEquipment(itemState.itemId())) {
+                    item = ItemInformationProvider.getInstance().getEquipById(itemState.itemId());
+                    if (item == null) {
+                        throw new IllegalStateException("missing Victoria checkpoint equipment "
+                                + itemState.itemId());
+                    }
+                    item.setPosition(itemState.position());
+                } else {
+                    item = new Item(itemState.itemId(), itemState.position(), itemState.quantity());
+                }
+                getInventory(inventoryType).addItemFromDB(item);
+            }
+            for (VictoriaCheckpointBaseline.SkillState skillState : baseline.skills()) {
+                Skill skill = SkillFactory.getSkill(skillState.skillId());
+                restoreFixtureSkillLevel(skill, skillState.level(), skillState.masterLevel());
+            }
+
+            recalcLocalStats();
+            markPersistenceDirty(PersistenceSection.STATS);
+            markPersistenceDirty(PersistenceSection.SKILLS);
+            markPersistenceDirty(PersistenceSection.INVENTORY);
+        } finally {
+            statWlock.unlock();
+            effLock.unlock();
+        }
+    }
+
+    void restoreFixtureSkillLevel(Skill skill, int skillLevel, int masterLevel) {
+        if (skill == null || skillLevel < 0 || skillLevel > skill.getMaxLevel()) {
+            throw new IllegalStateException("invalid skill in character fixture");
+        }
+        // Fixture pools already include every captured effect. Store the skill
+        // snapshot without invoking the gameplay mutation and its passive delta.
+        skills.put(skill, new SkillEntry((byte) skillLevel, masterLevel, -1));
+    }
+
+    /** Test-fixture mutation restoring AmherstRun immediately after the validated Amherst MVP. */
+    public synchronized void resetMapleIslandSouthperryBaseline() {
+        MapleIslandSouthperryBaseline.Snapshot baseline = MapleIslandSouthperryBaseline.snapshot();
+        MapleIslandSouthperryBaseline.CharacterState state = baseline.character();
+        sitChair(-1);
+        cancelAllBuffs(false);
+        dispelDebuffs();
+        effLock.lock();
+        statWlock.lock();
+        try {
+            job = Job.getById(state.jobId());
+            level = state.level();
+            exp.set(state.exp());
+            allowExpGain = true;
+            gachaexp.set(0);
+            str = state.str();
+            dex = state.dex();
+            int_ = state.intelligence();
+            luk = state.luk();
+            remainingAp = state.remainingAp();
+            Arrays.fill(remainingSp, 0);
+            int[] baselineSp = state.remainingSp();
+            System.arraycopy(baselineSp, 0, remainingSp, 0, Math.min(baselineSp.length, remainingSp.length));
+            hpMpApUsed = 0;
+            setMaxHp(state.maxHp());
+            setMaxMp(state.maxMp());
+            hp = Math.min(state.hp(), maxhp);
+            mp = Math.min(state.mp(), maxmp);
+            meso.set(state.mesos());
+            skinColor = SkinColor.getById(state.skinColorId());
+            gender = state.gender();
+            hair = state.hair();
+            face = state.face();
+            skills.clear();
+            removeAllCooldownsExcept(-1, false);
+
+            for (InventoryType type : InventoryType.values()) {
+                if (type == InventoryType.UNDEFINED || type == InventoryType.CANHOLD) {
+                    continue;
+                }
+                Inventory current = getInventory(type);
+                setInventory(type, new Inventory(this, type, current.getSlotLimit()));
+            }
+
+            for (MapleIslandSouthperryBaseline.ItemState itemState : baseline.items()) {
+                InventoryType inventoryType = InventoryType.valueOf(itemState.inventoryType());
+                Item item;
+                if (ItemConstants.isEquipment(itemState.itemId())) {
+                    item = ItemInformationProvider.getInstance().getEquipById(itemState.itemId());
+                    if (item == null) {
+                        throw new IllegalStateException("missing baseline equipment " + itemState.itemId());
+                    }
+                    item.setPosition(itemState.position());
+                } else {
+                    item = new Item(itemState.itemId(), itemState.position(), itemState.quantity());
+                }
+                getInventory(inventoryType).addItemFromDB(item);
+            }
+
+            recalcLocalStats();
+            markPersistenceDirty(PersistenceSection.STATS);
+            markPersistenceDirty(PersistenceSection.SKILLS);
+            markPersistenceDirty(PersistenceSection.INVENTORY);
+        } finally {
+            statWlock.unlock();
+            effLock.unlock();
+        }
     }
 
     public void setMap(int PmapId) {
         this.mapid = PmapId;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setMessenger(Messenger messenger) {
         this.messenger = messenger;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setMessengerPosition(int position) {
         this.messengerposition = position;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setMiniGame(MiniGame miniGame) {
@@ -9824,10 +10988,13 @@ public class Character extends AbstractCharacterObject {
                 visitor.matchcardties++;
             }
         }
+        markPersistenceDirty(PersistenceSection.STATS);
+        visitor.markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setMonsterBookCover(int bookCover) {
         this.bookCover = bookCover;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setName(String name) {
@@ -9877,6 +11044,7 @@ public class Character extends AbstractCharacterObject {
         } finally {
             prtLock.unlock();
         }
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setPlayerShop(PlayerShop playerShop) {
@@ -9889,6 +11057,7 @@ public class Character extends AbstractCharacterObject {
 
     public void setSkinColor(SkinColor skinColor) {
         this.skinColor = skinColor;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public byte getSlots(int type) {
@@ -9946,10 +11115,12 @@ public class Character extends AbstractCharacterObject {
 
     public void setVanquisherKills(int x) {
         this.vanquisherKills = x;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setVanquisherStage(int x) {
         this.vanquisherStage = x;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void setWorld(int world) {
@@ -9963,6 +11134,7 @@ public class Character extends AbstractCharacterObject {
                 pets[2] = pets[1];
                 pets[1] = pets[0];
                 pets[0] = null;
+                markPersistenceDirty(PersistenceSection.PETS);
             }
         } finally {
             petLock.unlock();
@@ -10036,9 +11208,9 @@ public class Character extends AbstractCharacterObject {
 
     public static class SkillEntry {
 
-        public int masterlevel;
-        public byte skillevel;
-        public long expiration;
+        public final int masterlevel;
+        public final byte skillevel;
+        public final long expiration;
 
         public SkillEntry(byte skillevel, int masterlevel, long expiration) {
             this.skillevel = skillevel;
@@ -10046,9 +11218,24 @@ public class Character extends AbstractCharacterObject {
             this.expiration = expiration;
         }
 
+        public SkillEntry persistenceCopy() {
+            return new SkillEntry(skillevel, masterlevel, expiration);
+        }
+
         @Override
         public String toString() {
             return skillevel + ":" + masterlevel;
+        }
+
+        @Override
+        public boolean equals(Object value) {
+            return value instanceof SkillEntry other && skillevel == other.skillevel
+                    && masterlevel == other.masterlevel && expiration == other.expiration;
+        }
+
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(skillevel, masterlevel, expiration);
         }
     }
 
@@ -10149,7 +11336,13 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void updateMacros(int position, SkillMacro updateMacro) {
+        SkillMacro previous = skillMacros[position];
+        if (previous != null && previous != updateMacro) {
+            previous.setPersistenceDirtyMarker(() -> {});
+        }
+        attachMacro(updateMacro);
         skillMacros[position] = updateMacro;
+        markPersistenceDirty(PersistenceSection.KEYMAP);
     }
 
     public void updatePartyMemberHP() {
@@ -10187,6 +11380,7 @@ public class Character extends AbstractCharacterObject {
         if (qs.getInfoNumber() > 0) {
             announceUpdateQuest(DelayedQuestUpdate.UPDATE, qs, true);
         }
+        AgentPartyQuestSyncService.syncPartyAgentsQuestProgress(this, id, infoNumber, progress);
     }
 
     public void awardQuestPoint(int awardedPoints) {
@@ -10201,6 +11395,7 @@ public class Character extends AbstractCharacterObject {
             delta = quest_fame / YamlConfig.config.server.QUEST_POINT_REQUIREMENT;
             quest_fame %= YamlConfig.config.server.QUEST_POINT_REQUIREMENT;
         }
+        markPersistenceDirty(PersistenceSection.STATS);
 
         if (delta > 0) {
             gainFame(delta);
@@ -10260,9 +11455,15 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void updateQuestStatus(QuestStatus qs) {
+        attachQuestStatus(qs);
         synchronized (quests) {
-            quests.put(qs.getQuestID(), qs);
+            QuestStatus previous = quests.put(qs.getQuestID(), qs);
+            questStatusSnapshot = null;
+            if (previous != null && previous != qs) {
+                previous.setPersistenceDirtyMarker(() -> {});
+            }
         }
+        markPersistenceDirty(PersistenceSection.QUESTS);
         if (qs.getStatus().equals(QuestStatus.Status.STARTED)) {
             announceUpdateQuest(DelayedQuestUpdate.UPDATE, qs, false);
             if (qs.getInfoNumber() > 0) {
@@ -10408,6 +11609,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     private void updateSingleStat(Stat stat, int newval, boolean itemReaction) {
+        markPersistenceDirty(PersistenceSection.STATS);
         sendPacket(PacketCreator.updatePlayerStats(Collections.singletonList(new Pair<>(stat, Integer.valueOf(newval))), itemReaction, this));
     }
 
@@ -10448,6 +11650,15 @@ public class Character extends AbstractCharacterObject {
 
     @Override
     public void setObjectId(int id) {}
+
+    @Override
+    public void setPosition(Point position) {
+        Point previous = getPosition();
+        super.setPosition(position);
+        if (!previous.equals(position)) {
+            markPersistenceDirty(PersistenceSection.STATS);
+        }
+    }
 
     @Override
     public String toString() {
@@ -10527,23 +11738,42 @@ public class Character extends AbstractCharacterObject {
 
     public boolean containsAreaInfo(int area, String info) {
         Short area_ = Short.valueOf((short) area);
-        if (area_info.containsKey(area_)) {
-            return area_info.get(area_).contains(info);
+        chrLock.lock();
+        try {
+            return area_info.containsKey(area_) && area_info.get(area_).contains(info);
+        } finally {
+            chrLock.unlock();
         }
-        return false;
+
     }
 
     public void updateAreaInfo(int area, String info) {
-        area_info.put(Short.valueOf((short) area), info);
+        chrLock.lock();
+        try {
+            area_info.put(Short.valueOf((short) area), info);
+        } finally {
+            chrLock.unlock();
+        }
+        markPersistenceDirty(PersistenceSection.RELATED);
         sendPacket(PacketCreator.updateAreaInfo(area, info));
     }
 
     public String getAreaInfo(int area) {
-        return area_info.get(Short.valueOf((short) area));
+        chrLock.lock();
+        try {
+            return area_info.get(Short.valueOf((short) area));
+        } finally {
+            chrLock.unlock();
+        }
     }
 
     public Map<Short, String> getAreaInfos() {
-        return area_info;
+        chrLock.lock();
+        try {
+            return Collections.unmodifiableMap(new LinkedHashMap<>(area_info));
+        } finally {
+            chrLock.unlock();
+        }
     }
 
     public void autoban(String reason) {
@@ -10576,7 +11806,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(4, accountid);
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -10585,68 +11815,119 @@ public class Character extends AbstractCharacterObject {
     }
 
     public List<Integer> getTrockMaps() {
-        return trockmaps;
+        chrLock.lock();
+        try {
+            return Collections.unmodifiableList(new ArrayList<>(trockmaps));
+        } finally {
+            chrLock.unlock();
+        }
     }
 
     public List<Integer> getVipTrockMaps() {
-        return viptrockmaps;
+        chrLock.lock();
+        try {
+            return Collections.unmodifiableList(new ArrayList<>(viptrockmaps));
+        } finally {
+            chrLock.unlock();
+        }
     }
 
     public int getTrockSize() {
-        int ret = trockmaps.indexOf(MapId.NONE);
-        if (ret == -1) {
-            ret = 5;
+        chrLock.lock();
+        try {
+            int ret = trockmaps.indexOf(MapId.NONE);
+            return ret == -1 ? 5 : ret;
+        } finally {
+            chrLock.unlock();
         }
-
-        return ret;
     }
 
     public void deleteFromTrocks(int map) {
-        trockmaps.remove(Integer.valueOf(map));
-        while (trockmaps.size() < 10) {
-            trockmaps.add(MapId.NONE);
+        chrLock.lock();
+        try {
+            trockmaps.remove(Integer.valueOf(map));
+            while (trockmaps.size() < 10) {
+                trockmaps.add(MapId.NONE);
+            }
+        } finally {
+            chrLock.unlock();
         }
+        markPersistenceDirty(PersistenceSection.LOCATIONS);
     }
 
     public void addTrockMap() {
-        int index = trockmaps.indexOf(MapId.NONE);
-        if (index != -1) {
-            trockmaps.set(index, getMapId());
+        boolean changed = false;
+        chrLock.lock();
+        try {
+            int index = trockmaps.indexOf(MapId.NONE);
+            if (index != -1) {
+                trockmaps.set(index, getMapId());
+                changed = true;
+            }
+        } finally {
+            chrLock.unlock();
+        }
+        if (changed) {
+            markPersistenceDirty(PersistenceSection.LOCATIONS);
         }
     }
 
     public boolean isTrockMap(int id) {
-        int index = trockmaps.indexOf(id);
-        return index != -1;
+        chrLock.lock();
+        try {
+            return trockmaps.contains(id);
+        } finally {
+            chrLock.unlock();
+        }
     }
 
     public int getVipTrockSize() {
-        int ret = viptrockmaps.indexOf(MapId.NONE);
-
-        if (ret == -1) {
-            ret = 10;
+        chrLock.lock();
+        try {
+            int ret = viptrockmaps.indexOf(MapId.NONE);
+            return ret == -1 ? 10 : ret;
+        } finally {
+            chrLock.unlock();
         }
-
-        return ret;
     }
 
     public void deleteFromVipTrocks(int map) {
-        viptrockmaps.remove(Integer.valueOf(map));
-        while (viptrockmaps.size() < 10) {
-            viptrockmaps.add(MapId.NONE);
+        chrLock.lock();
+        try {
+            viptrockmaps.remove(Integer.valueOf(map));
+            while (viptrockmaps.size() < 10) {
+                viptrockmaps.add(MapId.NONE);
+            }
+        } finally {
+            chrLock.unlock();
         }
+        markPersistenceDirty(PersistenceSection.LOCATIONS);
     }
 
     public void addVipTrockMap() {
-        int index = viptrockmaps.indexOf(MapId.NONE);
-        if (index != -1) {
-            viptrockmaps.set(index, getMapId());
+        boolean changed = false;
+        chrLock.lock();
+        try {
+            int index = viptrockmaps.indexOf(MapId.NONE);
+            if (index != -1) {
+                viptrockmaps.set(index, getMapId());
+                changed = true;
+            }
+        } finally {
+            chrLock.unlock();
+        }
+        if (changed) {
+            markPersistenceDirty(PersistenceSection.LOCATIONS);
         }
     }
 
     public boolean isVipTrockMap(int id) {
-        int index = viptrockmaps.indexOf(id);
-        return index != -1;
+        chrLock.lock();
+        try {
+            return viptrockmaps.contains(id);
+        } finally {
+            chrLock.unlock();
+        }
     }
 
     public AutobanManager getAutobanManager() {
@@ -10811,7 +12092,9 @@ public class Character extends AbstractCharacterObject {
     }
 
     public Map<String, Events> getEvents() {
-        return events;
+        synchronized (events) {
+            return Collections.unmodifiableMap(new LinkedHashMap<>(events));
+        }
     }
 
     public PartyQuest getPartyQuest() {
@@ -10867,11 +12150,6 @@ public class Character extends AbstractCharacterObject {
         cancelSkillCooldownTask();
         cancelExpirationTask();
 
-        if (questExpireTask != null) {
-            questExpireTask.cancel(true);
-        }
-        questExpireTask = null;
-
         if (recoveryTask != null) {
             recoveryTask.cancel(true);
         }
@@ -10898,10 +12176,8 @@ public class Character extends AbstractCharacterObject {
             if (questExpireTask != null) {
                 questExpireTask.cancel(false);
                 questExpireTask = null;
-
-                questExpirations.clear();
-                questExpirations = null;
             }
+            questExpirations.clear();
         } finally {
             evtLock.unlock();
         }
@@ -10912,7 +12188,7 @@ public class Character extends AbstractCharacterObject {
         }
         if (remove) {
             partyQuest = null;
-            events = null;
+            events.clear();
             mpc = null;
             mgc = null;
             party = null;
@@ -10948,7 +12224,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, getId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -10970,6 +12246,7 @@ public class Character extends AbstractCharacterObject {
 
     public void setMapId(int mapid) {
         this.mapid = mapid;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public boolean getWhiteChat() {
@@ -10992,12 +12269,14 @@ public class Character extends AbstractCharacterObject {
     public void removePartyQuestItem(String letter) {
         if (gotPartyQuestItem(letter)) {
             dataString = dataString.substring(0, dataString.indexOf(letter)) + dataString.substring(dataString.indexOf(letter) + letter.length());
+            markPersistenceDirty(PersistenceSection.STATS);
         }
     }
 
     public void setPartyQuestItemObtained(String partyquestchar) {
         if (!dataString.contains(partyquestchar)) {
             this.dataString += partyquestchar;
+            markPersistenceDirty(PersistenceSection.STATS);
         }
     }
 
@@ -11035,6 +12314,7 @@ public class Character extends AbstractCharacterObject {
 
     private void setFutureJailExpiration(long time) {
         jailExpiration = System.currentTimeMillis() + time;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public void addJailExpirationTime(long time) {
@@ -11049,6 +12329,7 @@ public class Character extends AbstractCharacterObject {
 
     public void removeJailExpirationTime() {
         jailExpiration = 0;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public boolean registerNameChange(String newName) {
@@ -11175,7 +12456,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11185,7 +12466,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11194,7 +12475,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11204,7 +12485,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11214,7 +12495,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11224,7 +12505,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11234,7 +12515,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11244,7 +12525,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11254,7 +12535,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11264,7 +12545,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -11274,7 +12555,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }*/
@@ -11479,7 +12760,7 @@ public class Character extends AbstractCharacterObject {
             }
             return point;
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return -1;
     }
@@ -11491,7 +12772,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, accountid);
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -11649,6 +12930,7 @@ public class Character extends AbstractCharacterObject {
 
     public void gainAriantPoints(int points) {
         this.ariantPoints += points;
+        markPersistenceDirty(PersistenceSection.STATS);
     }
 
     public int getAriantPoints() {
@@ -11664,7 +12946,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, getClient().getAccID());
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("Character error", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 

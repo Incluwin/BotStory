@@ -26,8 +26,10 @@ import net.server.services.task.channel.EventService;
 import net.server.services.task.channel.MobAnimationService;
 import net.server.services.task.channel.MobClearSkillService;
 import net.server.services.task.channel.MobMistService;
+import net.server.services.task.channel.MobPhysicsService;
 import net.server.services.task.channel.MobStatusService;
 import net.server.services.task.channel.OverallService;
+import net.server.services.task.channel.ServerMobAutonomyService;
 
 /**
  * @author Ronan
@@ -38,6 +40,8 @@ public enum ChannelServices implements ServiceType {
     MOB_ANIMATION(MobAnimationService.class),
     MOB_CLEAR_SKILL(MobClearSkillService.class),
     MOB_MIST(MobMistService.class),
+    MOB_PHYSICS(MobPhysicsService.class),
+    MOB_AUTONOMY(ServerMobAutonomyService.class),
     EVENT(EventService.class),
     OVERALL(OverallService.class);
 

@@ -1,0 +1,11 @@
+{
+  "profiles": [
+    "lith-harbor.json",
+    "henesys.json",
+    "kerning-city.json",
+    "perion.json",
+    "ellinia.json",
+    "nautilus.json",
+    "sleepywood.json"
+  ]
+}

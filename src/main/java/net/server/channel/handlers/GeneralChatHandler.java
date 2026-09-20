@@ -30,6 +30,10 @@ import net.packet.InPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ChatLogger;
+import server.agents.capabilities.partyquest.kpq.AgentKpqHumanDialogueRuntime;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
+import server.agents.commands.AgentReplyChannel;
+import server.agents.runtime.AgentInteractionRuntime;
 import tools.PacketCreator;
 
 public final class GeneralChatHandler extends AbstractPacketHandler {
@@ -67,6 +71,9 @@ public final class GeneralChatHandler extends AbstractPacketHandler {
                 ChatLogger.log(c, "GM General", s);
             }
 
+            AgentPartyQuestLobbyRuntime.observeChat(chr, s, currentServerTime());
+            AgentKpqHumanDialogueRuntime.observeChat(chr, s, currentServerTime());
+            AgentInteractionRuntime.handleLeaderChat(chr, s, AgentReplyChannel.MAP);
             chr.getAutobanManager().spam(7);
         }
     }

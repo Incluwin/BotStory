@@ -1,0 +1,106 @@
+package server.agents.commands;
+
+import server.agents.capabilities.follow.AgentFollowTargetCandidateService;
+import server.agents.capabilities.follow.AgentFollowTargetCommandService;
+import server.agents.capabilities.follow.AgentFollowTargetResolutionService;
+
+import client.Character;
+import server.agents.capabilities.dialogue.AgentDialogueSelector;
+import server.agents.capabilities.supplies.AgentPotionService;
+import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.runtime.AgentRandom;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.AgentSchedulerRuntime;
+import server.agents.capabilities.movement.AgentMovementCommandRuntime;
+import server.agents.capabilities.trade.AgentOfferStateRuntime;
+import server.agents.integration.AgentInventoryGatewayRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.capabilities.equipment.AgentEquipmentService;
+
+import java.util.List;
+
+/** Coordinates follow-target command resolution and dispatch across Agent capabilities. */
+public final class AgentFollowTargetCommandCoordinator {
+    private AgentFollowTargetCommandCoordinator() {
+    }
+
+    public static Character resolveFollowTarget(Character leader, String targetToken) {
+        return AgentFollowTargetResolutionService.resolveFollowTarget(
+                leader,
+                targetToken,
+                new AgentFollowTargetResolutionService.Hooks(
+                        AgentFollowTargetCommandCoordinator::followTargetCandidates,
+                        Character::yellowMessage));
+    }
+
+    public static List<Character> followTargetCandidates(Character leader) {
+        return AgentFollowTargetCandidateService.candidates(
+                leader,
+                new AgentFollowTargetCandidateService.Hooks(AgentRuntimeRegistry::entriesForLeader));
+    }
+
+    public static boolean applyFollowTargetCommand(Character leader,
+                                                   List<? extends AgentRuntimeEntry> entries,
+                                                   String targetToken) {
+        return AgentFollowTargetCommandService.applyFollowTargetCommand(
+                leader,
+                entries,
+                targetToken,
+                new AgentFollowTargetCommandService.Hooks(
+                        AgentFollowTargetCommandCoordinator::resolveFollowTarget,
+                        AgentFollowTargetCommandCoordinator::followTargetReply,
+                        AgentDialogueTransportRuntime::queueReply,
+                        () -> AgentRandom.randMs(250, 750),
+                        AgentSchedulerRuntime::afterDelay,
+                        AgentFollowTargetCommandCoordinator::autoEquipForFollow,
+                        AgentFollowTargetCommandCoordinator::checkPotShareForFollow,
+                        AgentMovementCommandRuntime::follow));
+    }
+
+    public static void applyResolvedFollowTargetCommand(
+            AgentRuntimeEntry entry,
+            Character target) {
+        AgentFollowTargetCommandService.applyResolvedFollowTargetCommand(
+                List.of(entry),
+                target,
+                hooks());
+    }
+
+    private static AgentFollowTargetCommandService.Hooks hooks() {
+        return new AgentFollowTargetCommandService.Hooks(
+                AgentFollowTargetCommandCoordinator::resolveFollowTarget,
+                AgentFollowTargetCommandCoordinator::followTargetReply,
+                AgentDialogueTransportRuntime::queueReply,
+                () -> AgentRandom.randMs(250, 750),
+                AgentSchedulerRuntime::afterDelay,
+                AgentFollowTargetCommandCoordinator::autoEquipForFollow,
+                AgentFollowTargetCommandCoordinator::checkPotShareForFollow,
+                AgentMovementCommandRuntime::follow);
+    }
+
+    private static String followTargetReply(Character target) {
+        return AgentDialogueSelector.randomReply(List.of(
+                "ok",
+                "k",
+                "sure",
+                "omw",
+                "got it",
+                "following " + target.getName(),
+                "ok, following " + target.getName()));
+    }
+
+    private static void autoEquipForFollow(AgentRuntimeEntry entry) {
+        AgentEquipmentService.autoEquip(
+                AgentRuntimeIdentityRuntime.bot(entry),
+                null,
+                AgentOfferStateRuntime.pendingLootOfferItem(entry));
+    }
+
+    private static void checkPotShareForFollow(AgentRuntimeEntry entry) {
+        AgentPotionService.checkPotShareOnModeStart(
+                entry,
+                AgentRuntimeIdentityRuntime.bot(entry),
+                AgentInventoryGatewayRuntime.inventory());
+    }
+}

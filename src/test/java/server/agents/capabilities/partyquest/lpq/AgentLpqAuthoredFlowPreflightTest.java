@@ -1,0 +1,244 @@
+package server.agents.capabilities.partyquest.lpq;
+
+import org.junit.jupiter.api.Test;
+import provider.Data;
+import provider.DataProviderFactory;
+import provider.DataTool;
+import provider.wz.WZFiles;
+import server.agents.capabilities.navigation.AgentNavigationGraph;
+import server.agents.capabilities.navigation.AgentNavigationGraphService;
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
+import server.agents.capabilities.navigation.AgentNavigationPathService;
+import server.maps.MapleMap;
+import server.maps.Portal;
+
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.List;
+import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class AgentLpqAuthoredFlowPreflightTest {
+    private record Exit(int sourceMapId, int portalId, int destinationMapId) { }
+
+    @Test
+    void everyFixedStageAndRoomExitMatchesTheAuthoredPortalDestination() {
+        List<Exit> exits = List.of(
+                new Exit(922_010_100, 2, 922_010_200),
+                new Exit(922_010_200, 2, 922_010_300),
+                new Exit(922_010_201, 2, 922_010_200),
+                new Exit(922_010_300, 2, 922_010_400),
+                new Exit(922_010_400, 7, 922_010_500),
+                new Exit(922_010_401, 2, 922_010_400),
+                new Exit(922_010_402, 2, 922_010_400),
+                new Exit(922_010_403, 2, 922_010_400),
+                new Exit(922_010_404, 2, 922_010_400),
+                new Exit(922_010_405, 2, 922_010_400),
+                new Exit(922_010_500, 8, 922_010_600),
+                new Exit(922_010_501, 3, 922_010_500),
+                new Exit(922_010_502, 2, 922_010_500),
+                new Exit(922_010_503, 2, 922_010_500),
+                new Exit(922_010_504, 2, 922_010_500),
+                new Exit(922_010_505, 2, 922_010_500),
+                new Exit(922_010_506, 2, 922_010_500),
+                new Exit(922_010_600, 47, 922_010_700),
+                new Exit(922_010_700, 2, 922_010_800),
+                new Exit(922_010_800, 2, 922_010_900));
+
+        for (Exit exit : exits) {
+            MapleMap map = AgentNavigationMapLoader.loadMapGeometry(exit.sourceMapId());
+            Portal portal = map.getPortal(exit.portalId());
+            assertNotNull(portal, () -> "missing portal " + exit);
+            assertEquals(exit.destinationMapId(), portal.getTargetMapId(),
+                    () -> "wrong portal destination " + exit);
+            Integer fixedPortal = AgentLpqExitRoutePolicy.portalId(
+                    exit.sourceMapId(), exit.destinationMapId());
+            if (exit.sourceMapId() != 922_010_600) {
+                assertEquals(exit.portalId(), fixedPortal, () -> "missing fixed exit " + exit);
+            }
+        }
+    }
+
+    @Test
+    void everyStageFiveRecoveryExitReturnsToTheCurrentStageMainMap() {
+        for (int roomMapId : List.of(922_010_501, 922_010_506)) {
+            MapleMap room = AgentNavigationMapLoader.loadMapGeometry(roomMapId);
+            for (int portalId : AgentLpqExitRoutePolicy.portalIds(roomMapId, 922_010_500)) {
+                Portal portal = room.getPortal(portalId);
+                assertNotNull(portal, () -> "missing recovery portal " + portalId
+                        + " in room " + roomMapId);
+                assertEquals(922_010_500, portal.getTargetMapId());
+            }
+        }
+    }
+
+    @Test
+    void stageSevenContainsExactlyTheThreeAuthoredTriggerMobs() {
+        Data map = DataProviderFactory.getDataProvider(WZFiles.MAP)
+                .getData("Map/Map9/922010700.img");
+        assertNotNull(map);
+        Data life = map.getChildByPath("life");
+        assertNotNull(life);
+        Set<Integer> configured = new java.util.LinkedHashSet<>();
+        for (Data entry : life) {
+            if ("m".equals(DataTool.getString("type", entry, ""))) {
+                configured.add(Integer.parseInt(DataTool.getString("id", entry, "0")));
+            }
+        }
+
+        assertTrue(configured.containsAll(AgentLpqDefinition.STAGE_7_TRIGGER_MOBS));
+        assertEquals(3, AgentLpqDefinition.STAGE_7_TRIGGER_MOBS.size());
+    }
+
+    @Test
+    void stageSevenContainsExactlyThreeAuthoredTriggerReactors() {
+        Data map = DataProviderFactory.getDataProvider(WZFiles.MAP)
+                .getData("Map/Map9/922010700.img");
+        assertNotNull(map);
+        Data reactors = map.getChildByPath("reactor");
+        assertNotNull(reactors);
+
+        long triggerReactors = reactors.getChildren().stream()
+                .filter(reactor -> DataTool.getInt("id", reactor, 0)
+                        == AgentLpqDefinition.STAGE_7_TRIGGER_REACTOR)
+                .count();
+        assertEquals(3L, triggerReactors);
+    }
+
+    @Test
+    void bossStageContainsTheAuthoredRatzPrerequisiteAndAlisharReactor() {
+        Data map = DataProviderFactory.getDataProvider(WZFiles.MAP)
+                .getData("Map/Map9/922010900.img");
+        assertNotNull(map);
+        Data life = map.getChildByPath("life");
+        Data reactors = map.getChildByPath("reactor");
+        assertNotNull(life);
+        assertNotNull(reactors);
+
+        assertTrue(life.getChildren().stream().anyMatch(entry ->
+                "m".equals(DataTool.getString("type", entry, ""))
+                        && AgentLpqDefinition.BOSS_TRIGGER_RATZ == Integer.parseInt(
+                        DataTool.getString("id", entry, "0"))));
+        assertTrue(reactors.getChildren().stream().anyMatch(reactor ->
+                DataTool.getInt("id", reactor, 0) == 2_201_003));
+    }
+
+    @Test
+    void bossTriggerFiringAnchorsStayOnAuthoredBalloonPlatform() {
+        Data map = DataProviderFactory.getDataProvider(WZFiles.MAP)
+                .getData("Map/Map9/922010900.img");
+        Data ratz = map.getChildByPath("life").getChildren().stream()
+                .filter(entry -> AgentLpqDefinition.BOSS_TRIGGER_RATZ == Integer.parseInt(
+                        DataTool.getString("id", entry, "0")))
+                .findFirst().orElseThrow();
+        assertEquals(588, DataTool.getInt("x", ratz, 0));
+        assertEquals(-3, DataTool.getInt("y", ratz, 0));
+        assertEquals(92, DataTool.getInt("fh", ratz, 0));
+
+        for (int characterId = 1; characterId <= 32; characterId++) {
+            Point anchor = AgentLpqCoordinator.stageNineRatzFiringAnchor(characterId);
+            assertEquals(74, anchor.y);
+            assertEquals(222, anchor.x,
+                    () -> "ranged anchor must remain on the authored balloon platform: " + anchor);
+        }
+    }
+
+    @Test
+    void bossTriggerAttackWaitsUntilRangedAgentIsGroundedOnBalloonPlatform() {
+        Point anchor = AgentLpqCoordinator.stageNineRatzFiringAnchor(1);
+
+        assertTrue(AgentLpqCoordinator.stageNineRatzFiringReady(anchor, true, anchor));
+        assertFalse(AgentLpqCoordinator.stageNineRatzFiringReady(anchor, false, anchor));
+        assertFalse(AgentLpqCoordinator.stageNineRatzFiringReady(
+                new Point(588, 184), true, anchor));
+    }
+
+    @Test
+    void bossStageEntryCanNavigateToAuthoredBalloonPlatform() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(922_010_900);
+        Portal entry = map.getPortal(0);
+        Point anchor = AgentLpqCoordinator.stageNineRatzFiringAnchor(1);
+        AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
+        int entryRegion = graph.findRegionId(map, entry.getPosition());
+        int anchorRegion = graph.findRegionId(map, anchor);
+
+        assertNotEquals(-1, entryRegion);
+        assertNotEquals(-1, anchorRegion);
+        assertFalse(AgentNavigationPathService.findPath(
+                graph, map, entry.getPosition(), entryRegion, anchorRegion, anchor).isEmpty());
+    }
+
+    @Test
+    void bossPreRallyIsNaturallyReachableFromEntryAndBalloonPlatform() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(922_010_900);
+        AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
+        Point balloon = AgentLpqCoordinator.stageNineRatzFiringAnchor(1);
+        int balloonRegion = graph.findRegionId(map, balloon);
+        Portal entry = map.getPortal(0);
+        int entryRegion = graph.findRegionId(map, entry.getPosition());
+
+        assertNotEquals(-1, balloonRegion);
+        assertNotEquals(-1, entryRegion);
+        for (int characterId = 1; characterId <= 6; characterId++) {
+            Point rally = AgentLpqCoordinator.stageNinePreBossRallyAnchor(characterId);
+            int rallyRegion = graph.findRegionId(map, rally);
+            assertNotEquals(-1, rallyRegion, () -> "missing rally region for " + rally);
+            if (entryRegion != rallyRegion) {
+                assertFalse(AgentNavigationPathService.findPath(
+                        graph, map, entry.getPosition(), entryRegion, rallyRegion, rally).isEmpty());
+            }
+            if (balloonRegion != rallyRegion) {
+                assertFalse(AgentNavigationPathService.findPath(
+                        graph, map, balloon, balloonRegion, rallyRegion, rally).isEmpty());
+            }
+        }
+    }
+
+    @Test
+    void bossTriggerObjectiveExtendsOnlyTheAuthoredShotToTheRatz() {
+        Rectangle ordinaryProjectile = new Rectangle(588, 134, 400, 100);
+        Point ratz = new Point(588, -3);
+
+        Rectangle objectiveHitBox = AgentLpqCoordinator.authoredBossTriggerHitBox(
+                ordinaryProjectile, ratz);
+
+        assertTrue(objectiveHitBox.contains(ratz));
+        assertTrue(objectiveHitBox.contains(ordinaryProjectile));
+        assertEquals(ordinaryProjectile.x, objectiveHitBox.x);
+        assertEquals(ratz.y, objectiveHitBox.y);
+    }
+
+    @Test
+    void bossFlowWaitsForTheDroppedPassAndSchedulesEveryAgentAgainstAlishar()
+            throws Exception {
+        String source = Files.readString(Path.of(
+                "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java"));
+        int start = source.indexOf("private static void boss(");
+        int end = source.indexOf("private static void assignStageNineRoles", start);
+        String bossFlow = source.substring(start, end);
+
+        assertFalse(bossFlow.contains("hitReactor("));
+        assertFalse(bossFlow.contains("assignStageNineRoles(session)"));
+        assertFalse(bossFlow.contains("prepareStageNineBossFormation("));
+        assertTrue(bossFlow.contains("ACTIONS.grind(entry, Set.of(AgentLpqDefinition.ALISHAR))"));
+    }
+
+    @Test
+    void redSignOffersAQuietGm6ObserverWarp() throws Exception {
+        String source = Files.readString(Path.of("scripts", "npc", "2040034.js"));
+
+        assertTrue(source.contains("[GM6] Warp into the active LPQ as an observer."));
+        assertTrue(source.contains("player.forceChangeMap(leader.getMap()"));
+        int warp = source.indexOf("player.forceChangeMap(leader.getMap()");
+        int dispose = source.indexOf("cm.dispose();", warp);
+        assertTrue(warp >= 0 && dispose > warp);
+        assertFalse(source.substring(warp, dispose).contains("sendOk"));
+    }
+}

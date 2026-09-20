@@ -90,7 +90,7 @@ public class CharSelectedWithPicHandler extends AbstractPacketHandler {
             try {
                 c.sendPacket(PacketCreator.getServerIP(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1]), charId));
             } catch (UnknownHostException | NumberFormatException e) {
-                log.error("Failed to send server IP packet for charId {}", charId, e);
+                monitoring.RuntimeFailureLogger.log(e);
             }
         } else {
             c.sendPacket(PacketCreator.wrongPic());

@@ -1,0 +1,1 @@
+CLAUDE.md also applies to all agents

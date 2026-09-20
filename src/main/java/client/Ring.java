@@ -29,15 +29,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Danny
  */
 public class Ring implements Comparable<Ring> {
-    private static final Logger log = LoggerFactory.getLogger(Ring.class);
-
     private final int ringId;
     private final int ringId2;
     private final int partnerId;
@@ -66,7 +62,7 @@ public class Ring implements Comparable<Ring> {
             }
             return ret;
         } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
             return null;
         }
     }
@@ -102,7 +98,7 @@ public class Ring implements Comparable<Ring> {
                 }
             }
         } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 
@@ -139,7 +135,7 @@ public class Ring implements Comparable<Ring> {
             }
             return new Pair<>(ringID[0], ringID[1]);
         } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
             return new Pair<>(-1, -1);
         }
     }

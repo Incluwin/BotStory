@@ -21,6 +21,9 @@
 */
 package client;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 
@@ -36,17 +39,20 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Objects;
 
 public final class MonsterBook {
-    private static final Logger log = LoggerFactory.getLogger(MonsterBook.class);
 
     private int specialCard = 0;
     private int normalCard = 0;
     private int bookLevel = 1;
     private final Map<Integer, Integer> cards = new LinkedHashMap<>();
     private final Lock lock = new ReentrantLock();
+    private Runnable persistenceDirtyMarker = () -> { };
+
+    void setPersistenceDirtyMarker(Runnable persistenceDirtyMarker) {
+        this.persistenceDirtyMarker = Objects.requireNonNull(persistenceDirtyMarker);
+    }
 
     public Set<Entry<Integer, Integer>> getCardSet() {
         lock.lock();
@@ -61,6 +67,7 @@ public final class MonsterBook {
         c.getPlayer().getMap().broadcastMessage(c.getPlayer(), PacketCreator.showForeignCardEffect(c.getPlayer().getId()), false);
 
         Integer qty;
+        boolean changed = false;
         lock.lock();
         try {
             qty = cards.get(cardid);
@@ -68,9 +75,11 @@ public final class MonsterBook {
             if (qty != null) {
                 if (qty < 5) {
                     cards.put(cardid, qty + 1);
+                    changed = true;
                 }
             } else {
                 cards.put(cardid, 1);
+                changed = true;
                 qty = 0;
 
                 if (cardid / 1000 >= 2388) {
@@ -81,6 +90,10 @@ public final class MonsterBook {
             }
         } finally {
             lock.unlock();
+        }
+
+        if (changed) {
+            persistenceDirtyMarker.run();
         }
 
         if (qty < 5) {
@@ -132,7 +145,7 @@ public final class MonsterBook {
     public Map<Integer, Integer> getCards() {
         lock.lock();
         try {
-            return Collections.unmodifiableMap(cards);
+            return Collections.unmodifiableMap(new LinkedHashMap<>(cards));
         } finally {
             lock.unlock();
         }
@@ -222,8 +235,9 @@ public final class MonsterBook {
                 VALUES (?, ?, ?)
                 ON DUPLICATE KEY UPDATE level = ?;
                 """;
+        Map<Integer, Integer> cardSnapshot = persistenceSnapshot().cards();
         try (final PreparedStatement ps = con.prepareStatement(query)) {
-            for (Map.Entry<Integer, Integer> cardAndLevel : cards.entrySet()) {
+            for (Map.Entry<Integer, Integer> cardAndLevel : cardSnapshot.entrySet()) {
                 final int card = cardAndLevel.getKey();
                 final int level = cardAndLevel.getValue();
                 // insert
@@ -237,6 +251,40 @@ public final class MonsterBook {
                 ps.addBatch();
             }
             ps.executeBatch();
+        }
+    }
+
+    public PersistenceSnapshot persistenceSnapshot() {
+        lock.lock();
+        try {
+            return new PersistenceSnapshot(cards);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    static MonsterBook fromPersistenceSnapshot(PersistenceSnapshot snapshot) {
+        MonsterBook restored = new MonsterBook();
+        restored.lock.lock();
+        try {
+            restored.cards.putAll(snapshot.cards());
+            for (Integer cardId : restored.cards.keySet()) {
+                if (cardId / 1000 >= 2388) {
+                    restored.specialCard++;
+                } else {
+                    restored.normalCard++;
+                }
+            }
+        } finally {
+            restored.lock.unlock();
+        }
+        restored.calculateLevel();
+        return restored;
+    }
+
+    public record PersistenceSnapshot(Map<Integer, Integer> cards) {
+        public PersistenceSnapshot {
+            cards = Collections.unmodifiableMap(new LinkedHashMap<>(cards));
         }
     }
 
@@ -254,7 +302,7 @@ public final class MonsterBook {
 
             return tierSizes;
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
             return new int[0];
         }
     }

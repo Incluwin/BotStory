@@ -70,18 +70,18 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static soloMapling.ArtificialPlayer.BotClientHandler.createBotClient;
 
 public final class PlayerLoggedinHandler extends AbstractPacketHandler {
     private static final Logger log = LoggerFactory.getLogger(PlayerLoggedinHandler.class);
-    private static final Set<Integer> attemptingLoginAccounts = new HashSet<>();
+    private static final Set<Integer> attemptingLoginAccounts = ConcurrentHashMap.newKeySet();
 
     private final NoteService noteService;
 
@@ -90,20 +90,11 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
     }
 
     private boolean tryAcquireAccount(int accId) {
-        synchronized (attemptingLoginAccounts) {
-            if (attemptingLoginAccounts.contains(accId)) {
-                return false;
-            }
-
-            attemptingLoginAccounts.add(accId);
-            return true;
-        }
+        return attemptingLoginAccounts.add(accId);
     }
 
     private void releaseAccount(int accId) {
-        synchronized (attemptingLoginAccounts) {
-            attemptingLoginAccounts.remove(accId);
-        }
+        attemptingLoginAccounts.remove(accId);
     }
 
     @Override
@@ -116,9 +107,8 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
         final int cid = p.readInt(); // TODO: investigate if this is the "client id" supplied in PacketCreator#getServerIP()
         final Server server = Server.getInstance();
 
-        if (!c.tryacquireClient()) {
-            // thanks MedicOP for assisting on concurrency protection here
-            c.sendPacket(PacketCreator.getAfterLoginError(10));
+        if (!acquireClientForLogin(c)) {
+            return;
         }
 
         try {
@@ -165,7 +155,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
                     player = Character.loadCharFromDB(cid, c, true);
                     newcomer = true;
                 } catch (SQLException e) {
-                    log.error("unhandled exception", e);
+                    monitoring.RuntimeFailureLogger.log(e);
                 }
 
                 if (player == null) { //If you are still getting null here then please just uninstall the game >.>, we dont need you fucking with the logs
@@ -493,10 +483,19 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
             // player.ensureMonsterBookMedal();
             // player.refreshMonsterBookMedal();
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         } finally {
             c.releaseClient();
         }
+    }
+
+    static boolean acquireClientForLogin(Client c) {
+        if (c.tryacquireClient()) {
+            return true;
+        }
+        // thanks MedicOP for assisting on concurrency protection here
+        c.sendPacket(PacketCreator.getAfterLoginError(10));
+        return false;
     }
 
     private static void showDueyNotification(Client c, Character player) {
@@ -515,7 +514,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 

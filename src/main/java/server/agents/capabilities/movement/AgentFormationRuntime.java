@@ -1,0 +1,42 @@
+package server.agents.capabilities.movement;
+
+import client.Character;
+import server.agents.runtime.AgentRuntimeConfig;
+import server.agents.runtime.AgentRuntimeEntry;
+
+import java.util.List;
+
+public final class AgentFormationRuntime {
+    private AgentFormationRuntime() {
+    }
+
+    public static AgentFormationService.FormationState defaultFormationState() {
+        return AgentFormationService.defaultStagger(
+                AgentRuntimeConfig.cfg.FOLLOW_STAGGER,
+                AgentMovementPhysicsConfig.configuredFollowYCap());
+    }
+
+    public static AgentFormationService.FormationState formationStateFor(AgentRuntimeEntry entry) {
+        return AgentFormationService.stateForEntry(
+                entry,
+                AgentFormationService.formationsByLeaderId(),
+                defaultFormationState());
+    }
+
+    public static void setFormationState(Character leader,
+                                         AgentFormationService.FormationType type,
+                                         int px,
+                                         int snapRange,
+                                         List<? extends AgentRuntimeEntry> entries) {
+        if (leader == null) {
+            return;
+        }
+
+        AgentFormationService.FormationState formation =
+                new AgentFormationService.FormationState(type, px, snapRange);
+        AgentFormationService.formationsByLeaderId().put(leader.getId(), formation);
+        if (entries != null) {
+            AgentFormationService.applyOffsets(entries, formation);
+        }
+    }
+}

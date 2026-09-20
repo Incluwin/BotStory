@@ -32,12 +32,8 @@ import client.command.Command;
 import provider.Data;
 import provider.DataProviderFactory;
 import provider.wz.WZFiles;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ResetSkillCommand extends Command {
-    private static final Logger log = LoggerFactory.getLogger(ResetSkillCommand.class);
-
     {
         setDescription("Set all skill levels to 0.");
     }
@@ -50,7 +46,7 @@ public class ResetSkillCommand extends Command {
                 Skill skill = SkillFactory.getSkill(Integer.parseInt(skill_.getName()));
                 player.changeSkillLevel(skill, (byte) 0, skill.getMaxLevel(), -1);
             } catch (NumberFormatException nfe) {
-                log.error("unhandled exception", nfe);
+                monitoring.RuntimeFailureLogger.log(nfe);
                 break;
             } catch (NullPointerException npe) {
             }

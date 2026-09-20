@@ -37,15 +37,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Ronan
  */
 public class Marriage extends EventInstanceManager {
-    private static final Logger log = LoggerFactory.getLogger(Marriage.class);
-
     public Marriage(EventManager em, String name) {
         super(em, name);
     }
@@ -125,7 +121,7 @@ public class Marriage extends EventInstanceManager {
             try (Connection con = DatabaseConnection.getConnection()) {
                 ItemFactory.MARRIAGE_GIFTS.saveItems(new LinkedList<>(), chr.getId(), con);
             } catch (SQLException sqle) {
-                log.error("unhandled exception", sqle);
+                monitoring.RuntimeFailureLogger.log(sqle);
             }
 
             for (Item item : gifts) {
@@ -146,7 +142,7 @@ public class Marriage extends EventInstanceManager {
                 items.add(it.getLeft());
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
 
         return items;
@@ -165,7 +161,7 @@ public class Marriage extends EventInstanceManager {
         try (Connection con = DatabaseConnection.getConnection()) {
             ItemFactory.MARRIAGE_GIFTS.saveItems(items, cid, con);
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
     }
 }

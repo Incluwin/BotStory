@@ -39,7 +39,6 @@ var maxMobId = 8830013;
 var bossMobId = 8830010;
 
 var eventTime = 60;         // 60 minutes
-var releaseClawTime = 1;
 
 const maxLobbies = 1;
 
@@ -120,11 +119,10 @@ function setup(level, lobbyid) {
     var eim = em.newInstance("Balrog" + lobbyid);
     eim.setProperty("level", level);
     eim.setProperty("boss", "0");
+    eim.setProperty("balrogRewardOpenedAt", "0");
 
     eim.getInstanceMap(105100400).resetPQ(level);
     eim.getInstanceMap(105100401).resetPQ(level);
-    eim.schedule("releaseLeftClaw", releaseClawTime * 60000);
-
     respawnStages(eim);
     eim.startEventTimer(eventTime * 60000);
     setEventRewards(eim);
@@ -133,29 +131,12 @@ function setup(level, lobbyid) {
 }
 
 function afterSetup(eim) {
-    spawnBalrog(eim);
+    const Encounter = Java.type('server.life.autonomy.balrog.EasyBalrogEncounterService');
+    const Point = Java.type('java.awt.Point');
+    Encounter.start(eim.getInstanceMap(entryMap), new Point(412, 258));
 }
 
 function respawnStages(eim) {}
-
-function releaseLeftClaw(eim) {
-    eim.getInstanceMap(entryMap).killMonster(8830013);
-}
-
-function spawnBalrog(eim) {
-    var mapObj = eim.getInstanceMap(entryMap);
-
-    const LifeFactory = Java.type('server.life.LifeFactory');
-    const Point = Java.type('java.awt.Point');
-    mapObj.spawnFakeMonsterOnGroundBelow(LifeFactory.getMonster(8830007), new Point(412, 258));
-    mapObj.spawnMonsterOnGroundBelow(LifeFactory.getMonster(8830009), new Point(412, 258));
-    mapObj.spawnMonsterOnGroundBelow(LifeFactory.getMonster(8830013), new Point(412, 258));
-}
-
-function spawnSealedBalrog(eim) {
-    const Point = Java.type('java.awt.Point');
-    eim.getInstanceMap(entryMap).spawnMonsterOnGroundBelow(LifeFactory.getMonster(bossMobId), new Point(412, 258));
-}
 
 function playerEntry(eim, player) {
     var map = eim.getMapInstance(entryMap);
@@ -181,11 +162,16 @@ function playerLeft(eim, player) {
 
 function changedMap(eim, player, mapid) {
     if (mapid < minMapId || mapid > maxMapId) {
-        if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
+        if (eim.isEventCleared()) {
+            eim.unregisterPlayer(player);
+        } else if (eim.isExpeditionTeamLackingNow(true, minPlayers, player)) {
             eim.unregisterPlayer(player);
             end(eim);
         } else {
             eim.unregisterPlayer(player);
+        }
+        if (eim.getPlayers().isEmpty()) {
+            eim.dispose();
         }
     }
 }
@@ -221,6 +207,8 @@ function monsterValue(eim, mobId) {
 }
 
 function end(eim) {
+    const Encounter = Java.type('server.life.autonomy.balrog.EasyBalrogEncounterService');
+    Encounter.stop(eim.getInstanceMap(entryMap), "event-end");
     var party = eim.getPlayers();
 
     for (var i = 0; i < party.size(); i++) {
@@ -238,36 +226,12 @@ function clearPQ(eim) {
     eim.setEventCleared();
 }
 
-function isUnsealedBalrog(mob) {
-    var balrogid = mob.getId() - 8830007;
-    return balrogid >= 0 && balrogid <= 2;
-}
-
-function isBalrogBody(mob) {
-    return mob.getId() == minMobId;
-}
-
 function monsterKilled(mob, eim) {
-    if (isUnsealedBalrog(mob)) {
-        var count = eim.getIntProperty("boss");
-
-        if (count == 2) {
-            eim.showClearEffect();
-            eim.clearPQ();
-
-            eim.dispatchRaiseQuestMobCount(bossMobId, entryMap);
-            mob.getMap().broadcastBalrogVictory(eim.getLeader().getName());
-        } else {
-            if (count == 1) {
-                var mapobj = eim.getInstanceMap(entryMap);
-                mapobj.makeMonsterReal(mapobj.getMonsterById(8830007));
-            }
-            eim.setIntProperty("boss", count + 1);
-        }
-
-        if (isBalrogBody(mob)) {
-            eim.schedule("spawnSealedBalrog", 10 * 1000);
-        }
+    if (mob.getId() == minMobId) {
+        eim.showClearEffect();
+        eim.clearPQ();
+        eim.dispatchRaiseQuestMobCount(bossMobId, entryMap);
+        mob.getMap().broadcastBalrogVictory(eim.getLeader().getName());
     }
 }
 
@@ -275,5 +239,7 @@ function allMonstersDead(eim) {}
 
 function cancelSchedule() {}
 
-function dispose(eim) {}
-
+function dispose(eim) {
+    const Encounter = Java.type('server.life.autonomy.balrog.EasyBalrogEncounterService');
+    Encounter.stop(eim.getInstanceMap(entryMap), "event-dispose");
+}

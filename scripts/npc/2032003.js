@@ -49,7 +49,7 @@ function action(mode, type, selection) {
             cm.sendNext("Well, time for you to head off.");
         } else if (status == 2) {
             cm.gainItem(4031062, 1);
-            cm.gainExp(10000 * cm.getPlayer().getExpRate());
+            cm.gainExp(10000);
             cm.warp(211042300);
 
             cm.dispose();

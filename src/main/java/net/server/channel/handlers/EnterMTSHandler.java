@@ -32,6 +32,7 @@ import net.server.Server;
 import server.MTSItemInfo;
 import server.maps.FieldLimit;
 import server.maps.MiniDungeonInfo;
+import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 
@@ -46,8 +47,6 @@ import org.slf4j.LoggerFactory;
 
 
 public final class EnterMTSHandler extends AbstractPacketHandler {
-    private static final Logger log = LoggerFactory.getLogger(EnterMTSHandler.class);
-
 
     // Free Market entrance — see server/maps MapId constants. 910000000 is the
     // Free Market lobby map in v83.
@@ -143,14 +142,14 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
         chr.forfeitExpirableQuests();
         chr.cancelQuestExpirationTask();
 
-        chr.saveCharToDB();
+        chr.saveCharToDB(true, SaveReason.MTS);
 
         c.getChannelServer().removePlayer(chr);
         chr.getMap().removePlayer(c.getPlayer());
         try {
             c.sendPacket(PacketCreator.openCashShop(c, true));
         } catch (Exception ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
         }
         chr.getCashShop().open(true);// xD
         c.enableCSActions();
@@ -207,7 +206,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
         c.sendPacket(PacketCreator.sendMTS(items, 1, 0, 0, pages));
         c.sendPacket(PacketCreator.transferInventory(getTransfer(chr.getId())));
@@ -259,7 +258,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return items;
     }
@@ -309,7 +308,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
         return items;
     }

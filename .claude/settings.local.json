@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
+      "mcp__plugin_context-mode_context-mode__ctx_execute_file",
+      "mcp__plugin_context-mode_context-mode__ctx_execute",
+      "mcp__plugin_context-mode_context-mode__ctx_search",
+      "Bash(find D:/GameServers/Maplestory/Cosmic/src/main/java/net/server/channel/handlers -name *Attack* -o -name *Damage*)",
+      "mcp__plugin_context-mode_context-mode__ctx_fetch_and_index",
+      "mcp__plugin_context-mode_context-mode__ctx_index",
+      "Bash(grep -rn \"HpRecover\\\\|hpRecover\\\\|hpRegen\\\\|mp_recover\\\\|addHP.*regen\\\\|recoverHp\\\\|naturallyRecoverHp\\\\|HpMpRecovery\\\\|startRecov\" D:/GameServers/Maplestory/Cosmic/src/main/java --include=*.java -l)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(grep:*)",
+      "Bash(find /d/GameServers/Maplestory/OpenStory -type d -name *ot*)",
+      "Bash(mvnw.cmd compile:*)",
+      "Bash(cmd /c \"mvnw.cmd compile -q 2>&1\")",
+      "Bash(cmd:*)",
+      "WebSearch",
+      "Read(//tmp/**)",
+      "Bash(/c/apache-maven/bin/mvn compile *)",
+      "Bash(\"C:\\\\Program Files\\\\Java\\\\jdk-21\\\\bin\\\\javac.exe\" -version)",
+      "Bash(\"C:\\\\Program Files\\\\Java\\\\jdk-17\\\\bin\\\\javac.exe\" -version)",
+      "Bash(cd /d D:\\\\GameServers\\\\Maplestory\\\\Cosmic)",
+      "Bash(\"C:\\\\apache-maven-3.9.6\\\\bin\\\\mvn.cmd\" -q -o compile -DskipTests)",
+      "Bash(git -C \"D:\\\\GameServers\\\\Maplestory\\\\Cosmic\" diff --stat)",
+      "Bash(git -C \"D:\\\\GameServers\\\\Maplestory\\\\Cosmic\" log --oneline -3)",
+      "mcp__mcp_server_mysql__mysql_query",
+      "Bash(git -C \"D:/GameServers/Maplestory/Cosmic\" ls-files)",
+      "Bash(grep -rn \"wz-path\\\\|System.getProperty\\\\|WZ_PATH\\\\|Path.of\\\\|String WZ\\\\|baseDir\\\\|getPath\" src/main/java/provider/wz/WZFiles.java)",
+      "Bash(sed -n '210,235p' pom.xml)"
+    ]
+  }
+}

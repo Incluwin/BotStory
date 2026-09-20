@@ -31,17 +31,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Objects;
 
 public class BuddyList {
-    private static final Logger log = LoggerFactory.getLogger(BuddyList.class);
-
     public enum BuddyOperation {
         ADDED, DELETED
     }
@@ -53,6 +52,7 @@ public class BuddyList {
     private final Map<Integer, BuddylistEntry> buddies = new LinkedHashMap<>();
     private int capacity;
     private final Deque<CharacterNameAndId> pendingRequests = new LinkedList<>();
+    private Runnable persistenceDirtyMarker = () -> { };
 
     public BuddyList(int capacity) {
         this.capacity = capacity;
@@ -82,7 +82,10 @@ public class BuddyList {
     }
 
     public void setCapacity(int capacity) {
-        this.capacity = capacity;
+        if (this.capacity != capacity) {
+            this.capacity = capacity;
+            persistenceDirtyMarker.run();
+        }
     }
 
     public BuddylistEntry get(int characterId) {
@@ -104,19 +107,67 @@ public class BuddyList {
 
     public void put(BuddylistEntry entry) {
         synchronized (buddies) {
-            buddies.put(entry.getCharacterId(), entry);
+            entry.setPersistenceDirtyMarker(persistenceDirtyMarker);
+            BuddylistEntry previous = buddies.put(entry.getCharacterId(), entry);
+            if (previous != entry) {
+                if (previous != null) {
+                    previous.setPersistenceDirtyMarker(() -> {});
+                }
+                persistenceDirtyMarker.run();
+            }
         }
     }
 
     public void remove(int characterId) {
         synchronized (buddies) {
-            buddies.remove(characterId);
+            BuddylistEntry removed = buddies.remove(characterId);
+            if (removed != null) {
+                removed.setPersistenceDirtyMarker(() -> {});
+                persistenceDirtyMarker.run();
+            }
+        }
+    }
+
+    void setPersistenceDirtyMarker(Runnable persistenceDirtyMarker) {
+        synchronized (buddies) {
+            this.persistenceDirtyMarker = Objects.requireNonNull(persistenceDirtyMarker);
+            for (BuddylistEntry entry : buddies.values()) {
+                entry.setPersistenceDirtyMarker(persistenceDirtyMarker);
+            }
         }
     }
 
     public Collection<BuddylistEntry> getBuddies() {
         synchronized (buddies) {
-            return Collections.unmodifiableCollection(buddies.values());
+            return Collections.unmodifiableList(new ArrayList<>(buddies.values()));
+        }
+    }
+
+    public PersistenceSnapshot persistenceSnapshot() {
+        synchronized (buddies) {
+            List<PersistedEntry> entries = new ArrayList<>(buddies.size());
+            for (BuddylistEntry entry : buddies.values()) {
+                entries.add(new PersistedEntry(entry.getName(), entry.getGroup(),
+                        entry.getCharacterId(), entry.isVisible()));
+            }
+            return new PersistenceSnapshot(capacity, entries);
+        }
+    }
+
+    static BuddyList fromPersistenceSnapshot(PersistenceSnapshot snapshot) {
+        BuddyList restored = new BuddyList(snapshot.capacity());
+        for (PersistedEntry entry : snapshot.entries()) {
+            restored.put(new BuddylistEntry(entry.name(), entry.group(), entry.characterId(), -1, entry.visible()));
+        }
+        return restored;
+    }
+
+    public record PersistedEntry(String name, String group, int characterId, boolean visible) {
+    }
+
+    public record PersistenceSnapshot(int capacity, List<PersistedEntry> entries) {
+        public PersistenceSnapshot {
+            entries = Collections.unmodifiableList(new ArrayList<>(entries));
         }
     }
 
@@ -166,8 +217,9 @@ public class BuddyList {
                 ps.setInt(1, characterId);
                 ps.executeUpdate();
             }
+
         } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
         }
     }
 

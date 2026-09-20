@@ -263,7 +263,7 @@ public class Pyramid extends PartyQuest {
             exp += ((kill * 2) + (cool * 10));
         }
         chr.sendPacket(PacketCreator.pyramidScore(rank, exp));
-        chr.gainExp(exp, true, true);
+        chr.gainExpRateScaled(exp, true, true);
     }
 }
 

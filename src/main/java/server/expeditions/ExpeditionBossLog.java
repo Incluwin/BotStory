@@ -150,7 +150,7 @@ public class ExpeditionBossLog {
                 }
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -174,7 +174,7 @@ public class ExpeditionBossLog {
             }
             return ret_count;
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
             return -1;
         }
     }
@@ -186,7 +186,7 @@ public class ExpeditionBossLog {
             ps.setString(2, boss.name());
             ps.executeUpdate();
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 

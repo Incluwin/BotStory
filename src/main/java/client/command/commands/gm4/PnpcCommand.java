@@ -37,12 +37,8 @@ import java.awt.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PnpcCommand extends Command {
-    private static final Logger log = LoggerFactory.getLogger(PnpcCommand.class);
-
     {
         setDescription("Spawn a permanent NPC on your location.");
     }
@@ -103,7 +99,7 @@ public class PnpcCommand extends Command {
 
                 player.yellowMessage("Pnpc created.");
             } catch (SQLException e) {
-                log.error("unhandled exception", e);
+                monitoring.RuntimeFailureLogger.log(e);
                 player.dropMessage(5, "Failed to store pNPC in the database.");
             }
         } else {

@@ -1,0 +1,98 @@
+package server.agents.integration.cosmic;
+
+import client.Character;
+import server.agents.model.AgentPosition;
+import server.agents.perception.AgentDropPerception;
+import server.agents.perception.AgentCharacterPerception;
+import server.agents.perception.AgentMapPerception;
+import server.agents.perception.AgentMobPerception;
+import server.agents.perception.AgentPerceptionSnapshot;
+import server.life.Monster;
+import server.maps.MapItem;
+import server.maps.MapleMap;
+import server.agents.integration.AgentCharacterGatewayRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.perception.AgentPeerPerception;
+import server.agents.runtime.AgentModeStateRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
+
+import java.awt.Point;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
+
+public final class CosmicAgentPerceptionSnapshotFactory {
+    private static final long CACHE_WINDOW_MS = config.AgentTuning.longValue("server.agents.integration.cosmic.CosmicAgentPerceptionSnapshotFactory.CACHE_WINDOW_MS");
+    private static final Map<MapleMap, AgentPerceptionSnapshot> CACHE =
+            Collections.synchronizedMap(new WeakHashMap<>());
+    private CosmicAgentPerceptionSnapshotFactory() {
+    }
+
+    public static AgentPerceptionSnapshot capture(Character agent, long nowMs) {
+        MapleMap map = agent == null ? null : agent.getMap();
+        if (map == null) {
+            return AgentPerceptionSnapshot.unavailable();
+        }
+        AgentPerceptionSnapshot cached = CACHE.get(map);
+        if (cached != null && nowMs - cached.observedAtMs() >= 0
+                && nowMs - cached.observedAtMs() <= CACHE_WINDOW_MS) {
+            return cached;
+        }
+        List<AgentMobPerception> mobs = AgentMapPerception.monsters(map).stream()
+                .map(CosmicAgentPerceptionSnapshotFactory::mob)
+                .toList();
+        List<AgentDropPerception> drops = AgentMapPerception.items(map).stream()
+                .map(CosmicAgentPerceptionSnapshotFactory::drop)
+                .toList();
+        List<Character> liveCharacters = map.getCharacters().stream()
+                .filter(character -> character.getPosition() != null && character.getId() > 0)
+                .toList();
+        List<AgentCharacterPerception> characters = liveCharacters.stream()
+                .map(character -> character(character,
+                        AgentCharacterGatewayRuntime.characters().isHeadlessControlled(character)))
+                .toList();
+        int realPlayers = (int) characters.stream()
+                .filter(character -> !character.agent())
+                .count();
+        List<AgentPeerPerception> peers = liveCharacters.stream()
+                .map(character -> peer(character, AgentRuntimeRegistry.findByAgentCharacterId(character.getId())))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        AgentPerceptionSnapshot captured = new AgentPerceptionSnapshot(map.getId(), nowMs, mobs, drops,
+                realPlayers, peers, characters);
+        CACHE.put(map, captured);
+        return captured;
+    }
+
+    private static AgentPeerPerception peer(Character peer, AgentRuntimeEntry entry) {
+        if (entry == null || AgentRuntimeIdentityRuntime.bot(entry) != peer
+                || peer.getPosition() == null || peer.getHp() <= 0) {
+            return null;
+        }
+        Monster target = AgentGrindTargetStateRuntime.target(entry);
+        return new AgentPeerPerception(peer.getId(),
+                new AgentPosition(peer.getPosition().x, peer.getPosition().y),
+                AgentModeStateRuntime.grinding(entry), target == null ? -1 : target.getObjectId());
+    }
+
+    private static AgentMobPerception mob(Monster mob) {
+        Point position = mob.getPosition();
+        return new AgentMobPerception(mob.getObjectId(), mob.getId(),
+                new AgentPosition(position.x, position.y), mob.getHp(), mob.isAlive());
+    }
+
+    private static AgentDropPerception drop(MapItem drop) {
+        Point position = drop.getPosition();
+        return new AgentDropPerception(drop.getObjectId(), drop.getItemId(), drop.getMeso(),
+                drop.getOwnerId(), new AgentPosition(position.x, position.y));
+    }
+
+    private static AgentCharacterPerception character(Character character, boolean agent) {
+        Point position = character.getPosition();
+        return new AgentCharacterPerception(character.getId(),
+                new AgentPosition(position.x, position.y), agent);
+    }
+}

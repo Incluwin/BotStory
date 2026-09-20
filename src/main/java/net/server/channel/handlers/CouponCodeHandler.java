@@ -157,7 +157,7 @@ public final class CouponCodeHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
         }
 
         c.resetCsCoupon();

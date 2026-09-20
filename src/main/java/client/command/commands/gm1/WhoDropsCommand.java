@@ -28,6 +28,7 @@ import client.Client;
 import client.command.Command;
 import constants.id.NpcId;
 import server.ItemInformationProvider;
+import server.life.LifeFactory;
 import server.life.MonsterInformationProvider;
 import tools.DatabaseConnection;
 import tools.Pair;
@@ -35,13 +36,10 @@ import tools.Pair;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.util.Iterator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class WhoDropsCommand extends Command {
-    private static final Logger log = LoggerFactory.getLogger(WhoDropsCommand.class);
-
     {
         setDescription("Show what drops an item.");
     }
@@ -54,47 +52,75 @@ public class WhoDropsCommand extends Command {
             return;
         }
 
-        if (c.tryacquireClient()) {
-            try {
-                String searchString = player.getLastCommandMessage();
-                String output = "";
-                Iterator<Pair<Integer, String>> listIterator = ItemInformationProvider.getInstance().getItemDataByName(searchString).iterator();
-                if (listIterator.hasNext()) {
-                    int count = 1;
-                    while (listIterator.hasNext() && count <= 3) {
-                        Pair<Integer, String> data = listIterator.next();
-                        output += "#b" + data.getRight() + "#k is dropped by:\r\n";
-                        try (Connection con = DatabaseConnection.getConnection();
-                             PreparedStatement ps = con.prepareStatement("SELECT dropperid FROM drop_data WHERE itemid = ? LIMIT 50")) {
-                            ps.setInt(1, data.getLeft());
+        if (!c.tryacquireClient()) {
+            player.dropMessage(5, "Please wait a while for your request to be processed.");
+            return;
+        }
 
-                            try (ResultSet rs = ps.executeQuery()) {
-                                while (rs.next()) {
-                                    String resultName = MonsterInformationProvider.getInstance().getMobNameFromId(rs.getInt("dropperid"));
-                                    if (resultName != null) {
-                                        output += resultName + ", ";
-                                    }
-                                }
-                            }
-                        } catch (Exception e) {
-                            player.dropMessage(6, "There was a problem retrieving the required data. Please try again.");
-                            log.error("unhandled exception", e);
-                            return;
-                        }
-                        output += "\r\n\r\n";
-                        count++;
-                    }
-                } else {
-                    player.dropMessage(5, "The item you searched for doesn't exist.");
+        try {
+            String searchString = player.getLastCommandMessage();
+            StringBuilder output = new StringBuilder();
+            ArrayList<Pair<Integer, String>> idNameList = ItemInformationProvider.getInstance().getItemDataByName(searchString);
+            if (idNameList.isEmpty()) {
+                player.dropMessage(5, "The item you searched for doesn't exist.");
+                return;
+            }
+            int count = 0;
+            for (int i = 0; i < idNameList.size() && count < 10; i++) {
+                Pair<Integer, String> data = idNameList.get(i);
+                Integer itemId = data.getLeft();
+                if (itemId < 1000000) { // hairs, faces, not actual items, will cause a crash
+                    continue;
+                }
+                count++;
+                try {
+                    appendWhoDropsResult(output, itemId);
+                } catch (Exception e) {
+                    player.dropMessage(6, "There was a problem retrieving the required data. Please try again.");
+                    monitoring.RuntimeFailureLogger.log(e);
                     return;
                 }
-
-                c.getAbstractPlayerInteraction().npcTalk(NpcId.MAPLE_ADMINISTRATOR, output);
-            } finally {
-                c.releaseClient();
             }
-        } else {
-            player.dropMessage(5, "Please wait a while for your request to be processed.");
+            output.insert(0, "Showing " + count + " of " + idNameList.size() + " results:\r\n\r\n");
+            c.getAbstractPlayerInteraction().npcTalk(NpcId.MAPLE_ADMINISTRATOR, output.toString());
+        } finally {
+            c.releaseClient();
         }
+    }
+
+    public static String getExactItemDropsText(int itemId) {
+        StringBuilder output = new StringBuilder();
+        try {
+            appendWhoDropsResult(output, itemId);
+        } catch (Exception e) {
+            monitoring.RuntimeFailureLogger.log(e);
+            return "There was a problem retrieving the required data. Please try again.";
+        }
+
+        output.insert(0, "Showing 1 of 1 results:\r\n\r\n");
+        return output.toString();
+    }
+
+    private static void appendWhoDropsResult(StringBuilder output, int itemId) throws SQLException {
+//      output.append("#v").append(itemId).append("#"); // Item Icon | CRASHES IF NO ICON (unused items / backported wz repacks)
+        output.append("#z").append(itemId).append("#"); // Item Name + Stats
+        output.append(" - #b").append(itemId); // Item ID
+        output.append("#k:\r\n");
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT dropperid FROM drop_data WHERE itemid = ? LIMIT 50")) {
+            ps.setInt(1, itemId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int dropperid = rs.getInt("dropperid");
+                    String resultName = MonsterInformationProvider.getInstance().getMobNameFromId(dropperid);
+                    String level = "(" + LifeFactory.getMonsterLevel(dropperid) + ")";
+                    if (resultName != null) {
+                        output.append(resultName).append(level).append(", ");
+                    }
+                }
+            }
+        }
+        output.append("\r\n\r\n");
     }
 }

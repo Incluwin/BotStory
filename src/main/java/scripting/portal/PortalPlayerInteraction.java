@@ -22,6 +22,8 @@
 package scripting.portal;
 
 import client.Client;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scripting.AbstractPlayerInteraction;
 import scripting.map.MapScriptManager;
 import server.maps.Portal;
@@ -32,8 +34,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PortalPlayerInteraction extends AbstractPlayerInteraction {
     private static final Logger log = LoggerFactory.getLogger(PortalPlayerInteraction.class);
@@ -67,7 +67,7 @@ public class PortalPlayerInteraction extends AbstractPlayerInteraction {
                 }
             }
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            log.error("Failed to check level 30 character for accId={}", getPlayer().getAccountID(), sqle);
         }
 
         return getPlayer().getLevel() >= 30;

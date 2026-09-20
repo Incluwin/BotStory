@@ -35,6 +35,28 @@ public class DatabaseConnection {
         return dataSource.getConnection();
     }
 
+    public static boolean isInitialized() {
+        return dataSource != null;
+    }
+
+    /** Read-only pool access for modules that require a DataSource boundary. */
+    public static DataSource dataSource() {
+        if (dataSource == null) throw new IllegalStateException("Database connection pool is uninitialized");
+        return dataSource;
+    }
+
+    public static String poolStats() {
+        if (dataSource == null || dataSource.getHikariPoolMXBean() == null) {
+            return "dbPool=uninitialized";
+        }
+        return "dbPool active=" + dataSource.getHikariPoolMXBean().getActiveConnections()
+                + " idle=" + dataSource.getHikariPoolMXBean().getIdleConnections()
+                + " total=" + dataSource.getHikariPoolMXBean().getTotalConnections()
+                + " waiting=" + dataSource.getHikariPoolMXBean().getThreadsAwaitingConnection()
+                + " max=" + dataSource.getMaximumPoolSize()
+                + " connTimeoutMs=" + dataSource.getConnectionTimeout();
+    }
+
     public static Handle getHandle() {
         if (jdbi == null) {
             throw new IllegalStateException("Unable to get handle - connection pool is uninitialized");
@@ -53,23 +75,55 @@ public class DatabaseConnection {
         return String.format(YamlConfig.config.server.DB_URL_FORMAT, host);
     }
 
+    public static String configuredUsername() {
+        return setting("DB_USER", YamlConfig.config.server.DB_USER);
+    }
+
+    public static String configuredPassword() {
+        // cosmic_agents uses DB_PASSWORD; the FriendServer stack (.env, start_all.bat) exports DB_PASS.
+        return setting("DB_PASSWORD", setting("DB_PASS", YamlConfig.config.server.DB_PASS));
+    }
+
     private static HikariConfig getConfig() {
         HikariConfig config = new HikariConfig();
 
         config.setJdbcUrl(getDbUrl());
-        config.setUsername(envOrConfig("DB_USER", YamlConfig.config.server.DB_USER));
-        config.setPassword(envOrConfig("DB_PASS", YamlConfig.config.server.DB_PASS));
+        config.setUsername(configuredUsername());
+        config.setPassword(configuredPassword());
 
         final int initFailTimeoutSeconds = YamlConfig.config.server.INIT_CONNECTION_POOL_TIMEOUT;
         config.setInitializationFailTimeout(SECONDS.toMillis(initFailTimeoutSeconds));
-        config.setConnectionTimeout(SECONDS.toMillis(30)); // Hikari default
-        config.setMaximumPoolSize(10); // Hikari default
+        config.setConnectionTimeout(SECONDS.toMillis(intSetting("cosmic.db.connectionTimeoutSeconds", "COSMIC_DB_CONNECTION_TIMEOUT_SECONDS", 30))); // Hikari default
+        config.setMaximumPoolSize(intSetting("cosmic.db.maxPoolSize", "COSMIC_DB_MAX_POOL_SIZE", 10)); // Hikari default
 
         config.addDataSourceProperty("cachePrepStmts", true);
         config.addDataSourceProperty("prepStmtCacheSize", 25);
         config.addDataSourceProperty("prepStmtCacheSqlLimit", 2048);
 
         return config;
+    }
+
+    private static String setting(String environmentName, String fallback) {
+        String value = System.getenv(environmentName);
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private static int intSetting(String propertyName, String environmentName, int defaultValue) {
+        String propertyValue = System.getProperty(propertyName);
+        String rawValue = propertyValue != null ? propertyValue : System.getenv(environmentName);
+        if (rawValue == null || rawValue.isBlank()) {
+            return defaultValue;
+        }
+
+        try {
+            int parsed = Integer.parseInt(rawValue.trim());
+            if (parsed > 0) {
+                return parsed;
+            }
+        } catch (NumberFormatException e) {
+            log.warn("Ignoring invalid integer setting {} / {}='{}'", propertyName, environmentName, rawValue);
+        }
+        return defaultValue;
     }
 
     /**

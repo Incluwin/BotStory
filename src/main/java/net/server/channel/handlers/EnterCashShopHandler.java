@@ -27,16 +27,13 @@ import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import net.server.Server;
 import server.maps.MiniDungeonInfo;
+import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.PacketCreator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Flav
  */
 public class EnterCashShopHandler extends AbstractPacketHandler {
-    private static final Logger log = LoggerFactory.getLogger(EnterCashShopHandler.class);
-
     @Override
     public void handlePacket(InPacket p, Client c) {
         try {
@@ -91,9 +88,9 @@ public class EnterCashShopHandler extends AbstractPacketHandler {
             c.getChannelServer().removePlayer(mc);
             mc.getMap().removePlayer(mc);
             mc.getCashShop().open(true);
-            mc.saveCharToDB();
+            mc.saveCharToDB(true, SaveReason.CASHSHOP);
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 }

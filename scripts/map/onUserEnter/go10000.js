@@ -22,5 +22,10 @@
 
 function start(ms) {
     ms.unlockUI();
-    ms.mapEffect("maplemap/enter/10000");
+    // Keep the normal beginner map presentation, but do not replay it during
+    // repeated GM test warps. The tutorial-skip dialog is controlled by the
+    // separate tutoChatNPC portal script.
+    if (!ms.getPlayer().isGM()) {
+        ms.mapEffect("maplemap/enter/10000");
+    }
 }

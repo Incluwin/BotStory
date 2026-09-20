@@ -1,0 +1,341 @@
+package server.agents.capabilities.movement;
+
+import server.agents.physics.AgentWallCollisionPolicy;
+import client.Character;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import server.agents.capabilities.combat.AgentCombatConfig;
+import server.agents.capabilities.combat.AgentCombatDamageRuntime;
+import server.agents.capabilities.movement.AgentMovementStateRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.events.AgentEventPriority;
+import server.agents.operations.events.AgentOperationalEventPublisher;
+import server.agents.operations.events.AgentRecoveryPerformedEvent;
+import server.maps.Foothold;
+import server.maps.MapleMap;
+import server.maps.Portal;
+
+import java.awt.Point;
+import java.awt.Rectangle;
+
+/**
+ * Agent-owned airborne movement integrator.
+ */
+public final class AgentAirbornePhysicsService {
+    private static final Logger log = LoggerFactory.getLogger(AgentAirbornePhysicsService.class);
+    private static final double CLIENT_GROUND_STEP_MS = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentAirbornePhysicsService.CLIENT_GROUND_STEP_MS");
+    private static final double CLIENT_GROUND_STEP_S = CLIENT_GROUND_STEP_MS / 1000.0;
+    private static final double GROUNDSLIP = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentAirbornePhysicsService.GROUNDSLIP");
+    private static final double FRICTION = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentAirbornePhysicsService.FRICTION");
+    private static final double SLOPEFACTOR = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentAirbornePhysicsService.SLOPEFACTOR");
+    private static final float MAX_FALL_PXS = config.AgentTuning.floatValue("server.agents.capabilities.movement.AgentAirbornePhysicsService.MAX_FALL_PXS");
+    private static final double AIR_STEER_ACCEL = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentAirbornePhysicsService.AIR_STEER_ACCEL");
+    private static final double AIR_STEER_MAX = config.AgentTuning.doubleValue("server.agents.capabilities.movement.AgentAirbornePhysicsService.AIR_STEER_MAX");
+    private static final int BELOW_MAP_RECOVERY_MARGIN_PX = config.AgentTuning.intValue("server.agents.capabilities.movement.AgentAirbornePhysicsService.BELOW_MAP_RECOVERY_MARGIN_PX");
+
+    private AgentAirbornePhysicsService() {
+    }
+
+    public static AgentAirborneStepResult stepAirborne(AgentRuntimeEntry entry, Character agent) {
+        if (AgentMovementStateRuntime.hasMoveDirection(entry)) {
+            applyAirSteering(entry, AgentMovementStateRuntime.moveDirection(entry));
+        }
+
+        applyPendingFlashJump(entry);
+        Point previousPosition = roundedAirPosition(entry);
+        Point nextPosition = advanceAirbornePosition(entry);
+        MapleMap map = agent.getMap();
+        int boundedX = AgentHorizontalBoundaryStateRuntime.clampX(
+                entry, map == null ? -1 : map.getId(), nextPosition.x);
+        if (boundedX != nextPosition.x) {
+            Point boundaryCollision = new Point(boundedX, nextPosition.y);
+            collideWithAirWall(entry, agent, boundaryCollision);
+            return AgentAirborneStepResult.WALL;
+        }
+        int moverZMass = AgentWallCollisionPolicy.moverZMassForRegion(
+                map, entry.navigationContinuityState().lastRegionIdForMap(agent.getMapId()));
+        AgentJumpProbeService.AirCollision collision =
+                AgentJumpProbeService.resolveAirCollision(map, previousPosition, nextPosition, moverZMass);
+        if (collision.type() == AgentJumpProbeService.AirCollisionType.WALL) {
+            collideWithAirWall(entry, agent, collision.point());
+            return AgentAirborneStepResult.WALL;
+        }
+        if (collision.type() == AgentJumpProbeService.AirCollisionType.CEILING) {
+            collideWithAirCeiling(entry, agent, collision.point());
+            return AgentAirborneStepResult.CEILING;
+        }
+        if (collision.type() == AgentJumpProbeService.AirCollisionType.LAND && canLand(entry)) {
+            landOnGround(entry, agent, collision.point(), collision.foothold(),
+                    nextPosition.x - previousPosition.x, nextPosition.y - previousPosition.y);
+            return AgentAirborneStepResult.LANDED;
+        }
+        Point recoveryPoint = belowMapRecoveryPoint(
+                map, nextPosition, AgentMapStateRuntime.entryPortalId(entry));
+        if (recoveryPoint != null) {
+            if (server.agents.progression.AgentMushroomKingdomMovementRecovery.blockWithoutTeleport(
+                    entry, agent, "fell below the map's reachable footholds")) {
+                return AgentAirborneStepResult.CONTINUE;
+            }
+            log.warn("Recovered Agent '{}' below map bounds map={} from={} to={}",
+                    agent.getName(), agent.getMapId(), nextPosition, recoveryPoint);
+            AgentMovementPoseService.teleportTo(entry, agent, recoveryPoint);
+            AgentOperationalEventPublisher.publish(entry,
+                    objectiveId -> new AgentRecoveryPerformedEvent(
+                            agent.getId(), System.currentTimeMillis(), agent.getMapId(),
+                            "below-map-bounds", nextPosition.x, nextPosition.y,
+                            recoveryPoint.x, recoveryPoint.y, objectiveId),
+                    AgentEventPriority.CRITICAL);
+            return AgentAirborneStepResult.LANDED;
+        }
+        applyAirbornePosition(entry, agent, nextPosition);
+        return AgentAirborneStepResult.CONTINUE;
+    }
+
+    private static void applyPendingFlashJump(AgentRuntimeEntry entry) {
+        AgentMovementSkillState skillState = entry.capabilityStates()
+                .find(AgentMovementSkillState.STATE_KEY)
+                .orElse(null);
+        if (skillState == null
+                || !skillState.flashJumpPending()
+                || AgentMovementPhysicsStateRuntime.verticalVelocity(entry) < 0f) {
+            return;
+        }
+        int direction = Integer.signum(AgentMovementPhysicsStateRuntime.airVelocityX(entry));
+        if (direction == 0) {
+            direction = AgentMovementStateRuntime.facingDirectionSign(entry);
+        }
+        float tickSeconds = AgentMovementPhysicsConfig.configuredMovementTickMs() / 1000f;
+        AgentMovementPhysicsStateRuntime.setAirVelocityX(entry,
+                Math.round(direction * AgentMovementSkillConfig.FLASH_JUMP_HORIZONTAL_SPEED_PXS
+                        * tickSeconds));
+        AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
+        AgentMovementPhysicsStateRuntime.setVerticalVelocity(entry,
+                -AgentMovementSkillConfig.FLASH_JUMP_UPWARD_SPEED_PXS * tickSeconds);
+        AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, true);
+        skillState.setFlashJumpPending(false);
+        skillState.setFlashJumpFired(true);
+    }
+
+    static Point belowMapRecoveryPoint(MapleMap map, Point position) {
+        return belowMapRecoveryPoint(map, position, -1);
+    }
+
+    static Point belowMapRecoveryPoint(MapleMap map, Point position, int preferredPortalId) {
+        Rectangle area = map == null ? null : map.getMapArea();
+        if (position == null || area == null || area.width <= 0 || area.height <= 0
+                || position.y <= area.y + area.height + BELOW_MAP_RECOVERY_MARGIN_PX) {
+            return null;
+        }
+
+        Point portalRecovery = portalRecoveryPoint(map, preferredPortalId);
+        if (portalRecovery != null) {
+            return portalRecovery;
+        }
+        if (preferredPortalId != 0) {
+            portalRecovery = portalRecoveryPoint(map, 0);
+            if (portalRecovery != null) {
+                return portalRecovery;
+            }
+        }
+
+        int recoveryX = Math.clamp(position.x, area.x, area.x + area.width);
+        return AgentGroundingService.findGroundPoint(map, new Point(recoveryX, area.y));
+    }
+
+    private static Point portalRecoveryPoint(MapleMap map, int portalId) {
+        if (portalId < 0) {
+            return null;
+        }
+        Portal portal = map.getPortal(portalId);
+        if (portal == null) {
+            return null;
+        }
+        Point portalPosition = portal.getPosition();
+        Point ground = AgentGroundingService.findGroundPoint(map,
+                new Point(portalPosition.x, portalPosition.y - 1));
+        return ground != null ? ground : new Point(portalPosition);
+    }
+
+    public static boolean canLand(AgentRuntimeEntry entry) {
+        return AgentMovementStateRuntime.downJumpGracePeriodMs(entry) == 0L;
+    }
+
+    static void landOnGround(AgentRuntimeEntry entry, Character agent, Point position) {
+        landOnGround(entry, agent, position, null, 0.0, 0.0);
+    }
+
+    static void landOnGround(AgentRuntimeEntry entry,
+                             Character agent,
+                             Point position,
+                             Foothold foothold,
+                             double incomingDeltaX,
+                             double incomingDeltaY) {
+        double fallDistance = AgentMovementPhysicsStateRuntime.hasFallPeakPhysicsY(entry)
+                ? Math.max(0.0, position.y - AgentMovementPhysicsStateRuntime.fallPeakPhysicsY(entry))
+                : 0.0;
+        agent.setPosition(position);
+        AgentMovementStateRuntime.setInAir(entry, false);
+        AgentClimbStateRuntime.setClimbingOnRope(entry, null);
+        AgentMovementStateRuntime.setCrouching(entry, false);
+        AgentClimbStateRuntime.setClimbUpIntent(entry, false);
+        AgentMovementPhysicsStateRuntime.setVerticalVelocity(entry, 0f);
+        AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, 0);
+        AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
+        AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
+        AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, position);
+        AgentClimbStateRuntime.clearRopeEntry(entry);
+        AgentMovementStateRuntime.setDownJumpPending(entry, false);
+        AgentMovementStateRuntime.setDownJumpGracePeriodMs(entry, 0L);
+        AgentMovementPhysicsStateRuntime.setGroundPhysicsCarryMs(entry, 0.0);
+        AgentClimbStateRuntime.clearBlockedRopeGrab(entry);
+        AgentMovementPhysicsStateRuntime.setHorizontalSpeed(entry, landingGroundHSpeed(agent.getMap(), foothold,
+                incomingDeltaX, incomingDeltaY, AgentMovementStateRuntime.movementProfile(entry)));
+        AgentMovementStateRuntime.setMovementVelocity(entry,
+                AgentMovementKinematicsService.velocityFromDeltaX(tickDeltaFromGroundHSpeed(agent.getMap(),
+                        AgentMovementPhysicsStateRuntime.horizontalSpeed(entry),
+                        AgentMovementStateRuntime.movementProfile(entry))),
+                0);
+        AgentMovementPoseService.syncCharacterState(entry);
+
+        AgentCombatDamageRuntime.applyFallDamage(entry, agent, (float) fallDistance, AgentCombatConfig.cfg);
+        AgentMovementPhysicsStateRuntime.resetFallPeakPhysicsY(entry);
+    }
+
+    private static void applyAirSteering(AgentRuntimeEntry entry, int steerDirection) {
+        if (steerDirection == 0) {
+            return;
+        }
+        double acceleration = steerDirection > 0 ? AIR_STEER_ACCEL : -AIR_STEER_ACCEL;
+        AgentMovementPhysicsStateRuntime.addClampedAirSteerVelocityX(entry, acceleration, AIR_STEER_MAX);
+        AgentMovementStateRuntime.setFacingDirection(entry, steerDirection > 0 ? 1 : -1);
+    }
+
+    private static Point advanceAirbornePosition(AgentRuntimeEntry entry) {
+        double deltaX = AgentMovementPhysicsStateRuntime.airVelocityX(entry)
+                + AgentMovementPhysicsStateRuntime.airSteerVelocityX(entry);
+        float gravity = AgentMovementKinematicsService.gravityPerTick();
+        double deltaY = AgentMovementPhysicsStateRuntime.verticalVelocity(entry) + 0.5f * gravity;
+        AgentMovementPhysicsStateRuntime.addPhysicsPosition(entry, deltaX, deltaY);
+        AgentMovementPhysicsStateRuntime.setVerticalVelocity(entry,
+                Math.min(AgentMovementPhysicsStateRuntime.verticalVelocity(entry) + gravity, maxFallPerTick()));
+        AgentMovementPhysicsStateRuntime.recordFallPeakPhysicsY(entry,
+                AgentMovementPhysicsStateRuntime.physicsY(entry));
+
+        return roundedAirPosition(entry);
+    }
+
+    private static void applyAirbornePosition(AgentRuntimeEntry entry, Character agent, Point position) {
+        agent.setPosition(position);
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentClimbStateRuntime.setClimbingOnRope(entry, null);
+        AgentMovementStateRuntime.setCrouching(entry, false);
+        int facingDirection = AgentMovementStateRuntime.facingDirection(entry);
+        AgentMovementStateRuntime.setMovementVelocity(entry,
+                AgentMovementKinematicsService.velocityFromDeltaX(
+                        AgentMovementPhysicsStateRuntime.airVelocityX(entry)),
+                velocityFromAirStep(AgentMovementPhysicsStateRuntime.verticalVelocity(entry)));
+        AgentMovementStateRuntime.setFacingDirection(entry, facingDirection);
+        AgentMovementPoseService.syncCharacterState(entry);
+    }
+
+    private static void collideWithAirWall(AgentRuntimeEntry entry, Character agent, Point collisionPoint) {
+        AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, 0);
+        AgentMovementPhysicsStateRuntime.setAirSteerVelocityX(entry, 0.0);
+        AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
+        AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, collisionPoint);
+        agent.setPosition(collisionPoint);
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentClimbStateRuntime.setClimbingOnRope(entry, null);
+        AgentMovementStateRuntime.setCrouching(entry, false);
+        AgentMovementStateRuntime.setMovementVelocity(entry, 0,
+                velocityFromAirStep(AgentMovementPhysicsStateRuntime.verticalVelocity(entry)));
+        AgentMovementPoseService.syncCharacterState(entry);
+    }
+
+    private static void collideWithAirCeiling(AgentRuntimeEntry entry, Character agent, Point collisionPoint) {
+        AgentMovementPhysicsStateRuntime.setVerticalVelocity(entry, 0f);
+        AgentMovementPhysicsStateRuntime.setFixedAirArc(entry, false);
+        AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, collisionPoint);
+        agent.setPosition(collisionPoint);
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentClimbStateRuntime.setClimbingOnRope(entry, null);
+        AgentMovementStateRuntime.setCrouching(entry, false);
+        AgentMovementStateRuntime.setMovementVelocity(entry,
+                AgentMovementKinematicsService.velocityFromDeltaX(
+                        AgentMovementPhysicsStateRuntime.airVelocityX(entry)),
+                0);
+        AgentMovementPoseService.syncCharacterState(entry);
+    }
+
+    private static Point roundedAirPosition(AgentRuntimeEntry entry) {
+        return AgentMovementPhysicsStateRuntime.roundedPhysicsPosition(entry);
+    }
+
+    private static int velocityFromAirStep(float airVelocityPerTick) {
+        return Math.round(airVelocityPerTick * (1000f / AgentMovementPhysicsConfig.configuredMovementTickMs()));
+    }
+
+    private static float maxFallPerTick() {
+        return MAX_FALL_PXS * AgentMovementPhysicsConfig.configuredMovementTickMs() / 1000f;
+    }
+
+    private static double landingGroundHSpeed(MapleMap map,
+                                              Foothold foothold,
+                                              double incomingDeltaX,
+                                              double incomingDeltaY,
+                                              AgentMovementProfile profile) {
+        double landingDeltaX = incomingDeltaX;
+        if (foothold != null && !foothold.isWall() && foothold.slope() != 0.0) {
+            double tangentX = foothold.getX2() - foothold.getX1();
+            double tangentY = foothold.getY2() - foothold.getY1();
+            double tangentLength = Math.hypot(tangentX, tangentY);
+            if (tangentLength > 0.0) {
+                double unitX = tangentX / tangentLength;
+                double unitY = tangentY / tangentLength;
+                double dot = incomingDeltaX * unitX + incomingDeltaY * unitY;
+                landingDeltaX = unitX * dot;
+            }
+        }
+
+        double maxDeltaPerTick = Math.max(1.0, AgentMovementKinematicsService.walkStep(map, profile));
+        landingDeltaX = Math.clamp(landingDeltaX, -maxDeltaPerTick, maxDeltaPerTick);
+        return groundHSpeedFromTickDelta(map, landingDeltaX, profile);
+    }
+
+    private static double groundHSpeedFromTickDelta(MapleMap map, double deltaXPerTick, AgentMovementProfile profile) {
+        double stepsPerTick = Math.max(1.0,
+                (AgentMovementPhysicsConfig.configuredMovementTickMs() * mapGroundSpeedScale(map)) / CLIENT_GROUND_STEP_MS);
+        return Math.clamp(deltaXPerTick / stepsPerTick,
+                -maxHorizontalSpeedPerClientStep(profile),
+                maxHorizontalSpeedPerClientStep(profile));
+    }
+
+    private static double tickDeltaFromGroundHSpeed(MapleMap map, double groundHSpeed, AgentMovementProfile profile) {
+        double stepsPerTick = Math.max(1.0,
+                (AgentMovementPhysicsConfig.configuredMovementTickMs() * mapGroundSpeedScale(map)) / CLIENT_GROUND_STEP_MS);
+        double clampedHSpeed = Math.clamp(groundHSpeed,
+                -maxHorizontalSpeedPerClientStep(profile),
+                maxHorizontalSpeedPerClientStep(profile));
+        return clampedHSpeed * stepsPerTick;
+    }
+
+    private static double mapGroundSpeedScale(MapleMap map) {
+        float footholdSpeed = map.getFootholdSpeed();
+        if (footholdSpeed <= 0.0f) {
+            return 1.0;
+        }
+        return footholdSpeed;
+    }
+
+    private static double maxHorizontalForcePerClientStep(AgentMovementProfile profile) {
+        return profileOrBase(profile).hForcePxs() * CLIENT_GROUND_STEP_S;
+    }
+
+    private static double maxHorizontalSpeedPerClientStep(AgentMovementProfile profile) {
+        return maxHorizontalForcePerClientStep(profile) * GROUNDSLIP / (FRICTION + SLOPEFACTOR);
+    }
+
+    private static AgentMovementProfile profileOrBase(AgentMovementProfile profile) {
+        return profile != null ? profile : AgentMovementProfile.base();
+    }
+}

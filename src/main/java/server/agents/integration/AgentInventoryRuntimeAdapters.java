@@ -1,0 +1,126 @@
+package server.agents.integration;
+
+import server.agents.capabilities.trade.AgentOfferStateRuntime;
+import server.agents.capabilities.trade.AgentPendingTradeStateRuntime;
+
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
+import server.agents.capabilities.movement.AgentMovementTimers;
+
+import client.Character;
+import server.ItemRestrictionPolicy;
+import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.capabilities.combat.AgentAttackExecutionProvider;
+import server.agents.capabilities.equipment.AgentEquipmentReservePolicy;
+import server.agents.capabilities.inventory.AgentEquippedSlotTradeService;
+import server.agents.capabilities.inventory.AgentInventoryItemPolicy;
+import server.agents.capabilities.inventory.AgentInventoryNamedItemService;
+import server.agents.capabilities.inventory.AgentInventoryStateRuntime;
+import server.agents.capabilities.looting.AgentLootCleanupService;
+import server.agents.capabilities.looting.AgentPassiveLootRuntimeService;
+import server.agents.capabilities.trade.AgentInventoryTradeRuntimeService;
+import server.agents.capabilities.trade.AgentManualTradeRuntimeService;
+import server.agents.capabilities.trade.AgentManualTradeService;
+import server.agents.capabilities.trade.AgentOfferService;
+import server.agents.capabilities.trade.AgentTradeCommandProfiler;
+import server.agents.capabilities.trade.AgentTradeDialogueService;
+import server.agents.capabilities.trade.AgentTradeLifecycleRuntimeService;
+import server.agents.capabilities.trade.AgentTradeRecipientService;
+import server.agents.capabilities.trade.AgentTradeTickRuntimeService;
+import server.agents.capabilities.trade.AgentTradeTransferAvailabilityRuntimeService;
+import server.agents.capabilities.equipment.AgentEquipRecommendation;
+import server.agents.runtime.AgentRandom;
+import server.agents.runtime.AgentRuntimeConfig;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.capabilities.equipment.AgentEquipmentService;
+
+import java.util.ArrayList;
+
+public final class AgentInventoryRuntimeAdapters {
+    private AgentInventoryRuntimeAdapters() {
+    }
+
+    public static AgentPassiveLootRuntimeService.RuntimeCallbacks passiveLootRuntimeCallbacks() {
+        return AgentPassiveLootRuntimeService.RuntimeCallbacks.of(
+                AgentInventoryStateRuntime::hasLootInhibit,
+                entry -> AgentInventoryStateRuntime.tickLootInhibit(entry, AgentMovementTimers::tickDown),
+                AgentPendingTradeStateRuntime::hasActiveSequence,
+                entry -> AgentInventoryStateRuntime.tickInventoryFullWarnCooldown(entry, AgentMovementTimers::tickDown),
+                System::currentTimeMillis,
+                () -> AgentRuntimeConfig.cfg.LOOT_RADIUS,
+                AgentInventoryStateRuntime::canWarnInventoryFull,
+                () -> AgentMovementTimers.delayAfterCurrentTick(AgentRuntimeConfig.cfg.INV_FULL_WARN_CD_MS),
+                AgentInventoryStateRuntime::setInventoryFullWarnCooldownMs,
+                ignoredEntry -> null,
+                AgentOfferStateRuntime::pendingLootOfferItem,
+                AgentInventoryItemPolicy::hasItem,
+                AgentEquipmentService::autoEquip,
+                AgentOfferService::scheduleLootOfferPrompt,
+                AgentLootCleanupService::cleanupGhostDrop,
+                Character::pickupItem);
+    }
+
+    public static AgentManualTradeRuntimeService.RuntimeCallbacks manualTradeRuntimeCallbacks(AgentRuntimeEntry entry) {
+        return AgentManualTradeRuntimeService.RuntimeCallbacks.of(
+                () -> AgentPendingTradeStateRuntime.hasActiveSequence(entry),
+                AgentMovementTimers::tickDown,
+                AgentMovementPhysicsConfig::configuredMovementTickMs,
+                peer -> AgentCharacterGatewayRuntime.characters().isHeadlessControlled(peer),
+                (peerId, ignoredInteractionTargetId) -> AgentRuntimeRegistry.hasActiveAgentCharacterId(peerId),
+                AgentTradeDialogueService::manualTradeGreeting,
+                (agent, owner) -> AgentEquipmentService.autoEquip(agent, owner, null));
+    }
+
+    public static AgentTradeTickRuntimeService.RuntimeCallbacks tradeTickRuntimeCallbacks() {
+        return AgentTradeTickRuntimeService.RuntimeCallbacks.of(
+                AgentMovementTimers::tickDown,
+                agent -> AgentTradeGatewayRuntime.trade().currentWindow(agent),
+                AgentMovementTimers::delayAfterCurrentTick,
+                AgentMovementPhysicsConfig::configuredMovementTickMs,
+                AgentRelationshipRuntime::interactionTarget,
+                (agent, owner) -> AgentEquipmentService.autoEquip(agent, owner, null),
+                AgentTradeRecipientService::resolveTradeRecipient,
+                recipient -> AgentCharacterGatewayRuntime.characters().isHeadlessControlled(recipient));
+    }
+
+    public static AgentTradeLifecycleRuntimeService.RuntimeCallbacks tradeLifecycleRuntimeCallbacks() {
+        return AgentTradeLifecycleRuntimeService.RuntimeCallbacks.of(
+                AgentEquippedSlotTradeService::restoreTemporarilyUnequippedItems,
+                AgentManualTradeService::clearState,
+                AgentRelationshipRuntime::interactionTarget,
+                (agent, owner) -> AgentEquipmentService.autoEquip(agent, owner, null),
+                AgentRandom::randMs,
+                AgentTradeDialogueService::thanksReply,
+                AgentTradeDialogueService::freebieReply);
+    }
+
+    public static AgentTradeTransferAvailabilityRuntimeService.RuntimeCallbacks transferAvailabilityRuntimeCallbacks() {
+        return AgentTradeTransferAvailabilityRuntimeService.RuntimeCallbacks.of(
+                AgentRuntimeIdentityRuntime::owner,
+                (agent, fragment) -> AgentInventoryNamedItemService.countNamedItems(agent, fragment, inventory()),
+                (agent, fragment) -> AgentEquippedSlotTradeService.countEquippedSlotItems(
+                        agent,
+                        fragment,
+                        AgentEquipmentService::slotsFromName,
+                        inventory()));
+    }
+
+    public static AgentInventoryTradeRuntimeService.RuntimeCallbacks tradeRuntimeCallbacks(AgentRuntimeEntry entry, Character agent) {
+        return AgentInventoryTradeRuntimeService.RuntimeCallbacks.of(
+                (owner, holder) -> new ArrayList<>(AgentEquipmentService.findRecommendedEquips(owner, holder).stream()
+                        .map(AgentEquipRecommendation::candidate)
+                        .toList()),
+                AgentAttackExecutionProvider::getEquippedWeaponType,
+                itemId -> inventory().getProjectileWeaponAttack(itemId),
+                itemId -> inventory().isQuestItem(itemId),
+                itemId -> ItemRestrictionPolicy.allowsUntradeable(agent, itemId),
+                () -> AgentTradeCommandProfiler.profileCategory("equips"),
+                AgentEquipmentReservePolicy::collectPotentialSelfUpgradeItems,
+                item -> AgentOfferService.isReservedForOtherRecipients(entry, agent, item),
+                () -> AgentRelationshipRuntime.interactionTarget(entry),
+                AgentInventoryRuntimeAdapters::inventory);
+    }
+
+    private static InventoryGateway inventory() {
+        return AgentInventoryGatewayRuntime.inventory();
+    }
+}

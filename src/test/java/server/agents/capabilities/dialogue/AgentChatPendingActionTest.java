@@ -1,0 +1,28 @@
+package server.agents.capabilities.dialogue;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class AgentChatPendingActionTest {
+    @Test
+    void shouldExposeLegacyPendingActionValues() {
+        assertEquals("skill_tree_choice", AgentChatPendingAction.SKILL_TREE_CHOICE);
+        assertEquals("relog", AgentChatPendingAction.RELOG);
+        assertEquals("logout", AgentChatPendingAction.LOGOUT);
+        assertEquals("item_choice", AgentChatPendingAction.ITEM_CHOICE);
+    }
+
+    @Test
+    void shouldClassifyPendingActions() {
+        assertTrue(AgentChatPendingAction.isSkillTreeChoice("skill_tree_choice"));
+        assertTrue(AgentChatPendingAction.isRelog("relog"));
+        assertTrue(AgentChatPendingAction.isItemChoice("item_choice"));
+        assertTrue(AgentChatPendingAction.isDropAction("drop"));
+        assertTrue(AgentChatPendingAction.isDropAction("drop_scrolls"));
+        assertFalse(AgentChatPendingAction.isRelog("logout"));
+        assertFalse(AgentChatPendingAction.isDropAction(null));
+    }
+}

@@ -28,23 +28,30 @@ import java.util.Map;
 public enum EquipType {
     UNDEFINED(-1),
     ACCESSORY(0),
-    EARRING(103),
-    CAP(100),
-    CAPE(110),
-    COAT(104),
     FACE(2),
-    GLOVES(108),
     HAIR(3),
+    CAP(100),
+    EARRING(103),
+    FaceAccessory(101),
+    EyeAccessory(102),
+    Earrings(103),
+    COAT(104),
     LONGCOAT(105),
     PANTS(106),
+    SHOES(107),
+    GLOVES(108),
+    SHIELD(109),
+    SHOULDER(115),
+    CAPE(110),
+    RING(111),
+    Pendant(112),
+    Belt(113),
+    Medal(114),
+    CASH_WEAPON(170),
     PET_EQUIP(180),
     PET_EQUIP_FIELD(181),
     PET_EQUIP_LABEL(182),
     PET_EQUIP_QUOTE(183),
-    RING(111),
-    SHOULDER(115),
-    SHIELD(109),
-    SHOES(107),
     TAMING(190),
     TAMING_SADDLE(191),
     SWORD(1302),
@@ -92,5 +99,26 @@ public enum EquipType {
         }
 
         return (ret != null) ? ret : EquipType.UNDEFINED;
+    }
+
+    public static EquipType getEquipTypeByString(String type) {
+        try { // Match by value
+            int intValue = Integer.parseInt(type);
+            for (EquipType equipType : EquipType.values()) {
+                if (equipType.getValue() == intValue) {
+                    return equipType;
+                }
+            }
+        } catch (NumberFormatException e) {
+        }
+
+        // Match by name
+        for (EquipType equipType : EquipType.values()) {
+            if (equipType.name().equalsIgnoreCase(type)) {
+                return equipType;
+            }
+        }
+
+        return UNDEFINED;
     }
 }

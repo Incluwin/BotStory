@@ -129,4 +129,407 @@
         </rollback>
     </changeSet>
 
+    <!-- ===== cosmic_agents (Kiwiism) changesets ===== -->
+    <changeSet id="25" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="bot_owners"/>
+            </not>
+        </preConditions>
+        <sqlFile path="db/tables/025-bot-ownership.sql"/>
+    </changeSet>
+
+    <!-- Keep changeset 25 immutable for existing Liquibase histories, then retire the table forward-only. -->
+    <changeSet id="26-remove-bot-owners" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="bot_owners"/>
+        </preConditions>
+        <dropTable tableName="bot_owners" cascadeConstraints="true"/>
+    </changeSet>
+
+    <!-- Retire the removed experimental Double Agent POC table on existing installs. -->
+    <changeSet id="27-remove-character-tag-sessions" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="character_tag_sessions"/>
+        </preConditions>
+        <dropTable tableName="character_tag_sessions" cascadeConstraints="true"/>
+    </changeSet>
+
+    <!-- Retire legacy server-CMS tables superseded by the separate Database Console schema. -->
+    <changeSet id="28a-remove-command-overrides" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="command_overrides"/>
+        </preConditions>
+        <dropTable tableName="command_overrides" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="28b-remove-configuration-profiles" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="configuration_profiles"/>
+        </preConditions>
+        <dropTable tableName="configuration_profiles" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="28c-remove-scheduled-operations" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="scheduled_operations"/>
+        </preConditions>
+        <dropTable tableName="scheduled_operations" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="28d-remove-server-cms-audit" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="server_cms_audit"/>
+        </preConditions>
+        <dropTable tableName="server_cms_audit" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="28e-remove-setting-overrides" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="setting_overrides"/>
+        </preConditions>
+        <dropTable tableName="setting_overrides" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="28f-remove-setting-catalog" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="setting_catalog"/>
+        </preConditions>
+        <dropTable tableName="setting_catalog" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="28g-remove-server-cms-users" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="server_cms_users"/>
+        </preConditions>
+        <dropTable tableName="server_cms_users" cascadeConstraints="true"/>
+    </changeSet>
+
+    <changeSet id="29-economy-transaction-journal" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="economy_transaction_journal"/>
+            </not>
+        </preConditions>
+        <createTable tableName="economy_transaction_journal">
+            <column name="transaction_id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="operation_kind" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(24)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="primary_character_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="secondary_character_id" type="INT"/>
+            <column name="summary" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="failure_reason" type="VARCHAR(1024)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="economy_transaction_journal" indexName="idx_economy_journal_status_updated">
+            <column name="status"/>
+            <column name="updated_at"/>
+        </createIndex>
+        <createIndex tableName="economy_transaction_journal" indexName="idx_economy_journal_primary_created">
+            <column name="primary_character_id"/>
+            <column name="created_at"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="30-security-event-evidence" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="security_event"/>
+            </not>
+        </preConditions>
+        <createTable tableName="security_event">
+            <column name="event_id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="occurred_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="event_type" type="VARCHAR(48)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="account_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="character_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="remote_fingerprint" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="evidence_json" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="review_status" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reviewed_by" type="VARCHAR(64)"/>
+            <column name="review_note" type="VARCHAR(1024)"/>
+            <column name="reviewed_at" type="TIMESTAMP"/>
+        </createTable>
+        <createIndex tableName="security_event" indexName="idx_security_event_review">
+            <column name="review_status"/>
+            <column name="severity"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <createIndex tableName="security_event" indexName="idx_security_event_character">
+            <column name="character_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="31-economy-idempotency" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="economy_transaction_journal"/>
+            <not><columnExists tableName="economy_transaction_journal" columnName="idempotency_key"/></not>
+        </preConditions>
+        <addColumn tableName="economy_transaction_journal">
+            <column name="idempotency_key" type="VARCHAR(128)"/>
+        </addColumn>
+        <update tableName="economy_transaction_journal">
+            <column name="idempotency_key" valueComputed="transaction_id"/>
+        </update>
+        <addNotNullConstraint tableName="economy_transaction_journal" columnName="idempotency_key"
+                              columnDataType="VARCHAR(128)"/>
+        <addUniqueConstraint tableName="economy_transaction_journal" columnNames="idempotency_key"
+                             constraintName="uk_economy_journal_idempotency"/>
+    </changeSet>
+
+    <changeSet id="32-security-event-review-indexes" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="security_event"/>
+        </preConditions>
+        <createIndex tableName="security_event" indexName="idx_security_event_open">
+            <column name="review_status"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <createIndex tableName="security_event" indexName="idx_security_event_retention">
+            <column name="review_status"/>
+            <column name="reviewed_at"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Minimal transactional outbox. The analytical economy database remains separate. -->
+    <changeSet id="33-economy-transaction-outbox" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="economy_transaction_outbox"/></not>
+        </preConditions>
+        <createTable tableName="economy_transaction_outbox">
+            <column name="outbox_id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="idempotency_key" type="VARCHAR(128)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="operation_kind" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="primary_character_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="secondary_character_id" type="INT"/>
+            <column name="summary" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="published_at" type="TIMESTAMP"/>
+            <column name="delivery_attempts" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_delivery_error" type="VARCHAR(1024)"/>
+        </createTable>
+        <createIndex tableName="economy_transaction_outbox" indexName="idx_economy_outbox_pending">
+            <column name="published_at"/>
+            <column name="created_at"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Agent PlayerShops are visible runtime objects, but unsold inventory must survive restarts. -->
+    <changeSet id="34-economy-player-shop-escrow" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="economy_player_shop_escrow"/></not>
+        </preConditions>
+        <createTable tableName="economy_player_shop_escrow">
+            <column name="owner_character_id" type="INT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="escrow_id" type="VARCHAR(36)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="room_map_id" type="INT"><constraints nullable="false"/></column>
+            <column name="spot_x" type="INT"><constraints nullable="false"/></column>
+            <column name="permit_item_id" type="INT"><constraints nullable="false"/></column>
+            <column name="description" type="VARCHAR(255)"><constraints nullable="false"/></column>
+            <column name="listings_json" type="LONGTEXT"><constraints nullable="false"/></column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="economy_player_shop_escrow"
+                                 baseColumnNames="owner_character_id"
+                                 referencedTableName="characters" referencedColumnNames="id"
+                                 constraintName="fk_economy_player_shop_owner" onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet id="35-economy-outbox-machine-evidence" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="economy_transaction_outbox"/>
+            <not><columnExists tableName="economy_transaction_outbox" columnName="payload_json"/></not>
+        </preConditions>
+        <addColumn tableName="economy_transaction_outbox">
+            <column name="payload_json" type="LONGTEXT"/>
+        </addColumn>
+        <update tableName="economy_transaction_outbox">
+            <column name="payload_json" value="{}"/>
+            <where>payload_json IS NULL</where>
+        </update>
+        <addNotNullConstraint tableName="economy_transaction_outbox"
+                              columnName="payload_json" columnDataType="LONGTEXT"/>
+    </changeSet>
+
+    <changeSet id="36-economy-outbox-simulation-attribution" author="Codex">
+        <preConditions onFail="MARK_RAN"><tableExists tableName="economy_transaction_outbox"/></preConditions>
+        <addColumn tableName="economy_transaction_outbox">
+            <column name="run_id" type="VARCHAR(36)"/>
+            <column name="logical_at" type="TIMESTAMP"/>
+            <column name="decision_id" type="VARCHAR(128)"/>
+            <column name="activity_id" type="VARCHAR(128)"/>
+            <column name="config_revision" type="VARCHAR(128)"/>
+            <column name="catalog_revision" type="VARCHAR(128)"/>
+            <column name="reason_code" type="VARCHAR(64)"/>
+            <column name="primary_is_agent" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="secondary_is_agent" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <createIndex tableName="economy_transaction_outbox" indexName="idx_economy_outbox_run_logical">
+            <column name="run_id"/><column name="logical_at"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Durable Agent identity is separate from whether a character currently uses a headless client. -->
+    <changeSet id="37-agent-character-identity" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="agent_characters"/></not>
+        </preConditions>
+        <createTable tableName="agent_characters">
+            <column name="character_id" type="INT">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="ACTIVE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="origin" type="VARCHAR(24)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interactive_allowed" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableName="agent_characters"
+                                 baseColumnNames="character_id"
+                                 referencedTableName="characters"
+                                 referencedColumnNames="id"
+                                 constraintName="fk_agent_character_identity"
+                                 onDelete="CASCADE"/>
+        <createIndex tableName="agent_characters" indexName="idx_agent_characters_status">
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Preserve existing Agents by translating the former account sentinel into explicit identity rows. -->
+    <changeSet id="38-backfill-agent-character-identity" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="agent_characters"/>
+        </preConditions>
+        <sql>
+            INSERT INTO agent_characters
+                (character_id, status, origin, interactive_allowed, created_at, updated_at)
+            SELECT c.id, 'ACTIVE', 'LEGACY_BACKFILL', FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            FROM characters c
+            JOIN accounts a ON a.id = c.accountid
+            WHERE a.banned = 1
+              AND a.banreason = 'Agent-only backing account'
+              AND NOT EXISTS (
+                  SELECT 1 FROM agent_characters identity_row
+                  WHERE identity_row.character_id = c.id
+              )
+        </sql>
+    </changeSet>
+
+    <changeSet id="39-agent-clean-slate-reset-audit" author="Codex">
+        <preConditions onFail="MARK_RAN">
+            <not><tableExists tableName="agent_reset_audit"/></not>
+        </preConditions>
+        <createTable tableName="agent_reset_audit">
+            <column name="reset_id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="character_id" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="character_name" type="VARCHAR(13)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requested_by" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason" type="VARCHAR(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(24)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="confirmation_hash" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="preview_json" type="LONGTEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result_json" type="LONGTEXT"/>
+            <column name="failure_reason" type="VARCHAR(1024)"/>
+            <column name="previewed_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expires_at" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="executed_at" type="TIMESTAMP"/>
+        </createTable>
+        <createIndex tableName="agent_reset_audit" indexName="idx_agent_reset_audit_character_time">
+            <column name="character_id"/>
+            <column name="previewed_at"/>
+        </createIndex>
+    </changeSet>
+
 </databaseChangeLog>

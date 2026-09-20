@@ -38,16 +38,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author XoticStory
  * @author Ronan
  */
 public class Alliance {
-    private static final Logger log = LoggerFactory.getLogger(Alliance.class);
-
     final private List<Integer> guilds = new LinkedList<>();
 
     private int allianceId = -1;
@@ -82,7 +78,7 @@ public class Alliance {
 
             return true;
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
             return false;
         }
     }
@@ -148,7 +144,7 @@ public class Alliance {
                 Server.getInstance().allianceMessage(id, GuildPackets.updateAllianceInfo(alliance, worldid), -1, -1);
                 Server.getInstance().allianceMessage(id, GuildPackets.getGuildAlliances(alliance, worldid), -1, -1);  // thanks Vcoc for noticing guilds from other alliances being visually stacked here due to this not being updated
             } catch (Exception e) {
-                log.error("unhandled exception", e);
+                monitoring.RuntimeFailureLogger.log(e);
                 return null;
             }
         }
@@ -178,7 +174,7 @@ public class Alliance {
                 }
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
             return null;
         }
 
@@ -224,7 +220,7 @@ public class Alliance {
                 }
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return alliance;
@@ -260,7 +256,7 @@ public class Alliance {
                 }
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -280,7 +276,7 @@ public class Alliance {
             Server.getInstance().allianceMessage(allianceId, GuildPackets.disbandAlliance(allianceId), -1, -1);
             Server.getInstance().disbandAlliance(allianceId);
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
     }
 
@@ -290,7 +286,7 @@ public class Alliance {
             ps.setInt(1, guildId);
             ps.executeUpdate();
         } catch (SQLException sqle) {
-            log.error("unhandled exception", sqle);
+            monitoring.RuntimeFailureLogger.log(sqle);
         }
     }
 

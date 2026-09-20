@@ -30,7 +30,7 @@ import client.command.Command;
 
 public class JobCommand extends Command {
     {
-        setDescription("Change job of a player.");
+        setDescription("Change your job.");
     }
 
     @Override
@@ -38,30 +38,21 @@ public class JobCommand extends Command {
         Character player = c.getPlayer();
         if (params.length == 1) {
             int jobid = Integer.parseInt(params[0]);
-            if (jobid < 0 || jobid >= 2200) {
+            Job targetJob = Job.getById(jobid);
+            if (targetJob == null) {
                 player.message("Jobid " + jobid + " is not available.");
                 return;
             }
 
-            player.changeJob(Job.getById(jobid));
-            player.equipChanged();
-        } else if (params.length == 2) {
-            Character victim = c.getWorldServer().getPlayerStorage().getCharacterByName(params[0]);
-
-            if (victim != null) {
-                int jobid = Integer.parseInt(params[1]);
-                if (jobid < 0 || jobid >= 2200) {
-                    player.message("Jobid " + jobid + " is not available.");
-                    return;
-                }
-
-                victim.changeJob(Job.getById(jobid));
+            if (player.forceChangeJobForAdmin(targetJob)) {
                 player.equipChanged();
+                player.message("Job changed to " + targetJob + "; base HP/MP rebuilt for level "
+                        + player.getLevel() + ".");
             } else {
-                player.message("Player '" + params[0] + "' could not be found.");
+                player.message("The requested job could not be applied.");
             }
         } else {
-            player.message("Syntax: !job <job id> <opt: IGN of another person>");
+            player.message("Syntax: !job <job id>");
         }
     }
 }

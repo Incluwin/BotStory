@@ -36,7 +36,9 @@ var maxMapId = 910010400;
 
 var eventTime = 10;     // 10 minutes
 
-const maxLobbies = 1;
+const AgentHpqLobbyPolicy = Java.type('server.agents.capabilities.partyquest.hpq.AgentHpqLobbyPolicy');
+const AgentHpqSessionRegistry = Java.type('server.agents.capabilities.partyquest.hpq.AgentHpqSessionRegistry');
+const maxLobbies = AgentHpqLobbyPolicy.maxLobbies();
 
 function init() {
     setEventRequirements();
@@ -158,7 +160,9 @@ function bunnyDefeated(eim) {
     end(eim);
 }
 
-function playerUnregistered(eim, player) {}
+function playerUnregistered(eim, player) {
+    AgentHpqSessionRegistry.forfeitUnclaimedReward(player);
+}
 
 function playerExit(eim, player) {
     eim.unregisterPlayer(player);
@@ -269,7 +273,7 @@ function friendlyDamaged(eim, mob) {
         var bunnyDamage = eim.getIntProperty("bunnyDamaged") + 1;
         if (bunnyDamage > 5) {
             const PacketCreator = Java.type('tools.PacketCreator');
-            broadcastMessage(PacketCreator.serverNotice(6, "The Moon Bunny is feeling sick. Please protect it so it can make delicious rice cakes."));
+            mob.getMap().broadcastMessage(PacketCreator.serverNotice(6, "The Moon Bunny is feeling sick. Please protect it so it can make delicious rice cakes."));
             eim.setIntProperty("bunnyDamaged", 0);
         }
     }

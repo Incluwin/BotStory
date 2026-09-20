@@ -1,0 +1,24 @@
+package server.agents.capabilities.build;
+
+import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.runtime.AgentSchedulerRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+
+/** Connects Maker capability replies and delayed batch steps to shared Agent services. */
+public final class AgentMakerRuntime {
+    private AgentMakerRuntime() {
+    }
+
+    public static void replyNow(AgentRuntimeEntry entry, String message) {
+        AgentDialogueTransportRuntime.replyNow(entry, message);
+    }
+
+    public static void afterDelay(AgentRuntimeEntry entry, long delayMs, Runnable action) {
+        AgentSchedulerRuntime.afterDelay(entry, delayMs, action);
+    }
+
+    public static void afterRandomDelay(AgentRuntimeEntry entry, int minMs, int maxMs, Runnable action) {
+        AgentSchedulerRuntime.afterRandomDelay(entry, minMs, maxMs, action);
+    }
+
+}

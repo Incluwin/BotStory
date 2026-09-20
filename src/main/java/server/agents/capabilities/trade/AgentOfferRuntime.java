@@ -1,0 +1,93 @@
+package server.agents.capabilities.trade;
+
+
+import server.agents.runtime.AgentSchedulerRuntime;
+import client.Character;
+import server.agents.capabilities.dialogue.AgentChatReportRuntime;
+import server.agents.commands.AgentReplyChannel;
+import server.agents.capabilities.dialogue.AgentChatStatusOrchestrator;
+import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+
+/**
+ * Agent-owned bridge for offer reply/timing/state orchestration while visible
+ * reply delivery stays behind integration runtime boundaries.
+ */
+public final class AgentOfferRuntime {
+    private AgentOfferRuntime() {
+    }
+
+    public static boolean isOwnerIdleForOffer(AgentRuntimeEntry entry) {
+        return AgentChatStatusOrchestrator.isOwnerIdle(entry);
+    }
+
+    public static void replyNow(AgentRuntimeEntry entry, String message) {
+        AgentDialogueTransportRuntime.replyNow(entry, message);
+    }
+
+    public static void queueSay(AgentRuntimeEntry entry, String message) {
+        AgentDialogueTransportRuntime.queueSay(entry, message);
+    }
+
+    public static void sayMapNow(Character bot, String message) {
+        AgentDialogueTransportRuntime.sayMapNow(bot, message);
+    }
+
+    public static void sayNow(Character bot, AgentReplyChannel channel, String message) {
+        AgentDialogueTransportRuntime.sayNow(bot, channel, message);
+    }
+
+    public static long queueSayWithEstimatedDelay(AgentRuntimeEntry entry, String message) {
+        return AgentDialogueTransportRuntime.queueSayWithEstimatedDelay(entry, message);
+    }
+
+    public static void afterDelay(AgentRuntimeEntry entry, long delayMs, Runnable action) {
+        AgentSchedulerRuntime.afterDelay(entry, delayMs, action);
+    }
+
+    public static void afterRandomDelay(AgentRuntimeEntry entry, int minMs, int maxMs, Runnable action) {
+        AgentSchedulerRuntime.afterRandomDelay(entry, minMs, maxMs, action);
+    }
+
+    public static long randomDelayMs(int minMs, int maxMs) {
+        return AgentSchedulerRuntime.randomDelayMs(minMs, maxMs);
+    }
+
+    public static boolean hasPendingGearPromptAfter(AgentRuntimeEntry entry, long nowMs) {
+        return AgentOfferStateRuntime.hasPendingGearPromptAfter(entry, nowMs);
+    }
+
+    public static void reserveGearPrompt(AgentRuntimeEntry entry, long scheduledAt) {
+        AgentOfferStateRuntime.reserveGearPrompt(entry, scheduledAt);
+    }
+
+    public static boolean isReservedGearPrompt(AgentRuntimeEntry entry, long scheduledAt) {
+        return AgentOfferStateRuntime.isReservedGearPrompt(entry, scheduledAt);
+    }
+
+    public static void clearGearPrompt(AgentRuntimeEntry entry) {
+        AgentOfferStateRuntime.clearGearPrompt(entry);
+    }
+
+    public static AgentChatReportRuntime.RecommendedGearActions recommendedGearActions(
+            AgentRuntimeEntry entry,
+            Character bot,
+            Character owner) {
+        return new AgentChatReportRuntime.RecommendedGearActions() {
+            @Override
+            public boolean hasOwner() {
+                return owner != null;
+            }
+
+            @Override
+            public boolean offerBestRecommendedGear() {
+                return AgentOfferService.offerBestRecommendedGear(entry, bot, owner);
+            }
+
+            @Override
+            public void queueReply(String line) {
+                AgentDialogueTransportRuntime.queueReply(entry, line);
+            }
+        };
+    }
+}

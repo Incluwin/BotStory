@@ -32,6 +32,7 @@ import provider.DataProvider;
 import provider.DataProviderFactory;
 import provider.DataTool;
 import provider.wz.WZFiles;
+import server.agents.capabilities.quest.AgentPartyQuestSyncService;
 import server.quest.actions.AbstractQuestAction;
 import server.quest.actions.BuffAction;
 import server.quest.actions.ExpAction;
@@ -90,6 +91,7 @@ public class Quest {
     private static final Logger log = LoggerFactory.getLogger(Quest.class);
     private static volatile Map<Integer, Quest> quests = new HashMap<>();
     private static volatile Map<Integer, Integer> infoNumberQuests = new HashMap<>();
+    private static volatile List<Quest> allQuestSnapshot;
     private static final Map<Short, Integer> medals = new HashMap<>();
 
     private static final Set<Short> exploitableQuests = new HashSet<>();
@@ -156,7 +158,8 @@ public class Quest {
                     break;
                 case MOB:
                     for (Data mob : startReq.getChildren()) {
-                        relevantMobs.add(DataTool.getInt(mob.getChildByPath("id")));
+                        relevantMobs.add(QuestSourceDataCorrections.mobRequirementId(
+                                id, DataTool.getInt(mob.getChildByPath("id"))));
                     }
                     break;
                 }
@@ -182,7 +185,8 @@ public class Quest {
 
                 if (type.equals(QuestRequirementType.MOB)) {
                     for (Data mob : completeReq.getChildren()) {
-                        relevantMobs.add(DataTool.getInt(mob.getChildByPath("id")));
+                        relevantMobs.add(QuestSourceDataCorrections.mobRequirementId(
+                                id, DataTool.getInt(mob.getChildByPath("id"))));
                     }
                 }
                 completeReqs.put(type, req);
@@ -324,7 +328,8 @@ public class Quest {
             for (AbstractQuestAction a : acts) {
                 a.run(chr, null);
             }
-            forceStart(chr, npc);
+            forceStart(chr, npc, false);
+            AgentPartyQuestSyncService.syncPartyAgentsQuestStart(chr, getId(), npc);
         }
     }
 
@@ -340,14 +345,21 @@ public class Quest {
                     return;
                 }
             }
-            forceComplete(chr, npc);
+            forceComplete(chr, npc, false);
             for (AbstractQuestAction a : acts) {
                 a.run(chr, selection);
             }
             if (!this.hasNextQuestAction()) {
                 chr.announceUpdateQuest(Character.DelayedQuestUpdate.INFO, chr.getQuest(this));
             }
+            AgentPartyQuestSyncService.syncPartyAgentsQuestComplete(chr, getId(), npc, selection);
         }
+    }
+
+    public List<Integer> selectableRewardItemIds(Character chr) {
+        AbstractQuestAction action = completeActs.get(QuestActionType.ITEM);
+        return action instanceof ItemAction items
+                ? items.selectableRewardItemIds(chr) : List.of();
     }
 
     public void reset(Character chr) {
@@ -369,6 +381,10 @@ public class Quest {
     }
 
     public boolean forceStart(Character chr, int npc) {
+        return forceStart(chr, npc, true);
+    }
+
+    private boolean forceStart(Character chr, int npc, boolean syncPartyBots) {
         QuestStatus newStatus = new QuestStatus(this, QuestStatus.Status.STARTED, npc);
 
         QuestStatus oldStatus = chr.getQuest(this.getId());
@@ -391,20 +407,27 @@ public class Quest {
         newStatus.setCompleted(chr.getQuest(this).getCompleted());
 
         if (timeLimit > 0) {
-            newStatus.setExpirationTime(System.currentTimeMillis() + SECONDS.toMillis(timeLimit));
+            newStatus.setExpirationTime(QuestTime.now() + SECONDS.toMillis(timeLimit));
             chr.questTimeLimit(this, timeLimit);
         }
         if (timeLimit2 > 0) {
-            newStatus.setExpirationTime(System.currentTimeMillis() + timeLimit2);
+            newStatus.setExpirationTime(QuestTime.now() + timeLimit2);
             chr.questTimeLimit2(this, newStatus.getExpirationTime());
         }
 
         chr.updateQuestStatus(newStatus);
+        if (syncPartyBots) {
+            AgentPartyQuestSyncService.syncPartyAgentsQuestStart(chr, getId(), npc);
+        }
 
         return true;
     }
 
     public boolean forceComplete(Character chr, int npc) {
+        return forceComplete(chr, npc, true);
+    }
+
+    private boolean forceComplete(Character chr, int npc, boolean syncPartyBots) {
         if (timeLimit > 0) {
             chr.sendPacket(PacketCreator.removeQuestTimeLimit(id));
         }
@@ -412,12 +435,37 @@ public class Quest {
         QuestStatus newStatus = new QuestStatus(this, QuestStatus.Status.COMPLETED, npc);
         newStatus.setForfeited(chr.getQuest(this).getForfeited());
         newStatus.setCompleted(chr.getQuest(this).getCompleted());
-        newStatus.setCompletionTime(System.currentTimeMillis());
+        newStatus.setCompletionTime(QuestTime.now());
         chr.updateQuestStatus(newStatus);
 
         chr.sendPacket(PacketCreator.showSpecialEffect(9)); // Quest completion
         chr.getMap().broadcastMessage(chr, PacketCreator.showForeignEffect(chr.getId(), 9), false); //use 9 instead of 12 for both
+        server.observer.ObserverInterestService.publish(
+                chr,
+                server.observer.ObserverInterestService.Type.QUEST_COMPLETE,
+                75,
+                "Completed quest " + id);
+        if (syncPartyBots) {
+            AgentPartyQuestSyncService.syncPartyAgentsQuestComplete(chr, getId(), npc, null);
+        }
         return true;
+    }
+
+    public void forceStartWithActions(Character chr, int npc) {
+        for (AbstractQuestAction action : startActs.values()) {
+            action.forceRun(chr, null);
+        }
+        forceStart(chr, npc, false);
+    }
+
+    public void forceCompleteWithActions(Character chr, int npc, Integer selection) {
+        forceComplete(chr, npc, false);
+        for (AbstractQuestAction action : completeActs.values()) {
+            action.forceRun(chr, selection);
+        }
+        if (!this.hasNextQuestAction()) {
+            chr.announceUpdateQuest(Character.DelayedQuestUpdate.INFO, chr.getQuest(this));
+        }
     }
 
     public short getId() {
@@ -446,6 +494,31 @@ public class Quest {
 
         ItemRequirement ireq = (ItemRequirement) req;
         return ireq.getItemAmountNeeded(itemid, true);
+    }
+
+    /** Exact completion item requirements from Quest.wz, without a level-limited derived catalog. */
+    public Map<Integer, Integer> getCompleteItemRequirements() {
+        AbstractQuestRequirement req = completeReqs.get(QuestRequirementType.ITEM);
+        if (req == null) {
+            return Map.of();
+        }
+        return ((ItemRequirement) req).getRequiredItems();
+    }
+
+    public Map<Integer, Integer> getStartItemRequirements() {
+        AbstractQuestRequirement req = startReqs.get(QuestRequirementType.ITEM);
+        return req == null ? Map.of() : ((ItemRequirement) req).getRequiredItems();
+    }
+
+    public Map<Integer, Integer> getCompleteMobRequirements() {
+        AbstractQuestRequirement req = completeReqs.get(QuestRequirementType.MOB);
+        if (req == null) return Map.of();
+        Map<Integer, Integer> result = new HashMap<>();
+        for (Integer mobId : relevantMobs) {
+            int amount = ((MobRequirement) req).getRequiredMobCount(mobId);
+            if (amount > 0) result.put(mobId, amount);
+        }
+        return Map.copyOf(result);
     }
 
     public int getMobAmountNeeded(int mid) {
@@ -672,6 +745,26 @@ public class Quest {
         return mqa != null;
     }
 
+    public Set<QuestActionType> getStartActionTypes() {
+        return Set.copyOf(startActs.keySet());
+    }
+
+    public Set<QuestActionType> getCompleteActionTypes() {
+        return Set.copyOf(completeActs.keySet());
+    }
+
+    public Set<QuestRequirementType> getStartRequirementTypes() {
+        return Set.copyOf(startReqs.keySet());
+    }
+
+    public Set<QuestRequirementType> getCompleteRequirementTypes() {
+        return Set.copyOf(completeReqs.keySet());
+    }
+
+    public boolean hasTimeLimit() {
+        return timeLimit > 0 || timeLimit2 > 0;
+    }
+
     public String getName() {
         return name;
     }
@@ -697,7 +790,7 @@ public class Quest {
         return ret;
     }
 
-    public static void loadAllQuests() {
+    public static synchronized void loadAllQuests() {
         final Map<Integer, Quest> loadedQuests = new HashMap<>();
         final Map<Integer, Integer> loadedInfoNumberQuests = new HashMap<>();
 
@@ -722,5 +815,14 @@ public class Quest {
 
         Quest.quests = loadedQuests;
         Quest.infoNumberQuests = loadedInfoNumberQuests;
+        Quest.allQuestSnapshot = loadedQuests.values().stream()
+                .sorted(java.util.Comparator.comparingInt(Quest::getId)).toList();
+    }
+
+    public static synchronized List<Quest> allQuests() {
+        if (allQuestSnapshot == null) {
+            loadAllQuests();
+        }
+        return allQuestSnapshot;
     }
 }

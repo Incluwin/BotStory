@@ -22,7 +22,13 @@ public final class AcceptToSHandler extends AbstractPacketHandler {
             return;
         }
         if (c.finishLogin() == 0) {
+            int disconnectedBots = c.checkChar(c.getAccID());
             c.sendPacket(PacketCreator.getAuthSuccess(c));
+            if (disconnectedBots > 0) {
+                String suffix = disconnectedBots == 1 ? "" : "s";
+                c.sendPacket(PacketCreator.serverNotice(5,
+                        "Disconnected " + disconnectedBots + " active bot" + suffix + " from this account."));
+            }
         } else {
             c.sendPacket(PacketCreator.getLoginFailed(9));//shouldn't happen XD
         }

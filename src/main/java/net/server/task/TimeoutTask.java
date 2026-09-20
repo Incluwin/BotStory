@@ -19,7 +19,7 @@ public class TimeoutTask extends BaseTask implements Runnable {
     @Override
     public void run() {
         long time = System.currentTimeMillis();
-        Collection<Character> chars = wserv.getPlayerStorage().getAllCharacters();
+        Collection<Character> chars = wserv.getPlayerStorage().getNetworkRecipients();
         for (Character chr : chars) {
             if (time - chr.getClient().getLastPacket() > YamlConfig.config.server.TIMEOUT_DURATION) {
                 if (!isBot(chr)) { // SoloMapling: bots send no packets; never idle-disconnect them

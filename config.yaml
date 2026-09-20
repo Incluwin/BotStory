@@ -17,6 +17,15 @@ worlds:
     travel_rate: 10                         #Means of transportation rides/departs using 1/N of the default time.
 
     #Properties for Bera 1
+    mob_rate: 4.0  # Mob count multiplier  # FriendServer: preserves pre-merge behaviour
+    max_mob_per_spawnpoint: 4  # Must be equal or higher than mob_rate  # FriendServer: preserves pre-merge behaviour
+    # mob_spawn_overrides examples: {map_ids: [100000000], mob_rate: 1.5} or {map_id_min: 100000000, map_id_max: 100000999, max_mob_per_spawnpoint: 3}
+    mob_spawn_overrides: []                                 # Optional map-specific overrides. Later matching entries win per field.
+    maker_rate: 1                                           # CUSTOM: Monster Crystals produced from Maker leftover conversion. 1 = vanilla, 2 = 2x.
+    allow_all_untradeable_items: false                      # Prefer the allowlist below; this broad custom-world bypass is explicit.
+    untradeable_item_allowlist: []
+    allow_multiple_one_of_a_kind_items: false
+    multiple_one_of_a_kind_item_allowlist: []
   - flag: 0
     server_message: Welcome to Bera!
     event_message: Bera!
@@ -502,6 +511,75 @@ server:
 #All bot-economy code is gated behind ENABLED - shipped OFF until live-tested.
 #Structural-only values (persona rarity weights, per-SMT persona targets, per-item
 #prices) live in DB tables seeded from scripts/config/bot-*.yml at cold-start.
+
+    # ===== cosmic_agents (Kiwiism) settings =====
+    # Login Configuration
+    DEPLOYMENT_PROFILE: local                               # Allowed values: local, production.
+    ALLOW_INSECURE_PRODUCTION_AUTH: false                   # Production must enable both PIN and PIC unless this risk is explicitly accepted.
+    TAILSCALEHOST: 100.65.63.117                            # Tailscale (100.64.0.0/10) IPv4 address - same as HOST; tailnet clients are routed here
+    # Server Flags
+    observer:
+        enabled: true                                       # Enables browser observer packets, event collection, navgraph inspection, and camera director feeds.
+        navgraph_enabled: true                              # Enables the optional agent navigation graph adapter for browser observers.
+        agent_navigation_enabled: true                      # Enables selected-agent live route tracing for authorized browser observers.
+        agent_signals_enabled: true                         # Enables optional upcoming/route/stuck signals sampled from agent runtimes.
+        minimum_gm_level: 2                                 # GM accounts at this level or above may use Observer packets.
+        allowed_account_names: [admin]                      # Non-GM accounts allowed to use Observer packets; matching is case-insensitive.
+        allowed_character_names: []                         # Additional non-GM Observer character names; matching is case-insensitive.
+    PACKET_MAX_FRAME_BYTES: 32768                            # Reject inbound frames larger than this before allocating their payload. Recommended: 16384-65535.
+    PACKET_GLOBAL_RATE_PER_SECOND: 300                       # Sustained packet allowance per connection across all packet families. Recommended: 200-500.
+    PACKET_GLOBAL_BURST: 600                                 # One-second burst allowance before packets are dropped. Recommended: 2x the global rate.
+    PACKET_MOVEMENT_RATE_PER_SECOND: 120                     # Movement updates allowed per second. Recommended: 60-180.
+    PACKET_COMBAT_RATE_PER_SECOND: 120                       # Attacks, skills and damage updates allowed per second. Recommended: 60-180.
+    PACKET_CHAT_RATE_PER_SECOND: 20                          # Chat-family packets allowed per second. Recommended: 8-30.
+    PACKET_ECONOMY_RATE_PER_SECOND: 30                       # Shop, trade, storage, MTS and Duey actions allowed per second. Recommended: 15-60.
+    PACKET_OTHER_RATE_PER_SECOND: 200                        # Remaining packet families allowed per second. Recommended: 100-300.
+    PACKET_RATE_LIMIT_VIOLATIONS_BEFORE_DISCONNECT: 20       # Dropped packets in ten seconds before closing the connection. Recommended: 10-50.
+    ITEMS_NEVER_EXPIRE: false                               # Explicit custom-world override. Normal item expiration is preserved by default.
+    PETS_NEVER_EXPIRE: true  # Explicit custom-world override. Normal pet expiration is preserved by default.  # FriendServer: preserves pre-merge behaviour
+    USE_GACHA_V2: false                                     # Opt-in database-console gachapon and mob-level global-drop eligibility. False preserves stock Cosmic rolls.
+    MOB_RESPAWN_TIME_OVERRIDE_SECONDS: 10                   # Generic respawn delay; 0 preserves each source-map value.
+    REACTOR_RESPAWN_TIME_OVERRIDE_SECONDS: 10               # Generic reactor respawn delay; 0 preserves each source-map value.
+    MAPLE_ISLAND_MOB_RESPAWN_TIME_OVERRIDE_SECONDS: 5       # Overrides the generic mob delay on Maple Island.
+    MAPLE_ISLAND_REACTOR_RESPAWN_TIME_OVERRIDE_SECONDS: 5   # Overrides the generic reactor delay on Maple Island.
+    DRESSING_ROOM_ENABLED: true                             # Local/admin content-generation tool. Disable for production unless explicitly required.
+    DRESSING_ROOM_MIN_GM_LEVEL: 1                           # Never expose dressing-room item spawning to normal players or Agents.
+    PLAYER_HP_MP_CAP: 30000                                 # Final HP/MP cap after equipment and buffs. Values above 30000 require a compatible client patch.
+    # Character Configuration
+    ALWAYS_MAX_INVENTORY_SLOTS: true                        # If true, new characters start with max equip/use/setup/etc slots and every login normalizes existing characters to max slots.
+    GM_NO_FAME_COOLDOWN: false                              # If true, GMs bypass the daily/monthly fame cooldown. Set false so bot GMs respect normal limits.
+    # NuTNNuT's custom features
+    # Scroll Success Bonus: adds a flat bonus % to all scroll success chances
+    SCROLL_SUCCESS_BONUS_ENABLED: false
+    SCROLL_SUCCESS_BONUS: 10                                # Flat % added to every scroll's success chance (capped at 100)
+    # Maker Skills:
+    MAKER_CRYSTAL_ONLY_IMPROVE: false                       # Black/Dark crystal only improves stats and never decreases, vanilla: false
+    # Godly Stats: chance for equipment to receive random bonus stats (like free-pre-applied chaos scroll)
+    GODLY_STATS_ENABLED: false                              # Dropped equipment only
+    GODLY_STATS_DROP_CHANCE: 20                             # % chance for dropped
+    GODLY_STATS_MAKER_ENABLED: false
+    GODLY_STATS_MAKER_CHANCE: 20                            # % chance for maker skill (with stimulant)
+    GODLY_STATS_MAKER_BONUS_SCALING: 0.1
+    GODLY_STATS_MAKER_MIN_BONUS: 5
+    GODLY_STATS_MAKER_HPMP_SCALING: 1.0
+    GODLY_STATS_MAKER_MIN_HPMP_BONUS: 30
+    GODLY_STATS_QUEST_ENABLED: false
+    GODLY_STATS_QUEST_CHANCE: 100                           # % chance for quest reward equips
+    GODLY_STATS_QUEST_BONUS_SCALING: 0.1
+    GODLY_STATS_QUEST_MIN_BONUS: 5
+    GODLY_STATS_QUEST_HPMP_SCALING: 1.0
+    GODLY_STATS_QUEST_MIN_HPMP_BONUS: 30
+    GODLY_STATS_NPC_ENABLED: false
+    GODLY_STATS_NPC_CHANCE: 20                              # % chance for NPC/event reward equips (e.g. KPQ reward)
+    GODLY_STATS_NPC_BONUS_SCALING: 0.1
+    GODLY_STATS_NPC_MIN_BONUS: 5
+    GODLY_STATS_NPC_HPMP_SCALING: 1.0
+    GODLY_STATS_NPC_MIN_HPMP_BONUS: 30
+    GODLY_STATS_BONUS_SCALING: 0.1                          # 0.1 -> lv 100 gear gain up to 10 str/dex/int/luk/atk/etc. (only if the stat already exists, like chaos scroll)
+    GODLY_STATS_MIN_BONUS: 5                                # Minimum max stat bonus
+    GODLY_STATS_HPMP_SCALING: 1.0                           # 1 -> lv 100 gear gain up to 100 bonus max HP/MP (even if equip had no hp/mp bonus)
+    GODLY_STATS_MIN_HPMP_BONUS: 30                          # Minimum max HP/MP bonus
+    ALLOW_DROPS_ON_DROP_LIMIT_MAPS: false                   # Independent map-rule override; not coupled to item tradeability.
 bot_economy:
     #Master switches.
     ENABLED: false

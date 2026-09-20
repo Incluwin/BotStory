@@ -38,12 +38,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PnpcRemoveCommand extends Command {
-    private static final Logger log = LoggerFactory.getLogger(PnpcRemoveCommand.class);
-
     {
         setDescription("Remove a permanent NPC on the map.");
     }
@@ -95,7 +91,7 @@ public class PnpcRemoveCommand extends Command {
 
             ps.close();
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
             player.dropMessage(5, "Failed to remove pNPC from the database.");
         }
 

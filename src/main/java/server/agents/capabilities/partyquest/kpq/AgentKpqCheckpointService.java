@@ -1,0 +1,60 @@
+package server.agents.capabilities.partyquest.kpq;
+
+import client.Character;
+import scripting.event.EventInstanceManager;
+import server.agents.capabilities.movement.AgentMovementPoseService;
+import server.agents.capabilities.movement.AgentMovementStateResetService;
+import server.agents.integration.AgentMapGatewayRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
+import server.maps.MapleMap;
+
+import java.awt.Point;
+
+/** GM-test-only stage bootstrap. Never used by production KPQ sessions. */
+final class AgentKpqCheckpointService {
+    private AgentKpqCheckpointService() {
+    }
+
+    static void apply(AgentKpqSession session, Character leader, int stage, long nowMs) {
+        if (session.mode() != AgentKpqSession.Mode.TEST_OBSERVATION) {
+            throw new IllegalStateException("KPQ checkpoints are test-only");
+        }
+        EventInstanceManager event = leader.getEventInstance();
+        if (event == null) {
+            AgentKpqTerminationService.fail(
+                    session, "Checkpoint requested without a live KPQ event", nowMs);
+            return;
+        }
+        for (int cleared = 1; cleared < stage; cleared++) {
+            event.setProperty(cleared + "stageclear", "true");
+        }
+        MapleMap target = event.getMapInstance(AgentKpqDefinition.STAGE_1_MAP + stage - 1);
+        if (target == null) {
+            AgentKpqTerminationService.fail(
+                    session, "KPQ checkpoint map " + stage + " is unavailable", nowMs);
+            return;
+        }
+        var spawn = target.getPortal(0).getPosition();
+        for (AgentKpqMemberState member : session.members()) {
+            AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
+            Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
+            if (agent != null) {
+                AgentMapGatewayRuntime.map().changeMap(agent, target, spawn);
+                // Direct checkpoint warps do not traverse a portal, so synchronize the
+                // Agent-owned physics pose explicitly. Otherwise the next physics tick can
+                // restore the Stage 1 coordinates on this map before normal recovery catches it.
+                AgentMovementPoseService.teleportTo(entry, agent, new Point(agent.getPosition()));
+                AgentMovementStateResetService.resetEntryStateAfterTeleport(entry);
+            }
+        }
+        session.transition(switch (stage) {
+            case 2 -> AgentKpqSession.Phase.STAGE_2;
+            case 3 -> AgentKpqSession.Phase.STAGE_3;
+            case 4 -> AgentKpqSession.Phase.STAGE_4;
+            case 5 -> AgentKpqSession.Phase.STAGE_5;
+            default -> AgentKpqSession.Phase.STAGE_1;
+        }, nowMs);
+    }
+}

@@ -45,6 +45,11 @@ public enum EquipSlot {
         return name;
     }
 
+    /** Returns the primary (first) allowed slot number, or 0 if none. */
+    public int getPrimarySlot() {
+        return (allowed != null && allowed.length > 0) ? allowed[0] : 0;
+    }
+
     public boolean isAllowed(int slot, boolean cash) {
         if (slot < 0) {
             if (allowed != null) {
@@ -60,7 +65,7 @@ public enum EquipSlot {
     }
 
     public static EquipSlot getFromTextSlot(String slot) {
-        if (!slot.isEmpty()) {
+        if (slot != null && !slot.isEmpty()) {
             for (EquipSlot c : values()) {
                 if (c.getName() != null) {
                     if (c.getName().equals(slot)) {

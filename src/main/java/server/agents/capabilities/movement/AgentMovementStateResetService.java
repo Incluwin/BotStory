@@ -1,0 +1,50 @@
+package server.agents.capabilities.movement;
+
+import server.agents.capabilities.combat.AgentGrindSearchStateRuntime;
+
+import server.agents.capabilities.movement.fidget.AgentFidgetService;
+import server.agents.capabilities.combat.AgentCombatCooldownStateRuntime;
+import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationStateResetService;
+import server.agents.capabilities.follow.AgentOwnerMotionStateRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+
+/**
+ * Agent-owned movement reset and transient-state cleanup.
+ */
+public final class AgentMovementStateResetService {
+    private AgentMovementStateResetService() {
+    }
+
+    public static void resetEntryState(AgentRuntimeEntry entry) {
+        AgentMovementPoseService.resetMotion(entry, AgentRuntimeIdentityRuntime.bot(entry).getPosition());
+        clearTransientState(entry);
+    }
+
+    public static void resetEntryStateAfterTeleport(AgentRuntimeEntry entry) {
+        AgentHorizontalBoundaryStateRuntime.clear(entry);
+        clearTransientState(entry);
+    }
+
+    public static void clearTransientState(AgentRuntimeEntry entry) {
+        AgentGrindTargetStateRuntime.clear(entry);
+        AgentGrindSearchStateRuntime.clear(entry);
+        AgentCombatCooldownStateRuntime.clearAttackCooldown(entry);
+        AgentNavigationStateResetService.clearGraphWarmupFallback(entry);
+        AgentOwnerMotionStateRuntime.clearObservedOwnerStep(entry);
+        AgentFidgetService.clear(entry);
+        clearNavigationState(entry);
+        AgentMovementBroadcastStateRuntime.invalidate(entry);
+    }
+
+    public static void clearNavigationState(AgentRuntimeEntry entry) {
+        clearNavigationStep(entry);
+        AgentNavigationStateResetService.clearTarget(entry);
+    }
+
+    /** Invalidates only the current traversal step while preserving the requested destination. */
+    public static void clearNavigationStep(AgentRuntimeEntry entry) {
+        AgentNavigationStateResetService.clearStep(entry);
+    }
+}

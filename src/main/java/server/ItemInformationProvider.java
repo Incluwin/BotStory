@@ -73,6 +73,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.DoubleSupplier;
 
 /**
  * @author Matze
@@ -108,6 +109,7 @@ public class ItemInformationProvider {
     protected Map<Integer, Integer> projectileWatkCache = new HashMap<>();
     protected Map<Integer, String> nameCache = new HashMap<>();
     protected Map<Integer, String> descCache = new HashMap<>();
+    protected Map<Integer, Boolean> hasDataCache = new HashMap<>(); // For detecting corrupted/unused items
     protected Map<Integer, String> msgCache = new HashMap<>();
     protected Map<Integer, Boolean> accountItemRestrictionCache = new HashMap<>();
     protected Map<Integer, Boolean> dropRestrictionCache = new HashMap<>();
@@ -141,6 +143,7 @@ public class ItemInformationProvider {
     protected Map<Integer, Data> skillUpgradeInfoCache = new HashMap<>();
     protected Map<Integer, Pair<Integer, Set<Integer>>> cashPetFoodCache = new HashMap<>();
     protected Map<Integer, QuestConsItem> questItemConsCache = new HashMap<>();
+    private final Map<Integer, Integer> vegaSpellByScroll;
 
     private ItemInformationProvider() {
         loadCardIdData();
@@ -154,9 +157,28 @@ public class ItemInformationProvider {
         etcStringData = stringData.getData("Etc.img");
         insStringData = stringData.getData("Ins.img");
         petStringData = stringData.getData("Pet.img");
+        vegaSpellByScroll = loadVegaSpellScrolls();
 
         isQuestItemCache.put(0, false);
         isPartyQuestItemCache.put(0, false);
+    }
+
+    private Map<Integer, Integer> loadVegaSpellScrolls() {
+        Data vegaData = etcData.getData("VegaSpell.img");
+        if (vegaData == null) {
+            log.error("Unable to load Etc.wz/VegaSpell.img; Vega's Spell will reject all scrolls");
+            return Map.of();
+        }
+        return CashItemEligibility.loadVegaSpellScrolls(vegaData);
+    }
+
+    public boolean isVegaCompatible(int scrollId, int vegaSpellId) {
+        return vegaSpellByScroll.getOrDefault(scrollId, 0) == vegaSpellId;
+    }
+
+    public boolean canUseViciousHammer(Equip equip) {
+        return CashItemEligibility.canUseViciousHammer(equip,
+                equip == null ? null : getEquipStats(equip.getItemId()));
     }
 
 
@@ -223,7 +245,7 @@ public class ItemInformationProvider {
         } else if (itemId >= 1000000 && itemId < 1010000) {
             theData = eqpStringData;
             cat = "Eqp/Cap";
-        } else if (itemId >= 1102000 && itemId < 1103000) {
+        } else if (itemId >= 1102000 && itemId < 1104000) {
             theData = eqpStringData;
             cat = "Eqp/Cape";
         } else if (itemId >= 1040000 && itemId < 1050000) {
@@ -363,9 +385,14 @@ public class ItemInformationProvider {
     }
 
     public short getSlotMax(Client c, int itemId) {
+        return (short) (getBaseSlotMax(itemId) + getExtraSlotMaxFromPlayer(c, itemId));
+    }
+
+    /** WZ/default slot maximum before character skill bonuses. */
+    public short getBaseSlotMax(int itemId) {
         Short slotMax = slotMaxCache.get(itemId);
         if (slotMax != null) {
-            return (short) (slotMax + getExtraSlotMaxFromPlayer(c, itemId));
+            return slotMax;
         }
         short ret = 0;
         Data item = getItemData(itemId);
@@ -383,7 +410,7 @@ public class ItemInformationProvider {
         }
 
         slotMaxCache.put(itemId, ret);
-        return (short) (ret + getExtraSlotMaxFromPlayer(c, itemId));
+        return ret;
     }
 
     public int getMeso(int itemId) {
@@ -516,7 +543,7 @@ public class ItemInformationProvider {
         return ret;
     }
 
-    protected String getEquipmentSlot(int itemId) {
+    public String getEquipmentSlot(int itemId) {
         if (equipmentSlotCache.containsKey(itemId)) {
             return equipmentSlotCache.get(itemId);
         }
@@ -620,6 +647,19 @@ public class ItemInformationProvider {
         return ret;
     }
 
+    /** Shared exact compatibility rule used by both the client handler and autonomous demand planning. */
+    public boolean canApplyScroll(int scrollId, int equipmentItemId) {
+        List<Integer> requirements = getScrollReqs(scrollId);
+        if (!requirements.isEmpty() && !requirements.contains(equipmentItemId)) return false;
+        if (ItemConstants.isChaosScroll(scrollId) || ItemConstants.isCleanSlate(scrollId)) return true;
+        int scrollCategory = scrollId / 100;
+        if (scrollCategory == 20492) {
+            int equipmentCategory = (equipmentItemId / 10000) % 100;
+            return equipmentCategory == 11 || equipmentCategory == 12 || equipmentCategory == 13;
+        }
+        return scrollCategory % 100 == (equipmentItemId / 10000) % 100;
+    }
+
     public WeaponType getWeaponType(int itemId) {
         int cat = (itemId / 10000) % 100;
         WeaponType[] type = {WeaponType.SWORD1H, WeaponType.GENERAL1H_SWING, WeaponType.GENERAL1H_SWING, WeaponType.DAGGER_OTHER, WeaponType.NOT_A_WEAPON, WeaponType.NOT_A_WEAPON, WeaponType.NOT_A_WEAPON, WeaponType.WAND, WeaponType.STAFF, WeaponType.NOT_A_WEAPON, WeaponType.SWORD2H, WeaponType.GENERAL2H_SWING, WeaponType.GENERAL2H_SWING, WeaponType.SPEAR_STAB, WeaponType.POLE_ARM_SWING, WeaponType.BOW, WeaponType.CROSSBOW, WeaponType.CLAW, WeaponType.KNUCKLE, WeaponType.GUN};
@@ -634,7 +674,8 @@ public class ItemInformationProvider {
     }
 
     public static boolean rollSuccessChance(double propPercent) {
-        return Math.random() >= testYourLuck(propPercent / 100.0, YamlConfig.config.server.SCROLL_CHANCE_ROLLS);
+        double actualChance = testYourLuck(propPercent / 100.0, YamlConfig.config.server.SCROLL_CHANCE_ROLLS);
+        return Randomizer.nextDouble() >= actualChance;
     }
 
     private static short getMaximumShortMaxIfOverflow(int value1, int value2) {
@@ -650,110 +691,26 @@ public class ItemInformationProvider {
     }
 
     public void scrollOptionEquipWithChaos(Equip nEquip, int range, boolean option) {
-        // option: watk, matk, wdef, mdef, spd, jump, hp, mp
-        //   stat: dex, luk, str, int, avoid, acc
+        // option: watk, matk, wdef, mdef, spd, jump, hp, mp - black crystal - 1/2/3
+        //   stat: dex, luk, str, int, avoid, acc - dark crystal - 2/3/5
 
-        if (!option) {
-            if (nEquip.getStr() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setStr(getMaximumShortMaxIfOverflow(nEquip.getStr(), (nEquip.getStr() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setStr(getMaximumShortMaxIfOverflow(0, (nEquip.getStr() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getDex() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setDex(getMaximumShortMaxIfOverflow(nEquip.getDex(), (nEquip.getDex() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setDex(getMaximumShortMaxIfOverflow(0, (nEquip.getDex() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getInt() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setInt(getMaximumShortMaxIfOverflow(nEquip.getInt(), (nEquip.getInt() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setInt(getMaximumShortMaxIfOverflow(0, (nEquip.getInt() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getLuk() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setLuk(getMaximumShortMaxIfOverflow(nEquip.getLuk(), (nEquip.getLuk() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setLuk(getMaximumShortMaxIfOverflow(0, (nEquip.getLuk() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getAcc() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setAcc(getMaximumShortMaxIfOverflow(nEquip.getAcc(), (nEquip.getAcc() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setAcc(getMaximumShortMaxIfOverflow(0, (nEquip.getAcc() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getAvoid() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setAvoid(getMaximumShortMaxIfOverflow(nEquip.getAvoid(), (nEquip.getAvoid() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setAvoid(getMaximumShortMaxIfOverflow(0, (nEquip.getAvoid() + chscrollRandomizedStat(range))));
-                }
-            }
+        boolean noNeg = YamlConfig.config.server.MAKER_CRYSTAL_ONLY_IMPROVE;
+        if (option) {
+            nEquip.setWatk(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getWatk(), range) : (short)(nEquip.getWatk() + chscrollRandomizedStat(range))));
+            nEquip.setWdef(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getWdef(), range) : (short)(nEquip.getWdef() + chscrollRandomizedStat(range))));
+            nEquip.setMatk(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getMatk(), range) : (short)(nEquip.getMatk() + chscrollRandomizedStat(range))));
+            nEquip.setMdef(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getMdef(), range) : (short)(nEquip.getMdef() + chscrollRandomizedStat(range))));
+            nEquip.setSpeed(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getSpeed(), range) : (short)(nEquip.getSpeed() + chscrollRandomizedStat(range))));
+            nEquip.setJump(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getJump(), range) : (short)(nEquip.getJump() + chscrollRandomizedStat(range))));
+            nEquip.setHp(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getHp(), range) : (short)(nEquip.getHp() + chscrollRandomizedStat(range))));
+            nEquip.setMp(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getMp(), range) : (short)(nEquip.getMp() + chscrollRandomizedStat(range))));
         } else {
-            if (nEquip.getWatk() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setWatk(getMaximumShortMaxIfOverflow(nEquip.getWatk(), (nEquip.getWatk() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setWatk(getMaximumShortMaxIfOverflow(0, (nEquip.getWatk() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getWdef() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setWdef(getMaximumShortMaxIfOverflow(nEquip.getWdef(), (nEquip.getWdef() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setWdef(getMaximumShortMaxIfOverflow(0, (nEquip.getWdef() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getMatk() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setMatk(getMaximumShortMaxIfOverflow(nEquip.getMatk(), (nEquip.getMatk() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setMatk(getMaximumShortMaxIfOverflow(0, (nEquip.getMatk() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getMdef() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setMdef(getMaximumShortMaxIfOverflow(nEquip.getMdef(), (nEquip.getMdef() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setMdef(getMaximumShortMaxIfOverflow(0, (nEquip.getMdef() + chscrollRandomizedStat(range))));
-                }
-            }
-
-            if (nEquip.getSpeed() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setSpeed(getMaximumShortMaxIfOverflow(nEquip.getSpeed(), (nEquip.getSpeed() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setSpeed(getMaximumShortMaxIfOverflow(0, (nEquip.getSpeed() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getJump() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setJump(getMaximumShortMaxIfOverflow(nEquip.getJump(), (nEquip.getJump() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setJump(getMaximumShortMaxIfOverflow(0, (nEquip.getJump() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getHp() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setHp(getMaximumShortMaxIfOverflow(nEquip.getHp(), (nEquip.getHp() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setHp(getMaximumShortMaxIfOverflow(0, (nEquip.getHp() + chscrollRandomizedStat(range))));
-                }
-            }
-            if (nEquip.getMp() > 0) {
-                if (YamlConfig.config.server.USE_ENHANCED_CHSCROLL) {
-                    nEquip.setMp(getMaximumShortMaxIfOverflow(nEquip.getMp(), (nEquip.getMp() + chscrollRandomizedStat(range))));
-                } else {
-                    nEquip.setMp(getMaximumShortMaxIfOverflow(0, (nEquip.getMp() + chscrollRandomizedStat(range))));
-                }
-            }
+            nEquip.setStr(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getStr(), range) : (short)(nEquip.getStr() + chscrollRandomizedStat(range))));
+            nEquip.setDex(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getDex(), range) : (short)(nEquip.getDex() + chscrollRandomizedStat(range))));
+            nEquip.setInt(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getInt(), range) : (short)(nEquip.getInt() + chscrollRandomizedStat(range))));
+            nEquip.setLuk(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getLuk(), range) : (short)(nEquip.getLuk() + chscrollRandomizedStat(range))));
+            nEquip.setAcc(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getAcc(), range) : (short)(nEquip.getAcc() + chscrollRandomizedStat(range))));
+            nEquip.setAvoid(getMaximumShortMaxIfOverflow(0, noNeg ? getRandUpgradedStat(nEquip.getAvoid(), range) : (short)(nEquip.getAvoid() + chscrollRandomizedStat(range))));
         }
     }
 
@@ -1076,6 +1033,9 @@ public class ItemInformationProvider {
 
             if (((nEquip.getUpgradeSlots() > 0 || ItemConstants.isCleanSlate(scrollId))) || assertGM) {
                 double prop = (double) stats.get("success");
+                if (YamlConfig.config.server.SCROLL_SUCCESS_BONUS_ENABLED) {
+                    prop = Math.min(prop + YamlConfig.config.server.SCROLL_SUCCESS_BONUS, 100);
+                }
 
                 switch (vegaItemId) {
                     case ItemId.VEGAS_SPELL_10:
@@ -1249,37 +1209,97 @@ public class ItemInformationProvider {
     }
 
     private static short getRandStat(short defaultValue, int maxRange) {
+        return getRandStat(defaultValue, maxRange, Randomizer::nextDouble);
+    }
+
+    private static short getRandStat(short defaultValue, int maxRange, DoubleSupplier random) {
         if (defaultValue == 0) {
             return 0;
         }
         int lMaxRange = (int) Math.min(Math.ceil(defaultValue * 0.1), maxRange);
-        return (short) ((defaultValue - lMaxRange) + Math.floor(Randomizer.nextDouble() * (lMaxRange * 2 + 1)));
+        return (short) ((defaultValue - lMaxRange) + Math.floor(random.getAsDouble() * (lMaxRange * 2 + 1)));
     }
 
     public Equip randomizeStats(Equip equip) {
-        equip.setStr(getRandStat(equip.getStr(), 5));
-        equip.setDex(getRandStat(equip.getDex(), 5));
-        equip.setInt(getRandStat(equip.getInt(), 5));
-        equip.setLuk(getRandStat(equip.getLuk(), 5));
-        equip.setMatk(getRandStat(equip.getMatk(), 5));
-        equip.setWatk(getRandStat(equip.getWatk(), 5));
-        equip.setAcc(getRandStat(equip.getAcc(), 5));
-        equip.setAvoid(getRandStat(equip.getAvoid(), 5));
-        equip.setJump(getRandStat(equip.getJump(), 5));
-        equip.setSpeed(getRandStat(equip.getSpeed(), 5));
-        equip.setWdef(getRandStat(equip.getWdef(), 10));
-        equip.setMdef(getRandStat(equip.getMdef(), 10));
-        equip.setHp(getRandStat(equip.getHp(), 10));
-        equip.setMp(getRandStat(equip.getMp(), 10));
+        return randomizeStats(equip, true);
+    }
+
+    public Equip randomizeStats(Equip equip, boolean checkGodly) {
+        return randomizeStats(equip, checkGodly, Randomizer::nextDouble);
+    }
+
+    public Equip randomizeStats(Equip equip, boolean checkGodly, DoubleSupplier random) {
+        equip.setStr(getRandStat(equip.getStr(), 5, random));
+        equip.setDex(getRandStat(equip.getDex(), 5, random));
+        equip.setInt(getRandStat(equip.getInt(), 5, random));
+        equip.setLuk(getRandStat(equip.getLuk(), 5, random));
+        equip.setMatk(getRandStat(equip.getMatk(), 5, random));
+        equip.setWatk(getRandStat(equip.getWatk(), 5, random));
+        equip.setAcc(getRandStat(equip.getAcc(), 5, random));
+        equip.setAvoid(getRandStat(equip.getAvoid(), 5, random));
+        equip.setJump(getRandStat(equip.getJump(), 5, random));
+        equip.setSpeed(getRandStat(equip.getSpeed(), 5, random));
+        equip.setWdef(getRandStat(equip.getWdef(), 10, random));
+        equip.setMdef(getRandStat(equip.getMdef(), 10, random));
+        equip.setHp(getRandStat(equip.getHp(), 10, random));
+        equip.setMp(getRandStat(equip.getMp(), 10, random));
+        double chance = 1d - Math.pow(1d - YamlConfig.config.server.GODLY_STATS_DROP_CHANCE / 100d,
+                YamlConfig.config.server.SCROLL_CHANCE_ROLLS);
+        if (checkGodly && YamlConfig.config.server.GODLY_STATS_ENABLED && random.getAsDouble() < chance) {
+            randomizeGodlyStats(equip, YamlConfig.config.server.GODLY_STATS_BONUS_SCALING,
+                    YamlConfig.config.server.GODLY_STATS_MIN_BONUS,
+                    YamlConfig.config.server.GODLY_STATS_HPMP_SCALING,
+                    YamlConfig.config.server.GODLY_STATS_MIN_HPMP_BONUS, random);
+        }
         return equip;
     }
 
+    public void randomizeGodlyStats(Equip equip) {
+        randomizeGodlyStats(equip,
+                YamlConfig.config.server.GODLY_STATS_BONUS_SCALING,
+                YamlConfig.config.server.GODLY_STATS_MIN_BONUS,
+                YamlConfig.config.server.GODLY_STATS_HPMP_SCALING,
+                YamlConfig.config.server.GODLY_STATS_MIN_HPMP_BONUS);
+    }
+
+    public void randomizeGodlyStats(Equip equip, double bonusScaling, int minimumBonus,
+                                    double hpMpScaling, int minimumHpMpBonus) {
+        randomizeGodlyStats(equip, bonusScaling, minimumBonus, hpMpScaling, minimumHpMpBonus,
+                Randomizer::nextDouble);
+    }
+
+    private void randomizeGodlyStats(Equip equip, double bonusScaling, int minimumBonus,
+                                     double hpMpScaling, int minimumHpMpBonus, DoubleSupplier random) {
+        Map<String, Integer> stats = getEquipStats(equip.getItemId());
+        short reqLevel = (short) ((stats == null || stats.get("reqLevel") == null) ? 0 : stats.get("reqLevel"));
+        int maxBonus = Math.max(Math.round((float) (reqLevel * bonusScaling)), minimumBonus);
+        int maxHPMPBonus = (short) Math.max((int) (reqLevel * hpMpScaling), minimumHpMpBonus);
+        equip.setStr(getRandUpgradedStat(equip.getStr(), maxBonus, random));
+        equip.setDex(getRandUpgradedStat(equip.getDex(), maxBonus, random));
+        equip.setInt(getRandUpgradedStat(equip.getInt(), maxBonus, random));
+        equip.setLuk(getRandUpgradedStat(equip.getLuk(), maxBonus, random));
+        equip.setMatk(getRandUpgradedStat(equip.getMatk(), maxBonus, random));
+        equip.setWatk(getRandUpgradedStat(equip.getWatk(), maxBonus, random));
+        equip.setAcc(getRandUpgradedStat(equip.getAcc(), maxBonus, random));
+        equip.setAvoid(getRandUpgradedStat(equip.getAvoid(), maxBonus, random));
+        equip.setJump(getRandUpgradedStat(equip.getJump(), maxBonus, random));
+        equip.setSpeed(getRandUpgradedStat(equip.getSpeed(), maxBonus, random));
+        equip.setWdef(getRandUpgradedStat(equip.getWdef(), maxBonus, random));
+        equip.setMdef(getRandUpgradedStat(equip.getMdef(), maxBonus, random));
+        equip.setHp(getRandUpgradedStat((short) (equip.getHp() + maxHPMPBonus), maxHPMPBonus, random));
+        equip.setMp(getRandUpgradedStat((short) (equip.getMp() + maxHPMPBonus), maxHPMPBonus, random));
+    }
+
     private static short getRandUpgradedStat(short defaultValue, int maxRange) {
+        return getRandUpgradedStat(defaultValue, maxRange, Randomizer::nextDouble);
+    }
+
+    private static short getRandUpgradedStat(short defaultValue, int maxRange, DoubleSupplier random) {
         if (defaultValue == 0) {
             return 0;
         }
         int lMaxRange = maxRange;
-        return (short) (defaultValue + Math.floor(Randomizer.nextDouble() * (lMaxRange + 1)));
+        return (short) (defaultValue + Math.floor(random.getAsDouble() * (lMaxRange + 1)));
     }
 
     public Equip randomizeUpgradeStats(Equip equip) {
@@ -1296,6 +1316,14 @@ public class ItemInformationProvider {
         equip.setMdef(getRandUpgradedStat(equip.getMdef(), 5));
         equip.setHp(getRandUpgradedStat(equip.getHp(), 5));
         equip.setMp(getRandUpgradedStat(equip.getMp(), 5));
+
+        if (YamlConfig.config.server.GODLY_STATS_MAKER_ENABLED && ItemInformationProvider.rollSuccessChance(YamlConfig.config.server.GODLY_STATS_MAKER_CHANCE)) {
+            randomizeGodlyStats(equip,
+                    YamlConfig.config.server.GODLY_STATS_MAKER_BONUS_SCALING,
+                    YamlConfig.config.server.GODLY_STATS_MAKER_MIN_BONUS,
+                    YamlConfig.config.server.GODLY_STATS_MAKER_HPMP_SCALING,
+                    YamlConfig.config.server.GODLY_STATS_MAKER_MIN_HPMP_BONUS);
+        }
         return equip;
     }
 
@@ -1381,6 +1409,18 @@ public class ItemInformationProvider {
         return bRestricted;
     }
 
+    public boolean hasData(int itemId) {
+        if (hasDataCache.containsKey(itemId)) {
+            return hasDataCache.get(itemId);
+        }
+
+        Data data = getItemData(itemId);
+        boolean hasData = data != null && !data.getChildren().isEmpty();
+
+        hasDataCache.put(itemId, hasData);
+        return hasData;
+    }
+
     public boolean isAccountRestricted(int itemId) {
         if (accountItemRestrictionCache.containsKey(itemId)) {
             return accountItemRestrictionCache.get(itemId);
@@ -1437,6 +1477,11 @@ public class ItemInformationProvider {
 
         pickupRestrictionCache.put(itemId, bRestricted);
         return bRestricted;
+    }
+
+    public boolean isPickupRestricted(int itemId, Character character) {
+        return isPickupRestricted(itemId)
+                && !ItemRestrictionPolicy.allowsMultipleOneOfAKind(character, itemId);
     }
 
     private Pair<Map<String, Integer>, Data> getSkillStatsInternal(int itemId) {
@@ -1557,7 +1602,7 @@ public class ItemInformationProvider {
                 monsterBookID.put(rs.getInt(1), rs.getInt(2));
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 
@@ -1702,6 +1747,12 @@ public class ItemInformationProvider {
         return consume;
     }
 
+    public int getWeaponAttackSpeed(int itemId) {
+        Data data = getItemData(itemId);
+        if (data == null) return 6;
+        return DataTool.getIntConvert("info/attackSpeed", data, 6);
+    }
+
     public final boolean isTwoHanded(int itemId) {
         switch (getWeaponType(itemId)) {
             case GENERAL2H_SWING:
@@ -1749,24 +1800,6 @@ public class ItemInformationProvider {
         return YamlConfig.config.server.USE_ENFORCE_UNMERCHABLE_PET && ItemConstants.isPet(itemId);
     }
 
-    /**
-     * Per-class stat-requirement gate used by both canWearEquipment overloads.
-     * Enforces ONLY the primary stat for the character's class (STR/INT/DEX/LUK
-     * for Warrior/Magician/Bowman/Thief respectively). Pirate and Beginner
-     * branches have no stat gate at all. Secondary stat requirements are
-     * ignored across the board, per the project's equipment design.
-     */
-    private boolean failsPrimaryStatReq(Character chr, Map<String, Integer> stats,
-                                        int tstr, int tdex, int tint, int tluk) {
-        switch (chr.getJob().getJobNiche()) {
-            case 1: return stats.get("reqSTR") > tstr;
-            case 2: return stats.get("reqINT") > tint;
-            case 3: return stats.get("reqDEX") > tdex;
-            case 4: return stats.get("reqLUK") > tluk;
-            default: return false;
-        }
-    }
-
     public Collection<Item> canWearEquipment(Character chr, Collection<Item> items) {
         Inventory inv = chr.getInventory(InventoryType.EQUIPPED);
         if (inv.checked()) {
@@ -1792,7 +1825,7 @@ public class ItemInformationProvider {
          }
          }
          } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
          }*/
         int tdex = chr.getDex(), tstr = chr.getStr(), tint = chr.getInt(), tluk = chr.getLuk(), fame = chr.getFame();
         if (chr.getJob() != Job.SUPERGM || chr.getJob() != Job.GM) {
@@ -1808,8 +1841,8 @@ public class ItemInformationProvider {
             Equip equip = (Equip) item;
             // Growing Quest Ring + Evolving Ring chain: bypass all wear requirements.
             // Evolving rings carry a WZ reqLevel of 0 to suppress the client "stats too low"
-            // popup, but they also carry no inc-stat fields the failsPrimaryStatReq check would
-            // care about, so the bypass is safe on both axes.
+            // popup, but they also carry no inc-stat fields the primary-stat check would
+            // care about (see EquipRequirementChecker), so the bypass is safe on both axes.
             if (equip.getItemId() == Character.QUEST_RING_ID
                     || equip.getItemId() == Character.MONSTER_BOOK_MEDAL_ID
                     || EvolvingRing.isChainRing(equip.getItemId())) {
@@ -1817,6 +1850,7 @@ public class ItemInformationProvider {
                 itemz.add(equip);
                 continue;
             }
+            Map<String, Integer> stats = getEquipStats(equip.getItemId());
             int reqLevel = getEquipLevelReq(equip.getItemId());
             if (highfivestamp) {
                 reqLevel -= 5;
@@ -1824,28 +1858,28 @@ public class ItemInformationProvider {
                     reqLevel = 0;
                 }
             }
-            /*
-             int reqJob = getEquipStats(equip.getItemId()).get("reqJob");
-             if (reqJob != 0) {
-             Really hard check, and not really needed in this one
-             Gm's should just be GM job, and players cannot change jobs.
-             }*/
-            if (reqLevel > chr.getLevel()) {
+            if (!EquipRequirementChecker.meetsRequirements(
+                    chr.getJob(), stats, chr.getLevel(), reqLevel, tdex, tstr, tint, tluk, fame)) {
                 continue;
-            } else if (failsPrimaryStatReq(chr, getEquipStats(equip.getItemId()), tstr, tdex, tint, tluk)) {
-                continue;
-            }
-            int reqPOP = getEquipStats(equip.getItemId()).get("reqPOP");
-            if (reqPOP > 0) {
-                if (getEquipStats(equip.getItemId()).get("reqPOP") > fame) {
-                    continue;
-                }
             }
             equip.wear(true);
             itemz.add(equip);
         }
         inv.checked(true);
         return itemz;
+    }
+
+    /** Read-only counterpart to equip validation for autonomous planning and inspection. */
+    public boolean meetsEquipRequirements(Character chr, int itemId) {
+        Map<String, Integer> stats = getEquipStats(itemId);
+        if (stats == null) return false;
+        int dex = chr.getDex(), str = chr.getStr(), int_ = chr.getInt(), luk = chr.getLuk();
+        for (Item item : chr.getInventory(InventoryType.EQUIPPED).list()) {
+            Equip equip = (Equip) item;
+            dex += equip.getDex(); str += equip.getStr(); int_ += equip.getInt(); luk += equip.getLuk();
+        }
+        return EquipRequirementChecker.meetsRequirements(chr.getJob(), stats, chr.getLevel(),
+                getEquipLevelReq(itemId), dex, str, int_, luk, chr.getFame());
     }
 
     public boolean canWearEquipment(Character chr, Equip equip, int dst) {
@@ -1892,30 +1926,20 @@ public class ItemInformationProvider {
          }
          }
          } catch (SQLException ex) {
-            log.error("unhandled exception", ex);
+            monitoring.RuntimeFailureLogger.log(ex);
          }*/
 
         int reqLevel = getEquipLevelReq(equip.getItemId());
         if (highfivestamp) {
             reqLevel -= 5;
-        }
-        int i = 0; //lol xD
-        //Removed job check. Shouldn't really be needed.
-        if (reqLevel > chr.getLevel()) {
-            i++;
-        } else if (failsPrimaryStatReq(chr, getEquipStats(equip.getItemId()),
-                                       chr.getTotalStr(), chr.getTotalDex(),
-                                       chr.getTotalInt(), chr.getTotalLuk())) {
-            i++;
-        }
-        int reqPOP = getEquipStats(equip.getItemId()).get("reqPOP");
-        if (reqPOP > 0) {
-            if (getEquipStats(equip.getItemId()).get("reqPOP") > chr.getFame()) {
-                i++;
+            if (reqLevel < 0) {
+                reqLevel = 0;
             }
         }
-
-        if (i > 0) {
+        Map<String, Integer> stats = getEquipStats(equip.getItemId());
+        if (!EquipRequirementChecker.meetsRequirements(
+                chr.getJob(), stats, chr.getLevel(), reqLevel,
+                chr.getTotalDex(), chr.getTotalStr(), chr.getTotalInt(), chr.getTotalLuk(), chr.getFame())) {
             equip.wear(false);
             return false;
         }
@@ -1923,13 +1947,55 @@ public class ItemInformationProvider {
         return true;
     }
 
-    public ArrayList<Pair<Integer, String>> getItemDataByName(String name) {
+    /**
+     * Non-mutating wearability check used by bot equip lookahead. Same gating as
+     * {@link #canWearEquipment} but takes simulated stat totals and skips the slot/GM/wedding
+     * checks (callers do those separately) and skips {@link Equip#wear} side effects.
+     */
+    public boolean meetsEquipRequirements(Equip equip, Job job, int level, int str, int dex, int int_, int luk, int fame) {
+        if (equip == null) {
+            return false;
+        }
+        int reqLevel = getEquipLevelReq(equip.getItemId());
+        Map<String, Integer> stats = getEquipStats(equip.getItemId());
+        return EquipRequirementChecker.meetsRequirements(job, stats, level, reqLevel, dex, str, int_, luk, fame);
+    }
+
+    public ArrayList<Pair<Integer, String>> getItemDataByName(String name) { // Pair<ItemID, ItemName>
         ArrayList<Pair<Integer, String>> ret = new ArrayList<>();
         for (Pair<Integer, String> itemPair : ItemInformationProvider.getInstance().getAllItems()) {
-            if (itemPair.getRight().toLowerCase().contains(name.toLowerCase())) {
+            int itemId = itemPair.getLeft();
+            String itemName = itemPair.getRight();
+            if (itemName.toLowerCase().contains(name.toLowerCase()) && hasData(itemId) && !isCash(itemId)) {
                 ret.add(itemPair);
             }
         }
+        return ret;
+    }
+
+    public Map<Integer, Map<String, Integer>> getItemDataByJob(int job) {
+        Data itemsData = stringData.getData("Eqp.img").getChildByPath("Eqp");
+        List<Pair<Integer, String>> idToNamePairs = new ArrayList<>();
+        for (Data eqpType : itemsData.getChildren()) {
+            for (Data itemFolder : eqpType.getChildren()) {
+                idToNamePairs.add(new Pair<>(Integer.parseInt(itemFolder.getName()), DataTool.getString("name", itemFolder, "NO-NAME")));
+            }
+        }
+
+        Map<Integer, Map<String, Integer>> ret = new HashMap<>();
+        for (Pair<Integer, String> itemPair : idToNamePairs) {
+            Integer itemId = itemPair.getLeft();
+            String itemName = itemPair.getRight();
+            Map<String, Integer> stats = getEquipStats(itemId);
+            if (stats == null) {
+                log.debug(itemName + " has no stats");
+                continue;
+            }
+            if (stats.get("reqJob") == job) {
+                ret.put(itemId, stats);
+            }
+        }
+
         return ret;
     }
 
@@ -2077,7 +2143,7 @@ public class ItemInformationProvider {
             statUpgradeMakerCache.put(itemId, statUpgd);
             return statUpgd;
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
             return null;
         }
     }
@@ -2106,7 +2172,7 @@ public class ItemInformationProvider {
             mobCrystalMakerCache.put(leftoverId, itemid);
             return itemid;
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return -1;
@@ -2149,7 +2215,7 @@ public class ItemInformationProvider {
                 }
                 makerItemCache.put(toCreate, new MakerItemCreateEntry(makerEntry));
             } catch (SQLException sqle) {
-                log.error("unhandled exception", sqle);
+                monitoring.RuntimeFailureLogger.log(sqle);
                 makerEntry = null;
             }
         }
@@ -2161,7 +2227,7 @@ public class ItemInformationProvider {
         try {
             return getCrystalForLevel(getEquipLevelReq(equipId));
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return -1;
@@ -2171,7 +2237,7 @@ public class ItemInformationProvider {
         try {
             return getCrystalForLevel(getEquipLevelReq(equipId));
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return -1;
@@ -2190,7 +2256,7 @@ public class ItemInformationProvider {
                 }
             }
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return items;
@@ -2210,7 +2276,7 @@ public class ItemInformationProvider {
                 }
             }
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return fee;
@@ -2251,7 +2317,7 @@ public class ItemInformationProvider {
                 }
             }
         } catch (Exception e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
 
         return list;

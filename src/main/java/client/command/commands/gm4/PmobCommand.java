@@ -36,12 +36,8 @@ import java.awt.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PmobCommand extends Command {
-    private static final Logger log = LoggerFactory.getLogger(PmobCommand.class);
-
     {
         setDescription("Spawn a permanent mob on your location.");
     }
@@ -96,7 +92,7 @@ public class PmobCommand extends Command {
 
                 player.yellowMessage("Pmob created.");
             } catch (SQLException e) {
-                log.error("unhandled exception", e);
+                monitoring.RuntimeFailureLogger.log(e);
                 player.dropMessage(5, "Failed to store pmob in the database.");
             }
         } else {

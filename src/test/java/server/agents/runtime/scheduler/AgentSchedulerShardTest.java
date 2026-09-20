@@ -1,0 +1,74 @@
+package server.agents.runtime.scheduler;
+
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class AgentSchedulerShardTest {
+    @Test
+    void ingressIsBoundedAndTracksHighWaterMark() {
+        AgentSchedulerShard<Integer> shard = new AgentSchedulerShard<>(2, Comparator.naturalOrder());
+
+        assertTrue(shard.offer(2));
+        assertTrue(shard.offer(1));
+        assertFalse(shard.offer(3));
+        assertEquals(2, shard.ingressDepth());
+        assertEquals(2, shard.ingressHighWaterMark());
+
+        List<Integer> drained = new ArrayList<>();
+        assertEquals(2, shard.drainIngress(drained::add));
+        assertEquals(List.of(2, 1), drained);
+        assertEquals(0, shard.ingressDepth());
+    }
+
+    @Test
+    void dueHeapIsShardLocalAndIndexed() {
+        AgentSchedulerShard<Integer> shard = new AgentSchedulerShard<>(2, Comparator.naturalOrder());
+
+        shard.addOrUpdate(2);
+        shard.addOrUpdate(1);
+
+        assertEquals(2, shard.scheduledCount());
+        assertEquals(1, shard.pollDue());
+        assertTrue(shard.remove(2));
+        assertTrue(shard.isIdle());
+    }
+
+    @Test
+    void clearReleasesIngressDueAndReadyState() {
+        AgentSchedulerShard<Integer> shard = new AgentSchedulerShard<>(2, Comparator.naturalOrder());
+        shard.offer(3);
+        shard.addOrUpdate(2);
+        shard.addReady(1, AgentPriorityClass.VISIBLE);
+
+        shard.clear();
+
+        assertTrue(shard.isIdle());
+        assertEquals(0, shard.ingressDepth());
+        assertEquals(0, shard.scheduledCount());
+        assertEquals(0, shard.readyCount());
+    }
+
+    @Test
+    void reportsBoundedReadyDepthByPriority() {
+        AgentSchedulerShard<Integer> shard = new AgentSchedulerShard<>(2, Comparator.naturalOrder());
+        shard.addReady(1, AgentPriorityClass.VISIBLE);
+        shard.addReady(2, AgentPriorityClass.BACKGROUND_ACTIVE);
+
+        assertEquals(Map.of(
+                        AgentPriorityClass.CRITICAL, 0,
+                        AgentPriorityClass.INTERACTIVE, 0,
+                        AgentPriorityClass.VISIBLE, 1,
+                        AgentPriorityClass.BACKGROUND_ACTIVE, 1,
+                        AgentPriorityClass.BACKGROUND_ABSTRACT, 0,
+                        AgentPriorityClass.DEFERRED, 0),
+                shard.readyDepths());
+    }
+}

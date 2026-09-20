@@ -65,29 +65,58 @@ public final class MagicDamageHandler extends AbstractDealDamageHandler {
             c.sendPacket(PacketCreator.getEnergy("energy", chr.getDojoEnergy()));
         }
 
-        int charge = (attack.skill == Evan.FIRE_BREATH || attack.skill == Evan.ICE_BREATH || attack.skill == FPArchMage.BIG_BANG || attack.skill == ILArchMage.BIG_BANG || attack.skill == Bishop.BIG_BANG) ? attack.charge : -1;
+        applyMagicAttackEffects(attack, chr, c);
+    }
+
+    public static boolean applyMagicAttackEffects(AttackInfo attack, Character chr, Client c) {
+        return applyMagicAttackEffects(attack, chr, c, true);
+    }
+
+    public static boolean applyAgentMagicAttackEffects(AttackInfo attack, Character chr, Client c) {
+        return applyMagicAttackEffects(attack, chr, c, false);
+    }
+
+    private static boolean applyMagicAttackEffects(
+            AttackInfo attack, Character chr, Client c, boolean rangeLimitedBroadcast) {
+        int charge = (attack.skill == Evan.FIRE_BREATH || attack.skill == Evan.ICE_BREATH
+                || attack.skill == FPArchMage.BIG_BANG || attack.skill == ILArchMage.BIG_BANG
+                || attack.skill == Bishop.BIG_BANG) ? attack.charge : -1;
         Packet packet = PacketCreator.magicAttack(chr, attack.skill, attack.skilllevel, attack.stance,
                 attack.numAttackedAndDamage, attack.targets, charge, attack.speed, attack.direction, attack.display);
 
-        chr.getMap().broadcastMessage(chr, packet, false, true);
+        chr.getMap().broadcastMessage(chr, packet, false, rangeLimitedBroadcast);
         StatEffect effect = attack.getAttackEffect(chr, null);
-        Skill skill = SkillFactory.getSkill(attack.skill);
-        StatEffect effect_ = skill.getEffect(chr.getSkillLevel(skill));
-        if (effect_.getCooldown() > 0) {
-            if (chr.skillIsCooling(attack.skill)) {
-                return;
-            } else {
-                c.sendPacket(PacketCreator.skillCooldown(attack.skill, effect_.getCooldown()));
-                chr.addCooldown(attack.skill, currentServerTime(), SECONDS.toMillis(effect_.getCooldown()));
-            }
+        if (effect == null) {
+            return false;
         }
-        applyAttack(attack, chr, effect.getAttackCount());
-        Skill eaterSkill = SkillFactory.getSkill((chr.getJob().getId() - (chr.getJob().getId() % 10)) * 10000);// MP Eater, works with right job
-        int eaterLevel = chr.getSkillLevel(eaterSkill);
-        if (eaterLevel > 0) {
-            for (Integer oid : attack.targets.keySet()) {
-                eaterSkill.getEffect(eaterLevel).applyPassive(chr, chr.getMap().getMapObject(oid), 0);
+
+        Skill skill = SkillFactory.getSkill(attack.skill);
+        StatEffect skillEffect = skill.getEffect(chr.getSkillLevel(skill));
+        if (skillEffect.getCooldown() > 0) {
+            if (chr.skillIsCooling(attack.skill)) {
+                return false;
             }
+
+            c.sendPacket(PacketCreator.skillCooldown(attack.skill, skillEffect.getCooldown()));
+            chr.addCooldown(attack.skill, currentServerTime(), SECONDS.toMillis(skillEffect.getCooldown()));
+        }
+
+        if (!applyAttack(attack, chr, effect.getAttackCount())) {
+            return false;
+        }
+        applyMpEater(attack, chr);
+        return true;
+    }
+
+    private static void applyMpEater(AttackInfo attack, Character chr) {
+        Skill eaterSkill = SkillFactory.getSkill((chr.getJob().getId() - (chr.getJob().getId() % 10)) * 10000);
+        int eaterLevel = chr.getSkillLevel(eaterSkill);
+        if (eaterLevel <= 0) {
+            return;
+        }
+
+        for (Integer oid : attack.targets.keySet()) {
+            eaterSkill.getEffect(eaterLevel).applyPassive(chr, chr.getMap().getMapObject(oid), 0);
         }
     }
 }

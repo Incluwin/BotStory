@@ -37,6 +37,7 @@ import constants.inventory.ItemConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.ItemRestrictionPolicy;
 import server.maps.MapleMap;
 import tools.PacketCreator;
 
@@ -194,7 +195,7 @@ public class InventoryManipulator {
     private static boolean addFromDropInternal(Client c, Character chr, InventoryType type, Inventory inv, Item item, boolean show, int petId) {
         ItemInformationProvider ii = ItemInformationProvider.getInstance();
         int itemid = item.getItemId();
-        if (ii.isPickupRestricted(itemid) && chr.haveItemWithId(itemid, true)) {
+        if (ii.isPickupRestricted(itemid, chr) && chr.haveItemWithId(itemid, true)) {
             c.sendPacket(PacketCreator.getInventoryFull());
             c.sendPacket(PacketCreator.showItemUnavailable());
             return false;
@@ -228,7 +229,7 @@ public class InventoryManipulator {
                     quantity -= newQ;
                     Item nItem = new Item(itemid, (short) 0, newQ, petId);
                     nItem.setExpiration(item.getExpiration());
-                    nItem.setOwner(item.getOwner());
+                    copyTransferMetadata(item, nItem);
                     nItem.setFlag(item.getFlag());
                     short newSlot = inv.addItem(nItem);
                     if (newSlot == -1) {
@@ -247,6 +248,7 @@ public class InventoryManipulator {
             } else {
                 Item nItem = new Item(itemid, (short) 0, quantity, petId);
                 nItem.setExpiration(item.getExpiration());
+                copyTransferMetadata(item, nItem);
                 nItem.setFlag(item.getFlag());
 
                 short newSlot = inv.addItem(nItem);
@@ -287,6 +289,11 @@ public class InventoryManipulator {
         return true;
     }
 
+    static void copyTransferMetadata(Item source, Item target) {
+        target.setOwner(source.getOwner());
+        target.setGiftFrom(source.getGiftFrom());
+    }
+
     private static boolean haveItemWithId(Inventory inv, int itemid) {
         return inv.findById(itemid) != null;
     }
@@ -297,7 +304,7 @@ public class InventoryManipulator {
         Character chr = c.getPlayer();
         Inventory inv = chr.getInventory(type);
 
-        if (ii.isPickupRestricted(itemid)) {
+        if (ii.isPickupRestricted(itemid, chr)) {
             if (haveItemWithId(inv, itemid)) {
                 return false;
             } else if (ItemConstants.isEquipment(itemid) && haveItemWithId(chr.getInventory(InventoryType.EQUIPPED), itemid)) {
@@ -352,7 +359,7 @@ public class InventoryManipulator {
         Character chr = c.getPlayer();
         Inventory inv = chr.getInventory(type);
 
-        if (ii.isPickupRestricted(itemid)) {
+        if (ii.isPickupRestricted(itemid, chr)) {
             if (haveItemWithId(inv, itemid)) {
                 return 0;
             } else if (ItemConstants.isEquipment(itemid) && haveItemWithId(chr.getInventory(InventoryType.EQUIPPED), itemid)) {
@@ -392,11 +399,9 @@ public class InventoryManipulator {
 
             returnValue = ((numSlotsNeeded + usedSlots) << 1);
             returnValue += (numSlotsNeeded == 0 || !inv.isFullAfterSomeItems(numSlotsNeeded - 1, usedSlots)) ? 1 : 0;
-            //System.out.print(" needed " + numSlotsNeeded + " used " + usedSlots + " rval " + returnValue);
         } else {
             returnValue = ((quantity + usedSlots) << 1);
             returnValue += (!inv.isFullAfterSomeItems(0, usedSlots)) ? 1 : 0;
-            //System.out.print(" eqpneeded " + 1 + " used " + usedSlots + " rval " + returnValue);
         }
 
         return returnValue;
@@ -520,6 +525,23 @@ public class InventoryManipulator {
         c.sendPacket(PacketCreator.modifyInventory(true, mods));
     }
 
+    public static void handleItemMove(Client c, InventoryType type, short src, short action, short quantity) {
+        if (src < 0 && action > 0) {
+            unequip(c, src, action);
+            return;
+        }
+        if (action < 0) {
+            equip(c, src, action);
+            return;
+        }
+        if (action == 0) {
+            drop(c, type, src, quantity);
+            return;
+        }
+
+        move(c, type, src, action);
+    }
+
     public static void equip(Client c, short src, short dst) {
         ItemInformationProvider ii = ItemInformationProvider.getInstance();
 
@@ -536,7 +558,7 @@ public class InventoryManipulator {
             return;
         }
         boolean itemChanged = false;
-        if (ii.isUntradeableOnEquip(source.getItemId())) {
+        if (ii.isUntradeableOnEquip(source.getItemId()) && !ItemRestrictionPolicy.allowsUntradeable(chr, source.getItemId())) {
             short flag = source.getFlag();      // thanks BHB for noticing flags missing after equipping these
             flag |= ItemConstants.UNTRADEABLE;
             source.setFlag(flag);
@@ -599,17 +621,7 @@ public class InventoryManipulator {
         source = (Equip) eqpInv.getItem(src);
         eqpInv.removeSlot(src);
 
-        Equip target;
-        eqpdInv.lockInventory();
-        try {
-            target = (Equip) eqpdInv.getItem(dst);
-            if (target != null) {
-                chr.unequippedItem(target);
-                eqpdInv.removeSlot(dst);
-            }
-        } finally {
-            eqpdInv.unlockInventory();
-        }
+        Equip target = removeEquippedTarget(chr, eqpdInv, dst);
 
         final List<ModifyInventory> mods = new ArrayList<>();
         if (itemChanged) {
@@ -631,8 +643,7 @@ public class InventoryManipulator {
         }
 
         if (target != null) {
-            target.setPosition(src);
-            eqpInv.addItemFromDB(target);
+            restoreSwappedEquip(eqpInv, target, src);
         }
         if (chr.getBuffedValue(BuffStat.BOOSTER) != null && ItemConstants.isWeapon(source.getItemId())) {
             chr.cancelBuffStats(BuffStat.BOOSTER);
@@ -686,17 +697,49 @@ public class InventoryManipulator {
         chr.equipChanged();
     }
 
-    private static boolean isDisappearingItemDrop(Item it) {
+    private static Equip removeEquippedTarget(Character chr, Inventory eqpdInv, short dst) {
+        eqpdInv.lockInventory();
+        try {
+            Equip target = (Equip) eqpdInv.getItem(dst);
+            if (target == null) {
+                return null;
+            }
+
+            if (target.getRingId() > -1) {
+                chr.getRingById(target.getRingId()).unequip();
+            }
+            chr.unequippedItem(target);
+            eqpdInv.removeSlot(dst);
+            return target;
+        } finally {
+            eqpdInv.unlockInventory();
+        }
+    }
+
+    private static void restoreSwappedEquip(Inventory eqpInv, Equip target, short preferredSlot) {
+        short returnSlot = preferredSlot;
+        if (eqpInv.getItem(returnSlot) != null) {
+            returnSlot = eqpInv.getNextFreeSlot();
+        }
+        if (returnSlot < 0) {
+            throw new IllegalStateException("No free EQUIP slot available while restoring swapped equip " + target.getItemId());
+        }
+
+        target.setPosition(returnSlot);
+        eqpInv.addItemFromDB(target);
+    }
+
+    private static boolean isDisappearingItemDrop(Character chr, Item it) {
         ItemInformationProvider ii = ItemInformationProvider.getInstance();
         if (ii.isDropRestricted(it.getItemId())) {
-            return true;
+            return !ItemRestrictionPolicy.allowsUntradeable(chr, it.getItemId());
         } else if (ii.isCash(it.getItemId())) {
             if (YamlConfig.config.server.USE_ENFORCE_UNMERCHABLE_CASH) {     // thanks Ari for noticing cash drops not available server-side
                 return true;
             } else {
                 return ItemConstants.isPet(it.getItemId()) && YamlConfig.config.server.USE_ENFORCE_UNMERCHABLE_PET;
             }
-        } else if (isDroppedItemRestricted(it)) {
+        } else if (isDroppedItemRestricted(chr, it)) {
             return true;
         } else {
             return ItemId.isWeddingRing(it.getItemId());
@@ -754,7 +797,7 @@ public class InventoryManipulator {
                 }
             }
 
-            if (isDisappearingItemDrop(target)) {
+            if (isDisappearingItemDrop(chr, target)) {
                 map.disappearingItemDrop(chr, chr, target, dropPos);
             } else {
                 map.spawnItemDrop(chr, chr, target, dropPos, true, true);
@@ -785,7 +828,7 @@ public class InventoryManipulator {
                 }
             }
 
-            if (isDisappearingItemDrop(source)) {
+            if (isDisappearingItemDrop(chr, source)) {
                 map.disappearingItemDrop(chr, chr, source, dropPos);
             } else {
                 map.spawnItemDrop(chr, chr, source, dropPos, true, true);
@@ -807,8 +850,9 @@ public class InventoryManipulator {
         }
     }
 
-    private static boolean isDroppedItemRestricted(Item it) {
-        return YamlConfig.config.server.USE_ERASE_UNTRADEABLE_DROP && it.isUntradeable();
+    private static boolean isDroppedItemRestricted(Character chr, Item it) {
+        return YamlConfig.config.server.USE_ERASE_UNTRADEABLE_DROP && it.isUntradeable()
+                && !ItemRestrictionPolicy.allowsUntradeable(chr, it.getItemId());
     }
 
     public static boolean isSandboxItem(Item it) {

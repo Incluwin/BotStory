@@ -27,16 +27,13 @@ import client.Character;
 import client.Client;
 import client.command.Command;
 import net.server.Server;
+import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.PacketCreator;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class WarpWorldCommand extends Command {
-    private static final Logger log = LoggerFactory.getLogger(WarpWorldCommand.class);
-
     {
         setDescription("Warp to a different world.");
     }
@@ -58,10 +55,10 @@ public class WarpWorldCommand extends Command {
                 player.getMap().removePlayer(player);//LOL FORGOT THIS ><
                 player.setSessionTransitionState();
                 player.setWorld(worldb);
-                player.saveCharToDB();//To set the new world :O (true because else 2 player instances are created, one in both worlds)
+                player.saveCharToDB(true, SaveReason.WARP_WORLD);//To set the new world :O (true because else 2 player instances are created, one in both worlds)
                 c.sendPacket(PacketCreator.getChannelChange(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1])));
             } catch (UnknownHostException | NumberFormatException ex) {
-                log.error("unhandled exception", ex);
+                monitoring.RuntimeFailureLogger.log(ex);
                 player.message("Unexpected error when changing worlds, are you sure the world you are trying to warp to has the same amount of channels?");
             }
 

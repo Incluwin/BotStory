@@ -30,8 +30,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author Matze
@@ -39,8 +37,6 @@ import org.slf4j.LoggerFactory;
  * @author Ronan
  */
 public class RankingLoginTask implements Runnable {
-    private static final Logger log = LoggerFactory.getLogger(RankingLoginTask.class);
-
     private long lastUpdate = System.currentTimeMillis();
 
     private void resetMoveRank(boolean job) throws SQLException {
@@ -73,7 +69,8 @@ public class RankingLoginTask implements Runnable {
                     int rankMove = 0;
                     rank++;
 
-                    final long lastlogin = rs.getTimestamp("lastlogin").getTime();
+                    java.sql.Timestamp lastloginTs = rs.getTimestamp("lastlogin");
+                    final long lastlogin = lastloginTs != null ? lastloginTs.getTime() : 0L;
                     if (lastlogin < lastUpdate || rs.getInt("loggedin") > 0) {
                         rankMove = rs.getInt((job != -1 ? "jobRankMove" : "rankMove"));
                     }
@@ -115,7 +112,7 @@ public class RankingLoginTask implements Runnable {
                 con.setAutoCommit(true);
             }
         } catch (SQLException e) {
-            log.error("unhandled exception", e);
+            monitoring.RuntimeFailureLogger.log(e);
         }
     }
 }

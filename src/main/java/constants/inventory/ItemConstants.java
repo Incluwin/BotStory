@@ -30,13 +30,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author Jay Estrella
  * @author Ronan
  */
 public final class ItemConstants {
-    protected static Map<Integer, InventoryType> inventoryTypeCache = new HashMap<>();
+    protected static Map<Integer, InventoryType> inventoryTypeCache = new ConcurrentHashMap<>();
 
     public final static short LOCK = 0x01;
     public final static short SPIKES = 0x02;
@@ -78,6 +79,11 @@ public final class ItemConstants {
 
     public static boolean isPotion(int itemId) {
         return itemId / 1000 == 2000;
+    }
+
+    /** Equip upgrade scrolls (2040000–2049999). */
+    public static boolean isEquipScroll(int itemId) {
+        return itemId >= 2040000 && itemId < 2050000;
     }
 
     public static boolean isFood(int itemId) {
@@ -179,19 +185,10 @@ public final class ItemConstants {
     }
 
     public static InventoryType getInventoryType(final int itemId) {
-        if (inventoryTypeCache.containsKey(itemId)) {
-            return inventoryTypeCache.get(itemId);
-        }
-
-        InventoryType ret = InventoryType.UNDEFINED;
-
-        final byte type = (byte) (itemId / 1000000);
-        if (type >= 1 && type <= 5) {
-            ret = InventoryType.getByType(type);
-        }
-
-        inventoryTypeCache.put(itemId, ret);
-        return ret;
+        return inventoryTypeCache.computeIfAbsent(itemId, id -> {
+            byte type = (byte) (id / 1000000);
+            return type >= 1 && type <= 5 ? InventoryType.getByType(type) : InventoryType.UNDEFINED;
+        });
     }
 
     public static boolean isMakerReagent(int itemId) {

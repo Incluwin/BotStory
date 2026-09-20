@@ -27,6 +27,7 @@ import client.BuddyList.BuddyOperation;
 import client.BuddylistEntry;
 import client.Character;
 import client.Family;
+import config.MobSpawnOverrideConfig;
 import config.YamlConfig;
 import constants.game.GameConstants;
 import net.packet.Packet;
@@ -125,11 +126,14 @@ public class World {
     private int questrate;
     private int travelrate;
     private int fishingrate;
+    private final float mobrate;
+    private final int mobperspawnpoint;
+    private final List<MobSpawnOverrideConfig> mobSpawnOverrides;
     private final String eventmsg;
     private final List<Channel> channels = new ArrayList<>();
     private final Map<Integer, Byte> pnpcStep = new HashMap<>();
     private final Map<Integer, Short> pnpcPodium = new HashMap<>();
-    private final Map<Integer, Messenger> messengers = new HashMap<>();
+    private final Map<Integer, Messenger> messengers = new ConcurrentHashMap<>();
     private final AtomicInteger runningMessengerId = new AtomicInteger();
     private final Map<Integer, Family> families = new LinkedHashMap<>();
     private final Map<Integer, Integer> relationships = new HashMap<>();
@@ -199,7 +203,15 @@ public class World {
     private ScheduledFuture<?> timeoutSchedule;
     private ScheduledFuture<?> hpDecSchedule;
 
-    public World(int world, int flag, String eventmsg, int exprate, int droprate, int bossdroprate, int mesorate, int questrate, int travelrate, int fishingrate) {
+    public World(int world, int flag, String eventmsg, int exprate, int droprate, int bossdroprate, int mesorate,
+                 int questrate, int travelrate, int fishingrate, float mobrate, int mobperspawnpoint) {
+        this(world, flag, eventmsg, exprate, droprate, bossdroprate, mesorate, questrate, travelrate, fishingrate,
+                mobrate, mobperspawnpoint, List.of());
+    }
+
+    public World(int world, int flag, String eventmsg, int exprate, int droprate, int bossdroprate, int mesorate,
+                 int questrate, int travelrate, int fishingrate, float mobrate, int mobperspawnpoint,
+                 List<MobSpawnOverrideConfig> mobSpawnOverrides) {
         this.id = world;
         this.flag = flag;
         this.eventmsg = eventmsg;
@@ -210,6 +222,9 @@ public class World {
         this.questrate = questrate;
         this.travelrate = travelrate;
         this.fishingrate = fishingrate;
+        this.mobrate = mobrate;
+        this.mobperspawnpoint = mobperspawnpoint;
+        this.mobSpawnOverrides = mobSpawnOverrides == null ? List.of() : List.copyOf(mobSpawnOverrides);
         runningPartyId.set(1000000001); // partyid must not clash with charid to solve update item looting issues, found thanks to Vcoc
         runningMessengerId.set(1);
 
@@ -234,8 +249,12 @@ public class World {
         mountsSchedule = tman.register(new MountTirednessTask(this), MINUTES.toMillis(1), MINUTES.toMillis(1));
         merchantSchedule = tman.register(new HiredMerchantTask(this), 10 * MINUTES.toMillis(1), 10 * MINUTES.toMillis(1));
         timedMapObjectsSchedule = tman.register(new TimedMapObjectTask(this), MINUTES.toMillis(1), MINUTES.toMillis(1));
-        long autosaveMs = MINUTES.toMillis(Math.max(1, YamlConfig.config.server.AUTOSAVE_INTERVAL_MINUTES));
-        charactersSchedule = tman.register(new CharacterAutosaverTask(this), autosaveMs, autosaveMs);
+        CharacterAutosaverTask autosaver = new CharacterAutosaverTask(this);
+        charactersSchedule = tman.register(
+                TimerManager.SchedulerLane.SAVE,
+                autosaver,
+                autosaver.dispatchIntervalMs(),
+                autosaver.dispatchIntervalMs());
         marriagesSchedule = tman.register(new WeddingReservationTask(this), MINUTES.toMillis(YamlConfig.config.server.WEDDING_RESERVATION_INTERVAL), MINUTES.toMillis(YamlConfig.config.server.WEDDING_RESERVATION_INTERVAL));
         mapOwnershipSchedule = tman.register(new MapOwnershipTask(this), SECONDS.toMillis(20), SECONDS.toMillis(20));
         fishingSchedule = tman.register(new FishingTask(this), SECONDS.toMillis(10), SECONDS.toMillis(10));
@@ -458,6 +477,22 @@ public class World {
         this.fishingrate = quest;
     }
 
+    public float getMobrate() {
+        return mobrate;
+    }
+
+    public float getMobrate(int mapId) {
+        return MobSpawnOverrideConfig.resolveMobRate(mobSpawnOverrides, mapId, mobrate);
+    }
+
+    public int getMobperspawnpoint() {
+        return mobperspawnpoint;
+    }
+
+    public int getMobperspawnpoint(int mapId) {
+        return MobSpawnOverrideConfig.resolveMaxMobPerSpawnpoint(mobSpawnOverrides, mapId, mobperspawnpoint);
+    }
+
     public void loadAccountCharactersView(Integer accountId, List<Character> chars) {
         SortedMap<Integer, Character> charsMap = new TreeMap<>();
         for (Character chr : chars) {
@@ -475,7 +510,9 @@ public class World {
     public void registerAccountCharacterView(Integer accountId, Character chr) {
         accountCharsLock.lock();
         try {
-            accountChars.get(accountId).put(chr.getId(), chr);
+            java.util.SortedMap<Integer, Character> charsMap = accountChars.get(accountId);
+            if (charsMap == null) return; // bot accounts (id=-1) have no entry — skip
+            charsMap.put(chr.getId(), chr);
         } finally {
             accountCharsLock.unlock();
         }
@@ -484,7 +521,10 @@ public class World {
     public void unregisterAccountCharacterView(Integer accountId, Integer chrId) {
         accountCharsLock.lock();
         try {
-            accountChars.get(accountId).remove(chrId);
+            SortedMap<Integer, Character> characters = accountChars.get(accountId);
+            if (characters != null) {
+                characters.remove(chrId);
+            }
         } finally {
             accountCharsLock.unlock();
         }
@@ -528,7 +568,12 @@ public class World {
     }
 
     public Storage getAccountStorage(Integer accountId) {
-        return accountStorages.get(accountId);
+        accountCharsLock.lock();
+        try {
+            return accountStorages.get(accountId);
+        } finally {
+            accountCharsLock.unlock();
+        }
     }
 
     private static List<Entry<Integer, SortedMap<Integer, Character>>> getSortedAccountCharacterView(Map<Integer, SortedMap<Integer, Character>> map) {
@@ -646,7 +691,7 @@ public class World {
 
     public Collection<Family> getFamilies() {
         synchronized (families) {
-            return Collections.unmodifiableCollection(families.values());
+            return Collections.unmodifiableList(new ArrayList<>(families.values()));
         }
     }
 
@@ -669,7 +714,7 @@ public class World {
 
     public int getWorldCapacityStatus() {
         int worldCap = getChannelsSize() * YamlConfig.config.server.CHANNEL_LOAD;
-        int num = players.getSize();
+        int num = players.getRealPlayerCount();
 
         int status;
         if (num >= worldCap) {
@@ -702,7 +747,7 @@ public class World {
     public void reloadGuildSummary() {
         Guild g;
         Server server = Server.getInstance();
-        for (int i : gsStore.keySet()) {
+        for (int i : new ArrayList<>(gsStore.keySet())) {
             g = server.getGuild(i, getId(), null);
             if (g != null) {
                 gsStore.put(i, new GuildSummary(g));
@@ -728,7 +773,7 @@ public class World {
             ps.setInt(3, cid);
             ps.executeUpdate();
         } catch (SQLException se) {
-            log.error("unhandled exception", se);
+            monitoring.RuntimeFailureLogger.log(se);
         }
     }
 
@@ -1140,6 +1185,9 @@ public class World {
         int position = messenger.getPositionByName(target.getName());
         messenger.removeMember(target);
         removeMessengerPlayer(messenger, position);
+        if (messenger.isEmpty()) {
+            messengers.remove(messengerid, messenger);
+        }
     }
 
     public void messengerInvite(String sender, int messengerid, String target, int fromchannel) {
@@ -1270,6 +1318,51 @@ public class World {
         Messenger messenger = new Messenger(messengerid, chrfor);
         messengers.put(messenger.getId(), messenger);
         return messenger;
+    }
+
+    public int getMessengerCount() {
+        return messengers.size();
+    }
+
+    public String runtimeCacheDiagnostics() {
+        int characterViews;
+        int storages;
+        accountCharsLock.lock();
+        try {
+            characterViews = accountChars.size();
+            storages = accountStorages.size();
+        } finally {
+            accountCharsLock.unlock();
+        }
+
+        int familyCount;
+        synchronized (families) {
+            familyCount = families.size();
+        }
+
+        int playerShopCount;
+        activePlayerShopsLock.lock();
+        try {
+            playerShopCount = activePlayerShops.size();
+        } finally {
+            activePlayerShopsLock.unlock();
+        }
+
+        int merchantCount;
+        activeMerchantsLock.lock();
+        try {
+            merchantCount = activeMerchants.size();
+        } finally {
+            activeMerchantsLock.unlock();
+        }
+
+        return "world=" + id
+                + " accountViews=" + characterViews
+                + " storages=" + storages
+                + " families=" + familyCount
+                + " messengers=" + messengers.size()
+                + " playerShops=" + playerShopCount
+                + " merchants=" + merchantCount;
     }
 
     public boolean isConnected(String charName) {
@@ -1665,10 +1758,34 @@ public class World {
         }
     }
 
+    public boolean tryRegisterHiredMerchant(HiredMerchant hm) {
+        activeMerchantsLock.lock();
+        try {
+            if (activeMerchants.containsKey(hm.getOwnerId())) {
+                return false;
+            }
+
+            int initProc;
+            if (Server.getInstance().getCurrentTime() - merchantUpdate > MINUTES.toMillis(5)) {
+                initProc = 1;
+            } else {
+                initProc = 0;
+            }
+
+            activeMerchants.put(hm.getOwnerId(), new Pair<>(hm, initProc));
+            return true;
+        } finally {
+            activeMerchantsLock.unlock();
+        }
+    }
+
     public void unregisterHiredMerchant(HiredMerchant hm) {
         activeMerchantsLock.lock();
         try {
-            activeMerchants.remove(hm.getOwnerId());
+            Pair<HiredMerchant, Integer> registered = activeMerchants.get(hm.getOwnerId());
+            if (registered != null && registered.getLeft() == hm) {
+                activeMerchants.remove(hm.getOwnerId());
+            }
         } finally {
             activeMerchantsLock.unlock();
         }
@@ -1689,7 +1806,7 @@ public class World {
                     activeMerchants.put(hm.getOwnerId(), new Pair<>(dm.getValue().getLeft(), timeOn + 1));
                 } else {
                     hm.forceClose();
-                    this.getChannel(hm.getChannel()).removeHiredMerchant(hm.getOwnerId());
+                    this.getChannel(hm.getChannel()).removeHiredMerchant(hm.getOwnerId(), hm);
 
                     activeMerchants.remove(dm.getKey());
                 }
@@ -1892,7 +2009,7 @@ public class World {
                     executePlayerNpcMapDataUpdate(con, true, pnpcPodium, podium, id, mapid);
                 }
             } catch (SQLException e) {
-                log.error("unhandled exception", e);
+                monitoring.RuntimeFailureLogger.log(e);
             }
         }
 
@@ -1932,7 +2049,7 @@ public class World {
     }
 
     public void broadcastPacket(Packet packet) {
-        for (Character chr : players.getAllCharacters()) {
+        for (Character chr : players.getNetworkRecipients()) {
             chr.sendPacket(packet);
         }
     }
@@ -1958,7 +2075,9 @@ public class World {
 
         hmsAvailable.sort((p1, p2) -> p1.getLeft().getPrice() - p2.getLeft().getPrice());
 
-        hmsAvailable.subList(0, Math.min(hmsAvailable.size(), 200));    //truncates the list to have up to 200 elements
+        if (hmsAvailable.size() > 200) {
+            return new ArrayList<>(hmsAvailable.subList(0, 200));
+        }
         return hmsAvailable;
     }
 
@@ -2027,7 +2146,7 @@ public class World {
 
             return (mid == null) ? null : new Pair<>(mid, new Pair<>(hid, wid));
         } catch (SQLException se) {
-            log.error("unhandled exception", se);
+            monitoring.RuntimeFailureLogger.log(se);
             return null;
         }
     }
@@ -2052,7 +2171,7 @@ public class World {
                 return ret;
             }
         } catch (SQLException se) {
-            log.error("unhandled exception", se);
+            monitoring.RuntimeFailureLogger.log(se);
             return -1;
         }
     }
@@ -2072,12 +2191,12 @@ public class World {
             ps.setInt(1, playerId);
             ps.executeUpdate();
         } catch (SQLException se) {
-            log.error("unhandled exception", se);
+            monitoring.RuntimeFailureLogger.log(se);
         }
     }
 
     public void dropMessage(int type, String message) {
-        for (Character player : getPlayerStorage().getAllCharacters()) {
+        for (Character player : getPlayerStorage().getNetworkRecipients()) {
             player.dropMessage(type, message);
         }
     }
@@ -2150,6 +2269,10 @@ public class World {
             ch.shutdown();
         }
 
+        shutdownWorldResources();
+    }
+
+    public final void shutdownWorldResources() {
         if (petsSchedule != null) {
             petsSchedule.cancel(false);
             petsSchedule = null;
@@ -2210,8 +2333,10 @@ public class World {
             hpDecSchedule = null;
         }
 
-        players.disconnectAll();
-        players = null;
+        if (players != null) {
+            players.disconnectAll();
+            players = null;
+        }
 
         clearWorldData();
         log.info("Finished shutting down world {}", id);
