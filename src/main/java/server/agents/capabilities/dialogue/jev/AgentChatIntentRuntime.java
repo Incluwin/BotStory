@@ -55,7 +55,8 @@ public final class AgentChatIntentRuntime {
     /**
      * Called only after the deterministic dispatcher reported {@code false}. Completes with
      * {@code true} when the judgment handled the message (acted or asked), otherwise {@code false}
-     * so the existing social fallback keeps its turn.
+     * so the existing social fallback keeps its turn. Commands the orchestrator carried out but
+     * reports as unhandled (its legacy fall-through) are never judged.
      */
     public static CompletionStage<Boolean> judgeUnmatched(AgentRuntimeEntry entry,
                                                            String message,
@@ -63,7 +64,8 @@ public final class AgentChatIntentRuntime {
                                                            Redispatch redispatch,
                                                            ReplyQueue replies) {
         JevJudgmentMode mode = mode();
-        if (!mode.asks() || entry == null || message == null || message.isBlank()) {
+        if (!mode.asks() || entry == null || message == null || message.isBlank()
+                || AgentChatFallThroughCommands.handledDeterministically(message)) {
             return CompletableFuture.completedFuture(false);
         }
         JevClient client = JevClient.runtime();
