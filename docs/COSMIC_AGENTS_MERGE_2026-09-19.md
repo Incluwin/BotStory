@@ -59,12 +59,21 @@ at it. A normal 3-way merge then produced 113 content conflicts.
 ## Verification
 
 * `mvnw compile` — clean (3,711 sources).
-* `mvnw test` — **4,533 tests, 4,525 pass.** The 8 that fail also fail on pristine
-  cosmic_agents `3c7e09435` (verified by running the same classes in a clean clone):
+* `mvnw test` — **the forked test JVM exhausts its heap before the suite finishes**, on
+  pristine cosmic_agents `3c7e09435` too (verified: `BotManagerTest` alone dies with the default
+  4 GB heap in a clean clone, and `-Xmx10g` changes nothing). The culprits are upstream's
+  mock-heavy `server.agents.integration.BotManagerTest` / `BotCombatManagerTest`, which mock
+  `client.Character` with Mockito inline. Excluding them
+  (`-Dtest='!BotManagerTest,!BotCombatManagerTest'`) lets the rest of the 1,352 test classes run.
+  Of those, the failures are all pre-existing upstream ones or environment-specific:
   `CharacterPersistenceSectionMutationTest`, `AgentConfigurationBoundaryTest` (2),
   `AgentArchitectureBoundaryTest` (4 — source-lint import ceilings + a missing
   `dialogue/llm/gateway` dir), `AgentNpcInteractionAnchorCatalogTest` (needs a generated
-  `tmp/game-catalog/generated_map_catalog.json`). Upstream's problem, not the merge's.
+  `tmp/game-catalog/generated_map_catalog.json`), and
+  `EconomyDemandCatalogIntegrityTest.configuredStallPermitPool...` (asserts a one-line XML
+  form that only Kiwiism's gitignored `wz_victoria` export has; stock P0nk WZ fails it even at
+  `fec53bc77`). Upstream's problems, not the merge's. See the 2026-09-20 addendum below for the
+  full excluded-run numbers.
 
 ## Not yet done
 
