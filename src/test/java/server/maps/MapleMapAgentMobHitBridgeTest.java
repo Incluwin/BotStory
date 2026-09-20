@@ -154,7 +154,7 @@ class MapleMapAgentMobHitBridgeTest {
         Monster monster = mock(Monster.class);
         AtomicInteger hp = new AtomicInteger(hpBefore);
         when(monster.getStats()).thenReturn(stats);
-        when(monster.getHp()).thenAnswer(invocation -> hp.get());
+        when(monster.getHp()).thenAnswer(invocation -> (long) hp.get());
         when(monster.isAlive()).thenAnswer(invocation -> hp.get() > 0);
         when(monster.damage(any(Character.class), anyInt(), eq(false)))
                 .thenAnswer(invocation -> {
