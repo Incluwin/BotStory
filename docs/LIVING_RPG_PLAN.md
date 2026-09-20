@@ -205,7 +205,7 @@ price:                              # any subset; ALL listed must be met unless 
 terms:
   durationHours: 6                  # 0 = until dismissed
   maxLevelGap: 15                   # leaves if leader outlevels him by more
-  lootShare: OWN_DROPS              # OWN_DROPS | NONE | LEADER
+  lootShare: OWN_DROPS              # OWN_DROPS (keeps a cut, default 10%) | NONE | LEADER; also splits the bench haul (11.5)
   leavesOn: [LEADER_OFFLINE_20M, DISMISS, LEADER_DEATH_3X, CONTRACT_END]
   cooldownHoursAfterLeave: 12
   rejoinPrice: { meso: 50000 }      # cheaper second time
@@ -483,7 +483,8 @@ and at most one town is usually awake per player. Watch `Scale health` lines and
   `recruitAgent` + party join, leave/return objective, cooldown and rejoin price.
 - Loadouts and strength tiers; arc-driven loadout changes.
 - Roster and bench (section 11): `living_roster`, party-slot accounting, `bench`/`call`/`swap`,
-  training camps with the offline training ledger, apprentice EXP bonus.
+  camps with the offline bench ledger (TRAIN first, then FARM_MESO / FARM_ITEM / GATHER / SELL
+  / STALL), the haul with trade-window, Duey and storage collection, apprentice EXP bonus.
 - Verify: Garrick-style contract (meso + kept item + kill proof) joins, fights, leaves on
   `LEADER_OFFLINE_20M`, returns to Perion, bond memory persists across restart.
 
@@ -533,8 +534,8 @@ party) and who is *benched*. Benched companions keep living and keep levelling.
   "guild charter"). Recruiting past the cap requires releasing someone; released Personas go
   home as Residents with the bond memory intact (they remember being dropped: small trust
   penalty, cheaper rejoin only after cooldown).
-- A Persona can belong to at most one player's roster at a time (they are real characters).
-  Popular Personas are therefore contested: the contract's `cooldownHoursAfterLeave` plus a
+- A Persona can belong to at most one player's roster at a time (they are real characters;
+  decision confirmed 2026-09-20). Popular Personas are therefore contested: the contract's `cooldownHoursAfterLeave` plus a
   world flag `persona.<id>.employedBy` make the town say "Garrick left with someone last
   night". Quest-only Residents never enter a roster.
 - Two humans in one party: each commands only their own companions (bond authority is per
@@ -571,13 +572,15 @@ recall exists as a consumable **whistle** (shop item, moderate meso price) or as
 not want to. Camps are the companion's home town by default; the owner can set a training
 map as camp, which is what makes benched training visible (11.4).
 
-### 11.4 Benched companions keep pace
+### 11.4 Benched companions keep pace (and earn)
 
-Three layers, cheapest first:
+A benched companion always has an **assignment**: `TRAIN` (levels, below), or one of the
+economic modes in 11.5. Whatever the assignment, it runs through the same three layers,
+cheapest first:
 
-1. **Offline training ledger** (`AgentTrainingLedger`, no character online): each benched
-   companion has a training assignment (camp map + mode). Every 10 minutes the ledger credits
-   EXP from a per-level model: `expPerHour(level) = fieldExpRate(campMap, level) * efficiency`
+1. **Offline ledger** (`AgentBenchLedger`, no character online): each benched companion has
+   an assignment (camp map + mode + target). Every 10 minutes the ledger credits the
+   assignment's outcome; for `TRAIN` that is EXP from a per-level model: `expPerHour(level) = fieldExpRate(campMap, level) * efficiency`
    where `fieldExpRate` comes from the existing field capacity and training catalogs
    (`resources/agents/field/victoria-field-capacities.json`, `VICTORIA_LEVEL15_30_TRAINING_CATALOG.md`)
    and `efficiency` from strength tier and gear. Deaths and potion use are modelled as a meso
@@ -616,6 +619,53 @@ around"), which is a deliberate difference between a loyal squire and a mercenar
 **Restart.** Roster state is DB-backed; benched companions need no process state at all.
 Active companions are re-registered to their owner when the owner logs in, or benched if the
 owner is offline for `LEADER_OFFLINE_20M`.
+
+### 11.5 Economic assignments: the bench farms too
+
+Companions are not only levelling on the bench; the owner can put them to work. Assignments
+(set by command, section 12.2, or from the roster whisper):
+
+| Assignment | What the companion does | Outcome credited |
+|---|---|---|
+| `TRAIN` | fights at the camp for EXP (11.4) | EXP up to the pace target, incidental drops |
+| `FARM_MESO` | hunts the best meso-per-hour mobs for its level near the camp | meso |
+| `FARM_ITEM <item> [n]` | hunts mobs that drop the item (real drop tables) until `n` or told to stop | the item, other drops |
+| `GATHER` | farms whatever the owner's *active Persona quests* need (`COLLECT_ITEM` steps) | quest items |
+| `SELL` | walks to a town, sells the haul's junk at NPC prices, banks the meso | meso |
+| `STALL` | sets up a Free Market stall (existing `AgentFreeMarketStallCapability`) and sells the haul at market prices | meso, slowly, more of it |
+| `REST` | does nothing; no upkeep, no gain | - |
+
+**Outcome model.** The offline ledger simulates `killsPerHour(level, campMap)` from the field
+capacity catalog, rolls real drop tables through `MonsterInformationProvider` at the server's
+own drop and meso rates, then applies a global **bench efficiency** (`BENCH_FARM_EFFICIENCY`,
+default 0.6) so live play with the companion is always better than parking it. Excluded
+offline: boss drops, event and cash items, anything on the SoloMapling hard-exclusion list.
+When a bounded `BACKGROUND_ABSTRACT` session runs instead (layer 2), the outcome is real and
+the ledger reconciles against it, exactly as for EXP.
+
+**The haul.** Farmed items and meso go to a per-companion `living_haul` (the companion's real
+inventory is the physical form; the haul row is the ledger view). Capacity is the
+companion's actual slots, so the owner has to collect or the companion has to `SELL`; this is
+what makes farming an activity instead of a faucet. Meso upkeep (potions, deaths, taxis) is
+paid out of the haul first, and the contract's `lootShare` term decides the split: `NONE`
+(the companion keeps nothing beyond upkeep), `OWN_DROPS` (it keeps a declared cut, default
+10%, which it spends on its own gear over time - visible growth), `LEADER` (everything goes to
+the owner).
+
+**Collecting.** Three ways, all existing mechanics:
+- meet the companion (call it, or visit its camp) and say `hand it over`: the trade window
+  opens with the haul pre-loaded, the owner accepts;
+- `send it`: the companion mails the haul through **Duey** (`DueyPackage` exists) for the
+  normal Duey fee, so the owner picks it up in any town - the Pokemon "item delivered" moment;
+- `bank it`: meso only, deposited to the owner's storage via the storage capability when the
+  companion is in a town (fee-free, items excluded to keep storage as the player's own space).
+
+**Guardrails.** Per-account bench farming is capped by `BENCH_FARM_HOURS_PER_DAY` (default 16)
+and the haul per companion by its slots; farmed item volume flows through the same saturation
+and rarity signals the SoloMapling economy already tracks (`bot_scroll_demand_cache`,
+saturation multipliers), so a hundred benched companions farming the same drop depress its
+yield the way merchant bots already do. `!world haul <player>` shows every companion's ledger
+and the reconciliation log explains any credit.
 
 ## 12. Command surface: deterministic first, Jev last
 
@@ -668,6 +718,8 @@ Groups and examples (arguments in angle brackets are slot-filled deterministical
   <item>`, `put sp in <skill>`, `build <preset>`, `job advance`.
 - **Party, roster, contracts** (section 11): call, bench, swap, roster, camp, `renew`,
   `extend a day`, `how long left`, `pay <n>`.
+- **Bench assignments** (11.5): `train`, `farm meso`, `farm <item> [n]`, `gather for my quests`,
+  `go sell`, `set up a stall`, `rest`, `what did you get`, `hand it over`, `send it`, `bank it`.
 - **Progression**: `train here till <level>`, `train till i'm back`, `stay at this level`,
   `what level are you`, `how much exp`.
 - **Town tasks**: `go sell`, `go bank`, `go heal`, `wait in town`, `buy <item> for me`
