@@ -62,6 +62,9 @@ players gaining command of a bot** (authority is a GM name allowlist today).
   proves, how long the Adventurer stays, what ends it.
 - **Rumor** - a scripted Resident-to-Resident dialogue (the "hidden dialogue") performed in
   public at a scheduled time and place; hearing it sets a flag on nearby players' bonds.
+- **Roster** - the set of Personas a player has recruited (section 11). At most 5 are
+  **active** (in the party, the 6-member cap minus humans); the rest are **benched** at a
+  **camp** (home town or a training map) where they keep levelling.
 
 ## 3. Lifecycle
 
@@ -74,18 +77,19 @@ players gaining command of a bot** (authority is a GM name allowlist today).
                              | bond stage reaches          | contract fulfilled
                              | "trusted" and persona       | (pay/prove) and
                              | has a contract              | player says join
-                             v                            v
-                    +----------------+           +------------------------+
-                    | OFFER          |  yes ---> | ADVENTURER             |
-                    | states terms   |           | companion of leader,   |
-                    | (once per day) |  no/timeout| in party, follows/    |
-                    +----------------+  -> RESIDENT| grinds/farms/PQ      |
-                                                  +-----+------------+----+
-                                                        | dismiss,   | contract end,
-                                                        | leader     | leader offline
-                                                        | offline    | > N min, death
-                                                        v            | rule, betrayal
-                                                  +------------------v-----+
+                             v                             v
+                    +----------------+           +---------------------------+
+                    | OFFER          |  yes ---> | ROSTER (owned by player)  |
+                    | states terms   |           |                           |
+                    | (once per day) |  no/      |  ACTIVE  <--call/bench--> BENCHED
+                    +----------------+  timeout  |  in party, follows/       at camp: trains
+                                       -> RESIDENT| grinds/farms/PQ          (ledger / abstract)
+                                                  +------+--------------+----+
+                                                         | release,     | contract end,
+                                                         | dismiss      | bench tolerance
+                                                         |              | exceeded, owner
+                                                         v              | gone, betrayal
+                                                  +-------------------v----+
                                                   | RETURNING              |
                                                   | walks/teleports home,  |
                                                   | bond updated (memory)  |
@@ -94,9 +98,9 @@ players gaining command of a bot** (authority is a GM name allowlist today).
                                                            RESIDENT
 ```
 
-Quest-only Personas never leave RESIDENT. Persistence: persona state, bonds, ledgers and
-world flags live in MySQL (Liquibase changesets), not in `.runtime` files, because they must
-survive restarts and be visible to MapleEdit.
+Quest-only Personas never leave RESIDENT. Persistence: persona state, bonds, roster, ledgers
+and world flags live in MySQL (Liquibase changesets), not in `.runtime` files, because they
+must survive restarts and be visible to MapleEdit.
 
 ## 4. Content model (data-driven, authored as YAML)
 
@@ -405,7 +409,9 @@ Cost model (measured 2026-09-20 prices: $0.042 per million input tokens, output 
 | 50 | 40 | 2.4M | 1.75M | $0.17 | $5.23 |
 | 200 | 40 | 9.6M | 7.0M | $0.70 | $20.9 |
 
-Bot count does not appear in the table: 60 or 600 Residents cost the same API money. Run
+Bot count does not appear in the table: 60 or 600 Residents cost the same API money. The
+miss rate itself falls over time: every confident ACT becomes a learned phrase (section 12.3),
+so a phrase costs money at most once per server, not once per player. Run
 `tools\typesafe-cost.bat --bots <adventurers> --commands-per-bot-hour 6 --hours-online 12 --live`
 after adding the `resident-intent` sample to `JevRequestSamples` to refresh the numbers.
 
@@ -463,6 +469,8 @@ and at most one town is usually awake per player. Watch `Scale health` lines and
 - Verify: 8 Residents in Lith Harbor for 2 hours, no scheduler warnings, standby when empty.
 
 **P1 - Quests in one town (1-2 weeks)**
+- Phrase packs (section 12): move the existing regexes into `command-phrases.yaml`, add the
+  filler/tail normalizer and the learned-phrase store; ship the first 40 new commands.
 - Resident dialogue classifier + `resident-intent` judge in SHADOW; whisper transport for
   quest text; `@quests`.
 - Ledger listeners: TALK, KILL_MOBS, COLLECT_ITEM, DELIVER, VISIT_MAP; rewards; audit log.
@@ -474,6 +482,8 @@ and at most one town is usually awake per player. Watch `Scale health` lines and
 - Contracts: offer flow, price collection via trade window, kill proofs, join through
   `recruitAgent` + party join, leave/return objective, cooldown and rejoin price.
 - Loadouts and strength tiers; arc-driven loadout changes.
+- Roster and bench (section 11): `living_roster`, party-slot accounting, `bench`/`call`/`swap`,
+  training camps with the offline training ledger, apprentice EXP bonus.
 - Verify: Garrick-style contract (meso + kept item + kill proof) joins, fights, leaves on
   `LEADER_OFFLINE_20M`, returns to Perion, bond memory persists across restart.
 
@@ -506,3 +516,189 @@ and at most one town is usually awake per player. Watch `Scale health` lines and
 - **Restart behaviour.** Residents respawn from the roster; Adventurers mid-contract should be
   re-registered to their leader on login if the contract is still active, otherwise the
   contract ends with a refund rule (`refundOnServerRestart: PARTIAL`).
+
+## 11. Party cap, roster and bench (the Pokemon model)
+
+MapleStory parties hold 6 characters. One player therefore fields at most 5 Adventurers at a
+time; two players in one party share the 4 remaining slots. Recruitment is not limited by
+that: a player owns a **roster** of recruited companions and decides who is *active* (in the
+party) and who is *benched*. Benched companions keep living and keep levelling.
+
+### 11.1 Roster
+
+- `living_roster` (characterId, personaId, recruitedAt, state ACTIVE|BENCHED|AWAY|RELEASED,
+  campMapId, campMode, accruedExp, lastMaterializedAt, wagesPaidUntil). One row per
+  (player, persona); the contract row stays the authority on whether the bond is still valid.
+- `ROSTER_MAX` per player (default 10; can be raised by an arc reward or a purchasable
+  "guild charter"). Recruiting past the cap requires releasing someone; released Personas go
+  home as Residents with the bond memory intact (they remember being dropped: small trust
+  penalty, cheaper rejoin only after cooldown).
+- A Persona can belong to at most one player's roster at a time (they are real characters).
+  Popular Personas are therefore contested: the contract's `cooldownHoursAfterLeave` plus a
+  world flag `persona.<id>.employedBy` make the town say "Garrick left with someone last
+  night". Quest-only Residents never enter a roster.
+- Two humans in one party: each commands only their own companions (bond authority is per
+  pair). Party slots are first come first served; the party leader can ask another human's
+  companion to step out (`Leroy, make room`), which the companion obeys only if *its* owner is
+  also in the party and has not said `Leroy, stay in`. Simple rule, no negotiation logic.
+
+### 11.2 Active party management
+
+Commands (all deterministic, see section 12 for phrasing):
+
+| Intent | Effect |
+|---|---|
+| `call <name>` / `<name> come` | benched -> travelling -> joins party when it arrives (see 11.3) |
+| `bench <name>` / `<name> take a break` | leaves party, goes to its camp |
+| `swap <a> for <b>` | bench a, call b, keeping the slot |
+| `roster` / `who do i have` | whisper list: name, level, state, ETA/camp |
+| `<name> camp here` / `camp at <town>` | sets the bench camp for that companion |
+| `everyone bench` / `call the usual` | bench all / call the last active set |
+| `<name> wait here` | AWAY state: stays on this map idle, keeps the slot reserved for 10 min |
+
+Slot accounting lives in `AgentRosterService`: `freeSlots = 6 - humans - activeBots`. A `call`
+with no free slot is refused with the reason in the companion's voice, unless the owner names
+who to swap.
+
+### 11.3 Recall and travel
+
+Realistic by default: a called companion travels from its camp with the existing travel and
+navigation capabilities (portals, taxis, ships), unmaterialized and ETA-based when no player
+can see it (`BACKGROUND_ABSTRACT` route ETA), materializing when it reaches a map with the
+player or another human. The owner gets `on my way, ~3 min` and `here` whispers. Instant
+recall exists as a consumable **whistle** (shop item, moderate meso price) or as a
+`SWORN`-bond perk, so the world stays believable but nobody is forced to wait when they do
+not want to. Camps are the companion's home town by default; the owner can set a training
+map as camp, which is what makes benched training visible (11.4).
+
+### 11.4 Benched companions keep pace
+
+Three layers, cheapest first:
+
+1. **Offline training ledger** (`AgentTrainingLedger`, no character online): each benched
+   companion has a training assignment (camp map + mode). Every 10 minutes the ledger credits
+   EXP from a per-level model: `expPerHour(level) = fieldExpRate(campMap, level) * efficiency`
+   where `fieldExpRate` comes from the existing field capacity and training catalogs
+   (`resources/agents/field/victoria-field-capacities.json`, `VICTORIA_LEVEL15_30_TRAINING_CATALOG.md`)
+   and `efficiency` from strength tier and gear. Deaths and potion use are modelled as a meso
+   upkeep drawn from the companion's own purse, then from `wages` the owner prepaid; an unpaid
+   companion trains at half efficiency and says so. The ledger only accrues up to the **pace
+   target** (below).
+2. **Background-abstract sessions** when the server has headroom and no players are in the
+   camp map: materialize the companion in `BACKGROUND_ABSTRACT` mode (the mode, policy and
+   outcome ledger exist in `server.agents.runtime.simulation`) and let the existing adaptive
+   hunting plan run for a bounded slice (real drops, real potion consumption, real EXP). The
+   ledger is reconciled against the real outcome (`AgentBackgroundOutcomeReconciler`) so
+   layer 1 never double-credits.
+3. **Presentation** whenever a human is in the camp map: the companion is simply there,
+   fighting, and the player can watch, trade, or talk to it. Entering the map is the Pokemon
+   "visit the daycare" moment.
+
+**Pace target.** A companion's target level is `ownerLevel - paceGap` where `paceGap` starts
+at 3 and shrinks with bond stage (SWORN: 0). Benched accrual stops at the target so a
+companion never overtakes its owner while benched; it also never falls more than `maxLag`
+(default 8) behind, because below that the ledger applies a catch-up multiplier of up to 3x.
+Both knobs are per Persona (a veteran mercenary may refuse to be outlevelled; a rookie is
+always catching up). This is the "gets more EXP as the player progresses" behaviour expressed
+as a visible rule instead of a hidden buff.
+
+**In-party EXP.** Active companions receive normal party EXP shares (Cosmic already splits
+EXP across party members in range and counts bots). On top, an **apprentice bonus** multiplies a
+companion's kill EXP by `1 + 0.15 * min(6, ownerLevel - botLevel)` while it is at least 2
+levels below its owner. Levels, job advancement and SP allocation reuse the existing
+progression runtime and build profiles, so a companion's growth is real character growth.
+
+**Contracts and the bench.** Contract duration counts party time only. Bench time is free, but
+each Persona declares `benchTolerance` (days). Past it the companion quits the roster and
+returns to Resident with a `walked-out` memory; some Personas set it to `0` ("I don't wait
+around"), which is a deliberate difference between a loyal squire and a mercenary.
+
+**Restart.** Roster state is DB-backed; benched companions need no process state at all.
+Active companions are re-registered to their owner when the owner logs in, or benched if the
+owner is offline for `LEADER_OFFLINE_20M`.
+
+## 12. Command surface: deterministic first, Jev last
+
+The classifiers today match a *whole* normalized message against ~80 regexes with fixed tails
+(`wait (here|up|for me|a sec)`), which is why `wait there`, `stop attacking` and `go attack`
+missed last night and cost a judgment each. Expanding the surface has three parts.
+
+### 12.1 Phrase packs replace inline regexes
+
+`scripts/config/living-world/command-phrases.yaml` declares every canonical command with
+its synonyms, argument slots and tolerated tails; a compiler turns it into the same
+`Pattern`s the classifiers use, and the classifiers become thin lookups. Example:
+
+```yaml
+- canonical: stop
+  aliases: [stop, stay, wait, hold, halt, freeze, chill, idle, park, "stand still", "don't move"]
+  tails: [here, there, put, up, "for me", "a sec", "a moment", "a bit", moving, attacking, fighting, "right there"]
+- canonical: grind
+  aliases: [grind, farm, hunt, train, "kill stuff", "kill mobs", attack, fight, "get exp", "go to work"]
+  prefixes: [go, start, begin, "let's", "time to", "you can", "keep"]
+  tails: [here, around, "around here", "over there", "for a while", "till i'm back", now]
+- canonical: focus
+  aliases: [focus, target, prioritize, "go for", "kill the", "attack the"]
+  slots: { mob: mobName }            # resolved against the map's live mob names, then Mob.wz names
+```
+
+Normalization (shared by every pack) strips the addressed name wherever it appears, the
+existing leading fillers (`please|pls|hey|yo`), and a larger filler vocabulary
+(`can you`, `could you`, `would you`, `just`, `go`, `now`, `ok`, `alright`, `dude`, `bro`,
+`buddy`, emoji, repeated letters `plsss`, common typos via a small edit-distance table for the
+alias words only). Matching is then `prefix? alias tail*` with unknown trailing tokens allowed
+up to two, so `stop attacking` and `wait there` are deterministic hits and `get on the rope`
+still misses (no alias). The compatibility test that pins canonical phrases to predicates
+stays and gains one case per alias.
+
+### 12.2 Many more commands
+
+Target: from ~25 movement/info commands to ~150 canonical commands, each with 5-15 aliases.
+Groups and examples (arguments in angle brackets are slot-filled deterministically):
+
+- **Movement**: follow, stop, come, `go to <portal|npc|map>`, `meet me at <map>`, `return to
+  town`, `wait at <spot>`, `take the taxi to <town>`, `stay close`, `keep distance`, `left/right
+  of me`, `spread out`, `line up`, `lead the way to <map>` (navigation graph route).
+- **Combat**: attack, `focus <mob>`, `avoid <mob>`, `only <mob>`, `use <skill>`, `stop using
+  <skill>`, `hold aggro`, `kite`, `melee only`, `ranged only`, `protect me`, `retreat under
+  <n>% hp`, `finish them`, `don't attack`, `attack on my mark`, `pull to me`.
+- **Supplies and loot**: `buy pots`, `restock`, `share pots`, `pot at <n>%`, `sell junk`,
+  `loot all|none|equips|rares|meso`, `give me the drops`, `keep the drops`, `hand over <item>`.
+- **Gear and build**: `equip <item>`, `unequip <slot>`, `autoequip`, `show gear`, `compare
+  <item>`, `put sp in <skill>`, `build <preset>`, `job advance`.
+- **Party, roster, contracts** (section 11): call, bench, swap, roster, camp, `renew`,
+  `extend a day`, `how long left`, `pay <n>`.
+- **Progression**: `train here till <level>`, `train till i'm back`, `stay at this level`,
+  `what level are you`, `how much exp`.
+- **Town tasks**: `go sell`, `go bank`, `go heal`, `wait in town`, `buy <item> for me`
+  (trusted only), `check the fm for <item>`.
+- **Social / presentation**: greet, thanks, `good job`, emotes (`dance`, `sit`, `wave`,
+  `cheer`), `quiet` / `talk more` (adjusts reply frequency), `what are you doing`.
+- **Info**: hp, mp, level, exp, meso, inventory, slots, potions, scrolls, skills, stats,
+  range, position (`where are you`), `what's your job`, `who are you` (persona blurb).
+- **Resident dialogue** (section 5.2): quest, accept, done, join, bye, `who is <persona>`,
+  `tell me about <topic>`.
+
+Every new canonical needs an executor; most map onto existing capability calls (movement
+modes, combat policy toggles, supplies, trade), so the work is mostly wiring plus a test per
+command. Commands the runtime cannot honour yet are declared with `status: planned` so the
+bot answers "can't do that yet" deterministically instead of falling to Jev.
+
+### 12.3 Learned phrases (Jev teaches the regexes)
+
+When the intent judge returns ACT with confidence >= 0.90 and the re-dispatch succeeds, the
+normalized message is stored in `living_learned_phrase` (normalizedText, canonical, hits,
+firstSeen, source=JEV|GM, approved). Learned phrases are loaded into the matcher ahead of the
+packs, so `wait there` costs one judgment on the whole server, ever. Entries with fewer than
+3 hits expire after 30 days; GMs review with `!phrases pending|approve|reject|export`, and the
+export feeds back into `command-phrases.yaml` for the next release (and upstream).
+
+### 12.4 What is left for Jev
+
+With packs and learned phrases in place, Jev sees only genuinely new constructions, sentences
+with two intents, and Resident conversation. Measured last night the companion state is
+~3.5k tokens; it should shrink to ~2k by dropping sections the intent question does not need
+(the state builder already bands numbers; the mob list and full inventory can go). Expected
+effect on section 6: miss rate 25% -> under 10% within the first week of play, then a slow
+decay as phrases are learned. `!typesafe` already shows the per-kind request count, so the
+miss rate is observable directly (judgments / commands).
