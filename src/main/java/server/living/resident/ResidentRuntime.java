@@ -79,6 +79,8 @@ public final class ResidentRuntime {
     private final ResidentProvisioner provisioner;
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
     private final Map<Integer, String> personaByCharacter = new ConcurrentHashMap<>();
+    /** Agent character ids known not to be personas (spawnbot companions, ambient pool), so kills skip the DB. */
+    private final java.util.Set<Integer> notPersona = ConcurrentHashMap.newKeySet();
     private final Map<Integer, Long> lastPlayerSeenMs = new ConcurrentHashMap<>();
     private final Map<String, Long> retryAfterMs = new ConcurrentHashMap<>();
     private final Map<String, Boolean> forcedAwake = new ConcurrentHashMap<>();
@@ -108,22 +110,7 @@ public final class ResidentRuntime {
         if (character == null) {
             return null;
         }
-        String personaId = personaByCharacter.get(character.getId());
-        if (personaId == null) {
-            LivingStore.PersonaState state = null;
-            for (Map.Entry<String, LivingStore.PersonaState> entry : world.store().allPersonaStates().entrySet()) {
-                if (entry.getValue().characterId() == character.getId()) {
-                    state = entry.getValue();
-                    break;
-                }
-            }
-            if (state == null) {
-                return null;
-            }
-            personaByCharacter.put(character.getId(), state.personaId());
-            personaId = state.personaId();
-        }
-        return world.content().persona(personaId);
+        return personaOfCharacterId(character.getId());
     }
 
     public Persona personaOfCharacterId(int characterId) {
@@ -131,12 +118,16 @@ public final class ResidentRuntime {
         if (personaId != null) {
             return world.content().persona(personaId);
         }
+        if (notPersona.contains(characterId)) {
+            return null;
+        }
         for (Map.Entry<String, LivingStore.PersonaState> entry : world.store().allPersonaStates().entrySet()) {
             if (entry.getValue().characterId() == characterId) {
                 personaByCharacter.put(characterId, entry.getKey());
                 return world.content().persona(entry.getKey());
             }
         }
+        notPersona.add(characterId);
         return null;
     }
 
@@ -169,6 +160,7 @@ public final class ResidentRuntime {
         int id = provisioner.ensureCharacter(persona);
         if (id > 0) {
             personaByCharacter.put(id, persona.id());
+            notPersona.remove(id);
         }
         return id;
     }

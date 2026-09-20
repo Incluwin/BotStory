@@ -1,6 +1,8 @@
 # Living RPG plan: resident bots, quest lines, character arcs
 
-Status: proposal, 2026-09-20. FriendServer-specific unless a section says "upstream".
+Status: first cut implemented 2026-09-20 (`server.living.*`, content for all seven towns); see
+`docs/LIVING_WORLD_GUIDE.md` for how to run, play and author it and for what is still open.
+FriendServer-specific unless a section says "upstream".
 
 ## 0. Goal and shape
 
