@@ -25,6 +25,14 @@ class AgentChatFallThroughCommandsTest {
     }
 
     @Test
+    void liveActOnAFallThroughCanonicalCountsAsHandled() {
+        assertTrue(AgentChatIntentRuntime.actHandled("grind", false), "movement flow acted, orchestrator said false");
+        assertTrue(AgentChatIntentRuntime.actHandled("stop", null));
+        assertTrue(AgentChatIntentRuntime.actHandled("autoequip", true));
+        assertFalse(AgentChatIntentRuntime.actHandled("autoequip", false), "a real dispatcher miss stays a miss");
+    }
+
+    @Test
     void regexMissesStillReachTheJudge() {
         assertFalse(AgentChatFallThroughCommands.handledDeterministically("can u farm around here pls"));
         assertFalse(AgentChatFallThroughCommands.handledDeterministically("stick with me for a bit"));

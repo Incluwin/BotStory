@@ -111,13 +111,22 @@ public final class AgentChatIntentRuntime {
         switch (decision.outcome()) {
             case ACT -> redispatch.handle(entry, decision.canonicalCommand(), channel)
                     .whenComplete((handled, failure) ->
-                            result.complete(failure == null && Boolean.TRUE.equals(handled)));
+                            result.complete(failure == null && actHandled(decision.canonicalCommand(), handled)));
             case ASK -> {
                 replies.queue(entry, "did you mean '" + decision.canonicalCommand() + "'?");
                 result.complete(true);
             }
             default -> result.complete(false);
         }
+    }
+
+    /**
+     * A canonical command the orchestrator carries out but reports as unhandled (its legacy
+     * fall-through) still counts as acted on, so the owner-command record is updated and the
+     * social small-talk fallback stays quiet.
+     */
+    static boolean actHandled(String canonicalCommand, Boolean handled) {
+        return Boolean.TRUE.equals(handled) || AgentChatFallThroughCommands.handledDeterministically(canonicalCommand);
     }
 
     private static AgentChatIntentJudge judge() {
