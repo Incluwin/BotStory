@@ -101,18 +101,18 @@ public final class JevClient {
         try {
             JevResponse response = transport.send(request, settings);
             breaker.recordSuccess();
-            meter.recordSuccess(response);
+            meter.recordSuccess(request.kind(), response);
             return Optional.of(response);
         } catch (JevTransportException failure) {
             breaker.recordFailure(System.currentTimeMillis());
-            meter.recordFailure();
+            meter.recordFailure(request.kind());
             ThrottledLogger.warn("typesafe:" + failure.statusCode(), log,
                     "System One request failed (status {}, retryable {})", failure,
                     failure.statusCode(), failure.retryable());
             return Optional.empty();
         } catch (RuntimeException failure) {
             breaker.recordFailure(System.currentTimeMillis());
-            meter.recordFailure();
+            meter.recordFailure(request.kind());
             ThrottledLogger.warn("typesafe:runtime", log, "System One request failed unexpectedly", failure);
             return Optional.empty();
         }

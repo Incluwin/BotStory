@@ -29,6 +29,7 @@ public final class JevReportTriage {
     private static final Logger log = LoggerFactory.getLogger(JevReportTriage.class);
     static final String SEVERITY = "severity";
     static final String CATEGORY = "category";
+    public static final String REQUEST_KIND = "report-triage";
     static final List<Object> SEVERITY_LEVELS = List.of(
             "nothing actionable: banter, a misunderstanding, or no evidence in the chat log",
             "minor: rude language or spam that a warning would settle",
@@ -85,7 +86,7 @@ public final class JevReportTriage {
         });
     }
 
-    static JevRequest request(String reporterName, String victimName, String description, String chatlog) {
+    public static JevRequest request(String reporterName, String victimName, String description, String chatlog) {
         Map<String, Object> state = new LinkedHashMap<>();
         Map<String, Object> report = new LinkedHashMap<>();
         report.put("reporter", reporterName);
@@ -111,7 +112,7 @@ public final class JevReportTriage {
         categories.put("cheating", "claims of hacking, botting, or exploiting");
         categories.put("spam", "repeated or flooding messages without other harm");
         categories.put("no_issue", "nothing against the rules is described or shown");
-        return JevRequest.builder(state)
+        return JevRequest.builder(state).kind(REQUEST_KIND)
                 .score(SEVERITY, severityInstructions, SEVERITY_LEVELS)
                 .choice(CATEGORY, categoryInstructions, categories)
                 .build();

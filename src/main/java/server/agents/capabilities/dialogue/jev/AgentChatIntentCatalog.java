@@ -15,13 +15,14 @@ import java.util.Optional;
 public final class AgentChatIntentCatalog {
     public static final String INTENT_QUESTION = "intent";
     public static final String ADDRESSED_QUESTION = "addressed_to_bot";
+    public static final String REQUEST_KIND = "chat-intent";
 
     private AgentChatIntentCatalog() {
     }
 
     /** All questions are asked together; argument answers are read only for the chosen intent. */
     public static JevRequest request(Map<String, Object> state) {
-        JevRequest.Builder builder = JevRequest.builder(state);
+        JevRequest.Builder builder = JevRequest.builder(state).kind(REQUEST_KIND);
         Map<String, Object> intentInstructions = new LinkedHashMap<>();
         intentInstructions.put("question", "Which companion command does `message` express?");
         intentInstructions.put("inspect", "`message`, using `speaker`, `bot` and `recent_turns` only as context");

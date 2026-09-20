@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class AgentPartyQuestDialogueJudge {
     private static final Logger log = LoggerFactory.getLogger(AgentPartyQuestDialogueJudge.class);
+    public static final String REQUEST_KIND = "party-quest";
     private static final double YES_PROBABILITY = config.AgentTuning.doubleValue(
             "server.agents.capabilities.partyquest.dialogue.AgentPartyQuestDialogueJudge.YES_PROBABILITY");
 
@@ -79,18 +80,23 @@ public final class AgentPartyQuestDialogueJudge {
         if (client == null || !client.available() || questions == null || questions.isEmpty()) {
             return CompletableFuture.completedFuture(Optional.empty());
         }
-        JevRequest.Builder builder = JevRequest.builder(state);
+        return client.askAsync(request(state, questions)).thenApply(response -> response.map(AgentPartyQuestDialogueJudge::verdict))
+                .exceptionally(failure -> {
+                    log.debug("party-quest dialogue judgment failed", failure);
+                    return Optional.empty();
+                });
+    }
+
+    /** The request a judgment sends: one Noul per question over the stage state. */
+    public static JevRequest request(Map<String, Object> state, List<Question> questions) {
+        JevRequest.Builder builder = JevRequest.builder(state).kind(REQUEST_KIND);
         for (Question question : questions) {
             Map<String, Object> instructions = new LinkedHashMap<>();
             instructions.put("question", question.statement());
             instructions.put("inspect", "`message`, with `party_quest` and `speaker` as context");
             builder.noul(question.id(), instructions);
         }
-        return client.askAsync(builder.build()).thenApply(response -> response.map(AgentPartyQuestDialogueJudge::verdict))
-                .exceptionally(failure -> {
-                    log.debug("party-quest dialogue judgment failed", failure);
-                    return Optional.empty();
-                });
+        return builder.build();
     }
 
     static Verdict verdict(JevResponse response) {

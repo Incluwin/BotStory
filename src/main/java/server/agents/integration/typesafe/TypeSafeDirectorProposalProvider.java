@@ -26,9 +26,11 @@ import java.util.Optional;
 public final class TypeSafeDirectorProposalProvider implements AgentDirectorProposalProvider {
     private static final double MIN_SELECT_CONFIDENCE = config.AgentTuning.doubleValue(
             "server.agents.integration.typesafe.TypeSafeDirectorProposalProvider.MIN_SELECT_CONFIDENCE");
-    static final String ACTION_QUESTION = "action";
-    static final String ACTIONABLE_QUESTION = "asks_for_an_action";
-    static final List<Object> FIT_LEVELS = List.of(
+    public static final String ACTION_QUESTION = "action";
+    public static final String ACTIONABLE_QUESTION = "asks_for_an_action";
+    public static final String SELECT_KIND = "director-select";
+    public static final String RANK_KIND = "director-rank";
+    public static final List<Object> FIT_LEVELS = List.of(
             "poor fit: wrong level range, wrong kind of place, or contradicts the request",
             "partial fit: usable but clearly not what was asked for",
             "good fit: matches the request and the requested level",
@@ -90,7 +92,7 @@ public final class TypeSafeDirectorProposalProvider implements AgentDirectorProp
         Map<String, Object> instructions = new LinkedHashMap<>();
         instructions.put("question", "Which listed action does `operator_request` ask the Director to perform?");
         instructions.put("inspect", "`operator_request` against each entry of `actions`");
-        Optional<JevResponse> response = client.ask(JevRequest.builder(state)
+        Optional<JevResponse> response = client.ask(JevRequest.builder(state).kind(SELECT_KIND)
                 .choice(ACTION_QUESTION, instructions, criteria)
                 .noul(ACTIONABLE_QUESTION, "Does `operator_request` ask the Director to do something now, rather than ask a question or make small talk?")
                 .build());
@@ -134,7 +136,7 @@ public final class TypeSafeDirectorProposalProvider implements AgentDirectorProp
         state.put("requested_level", domainContext.requestedLevel());
         state.put("agent_level_vs_requested", JevStateBands.levelGap(domainContext.requestedLevel(), domainContext.agentLevel()));
         List<Map<String, Object>> rows = new ArrayList<>();
-        JevRequest.Builder builder = JevRequest.builder(state);
+        JevRequest.Builder builder = JevRequest.builder(state).kind(RANK_KIND);
         for (int index = 0; index < candidates.size(); index++) {
             AgentDirectorDomainContext.TrainingMapCandidate candidate = candidates.get(index);
             Map<String, Object> row = new LinkedHashMap<>();

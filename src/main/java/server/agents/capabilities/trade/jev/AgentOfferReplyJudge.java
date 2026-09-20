@@ -20,6 +20,7 @@ public final class AgentOfferReplyJudge {
     private static final double ACT_CONFIDENCE = config.AgentTuning.doubleValue(
             "server.agents.capabilities.trade.jev.AgentOfferReplyJudge.ACT_CONFIDENCE");
     static final String REPLY_QUESTION = "reply";
+    public static final String REQUEST_KIND = "offer-reply";
 
     public enum Reply {
         ACCEPT("yes"), DECLINE("no"), QUESTION(null), UNRELATED(null);
@@ -83,6 +84,11 @@ public final class AgentOfferReplyJudge {
 
     /** Blocking; run on the Agent async gateway. */
     public Optional<Decision> judge(Map<String, Object> state) {
+        return client.ask(request(state)).flatMap(this::decide);
+    }
+
+    /** The single Choice a reply judgment sends. */
+    public static JevRequest request(Map<String, Object> state) {
         Map<String, Object> instructions = new LinkedHashMap<>();
         instructions.put("question", "How does `message` answer the `pending_offer`?");
         instructions.put("inspect", "`message`, using `pending_offer.direction` to read who gives what");
@@ -95,10 +101,9 @@ public final class AgentOfferReplyJudge {
                 "examples", List.of("which item?", "what stats does it have?", "why?")));
         criteria.put("unrelated", Map.of("what", "talks about something else or to someone else",
                 "examples", List.of("brb", "lol", "anyone selling steelies")));
-        Optional<JevResponse> response = client.ask(JevRequest.builder(state)
+        return JevRequest.builder(state).kind(REQUEST_KIND)
                 .choice(REPLY_QUESTION, instructions, criteria)
-                .build());
-        return response.flatMap(this::decide);
+                .build();
     }
 
     Optional<Decision> decide(JevResponse response) {

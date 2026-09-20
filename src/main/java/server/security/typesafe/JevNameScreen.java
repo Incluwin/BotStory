@@ -24,6 +24,7 @@ public final class JevNameScreen {
     private static final Logger log = LoggerFactory.getLogger(JevNameScreen.class);
     static final String IMPERSONATES_STAFF = "impersonates_staff";
     static final String OFFENSIVE = "offensive";
+    public static final String REQUEST_KIND = "name-screen";
     /** Noul probability at or above which a name is rejected; well above the 0.5 "cannot tell". */
     static final double REJECT_PROBABILITY = 0.7d;
 
@@ -60,7 +61,7 @@ public final class JevNameScreen {
         return allowed;
     }
 
-    static JevRequest request(String name) {
+    public static JevRequest request(String name) {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("proposed_character_name", name.trim());
         state.put("context", "a player is creating a character on a MapleStory private server; "
@@ -73,7 +74,7 @@ public final class JevNameScreen {
         Map<String, Object> offensive = new LinkedHashMap<>();
         offensive.put("question", "Is `proposed_character_name` a slur, a sexual or hateful term, or a disguised spelling of one?");
         offensive.put("not_true_for", "innocent names that only contain an offensive substring, such as a surname that contains a rude syllable");
-        return JevRequest.builder(state)
+        return JevRequest.builder(state).kind(REQUEST_KIND)
                 .noul(IMPERSONATES_STAFF, staff)
                 .noul(OFFENSIVE, offensive)
                 .build();

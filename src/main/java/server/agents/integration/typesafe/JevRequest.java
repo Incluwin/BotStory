@@ -6,10 +6,18 @@ import java.util.Map;
 
 /**
  * A System One request: one {@code state} (string, map, or list) and a named set of questions
- * that are all evaluated against that state in a single round trip.
+ * that are all evaluated against that state in a single round trip. {@code kind} names the
+ * judgment for usage accounting (for example {@code chat-intent}); it is never sent to the API.
  */
-public record JevRequest(Object state, Map<String, JevQuestion> questions) {
+public record JevRequest(Object state, Map<String, JevQuestion> questions, String kind) {
+    public static final String DEFAULT_KIND = "other";
+
+    public JevRequest(Object state, Map<String, JevQuestion> questions) {
+        this(state, questions, DEFAULT_KIND);
+    }
+
     public JevRequest {
+        kind = kind == null || kind.isBlank() ? DEFAULT_KIND : kind.trim();
         if (state == null) {
             throw new IllegalArgumentException("request state is required");
         }
@@ -39,6 +47,7 @@ public record JevRequest(Object state, Map<String, JevQuestion> questions) {
     public static final class Builder {
         private final Object state;
         private final LinkedHashMap<String, JevQuestion> questions = new LinkedHashMap<>();
+        private String kind = DEFAULT_KIND;
 
         private Builder(Object state) {
             this.state = state;
@@ -70,12 +79,18 @@ public record JevRequest(Object state, Map<String, JevQuestion> questions) {
             return this;
         }
 
+        /** Usage-accounting label; see {@link JevUsageMeter}. */
+        public Builder kind(String kind) {
+            this.kind = kind;
+            return this;
+        }
+
         public int size() {
             return questions.size();
         }
 
         public JevRequest build() {
-            return new JevRequest(state, questions);
+            return new JevRequest(state, questions, kind);
         }
     }
 }

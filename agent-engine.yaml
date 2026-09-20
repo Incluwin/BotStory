@@ -4464,3 +4464,11 @@ tuning:
     # Purpose: Minimum Choice confidence for the offer reply judge to treat a free-form reply as an accept or decline of a pending item offer.
     # Technical: Accept and decline are re-dispatched as the canonical yes or no reply through the existing offer service; anything else leaves the offer pending.
     server.agents.capabilities.trade.jev.AgentOfferReplyJudge.ACT_CONFIDENCE: '0.7'
+    # Values: a non-negative decimal; unit: US dollars per million input tokens. Recommended: the published TypeSafe price, 0.042 at the time of writing; output tokens are free.
+    # Purpose: Converts measured input token counts into the spend figures shown by the usage meter, the typesafe command, and the cost projector.
+    # Technical: Applied uniformly to every judgment kind; changing it never alters behaviour, only the money columns, so a price change is a configuration edit rather than a code change.
+    server.agents.integration.typesafe.JevCostModel.PRICE_USD_PER_MILLION_INPUT_TOKENS: '0.042'
+    # Values: a non-negative integer; unit: minutes; 0 disables. Recommended: 15-60; 30 gives a readable spend trail without cluttering the log.
+    # Purpose: Interval at which the live TypeSafe usage report is written to the server log and appended to logs/typesafe-usage.csv.
+    # Technical: Registered on the low-priority timer lane only when TYPESAFE_API_KEY is configured; each cycle logs totals, the observed rate, the day projection, and one CSV row per judgment kind.
+    server.agents.integration.typesafe.JevUsageReporter.LOG_INTERVAL_MINUTES: '30'

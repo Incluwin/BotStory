@@ -45,7 +45,9 @@ server.agents.integration.typesafe
   JevResponse, JevAnswer        typed answers, probabilities, confidence, usage, latency
   JevTransport, JevHttpTransport POST /v1/systemone; one immediate retry on 529/5xx/IO, none on 429
   JevCircuitBreaker             opens after N consecutive failures for OPEN_MS
-  JevUsageMeter                 counters for diagnostics
+  JevUsageMeter                 per-kind requests/tokens/latency/cost + observed rate
+  JevCostModel, JevUsageReporter  price -> money; periodic [typesafe-usage] log + CSV
+  cost.JevCostProjector, cost.JevRequestSamples  spend projection tool (tools/typesafe-cost.bat)
   JevClient                     process-wide facade; ask() never throws, askAsync() for core callers
   JevJudgmentMode               OFF / SHADOW / LIVE
   TypeSafeDirectorProposalProvider  Director provider wrapping the Ollama provider as fallback
@@ -99,11 +101,41 @@ request on the `SYSTEM_ONE_NETWORK` async lane, and read the answers:
   constants in agent sources.
 * `config.yaml` and `agent-engine.yaml` are decoded as US-ASCII; keep additions 7-bit.
 
-## Costs
+## Cost: projecting before, watching while running
 
-At $0.042 per million input tokens a chat judgment (about 1.5-2k tokens with the full intent
-catalog) costs around $0.0001; report triage or Director ranking with several candidates is a
-few times that. The meter reports exact `input_tokens` from the API.
+Only input tokens are billed (`PRICE_USD_PER_MILLION_INPUT_TOKENS` in `agent-engine.yaml`,
+$0.042 as published). Every request carries a usage `kind` (`chat-intent`, `party-quest`,
+`offer-reply`, `director-select`, `director-rank`, `name-screen`, `report-triage`) so spend is
+attributed per judgment.
+
+**Before enabling anything** — project spend for an expected bot population:
+
+```
+tools\typesafe-cost.bat --bots 20 --commands-per-bot-hour 6 --hours-online 12 --live
+```
+
+`--live` sends one representative request per kind (about seven requests, well under a cent)
+and uses the API's own `input_tokens`; without it the same production request builders are
+measured with the offline estimator. Other knobs: `--miss-rate` (share of commands the regexes
+miss and Jev is asked about, default 0.25), `--pq-sessions`, `--pq-messages`, `--offers`,
+`--free-form-rate`, `--new-characters`, `--reports`, `--director-queries`. Measured on
+2026-09-20 with jev-1.13.0: chat-intent ~3.5k tokens, director-rank (5 maps) ~1.6k,
+director-select ~0.7k, report-triage ~0.75k, offer-reply ~0.6k, name-screen ~0.5k,
+party-quest ~0.4k; 20 bots at 6 commands/hour for 12 hours with 25% misses came to about
+$0.06/day.
+
+**While the server runs**
+
+* `!typesafe` (GM 5) — totals, cost so far, observed tokens/hour with the day/month projection
+  at that rate, and one line per kind (requests, failures, avg tokens, avg/max latency, cost).
+* `!typesafe project <bots> [commands/bot/hour] [hours online]` — the same projection as the
+  tool, using tokens-per-request measured by this server so far (offline estimates fill gaps).
+* `!typesafe report` — writes the report to the log and the CSV immediately.
+* Every `LOG_INTERVAL_MINUTES` (default 30) `JevUsageReporter` logs `[typesafe-usage]` lines
+  and appends one CSV row per kind plus a total to `logs/typesafe-usage.csv`
+  (`timestamp,kind,requests,ok,failed,input_tokens,output_tokens,avg_input_tokens,avg_latency_ms,max_latency_ms,cost_usd`).
+* `!serverhealth` / `Server.diagnosticLines()` carries the compact `TypeSafe:` line with the
+  same counters, cost, rate and projection.
 
 ## Contribution validation
 
