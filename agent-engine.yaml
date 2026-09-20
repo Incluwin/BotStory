@@ -280,11 +280,11 @@ agent:
     # Values: a comma-separated IGN allowlist; an empty string means nobody. Recommended: keep the list minimal and grant only the narrowest required authority (tested baseline Kiwi).
     # Purpose: Lists the character names used for authority administrator names. Separate multiple names with commas; an empty value grants the role to nobody.
     # Technical: the Agent engine deployment configuration consumes this as a text. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel.
-    AGENT_AUTHORITY_ADMINISTRATOR_NAMES: Kiwi,AgentForSure
+    AGENT_AUTHORITY_ADMINISTRATOR_NAMES: Jevelopers,Reluctant
     # Values: a comma-separated IGN allowlist; an empty string means nobody. Recommended: keep the list minimal and grant only the narrowest required authority (tested baseline empty).
     # Purpose: Lists the character names used for authority operator names. Separate multiple names with commas; an empty value grants the role to nobody.
     # Technical: the Agent engine deployment configuration consumes this as a text. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
-    AGENT_AUTHORITY_OPERATOR_NAMES: FieldOp26
+    AGENT_AUTHORITY_OPERATOR_NAMES: ''
     # Values: a comma-separated IGN allowlist; an empty string means nobody. Recommended: keep the list minimal and grant only the narrowest required authority (tested baseline empty).
     # Purpose: Lists the character names used for authority observer names. Separate multiple names with commas; an empty value grants the role to nobody.
     # Technical: the Agent engine deployment configuration consumes this as a text. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
@@ -292,7 +292,7 @@ agent:
     # Values: a comma-separated IGN allowlist; an empty string means nobody. Recommended: keep the list minimal and grant only the narrowest required authority (tested baseline Kiwi).
     # Purpose: Lists the character names used for trusted trade player names. Separate multiple names with commas; an empty value grants the role to nobody.
     # Technical: the Agent engine deployment configuration consumes this as a text. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
-    AGENT_TRUSTED_TRADE_PLAYER_NAMES: Kiwi
+    AGENT_TRUSTED_TRADE_PLAYER_NAMES: Jevelopers,Reluctant
 
     # World Director rollout
     # Values: true or false. Recommended: false until a named Agent canary has passed manual rollback tests.
