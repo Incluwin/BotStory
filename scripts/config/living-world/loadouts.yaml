@@ -1,0 +1,60 @@
+# Equipment and consumables applied when a Persona is shaped (docs/LIVING_RPG_PLAN.md 5.5).
+# `stats` are relative shares of AP (str/dex/int/luk); omit to use the job archetype default.
+loadouts:
+  - id: beginner-townsfolk
+    equips: [1302000, 1002026]
+    consumables: [{ itemId: 2000000, count: 20 }]
+  - id: dock-worker
+    equips: [1322005, 1082002, 1002019]
+    consumables: [{ itemId: 2000001, count: 30 }]
+  - id: sailor-cutlass
+    equips: [1302008, 1082002, 1102001]
+    consumables: [{ itemId: 2000001, count: 40 }, { itemId: 2000003, count: 20 }]
+  - id: hunter-bowman-l25
+    equips: [1452003, 1082002, 1002026]
+    consumables: [{ itemId: 2000001, count: 40 }, { itemId: 2060000, count: 1000 }]
+    stats: { dex: 4, str: 1 }
+  - id: hunter-bowman-l35
+    equips: [1452005, 1082002, 1002034, 1072033]
+    consumables: [{ itemId: 2000016, count: 40 }, { itemId: 2060000, count: 1500 }]
+    stats: { dex: 4, str: 1 }
+  - id: perion-warrior-l30
+    equips: [1302020, 1092000, 1002025, 1072033]
+    consumables: [{ itemId: 2000016, count: 40 }, { itemId: 2000003, count: 20 }]
+    stats: { str: 4, dex: 1 }
+  - id: perion-spearman-l32
+    equips: [1432009, 1002025]
+    consumables: [{ itemId: 2000016, count: 40 }]
+    stats: { str: 4, dex: 1 }
+  - id: ellinia-mage-l30
+    equips: [1372001, 1002034]
+    consumables: [{ itemId: 2000006, count: 60 }, { itemId: 2000001, count: 20 }]
+    stats: { int: 4, luk: 1 }
+  - id: ellinia-mage-l22
+    equips: [1372005, 1002036]
+    consumables: [{ itemId: 2000003, count: 60 }]
+    stats: { int: 4, luk: 1 }
+  - id: kerning-thief-l28
+    equips: [1332006, 1002019, 1072033]
+    consumables: [{ itemId: 2000016, count: 40 }, { itemId: 2070001, count: 1 }]
+    stats: { luk: 4, dex: 1 }
+  - id: kerning-thief-l35
+    equips: [1332010, 1002034]
+    consumables: [{ itemId: 2000016, count: 50 }, { itemId: 2070002, count: 1 }]
+    stats: { luk: 4, dex: 1 }
+  - id: nautilus-pirate-l30
+    equips: [1472008, 1002019]
+    consumables: [{ itemId: 2000016, count: 40 }]
+    stats: { dex: 3, str: 2 }
+  - id: nautilus-gunslinger-l28
+    equips: [1492000, 1002019]
+    consumables: [{ itemId: 2000016, count: 40 }, { itemId: 2330000, count: 1000 }]
+    stats: { dex: 4, str: 1 }
+  - id: sleepywood-guide-l40
+    equips: [1302038, 1092000, 1002025, 1072033]
+    consumables: [{ itemId: 2000016, count: 60 }, { itemId: 2000006, count: 30 }]
+    stats: { str: 4, dex: 1 }
+  - id: cleric-l32
+    equips: [1372002, 1002036]
+    consumables: [{ itemId: 2000006, count: 80 }]
+    stats: { int: 4, luk: 1 }

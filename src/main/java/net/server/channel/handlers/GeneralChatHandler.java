@@ -73,7 +73,9 @@ public final class GeneralChatHandler extends AbstractPacketHandler {
 
             AgentPartyQuestLobbyRuntime.observeChat(chr, s, currentServerTime());
             AgentKpqHumanDialogueRuntime.observeChat(chr, s, currentServerTime());
-            AgentInteractionRuntime.handleLeaderChat(chr, s, AgentReplyChannel.MAP);
+            if (!server.living.LivingWorldHooks.chat(chr, s)) {
+                AgentInteractionRuntime.handleLeaderChat(chr, s, AgentReplyChannel.MAP);
+            }
             chr.getAutobanManager().spam(7);
         }
     }

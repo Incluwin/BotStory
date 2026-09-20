@@ -787,6 +787,7 @@ public class Monster extends AbstractLoadedLife {
                 personalExp += expBonus;
             }
 
+            personalExp *= (float) server.living.LivingWorldHooks.expMultiplier(attacker);
             int _personalExp = expValueToInteger(personalExp); // assuming no negative xp here
 
             if (partyExp != null) {
@@ -947,6 +948,7 @@ public class Monster extends AbstractLoadedLife {
 
     private void dispatchRaiseQuestMobCount() {
         Set<Integer> attackerChrids = takenDamage.keySet();
+        server.living.LivingWorldHooks.mobKilled(this, attackerChrids, getMap());
         if (!attackerChrids.isEmpty()) {
             Map<Integer, Character> mapChars = map.getMapPlayers();
             if (!mapChars.isEmpty()) {

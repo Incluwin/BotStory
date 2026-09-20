@@ -1,0 +1,34 @@
+# Hadrik's arc: a first mate who lost his ship and his cabin boy, and gets one more voyage.
+- id: hadrik-last-voyage
+  persona: hadrik
+  chapters:
+    - id: chapter-1
+      title: "The Deck"
+      dialogueOverrides:
+        greet: ["what.", "you're standing in my light.", "the deck's taken. find another."]
+    - id: chapter-2
+      title: "An Edge Again"
+      dialogueOverrides:
+        greet: ["you. the one with the shells.", "still carrying that blade around, i see."]
+        chapterEnter: ["(tests the edge of a cutlass against his thumb)"]
+      unlocks:
+        rumors: [lith-dock-confession]
+        questLines: [hadrik-ghosts-of-the-road]
+    - id: chapter-3
+      title: "What the Boy Heard"
+      enterWhen: { rumorPerformed: lith-dock-confession, times: 1 }
+      dialogueOverrides:
+        greet: ["so now you know.", "the boy talks too much. so do i, apparently."]
+        chapterEnter: ["fine. fine. the harbor knows anyway."]
+      unlocks:
+        contract: hadrik-last-voyage
+    - id: chapter-4
+      title: "Ashore for Good"
+      enterWhen: { adventurerHoursTotal: 20 }
+      recruitable: false
+      routineOverride:
+        - { from: 8, to: 22, spot: "venue:olaf-crossroads", activity: SOCIALIZE }
+        - { from: 22, to: 8, materialize: false }
+      dialogueOverrides:
+        greet: ["done sailing. really, this time.", "the crossroads suit me. everyone leaves, i stay."]
+        refuse: ["my sailing days are behind me. ask the deckhand."]

@@ -1049,6 +1049,7 @@ public class Server {
 
         AgentPopulationRuntime.start();
         server.agents.integration.typesafe.JevUsageReporter.start();
+        server.living.LivingWorld.start();
         startDatabaseConsoleBridge();
         startAgentDirectorBridge();
         startAgentMapGraphViewer();
@@ -2335,6 +2336,7 @@ public class Server {
         List<World> shuttingWorlds = new ArrayList<>(getWorlds());
         List<Channel> allChannels = getAllChannels();
         AgentRuntimeShutdownCoordinator.beginShutdown();
+        server.living.LivingWorld.stop();
         AgentPopulationRuntime.stop();
         AgentDecisionCatalogRuntime.stop();
         AgentNavigationGraphService.shutdownAsyncWarmups();

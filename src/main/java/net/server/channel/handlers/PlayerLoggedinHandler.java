@@ -58,6 +58,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.life.MobSkill;
+import server.living.LivingWorldHooks;
 import service.NoteService;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
@@ -257,6 +258,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
 
             player.getMap().addPlayer(player);
             player.visitMap(player.getMap());
+            LivingWorldHooks.playerLoggedIn(player);
             player.applyAllPassiveSkills();
             player.startEnergyChargeFillTask();
 

@@ -28,7 +28,10 @@ public final class AgentChatIntentRuntime {
     private static final long TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime.TIMEOUT_MS");
     private static final String REQUEST_KEY = "typesafe-chat-intent";
+    private static final String REPLY_PREFIX = "reply:";
     private static volatile AgentChatIntentJudge judge;
+    private static volatile Prejudge prejudge;
+    private static volatile Learner learner;
 
     private AgentChatIntentRuntime() {
     }
@@ -41,6 +44,29 @@ public final class AgentChatIntentRuntime {
     @FunctionalInterface
     public interface ReplyQueue {
         void queue(AgentRuntimeEntry entry, String reply);
+    }
+
+    /**
+     * Deterministic resolver consulted before the judge (phrase packs, learned phrases). Returns the
+     * canonical command to re-dispatch, {@code reply:<text>} to answer without dispatching, or null.
+     */
+    @FunctionalInterface
+    public interface Prejudge {
+        String resolve(String message);
+    }
+
+    /** Receives every LIVE ACT the judge produced so confident phrases can be remembered. */
+    @FunctionalInterface
+    public interface Learner {
+        void learned(String message, String canonicalCommand, double confidence);
+    }
+
+    public static void installPrejudge(Prejudge replacement) {
+        prejudge = replacement;
+    }
+
+    public static void installLearner(Learner replacement) {
+        learner = replacement;
     }
 
     public static JevJudgmentMode mode() {
@@ -64,8 +90,24 @@ public final class AgentChatIntentRuntime {
                                                            Redispatch redispatch,
                                                            ReplyQueue replies) {
         JevJudgmentMode mode = mode();
-        if (!mode.asks() || entry == null || message == null || message.isBlank()
+        if (entry == null || message == null || message.isBlank()
                 || AgentChatFallThroughCommands.handledDeterministically(message)) {
+            return CompletableFuture.completedFuture(false);
+        }
+        Prejudge resolver = prejudge;
+        if (resolver != null) {
+            String canonical = resolver.resolve(message);
+            if (canonical != null && canonical.startsWith(REPLY_PREFIX)) {
+                replies.queue(entry, canonical.substring(REPLY_PREFIX.length()));
+                return CompletableFuture.completedFuture(true);
+            }
+            if (canonical != null && !canonical.isBlank()) {
+                log.info("[phrase] message=\"{}\" -> {}", message, canonical);
+                return redispatch.handle(entry, canonical, channel)
+                        .thenApply(handled -> actHandled(canonical, handled));
+            }
+        }
+        if (!mode.asks()) {
             return CompletableFuture.completedFuture(false);
         }
         JevClient client = JevClient.runtime();
@@ -94,7 +136,7 @@ public final class AgentChatIntentRuntime {
                         result.complete(false);
                         return;
                     }
-                    apply(completionEntry, channel, decision, redispatch, replies, result);
+                    apply(completionEntry, channel, message, decision, redispatch, replies, result);
                 });
         if (!submission.accepted()) {
             return CompletableFuture.completedFuture(false);
@@ -104,14 +146,21 @@ public final class AgentChatIntentRuntime {
 
     private static void apply(AgentRuntimeEntry entry,
                               AgentReplyChannel channel,
+                              String message,
                               Decision decision,
                               Redispatch redispatch,
                               ReplyQueue replies,
                               CompletableFuture<Boolean> result) {
         switch (decision.outcome()) {
             case ACT -> redispatch.handle(entry, decision.canonicalCommand(), channel)
-                    .whenComplete((handled, failure) ->
-                            result.complete(failure == null && actHandled(decision.canonicalCommand(), handled)));
+                    .whenComplete((handled, failure) -> {
+                        boolean acted = failure == null && actHandled(decision.canonicalCommand(), handled);
+                        Learner memory = learner;
+                        if (acted && memory != null) {
+                            memory.learned(message, decision.canonicalCommand(), decision.confidence());
+                        }
+                        result.complete(acted);
+                    });
             case ASK -> {
                 replies.queue(entry, "did you mean '" + decision.canonicalCommand() + "'?");
                 result.complete(true);

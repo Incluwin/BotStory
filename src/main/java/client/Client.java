@@ -1133,6 +1133,9 @@ public class Client extends ChannelInboundHandlerAdapter {
         if (this instanceof BotClient && player != null) {
             AgentRuntimeCleanupService.cleanupAgentRuntimeState(player);
         }
+        if (!(this instanceof BotClient) && player != null) {
+            server.living.LivingWorldHooks.playerLoggedOut(player);
+        }
 
         if (player != null && player.isLoggedin() && player.getClient() != null) {
             final int messengerid = player.getMessenger() == null ? 0 : player.getMessenger().getId();

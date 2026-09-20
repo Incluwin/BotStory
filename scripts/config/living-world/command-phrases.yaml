@@ -1,0 +1,342 @@
+# Companion command phrase packs (docs/LIVING_RPG_PLAN.md section 12).
+#
+# Matched after the built-in regexes miss and before the TypeSafe judge. A message is
+# normalized (lowercase, punctuation and fillers removed), then matched as
+#   prefix? alias tail*   with up to two unknown trailing words allowed.
+# `canonical` must be a phrase the deterministic classifiers already accept as a whole
+# command. `status: PLANNED` commands answer with `reply` deterministically instead of
+# costing a judgment; wire the behaviour, then drop the status.
+# Learned phrases (living_learned_phrase) are matched ahead of these packs.
+
+commands:
+  # ---- movement -------------------------------------------------------------------------
+  - canonical: follow me
+    aliases: [follow, "follow me", "come with me", "stick with me", "stay with me", "stay close", "keep up",
+              "stay on me", "on me", "come on", "with me", "tag along", "lets go", "lets move", "walk with me",
+              "come over here", "get over here", "over here", "this way", "follow along", "heel"]
+    prefixes: [go, come, "you can", "you should", "time to", "keep", "start", "just"]
+    tails: [now, "for a bit", "for a while", please, "will you", "would you", "ok", "buddy", "pal", "again"]
+
+  - canonical: stop
+    aliases: [stop, stay, wait, hold, halt, freeze, chill, idle, park, "stand still", "dont move", "stay put",
+              "hold position", "hold still", "stay there", "wait there", "wait here", "stop moving", "stop attacking",
+              "stop fighting", "stop hunting", "stop grinding", "cease", "enough", "thats enough", "take a breather",
+              "hang on", "hang tight", "sit tight", "dont go anywhere", "stay right there", "knock it off", "cut it out",
+              "stand down", "hold up", "hold on", "one sec", "gimme a sec", "wait a sec", "wait a minute", "wait for me",
+              "stay behind", "back off", "leave them", "leave it", "let them be"]
+    prefixes: [go, "you can", "just", "please", "ok", "now"]
+    tails: [here, there, put, up, moving, attacking, fighting, "for me", "a sec", "a second", "a moment", "a bit",
+            "a minute", "right there", "right here", now, please, "for now", "for a bit", "will you", "ok"]
+
+  - canonical: move here
+    aliases: [here, "move here", "come here", "get here", "go here", "move", "right here", "to me", "come to me",
+              "come closer", "closer", "next to me", "beside me", "stand here", "stand next to me", "go there",
+              "move there", "over there"]
+    prefixes: [go, come, "you can", just, now]
+    tails: [now, please, "right now", "quick", "quickly", "ok"]
+
+  - canonical: grind
+    aliases: [grind, farm, hunt, train, attack, fight, kill, "kill stuff", "kill mobs", "kill monsters", "kill things",
+              "get exp", "get some exp", "gain exp", "level up", "go to work", "get to work", "do your thing", "have at it",
+              "go wild", "clear the map", "clean up", "sweep the map", "auto", "auto on", "attack mode", "hunt mode",
+              "farm mode", "start hunting", "start farming", "start killing", "start attacking", "start fighting",
+              "go attack", "go fight", "go kill", "go hunt", "go farm", "go grind", "go train", "engage", "unleash",
+              "take them out", "wipe them out", "clear them", "murder them", "deal with them", "handle them", "get them"]
+    prefixes: [go, start, begin, "lets", "time to", "you can", "keep", "just", "now", "ok"]
+    tails: [here, around, "around here", "over there", "for a while", "for a bit", "till im back", "until im back",
+            "while im gone", now, please, "the mobs", "the monsters", "them", "everything", "these", "those", "some mobs",
+            "some monsters", "on this map", "this map", "ok"]
+
+  - canonical: patrol
+    aliases: [patrol, roam, wander, "walk around", "look around", "scout", "scout around", "check the area",
+              "sweep the area", "make rounds", "do rounds", "guard the area", "watch the area", "keep watch"]
+    prefixes: [go, start, "you can", just]
+    tails: [here, around, "the area", "around here", "this platform", now, please, "a bit"]
+
+  - canonical: farm here
+    aliases: ["farm here", "grind here", "hunt here", "camp", "camp here", "sentry", "guard", "guard here", "post up",
+              "anchor", "anchor here", "hold here", "hold this spot", "hold this platform", "stay and fight", "fight here",
+              "defend here", "defend this spot", "watch this spot", "hold the line", "dig in", "set up here",
+              "stand guard", "keep this spot", "farm this spot", "farm this platform", "camp this platform",
+              "stay here and fight", "fight from here", "dont chase", "stop chasing", "only whats close", "only nearby",
+              "farm around here", "hunt around here", "grind around here", "fight around here", "kill whats near",
+              "kill what comes"]
+    prefixes: [go, "you can", just, now, "ok"]
+    tails: [now, please, "for a while", "for a bit", "till im back", "until im back", "mode", "ok", "here"]
+
+  - canonical: fidget
+    aliases: [fidget, dance, wave, cheer, bow, sit, "sit down", "say hi", "greet", "do something", "do a trick",
+              "show off", "flex", "celebrate", "do a dance", "emote", "wiggle", "spin", "jump around", "goof around",
+              "act natural", "look busy", "relax", "stretch"]
+    prefixes: [go, "you can", just, "lets", now]
+    tails: [now, please, "for me", "a bit", "around", "ok"]
+
+  # ---- info -----------------------------------------------------------------------------
+  - canonical: stats
+    aliases: [stats, "your stats", "show stats", "show me your stats", "what are your stats", "how strong are you",
+              "what level are you", "your level", "level", "whats your level", "how much str", "how much dex",
+              "how much int", "how much luk", "your str", "your dex", "your int", "your luk", "hp", "your hp",
+              "how much hp", "how much mp", "your mp", "status", "how are you doing", "hows your hp", "health check"]
+    tails: [now, please, "right now", "ok", "then"]
+  - canonical: inventory
+    aliases: [inventory, "show inventory", "show me your inventory", "what do you have", "what do you carry",
+              "whats in your bag", "whats in your inventory", "what are you carrying", "what items do you have",
+              "open your bag", "show me your bag", "your items", "your stuff", "what have you got", "what did you loot",
+              "what did you pick up", "show loot", "show me the loot", "your loot"]
+    tails: [now, please, "ok", "then", "so far", "today"]
+  - canonical: slots
+    aliases: [slots, "how many slots", "free slots", "inventory space", "how much space", "room left", "any room",
+              "is your inventory full", "are you full", "bag full", "how full are you", "space left"]
+    tails: [now, please, "ok", "do you have", "left"]
+  - canonical: range
+    aliases: [range, "your range", "damage range", "how hard do you hit", "how much damage", "your damage",
+              "whats your damage", "show range", "hit chance", "accuracy", "your accuracy", "can you hit these",
+              "can you hit them", "dps", "your dps"]
+    tails: [now, please, "ok", "then"]
+  - canonical: build
+    aliases: [build, "your build", "whats your build", "how is your ap", "how are your ap", "ap build", "sp build",
+              "show build", "how did you spend your ap", "where did your sp go", "skill build", "what build are you"]
+    tails: [now, please, "ok"]
+  - canonical: skills
+    aliases: [skills, "your skills", "what skills do you have", "what skills", "show skills", "show me your skills",
+              "which skills", "skill list", "list skills", "what can you cast", "what can you do", "abilities",
+              "your abilities", "what moves do you have", "spells", "your spells"]
+    tails: [now, please, "ok", "then", "have"]
+  - canonical: mesos
+    aliases: [mesos, meso, money, "how much money", "how much meso", "how many mesos", "how rich are you", "your meso",
+              "your money", "cash", "how much cash", "show meso", "gold", "how much gold", "are you broke", "funds"]
+    tails: [now, please, "do you have", "have you got", "ok", "on you"]
+  - canonical: speed
+    aliases: [speed, "your speed", "how fast are you", "movement speed", "jump", "your jump", "speed and jump",
+              "how fast can you go", "can you keep up"]
+    tails: [now, please, "ok"]
+  - canonical: exp
+    aliases: [exp, xp, "your exp", "how much exp", "how much xp", "exp progress", "how close to leveling",
+              "how close to level", "when do you level", "exp left", "how much till level", "how much to level",
+              "percent exp", "what percent", "level progress", "almost level"]
+    tails: [now, please, "ok", "up", "do you have", "left", "to go"]
+  - canonical: scrolls
+    aliases: [scrolls, "your scrolls", "what scrolls", "which scrolls", "show scrolls", "any scrolls", "got scrolls",
+              "how many scrolls", "scroll count"]
+    tails: [now, please, "do you have", "have you got", "ok"]
+  - canonical: pots
+    aliases: [pots, potions, "your pots", "how many pots", "how many potions", "pot count", "potion count",
+              "how many hp pots", "how many mp pots", "got pots", "any pots", "are you low on pots",
+              "how are your pots", "pots left", "potions left", "show pots", "count your pots"]
+    tails: [now, please, "do you have", "have you got", "left", "ok"]
+  - canonical: buff list
+    aliases: ["buff list", buffs, "your buffs", "what buffs", "which buffs", "active buffs", "show buffs",
+              "what buffs are on", "what buffs do you have", "are you buffed", "list buffs", "buffs active"]
+    tails: [now, please, "do you have", "right now", "ok"]
+
+  # ---- support / supplies ----------------------------------------------------------------
+  - canonical: support on
+    aliases: ["support on", "buff me", "buff us", "buff the party", "start buffing", "keep us buffed", "cast buffs",
+              "use your buffs", "buffs on", "support mode", "support us", "give us buffs", "buff up", "haste me",
+              "bless us", "buff please", "keep buffing"]
+    tails: [now, please, "ok", "up", "me", "us"]
+  - canonical: support off
+    aliases: ["support off", "stop buffing", "no more buffs", "buffs off", "dont buff", "save your mp", "stop casting",
+              "no buffs", "quit buffing", "hold your buffs"]
+    tails: [now, please, "ok", "me", "us"]
+  - canonical: heals on
+    aliases: ["heals on", "heal me", "heal us", "heal the party", "start healing", "keep us healed", "heals please",
+              "healing on", "heal mode", "keep me alive", "watch my hp", "heal when low"]
+    tails: [now, please, "ok", "me", "us"]
+  - canonical: heals off
+    aliases: ["heals off", "stop healing", "no heals", "healing off", "dont heal", "save your heals", "quit healing"]
+    tails: [now, please, "ok", "me", "us"]
+  - canonical: buff on
+    aliases: ["buff on", "use buff pots", "use buff potions", "buff pots on", "drink your buffs", "pop your pots",
+              "use your warrior pills", "use your potions", "start using buff pots"]
+    tails: [now, please, "ok"]
+  - canonical: buff off
+    aliases: ["buff off", "stop using buff pots", "no buff pots", "buff pots off", "dont waste pots", "save your buff pots",
+              "stop popping pots"]
+    tails: [now, please, "ok"]
+  - canonical: buff cheap
+    aliases: ["buff cheap", "cheap buffs", "use cheap pots", "cheapest pots", "dont waste money on pots", "save money on buffs",
+              "budget buffs"]
+    tails: [now, please, "ok"]
+  - canonical: buff max
+    aliases: ["buff max", "best buffs", "use the best pots", "max buffs", "go all out on pots", "no expense spared",
+              "use the good stuff"]
+    tails: [now, please, "ok"]
+  - canonical: need hp pot
+    aliases: ["need hp pot", "need hp pots", "need hp", "hp pots please", "give me hp pots", "spare an hp pot",
+              "im low on hp pots", "out of hp pots", "toss me some hp pots", "pass me hp pots", "red pots please",
+              "any hp pots", "hp pot"]
+    tails: [now, please, "ok", "pls"]
+  - canonical: need mp pot
+    aliases: ["need mp pot", "need mp pots", "need mp", "mp pots please", "give me mp pots", "spare an mp pot",
+              "im low on mp pots", "out of mp pots", "toss me some mp pots", "pass me mp pots", "blue pots please",
+              "any mp pots", "mana pots", "need mana", "mp pot"]
+    tails: [now, please, "ok", "pls"]
+  - canonical: need ammo
+    aliases: ["need ammo", "need arrows", "need stars", "need bolts", "need bullets", "out of arrows", "out of ammo",
+              "out of stars", "im out of arrows", "im out of stars", "spare arrows", "spare stars", "give me arrows",
+              "give me stars", "ammo please", "arrows please", "stars please", "toss me ammo"]
+    tails: [now, please, "ok", "pls"]
+  - canonical: need pot
+    aliases: ["need pot", "need pots", "need potions", "pots please", "give me pots", "spare some pots", "im low on pots",
+              "out of pots", "running low on pots", "running out of pots", "toss me some pots", "any pots to spare",
+              "share pots", "share your pots", "potion please"]
+    tails: [now, please, "ok", "pls"]
+
+  # ---- social / gear / trade -------------------------------------------------------------
+  - canonical: fame me
+    aliases: ["fame me", "fame", "fame please", "give me fame", "can i get a fame", "fame up", "gimme fame",
+              "spare a fame", "fame pls"]
+    tails: [now, please, "ok", "pls"]
+  - canonical: any upgrades?
+    aliases: ["any upgrades", "better gear", "recommended gear", "got anything better for me", "any gear for me",
+              "anything for me to wear", "upgrades for me", "got an upgrade", "any equips for me", "gear for me",
+              "what should i wear", "do you have better armor", "do you have a better weapon", "any hand me downs"]
+    tails: [now, please, "ok", "for me"]
+  - canonical: need anything?
+    aliases: ["need anything", "what do you need", "what do you want", "anything you need", "want anything",
+              "what gear do you need", "what equips do you want", "request", "what would help you", "your wishlist",
+              "wishlist", "what are you missing", "what are you looking for", "shopping list"]
+    tails: [now, please, "ok", "from me"]
+  - canonical: trade
+    aliases: [trade, "open trade", "trade with me", "lets trade", "trade me", "open a trade", "trade window",
+              "start a trade", "trade please", "wanna trade", "want to trade"]
+    tails: [now, please, "ok", "with me", "real quick"]
+  - canonical: sell trash
+    aliases: ["sell trash", "sell junk", "sell your junk", "sell your trash", "sell the junk", "dump your junk",
+              "get rid of junk", "go sell your trash", "sell useless stuff", "sell what you dont need", "clear your junk",
+              "sell extras", "vendor your junk", "sell off the trash"]
+    prefixes: [go, "you can", just, "time to"]
+    tails: [now, please, "ok", "at the shop", "in town"]
+  - canonical: autoequip
+    aliases: [autoequip, "auto equip", "equip your best", "equip the best gear", "gear up", "optimize gear",
+              "fix your gear", "sort your gear", "wear your best", "put on your best", "equip upgrades", "re equip",
+              "check your gear", "update your gear", "wear the new stuff", "equip the new gear", "put that on"]
+    prefixes: [go, "you can", just, "please"]
+    tails: [now, please, "ok", "again"]
+  - canonical: unequip everything
+    aliases: ["unequip everything", "unequip all", "take everything off", "take it all off", "strip", "remove all gear",
+              "take off your gear", "unequip your gear", "remove everything", "naked", "go naked"]
+    tails: [now, please, "ok"]
+  - canonical: change build
+    aliases: ["change build", "change your build", "new build", "pick a build", "choose a build", "reset build",
+              "redo your build", "switch build", "respec ap", "reassign ap", "redo ap", "different build"]
+    tails: [now, please, "ok"]
+  - canonical: help
+    aliases: [help, commands, "what can you do", "what commands", "list commands", "how do i control you",
+              "what do you understand", "instructions", "show commands", "help me out", "options", "what can i say",
+              "what should i say", "command list"]
+    tails: [now, please, "ok", "me", "here"]
+  - canonical: relog
+    aliases: [relog, "reconnect", "relog please", "refresh yourself", "log back in", "reset yourself", "reboot",
+              "restart yourself", "reconnect yourself"]
+    tails: [now, please, "ok"]
+  - canonical: logout
+    aliases: [logout, "log out", "log off", "go offline", "despawn", "disappear", "leave the game", "go away for good",
+              "sign off", "quit for now", "unspawn"]
+    tails: [now, please, "ok"]
+
+  # ---- planned behaviours (deterministic replies, no judgment spent) -----------------------
+  - canonical: focus target
+    status: PLANNED
+    reply: "can't pick a single monster yet, but i'll fight whatever is closest."
+    aliases: [focus, target, prioritize, "go for the", "kill the", "attack the", "focus the", "target the",
+              "only the", "just the", "take out the", "go after the", "concentrate on"]
+    tails: [first, please, now, "one", "ones", "big one", "boss", "mobs", "monsters", "over there", "there", "here"]
+  - canonical: avoid target
+    status: PLANNED
+    reply: "i can't blacklist a monster type yet."
+    aliases: [avoid, "dont attack the", "leave the", "ignore the", "skip the", "stay away from", "dont touch the",
+              "steer clear of", "not the"]
+    tails: [please, now, "ones", "one", "mobs", "monsters", "alone"]
+  - canonical: use skill
+    status: PLANNED
+    reply: "i pick my own skills for now. ask for 'buffs' to see what i cast."
+    aliases: ["use", "cast", "use your", "cast your", "spam", "throw"]
+    tails: [skill, skills, please, now, "on them", "on me", "more", "less"]
+  - canonical: hold aggro
+    status: PLANNED
+    reply: "can't tank on purpose yet, but i'll stay close."
+    aliases: ["hold aggro", "tank", "tank them", "take the hits", "draw them", "pull aggro", "keep them on you",
+              "be the tank", "distract them", "keep them busy", "protect me", "cover me", "guard me", "shield me",
+              "keep them off me", "body block", "be my shield"]
+    tails: [please, now, "for me", "ok"]
+  - canonical: kite
+    status: PLANNED
+    reply: "kiting isn't in my repertoire yet."
+    aliases: [kite, "kite them", "hit and run", "keep your distance", "fight from range", "dont let them touch you",
+              "stay out of reach", "ranged only", "melee only", "stay back and shoot"]
+    tails: [please, now, "ok"]
+  - canonical: retreat at hp
+    status: PLANNED
+    reply: "i already pot when i'm low; a retreat threshold is coming."
+    aliases: ["retreat", "retreat under", "retreat at", "run away when", "back off when", "fall back at", "flee at",
+              "run when low", "escape when low", "dont die", "be careful", "play safe", "stay safe", "be safe",
+              "careful", "watch your hp", "pot earlier", "pot sooner", "heal earlier"]
+    tails: [please, now, "hp", "percent", "health", "low", "ok"]
+  - canonical: go to map
+    status: PLANNED
+    reply: "i can't travel on my own yet. lead and i'll follow."
+    aliases: ["go to", "meet me at", "meet me in", "head to", "travel to", "take the taxi to", "take a taxi to",
+              "take the boat to", "go back to town", "return to town", "go to town", "back to town", "warp to",
+              "wait at", "wait in", "wait for me at", "wait for me in", "go wait in", "lead the way to", "lead me to",
+              "show me the way to", "guide me to", "take me to"]
+    tails: [please, now, "ok", "town", "the town", "henesys", "ellinia", "perion", "kerning", "lith", "sleepywood",
+            "nautilus", "the fm", "fm", "the free market", "the shop", "a shop"]
+  - canonical: formation
+    status: PLANNED
+    reply: "formations aren't wired for me yet. i'll just stay near you."
+    aliases: ["spread out", "line up", "get in line", "form up", "stand left of me", "stand right of me", "on my left",
+              "on my right", "behind me", "get behind me", "in front of me", "flank", "surround them", "circle up",
+              "keep distance", "give me space", "back up a bit", "too close", "not so close", "stay back"]
+    tails: [please, now, "ok", "a bit", "a little", "more"]
+  - canonical: loot mode
+    status: PLANNED
+    reply: "i loot what's near me; loot rules are coming."
+    aliases: ["loot all", "loot everything", "pick everything up", "loot none", "dont loot", "stop looting",
+              "leave the drops", "loot equips", "only equips", "only loot equips", "loot rares", "only rares",
+              "loot meso", "only meso", "leave the meso", "leave the mesos", "grab the drops", "pick up the drops",
+              "get the drops", "loot that", "grab that", "pick that up", "take the loot", "leave that", "dont take that",
+              "give me the drops", "keep the drops", "the drops are mine", "drops are yours", "you can keep the drops",
+              "loot for me", "dont pick up", "pick up mesos", "leave items", "leave the items"]
+    tails: [please, now, "ok", "from now on", "for now", "today"]
+  - canonical: restock
+    status: PLANNED
+    reply: "i can't shop on my own yet. tell me 'need pot' if you want some of mine."
+    aliases: ["buy pots", "go buy pots", "restock", "restock pots", "go restock", "buy potions", "get more pots",
+              "refill your pots", "stock up", "stock up on pots", "go shopping", "buy supplies", "get supplies",
+              "top up your pots", "buy more arrows", "buy ammo", "buy more ammo", "resupply"]
+    prefixes: [go, "you can", just, "time to"]
+    tails: [please, now, "ok", "in town", "at the shop", "first"]
+  - canonical: bank
+    status: PLANNED
+    reply: "i don't use the storage yet."
+    aliases: ["go bank", "bank your stuff", "put it in storage", "use the storage", "store your loot", "go to storage",
+              "deposit", "deposit your meso", "store it", "storage", "go heal", "go to the hospital", "heal up in town",
+              "go rest in town", "wait in town", "stay in town"]
+    prefixes: [go, "you can", just]
+    tails: [please, now, "ok", "first", "for me"]
+  - canonical: train until
+    status: PLANNED
+    reply: "i can't watch a level target yet; i'll just keep training."
+    aliases: ["train here till", "train here until", "train until", "train till", "grind until", "grind till", "farm until",
+              "farm till", "level to", "get to level", "reach level", "hit level", "stay at this level", "dont level",
+              "stop leveling", "stop at level", "no more levels", "keep your level", "train till im back",
+              "train until im back", "keep training till i get back", "level while im gone"]
+    prefixes: [go, "you can", just]
+    tails: [please, now, "ok", "level", "lvl", "then stop", "back", "here"]
+  - canonical: quiet
+    status: PLANNED
+    reply: "i'll keep it short."
+    aliases: [quiet, "be quiet", "shut up", "less talking", "talk less", "stop talking", "zip it", "hush", "silence",
+              "no chatter", "less chatter", "talk more", "say more", "chat more", "speak up", "be chatty", "tell me things",
+              "keep me company", "talk to me"]
+    tails: [please, now, "ok", "for a bit", "a bit"]
+  - canonical: what are you doing
+    status: PLANNED
+    reply: "fighting or following, depending on what you last told me. ask 'stats' for numbers."
+    aliases: ["what are you doing", "what are you up to", "whats your plan", "what now", "status report", "report",
+              "sitrep", "how goes it", "hows it going", "where are you", "where did you go", "where are you at",
+              "you there", "you still there", "you alive", "are you alive", "you ok", "are you ok", "you good",
+              "still with me", "whats happening", "what happened"]
+    tails: [please, now, "ok", "over there", "right now", "buddy", "pal"]

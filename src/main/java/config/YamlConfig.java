@@ -17,6 +17,7 @@ public class YamlConfig {
     public List<WorldConfig> worlds;
     public ServerConfig server;
     public BotEconomyConfig bot_economy;
+    public LivingWorldConfig living_world;
 
     private static YamlConfig loadConfig() {
         try {
@@ -29,6 +30,10 @@ public class YamlConfig {
                 config.bot_economy = new BotEconomyConfig();
             }
             config.bot_economy.validate();
+            if (config.living_world == null) {
+                config.living_world = new LivingWorldConfig();
+            }
+            config.living_world.validate();
             return config;
         } catch (FileNotFoundException e) {
             throw new RuntimeException("Could not read config file " + YamlConfig.CONFIG_FILE_NAME + ": " + e.getMessage(), e);

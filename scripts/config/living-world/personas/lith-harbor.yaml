@@ -1,0 +1,301 @@
+# Lith Harbor cast: arrivals and debts. 8 residents, 2 recruitable (Brannock early, Hadrik through his arc).
+- id: olwen
+  name: Olwen
+  title: "Harbormaster's Ledger-Keeper"
+  job: BEGINNER
+  level: { min: 12, max: 14 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 6, to: 20, spot: "venue:olaf-crossroads", activity: LINGER }
+      - { from: 20, to: 24, spot: "venue:central-benches", activity: REST }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: false
+  questLines: [olwen-snail-tally, olwen-lost-manifest]
+  relationships:
+    - { persona: hadrik, kind: DISAPPROVES }
+    - { persona: pim, kind: FEEDS }
+  dialogue:
+    greetFirst: ["new face. sign the ledger or keep walking.", "you're not on my list. yet."]
+    greet: ["back again.", "the ledger doesn't fill itself.", "make it quick, the tide's turning."]
+    idle: ["(scratches at the ledger)", "numbers don't lie. people do."]
+    noWork: ["nothing needs counting today.", "come back when the snails have been at the crates again."]
+    nothingDue: ["you owe me nothing. yet."]
+    who: ["Olwen. i count what comes off the boats and what crawls back into the sea."]
+    bye: ["mind the ropes."]
+    thanks: ["put it in writing."]
+    smallTalk: ["weather's weather.", "i don't do small talk. i do tallies."]
+    speakPlainly: ["speak plainly. i have a ledger to keep."]
+    questOffer.olwen-snail-tally: ["snails are eating the rope stock at the 3-way road. bring me fifteen fewer snails."]
+    questAccept.olwen-snail-tally: ["good. count them. i will."]
+    questComplete.olwen-snail-tally: ["fifteen. huh. you can count."]
+    questOffer.olwen-lost-manifest: ["a manifest went overboard. the blue snails have the paper by now. five shells, and i'll rewrite it."]
+    questWaiting.olwen-lost-manifest: ["five shells. blue ones. not whatever that is."]
+    questComplete.olwen-lost-manifest: ["that'll do. the harbormaster owes you, which means i do."]
+    about.hadrik: ["drinks his pension on the upper deck. used to be worth something."]
+    about.pim: ["the kid steals bread. i leave some out. don't tell anyone."]
+    aboutUnknown: ["not in my ledger."]
+
+- id: brannock
+  name: Brannock
+  title: "Deckhand"
+  job: WARRIOR
+  level: { min: 13, max: 16 }
+  strength: ROOKIE
+  loadout: dock-worker
+  personality: relaxed-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 5, to: 18, spot: "venue:ship-upper-deck", activity: LINGER }
+      - { from: 18, to: 24, activity: SOCIALIZE }
+      - { from: 0, to: 5, materialize: false }
+  recruitable: true
+  contract: brannock-day-wage
+  questLines: [brannock-crates, brannock-mushroom-run]
+  rumors: [lith-dock-confession]
+  benchToleranceDays: 7
+  paceGap: 2
+  relationships:
+    - { persona: tobin, kind: PROTECTS }
+    - { persona: hadrik, kind: ADMIRES }
+  dialogue:
+    greetFirst: ["oh hey. you new? everyone's new here.", "hey! don't mind the smell, that's the fish. or me."]
+    greet: ["hey hey.", "you again! good.", "what's the word?"]
+    idle: ["(hauls a crate that doesn't need hauling)", "one day i'm getting on one of these boats. the right direction."]
+    noWork: ["nothing right now, but stick around."]
+    nothingDue: ["nah we're square."]
+    who: ["Brannock. deckhand, crate-hauler, future adventurer. mostly the first two."]
+    bye: ["catch you at the docks!"]
+    thanks: ["anytime!"]
+    smallTalk: ["did you see the size of that snail? no? okay."]
+    speakPlainly: ["uh. say that simpler?"]
+    offer: ["for real? okay, okay. here's the thing, i've got debts.", "you'd take me? alright, but i can't go for free."]
+    join: ["let's go! finally!", "grab your stuff, i'm ready!"]
+    bench: ["cool, i'll train up while you're gone.", "i'll be here. or at the mushrooms."]
+    leave: ["that was fun. see you around the harbor.", "back to crates, i guess."]
+    refuse.bond: ["i barely know you. help me with the crates first."]
+    refuse.flags: ["finish the crate thing first, then we talk."]
+    refuseOwnErrand: ["that's your errand! i'd feel weird farming my own favor."]
+    questOffer.brannock-crates: ["the shrooms at the 3-way road keep breaking into the crates. ten caps and i can prove it to Olwen."]
+    questAccept.brannock-crates: ["you're the best. orange caps, ten of them!"]
+    questWaiting.brannock-crates: ["ten orange caps. i'll wait."]
+    questComplete.brannock-crates: ["ten! Olwen has to believe me now."]
+    questOffer.brannock-mushroom-run: ["want to do something bigger? clear twenty stumps on the road, then check Pig Beach for me. i heard things."]
+    questAccept.brannock-mushroom-run: ["stumps first, then the beach. i'd come but... crates."]
+    questComplete.brannock-mushroom-run: ["you went all the way to the beach? okay. okay! i owe you one."]
+    about.tobin: ["the kid? he's fine. he's fine. don't ask him about the money."]
+    about.hadrik: ["Hadrik was a real sailor. ask him about the cutlass, but not before he's had a drink."]
+    aboutUnknown: ["no clue, honestly."]
+
+- id: mirel
+  name: Mirel
+  title: "Ship's Cook"
+  job: BEGINNER
+  level: { min: 15, max: 18 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 6, to: 22, spot: "venue:general-store", activity: LINGER }
+      - { from: 22, to: 24, activity: REST }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: false
+  questLines: [mirel-shell-stock]
+  relationships:
+    - { persona: pim, kind: FEEDS }
+  dialogue:
+    greetFirst: ["hungry? everyone who says no is lying."]
+    greet: ["back for seconds?", "hello, love."]
+    idle: ["(stirs a pot that is mostly water)"]
+    noWork: ["kitchen's stocked. for once."]
+    who: ["Mirel. i feed the whole harbor and nobody remembers my name. you will."]
+    bye: ["eat something!"]
+    thanks: ["thank the snails."]
+    smallTalk: ["salt. everything is salt here."]
+    questOffer.mirel-shell-stock: ["snail shells. i grind them for the soup. don't ask. ten of them?"]
+    questWaiting.mirel-shell-stock: ["ten shells, plain snail. the soup knows the difference."]
+    questComplete.mirel-shell-stock: ["perfect. here, something to keep you standing."]
+    about.pim: ["the kid eats here most nights. keep an eye on him."]
+    aboutUnknown: ["never cooked for them."]
+
+- id: tobin
+  name: Tobin
+  title: "Runaway Cabin Boy"
+  job: BEGINNER
+  level: { min: 9, max: 11 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 7, to: 19, spot: "venue:world-tour-platform", activity: LINGER }
+      - { from: 19, to: 23, spot: "venue:ship-upper-deck", activity: LINGER }
+      - { from: 23, to: 7, materialize: false }
+  recruitable: false
+  questLines: [tobin-shell-game]
+  rumors: [lith-dock-confession]
+  relationships:
+    - { persona: brannock, kind: OWES }
+    - { persona: hadrik, kind: FEARS }
+  dialogue:
+    greetFirst: ["i didn't take anything.", "who sent you?"]
+    greet: ["oh. it's you.", "you're okay, i guess."]
+    idle: ["(watches the boats)", "one of these goes somewhere far."]
+    noWork: ["i've got nothing. literally."]
+    who: ["Tobin. i was on a ship. now i'm not."]
+    bye: ["don't tell Hadrik you saw me."]
+    thanks: ["sure."]
+    smallTalk: ["the sea looks bigger from the deck."]
+    questOffer.tobin-shell-game: ["i lost a bet. eight red snail shells and i'm clear. i'm not going near those things."]
+    questWaiting.tobin-shell-game: ["red ones. eight."]
+    questComplete.tobin-shell-game: ["you actually did it. okay. i owe Brannock, not you, but still."]
+    about.hadrik: ["he was the first mate. i was supposed to be on his ship. i wasn't."]
+    about.brannock: ["Brannock covered for me. he shouldn't have."]
+    aboutUnknown: ["dunno."]
+
+- id: sable
+  name: Sable
+  title: "Cartographer"
+  job: BEGINNER
+  level: { min: 18, max: 21 }
+  strength: SEASONED
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 8, to: 18, spot: "venue:upper-town-overlook", activity: LINGER }
+      - { from: 18, to: 24, spot: "venue:central-benches", activity: SOCIALIZE }
+      - { from: 0, to: 8, materialize: false }
+  recruitable: false
+  questLines: [sable-three-roads, sable-hill-survey]
+  dialogue:
+    greetFirst: ["you walk like someone who gets lost. good. i can use that."]
+    greet: ["ah, the walker.", "where did you go today?"]
+    idle: ["(sketches the coastline for the fortieth time)"]
+    noWork: ["the map is as full as i can make it from here."]
+    who: ["Sable. i draw where things are. from a chair, mostly. that's where you come in."]
+    bye: ["watch the road forks."]
+    thanks: ["thank the map."]
+    smallTalk: ["every road out of here forks. it's a metaphor. or bad planning."]
+    questOffer.sable-three-roads: ["walk the 3-way road, then the forest west of Henesys, then the hill beyond it. i need to know they still connect."]
+    questComplete.sable-three-roads: ["they connect. i'll update the sheet. take this for the shoes."]
+    questOffer.sable-hill-survey: ["there's a beach the pigs have taken. hidden path off the 3-way road. go stand on it so i can draw it."]
+    questComplete.sable-hill-survey: ["a beach of pigs. i'll write that down exactly like that."]
+    aboutUnknown: ["not on any map of mine."]
+
+- id: hadrik
+  name: Hadrik
+  title: "Retired First Mate"
+  job: FIGHTER
+  level: { min: 30, max: 33 }
+  strength: VETERAN
+  loadout: sailor-cutlass
+  personality: efficient-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 10, to: 24, spot: "venue:ship-upper-deck", activity: LINGER }
+      - { from: 0, to: 10, materialize: false }
+  recruitable: true
+  contract: hadrik-last-voyage
+  questLines: [hadrik-old-cutlass, hadrik-ghosts-of-the-road]
+  arc: hadrik-last-voyage
+  rumors: [lith-dock-confession]
+  benchToleranceDays: 3
+  paceGap: 4
+  relationships:
+    - { persona: tobin, kind: RESENTS }
+    - { persona: olwen, kind: RESPECTS }
+  dialogue:
+    greetFirst: ["what.", "you're standing in my light."]
+    greet: ["you again.", "still here?"]
+    idle: ["(stares at the horizon)", "(turns a coin over and over)"]
+    noWork: ["i've got nothing for you."]
+    nothingDue: ["you don't owe me. nobody does. that's the problem."]
+    who: ["Hadrik. first mate of the Merrow, once. now i sit."]
+    bye: ["go on."]
+    thanks: ["hm."]
+    smallTalk: ["the sea doesn't care. i like that about it."]
+    speakPlainly: ["sailors talk plain. try it."]
+    refuse.bond: ["i don't sail with strangers."]
+    refuse.arc: ["there's something you don't know about me yet. ask around."]
+    refuse.flags: ["you haven't heard the whole story."]
+    offer: ["one voyage. one. and i want steel worth carrying."]
+    join: ["cast off, then."]
+    bench: ["i'll be on the deck. don't take long."]
+    leave: ["that was the last one. i mean it this time."]
+    refuseOwnErrand: ["a first mate doesn't fetch his own rope."]
+    questOffer.hadrik-old-cutlass: ["my cutlass rusted through. the red snails on the road have shells hard enough to whet a new edge. ten of them, and five hundred meso for the smith."]
+    questWaiting.hadrik-old-cutlass: ["ten red shells. and the meso."]
+    questComplete.hadrik-old-cutlass: ["...huh. you didn't have to. that's the first edge i've held in a year."]
+    questOffer.hadrik-ghosts-of-the-road: ["stumps. thirty of them, on the roads out of here. i want to know if i can still count kills."]
+    questComplete.hadrik-ghosts-of-the-road: ["thirty. the hands still work."]
+    about.tobin: ["don't say that name to me."]
+    about.olwen: ["Olwen keeps the harbor honest. more than i did."]
+    aboutUnknown: ["never sailed with them."]
+
+- id: pim
+  name: Pim
+  title: "Street Kid"
+  job: BEGINNER
+  level: { min: 6, max: 8 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 6, to: 21, activity: STROLL }
+      - { from: 21, to: 24, spot: "venue:general-store", activity: LINGER }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: false
+  questLines: [pim-cat-and-cook]
+  giftItemIds: [2020004, 2022003]
+  dialogue:
+    greetFirst: ["got any food?", "you're tall."]
+    greet: ["hi again!", "hey tall person."]
+    idle: ["(kicks a shell down the street)"]
+    noWork: ["nope. wanna race?"]
+    who: ["Pim! i live here. everywhere here."]
+    bye: ["bye bye!"]
+    thanks: ["yay!"]
+    smallTalk: ["the cook gives me soup. don't tell Olwen."]
+    questOffer.pim-cat-and-cook: ["tell Mirel i said thanks for the soup! i'm too shy. then come back!"]
+    questComplete.pim-cat-and-cook: ["did she smile? she smiled. here, i found this shiny thing."]
+    about.mirel: ["she's the best. the BEST."]
+    aboutUnknown: ["never heard of them!"]
+
+- id: yara
+  name: Yara
+  title: "Dock Guard"
+  job: WARRIOR
+  level: { min: 22, max: 25 }
+  strength: SEASONED
+  loadout: dock-worker
+  personality: efficient-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 0, to: 24, spot: "venue:east-town-street", activity: LINGER }
+  recruitable: false
+  questLines: [yara-road-watch]
+  dialogue:
+    greetFirst: ["state your business.", "keep moving unless you're useful."]
+    greet: ["you.", "road's still bad. you know that."]
+    idle: ["(watches the east road)"]
+    noWork: ["the road's quiet. give it an hour."]
+    who: ["Yara. i watch the road so the rest of you don't have to."]
+    bye: ["stay on the road."]
+    thanks: ["do it again tomorrow."]
+    smallTalk: ["stumps don't sleep. neither do i."]
+    questOffer.yara-road-watch: ["stumps and red snails on the east road. twenty and ten. same job as always."]
+    questComplete.yara-road-watch: ["the road's clear for a day. that's all i ever ask."]
+    aboutUnknown: ["not my post."]

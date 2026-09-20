@@ -110,6 +110,9 @@ public final class WhisperHandler extends AbstractPacketHandler {
 
         // Whisper-driven bot command: if the recipient is a bot owned by the sender,
         // route the message into the bot command pipeline (no name-prefix needed).
+        if (server.living.LivingWorldHooks.whisper(user, target.getName(), message)) {
+            return;
+        }
         CosmicAgentWhisperCommandBridge.handleWhisperToAgent(user, target, message);
     }
 }

@@ -1,0 +1,16 @@
+# Lith Harbor rumors (hidden dialogues).
+- id: lith-dock-confession
+  participants: [hadrik, tobin, brannock]
+  where: { town: lith-harbor, spot: "venue:ship-upper-deck" }
+  when:
+    serverHours: [20, 21, 22]
+    everyDays: 1
+    requiresArc: { arc: hadrik-last-voyage, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: brannock, text: "Hadrik. the kid wants to say something." }
+    - { by: hadrik, text: "the kid should have said it on the Merrow. before it went down." }
+    - { by: tobin, text: "i wasn't on it because i sold my berth. to pay a debt. i'm sorry." }
+    - { by: hadrik, text: "...you sold it. and lived. that's more than the rest of us managed." }
+    - { by: brannock, text: "so that's the story. the whole harbor's been guessing for a year." }
+    - { by: hadrik, text: "let them guess. and if anyone wants a first mate, they know where the deck is." }
+  setsFlagOnListeners: hadrik.heard-confession

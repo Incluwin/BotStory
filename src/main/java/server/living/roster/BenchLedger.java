@@ -1,0 +1,279 @@
+package server.living.roster;
+
+import client.Character;
+import constants.game.ExpTable;
+import constants.inventory.ItemConstants;
+import net.server.Server;
+import net.server.world.World;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import server.ItemInformationProvider;
+import server.living.LivingWorld;
+import server.living.config.Content.BondStage;
+import server.living.config.Content.Persona;
+import server.living.config.Content.Quest;
+import server.living.config.Content.Step;
+import server.living.config.Content.StepType;
+import server.living.store.LivingStore.Assignment;
+import server.living.store.LivingStore.Bond;
+import server.living.store.LivingStore.HaulItem;
+import server.living.store.LivingStore.QuestState;
+import server.living.store.LivingStore.RosterEntry;
+import server.living.store.LivingStore.RosterState;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Offline model for benched companions (plan 11.4/11.5): every interval it credits EXP toward the
+ * pace target, or meso/items from real drop tables under the bench efficiency factor, charges
+ * upkeep, and respects the per-account daily farming cap. Everything lands in the roster row and
+ * the haul; EXP is applied to the character when it is next called.
+ */
+public final class BenchLedger {
+    private static final Logger log = LoggerFactory.getLogger(BenchLedger.class);
+    private static final double KILLS_PER_HOUR = 110.0d;
+    private static final double MESO_PER_KILL_PER_LEVEL = 9.0d;
+    private static final double UPKEEP_PER_LEVEL_PER_HOUR = 30.0d;
+    private static final double STALL_MARKUP = 1.8d;
+    private static final double STALL_FRACTION_PER_TICK = 0.25d;
+
+    private final LivingWorld world;
+    /** Fractional item expectation carried between ticks, keyed by owner:persona:item. */
+    private final Map<String, Double> fractions = new ConcurrentHashMap<>();
+
+    public BenchLedger(LivingWorld world) {
+        this.world = world;
+    }
+
+    public void tick() {
+        long now = System.currentTimeMillis();
+        for (RosterEntry entry : world.store().allBenched()) {
+            try {
+                accrue(entry, now);
+            } catch (RuntimeException failure) {
+                log.warn("bench ledger failed for {}/{}", entry.characterId(), entry.personaId(), failure);
+            }
+        }
+    }
+
+    private void accrue(RosterEntry entry, long now) {
+        if (entry.state() != RosterState.BENCHED) {
+            return;
+        }
+        Persona persona = world.content().persona(entry.personaId());
+        if (persona == null) {
+            return;
+        }
+        long last = entry.lastLedgerAtMs() == 0L ? entry.benchedAtMs() : entry.lastLedgerAtMs();
+        double hours = Math.max(0.0d, Math.min(6.0d, (now - last) / 3_600_000.0d));
+        if (hours < 0.01d) {
+            return;
+        }
+        int botCharacterId = world.residents().characterIdOf(persona.id());
+        int botLevel = Math.max(1, world.store().characterLevel(botCharacterId));
+        int ownerLevel = Math.max(1, world.store().characterLevel(entry.characterId()));
+        Bond bond = world.bonds().peek(entry.characterId(), persona.id());
+        BondStage stage = bond == null ? BondStage.MET : bond.stage();
+
+        String today = LocalDate.now().toString();
+        int farmSecondsToday = today.equals(entry.farmDay()) ? entry.farmSecondsToday() : 0;
+        long accruedExp = entry.accruedExp();
+        long haulMeso = entry.haulMeso();
+        Assignment assignment = entry.assignment();
+        double efficiency = world.config().BENCH_FARM_EFFICIENCY;
+        if (haulMeso < 0) {
+            efficiency *= 0.5d; // unpaid upkeep: half speed until the haul recovers
+        }
+        String note = null;
+
+        switch (assignment) {
+            case TRAIN -> {
+                int paceGap = persona.paceGap() >= 0 ? persona.paceGap() : world.config().PACE_GAP;
+                paceGap = Math.max(0, paceGap - stage.ordinal() + 1);
+                int maxLag = persona.maxLag() >= 0 ? persona.maxLag() : world.config().MAX_LAG;
+                int target = Math.max(1, ownerLevel - paceGap);
+                int effectiveLevel = botLevel + (int) (accruedExp / Math.max(1L, ExpTable.getExpNeededForLevel(botLevel)));
+                if (effectiveLevel < target) {
+                    double multiplier = 1.0d;
+                    int lag = ownerLevel - effectiveLevel;
+                    if (lag > maxLag) {
+                        multiplier = Math.min(world.config().CATCH_UP_MAX_MULTIPLIER, 1.0d + (lag - maxLag) * 0.5d);
+                    }
+                    long gained = Math.round(expPerHour(effectiveLevel) * hours * efficiency * multiplier);
+                    long cap = Math.max(0L, (long) ExpTable.getExpNeededForLevel(effectiveLevel) * (target - effectiveLevel));
+                    accruedExp += Math.min(gained, cap);
+                    note = "train +" + Math.min(gained, cap) + " exp";
+                }
+            }
+            case FARM_MESO -> {
+                if (withinDailyCap(entry, farmSecondsToday, hours)) {
+                    long gained = Math.round(KILLS_PER_HOUR * hours * MESO_PER_KILL_PER_LEVEL * botLevel * efficiency * mesoRate());
+                    haulMeso += gained;
+                    farmSecondsToday += (int) (hours * 3600);
+                    note = "farm +" + gained + " meso";
+                }
+            }
+            case FARM_ITEM -> {
+                if (entry.assignmentItem() > 0 && withinDailyCap(entry, farmSecondsToday, hours)) {
+                    int have = haulCount(entry, entry.assignmentItem());
+                    if (entry.assignmentCount() <= 0 || have < entry.assignmentCount()) {
+                        int gained = farmItem(entry, entry.assignmentItem(), hours, efficiency,
+                                entry.assignmentCount() <= 0 ? Integer.MAX_VALUE : entry.assignmentCount() - have);
+                        farmSecondsToday += (int) (hours * 3600);
+                        note = "farm item " + entry.assignmentItem() + " +" + gained;
+                    }
+                }
+            }
+            case GATHER -> {
+                if (withinDailyCap(entry, farmSecondsToday, hours)) {
+                    note = gather(entry, persona, hours, efficiency);
+                    farmSecondsToday += (int) (hours * 3600);
+                }
+            }
+            case SELL -> {
+                long sold = sellHaul(entry, 1.0d, 1.0d);
+                haulMeso += sold;
+                note = sold > 0 ? "sold haul for " + sold : null;
+            }
+            case STALL -> {
+                long sold = sellHaul(entry, STALL_MARKUP, STALL_FRACTION_PER_TICK);
+                haulMeso += sold;
+                note = sold > 0 ? "stall sold for " + sold : null;
+            }
+            case REST -> { }
+        }
+        if (assignment != Assignment.REST) {
+            long upkeep = Math.round(UPKEEP_PER_LEVEL_PER_HOUR * botLevel * hours);
+            haulMeso -= upkeep;
+        }
+        RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
+                entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), accruedExp, haulMeso,
+                entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, farmSecondsToday, today);
+        world.store().saveRoster(updated);
+        if (note != null) {
+            world.store().event(entry.characterId(), entry.personaId(), "bench.ledger", note);
+        }
+    }
+
+    private boolean withinDailyCap(RosterEntry entry, int farmSecondsToday, double hours) {
+        int capSeconds = world.config().BENCH_FARM_HOURS_PER_DAY * 3600;
+        int total = farmSecondsToday;
+        for (RosterEntry other : world.store().roster(entry.characterId())) {
+            if (!other.personaId().equals(entry.personaId()) && LocalDate.now().toString().equals(other.farmDay())) {
+                total += other.farmSecondsToday();
+            }
+        }
+        return total + (int) (hours * 3600) <= capSeconds;
+    }
+
+    /** Rough EXP/hour a bot of this level earns at a fitting field: one level per (0.5 + level/20) hours. */
+    static double expPerHour(int level) {
+        double hoursPerLevel = 0.5d + level / 20.0d;
+        return ExpTable.getExpNeededForLevel(level) / hoursPerLevel;
+    }
+
+    private int farmItem(RosterEntry entry, int itemId, double hours, double efficiency, int limit) {
+        List<int[]> droppers = world.store().mobsDropping(itemId);
+        if (droppers.isEmpty()) {
+            return 0;
+        }
+        int[] best = droppers.get(0);
+        double chance = best[1] / 1_000_000.0d * dropRate();
+        String key = entry.characterId() + ":" + entry.personaId() + ":" + itemId;
+        double expectation = fractions.getOrDefault(key, 0.0d) + KILLS_PER_HOUR * hours * chance * efficiency;
+        int whole = (int) Math.min(expectation, limit);
+        fractions.put(key, expectation - whole);
+        if (whole > 0) {
+            if (haulStacks(entry) >= world.config().HAUL_MAX_STACKS && haulCount(entry, itemId) == 0) {
+                return 0;
+            }
+            world.store().addHaul(entry.characterId(), entry.personaId(), itemId, whole);
+        }
+        return whole;
+    }
+
+    private String gather(RosterEntry entry, Persona persona, double hours, double efficiency) {
+        StringBuilder note = new StringBuilder();
+        for (QuestState state : world.store().questStates(entry.characterId(), server.living.store.LivingStore.QuestStatus.ACTIVE)) {
+            Quest quest = world.content().quest(state.questId());
+            Step step = quest == null ? null : quest.step(state.stepIndex());
+            if (step == null || step.type() != StepType.COLLECT_ITEM) {
+                continue;
+            }
+            if (quest.persona().equals(persona.id())) {
+                continue; // never its own quest from the bench
+            }
+            int remaining = step.count() - state.progress() - haulCount(entry, step.itemId());
+            if (remaining <= 0) {
+                continue;
+            }
+            int gained = farmItem(entry, step.itemId(), hours, efficiency, remaining);
+            if (gained > 0) {
+                note.append("gathered ").append(gained).append(" of item ").append(step.itemId()).append("; ");
+            }
+        }
+        return note.length() == 0 ? null : note.toString();
+    }
+
+    private long sellHaul(RosterEntry entry, double markup, double fraction) {
+        long total = 0L;
+        ItemInformationProvider ii = ItemInformationProvider.getInstance();
+        for (HaulItem item : world.store().haul(entry.characterId(), entry.personaId())) {
+            if (world.quests().isQuestItemFor(entry.characterId(), item.itemId())) {
+                continue; // keep what the owner's quests need
+            }
+            int quantity = Math.max(1, (int) Math.ceil(item.quantity() * fraction));
+            double unit = ItemConstants.isEquipment(item.itemId()) ? ii.getWholePrice(item.itemId()) : ii.getUnitPrice(item.itemId());
+            if (unit <= 0) {
+                continue;
+            }
+            total += Math.round(unit * quantity * markup);
+            world.store().removeHaul(entry.characterId(), entry.personaId(), item.itemId(), quantity);
+        }
+        return total;
+    }
+
+    private int haulCount(RosterEntry entry, int itemId) {
+        for (HaulItem item : world.store().haul(entry.characterId(), entry.personaId())) {
+            if (item.itemId() == itemId) {
+                return item.quantity();
+            }
+        }
+        return 0;
+    }
+
+    private int haulStacks(RosterEntry entry) {
+        return world.store().haul(entry.characterId(), entry.personaId()).size();
+    }
+
+    /** Banked EXP is granted when the companion materializes so level-ups run through the real path. */
+    public void applyAccrued(RosterEntry entry, Character agent) {
+        if (entry.accruedExp() <= 0 || agent == null) {
+            return;
+        }
+        long remaining = entry.accruedExp();
+        while (remaining > 0) {
+            int chunk = (int) Math.min(remaining, Integer.MAX_VALUE / 2);
+            agent.gainExp(chunk, false, false);
+            remaining -= chunk;
+        }
+        world.store().saveRoster(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
+                entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), 0L, entry.haulMeso(),
+                entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
+                entry.farmSecondsToday(), entry.farmDay()));
+        world.store().event(entry.characterId(), entry.personaId(), "bench.exp-applied", entry.accruedExp() + " exp -> level " + agent.getLevel());
+    }
+
+    private double dropRate() {
+        World w = Server.getInstance().getWorld(world.config().WORLD);
+        return w == null ? 1.0d : Math.max(1, w.getDropRate());
+    }
+
+    private double mesoRate() {
+        World w = Server.getInstance().getWorld(world.config().WORLD);
+        return w == null ? 1.0d : Math.max(1, w.getMesoRate());
+    }
+}

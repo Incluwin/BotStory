@@ -77,7 +77,11 @@ public class InventoryManipulator {
         Inventory inv = chr.getInventory(type);
         inv.lockInventory();
         try {
-            return addByIdInternal(c, chr, type, inv, itemId, quantity, owner, petid, flag, expiration);
+            boolean added = addByIdInternal(c, chr, type, inv, itemId, quantity, owner, petid, flag, expiration);
+            if (added) {
+                server.living.LivingWorldHooks.itemGained(chr, itemId, quantity);
+            }
+            return added;
         } finally {
             inv.unlockInventory();
         }
