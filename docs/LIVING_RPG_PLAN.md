@@ -320,6 +320,14 @@ New `server.living.quest` (FriendServer package, server-side, no WZ dependency):
   TALK_TO / DELIVER via the Resident dialogue layer), rumor performance (HEAR_RUMOR).
   Each event is matched against active steps of that player only (indexed by type), so cost
   is O(active steps of online players).
+- **No self-service.** A Persona never contributes to its own quests, benched or in the
+  party: `KILL_MOBS` steps of Persona X's quests ignore kills made by X; `COLLECT_ITEM` and
+  `DELIVER` steps of X's quests ignore items that arrived from X's haul (the ledger keeps a
+  24 h provenance record of haul transfers per persona and item); `GATHER` and `FARM_ITEM`
+  skip or refuse X's own targets. Contributions from *other* companions count normally: a
+  party kill by Leroy credits Garrick's boar cull, and Leroy can gather Garrick's badge. The
+  quest giver being in the owner's party changes nothing else - it still offers, comments on
+  and grades its quests, it just will not do them for you.
 - Rewards through existing APIs (`gainMeso`, `gainExp`, `InventoryManipulator.addById`,
   fame). Custom temporary drops (`dropFrom`) are added as a per-step drop overlay checked in
   the drop path only while the step is active for a player in the map.
@@ -630,10 +638,13 @@ Companions are not only levelling on the bench; the owner can put them to work. 
 | `TRAIN` | fights at the camp for EXP (11.4) | EXP up to the pace target, incidental drops |
 | `FARM_MESO` | hunts the best meso-per-hour mobs for its level near the camp | meso |
 | `FARM_ITEM <item> [n]` | hunts mobs that drop the item (real drop tables) until `n` or told to stop | the item, other drops |
-| `GATHER` | farms whatever the owner's *active Persona quests* need (`COLLECT_ITEM` steps) | quest items |
+| `GATHER` | farms whatever the owner's *active Persona quests* need (`COLLECT_ITEM` steps), except quests given by this Persona itself (see "no self-service" in 5.3) | quest items |
 | `SELL` | walks to a town, sells the haul's junk at NPC prices, banks the meso | meso |
 | `STALL` | sets up a Free Market stall (existing `AgentFreeMarketStallCapability`) and sells the haul at market prices | meso, slowly, more of it |
 | `REST` | does nothing; no upkeep, no gain | - |
+
+`FARM_ITEM` is refused, in the companion's voice ("that one's your errand, not mine"), when
+the item is what one of *its own* active quests asks the owner to collect.
 
 **Outcome model.** The offline ledger simulates `killsPerHour(level, campMap)` from the field
 capacity catalog, rolls real drop tables through `MonsterInformationProvider` at the server's
