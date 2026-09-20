@@ -2,6 +2,8 @@ package server.living.resident;
 
 import client.Character;
 import client.Job;
+import client.JobProgressionPolicy;
+import client.inventory.InventoryType;
 import client.inventory.manipulator.InventoryManipulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,44 +12,54 @@ import server.living.config.Content.ItemStack;
 import server.living.config.Content.Loadout;
 import server.living.config.Content.Persona;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 /**
- * Turns a freshly provisioned level-1 beginner into the authored Persona: level band, job,
- * AP by job archetype, loadout equipment and consumables. Idempotent per shaped version.
+ * Turns a freshly provisioned level-1 beginner into the authored Persona: levels one at a time
+ * so HP/MP and AP grow through the normal formulas, job advancements at the levels the game
+ * allows them (a persona authored as a third job below level 70 stops at its second job),
+ * AP by job archetype, then loadout equipment and consumables. Idempotent per shaped version.
  */
 final class ResidentShaper {
     private static final Logger log = LoggerFactory.getLogger(ResidentShaper.class);
     /** Bump when the shaping recipe changes so existing personas are reshaped once. */
-    static final int RECIPE_VERSION = 1;
+    static final int RECIPE_VERSION = 2;
 
     private ResidentShaper() {
     }
 
     static void shape(Character agent, Persona persona, Loadout loadout, int levelSeed) {
-        int targetLevel = Math.max(1, Math.min(persona.level().pick(levelSeed), agent.getMaxClassLevel()));
-        Job job = job(persona.job());
-        if (agent.getLevel() < targetLevel) {
-            agent.loseExp(agent.getExp(), false, false);
-            agent.setLevel(targetLevel - 1);
-            agent.resetPlayerRates();
+        int targetLevel = Math.max(1, Math.min(persona.level().pick(levelSeed), 200));
+        List<Job> chain = advancementChain(job(persona.job()));
+        int guard = 0;
+        while (guard++ < 250) {
+            advanceIfLegal(agent, chain);
+            if (agent.getLevel() >= targetLevel) {
+                break;
+            }
             agent.levelUp(false);
         }
-        if (job != null && agent.getJob() != job) {
-            agent.forceChangeJobForAdmin(job);
-            agent.equipChanged();
-        }
-        assignAp(agent, job, loadout == null ? Map.of() : loadout.stats());
+        advanceIfLegal(agent, chain);
+        repairGrowth(agent);
+        assignAp(agent, agent.getJob(), loadout == null ? Map.of() : loadout.stats());
         if (loadout != null) {
             for (int equipId : loadout.equipIds()) {
-                if (agent.getInventory(client.inventory.InventoryType.EQUIP).countById(equipId) == 0
-                        && agent.getInventory(client.inventory.InventoryType.EQUIPPED).countById(equipId) == 0) {
+                if (agent.getInventory(InventoryType.EQUIP).countById(equipId) == 0
+                        && agent.getInventory(InventoryType.EQUIPPED).countById(equipId) == 0) {
                     InventoryManipulator.addById(agent.getClient(), equipId, (short) 1);
                 }
             }
             for (ItemStack stack : loadout.consumables()) {
-                InventoryManipulator.addById(agent.getClient(), stack.itemId(), (short) Math.min(stack.count(), Short.MAX_VALUE));
+                int type = stack.itemId() / 1_000_000;
+                InventoryType inventory = type == 2 ? InventoryType.USE : type == 3 ? InventoryType.SETUP
+                        : type == 4 ? InventoryType.ETC : InventoryType.EQUIP;
+                if (agent.getInventory(inventory).countById(stack.itemId()) < stack.count()) {
+                    InventoryManipulator.addById(agent.getClient(), stack.itemId(),
+                            (short) Math.min(stack.count() - agent.getInventory(inventory).countById(stack.itemId()), Short.MAX_VALUE));
+                }
             }
             try {
                 AgentEquipmentService.autoEquip(agent, agent, null, true);
@@ -57,6 +69,60 @@ final class ResidentShaper {
         }
         agent.healHpMp();
         agent.saveCharToDB();
+    }
+
+    /**
+     * Characters that were jumped to a level (GM tools, an older recipe) never received the AP
+     * and HP/MP of the skipped levels; top them up to the job's formula for this level.
+     */
+    private static void repairGrowth(Character agent) {
+        int level = agent.getLevel();
+        int spentBeyondBase = Math.max(0, agent.getStr() + agent.getDex() + agent.getInt() + agent.getLuk() - 25);
+        int expectedRemaining = Math.max(0, 5 * (level - 1) - spentBeyondBase);
+        if (agent.getRemainingAp() < expectedRemaining) {
+            agent.gainAp(expectedRemaining - agent.getRemainingAp(), true);
+        }
+        client.HpMpGrowthPolicy.Growth base = client.HpMpGrowthPolicy.baseForJobAtLevel(agent.getJob(), level);
+        if (agent.getMaxHp() < base.hp()) {
+            agent.addMaxHP(base.hp() - agent.getMaxHp());
+        }
+        if (agent.getMaxMp() < base.mp()) {
+            agent.addMaxMP(base.mp() - agent.getMaxMp());
+        }
+    }
+
+    /** BEGINNER -> first job -> second job -> ... up to the authored job. */
+    static List<Job> advancementChain(Job target) {
+        List<Job> chain = new ArrayList<>();
+        if (target == null || target == Job.BEGINNER) {
+            return chain;
+        }
+        int id = target.getId();
+        int first = id / 100 * 100;
+        int second = id / 10 * 10;
+        Job firstJob = first > 0 ? Job.getById(first) : null;
+        Job secondJob = second != first ? Job.getById(second) : null;
+        if (firstJob != null) {
+            chain.add(firstJob);
+        }
+        if (secondJob != null) {
+            chain.add(secondJob);
+        }
+        if (id != second) {
+            chain.add(target);
+        }
+        return chain;
+    }
+
+    private static void advanceIfLegal(Character agent, List<Job> chain) {
+        for (Job next : chain) {
+            if (agent.getJob() == next) {
+                continue;
+            }
+            if (JobProgressionPolicy.isLegalAdvancement(agent.getJob(), next, agent.getLevel())) {
+                agent.changeJob(next);
+            }
+        }
     }
 
     static Job job(String name) {

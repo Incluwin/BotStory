@@ -276,7 +276,7 @@ public final class ResidentRuntime {
         }
         long lastSeen = lastPlayerSeenMs.getOrDefault(mapId, 0L);
         boolean awake = humans > 0 || now - lastSeen < world.config().RESIDENT_SLEEP_AFTER_MS
-                || forcedAwake.containsKey(persona.homeTown());
+                || forcedAwake.containsKey(persona.homeTown()) || alwaysAwake(persona.homeTown());
         RoutineSlot slot = currentSlot(persona, hour);
         boolean want = awake && (slot == null || slot.materialize());
         if (want) {
@@ -476,6 +476,19 @@ public final class ResidentRuntime {
             }
         }
         return null;
+    }
+
+    private boolean alwaysAwake(String town) {
+        String configured = world.config().ALWAYS_AWAKE_TOWNS;
+        if (configured == null || configured.isBlank()) {
+            return false;
+        }
+        for (String entry : configured.split(",")) {
+            if (entry.trim().equalsIgnoreCase(town)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String slotKey(RoutineSlot slot) {

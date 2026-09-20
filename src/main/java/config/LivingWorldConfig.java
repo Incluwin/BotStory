@@ -18,6 +18,8 @@ public class LivingWorldConfig {
     public int RESIDENT_SLEEP_AFTER_MS = 300000;
     /** How often the resident runtime reconciles presence, routines and leases. */
     public int RESIDENT_TICK_MS = 5000;
+    /** Comma-separated TownLife profile ids whose Residents stay materialized even with no players (ops/testing). */
+    public String ALWAYS_AWAKE_TOWNS = "";
     /** Reply-length threshold above which a Resident whispers instead of using a chat bubble. */
     public int RESIDENT_BUBBLE_MAX_CHARS = 70;
 
