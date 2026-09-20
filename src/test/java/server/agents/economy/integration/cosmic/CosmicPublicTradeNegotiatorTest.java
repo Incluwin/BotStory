@@ -77,7 +77,7 @@ class CosmicPublicTradeNegotiatorTest {
         assertEquals("buyer", offer.buyerAgentId()); assertEquals("seller", offer.sellerAgentId());
         assertEquals(4000000, offer.itemId()); assertEquals("fp", offer.itemFingerprint());
         assertEquals(950, offer.offeredMesos()); assertEquals(StallOffer.Status.PENDING, offer.status());
-        verify(shop).chat(any(client.Client.class), eq(offer.publicText()));
+        verify(shop).chat(org.mockito.ArgumentMatchers.<client.Client>any(), eq(offer.publicText()));
         verifyNoInteractions(closer, trades);
         verify(journal).appendSocial(any());
     }
@@ -119,7 +119,7 @@ class CosmicPublicTradeNegotiatorTest {
         assertTrue(result.attempted());
         assertEquals(950L, offers.created.getFirst().offeredMesos());
         assertEquals(offers.highest.offerId().toString(), result.evidence().get("outbidsOfferId"));
-        verify(shop).chat(any(client.Client.class), eq("public offer 950"));
+        verify(shop).chat(org.mockito.ArgumentMatchers.<client.Client>any(), eq("public offer 950"));
     }
 
     @Test
