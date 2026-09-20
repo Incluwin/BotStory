@@ -36,12 +36,16 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 
 import static java.util.concurrent.TimeUnit.DAYS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Ronan
  * @author Ubaware
  */
 public final class TransferNameHandler extends AbstractPacketHandler {
+    private static final Logger log = LoggerFactory.getLogger(TransferNameHandler.class);
+
 
     @Override
     public final void handlePacket(InPacket p, Client c) {
@@ -80,7 +84,7 @@ public final class TransferNameHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return;
         }
         c.sendPacket(PacketCreator.sendNameTransferRules(0));

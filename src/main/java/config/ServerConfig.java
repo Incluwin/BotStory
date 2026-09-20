@@ -83,6 +83,7 @@ public class ServerConfig {
     public boolean USE_AUTOBAN_LOG;
     public boolean USE_EXP_GAIN_LOG;
     public boolean USE_AUTOSAVE;
+    public int AUTOSAVE_INTERVAL_MINUTES = 10;
     public boolean USE_SERVER_AUTOASSIGNER;
     public boolean USE_REFRESH_RANK_MOVE;
     public boolean USE_ENFORCE_ADMIN_ACCOUNT;
@@ -299,4 +300,42 @@ public class ServerConfig {
 
     //Custom NPC overrides. List of NPC IDs.
     public Map<String, String> NPCS_SCRIPTABLE = new HashMap<>();
+
+    //Server-side "secondary-stat requirement removal" (PLAN.md §95-157). When true
+    //the server reads MapleEdit/app/patches/zero-secondary-stats.json at startup
+    //and zeroes reqSTR/reqDEX/reqINT/reqLUK on matching items at the canEquip
+    //layer. Implemented in Java so the WZ stays pristine (the WZ patcher produces
+    //a corrupt Character.wz; see project memory).
+    public boolean USE_SECONDARY_STAT_REQ_OVERRIDES;
+
+    //Admin bridge (MapleEdit ↔ Cosmic). See ADMIN_DASHBOARD_PLAN.md §2.
+    public boolean ENABLE_GM_TEST_QUEUE;
+    public boolean ENABLE_ADMIN_CONTROL_PORT;
+    public int ADMIN_CONTROL_PORT_BIND;
+    public String ADMIN_CONTROL_TOKEN;
+
+    //Admin service bot (ADMIN_DASHBOARD_PLAN.md §14).
+    public boolean ENABLE_ADMIN_SERVICE_BOT;
+    public String  ADMIN_SERVICE_BOT_CHARACTER;
+    public int     ADMIN_SERVICE_BOT_WORLD;
+    public int     ADMIN_SERVICE_BOT_CHANNEL;
+    public int     ADMIN_SERVICE_BOT_MAP;
+
+    //SoloMapling ambient social-bot layer master gate.
+    public boolean ENABLE_SOLO_MAPLING;
+
+    //Connection / packet throttle (see net.security.ConnectionThrottle).
+    public boolean ENABLE_CONNECTION_THROTTLE;
+    public int CT_MAX_CONCURRENT_PER_IP;
+    public int CT_MAX_CONNECTS_PER_WINDOW;
+    public long CT_CONNECT_WINDOW_MS;
+    public int CT_MAX_PACKETS_PER_WINDOW;
+    public long CT_PACKET_WINDOW_MS;
+
+    //Anti-cheat (see net.security.AntiCheat).
+    public boolean ENABLE_ANTICHEAT;
+    public int  ANTICHEAT_MAX_SINGLE_HIT_DAMAGE;
+    public int  ANTICHEAT_MAX_MESO_PER_MIN;
+    public int  ANTICHEAT_MAX_MOVE_DELTA_PX;
+    public boolean ANTICHEAT_LOG_ONLY;
 }

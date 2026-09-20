@@ -172,6 +172,8 @@ public final class ScrollHandler extends AbstractPacketHandler {
                 if (equipSlot < 0 && (scrollSuccess == Equip.ScrollResult.SUCCESS || scrollSuccess == Equip.ScrollResult.CURSE)) {
                     chr.equipChanged();
                 }
+                // Scroll consumed + equip mutated; persist before any crash window so a rollback can't restore the scroll AND keep the upgrade.
+                chr.saveCharToDB();
             } finally {
                 c.releaseClient();
             }

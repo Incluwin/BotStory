@@ -22,9 +22,10 @@ public enum EquipSlot {
     WEAPON_2("WpSi", -11),
     LOW_WEAPON("WpSp", -11),
     RING("Ri", -12, -13, -15, -16),
-    PENDANT("Pe", -17),
+    PENDANT("Pe", -17, -51),
     TAMED_MOB("Tm", -18),
     SADDLE("Sd", -19),
+    SHOULDER("Sh", -20),
     MEDAL("Me", -49),
     BELT("Be", -50),
     PET_EQUIP;

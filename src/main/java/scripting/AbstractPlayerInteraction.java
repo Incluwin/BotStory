@@ -59,8 +59,12 @@ import java.util.List;
 import java.util.*;
 
 import static java.util.concurrent.TimeUnit.DAYS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AbstractPlayerInteraction {
+    private static final Logger log = LoggerFactory.getLogger(AbstractPlayerInteraction.class);
+
 
     public Client c;
 
@@ -377,7 +381,7 @@ public class AbstractPlayerInteraction {
         try {
             return getQuestStat(id) == QuestStatus.Status.COMPLETED;
         } catch (NullPointerException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return false;
         }
     }
@@ -390,7 +394,7 @@ public class AbstractPlayerInteraction {
         try {
             return getQuestStat(id) == QuestStatus.Status.STARTED;
         } catch (NullPointerException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return false;
         }
     }
@@ -506,7 +510,7 @@ public class AbstractPlayerInteraction {
         try {
             return Quest.getInstance(id).forceStart(getPlayer(), npc);
         } catch (NullPointerException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
             return false;
         }
     }
@@ -515,7 +519,7 @@ public class AbstractPlayerInteraction {
         try {
             return Quest.getInstance(id).forceComplete(getPlayer(), npc);
         } catch (NullPointerException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
             return false;
         }
     }
@@ -729,7 +733,7 @@ public class AbstractPlayerInteraction {
         try {
             return Server.getInstance().getGuild(getPlayer().getGuildId(), getPlayer().getWorld(), null);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
         return null;
     }
@@ -1098,6 +1102,41 @@ public class AbstractPlayerInteraction {
     public void endExpedition(Expedition exped) {
         exped.dispose(true);
         exped.removeChannelExpedition(getPlayer().getClient().getChannelServer());
+    }
+
+    /**
+     * Daily lockout pre-check for bosses that run outside the Expedition framework
+     * (currently Papulatus). Checks every party member. Returns the name of the first
+     * member who has reached the daily cap, or null if everyone is clear.
+     */
+    public String firstPartyMemberOverBossCap(String bossName) {
+        Party party = getPlayer().getParty();
+        if (party == null) {
+            return ExpeditionBossLog.attemptBossByName(getPlayer().getId(), bossName, false)
+                    ? null : getPlayer().getName();
+        }
+        for (PartyCharacter pc : party.getMembers()) {
+            if (!ExpeditionBossLog.attemptBossByName(pc.getId(), bossName, false)) {
+                return pc.getName();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Records a daily-lockout entry for every party member. Call this once a boss
+     * battle actually starts (symmetrical to how Expedition.registerExpeditionAttempt
+     * logs each active member).
+     */
+    public void logPartyBossAttempt(String bossName) {
+        Party party = getPlayer().getParty();
+        if (party == null) {
+            ExpeditionBossLog.attemptBossByName(getPlayer().getId(), bossName, true);
+            return;
+        }
+        for (PartyCharacter pc : party.getMembers()) {
+            ExpeditionBossLog.attemptBossByName(pc.getId(), bossName, true);
+        }
     }
 
     public Expedition getExpedition(ExpeditionType type) {

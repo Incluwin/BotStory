@@ -446,24 +446,24 @@
       <imgdir name="level">
         <imgdir name="1">
           <string name="hs" value="h1"/>
-          <int name="mpCon" value="4"/>
+          <int name="mpCon" value="0"/>
           <int name="time" value="4"/>
           <int name="speed" value="10"/>
-          <int name="cooltime" value="60"/>
+          <int name="cooltime" value="0"/>
         </imgdir>
         <imgdir name="2">
           <string name="hs" value="h2"/>
-          <int name="mpCon" value="7"/>
+          <int name="mpCon" value="0"/>
           <int name="time" value="8"/>
           <int name="speed" value="15"/>
-          <int name="cooltime" value="60"/>
+          <int name="cooltime" value="0"/>
         </imgdir>
         <imgdir name="3">
           <string name="hs" value="h3"/>
-          <int name="mpCon" value="10"/>
+          <int name="mpCon" value="0"/>
           <int name="time" value="12"/>
           <int name="speed" value="20"/>
-          <int name="cooltime" value="60"/>
+          <int name="cooltime" value="0"/>
         </imgdir>
       </imgdir>
       <imgdir name="effect">

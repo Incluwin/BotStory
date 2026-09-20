@@ -1,0 +1,49 @@
+# Rarity tier shape (BOT_ECONOMY.md § Rarity scale).
+# Structural — adding/removing a tier is a code change.
+
+rarity_tiers:
+  R1:
+    label:                     Common
+    aggregate_drop_rate_min:   0.01
+    saturation_threshold:      50
+    saturation_min_multiplier: 0.10
+    price_jitter:              0.15
+    keep_avg_prob:             0.50
+  R2:
+    label:                     Uncommon
+    aggregate_drop_rate_min:   0.001
+    saturation_threshold:      20
+    saturation_min_multiplier: 0.10
+    price_jitter:              0.15
+    keep_avg_prob:             0.60
+  R3:
+    label:                     Rare
+    aggregate_drop_rate_min:   0.0001
+    saturation_threshold:      8
+    saturation_min_multiplier: 0.15
+    price_jitter:              0.12
+    keep_avg_prob:             0.85
+  R4:
+    label:                     Epic
+    aggregate_drop_rate_min:   0.00002
+    saturation_threshold:      3
+    saturation_min_multiplier: 0.25
+    price_jitter:              0.08
+    keep_avg_prob:             0.95
+  R5:
+    label:                     Legendary
+    aggregate_drop_rate_min:   0.0           # everything below R4 threshold
+    saturation_threshold:      1
+    saturation_min_multiplier: 0.40
+    price_jitter:              0.05
+    keep_avg_prob:             1.00
+
+target_distribution_pct:
+  R1: 50
+  R2: 25
+  R3: 15
+  R4: 8
+  R5: 2
+  tolerance_pct: 3
+
+max_overrides: 100

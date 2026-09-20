@@ -77,6 +77,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static soloMapling.ArtificialPlayer.BotClientHandler.createBotClient;
+
 public final class PlayerLoggedinHandler extends AbstractPacketHandler {
     private static final Logger log = LoggerFactory.getLogger(PlayerLoggedinHandler.class);
     private static final Set<Integer> attemptingLoginAccounts = new HashSet<>();
@@ -163,7 +165,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
                     player = Character.loadCharFromDB(cid, c, true);
                     newcomer = true;
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    log.error("unhandled exception", e);
                 }
 
                 if (player == null) { //If you are still getting null here then please just uninstall the game >.>, we dont need you fucking with the logs
@@ -228,6 +230,12 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
             cserv.addPlayer(player);
             wserv.addPlayer(player);
             player.setEnteredChannelWorld();
+            // SoloMapling: seed the shared bot client from the first real login so
+            // bots can route packets, then bootstrap the bot environment. Gated OFF
+            // by default; no effect (and no first-login disconnect) unless enabled.
+            if (YamlConfig.config.server.ENABLE_SOLO_MAPLING) {
+                createBotClient(c);
+            }
 
             List<PlayerBuffValueHolder> buffs = server.getPlayerBuffStorage().getBuffsFromStorage(cid);
             if (buffs != null) {
@@ -259,6 +267,8 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
 
             player.getMap().addPlayer(player);
             player.visitMap(player.getMap());
+            player.applyAllPassiveSkills();
+            player.startEnergyChargeFillTask();
 
             BuddyList bl = player.getBuddylist();
             int[] buddyIds = bl.getBuddyIds();
@@ -361,6 +371,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
             c.sendPacket(PacketCreator.updateGender(player));
             player.checkMessenger();
             c.sendPacket(PacketCreator.enableReport());
+            c.sendPacket(PacketCreator.setExtraPendantSlot(true));
             player.changeSkillLevel(SkillFactory.getSkill(10000000 * player.getJobType() + 12), (byte) (player.getLinkedLevel() / 10), 20, -1);
             player.checkBerserk(player.isHidden());
 
@@ -454,8 +465,35 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
             if (newcomer) {
                 player.setLoginTime(System.currentTimeMillis());
             }
+
+            // Growing Quest Ring: retroactively grant the ring to legacy characters
+            // (pre-feature, or pre-1112405->1112414 vessel switch), then sync stats.
+            player.ensureQuestRing();
+            player.refreshQuestRing();
+            // Hyper Teleport Rock: backfill the permanent rock for any character
+            // already past the level-10 grant threshold.
+            player.ensureHyperRock();
+            // Evolving Ring chain: retroactively grant Evolving Ring I to legacy characters
+            // who pre-date the chain feature. No-op for characters that already carry any
+            // chain ring (including the Fully Evolved terminal).
+            player.ensureEvolvingRing();
+            // Hunter's Codex: relocate from regular medal slot (-49) to cash medal
+            // slot (-149) so a regular medal can occupy -49 alongside it. WZ now has
+            // cash=1 on img 1142165 (set by install_monster_book_medal.py), so the v83
+            // client treats this as a cash medal and renders it at the offset slot.
+            // No-op if the codex is not at -49 — independent of the gated auto-grant.
+            player.relocateMonsterBookMedalToCashSlot();
+            // Hunter's Codex: backfill + stat sync.
+            // GATED: leave commented until install_monster_book_medal.py has been
+            // run. The medal img 1142165 ships with medalTag=95 in stock v83 WZ,
+            // which references a title sprite missing from the MapleCommons Client
+            // and crashes the client ~3s after spawn (Connection reset, see logs
+            // 2026-04-25 00:30:38–41). The install script zeros medalTag (and the
+            // base inc* stats) — re-enable these two lines after running it.
+            // player.ensureMonsterBookMedal();
+            // player.refreshMonsterBookMedal();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         } finally {
             c.releaseClient();
         }
@@ -477,7 +515,7 @@ public final class PlayerLoggedinHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 

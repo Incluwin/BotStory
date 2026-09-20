@@ -25,6 +25,7 @@ package client;
 import client.autoban.AutobanManager;
 import client.creator.CharacterFactoryRecipe;
 import client.inventory.Equip;
+import client.inventory.EvolvingRing;
 import client.inventory.Inventory;
 import client.inventory.InventoryProof;
 import client.inventory.InventoryType;
@@ -36,6 +37,7 @@ import client.inventory.PetDataFactory;
 import client.inventory.WeaponType;
 import client.inventory.manipulator.CashIdGenerator;
 import client.inventory.manipulator.InventoryManipulator;
+import soloMapling.ArtificialPlayer.BotTier;
 import client.keybind.KeyBinding;
 import client.keybind.QuickslotBinding;
 import client.newyear.NewYearCardRecord;
@@ -49,6 +51,8 @@ import constants.id.MapId;
 import constants.id.MobId;
 import constants.inventory.ItemConstants;
 import constants.skills.Aran;
+import constants.skills.Assassin;
+import constants.skills.Bandit;
 import constants.skills.Beginner;
 import constants.skills.Bishop;
 import constants.skills.BlazeWizard;
@@ -56,27 +60,37 @@ import constants.skills.Bowmaster;
 import constants.skills.Brawler;
 import constants.skills.Buccaneer;
 import constants.skills.Corsair;
+import constants.skills.Crossbowman;
 import constants.skills.Crusader;
 import constants.skills.DarkKnight;
 import constants.skills.DawnWarrior;
 import constants.skills.Evan;
 import constants.skills.FPArchMage;
+import constants.skills.FPMage;
+import constants.skills.Fighter;
+import constants.skills.Gunslinger;
 import constants.skills.Hermit;
 import constants.skills.Hero;
+import constants.skills.Hunter;
 import constants.skills.ILArchMage;
+import constants.skills.ILMage;
 import constants.skills.Legend;
 import constants.skills.Magician;
 import constants.skills.Marauder;
 import constants.skills.Marksman;
 import constants.skills.NightLord;
+import constants.skills.NightWalker;
 import constants.skills.Noblesse;
+import constants.skills.Page;
 import constants.skills.Paladin;
 import constants.skills.Priest;
 import constants.skills.Ranger;
 import constants.skills.Shadower;
 import constants.skills.Sniper;
+import constants.skills.Spearman;
 import constants.skills.ThunderBreaker;
 import constants.skills.Warrior;
+import constants.skills.WindArcher;
 import net.packet.Packet;
 import net.server.PlayerBuffValueHolder;
 import net.server.PlayerCoolDownValueHolder;
@@ -107,6 +121,8 @@ import server.ItemInformationProvider.ScriptedItem;
 import server.Marriage;
 import server.Shop;
 import server.StatEffect;
+import server.set.SetBonusTotal;
+import server.set.SetItemManager;
 import server.Storage;
 import server.ThreadManager;
 import server.TimerManager;
@@ -195,6 +211,34 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Character extends AbstractCharacterObject {
     private static final Logger log = LoggerFactory.getLogger(Character.class);
+    // ------------------------------------------------------------------
+    // Growing Quest Ring: +1 to every stat per completed quest.
+    // 1112414 = "Lilin's Ring" (greatest variant). Chosen because it is
+    // non-cash and not given by any v83 quest/drop/shop, so the only way
+    // to obtain it is the auto-equip in CharacterFactory. Character.wz
+    // entry for 01112414.img is patched (install_quest_ring_zero_stats.py) to
+    // zero every inc* stat and set reqLevel=0 — displayed stats come
+    // purely from completed quests, and a Lv.1 character can equip it
+    // without the client-side "stats too low" popup.
+    // ------------------------------------------------------------------
+    public static final int QUEST_RING_ID = 1112414;
+    // Hyper Teleport Rock — repurposed VIP rock (5041000) made permanent and
+    // never-consumed server-side. Auto-granted at level 10 and backfilled on
+    // login for any legacy character at or above that threshold.
+    public static final int HYPER_TELEPORT_ROCK_ID = 5041000;
+    public static final int HYPER_TELEPORT_ROCK_GRANT_LEVEL = 10;
+    // Hunter's Codex — medal whose stats grow with monster-book card discoveries.
+    // Mirrors the Quest Ring pattern: auto-granted at character creation, locked
+    // in inventory, wear-requirement bypass, login refresh. Stats are derived
+    // from MonsterBook.getTotalCards() — every newly-discovered unique card
+    // bumps the stat; duplicates beyond the first don't move the needle.
+    //
+    // Vessel: 1142165 — an existing v83 medal img (had a "MISSING NAME" stub in
+    // String.wz, no quest references). Repurposed by install_monster_book_medal.py:
+    // zeros inc* stats and renames it to "Hunter's Codex" in both server XML and
+    // client binary WZ. Using an existing img avoids the risk of adding a brand-new
+    // entry to the binary Character.wz directory tree.
+    public static final int MONSTER_BOOK_MEDAL_ID = 1142165;
     private static final String LEVEL_200 = "[Congrats] %s has reached Level %d! Congratulate %s on such an amazing achievement!";
     private static final String[] BLOCKED_NAMES = {"admin", "owner", "moderator", "intern", "donor", "administrator", "FREDRICK", "help", "helper", "alert", "notice", "maplestory", "fuck", "wizet", "fucking", "negro", "fuk", "fuc", "penis", "pussy", "asshole", "gay",
             "nigger", "homo", "suck", "cum", "shit", "shitty", "condom", "security", "official", "rape", "nigga", "sex", "tit", "boner", "orgy", "clit", "asshole", "fatass", "bitch", "support", "gamemaster", "cock", "gaay", "gm",
@@ -202,6 +246,21 @@ public class Character extends AbstractCharacterObject {
 
     private int world;
     private int accountid, id, level;
+
+    // SoloMapling: bot appearance tier (gear-quality S/A/B/C/D). Default/harmless for real players.
+    private BotTier botTier = BotTier.getDefaultTier();
+
+    public void setID(int id) {
+        this.id = id;
+    }
+
+    public BotTier getTier() {
+        return BotTier.TierManager.getSafeTier(botTier);
+    }
+
+    public void setTier(BotTier newTier) {
+        this.botTier = BotTier.TierManager.safeTierSet(this.botTier, newTier);
+    }
     private int rank, rankMove, jobRank, jobRankMove;
     private int gender, hair, face;
     private int fame, quest_fame;
@@ -228,6 +287,8 @@ public class Character extends AbstractCharacterObject {
     private long lastfametime, lastUsedCashItem, lastExpression = 0, lastHealed, lastDeathtime, jailExpiration = -1;
     private transient int localstr, localdex, localluk, localint_, localmagic, localwatk;
     private transient int equipmaxhp, equipmaxmp, equipstr, equipdex, equipluk, equipint_, equipmagic, equipwatk, localchairhp, localchairmp;
+    private transient int equipMaxedEliteCount;  // # equipped pieces qualifying for the +1% all-stat maxed bonus
+    private transient SetBonusTotal setBonus;  // recomputed inside recalcEquipStats; null until first recalc
     private int localchairrate;
     private boolean hidden, equipchanged = true, berserk, hasMerchant, hasSandboxItem = false, whiteChat = false, canRecvPartySearchInvite = true;
     private boolean equippedMesoMagnet = false, equippedItemPouch = false, equippedPetItemIgnore = false;
@@ -310,6 +371,7 @@ public class Character extends AbstractCharacterObject {
     private ScheduledFuture<?> chairRecoveryTask = null;
     private ScheduledFuture<?> pendantOfSpirit = null; //1122017
     private ScheduledFuture<?> cpqSchedule = null;
+    private ScheduledFuture<?> energyChargeFillTask = null;
     private final Lock chrLock = new ReentrantLock(true);
     private final Lock evtLock = new ReentrantLock(true);
     private final Lock petLock = new ReentrantLock(true);
@@ -746,7 +808,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, accountid);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
     }
 
@@ -784,7 +846,7 @@ public class Character extends AbstractCharacterObject {
             }
             return ret;
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("Character error", ex);
         }
         return false;
     }
@@ -909,12 +971,17 @@ public class Character extends AbstractCharacterObject {
     }
 
     public String getMedalText() {
-        String medal = "";
-        final Item medalItem = getInventory(InventoryType.EQUIPPED).getItem((short) -49);
-        if (medalItem != null) {
-            medal = "<" + ItemInformationProvider.getInstance().getName(medalItem.getItemId()) + "> ";
+        // Prefer the regular medal at -49; fall back to the Hunter's Codex at the
+        // cash medal slot (-149) only when no other medal is equipped.
+        Inventory equipped = getInventory(InventoryType.EQUIPPED);
+        Item medalItem = equipped.getItem((short) -49);
+        if (medalItem == null) {
+            medalItem = equipped.getItem((short) -149);
         }
-        return medal;
+        if (medalItem != null) {
+            return "<" + ItemInformationProvider.getInstance().getName(medalItem.getItemId()) + "> ";
+        }
+        return "";
     }
 
     public void Hide(boolean hide, boolean login) {
@@ -1273,6 +1340,9 @@ public class Character extends AbstractCharacterObject {
                 broadcastAcquaintances(6, "[" + GameConstants.ordinal(GameConstants.getJobBranch(newJob)) + " Job] " + name + " has just become a " + GameConstants.getJobName(this.job.getId()) + ".");    // thanks Vcoc for noticing job name appearing in uppercase here
             }
         }
+
+        // Job advancement is once-per-tier and grants AP/SP/HP/MP. A rollback here would put the player back to a lower job with skill points already spent in the new tree.
+        saveCharToDB();
     }
 
     public void broadcastAcquaintances(int type, String message) {
@@ -1818,6 +1888,12 @@ public class Character extends AbstractCharacterObject {
             if (!GameConstants.isHiddenSkills(skill.getId())) {
                 sendPacket(PacketCreator.updateSkill(skill.getId(), newLevel, newMasterlevel, expiration));
             }
+            if (newLevel > 0) {
+                applyPassiveSkillEffect(skill.getId());
+                if (skill.getId() == Marauder.ENERGY_CHARGE || skill.getId() == ThunderBreaker.ENERGY_CHARGE) {
+                    startEnergyChargeFillTask();
+                }
+            }
         } else {
             skills.remove(skill);
             sendPacket(PacketCreator.updateSkill(skill.getId(), newLevel, newMasterlevel, -1)); //Shouldn't use expiration anymore :)
@@ -1827,9 +1903,97 @@ public class Character extends AbstractCharacterObject {
                 ps.setInt(2, id);
                 ps.executeUpdate();
             } catch (SQLException ex) {
-                ex.printStackTrace();
+                log.error("Character error", ex);
             }
         }
+    }
+
+    // Booster skill -> item categories (from (itemId / 10000) % 100) that the booster buffs.
+    // Used to prevent the wrong booster from being auto-applied on a character with two boosters
+    // (e.g. Fighter knowing both Sword and Axe Booster, Page knowing Sword + BW, Spearman knowing Spear + Polearm).
+    private static final Map<Integer, Set<Integer>> BOOSTER_WEAPON_CATEGORIES = Map.ofEntries(
+            Map.entry(Fighter.SWORD_BOOSTER, Set.of(30, 40)),       // 1H & 2H sword
+            Map.entry(Page.SWORD_BOOSTER, Set.of(30, 40)),
+            Map.entry(DawnWarrior.SWORD_BOOSTER, Set.of(30, 40)),
+            Map.entry(Fighter.AXE_BOOSTER, Set.of(31, 41)),         // 1H & 2H axe
+            Map.entry(Page.BW_BOOSTER, Set.of(32, 42)),             // 1H & 2H blunt weapon
+            Map.entry(Spearman.SPEAR_BOOSTER, Set.of(43)),
+            Map.entry(Spearman.POLEARM_BOOSTER, Set.of(44)),
+            Map.entry(Aran.POLEARM_BOOSTER, Set.of(44)),
+            Map.entry(Hunter.BOW_BOOSTER, Set.of(45)),
+            Map.entry(WindArcher.BOW_BOOSTER, Set.of(45)),
+            Map.entry(Crossbowman.CROSSBOW_BOOSTER, Set.of(46)),
+            Map.entry(Assassin.CLAW_BOOSTER, Set.of(47)),
+            Map.entry(NightWalker.CLAW_BOOSTER, Set.of(47)),
+            Map.entry(Bandit.DAGGER_BOOSTER, Set.of(33)),
+            Map.entry(Brawler.KNUCKLER_BOOSTER, Set.of(48)),
+            Map.entry(ThunderBreaker.KNUCKLER_BOOSTER, Set.of(48)),
+            Map.entry(Gunslinger.GUN_BOOSTER, Set.of(49)),
+            Map.entry(FPMage.SPELL_BOOSTER, Set.of(37, 38)),        // wand & staff
+            Map.entry(ILMage.SPELL_BOOSTER, Set.of(37, 38))
+    );
+
+    private boolean boosterMatchesEquippedWeapon(int skillId) {
+        Set<Integer> validCategories = BOOSTER_WEAPON_CATEGORIES.get(skillId);
+        if (validCategories == null) {
+            return true; // not a weapon-gated booster
+        }
+        Item weapon = getInventory(InventoryType.EQUIPPED).getItem((short) -11);
+        if (weapon == null) {
+            return false;
+        }
+        int category = (weapon.getItemId() / 10000) % 100;
+        return validCategories.contains(category);
+    }
+
+    public void applyPassiveSkillEffect(int skillId) {
+        int skillLevel = getSkillLevel(skillId);
+        if (skillLevel <= 0) {
+            return;
+        }
+        boolean qualifies = skillId == Beginner.NIMBLE_FEET
+                || (StatEffect.isPassiveBoosterSkill(skillId) && skillLevel >= StatEffect.getPassiveBoosterMaxLevel());
+        if (!qualifies) {
+            return;
+        }
+        if (StatEffect.isPassiveBoosterSkill(skillId) && !boosterMatchesEquippedWeapon(skillId)) {
+            return;
+        }
+        Skill skill = SkillFactory.getSkill(skillId);
+        if (skill == null) {
+            return;
+        }
+        StatEffect effect = skill.getEffect(skillLevel);
+        if (effect != null) {
+            effect.applyTo(this);
+        }
+    }
+
+    public void applyAllPassiveSkills() {
+        applyPassiveSkillEffect(Beginner.NIMBLE_FEET);
+        applyPassiveSkillEffect(Fighter.SWORD_BOOSTER);
+        applyPassiveSkillEffect(Fighter.AXE_BOOSTER);
+        applyPassiveSkillEffect(Page.SWORD_BOOSTER);
+        applyPassiveSkillEffect(Page.BW_BOOSTER);
+        applyPassiveSkillEffect(Spearman.SPEAR_BOOSTER);
+        applyPassiveSkillEffect(Spearman.POLEARM_BOOSTER);
+        applyPassiveSkillEffect(Hunter.BOW_BOOSTER);
+        applyPassiveSkillEffect(Crossbowman.CROSSBOW_BOOSTER);
+        applyPassiveSkillEffect(Assassin.CLAW_BOOSTER);
+        applyPassiveSkillEffect(Bandit.DAGGER_BOOSTER);
+        applyPassiveSkillEffect(Brawler.KNUCKLER_BOOSTER);
+        applyPassiveSkillEffect(Gunslinger.GUN_BOOSTER);
+        applyPassiveSkillEffect(DawnWarrior.SWORD_BOOSTER);
+        applyPassiveSkillEffect(WindArcher.BOW_BOOSTER);
+        applyPassiveSkillEffect(NightWalker.CLAW_BOOSTER);
+        applyPassiveSkillEffect(ThunderBreaker.KNUCKLER_BOOSTER);
+        applyPassiveSkillEffect(Aran.POLEARM_BOOSTER);
+        applyPassiveSkillEffect(FPMage.SPELL_BOOSTER);
+        applyPassiveSkillEffect(ILMage.SPELL_BOOSTER);
+    }
+
+    public void applyNimbleFeetPassive() {
+        applyPassiveSkillEffect(Beginner.NIMBLE_FEET);
     }
 
     public void changeTab(int tab) {
@@ -2172,7 +2336,7 @@ public class Character extends AbstractCharacterObject {
                 ps.executeUpdate();
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("Character error", ex);
         }
     }
 
@@ -2385,7 +2549,7 @@ public class Character extends AbstractCharacterObject {
             Server.getInstance().deleteCharacterEntry(accId, cid);
             return true;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
             return false;
         }
     }
@@ -2587,7 +2751,7 @@ public class Character extends AbstractCharacterObject {
         try {
             Server.getInstance().disbandGuild(guildid);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
     }
 
@@ -2596,7 +2760,7 @@ public class Character extends AbstractCharacterObject {
             List<BuffStatValueHolder> mbsvhList = getAllStatups();
             for (BuffStatValueHolder mbsvh : mbsvhList) {
                 if (mbsvh.effect.isSkill()) {
-                    if (mbsvh.effect.getBuffSourceId() != Aran.COMBO_ABILITY) { // check discovered thanks to Croosade dev team
+                    if (mbsvh.effect.getBuffSourceId() != Aran.COMBO_ABILITY && !mbsvh.effect.isPassiveSkillBuff()) { // check discovered thanks to Croosade dev team
                         cancelEffect(mbsvh.effect, false, mbsvh.startTime);
                     }
                 }
@@ -2845,10 +3009,16 @@ public class Character extends AbstractCharacterObject {
     public void equipChanged() {
         getMap().broadcastUpdateCharLookMessage(this, this);
         equipchanged = true;
-        updateLocalStats();
+        SetBonusTotal prevSetBonus = this.setBonus;
+        updateLocalStats();  // recalcEquipStats refreshes this.setBonus
+        SetItemManager.announceChanges(this, prevSetBonus, this.setBonus);
         if (getMessenger() != null) {
             getWorldServer().updateMessenger(getMessenger(), getName(), getWorld(), client.getChannel());
         }
+    }
+
+    public SetBonusTotal getSetBonus() {
+        return setBonus != null ? setBonus : SetBonusTotal.EMPTY;
     }
 
     public void cancelDiseaseExpireTask() {
@@ -3064,6 +3234,368 @@ public class Character extends AbstractCharacterObject {
         sendPacket(PacketCreator.modifyInventory(true, mods));
     }
 
+    // ------------------------------------------------------------------
+    // Growing Quest Ring helpers.
+    // findQuestRing() locates the ring in either equipped or equip inventories.
+    // applyQuestRingBoost() bumps every stat by `boost` and syncs the client.
+    // refreshQuestRing() is called on login so the client re-reads the ring.
+    // ------------------------------------------------------------------
+    private Equip findQuestRing() {
+        Item ring = getInventory(InventoryType.EQUIPPED).findById(QUEST_RING_ID);
+        if (ring == null) {
+            ring = getInventory(InventoryType.EQUIP).findById(QUEST_RING_ID);
+        }
+        return (ring instanceof Equip) ? (Equip) ring : null;
+    }
+
+    // ------------------------------------------------------------------
+    // Quest Ring growth configuration. Each stat is derived deterministically
+    // from the count of qualifying completed quests:
+    //     value = min(cap, baseline + completedCount * num / denom)
+    //
+    // Character.wz baseline for 01112414.img is zeroed
+    // (install_quest_ring_zero_stats.py), so all BASE_* below are 0 — displayed
+    // stats are purely growth from completions, capped.
+    //
+    // Picked so the caps line up with the target quest counts:
+    //   STR/DEX/INT/LUK  cap 100  ~500 quests  (+1 per 5 quests)
+    //   WATK/MATK        cap 20   ~500 quests  (+1 per 25 quests)
+    //   WDEF/MDEF        cap 100  ~100 quests  (+1 per 1 quest)
+    //   HP/MP            cap 1000 ~200 quests  (+5 per 1 quest)
+    //   ACC/AVOID        cap 50   ~50 quests   (+1 per 1 quest)
+    //   SPEED/JUMP       cap 10   ~50 quests   (+1 per 5 quests)
+    // ------------------------------------------------------------------
+
+    // Cap, baseline, growth numerator, growth denominator — one per stat class.
+    private static final int CAP_STAT = 100, BASE_STAT = 0, NUM_STAT = 1, DEN_STAT = 5;
+    private static final int CAP_ATK  = 20,  BASE_ATK  = 0, NUM_ATK  = 1, DEN_ATK  = 25;
+    private static final int CAP_DEF  = 100, BASE_DEF  = 0, NUM_DEF  = 1, DEN_DEF  = 1;
+    private static final int CAP_HPMP = 1000, BASE_HPMP = 0, NUM_HPMP = 5, DEN_HPMP = 1;
+    private static final int CAP_ACC  = 50,  BASE_ACC  = 0, NUM_ACC  = 1, DEN_ACC  = 1;
+    private static final int CAP_MOVE = 10,  BASE_MOVE = 0, NUM_MOVE = 1, DEN_MOVE = 5;
+
+    private static short questRingStat(int count, int baseline, int cap, int num, int denom) {
+        return (short) Math.min(cap, baseline + count * num / denom);
+    }
+
+    // Count of completed quests that qualify for ring growth (non-repeatable,
+    // non-exploitable — same filter applied in updateQuestStatus).
+    private int countQuestRingCompletions() {
+        int n = 0;
+        for (QuestStatus qs : getQuests()) {
+            if (qs.getStatus() != QuestStatus.Status.COMPLETED) continue;
+            Quest q = qs.getQuest();
+            if (q == null) continue;
+            if (q.isSameDayRepeatable()) continue;
+            if (Quest.isExploitableQuest(qs.getQuestID())) continue;
+            n++;
+        }
+        return n;
+    }
+
+    // Recompute every quest-ring stat from the current completed-quest count.
+    // Idempotent and self-healing: if stats drift (server crash, manual DB
+    // tinkering, cap-table changes), the next call re-derives correct values.
+    // Kept legacy name `applyQuestRingBoost` so the updateQuestStatus call
+    // site doesn't need to change; the `boost` parameter is ignored.
+    public void applyQuestRingBoost(int boost) {
+        Equip eq = findQuestRing();
+        if (eq == null) {
+            return;
+        }
+        int n = countQuestRingCompletions();
+        eq.setStr  (questRingStat(n, BASE_STAT, CAP_STAT, NUM_STAT, DEN_STAT));
+        eq.setDex  (questRingStat(n, BASE_STAT, CAP_STAT, NUM_STAT, DEN_STAT));
+        eq.setInt  (questRingStat(n, BASE_STAT, CAP_STAT, NUM_STAT, DEN_STAT));
+        eq.setLuk  (questRingStat(n, BASE_STAT, CAP_STAT, NUM_STAT, DEN_STAT));
+        eq.setWatk (questRingStat(n, BASE_ATK,  CAP_ATK,  NUM_ATK,  DEN_ATK));
+        eq.setMatk (questRingStat(n, BASE_ATK,  CAP_ATK,  NUM_ATK,  DEN_ATK));
+        eq.setWdef (questRingStat(n, BASE_DEF,  CAP_DEF,  NUM_DEF,  DEN_DEF));
+        eq.setMdef (questRingStat(n, BASE_DEF,  CAP_DEF,  NUM_DEF,  DEN_DEF));
+        eq.setHp   (questRingStat(n, BASE_HPMP, CAP_HPMP, NUM_HPMP, DEN_HPMP));
+        eq.setMp   (questRingStat(n, BASE_HPMP, CAP_HPMP, NUM_HPMP, DEN_HPMP));
+        eq.setAcc  (questRingStat(n, BASE_ACC,  CAP_ACC,  NUM_ACC,  DEN_ACC));
+        eq.setAvoid(questRingStat(n, BASE_ACC,  CAP_ACC,  NUM_ACC,  DEN_ACC));
+        eq.setSpeed(questRingStat(n, BASE_MOVE, CAP_MOVE, NUM_MOVE, DEN_MOVE));
+        eq.setJump (questRingStat(n, BASE_MOVE, CAP_MOVE, NUM_MOVE, DEN_MOVE));
+        forceUpdateItem(eq);
+        equipChanged();
+    }
+
+    public void refreshQuestRing() {
+        // Recompute is idempotent — calling it on login reconciles any drift
+        // from prior sessions and retroactively applies cap-table changes.
+        applyQuestRingBoost(0);
+    }
+
+    // ------------------------------------------------------------------
+    // Quest Ring grant helper. CharacterFactory auto-equips the ring at
+    // character creation, but characters that pre-date this feature (or
+    // that pre-date the 1112405 -> 1112414 vessel switch) won't have the
+    // current QUEST_RING_ID anywhere. ensureQuestRing() retroactively
+    // grants and equips it on login.
+    //
+    // Idempotent: any 1112414 already in EQUIPPED or EQUIP short-circuits.
+    //
+    // Slot policy: targets ring slot -12 (the Quest Ring's home). If -12
+    // is occupied by a non-quest-ring item we defer rather than displace —
+    // a future login will retry once the slot is free.
+    // ------------------------------------------------------------------
+    public void ensureQuestRing() {
+        Inventory equipped = getInventory(InventoryType.EQUIPPED);
+        Inventory equipInv = getInventory(InventoryType.EQUIP);
+
+        if (equipped.findById(QUEST_RING_ID) != null) return;
+        if (equipInv.findById(QUEST_RING_ID) != null) return;
+
+        if (equipped.getItem((short) -12) != null) {
+            log.info("ensureQuestRing: chr {} has slot -12 occupied; deferring grant",
+                    getName());
+            return;
+        }
+
+        try {
+            ItemInformationProvider ii = ItemInformationProvider.getInstance();
+            Item ring = ii.getEquipById(QUEST_RING_ID);
+            if (ring == null) {
+                log.warn("ensureQuestRing: getEquipById({}) returned null; Character.wz missing 01112414.img?",
+                        QUEST_RING_ID);
+                return;
+            }
+            ring.setPosition((byte) -12);
+            if (ring instanceof Equip) {
+                ((Equip) ring).wear(true);
+                equippedItem((Equip) ring);
+            }
+            equipped.addItemFromDB(ring);
+            forceUpdateItem(ring);
+            equipChanged();
+            log.info("ensureQuestRing: granted quest ring to chr {}", getName());
+        } catch (Exception e) {
+            log.warn("ensureQuestRing: failed to grant quest ring to chr {}",
+                    getName(), e);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Hyper Teleport Rock backfill — grants 5041000 to any character at or
+    // above HYPER_TELEPORT_ROCK_GRANT_LEVEL who doesn't already own one.
+    // Skips silently when the Use inventory has no free slot; the next
+    // login will retry. Idempotent — safe to call on every login.
+    // ------------------------------------------------------------------
+    public void ensureHyperRock() {
+        if (getLevel() < HYPER_TELEPORT_ROCK_GRANT_LEVEL) return;
+
+        if (getInventory(InventoryType.CASH).findById(HYPER_TELEPORT_ROCK_ID) != null) return;
+
+        if (!InventoryManipulator.checkSpace(client, HYPER_TELEPORT_ROCK_ID, (short) 1, "")) {
+            log.info("ensureHyperRock: chr {} has no free Use slot; deferring grant", getName());
+            return;
+        }
+
+        try {
+            if (InventoryManipulator.addById(client, HYPER_TELEPORT_ROCK_ID, (short) 1, "", -1)) {
+                log.info("ensureHyperRock: granted Hyper Teleport Rock to chr {}", getName());
+            }
+        } catch (Exception e) {
+            log.warn("ensureHyperRock: failed to grant Hyper Teleport Rock to chr {}",
+                    getName(), e);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Hunter's Codex (Monster Book Medal) growth helpers.
+    // Same shape as the Quest Ring: stats are recomputed on demand from a
+    // monster-book score — no incremental storage, self-healing on cap edits.
+    //
+    // Score = sum of card-copy counts for cards in tabs 5/6/7
+    //         (cardid prefix 2385/2386/2387). Each card contributes 0..5 copies.
+    //
+    // Tab inventory:    Tab 5 (2385xxx)  25 cards
+    //                   Tab 6 (2386xxx)  22 cards
+    //                   Tab 7 (2387xxx)  13 cards    Total: 60 cards
+    // Maximum score = 60 cards × 5 copies = 300 — the codex is "fully maxed"
+    // when every card in those tabs is held at the 5-copy cap.
+    //
+    // All caps saturate together at score 300, so reaching full codex completion
+    // simultaneously caps every stat:
+    //   STR/DEX/INT/LUK   cap 100   (+1 per 3 score)
+    //   WATK/MATK         cap 25    (+1 per 12 score)
+    //   WDEF/MDEF         cap 250   (+5 per 6 score)
+    //   HP/MP             cap 1000  (+10 per 3 score)
+    //   ACC               cap 20    (+1 per 15 score)
+    //   AVOID             cap 50    (+1 per 6 score)
+    //   SPEED             cap 20    (+1 per 15 score)
+    //   JUMP              cap 5     (+1 per 60 score)
+    // ------------------------------------------------------------------
+    private static final int MBM_TAB_LO = 2385, MBM_TAB_HI = 2387;
+    private static final int MBM_CAP_STAT  = 100,  MBM_NUM_STAT  = 1,  MBM_DEN_STAT  = 3;
+    private static final int MBM_CAP_ATK   = 25,   MBM_NUM_ATK   = 1,  MBM_DEN_ATK   = 12;
+    private static final int MBM_CAP_DEF   = 250,  MBM_NUM_DEF   = 5,  MBM_DEN_DEF   = 6;
+    private static final int MBM_CAP_HPMP  = 1000, MBM_NUM_HPMP  = 10, MBM_DEN_HPMP  = 3;
+    private static final int MBM_CAP_ACC   = 20,   MBM_NUM_ACC   = 1,  MBM_DEN_ACC   = 15;
+    private static final int MBM_CAP_AVOID = 50,   MBM_NUM_AVOID = 1,  MBM_DEN_AVOID = 6;
+    private static final int MBM_CAP_SPEED = 20,   MBM_NUM_SPEED = 1,  MBM_DEN_SPEED = 15;
+    private static final int MBM_CAP_JUMP  = 5,    MBM_NUM_JUMP  = 1,  MBM_DEN_JUMP  = 60;
+
+    private Equip findMonsterBookMedal() {
+        Item medal = getInventory(InventoryType.EQUIPPED).findById(MONSTER_BOOK_MEDAL_ID);
+        if (medal == null) {
+            medal = getInventory(InventoryType.EQUIP).findById(MONSTER_BOOK_MEDAL_ID);
+        }
+        return (medal instanceof Equip) ? (Equip) medal : null;
+    }
+
+    public void applyMonsterBookMedalBoost() {
+        Equip eq = findMonsterBookMedal();
+        if (eq == null) {
+            return;
+        }
+        MonsterBook book = getMonsterBook();
+        int n = (book == null) ? 0 : book.getCardCopiesInTabs(MBM_TAB_LO, MBM_TAB_HI);
+        // questRingStat() is a generic min(cap, base + n*num/denom) — reused here.
+        eq.setStr  (questRingStat(n, 0, MBM_CAP_STAT, MBM_NUM_STAT, MBM_DEN_STAT));
+        eq.setDex  (questRingStat(n, 0, MBM_CAP_STAT, MBM_NUM_STAT, MBM_DEN_STAT));
+        eq.setInt  (questRingStat(n, 0, MBM_CAP_STAT, MBM_NUM_STAT, MBM_DEN_STAT));
+        eq.setLuk  (questRingStat(n, 0, MBM_CAP_STAT, MBM_NUM_STAT, MBM_DEN_STAT));
+        eq.setWatk (questRingStat(n, 0, MBM_CAP_ATK,  MBM_NUM_ATK,  MBM_DEN_ATK));
+        eq.setMatk (questRingStat(n, 0, MBM_CAP_ATK,  MBM_NUM_ATK,  MBM_DEN_ATK));
+        eq.setWdef (questRingStat(n, 0, MBM_CAP_DEF,  MBM_NUM_DEF,  MBM_DEN_DEF));
+        eq.setMdef (questRingStat(n, 0, MBM_CAP_DEF,  MBM_NUM_DEF,  MBM_DEN_DEF));
+        eq.setHp   (questRingStat(n, 0, MBM_CAP_HPMP, MBM_NUM_HPMP, MBM_DEN_HPMP));
+        eq.setMp   (questRingStat(n, 0, MBM_CAP_HPMP, MBM_NUM_HPMP, MBM_DEN_HPMP));
+        eq.setAcc  (questRingStat(n, 0, MBM_CAP_ACC,   MBM_NUM_ACC,   MBM_DEN_ACC));
+        eq.setAvoid(questRingStat(n, 0, MBM_CAP_AVOID, MBM_NUM_AVOID, MBM_DEN_AVOID));
+        eq.setSpeed(questRingStat(n, 0, MBM_CAP_SPEED, MBM_NUM_SPEED, MBM_DEN_SPEED));
+        eq.setJump (questRingStat(n, 0, MBM_CAP_JUMP,  MBM_NUM_JUMP,  MBM_DEN_JUMP));
+        forceUpdateItem(eq);
+        equipChanged();
+    }
+
+    public void refreshMonsterBookMedal() {
+        applyMonsterBookMedalBoost();
+    }
+
+    // Move a legacy Hunter's Codex from the regular medal slot (-49) to the cash
+    // medal slot (-149) so a regular medal can occupy -49 alongside it. Called
+    // unconditionally on login — independent of the (still-gated) auto-grant path.
+    // Requires WZ Character.wz/Accessory/01142165.img to have cash=1, otherwise
+    // the v83 client crashes when it sees a non-cash item at slot 149 in the look
+    // packet. install_monster_book_medal.py sets that flag.
+    public void relocateMonsterBookMedalToCashSlot() {
+        Inventory equipped = getInventory(InventoryType.EQUIPPED);
+        Item at49 = equipped.getItem((short) -49);
+        if (at49 == null || at49.getItemId() != MONSTER_BOOK_MEDAL_ID) return;
+        if (equipped.getItem((short) -149) != null) {
+            log.warn("relocateMonsterBookMedalToCashSlot: -149 already occupied for chr {}, skipping", getName());
+            return;
+        }
+        equipped.removeSlot((short) -49);
+        at49.setPosition((short) -149);
+        equipped.addItemFromDB(at49);
+        forceUpdateItem(at49);
+        equipChanged();
+        log.info("relocateMonsterBookMedalToCashSlot: moved codex from -49 to -149 for chr {}", getName());
+    }
+
+    // Retroactively grant Hunter's Codex to characters that pre-date the medal.
+    // Idempotent: short-circuits if the medal already exists in equipped or equip
+    // inventory. Targets the cash medal slot (-149) so a regular medal can sit at -49.
+    public void ensureMonsterBookMedal() {
+        Inventory equipped = getInventory(InventoryType.EQUIPPED);
+        Inventory equipInv = getInventory(InventoryType.EQUIP);
+        if (equipped.findById(MONSTER_BOOK_MEDAL_ID) != null) return;
+        if (equipInv.findById(MONSTER_BOOK_MEDAL_ID) != null) return;
+
+        if (equipped.getItem((short) -149) != null) {
+            log.info("ensureMonsterBookMedal: chr {} has cash medal slot occupied; deferring grant",
+                    getName());
+            return;
+        }
+
+        try {
+            ItemInformationProvider ii = ItemInformationProvider.getInstance();
+            Item medal = ii.getEquipById(MONSTER_BOOK_MEDAL_ID);
+            if (medal == null) {
+                log.warn("ensureMonsterBookMedal: getEquipById({}) returned null; WZ entry missing?",
+                        MONSTER_BOOK_MEDAL_ID);
+                return;
+            }
+            medal.setPosition((short) -149);
+            if (medal instanceof Equip) {
+                ((Equip) medal).wear(true);
+                equippedItem((Equip) medal);
+            }
+            equipped.addItemFromDB(medal);
+            forceUpdateItem(medal);
+            equipChanged();
+            applyMonsterBookMedalBoost();
+            dropMessage(6, "You've received the Hunter's Codex! It grows as you fill your monster book.");
+            log.info("ensureMonsterBookMedal: granted Hunter's Codex to chr {}", getName());
+        } catch (Exception e) {
+            log.warn("ensureMonsterBookMedal: failed to grant medal to chr {}", getName(), e);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Evolving Ring chain bootstrap.
+    // New characters get Evolving Ring I at character creation (CharacterFactory).
+    // For characters that pre-date the chain feature (or who got their ring DB-wiped),
+    // ensureEvolvingRing() retroactively grants the starter ring on login.
+    //
+    // Idempotent: any chain ring already in EQUIPPED or EQUIP short-circuits,
+    // so a Lv.30 Evolving Ring II player won't get reset to Ring I.
+    //
+    // Slot policy: targets ring slot -13 (Quest Ring lives at -12). If -13 is
+    // already occupied by a non-chain ring, we skip rather than displace —
+    // the player can decide what to do, and a future login will retry once
+    // they've freed the slot.
+    // ------------------------------------------------------------------
+    public void ensureEvolvingRing() {
+        Inventory equipped = getInventory(InventoryType.EQUIPPED);
+        Inventory equipInv = getInventory(InventoryType.EQUIP);
+
+        // Already have a chain ring somewhere? Done.
+        for (int chainId : new int[]{
+                EvolvingRing.EVOLVING_RING_I,
+                EvolvingRing.EVOLVING_RING_II,
+                EvolvingRing.EVOLVING_RING_III,
+                EvolvingRing.FULLY_EVOLVED_RING}) {
+            if (equipped.findById(chainId) != null) return;
+            if (equipInv.findById(chainId) != null) return;
+        }
+
+        // Slot -13 must be free. Don't displace whatever the player has there.
+        if (equipped.getItem((short) -13) != null) {
+            log.info("ensureEvolvingRing: chr {} has slot -13 occupied; deferring grant",
+                    getName());
+            return;
+        }
+
+        try {
+            ItemInformationProvider ii = ItemInformationProvider.getInstance();
+            Item ring = ii.getEquipById(EvolvingRing.EVOLVING_RING_I);
+            if (ring == null) {
+                log.warn("ensureEvolvingRing: getEquipById({}) returned null; chain WZ missing?",
+                        EvolvingRing.EVOLVING_RING_I);
+                return;
+            }
+            ring.setPosition((byte) -13);
+            if (ring instanceof Equip) {
+                ((Equip) ring).wear(true);
+                equippedItem((Equip) ring);
+            }
+            equipped.addItemFromDB(ring);
+            forceUpdateItem(ring);
+            equipChanged();
+            dropMessage(6, "You've received an Evolving Ring I! It will grow as you do.");
+            log.info("ensureEvolvingRing: granted Evolving Ring I to chr {}", getName());
+        } catch (Exception e) {
+            log.warn("ensureEvolvingRing: failed to grant chain starter to chr {}",
+                    getName(), e);
+        }
+    }
+
     public void gainGachaExp() {
         int expgain = 0;
         long currentgexp = gachaexp.get();
@@ -3111,6 +3643,15 @@ public class Character extends AbstractCharacterObject {
 
         if (party < 0) {
             party = Integer.MAX_VALUE;  // integer overflow, heh.
+        }
+
+        // Feed every positive personal-exp gain (mob kill, quest, cheer, family rep,
+        // etc.) into upgradeable equips + the Evolving Ring chain. Hoisted here from
+        // Monster.distributeExperience so quest exp, NPC bonuses, and any future
+        // non-kill exp source level rings consistently. Party share is intentionally
+        // excluded so a leech can't accelerate someone else's ring.
+        if (gain > 0) {
+            increaseEquipExp(gain);
         }
 
         int equip = (int) Math.min((long) (gain / 10) * pendantExp, Integer.MAX_VALUE);
@@ -3244,6 +3785,12 @@ public class Character extends AbstractCharacterObject {
 
     public void gainMeso(int gain, boolean show, boolean enableActions, boolean inChat) {
         long nextMeso;
+        // Anti-cheat: rate-limit positive gains. Negative gains (spending) are
+        // always allowed; only income from drops / monster kill / quest / etc.
+        // goes through this path with a positive value.
+        if (gain > 0) {
+            net.security.AntiCheat.checkMesoGain(this, gain);
+        }
         petLock.lock();
         try {
             nextMeso = (long) meso.get() + gain;  // thanks Thora for pointing integer overflow here
@@ -3344,7 +3891,7 @@ public class Character extends AbstractCharacterObject {
                 }
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("Character error", sqle);
         }
 
         return character;
@@ -3377,6 +3924,99 @@ public class Character extends AbstractCharacterObject {
         } finally {
             chrLock.unlock();
             effLock.unlock();
+        }
+    }
+
+    // Sums all skill buffs of a stat additively, plus the strongest active item buff.
+    // Items mutually replace each other (see StatEffect.applyBuffEffect → cancelOverlappingItemBuffs),
+    // so at most one item-source value should be live at a time; the max is a defensive fallback.
+    public int getStackedBuffedValue(BuffStat stat) {
+        int totalSkill = 0;
+        int bestItem = 0;
+        effLock.lock();
+        chrLock.lock();
+        try {
+            for (Entry<Integer, Map<BuffStat, BuffStatValueHolder>> entry : buffEffects.entrySet()) {
+                int srcId = entry.getKey();
+                BuffStatValueHolder holder = entry.getValue().get(stat);
+                if (holder == null || !holder.effect.isActive(this)) {
+                    continue;
+                }
+                if (srcId > 0) {
+                    totalSkill += holder.value;
+                } else if (holder.value > bestItem) {
+                    bestItem = holder.value;
+                }
+            }
+        } finally {
+            chrLock.unlock();
+            effLock.unlock();
+        }
+        return totalSkill + bestItem;
+    }
+
+    // Cancels other consumable (item) buffs that share any stat-affecting buff stat with newEffect.
+    // Enforces "consumables don't stack with each other" while preserving skill stacking.
+    // Skills are untouched; non-stat item buffs (coupons, monster cards, mounts) are untouched.
+    public void cancelOverlappingItemBuffs(StatEffect newEffect) {
+        if (newEffect.isSkill()) {
+            return;
+        }
+        Set<BuffStat> newStatStatups = new LinkedHashSet<>();
+        for (Pair<BuffStat, Integer> p : newEffect.getStatups()) {
+            if (isCombatStatBuff(p.getLeft())) {
+                newStatStatups.add(p.getLeft());
+            }
+        }
+        if (newStatStatups.isEmpty()) {
+            return;
+        }
+        int newSrcId = newEffect.getBuffSourceId();
+        List<StatEffect> toCancel = new ArrayList<>();
+        effLock.lock();
+        chrLock.lock();
+        try {
+            for (Entry<Integer, Map<BuffStat, BuffStatValueHolder>> entry : buffEffects.entrySet()) {
+                int srcId = entry.getKey();
+                if (srcId >= 0 || srcId == newSrcId) {
+                    continue;
+                }
+                boolean overlaps = false;
+                for (BuffStat stat : entry.getValue().keySet()) {
+                    if (newStatStatups.contains(stat)) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                if (overlaps) {
+                    for (BuffStatValueHolder h : entry.getValue().values()) {
+                        toCancel.add(h.effect);
+                        break;
+                    }
+                }
+            }
+        } finally {
+            chrLock.unlock();
+            effLock.unlock();
+        }
+        for (StatEffect mse : toCancel) {
+            cancelEffect(mse, false, -1);
+        }
+    }
+
+    private static boolean isCombatStatBuff(BuffStat stat) {
+        switch (stat) {
+            case WATK:
+            case MATK:
+            case WDEF:
+            case MDEF:
+            case ACC:
+            case AVOID:
+            case SPEED:
+            case JUMP:
+                return true;
+            default:
+                return false;
         }
     }
 
@@ -5067,7 +5707,7 @@ public class Character extends AbstractCharacterObject {
         try {
             return Server.getInstance().getGuild(getGuildId(), getWorld(), this);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Character error", ex);
             return null;
         }
     }
@@ -5077,7 +5717,7 @@ public class Character extends AbstractCharacterObject {
             try {
                 return Server.getInstance().getAlliance(getGuild().getAllianceId());
             } catch (Exception ex) {
-                ex.printStackTrace();
+                log.error("Character error", ex);
             }
         }
 
@@ -5117,7 +5757,7 @@ public class Character extends AbstractCharacterObject {
             }
             return id;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
         return -1;
     }
@@ -5135,7 +5775,7 @@ public class Character extends AbstractCharacterObject {
             }
             return id;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
         return -1;
     }
@@ -5153,7 +5793,7 @@ public class Character extends AbstractCharacterObject {
             }
             return name;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
         return null;
     }
@@ -5333,7 +5973,7 @@ public class Character extends AbstractCharacterObject {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
 
         if (elapsedDays > 100) {
@@ -6005,7 +6645,30 @@ public class Character extends AbstractCharacterObject {
                 Server.getInstance().allianceMessage(allianceId, GuildPackets.updateAllianceJobLevel(this), getId(), -1);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Character error", e);
+        }
+    }
+
+    public void startEnergyChargeFillTask() {
+        if (energyChargeFillTask != null) {
+            return;
+        }
+        int energyChargeId = isCygnus() ? ThunderBreaker.ENERGY_CHARGE : Marauder.ENERGY_CHARGE;
+        if (getSkillLevel(energyChargeId) <= 0) {
+            return;
+        }
+        energyChargeFillTask = TimerManager.getInstance().register(() -> {
+            int id = isCygnus() ? ThunderBreaker.ENERGY_CHARGE : Marauder.ENERGY_CHARGE;
+            if (getSkillLevel(id) > 0) {
+                handleEnergyChargeGain();
+            }
+        }, 500, 500);
+    }
+
+    public void stopEnergyChargeFillTask() {
+        if (energyChargeFillTask != null) {
+            energyChargeFillTask.cancel(false);
+            energyChargeFillTask = null;
         }
     }
 
@@ -6075,7 +6738,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, to.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
     }
 
@@ -6285,21 +6948,61 @@ public class Character extends AbstractCharacterObject {
         int improvingMaxMPLevel = 0;
 
         boolean isBeginner = isBeginnerJob();
-        if (YamlConfig.config.server.USE_AUTOASSIGN_STARTERS_AP && isBeginner && level < 11) {
+        // Auto-assign for any Beginner (job == 0) regardless of level. The
+        // v83 client hard-codes a "Please use your AP" popup whenever a
+        // character levels up with remainingAp > 0 in the stats packet. We
+        // drain *all* accumulated AP here — not just this level's 5 — so
+        // Beginners that had AP stuck from earlier (either pre-fix characters
+        // or GM !stat grants) don't keep seeing the popup forever.
+        if (YamlConfig.config.server.USE_AUTOASSIGN_STARTERS_AP && isBeginner) {
             effLock.lock();
             statWlock.lock();
             try {
                 gainAp(5, true);
 
-                int str = 0, dex = 0;
+                int apToSpend = getRemainingAp();
+                // Early Beginners (<6) go all STR; later Beginners split 4/1
+                // STR/DEX. For every extra AP beyond the base 5 (i.e. leftover
+                // from prior levels), pile it on STR since that's the closest
+                // to what a permanent Beginner's build looks like.
+                int addStr, addDex;
                 if (level < 6) {
-                    str += 5;
+                    addStr = apToSpend;
+                    addDex = 0;
                 } else {
-                    str += 4;
-                    dex += 1;
+                    addDex = Math.min(1, apToSpend);
+                    addStr = apToSpend - addDex;
                 }
 
-                assignStrDexIntLuk(str, dex, 0, 0);
+                // Cap against MAX_AP — assignStrDexIntLuk bails if any stat
+                // would cross it, which would leave AP stuck again. Clamp the
+                // target and discard the overflow rather than silently fail.
+                int maxAp = YamlConfig.config.server.MAX_AP;
+                int headroom = Math.max(0, maxAp - getStr());
+                if (addStr > headroom) {
+                    int overflow = addStr - headroom;
+                    addStr = headroom;
+                    // Dump overflow into DEX; if that overflows, INT, then LUK.
+                    int dexHeadroom = Math.max(0, maxAp - getDex());
+                    int dexExtra = Math.min(overflow, dexHeadroom);
+                    addDex += dexExtra;
+                    overflow -= dexExtra;
+                    if (overflow > 0) {
+                        // Give up — discard the rest via changeRemainingAp(0).
+                        // Better than having remainingAp stuck > 0 forever.
+                    }
+                }
+
+                if (addStr > 0 || addDex > 0) {
+                    assignStrDexIntLuk(addStr, addDex, 0, 0);
+                }
+
+                // Belt-and-suspenders: if anything remained (overflow path or
+                // bounds mismatch), zero it explicitly so the client never
+                // shows the warning popup.
+                if (getRemainingAp() > 0) {
+                    changeRemainingAp(0, true);
+                }
             } finally {
                 statWlock.unlock();
                 effLock.unlock();
@@ -6470,6 +7173,10 @@ public class Character extends AbstractCharacterObject {
             };
 
             ThreadManager.getInstance().newTask(r);
+        }
+
+        if (level == HYPER_TELEPORT_ROCK_GRANT_LEVEL) {
+            ensureHyperRock();
         }
 
         guildUpdate();
@@ -6777,7 +7484,7 @@ public class Character extends AbstractCharacterObject {
                 }
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("Character error", sqle);
         }
 
         return ret;
@@ -7346,7 +8053,7 @@ public class Character extends AbstractCharacterObject {
 
             return ret;
         } catch (SQLException | RuntimeException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
         return null;
     }
@@ -7459,6 +8166,7 @@ public class Character extends AbstractCharacterObject {
 
         cancelAllBuffs(false);
         dispelDebuffs();
+        applyAllPassiveSkills();
         lastDeathtime = Server.getInstance().getCurrentTime();
 
         EventInstanceManager eim = getEventInstance();
@@ -7554,7 +8262,7 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
-    private void setChair(int chair) {
+    public void setChair(int chair) {
         this.chair.set(chair);
     }
 
@@ -7569,6 +8277,7 @@ public class Character extends AbstractCharacterObject {
         changeMap(returnMap);
 
         cancelAllBuffs(false);  // thanks Oblivium91 for finding out players still could revive in area and take damage before returning to town
+        applyAllPassiveSkills();
 
         if (usedSafetyCharm) {  // thanks kvmba for noticing safety charm not providing 30% HP/MP
             addMPHP((int) Math.ceil(this.getClientMaxHp() * 0.3), (int) Math.ceil(this.getClientMaxMp() * 0.3));
@@ -7607,6 +8316,7 @@ public class Character extends AbstractCharacterObject {
             equipluk = 0;
             equipmagic = 0;
             equipwatk = 0;
+            equipMaxedEliteCount = 0;
             //equipspeed = 0;
             //equipjump = 0;
 
@@ -7622,7 +8332,23 @@ public class Character extends AbstractCharacterObject {
                 equipwatk += equip.getWatk();
                 //equipspeed += equip.getSpeed();
                 //equipjump += equip.getJump();
+                if (equip.qualifiesForMaxedAllStatBonus()) {
+                    equipMaxedEliteCount++;
+                }
             }
+
+            // Fold in set-effect bonuses. See server.set.SetItemManager + scripts/config/set-items.yml.
+            // Only STR/DEX/INT/LUK/WATK/MATK/HP/MP flow through server combat math in v83;
+            // def / acc / avoid / speed / jump / bossDamage% are recorded on setBonus but not applied.
+            setBonus = SetItemManager.compute(this);
+            equipstr += setBonus.str;
+            equipdex += setBonus.dex;
+            equipint_ += setBonus.int_;
+            equipluk += setBonus.luk;
+            equipmagic += setBonus.matk;
+            equipwatk += setBonus.watk;
+            equipmaxhp += setBonus.hp;
+            equipmaxmp += setBonus.mp;
 
             equipchanged = false;
         }
@@ -7635,6 +8361,18 @@ public class Character extends AbstractCharacterObject {
         localluk += equipluk;
         localmagic += equipmagic;
         localwatk += equipwatk;
+
+        // Maxed-elite all-stat bonus: each equipped tier-3/4 piece at item-level cap (and the
+        // Fully Evolved Ring, which is terminal) grants +1% STR/DEX/INT/LUK on the (base+equip)
+        // total. See Equip.qualifiesForMaxedAllStatBonus. Applied here so it stacks before the
+        // separate Maple Warrior multiplier below (which uses raw base via getStr()).
+        if (equipMaxedEliteCount > 0) {
+            int pct = equipMaxedEliteCount;
+            localstr += localstr * pct / 100;
+            localdex += localdex * pct / 100;
+            localint_ += localint_ * pct / 100;
+            localluk += localluk * pct / 100;
+        }
     }
 
     private void reapplyLocalStats() {
@@ -7701,13 +8439,16 @@ public class Character extends AbstractCharacterObject {
                 }
             }
 
-            Integer watkbuff = getBuffedValue(BuffStat.WATK);
-            if (watkbuff != null) {
-                localwatk += watkbuff.intValue();
+            // Stack item-source ATT (e.g. Onyx Apple) additively with all skill ATT buffs
+            // (Rage, Echo of Hero, etc). Consumables already mutually replace each other on
+            // apply, so at most one item value contributes.
+            int watkBuffStacked = getStackedBuffedValue(BuffStat.WATK);
+            if (watkBuffStacked != 0) {
+                localwatk += watkBuffStacked;
             }
-            Integer matkbuff = getBuffedValue(BuffStat.MATK);
-            if (matkbuff != null) {
-                localmagic += matkbuff.intValue();
+            int matkBuffStacked = getStackedBuffedValue(BuffStat.MATK);
+            if (matkBuffStacked != 0) {
+                localmagic += matkBuffStacked;
             }
 
             /*
@@ -8002,7 +8743,7 @@ public class Character extends AbstractCharacterObject {
                     ps.executeBatch();
                 }
             } catch (SQLException se) {
-                se.printStackTrace();
+                log.error("Character error", se);
             }
         }
 
@@ -8027,7 +8768,7 @@ public class Character extends AbstractCharacterObject {
                     ps.executeBatch();
                 }
             } catch (SQLException se) {
-                se.printStackTrace();
+                log.error("Character error", se);
             }
         }
     }
@@ -8041,7 +8782,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(4, id);
             ps.executeUpdate();
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("Character error", se);
         }
     }
 
@@ -8814,7 +9555,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
         hasMerchant = set;
     }
@@ -8828,7 +9569,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
             return;
         }
         merchantmeso = newAmount;
@@ -8841,7 +9582,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, id);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
             return;
         }
         merchantmeso = set;
@@ -9536,6 +10277,11 @@ public class Character extends AbstractCharacterObject {
             }
             qs.setCompleted(qs.getCompleted() + 1);   // Jayd's idea - count quest completed
 
+            // Growing Quest Ring: +1 to every stat on the equipped quest ring per completed quest.
+            if (!mquest.isSameDayRepeatable() && !Quest.isExploitableQuest(questid)) {
+                applyQuestRingBoost(1);
+            }
+
             announceUpdateQuest(DelayedQuestUpdate.COMPLETE, questid, qs.getCompletionTime());
             //announceUpdateQuest(DelayedQuestUpdate.INFO, qs); // happens after giving rewards, for non-next quests only
         } else if (qs.getStatus().equals(QuestStatus.Status.NOT_STARTED)) {
@@ -9830,7 +10576,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(4, accountid);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
     }
 
@@ -9989,20 +10735,46 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void increaseEquipExp(int expGain) {
-        if (allowExpGain) {     // thanks Vcoc for suggesting equip EXP gain conditionally
-            if (expGain < 0) {
-                expGain = Integer.MAX_VALUE;
+        if (!allowExpGain) {
+            return;
+        }
+        if (expGain < 0) {
+            expGain = Integer.MAX_VALUE;
+        }
+
+        ItemInformationProvider ii = ItemInformationProvider.getInstance();
+        // Collect all level-ups across the equipped list so simultaneous level-ups from a
+        // fresh NPC-bought set don't fire N animations + N yellow chat lines. See PLAN.md
+        // equipment-leveling section ("batched level-up animations").
+        Equip.LevelUpBatch batch = new Equip.LevelUpBatch();
+        for (Item item : getUpgradeableEquipList()) {
+            Equip nEquip = (Equip) item;
+            if (ii.getName(nEquip.getItemId()) == null) {
+                continue;
             }
+            nEquip.gainItemExp(client, expGain, batch);
+        }
 
-            ItemInformationProvider ii = ItemInformationProvider.getInstance();
-            for (Item item : getUpgradeableEquipList()) {
-                Equip nEquip = (Equip) item;
-                String itemName = ii.getName(nEquip.getItemId());
-                if (itemName == null) {
-                    continue;
-                }
+        if (batch.isEmpty()) {
+            return;
+        }
 
-                nEquip.gainItemExp(client, expGain);
+        // One stat recalc for the whole batch (equipChanged refreshes set bonuses + stats).
+        equipChanged();
+        for (Equip e : batch.items) {
+            forceUpdateItem(e);
+        }
+
+        // One animation + one aggregate chat line, regardless of how many items leveled.
+        client.sendPacket(PacketCreator.showEquipmentLevelUp());
+        getMap().broadcastPacket(this, PacketCreator.showForeignEffect(getId(), 15));
+
+        if (batch.size() == 1) {
+            dropMessage(6, batch.summaries.get(0));
+        } else {
+            dropMessage(6, "Equipment level up! (" + batch.size() + " items)");
+            for (String summary : batch.summaries) {
+                dropMessage(6, "  " + summary);
             }
         }
     }
@@ -10062,6 +10834,8 @@ public class Character extends AbstractCharacterObject {
     }
 
     public final void empty(final boolean remove) {
+        stopEnergyChargeFillTask();
+
         if (dragonBloodSchedule != null) {
             dragonBloodSchedule.cancel(true);
         }
@@ -10174,7 +10948,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, getId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
     }
 
@@ -10401,7 +11175,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10411,7 +11185,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10420,7 +11194,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10430,7 +11204,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10440,7 +11214,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10450,7 +11224,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10460,7 +11234,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10470,7 +11244,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10480,7 +11254,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10490,7 +11264,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }
@@ -10500,7 +11274,7 @@ public class Character extends AbstractCharacterObject {
             ps.setString(2, oldName);
             ps.executeUpdate();
         } catch(SQLException e) { 
-            e.printStackTrace();
+            log.error("Character error", e);
             FilePrinter.printError(FilePrinter.CHANGE_CHARACTER_NAME, e, "Character ID : " + characterId);
             return false;
         }*/
@@ -10705,7 +11479,7 @@ public class Character extends AbstractCharacterObject {
             }
             return point;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
         return -1;
     }
@@ -10717,7 +11491,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, accountid);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
     }
 
@@ -10890,7 +11664,7 @@ public class Character extends AbstractCharacterObject {
             ps.setInt(2, getClient().getAccID());
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Character error", e);
         }
     }
 

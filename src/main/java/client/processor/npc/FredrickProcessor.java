@@ -112,7 +112,7 @@ public class FredrickProcessor {
         try (Connection con = DatabaseConnection.getConnection()) {
             removeFredrickLog(con, cid);
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
     }
 
@@ -133,8 +133,38 @@ public class FredrickProcessor {
                 ps.executeUpdate();
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
+    }
+
+    /**
+     * BOT_ECONOMY.md § Fredrick reconciliation — direct-DB helper that returns
+     * unsold merchant items for a bot character and clears the Fredrick rows,
+     * bypassing the full NPC dialogue flow. Called by the lifecycle manager's
+     * rotate phase sweep so bot inventory gets back to {@code bot_inventory}
+     * without an actual Fredrick visit.
+     *
+     * @param botCharId bot character id (must have bot_flag = 1)
+     * @return the number of item rows cleared from merchant storage
+     */
+    public static int sweepBotStorage(int botCharId) {
+        int cleared = 0;
+        try (Connection con = DatabaseConnection.getConnection()) {
+            try (PreparedStatement ps = con.prepareStatement(
+                    "DELETE FROM inventoryitems WHERE characterid = ? AND inventorytype = ?")) {
+                ps.setInt(1, botCharId);
+                ps.setInt(2, ItemFactory.MERCHANT.getValue());
+                cleared = ps.executeUpdate();
+            }
+            try (PreparedStatement ps = con.prepareStatement(
+                    "DELETE FROM fredstorage WHERE cid = ?")) {
+                ps.setInt(1, botCharId);
+                ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            log.warn("FredrickProcessor.sweepBotStorage failed for bot {} ({})", botCharId, e.toString());
+        }
+        return cleared;
     }
 
     private static void removeFredrickReminders(List<Pair<Integer, Integer>> expiredCids) {
@@ -155,7 +185,7 @@ public class FredrickProcessor {
                 ps.executeBatch();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -254,7 +284,7 @@ public class FredrickProcessor {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -267,7 +297,7 @@ public class FredrickProcessor {
 
             return true;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return false;
         }
     }
@@ -309,7 +339,7 @@ public class FredrickProcessor {
                         chr.message("An unknown error has occured.");
                     }
                 } catch (SQLException ex) {
-                    ex.printStackTrace();
+                    log.error("unhandled exception", ex);
                 }
             } finally {
                 c.releaseClient();

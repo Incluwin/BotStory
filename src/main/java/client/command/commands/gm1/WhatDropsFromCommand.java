@@ -33,8 +33,12 @@ import server.life.MonsterInformationProvider;
 import tools.Pair;
 
 import java.util.Iterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WhatDropsFromCommand extends Command {
+    private static final Logger log = LoggerFactory.getLogger(WhatDropsFromCommand.class);
+
     {
         setDescription("Show what items drop from a mob.");
     }
@@ -65,7 +69,7 @@ public class WhatDropsFromCommand extends Command {
                         float chance = Math.max(1000000 / drop.chance / (!MonsterInformationProvider.getInstance().isBoss(mobId) ? player.getDropRate() : player.getBossDropRate()), 1);
                         output += "- " + name + " (1/" + (int) chance + ")\r\n";
                     } catch (Exception ex) {
-                        ex.printStackTrace();
+                        log.error("unhandled exception", ex);
                         continue;
                     }
                 }

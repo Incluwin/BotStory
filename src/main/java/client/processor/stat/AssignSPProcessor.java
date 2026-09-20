@@ -96,6 +96,7 @@ public class AssignSPProcessor {
                 } else {
                     player.changeSkillLevel(skill, (byte) (curLevel + 1), player.getMasterLevel(skill), player.getSkillExpiration(skill));
                 }
+                player.saveCharToDB();
             }
         } finally {
             c.unlockClient();

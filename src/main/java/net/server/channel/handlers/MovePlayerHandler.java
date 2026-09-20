@@ -22,6 +22,7 @@
 package net.server.channel.handlers;
 
 import client.Client;
+import java.awt.Point;
 import net.packet.InPacket;
 import tools.PacketCreator;
 import tools.exceptions.EmptyMovementException;
@@ -31,10 +32,21 @@ public final class MovePlayerHandler extends AbstractMovementPacketHandler {
     public final void handlePacket(InPacket p, Client c) {
         p.skip(9);
         try {   // thanks Sa for noticing empty movement sequences crashing players
+            Point prevPos = c.getPlayer().getPosition();
+            int prevX = prevPos != null ? prevPos.x : 0;
+            int prevY = prevPos != null ? prevPos.y : 0;
+
             int movementDataStart = p.getPosition();
             updatePosition(p, c.getPlayer(), 0);
             long movementDataLength = p.getPosition() - movementDataStart; //how many bytes were read by updatePosition
             p.seek(movementDataStart);
+
+            // Anti-cheat: catch teleport-like position jumps. The validator
+            // logs the delta and optionally blocks depending on ANTICHEAT_LOG_ONLY.
+            Point curPos = c.getPlayer().getPosition();
+            if (curPos != null) {
+                net.security.AntiCheat.checkMovement(c.getPlayer(), prevX, prevY, curPos.x, curPos.y);
+            }
 
             c.getPlayer().getMap().movePlayer(c.getPlayer(), c.getPlayer().getPosition());
             if (c.getPlayer().isHidden()) {

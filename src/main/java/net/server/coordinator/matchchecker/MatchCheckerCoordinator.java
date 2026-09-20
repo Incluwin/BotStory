@@ -32,11 +32,15 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Ronan
  */
 public class MatchCheckerCoordinator {
+    private static final Logger log = LoggerFactory.getLogger(MatchCheckerCoordinator.class);
+
 
     private final Map<Integer, MatchCheckingElement> matchEntries = new HashMap<>();
 
@@ -288,7 +292,7 @@ public class MatchCheckerCoordinator {
                 semaphorePool.release();
             }
         } catch (InterruptedException ie) {
-            ie.printStackTrace();
+            log.error("unhandled exception", ie);
         }
 
         if (mmce != null) {
@@ -378,7 +382,7 @@ public class MatchCheckerCoordinator {
                 semaphorePool.release();
             }
         } catch (InterruptedException ie) {
-            ie.printStackTrace();
+            log.error("unhandled exception", ie);
         }
 
         if (mmce != null) {
@@ -416,7 +420,7 @@ public class MatchCheckerCoordinator {
                 semaphorePool.release();
             }
         } catch (InterruptedException ie) {
-            ie.printStackTrace();
+            log.error("unhandled exception", ie);
         }
 
         if (mmce != null) {

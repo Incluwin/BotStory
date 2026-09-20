@@ -397,10 +397,10 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 Skill skill = SkillFactory.getSkill(Integer.parseInt(skill_.getName()));
                 getPlayer().changeSkillLevel(skill, (byte) 0, skill.getMaxLevel(), -1);
             } catch (NumberFormatException nfe) {
-                nfe.printStackTrace();
+                log.error("unhandled exception", nfe);
                 break;
             } catch (NullPointerException npe) {
-                npe.printStackTrace();
+                log.error("unhandled exception", npe);
                 continue;
             }
         }
@@ -461,7 +461,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 return true;
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return false;
         }
         return getPlayer().getMerchantMeso() != 0;
@@ -686,7 +686,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 }
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -808,7 +808,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 }
             }, 11000);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -860,7 +860,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 }
             }, 10000);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -929,7 +929,7 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
                 }
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 

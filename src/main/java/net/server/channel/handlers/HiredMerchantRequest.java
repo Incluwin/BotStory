@@ -36,11 +36,15 @@ import tools.PacketCreator;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author XoticStory
  */
 public final class HiredMerchantRequest extends AbstractPacketHandler {
+    private static final Logger log = LoggerFactory.getLogger(HiredMerchantRequest.class);
+
     @Override
     public final void handlePacket(InPacket p, Client c) {
         Character chr = c.getPlayer();
@@ -67,7 +71,7 @@ public final class HiredMerchantRequest extends AbstractPacketHandler {
                 return;
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         if (GameConstants.isFreeMarketRoom(chr.getMapId())) {
@@ -79,7 +83,7 @@ public final class HiredMerchantRequest extends AbstractPacketHandler {
                         chr.sendPacket(PacketCreator.retrieveFirstMessage());
                     }
                 } catch (SQLException ex) {
-                    ex.printStackTrace();
+                    log.error("unhandled exception", ex);
                 }
             } else {
                 chr.dropMessage(1, "You already have a store open.");

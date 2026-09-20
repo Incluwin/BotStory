@@ -101,4 +101,32 @@
         <sqlFile path="db/tables/024-duey.sql"/>
     </changeSet>
 
+    <changeSet id="25" author="Ponk">
+        <sqlFile path="db/tables/025-anvil-transmog.sql"/>
+    </changeSet>
+
+    <changeSet id="26" author="ganre">
+        <!-- ADMIN_DASHBOARD_PLAN.md §12 Phase D instrumentation (early-ship
+             so data accumulates before charts land). -->
+        <sqlFile path="db/tables/026-admin-instrumentation.sql"/>
+    </changeSet>
+
+    <changeSet id="27" author="ganre">
+        <!-- BOT_ECONOMY.md — bot-driven FM merchant economy schema.
+             Ships behind bot_economy.ENABLED=false; no runtime effect until flipped. -->
+        <sqlFile path="db/tables/027-bot-economy.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/027-bot-economy-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="28" author="ganre">
+        <!-- SoloMapling social-bot integration — bot_kind discriminator.
+             Ships behind server.ENABLE_SOLO_MAPLING=false; no runtime effect until flipped. -->
+        <sqlFile path="db/tables/028-solomapling-bots.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/028-solomapling-bots-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

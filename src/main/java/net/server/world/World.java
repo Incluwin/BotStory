@@ -106,7 +106,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static java.util.concurrent.TimeUnit.DAYS;
-import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -235,7 +234,8 @@ public class World {
         mountsSchedule = tman.register(new MountTirednessTask(this), MINUTES.toMillis(1), MINUTES.toMillis(1));
         merchantSchedule = tman.register(new HiredMerchantTask(this), 10 * MINUTES.toMillis(1), 10 * MINUTES.toMillis(1));
         timedMapObjectsSchedule = tman.register(new TimedMapObjectTask(this), MINUTES.toMillis(1), MINUTES.toMillis(1));
-        charactersSchedule = tman.register(new CharacterAutosaverTask(this), HOURS.toMillis(1), HOURS.toMillis(1));
+        long autosaveMs = MINUTES.toMillis(Math.max(1, YamlConfig.config.server.AUTOSAVE_INTERVAL_MINUTES));
+        charactersSchedule = tman.register(new CharacterAutosaverTask(this), autosaveMs, autosaveMs);
         marriagesSchedule = tman.register(new WeddingReservationTask(this), MINUTES.toMillis(YamlConfig.config.server.WEDDING_RESERVATION_INTERVAL), MINUTES.toMillis(YamlConfig.config.server.WEDDING_RESERVATION_INTERVAL));
         mapOwnershipSchedule = tman.register(new MapOwnershipTask(this), SECONDS.toMillis(20), SECONDS.toMillis(20));
         fishingSchedule = tman.register(new FishingTask(this), SECONDS.toMillis(10), SECONDS.toMillis(10));
@@ -728,7 +728,7 @@ public class World {
             ps.setInt(3, cid);
             ps.executeUpdate();
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
         }
     }
 
@@ -1892,7 +1892,7 @@ public class World {
                     executePlayerNpcMapDataUpdate(con, true, pnpcPodium, podium, id, mapid);
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                log.error("unhandled exception", e);
             }
         }
 
@@ -2027,7 +2027,7 @@ public class World {
 
             return (mid == null) ? null : new Pair<>(mid, new Pair<>(hid, wid));
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
             return null;
         }
     }
@@ -2052,7 +2052,7 @@ public class World {
                 return ret;
             }
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
             return -1;
         }
     }
@@ -2072,7 +2072,7 @@ public class World {
             ps.setInt(1, playerId);
             ps.executeUpdate();
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
         }
     }
 

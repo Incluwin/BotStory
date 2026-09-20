@@ -41,6 +41,7 @@
     </changeSet>
 
     <changeSet id="151" author="Ponk">
+        <validCheckSum>9:51986181fb85cd005492b627749acac4</validCheckSum>
         <sqlFile path="db/data/151-global-drop-data.sql"/>
     </changeSet>
     <changeSet id="152" author="Ponk">
@@ -49,6 +50,22 @@
 
     <changeSet id="161" author="Ponk">
         <sqlFile path="db/data/161-admin-data.sql"/>
+    </changeSet>
+
+    <changeSet id="162" author="Kuro">
+        <sqlFile path="db/data/162-global-drop-perfect-pitch.sql" splitStatements="false"/>
+    </changeSet>
+
+    <changeSet id="163" author="Kuro">
+        <sqlFile path="db/data/163-global-drop-nx-card-rebalance.sql"/>
+    </changeSet>
+
+    <!-- 200-series: operator data tweaks (post-initial-load edits). Each
+         entry is a one-off DELETE/UPDATE that can't be expressed by editing
+         the original 100-series load files (Liquibase rejects checksum
+         changes to applied changesets). -->
+    <changeSet id="200" author="ganre">
+        <sqlFile path="db/data/200-shop-1338-remove-teleport-rock.sql"/>
     </changeSet>
 
 </databaseChangeLog>

@@ -372,8 +372,11 @@ public class SkillFactory {
             }
         }
 
+        int lvlIdx = 1;
         for (Data level : data.getChildByPath("level")) {
-            ret.addLevelEffect(StatEffect.loadSkillEffectFromData(level, id, isBuff));
+            StatEffect lvlEffect = StatEffect.loadSkillEffectFromData(level, id, isBuff);
+            lvlEffect.setLevel(lvlIdx++);
+            ret.addLevelEffect(lvlEffect);
         }
         ret.setAnimationTime(0);
         if (effect != null) {
@@ -401,5 +404,18 @@ public class SkillFactory {
         }
 
         return null;
+    }
+
+    /**
+     * Re-read every skill from Skill.wz and atomically swap the cache.
+     *
+     * The read path only touches the volatile {@code skills} reference,
+     * so readers during reload see either the old or the new fully-built
+     * map — never a torn/partial one. Clients already holding a Skill
+     * reference for an active buff keep it; the next cast / re-cast picks
+     * up the new effect data.
+     */
+    public static synchronized void reloadAllSkills() {
+        loadAllSkills();
     }
 }

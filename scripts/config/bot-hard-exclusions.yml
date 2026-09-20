@@ -1,0 +1,44 @@
+# Hard exclusion list (BOT_ECONOMY.md § Item pool eligibility - 3. Hard exclusion list).
+# Bots NEVER stock these items regardless of rarity or persona.
+# Safety invariant — lifting one needs design review, not a dashboard edit.
+
+hard_exclusions:
+  # Boss-exclusive gear (preserves real-player bossing thrill)
+  zakum_helm_ids: [1002357, 1002358, 1002359, 1002972, 1002973, 1002974]
+  horntail_accessory_ids: [1122000, 1122001, 1132026, 1132027, 1132028, 1132029]
+  pink_bean_reward_ids: [1122007, 1122076, 1122226, 1122227, 1122228, 1122229]
+  chaos_variant_exclusives: []   # populate at seed if CZak/CHT/CPB drops are enabled
+
+  # Timeless / Reverse endgame weapons
+  timeless_reverse_ranges:
+    - [1372071, 1372076]
+    - [1382069, 1382074]
+    - [1402067, 1402072]
+    - [1412025, 1412030]
+    - [1432036, 1432041]
+    - [1442048, 1442053]
+    - [1452042, 1452047]
+    - [1462040, 1462045]
+    - [1472052, 1472057]
+    - [1482017, 1482022]
+    - [1492016, 1492021]
+
+  # Royal Von Leon set (when introduced)
+  royal_von_leon_ranges: []
+
+  # Premium scrolls — intentionally kept out of bot supply so they stay gated
+  # behind cash shop / Gachapon / boss drops
+  chaos_scroll_ids: [2049100, 2049101, 2049102, 2049103, 2049104, 2049105, 2049106, 2049107]
+  white_scroll_ids: [2340000]
+  gfa_ids: [2046000, 2046001, 2046002, 2046003, 2046004, 2046005, 2046100, 2046101, 2046102, 2046103]
+  shielding_ward_ids: [2530000]
+  clean_slate_ids: [2049000, 2049001, 2049002, 2049003]
+
+  # Set-completion pieces past Tier 3 (Veteran)
+  # Populated at seed from set-items.yml
+  veteran_plus_set_pieces: []
+
+  # Cash shop items are already gated by USE_ENFORCE_UNMERCHABLE_CASH at config.yaml:249.
+  # Listed here for defense in depth.
+  cash_item_ranges:
+    - [5000000, 5999999]

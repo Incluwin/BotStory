@@ -39,8 +39,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GotoCommand extends Command {
+    private static final Logger log = LoggerFactory.getLogger(GotoCommand.class);
+
 
     {
         setDescription("Warp to a predefined map.");
@@ -61,7 +65,7 @@ public class GotoCommand extends Command {
                 GOTO_AREAS_INFO += ("'" + e.getKey() + "' - #b" + (MapFactory.loadPlaceName(e.getValue())) + "#k\r\n");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
 
             GOTO_TOWNS_INFO = "(none)";
             GOTO_AREAS_INFO = "(none)";

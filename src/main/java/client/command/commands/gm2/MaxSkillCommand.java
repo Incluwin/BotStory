@@ -32,8 +32,12 @@ import client.command.Command;
 import provider.Data;
 import provider.DataProviderFactory;
 import provider.wz.WZFiles;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MaxSkillCommand extends Command {
+    private static final Logger log = LoggerFactory.getLogger(MaxSkillCommand.class);
+
     {
         setDescription("Max out all job skills.");
     }
@@ -46,7 +50,7 @@ public class MaxSkillCommand extends Command {
                 Skill skill = SkillFactory.getSkill(Integer.parseInt(skill_.getName()));
                 player.changeSkillLevel(skill, (byte) skill.getMaxLevel(), skill.getMaxLevel(), -1);
             } catch (NumberFormatException nfe) {
-                nfe.printStackTrace();
+                log.error("unhandled exception", nfe);
                 break;
             } catch (NullPointerException npe) {
             }

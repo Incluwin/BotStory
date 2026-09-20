@@ -28,7 +28,10 @@ import scripting.SynchronizedInvocable;
 
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -72,6 +75,24 @@ public class EventScriptManager extends AbstractScriptManager {
             return fallback.em;
         }
         return entry.em;
+    }
+
+    /**
+     * Snapshot of every EventManager currently registered on this channel.
+     *
+     * Used by {@code server.admin.AdminControlPort} to build /runtime/events —
+     * callers iterate this, then iterate each manager's {@link EventManager#getInstances()}
+     * to emit per-instance state (member count, elapsed time, map ids).
+     *
+     * @return a stable copy of the registered managers; mutations on the
+     *         returned list do not affect internal state.
+     */
+    public Collection<EventManager> getRegisteredEventManagers() {
+        List<EventManager> out = new ArrayList<>(events.size());
+        for (EventEntry entry : events.values()) {
+            out.add(entry.em);
+        }
+        return out;
     }
 
     public boolean isActive() {

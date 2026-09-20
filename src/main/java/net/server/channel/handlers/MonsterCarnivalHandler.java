@@ -39,6 +39,8 @@ import tools.Pair;
 
 import java.awt.*;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -46,6 +48,8 @@ import java.util.List;
  */
 
 public final class MonsterCarnivalHandler extends AbstractPacketHandler {
+    private static final Logger log = LoggerFactory.getLogger(MonsterCarnivalHandler.class);
+
 
     @Override
     public void handlePacket(InPacket p, Client c) {
@@ -170,7 +174,7 @@ public final class MonsterCarnivalHandler extends AbstractPacketHandler {
                     c.getPlayer().gainCP(-neededCP);
                     c.getPlayer().getMap().broadcastMessage(PacketCreator.playerSummoned(c.getPlayer().getName(), tab, num));
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    log.error("unhandled exception", e);
                 }
             } finally {
                 c.releaseClient();

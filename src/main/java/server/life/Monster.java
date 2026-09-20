@@ -80,7 +80,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -90,7 +89,7 @@ public class Monster extends AbstractLoadedLife {
 
     private ChangeableStats ostats = null;  //unused, v83 WZs offers no support for changeable stats.
     private MonsterStats stats;
-    private final AtomicInteger hp = new AtomicInteger(1);
+    private final AtomicLong hp = new AtomicLong(1);
     private final AtomicLong maxHpPlusHeal = new AtomicLong(1);
     private int mp;
     private WeakReference<Character> controller = new WeakReference<>(null);
@@ -235,23 +234,23 @@ public class Monster extends AbstractLoadedLife {
         return r;
     }
 
-    public int getHp() {
+    public long getHp() {
         return hp.get();
     }
 
-    public synchronized void addHp(int hp) {
+    public synchronized void addHp(long hp) {
         if (this.hp.get() <= 0) {
             return;
         }
         this.hp.addAndGet(hp);
     }
 
-    public synchronized void setStartingHp(int hp) {
+    public synchronized void setStartingHp(long hp) {
         stats.setHp(hp);    // refactored mob stats after non-static HP pool suggestion thanks to twigs
         this.hp.set(hp);
     }
 
-    public int getMaxHp() {
+    public long getMaxHp() {
         return stats.getHp();
     }
 
@@ -323,7 +322,7 @@ public class Monster extends AbstractLoadedLife {
     }
 
     public void setHpZero() {     // force HP = 0
-        applyAndGetHpDamage(Integer.MAX_VALUE, false);
+        applyAndGetHpDamage(Long.MAX_VALUE, false);
     }
 
     private boolean applyAnimationIfRoaming(int attackPos, MobSkill skill) {   // roam: not casting attack or skill animations
@@ -351,8 +350,8 @@ public class Monster extends AbstractLoadedLife {
         }
     }
 
-    public synchronized Integer applyAndGetHpDamage(int delta, boolean stayAlive) {
-        int curHp = hp.get();
+    public synchronized Long applyAndGetHpDamage(long delta, boolean stayAlive) {
+        long curHp = hp.get();
         if (curHp <= 0) {       // this monster is already dead
             return null;
         }
@@ -361,14 +360,14 @@ public class Monster extends AbstractLoadedLife {
             if (stayAlive) {
                 curHp--;
             }
-            int trueDamage = Math.min(curHp, delta);
+            long trueDamage = Math.min(curHp, delta);
 
             hp.addAndGet(-trueDamage);
             return trueDamage;
         } else {
-            int trueHeal = -delta;
-            int hp2Heal = curHp + trueHeal;
-            int maxHp = getMaxHp();
+            long trueHeal = -delta;
+            long hp2Heal = curHp + trueHeal;
+            long maxHp = getMaxHp();
 
             if (hp2Heal > maxHp) {
                 trueHeal -= (hp2Heal - maxHp);
@@ -388,7 +387,7 @@ public class Monster extends AbstractLoadedLife {
             from.setPlayerAggro(this.hashCode());
             from.getMap().broadcastBossHpMessage(this, this.hashCode(), makeBossHPBarPacket(), getPosition());
         } else if (!isBoss()) {
-            int remainingHP = (int) Math.max(1, hp.get() * 100f / getMaxHp());
+            int remainingHP = (int) Math.max(1, hp.get() * 100d / getMaxHp());
             Packet packet = PacketCreator.showMonsterHP(getObjectId(), remainingHP);
             if (from.getParty() != null) {
                 for (PartyCharacter mpc : from.getParty().getMembers()) {
@@ -454,7 +453,7 @@ public class Monster extends AbstractLoadedLife {
      * @param stayAlive
      */
     private void applyDamage(Character from, int damage, boolean stayAlive, boolean fake) {
-        Integer trueDamage = applyAndGetHpDamage(damage, stayAlive);
+        Long trueDamage = applyAndGetHpDamage(damage, stayAlive);
         if (trueDamage == null) {
             return;
         }
@@ -464,7 +463,7 @@ public class Monster extends AbstractLoadedLife {
         }
 
         if (!fake) {
-            dispatchMonsterDamaged(from, trueDamage);
+            dispatchMonsterDamaged(from, trueDamage.intValue());
         }
 
         if (!takenDamage.containsKey(from.getId())) {
@@ -480,8 +479,8 @@ public class Monster extends AbstractLoadedLife {
         applyDamage(from, damage, stayAlive, true);
     }
 
-    public void heal(int hp, int mp) {
-        Integer hpHealed = applyAndGetHpDamage(-hp, false);
+    public void heal(long hp, int mp) {
+        Long hpHealed = applyAndGetHpDamage(-hp, false);
         if (hpHealed == null) {
             return;
         }
@@ -494,11 +493,14 @@ public class Monster extends AbstractLoadedLife {
         setMp(mp2Heal);
 
         if (hp > 0) {
-            getMap().broadcastMessage(PacketCreator.healMonster(getObjectId(), hp, getHp(), getMaxHp()));
+            int healDisplay = (int) Math.min(Integer.MAX_VALUE, hp);
+            int currentHpDisplay = (int) Math.min(Integer.MAX_VALUE, getHp());
+            int maxHpDisplay = (int) Math.min(Integer.MAX_VALUE, getMaxHp());
+            getMap().broadcastMessage(PacketCreator.healMonster(getObjectId(), healDisplay, currentHpDisplay, maxHpDisplay));
         }
 
         maxHpPlusHeal.addAndGet(hpHealed);
-        dispatchMonsterHealed(hpHealed);
+        dispatchMonsterHealed(hpHealed.intValue());
     }
 
     public boolean isAttackedBy(Character chr) {
@@ -751,8 +753,10 @@ public class Monster extends AbstractLoadedLife {
 
             int _partyExp = expValueToInteger(partyExp);
 
+            // Personal-exp -> equip-exp wiring lives inside Character.gainExp now,
+            // so quest / cheer / non-kill exp sources level rings + upgradeable
+            // equips on the same path. (See Character.java rev that hoisted it.)
             attacker.gainExp(_personalExp, _partyExp, true, false, white);
-            attacker.increaseEquipExp(_personalExp);
             attacker.raiseQuestMobCount(getId());
         }
     }
@@ -1033,7 +1037,19 @@ public class Monster extends AbstractLoadedLife {
     }
 
     public Packet makeBossHPBarPacket() {
-        return PacketCreator.showBossHP(getId(), getHp(), getMaxHp(), getTagColor(), getTagBgColor());
+        int displayHp;
+        int displayMaxHp;
+
+        // Verifica se o HP passou do limite do int (2.14B) e calcula a proporção da barra
+        if (getMaxHp() > Integer.MAX_VALUE) {
+            displayHp = (int) (((double) getHp() / getMaxHp()) * Integer.MAX_VALUE);
+            displayMaxHp = Integer.MAX_VALUE;
+        } else {
+            displayHp = (int) getHp();
+            displayMaxHp = (int) getMaxHp();
+        }
+
+        return PacketCreator.showBossHP(getId(), displayHp, displayMaxHp, getTagColor(), getTagBgColor());
     }
 
     public boolean hasBossHPBar() {
@@ -1170,7 +1186,12 @@ public class Monster extends AbstractLoadedLife {
 
         final Map<MonsterStatus, Integer> statis = status.getStati();
         if (stats.isBoss()) {
-            if (!(statis.containsKey(MonsterStatus.SPEED)
+            // KuroMS mirror (Bucket C): Taunt is designed to work on bosses - that's where
+            // its EXP/drop multiplier matters. SHOWDOWN is Taunt's signature status, so let
+            // it through. The existing bulk-debuff allowlist (Slow+Ninja Ambush+WATK) stays.
+            if (statis.containsKey(MonsterStatus.SHOWDOWN)) {
+                // fall through — allow Taunt on bosses
+            } else if (!(statis.containsKey(MonsterStatus.SPEED)
                     && statis.containsKey(MonsterStatus.NINJA_AMBUSH)
                     && statis.containsKey(MonsterStatus.WATK))) {
                 return false;
@@ -1626,7 +1647,7 @@ public class Monster extends AbstractLoadedLife {
 
         @Override
         public void run() {
-            int curHp = hp.get();
+            long curHp = hp.get();
             if (curHp <= 1) {
                 MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_STATUS);
                 service.interruptMobStatus(map.getId(), status);
@@ -1635,7 +1656,7 @@ public class Monster extends AbstractLoadedLife {
 
             int damage = dealDamage;
             if (damage >= curHp) {
-                damage = curHp - 1;
+                damage = (int) (curHp - 1);
                 if (type == 1 || type == 2) {
                     MobStatusService service = (MobStatusService) map.getChannelServer().getServiceAccess(ChannelServices.MOB_STATUS);
                     service.interruptMobStatus(map.getId(), status);
@@ -1748,7 +1769,7 @@ public class Monster extends AbstractLoadedLife {
         return ostats;
     }
 
-    public final int getMobMaxHp() {
+    public final long getMobMaxHp() {
         if (ostats != null) {
             return ostats.hp;
         }

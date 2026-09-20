@@ -19,10 +19,14 @@
 */
 package net.server.services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * @author Ronan
  */
 public class Service<T extends BaseService> {
+    private static final Logger log = LoggerFactory.getLogger(Service.class);
 
     private Class<T> cls;
     private BaseService service;
@@ -32,7 +36,7 @@ public class Service<T extends BaseService> {
             cls = s;
             service = cls.getConstructor().newInstance();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 

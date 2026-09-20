@@ -29,16 +29,15 @@ function action(mode, type, selection) {
     status++;
     if (mode != 1) {
         if (mode == 0) {
-            cm.sendNext("If you wish to experience what it's like to be a Warrior, come see me again.");
+            cm.sendNext("If you wish to visit Perion, the home of the Warriors, come see me again.");
         }
         cm.dispose();
         return;
     }
     if (status == 0) {
-        cm.sendYesNo("Would you like to experience what it's like to be a Warrior?");
+        cm.sendYesNo("Would you like me to send you to #bPerion#k, the home of the Warriors? You can meet me there, in the flesh.");
     } else if (status == 1) {
-        cm.lockUI();
-        cm.warp(1020100, 0);
+        cm.warp(102000000, 0);
         cm.dispose();
     }
 }

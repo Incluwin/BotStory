@@ -30,6 +30,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class SpawnPoint {
+    // Max mobs allowed at a single non-boss, mobile spawn point. Bosses and immobile mobs stay capped at 1.
+    public static final int MAX_PER_NONBOSS_POINT = 4;
+
     private final int monster;
     private final int mobTime;
     private final int team;
@@ -40,6 +43,7 @@ public class SpawnPoint {
     private int mobInterval = 5000;
     private final AtomicInteger spawnedMonsters = new AtomicInteger(0);
     private final boolean immobile;
+    private final int maxConcurrent;
     private boolean denySpawn = false;
 
     public SpawnPoint(final Monster monster, Point pos, boolean immobile, int mobTime, int mobInterval, int team) {
@@ -52,6 +56,8 @@ public class SpawnPoint {
         this.immobile = immobile;
         this.mobInterval = mobInterval;
         this.nextPossibleSpawn = Server.getInstance().getCurrentTime();
+        // Bosses and immobile mobs keep the original 1-per-point cap to avoid duplicated bosses / visual stacking.
+        this.maxConcurrent = (monster.isBoss() || immobile) ? 1 : MAX_PER_NONBOSS_POINT;
     }
 
     public int getSpawned() {
@@ -67,14 +73,14 @@ public class SpawnPoint {
     }
 
     public boolean shouldSpawn() {
-        if (denySpawn || mobTime < 0 || spawnedMonsters.get() > 0) {
+        if (denySpawn || mobTime < 0 || spawnedMonsters.get() >= maxConcurrent) {
             return false;
         }
         return nextPossibleSpawn <= Server.getInstance().getCurrentTime();
     }
 
     public boolean shouldForceSpawn() {
-        return mobTime >= 0 && spawnedMonsters.get() <= 0;
+        return mobTime >= 0 && spawnedMonsters.get() < maxConcurrent;
     }
 
     public Monster getMonster() {
@@ -87,13 +93,20 @@ public class SpawnPoint {
         mob.addListener(new MonsterListener() {
             @Override
             public void monsterKilled(int aniTime) {
-                nextPossibleSpawn = Server.getInstance().getCurrentTime();
-                if (mobTime > 0) {
-                    nextPossibleSpawn += SECONDS.toMillis(mobTime);
+                long now = Server.getInstance().getCurrentTime();
+                int remaining = spawnedMonsters.decrementAndGet();
+                long delay;
+                if (remaining > 0) {
+                    // Point still has mobs alive — refill the empty slot quickly (just death animation),
+                    // otherwise the shared timer held the point at 1 mob for the full WZ mobTime window.
+                    delay = aniTime;
+                } else if (mobTime > 0) {
+                    // Point is fully cleared — shrink WZ respawn delay to 1/5 for aggressive pack recovery.
+                    delay = SECONDS.toMillis(mobTime) / 5;
                 } else {
-                    nextPossibleSpawn += aniTime;
+                    delay = aniTime;
                 }
-                spawnedMonsters.decrementAndGet();
+                nextPossibleSpawn = now + delay;
             }
 
             @Override

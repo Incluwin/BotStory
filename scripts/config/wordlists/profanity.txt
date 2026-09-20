@@ -1,0 +1,29 @@
+# Bot-name profanity blocklist (BOT_ECONOMY.md § Naming).
+# Case-insensitive substring match against generated bot names.
+# Keep terse; the real defense is the restricted-names list + server-wide moderation.
+# One term per line, '#' starts a comment.
+fuck
+shit
+cunt
+bitch
+slut
+whore
+nigger
+nigga
+faggot
+retard
+rape
+nazi
+hitler
+pedo
+molest
+kkk
+cock
+dick
+pussy
+asshole
+bastard
+damn
+hell
+sex
+porn

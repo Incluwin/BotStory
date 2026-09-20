@@ -109,7 +109,7 @@ public final class BBSOperationHandler extends AbstractPacketHandler {
                 c.sendPacket(GuildPackets.BBSThreadList(rs, start));
             }
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
         }
     }
 
@@ -147,7 +147,7 @@ public final class BBSOperationHandler extends AbstractPacketHandler {
 
             displayThread(c, localthreadid);
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
         }
     }
 
@@ -171,7 +171,7 @@ public final class BBSOperationHandler extends AbstractPacketHandler {
 
             displayThread(client, localthreadid);
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
         }
     }
 
@@ -205,7 +205,7 @@ public final class BBSOperationHandler extends AbstractPacketHandler {
 
             displayThread(client, nextId);
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
         }
 
     }
@@ -246,7 +246,7 @@ public final class BBSOperationHandler extends AbstractPacketHandler {
                 ps.executeUpdate();
             }
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
         }
     }
 
@@ -287,7 +287,7 @@ public final class BBSOperationHandler extends AbstractPacketHandler {
 
             displayThread(client, threadid, false);
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("unhandled exception", se);
         }
     }
 

@@ -56,6 +56,7 @@ public abstract class ServerChannelInitializer extends ChannelInitializer<Socket
     private void setUpHandlers(ChannelPipeline pipeline, InitializationVector sendIv, InitializationVector recvIv,
                                Client client) {
         pipeline.addLast("IdleStateHandler", new IdleStateHandler(0, 0, IDLE_TIME_SECONDS));
+        pipeline.addLast("PacketRateGuard", new net.security.ConnectionThrottle.PacketRateGuard());
         pipeline.addLast("PacketCodec", new PacketCodec(ClientCyphers.of(sendIv, recvIv)));
         pipeline.addLast("Client", client);
 

@@ -34,11 +34,15 @@ import java.util.Set;
 import java.util.concurrent.ScheduledFuture;
 
 import static java.util.concurrent.TimeUnit.HOURS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Ronan - credits to Eric for showing the New Year opcodes and handler layout
  */
 public class NewYearCardRecord {
+    private static final Logger log = LoggerFactory.getLogger(NewYearCardRecord.class);
+
     private int id;
 
     private final int senderId;
@@ -156,7 +160,7 @@ public class NewYearCardRecord {
                 }
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
     }
 
@@ -172,7 +176,7 @@ public class NewYearCardRecord {
                 ps.executeUpdate();
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
     }
 
@@ -196,7 +200,7 @@ public class NewYearCardRecord {
                 }
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
 
         return null;
@@ -217,7 +221,7 @@ public class NewYearCardRecord {
                 }
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
     }
 
@@ -283,7 +287,7 @@ public class NewYearCardRecord {
                 ps.executeUpdate();
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
     }
 
@@ -299,7 +303,7 @@ public class NewYearCardRecord {
                 ps.executeUpdate();
             }
         } catch(SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
         */
 

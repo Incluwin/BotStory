@@ -29,16 +29,15 @@ function action(mode, type, selection) {
     status++;
     if (mode != 1) {
         if (mode == 0) {
-            cm.sendNext("If you wish to experience what it's like to be a Pirate, come see me again.");
+            cm.sendNext("If you wish to visit the Nautilus, the home of the Pirates, come see me again.");
         }
         cm.dispose();
         return;
     }
     if (status == 0) {
-        cm.sendYesNo("Would you like to experience what it's like to be a Pirate?");
+        cm.sendYesNo("Would you like me to send you to #bthe Nautilus#k, the home of the Pirates? You can meet me there, in the flesh.");
     } else if (status == 1) {
-        cm.lockUI();
-        cm.warp(1020500, 0);
+        cm.warp(120000000, 0);
         cm.dispose();
     }
 }

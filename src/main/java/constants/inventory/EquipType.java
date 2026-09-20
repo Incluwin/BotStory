@@ -28,6 +28,7 @@ import java.util.Map;
 public enum EquipType {
     UNDEFINED(-1),
     ACCESSORY(0),
+    EARRING(103),
     CAP(100),
     CAPE(110),
     COAT(104),
@@ -41,6 +42,7 @@ public enum EquipType {
     PET_EQUIP_LABEL(182),
     PET_EQUIP_QUOTE(183),
     RING(111),
+    SHOULDER(115),
     SHIELD(109),
     SHOES(107),
     TAMING(190),

@@ -169,11 +169,11 @@ public class Trade {
         chr.sendPacket(PacketCreator.getTradeResult(number, result));
     }
 
-    private boolean isLocked() {
+    public boolean isLocked() {
         return locked.get();
     }
 
-    private int getMeso() {
+    public int getMeso() {
         return meso;
     }
 
@@ -357,6 +357,10 @@ public class Trade {
 
             partner.getChr().setTrade(null);
             chr.setTrade(null);
+
+            // Save both atomically: if only one side persists before a crash, the unsaved side rolls back and items dupe.
+            chr.saveCharToDB();
+            partner.getChr().saveCharToDB();
         }
     }
 
@@ -564,4 +568,35 @@ public class Trade {
         }
         return sj.toString();
     }
+
+    public interface TradeResultCallback {
+        void onTradeResult(TradeResult result);
+    }
+
+    private TradeResultCallback callback;
+
+    public void setTradeResultCallback(TradeResultCallback callback) {
+        this.callback = callback;
+    }
+
+    public void setMesoBot(int meso) {
+        this.meso = meso;
+        chr.sendPacket(PacketCreator.getTradeMesoSet((byte) 0, this.meso));
+        if (partner != null) {
+            partner.getChr().sendPacket(PacketCreator.getTradeMesoSet((byte) 1, this.meso));
+        }
+    }
+
+    public boolean swapItem(Item item) {
+        synchronized (items) {
+            if (items.size() > 9) {
+                return false;
+            }
+            items.removeIf(it -> it.getPosition() == item.getPosition());
+            items.add(item);
+        }
+
+        return true;
+    }
+
 }

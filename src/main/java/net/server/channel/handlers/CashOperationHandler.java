@@ -466,6 +466,9 @@ public final class CashOperationHandler extends AbstractPacketHandler {
                     log.warn("Unhandled action: {}, packet: {}", action, p);
                 }
             } finally {
+                // Most actions here charge NX or move items between cash and regular inventory;
+                // a crash before autosave would either dupe the item or restore the NX. Persist on exit.
+                chr.saveCharToDB();
                 c.releaseClient();
             }
         } else {

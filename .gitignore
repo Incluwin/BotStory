@@ -24,3 +24,11 @@ database/docker-pg-db-data
 
 # macOS files
 .DS_Store
+
+# Local secrets (DB_PASS etc.)
+.env
+!.env.example
+
+# Local secrets / raw client data (never commit)
+sso-key.json
+/v83 clean wz files/

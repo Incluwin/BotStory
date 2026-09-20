@@ -43,21 +43,22 @@ public class DatabaseConnection {
         return jdbi.open();
     }
 
+    private static String envOrConfig(String envKey, String configValue) {
+        String override = System.getenv(envKey);
+        return override != null ? override : configValue;
+    }
+
     private static String getDbUrl() {
-        // Environment variables override what's defined in the config file
-        // This feature is used for the Docker support
-        String hostOverride = System.getenv("DB_HOST");
-        String host = hostOverride != null ? hostOverride : YamlConfig.config.server.DB_HOST;
-        String dbUrl = String.format(YamlConfig.config.server.DB_URL_FORMAT, host);
-        return dbUrl;
+        String host = envOrConfig("DB_HOST", YamlConfig.config.server.DB_HOST);
+        return String.format(YamlConfig.config.server.DB_URL_FORMAT, host);
     }
 
     private static HikariConfig getConfig() {
         HikariConfig config = new HikariConfig();
 
         config.setJdbcUrl(getDbUrl());
-        config.setUsername(YamlConfig.config.server.DB_USER);
-        config.setPassword(YamlConfig.config.server.DB_PASS);
+        config.setUsername(envOrConfig("DB_USER", YamlConfig.config.server.DB_USER));
+        config.setPassword(envOrConfig("DB_PASS", YamlConfig.config.server.DB_PASS));
 
         final int initFailTimeoutSeconds = YamlConfig.config.server.INIT_CONNECTION_POOL_TIMEOUT;
         config.setInitializationFailTimeout(SECONDS.toMillis(initFailTimeoutSeconds));

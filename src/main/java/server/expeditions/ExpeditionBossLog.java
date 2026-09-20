@@ -34,16 +34,22 @@ import java.util.List;
 
 import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.HOURS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Conrad
  * @author Ronan
  */
 public class ExpeditionBossLog {
+    private static final Logger log = LoggerFactory.getLogger(ExpeditionBossLog.class);
+
 
     public enum BossLogEntry {
-        ZAKUM(2, 1, false),
-        HORNTAIL(2, 1, false),
+        // Per PLAN.md Phase 3 boss lockout: per-character, resets daily at 00:00 server time.
+        // Chaos Zakum / Chaos Horntail share counters with their regular variants (see getBossEntryByName).
+        ZAKUM(1, 1, false),
+        HORNTAIL(1, 1, false),
         PINKBEAN(1, 1, false),
         SCARGA(1, 1, false),
         PAPULATUS(2, 1, false);
@@ -79,13 +85,22 @@ public class ExpeditionBossLog {
             return resetTimestamps;
         }
 
-        private static BossLogEntry getBossEntryByName(String name) {
+        static BossLogEntry getBossEntryByName(String name) {
+            if (name == null) {
+                return null;
+            }
+            // Chaos variants share the daily counter with their regular counterparts.
+            if (name.contentEquals("CHAOS_ZAKUM")) {
+                return ZAKUM;
+            }
+            if (name.contentEquals("CHAOS_HORNTAIL")) {
+                return HORNTAIL;
+            }
             for (BossLogEntry b : BossLogEntry.values()) {
                 if (name.contentEquals(b.name())) {
                     return b;
                 }
             }
-
             return null;
         }
 
@@ -135,7 +150,7 @@ public class ExpeditionBossLog {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -159,7 +174,7 @@ public class ExpeditionBossLog {
             }
             return ret_count;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return -1;
         }
     }
@@ -171,7 +186,7 @@ public class ExpeditionBossLog {
             ps.setString(2, boss.name());
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -197,5 +212,51 @@ public class ExpeditionBossLog {
             insertPlayerEntry(cid, boss);
         }
         return true;
+    }
+
+    /**
+     * Lockout check for bosses that don't use the Expedition framework (e.g. Papulatus,
+     * which is EventManager-based). Pass the boss name as it appears in {@link BossLogEntry}
+     * (e.g. "PAPULATUS"). Returns true if the character may enter.
+     */
+    public static boolean attemptBossByName(int cid, String bossName, boolean log) {
+        if (!YamlConfig.config.server.USE_ENABLE_DAILY_EXPEDITIONS) {
+            return true;
+        }
+
+        BossLogEntry boss = BossLogEntry.getBossEntryByName(bossName);
+        if (boss == null) {
+            return true;
+        }
+
+        if (countPlayerEntries(cid, boss) >= boss.entries) {
+            return false;
+        }
+
+        if (log) {
+            insertPlayerEntry(cid, boss);
+        }
+        return true;
+    }
+
+    /**
+     * GM override: clear all of a character's daily (and weekly, if applicable) entries for a given boss.
+     * Returns true if the boss name resolved to a known {@link BossLogEntry}.
+     */
+    public static boolean resetPlayerEntries(int cid, String bossName) {
+        BossLogEntry boss = BossLogEntry.getBossEntryByName(bossName);
+        if (boss == null) {
+            return false;
+        }
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("DELETE FROM " + getBossLogTable(boss.week) + " WHERE characterid = ? AND bosstype = ?")) {
+            ps.setInt(1, cid);
+            ps.setString(2, boss.name());
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            log.error("failed to reset boss entries for cid={} boss={}", cid, bossName, e);
+            return false;
+        }
     }
 }

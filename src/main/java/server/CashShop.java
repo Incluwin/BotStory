@@ -55,12 +55,16 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import static java.util.concurrent.TimeUnit.DAYS;
 import static java.util.concurrent.TimeUnit.HOURS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*
  * @author Flav
  * @author Ponk
  */
 public class CashShop {
+    private static final Logger log = LoggerFactory.getLogger(CashShop.class);
+
     public static final int NX_CREDIT = 1;
     public static final int MAPLE_POINT = 2;
     public static final int NX_PREPAID = 4;
@@ -178,7 +182,7 @@ public class CashShop {
                 item = new Item(itemId, (byte) 0, count, petid);
             }
 
-            if (ItemConstants.EXPIRING_ITEMS) {
+            if (ItemConstants.EXPIRING_ITEMS && itemId != 5041000) { // Hyper Teleport Rock — permanent, never expires
                 if (period == 1) {
                     switch (itemId) {
                         case ItemId.DROP_COUPON_2X_4H,
@@ -270,7 +274,7 @@ public class CashShop {
                     loadedSpecialItems.add(new SpecialCashItem(rs.getInt("sn"), rs.getInt("modifier"), rs.getByte("info")));
                 }
             } catch (SQLException ex) {
-                ex.printStackTrace();
+                log.error("unhandled exception", ex);
             }
             CashItemFactory.specialcashitems = loadedSpecialItems;
         }
@@ -422,7 +426,7 @@ public class CashShop {
             ps.setInt(5, ringid);
             ps.executeUpdate();
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
     }
 
@@ -466,7 +470,7 @@ public class CashShop {
                 ps.executeUpdate();
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
 
         return gifts;

@@ -1,0 +1,75 @@
+# Price-class definitions (BOT_ECONOMY.md § Price classes).
+# Structural file — classes have implementation logic, so adding one is a code change.
+
+price_classes:
+  npc_consumable:
+    description:    "NPC-sold consumables (pots, returns, etc)"
+    pricing_rule:   npc_anchored
+    generation:     npc_stock
+    persona_mult:   false   # persona multiplier bypassed
+    rarity_jitter:  false
+    floor_ceiling:  false
+    eligible_for_misprice: false
+
+  npc_gear:
+    description:    "NPC-sold gear — explicitly excluded from bot pool"
+    pricing_rule:   excluded
+    generation:     none
+    persona_mult:   false
+    rarity_jitter:  false
+    floor_ceiling:  false
+    eligible_for_misprice: false
+
+  player_equip:
+    description:    "Named-drop gear with stat variance"
+    pricing_rule:   stat_rolled
+    generation:     drop_sim
+    persona_mult:   true
+    rarity_jitter:  true
+    floor_ceiling:  true
+    eligible_for_misprice: true
+
+  scroll_demand:
+    description:    "Scrolls, demand-responsive pricing"
+    pricing_rule:   demand_scaled
+    generation:     drop_sim
+    persona_mult:   true
+    rarity_jitter:  true
+    floor_ceiling:  true
+    eligible_for_misprice: true
+
+  crafting_mat:
+    description:    "Ores, refined plates, manuals"
+    pricing_rule:   fixed_tier_indexed
+    generation:     drop_sim
+    persona_mult:   true
+    rarity_jitter:  true
+    floor_ceiling:  true
+    eligible_for_misprice: true
+
+  rare_specialty:
+    description:    "Onyx Apple, non-NPC pots, event leftovers"
+    pricing_rule:   fixed_tier_indexed
+    generation:     drop_sim
+    persona_mult:   true
+    rarity_jitter:  true
+    floor_ceiling:  true
+    eligible_for_misprice: true
+
+# Type-ID heuristics for auto-classification. Items not matching a range default to
+# 'player_equip' for equips, 'crafting_mat' for etc/mats, 'rare_specialty' for consumables.
+item_id_heuristics:
+  scroll_ranges:
+    - [2040000, 2049999]   # all 20xxxxx equip-enhancement scrolls
+    - [2044000, 2044999]
+  equip_ranges:
+    - [1000000, 1999999]
+  consumable_ranges:
+    - [2000000, 2099999]
+  mat_ranges:
+    - [4000000, 4299999]
+    - [4260000, 4260999]   # ores / manuals
+
+# Items whose heuristic classification should be overridden.
+# Kept terse at seed; audit phase fills this in.
+price_class_overrides: {}

@@ -109,7 +109,7 @@ public class DueyProcessor {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return ids;
@@ -131,7 +131,7 @@ public class DueyProcessor {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -147,7 +147,7 @@ public class DueyProcessor {
 
             deletePackageFromInventoryDB(con, packageId);
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -171,7 +171,7 @@ public class DueyProcessor {
 
             return dueypack;
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
             return null;
         }
     }
@@ -194,7 +194,7 @@ public class DueyProcessor {
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return packages;
@@ -228,7 +228,7 @@ public class DueyProcessor {
 
             return packageId;
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
 
         return -1;
@@ -240,7 +240,7 @@ public class DueyProcessor {
             ItemFactory.DUEY.saveItems(Collections.singletonList(dueyItem), packageId, con);
             return true;
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
 
         return false;
@@ -444,7 +444,7 @@ public class DueyProcessor {
 
                     dueyRemovePackage(c, packageId, false);
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    log.error("unhandled exception", e);
                 }
             } finally {
                 c.releaseClient();
@@ -506,7 +506,7 @@ public class DueyProcessor {
                 ps.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 }

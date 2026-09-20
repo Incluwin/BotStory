@@ -41,7 +41,8 @@ function action(mode, type, selection) {
 
         if (status == 0) {
             var sendStr = "There are all available commands for you:\r\n\r\n#b";
-            for (var i = 0; i <= cm.getPlayer().gmLevel(); i++) {
+            var maxTier = Math.min(cm.getPlayer().gmLevel(), levels.length - 1);
+            for (var i = 0; i <= maxTier; i++) {
                 sendStr += "#L" + i + "#" + levels[i] + "#l\r\n";
             }
 

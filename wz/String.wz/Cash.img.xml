@@ -361,8 +361,8 @@
     <string name="desc" value="By drinking sweet refreshing #cCoca-Cola#, it ables you to #cteleport to one of the remembered maps#. You can also #cteleport to the map where specific character is located# in the same channel.  Unable the teleport to the maps where teleport is limited."/>
   </imgdir>
   <imgdir name="5041000">
-    <string name="name" value="VIP Teleport Rock"/>
-    <string name="desc" value="This Teleport Rock enables one to #cteleport between continents#. It also enables the user to teleport to a specific character from the same channel. Up to #c10# maps, excluding the maps that cannot be reached through teleport, can be registered for this."/>
+    <string name="name" value="Hyper Teleport Rock"/>
+    <string name="desc" value="A #cpermanent#, never-consumed Teleport Rock that lets you #cteleport between continents# at will. Save up to #c10 maps# and warp to any registered location, or to a specific character on the same channel. Granted automatically at #cLv. 10#."/>
   </imgdir>
   <imgdir name="5050000">
     <string name="name" value="AP Reset"/>
@@ -1989,5 +1989,9 @@
   <imgdir name="5530008">
     <string name="name" value="MISSING NAME"/>
     <string name="desc" value="MISSING INFO"/>
+  </imgdir>
+  <imgdir name="5900000">
+    <string name="name" value="Fusion Anvil"/>
+    <string name="desc" value="Transfers the appearance of one equip onto another, keeping the base's stats."/>
   </imgdir>
 </imgdir>

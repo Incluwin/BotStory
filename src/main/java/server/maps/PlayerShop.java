@@ -42,12 +42,16 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Matze
  * @author Ronan - concurrency protection
  */
 public class PlayerShop extends AbstractMapObject {
+    private static final Logger log = LoggerFactory.getLogger(PlayerShop.class);
+
     private final AtomicBoolean open = new AtomicBoolean(false);
     private final Character owner;
     private final int itemid;
@@ -375,7 +379,7 @@ public class PlayerShop extends AbstractMapObject {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("unhandled exception", e);
             }
         } finally {
             visitorLock.unlock();
@@ -622,4 +626,66 @@ public class PlayerShop extends AbstractMapObject {
             return mesos;
         }
     }
+
+    public void setItems(List<PlayerShopItem> premadeShop) {
+        synchronized (items) {
+            items.addAll(premadeShop);
+        }
+    }
+
+
+    public void chat(Character player, String chat) {
+        byte s = getVisitorSlot(player);
+
+        synchronized (chatLog) {
+            chatLog.add(new Pair<>(player, chat));
+            if (chatLog.size() > 25) {
+                chatLog.remove(0);
+            }
+            chatSlot.put(player.getId(), s);
+        }
+
+        broadcast(PacketCreator.getPlayerShopChat(player, chat, s));
+    }
+
+    public boolean botBuy(Character fakechar, PlayerShopItem pItem, int itemPosition, short quantity) {
+        synchronized (items) {
+            Item newItem = pItem.getItem().copy();
+            newItem.setQuantity((short) ((pItem.getItem().getQuantity() * quantity)));
+            visitorLock.lock();
+            try {
+                int price = (int) Math.min((float) pItem.getPrice() * quantity, Integer.MAX_VALUE);
+
+                if (!owner.canHoldMeso(price)) {    // thanks Rohenn for noticing owner hold check misplaced
+                    fakechar.dropMessage(1, "Transaction failed since the shop owner can't hold any more mesos.");
+                    return false;
+                }
+
+                price -= Trade.getFee(price);  // thanks BHB for pointing out trade fees not applying here
+                owner.gainMeso(price, true);
+
+                SoldItem soldItem = new SoldItem(fakechar.getName(), pItem.getItem().getItemId(), quantity, price);
+                owner.sendPacket(PacketCreator.getPlayerShopOwnerUpdate(soldItem, itemPosition));
+
+                synchronized (sold) {
+                    sold.add(soldItem);
+                }
+
+                pItem.setBundles((short) (pItem.getBundles() - quantity));
+                if (pItem.getBundles() < 1) {
+                    pItem.setDoesExist(false);
+                    if (++boughtnumber == items.size()) {
+                        owner.setPlayerShop(null);
+                        this.setOpen(false);
+                        this.closeShop();
+                        owner.dropMessage(1, "Your items are sold out, and therefore your shop is closed.");
+                    }
+                }
+                return true;
+            } finally {
+                visitorLock.unlock();
+            }
+        }
+    }
+
 }

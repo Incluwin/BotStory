@@ -34,12 +34,16 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*
  *
  * @author BubblesDev
  */
 public final class ReportHandler extends AbstractPacketHandler {
+    private static final Logger log = LoggerFactory.getLogger(ReportHandler.class);
+
     public final void handlePacket(InPacket p, Client c) {
         int type = p.readByte(); //00 = Illegal program claim, 01 = Conversation claim
         String victim = p.readString();
@@ -92,7 +96,7 @@ public final class ReportHandler extends AbstractPacketHandler {
             ps.setString(6, description);
             ps.executeUpdate();
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 }

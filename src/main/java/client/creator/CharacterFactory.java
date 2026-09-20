@@ -22,6 +22,7 @@ package client.creator;
 import client.Character;
 import client.Client;
 import client.SkinColor;
+import client.inventory.EvolvingRing;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
@@ -69,6 +70,52 @@ public abstract class CharacterFactory {
             eq_top.setPosition((byte) -5);
             equipped.addItemFromDB(eq_top);
         }
+
+        // Growing Quest Ring: auto-equip on character creation in Ring slot 1 (-12).
+        try {
+            Item eq_ring = ii.getEquipById(Character.QUEST_RING_ID);
+            if (eq_ring != null) {
+                eq_ring.setPosition((byte) -12);
+                equipped.addItemFromDB(eq_ring);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to auto-equip quest ring {} on new character", Character.QUEST_RING_ID, e);
+        }
+
+        // Evolving Ring I: auto-equip in Ring slot 2 (-13). The ring auto-evolves at item-level 30
+        // (see Equip.transmuteToNextTier) through Ring II → Ring III → Fully Evolved Ring. Like
+        // the Quest Ring, it's locked to the slot — see ItemMoveHandler / canWearEquipment.
+        try {
+            Item eq_evo = ii.getEquipById(EvolvingRing.EVOLVING_RING_I);
+            if (eq_evo != null) {
+                eq_evo.setPosition((byte) -13);
+                equipped.addItemFromDB(eq_evo);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to auto-equip Evolving Ring I {} on new character",
+                    EvolvingRing.EVOLVING_RING_I, e);
+        }
+
+        // Hunter's Codex: auto-equip in cash medal slot (-149) so a regular medal can
+        // occupy -49 alongside it. Requires WZ cash=1 on img 1142165 (set by
+        // install_monster_book_medal.py). Stats grow with monster-book discoveries (see
+        // Character.applyMonsterBookMedalBoost). Locked like the Quest Ring —
+        // ItemMoveHandler.isLockedEquippedItem prevents drop/move.
+        //
+        // GATED: leave commented until install_monster_book_medal.py has been run.
+        // Stock v83 WZ has medalTag=95 on this img, which crashes the FriendStory
+        // client ~3s after spawn. The install script zeros it. Mirror the gate in
+        // PlayerLoggedinHandler — re-enable both together.
+        // try {
+        //     Item eq_medal = ii.getEquipById(Character.MONSTER_BOOK_MEDAL_ID);
+        //     if (eq_medal != null) {
+        //         eq_medal.setPosition((short) -149);
+        //         equipped.addItemFromDB(eq_medal);
+        //     }
+        // } catch (Exception e) {
+        //     log.warn("Failed to auto-equip Hunter's Codex {} on new character",
+        //             Character.MONSTER_BOOK_MEDAL_ID, e);
+        // }
 
         if (bottom > 0) {
             Item eq_bottom = ii.getEquipById(bottom);

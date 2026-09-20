@@ -16,11 +16,15 @@ import java.util.concurrent.ScheduledFuture;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Drago (Dragohe4rt)
  */
 public class MonsterCarnival {
+    private static final Logger log = LoggerFactory.getLogger(MonsterCarnival.class);
+
 
     public static int D = 3;
     public static int C = 2;
@@ -105,7 +109,7 @@ public class MonsterCarnival {
 
             cs.initMonsterCarnival(cpq1, room);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -317,7 +321,7 @@ public class MonsterCarnival {
             }
             dispose();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 

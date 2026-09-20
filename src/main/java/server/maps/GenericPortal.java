@@ -31,8 +31,12 @@ import tools.PacketCreator;
 import java.awt.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class GenericPortal implements Portal {
+    private static final Logger log = LoggerFactory.getLogger(GenericPortal.class);
+
     private String name;
     private String target;
     private Point position;
@@ -138,7 +142,7 @@ public class GenericPortal implements Portal {
                     scriptLock.unlock();
                 }
             } catch (NullPointerException npe) {
-                npe.printStackTrace();
+                log.error("unhandled exception", npe);
             }
         } else if (getTargetMapId() != MapId.NONE) {
             Character chr = c.getPlayer();

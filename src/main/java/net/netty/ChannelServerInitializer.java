@@ -3,6 +3,7 @@ package net.netty;
 import client.Client;
 import io.netty.channel.socket.SocketChannel;
 import net.PacketProcessor;
+import net.security.ConnectionThrottle;
 import net.server.Server;
 import net.server.coordinator.session.SessionCoordinator;
 import org.slf4j.Logger;
@@ -23,6 +24,12 @@ public class ChannelServerInitializer extends ServerChannelInitializer {
     public void initChannel(SocketChannel socketChannel) {
         final String clientIp = socketChannel.remoteAddress().getHostString();
         log.debug("Client connecting to world {}, channel {} from {}", world, channel, clientIp);
+
+        if (!ConnectionThrottle.shouldAccept(socketChannel)) {
+            socketChannel.close();
+            return;
+        }
+        socketChannel.closeFuture().addListener(f -> ConnectionThrottle.release(socketChannel));
 
         PacketProcessor packetProcessor = PacketProcessor.getChannelServerProcessor(world, channel);
         final long clientSessionId = sessionId.getAndIncrement();

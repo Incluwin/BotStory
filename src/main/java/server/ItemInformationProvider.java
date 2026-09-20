@@ -28,6 +28,7 @@ import client.Skill;
 import client.SkillFactory;
 import client.autoban.AutobanFactory;
 import client.inventory.Equip;
+import client.inventory.EvolvingRing;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
@@ -216,7 +217,7 @@ public class ItemInformationProvider {
             theData = cashStringData;
         } else if (itemId >= 2000000 && itemId < 3000000) {
             theData = consumeStringData;
-        } else if ((itemId >= 1010000 && itemId < 1040000) || (itemId >= 1122000 && itemId < 1123000) || (itemId >= 1132000 && itemId < 1133000) || (itemId >= 1142000 && itemId < 1143000)) {
+        } else if ((itemId >= 1010000 && itemId < 1040000) || (itemId >= 1122000 && itemId < 1123000) || (itemId >= 1132000 && itemId < 1133000) || (itemId >= 1142000 && itemId < 1143000) || (itemId >= 1152000 && itemId < 1153000)) {
             theData = eqpStringData;
             cat = "Eqp/Accessory";
         } else if (itemId >= 1000000 && itemId < 1010000) {
@@ -573,6 +574,12 @@ public class ItemInformationProvider {
         ret.put("cursed", DataTool.getInt("cursed", info, 0));
         ret.put("success", DataTool.getInt("success", info, 0));
         ret.put("fs", DataTool.getInt("fs", info, 0));
+        // Apply the server-side secondary-stat requirement overrides before caching.
+        // This is the PLAN.md §95-157 feature ("Secondary-stat requirement removal")
+        // implemented in Java instead of via WZ patch — see the class Javadoc for why.
+        if (YamlConfig.config.server.USE_SECONDARY_STAT_REQ_OVERRIDES) {
+            server.equip.SecondaryStatRequirementOverrides.apply(itemId, ret);
+        }
         equipStatsCache.put(itemId, ret);
         return ret;
     }
@@ -1550,7 +1557,7 @@ public class ItemInformationProvider {
                 monsterBookID.put(rs.getInt(1), rs.getInt(2));
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -1742,6 +1749,24 @@ public class ItemInformationProvider {
         return YamlConfig.config.server.USE_ENFORCE_UNMERCHABLE_PET && ItemConstants.isPet(itemId);
     }
 
+    /**
+     * Per-class stat-requirement gate used by both canWearEquipment overloads.
+     * Enforces ONLY the primary stat for the character's class (STR/INT/DEX/LUK
+     * for Warrior/Magician/Bowman/Thief respectively). Pirate and Beginner
+     * branches have no stat gate at all. Secondary stat requirements are
+     * ignored across the board, per the project's equipment design.
+     */
+    private boolean failsPrimaryStatReq(Character chr, Map<String, Integer> stats,
+                                        int tstr, int tdex, int tint, int tluk) {
+        switch (chr.getJob().getJobNiche()) {
+            case 1: return stats.get("reqSTR") > tstr;
+            case 2: return stats.get("reqINT") > tint;
+            case 3: return stats.get("reqDEX") > tdex;
+            case 4: return stats.get("reqLUK") > tluk;
+            default: return false;
+        }
+    }
+
     public Collection<Item> canWearEquipment(Character chr, Collection<Item> items) {
         Inventory inv = chr.getInventory(InventoryType.EQUIPPED);
         if (inv.checked()) {
@@ -1767,7 +1792,7 @@ public class ItemInformationProvider {
          }
          }
          } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
          }*/
         int tdex = chr.getDex(), tstr = chr.getStr(), tint = chr.getInt(), tluk = chr.getLuk(), fame = chr.getFame();
         if (chr.getJob() != Job.SUPERGM || chr.getJob() != Job.GM) {
@@ -1781,6 +1806,17 @@ public class ItemInformationProvider {
         }
         for (Item item : items) {
             Equip equip = (Equip) item;
+            // Growing Quest Ring + Evolving Ring chain: bypass all wear requirements.
+            // Evolving rings carry a WZ reqLevel of 0 to suppress the client "stats too low"
+            // popup, but they also carry no inc-stat fields the failsPrimaryStatReq check would
+            // care about, so the bypass is safe on both axes.
+            if (equip.getItemId() == Character.QUEST_RING_ID
+                    || equip.getItemId() == Character.MONSTER_BOOK_MEDAL_ID
+                    || EvolvingRing.isChainRing(equip.getItemId())) {
+                equip.wear(true);
+                itemz.add(equip);
+                continue;
+            }
             int reqLevel = getEquipLevelReq(equip.getItemId());
             if (highfivestamp) {
                 reqLevel -= 5;
@@ -1796,13 +1832,7 @@ public class ItemInformationProvider {
              }*/
             if (reqLevel > chr.getLevel()) {
                 continue;
-            } else if (getEquipStats(equip.getItemId()).get("reqDEX") > tdex) {
-                continue;
-            } else if (getEquipStats(equip.getItemId()).get("reqSTR") > tstr) {
-                continue;
-            } else if (getEquipStats(equip.getItemId()).get("reqLUK") > tluk) {
-                continue;
-            } else if (getEquipStats(equip.getItemId()).get("reqINT") > tint) {
+            } else if (failsPrimaryStatReq(chr, getEquipStats(equip.getItemId()), tstr, tdex, tint, tluk)) {
                 continue;
             }
             int reqPOP = getEquipStats(equip.getItemId()).get("reqPOP");
@@ -1841,6 +1871,15 @@ public class ItemInformationProvider {
             return true;
         }
 
+        // Growing Quest Ring + Evolving Ring chain: bypass all wear requirements
+        // (slot check still applies above). Both groups are auto-granted at character creation
+        // and intentionally don't gate on level/stat requirements.
+        if (id == Character.QUEST_RING_ID || id == Character.MONSTER_BOOK_MEDAL_ID
+                || EvolvingRing.isChainRing(id)) {
+            equip.wear(true);
+            return true;
+        }
+
 
         boolean highfivestamp = false;
         /* Removed check above for message ><
@@ -1853,7 +1892,7 @@ public class ItemInformationProvider {
          }
          }
          } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
          }*/
 
         int reqLevel = getEquipLevelReq(equip.getItemId());
@@ -1864,13 +1903,9 @@ public class ItemInformationProvider {
         //Removed job check. Shouldn't really be needed.
         if (reqLevel > chr.getLevel()) {
             i++;
-        } else if (getEquipStats(equip.getItemId()).get("reqDEX") > chr.getTotalDex()) {
-            i++;
-        } else if (getEquipStats(equip.getItemId()).get("reqSTR") > chr.getTotalStr()) {
-            i++;
-        } else if (getEquipStats(equip.getItemId()).get("reqLUK") > chr.getTotalLuk()) {
-            i++;
-        } else if (getEquipStats(equip.getItemId()).get("reqINT") > chr.getTotalInt()) {
+        } else if (failsPrimaryStatReq(chr, getEquipStats(equip.getItemId()),
+                                       chr.getTotalStr(), chr.getTotalDex(),
+                                       chr.getTotalInt(), chr.getTotalLuk())) {
             i++;
         }
         int reqPOP = getEquipStats(equip.getItemId()).get("reqPOP");
@@ -2042,7 +2077,7 @@ public class ItemInformationProvider {
             statUpgradeMakerCache.put(itemId, statUpgd);
             return statUpgd;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return null;
         }
     }
@@ -2071,7 +2106,7 @@ public class ItemInformationProvider {
             mobCrystalMakerCache.put(leftoverId, itemid);
             return itemid;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return -1;
@@ -2114,7 +2149,7 @@ public class ItemInformationProvider {
                 }
                 makerItemCache.put(toCreate, new MakerItemCreateEntry(makerEntry));
             } catch (SQLException sqle) {
-                sqle.printStackTrace();
+                log.error("unhandled exception", sqle);
                 makerEntry = null;
             }
         }
@@ -2126,7 +2161,7 @@ public class ItemInformationProvider {
         try {
             return getCrystalForLevel(getEquipLevelReq(equipId));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return -1;
@@ -2136,7 +2171,7 @@ public class ItemInformationProvider {
         try {
             return getCrystalForLevel(getEquipLevelReq(equipId));
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return -1;
@@ -2155,7 +2190,7 @@ public class ItemInformationProvider {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return items;
@@ -2175,7 +2210,7 @@ public class ItemInformationProvider {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return fee;
@@ -2216,7 +2251,7 @@ public class ItemInformationProvider {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return list;
@@ -2326,5 +2361,88 @@ public class ItemInformationProvider {
             return items.get(itemid);
         }
 
+    }
+
+    /**
+     * Flush every cache and re-resolve the String.wz category nodes so a
+     * subsequent getEquipById / getEquipStats / getName / etc. reads fresh
+     * WZ data. Re-parsing of the WZ files themselves is handled by
+     * XMLWZFile.getData() which reads the underlying XML on every call.
+     *
+     * Already-loaded Equip instances on players (in inventory / equipped)
+     * keep their per-instance stats — those are persisted to the DB and are
+     * not re-derived from WZ on equip. To propagate base-stat edits to an
+     * existing item, either re-spawn it with !item or add the delta in SQL.
+     *
+     * Safe to call while players are online: reads that happen during a
+     * clear see a transient miss and rebuild on the next hit. Synchronized
+     * to block concurrent reloads.
+     */
+    public synchronized void clearCaches() {
+        slotMaxCache.clear();
+        itemEffects.clear();
+        equipStatsCache.clear();
+        equipCache.clear();
+        equipLevelInfoCache.clear();
+        equipLevelReqCache.clear();
+        equipMaxLevelCache.clear();
+        scrollReqsCache.clear();
+        wholePriceCache.clear();
+        unitPriceCache.clear();
+        projectileWatkCache.clear();
+        nameCache.clear();
+        descCache.clear();
+        msgCache.clear();
+        accountItemRestrictionCache.clear();
+        dropRestrictionCache.clear();
+        pickupRestrictionCache.clear();
+        getMesoCache.clear();
+        monsterBookID.clear();
+        untradeableCache.clear();
+        onEquipUntradeableCache.clear();
+        scriptedItemCache.clear();
+        karmaCache.clear();
+        triggerItemCache.clear();
+        expCache.clear();
+        createItem.clear();
+        mobItem.clear();
+        useDelay.clear();
+        mobHP.clear();
+        levelCache.clear();
+        rewardCache.clear();
+        itemNameCache.clear();
+        consumeOnPickupCache.clear();
+        isQuestItemCache.clear();
+        isPartyQuestItemCache.clear();
+        replaceOnExpireCache.clear();
+        equipmentSlotCache.clear();
+        noCancelMouseCache.clear();
+        mobCrystalMakerCache.clear();
+        statUpgradeMakerCache.clear();
+        makerItemCache.clear();
+        makerCatalystCache.clear();
+        skillUpgradeCache.clear();
+        skillUpgradeInfoCache.clear();
+        cashPetFoodCache.clear();
+        questItemConsCache.clear();
+
+        // Re-resolve category string data — these are parsed XML snapshots
+        // that do not auto-refresh when String.wz changes on disk.
+        itemData = DataProviderFactory.getDataProvider(provider.wz.WZFiles.ITEM);
+        equipData = DataProviderFactory.getDataProvider(provider.wz.WZFiles.CHARACTER);
+        stringData = DataProviderFactory.getDataProvider(provider.wz.WZFiles.STRING);
+        etcData = DataProviderFactory.getDataProvider(provider.wz.WZFiles.ETC);
+        cashStringData = stringData.getData("Cash.img");
+        consumeStringData = stringData.getData("Consume.img");
+        eqpStringData = stringData.getData("Eqp.img");
+        etcStringData = stringData.getData("Etc.img");
+        insStringData = stringData.getData("Ins.img");
+        petStringData = stringData.getData("Pet.img");
+
+        // isQuestItemCache seeds a sentinel entry in the constructor.
+        isQuestItemCache.put(0, false);
+        isPartyQuestItemCache.put(0, false);
+
+        log.info("ItemInformationProvider caches cleared — next access will re-read WZ");
     }
 }

@@ -10,6 +10,22 @@ import static org.junit.jupiter.api.Assertions.*;
 class AssignAPProcessorTest {
 
     @Test
+    void isHpOrMpApTarget_rejectsHpAndMp() {
+        // Byte-encoded AP targets per Stat.getBy5ByteEncoding: HP=2048, MP=8192.
+        assertTrue(AssignAPProcessor.isHpOrMpApTarget(2048));
+        assertTrue(AssignAPProcessor.isHpOrMpApTarget(8192));
+    }
+
+    @Test
+    void isHpOrMpApTarget_acceptsStrDexIntLuk() {
+        assertFalse(AssignAPProcessor.isHpOrMpApTarget(64));   // STR
+        assertFalse(AssignAPProcessor.isHpOrMpApTarget(128));  // DEX
+        assertFalse(AssignAPProcessor.isHpOrMpApTarget(256));  // INT
+        assertFalse(AssignAPProcessor.isHpOrMpApTarget(512));  // LUK
+        assertFalse(AssignAPProcessor.isHpOrMpApTarget(0));
+    }
+
+    @Test
     void getMinHp() {
         int max_level = 200;
         int cygnus_max_level = 120;

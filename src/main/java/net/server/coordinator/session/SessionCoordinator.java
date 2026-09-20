@@ -287,7 +287,7 @@ public class SessionCoordinator {
             try {
                 fakeClient.setAccID(Character.loadCharFromDB(chrId, client, false).getAccountID());
             } catch (SQLException sqle) {
-                sqle.printStackTrace();
+                log.error("Failed to resolve accID from chrId {} during session coordination", chrId, sqle);
             }
         }
 

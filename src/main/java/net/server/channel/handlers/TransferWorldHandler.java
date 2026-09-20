@@ -34,12 +34,16 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Ronan
  * @author Ubaware
  */
 public final class TransferWorldHandler extends AbstractPacketHandler {
+    private static final Logger log = LoggerFactory.getLogger(TransferWorldHandler.class);
+
 
     @Override
     public final void handlePacket(InPacket p, Client c) {
@@ -75,7 +79,7 @@ public final class TransferWorldHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return;
         }
         c.sendPacket(PacketCreator.sendWorldTransferRules(0, c));

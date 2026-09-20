@@ -41,15 +41,57 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public final class EnterMTSHandler extends AbstractPacketHandler {
+    private static final Logger log = LoggerFactory.getLogger(EnterMTSHandler.class);
+
+
+    // Free Market entrance — see server/maps MapId constants. 910000000 is the
+    // Free Market lobby map in v83.
+    private static final int FREE_MARKET_MAP_ID = 910000000;
 
     @Override
     public void handlePacket(InPacket p, Client c) {
         Character chr = c.getPlayer();
 
+        // With MTS disabled, repurpose the green TRADE button as a quick warp
+        // to the Free Market entrance. The v83 MTS was a cash-shop marketplace;
+        // a populated Free Market (real players + bot-economy merchants) is
+        // the useful destination on this server.
         if (!YamlConfig.config.server.USE_MTS) {
+            if (chr.getMapId() == FREE_MARKET_MAP_ID) {
+                chr.dropMessage(1, "You're already in the Free Market.");
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+            if (FieldLimit.CANNOTMIGRATE.check(chr.getMap().getFieldLimit())) {
+                chr.dropMessage(1, "You can't do it here in this map.");
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+            if (MiniDungeonInfo.isDungeonMap(chr.getMapId())) {
+                chr.dropMessage(1, "Can't warp out from inside a Mini-Dungeon.");
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+            if (chr.getEventInstance() != null) {
+                chr.dropMessage(1, "Can't warp while registered on an event.");
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+            if (!chr.isAlive()) {
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+            chr.closePlayerInteractions();
+            // Save the caller's location so the FM exit portal (market00.js)
+            // warps them back to the map they came from, not to the Henesys
+            // fallback. This mirrors what the vanilla FM-entrance NPCs do.
+            chr.saveLocation("FREE_MARKET");
+            chr.changeMap(FREE_MARKET_MAP_ID);
             c.sendPacket(PacketCreator.enableActions());
             return;
         }
@@ -108,7 +150,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
         try {
             c.sendPacket(PacketCreator.openCashShop(c, true));
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
         chr.getCashShop().open(true);// xD
         c.enableCSActions();
@@ -165,7 +207,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
         c.sendPacket(PacketCreator.sendMTS(items, 1, 0, 0, pages));
         c.sendPacket(PacketCreator.transferInventory(getTransfer(chr.getId())));
@@ -217,7 +259,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
         return items;
     }
@@ -267,7 +309,7 @@ public final class EnterMTSHandler extends AbstractPacketHandler {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
         return items;
     }

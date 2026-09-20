@@ -37,12 +37,16 @@ import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Lerk
  * @author Ronan
  */
 public class Reactor extends AbstractMapObject {
+    private static final Logger log = LoggerFactory.getLogger(Reactor.class);
+
     private final int rid;
     private final ReactorStats stats;
     private byte state;
@@ -320,7 +324,7 @@ public class Reactor extends AbstractMapObject {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 

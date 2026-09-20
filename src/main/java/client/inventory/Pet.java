@@ -38,11 +38,15 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Matze
  */
 public class Pet extends Item {
+    private static final Logger log = LoggerFactory.getLogger(Pet.class);
+
     private String name;
     private int uniqueid;
     private int tameness = 0;
@@ -91,7 +95,7 @@ public class Pet extends Item {
             }
             return ret;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return null;
         }
     }
@@ -105,7 +109,7 @@ public class Pet extends Item {
             owner.resetExcluded(petid);
             CashIdGenerator.freeCashId(petid);
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -121,7 +125,7 @@ public class Pet extends Item {
             ps.setInt(7, getUniqueId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -134,7 +138,7 @@ public class Pet extends Item {
             ps.executeUpdate();
             return ret;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return -1;
         }
     }
@@ -151,7 +155,7 @@ public class Pet extends Item {
             ps.executeUpdate();
             return ret;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return -1;
         }
     }

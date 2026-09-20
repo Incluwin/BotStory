@@ -29,16 +29,15 @@ function action(mode, type, selection) {
     status++;
     if (mode != 1) {
         if (mode == 0) {
-            cm.sendNext("If you wish to experience what it's like to be a Bowman, come see me again.");
+            cm.sendNext("If you wish to visit Henesys, the home of the Bowmen, come see me again.");
         }
         cm.dispose();
         return;
     }
     if (status == 0) {
-        cm.sendYesNo("Would you like to experience what it's like to be a Bowman?");
+        cm.sendYesNo("Would you like me to send you to #bHenesys#k, the home of the Bowmen? You can meet me there, in the flesh.");
     } else if (status == 1) {
-        cm.lockUI();
-        cm.warp(1020300, 0);
+        cm.warp(100000000, 0);
         cm.dispose();
     }
 }

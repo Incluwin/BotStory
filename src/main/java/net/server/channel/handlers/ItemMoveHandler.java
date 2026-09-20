@@ -21,8 +21,12 @@
 */
 package net.server.channel.handlers;
 
+import client.Character;
 import client.Client;
+import client.inventory.EvolvingRing;
+import client.inventory.Inventory;
 import client.inventory.InventoryType;
+import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
@@ -45,6 +49,16 @@ public final class ItemMoveHandler extends AbstractPacketHandler {
         short action = p.readShort();
         short quantity = p.readShort();
 
+        // Locked rings (Quest Ring + Evolving Ring chain) cannot be unequipped, dropped, or moved.
+        // The unequip path is the only one a normal player can hit (src < 0 means EQUIPPED slot),
+        // but we also guard drop/move so a packet edit can't dislodge them. Equip-into a locked
+        // slot from inventory is impossible anyway because the rings are never in EQUIP — they
+        // live exclusively in EQUIPPED from character creation onward.
+        if (isLockedEquippedItem(c, type, src) || isLockedEquippedItem(c, InventoryType.EQUIPPED, src)) {
+            c.sendPacket(PacketCreator.enableActions());
+            return;
+        }
+
         if (src < 0 && action > 0) {
             InventoryManipulator.unequip(c, src, action);
         } else if (action < 0) {
@@ -56,5 +70,22 @@ public final class ItemMoveHandler extends AbstractPacketHandler {
         }
 
         c.getPlayer().getAutobanManager().spam(6);
+    }
+
+    /**
+     * True if `src` references a slot in the EQUIPPED inventory that holds a locked item
+     * (Quest Ring, Hunter's Codex monster-book medal, or any Evolving Ring chain entry).
+     * Cheap reject — only does inventory lookups when src is in the equipped negative-slot range.
+     */
+    private static boolean isLockedEquippedItem(Client c, InventoryType type, short src) {
+        if (src >= 0) return false;
+        if (type != InventoryType.EQUIPPED) return false;
+        Inventory inv = c.getPlayer().getInventory(InventoryType.EQUIPPED);
+        Item it = inv.getItem(src);
+        if (it == null) return false;
+        int id = it.getItemId();
+        return id == Character.QUEST_RING_ID
+                || id == Character.MONSTER_BOOK_MEDAL_ID
+                || EvolvingRing.isChainRing(id);
     }
 }

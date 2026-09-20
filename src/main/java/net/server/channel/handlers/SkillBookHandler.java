@@ -89,6 +89,8 @@ public final class SkillBookHandler extends AbstractPacketHandler {
                         success = false;
                         //player.dropMessage("The skill book lights up, but the skill winds up as if nothing happened.");
                     }
+                    // Book is consumed regardless of success roll; persist so a rollback can't restore the book.
+                    player.saveCharToDB();
                 } else {
                     canuse = false;
                 }

@@ -35,10 +35,16 @@ function enter(pi) {
         } else {
             var eli = em.getEligibleParty(pi.getParty());
             if (eli.size() > 0) {
+                var over = pi.firstPartyMemberOverBossCap("PAPULATUS");
+                if (over != null) {
+                    pi.playerMessage(5, over + " has reached the daily Papulatus entry limit. Try again tomorrow.");
+                    return false;
+                }
                 if (!em.startInstance(pi.getParty(), pi.getPlayer().getMap(), 1)) {
                     pi.playerMessage(5, "The battle against the boss has already begun, so you may not enter this place yet.");
                     return false;
                 }
+                pi.logPartyBossAttempt("PAPULATUS");
             } else {  //this should never appear
                 pi.playerMessage(5, "You cannot start this battle yet, because either your party is not in the range size, some of your party members are not eligible to attempt it or they are not in this map. If you're having trouble finding party members, try Party Search.");
                 return false;

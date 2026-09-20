@@ -1,0 +1,459 @@
+# Set-effects configuration. Loaded by server.set.SetItemManager on startup.
+#
+# Thresholds are cumulative: a player at 3pc gets 2pc bonus + 3pc bonus.
+# 'allStats' applies to each of STR / DEX / INT / LUK simultaneously.
+#
+# Tier 4 Timeless (L120) numbers verbatim from PLAN.md; KuroMS-mirror.
+# Reverse items are listed as set members because they count toward the same Timeless set
+# (Reverse is a cosmetic/color variant in KMS canon).
+#
+# Currently wired to combat math: allStats / watk / matk / hp / mp.
+# Recorded but not yet applied: wdef / mdef / acc / avoid / speed / jump / bossDamagePct / finalDamagePct.
+# (v83 handles these client-side; adding them needs a combat-path hook.)
+
+sets:
+  - id: TIMELESS_WARRIOR
+    name: Timeless Warrior
+    jobs: [WARRIOR]
+    members:
+      # Timeless armor
+      - 1002776   # Timeless Fennel (hat)
+      - 1052155   # Timeless Taragon (overall)
+      - 1082234   # Timeless Bergamot (gloves)
+      - 1072355   # Timeless Grabbe (shoes)
+      - 1092058   # Timeless Kite Shield
+      - 1102172   # Timeless Moonlight cape (shared across warrior/magician/archer/thief)
+      # Timeless weapons (alternatives, equip at most one)
+      - 1402046   # Timeless Nibleheim
+      - 1312037   # Timeless Bardiche
+      - 1302081   # Timeless Executioners
+      - 1322060   # Timeless Allargando
+      # Reverse equivalents (same set)
+      - 1002790   # Reverse hat (warrior)
+      - 1052160   # Reverse overall (warrior)
+      - 1082239   # Reverse gloves (warrior)
+      - 1072361   # Reverse shoes (warrior)
+      - 1302086   # Reverse Executioners
+      - 1312038   # Reverse Bardiche
+      - 1322061   # Reverse Allargando
+      - 1402047   # Reverse Nibleheim
+      - 1412033   # Timeless Tabarzin (2h axe)
+      - 1412034   # Reverse Tabarzin
+      - 1422037   # Timeless Bellocce (2h blunt)
+      - 1422038   # Reverse Bellocce
+      - 1432047   # Timeless Alchupiz (spear)
+      - 1432049   # Reverse Alchupiz
+      - 1442063   # Timeless Diesra (polearm)
+      - 1442067   # Reverse Diesra
+    bonuses:
+      - { pieces: 2, allStats: 15, watk: 5,  matk: 5,  wdef: 50, acc: 10, avoid: 10 }
+      - { pieces: 3, allStats: 10,                    wdef: 50, acc: 5,  avoid: 5  }
+      - { pieces: 4,              watk: 12, matk: 12, wdef: 25 }
+      - { pieces: 5, allStats: 25,                              acc: 10, avoid: 10 }
+      - { pieces: 6, allStats: 10, watk: 16, matk: 16,          acc: 15, avoid: 15, bossDamagePct: 10 }
+      - { pieces: 7,              watk: 22, matk: 22, wdef: 25, speed: 10, jump: 10 }
+
+  - id: TIMELESS_MAGICIAN
+    name: Timeless Magician
+    jobs: [MAGICIAN]
+    members:
+      - 1002777   # Timeless Coral (hat)
+      - 1052156   # Timeless Myst Blue (overall)
+      - 1082235   # Timeless Hermosa (gloves)
+      - 1072356   # Timeless Cabatina (shoes)
+      - 1092057   # Timeless Prelude shield
+      - 1102172   # Timeless Moonlight cape (shared)
+      - 1372044   # Timeless Enreal Tear (wand)
+      - 1382057   # Timeless Aeas Hand (staff)
+      # Reverse equivalents
+      - 1002791   # Reverse hat (magician)
+      - 1052161   # Reverse overall (magician)
+      - 1082240   # Reverse gloves (magician)
+      - 1072362   # Reverse shoes (magician)
+      - 1372045   # Reverse wand
+      - 1382059   # Reverse staff
+    bonuses:
+      - { pieces: 2, allStats: 15, watk: 5,  matk: 5,  wdef: 50, acc: 10, avoid: 10 }
+      - { pieces: 3, allStats: 10,                    wdef: 50, acc: 5,  avoid: 5  }
+      - { pieces: 4,              watk: 12, matk: 12, wdef: 25 }
+      - { pieces: 5, allStats: 25,                              acc: 10, avoid: 10 }
+      - { pieces: 6, allStats: 10, watk: 16, matk: 16,          acc: 15, avoid: 15, bossDamagePct: 10 }
+      - { pieces: 7,              watk: 22, matk: 22, wdef: 25, speed: 10, jump: 10 }
+
+  - id: TIMELESS_ARCHER
+    name: Timeless Archer
+    jobs: [BOWMAN]
+    members:
+      - 1002778   # Timeless Rapido (hat)
+      - 1052157   # Timeless Evernew (overall)
+      - 1082236   # Timeless Presto (gloves)
+      - 1072357   # Timeless Rontano (shoes)
+      - 1032031   # Timeless Earrings (shared with pirate)
+      - 1102172   # Timeless Moonlight cape (shared)
+      # Reverse equivalents
+      - 1002792   # Reverse hat (archer)
+      - 1052162   # Reverse overall (archer)
+      - 1082241   # Reverse gloves (archer)
+      - 1072363   # Reverse shoes (archer)
+      - 1452057   # Timeless Engaw (bow)
+      - 1452059   # Reverse Engaw
+      - 1462050   # Timeless Black Beauty (crossbow)
+      - 1462051   # Reverse Black Beauty
+    bonuses:
+      - { pieces: 2, allStats: 15, watk: 5,  matk: 5,  wdef: 50, acc: 10, avoid: 10 }
+      - { pieces: 3, allStats: 10,                    wdef: 50, acc: 5,  avoid: 5  }
+      - { pieces: 4,              watk: 12, matk: 12, wdef: 25 }
+      - { pieces: 5, allStats: 25,                              acc: 10, avoid: 10 }
+      - { pieces: 6, allStats: 10, watk: 16, matk: 16,          acc: 15, avoid: 15, bossDamagePct: 10 }
+      - { pieces: 7,              watk: 22, matk: 22, wdef: 25, speed: 10, jump: 10 }
+
+  - id: TIMELESS_THIEF
+    name: Timeless Thief
+    jobs: [THIEF]
+    members:
+      - 1002779   # Timeless Chive (hat)
+      - 1052158   # Timeless Prinsid (overall)
+      - 1082237   # Timeless Lubav (gloves)
+      - 1072358   # Timeless Moonsteed (shoes)
+      - 1092059   # Timeless List shield
+      - 1102172   # Timeless Moonlight cape (shared)
+      - 1332073   # Timeless Pescas (dagger)
+      - 1332074   # Timeless Killic (dagger)
+      # Reverse equivalents
+      - 1002793   # Reverse hat (thief)
+      - 1052163   # Reverse overall (thief)
+      - 1082242   # Reverse gloves (thief)
+      - 1072364   # Reverse shoes (thief)
+      - 1332075   # Reverse Pescas
+      - 1332076   # Reverse Killic
+      - 1472068   # Timeless Lampion (claw)
+      - 1472071   # Reverse Lampion
+    bonuses:
+      - { pieces: 2, allStats: 15, watk: 5,  matk: 5,  wdef: 50, acc: 10, avoid: 10 }
+      - { pieces: 3, allStats: 10,                    wdef: 50, acc: 5,  avoid: 5  }
+      - { pieces: 4,              watk: 12, matk: 12, wdef: 25 }
+      - { pieces: 5, allStats: 25,                              acc: 10, avoid: 10 }
+      - { pieces: 6, allStats: 10, watk: 16, matk: 16,          acc: 15, avoid: 15, bossDamagePct: 10 }
+      - { pieces: 7,              watk: 22, matk: 22, wdef: 25, speed: 10, jump: 10 }
+
+  - id: TIMELESS_PIRATE
+    name: Timeless Pirate
+    jobs: [PIRATE]
+    members:
+      - 1002780   # Timeless Conrad Henkel (hat)
+      - 1052159   # Timeless Burgunt (overall)
+      - 1082238   # Timeless Charlston (gloves)
+      - 1072359   # Timeless Faraon (shoes)
+      - 1032031   # Timeless Earrings (shared with archer)
+      - 1122012   # Timeless Pendant
+      # Reverse equivalents
+      - 1002794   # Reverse hat (pirate)
+      - 1052164   # Reverse overall (pirate)
+      - 1082243   # Reverse gloves (pirate)
+      - 1072365   # Reverse shoes (pirate)
+      - 1482023   # Timeless Equinox (knuckle)
+      - 1482024   # Reverse Equinox
+      - 1492023   # Timeless Blindness (gun)
+      - 1492025   # Reverse Blindness
+    bonuses:
+      - { pieces: 2, allStats: 15, watk: 5,  matk: 5,  wdef: 50, acc: 10, avoid: 10 }
+      - { pieces: 3, allStats: 10,                    wdef: 50, acc: 5,  avoid: 5  }
+      - { pieces: 4,              watk: 12, matk: 12, wdef: 25 }
+      - { pieces: 5, allStats: 25,                              acc: 10, avoid: 10 }
+      - { pieces: 6, allStats: 10, watk: 16, matk: 16,          acc: 15, avoid: 15, bossDamagePct: 10 }
+      - { pieces: 7,              watk: 22, matk: 22, wdef: 25, speed: 10, jump: 10 }
+
+  # ---------------------------------------------------------------------------
+  # Tier 3 Veteran (L80-110) - 6 pieces, +25 all stats / +8 WA / +10 MA / +100 DEF ceiling.
+  # HP/MP at 3pc routes by class (warrior/archer/thief/pirate: HP; magician: MP).
+  # Some slots for magician/archer/thief cape-or-hat are pending repack audit; the
+  # framework handles partial coverage (player still gets the lower-piece bonuses).
+  # ---------------------------------------------------------------------------
+
+  - id: VETERAN_WARRIOR
+    name: Warrior Veteran
+    jobs: [WARRIOR]
+    members:
+      - 1002551   # Blue Dragon Helmet
+      - 1052075   # Blue Dragon Armor
+      - 1082168   # Blue Dragon Gauntlet
+      - 1072273   # Blue Dragon Boots
+      - 1092060   # Blue Dragon Shield
+      - 1102031   # Green Giles Cape (any color counts)
+      - 1102032   # Purple Giles Cape
+      - 1102033   # Red Giles Cape
+      - 1412026   # Dragon Battle Axe (weapon alt)
+      - 1422028   # Dragon Flame (weapon alt)
+    bonuses:
+      - { pieces: 2, allStats: 5, watk: 2, matk: 3, wdef: 20 }
+      - { pieces: 3, allStats: 5, watk: 2, matk: 2, wdef: 20, hp: 10 }
+      - { pieces: 4, allStats: 5, watk: 1, matk: 1, wdef: 20, acc: 5 }
+      - { pieces: 5, allStats: 5, watk: 2, matk: 2, wdef: 20 }
+      - { pieces: 6, allStats: 5, watk: 1, matk: 2, wdef: 20, avoid: 5 }
+
+  - id: VETERAN_MAGICIAN
+    name: Magician Veteran
+    jobs: [MAGICIAN]
+    members:
+      - 1002773   # Gold Dragon Crown
+      - 1052076   # Blue Czar
+      - 1102031   # Green Giles Cape
+      - 1102032   # Purple Giles Cape
+      - 1102033   # Red Giles Cape
+      - 1372032   # Dragon Wand (weapon alt)
+      - 1382036   # Dragon Staff (weapon alt)
+      - 1082151   # Green Ciara (gloves)
+      - 1082152   # Blue Ciara
+      - 1082153   # Red Ciara
+      - 1082154   # Purple Ciara
+      - 1082164   # Blue Elemental Gloves
+      - 1072223   # Green Varr Shoes
+      - 1072224   # Blue Varr Shoes
+      - 1072225   # Red Varr Shoes
+      - 1072226   # Dark Varr Shoes
+      - 1072268   # Blue Elemental Shoes
+    bonuses:
+      - { pieces: 2, allStats: 5, watk: 2, matk: 3, wdef: 20 }
+      - { pieces: 3, allStats: 5, watk: 2, matk: 2, wdef: 20, mp: 10 }
+      - { pieces: 4, allStats: 5, watk: 1, matk: 1, wdef: 20, acc: 5 }
+      - { pieces: 5, allStats: 5, watk: 2, matk: 2, wdef: 20 }
+      - { pieces: 6, allStats: 5, watk: 1, matk: 2, wdef: 20, avoid: 5 }
+
+  - id: VETERAN_ARCHER
+    name: Archer Veteran
+    jobs: [BOWMAN]
+    members:
+      - 1052071   # Red Mantle (overall)
+      - 1102031   # Green Giles Cape
+      - 1102032   # Purple Giles Cape
+      - 1102033   # Red Giles Cape
+      - 1452044   # Dragon Shiner Bow (weapon alt)
+      - 1462039   # Dragon Shiner Cross (weapon alt)
+      - 1002547   # Red Hunter (hat)
+      - 1082163   # Red Hunter Gloves
+      - 1072269   # Red Hunter Shoes
+    bonuses:
+      - { pieces: 2, allStats: 5, watk: 2, matk: 3, wdef: 20 }
+      - { pieces: 3, allStats: 5, watk: 2, matk: 2, wdef: 20, hp: 10 }
+      - { pieces: 4, allStats: 5, watk: 1, matk: 1, wdef: 20, acc: 5 }
+      - { pieces: 5, allStats: 5, watk: 2, matk: 2, wdef: 20 }
+      - { pieces: 6, allStats: 5, watk: 1, matk: 2, wdef: 20, avoid: 5 }
+
+  - id: VETERAN_THIEF
+    name: Thief Veteran
+    jobs: [THIEF]
+    members:
+      - 1002550   # Black Garina Hood
+      - 1102031   # Green Giles Cape
+      - 1102032   # Purple Giles Cape
+      - 1102033   # Red Giles Cape
+      - 1332049   # Dragon Kanzir (weapon alt)
+      - 1332050   # Dragon Kreda (weapon alt)
+      - 1052072   # Black Garina (overall)
+      - 1082167   # Black Garina Gloves
+      - 1072272   # Black Garina Shoes
+    bonuses:
+      - { pieces: 2, allStats: 5, watk: 2, matk: 3, wdef: 20 }
+      - { pieces: 3, allStats: 5, watk: 2, matk: 2, wdef: 20, hp: 10 }
+      - { pieces: 4, allStats: 5, watk: 1, matk: 1, wdef: 20, acc: 5 }
+      - { pieces: 5, allStats: 5, watk: 2, matk: 2, wdef: 20 }
+      - { pieces: 6, allStats: 5, watk: 1, matk: 2, wdef: 20, avoid: 5 }
+
+  - id: VETERAN_PIRATE
+    name: Pirate Veteran
+    jobs: [PIRATE]
+    members:
+      - 1002649   # Canopus Hat
+      - 1052134   # Canopus Suit
+      - 1082216   # Canopus Glove
+      - 1072321   # Canopus Boots
+      - 1102031   # Green Giles Cape
+      - 1102032   # Purple Giles Cape
+      - 1102033   # Red Giles Cape
+      - 1482013   # Dragon Slash Claw (weapon alt)
+      - 1492013   # Dragonfire Revolver (weapon alt)
+    bonuses:
+      - { pieces: 2, allStats: 5, watk: 2, matk: 3, wdef: 20 }
+      - { pieces: 3, allStats: 5, watk: 2, matk: 2, wdef: 20, hp: 10 }
+      - { pieces: 4, allStats: 5, watk: 1, matk: 1, wdef: 20, acc: 5 }
+      - { pieces: 5, allStats: 5, watk: 2, matk: 2, wdef: 20 }
+      - { pieces: 6, allStats: 5, watk: 1, matk: 2, wdef: 20, avoid: 5 }
+
+  # ---------------------------------------------------------------------------
+  # Tier 2 Adventurer (L40-70) - 5 pieces, +10 all stats / +2 WA / +3 MA ceiling.
+  # HP/MP at 5pc routes by class. Several weapon/overall slots pending audit.
+  # ---------------------------------------------------------------------------
+
+  - id: ADVENTURER_WARRIOR
+    name: Warrior Adventurer
+    jobs: [WARRIOR]
+    members:
+      - 1002030   # Silver Planet (hat)
+      - 1082103   # Bronze Husk (gloves)
+      - 1072154   # Blue Carzen Boots
+      - 1040090   # Wild Armor (top)
+      - 1060079   # Wild Skirt (pants)
+      - 1302012   # Red Katana (1h sword)
+      - 1312010   # Mikhail (1h axe)
+      - 1322019   # The Judgement (1h blunt)
+      - 1402012   # Doombringer (2h sword)
+      - 1412010   # Colonian Axe (2h axe)
+      - 1422010   # Gigantic Sledge (2h blunt)
+      - 1432012   # Maple Impaler (spear)
+      - 1442012   # Sky Snowboard (polearm)
+    bonuses:
+      - { pieces: 2, allStats: 3 }
+      - { pieces: 3, allStats: 2, watk: 1, matk: 2 }
+      - { pieces: 4, allStats: 3, wdef: 10 }
+      - { pieces: 5, allStats: 2, watk: 1, matk: 1, hp: 15, acc: 3, avoid: 3 }
+
+  - id: ADVENTURER_MAGICIAN
+    name: Magician Adventurer
+    jobs: [MAGICIAN]
+    members:
+      - 1002253   # Blue Infinium Circlet
+      - 1050067   # Blue Requiem (overall)
+      - 1082099   # Blue Lorin (gloves)
+      - 1072136   # L60 mage shoes (alt)
+      - 1072157   # L70 mage shoes (alt)
+      - 1372015   # Angel Wings (wand)
+      - 1382007   # Evil Wings (staff)
+    bonuses:
+      - { pieces: 2, allStats: 3 }
+      - { pieces: 3, allStats: 2, watk: 1, matk: 2 }
+      - { pieces: 4, allStats: 3, wdef: 10 }
+      - { pieces: 5, allStats: 2, watk: 1, matk: 1, mp: 15, acc: 3, avoid: 3 }
+
+  - id: ADVENTURER_ARCHER
+    name: Archer Adventurer
+    jobs: [BOWMAN]
+    members:
+      - 1002287   # Beige Patriot
+      - 1050062   # Beige Linnex (overall)
+      - 1082106   # Blue Eyes (gloves)
+      - 1072164   # Blue Elf Shoes
+      - 1452009   # Red Hinkel (bow)
+      - 1452010   # Blue Hinkel (bow alt)
+      - 1452011   # Golden Hinkel (bow alt)
+      - 1462009   # Gross Jaeger (crossbow)
+    bonuses:
+      - { pieces: 2, allStats: 3 }
+      - { pieces: 3, allStats: 2, watk: 1, matk: 2 }
+      - { pieces: 4, allStats: 3, wdef: 10 }
+      - { pieces: 5, allStats: 2, watk: 1, matk: 1, hp: 15, acc: 3, avoid: 3 }
+
+  - id: ADVENTURER_THIEF
+    name: Thief Adventurer
+    jobs: [THIEF]
+    members:
+      - 1002282   # Blue Nightfox (hat)
+      - 1082096   # Silver Rover (gloves)
+      - 1041101   # Blue Mystique (top)
+      - 1060087   # L60 thief pants (alt)
+      - 1072150   # L60 thief shoes (alt)
+      - 1072161   # L70 thief shoes (alt)
+      - 1332018   # Kandine (dagger)
+      - 1472023   # Blood Gigantic (claw)
+      - 1472024   # Sapphire Gigantic (claw alt)
+      - 1472025   # Dark Gigantic (claw alt)
+    bonuses:
+      - { pieces: 2, allStats: 3 }
+      - { pieces: 3, allStats: 2, watk: 1, matk: 2 }
+      - { pieces: 4, allStats: 3, wdef: 10 }
+      - { pieces: 5, allStats: 2, watk: 1, matk: 1, hp: 15, acc: 3, avoid: 3 }
+
+  - id: ADVENTURER_PIRATE
+    name: Pirate Adventurer
+    jobs: [PIRATE]
+    members:
+      - 1052122   # Red Viska (overall)
+      - 1082204   # Black Bisk (gloves)
+      - 1072309   # Black Voyson Shoes
+      - 1002634   # Purple Cast Linen (hat)
+      - 1002637   # Black Pirate's Bandana (hat alt)
+      - 1482009   # Beia Crash (knuckle)
+      - 1492009   # Abyss Shooter (gun)
+    bonuses:
+      - { pieces: 2, allStats: 3 }
+      - { pieces: 3, allStats: 2, watk: 1, matk: 2 }
+      - { pieces: 4, allStats: 3, wdef: 10 }
+      - { pieces: 5, allStats: 2, watk: 1, matk: 1, hp: 15, acc: 3, avoid: 3 }
+
+  # ---------------------------------------------------------------------------
+  # Tier 1 Starter (L10-30) - 4 pieces, +4 all stats / +1 WA or MA ceiling.
+  # HP/MP at 3pc and 4pc routes by class; WA vs MA at 4pc also routes by class
+  # (warriors/thieves/pirates/archers: WA; magicians: MA).
+  # ---------------------------------------------------------------------------
+
+  - id: STARTER_WARRIOR
+    name: Warrior Starter
+    jobs: [WARRIOR]
+    members:
+      - 1002005   # Iron Burgernet Helm
+      - 1082005   # Steel Missel (gloves; 1082005 family)
+      - 1072039   # Mithril Battle Grieves
+      - 1040009   # Steel Corporal (top)
+      - 1060009   # Steel Corporal Pants
+    bonuses:
+      - { pieces: 2, allStats: 1 }
+      - { pieces: 3, allStats: 1, hp: 5 }
+      - { pieces: 4, allStats: 2, hp: 10, watk: 1, wdef: 2 }
+
+  - id: STARTER_MAGICIAN
+    name: Magician Starter
+    jobs: [MAGICIAN]
+    members:
+      - 1002034   # Blue Jester (hat alt)
+      - 1002035   # Pink Jester (hat alt)
+      - 1050018   # Blue Sauna Robe (overall)
+      - 1082052   # Blue Lutia (gloves)
+      - 1072076   # Blue Magicshoes
+    bonuses:
+      - { pieces: 2, allStats: 1 }
+      - { pieces: 3, allStats: 1, mp: 5 }
+      - { pieces: 4, allStats: 2, mp: 10, matk: 1, wdef: 2 }
+
+  - id: STARTER_ARCHER
+    name: Archer Starter
+    jobs: [BOWMAN]
+    members:
+      - 1002162   # Blue Hawkeye (hat)
+      - 1082049   # Green Marker (gloves)
+      - 1072080   # Blue Hunter Boots
+      - 1040008   # Brown Archer Top
+      - 1060056   # Green Hunter's Pants
+    bonuses:
+      - { pieces: 2, allStats: 1 }
+      - { pieces: 3, allStats: 1, hp: 5 }
+      - { pieces: 4, allStats: 2, hp: 10, watk: 1, wdef: 2 }
+
+  - id: STARTER_THIEF
+    name: Thief Starter
+    jobs: [THIEF]
+    members:
+      - 1002172   # Blue Guise (hat)
+      - 1082043   # Silver Sylvia (gloves)
+      - 1072035   # Silver Chain Boots
+      - 1040031   # Blue Cloth Vest (top)
+      - 1060021   # Blue Cloth Pants
+    bonuses:
+      - { pieces: 2, allStats: 1 }
+      - { pieces: 3, allStats: 1, hp: 5 }
+      - { pieces: 4, allStats: 2, hp: 10, watk: 1, wdef: 2 }
+
+  - id: STARTER_PIRATE
+    name: Pirate Starter
+    jobs: [PIRATE]
+    members:
+      # NOTE: PLAN.md originally listed 1040003/1062002 as pirate gear, but
+      # they are actually archer (reqJob=4). Pirate L10-30 uses overalls.
+      - 1002619   # Brown Pitz Bandana (hat)
+      - 1052095   # Brown Rocky Suit (overall)
+      - 1052098   # Brown Cotton Lagger (overall alt)
+      - 1052101   # Beige Carribean (overall alt)
+      - 1082186   # Hard Leather Glove
+      - 1072294   # Brown Paulie Boots
+    bonuses:
+      - { pieces: 2, allStats: 1 }
+      - { pieces: 3, allStats: 1, hp: 5 }
+      - { pieces: 4, allStats: 2, hp: 10, watk: 1, wdef: 2 }

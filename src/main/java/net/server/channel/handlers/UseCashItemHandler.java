@@ -38,6 +38,7 @@ import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.ModifyInventory;
 import client.inventory.Pet;
+import client.inventory.WeaponType;
 import client.inventory.manipulator.InventoryManipulator;
 import client.inventory.manipulator.KarmaManipulator;
 import client.processor.npc.DueyProcessor;
@@ -69,6 +70,7 @@ import tools.PacketCreator;
 import tools.Pair;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -128,7 +130,10 @@ public final class UseCashItemHandler extends AbstractPacketHandler {
         if (itemType == 504) { // vip teleport rock
             String error1 = "Either the player could not be found or you were trying to teleport to an illegal location.";
             boolean vip = p.readByte() == 1 && itemId / 1000 >= 5041;
-            remove(c, position, itemId);
+            boolean permanent = (itemId == 5041000); // Hyper Teleport Rock — never consumed
+            if (!permanent) {
+                remove(c, position, itemId);
+            }
             boolean success = false;
             if (!vip) {
                 int mapId = p.readInt();
@@ -164,8 +169,10 @@ public final class UseCashItemHandler extends AbstractPacketHandler {
                 }
             }
 
-            if (!success) {
+            if (!success && !permanent) {
                 InventoryManipulator.addById(c, itemId, (short) 1);
+                c.sendPacket(PacketCreator.enableActions());
+            } else if (!success) {
                 c.sendPacket(PacketCreator.enableActions());
             }
         } else if (itemType == 505) { // AP/SP reset
@@ -627,6 +634,43 @@ public final class UseCashItemHandler extends AbstractPacketHandler {
 
                 client.sendPacket(PacketCreator.enableActions());
             }, SECONDS.toMillis(3));
+        } else if (itemId == 5900000) { // Fusion Anvil — kaentake client; packet body order: skinPos (left/APPEARANCE slot), basePos (right/FUNCTION slot)
+            short skinPos = p.readShort();
+            short basePos = p.readShort();
+
+            InventoryType baseInv = basePos < 0 ? InventoryType.EQUIPPED : InventoryType.EQUIP;
+            InventoryType skinInv = skinPos < 0 ? InventoryType.EQUIPPED : InventoryType.EQUIP;
+            Item baseItem = player.getInventory(baseInv).getItem(basePos);
+            Item skinItem = player.getInventory(skinInv).getItem(skinPos);
+            if (!(baseItem instanceof Equip) || !(skinItem instanceof Equip) || baseItem == skinItem) {
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+            Equip base = (Equip) baseItem;
+            Equip skin = (Equip) skinItem;
+
+            // Mirror CUIFusionAnvil::PutItem validation: same body-part category,
+            // and if a weapon, same weapon type (one-handed can't skin a two-handed).
+            if (base.getItemId() / 10000 != skin.getItemId() / 10000) {
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+            WeaponType baseWeapon = ii.getWeaponType(base.getItemId());
+            if (baseWeapon != WeaponType.NOT_A_WEAPON
+                    && baseWeapon != ii.getWeaponType(skin.getItemId())) {
+                c.sendPacket(PacketCreator.enableActions());
+                return;
+            }
+
+            base.setAnvilItemId(skin.getItemId());
+            remove(c, position, itemId); // consume the anvil
+            InventoryManipulator.removeFromSlot(c, skinInv, skinPos, (short) 1, false); // consume the skin
+            List<ModifyInventory> baseMods = new ArrayList<>(2);
+            baseMods.add(new ModifyInventory(3, base)); // drop stale client entry
+            baseMods.add(new ModifyInventory(0, base)); // re-add so client parses anvilItemId extra int
+            c.sendPacket(PacketCreator.modifyInventory(true, baseMods));
+            player.equipChanged(); // rebroadcast avatar so others see the transmog
+            c.sendPacket(PacketCreator.enableActions());
         } else {
             log.warn("NEW CASH ITEM TYPE: {}, packet: {}", itemType, p);
             c.sendPacket(PacketCreator.enableActions());

@@ -230,7 +230,7 @@ public final class Channel {
         closeChannelServices();
     }
 
-    private void closeAllMerchants() {
+    public void closeAllMerchants() {
         try {
             List<HiredMerchant> merchs;
 
@@ -246,7 +246,7 @@ public final class Channel {
                 merch.forceClose();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -458,7 +458,7 @@ public final class Channel {
             }
         } catch (IOException e) {
             log.warn("Unable to load events !");
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
         return events.toArray(new String[0]);
     }

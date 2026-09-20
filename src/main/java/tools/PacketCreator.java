@@ -123,11 +123,15 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Frz
  */
 public class PacketCreator {
+    private static final Logger log = LoggerFactory.getLogger(PacketCreator.class);
+
 
     public static final List<Pair<Stat, Integer>> EMPTY_STATUPDATE = Collections.emptyList();
     private final static long FT_UT_OFFSET = 116444736010800000L + (10000L * TimeZone.getDefault().getOffset(System.currentTimeMillis())); // normalize with timezone offset suggested by Ari
@@ -302,12 +306,27 @@ public class PacketCreator {
         Collection<Item> ii = ItemInformationProvider.getInstance().canWearEquipment(chr, equip.list());
         Map<Short, Integer> myEquip = new LinkedHashMap<>();
         Map<Short, Integer> maskedEquip = new LinkedHashMap<>();
+        // Hunter's Codex special case: it lives at -149 (cash medal slot) but has
+        // no avatar layer, and the v83 client reads the medal title off myEquip[49].
+        // If a real medal occupies -49, we want THAT to be the visible title — so
+        // pre-check and force the title-priority result regardless of iteration order.
+        Item codexAt149 = equip.getItem((short) -149);
+        Item realMedalAt49 = equip.getItem((short) -49);
+        boolean suppressCodex = codexAt149 != null && realMedalAt49 != null
+                && codexAt149.getItemId() == client.Character.MONSTER_BOOK_MEDAL_ID;
+
         for (Item item : ii) {
-            short pos = (byte) (item.getPosition() * -1);
+            // (short) cast, not (byte): cash medal slot -149 (and any cash slot beyond
+            // -127) overflows a signed byte to a negative value and skips the cash branch.
+            short pos = (short) (item.getPosition() * -1);
             if (pos < 100 && myEquip.get(pos) == null) {
                 myEquip.put(pos, item.getItemId());
             } else if (pos > 100 && pos != 111) { // don't ask. o.o
                 pos -= 100;
+                if (suppressCodex && item.getItemId() == client.Character.MONSTER_BOOK_MEDAL_ID) {
+                    maskedEquip.put(pos, item.getItemId());
+                    continue;
+                }
                 if (myEquip.get(pos) != null) {
                     maskedEquip.put(pos, myEquip.get(pos));
                 }
@@ -488,6 +507,7 @@ public class PacketCreator {
         }
         p.writeLong(getTime(-2));
         p.writeInt(-1);
+        p.writeInt(equip.getAnvilItemId()); // Fusion Anvil transmog — kaentake client reads this via GW_ItemSlotBase::Decode hook
 
     }
 
@@ -907,6 +927,14 @@ public class PacketCreator {
         List<Character> chars = c.loadCharacters(serverId);
         p.writeByte((byte) chars.size());
         for (Character chr : chars) {
+            if (chr == null) {
+                // loadCharacters swallows loadCharFromDB exceptions and keeps
+                // iterating, so a failed load lands here as a null entry.
+                // Writing an entry for it would NPE mid-packet and leave the
+                // client with a half-formed CHARLIST; skip instead.
+                log.warn("getCharList account={} skipping null character entry", c.getAccountName());
+                continue;
+            }
             addCharEntry(p, chr, false);
         }
 
@@ -5007,7 +5035,7 @@ public class PacketCreator {
                 addItemInfo(p, item.getLeft(), true);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
         p.skip(3);
         return p;
@@ -6759,7 +6787,8 @@ public class PacketCreator {
         p.writeByte(1); // direction ?
         p.writeInt(damage);
         p.writeInt(remainingHp);
-        p.writeInt(mob.getMaxHp());
+        // A linha abaixo foi alterada para travar o MaxHP no limite do cliente (int)
+        p.writeInt((int) Math.min(Integer.MAX_VALUE, mob.getMaxHp()));
         return p;
     }
 

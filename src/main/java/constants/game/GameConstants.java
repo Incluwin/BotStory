@@ -14,12 +14,16 @@ import server.quest.Quest;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*
  * @author kevintjuh93
  * @author Ronan
  */
 public class GameConstants {
+    private static final Logger log = LoggerFactory.getLogger(GameConstants.class);
+
     public static String[] WORLD_NAMES = {"Scania", "Bera", "Broa", "Windia", "Khaini", "Bellocan", "Mardia", "Kradia", "Yellonde", "Demethos", "Galicia", "El Nido", "Zenith", "Arcenia", "Kastia", "Judis", "Plana", "Kalluna", "Stius", "Croa", "Medere"};
     public static final String[] stats = {"tuc", "reqLevel", "reqJob", "reqSTR", "reqDEX", "reqINT", "reqLUK", "reqPOP", "cash", "cursed", "success", "setItemID", "equipTradeBlock", "durability", "randOption", "randStat", "masterLevel", "reqSkillLevel", "elemDefault", "incRMAS", "incRMAF", "incRMAI", "incRMAL", "canLevel", "skill", "charmEXP"};
     public static final int[] CASH_DATA = new int[]{50200004, 50200069, 50200117, 50100008, 50000047};
@@ -275,10 +279,17 @@ public class GameConstants {
     private static final int[] DEFAULT_TYPE = {4, 6, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 4, 4, 5, 6, 6, 6, 6, 6, 6, 5, 4, 5, 4, 4, 4, 4, 4};
     private static final int[] DEFAULT_ACTION = {0, 106, 10, 1, 12, 13, 18, 24, 8, 5, 4, 19, 14, 15, 2, 17, 11, 3, 20, 16, 9, 50, 51, 6, 7, 53, 100, 101, 102, 103, 104, 105, 54, 22, 52, 21, 25, 26, 23, 27};
 
-    // HeavenMS custom keyset
-    private static final int[] CUSTOM_KEY = {2, 3, 4, 5, 31, 56, 59, 32, 42, 6, 17, 29, 30, 41, 50, 60, 61, 62, 63, 64, 65, 16, 7, 9, 13, 8};
-    private static final int[] CUSTOM_TYPE = {4, 4, 4, 4, 5, 5, 6, 5, 5, 4, 4, 4, 5, 4, 4, 6, 6, 6, 6, 6, 6, 4, 4, 4, 4, 4};
-    private static final int[] CUSTOM_ACTION = {1, 0, 3, 2, 53, 54, 100, 52, 51, 19, 5, 9, 50, 7, 22, 101, 102, 103, 104, 105, 106, 8, 17, 26, 20, 4};
+    // Cosmic custom keyset — mirrors the "Reluctant" reference layout so
+    // new characters don't spend 5 minutes rearranging keys on login.
+    // Index-aligned triples; 4=menu, 5=game-action, 6=emote, 7=macro slot.
+    //   1..4 → Stats/Skills/Equip/Inventory
+    //   Q/W/P/\ → CharInfo/WorldMap/Quest/PartyChat
+    //   E → NPC chat; ` → sit; Z=jump, C=attack, B=pick up
+    //   F1..F7 → emotes; key 91/92 left as empty macro slots (preserves
+    //   the slot record so client-side rebinds stay stable after load).
+    private static final int[] CUSTOM_KEY    = {2, 3, 4,  5, 16, 17, 18, 25, 41, 43, 44, 46, 48, 59,  60,  61,  62,  63,  64,  65,  91, 92};
+    private static final int[] CUSTOM_TYPE   = {4, 4, 4,  4,  4,  4,  5,  4,  5,  4,  5,  5,  5,  6,   6,   6,   6,   6,   6,   6,   7,  7};
+    private static final int[] CUSTOM_ACTION = {2, 3, 0,  1,  8,  5, 54, 19, 51,  9, 53, 52, 50, 100, 101, 102, 103, 104, 105, 106,  0,  0};
 
     public static int[] getCustomKey(boolean customKeyset) {
         return (customKeyset ? CUSTOM_KEY : DEFAULT_KEY);
@@ -645,7 +656,7 @@ public class GameConstants {
         try {
             return nfParser.parse(value);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return 0.0f;
         }
     }

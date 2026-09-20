@@ -287,7 +287,7 @@ public class Shop {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
         return ret;
     }

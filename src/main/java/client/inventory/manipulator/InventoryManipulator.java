@@ -636,6 +636,7 @@ public class InventoryManipulator {
         }
         if (chr.getBuffedValue(BuffStat.BOOSTER) != null && ItemConstants.isWeapon(source.getItemId())) {
             chr.cancelBuffStats(BuffStat.BOOSTER);
+            chr.applyAllPassiveSkills();
         }
 
         mods.add(new ModifyInventory(2, source, src));

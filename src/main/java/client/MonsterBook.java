@@ -36,8 +36,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class MonsterBook {
+    private static final Logger log = LoggerFactory.getLogger(MonsterBook.class);
+
     private int specialCard = 0;
     private int normalCard = 0;
     private int bookLevel = 1;
@@ -82,6 +86,14 @@ public final class MonsterBook {
         if (qty < 5) {
             if (qty == 0) {     // leveling system only accounts unique cards
                 calculateLevel();
+            }
+            // Hunter's Codex score = card copies in tabs 5/6/7 (cardid prefix
+            // 2385–2387). Duplicates count up to the 5-per-card cap, so refresh
+            // on every successful add — but only when the new card is in-scope
+            // for the codex; cards from other tabs don't move the score.
+            int prefix = cardid / 1000;
+            if (prefix >= 2385 && prefix <= 2387) {
+                c.getPlayer().refreshMonsterBookMedal();
             }
 
             c.sendPacket(PacketCreator.addCard(false, cardid, qty + 1));
@@ -130,6 +142,30 @@ public final class MonsterBook {
         lock.lock();
         try {
             return specialCard + normalCard;
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * Sum of card-copy counts for cards whose tab prefix (cardid / 1000) falls in
+     * the inclusive range [loTab, hiTab]. Each card contributes 1..5 (the per-card
+     * cap), so the maximum return value is 5 * (number of cards in those tabs).
+     *
+     * Used by Hunter's Codex (Character.applyMonsterBookMedalBoost) to score
+     * progress against the cards-in-tab-5-through-7 milestone (60 cards × 5 = 300).
+     */
+    public int getCardCopiesInTabs(int loTab, int hiTab) {
+        lock.lock();
+        try {
+            int sum = 0;
+            for (Map.Entry<Integer, Integer> e : cards.entrySet()) {
+                int prefix = e.getKey() / 1000;
+                if (prefix >= loTab && prefix <= hiTab) {
+                    sum += e.getValue();
+                }
+            }
+            return sum;
         } finally {
             lock.unlock();
         }
@@ -218,7 +254,7 @@ public final class MonsterBook {
 
             return tierSizes;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return new int[0];
         }
     }

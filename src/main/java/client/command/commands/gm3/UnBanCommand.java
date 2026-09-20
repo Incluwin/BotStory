@@ -30,8 +30,12 @@ import tools.DatabaseConnection;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class UnBanCommand extends Command {
+    private static final Logger log = LoggerFactory.getLogger(UnBanCommand.class);
+
     {
         setDescription("Unban a player.");
     }
@@ -59,7 +63,7 @@ public class UnBanCommand extends Command {
                 p.executeUpdate();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             player.message("Failed to unban " + params[0]);
             return;
         }

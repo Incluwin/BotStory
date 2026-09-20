@@ -75302,7 +75302,7 @@
     <int name="Period" value="90"/>
     <int name="Priority" value="8"/>
     <int name="Gender" value="2"/>
-    <int name="OnSale" value="1"/>
+    <int name="OnSale" value="0"/>
     <int name="Class" value="2"/>
   </imgdir>
   <imgdir name="7355">
@@ -75313,7 +75313,7 @@
     <int name="Period" value="90"/>
     <int name="Priority" value="8"/>
     <int name="Gender" value="2"/>
-    <int name="OnSale" value="1"/>
+    <int name="OnSale" value="0"/>
     <int name="Class" value="2"/>
   </imgdir>
   <imgdir name="7356">
@@ -75345,7 +75345,7 @@
     <int name="Period" value="90"/>
     <int name="Priority" value="10"/>
     <int name="Gender" value="2"/>
-    <int name="OnSale" value="1"/>
+    <int name="OnSale" value="0"/>
     <int name="Class" value="2"/>
   </imgdir>
   <imgdir name="7359">
@@ -75356,7 +75356,7 @@
     <int name="Period" value="90"/>
     <int name="Priority" value="9"/>
     <int name="Gender" value="2"/>
-    <int name="OnSale" value="1"/>
+    <int name="OnSale" value="0"/>
     <int name="Class" value="2"/>
   </imgdir>
   <imgdir name="7360">
@@ -91670,5 +91670,15 @@
     <int name="Price" value="5800"/>
     <int name="Priority" value="7"/>
     <int name="SN" value="60001001"/>
+  </imgdir>
+  <imgdir name="8943">
+    <int name="Count" value="1"/>
+    <int name="Gender" value="2"/>
+    <int name="ItemId" value="5900000"/>
+    <int name="OnSale" value="1"/>
+    <int name="Period" value="0"/>
+    <int name="Price" value="1000"/>
+    <int name="Priority" value="5"/>
+    <int name="SN" value="99900001"/>
   </imgdir>
 </imgdir>

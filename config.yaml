@@ -4,14 +4,14 @@
 worlds:
     #Properties for Scania 0
   - flag: 0
-    server_message: Welcome to Scania!
+    server_message: ""
     event_message: Scania!
     why_am_i_recommended: Welcome to Scania!
     channels: 3
     exp_rate: 10
-    meso_rate: 10
-    drop_rate: 10
-    boss_drop_rate: 10                      #NOTE: Boss drop rate OVERRIDES common drop rate, for bosses-only.
+    meso_rate: 3
+    drop_rate: 3
+    boss_drop_rate: 3                       #NOTE: Boss drop rate OVERRIDES common drop rate, for bosses-only.
     quest_rate: 5                           #Multiplier for Exp & Meso gains when completing a quest. Only available when USE_QUEST_RATE is true. Stacks with server Exp & Meso rates.
     fishing_rate: 10                        #Multiplier for success likelihood on meso thrown during fishing.
     travel_rate: 10                         #Means of transportation rides/departs using 1/N of the default time.
@@ -159,9 +159,11 @@ worlds:
 
 server:
     #Database Configuration
-    DB_URL_FORMAT: "jdbc:mysql://%s:3306/cosmic" # If the docker ENV for DB_HOST is anything but "db", this string format should be changed from 3306 to 3307 (or whichever port it was changed to in docker) 
-    DB_HOST: "localhost" 
+    DB_URL_FORMAT: "jdbc:mysql://%s:3306/cosmic" # If the docker ENV for DB_HOST is anything but "db", this string format should be changed from 3306 to 3307 (or whichever port it was changed to in docker)
+    DB_HOST: "localhost"
     DB_USER: "root"
+    # Leave DB_PASS blank here and set it via the DB_PASS environment variable (or a local .env file loaded by start_all.bat / launch.bat).
+    # Committing a real password to this file ships it in the upstream repo. See .env.example at the FriendServer root.
     DB_PASS: ""
     INIT_CONNECTION_POOL_TIMEOUT: 90    # Seconds
 
@@ -172,14 +174,14 @@ server:
     CHANNEL_LOAD: 100                   #Max players per channel (limit actually used to calculate the World server capacity).
     CHANNEL_LOCKS: 20                   #Total number of structure management locks each channel has.
 
-    RESPAWN_INTERVAL: 10000             #10 seconds, 10000.
+    RESPAWN_INTERVAL: 2000              #2 seconds. Bumped from 10000 (vanilla) -> 3000 -> 2000 for denser mob respawn.
     PURGING_INTERVAL: 300000            #5 minutes, 300000.
     RANKING_INTERVAL: 3600000           #60 minutes, 3600000.
     COUPON_INTERVAL: 3600000            #60 minutes, 3600000.
     UPDATE_INTERVAL: 777                #Dictates the frequency on which the "centralized server time" is updated.
 
-    ENABLE_PIC: true               #Pick true/false to enable or disable Pic. Delete character requires PIC available.
-    ENABLE_PIN: true               #Pick true/false to enable or disable Pin.
+    ENABLE_PIC: false               #Pick true/false to enable or disable Pic. Delete character requires PIC available.
+    ENABLE_PIN: false               #Pick true/false to enable or disable Pin.
 
     BYPASS_PIC_EXPIRATION: 20           #Enables PIC bypass, which will remain active for that account by that client machine for N minutes. Set 0 to disable.
     BYPASS_PIN_EXPIRATION: 15           #Enables PIN bypass, which will remain active for that account by that client machine for N minutes. Set 0 to disable.
@@ -191,12 +193,12 @@ server:
     #Besides blocking logging in with several client sessions on the same machine, this also blocks suspicious login attempts for players that tries to login on an account using several diferent remote addresses.
 
     #Multiclient Coordinator Configuration
-    MAX_ALLOWED_ACCOUNT_HWID: 10        #Allows up to N concurrent HWID's for an account. HWID's remains linked to an account longer the more times it's used to login.
+    MAX_ALLOWED_ACCOUNT_HWID: 2         #Allows up to N concurrent HWID's for an account. HWID's remains linked to an account longer the more times it's used to login.
     MAX_ACCOUNT_LOGIN_ATTEMPT: 15       #After N tries on an account, login on that account gets disabled for a short period.
     LOGIN_ATTEMPT_DURATION: 120         #Period in seconds the login attempt remains registered on the system.
 
     #Ip Configuration
-    HOST: 127.0.0.1                 #WAN IPv4 address
+    HOST: 100.65.63.117             #WAN IPv4 address (Tailscale IP - what remote friends connect to)
     LANHOST: 127.0.0.1              #LAN IPv4 address
     LOCALHOST: 127.0.0.1            #Loopback IPv4 address
     GMSERVER: false
@@ -205,7 +207,7 @@ server:
     SHUTDOWNHOOK: true
 
     #Server Flags
-    USE_CUSTOM_KEYSET: false             #Enables auto-setup of the HeavenMS's custom keybindings when creating characters.
+    USE_CUSTOM_KEYSET: true              #New characters get the Cosmic custom keyset (GameConstants.CUSTOM_*) on creation. Reluctant's layout.
     USE_DEBUG: false                    #Will enable some text prints on the client, oriented for debugging purposes.
     USE_DEBUG_SHOW_INFO_EQPEXP: false   #Prints on the cmd all equip exp gain info.
     USE_DEBUG_SHOW_RCVD_PACKET: false   #Prints on the cmd all received packet ids.
@@ -234,7 +236,8 @@ server:
     USE_AUTOBAN: false                  #Commands the server to detect infractors automatically.
     USE_AUTOBAN_LOG: true               #Log autoban related messages. Still logs even with USE_AUTOBAN disabled.
     USE_EXP_GAIN_LOG: false #Logs characters exp gains; logs world rate & coupon exp, total gained exp, and current exp, level can be calculated from "ExpTable".
-    USE_AUTOSAVE: true                  #Enables server autosaving feature (saves characters to DB each 1 hour).
+    USE_AUTOSAVE: true                  #Enables server autosaving feature. Period controlled by AUTOSAVE_INTERVAL_MINUTES.
+    AUTOSAVE_INTERVAL_MINUTES: 10       #Period (in minutes) between full character autosaves. Lower = less rollback risk, more DB load. Default 10.
     USE_SERVER_AUTOASSIGNER: false       #HeavenMS-builtin autoassigner, uses algorithm based on distributing AP accordingly with required secondary stat on equipments.
     USE_REFRESH_RANK_MOVE: true
     USE_ENFORCE_ADMIN_ACCOUNT: false    #Forces accounts having GM characters to be treated as a "GM account" by the client (localhost). Some of the GM account perks is the ability to FLY, but unable to TRADE.
@@ -256,7 +259,7 @@ server:
     USE_BUFF_MOST_SIGNIFICANT: true     #When applying buffs, the player will stick with the highest stat boost among the listed, rather than overwriting stats.
     USE_BUFF_EVERLASTING: false         #Every applied buff on players holds expiration time so high it'd be considered permanent. Suggestion thanks to Vcoc.
     USE_MULTIPLE_SAME_EQUIP_DROP: true  #Enables multiple drops by mobs of the same equipment, number of possible drops based on the quantities provided at the drop data.
-    USE_ENABLE_FULL_RESPAWN: false       #At respawn task, always respawn missing mobs when they're available. Spawn count doesn't depend on how many players are currently there.
+    USE_ENABLE_FULL_RESPAWN: true        #At respawn task, always respawn missing mobs when they're available. Spawn count doesn't depend on how many players are currently there.
     USE_ENABLE_CHAT_LOG: false          #Write in-game chat to log
     USE_MAP_OWNERSHIP_SYSTEM: false      #Flag to enable/disable map ownership system
     USE_FISHING_SYSTEM: false            #Flag to enable/disable custom fishing system
@@ -265,7 +268,7 @@ server:
     #Events/PQs Configuration
     USE_OLD_GMS_STYLED_PQ_NPCS: true     #Enables PQ NPCs with similar behaviour to old GMS style, that skips info about the PQs and immediately tries to register the party in.
     USE_ENABLE_SOLO_EXPEDITIONS: false    #Enables start expeditions with any number of players. This will also bypass all the Zakum prequest.
-    USE_ENABLE_DAILY_EXPEDITIONS: false  #Enables daily entry limitations in expeditions.
+    USE_ENABLE_DAILY_EXPEDITIONS: true   #Enables daily entry limitations on expedition bosses and Papulatus. Per-character, resets at server-time 00:00.
     USE_ENABLE_RECALL_EVENT: false        #Enables a disconnected player to reaccess the last event instance they were in before logging out. Recall only works if the event isn't cleared or disposed yet. Suggestion thanks to Alisson (Goukken).
 
     #Announcement Configuration
@@ -389,7 +392,7 @@ server:
     USE_EQUIPMNT_LVLUP_CASH: false   #Enable equip leveling up on cash equipments as well.
     MAX_EQUIPMNT_LVLUP_STAT_UP: 10000   #Max stat upgrade an equipment can have on a levelup.
     MAX_EQUIPMNT_STAT: 32767            #Max stat on an equipment by leveling up.
-    USE_EQUIPMNT_LVLUP: 1               #All equips lvlup at max level of N, set 1 to disable.
+    USE_EQUIPMNT_LVLUP: 1               #Kill-switch for the tiered equipment-leveling system (PLAN.md). Any value > 0 enables leveling; set to 0 to disable.
 
     #Map-Chair Configuration
     USE_CHAIR_EXTRAHEAL: false       #Enable map chairs to further recover player's HP and MP (player must have the Chair Mastery skill).
@@ -453,3 +456,188 @@ server:
     NPCS_SCRIPTABLE:
       #9200000: Talk to Cody # Cody
       9001105: Rescue Gaga!  # Grandpa moon bunny
+
+    #Secondary-stat requirement removal (PLAN.md sections 95-157). When true, the server loads
+    #MapleEdit/app/patches/zero-secondary-stats.json at startup and zeroes reqSTR/reqDEX/reqINT/reqLUK
+    #on the listed items before caching equip stats. Applied server-side because the equivalent
+    #WZ-level patch corrupts Character.wz and crashes the v83 renderer.
+    USE_SECONDARY_STAT_REQ_OVERRIDES: true
+
+    #Admin bridge (MapleEdit dashboard <-> Cosmic). See ADMIN_DASHBOARD_PLAN.md sections 2/5.
+    #Leave both false on untrusted hosts. ADMIN_CONTROL_TOKEN is read from env ADMIN_CONTROL_TOKEN if blank.
+    ENABLE_GM_TEST_QUEUE: true            #Tail logs/gm-command-queue.txt and dispatch via CommandsExecutor (dev only).
+    ENABLE_ADMIN_CONTROL_PORT: true       #Bind a JSON control port on loopback for the MapleEdit admin dashboard.
+    ADMIN_CONTROL_PORT_BIND: 8480         #Loopback port. Never expose; MapleEdit talks to it locally.
+    ADMIN_CONTROL_TOKEN: ""               #Shared secret. If blank, read from env ADMIN_CONTROL_TOKEN. Blank on both -> port refuses connections.
+
+    #Admin service bot (ADMIN_DASHBOARD_PLAN.md section 14). When enabled, Cosmic auto-logs in the named GM character on startup so queue-routed admin commands dispatch even with zero humans online. Account + character must already exist; see service_bot.py to provision.
+    ENABLE_ADMIN_SERVICE_BOT: false
+    ADMIN_SERVICE_BOT_CHARACTER: "AdminBot"
+    ADMIN_SERVICE_BOT_WORLD: 0
+    ADMIN_SERVICE_BOT_CHANNEL: 1
+    ADMIN_SERVICE_BOT_MAP: 100000000      #Henesys by default; any valid map id works.
+
+    #SoloMapling ambient social-bot layer (town wanderers, minigames, social chat, jump/party quests).
+    #Master gate - shipped OFF until live-tested. When false, no bots spawn and all SoloMapling
+    #runtime hooks short-circuit. The FM marketplace stays owned by the bot_economy system regardless.
+    ENABLE_SOLO_MAPLING: false
+
+    #Connection & packet throttle (net.security.ConnectionThrottle).
+    #Loopback (127/8) is always exempt so tests and the admin port are never throttled.
+    ENABLE_CONNECTION_THROTTLE: true
+    CT_MAX_CONCURRENT_PER_IP: 6           #Max concurrent TCP sockets per IP (2 HWID * 3 channels plus launcher probe).
+    CT_MAX_CONNECTS_PER_WINDOW: 20        #Allowed new connects per IP inside CT_CONNECT_WINDOW_MS.
+    CT_CONNECT_WINDOW_MS: 10000           #Sliding window for new-connect rate (10 s default).
+    CT_MAX_PACKETS_PER_WINDOW: 120        #Per-channel packet burst cap inside CT_PACKET_WINDOW_MS.
+    CT_PACKET_WINDOW_MS: 1000             #Sliding window for packet rate (1 s default = 120 pps).
+
+    #Server-side anti-cheat (net.security.AntiCheat).
+    ENABLE_ANTICHEAT: true
+    ANTICHEAT_MAX_SINGLE_HIT_DAMAGE: 500000   #Single attack line cap; flag if exceeded.
+    ANTICHEAT_MAX_MESO_PER_MIN: 5000000       #Hard ceiling on mesos/min gained (rate + drop).
+    ANTICHEAT_MAX_MOVE_DELTA_PX: 1200         #Max position jump between move packets in pixels.
+    ANTICHEAT_LOG_ONLY: true                  #Log flags but don't act. Set false to auto-kick/ban after N strikes.
+
+#Bot-driven FM merchant economy (Docs/BOT_ECONOMY.md).
+#All bot-economy code is gated behind ENABLED - shipped OFF until live-tested.
+#Structural-only values (persona rarity weights, per-SMT persona targets, per-item
+#prices) live in DB tables seeded from scripts/config/bot-*.yml at cold-start.
+bot_economy:
+    #Master switches.
+    ENABLED: false
+    SHADOW_MODE: false
+    DRAIN: false
+    #Per-component kill switches (respected only when ENABLED: true).
+    DROP_SIM_ENABLED: true
+    LIFECYCLE_ENABLED: true
+    TREASURY_COLLECTION_ENABLED: true
+    BUY_ORDERS_ENABLED: false
+    #Population and spawning.
+    BOT_POOL_SIZE: 200
+    BOT_MERCHANT_TARGET_TOTAL: 175
+    BOT_FM_ROOM_BUDGET: 12
+    BOT_FM_ROOM_REAL_PLAYER_RESERVE: 5
+    BOT_MERCHANT_TICK_MINUTES: 5
+    BOT_MERCHANT_TTL_HOURS: 24
+    BOT_MERCHANT_SPAWN_PER_TICK: 10
+    BOT_MERCHANT_RESPAWN_COOLDOWN_MINUTES: 30
+    BOT_MERCHANT_SPAWN_JITTER_PCT: 0.30
+    BOT_MERCHANT_ITEMS_MIN: 3
+    BOT_MERCHANT_ITEMS_MAX: 8
+    #Drop simulation.
+    BOT_VIRTUAL_HUNTERS: 32
+    BOT_HUNTER_MONSTERS_PER_TICK: 50
+    BOT_DROP_SIM_INTERVAL_MINUTES: 15
+    BOT_DROP_RATE_MULTIPLIER: 0.35
+    #SMT.
+    BOT_SMT_SIGNAL_P75_WEIGHT: 0.60
+    BOT_SMT_SIGNAL_THRESHOLD_WEIGHT: 0.30
+    BOT_SMT_SIGNAL_ACTIVE_WEIGHT: 0.10
+    BOT_SMT_RECOMPUTE_CRON: "0 30 3 * * *"
+    BOT_SMT_PROMOTION_COOLDOWN_DAYS: 7
+    BOT_SMT_RATCHET_ONLY: true
+    #Saturation feedback (rarity-indexed).
+    BOT_SATURATION_AGE_HOURS: 48
+    BOT_SATURATION_THRESHOLDS:
+        R1: 50
+        R2: 20
+        R3: 8
+        R4: 3
+        R5: 1
+    BOT_SATURATION_MIN_MULTIPLIERS:
+        R1: 0.10
+        R2: 0.10
+        R3: 0.15
+        R4: 0.25
+        R5: 0.40
+    #Rarity derivation.
+    BOT_RARITY_DROP_RATE_BOUNDARIES:
+        R1_min_rate: 0.01
+        R2_min_rate: 0.001
+        R3_min_rate: 0.0001
+        R4_min_rate: 0.00002
+    BOT_RARITY_TARGET_DISTRIBUTION:
+        R1: 50
+        R2: 25
+        R3: 15
+        R4: 8
+        R5: 2
+        tolerance_pct: 3
+    BOT_RARITY_MAX_OVERRIDES: 100
+    #Pricing (rarity-indexed jitter).
+    BOT_PRICE_JITTER_BY_RARITY:
+        R1: 0.15
+        R2: 0.15
+        R3: 0.12
+        R4: 0.08
+        R5: 0.05
+    BOT_PRICE_FLOOR_NPC_MULT: 2.0
+    BOT_PRICE_CEILING_NPC_MULT: 200.0
+    BOT_PRICE_ABSOLUTE_FLOOR: 1000
+    #Stat-roll premium (player_equip class).
+    BOT_STAT_PREMIUM_PRIMARY: 0.25
+    BOT_STAT_PREMIUM_SECONDARY: 0.05
+    BOT_STAT_PREMIUM_UNIVERSAL: 0.15
+    BOT_STAT_MAX_MULT: 2.5
+    BOT_STAT_KEEP_AVG_PROB_BY_RARITY:
+        R1: 0.50
+        R2: 0.60
+        R3: 0.85
+        R4: 0.95
+        R5: 1.00
+    BOT_STAT_RESTOCK_REFILTER: true
+    #Scroll demand pricing.
+    BOT_DEMAND_WINDOW_DAYS: 7
+    BOT_DEMAND_MULT_CLAMP_MIN: 0.50
+    BOT_DEMAND_MULT_CLAMP_MAX: 2.00
+    BOT_DEMAND_CACHE_REFRESH_TICKS: 1
+    #NPC-stock path (NPCVendor).
+    BOT_NPC_STOCK_INTERVAL_MINUTES: 30
+    BOT_NPC_STOCK_DISCOUNT_MIN: 0.95
+    BOT_NPC_STOCK_DISCOUNT_MAX: 1.00
+    BOT_NPC_STOCK_QTY_MIN: 20
+    BOT_NPC_STOCK_QTY_MAX: 50
+    #Shop visual identity (blend | distinct | hybrid).
+    BOT_VISUAL_MODE: distinct
+    BOT_BLEND_PERMIT_ID: 5030000
+    BOT_DISTINCT_PERMIT_POOL: [5030004, 5030005, 5030012]
+    BOT_HYBRID_PERSONA_MAP:
+        NPCVendor: 5030004
+        BulkVendor: 5030010
+        default: 5030000
+    #Misprice mechanic.
+    BOT_MISPRICE:
+        enabled: true
+        chance_per_shop: 0.015
+        discount_range: [0.40, 0.50]
+        eligible_classes: [player_equip, scroll_demand, crafting_mat, rare_specialty]
+        buyer_limit_per_day: 3
+        buyer_limit_window_hours: 24
+    #Treasury / meso disposition.
+    BOT_MESO_SINK_PCT: 70
+    BOT_MESO_EVENT_POOL_PCT: 20
+    BOT_MESO_GM_RESERVE_PCT: 10
+    BOT_EVENT_POOL_CAP: 500000000
+    BOT_LOG_ALL_SALES: true
+    #Reconciliation and telemetry.
+    BOT_RECONCILIATION_CRON: "0 0 4 * * *"
+    BOT_RECONCILIATION_STRICT: false
+    BOT_METRICS_SAMPLE_INTERVAL_MINUTES: 5
+    BOT_METRICS_RETENTION_DAYS: 90
+    #Alerts.
+    alerts:
+        webhook_url: ""
+        severity_threshold: WARN
+        treasury_growth_anomaly: true
+        player_meso_surge: true
+        player_meso_drain: true
+        saturation_explosion: true
+        merchant_churn: true
+        sales_drought: true
+        gini_spike: true
+        pricing_clamp_flood: true
+        reconciliation_failure: true
+    #Test mode.
+    TEST_MODE: false
+    test:
+        RNG_SEED: 42

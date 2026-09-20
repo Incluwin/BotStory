@@ -1,0 +1,70 @@
+# Item allowlist — which items bot drop-sim can emit (BOT_ECONOMY.md § Item pool eligibility).
+# Intersected with price-class, rarity cap, and hard-exclusions at runtime.
+# Ranges are inclusive [min, max].
+
+global_allowlist:
+  # Equips
+  equip_ranges:
+    - [1000000, 1099999]   # hats
+    - [1100000, 1109999]   # medals / shoulder
+    - [1102000, 1102999]   # capes
+    - [1132000, 1132999]   # belts
+    - [1050000, 1059999]   # overalls
+    - [1060000, 1069999]   # bottoms
+    - [1070000, 1079999]   # shoes
+    - [1080000, 1089999]   # gloves
+    - [1040000, 1049999]   # tops
+    - [1002000, 1049999]   # misc hats
+    - [1302000, 1302999]   # swords 1H
+    - [1312000, 1312999]   # axes 1H
+    - [1322000, 1322999]   # maces 1H
+    - [1332000, 1332999]   # daggers
+    - [1372000, 1372099]   # wands
+    - [1382000, 1382099]   # staves
+    - [1402000, 1402099]   # swords 2H
+    - [1412000, 1412099]   # axes 2H
+    - [1422000, 1422099]   # maces 2H
+    - [1432000, 1432099]   # spears
+    - [1442000, 1442099]   # polearms
+    - [1452000, 1452099]   # bows
+    - [1462000, 1462099]   # crossbows
+    - [1472000, 1472099]   # claws
+    - [1482000, 1482099]   # knuckles
+    - [1492000, 1492099]   # guns
+    - [1112000, 1113499]   # rings
+    - [1122000, 1122999]   # pendants
+    - [1032000, 1032999]   # earrings
+    - [1092000, 1092999]   # shields
+
+  # Scrolls (20xxxxx except premium + Chaos/White/GFA/Shielding/Clean-Slate — handled in hard-exclusions)
+  scroll_ranges:
+    - [2040000, 2044999]
+
+  # Consumables — rare/specialty only (non-NPC).
+  # NPC-sold consumables go through the NPC-stock path, not drop-sim.
+  rare_consumable_ranges:
+    - [2022000, 2022999]    # Onyx Apple, Sap of Ancient Tree, event drops
+    - [2050000, 2050099]    # cure-all / event pots
+
+  # Crafting mats
+  crafting_mat_ranges:
+    - [4000000, 4000999]    # generic mats
+    - [4003000, 4003999]    # ores
+    - [4011000, 4012999]    # refined plates
+    - [4260000, 4260099]    # manuals
+
+per_persona_overlay:
+  # Optional additional narrowing beyond persona_rarity_profile — empty by default.
+  ScrollMerchant:  {}
+  WarriorGear:     {}
+  MagicianGear:    {}
+  ArcherGear:      {}
+  ThiefGear:       {}
+  PirateGear:      {}
+  BulkVendor:      {}
+  RareSpecialist:  {}
+  AccessoryVendor: {}
+  Generalist:      {}
+
+# NPCVendor gets its pool from bot_npc_sold_items (populated at seed via
+# scripts/bot-economy/extract-npc-items.sql), not this allowlist.

@@ -28,11 +28,15 @@ import net.packet.InPacket;
 import net.server.Server;
 import server.maps.MiniDungeonInfo;
 import tools.PacketCreator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Flav
  */
 public class EnterCashShopHandler extends AbstractPacketHandler {
+    private static final Logger log = LoggerFactory.getLogger(EnterCashShopHandler.class);
+
     @Override
     public void handlePacket(InPacket p, Client c) {
         try {
@@ -89,7 +93,7 @@ public class EnterCashShopHandler extends AbstractPacketHandler {
             mc.getCashShop().open(true);
             mc.saveCharToDB();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 }

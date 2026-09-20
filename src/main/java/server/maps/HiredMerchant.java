@@ -21,6 +21,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package server.maps;
 
+import static soloMapling.ArtificialPlayer.BotHelpers.isBot;
+
 import client.Character;
 import client.Client;
 import client.inventory.Inventory;
@@ -54,22 +56,26 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author XoticStory
  * @author Ronan - concurrency protection
  */
 public class HiredMerchant extends AbstractMapObject {
+    private static final Logger log = LoggerFactory.getLogger(HiredMerchant.class);
+
     private static final int VISITOR_HISTORY_LIMIT = 10;
     private static final int BLACKLIST_LIMIT = 20;
 
-    private final int ownerId;
+    public int ownerId;
     private final int itemId;
     private final int mesos = 0;
     private final int channel;
     private final int world;
     private final long start;
-    private String ownerName = "";
+    public String ownerName = "";
     private String description = "";
     private final List<PlayerShopItem> items = new LinkedList<>();
     private final List<Pair<String, Byte>> messages = new LinkedList<>();
@@ -96,6 +102,38 @@ public class HiredMerchant extends AbstractMapObject {
         this.ownerName = owner.getName();
         this.description = desc;
         this.map = owner.getMap();
+    }
+
+    /**
+     * BOT_ECONOMY.md § Ephemeral Character instantiation — alternate ctor that
+     * builds a merchant against an owner snapshot struct, without requiring a
+     * live {@link Character}. Used only by {@code BotMerchantManager} for
+     * bot-owned FM merchants; real-player merchants always go through the
+     * {@link #HiredMerchant(Character, String, int)} path.
+     *
+     * @param ownerId   bot character id (matches {@code characters.id})
+     * @param ownerName bot character name
+     * @param channel   target channel
+     * @param world     target world
+     * @param map       FM map the merchant attaches to
+     * @param itemId    shop permit (Mushroom/Robot/etc) — drives visual skin
+     * @param desc      short description string shown over the shop
+     */
+    public HiredMerchant(int ownerId, String ownerName, int channel, int world,
+                         MapleMap map, int itemId, String desc) {
+        this.start = System.currentTimeMillis();
+        this.ownerId = ownerId;
+        this.channel = channel;
+        this.world = world;
+        this.itemId = itemId;
+        this.ownerName = ownerName == null ? "" : ownerName;
+        this.description = desc == null ? "" : desc;
+        this.map = map;
+        if (map != null) {
+            // Centre of map is fine for bot shops — real-player merchants set
+            // position from the owner's current foothold.
+            this.setPosition(new java.awt.Point(0, 0));
+        }
     }
 
     public void broadcastToVisitorsThreadsafe(Packet packet) {
@@ -339,7 +377,7 @@ public class HiredMerchant extends AbstractMapObject {
                                 ps.executeUpdate();
                             }
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            log.error("unhandled exception", e);
                         }
                     }
                 } else {
@@ -355,7 +393,7 @@ public class HiredMerchant extends AbstractMapObject {
             try {
                 this.saveItems(false);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("unhandled exception", e);
             }
         }
     }
@@ -396,7 +434,7 @@ public class HiredMerchant extends AbstractMapObject {
                 items.clear();
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
 
         Character player = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterById(ownerId);
@@ -408,7 +446,7 @@ public class HiredMerchant extends AbstractMapObject {
                 ps.setInt(1, ownerId);
                 ps.executeUpdate();
             } catch (SQLException ex) {
-                ex.printStackTrace();
+                log.error("unhandled exception", ex);
             }
         }
 
@@ -451,7 +489,7 @@ public class HiredMerchant extends AbstractMapObject {
             try {
                 this.saveItems(timeout);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("unhandled exception", e);
             }
 
             // thanks Rohenn for noticing a possible dupe scenario on closing shop
@@ -474,7 +512,7 @@ public class HiredMerchant extends AbstractMapObject {
                 items.clear();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         Server.getInstance().getWorld(world).unregisterHiredMerchant(this);
@@ -579,7 +617,7 @@ public class HiredMerchant extends AbstractMapObject {
             try {
                 this.saveItems(false);
             } catch (SQLException ex) {
-                ex.printStackTrace();
+                log.error("unhandled exception", ex);
             }
         }
     }
@@ -590,7 +628,7 @@ public class HiredMerchant extends AbstractMapObject {
         try {
             this.saveItems(false);
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -821,4 +859,57 @@ public class HiredMerchant extends AbstractMapObject {
             return mesos;
         }
     }
+
+    public void botBuy(Character fakechar, PlayerShopItem pItem, short quantity) {
+        synchronized (items) {
+            Item newItem = pItem.getItem().copy();
+            int price = (int) Math.min((float) pItem.getPrice() * quantity, Integer.MAX_VALUE);
+            price -= Trade.getFee(price);  // thanks BHB for pointing out trade fees not applying here
+
+            synchronized (sold) {
+                sold.add(new SoldItem(fakechar.getName(), pItem.getItem().getItemId(), quantity, price));
+            }
+
+            pItem.setBundles((short) (pItem.getBundles() - quantity));
+            if (pItem.getBundles() < 1) {
+                pItem.setDoesExist(false);
+            }
+
+            if (YamlConfig.config.server.USE_ANNOUNCE_SHOPITEMSOLD) {   // idea thanks to Vcoc
+                announceItemSold(newItem, price, getQuantityLeft(pItem.getItem().getItemId()));
+            }
+
+            Character owner = Server.getInstance().getWorld(world).getPlayerStorage().getCharacterByName(ownerName);
+            if (owner != null && !isBot(owner)) {
+                owner.addMerchantMesos(price);
+            } else {
+                try (Connection con = DatabaseConnection.getConnection()) {
+                    long merchantMesos = 0;
+                    try (PreparedStatement ps = con.prepareStatement("SELECT MerchantMesos FROM characters WHERE id = ?")) {
+                        ps.setInt(1, ownerId);
+                        try (ResultSet rs = ps.executeQuery()) {
+                            if (rs.next()) {
+                                merchantMesos = rs.getInt(1);
+                            }
+                        }
+                    }
+                    merchantMesos += price;
+
+                    try (PreparedStatement ps = con.prepareStatement("UPDATE characters SET MerchantMesos = ? WHERE id = ?", PreparedStatement.RETURN_GENERATED_KEYS)) {
+                        ps.setInt(1, (int) Math.min(merchantMesos, Integer.MAX_VALUE));
+                        ps.setInt(2, ownerId);
+                        ps.executeUpdate();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+            try {
+                this.saveItems(false);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 }

@@ -22,7 +22,6 @@
 package server.quest.actions;
 
 import client.Character;
-import config.YamlConfig;
 import provider.Data;
 import provider.DataTool;
 import server.quest.Quest;
@@ -51,10 +50,7 @@ public class ExpAction extends AbstractQuestAction {
     }
 
     public static void runAction(Character chr, int gain) {
-        if (!YamlConfig.config.server.USE_QUEST_RATE) {
-            chr.gainExp(gain * chr.getExpRate(), true, true);
-        } else {
-            chr.gainExp(gain * chr.getQuestExpRate(), true, true);
-        }
+        int multiplier = chr.getLevel() < 10 ? 3 : 6;
+        chr.gainExp(gain * multiplier, true, true);
     }
 } 

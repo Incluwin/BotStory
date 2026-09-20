@@ -25,6 +25,7 @@ import client.Client;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import net.server.Server;
+import net.server.coordinator.session.GmLoginSecurity;
 import net.server.coordinator.session.Hwid;
 import net.server.coordinator.session.SessionCoordinator;
 import net.server.coordinator.session.SessionCoordinator.AntiMulticlientResult;
@@ -87,6 +88,10 @@ public final class ViewAllCharSelectedHandler extends AbstractPacketHandler {
             return;
         }
 
+        if (GmLoginSecurity.blockIfGmFromRemote(c, charId)) {
+            return;
+        }
+
         c.setWorld(server.getCharacterWorld(charId));
 
         World wserv = c.getWorldServer();
@@ -99,7 +104,7 @@ public final class ViewAllCharSelectedHandler extends AbstractPacketHandler {
             int channel = Randomizer.rand(1, wserv.getChannelsSize());
             c.setChannel(channel);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to pick random channel for world {}; defaulting to channel 1", c.getWorld(), e);
             c.setChannel(1);
         }
 
@@ -115,7 +120,7 @@ public final class ViewAllCharSelectedHandler extends AbstractPacketHandler {
         try {
             c.sendPacket(PacketCreator.getServerIP(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1]), charId));
         } catch (UnknownHostException e) {
-            e.printStackTrace();
+            log.error("Failed to send server IP packet for charId {}", charId, e);
         }
     }
 }

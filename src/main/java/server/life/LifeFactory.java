@@ -42,10 +42,10 @@ import java.util.Set;
 
 public class LifeFactory {
     private static final Logger log = LoggerFactory.getLogger(LifeFactory.class);
-    private static final DataProvider data = DataProviderFactory.getDataProvider(WZFiles.MOB);
-    private final static DataProvider stringDataWZ = DataProviderFactory.getDataProvider(WZFiles.STRING);
-    private static final Data mobStringData = stringDataWZ.getData("Mob.img");
-    private static final Data npcStringData = stringDataWZ.getData("Npc.img");
+    private static DataProvider data = DataProviderFactory.getDataProvider(WZFiles.MOB);
+    private static DataProvider stringDataWZ = DataProviderFactory.getDataProvider(WZFiles.STRING);
+    private static Data mobStringData = stringDataWZ.getData("Mob.img");
+    private static Data npcStringData = stringDataWZ.getData("Npc.img");
     private static final Map<Integer, MonsterStats> monsterStats = new HashMap<>();
     private static final Set<Integer> hpbarBosses = getHpBarBosses();
 
@@ -117,7 +117,12 @@ public class LifeFactory {
             attackInfos.addAll(linkStats.getRight());
         }
 
-        stats.setHp(DataTool.getIntConvert("maxHP", monsterInfoData));
+        long maxHpValue = 1;
+        provider.Data hpData = monsterInfoData.getChildByPath("maxHP");
+        if (hpData != null) {
+            maxHpValue = Long.parseLong(String.valueOf(hpData.getData()));
+        }
+        stats.setHp(maxHpValue);
         stats.setFriendly(DataTool.getIntConvert("damagedByMob", monsterInfoData, stats.isFriendly() ? 1 : 0) == 1);
         stats.setPADamage(DataTool.getIntConvert("PADamage", monsterInfoData));
         stats.setPDDamage(DataTool.getIntConvert("PDDamage", monsterInfoData));
@@ -347,5 +352,23 @@ public class LifeFactory {
         public int removeAfter() {
             return removeAfter;
         }
+    }
+
+    /**
+     * Clear mob/npc stat caches and refresh the String.wz image snapshots so
+     * subsequent getMonster / getNPC calls re-read Mob.wz and String.wz.
+     *
+     * Does NOT touch Monster instances already on maps — their stats were
+     * copied at spawn time and are independent of this cache. Use !killall
+     * (or respawn the map) after reload if you need existing mobs to pick
+     * up the new values.
+     */
+    public static synchronized void clearCaches() {
+        monsterStats.clear();
+        data = DataProviderFactory.getDataProvider(WZFiles.MOB);
+        stringDataWZ = DataProviderFactory.getDataProvider(WZFiles.STRING);
+        mobStringData = stringDataWZ.getData("Mob.img");
+        npcStringData = stringDataWZ.getData("Npc.img");
+        log.info("LifeFactory caches cleared — next getMonster/getNPC will re-read WZ");
     }
 }

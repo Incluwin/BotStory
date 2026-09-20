@@ -25,6 +25,7 @@ import client.Client;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import net.server.Server;
+import net.server.coordinator.session.GmLoginSecurity;
 import net.server.coordinator.session.Hwid;
 import net.server.coordinator.session.SessionCoordinator;
 import net.server.coordinator.session.SessionCoordinator.AntiMulticlientResult;
@@ -85,6 +86,10 @@ public final class CharSelectedHandler extends AbstractPacketHandler {
             return;
         }
 
+        if (GmLoginSecurity.blockIfGmFromRemote(c, charId)) {
+            return;
+        }
+
         c.setWorld(server.getCharacterWorld(charId));
         World wserv = c.getWorldServer();
         if (wserv == null || wserv.isWorldCapacityFull()) {
@@ -104,7 +109,7 @@ public final class CharSelectedHandler extends AbstractPacketHandler {
         try {
             c.sendPacket(PacketCreator.getServerIP(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1]), charId));
         } catch (UnknownHostException | NumberFormatException e) {
-            e.printStackTrace();
+            log.error("Failed to send server IP packet for charId {}", charId, e);
         }
     }
 }

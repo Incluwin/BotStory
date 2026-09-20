@@ -25,6 +25,7 @@ import client.Character;
 import client.Skill;
 import client.SkillFactory;
 import config.YamlConfig;
+import constants.id.ItemId;
 import constants.inventory.ItemConstants;
 import net.server.coordinator.world.EventRecallCoordinator;
 import net.server.world.Party;
@@ -38,6 +39,7 @@ import server.StatEffect;
 import server.ThreadManager;
 import server.TimerManager;
 import server.expeditions.Expedition;
+import server.expeditions.ExpeditionType;
 import server.life.LifeFactory;
 import server.life.Monster;
 import server.life.NPC;
@@ -47,6 +49,7 @@ import server.maps.Portal;
 import server.maps.Reactor;
 import tools.PacketCreator;
 import tools.Pair;
+import tools.Randomizer;
 
 import javax.script.ScriptException;
 import java.awt.*;
@@ -257,7 +260,7 @@ public class EventInstanceManager {
             try {
                 invokeScriptFunction("playerEntry", EventInstanceManager.this, chr);
             } catch (ScriptException | NoSuchMethodException ex) {
-                ex.printStackTrace();
+                log.error("unhandled exception", ex);
             }
         }
     }
@@ -272,7 +275,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("playerExit", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -352,6 +355,44 @@ public class EventInstanceManager {
 
     public long getTimeLeft() {
         return eventTime - (System.currentTimeMillis() - timeStarted);
+    }
+
+    /**
+     * Wall-clock ms at which the event timer started (0 if not started).
+     * Exposed for AdminControlPort.rEvents() — do NOT use this for gameplay
+     * checks (those should go through {@link #isTimerStarted()}).
+     */
+    public long getTimeStarted() {
+        return timeStarted;
+    }
+
+    /**
+     * Configured event duration in ms (0 if not set). AdminControlPort.rEvents()
+     * pairs this with {@link #getTimeStarted()} to compute elapsed-vs-remaining.
+     */
+    public long getEventTime() {
+        return eventTime;
+    }
+
+    /**
+     * True once {@link #startEvent()} has run. AdminControlPort reports this so
+     * the dashboard can distinguish "lobby gathering" from "run in progress".
+     */
+    public boolean isEventStarted() {
+        return eventStarted;
+    }
+
+    /**
+     * Snapshot of the map ids this instance has opened (in registration order).
+     * Returned as a copy to keep the internal list private.
+     */
+    public List<Integer> getMapIds() {
+        readLock.lock();
+        try {
+            return new ArrayList<>(mapIds);
+        } finally {
+            readLock.unlock();
+        }
     }
 
     public void registerParty(Character chr) {
@@ -451,7 +492,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("moveMap", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -473,7 +514,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("changedLeader", EventInstanceManager.this, ldr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
 
         leaderId = ldr.getId();
@@ -501,14 +542,14 @@ public class EventInstanceManager {
             try {
                 invokeScriptFunction("monsterKilled", mob, EventInstanceManager.this, hasKiller);
             } catch (ScriptException | NoSuchMethodException ex) {
-                ex.printStackTrace();
+                log.error("unhandled exception", ex);
             }
 
             if (scriptResult > 1) {
                 try {
                     invokeScriptFunction("allMonstersDead", EventInstanceManager.this, hasKiller);
                 } catch (ScriptException | NoSuchMethodException ex) {
-                    ex.printStackTrace();
+                    log.error("unhandled exception", ex);
                 }
             }
         }
@@ -567,7 +608,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("playerDisconnected", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
 
         EventRecallCoordinator.getInstance().storeEventInstance(chr.getId(), this);
@@ -590,7 +631,7 @@ public class EventInstanceManager {
                 }
             }
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -620,7 +661,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("dispose", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
         disposed = true;
 
@@ -683,7 +724,7 @@ public class EventInstanceManager {
                     try {
                         invokeScriptFunction(methodName, EventInstanceManager.this);
                     } catch (ScriptException | NoSuchMethodException ex) {
-                        ex.printStackTrace();
+                        log.error("unhandled exception", ex);
                     }
                 };
 
@@ -781,7 +822,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("leftParty", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -789,7 +830,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("disbandParty", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -797,7 +838,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("clearPQ", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -805,7 +846,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("playerExit", EventInstanceManager.this, chr);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -857,7 +898,7 @@ public class EventInstanceManager {
                 return true;
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
 
         return false;
@@ -1088,7 +1129,7 @@ public class EventInstanceManager {
         try {
             invokeScriptFunction("afterSetup", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
     }
 
@@ -1097,6 +1138,7 @@ public class EventInstanceManager {
 
         for (Character chr : getPlayers()) {
             chr.awardQuestPoint(YamlConfig.config.server.QUEST_POINT_PER_EVENT_CLEAR);
+            awardPerfectPitch(chr);
         }
 
         scriptLock.lock();
@@ -1107,6 +1149,56 @@ public class EventInstanceManager {
         }
 
         disposeExpedition();
+    }
+
+    // Awards Perfect Pitch (4310000) on successful expedition/PQ clear. Framed in-fiction as
+    // a handout from Kuro — trade at Inkwell (Henesys / FM Entrance) for items.
+    private void awardPerfectPitch(Character chr) {
+        int[] range = getPerfectPitchRange();
+        int min = range[0], max = range[1];
+        if (max < min || max <= 0) {
+            return;
+        }
+        int qty = min + Randomizer.nextInt(max - min + 1);
+        if (qty <= 0) {
+            return;
+        }
+        chr.getAbstractPlayerInteraction().gainItem(ItemId.PERFECT_PITCH, (short) qty);
+        chr.yellowMessage("[Kuro] A fine performance! Take " + qty + " Perfect Pitch"
+                + (qty == 1 ? "" : "es") + " to Inkwell at the Free Market Entrance or Henesys.");
+    }
+
+    private int[] getPerfectPitchRange() {
+        if (expedition != null) {
+            ExpeditionType t = expedition.getType();
+            if (t != null) {
+                switch (t) {
+                    case ARIANT:
+                    case ARIANT1:
+                    case ARIANT2:
+                        return new int[]{2, 5};
+                    case BALROG_EASY:
+                        return new int[]{3, 6};
+                    case SHOWA:
+                        return new int[]{4, 8};
+                    case BALROG_NORMAL:
+                    case SCARGA:
+                        return new int[]{6, 10};
+                    case ZAKUM:
+                        return new int[]{8, 14};
+                    case HORNTAIL:
+                        return new int[]{12, 20};
+                    case CWKPQ:
+                        return new int[]{10, 18};
+                    case CHAOS_ZAKUM:
+                    case CHAOS_HORNTAIL:
+                    case PINKBEAN:
+                        return new int[]{15, 25};
+                }
+            }
+            return new int[]{5, 10};
+        }
+        return new int[]{1, 3};
     }
 
     public final boolean isEventCleared() {

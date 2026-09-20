@@ -31,8 +31,12 @@ import constants.id.ItemId;
 import constants.id.MapId;
 
 import java.awt.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SeedCommand extends Command {
+    private static final Logger log = LoggerFactory.getLogger(SeedCommand.class);
+
     {
         setDescription("Drop all seeds inside Henesys PQ.");
     }
@@ -53,7 +57,7 @@ public class SeedCommand extends Command {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                log.error("unhandled exception", e);
             }
         }
     }

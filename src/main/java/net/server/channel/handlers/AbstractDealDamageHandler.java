@@ -110,8 +110,12 @@ import java.util.Map;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
+    private static final Logger log = LoggerFactory.getLogger(AbstractDealDamageHandler.class);
+
     private static final int EXPLODED_MESO_SPREAD_DELAY = 100;
     private static final int EXPLODED_MESO_MAX_DELAY = 1000;
 
@@ -312,7 +316,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                             }
                         }
                     } else if (attack.skill == Marauder.ENERGY_DRAIN || attack.skill == ThunderBreaker.ENERGY_DRAIN || attack.skill == NightWalker.VAMPIRE || attack.skill == Assassin.DRAIN) {
-                        player.addHP(Math.min(monster.getMaxHp(), Math.min((int) ((double) totDamage * (double) SkillFactory.getSkill(attack.skill).getEffect(player.getSkillLevel(SkillFactory.getSkill(attack.skill))).getX() / 100.0), player.getCurrentMaxHp() / 2)));
+                        player.addHP((int) Math.min(monster.getMaxHp(), Math.min((int) ((double) totDamage * (double) SkillFactory.getSkill(attack.skill).getEffect(player.getSkillLevel(SkillFactory.getSkill(attack.skill))).getX() / 100.0), player.getCurrentMaxHp() / 2)));
                     } else if (attack.skill == Bandit.STEAL) {
                         Skill steal = SkillFactory.getSkill(Bandit.STEAL);
                         if (monster.getStolen().size() < 1) { // One steal per mob <3
@@ -501,14 +505,14 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                     }
                     if (attack.skill == Paladin.HEAVENS_HAMMER) {
                         if (!monster.isBoss()) {
-                            damageMonsterWithSkill(player, map, monster, monster.getHp() - 1, attack.skill, 1777);
+                            damageMonsterWithSkill(player, map, monster, (int) (monster.getHp() - 1), attack.skill, 1777);
                         } else {
                             int HHDmg = (player.calculateMaxBaseDamage(player.getTotalWatk()) * (SkillFactory.getSkill(Paladin.HEAVENS_HAMMER).getEffect(player.getSkillLevel(SkillFactory.getSkill(Paladin.HEAVENS_HAMMER))).getDamage() / 100));
                             damageMonsterWithSkill(player, map, monster, (int) (Math.floor(Math.random() * (HHDmg / 5) + HHDmg * .8)), attack.skill, 1777);
                         }
                     } else if (attack.skill == Aran.COMBO_TEMPEST) {
                         if (!monster.isBoss()) {
-                            damageMonsterWithSkill(player, map, monster, monster.getHp(), attack.skill, 0);
+                            damageMonsterWithSkill(player, map, monster, (int) monster.getHp(), attack.skill, 0);
                         } else {
                             int TmpDmg = (player.calculateMaxBaseDamage(player.getTotalWatk()) * (SkillFactory.getSkill(Aran.COMBO_TEMPEST).getEffect(player.getSkillLevel(SkillFactory.getSkill(Aran.COMBO_TEMPEST))).getDamage() / 100));
                             damageMonsterWithSkill(player, map, monster, (int) (Math.floor(Math.random() * (TmpDmg / 5) + TmpDmg * .8)), attack.skill, 0);
@@ -541,7 +545,7 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -873,6 +877,11 @@ public abstract class AbstractDealDamageHandler extends AbstractPacketHandler {
                     // If the skill is a crit, inverse the damage to make it show up on clients.
                     damage = -Integer.MAX_VALUE + damage - 1;
                 }
+
+                // Anti-cheat: hard cap per-line damage independent of the
+                // per-skill heuristic above. Catches clients that spoof a
+                // skill ID to inflate hitDmgMax beyond any legit value.
+                net.security.AntiCheat.checkDamage(chr, damage);
 
                 if(effect != null) {
                     int maxattack = Math.max(effect.getBulletCount(), effect.getAttackCount());

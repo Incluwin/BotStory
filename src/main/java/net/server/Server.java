@@ -72,6 +72,7 @@ import server.life.PlayerNPC;
 import server.quest.Quest;
 import service.NoteService;
 import tools.DatabaseConnection;
+import tools.PacketCreator;
 import tools.Pair;
 
 import java.sql.Connection;
@@ -237,7 +238,7 @@ public class Server {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Failed to load PlayerNPC map data", e);
         }
     }
 
@@ -852,7 +853,7 @@ public class Server {
                 }
             }
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
         }
 
         return rankSystem;
@@ -881,6 +882,12 @@ public class Server {
         futures.add(initExecutor.submit(CashItemFactory::loadAllCashItems));
         futures.add(initExecutor.submit(Quest::loadAllQuests));
         futures.add(initExecutor.submit(SkillbookInformationProvider::loadAllSkillbookInformation));
+        // SoloMapling bot equip metadata - loaded with the rest of the WZ-derived
+        // data so it's ready before the bot environment can start. Gated OFF by default.
+        if (YamlConfig.config.server.ENABLE_SOLO_MAPLING) {
+            futures.add(initExecutor.submit(soloMapling.itemPool.EquipMetadataCache::initialize));
+            futures.add(initExecutor.submit(soloMapling.itemPool.DesirableEquipList::load));
+        }
         initExecutor.shutdown();
 
         TimeZone.setDefault(TimeZone.getTimeZone(YamlConfig.config.server.TIMEZONE));
@@ -900,6 +907,11 @@ public class Server {
         } catch (SQLException sqle) {
             log.error("Failed to run all startup-bound database tasks", sqle);
             throw new IllegalStateException(sqle);
+        }
+
+        // SoloMapling: patch in casino/bot WZ nodes before timely tasks. Gated OFF by default.
+        if (YamlConfig.config.server.ENABLE_SOLO_MAPLING) {
+            soloMapling.Casino.WzXmlPatcher.applyAllPatches();
         }
 
         ThreadManager.getInstance().start();
@@ -943,9 +955,38 @@ public class Server {
 
         OpcodeConstants.generateOpcodeNames();
         CommandsExecutor.getInstance();
+        server.set.SetItemManager.loadAllSets();
+        if (YamlConfig.config.server.USE_SECONDARY_STAT_REQ_OVERRIDES) {
+            server.equip.SecondaryStatRequirementOverrides.load();
+        }
 
         for (Channel ch : this.getAllChannels()) {
             ch.reloadEventScriptManager();
+        }
+
+        if (YamlConfig.config.server.ENABLE_GM_TEST_QUEUE) {
+            tools.test.GmTestQueueWatcher.start(
+                    java.nio.file.Paths.get("logs", "gm-command-queue.txt"));
+        }
+
+        if (YamlConfig.config.server.ENABLE_ADMIN_CONTROL_PORT) {
+            server.admin.AdminControlPort.start();
+            server.admin.AdminSampler.start();
+        }
+
+        // Connection throttle + anti-cheat: pick up their tunables from YAML.
+        net.security.ConnectionThrottle.reloadFromYaml();
+        net.security.AntiCheat.reloadFromYaml();
+        TimerManager.getInstance().register(
+                net.security.ConnectionThrottle::sweepStaleHistory,
+                MINUTES.toMillis(5), MINUTES.toMillis(5));
+
+        // Admin service bot — ADMIN_DASHBOARD_PLAN.md section 14. Brings a GM
+        // character online so queue-routed admin commands dispatch even when
+        // no human GM is logged in. Gated by its own YAML flag; the account +
+        // character must already exist (see service_bot.py).
+        if (YamlConfig.config.server.ENABLE_ADMIN_SERVICE_BOT) {
+            server.admin.AdminServiceBot.startIfEnabled();
         }
     }
 
@@ -998,6 +1039,24 @@ public class Server {
         timeLeft = getTimeLeftForNextDay();
         ExpeditionBossLog.resetBossLogTable();
         tMan.register(new BossLogTask(), DAYS.toMillis(1), timeLeft);
+
+        // BOT_ECONOMY.md § Implementation order — task registration. Tasks always
+        // run; the bot_economy.ENABLED flag is checked inside each runner so the
+        // cron stays dormant until the master switch flips. This lets operators
+        // toggle the feature at runtime without bouncing the server.
+        tMan.register(new net.server.task.BotMerchantTask(),
+                MINUTES.toMillis(YamlConfig.config.bot_economy.BOT_MERCHANT_TICK_MINUTES),
+                MINUTES.toMillis(1));
+        tMan.register(new net.server.task.BotDropSimTask(),
+                MINUTES.toMillis(YamlConfig.config.bot_economy.BOT_DROP_SIM_INTERVAL_MINUTES),
+                MINUTES.toMillis(2));
+        tMan.register(new net.server.task.BotMetricsSampleTask(),
+                MINUTES.toMillis(YamlConfig.config.bot_economy.BOT_METRICS_SAMPLE_INTERVAL_MINUTES),
+                MINUTES.toMillis(3));
+        tMan.register(new net.server.task.BotReconciliationCronTask(),
+                DAYS.toMillis(1), timeLeft);
+        tMan.register(new net.server.task.BotSMTRecomputeTask(),
+                DAYS.toMillis(1), Math.max(MINUTES.toMillis(30), timeLeft - MINUTES.toMillis(30)));
     }
 
     public static void main(String[] args) {
@@ -1578,7 +1637,7 @@ public class Server {
 
             wchars.add(curWorld, chars);
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("Failed to load characters for account", sqle);
         }
 
         return new Pair<>(characterCount, wchars);
@@ -1596,7 +1655,7 @@ public class Server {
                 }
             }
         } catch (SQLException se) {
-            se.printStackTrace();
+            log.error("Failed to load all account character views", se);
         }
     }
 
@@ -1922,6 +1981,30 @@ public class Server {
         if (getWorlds() == null) {
             return;//already shutdown
         }
+
+        // Final 30s warning before tearing worlds down. World.shutdown() below
+        // disconnects every channel immediately, so the broadcast has to land
+        // first. stop_all.bat's PowerShell grace window must stay >= 30s plus
+        // character-save time, otherwise the helper force-kills mid-save.
+        int connectedCount = 0;
+        for (World w : getWorlds()) {
+            connectedCount += w.getPlayerStorage().getAllCharacters().size();
+        }
+        if (connectedCount > 0) {
+            String notice = (restart ? "The server will restart" : "The server will shut down")
+                    + " in 30 seconds. Please log out safely.";
+            Packet noticePacket = PacketCreator.serverNotice(0, notice);
+            for (World w : getWorlds()) {
+                broadcastMessage(w.getId(), noticePacket);
+            }
+            try {
+                Thread.sleep(30_000);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                log.warn("Shutdown warning sleep interrupted; proceeding to shutdown.", ie);
+            }
+        }
+
         for (World w : getWorlds()) {
             w.shutdown();
         }

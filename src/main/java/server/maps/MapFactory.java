@@ -46,8 +46,12 @@ import java.util.LinkedList;
 import java.util.List;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MapFactory {
+    private static final Logger log = LoggerFactory.getLogger(MapFactory.class);
+
     private static final Data nameData;
     private static final DataProvider mapSource;
 
@@ -109,7 +113,7 @@ public class MapFactory {
                 }
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
     }
 
@@ -157,7 +161,7 @@ public class MapFactory {
         map.setOnUserEnter(onEnter.equals("") ? String.valueOf(mapid) : onEnter);
 
         map.setFieldLimit(DataTool.getInt(infoData.getChildByPath("fieldLimit"), 0));
-        map.setMobInterval((short) DataTool.getInt(infoData.getChildByPath("createMobInterval"), 5000));
+        map.setMobInterval((short) DataTool.getInt(infoData.getChildByPath("createMobInterval"), 2000));
         PortalFactory portalFactory = new PortalFactory();
         for (Data portal : mapData.getChildByPath("portal")) {
             map.addPortal(portalFactory.makePortal(DataTool.getInt(portal.getChildByPath("pt")), portal));
@@ -250,7 +254,7 @@ public class MapFactory {
                     }
                 }
             } catch (SQLException e) {
-                e.printStackTrace();
+                log.error("unhandled exception", e);
             }
         }
 
@@ -309,7 +313,7 @@ public class MapFactory {
         map.setBoat(mapData.getChildByPath("shipObj") != null);
         map.setTimeLimit(DataTool.getIntConvert("timeLimit", infoData, -1));
         map.setFieldType(DataTool.getIntConvert("fieldType", infoData, 0));
-        map.setMobCapacity(DataTool.getIntConvert("fixedMobCapacity", infoData, 500));//Is there a map that contains more than 500 mobs?
+        map.setMobCapacity(DataTool.getIntConvert("fixedMobCapacity", infoData, 1000));//Raised from 500 to allow denser maps to fill.
 
         Data recData = infoData.getChildByPath("recovery");
         if (recData != null) {
@@ -325,7 +329,7 @@ public class MapFactory {
                 backTypes.put(layerNum, btype);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             // swallow cause I'm cool
         }
 

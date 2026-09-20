@@ -176,7 +176,7 @@ public final class TakeDamageHandler extends AbstractPacketHandler {
                         if (chr.isBuffFrom(BuffStat.MANA_REFLECTION, manaReflectSkill) && chr.getSkillLevel(manaReflectSkill) > 0 && manaReflectSkill.getEffect(chr.getSkillLevel(manaReflectSkill)).makeChanceResult()) {
                             int bouncedamage = (damage * manaReflectSkill.getEffect(chr.getSkillLevel(manaReflectSkill)).getX() / 100);
                             if (bouncedamage > attacker.getMaxHp() / 5) {
-                                bouncedamage = attacker.getMaxHp() / 5;
+                                bouncedamage = (int) Math.min(Integer.MAX_VALUE, (attacker.getMaxHp() / 5));
                             }
                             map.damageMonster(chr, attacker, bouncedamage);
                             map.broadcastMessage(chr, PacketCreator.damageMonster(oid, bouncedamage), true);
@@ -209,7 +209,7 @@ public final class TakeDamageHandler extends AbstractPacketHandler {
                 if (damagefrom == -1) {
                     if (chr.getBuffedValue(BuffStat.POWERGUARD) != null) { // PG works on bosses, but only at half of the rate.
                         int bouncedamage = (int) (damage * (chr.getBuffedValue(BuffStat.POWERGUARD).doubleValue() / (attacker.isBoss() ? 200 : 100)));
-                        bouncedamage = Math.min(bouncedamage, attacker.getMaxHp() / 10);
+                        bouncedamage = (int) Math.min(bouncedamage, attacker.getMaxHp() / 10);
                         damage -= bouncedamage;
                         map.damageMonster(chr, attacker, bouncedamage);
                         map.broadcastMessage(chr, PacketCreator.damageMonster(oid, bouncedamage), false, true);

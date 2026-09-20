@@ -32,8 +32,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PortalPlayerInteraction extends AbstractPlayerInteraction {
+    private static final Logger log = LoggerFactory.getLogger(PortalPlayerInteraction.class);
+
     private final Portal portal;
 
     public PortalPlayerInteraction(Client c, Portal portal) {
@@ -63,7 +67,7 @@ public class PortalPlayerInteraction extends AbstractPlayerInteraction {
                 }
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
 
         return getPlayer().getLevel() >= 30;

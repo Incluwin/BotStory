@@ -1,14 +1,8 @@
 function start() {
     if (cm.haveItem(4031045)) {
-        var em = cm.getEventManager("Cabin");
-        if (em.getProperty("entry") == "true") {
-            cm.sendYesNo("Do you wish to board the flight?");
-        } else {
-            cm.sendOk("The flight has not arrived yet. Come back soon.");
-            cm.dispose();
-        }
+        cm.sendYesNo("Do you wish to travel to #bOrbis#k?");
     } else {
-        cm.sendOk("Make sure you got an Orbis ticket to travel in this flight. Check your inventory.");
+        cm.sendOk("Make sure you got an Orbis ticket to travel. Check your inventory.");
         cm.dispose();
     }
 }
@@ -19,12 +13,7 @@ function action(mode, type, selection) {
         cm.dispose();
         return;
     }
-    var em = cm.getEventManager("Cabin");
-    if (em.getProperty("entry") == "true") {
-        cm.warp(240000111);
-        cm.gainItem(4031045, -1);
-    } else {
-        cm.sendOk("The flight has not arrived yet. Come back soon.");
-    }
+    cm.gainItem(4031045, -1);
+    cm.warp(200000100, 0);
     cm.dispose();
 }

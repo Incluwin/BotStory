@@ -132,7 +132,7 @@ public class PlayerNPC extends AbstractMapObject {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -289,7 +289,7 @@ public class PlayerNPC extends AbstractMapObject {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         return ret;
@@ -312,7 +312,7 @@ public class PlayerNPC extends AbstractMapObject {
             ps.setInt(6, getObjectId());
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -356,7 +356,7 @@ public class PlayerNPC extends AbstractMapObject {
                 list.add(availables.get(i));
             }
         } catch (SQLException sqle) {
-            sqle.printStackTrace();
+            log.error("unhandled exception", sqle);
         }
     }
 
@@ -482,7 +482,7 @@ public class PlayerNPC extends AbstractMapObject {
 
             return ret;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return null;
         }
     }
@@ -517,7 +517,7 @@ public class PlayerNPC extends AbstractMapObject {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         mapids.addAll(updateMapids);
@@ -649,7 +649,7 @@ public class PlayerNPC extends AbstractMapObject {
                 w.resetPlayerNpcMapData();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 }

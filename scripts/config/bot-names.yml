@@ -1,0 +1,176 @@
+# Bot-name generator pools and weights.
+# See BOT_ECONOMY.md § Naming for full spec.
+# Loaded by server.bot.BotNameGenerator.
+
+bot_names:
+  style_pools:
+    dictionary_word:
+      - Panic
+      - Shadow
+      - Frost
+      - Storm
+      - Ghost
+      - Phantom
+      - Bolt
+      - Venom
+      - Blaze
+      - Rogue
+      - Spark
+      - Lunar
+      - Solar
+      - Ember
+      - Rift
+      - Void
+      - Thorn
+      - Reaper
+      - Specter
+      - Onyx
+      - Crimson
+      - Raven
+      - Fang
+      - Claw
+      - Drift
+      - Gale
+      - Pulse
+      - Rift
+      - Nova
+      - Saber
+      - Wraith
+      - Vortex
+      - Cipher
+      - Eclipse
+
+    adjective_noun:
+      - DarkAngel
+      - SwiftFox
+      - LostSoul
+      - ColdMoon
+      - NightWolf
+      - IronFist
+      - SilverArrow
+      - CrimsonBlade
+      - FrostBite
+      - BlackHeart
+      - RedTalon
+      - SteelFang
+      - GoldenEye
+      - WildCard
+      - StormRider
+      - ShadowBorn
+      - LoneWolf
+      - BlueFlame
+      - FireStorm
+      - IceVeil
+      - DarkStar
+
+    decorated_bases:
+      - Slasher
+      - Shadow
+      - Blade
+      - Assassin
+      - Dark
+      - Pain
+      - Death
+      - Warrior
+      - Reaper
+      - Ninja
+      - Knight
+      - Venom
+      - Raven
+      - Hunter
+      - Slayer
+
+    leetspeak_bases:
+      - shadow
+      - panda
+      - nightmare
+      - mark
+      - angel
+      - ghost
+      - dragon
+      - storm
+      - fire
+      - knight
+      - demon
+      - reaper
+      - blade
+      - warrior
+
+    syllable_seeds:
+      prefixes: [zy, vael, thor, kae, zel, mor, rav, nex, syl, dra, kry, vor, xan, zer, ae, bel]
+      middles:  [en, or, ar, eth, yn, ax, is, an, ir, ul, ev, ith]
+      suffixes: [loth, ryn, vex, tho, eth, zar, wop, ynn, ath, ex, oth, ael, iel]
+
+    gamer_phrases:
+      - OneShot
+      - MobFarmer
+      - CritKing
+      - Tank
+      - Boomer
+      - Healer
+      - NoScope
+      - AFK
+      - LagLord
+      - ProGamer
+      - TryHard
+      - EZ
+      - Camper
+      - Smurf
+      - GG
+
+  style_weights:
+    dictionary_word: 30
+    adjective_noun:  20
+    decorated:       16
+    leetspeak:       14
+    syllable_gen:    10
+    gamer_phrase:    10
+
+  persona_bias:
+    WarriorGear:     { adjective_noun: 8,  gamer_phrase: 5,  dictionary_word: 3 }
+    MagicianGear:    { syllable_gen:   8,  dictionary_word: 5, leetspeak:     3 }
+    ArcherGear:      { dictionary_word: 5, adjective_noun: 5, syllable_gen:  3 }
+    ThiefGear:       { decorated:      7,  leetspeak:      5, syllable_gen:  3 }
+    PirateGear:      { gamer_phrase:   5,  adjective_noun: 5, decorated:     3 }
+    ScrollMerchant:  { syllable_gen:   8,  dictionary_word: 3 }
+    RareSpecialist:  { decorated:      7,  adjective_noun: 5 }
+    NPCVendor:       { gamer_phrase:   8,  dictionary_word: 5 }
+    BulkVendor:      { gamer_phrase:   10, dictionary_word: 5 }
+    AccessoryVendor: { dictionary_word: 8, syllable_gen:    3 }
+    Generalist:      {}
+
+  post_processing:
+    suffix_digit_probability: 0.40
+    suffix_digit_range: [1, 999]
+    case_variation:
+      lowercase: 0.20
+      uppercase: 0.10
+      mixed:     0.70
+
+  constraints:
+    min_length: 4
+    max_length: 13
+    allowed_regex: "^[A-Za-z0-9]+$"
+    profanity_wordlist: scripts/config/wordlists/profanity.txt
+    restricted_names:
+      - GM
+      - Admin
+      - CM
+      - Tester
+      - Moderator
+      - Staff
+      - Server
+      - Bot
+      - System
+      - Support
+      - Help
+      - Info
+      - MapleGM
+      - MapleStory
+      - AdminBot
+    real_player_collision_check: true
+    existing_bot_collision_check: true
+
+  generation:
+    max_regeneration_attempts: 20
+    distribution_tolerance_pct: 2

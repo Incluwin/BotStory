@@ -16,8 +16,12 @@ import java.util.concurrent.ThreadFactory;
 
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ExpLogger {
+    private static final Logger log = LoggerFactory.getLogger(ExpLogger.class);
+
     private static final LinkedBlockingQueue<ExpLogRecord> expLoggerQueue = new LinkedBlockingQueue<>();
     private static final short EXP_LOGGER_THREAD_SLEEP_DURATION_SECONDS = 60;
     private static final short EXP_LOGGER_THREAD_SHUTDOWN_WAIT_DURATION_MINUTES = 5;
@@ -28,7 +32,7 @@ public class ExpLogger {
         try {
             expLoggerQueue.put(expLogRecord);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -60,7 +64,7 @@ public class ExpLogger {
                 }
                 ps.executeBatch();
             } catch (SQLException sqle) {
-                sqle.printStackTrace();
+                log.error("unhandled exception", sqle);
             }
         }
     };
@@ -82,7 +86,7 @@ public class ExpLogger {
             runThreadBeforeShutdown.start();
             return true;
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return false;
         }
     }

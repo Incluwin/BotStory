@@ -127,6 +127,45 @@ import java.util.Map;
  * @author Ronan
  */
 public class StatEffect {
+    private static final int PASSIVE_BOOSTER_MAX_LEVEL = 20;
+    private static final java.util.Set<Integer> PASSIVE_BOOSTER_SKILLS = java.util.Set.of(
+            Fighter.SWORD_BOOSTER,
+            Fighter.AXE_BOOSTER,
+            Page.SWORD_BOOSTER,
+            Page.BW_BOOSTER,
+            Spearman.SPEAR_BOOSTER,
+            Spearman.POLEARM_BOOSTER,
+            Hunter.BOW_BOOSTER,
+            Crossbowman.CROSSBOW_BOOSTER,
+            Assassin.CLAW_BOOSTER,
+            Bandit.DAGGER_BOOSTER,
+            Brawler.KNUCKLER_BOOSTER,
+            Gunslinger.GUN_BOOSTER,
+            DawnWarrior.SWORD_BOOSTER,
+            WindArcher.BOW_BOOSTER,
+            NightWalker.CLAW_BOOSTER,
+            ThunderBreaker.KNUCKLER_BOOSTER,
+            Aran.POLEARM_BOOSTER,
+            FPMage.SPELL_BOOSTER,
+            ILMage.SPELL_BOOSTER
+    );
+
+    public static boolean isPassiveBoosterSkill(int skillid) {
+        return PASSIVE_BOOSTER_SKILLS.contains(skillid);
+    }
+
+    public static int getPassiveBoosterMaxLevel() {
+        return PASSIVE_BOOSTER_MAX_LEVEL;
+    }
+
+    public boolean isPassiveSkillBuff() {
+        if (sourceid == Beginner.NIMBLE_FEET) {
+            return true;
+        }
+        return isPassiveBoosterSkill(sourceid) && level >= PASSIVE_BOOSTER_MAX_LEVEL;
+    }
+
+    private int level;
     private short watk, matk, wdef, mdef, acc, avoid, speed, jump;
     private short hp, mp;
     private double hpR, mpR;
@@ -665,8 +704,14 @@ public class StatEffect {
                 case ThunderBreaker.DASH:
                 case Beginner.SPACE_DASH:
                 case Noblesse.SPACE_DASH:
-                    statups.add(new Pair<>(BuffStat.DASH2, ret.x));
-                    statups.add(new Pair<>(BuffStat.DASH, ret.y));
+                    // Server policy: Dash is a flat +20 SPEED bonus that stacks additively with
+                    // other speed sources. DO NOT emit DASH2 — the v83 client treats any DASH2
+                    // buff as "enable dash-mode" which slams speed to the kaentake-patched 250 cap
+                    // regardless of value. Likewise drop the WZ-derived SPEED entry to avoid
+                    // double-counting against our +20.
+                    statups.removeIf(p -> p.getLeft() == BuffStat.SPEED);
+                    ret.speed = 20;
+                    statups.add(new Pair<>(BuffStat.SPEED, 20));
                     break;
                 case Corsair.SPEED_INFUSION:
                 case Buccaneer.SPEED_INFUSION:
@@ -1218,7 +1263,25 @@ public class StatEffect {
     }
 
     public int getBuffLocalDuration() {
+        if (sourceid == Beginner.NIMBLE_FEET) {
+            return Integer.MAX_VALUE;
+        }
+        if (isPassiveBoosterSkill(sourceid) && level >= PASSIVE_BOOSTER_MAX_LEVEL) {
+            return Integer.MAX_VALUE;
+        }
         return !YamlConfig.config.server.USE_BUFF_EVERLASTING ? duration : Integer.MAX_VALUE;
+    }
+
+    public void setLevel(int level) {
+        this.level = level;
+        if (isPassiveBoosterSkill(sourceid) && level >= PASSIVE_BOOSTER_MAX_LEVEL) {
+            this.mpCon = 0;
+            this.cooldown = 0;
+        }
+    }
+
+    public int getLevel() {
+        return level;
     }
 
     public void silentApplyBuff(Character chr, long localStartTime) {
@@ -1265,7 +1328,10 @@ public class StatEffect {
 
         long leftDuration = (starttime + localDuration) - Server.getInstance().getCurrentTime();
         if (leftDuration > 0) {
-            if (isDash() || isInfusion()) {
+            // Dash uses the regular giveBuff format (not givePirateBuff) so the client treats
+            // it as a plain SPEED buff. givePirateBuff would trigger dash-mode and force speed
+            // to 250 regardless of value.
+            if (isInfusion()) {
                 target.sendPacket(PacketCreator.givePirateBuff(activeStats, (skill ? sourceid : -sourceid), (int) leftDuration));
             } else {
                 target.sendPacket(PacketCreator.giveBuff((skill ? sourceid : -sourceid), (int) leftDuration, activeStats));
@@ -1276,6 +1342,13 @@ public class StatEffect {
     private void applyBuffEffect(Character applyfrom, Character applyto, boolean primary) {
         if (!isMonsterRiding() && !isCouponBuff() && !isMysticDoor() && !isHyperBody() && !isCombo()) {     // last mystic door already dispelled if it has been used before.
             applyto.cancelEffect(this, true, -1);
+        }
+
+        // Consumables don't stack with each other: any other item-source stat buff sharing
+        // WATK/MATK/WDEF/MDEF/ACC/AVOID/SPEED/JUMP is dropped before the new one applies.
+        // Skill buffs are unaffected — they stack additively in Character.getStackedBuffedValue.
+        if (!skill) {
+            applyto.cancelOverlappingItemBuffs(this);
         }
 
         List<Pair<BuffStat, Integer>> localstatups = statups;
@@ -1330,8 +1403,10 @@ public class StatEffect {
                 buff = PacketCreator.giveBuff((skill ? sourceid : -sourceid), localDuration, localstatups);
             }
             if (isDash()) {
-                buff = PacketCreator.givePirateBuff(statups, sourceid, seconds);
-                mbuff = PacketCreator.giveForeignPirateBuff(applyto.getId(), sourceid, seconds, localstatups);
+                // Dash deliberately uses the regular giveBuff packet (already built above) so
+                // the v83 client treats it as a plain SPEED buff. Routing it through
+                // givePirateBuff would tell the client "dash-mode active" and slam movement
+                // to the kaentake-patched 250 cap regardless of the SPEED value.
             } else if (isWkCharge()) {
                 mbuff = PacketCreator.giveForeignWKChargeEffect(applyto.getId(), sourceid, localstatups);
             } else if (isInfusion()) {

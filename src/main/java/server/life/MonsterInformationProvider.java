@@ -164,7 +164,7 @@ public class MonsterInformationProvider {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             return ret;
         }
 
@@ -285,5 +285,19 @@ public class MonsterInformationProvider {
         globaldrops.clear();
         continentDrops.clear();
         retrieveGlobal();
+    }
+
+    /**
+     * Clear every cache the provider owns (drops + mob meta). Called by
+     * !reloadmobs alongside LifeFactory.clearCaches() so the next mob spawn
+     * reads fresh Mob.wz + String.wz/Mob.img data.
+     */
+    public final synchronized void clearMobCaches() {
+        clearDrops();
+        mobBossCache.clear();
+        mobNameCache.clear();
+        mobAttackInfo.clear();
+        mobAttackAnimationTime.clear();
+        mobSkillAnimationTime.clear();
     }
 }

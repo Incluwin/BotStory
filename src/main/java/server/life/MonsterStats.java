@@ -26,6 +26,7 @@ import server.life.LifeFactory.selfDestruction;
 import tools.Pair;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,13 +34,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Frz
  */
 public class MonsterStats {
+    private static final Logger log = LoggerFactory.getLogger(MonsterStats.class);
+
     public boolean changeable;
-    public int exp, hp, mp, level, PADamage, PDDamage, MADamage, MDDamage, dropPeriod, cp, buffToGive = -1, removeAfter;
+    public int exp, mp, level, PADamage, PDDamage, MADamage, MDDamage, dropPeriod, cp, buffToGive = -1, removeAfter;
+    public long hp;
     public boolean boss, undead, ffaLoot, isExplosiveReward, firstAttack, removeOnMiss;
     public String name;
     public Map<String, Integer> animationTimes = new HashMap<>();
@@ -70,11 +76,11 @@ public class MonsterStats {
         this.exp = exp;
     }
 
-    public int getHp() {
+    public long getHp() {
         return hp;
     }
 
-    public void setHp(int hp) {
+    public void setHp(long hp) {
         this.hp = hp;
     }
 
@@ -348,7 +354,7 @@ public class MonsterStats {
         try {
             FieldCopyUtil.setFields(this, copy);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             try {
                 Thread.sleep(10000);
             } catch (Exception ex) {
@@ -365,15 +371,21 @@ public class MonsterStats {
         private static void setFields(Object from, Object to) {
             Field[] fields = from.getClass().getDeclaredFields();
             for (Field field : fields) {
+                // Static fields (e.g. the class logger) share a slot across all instances
+                // and are often final — JDK 17+ disallows reflective writes to final fields,
+                // which produced a loud IllegalAccessException on every copy().
+                if (Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
                 try {
                     Field fieldFrom = from.getClass().getDeclaredField(field.getName());
                     Object value = fieldFrom.get(from);
                     to.getClass().getDeclaredField(field.getName()).set(to, value);
 
                 } catch (IllegalAccessException e) {
-                    e.printStackTrace();
+                    log.error("unhandled exception", e);
                 } catch (NoSuchFieldException e) {
-                    e.printStackTrace();
+                    log.error("unhandled exception", e);
                 }
             }
         }

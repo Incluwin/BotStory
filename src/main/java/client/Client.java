@@ -65,18 +65,14 @@ import server.life.Monster;
 import server.maps.FieldLimit;
 import server.maps.MapleMap;
 import server.maps.MiniDungeonInfo;
-import tools.BCrypt;
 import tools.DatabaseConnection;
-import tools.HexTool;
 import tools.PacketCreator;
+import tools.PasswordHasher;
 
 import javax.script.ScriptEngine;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -215,7 +211,19 @@ public class Client extends ChannelInboundHandlerAdapter {
             log.debug("Received packet id {}", opcode);
         }
 
-        if (handler != null && handler.validateState(this)) {
+        if (handler == null) {
+            // Unknown opcode — client sent something the server doesn't route.
+            // Usually harmless (the client's version may have opcodes we don't
+            // handle) but logging surfaces opcode-table mismatches if they happen.
+            log.debug("No handler for opcode 0x{} (account={}, loggedIn={})",
+                    String.format("%04X", opcode & 0xFFFF), getAccountName(), loggedIn);
+        } else if (!handler.validateState(this)) {
+            // State gate rejected the packet. Usually "not logged in" on a
+            // packet that requires login — can also mask a login state that
+            // failed to transition to LOGGEDIN, so keep this at debug.
+            log.debug("Handler {} rejected by validateState (account={}, loggedIn={})",
+                    handler.getClass().getSimpleName(), getAccountName(), loggedIn);
+        } else {
             try {
                 MonitoredChrLogger.logPacketIfMonitored(this, opcode, packet.getBytes());
                 handler.handlePacket(packet, this);
@@ -332,7 +340,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 chars.add(Character.loadCharFromDB(cni.id, this, false));
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
         return chars;
     }
@@ -358,7 +366,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
         return chars;
     }
@@ -379,7 +387,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
         return ret;
     }
@@ -434,7 +442,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
 
         return ret;
@@ -468,7 +476,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
 
         return ret;
@@ -518,7 +526,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 ps.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 
@@ -553,7 +561,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 
@@ -580,7 +588,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 
@@ -613,7 +621,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 
@@ -649,7 +657,7 @@ public class Client extends ChannelInboundHandlerAdapter {
         }
 
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement("SELECT id, password, gender, banned, pin, pic, characterslots, tos, language FROM accounts WHERE name = ?")) {
+             PreparedStatement ps = con.prepareStatement("SELECT id, password, gender, banned, pin, pic, characterslots, tos, language, bot_flag FROM accounts WHERE name = ?")) {
             ps.setString(1, login);
 
             try (ResultSet rs = ps.executeQuery()) {
@@ -659,6 +667,14 @@ public class Client extends ChannelInboundHandlerAdapter {
                     if (accId <= 0) {
                         log.warn("Tried to log in with accId {}", accId);
                         return 15;
+                    }
+
+                    // BOT_ECONOMY.md § Bot login / impersonation prevention —
+                    // accounts flagged as bot-owned cannot log in via the client
+                    // regardless of credentials. Bots exist only as DB rows.
+                    if (rs.getByte("bot_flag") == 1) {
+                        log.warn("Rejected login attempt on bot-flagged account {} (accId {})", login, accId);
+                        return 3;   // treat as banned for the client's purposes
                     }
 
                     boolean banned = (rs.getByte("banned") == 1);
@@ -678,9 +694,11 @@ public class Client extends ChannelInboundHandlerAdapter {
                     if (getLoginState() > LOGIN_NOTLOGGEDIN) { // already loggedin
                         loggedIn = false;
                         loginok = 7;
-                    } else if (passhash.charAt(0) == '$' && passhash.charAt(1) == '2' && BCrypt.checkpw(pwd, passhash)) {
+                    } else if (PasswordHasher.isBcryptHash(passhash) && PasswordHasher.checkBcrypt(pwd, passhash)) {
                         loginok = (tos == 0) ? 23 : 0;
-                    } else if (pwd.equals(passhash) || checkHash(passhash, "SHA-1", pwd) || checkHash(passhash, "SHA-512", pwd)) {
+                    } else if (pwd.equals(passhash)
+                            || PasswordHasher.matchesLegacyHash(passhash, "SHA-1", pwd)
+                            || PasswordHasher.matchesLegacyHash(passhash, "SHA-512", pwd)) {
                         // thanks GabrielSin for detecting some no-bcrypt inconsistencies here
                         loginok = (tos == 0) ? (!YamlConfig.config.server.BCRYPT_MIGRATION ? 23 : -23) : (!YamlConfig.config.server.BCRYPT_MIGRATION ? 0 : -10); // migrate to bcrypt
                     } else {
@@ -692,7 +710,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
 
         if (loginok == 0 || loginok == 4) {
@@ -749,7 +767,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             tempBanCalendar = lTempban;
             return lTempban;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
 
         return null;//why oh why!?!
@@ -785,7 +803,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 
@@ -807,7 +825,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 
@@ -834,7 +852,16 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(3, getAccID());
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
+        }
+
+        // Phase D instrumentation — see ADMIN_DASHBOARD_PLAN.md §12. Safe to call
+        // on every state change; the emitter filters to login/logout events and
+        // runs writes on its own daemon thread so this path stays cheap.
+        if (newState == LOGIN_LOGGEDIN) {
+            server.admin.AdminEventEmitter.login(this);
+        } else if (newState == LOGIN_NOTLOGGEDIN) {
+            server.admin.AdminEventEmitter.logout(this);
         }
 
         if (newState == LOGIN_NOTLOGGEDIN) {
@@ -888,7 +915,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             return state;
         } catch (SQLException e) {
             loggedIn = false;
-            e.printStackTrace();
+            log.error("Client error", e);
             throw new RuntimeException("login state");
         }
     }
@@ -1132,7 +1159,7 @@ public class Client extends ChannelInboundHandlerAdapter {
 
             return Character.deleteCharFromDB(chr, senderAccId);
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            log.error("unhandled exception", ex);
             return false;
         }
     }
@@ -1174,7 +1201,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                     }
                 }
             } catch (NullPointerException e) {
-                e.printStackTrace();
+                log.error("Client error", e);
             }
         }, SECONDS.toMillis(15));
     }
@@ -1235,7 +1262,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 ps.executeUpdate();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
         return disconnect;
     }
@@ -1268,7 +1295,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
         votePoints = points;
         return votePoints;
@@ -1296,7 +1323,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 
@@ -1348,16 +1375,6 @@ public class Client extends ChannelInboundHandlerAdapter {
         }
     }
 
-    private static boolean checkHash(String hash, String type, String password) {
-        try {
-            MessageDigest digester = MessageDigest.getInstance(type);
-            digester.update(password.getBytes(StandardCharsets.UTF_8), 0, password.length());
-            return HexTool.toHexString(digester.digest()).replace(" ", "").toLowerCase().equals(hash);
-        } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("Encoding the string failed", e);
-        }
-    }
-
     public short getAvailableCharacterSlots() {
         return (short) Math.max(0, characterSlots - Server.getInstance().getAccountCharacterCount(accId));
     }
@@ -1391,7 +1408,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 ps.executeUpdate();
 
             } catch (SQLException e) {
-                e.printStackTrace();
+                log.error("Client error", e);
             }
             return true;
         }
@@ -1409,7 +1426,7 @@ public class Client extends ChannelInboundHandlerAdapter {
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
         return 0;
     }
@@ -1427,7 +1444,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             ps.setInt(2, accId);
             ps.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 
@@ -1465,6 +1482,11 @@ public class Client extends ChannelInboundHandlerAdapter {
     public void sendPacket(Packet packet) {
         announcerLock.lock();
         try {
+            // Service-bot clients (ADMIN_DASHBOARD_PLAN.md section 14) have no real
+            // io channel — they exist so the GM-command-queue dispatch path can
+            // find a GM character without a human logged in. Drop their packets
+            // silently rather than NPE'ing.
+            if (ioChannel == null) return;
             ioChannel.writeAndFlush(packet);
         } finally {
             announcerLock.unlock();
@@ -1526,7 +1548,7 @@ public class Client extends ChannelInboundHandlerAdapter {
         try {
             sendPacket(PacketCreator.getChannelChange(InetAddress.getByName(socket[0]), Integer.parseInt(socket[1])));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Client error", e);
         }
     }
 

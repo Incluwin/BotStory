@@ -137,9 +137,12 @@ import client.command.commands.gm3.QuestResetCommand;
 import client.command.commands.gm3.QuestStartCommand;
 import client.command.commands.gm3.ReloadDropsCommand;
 import client.command.commands.gm3.ReloadEventsCommand;
+import client.command.commands.gm3.ReloadItemsCommand;
 import client.command.commands.gm3.ReloadMapCommand;
+import client.command.commands.gm3.ReloadMobsCommand;
 import client.command.commands.gm3.ReloadPortalsCommand;
 import client.command.commands.gm3.ReloadShopsCommand;
+import client.command.commands.gm3.ReloadSkillsCommand;
 import client.command.commands.gm3.RipCommand;
 import client.command.commands.gm3.SeedCommand;
 import client.command.commands.gm3.SpawnCommand;
@@ -152,7 +155,19 @@ import client.command.commands.gm3.TimerMapCommand;
 import client.command.commands.gm3.ToggleCouponCommand;
 import client.command.commands.gm3.UnBanCommand;
 import client.command.commands.gm4.BossDropRateCommand;
+import client.command.commands.gm4.BotEconomyCommand;
+// SoloMapling bot dev/admin commands.
+import client.command.commands.gm4.ArtificialPlayerCommand;
+import client.command.commands.gm4.OPQCommands;
+import client.command.commands.gm4.ReactorCommands;
+import client.command.commands.gm4.BotMoveCommand;
+import client.command.commands.gm4.ArtificialFreeMarketCommand;
+import client.command.commands.gm4.TestDevCommand;
+import client.command.commands.gm4.FMBotCommand;
+import client.command.commands.gm4.TradeBotTestCommand;
+import client.command.commands.gm4.EnvironmentCommand;
 import client.command.commands.gm4.CakeCommand;
+import client.command.commands.gm4.CheckSetsCommand;
 import client.command.commands.gm4.DropRateCommand;
 import client.command.commands.gm4.ExpRateCommand;
 import client.command.commands.gm4.FishingRateCommand;
@@ -171,6 +186,7 @@ import client.command.commands.gm4.PnpcCommand;
 import client.command.commands.gm4.PnpcRemoveCommand;
 import client.command.commands.gm4.ProItemCommand;
 import client.command.commands.gm4.QuestRateCommand;
+import client.command.commands.gm4.ResetBossCommand;
 import client.command.commands.gm4.ServerMessageCommand;
 import client.command.commands.gm4.SetEqStatCommand;
 import client.command.commands.gm4.TravelRateCommand;
@@ -296,7 +312,7 @@ public class CommandsExecutor {
             levelCommandsCursor.getRight().add(commandClass.getDeclaredConstructor().newInstance().getDescription());
             levelCommandsCursor.getLeft().add(name);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
     }
 
@@ -442,6 +458,9 @@ public class CommandsExecutor {
         addCommand("reloadportals", 3, ReloadPortalsCommand.class);
         addCommand("reloadmap", 3, ReloadMapCommand.class);
         addCommand("reloadshops", 3, ReloadShopsCommand.class);
+        addCommand("reloaditems", 3, ReloadItemsCommand.class);
+        addCommand("reloadskills", 3, ReloadSkillsCommand.class);
+        addCommand("reloadmobs", 3, ReloadMobsCommand.class);
         addCommand("hpmp", 3, HpMpCommand.class);
         addCommand("maxhpmp", 3, MaxHpMpCommand.class);
         addCommand("music", 3, MusicCommand.class);
@@ -514,6 +533,20 @@ public class CommandsExecutor {
         addCommand("pinkbean", 4, PinkbeanCommand.class);
         addCommand("pap", 4, PapCommand.class);
         addCommand("pianus", 4, PianusCommand.class);
+        addCommand("resetboss", 4, ResetBossCommand.class);
+        addCommand("checksets", 4, CheckSetsCommand.class);
+        addCommand("boteconomy", 4, BotEconomyCommand.class);
+        // SoloMapling bot dev/admin commands (gm4). Operate on the social-bot layer;
+        // the FM/merchant ones (betafmshop/fmbot/tradebot) drive keep-but-gate code.
+        addCommand("bot", 4, ArtificialPlayerCommand.class);
+        addCommand("opq", 4, OPQCommands.class);
+        addCommand("reactor", 4, ReactorCommands.class);
+        addCommand("move", 4, BotMoveCommand.class);
+        addCommand("betafmshop", 4, ArtificialFreeMarketCommand.class);
+        addCommand("test", 4, TestDevCommand.class);
+        addCommand("fmbot", 4, FMBotCommand.class);
+        addCommand("tradebot", 4, TradeBotTestCommand.class);
+        addCommand("env", 4, EnvironmentCommand.class);
         addCommand("cake", 4, CakeCommand.class);
         addCommand("playernpc", 4, PlayerNpcCommand.class);
         addCommand("playernpcremove", 4, PlayerNpcRemoveCommand.class);

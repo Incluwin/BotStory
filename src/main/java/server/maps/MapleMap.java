@@ -24,6 +24,8 @@ package server.maps;
 import client.BuffStat;
 import client.Character;
 import client.Client;
+import client.Skill;
+import client.SkillFactory;
 import client.autoban.AutobanFactory;
 import client.inventory.Equip;
 import client.inventory.InventoryType;
@@ -31,6 +33,7 @@ import client.inventory.Item;
 import client.inventory.Pet;
 import client.status.MonsterStatus;
 import client.status.MonsterStatusEffect;
+import constants.skills.Bandit;
 import config.YamlConfig;
 import constants.game.GameConstants;
 import constants.id.MapId;
@@ -684,8 +687,26 @@ public class MapleMap {
                             mesos = Integer.MAX_VALUE;
                         }
 
-                        spawnMesoDrop(mesos, calcDropPos(pos, mob.getPosition()), mob, chr, false, droptype,
-                                delay);
+                        if (droptype == 3) {
+                            // Pinata / explosive-reward style mobs: keep mesos on the floor so the visual fan-out is preserved.
+                            spawnMesoDrop(mesos, calcDropPos(pos, mob.getPosition()), mob, chr, false, droptype,
+                                    delay);
+                        } else {
+                            // Auto-pickup for top damager. chr is the highest-damage attacker, set by
+                            // Monster.killBy() → getHighestDamagerId() before dropFromMonster() is invoked.
+                            // Party split mirrors Character.pickupItem() so party play isn't regressed.
+                            List<Character> mpcs = chr.getPartyMembersOnSameMap();
+                            if (!mpcs.isEmpty()) {
+                                int share = mesos / mpcs.size();
+                                for (Character pm : mpcs) {
+                                    if (pm.isLoggedinWorld()) {
+                                        pm.gainMeso(share, true, true, false);
+                                    }
+                                }
+                            } else {
+                                chr.gainMeso(mesos, true, true, false);
+                            }
+                        }
                     }
                 } else {
                     if (ItemConstants.getInventoryType(de.itemId) == InventoryType.EQUIP) {
@@ -774,7 +795,33 @@ public class MapleMap {
 
         // Quest Drops
         index = dropItemsFromMonsterOnMap(visibleQuestEntry, pos, index, chRate, droptype, mobpos, chr, mob, delay);
-        dropItemsFromMonsterOnMap(otherQuestEntry, pos, index, chRate, droptype, mobpos, chr, mob, delay);
+        index = dropItemsFromMonsterOnMap(otherQuestEntry, pos, index, chRate, droptype, mobpos, chr, mob, delay);
+
+        // Bucket C (KuroMS mirror): Steal grants one extra boss-drop roll when a Bandit-branch
+        // character with Steal learned is in the killing party. Picks a single random entry
+        // from the main drop table and rolls it once; not a full re-roll of every loot line.
+        if (mob.isBoss() && !dropEntry.isEmpty() && partyHasStealLearned(chr)) {
+            int pick = Randomizer.nextInt(dropEntry.size());
+            dropItemsFromMonsterOnMap(java.util.Collections.singletonList(dropEntry.get(pick)),
+                    pos, index, chRate, droptype, mobpos, chr, mob, delay);
+        }
+    }
+
+    private static boolean partyHasStealLearned(Character chr) {
+        if (chr == null) return false;
+        Skill steal = SkillFactory.getSkill(Bandit.STEAL);
+        if (steal == null) return false;
+        if (chr.getSkillLevel(steal) > 0) return true;
+        if (chr.getParty() == null) return false;
+        World ws = chr.getWorldServer();
+        for (net.server.world.PartyCharacter pc : chr.getParty().getMembers()) {
+            if (pc.getId() == chr.getId()) continue;
+            Character m = ws.getPlayerStorage().getCharacterById(pc.getId());
+            if (m != null && m.getSkillLevel(steal) > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public void dropItemsFromMonster(List<MonsterDropEntry> list, final Character chr, final Monster mob, short delay) {
@@ -1434,7 +1481,7 @@ public class MapleMap {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         } finally {     // thanks resinate for pointing out a memory leak possibly from an exception thrown
             monster.dispatchMonsterKilled(true);
             broadcastMessage(PacketCreator.killMonster(monster.getObjectId(), animation), monster.getPosition());
@@ -3154,13 +3201,23 @@ public class MapleMap {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
 
         for (MapObject mo : getMapObjectsInRange(player.getPosition(), getRangedDistance(), rangedMapobjectTypes)) {
             if (!player.isMapObjectVisible(mo)) {
                 mo.sendSpawnData(player.getClient());
                 player.addVisibleMapObject(mo);
+
+                // Reassign controller whenever a monster enters visibility.
+                // sendObjectPlacement does this on map entry, but without this
+                // path a monster that spawned while no player was nearby stays
+                // uncontrolled once someone walks toward it — and an
+                // uncontrolled mob is visually frozen because the client only
+                // animates/moves mobs it's been granted control of.
+                if (mo.getType() == MapObjectType.MONSTER) {
+                    ((Monster) mo).aggroUpdateController();
+                }
             }
         }
     }
@@ -3530,11 +3587,15 @@ public class MapleMap {
         System.out.println("----------------------------------");
         */
 
+        // Non-boss spawn points can each hold MAX_PER_NONBOSS_POINT mobs, so scale the target accordingly.
+        // Boss/immobile points self-limit to 1, so they just leave unfillable slack — harmless.
+        int densityCap = monsterSpawn.size() * SpawnPoint.MAX_PER_NONBOSS_POINT;
+
         if (YamlConfig.config.server.USE_ENABLE_FULL_RESPAWN) {
-            return (monsterSpawn.size() - spawnedMonstersOnMap.get());
+            return densityCap - spawnedMonstersOnMap.get();
         }
 
-        int maxNumShouldSpawn = (int) Math.ceil(getCurrentSpawnRate(numPlayers) * monsterSpawn.size());
+        int maxNumShouldSpawn = (int) Math.ceil(getCurrentSpawnRate(numPlayers) * densityCap);
         return maxNumShouldSpawn - spawnedMonstersOnMap.get();
     }
 
@@ -4264,7 +4325,7 @@ public class MapleMap {
             this.buffMonsters(team, skill);
             getReactorByOid(reactor.getObjectId()).hitReactor(((Character) this.getAllPlayer().get(0)).getClient());
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
         }
         return 1;
     }
@@ -4426,6 +4487,130 @@ public class MapleMap {
 
     public void setTimeExpand(int timeExpand) {
         this.timeExpand = timeExpand;
+    }
+
+
+    public final List<HiredMerchant> getAllHiredMerchants() {
+        List<HiredMerchant> list = new LinkedList<>();
+        for (MapObject mmo : getHiredMerchants()) {
+            list.add((HiredMerchant) mmo);
+        }
+
+        return list;
+    }
+
+    public final List<PlayerShop> getAllPlayerShops() {
+        List<PlayerShop> list = new LinkedList<>();
+        for (MapObject mmo : getPlayerStores()) {
+            list.add((PlayerShop) mmo);
+        }
+
+        return list;
+    }
+
+    public final List<MapObject> getHiredMerchants() {
+        return getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapObjectType.HIRED_MERCHANT));
+    }
+
+    public final List<MapObject> getPlayerStores() {
+        return getMapObjectsInRange(new Point(0, 0), Double.POSITIVE_INFINITY, Arrays.asList(MapObjectType.SHOP));
+    }
+
+    public void moveBot(Character player, Point newPosition) {
+        player.setPosition(newPosition);
+
+//        // is this try needed? idk
+//        try {
+//            MapObject[] visibleObjects = player.getVisibleMapObjects();
+//
+//            Map<Integer, MapObject> mapObjects = getCopyMapObjects();
+//            for (MapObject mo : visibleObjects) {
+//                if (mo != null) {
+//                    if (mapObjects.get(mo.getObjectId()) == mo) {
+//                        updateMapObjectVisibility(player, mo);
+//                    } else {
+//                        player.removeVisibleMapObject(mo);
+//                    }
+//                }
+//            }
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//        }
+
+//        for (MapObject mo : getMapObjectsInRange(player.getPosition(), getRangedDistance(), rangedMapobjectTypes)) {
+//            if (!player.isMapObjectVisible(mo)) {
+//                try {
+////                    mo.sendSpawnData(player.getClient()); // not needed. cause a lot of MapItem errors
+//                    player.addVisibleMapObject(mo);
+//                } catch (Exception e) {
+//                    e.printStackTrace();
+//                }
+//            }
+//        }
+    }
+
+    public final MapItem spawnItemDropNoExpire(final MapObject dropper, final Character owner, final Item item, Point pos,
+                                    final boolean ffaDrop, final boolean playerDrop) {
+        if (FieldLimit.DROP_LIMIT.check(this.getFieldLimit())) {
+            this.disappearingItemDrop(dropper, owner, item, pos);
+            return null;
+        }
+
+        final Point droppos = calcDropPos(pos, pos);
+        final MapItem mdrop = new MapItem(item, droppos, dropper, owner, owner.getClient(), (byte) (ffaDrop ? 2 : 0), playerDrop);
+        mdrop.setDropTime(Server.getInstance().getCurrentTime());
+
+        spawnAndAddRangedMapObject(mdrop, c -> {
+            mdrop.lockItem();
+            try {
+                c.sendPacket(PacketCreator.dropItemFromMapObject(c.getPlayer(), mdrop, dropper.getPosition(), droppos,
+                        (byte) 1, (short) 0));
+            } finally {
+                mdrop.unlockItem();
+            }
+        }, null);
+
+        mdrop.lockItem();
+        try {
+            broadcastItemDropMessage(mdrop, dropper.getPosition(), droppos, (byte) 0, (short) 0);
+        } finally {
+            mdrop.unlockItem();
+        }
+
+        // Use no-expire registration instead of standard
+        if (droppedItemCount.get() >= YamlConfig.config.server.ITEM_LIMIT_ON_MAP) {
+            MapObject mapobj;
+            do {
+                mapobj = null;
+                objectWLock.lock();
+                try {
+                    while (mapobj == null) {
+                        if (registeredDrops.isEmpty()) {
+                            break;
+                        }
+                        mapobj = registeredDrops.remove(0).get();
+                    }
+                } finally {
+                    objectWLock.unlock();
+                }
+            } while (!makeDisappearItemFromMap(mapobj));
+        }
+
+        objectWLock.lock();
+        try {
+            registerItemDropNoExpire(mdrop);
+            registeredDrops.add(new WeakReference<>(mdrop));
+        } finally {
+            objectWLock.unlock();
+        }
+        droppedItemCount.incrementAndGet();
+
+        activateItemReactors(mdrop, owner.getClient());
+        return mdrop;
+    }
+
+    private void registerItemDropNoExpire(MapItem mdrop) {
+        droppedItems.put(mdrop, Long.MAX_VALUE);
     }
 
 }

@@ -38,8 +38,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PmobRemoveCommand extends Command {
+    private static final Logger log = LoggerFactory.getLogger(PmobRemoveCommand.class);
+
     {
         setDescription("Remove all permanent mobs of the same type on the map.");
     }
@@ -90,7 +94,7 @@ public class PmobRemoveCommand extends Command {
             }
             ps.close();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("unhandled exception", e);
             player.dropMessage(5, "Failed to remove pmob from the database.");
         }
 

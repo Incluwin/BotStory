@@ -108,6 +108,7 @@ public class StorageProcessor {
                                 log.debug("Chr {} took out {}x {} ({})", c.getPlayer().getName(), item.getQuantity(), itemName, item.getItemId());
 
                                 storage.sendTakenOut(c, item.getInventoryType());
+                                chr.saveCharToDB();
                             } else {
                                 c.sendPacket(PacketCreator.enableActions());
                                 return;
@@ -189,6 +190,7 @@ public class StorageProcessor {
                         String itemName = ii.getName(item.getItemId());
                         log.debug("Chr {} stored {}x {} ({})", c.getPlayer().getName(), item.getQuantity(), itemName, item.getItemId());
                         storage.sendStored(c, ItemConstants.getInventoryType(itemId));
+                        chr.saveCharToDB();
                     }
                     break;
                 }
@@ -229,6 +231,7 @@ public class StorageProcessor {
                         chr.setUsedStorage();
                         log.debug("Chr {} {} {} mesos", c.getPlayer().getName(), meso > 0 ? "took out" : "stored", Math.abs(meso));
                         storage.sendMeso(c);
+                        chr.saveCharToDB();
                     } else {
                         c.sendPacket(PacketCreator.enableActions());
                         return;

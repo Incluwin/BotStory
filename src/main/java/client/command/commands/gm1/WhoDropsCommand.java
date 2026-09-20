@@ -36,8 +36,12 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.Iterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WhoDropsCommand extends Command {
+    private static final Logger log = LoggerFactory.getLogger(WhoDropsCommand.class);
+
     {
         setDescription("Show what drops an item.");
     }
@@ -74,7 +78,7 @@ public class WhoDropsCommand extends Command {
                             }
                         } catch (Exception e) {
                             player.dropMessage(6, "There was a problem retrieving the required data. Please try again.");
-                            e.printStackTrace();
+                            log.error("unhandled exception", e);
                             return;
                         }
                         output += "\r\n\r\n";

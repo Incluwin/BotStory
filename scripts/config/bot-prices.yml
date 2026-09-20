@@ -1,0 +1,107 @@
+# Per-item per-SMT absolute prices (BOT_ECONOMY.md § Price-table shape).
+# Sparse: only items that need explicit SMT-tier prices. Missing entries fall back to
+# NPC_sell x 4 (recorded as clamp_floor_count and flagged by invariant 8).
+#
+# After seed migration, this file seeds the bot_item_prices DB table; the DB becomes
+# authoritative. Editing this file post-seed only matters on re-migration.
+#
+# Rule of thumb: at each SMT, aim for ~30-60% of the p75 player's typical liquid meso
+# on aspirational items (R3+), 5-20% on staples (R1-R2).
+
+# ───── Scrolls (scroll_demand, rarity varies) ─────
+2040804:   # Glove for ATT 60%
+  price_class: scroll_demand
+  rarity: R2
+  smt_1: 45000
+  smt_2: 120000
+  smt_3: 250000
+  smt_4: 400000
+  smt_5: 550000
+  smt_6: 700000
+
+2044702:   # Claw for ATT 30%
+  price_class: scroll_demand
+  rarity: R3
+  smt_3: 800000
+  smt_4: 1500000
+  smt_5: 2400000
+  smt_6: 3200000
+
+2040804:   # Overall ATT 10% (placeholder — overwrite at seed with real ID)
+  price_class: scroll_demand
+  rarity: R4
+  smt_4: 5000000
+  smt_5: 7500000
+  smt_6: 10000000
+
+# ───── Player equips (player_equip, rarity varies) ─────
+1302081:   # Silver Planet
+  price_class: player_equip
+  rarity: R3
+  smt_3: 2500000
+  smt_4: 4000000
+  smt_5: 6000000
+  smt_6: 8000000
+
+1402039:   # Patriot
+  price_class: player_equip
+  rarity: R3
+  smt_3: 1800000
+  smt_4: 3000000
+  smt_5: 4800000
+  smt_6: 6500000
+
+1432012:   # Red Craven Spear
+  price_class: player_equip
+  rarity: R2
+  smt_1: 250000
+  smt_2: 450000
+  smt_3: 700000
+  smt_4: 1100000
+  smt_5: 1500000
+  smt_6: 2000000
+
+# ───── Crafting mats (crafting_mat, rarity varies) ─────
+4011001:   # Refined Mithril
+  price_class: crafting_mat
+  rarity: R1
+  smt_0: 3000
+  smt_1: 5000
+  smt_2: 8000
+  smt_3: 12000
+  smt_4: 18000
+  smt_5: 24000
+  smt_6: 30000
+
+4003000:   # Bronze Plate
+  price_class: crafting_mat
+  rarity: R1
+  smt_0: 2000
+  smt_1: 3500
+  smt_2: 5000
+  smt_3: 7500
+  smt_4: 10000
+  smt_5: 13000
+  smt_6: 16000
+
+# ───── Rare specialty (rare_specialty, rarity varies) ─────
+2022179:   # Onyx Apple
+  price_class: rare_specialty
+  rarity: R3
+  smt_3: 800000
+  smt_4: 1200000
+  smt_5: 1800000
+  smt_6: 2500000
+
+2022121:   # Sap of Ancient Tree
+  price_class: rare_specialty
+  rarity: R2
+  smt_1: 80000
+  smt_2: 150000
+  smt_3: 250000
+  smt_4: 380000
+  smt_5: 500000
+  smt_6: 650000
+
+# NPC-consumables (npc_consumable) do not need per-SMT entries — price derives
+# live from ItemInformationProvider.getPrice() x uniform(0.95, 1.00).

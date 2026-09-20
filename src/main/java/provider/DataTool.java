@@ -24,8 +24,12 @@ package provider;
 import provider.wz.DataType;
 
 import java.awt.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DataTool {
+    private static final Logger log = LoggerFactory.getLogger(DataTool.class);
+
     public static String getString(Data data) {
         return ((String) data.getData());
     }
@@ -129,7 +133,7 @@ public class DataTool {
             try {
                 return Integer.parseInt(getString(d));
             } catch (NumberFormatException nfe) {
-                nfe.printStackTrace();
+                log.error("unhandled exception", nfe);
                 return def;
             }
         } else {

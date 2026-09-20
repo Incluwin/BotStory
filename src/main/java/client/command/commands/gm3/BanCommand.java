@@ -34,8 +34,12 @@ import tools.PacketCreator;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BanCommand extends Command {
+    private static final Logger log = LoggerFactory.getLogger(BanCommand.class);
+
     {
         setDescription("Ban a player.");
     }
@@ -64,7 +68,7 @@ public class BanCommand extends Command {
                     }
                 }
             } catch (SQLException ex) {
-                ex.printStackTrace();
+                log.error("unhandled exception", ex);
                 c.getPlayer().message("Error occured while banning IP address");
                 c.getPlayer().message(target.getName() + "'s IP was not banned: " + ip);
             }
