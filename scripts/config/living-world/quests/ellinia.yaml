@@ -1,0 +1,165 @@
+# Ellinia quest lines. Green mushroom 1110100 (spore 4000011), slime 210100 (bubble 4000010),
+# lupin 3210800 (doll 4000026, banana 4000029), zombie lupin 4230101, zombie mushroom 2230101,
+# horny mushroom 2110200 (cap 4000015), dark stump 1110101, stirge 2300100 (wing 4000042),
+# fairy wing 4003003, sap of ancient tree 2012002. Maps: station 101000300, tree I 101010100.
+- id: wren-shelf-of-spores
+  persona: wren
+  title: "Ink from Spores"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: spores, type: COLLECT_ITEM, itemId: 4000011, count: 20 }
+    - { id: return, type: DELIVER, to: wren, take: { itemId: 4000011, count: 20 } }
+  rewards: { meso: 2500, exp: 900, bondPoints: 20, flags: [wren.ink.done] }
+
+- id: wren-the-missing-volume
+  persona: wren
+  title: "The Missing Volume"
+  length: SHORT
+  requires: { level: { min: 14 }, questsCompleted: [wren-shelf-of-spores] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bubbles, type: COLLECT_ITEM, itemId: 4000010, count: 30 }
+    - { id: return, type: DELIVER, to: wren, take: { itemId: 4000010, count: 30 } }
+  rewards: { meso: 4000, exp: 1600, bondPoints: 25, flags: [wren.volume.rebound] }
+  onComplete: { arcAdvance: { arc: wren-sealed-shelf, to: chapter-2 } }
+
+- id: wren-what-the-lupins-took
+  persona: wren
+  title: "What the Lupins Took"
+  length: MEDIUM
+  requires: { level: { min: 26 }, questsCompleted: [wren-the-missing-volume] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000026, count: 5 }
+    - { id: return, type: DELIVER, to: wren, take: { itemId: 4000026, count: 5 } }
+  rewards: { meso: 9000, exp: 5000, bondPoints: 40, flags: [wren.doll.found] }
+  onComplete: { arcAdvance: { arc: wren-sealed-shelf, to: chapter-3 } }
+
+- id: lioren-ashes-to-read
+  persona: lioren
+  title: "Ashes to Read"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: caps, type: KILL_MOBS, mobIds: [2230101], count: 15 }
+    - { id: report, type: DELIVER, to: lioren }
+  rewards: { meso: 5000, exp: 2800, bondPoints: 30, flags: [lioren.ashes.read] }
+
+- id: lioren-the-sealed-shelf
+  persona: lioren
+  title: "The Sealed Shelf"
+  length: LONG
+  requires: { level: { min: 28 }, flags: [lioren.ashes.read, wren.doll.found] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wren, type: TALK_TO, persona: wren, say: ["Lioren wants the shelf open. fine. take Casse. she should see what's inside before she decides who to become."] }
+    - { id: casse, type: TALK_TO, persona: casse, say: ["the shelf? Wren said yes?! okay okay. tell Lioren i'm coming. i've always wanted to see it."] }
+    - { id: guard, type: KILL_MOBS, mobIds: [4230101], count: 20 }
+    - { id: report, type: DELIVER, to: lioren, say: ["burn the seal. now. before Wren changes her mind."] }
+  rewards: { meso: 15000, exp: 9000, bondPoints: 50, flags: [lioren.shelf.open], worldFlags: [ellinia.shelf.open] }
+
+- id: casse-frost-notes
+  persona: casse
+  title: "Frost Notes"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000015, count: 10 }
+    - { id: return, type: DELIVER, to: casse, take: { itemId: 4000015, count: 10 } }
+  rewards: { meso: 3000, exp: 1300, bondPoints: 25, flags: [casse.frost.notes] }
+  onComplete: { arcAdvance: { arc: casse-cold-study, to: chapter-2 } }
+
+- id: casse-a-cold-shelf
+  persona: casse
+  title: "A Cold Shelf"
+  length: MEDIUM
+  requires: { level: { min: 18 }, questsCompleted: [casse-frost-notes] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slimes, type: KILL_MOBS, mobIds: [210100], count: 40 }
+    - { id: report, type: DELIVER, to: casse }
+  rewards: { meso: 4500, exp: 2200, bondPoints: 30, flags: [casse.archive.safe] }
+
+- id: bram-stump-rot
+  persona: bram
+  title: "Stump Rot"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 12 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [1110101], count: 30 }
+    - { id: report, type: DELIVER, to: bram }
+  rewards: { meso: 3000, exp: 1500, bondPoints: 10 }
+
+- id: nettle-upstairs-please
+  persona: nettle
+  title: "Upstairs, Please"
+  length: SHORT
+  requires: { level: { min: 5 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wren, type: TALK_TO, persona: wren, say: ["station letters. good. tell Nettle the ladder won't bite."] }
+    - { id: back, type: DELIVER, to: nettle }
+  rewards: { meso: 800, exp: 300, bondPoints: 15 }
+
+- id: nettle-station-run
+  persona: nettle
+  title: "Mail Day"
+  length: SHORT
+  requires: { level: { min: 8 }, questsCompleted: [nettle-upstairs-please] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: station, type: VISIT_MAP, mapIds: [101000300] }
+    - { id: back, type: DELIVER, to: nettle }
+  rewards: { meso: 1500, exp: 600, bondPoints: 15 }
+
+- id: oda-wings-on-the-tracks
+  persona: oda
+  title: "Wings on the Tracks"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000042, count: 12 }
+    - { id: return, type: DELIVER, to: oda, take: { itemId: 4000042, count: 12 } }
+  rewards: { meso: 4000, exp: 2000, bondPoints: 10 }
+
+- id: pell-banana-trail
+  persona: pell
+  title: "The Banana Trail"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 20 }
+    - { id: report, type: DELIVER, to: pell }
+  rewards: { meso: 5000, exp: 3000, bondPoints: 20, items: [{ itemId: 2060000, count: 400 }], flags: [pell.trail.done] }
+
+- id: pell-zombie-lupins
+  persona: pell
+  title: "Something in the Forest"
+  length: MEDIUM
+  requires: { level: { min: 30 }, questsCompleted: [pell-banana-trail] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zombies, type: KILL_MOBS, mobIds: [4230101], count: 15 }
+    - { id: banana, type: COLLECT_ITEM, itemId: 4000029, count: 1 }
+    - { id: return, type: DELIVER, to: pell, take: { itemId: 4000029, count: 1 } }
+  rewards: { meso: 9000, exp: 6000, bondPoints: 30, flags: [pell.grey.banana], worldFlags: [ellinia.forest.turning] }
+
+- id: thessaly-a-fallen-wing
+  persona: thessaly
+  title: "A Fallen Wing"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wing, type: COLLECT_ITEM, itemId: 4003003, count: 1 }
+    - { id: return, type: DELIVER, to: thessaly, take: { itemId: 4003003, count: 1 } }
+  rewards: { meso: 3500, exp: 1500, bondPoints: 25, items: [{ itemId: 2012002, count: 1 }], flags: [thessaly.wing.seen] }

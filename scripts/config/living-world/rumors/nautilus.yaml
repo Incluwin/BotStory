@@ -1,0 +1,15 @@
+# Nautilus rumors.
+- id: nautilus-empty-cabin
+  participants: [kettle, mae, pike]
+  where: { town: nautilus, spot: "venue:cabin-approach" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: kettle-new-captain, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: pike, text: "the cabin's open. it's empty. it's been empty the whole time, hasn't it." }
+    - { by: mae, text: "a year, Pike. the captain walked off at Ellinia and left the ship to the bosun." }
+    - { by: kettle, text: "he left it to the crew. i just kept the deck." }
+    - { by: mae, text: "you kept the ship, Kettle. say it. captain." }
+    - { by: kettle, text: "...fine. captain. now somebody find me a token worth the word." }
+  setsFlagOnListeners: nautilus.heard-cabin

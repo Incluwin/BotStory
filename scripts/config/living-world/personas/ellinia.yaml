@@ -1,0 +1,292 @@
+# Ellinia cast: what the archive hides. 8 residents, 2 recruitable (Casse early via a rare item, Lioren through the archive arc), 2 arcs.
+- id: wren
+  name: Wren
+  title: "Archivist of the Upper Tree"
+  job: BEGINNER
+  level: { min: 28, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 7, to: 21, spot: "venue:upper-tree", activity: LINGER }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  questLines: [wren-shelf-of-spores, wren-the-missing-volume, wren-what-the-lupins-took]
+  arc: wren-sealed-shelf
+  rumors: [ellinia-what-was-burned]
+  relationships:
+    - { persona: lioren, kind: HIDES_FROM }
+    - { persona: casse, kind: TEACHES }
+  dialogue:
+    greetFirst: ["quiet. the pages can hear you.", "you're dripping on the floor of a library."]
+    greet: ["ah. you.", "back for another page?"]
+    idle: ["(reshelves a book that was already shelved)"]
+    noWork: ["the archive is in order. for once. go away."]
+    nothingDue: ["you owe the archive nothing. the archive owes you nothing. balanced."]
+    who: ["Wren. i keep the upper archive. i keep what's in it, too."]
+    bye: ["mind the ladder."]
+    thanks: ["put it in the margin."]
+    smallTalk: ["every book here was written by someone who thought they'd be remembered. cheerful, isn't it."]
+    speakPlainly: ["use words that exist in a dictionary."]
+    questOffer.wren-shelf-of-spores: ["mushroom spores. the green mushrooms outside carry them. twenty, for the ink."]
+    questComplete.wren-shelf-of-spores: ["twenty. the ink will hold for another season."]
+    questOffer.wren-the-missing-volume: ["a volume went missing. slimes ate the binding, i think. thirty slime bubbles and i can rebind what's left."]
+    questComplete.wren-the-missing-volume: ["the binding holds. the text inside is... not what i remembered. never mind."]
+    questOffer.wren-what-the-lupins-took: ["the lupins in the north forest carry off anything shiny. a doll went with them. one that was pressed in a book. bring me five lupin dolls and i'll know if mine is among them."]
+    questWaiting.wren-what-the-lupins-took: ["five dolls. lupin dolls. i'll know mine."]
+    questComplete.wren-what-the-lupins-took: ["...this one. this is it. Lioren pressed it in the book the day he left. i suppose you should hear the rest from him."]
+    about.lioren: ["he studied here. then the shelf was sealed. draw a line between those two facts if you like."]
+    about.casse: ["Casse reads faster than she thinks. she'll be good, if she survives herself."]
+    aboutUnknown: ["not catalogued."]
+
+- id: lioren
+  name: Lioren
+  title: "Fire Reader"
+  job: FP_WIZARD
+  level: { min: 31, max: 34 }
+  strength: VETERAN
+  loadout: ellinia-mage-l30
+  personality: efficient-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 12, to: 24, spot: "venue:lower-village", activity: LINGER }
+      - { from: 0, to: 12, materialize: false }
+  recruitable: true
+  contract: lioren-unsealed
+  questLines: [lioren-ashes-to-read, lioren-the-sealed-shelf]
+  arc: lioren-unsealed
+  rumors: [ellinia-what-was-burned]
+  benchToleranceDays: 4
+  paceGap: 3
+  relationships:
+    - { persona: wren, kind: RESENTS }
+    - { persona: casse, kind: WATCHES }
+  dialogue:
+    greetFirst: ["don't stand downwind of me. i smell like a campfire.", "if Wren sent you, turn around."]
+    greet: ["you again.", "the village is small. i notice people."]
+    idle: ["(lights a small flame on his fingertip, watches it, puts it out)"]
+    noWork: ["nothing burns today."]
+    nothingDue: ["we're square."]
+    who: ["Lioren. i read fire. the archive didn't approve."]
+    bye: ["stay dry."]
+    thanks: ["hm."]
+    smallTalk: ["paper and fire want each other. i just stopped pretending otherwise."]
+    speakPlainly: ["plain words. fire doesn't do metaphor."]
+    refuse.bond: ["i've been read wrong by everyone in this tree. i'm not adding you."]
+    refuse.arc: ["there's a shelf that needs opening first. not by me."]
+    refuse.flags: ["you don't know why the shelf was sealed. ask around, or don't ask me to come."]
+    offer: ["i'll come. i want one thing: sap of the ancient tree, so i know you can reach the top branches. and the fee. fire isn't free."]
+    join: ["stand back when i cast. i mean it.", "lead. i'll keep the dark off you."]
+    bench: ["i'll be in the lower village. try not to burn anything without me."]
+    leave: ["that was warm. thank you. don't tell Wren i said that."]
+    refuseOwnErrand: ["that's my history. i don't outsource it."]
+    questOffer.lioren-ashes-to-read: ["zombie mushrooms in the north. their caps hold ash. fifteen, and i'll show you what fire remembers."]
+    questWaiting.lioren-ashes-to-read: ["fifteen zombie caps. the dead ones."]
+    questComplete.lioren-ashes-to-read: ["watch. see the shape in the smoke? that's the shelf. it remembers being closed."]
+    questOffer.lioren-the-sealed-shelf: ["the shelf can only be opened by someone the archive trusts. that's not me. go to Wren, then to Casse. then come back and we burn the seal, together, in front of the tree."]
+    questComplete.lioren-the-sealed-shelf: ["it's open. thirty years of my notes and one pressed flower. thank you."]
+    about.wren: ["Wren sealed the shelf to protect me. she'll never say that. neither will i, so."]
+    about.casse: ["the ice student. she's the only one here who isn't afraid of me. that's either brave or stupid."]
+    aboutUnknown: ["never read them."]
+
+- id: casse
+  name: Casse
+  title: "Ice Apprentice"
+  job: IL_WIZARD
+  level: { min: 21, max: 24 }
+  strength: SEASONED
+  loadout: ellinia-mage-l22
+  personality: relaxed-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 6, to: 12, spot: "venue:upper-tree", activity: LINGER }
+      - { from: 12, to: 23, spot: "venue:middle-tree", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  contract: casse-cold-study
+  questLines: [casse-frost-notes, casse-a-cold-shelf]
+  arc: casse-cold-study
+  benchToleranceDays: 10
+  paceGap: 1
+  giftItemIds: [2012002]
+  relationships:
+    - { persona: wren, kind: STUDIES_UNDER }
+    - { persona: lioren, kind: ADMIRES }
+  dialogue:
+    greetFirst: ["oh! hi! don't mind the frost, it's a work in progress.", "hello hello, are you here for the archive or the view?"]
+    greet: ["hi again!", "you came back! nobody comes back."]
+    idle: ["(freezes a leaf, unfreezes it, freezes it again)"]
+    noWork: ["nothing right now! unless you want to watch me practice. it's very boring."]
+    nothingDue: ["you don't owe me anything! i'd remember."]
+    who: ["Casse. i'm studying ice. Wren says i'm studying impatience. same thing, honestly."]
+    bye: ["stay warm! or cold! whichever!"]
+    thanks: ["aw."]
+    smallTalk: ["Lioren says fire remembers. i think ice does too, it just doesn't gossip."]
+    speakPlainly: ["sorry, say that slower? i freeze up. ha. sorry."]
+    refuse.bond: ["i'd love to, but Wren would kill me if i left with someone i don't know."]
+    refuse.arc: ["let me finish my notes first! then i'll come."]
+    offer: ["really?! okay. Wren says i can go if you can reach the top of the tree. bring sap of the ancient tree to prove it. i won't even keep it!"]
+    join: ["yes! okay! ice at the front, don't stand in it!"]
+    bench: ["i'll be at the tree. write to me! nobody writes."]
+    leave: ["that was the best. i'll put it in my notes."]
+    refuseOwnErrand: ["that's my homework! Wren checks!"]
+    questOffer.casse-frost-notes: ["for my notes: ten horny mushroom caps. they hold frost longer than the plain ones, i think. i hope."]
+    questComplete.casse-frost-notes: ["they DO hold frost longer! i was right! nobody's ever going to know but me and you."]
+    questOffer.casse-a-cold-shelf: ["Wren won't let me near the sealed shelf. but she said if the archive was safe from slimes she'd think about it. forty slimes, on the tree levels. please?"]
+    questComplete.casse-a-cold-shelf: ["forty! she said she'd think about it. that's basically a yes with Wren."]
+    about.wren: ["she's strict but she leaves tea out. don't tell her i know."]
+    about.lioren: ["he's not scary. he's just sad and on fire a little."]
+    aboutUnknown: ["haven't met them! do they like ice?"]
+
+- id: bram
+  name: Bram
+  title: "Tree Keeper"
+  job: WARRIOR
+  level: { min: 27, max: 29 }
+  strength: SEASONED
+  loadout: dock-worker
+  personality: efficient-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 5, to: 18, spot: "venue:middle-tree", activity: LINGER }
+      - { from: 18, to: 5, materialize: false }
+  recruitable: false
+  questLines: [bram-stump-rot]
+  dialogue:
+    greetFirst: ["don't carve the bark.", "you're standing on a root. it's fine. it minds, but it's fine."]
+    greet: ["tree's fine. you?"]
+    idle: ["(presses a palm to the bark and listens)"]
+    noWork: ["the tree's healthy. rare. enjoy it."]
+    who: ["Bram. i keep the great tree standing. the tree does most of the work."]
+    bye: ["step lightly."]
+    thanks: ["the tree thanks you. i just talk for it."]
+    smallTalk: ["dark stumps are dead trees that didn't get the message."]
+    questOffer.bram-stump-rot: ["dark stumps below the tree line. thirty. they spread rot and they know it."]
+    questComplete.bram-stump-rot: ["thirty. the roots breathe easier."]
+    aboutUnknown: ["not of the tree."]
+
+- id: nettle
+  name: Nettle
+  title: "Courier Who Fears Heights"
+  job: BEGINNER
+  level: { min: 15, max: 17 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 7, to: 20, spot: "venue:lower-village", activity: LINGER }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  questLines: [nettle-upstairs-please, nettle-station-run]
+  dialogue:
+    greetFirst: ["you're not afraid of ladders, are you? no? oh thank goodness."]
+    greet: ["hi! feet on the ground, good."]
+    idle: ["(looks up the tree, looks away quickly)"]
+    noWork: ["nothing to carry up. bliss."]
+    who: ["Nettle. courier. in a town built vertically. ask me how that's going."]
+    bye: ["stay low!"]
+    thanks: ["you're a lifesaver. literally, probably."]
+    smallTalk: ["the fairies fly. show-offs."]
+    questOffer.nettle-upstairs-please: ["take a message to Wren at the top. just tell her Nettle says the station letters are in. then come tell me she didn't glare."]
+    questComplete.nettle-upstairs-please: ["she didn't glare? she glared a little. that's fine. here."]
+    questOffer.nettle-station-run: ["run to the station and back. i need to know the path's clear of stumps before i take the mail down."]
+    questComplete.nettle-station-run: ["clear! okay. deep breath. mail day."]
+    about.wren: ["she lives at the TOP. of course she does."]
+    aboutUnknown: ["never delivered to them."]
+
+- id: oda
+  name: Oda
+  title: "Station Master"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 5, to: 22, spot: "venue:shop-approach", activity: LINGER }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: false
+  questLines: [oda-wings-on-the-tracks]
+  dialogue:
+    greetFirst: ["ticket? no? then you're in the way of people who have one."]
+    greet: ["the ship's late. it's always late."]
+    idle: ["(checks a watch against a clock that agrees with it)"]
+    noWork: ["the tracks are clear. mark the date."]
+    who: ["Oda. the station runs on time. the ship does not."]
+    bye: ["next departure's whenever it is."]
+    thanks: ["stamp your ticket."]
+    smallTalk: ["stirges nest under the platform. passengers scream. it's a whole thing."]
+    questOffer.oda-wings-on-the-tracks: ["stirges under the platform. twelve wings and the passengers can stop screaming."]
+    questComplete.oda-wings-on-the-tracks: ["twelve. quiet platform. i'd forgotten what that sounds like."]
+    aboutUnknown: ["never bought a ticket from me."]
+
+- id: pell
+  name: Pell
+  title: "Lupin Trapper"
+  job: HUNTER
+  level: { min: 29, max: 32 }
+  strength: SEASONED
+  loadout: hunter-bowman-l25
+  personality: relaxed-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 6, to: 16, spot: "venue:lower-village", activity: LINGER }
+      - { from: 16, to: 22, spot: "venue:middle-tree", activity: SOCIALIZE }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: false
+  questLines: [pell-banana-trail, pell-zombie-lupins]
+  dialogue:
+    greetFirst: ["smell that? bananas. lupins. they're closer than you think."]
+    greet: ["trapper's back. or you are. one of us."]
+    idle: ["(untangles a snare that catches him instead)"]
+    noWork: ["traps are set. now we wait. that's most of trapping."]
+    who: ["Pell. i trap lupins. they trap me back about half the time."]
+    bye: ["watch for bananas on the path. that's how they get you."]
+    thanks: ["banana?"]
+    smallTalk: ["a lupin threw a banana at me once. i still think about it."]
+    questOffer.pell-banana-trail: ["lupins in the north forest. twenty. they've figured out my traps."]
+    questComplete.pell-banana-trail: ["twenty. they'll be back. they always are. take these."]
+    questOffer.pell-zombie-lupins: ["something's wrong with the deep-forest lupins. they don't bleed right. fifteen zombie lupins, and bring me one banana from them so i can see."]
+    questWaiting.pell-zombie-lupins: ["fifteen zombie lupins and one of their bananas. one."]
+    questComplete.pell-zombie-lupins: ["look at it. grey. something in the forest is turning them. Wren should know. she won't like it."]
+    aboutUnknown: ["never trapped them. yet."]
+
+- id: thessaly
+  name: Thessaly
+  title: "Fairy Watcher"
+  job: BEGINNER
+  level: { min: 19, max: 21 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 8, to: 20, spot: "venue:upper-tree", activity: SOCIALIZE }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  questLines: [thessaly-a-fallen-wing]
+  giftItemIds: [4003003]
+  dialogue:
+    greetFirst: ["shh. there's one right above you. don't look. okay look, it's gone."]
+    greet: ["hello, hello. any wings today?"]
+    idle: ["(counts fairies, loses count, starts over)"]
+    noWork: ["the fairies are calm. so am i. it won't last."]
+    who: ["Thessaly. i watch the fairies. they watch back. it's a relationship."]
+    bye: ["look up sometimes."]
+    thanks: ["the wings thank you."]
+    smallTalk: ["a fairy wing weighs nothing and costs everything to get."]
+    questOffer.thessaly-a-fallen-wing: ["a fairy dropped a wing at the tree tops. i can't reach. you can. bring me one and i'll show you what it does."]
+    questWaiting.thessaly-a-fallen-wing: ["one fairy wing. just one. they don't grow back fast."]
+    questComplete.thessaly-a-fallen-wing: ["look... see the light in it? that's a memory. this one's of falling. here, a small thing for your trouble."]
+    aboutUnknown: ["the fairies haven't mentioned them."]

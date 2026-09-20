@@ -1,0 +1,320 @@
+# Kerning City cast: couriers, fences, the sewer. 9 residents, 3 recruitable (Vex for meso, Jinx through a hidden dialogue, Sadie for a kill proof), 2 arcs.
+- id: vex
+  name: Vex
+  title: "Courier"
+  job: BANDIT
+  level: { min: 26, max: 29 }
+  strength: SEASONED
+  loadout: kerning-thief-l28
+  personality: relaxed-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 8, to: 20, spot: "venue:central-street", activity: LINGER }
+      - { from: 20, to: 24, spot: "venue:subway-sidewalk", activity: SOCIALIZE }
+      - { from: 0, to: 8, materialize: false }
+  recruitable: true
+  contract: vex-courier-fee
+  questLines: [vex-the-package, vex-line-one]
+  benchToleranceDays: 5
+  paceGap: 2
+  relationships:
+    - { persona: lorca, kind: WORKS_FOR }
+    - { persona: nico, kind: MENTORS }
+  dialogue:
+    greetFirst: ["you look like you need something moved. i move things.", "new in town? keep your hand on your purse. not because of me. mostly."]
+    greet: ["hey, you.", "got a job or just saying hi? both's fine."]
+    idle: ["(flips a coin, catches it without looking)"]
+    noWork: ["nothing to move. weird day."]
+    nothingDue: ["we're square. i keep track."]
+    who: ["Vex. courier. if it fits in a bag, i've carried it. if it doesn't, i know someone."]
+    bye: ["watch your pockets."]
+    thanks: ["that's what the fee's for."]
+    smallTalk: ["the subway's faster than the road. also full of stirges. tradeoffs."]
+    speakPlainly: ["plain words, fast. that's how we talk here."]
+    refuse.bond: ["i don't work with people i haven't done a job with."]
+    refuse.flags: ["do the package run first. then we talk rates."]
+    offer: ["sure, i'll run with you. courier rate, up front."]
+    join: ["let's move. keep up."]
+    bench: ["i'll be on the street. i've got other deliveries."]
+    leave: ["good run. same rate next time."]
+    refuseOwnErrand: ["carry my own package? that's not how this works."]
+    questOffer.vex-the-package: ["a package for the construction site. it's not heavy. it's not legal either. run it and don't open it."]
+    questComplete.vex-the-package: ["you didn't open it. i can tell. good. here's your cut."]
+    questOffer.vex-line-one: ["stirges in line one keep eating my deliveries. twenty of them, and i'll owe you."]
+    questComplete.vex-line-one: ["twenty. the subway's mine again. for a week."]
+    about.lorca: ["Lorca? i deliver for her. i don't ask what. that's the arrangement."]
+    about.nico: ["the kid's fast. too fast. he'll be me in five years if he's lucky."]
+    aboutUnknown: ["haven't carried for them."]
+
+- id: lorca
+  name: Lorca
+  title: "The Fence"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 12, to: 24, spot: "venue:west-shop-front", activity: LINGER }
+      - { from: 0, to: 12, materialize: false }
+  recruitable: false
+  questLines: [lorca-a-fair-price, lorca-what-the-sewer-keeps]
+  arc: lorca-the-ledger-under-the-floor
+  rumors: [kerning-back-room-deal]
+  relationships:
+    - { persona: vex, kind: EMPLOYS }
+    - { persona: jinx, kind: HIDES }
+    - { persona: dario, kind: WATCHED_BY }
+  dialogue:
+    greetFirst: ["i don't know you. that's expensive.", "looking to sell? everything has a price. even the looking."]
+    greet: ["you again. good. familiar faces are cheaper."]
+    idle: ["(weighs something small in one hand)"]
+    noWork: ["nothing moving today. the detective's assistant is watching. hi, Dario."]
+    who: ["Lorca. i buy things people found. i sell things people lost. it evens out."]
+    bye: ["don't get followed."]
+    thanks: ["thank the market."]
+    smallTalk: ["everything in this city was somebody else's first."]
+    questOffer.lorca-a-fair-price: ["jr. necki skins. eight. the swamp's full of them and the market's empty. i pay fair."]
+    questComplete.lorca-a-fair-price: ["eight skins at a fair price. see? honest business."]
+    questOffer.lorca-what-the-sewer-keeps: ["something's in the sewer that wasn't there before. ligators guarding it. thin them, twenty, and tell me what you saw."]
+    questComplete.lorca-what-the-sewer-keeps: ["a door under the swamp. well. that explains the ledger."]
+    about.jinx: ["never heard of her. which is what she pays me to say."]
+    about.dario: ["the detective's boy. he thinks he's subtle. it's adorable."]
+    aboutUnknown: ["not on my books."]
+
+- id: jinx
+  name: Jinx
+  title: "Nobody in Particular"
+  job: ASSASSIN
+  level: { min: 34, max: 37 }
+  strength: VETERAN
+  loadout: kerning-thief-l35
+  personality: efficient-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 21, to: 24, spot: "venue:east-street", activity: LINGER }
+      - { from: 0, to: 3, spot: "venue:east-street", activity: LINGER }
+      - { from: 3, to: 21, materialize: false }
+  recruitable: true
+  contract: jinx-a-name-you-heard
+  questLines: [jinx-quiet-work]
+  rumors: [kerning-back-room-deal]
+  benchToleranceDays: 1
+  paceGap: 4
+  relationships:
+    - { persona: lorca, kind: PAYS }
+  dialogue:
+    greetFirst: ["you didn't see me.", "keep walking."]
+    greet: ["...you're persistent.", "quietly."]
+    idle: ["(is somehow standing where the light isn't)"]
+    noWork: ["no."]
+    nothingDue: ["nothing owed. nothing remembered."]
+    who: ["nobody. ask Lorca. she'll tell you the same."]
+    bye: ["."]
+    thanks: ["don't."]
+    smallTalk: ["the city's louder at night. easier to be quiet in."]
+    speakPlainly: ["fewer words."]
+    refuse.bond: ["no."]
+    refuse.flags: ["you don't know my name. you don't get to ask."]
+    offer: ["you heard the name. fine. i want stars to work with, and the fee. and i'm gone at first light."]
+    join: ["stay behind me. stay quiet."]
+    bench: ["i don't wait. a day, and you won't find me."]
+    leave: ["forget the name."]
+    refuseOwnErrand: ["no."]
+    questOffer.jinx-quiet-work: ["wraiths in the deep subway. fifteen. quietly. if anyone hears you, i didn't ask."]
+    questComplete.jinx-quiet-work: ["fifteen. nobody heard. good."]
+    aboutUnknown: ["."]
+
+- id: sadie
+  name: Sadie
+  title: "Construction Foreman"
+  job: FIGHTER
+  level: { min: 29, max: 32 }
+  strength: SEASONED
+  loadout: dock-worker
+  personality: efficient-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 5, to: 19, spot: "venue:pq-plaza", activity: LINGER }
+      - { from: 19, to: 5, materialize: false }
+  recruitable: true
+  contract: sadie-overtime
+  questLines: [sadie-clear-the-site, sadie-the-b1-problem]
+  benchToleranceDays: 14
+  paceGap: 2
+  dialogue:
+    greetFirst: ["hard hat zone. i'll let it slide once.", "you swing that thing like a hammer. good. i need hammers."]
+    greet: ["site's a mess. as usual.", "hey. still standing? good."]
+    idle: ["(checks a blueprint that has been rained on)"]
+    noWork: ["site's clear. i'm going to enjoy this for exactly one hour."]
+    nothingDue: ["we're even."]
+    who: ["Sadie. foreman of the construction site north of town. also south of town. also under it."]
+    bye: ["mind the drop."]
+    thanks: ["get back to work. the good kind."]
+    smallTalk: ["we dug down to line 3 and found more monsters than rail. story of this city."]
+    speakPlainly: ["plainer. i'm covered in dust, not degrees."]
+    refuse.bond: ["i hire people i've watched work."]
+    offer: ["i'll swing for you. overtime rate, and show me thirty stirges dead so i know you can handle the tunnels."]
+    join: ["alright. let's build something. or knock it down."]
+    bench: ["back to the site. yell when you need a hammer."]
+    leave: ["good shift. site's still there, unfortunately."]
+    refuseOwnErrand: ["that's a contractor job. i'm the foreman."]
+    questOffer.sadie-clear-the-site: ["octopi all over the construction site. twenty. they get in the concrete."]
+    questComplete.sadie-clear-the-site: ["twenty. concrete's pouring. this is the happiest i get."]
+    questOffer.sadie-the-b1-problem: ["line 3 basement. stirges and wraiths and something worse. clear twenty stirges and ten jr. wraiths so my crew can get down there."]
+    questComplete.sadie-the-b1-problem: ["B1's clear enough to work. you should charge me more."]
+    aboutUnknown: ["not on my crew."]
+
+- id: pipes
+  name: Pipes
+  title: "Sewer Worker"
+  job: BEGINNER
+  level: { min: 22, max: 24 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 6, to: 18, spot: "venue:subway-sidewalk", activity: LINGER }
+      - { from: 18, to: 6, materialize: false }
+  recruitable: false
+  questLines: [pipes-ligator-leak]
+  dialogue:
+    greetFirst: ["smell that? that's job security."]
+    greet: ["ah, someone who doesn't hold their nose. respect."]
+    idle: ["(taps a pipe, listens, frowns)"]
+    noWork: ["the pipes are quiet. the ligators are not. give it a day."]
+    who: ["Pipes. everybody calls me that. i've stopped fighting it."]
+    bye: ["don't fall in."]
+    thanks: ["the sewer thanks you. in its way."]
+    smallTalk: ["ligators are just alligators that read the city plans."]
+    questOffer.pipes-ligator-leak: ["ligators chewed through the swamp main. fifteen of them and i can patch it."]
+    questComplete.pipes-ligator-leak: ["fifteen. patched. until the next fifteen."]
+    aboutUnknown: ["never seen them down here."]
+
+- id: mags
+  name: Mags
+  title: "Bar Owner"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 14, to: 24, spot: "venue:central-shop-front", activity: SOCIALIZE }
+      - { from: 0, to: 2, spot: "venue:central-shop-front", activity: SOCIALIZE }
+      - { from: 2, to: 14, materialize: false }
+  recruitable: false
+  questLines: [mags-a-round-for-the-crew]
+  rumors: [kerning-back-room-deal]
+  giftItemIds: [2022003, 2020004]
+  dialogue:
+    greetFirst: ["first one's not free but the second one might be. sit."]
+    greet: ["back for another? of course you are."]
+    idle: ["(polishes a glass that is already clean)"]
+    noWork: ["bar's stocked. a miracle."]
+    who: ["Mags. i pour. i listen. i forget, for a price."]
+    bye: ["mind the step."]
+    thanks: ["tip jar's right there."]
+    smallTalk: ["everyone in this city has a secret. half of them told me."]
+    questOffer.mags-a-round-for-the-crew: ["Sadie's crew drinks here after shift. i'm out of octopus legs for the special. twelve, and the round's on you. figuratively."]
+    questComplete.mags-a-round-for-the-crew: ["twelve legs. the crew will be insufferable. thank you."]
+    about.lorca: ["Lorca drinks alone. Jinx drinks alone at the same table. draw your own map."]
+    aboutUnknown: ["never poured for them."]
+
+- id: nico
+  name: Nico
+  title: "Pickpocket"
+  job: BEGINNER
+  level: { min: 9, max: 11 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 8, to: 22, activity: STROLL }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: false
+  questLines: [nico-give-it-back]
+  dialogue:
+    greetFirst: ["i didn't take it. whatever it is.", "you dropped this. no you didn't. yes you did."]
+    greet: ["hey! check your pockets. kidding. maybe."]
+    idle: ["(practices on a dummy that keeps its wallet)"]
+    noWork: ["nothing to return today. i'm reformed. for today."]
+    who: ["Nico. Vex is teaching me. not that. the courier stuff."]
+    bye: ["count your coins!"]
+    thanks: ["yesss."]
+    smallTalk: ["Vex says the trick is to not need the money. i don't get it yet."]
+    questOffer.nico-give-it-back: ["i took a bubbling's bubble from a hunter's bag. by accident. mostly. get me six more so i can give back double."]
+    questComplete.nico-give-it-back: ["six! okay, giving back twelve. Vex will be so proud. or confused."]
+    about.vex: ["the best. don't tell Vex i said that."]
+    aboutUnknown: ["never lifted from them!"]
+
+- id: rook
+  name: Rook
+  title: "Subway Busker"
+  job: BEGINNER
+  level: { min: 18, max: 20 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 10, to: 22, spot: "venue:subway-sidewalk", activity: SHOW_OFF }
+      - { from: 22, to: 10, materialize: false }
+  recruitable: false
+  questLines: [rook-a-song-for-a-ticket]
+  dialogue:
+    greetFirst: ["requests are free. tips are not."]
+    greet: ["my favourite audience!", "back for the encore?"]
+    idle: ["(plays a song about a train that never comes)"]
+    noWork: ["no songs need writing. suspicious."]
+    who: ["Rook. i play the subway. the subway does not play back."]
+    bye: ["hum something on the way out."]
+    thanks: ["tips!"]
+    smallTalk: ["stirges hate the high notes. i've weaponized music."]
+    questOffer.rook-a-song-for-a-ticket: ["i want to write a song about the ticketing booth. go stand in it and come back and tell me what it smells like."]
+    questComplete.rook-a-song-for-a-ticket: ["'like wet coins and hope'. that's the chorus. you're a poet."]
+    aboutUnknown: ["haven't written a song about them. yet."]
+
+- id: dario
+  name: Dario
+  title: "Detective's Assistant"
+  job: BEGINNER
+  level: { min: 24, max: 26 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 9, to: 21, spot: "venue:east-street", activity: LINGER }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  questLines: [dario-follow-the-courier]
+  relationships:
+    - { persona: lorca, kind: INVESTIGATES }
+  dialogue:
+    greetFirst: ["don't look at me. look past me. good. now you're a civilian."]
+    greet: ["ah, my informant. i mean, hello."]
+    idle: ["(writes in a notebook, badly concealed)"]
+    noWork: ["the case is cold. it's always cold. this city has no thermostat."]
+    who: ["Dario. i assist the detective. the detective is mostly a desk."]
+    bye: ["you never saw me."]
+    thanks: ["for the case."]
+    smallTalk: ["the fence, the courier, the one who isn't there. it's a triangle. i'm sure of it."]
+    questOffer.dario-follow-the-courier: ["talk to Vex. then Lorca. then come back. i want to know who says whose name first."]
+    questComplete.dario-follow-the-courier: ["neither of them said the third name? that IS the evidence. thank you."]
+    about.lorca: ["the fence. she knows i'm watching. she waves."]
+    about.jinx: ["there's no such person. that's what makes her interesting."]
+    aboutUnknown: ["not a suspect. yet."]

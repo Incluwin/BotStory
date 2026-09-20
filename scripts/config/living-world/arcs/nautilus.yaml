@@ -1,0 +1,27 @@
+# Kettle's arc: a bosun who will not call himself captain until the crew says it for him.
+- id: kettle-new-captain
+  persona: kettle
+  chapters:
+    - id: chapter-1
+      title: "The Empty Cabin"
+    - id: chapter-2
+      title: "The Sea Keeps It"
+      dialogueOverrides:
+        greet: ["the chest is gone. the sea keeps what it takes. i've stopped waiting for it back."]
+        chapterEnter: ["(stands at the cabin door a long moment, then walks away from it)"]
+      unlocks:
+        rumors: [nautilus-empty-cabin]
+    - id: chapter-3
+      title: "Said on Deck"
+      enterWhen: { rumorPerformed: nautilus-empty-cabin, times: 1 }
+      dialogueOverrides:
+        greet: ["the crew said it. i suppose that makes it true. captain, then. don't wear it out."]
+      unlocks:
+        contract: kettle-a-captains-token
+    - id: chapter-4
+      title: "A Ship Again"
+      enterWhen: { adventurerHoursTotal: 16 }
+      recruitable: false
+      dialogueOverrides:
+        greet: ["the Nautilus sails. i've got a deck to run. good hunting, sailor."]
+        refuse: ["a captain stays with his ship. ask Mae if you want a gunner."]

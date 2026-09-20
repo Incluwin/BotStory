@@ -277,7 +277,8 @@ public final class ContentLoader {
                 node.get("hours").integer(0),
                 dropRule,
                 node.get("with").string(null),
-                takeStack);
+                takeStack,
+                node.get("label").string(null));
         switch (type) {
             case KILL_MOBS, HUNT_WITH, KILL_BOSS -> {
                 if (step.mobIds().isEmpty()) {

@@ -1,0 +1,60 @@
+# Ellinia arcs: the archive's sealed shelf (Wren, Lioren) and the ice apprentice finding her footing (Casse).
+- id: wren-sealed-shelf
+  persona: wren
+  chapters:
+    - id: chapter-1
+      title: "In Order"
+    - id: chapter-2
+      title: "A Text Not Remembered"
+      dialogueOverrides:
+        greet: ["the rebound volume. i keep opening it. the words moved. or i did."]
+    - id: chapter-3
+      title: "The Pressed Doll"
+      dialogueOverrides:
+        greet: ["so you found the doll. then you know the shelf isn't about books."]
+        chapterEnter: ["(sets a small pressed doll on the reading desk and does not look at it)"]
+      unlocks:
+        rumors: [ellinia-what-was-burned]
+
+- id: lioren-unsealed
+  persona: lioren
+  chapters:
+    - id: chapter-1
+      title: "Downwind"
+    - id: chapter-2
+      title: "Fire Remembers"
+      enterWhen: { flags: [ellinia.shelf.open] }
+      dialogueOverrides:
+        greet: ["the shelf's open. i've read my own notes. i was insufferable. i've improved."]
+        chapterEnter: ["(a small flame steadies on his palm and, for once, stays)"]
+    - id: chapter-3
+      title: "Said Aloud"
+      enterWhen: { rumorPerformed: ellinia-what-was-burned, times: 1 }
+      dialogueOverrides:
+        greet: ["Wren said it in front of the tree. i didn't think she had it in her. i didn't think i did either."]
+      unlocks:
+        contract: lioren-unsealed
+    - id: chapter-4
+      title: "Warm Hands"
+      enterWhen: { adventurerHoursTotal: 24 }
+      recruitable: false
+      dialogueOverrides:
+        greet: ["i've seen enough of the world. the archive wants a fire reader again. imagine that."]
+        refuse: ["i teach now. ask Casse if she wants the road."]
+
+- id: casse-cold-study
+  persona: casse
+  chapters:
+    - id: chapter-1
+      title: "Notes"
+    - id: chapter-2
+      title: "Frost Holds"
+      dialogueOverrides:
+        greet: ["did you know horny mushroom caps hold frost for eleven minutes? you do now!"]
+        chapterEnter: ["(a leaf freezes and, this time, stays frozen)"]
+    - id: chapter-3
+      title: "Field Notes"
+      enterWhen: { adventurerHoursTotal: 10 }
+      loadout: ellinia-mage-l30
+      dialogueOverrides:
+        greet: ["i've got field notes now. real ones. with blood on them. mine, mostly."]

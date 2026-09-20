@@ -1,0 +1,197 @@
+# Nautilus cast: a crew that lost its captain. 6 residents, 1 recruitable (Kettle, for a special item), 1 arc.
+- id: kettle
+  name: Kettle
+  title: "Bosun Without a Captain"
+  job: BRAWLER
+  level: { min: 30, max: 33 }
+  strength: VETERAN
+  loadout: nautilus-pirate-l30
+  personality: efficient-v1
+  home:
+    town: nautilus
+    routine:
+      - { from: 6, to: 22, spot: "venue:east-deck", activity: LINGER }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  contract: kettle-a-captains-token
+  questLines: [kettle-deck-drill, kettle-what-the-tide-took]
+  arc: kettle-new-captain
+  rumors: [nautilus-empty-cabin]
+  benchToleranceDays: 6
+  paceGap: 3
+  relationships:
+    - { persona: mae, kind: TRUSTS }
+    - { persona: pike, kind: SCOLDS }
+  dialogue:
+    greetFirst: ["you're on my deck. state your rank.", "no rank? then swab."]
+    greet: ["sailor.", "deck's clean. for now."]
+    idle: ["(coils a rope that was already coiled)"]
+    noWork: ["ship's shipshape. that's the job."]
+    nothingDue: ["ledger's clean."]
+    who: ["Kettle. bosun of the Nautilus. the captain's cabin has been empty a year. i keep the deck anyway."]
+    bye: ["mind the gangway."]
+    thanks: ["aye."]
+    smallTalk: ["a ship without a captain is a very large raft."]
+    speakPlainly: ["plain speech. we're sailors."]
+    refuse.bond: ["i don't take orders from passengers."]
+    refuse.arc: ["there's a cabin you haven't seen inside yet."]
+    refuse.flags: ["bring me something that says you belong on a deck."]
+    offer: ["a captain's token. that's the price. something a captain would carry. show me, and i'll take a berth with you."]
+    join: ["aye. lead. i'll keep the deck."]
+    bench: ["i'll be on the deck. it doesn't clean itself."]
+    leave: ["fair winds. the deck's waiting."]
+    refuseOwnErrand: ["a bosun doesn't run his own drills."]
+    questOffer.kettle-deck-drill: ["lorangs on the beach below. they climb the hull. twenty of them and i'll believe you can hold a deck."]
+    questComplete.kettle-deck-drill: ["twenty. you'd pass drill."]
+    questOffer.kettle-what-the-tide-took: ["the tide took the captain's chest. torties nest where it went down. ten tortie shells, and whatever's under them."]
+    questComplete.kettle-what-the-tide-took: ["ten shells and no chest. the sea keeps what it takes. still. thank you."]
+    about.mae: ["Mae keeps the guns. she'd have been captain if she wanted it. she doesn't."]
+    about.pike: ["the cabin boy. good hands, bad ideas."]
+    aboutUnknown: ["not crew."]
+
+- id: mae
+  name: Mae
+  title: "Gunner"
+  job: GUNSLINGER
+  level: { min: 28, max: 31 }
+  strength: SEASONED
+  loadout: nautilus-gunslinger-l28
+  personality: efficient-v1
+  home:
+    town: nautilus
+    routine:
+      - { from: 7, to: 21, spot: "venue:ship-square", activity: LINGER }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  questLines: [mae-powder-and-shot]
+  rumors: [nautilus-empty-cabin]
+  dialogue:
+    greetFirst: ["don't touch the guns.", "you can look. looking's free."]
+    greet: ["gunner's here. what do you need?"]
+    idle: ["(oils a barrel that gleams)"]
+    noWork: ["powder's dry, shot's counted. good day."]
+    who: ["Mae. gunner. i keep the Nautilus armed and Kettle from doing anything stupid."]
+    bye: ["keep your powder dry."]
+    thanks: ["aye."]
+    smallTalk: ["a captain's job is to point. a gunner's job is to hit. i know which is harder."]
+    questOffer.mae-powder-and-shot: ["clangs on the shore. their claws make good shot. fifteen claws."]
+    questComplete.mae-powder-and-shot: ["fifteen. that's a broadside."]
+    about.kettle: ["Kettle runs the ship. he just won't call himself captain."]
+    aboutUnknown: ["not on the gun deck."]
+
+- id: pike
+  name: Pike
+  title: "Cabin Boy"
+  job: BEGINNER
+  level: { min: 10, max: 12 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: nautilus
+    routine:
+      - { from: 6, to: 20, activity: STROLL }
+      - { from: 20, to: 24, spot: "venue:cabin-approach", activity: LINGER }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: false
+  questLines: [pike-the-captains-door]
+  rumors: [nautilus-empty-cabin]
+  dialogue:
+    greetFirst: ["are you the new captain? no? oh. everyone asks me that. i mean i ask everyone."]
+    greet: ["hi! still no captain."]
+    idle: ["(polishes a door handle nobody uses)"]
+    noWork: ["nothing today. want to see the cabin? you can't. but want to?"]
+    who: ["Pike. cabin boy. i keep the cabin. it keeps nobody."]
+    bye: ["bye!"]
+    thanks: ["aye aye!"]
+    smallTalk: ["Kettle says the captain's coming back. Mae says nothing. i believe Mae."]
+    questOffer.pike-the-captains-door: ["the captain's door is stuck. salt. bring me five clang claws to scrape it and i'll let you look inside."]
+    questComplete.pike-the-captains-door: ["it opens! it's... empty. it's really empty. i knew that. i knew that."]
+    about.kettle: ["Kettle's the captain. he just won't say it. everyone knows."]
+    aboutUnknown: ["never sailed with them!"]
+
+- id: barnaby
+  name: Barnaby
+  title: "Deck Cook"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: nautilus
+    routine:
+      - { from: 5, to: 21, spot: "venue:harbor-entry", activity: LINGER }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: false
+  questLines: [barnaby-galley-stock]
+  giftItemIds: [2022003]
+  dialogue:
+    greetFirst: ["hungry? sailors always are. sit."]
+    greet: ["back for the stew? everyone comes back for the stew."]
+    idle: ["(stirs something that smells better than it looks)"]
+    noWork: ["galley's stocked. eat something."]
+    who: ["Barnaby. deck cook. the crew would mutiny without me. they've said so."]
+    bye: ["take a biscuit."]
+    thanks: ["eat!"]
+    smallTalk: ["lorang meat is chewy. tortie is chewier. the crew eats both and complains about neither."]
+    questOffer.barnaby-galley-stock: ["lorang claws for the stew. twelve. don't ask."]
+    questComplete.barnaby-galley-stock: ["twelve claws. stew's on. here, taste."]
+    aboutUnknown: ["never fed them."]
+
+- id: coral
+  name: Coral
+  title: "Navigator"
+  job: BEGINNER
+  level: { min: 26, max: 28 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: nautilus
+    routine:
+      - { from: 8, to: 20, spot: "venue:ship-square", activity: LINGER }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  questLines: [coral-the-beach-chart]
+  dialogue:
+    greetFirst: ["don't lean on the chart table.", "north is that way. it usually is."]
+    greet: ["ah. the one who walks."]
+    idle: ["(redraws a coastline that has not moved)"]
+    noWork: ["the charts are current. give the tide a week."]
+    who: ["Coral. navigator. a ship that doesn't sail still needs to know where it isn't going."]
+    bye: ["mind the shoals."]
+    thanks: ["mark it on the chart."]
+    smallTalk: ["Florina's beach moves. i've measured. nobody believes a navigator."]
+    questOffer.coral-the-beach-chart: ["walk Florina beach for me and come back. i need to know the sand's where i left it."]
+    questComplete.coral-the-beach-chart: ["still there. i'll update the chart. the chart is grateful."]
+    aboutUnknown: ["not charted."]
+
+- id: gull
+  name: Gull
+  title: "Old Salt"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: nautilus
+    routine:
+      - { from: 9, to: 23, spot: "venue:harbor-entry", activity: SOCIALIZE }
+      - { from: 23, to: 9, materialize: false }
+  recruitable: false
+  questLines: [gull-a-shell-for-a-story]
+  dialogue:
+    greetFirst: ["sit. i've got a story. i've always got a story."]
+    greet: ["the listener returns!"]
+    idle: ["(tells the sea a story it has heard before)"]
+    noWork: ["no story needs a shell today. sit anyway."]
+    who: ["Gull. i sailed under three captains. i'm waiting on the fourth. i'll be waiting a while."]
+    bye: ["come back for the ending. there isn't one, but come back."]
+    thanks: ["a story's thanks enough. a shell's better."]
+    smallTalk: ["the captain didn't drown. that's the story nobody tells."]
+    questOffer.gull-a-shell-for-a-story: ["bring me a tortie shell and i'll tell you where the captain really went."]
+    questComplete.gull-a-shell-for-a-story: ["...he walked to Ellinia. on foot. left the ship to Kettle and never said. now you know. don't tell Kettle. he knows."]
+    about.kettle: ["captain. he just won't say it."]
+    aboutUnknown: ["never sailed with them. probably."]

@@ -1,0 +1,129 @@
+# Perion quest lines. Wild boar 2230102 (tooth 4000020), fire boar 3210100 (tooth 4000024),
+# stone golem 5130101 (rubble 4000022), copper drake 4130100, drake 5130100 (skull 4000014),
+# badge: leather strap 4000021 with a quest label, custom 15% drop from wild boars while the step is active. Maps: west domain 102030000, land of wild boar 101040001,
+# excavation I 101030101.
+- id: garrick-lost-badge
+  persona: garrick
+  title: "The Lost Badge"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: badge, type: COLLECT_ITEM, itemId: 4000021, count: 1, label: "Garrick's unit badge", dropFrom: { mobIds: [2230102], chance: 0.15 } }
+    - { id: return, type: DELIVER, to: garrick, take: { itemId: 4000021, count: 1 } }
+  rewards: { meso: 8000, exp: 1200, bondPoints: 25, items: [{ itemId: 2000002, count: 20 }], flags: [garrick.badge.returned] }
+  onComplete: { arcAdvance: { arc: garrick-redemption, to: chapter-2 } }
+
+- id: garrick-boar-cull
+  persona: garrick
+  title: "The Boar Cull"
+  length: MEDIUM
+  requires: { level: { min: 26 }, flags: [garrick.badge.returned] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: HUNT_WITH, persona: garrick, mobIds: [3210100], count: 40 }
+    - { id: report, type: DELIVER, to: garrick, say: ["forty. we still count."] }
+  rewards: { meso: 12000, exp: 6000, bondPoints: 40, flags: [garrick.cull.done] }
+
+- id: yona-iron-and-rubble
+  persona: yona
+  title: "Iron in the Rubble"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rubble, type: COLLECT_ITEM, itemId: 4000022, count: 10 }
+    - { id: return, type: DELIVER, to: yona, take: { itemId: 4000022, count: 10 } }
+  rewards: { meso: 6000, exp: 2500, bondPoints: 10 }
+
+- id: yona-a-blade-for-a-deserter
+  persona: yona
+  title: "A Blade for a Deserter"
+  length: SHORT
+  requires: { level: { min: 20 }, flags: [garrick.badge.returned] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: deliver, type: TALK_TO, persona: garrick, say: ["from Yona? ...tell her the debt stands. i know. i know."] }
+    - { id: back, type: DELIVER, to: yona }
+  rewards: { meso: 3000, exp: 1500, bondPoints: 25, flags: [yona.blade.delivered] }
+
+- id: tamsin-hold-the-gate
+  persona: tamsin
+  title: "Hold the Gate"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [2230102], count: 30 }
+    - { id: report, type: DELIVER, to: tamsin }
+  rewards: { meso: 4000, exp: 2000, bondPoints: 10 }
+
+- id: tamsin-the-copper-drakes
+  persona: tamsin
+  title: "The Copper Drakes"
+  length: MEDIUM
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drakes, type: KILL_MOBS, mobIds: [4130100], count: 20, mapIds: [101030101, 101030102, 101030103] }
+    - { id: report, type: DELIVER, to: tamsin }
+  rewards: { meso: 9000, exp: 6000, bondPoints: 30, flags: [tamsin.drakes.done] }
+
+- id: halvard-quarry-teeth
+  persona: halvard
+  title: "Helmets from Skulls"
+  length: SHORT
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skulls, type: COLLECT_ITEM, itemId: 4000014, count: 6 }
+    - { id: return, type: DELIVER, to: halvard, take: { itemId: 4000014, count: 6 } }
+  rewards: { meso: 8000, exp: 4500, bondPoints: 30, flags: [halvard.skulls.done] }
+
+- id: ossa-clear-the-site
+  persona: ossa
+  title: "Clear the Site"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 30 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drakes, type: KILL_MOBS, mobIds: [4130100], count: 25, mapIds: [101030101] }
+    - { id: report, type: DELIVER, to: ossa }
+  rewards: { meso: 7000, exp: 4000, bondPoints: 10 }
+
+- id: kip-teeth-for-a-necklace
+  persona: kip
+  title: "Teeth for a Necklace"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000020, count: 6 }
+    - { id: return, type: DELIVER, to: kip, take: { itemId: 4000020, count: 6 } }
+  rewards: { meso: 1000, exp: 800, bondPoints: 15, items: [{ itemId: 4000022, count: 1 }] }
+
+- id: moss-stone-that-walks
+  persona: moss
+  title: "Stone That Walks"
+  length: SHORT
+  requires: { level: { min: 28 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rubble, type: COLLECT_ITEM, itemId: 4000022, count: 8 }
+    - { id: return, type: DELIVER, to: moss, take: { itemId: 4000022, count: 8 } }
+  rewards: { meso: 5000, exp: 3000, bondPoints: 20, flags: [moss.wall.remembers] }
+
+- id: dust-rubble-run
+  persona: dust
+  title: "The Collection"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 25 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rubble, type: COLLECT_ITEM, itemId: 4000022, count: 12 }
+    - { id: return, type: DELIVER, to: dust, take: { itemId: 4000022, count: 12 } }
+  rewards: { meso: 6500, exp: 2500, bondPoints: 8 }

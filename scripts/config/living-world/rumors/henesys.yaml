@@ -1,0 +1,16 @@
+# Henesys rumors.
+- id: henesys-guild-hall-ashes
+  participants: [marrow, dorran, quill]
+  where: { town: henesys, spot: "venue:west-park-benches" }
+  when:
+    serverHours: [19, 20, 21]
+    everyDays: 1
+    requiresArc: { arc: dorran-sable-guild, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: quill, text: "two old hunters on one bench. this is either a story or a fight." }
+    - { by: marrow, text: "Dorran. i left the week before the fire because i knew the hall would burn. i didn't know who'd be in it." }
+    - { by: dorran, text: "you knew. and you took a bow and walked to the overlook." }
+    - { by: marrow, text: "i warned Aldous. he wrote it in the ledger. nobody reads the ledger." }
+    - { by: dorran, text: "...he did write it. i've read that page a hundred times and never once believed it." }
+    - { by: quill, text: "a warning nobody read. that's the saddest kind. i'll tell it right." }
+  setsFlagOnListeners: henesys.heard-ashes

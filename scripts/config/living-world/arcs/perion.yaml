@@ -1,0 +1,33 @@
+# Garrick's arc: the deserter earns his way back into the guard's story, then out of it.
+- id: garrick-redemption
+  persona: garrick
+  chapters:
+    - id: chapter-1
+      title: "The Cliff"
+      dialogueOverrides:
+        greet: ["what.", "make it quick"]
+    - id: chapter-2
+      title: "A Badge Returned"
+      dialogueOverrides:
+        greet: ["you again. still here.", "the badge is heavier than i remembered."]
+        chapterEnter: ["(pins a battered badge to a coat that has not worn one in a year)"]
+      routineOverride:
+        - { from: 6, to: 24, spot: "venue:market-approach", activity: LINGER }
+        - { from: 0, to: 6, materialize: false }
+      unlocks:
+        questLines: [garrick-boar-cull]
+        rumors: [perion-campfire-confession]
+    - id: chapter-3
+      title: "Confession"
+      enterWhen: { rumorPerformed: perion-campfire-confession, times: 1 }
+      dialogueOverrides:
+        greet: ["so Yona told you. or i did. same thing, by now."]
+      unlocks:
+        contract: garrick-blood-debt
+    - id: chapter-4
+      title: "Gone Hunting"
+      enterWhen: { adventurerHoursTotal: 20 }
+      recruitable: false
+      dialogueOverrides:
+        greet: ["done fighting. go on.", "the gate's got a new guard. me. imagine."]
+        refuse: ["my sword's on the gate now. ask Halvard if you want a spear."]

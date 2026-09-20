@@ -1,0 +1,34 @@
+# Ellinia contracts: a rare item shown (Casse) and the archive's long chain plus a hidden dialogue (Lioren).
+- id: casse-cold-study
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [casse.frost.notes]
+    arcChapterAtLeast: { arc: casse-cold-study, chapter: chapter-2 }
+  price:
+    meso: 10000
+    items: [{ itemId: 2012002, count: 1, keep: false }]
+  terms:
+    durationHours: 6
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 3
+    rejoinPrice: { meso: 4000 }
+
+- id: lioren-unsealed
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [lioren.shelf.open, ellinia.heard-burning]
+    arcChapterAtLeast: { arc: lioren-unsealed, chapter: chapter-3 }
+  price:
+    meso: 35000
+    items: [{ itemId: 2012002, count: 1, keep: true }]
+  terms:
+    durationHours: 8
+    maxLevelGap: 12
+    lootShare: OWN_DROPS
+    ownDropsPercent: 15
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 12000 }

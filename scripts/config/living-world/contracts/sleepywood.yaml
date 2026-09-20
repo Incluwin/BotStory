@@ -1,0 +1,32 @@
+# Sleepywood contracts.
+- id: thane-guides-fee
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [thane.walked.down]
+    arcChapterAtLeast: { arc: thane-last-descent, chapter: chapter-2 }
+  price:
+    meso: 30000
+  terms:
+    durationHours: 6
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 15000 }
+
+- id: orrin-the-deep-claim
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [orrin.claim.clear]
+  price:
+    meso: 25000
+    items: [{ itemId: 1092000, count: 1, keep: true }]
+  terms:
+    durationHours: 0
+    maxLevelGap: 12
+    lootShare: OWN_DROPS
+    ownDropsPercent: 20
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M]
+    cooldownHoursAfterLeave: 3
+    rejoinPrice: { meso: 5000 }

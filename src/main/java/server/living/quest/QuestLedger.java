@@ -333,7 +333,7 @@ public final class QuestLedger {
                 QuestState updated = new QuestState(chr.getId(), quest.id(), state.stepIndex(), have, state.status(),
                         state.startedAtMs(), state.completedAtMs(), state.repeats());
                 world.store().saveQuestState(updated);
-                chr.dropMessage(5, quest.title() + ": " + itemName(itemId) + " " + have + "/" + step.count());
+                chr.dropMessage(5, quest.title() + ": " + (step.label() != null ? step.label() : itemName(itemId)) + " " + have + "/" + step.count());
                 if (have >= step.count()) {
                     advance(chr, world.content().persona(quest.persona()), quest, updated);
                 }
@@ -399,7 +399,7 @@ public final class QuestLedger {
                 if (ThreadLocalRandom.current().nextDouble() < step.dropFrom().chance()
                         && InventoryManipulator.checkSpace(chr.getClient(), step.itemId(), 1, "")) {
                     InventoryManipulator.addById(chr.getClient(), step.itemId(), (short) 1);
-                    chr.dropMessage(5, "You found " + itemName(step.itemId()) + ".");
+                    chr.dropMessage(5, "You found " + (step.label() != null ? step.label() : itemName(step.itemId())) + ".");
                     onItemGained(chr, step.itemId());
                 }
             }
@@ -528,7 +528,8 @@ public final class QuestLedger {
                     + (step.with() != null ? " with " + personaName(step.with()) : "");
             case HUNT_WITH: return "hunt " + mobNames(step.mobIds()) + " with " + personaName(step.persona()) + " "
                     + state.progress() + "/" + step.count();
-            case COLLECT_ITEM: return "collect " + itemName(step.itemId()) + " " + state.progress() + "/" + step.count();
+            case COLLECT_ITEM: return "collect " + (step.label() != null ? step.label() : itemName(step.itemId())) + " "
+                    + state.progress() + "/" + step.count();
             case DELIVER: return "bring " + (step.take() == null ? "word" : itemName(step.take().itemId()) + " x" + step.take().count())
                     + " to " + personaName(step.to());
             case VISIT_MAP: return "go to map " + step.mapIds().get(0);

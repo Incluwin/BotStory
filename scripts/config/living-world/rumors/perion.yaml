@@ -1,0 +1,15 @@
+# Perion rumors.
+- id: perion-campfire-confession
+  participants: [garrick, yona]
+  where: { town: perion, spot: "rest:2" }
+  when:
+    serverHours: [21, 22]
+    everyDays: 1
+    requiresArc: { arc: garrick-redemption, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: yona, text: "you never told them why you left the guard." }
+    - { by: garrick, text: "and i won't. not until someone earns it." }
+    - { by: yona, text: "the boar badge. that's how you'd know. somebody brought it back, didn't they." }
+    - { by: garrick, text: "...somebody did. the gate fell because i opened it. for a friend who wasn't one." }
+    - { by: yona, text: "then close it this time. with somebody who is." }
+  setsFlagOnListeners: garrick.heard-confession

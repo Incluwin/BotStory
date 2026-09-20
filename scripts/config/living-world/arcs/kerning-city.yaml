@@ -1,0 +1,19 @@
+# Kerning arcs: the fence's ledger under the floor (Lorca; it opens the door to Jinx).
+- id: lorca-the-ledger-under-the-floor
+  persona: lorca
+  chapters:
+    - id: chapter-1
+      title: "Honest Business"
+    - id: chapter-2
+      title: "A Door Under the Swamp"
+      dialogueOverrides:
+        greet: ["so you found the door. i suppose i owe you the ledger. not the whole ledger."]
+        chapterEnter: ["(pulls a floorboard, glances at something, replaces it)"]
+      unlocks:
+        rumors: [kerning-back-room-deal]
+    - id: chapter-3
+      title: "The Third Name"
+      enterWhen: { rumorPerformed: kerning-back-room-deal, times: 1 }
+      dialogueOverrides:
+        greet: ["you heard a name in the back room. pretend you didn't. or use it. your call."]
+        about.jinx: ["fine. she's real. she drinks at the corner table. don't say i said."]

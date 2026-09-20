@@ -1,0 +1,29 @@
+# Dorran's arc: the last Sable Hunter, from a bench to the mushmom's grove and back.
+- id: dorran-sable-guild
+  persona: dorran
+  chapters:
+    - id: chapter-1
+      title: "The Bench"
+    - id: chapter-2
+      title: "The Grove Thinned"
+      dialogueOverrides:
+        greet: ["the grove's quieter. i can hear myself think. i'm not sure i want to."]
+        chapterEnter: ["(stands up from the bench for the first time in a while)"]
+      unlocks:
+        rumors: [henesys-guild-hall-ashes]
+    - id: chapter-3
+      title: "Ashes Spoken Of"
+      enterWhen: { rumorPerformed: henesys-guild-hall-ashes, times: 1 }
+      dialogueOverrides:
+        greet: ["so Marrow finally said it out loud. good. now i can stop saying it for him."]
+      unlocks:
+        contract: dorran-guild-debt
+        questLines: [dorran-the-mushmom]
+    - id: chapter-4
+      title: "The Banner Returns"
+      enterWhen: { flags: [henesys.mushmom.fell] }
+      loadout: perion-spearman-l32
+      dialogueOverrides:
+        greet: ["the banner's up on the bench. eleven names under it. twelve, if you count yours."]
+        chapterEnter: ["(unrolls a scorched banner and hangs it from the bench)"]
+        offer: ["the guild's got one member and a banner. want to be the second? the price stands."]

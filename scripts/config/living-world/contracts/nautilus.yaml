@@ -1,0 +1,17 @@
+# Nautilus contracts: the bosun asks for a captain's token, shown, not kept.
+- id: kettle-a-captains-token
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [kettle.chest.searched, nautilus.heard-cabin]
+    arcChapterAtLeast: { arc: kettle-new-captain, chapter: chapter-3 }
+  price:
+    meso: 20000
+    items: [{ itemId: 1492000, count: 1, keep: false }]
+  terms:
+    durationHours: 8
+    maxLevelGap: 12
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 6
+    rejoinPrice: { meso: 8000 }

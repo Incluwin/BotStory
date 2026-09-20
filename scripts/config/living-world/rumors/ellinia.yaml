@@ -1,0 +1,15 @@
+# Ellinia rumors.
+- id: ellinia-what-was-burned
+  participants: [wren, lioren]
+  where: { town: ellinia, spot: "venue:lower-village" }
+  when:
+    serverHours: [18, 19, 20]
+    everyDays: 1
+    requiresArc: { arc: wren-sealed-shelf, chapterAtLeast: chapter-3 }
+  lines:
+    - { by: wren, text: "Lioren. i sealed the shelf because the council wanted your notes burned. all of them." }
+    - { by: lioren, text: "you let me think you were ashamed of me for eleven years." }
+    - { by: wren, text: "it was easier than telling you they voted eight to one. i was the one." }
+    - { by: lioren, text: "...the doll. you kept the doll." }
+    - { by: wren, text: "of course i kept the doll. i keep everything. it's the job." }
+  setsFlagOnListeners: ellinia.heard-burning

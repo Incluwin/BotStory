@@ -1,0 +1,185 @@
+# Sleepywood cast: the dungeon's toll. 5 residents, 2 recruitable (Thane the guide via an escort, Orrin the miner via a long chain), 1 arc.
+- id: thane
+  name: Thane
+  title: "Dungeon Guide"
+  job: CRUSADER
+  level: { min: 40, max: 43 }
+  strength: ELITE
+  loadout: sleepywood-guide-l40
+  personality: efficient-v1
+  home:
+    town: sleepywood
+    routine:
+      - { from: 6, to: 22, spot: "venue:central-camp", activity: LINGER }
+      - { from: 22, to: 6, materialize: false }
+  recruitable: true
+  contract: thane-guides-fee
+  questLines: [thane-the-first-descent, thane-walk-me-down]
+  arc: thane-last-descent
+  rumors: [sleepywood-toll-of-the-tunnel]
+  benchToleranceDays: 4
+  paceGap: 4
+  relationships:
+    - { persona: orrin, kind: SAVED }
+    - { persona: wilhelmina, kind: LODGES_WITH }
+  dialogue:
+    greetFirst: ["the dungeon takes a toll. i collect it up front, in caution.", "you're going down there. everyone who comes here is. sit first."]
+    greet: ["still above ground. good.", "traveler."]
+    idle: ["(counts the notches on a shield)"]
+    noWork: ["the tunnel's quiet. it's lying."]
+    nothingDue: ["no toll owed."]
+    who: ["Thane. i guide people into the ant tunnel. i guide fewer back. i'm honest about the number."]
+    bye: ["watch the third step. there is no third step."]
+    thanks: ["thank the shield."]
+    smallTalk: ["the dungeon isn't evil. it's just very, very hungry."]
+    speakPlainly: ["plain. the tunnel doesn't do nuance."]
+    refuse.bond: ["i don't descend with strangers. that's how the notches happen."]
+    refuse.flags: ["walk with me once first. then ask."]
+    offer: ["the guide's fee, and you walk me down once so i see how you move in the dark."]
+    join: ["stay on my left. the shield's on the left."]
+    bench: ["i'll be at the camp. the tunnel waits."]
+    leave: ["you came back up. that's the whole job."]
+    refuseOwnErrand: ["a guide doesn't scout for himself."]
+    questOffer.thane-the-first-descent: ["evil eyes in the first tunnel. twenty. if you can't handle the eyes, you can't handle what's behind them."]
+    questComplete.thane-the-first-descent: ["twenty eyes. you move well in the dark. rare."]
+    questOffer.thane-walk-me-down: ["walk with me to the second tunnel. i'll follow you, not the other way. i want to see how you lead."]
+    questAccept.thane-walk-me-down: ["lead, then. i'll be right behind."]
+    questComplete.thane-walk-me-down: ["you led. i followed. i can work with that."]
+    about.orrin: ["Orrin i carried out of the fourth tunnel. he went back the next week. miners."]
+    about.wilhelmina: ["she keeps my room. i keep her guests alive. fair trade."]
+    aboutUnknown: ["never guided them."]
+
+- id: orrin
+  name: Orrin
+  title: "Tunnel Miner"
+  job: PAGE
+  level: { min: 36, max: 39 }
+  strength: VETERAN
+  loadout: perion-warrior-l30
+  personality: relaxed-v1
+  home:
+    town: sleepywood
+    routine:
+      - { from: 5, to: 20, spot: "venue:west-camp", activity: LINGER }
+      - { from: 20, to: 5, materialize: false }
+  recruitable: true
+  contract: orrin-the-deep-claim
+  questLines: [orrin-eyes-and-tails, orrin-the-fourth-tunnel, orrin-what-the-ants-guard]
+  rumors: [sleepywood-toll-of-the-tunnel]
+  benchToleranceDays: 20
+  paceGap: 2
+  relationships:
+    - { persona: thane, kind: OWES_LIFE }
+  dialogue:
+    greetFirst: ["there's ore down there. real ore. everyone thinks i'm mad. i'm rich-adjacent."]
+    greet: ["hey! any luck below?", "the claim's still mine. mostly."]
+    idle: ["(taps a pick against a rock that isn't ore)"]
+    noWork: ["the seam's quiet. the ants aren't. tomorrow."]
+    nothingDue: ["we're square. i keep a ledger. it's a rock."]
+    who: ["Orrin. i mine the ant tunnel. the ants mine me back."]
+    bye: ["don't breathe the deep air."]
+    thanks: ["ore's on me. figuratively. it's rock."]
+    smallTalk: ["the fourth tunnel has a wall that hums. Thane says leave it. Thane's usually right."]
+    speakPlainly: ["simpler. i talk to rocks all day."]
+    refuse.bond: ["i take partners i've dug beside."]
+    refuse.flags: ["finish the claim work first. then we talk shares."]
+    offer: ["partners, then. a share of the claim's yours if you cover the deep gear: the meso, and a real shield."]
+    join: ["let's dig. metaphorically. also literally."]
+    bench: ["i'll be at the claim. bring lamp oil."]
+    leave: ["good dig. the seam's still down there."]
+    refuseOwnErrand: ["that's my claim. i don't outsource the claim."]
+    questOffer.orrin-eyes-and-tails: ["evil eye tails. twelve. i trade them to the shaman for lamp oil. don't ask what he does with them."]
+    questComplete.orrin-eyes-and-tails: ["twelve tails. a month of light."]
+    questOffer.orrin-the-fourth-tunnel: ["the fourth tunnel. go stand at the humming wall and come back. i need to know it's still humming."]
+    questComplete.orrin-the-fourth-tunnel: ["still humming? good. or bad. one of those."]
+    questOffer.orrin-what-the-ants-guard: ["curse eyes and cold eyes guard the deep seam. fifteen and ten. then the claim's clear and we're partners."]
+    questComplete.orrin-what-the-ants-guard: ["the seam's clear. partners, then. shake. your hand's cold, that's the deep air."]
+    about.thane: ["carried me out of the fourth tunnel on his back. i weigh a lot. i'm grateful in proportion."]
+    aboutUnknown: ["never dug with them."]
+
+- id: wilhelmina
+  name: Wilhelmina
+  title: "Hotel Keeper"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: sleepywood
+    routine:
+      - { from: 6, to: 24, spot: "venue:hotel-approach", activity: LINGER }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: false
+  questLines: [wilhelmina-clean-sheets]
+  dialogue:
+    greetFirst: ["rooms are upstairs. boots come off. no exceptions.", "you look like you need a bed and a bath. in that order."]
+    greet: ["room's ready if you need it."]
+    idle: ["(folds a sheet with military precision)"]
+    noWork: ["the hotel's full and quiet. cherish it."]
+    who: ["Wilhelmina. i keep the hotel. i keep the guests alive by keeping them rested."]
+    bye: ["sleep before you descend."]
+    thanks: ["tip the staff. i'm the staff."]
+    smallTalk: ["every guest leaves a story in the sheets. i wash the stories out."]
+    questOffer.wilhelmina-clean-sheets: ["evil eyes drool on the guests' packs. twenty of them fewer and my laundry halves."]
+    questComplete.wilhelmina-clean-sheets: ["twenty. the laundry is grateful. i am the laundry."]
+    about.thane: ["he pays on time and leaves the room cleaner than he found it. i'd marry him if he weren't so grim."]
+    aboutUnknown: ["never lodged here."]
+
+- id: hesper
+  name: Hesper
+  title: "Hermit of the Roots"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: sleepywood
+    routine:
+      - { from: 10, to: 20, spot: "venue:east-camp", activity: REST }
+      - { from: 20, to: 10, materialize: false }
+  recruitable: false
+  questLines: [hesper-the-humming-wall]
+  giftItemIds: [4000007, 4000013]
+  dialogue:
+    greetFirst: ["the roots said someone was coming. the roots say a lot."]
+    greet: ["the roots remember you."]
+    idle: ["(listens to something under the ground)"]
+    noWork: ["the roots are quiet. rare."]
+    who: ["Hesper. i live with the roots. they're better company than the hotel."]
+    bye: ["walk soft. the roots feel it."]
+    thanks: ["the roots thank you. i just translate."]
+    smallTalk: ["the wall in the fourth tunnel hums because something on the other side is breathing."]
+    questOffer.hesper-the-humming-wall: ["curse eye tails. eight. i lay them at the roots and the humming quiets. for a night."]
+    questComplete.hesper-the-humming-wall: ["eight tails. the roots will sleep tonight. so will the wall."]
+    about.orrin: ["the miner wants what's behind the wall. the roots say he shouldn't. the roots say that about everyone."]
+    aboutUnknown: ["the roots haven't felt them."]
+
+- id: jory
+  name: Jory
+  title: "Lost Adventurer"
+  job: BEGINNER
+  level: { min: 21, max: 23 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: sleepywood
+    routine:
+      - { from: 7, to: 21, spot: "venue:central-camp", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  questLines: [jory-the-way-back]
+  dialogue:
+    greetFirst: ["is this... is this still sleepywood? oh thank goodness.", "which way's henesys? i've asked four people. they all pointed different ways."]
+    greet: ["hey! still lost. professionally."]
+    idle: ["(turns a map upside down, then sideways)"]
+    noWork: ["nothing to carry. i'd lose it."]
+    who: ["Jory. adventurer. currently between adventures. and towns. and directions."]
+    bye: ["which way did you come in? never mind."]
+    thanks: ["you're a hero. a small one. still counts."]
+    smallTalk: ["i came here for the dungeon. i found the hotel. i'm not complaining."]
+    questOffer.jory-the-way-back: ["i dropped my pack in the deep forest on the way in. slimes have it. thirty slime bubbles and i'll consider it replaced."]
+    questComplete.jory-the-way-back: ["thirty bubbles! that's a pack's worth. of bubbles. i'll take it."]
+    aboutUnknown: ["haven't met them. or i have and got lost after."]

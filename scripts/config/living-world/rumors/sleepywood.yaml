@@ -1,0 +1,15 @@
+# Sleepywood rumors.
+- id: sleepywood-toll-of-the-tunnel
+  participants: [thane, orrin]
+  where: { town: sleepywood, spot: "venue:central-camp" }
+  when:
+    serverHours: [20, 21, 22]
+    everyDays: 1
+    requiresArc: { arc: thane-last-descent, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: orrin, text: "tell them, Thane. tell the camp what the fourth tunnel cost." }
+    - { by: thane, text: "it cost a party of five. i brought up one. you." }
+    - { by: orrin, text: "and you kept guiding. every week. that's the toll, isn't it. you pay it so nobody else does." }
+    - { by: thane, text: "...somebody led me down last week. first time in years i wasn't in front. i could get used to it." }
+    - { by: orrin, text: "then let them. the camp will still be here." }
+  setsFlagOnListeners: sleepywood.heard-toll

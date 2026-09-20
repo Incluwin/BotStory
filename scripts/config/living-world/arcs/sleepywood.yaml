@@ -1,0 +1,25 @@
+# Thane's arc: the guide who has counted too many notches decides to make one last descent count.
+- id: thane-last-descent
+  persona: thane
+  chapters:
+    - id: chapter-1
+      title: "The Notches"
+    - id: chapter-2
+      title: "Led, Not Leading"
+      dialogueOverrides:
+        greet: ["you led me down and up. i haven't followed anyone in years. it was... restful."]
+        chapterEnter: ["(runs a thumb along the notches, then stops counting)"]
+      unlocks:
+        rumors: [sleepywood-toll-of-the-tunnel]
+    - id: chapter-3
+      title: "The Toll Paid"
+      enterWhen: { rumorPerformed: sleepywood-toll-of-the-tunnel, times: 1 }
+      dialogueOverrides:
+        greet: ["Orrin told the camp what the tunnel cost me. i'd have kept it. he's right that i shouldn't."]
+    - id: chapter-4
+      title: "Above Ground"
+      enterWhen: { adventurerHoursTotal: 24 }
+      recruitable: false
+      dialogueOverrides:
+        greet: ["i've made my last descent. the camp needs someone who stays. that's me now."]
+        refuse: ["i guide from the camp these days. Orrin still goes down, if you want a partner."]

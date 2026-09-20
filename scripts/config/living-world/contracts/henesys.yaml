@@ -1,0 +1,46 @@
+# Henesys contracts: a kill proof, a guild debt with a kept blade, and a healer who only needs stock.
+- id: fenna-proof-of-aim
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [fenna.pigs.done]
+  price:
+    proof: { killMobs: { mobIds: [1210100, 1210101], count: 30 } }
+  terms:
+    durationHours: 5
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 5000 }
+
+- id: dorran-guild-debt
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [dorran.grove.thinned, henesys.heard-ashes]
+    arcChapterAtLeast: { arc: dorran-sable-guild, chapter: chapter-3 }
+  price:
+    meso: 40000
+    items: [{ itemId: 1302020, count: 1, keep: true }]
+  terms:
+    durationHours: 8
+    maxLevelGap: 12
+    lootShare: OWN_DROPS
+    ownDropsPercent: 15
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 24
+    rejoinPrice: { meso: 15000 }
+
+- id: ilse-house-call
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ilse.salve.stocked]
+  price:
+    items: [{ itemId: 4000010, count: 20, keep: true }]
+  terms:
+    durationHours: 0
+    maxLevelGap: 20
+    lootShare: NONE
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M]
+    cooldownHoursAfterLeave: 1
+    rejoinPrice: { meso: 0 }

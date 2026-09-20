@@ -1,0 +1,16 @@
+# Kerning City rumors.
+- id: kerning-back-room-deal
+  participants: [lorca, jinx, mags]
+  where: { town: kerning-city, spot: "venue:central-shop-front" }
+  when:
+    serverHours: [22, 23]
+    everyDays: 1
+    requiresArc: { arc: lorca-the-ledger-under-the-floor, chapterAtLeast: chapter-2 }
+  lines:
+    - { by: mags, text: "corner table's yours. same as always. i'll be over here not listening." }
+    - { by: lorca, text: "the door under the swamp is open. somebody thinned the ligators. that wasn't me." }
+    - { by: jinx, text: "then somebody's useful. does somebody have a name?" }
+    - { by: lorca, text: "somebody will, if they hear yours first. Jinx." }
+    - { by: jinx, text: "...you said it out loud. in a bar." }
+    - { by: mags, text: "i didn't hear anything. that's twenty meso." }
+  setsFlagOnListeners: kerning.heard-back-room

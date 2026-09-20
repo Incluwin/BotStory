@@ -98,7 +98,8 @@ public final class Content {
                        int hours,
                        DropRule dropFrom,
                        String with,
-                       ItemStack take) { }
+                       ItemStack take,
+                       String label) { }
 
     public record Reward(int meso, int exp, List<ItemStack> items, int bondPoints, List<String> flags,
                          int fame, List<String> worldFlags) { }

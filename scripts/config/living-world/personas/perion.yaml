@@ -1,0 +1,279 @@
+# Perion cast: the guard that deserted. 8 residents, 2 recruitable (Garrick through his arc, Halvard for meso and a kill proof), 1 arc.
+- id: garrick
+  name: Garrick
+  title: "Deserter of Perion"
+  job: FIGHTER
+  level: { min: 28, max: 32 }
+  strength: VETERAN
+  loadout: perion-warrior-l30
+  personality: efficient-v1
+  home:
+    town: perion
+    routine:
+      - { from: 6, to: 11, spot: "venue:market-approach", activity: LINGER }
+      - { from: 11, to: 18, spot: "venue:middle-ledge", activity: SHOW_OFF }
+      - { from: 18, to: 24, spot: "rest:2", activity: REST }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: true
+  contract: garrick-blood-debt
+  questLines: [garrick-lost-badge, garrick-boar-cull]
+  arc: garrick-redemption
+  rumors: [perion-campfire-confession]
+  benchToleranceDays: 2
+  paceGap: 3
+  maxLag: 6
+  relationships:
+    - { persona: yona, kind: OWES }
+    - { persona: tamsin, kind: DESERTED }
+  dialogue:
+    greetFirst: ["what.", "make it quick."]
+    greet: ["you again.", "still here."]
+    idle: ["(sharpens a blade)", "cold up here."]
+    noWork: ["nothing. go bother the guard."]
+    nothingDue: ["you owe me nothing. that's how i like people."]
+    who: ["Garrick. i was Perion guard. was."]
+    bye: ["go on."]
+    thanks: ["hm."]
+    smallTalk: ["the cliffs don't ask questions. that's why i'm up here."]
+    speakPlainly: ["say it straight."]
+    refuse.bond: ["i don't know you. i don't fight beside people i don't know."]
+    refuse.arc: ["there's a story you haven't heard. the smith knows it."]
+    refuse.flags: ["earn it first."]
+    offer: ["one condition. a sword worth carrying, the meso for the smith, and thirty fire boars dead first. i want to see you can bleed."]
+    join: ["fine. stay out of my swing."]
+    bench: ["i don't wait around. two days, then i'm gone."]
+    leave: ["that's my debt paid. don't follow me."]
+    refuseOwnErrand: ["that one's your errand, not mine."]
+    questOffer.garrick-lost-badge: ["lost my unit badge near the boars. bring it and we talk."]
+    questWaiting.garrick-lost-badge: ["the badge. not a tooth. the badge."]
+    questComplete.garrick-lost-badge: ["...huh. didn't think you'd bother."]
+    questOffer.garrick-boar-cull: ["the fire boars are pushing into the domain. forty. and i want to be there, if you're going."]
+    questAccept.garrick-boar-cull: ["good. call me when you're at the boars."]
+    questComplete.garrick-boar-cull: ["forty. that's a guard's day. i remember it."]
+    about.yona: ["Yona. i owe her a sword and an apology. she'll take the sword."]
+    about.tamsin: ["the captain. she knows why i left. she won't say. neither will i."]
+    aboutUnknown: ["never served with them."]
+
+- id: yona
+  name: Yona
+  title: "Smith"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: perion
+    routine:
+      - { from: 6, to: 20, spot: "venue:market-approach", activity: LINGER }
+      - { from: 20, to: 24, spot: "rest:2", activity: REST }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: false
+  questLines: [yona-iron-and-rubble, yona-a-blade-for-a-deserter]
+  rumors: [perion-campfire-confession]
+  relationships:
+    - { persona: garrick, kind: OWED_BY }
+  dialogue:
+    greetFirst: ["hands off the anvil.", "if you want it sharp, wait. if you want it now, go away."]
+    greet: ["back for more steel?", "the forge is hot. talk fast."]
+    idle: ["(hammers something that was already flat)"]
+    noWork: ["the forge is fed. rare."]
+    nothingDue: ["you're paid up."]
+    who: ["Yona. i make the steel this town swings. i also fix what it breaks."]
+    bye: ["mind the sparks."]
+    thanks: ["thank the iron."]
+    smallTalk: ["stone golems are just ore that learned to walk. i take it personally."]
+    questOffer.yona-iron-and-rubble: ["golem rubble. ten. the good iron hides in it."]
+    questComplete.yona-iron-and-rubble: ["ten. that's a week of blades."]
+    questOffer.yona-a-blade-for-a-deserter: ["Garrick owes me a sword. he won't come down. take him this and tell him the debt stands anyway."]
+    questComplete.yona-a-blade-for-a-deserter: ["he took it? he took it. well. the debt still stands. tell him that too."]
+    about.garrick: ["he was the best of the guard. then he wasn't there. ask him why over a fire, not a forge."]
+    aboutUnknown: ["never forged for them."]
+
+- id: tamsin
+  name: Tamsin
+  title: "Guard Captain"
+  job: PAGE
+  level: { min: 38, max: 41 }
+  strength: ELITE
+  loadout: perion-warrior-l30
+  personality: efficient-v1
+  home:
+    town: perion
+    routine:
+      - { from: 0, to: 24, spot: "venue:west-gate", activity: LINGER }
+  recruitable: false
+  questLines: [tamsin-hold-the-gate, tamsin-the-copper-drakes]
+  relationships:
+    - { persona: garrick, kind: LOST }
+  dialogue:
+    greetFirst: ["state your business at the gate.", "civilian. stay behind the line."]
+    greet: ["you.", "the gate holds. barely."]
+    idle: ["(watches the west road without blinking)"]
+    noWork: ["the road is quiet. that's when i worry."]
+    who: ["Tamsin. captain of what's left of the Perion guard."]
+    bye: ["stay inside the walls."]
+    thanks: ["do your duty. that's thanks."]
+    smallTalk: ["i had twelve guards. i have four. do the arithmetic yourself."]
+    questOffer.tamsin-hold-the-gate: ["wild boars at the west domain. thirty. the gate can't hold them and the four of us."]
+    questComplete.tamsin-hold-the-gate: ["thirty. the gate holds another week."]
+    questOffer.tamsin-the-copper-drakes: ["copper drakes at the excavation. twenty. that's guard work and i've no guard to send."]
+    questComplete.tamsin-the-copper-drakes: ["twenty drakes. you'd have made the guard. you'd have left it, too. they all do."]
+    about.garrick: ["he saved the gate once and walked out the next morning. i've stopped asking why."]
+    aboutUnknown: ["not on my roster."]
+
+- id: halvard
+  name: Halvard
+  title: "Quarry Spearman"
+  job: SPEARMAN
+  level: { min: 31, max: 34 }
+  strength: SEASONED
+  loadout: perion-spearman-l32
+  personality: relaxed-v1
+  home:
+    town: perion
+    routine:
+      - { from: 5, to: 17, spot: "venue:lower-square", activity: LINGER }
+      - { from: 17, to: 24, activity: SOCIALIZE }
+      - { from: 0, to: 5, materialize: false }
+  recruitable: true
+  contract: halvard-day-rate
+  questLines: [halvard-quarry-teeth]
+  benchToleranceDays: 30
+  paceGap: 2
+  dialogue:
+    greetFirst: ["big spear, small talk. what do you need?", "you're not from the quarry. everyone from the quarry is dusty."]
+    greet: ["hey! quarry's slow, talk to me.", "good to see a face without dust on it."]
+    idle: ["(spins a spear like it weighs nothing)"]
+    noWork: ["nothing today. want to spar?"]
+    nothingDue: ["nah we're good."]
+    who: ["Halvard. quarry spearman. i keep the drakes off the diggers. mostly."]
+    bye: ["don't fall in a pit!"]
+    thanks: ["cheers!"]
+    smallTalk: ["a drake's skull is worth more than my week. i've considered a career change."]
+    speakPlainly: ["simpler. i'm a spearman, not a scholar."]
+    refuse.bond: ["i'd go with you but i don't know you from a drake."]
+    offer: ["sure! day rate, though. and prove you can handle the excavation: twenty copper drakes, counted from now."]
+    join: ["let's go! spear in front!"]
+    bench: ["i'll be at the quarry. take your time, i've got patience."]
+    leave: ["good hunt. the quarry'll still be here."]
+    refuseOwnErrand: ["ha, that's your job. i'm the hired spear."]
+    questOffer.halvard-quarry-teeth: ["drakes have skulls thick enough to make helmets. six drake skulls and the foreman gets off my back."]
+    questWaiting.halvard-quarry-teeth: ["six skulls. drake skulls. the big lizards."]
+    questComplete.halvard-quarry-teeth: ["six! the foreman owes me. and i owe you. that's how it goes."]
+    aboutUnknown: ["dunno them. do they like spears?"]
+
+- id: ossa
+  name: Ossa
+  title: "Quarry Foreman"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: perion
+    routine:
+      - { from: 5, to: 18, spot: "venue:lower-square", activity: LINGER }
+      - { from: 18, to: 5, materialize: false }
+  recruitable: false
+  questLines: [ossa-clear-the-site]
+  dialogue:
+    greetFirst: ["hard hat. no? then stay off the site."]
+    greet: ["the dig's behind schedule. it's always behind schedule."]
+    idle: ["(reads a schedule that stopped being true weeks ago)"]
+    noWork: ["site's clear today. don't tell the diggers or they'll slow down."]
+    who: ["Ossa. foreman of the excavation. i dig up old things and the drakes dig up my people."]
+    bye: ["mind the pits."]
+    thanks: ["get back to work. i mean me."]
+    smallTalk: ["we found a wall down there older than Perion. the drakes live in it now."]
+    questOffer.ossa-clear-the-site: ["clear the first excavation site. twenty-five copper drakes. then the diggers can dig."]
+    questComplete.ossa-clear-the-site: ["twenty-five. the diggers are digging. they're also complaining, but that's baseline."]
+    aboutUnknown: ["not on the site."]
+
+- id: kip
+  name: Kip
+  title: "Ledge Kid"
+  job: BEGINNER
+  level: { min: 7, max: 9 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: perion
+    routine:
+      - { from: 7, to: 20, spot: "venue:middle-ledge", activity: STROLL }
+      - { from: 20, to: 7, materialize: false }
+  recruitable: false
+  questLines: [kip-teeth-for-a-necklace]
+  giftItemIds: [4000020, 4000024]
+  dialogue:
+    greetFirst: ["i can jump that gap. i haven't yet. but i can."]
+    greet: ["hi! watch this!", "you're back!"]
+    idle: ["(dangles legs over a very high ledge)"]
+    noWork: ["nothing! wanna see me jump?"]
+    who: ["Kip! i live on the ledge. the guard says i can't. the guard is wrong."]
+    bye: ["bye!"]
+    thanks: ["yesss."]
+    smallTalk: ["Garrick sits up here too. he doesn't jump either."]
+    questOffer.kip-teeth-for-a-necklace: ["boar teeth! i'm making a necklace. six wild boar teeth. i'd get them but the guard would notice."]
+    questComplete.kip-teeth-for-a-necklace: ["six teeth! necklace time. here, you can have the shiny rock i found."]
+    about.garrick: ["he's grumpy but he gave me his lunch once."]
+    aboutUnknown: ["don't know them!"]
+
+- id: moss
+  name: Moss
+  title: "Old Shaman"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: perion
+    routine:
+      - { from: 9, to: 22, spot: "rest:0", activity: REST }
+      - { from: 22, to: 9, materialize: false }
+  recruitable: false
+  questLines: [moss-stone-that-walks]
+  dialogue:
+    greetFirst: ["the rocks told me you'd come. they say that about everyone."]
+    greet: ["the stones are restless today.", "ah, the walker."]
+    idle: ["(listens to a rock)"]
+    noWork: ["the stones are quiet. enjoy it."]
+    who: ["Moss. i talk to stone. it talks back slower than i'd like."]
+    bye: ["walk soft."]
+    thanks: ["the stone is pleased. so am i."]
+    smallTalk: ["stone golems are just very angry hills."]
+    questOffer.moss-stone-that-walks: ["a stone golem carries a piece of the old wall in it. bring me eight golem rubble and i'll hear what the wall remembers."]
+    questComplete.moss-stone-that-walks: ["...the wall remembers a gate. and a man who walked through it at dawn. curious."]
+    aboutUnknown: ["the stones haven't mentioned them."]
+
+- id: dust
+  name: Dust
+  title: "Rock Collector"
+  job: BEGINNER
+  level: { min: 16, max: 18 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: perion
+    routine:
+      - { from: 6, to: 19, spot: "venue:lower-square", activity: STROLL }
+      - { from: 19, to: 6, materialize: false }
+  recruitable: false
+  questLines: [dust-rubble-run]
+  giftItemIds: [4000022, 4000025]
+  dialogue:
+    greetFirst: ["that's a nice rock you're standing on. don't move it."]
+    greet: ["found anything? rocks, i mean."]
+    idle: ["(sorts pebbles by a system only they understand)"]
+    noWork: ["collection's complete. until it isn't."]
+    who: ["Dust. i collect rocks. the interesting kind. all of them are the interesting kind."]
+    bye: ["don't kick anything!"]
+    thanks: ["rock on."]
+    smallTalk: ["dark golem rubble is darker. that's the whole difference. i still want it."]
+    questOffer.dust-rubble-run: ["twelve golem rubble for the collection? the ordinary grey. i'll pay in meso, not rocks. i keep the rocks."]
+    questComplete.dust-rubble-run: ["twelve! this one has a stripe. look. LOOK."]
+    aboutUnknown: ["not a rock. not interested."]

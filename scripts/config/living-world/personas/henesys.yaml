@@ -1,0 +1,363 @@
+# Henesys cast: hunters and the guild that failed. 10 residents, 3 recruitable (Fenna, Dorran, Ilse), 2 arcs.
+- id: fenna
+  name: Fenna
+  title: "Hunter of the Boar Road"
+  job: HUNTER
+  level: { min: 24, max: 27 }
+  strength: SEASONED
+  loadout: hunter-bowman-l25
+  personality: efficient-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 5, to: 12, spot: "venue:east-town-benches", activity: LINGER }
+      - { from: 12, to: 22, spot: "venue:central-square", activity: SOCIALIZE }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: true
+  contract: fenna-proof-of-aim
+  questLines: [fenna-pig-problem, fenna-boar-teeth]
+  benchToleranceDays: 5
+  paceGap: 2
+  relationships:
+    - { persona: dorran, kind: RIVALS }
+    - { persona: marrow, kind: RESPECTS }
+  dialogue:
+    greetFirst: ["you hold that weapon like it owes you money.", "hunter? no? you will be."]
+    greet: ["back from the road?", "aim's steady today. yours?"]
+    idle: ["(checks the fletching on an arrow)", "(watches the treeline)"]
+    noWork: ["the road's quiet. suspicious, but quiet."]
+    nothingDue: ["you're square with me."]
+    who: ["Fenna. i keep the pig road passable. someone has to."]
+    bye: ["straight arrows."]
+    thanks: ["thank the bow."]
+    smallTalk: ["boars are stupid but honest. i respect that."]
+    speakPlainly: ["say it like you'd say it to a boar."]
+    refuse.bond: ["i don't hunt with people i haven't hunted beside."]
+    refuse.flags: ["show me you can shoot first."]
+    offer: ["i'll come. but i want proof you won't get me killed: thirty pigs, on your own, and i'll count."]
+    join: ["stay behind me and don't step on the boars.", "lead on. i'll watch the treeline."]
+    bench: ["i'll be on the road. the pigs never stop."]
+    leave: ["good hunt. find me at the benches."]
+    refuseOwnErrand: ["you're the one who wanted to hunt. i'm the one who watches."]
+    questOffer.fenna-pig-problem: ["pigs on the beach have gotten bold. twenty of them, and ten ribbon pigs. it's not hunting, it's gardening."]
+    questComplete.fenna-pig-problem: ["thirty pigs. the beach owes you a nap."]
+    questOffer.fenna-boar-teeth: ["wild boars past the crossroads. twelve teeth. mind the fire boars, they aren't a joke."]
+    questWaiting.fenna-boar-teeth: ["twelve teeth. wild boar. not fire boar, i can tell."]
+    questComplete.fenna-boar-teeth: ["twelve. you didn't come back singed. i noticed."]
+    about.dorran: ["Dorran was guild. was. don't bring it up around him unless you want the speech."]
+    about.marrow: ["Marrow taught half this town to shoot. the other half didn't listen."]
+    aboutUnknown: ["never hunted with them."]
+
+- id: dorran
+  name: Dorran
+  title: "Last of the Sable Hunters"
+  job: FIGHTER
+  level: { min: 33, max: 36 }
+  strength: VETERAN
+  loadout: perion-warrior-l30
+  personality: efficient-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 9, to: 24, spot: "venue:west-park-benches", activity: LINGER }
+      - { from: 0, to: 9, materialize: false }
+  recruitable: true
+  contract: dorran-guild-debt
+  questLines: [dorran-guild-banner, dorran-the-mushmom]
+  arc: dorran-sable-guild
+  rumors: [henesys-guild-hall-ashes]
+  benchToleranceDays: 0
+  paceGap: 3
+  relationships:
+    - { persona: fenna, kind: RIVALS }
+    - { persona: ilse, kind: OWES }
+    - { persona: marrow, kind: BLAMES }
+  dialogue:
+    greetFirst: ["the guild's gone. if that's what you're here about.", "no autographs."]
+    greet: ["you.", "still here, hm."]
+    idle: ["(polishes a guild crest that doesn't shine anymore)"]
+    noWork: ["i've got nothing for you. nothing for anyone."]
+    nothingDue: ["we're even. that's rare."]
+    who: ["Dorran. the Sable Hunters had eleven members. you're looking at one."]
+    bye: ["watch the treeline."]
+    thanks: ["don't."]
+    smallTalk: ["this bench used to be the guild's front step. now it's a bench."]
+    speakPlainly: ["speak straight. i'm too old for riddles."]
+    refuse.bond: ["i had ten people i trusted. i'm not looking for an eleventh."]
+    refuse.arc: ["there's a fire you haven't heard about yet."]
+    offer: ["one condition: the crest comes with us, and you carry a real blade for me. then the debt."]
+    join: ["for the guild. whatever's left of it."]
+    bench: ["i don't wait on benches. i've done enough of that. find me when you're serious."]
+    leave: ["that's the last hunt under the crest. keep it."]
+    refuseOwnErrand: ["that's guild business. mine."]
+    questOffer.dorran-guild-banner: ["the guild banner's in the mushmom's grove. forty green mushrooms stand between it and me. go thin them."]
+    questComplete.dorran-guild-banner: ["forty. the grove's quieter. the banner's still there, i can feel it."]
+    questOffer.dorran-the-mushmom: ["the mushmom. she took the banner and three hunters. kill her with me. i want to see her fall."]
+    questAccept.dorran-the-mushmom: ["finally. i've waited a year for someone to say yes."]
+    questComplete.dorran-the-mushmom: ["...she's down. the banner's ours. i don't know what to do with my hands now."]
+    about.marrow: ["Marrow was our guildmaster. he left before the fire. draw your own conclusions."]
+    about.ilse: ["Ilse patched every one of us. she never sent a bill. i owe her more than meso."]
+    about.fenna: ["Fenna shoots better than half the guild did. don't tell her."]
+    aboutUnknown: ["not guild."]
+
+- id: ilse
+  name: Ilse
+  title: "Field Medic"
+  job: CLERIC
+  level: { min: 31, max: 34 }
+  strength: SEASONED
+  loadout: cleric-l32
+  personality: relaxed-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 7, to: 21, spot: "venue:market-rooftop-benches", activity: LINGER }
+      - { from: 21, to: 24, activity: SOCIALIZE }
+      - { from: 0, to: 7, materialize: false }
+  recruitable: true
+  contract: ilse-house-call
+  questLines: [ilse-herb-run, ilse-slime-salve]
+  benchToleranceDays: 14
+  paceGap: 1
+  giftItemIds: [2000016, 2000006]
+  relationships:
+    - { persona: dorran, kind: WORRIES_ABOUT }
+    - { persona: brannock, kind: KNOWS }
+  dialogue:
+    greetFirst: ["you're bleeding. no? you will be. sit.", "hello! let me see your hands. hunters always lie about their hands."]
+    greet: ["oh good, you're in one piece.", "hi! anything broken?"]
+    idle: ["(sorts bandages by colour for no reason)"]
+    noWork: ["everyone's healthy today. i'm suspicious."]
+    nothingDue: ["you don't owe me. nobody does. i'm bad at business."]
+    who: ["Ilse. i put hunters back together. some of them even say thanks."]
+    bye: ["drink water!"]
+    thanks: ["that's what i'm here for."]
+    smallTalk: ["mushroom caps, believe it or not, make a decent salve."]
+    speakPlainly: ["slow down, you'll pull something."]
+    refuse.bond: ["i go where i'm needed. i don't know you need me yet."]
+    offer: ["i'll come along and keep you standing. i just need the salve stock covered, that's all."]
+    join: ["stay in range of me and you'll be fine.", "right behind you. don't be a hero."]
+    bench: ["i'll be at the rooftop. don't come back in pieces."]
+    leave: ["take care of yourself. i mean it."]
+    refuseOwnErrand: ["you gather, i heal. that's the arrangement."]
+    questOffer.ilse-herb-run: ["slime bubbles. fifteen. i boil them down for burns. the slimes at the tree don't mind, mostly."]
+    questWaiting.ilse-herb-run: ["fifteen bubbles. slime ones."]
+    questComplete.ilse-herb-run: ["perfect. here, the first jar's yours."]
+    questOffer.ilse-slime-salve: ["orange caps and green caps, ten and ten. the boar-road hunters go through salve like water."]
+    questComplete.ilse-slime-salve: ["that's a month of salve. Fenna will never know how close she came to running out."]
+    about.dorran: ["Dorran sits on that bench every day. i bring him lunch. he pretends he doesn't notice."]
+    aboutUnknown: ["never treated them."]
+
+- id: marrow
+  name: Marrow
+  title: "Old Bowmaster"
+  job: RANGER
+  level: { min: 44, max: 47 }
+  strength: ELITE
+  loadout: hunter-bowman-l35
+  personality: efficient-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 6, to: 11, spot: "venue:park-overlook", activity: LINGER }
+      - { from: 11, to: 20, spot: "venue:upper-east-benches", activity: LINGER }
+      - { from: 20, to: 6, materialize: false }
+  recruitable: false
+  questLines: [marrow-eyes-in-the-dark, marrow-a-clean-shot]
+  rumors: [henesys-guild-hall-ashes]
+  relationships:
+    - { persona: dorran, kind: REGRETS }
+  dialogue:
+    greetFirst: ["stand up straight. there. now you look like someone worth teaching."]
+    greet: ["ah. the student who didn't ask to be one."]
+    idle: ["(draws an empty bow and holds it, steady, for a very long time)"]
+    noWork: ["practice. that's the work."]
+    who: ["Marrow. i taught the Sable Hunters. i also left them. both things are true."]
+    bye: ["breathe out before you release."]
+    thanks: ["thank yourself. i only pointed."]
+    smallTalk: ["a bow is a held breath. that's all it is."]
+    questOffer.marrow-eyes-in-the-dark: ["evil eyes in the ant tunnel. their tails don't lie about where you hit. bring me eight."]
+    questComplete.marrow-eyes-in-the-dark: ["clean cuts. you're aiming, not flailing."]
+    questOffer.marrow-a-clean-shot: ["curse eyes. deeper in the tunnel. fifteen of them. then we'll talk about what a clean shot means."]
+    questComplete.marrow-a-clean-shot: ["fifteen. good. now you know: a clean shot is the one you don't have to take twice."]
+    about.dorran: ["i left the guild the week before the fire. he'll never forgive that. he shouldn't."]
+    aboutUnknown: ["not a student of mine."]
+
+- id: tavi
+  name: Tavi
+  title: "Market Runner"
+  job: BEGINNER
+  level: { min: 14, max: 16 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 6, to: 20, spot: "venue:henesys-market", activity: LINGER }
+      - { from: 20, to: 24, activity: STROLL }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: false
+  questLines: [tavi-market-delivery, tavi-octopus-order]
+  dialogue:
+    greetFirst: ["coming through! oh, hi. need something carried?"]
+    greet: ["hey! busy busy.", "you again! got a minute? i don't, but you might."]
+    idle: ["(counts coins twice)"]
+    noWork: ["all deliveries done. weird."]
+    who: ["Tavi. if it got from one end of the market to the other, i carried it."]
+    bye: ["gotta run. literally."]
+    thanks: ["np np np."]
+    smallTalk: ["the pig beach pigs are cheaper than the market pigs. don't ask how i know."]
+    questOffer.tavi-market-delivery: ["run to the market, then the hunting ground past it, then back. i need to know the shortcut still works."]
+    questComplete.tavi-market-delivery: ["it works! okay, saved me twenty minutes a day."]
+    questOffer.tavi-octopus-order: ["a customer wants octopus legs. eight. from the ellinia side. i don't do octopus."]
+    questWaiting.tavi-octopus-order: ["eight legs. octopus legs. yes it's weird."]
+    questComplete.tavi-octopus-order: ["eight legs! the customer will be thrilled. or hungry. or both."]
+    aboutUnknown: ["never delivered to them."]
+
+- id: rurik
+  name: Rurik
+  title: "Boar Farmer"
+  job: WARRIOR
+  level: { min: 26, max: 29 }
+  strength: SEASONED
+  loadout: dock-worker
+  personality: efficient-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 5, to: 19, spot: "venue:east-town-benches", activity: LINGER }
+      - { from: 19, to: 5, materialize: false }
+  recruitable: false
+  questLines: [rurik-fence-line]
+  dialogue:
+    greetFirst: ["boars got into the fence again. you look like you can hit things."]
+    greet: ["fence is holding. for now."]
+    idle: ["(mends a fence post that will not hold)"]
+    noWork: ["fence is fine today. give it a week."]
+    who: ["Rurik. i farm on the boar road. the boars disagree."]
+    bye: ["mind the fence."]
+    thanks: ["ale's on me. figuratively."]
+    smallTalk: ["a boar can eat its own weight in turnips. i've measured."]
+    questOffer.rurik-fence-line: ["twenty-five wild boars past the crossroads. call it fence maintenance."]
+    questComplete.rurik-fence-line: ["twenty-five fewer boars. the turnips thank you."]
+    aboutUnknown: ["not a farmer."]
+
+- id: senna
+  name: Senna
+  title: "Fletcher"
+  job: BEGINNER
+  level: { min: 20, max: 22 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 8, to: 20, spot: "venue:henesys-market", activity: LINGER }
+      - { from: 20, to: 8, materialize: false }
+  recruitable: false
+  questLines: [senna-feather-and-shell]
+  dialogue:
+    greetFirst: ["arrows don't grow on trees. well. partly."]
+    greet: ["need arrows? everyone needs arrows."]
+    idle: ["(trims feathers with a tiny knife)"]
+    noWork: ["stock's full. buy something."]
+    who: ["Senna. every arrow Fenna loses, i made."]
+    bye: ["don't lose them all."]
+    thanks: ["buy more arrows."]
+    smallTalk: ["snail shells make the best arrowheads. nobody believes me."]
+    questOffer.senna-feather-and-shell: ["twelve snail shells, any snail. i'm out of arrowheads and Fenna's out of patience."]
+    questComplete.senna-feather-and-shell: ["twelve. here, a bundle to test them with."]
+    aboutUnknown: ["never sold them arrows."]
+
+- id: quill
+  name: Quill
+  title: "Wandering Storyteller"
+  job: BEGINNER
+  level: { min: 17, max: 19 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 10, to: 24, spot: "venue:central-square", activity: SOCIALIZE }
+      - { from: 0, to: 10, materialize: false }
+  recruitable: false
+  questLines: [quill-a-story-worth-telling]
+  rumors: [henesys-guild-hall-ashes]
+  dialogue:
+    greetFirst: ["a new face! sit, sit. have you heard about the fire? no? oh, you will."]
+    greet: ["my favourite audience!", "back for another chapter?"]
+    idle: ["(tells a story to nobody in particular)"]
+    noWork: ["no errands. only stories. want one?"]
+    who: ["Quill. i collect what happened and make it sound like it mattered."]
+    bye: ["come back for the ending!"]
+    thanks: ["applause is thanks enough. meso is also thanks."]
+    smallTalk: ["every town has a fire in its past. Henesys just has a fresher one."]
+    questOffer.quill-a-story-worth-telling: ["i need a story. go talk to Dorran, then to Marrow. come back and tell me whose version you believe."]
+    questComplete.quill-a-story-worth-telling: ["two men, one fire, no villain. that's the best kind of story. here."]
+    about.dorran: ["a man made of grief and a bench."]
+    about.marrow: ["he left before the fire. the town says that like it's an accusation."]
+    aboutUnknown: ["haven't heard their story yet. give me time."]
+
+- id: brisa
+  name: Brisa
+  title: "Mushroom Picker"
+  job: BEGINNER
+  level: { min: 11, max: 13 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 6, to: 18, spot: "venue:west-park-benches", activity: STROLL }
+      - { from: 18, to: 24, spot: "venue:central-square", activity: REST }
+      - { from: 0, to: 6, materialize: false }
+  recruitable: false
+  questLines: [brisa-cap-basket]
+  giftItemIds: [4000001, 4000012]
+  dialogue:
+    greetFirst: ["careful, that one's poisonous. kidding. maybe."]
+    greet: ["hi hi!", "found any good caps?"]
+    idle: ["(sniffs a mushroom, frowns, keeps it)"]
+    noWork: ["basket's full. for once!"]
+    who: ["Brisa. if it's a cap and it's in Henesys, i've picked it or tripped over it."]
+    bye: ["watch your step!"]
+    thanks: ["mushroom hug!"]
+    smallTalk: ["the orange ones squeak. nobody believes me either."]
+    questOffer.brisa-cap-basket: ["fifteen orange caps for the basket? the ones by the hunting ground squeak the loudest."]
+    questComplete.brisa-cap-basket: ["fifteen squeaky caps! you're the best."]
+    aboutUnknown: ["dunno them! do they like mushrooms?"]
+
+- id: aldous
+  name: Aldous
+  title: "Retired Guild Clerk"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: efficient-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 9, to: 17, spot: "venue:market-rooftop-benches", activity: LINGER }
+      - { from: 17, to: 9, materialize: false }
+  recruitable: false
+  questLines: [aldous-ledger-of-the-lost]
+  dialogue:
+    greetFirst: ["the guild kept records. i kept the records. that's the difference between us and rumour."]
+    greet: ["yes?", "ah, the courier."]
+    idle: ["(reads the same page again)"]
+    noWork: ["the ledger's closed. i keep opening it anyway."]
+    who: ["Aldous. clerk of the Sable Hunters. i counted the dead, once. i'd rather count anything else."]
+    bye: ["mind the ink."]
+    thanks: ["noted."]
+    smallTalk: ["eleven names. i can still write them without looking."]
+    questOffer.aldous-ledger-of-the-lost: ["the guild's last hunt was the stone golems. bring me six pieces of rubble. i want to finish the entry."]
+    questWaiting.aldous-ledger-of-the-lost: ["six. golem rubble. it's grey and it's heavy, you'll know."]
+    questComplete.aldous-ledger-of-the-lost: ["six. the entry is finished. thank you. genuinely."]
+    about.dorran: ["Dorran is the only name left in the active column."]
+    aboutUnknown: ["not in the ledger."]

@@ -1,0 +1,46 @@
+# Kerning City contracts.
+- id: vex-courier-fee
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [vex.package.run]
+  price:
+    meso: 18000
+  terms:
+    durationHours: 5
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 2
+    rejoinPrice: { meso: 9000 }
+
+- id: jinx-a-name-you-heard
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [kerning.heard-back-room, jinx.quiet.done]
+  price:
+    meso: 45000
+    items: [{ itemId: 2070002, count: 1, keep: true }]
+  terms:
+    durationHours: 4
+    maxLevelGap: 10
+    lootShare: LEADER
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 24
+    rejoinPrice: { meso: 20000 }
+
+- id: sadie-overtime
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [sadie.concrete.poured]
+  price:
+    meso: 12000
+    proof: { killMobs: { mobIds: [2300100], count: 30 } }
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 4
+    rejoinPrice: { meso: 6000 }

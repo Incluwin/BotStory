@@ -1,0 +1,34 @@
+# Perion contracts.
+- id: garrick-blood-debt
+  offerWhen:
+    bondStage: TRUSTED
+    flags: [garrick.badge.returned, garrick.heard-confession]
+    arcChapterAtLeast: { arc: garrick-redemption, chapter: chapter-3 }
+  price:
+    meso: 25000
+    items: [{ itemId: 1302020, count: 1, keep: true }]
+    proof: { killMobs: { mobIds: [3210100], count: 30 } }
+  terms:
+    durationHours: 6
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 5000 }
+
+- id: halvard-day-rate
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [halvard.skulls.done]
+  price:
+    meso: 20000
+    proof: { killMobs: { mobIds: [4130100], count: 20 } }
+  terms:
+    durationHours: 6
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 2
+    rejoinPrice: { meso: 10000 }

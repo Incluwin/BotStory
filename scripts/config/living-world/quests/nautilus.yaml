@@ -1,0 +1,81 @@
+# Nautilus quest lines. Lorang 3230102 (claw 4000043), clang 4230104 (claw 4000044), tortie 4130101 (shell 4000045).
+# Maps: florina beach 110000000.
+- id: kettle-deck-drill
+  persona: kettle
+  title: "Deck Drill"
+  length: SHORT
+  requires: { level: { min: 22 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 20 }
+    - { id: report, type: DELIVER, to: kettle }
+  rewards: { meso: 5000, exp: 2500, bondPoints: 25, flags: [kettle.drill.passed] }
+
+- id: kettle-what-the-tide-took
+  persona: kettle
+  title: "What the Tide Took"
+  length: MEDIUM
+  requires: { level: { min: 28 }, questsCompleted: [kettle-deck-drill] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000045, count: 10 }
+    - { id: return, type: DELIVER, to: kettle, take: { itemId: 4000045, count: 10 } }
+  rewards: { meso: 9000, exp: 5000, bondPoints: 35, flags: [kettle.chest.searched] }
+  onComplete: { arcAdvance: { arc: kettle-new-captain, to: chapter-2 } }
+
+- id: mae-powder-and-shot
+  persona: mae
+  title: "Powder and Shot"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 26 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000044, count: 15 }
+    - { id: return, type: DELIVER, to: mae, take: { itemId: 4000044, count: 15 } }
+  rewards: { meso: 6000, exp: 3000, bondPoints: 12, items: [{ itemId: 2330000, count: 500 }] }
+
+- id: pike-the-captains-door
+  persona: pike
+  title: "The Captain's Door"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000044, count: 5 }
+    - { id: return, type: DELIVER, to: pike, take: { itemId: 4000044, count: 5 } }
+  rewards: { meso: 2500, exp: 1500, bondPoints: 20, flags: [pike.door.open] }
+
+- id: barnaby-galley-stock
+  persona: barnaby
+  title: "Galley Stock"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000043, count: 12 }
+    - { id: return, type: DELIVER, to: barnaby, take: { itemId: 4000043, count: 12 } }
+  rewards: { meso: 3500, exp: 1800, bondPoints: 10, items: [{ itemId: 2022003, count: 3 }] }
+
+- id: coral-the-beach-chart
+  persona: coral
+  title: "The Beach Chart"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: beach, type: VISIT_MAP, mapIds: [110000000] }
+    - { id: back, type: DELIVER, to: coral }
+  rewards: { meso: 2500, exp: 1200, bondPoints: 15 }
+
+- id: gull-a-shell-for-a-story
+  persona: gull
+  title: "A Shell for a Story"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shell, type: COLLECT_ITEM, itemId: 4000045, count: 1 }
+    - { id: return, type: DELIVER, to: gull, take: { itemId: 4000045, count: 1 } }
+  rewards: { meso: 1500, exp: 1500, bondPoints: 20, flags: [gull.captain.story] }
