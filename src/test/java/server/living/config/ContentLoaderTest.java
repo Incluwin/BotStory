@@ -79,7 +79,7 @@ class ContentLoaderTest {
         LivingContent content = ContentLoader.load(ROOT);
         Persona broken = new Persona("ghost", "Ghost", "", "BEGINNER", new Content.LevelBand(1, 1), Content.Strength.ROOKIE,
                 "no-such-loadout", "relaxed-v1", null, "atlantis", List.of(), true, null, List.of("nope"), "no-arc",
-                List.of(), List.of(), java.util.Map.of(), -1, -1, -1, List.of(), "test");
+                List.of(), List.of(), java.util.Map.of(), -1, -1, -1, List.of(), 0, "test");
         LivingContent withBroken = new LivingContent(
                 java.util.Map.of("ghost", broken), content.quests(), content.contracts(), content.arcs(), content.rumors(),
                 content.loadouts(), content.phrases(), List.of());

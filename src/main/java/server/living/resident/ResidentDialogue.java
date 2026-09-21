@@ -43,6 +43,25 @@ public final class ResidentDialogue {
     private static final Pattern DECLINE = Pattern.compile("^(no|nah|nope|not now|maybe later|decline|pass|no thanks)( .*)?$");
     private static final Pattern PAY = Pattern.compile("^pay (\\d+)k?$");
     private static final Pattern ASK_ABOUT = Pattern.compile("^(tell me about|who is|what about|whats with|know anything about|heard about) (\\w+)$");
+    private static final Pattern TALK = Pattern.compile("^(talk|lets talk|menu|options|speak|chat|talk to me|can we talk|got a minute|a word)$");
+
+    /** Portrait NPCs per town for personas that do not name their own. */
+    private static final Map<String, int[]> PORTRAITS = Map.of(
+            "lith-harbor", new int[] {1002000, 1002001, 1002002, 1002003, 1002005},
+            "henesys", new int[] {1010100, 1012003, 1012106, 1012108, 1012109},
+            "kerning-city", new int[] {1052002, 1052003, 1052004, 1052005, 1052006, 1052017, 1052102, 1052103},
+            "perion", new int[] {1022002, 1022003, 1022004, 1022005},
+            "ellinia", new int[] {1032002, 1032003, 1032100, 1032101, 1032102},
+            "nautilus", new int[] {1092000, 1092001, 1092002, 1092003},
+            "sleepywood", new int[] {1061000, 1061002, 1061003, 1061004});
+
+    public static int portraitOf(Persona persona) {
+        if (persona.portraitNpcId() > 0) {
+            return persona.portraitNpcId();
+        }
+        int[] town = PORTRAITS.getOrDefault(persona.homeTown(), new int[] {9010000});
+        return town[Math.floorMod(persona.id().hashCode(), town.length)];
+    }
 
     private static final Pattern ROSTER = Pattern.compile("^(roster|who do i have|my companions|my crew|who travels with me|list companions)$");
     private static final Pattern CALL = Pattern.compile("^(call|summon|bring) (\\w+)$");
@@ -52,6 +71,7 @@ public final class ResidentDialogue {
     private static final Pattern EVERYONE_BENCH = Pattern.compile("^(everyone|all|everybody) (bench|rest|go to camp)$");
     private static final Pattern CALL_USUAL = Pattern.compile("^(call|bring) (the usual|everyone|all|everybody)$");
     private static final Pattern FARM_ITEM = Pattern.compile("^farm (\\d+ )?(.+?)( x?(\\d+))?$");
+    private static final Pattern WAGES = Pattern.compile("^(wages|pay wages|heres your pay|your pay|payday)( (\\d+)k?)?$");
 
     private final LivingWorld world;
     private final ResidentIntentJudge judge;
@@ -179,6 +199,10 @@ public final class ResidentDialogue {
             greet(speaker, persona);
             return true;
         }
+        if (TALK.matcher(normalized).matches()) {
+            openMenu(speaker, persona);
+            return true;
+        }
         Matcher pay = PAY.matcher(normalized);
         if (pay.matches()) {
             long amount = Long.parseLong(pay.group(1)) * (normalized.endsWith("k") ? 1000L : 1L);
@@ -286,6 +310,37 @@ public final class ResidentDialogue {
         }
         sayLine(speaker, persona, "idle", "hm.");
         return true;
+    }
+
+    /** The structured conversation: what this persona can do for the player right now. */
+    public void openMenu(Character speaker, Persona persona) {
+        world.bonds().bond(speaker, persona);
+        List<LivingTalk.Option> options = new ArrayList<>();
+        if (!world.quests().available(speaker, persona).isEmpty()) {
+            options.add(new LivingTalk.Option("Got any work for me?", () -> world.quests().offer(speaker, persona)));
+        }
+        for (var state : world.quests().activeFrom(speaker, persona)) {
+            var quest = world.content().quest(state.questId());
+            if (quest != null) {
+                options.add(new LivingTalk.Option("About " + quest.title() + "...", () -> {
+                    if (!world.quests().turnIn(speaker, persona)) {
+                        LivingTalk.open(speaker, portraitOf(persona))
+                                .ok(quest.title() + ": " + world.quests().describe(quest.step(state.stepIndex()), state)).show();
+                    }
+                }));
+            }
+        }
+        if (world.arcs().recruitable(persona) && world.roster().ownerOf(persona.id()) == 0) {
+            options.add(new LivingTalk.Option("Would you travel with me?", () ->
+                    world.residents().reply(persona, speaker, world.contracts().askToJoin(speaker, persona))));
+        }
+        options.add(new LivingTalk.Option("Who are you?", () -> sayLine(speaker, persona, "who",
+                persona.name() + (persona.title().isEmpty() ? "" : ", " + persona.title()) + ".")));
+        options.add(new LivingTalk.Option("Never mind.", () -> sayLine(speaker, persona, "bye", "later.")));
+        List<String> greet = world.arcs().lines(persona, "greet");
+        LivingTalk.open(speaker, portraitOf(persona))
+                .menu((greet.isEmpty() ? "yes?" : pick(greet, speaker)) + "\r\n", options)
+                .show();
     }
 
     private void greet(Character speaker, Persona persona) {
@@ -433,6 +488,16 @@ public final class ResidentDialogue {
             case "bank it", "deposit it", "bank the meso": owner.dropMessage(5, world.roster().bankIt(owner, persona)); return true;
             case "release", "dismiss", "youre free", "go home": owner.dropMessage(5, world.contracts().dismiss(owner, persona)); return true;
             default: break;
+        }
+        Matcher wages = WAGES.matcher(command);
+        if (wages.matches()) {
+            if (wages.group(3) == null) {
+                owner.dropMessage(5, world.roster().wagesStatus(owner, persona));
+            } else {
+                long amount = Long.parseLong(wages.group(3)) * (command.endsWith("k") ? 1000L : 1L);
+                owner.dropMessage(5, world.roster().payWages(owner, persona, amount));
+            }
+            return true;
         }
         Matcher farm = FARM_ITEM.matcher(command);
         if (farm.matches()) {

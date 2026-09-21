@@ -43,6 +43,7 @@ public final class LivingWorld {
     private final ContractService contracts;
     private final RosterService roster;
     private final BenchLedger bench;
+    private final server.living.roster.BenchSessions benchSessions;
     private final ResidentRuntime residents;
     private final ResidentDialogue dialogue;
     private final RumorScheduler rumors;
@@ -59,6 +60,7 @@ public final class LivingWorld {
         this.roster = new RosterService(this);
         this.contracts = new ContractService(this);
         this.bench = new BenchLedger(this);
+        this.benchSessions = new server.living.roster.BenchSessions(this);
         this.residents = new ResidentRuntime(this);
         this.dialogue = new ResidentDialogue(this);
         this.rumors = new RumorScheduler(this);
@@ -109,6 +111,8 @@ public final class LivingWorld {
                 config.RUMOR_TICK_MS, config.RUMOR_TICK_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.contracts::tick,
                 60_000L, 60_000L));
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.benchSessions::tick,
+                120_000L, 120_000L));
         instance = world;
         log.info("Living world started: {} (world {} channel {}, content {})", content.census(), config.WORLD,
                 config.CHANNEL, Path.of(config.CONTENT_DIR).toAbsolutePath());
@@ -124,6 +128,7 @@ public final class LivingWorld {
             timer.cancel(false);
         }
         world.timers.clear();
+        world.benchSessions.endAll("server shutdown");
         world.residents.standbyAll("server shutdown");
         log.info("Living world stopped.");
     }
@@ -172,6 +177,10 @@ public final class LivingWorld {
 
     public BenchLedger bench() {
         return bench;
+    }
+
+    public server.living.roster.BenchSessions benchSessions() {
+        return benchSessions;
     }
 
     public ResidentRuntime residents() {

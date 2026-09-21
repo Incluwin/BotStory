@@ -49,6 +49,8 @@ public final class RosterService {
     /** persona id -> owner character id, cached from the store. */
     private final Map<String, Integer> ownerByPersona = new ConcurrentHashMap<>();
     private final Map<String, Long> ownerLogoutAtMs = new ConcurrentHashMap<>();
+    /** owner:persona -> arrival time of a companion travelling from its camp. */
+    private final Map<String, Long> travelling = new ConcurrentHashMap<>();
     /** Character ids with at least one roster entry; consulted on every chat line, so cached. */
     private final java.util.Set<Integer> owners = ConcurrentHashMap.newKeySet();
 
@@ -167,7 +169,10 @@ public final class RosterService {
         world.store().setWorldFlag("persona." + persona.id() + ".employed", owner.getId());
         world.residents().releaseForRecruit(persona.id());
         world.store().event(owner.getId(), persona.id(), "roster.recruit", null);
-        return call(owner, persona);
+        if (freeSlots(owner) <= 0) {
+            return persona.name() + " joins your roster but your party is full; call them when there is room.";
+        }
+        return spawnCompanion(owner, persona, entry);
     }
 
     /** Drops the persona from the roster; it goes home as a Resident. */
@@ -176,6 +181,7 @@ public final class RosterService {
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return persona.name() + " is not in your roster.";
         }
+        world.benchSessions().endFor(persona.id(), "released");
         despawn(entry, "released");
         world.store().saveRoster(entry.with(RosterState.RELEASED, System.currentTimeMillis()));
         world.store().deleteRoster(owner.getId(), persona.id());
@@ -192,6 +198,7 @@ public final class RosterService {
 
     // ---- call / bench / swap -------------------------------------------------------------
 
+    /** Calls a companion: benched ones travel from their camp first (plan 11.3) unless a whistle is used. */
     public String call(Character owner, Persona persona) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
@@ -203,10 +210,67 @@ public final class RosterService {
         if (freeSlots(owner) <= 0) {
             return "Your party is full. Bench someone or name who to swap.";
         }
+        String key = owner.getId() + ":" + persona.id();
+        Long arriving = travelling.get(key);
+        if (arriving != null && arriving > System.currentTimeMillis()) {
+            return persona.name() + " is already on the way (" + RecallTravel.describe(arriving - System.currentTimeMillis()) + ").";
+        }
+        if (entry.state() == RosterState.BENCHED && owner.getMap() != null) {
+            int campMap = entry.campMapId() == 0 ? server.living.resident.ResidentSpots.townMapId(persona.homeTown()) : entry.campMapId();
+            long eta = RecallTravel.etaMs(campMap, owner.getMapId());
+            if (eta > 0L && !consumeWhistle(owner)) {
+                travelling.put(key, System.currentTimeMillis() + eta);
+                List<String> lines = world.arcs().lines(persona, "onMyWay");
+                world.residents().whisper(persona, owner, (lines.isEmpty() ? "on my way." : lines.get(Math.floorMod(owner.getId(), lines.size())))
+                        + " " + RecallTravel.describe(eta) + ".");
+                world.store().event(owner.getId(), persona.id(), "roster.travel", "eta " + eta + " ms from map " + campMap);
+                server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> arrive(owner.getId(), persona), eta);
+                return persona.name() + " is on the way (" + RecallTravel.describe(eta) + ").";
+            }
+        }
+        travelling.remove(key);
+        return spawnCompanion(owner, persona, entry);
+    }
+
+    private void arrive(int ownerId, Persona persona) {
+        travelling.remove(ownerId + ":" + persona.id());
+        Character owner = onlineCharacter(ownerId);
+        if (owner == null) {
+            return;
+        }
+        RosterEntry entry = world.store().rosterEntry(ownerId, persona.id());
+        if (entry == null || entry.state() != RosterState.BENCHED) {
+            return;
+        }
+        if (freeSlots(owner) <= 0) {
+            world.residents().whisper(persona, owner, "your party's full. i'll head back to camp.");
+            return;
+        }
+        owner.dropMessage(5, spawnCompanion(owner, persona, entry));
+    }
+
+    /** True when the owner carried a recall whistle and one was consumed. */
+    private boolean consumeWhistle(Character owner) {
+        int whistle = world.config().RECALL_WHISTLE_ITEM_ID;
+        if (whistle <= 0) {
+            return false;
+        }
+        client.inventory.InventoryType type = constants.inventory.ItemConstants.getInventoryType(whistle);
+        if (owner.getInventory(type).countById(whistle) <= 0) {
+            return false;
+        }
+        InventoryManipulator.removeById(owner.getClient(), type, whistle, 1, false, false);
+        owner.dropMessage(5, "You blow the whistle.");
+        return true;
+    }
+
+    private String spawnCompanion(Character owner, Persona persona, RosterEntry entry) {
         int characterId = world.residents().ensureCharacter(persona);
         if (characterId == 0) {
             return persona.name() + " cannot be reached right now.";
         }
+        world.benchSessions().endFor(persona.id(), "called by owner");
+        world.residents().releaseForRecruit(persona.id());
         if (AgentRuntimeRegistry.hasActiveAgentCharacterId(characterId)) {
             AgentRuntimeCleanupService.removeAgentByCharacterId(characterId);
         }
@@ -290,6 +354,40 @@ public final class RosterService {
             case STALL -> "run a stall";
             case REST -> "rest";
         };
+    }
+
+    // ---- wages ---------------------------------------------------------------------------
+
+    /** Prepays upkeep so bench work is not charged to the haul; returns the new paid-until description. */
+    public String payWages(Character owner, Persona persona, long meso) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null) {
+            return persona.name() + " is not in your roster.";
+        }
+        if (meso <= 0 || owner.getMeso() < meso) {
+            return "you don't have " + meso + " meso.";
+        }
+        int level = Math.max(1, world.store().characterLevel(world.residents().characterIdOf(persona.id())));
+        long hoursMs = Math.round(meso / BenchLedger.upkeepPerHour(level) * 3_600_000.0d);
+        long from = Math.max(System.currentTimeMillis(), entry.wagesPaidUntilMs());
+        owner.gainMeso((int) -meso, true);
+        RosterEntry paid = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
+                entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), entry.accruedExp(), entry.haulMeso(),
+                from + hoursMs, entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay());
+        world.store().saveRoster(paid);
+        world.store().event(owner.getId(), persona.id(), "roster.wages", meso + " meso -> " + (hoursMs / 3_600_000L) + " h");
+        return persona.name() + " is paid up for " + RecallTravel.describe(paid.wagesPaidUntilMs() - System.currentTimeMillis()) + ".";
+    }
+
+    public String wagesStatus(Character owner, Persona persona) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null) {
+            return persona.name() + " is not in your roster.";
+        }
+        long left = entry.wagesPaidUntilMs() - System.currentTimeMillis();
+        int level = Math.max(1, world.store().characterLevel(world.residents().characterIdOf(persona.id())));
+        return persona.name() + (left > 0 ? " is paid up for " + RecallTravel.describe(left) : " is working off the haul")
+                + " (upkeep " + Math.round(BenchLedger.upkeepPerHour(level)) + " meso/hour).";
     }
 
     // ---- haul ----------------------------------------------------------------------------

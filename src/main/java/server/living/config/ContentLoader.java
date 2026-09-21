@@ -202,6 +202,7 @@ public final class ContentLoader {
                 node.get("paceGap").integer(-1),
                 node.get("maxLag").integer(-1),
                 node.get("giftItemIds").integers(),
+                node.get("portraitNpcId").integer(0),
                 node.path());
     }
 

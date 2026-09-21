@@ -8548,6 +8548,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     private void playerDead() {
+        server.living.LivingWorldHooks.playerDied(this);
         if (this.getMap().isCPQMap()) {
             int losing = getMap().getDeathCP();
             if (getCP() < losing) {

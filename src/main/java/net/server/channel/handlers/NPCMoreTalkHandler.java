@@ -40,6 +40,9 @@ public final class NPCMoreTalkHandler extends AbstractPacketHandler {
     public final void handlePacket(InPacket p, Client c) {
         byte lastMsg = p.readByte(); // 00 (last msg type I think)
         byte action = p.readByte(); // 00 = end chat, 01 == follow
+        if (server.living.LivingWorldHooks.npcTalkResponse(c, lastMsg, action, p)) {
+            return;
+        }
         NPCConversationManager conversation = c.getQM() != null ? c.getQM() : c.getCM();
         if (conversation == null) {
             return;

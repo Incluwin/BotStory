@@ -72,6 +72,13 @@ public final class BenchLedger {
         if (hours < 0.01d) {
             return;
         }
+        if (world.benchSessions().live(persona.id())) {
+            // training for real at its camp: the fight credits EXP itself; just move the clock
+            world.store().saveRoster(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
+                    entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), entry.accruedExp(), entry.haulMeso(),
+                    entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, entry.farmSecondsToday(), entry.farmDay()));
+            return;
+        }
         int botCharacterId = world.residents().characterIdOf(persona.id());
         int botLevel = Math.max(1, world.store().characterLevel(botCharacterId));
         int ownerLevel = Math.max(1, world.store().characterLevel(entry.characterId()));
@@ -145,9 +152,9 @@ public final class BenchLedger {
             }
             case REST -> { }
         }
-        if (assignment != Assignment.REST) {
+        if (assignment != Assignment.REST && entry.wagesPaidUntilMs() < now) {
             long upkeep = Math.round(UPKEEP_PER_LEVEL_PER_HOUR * botLevel * hours);
-            haulMeso -= upkeep;
+            haulMeso -= upkeep; // prepaid wages cover upkeep; otherwise the haul pays, and an unpaid haul slows the work
         }
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), accruedExp, haulMeso,
@@ -167,6 +174,11 @@ public final class BenchLedger {
             }
         }
         return total + (int) (hours * 3600) <= capSeconds;
+    }
+
+    /** Upkeep per hour for a companion of this level; what a meso of wages buys. */
+    public static double upkeepPerHour(int level) {
+        return UPKEEP_PER_LEVEL_PER_HOUR * Math.max(1, level);
     }
 
     /** Rough EXP/hour a bot of this level earns at a fitting field: one level per (0.5 + level/20) hours. */

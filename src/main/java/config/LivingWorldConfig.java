@@ -53,6 +53,10 @@ public class LivingWorldConfig {
     public double BENCH_FARM_EFFICIENCY = 0.6;
     /** Bench farming (all assignments except TRAIN/REST) capped per account per day, hours. */
     public int BENCH_FARM_HOURS_PER_DAY = 16;
+    /** Benched TRAIN companions materialized at their camps at once (0 disables live bench sessions). */
+    public int BENCH_LIVE_MAX = 4;
+    /** Length of one live training slice before the next benched companion gets a turn (unless a player is watching). */
+    public int BENCH_LIVE_SLICE_MS = 900000;
     /** Distinct item stacks a companion's haul can hold. */
     public int HAUL_MAX_STACKS = 24;
     /** Pace: benched companions stop accruing at ownerLevel - PACE_GAP (shrinks with bond stage). */

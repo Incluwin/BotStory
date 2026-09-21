@@ -95,7 +95,18 @@ public final class ContractService {
             world.store().event(chr.getId(), persona.id(), "contract.offered", persona.contract());
             List<String> lines = world.arcs().lines(persona, "offer");
             String voice = lines.isEmpty() ? "here's my price." : lines.get(Math.floorMod(chr.getId(), lines.size()));
-            return voice + " " + describePrice(contract, mesoDue, offered) + " Say join again when you have it.";
+            String price = describePrice(contract, mesoDue, offered);
+            server.living.resident.LivingTalk.open(chr, server.living.resident.ResidentDialogue.portraitOf(persona))
+                    .say(voice)
+                    .say("#e" + persona.name() + "'s terms#n" + "\r\n\r\n" + price)
+                    .menu("Well?", List.of(
+                            new server.living.resident.LivingTalk.Option("I have it. Let's go.",
+                                    () -> world.residents().reply(persona, chr, askToJoin(chr, persona))),
+                            new server.living.resident.LivingTalk.Option("Give me some time.",
+                                    () -> world.residents().reply(persona, chr, "the offer stands for "
+                                            + world.config().CONTRACT_OFFER_MINUTES + " minutes."))))
+                    .show();
+            return voice + " " + price + " Say join again when you have it.";
         }
         List<String> missing = missing(chr, contract, bond, mesoDue);
         if (!missing.isEmpty()) {
@@ -203,6 +214,39 @@ public final class ContractService {
                 int needed = contract.price().proof().count();
                 if (progress == needed || progress % 10 == 0) {
                     chr.dropMessage(5, persona.name() + "'s proof: " + Math.min(progress, needed) + "/" + needed + " kills.");
+                }
+            }
+        }
+    }
+
+    // ---- deaths --------------------------------------------------------------------------
+
+    /** owner:persona -> owner deaths while the contract has been active (LEADER_DEATH_3X). */
+    private final java.util.Map<String, Integer> deaths = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public void onOwnerDied(Character owner) {
+        if (AgentPresence.isAgent(owner)) {
+            return;
+        }
+        for (RosterEntry entry : world.roster().roster(owner)) {
+            if (entry.state() != RosterState.ACTIVE) {
+                continue;
+            }
+            Persona persona = world.content().persona(entry.personaId());
+            Contract contract = persona == null ? null : contractOf(persona);
+            if (contract == null || !contract.terms().leavesOn().contains(LeaveRule.LEADER_DEATH_3X)) {
+                continue;
+            }
+            int count = deaths.merge(owner.getId() + ":" + persona.id(), 1, Integer::sum);
+            if (count >= 3) {
+                deaths.remove(owner.getId() + ":" + persona.id());
+                List<String> lines = world.arcs().lines(persona, "leaveDeaths");
+                world.residents().reply(persona, owner, lines.isEmpty() ? "three times. i'm not dying for this." : lines.get(0));
+                owner.dropMessage(5, world.roster().release(owner, persona, "leader died three times"));
+            } else {
+                List<String> lines = world.arcs().lines(persona, "ownerDied");
+                if (!lines.isEmpty()) {
+                    world.residents().reply(persona, owner, lines.get(Math.floorMod(count, lines.size())));
                 }
             }
         }

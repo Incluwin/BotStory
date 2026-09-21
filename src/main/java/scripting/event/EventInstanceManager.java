@@ -863,6 +863,7 @@ public class EventInstanceManager {
     }
 
     public void clearPQ() {
+        server.living.LivingWorldHooks.partyQuestCleared(getPlayers(), getName());
         try {
             invokeScriptFunction("clearPQ", EventInstanceManager.this);
         } catch (ScriptException | NoSuchMethodException ex) {

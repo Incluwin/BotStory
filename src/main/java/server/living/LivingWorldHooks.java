@@ -109,6 +109,48 @@ public final class LivingWorldHooks {
         }
     }
 
+    /** A party quest instance was cleared by these players. */
+    public static void partyQuestCleared(java.util.List<Character> players, String eventName) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || players == null) {
+            return;
+        }
+        try {
+            for (Character chr : players) {
+                if (chr != null) {
+                    world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName);
+                }
+            }
+        } catch (RuntimeException failure) {
+            log.warn("living world partyQuestCleared hook failed", failure);
+        }
+    }
+
+    public static void playerDied(Character chr) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || chr == null) {
+            return;
+        }
+        try {
+            world.contracts().onOwnerDied(chr);
+        } catch (RuntimeException failure) {
+            log.warn("living world playerDied hook failed", failure);
+        }
+    }
+
+    /** A response to a Resident's NPC-window dialog; true when one was open for this client. */
+    public static boolean npcTalkResponse(client.Client client, byte lastMsg, byte action, net.packet.InPacket packet) {
+        if (LivingWorld.get() == null) {
+            return false;
+        }
+        try {
+            return server.living.resident.LivingTalk.respond(client, lastMsg, action, packet);
+        } catch (RuntimeException failure) {
+            log.warn("living world npc talk hook failed", failure);
+            return false;
+        }
+    }
+
     /** Multiplier applied to a companion's kill EXP (apprentice bonus); 1.0 for everyone else. */
     public static double expMultiplier(Character attacker) {
         LivingWorld world = LivingWorld.get();

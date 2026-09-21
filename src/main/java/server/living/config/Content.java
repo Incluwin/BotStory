@@ -71,6 +71,7 @@ public final class Content {
                           int paceGap,
                           int maxLag,
                           List<Integer> giftItemIds,
+                          int portraitNpcId,
                           String file) {
         public List<String> lines(String intent) {
             List<String> lines = dialogue.get(intent);

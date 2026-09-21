@@ -17,6 +17,8 @@ import server.living.config.Content.Requirements;
 import server.living.config.Content.Reward;
 import server.living.config.Content.Step;
 import server.living.config.Content.StepType;
+import server.living.resident.LivingTalk;
+import server.living.resident.ResidentDialogue;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.QuestState;
@@ -134,12 +136,49 @@ public final class QuestLedger {
         if (lines.isEmpty() && !quest.steps().isEmpty()) {
             lines = quest.steps().get(0).say();
         }
-        world.residents().reply(persona, chr, lines.isEmpty()
-                ? "I could use a hand with something. Say accept if you're in."
-                : pick(lines, chr));
-        chr.dropMessage(5, "[" + persona.name() + "] offers: " + quest.title() + " (" + quest.length().name().toLowerCase()
-                + "). Say 'accept' to take it.");
+        String pitch = lines.isEmpty() ? "I could use a hand with something." : pick(lines, chr);
+        StringBuilder details = new StringBuilder("#e" + quest.title() + "#n (" + quest.length().name().toLowerCase() + ")\r\n");
+        int shown = 0;
+        for (Step step : quest.steps()) {
+            if (step.type() == StepType.TALK) {
+                continue;
+            }
+            details.append("\r\n#b- ").append(describe(step, new QuestState(chr.getId(), quest.id(), 0, 0, QuestStatus.ACTIVE, 0L, 0L, 0)))
+                    .append("#k");
+            if (++shown >= 5) {
+                break;
+            }
+        }
+        details.append("\r\n\r\n").append(rewardSummary(quest.rewards()));
+        Quest chosen = quest;
+        LivingTalk.open(chr, ResidentDialogue.portraitOf(persona))
+                .say(pitch)
+                .say(details.toString())
+                .yesNo("Take it on?", () -> accept(chr, persona), () -> {
+                    offers.remove(key(chr, persona));
+                    List<String> declined = world.arcs().lines(persona, "declined");
+                    world.residents().reply(persona, chr, declined.isEmpty() ? "suit yourself." : pick(declined, chr));
+                })
+                .show();
+        chr.dropMessage(5, "[" + persona.name() + "] offers: " + chosen.title() + ". Say 'accept' to take it.");
         return true;
+    }
+
+    private String rewardSummary(Reward reward) {
+        List<String> parts = new ArrayList<>();
+        if (reward.meso() > 0) {
+            parts.add(reward.meso() + " meso");
+        }
+        if (reward.exp() > 0) {
+            parts.add(reward.exp() + " exp");
+        }
+        for (ItemStack stack : reward.items()) {
+            parts.add(itemName(stack.itemId()) + (stack.count() > 1 ? " x" + stack.count() : ""));
+        }
+        if (reward.fame() != 0) {
+            parts.add(reward.fame() + " fame");
+        }
+        return parts.isEmpty() ? "Reward: their gratitude." : "Reward: " + String.join(", ", parts) + ".";
     }
 
     public Quest pendingOffer(Character chr, Persona persona) {
@@ -487,10 +526,36 @@ public final class QuestLedger {
         chr.dropMessage(5, "Quest complete: " + quest.title() + ".");
         if (giver != null) {
             List<String> lines = world.arcs().lines(giver, "questComplete." + quest.id());
-            if (!lines.isEmpty()) {
-                world.residents().reply(giver, chr, pick(lines, chr));
-            }
+            String closing = lines.isEmpty() ? "that settles it." : pick(lines, chr);
+            LivingTalk.open(chr, ResidentDialogue.portraitOf(giver))
+                    .say(closing)
+                    .ok("#e" + quest.title() + "#n complete.\r\n\r\n" + rewardSummary(reward))
+                    .show();
         }
+    }
+
+    /** The player's quest log as one NPC window. */
+    public void showLog(Character chr) {
+        StringBuilder text = new StringBuilder("#eYour resident quests#n\r\n");
+        List<QuestState> states = active(chr);
+        if (states.isEmpty()) {
+            text.append("\r\nNone active. Ask a townsperson for work.");
+        }
+        int portrait = 9010000;
+        for (QuestState state : states) {
+            Quest quest = world.content().quest(state.questId());
+            if (quest == null) {
+                continue;
+            }
+            Persona giver = world.content().persona(quest.persona());
+            if (giver != null && portrait == 9010000) {
+                portrait = ResidentDialogue.portraitOf(giver);
+            }
+            text.append("\r\n#b").append(quest.title()).append("#k (").append(giver == null ? quest.persona() : giver.name())
+                    .append(", ").append(giver == null ? "" : giver.homeTown().replace('-', ' ')).append(")\r\n   ")
+                    .append(describe(quest.step(state.stepIndex()), state));
+        }
+        LivingTalk.open(chr, portrait).ok(text.toString()).show();
     }
 
     // ---- helpers -------------------------------------------------------------------------

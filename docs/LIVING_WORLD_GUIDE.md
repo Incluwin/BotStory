@@ -29,8 +29,11 @@ chat with their name anywhere in the line, or stand next to one and speak, or wh
 | `bye`, `thanks`, `who are you` | in character |
 | `@quests` | your active resident quests and current step |
 | `@roster` / `@bond <name>` | companions; relationship and haul with one persona |
+| `Olwen talk` / `menu` | opens the persona's NPC window: work, quests in progress, travel, who are you |
 
-Progress messages appear as pink system text; long replies arrive as whispers from the persona.
+Quest offers, completions, contract terms and `@quests` open a real NPC dialog window (the persona
+borrows a townsperson's portrait; set `portraitNpcId` on a persona to pick one). Progress messages
+appear as pink system text; long chat replies arrive as whispers from the persona.
 Anything the regexes miss goes to the `resident-intent` Jev judge (budgeted per player per day)
 which either acts, hints (`looking for work? say 'quest'`) or lets the Resident shrug.
 
@@ -42,8 +45,17 @@ the companion is with you or benched:
 
 `call <name>`, `bench <name>`, `swap <a> for <b>`, `roster`, `everyone bench`, `call the usual`,
 `<name> camp here`, `<name> train | farm meso | farm <item> [n] | gather for my quests | go sell |
-set up a stall | rest`, `<name> what did you get`, `<name> hand it over | send it | bank it`,
+set up a stall | rest`, `<name> what did you get`, `<name> hand it over | send it | bank it`, `<name> wages` / `<name> pay wages 5000`,
 `release <name>`.
+
+Calling a benched companion is a trip: it whispers an ETA from its camp (Victoria road hops, 20 s
+plus 40 s per town) and appears beside you when it arrives; a recall whistle
+(`living_world.RECALL_WHISTLE_ITEM_ID`, off by default) makes it instant. Up to `BENCH_LIVE_MAX`
+benched companions on TRAIN duty are materialized at their camp maps in rotating slices and fight
+for real (abstractly when nobody is there, visibly when you visit); the offline ledger skips them
+while they are live. Prepaid wages cover upkeep; otherwise the haul pays and an unpaid haul halves
+efficiency. Owners who die three times with a companion whose contract lists `LEADER_DEATH_3X` lose
+it; party quest clears (`eim.clearPQ()`) fire `PARTY_QUEST_CLEAR` steps.
 
 Party cap is 6: with two humans you share four companion slots. Benched companions accrue EXP
 toward `ownerLevel - paceGap` (banked, granted when called), or meso/items into a haul under the
@@ -103,8 +115,7 @@ wired yet. The longest explanation wins, then the more specific alias.
 
 ## Not done yet (from the plan)
 
-Realistic recall travel (called companions appear beside you; the whistle item is unused),
-`BACKGROUND_ABSTRACT` bench sessions (layer 1 ledger only), the Quest.wz patch for the in-game
-quest log and the proxy-NPC dialogue window, wages, `LEADER_DEATH_3X`, `PARTY_QUEST_CLEAR`
-events (step type exists; nothing fires it), Director ranking for rumors, MapleEdit authoring page,
-and the upstream contribution split.
+The Quest.wz patch for the in-game quest log (quest text uses the NPC window instead),
+`BACKGROUND_ABSTRACT` for farming assignments (live bench sessions cover TRAIN only; meso and
+item farming stay on the offline ledger), delegated remote work for active companions,
+Director ranking for rumors, the MapleEdit authoring page, and the upstream contribution split.

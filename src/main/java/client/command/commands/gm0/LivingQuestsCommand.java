@@ -19,8 +19,6 @@ public class LivingQuestsCommand extends Command {
             player.dropMessage(5, "The living world is not enabled on this server.");
             return;
         }
-        for (String line : world.quests().summary(player)) {
-            player.dropMessage(6, line);
-        }
+        world.quests().showLog(player);
     }
 }
