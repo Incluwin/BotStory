@@ -229,6 +229,7 @@ public final class AdminControlPort {
                 case "/actions/shutdown": return aShutdown(body);
                 case "/actions/cancel-shutdown": return aCancelShutdown();
                 case "/actions/living-reload": return aLivingReload();
+                case "/actions/citizens": return aCitizens(body);
                 case "/actions/saveall": return aSaveAll();
                 case "/actions/dcall": return aDcAll();
                 case "/actions/whisper": return aWhisper(body);
@@ -530,6 +531,10 @@ public final class AdminControlPort {
             }
             cohorts.obj().str("id", cohort.id()).num("members", members).num("online", onlineCount).num("hourWeight", cohort.weight(now));
         }
+        AdminJson.Arr recentChatter = new AdminJson.Arr();
+        for (String line : population.chatter().recentLines()) {
+            recentChatter.rawEl(AdminJson.str(line));
+        }
         return new AdminJson.Obj()
                 .bool("ok", true)
                 .bool("enabled", true)
@@ -547,7 +552,38 @@ public final class AdminControlPort {
                 .str("market", population.market().report())
                 .raw("online", online.toString())
                 .raw("cohorts", cohorts.toString())
+                .raw("chatter", recentChatter.toString())
                 .finished();
+    }
+
+    /** Population ops for the dashboard: {"force": n} keeps n citizens loaded, {"sweep": true} runs a sweep, {"reload": true} re-reads content. */
+    private static String aCitizens(String body) {
+        Population population = Population.get();
+        if (population == null) {
+            return "{\"ok\":false,\"error\":\"population_disabled\"}";
+        }
+        Map<String, String> req = AdminJson.parseFlat(body);
+        try {
+            if (req.containsKey("force")) {
+                population.presence().forceOnline(Integer.parseInt(req.get("force")));
+            }
+            java.util.List<String> findings = java.util.List.of();
+            if ("true".equalsIgnoreCase(req.getOrDefault("reload", "false"))) {
+                findings = population.reload();
+            }
+            if ("true".equalsIgnoreCase(req.getOrDefault("sweep", "false"))) {
+                population.presence().sweep();
+            }
+            AdminJson.Arr arr = new AdminJson.Arr();
+            for (String finding : findings) {
+                arr.rawEl(AdminJson.str(finding));
+            }
+            return new AdminJson.Obj().bool("ok", true).num("loaded", population.presence().loadedCount())
+                    .num("virtual", population.presence().virtualCount()).num("forced", population.presence().forcedOnline())
+                    .num("sweepMs", population.presence().lastSweepDurationMs()).raw("findings", arr.toString()).finished();
+        } catch (RuntimeException failure) {
+            return "{\"ok\":false,\"error\":" + AdminJson.str(String.valueOf(failure.getMessage())) + "}";
+        }
     }
 
     /** Re-reads living-world content from disk (same as {@code !world reload}); reports lint findings. */

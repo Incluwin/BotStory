@@ -100,6 +100,7 @@ public final class ChatterEngine {
     private volatile int smegasThisHour;
     private volatile long hourStartMs;
     private volatile long linesSpoken;
+    private final java.util.Deque<String> recent = new java.util.ArrayDeque<>();
 
     ChatterEngine(Population population) {
         this.population = population;
@@ -112,6 +113,22 @@ public final class ChatterEngine {
 
     public long linesSpoken() {
         return linesSpoken;
+    }
+
+    /** The last few lines citizens said anywhere (newest last), for ops and the dashboard. */
+    public List<String> recentLines() {
+        synchronized (recent) {
+            return new ArrayList<>(recent);
+        }
+    }
+
+    private void remember(String line) {
+        synchronized (recent) {
+            recent.addLast(line);
+            while (recent.size() > 30) {
+                recent.removeFirst();
+            }
+        }
     }
 
     // ---- entry points --------------------------------------------------------------------
@@ -372,6 +389,8 @@ public final class ChatterEngine {
                 }
                 linesSpoken++;
                 session.journal.add("said", "said \"" + clean + "\"");
+                remember(session.name() + " [" + channel + " " + population.fields().name(session.mapId) + "]: " + clean);
+                log.debug("[chatter] {} ({}) @{}: {}", session.name(), channel, session.mapId, clean);
             } catch (RuntimeException failure) {
                 log.debug("chatter delivery failed for {}", session.name(), failure);
             }

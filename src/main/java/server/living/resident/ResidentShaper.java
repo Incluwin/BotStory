@@ -41,6 +41,22 @@ public final class ResidentShaper {
      * Residents and for generated citizens (population).
      */
     public static void shapeTo(Character agent, Job target, int level, Loadout loadout) {
+        SHAPING.set(Boolean.TRUE);
+        try {
+            shapeUnhooked(agent, target, level, loadout);
+        } finally {
+            SHAPING.remove();
+        }
+    }
+
+    private static final ThreadLocal<Boolean> SHAPING = new ThreadLocal<>();
+
+    /** True on the thread that is currently shaping a character (level-up/job hooks stay quiet). */
+    public static boolean shaping() {
+        return Boolean.TRUE.equals(SHAPING.get());
+    }
+
+    private static void shapeUnhooked(Character agent, Job target, int level, Loadout loadout) {
         int targetLevel = Math.max(1, Math.min(level, 200));
         List<Job> chain = advancementChain(target);
         int guard = 0;

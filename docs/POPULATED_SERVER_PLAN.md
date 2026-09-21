@@ -5,7 +5,9 @@ Agent engine docs under `docs/agents/`. This plan covers the other half of the g
 thousands of bots across the whole world that read as real players, with chat that makes each one
 feel like a person, without ballooning API cost or melting the server.
 
-Status: plan, 2026-09-21. Nothing in this document is built yet unless section 1 says so.
+Status: plan written 2026-09-21; first cut of every phase built the same day as
+`server.living.population.*` (see `docs/POPULATION_GUIDE.md` for what exists, how to run it and
+what is still open). Sizing numbers below remain hypotheses until the soak run in section 9.
 
 ## 0. Goal and shape
 

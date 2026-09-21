@@ -95,7 +95,7 @@ public final class FieldCatalog {
         List<Field> candidates = new ArrayList<>();
         String region = citizen.homeRegion();
         for (Field field : population.content().fields().values()) {
-            if (field.town() || field.capacity() <= 0 || !field.region().equals(region)) {
+            if (field.town() || field.capacity() <= 0 || field.mobLevel() <= 0 || !field.region().equals(region)) {
                 continue;
             }
             if (field.mobLevel() < level - LEVEL_BELOW || field.mobLevel() > level + LEVEL_ABOVE) {
@@ -108,7 +108,7 @@ public final class FieldCatalog {
         }
         if (candidates.isEmpty()) {
             for (Field field : population.content().fields().values()) {
-                if (!field.town() && field.capacity() > 0 && Math.abs(field.mobLevel() - level) <= LEVEL_BELOW + 4
+                if (!field.town() && field.capacity() > 0 && field.mobLevel() > 0 && Math.abs(field.mobLevel() - level) <= LEVEL_BELOW + 4
                         && occupancy(field.mapId()) < field.capacity()) {
                     candidates.add(field);
                 }

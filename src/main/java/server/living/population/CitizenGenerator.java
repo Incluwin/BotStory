@@ -90,7 +90,7 @@ public final class CitizenGenerator {
                 joined + lifeDays * 86_400_000L, 0L, now, 0L, 0, "");
         int level = LifeCurve.levelTarget(citizen.ageDays(now), pace, career.levelCap(), population.config().LIFE_PACE);
         citizen = citizen.withRegion(regionFor(level, citizen.characterId()));
-        population.store().save(citizen);
+        population.save(citizen);
         shape(citizen, career, level);
         births++;
         log.info("citizen born: {} ({}) cohort {} career {} level {} voice {}", name, characterId, cohort.id(), career.id(), level, citizen.voice());

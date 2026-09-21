@@ -120,7 +120,10 @@ public final class Market {
 
     // ---- stalls --------------------------------------------------------------------------
 
-    /** A MARKET-activity citizen reached the Free Market: pick a room and try to open a stall. */
+    /**
+     * A MARKET-activity citizen arrived somewhere in the Free Market: from the entrance it walks
+     * into a room (which calls back here); in a room a merchant opens a stall, anyone else browses.
+     */
     void onArrive(CitizenSession session) {
         if (!population.config().MARKET_ENABLED) {
             return;
@@ -129,13 +132,15 @@ public final class Market {
         if (agent == null) {
             return;
         }
-        if (!session.citizen.has(Citizen.FLAG_MERCHANT) || stallsOpen >= population.config().MARKET_STALLS_MAX) {
-            browse(session);
+        if (agent.getMapId() == FieldCatalog.FM_ENTRANCE) {
+            int room = FieldCatalog.FM_ENTRANCE + 1 + random.nextInt(FM_ROOMS);
+            population.presence().travel(session, Activity.MARKET, room, System.currentTimeMillis());
             return;
         }
-        int room = FieldCatalog.FM_ENTRANCE + 1 + random.nextInt(FM_ROOMS);
-        population.presence().travel(session, Activity.MARKET, room, System.currentTimeMillis());
-        server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> openStall(session), 6_000L);
+        if (session.citizen.has(Citizen.FLAG_MERCHANT) && !session.stallOpen && stallsOpen < population.config().MARKET_STALLS_MAX) {
+            server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> openStall(session), 3_000L);
+        }
+        // otherwise the market tick browses the room's shops
     }
 
     void onLeave(CitizenSession session) {
@@ -180,8 +185,7 @@ public final class Market {
                 }
             }
             if (shopListings.isEmpty()) {
-                browse(session);
-                return;
+                return; // nothing to sell; browse instead
             }
             int permit = population.content().permitItemId();
             if (agent.getInventory(InventoryType.CASH).countById(permit) == 0) {
@@ -189,7 +193,6 @@ public final class Market {
             }
             CharacterSpaceReservation reservation = FreeMarketStorePlacementService.reserveNearest(agent).orElse(null);
             if (reservation == null) {
-                browse(session);
                 return;
             }
             String description = listings.get(0).name() + (listings.size() > 1 ? " and more" : "") + ", fair prices";
@@ -202,7 +205,6 @@ public final class Market {
             } else {
                 FreeMarketStorePlacementService.release(agent);
                 log.debug("citizen {} stall failed: {}", session.name(), result.message());
-                browse(session);
             }
         } catch (RuntimeException failure) {
             log.debug("citizen {} stall opening failed", session.name(), failure);
@@ -243,16 +245,6 @@ public final class Market {
     }
 
     // ---- buying --------------------------------------------------------------------------
-
-    private void browse(CitizenSession session) {
-        Character agent = session.agent();
-        if (agent == null) {
-            return;
-        }
-        if (agent.getMapId() == FieldCatalog.FM_ENTRANCE) {
-            population.presence().travel(session, Activity.MARKET, FieldCatalog.FM_ENTRANCE + 1 + random.nextInt(FM_ROOMS), System.currentTimeMillis());
-        }
-    }
 
     /** Every two minutes: browsing citizens buy under-index items from human shops within their daily budget. */
     public void tick() {

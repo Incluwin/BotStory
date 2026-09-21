@@ -39,6 +39,28 @@ public final class AgentHpqPopulationRuntime {
     private static ScheduledFuture<?> task;
     private static BooleanSupplier populationEnabled = () -> false;
     private static Supplier<Set<Integer>> managedCharacterIds = Set::of;
+    private static volatile BooleanSupplier hostEnabled = () -> false;
+    private static volatile Supplier<Set<Integer>> hostCharacterIds = Set::of;
+
+    /**
+     * A second managed set from the host (for example generated population citizens) that is
+     * eligible for background party quests alongside the Agent population registry.
+     */
+    public static void installHostManaged(BooleanSupplier enabledSource, Supplier<Set<Integer>> idsSource) {
+        hostEnabled = enabledSource == null ? () -> false : enabledSource;
+        hostCharacterIds = idsSource == null ? Set::of : idsSource;
+    }
+
+    private static Set<Integer> allManagedIds() {
+        java.util.Set<Integer> ids = new java.util.HashSet<>();
+        if (populationEnabled.getAsBoolean()) {
+            ids.addAll(managedCharacterIds.get());
+        }
+        if (hostEnabled.getAsBoolean()) {
+            ids.addAll(hostCharacterIds.get());
+        }
+        return ids;
+    }
 
     private AgentHpqPopulationRuntime() {
     }
@@ -79,7 +101,7 @@ public final class AgentHpqPopulationRuntime {
         long cooldownMs = Math.max(0L, config.AgentTuning.longValue(
                 "server.agents.capabilities.partyquest.hpq.AgentHpqPopulationRuntime.REENTRY_COOLDOWN_MS"));
         Map<ChannelKey, List<Character>> eligible = new LinkedHashMap<>();
-        Set<Integer> managedIds = Set.copyOf(managedCharacterIds.get());
+        Set<Integer> managedIds = allManagedIds();
         for (AgentRuntimeEntry entry : AgentRuntimeRegistry.activeEntriesSnapshot()) {
             Character agent = AgentRuntimeIdentityRuntime.bot(entry);
             if (agent == null || !managedIds.contains(agent.getId())
@@ -165,7 +187,7 @@ public final class AgentHpqPopulationRuntime {
     }
 
     private static boolean enabled() {
-        return populationEnabled.getAsBoolean() && featureEnabled();
+        return (populationEnabled.getAsBoolean() || hostEnabled.getAsBoolean()) && featureEnabled();
     }
 
     private static boolean featureEnabled() {

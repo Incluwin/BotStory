@@ -29,7 +29,7 @@ public final class PopulationHooks {
 
     public static void levelUp(Character chr) {
         Population population = Population.get();
-        if (population == null || chr == null || chr.getMap() == null) {
+        if (population == null || chr == null || chr.getMap() == null || server.living.resident.ResidentShaper.shaping()) {
             return;
         }
         try {
@@ -46,7 +46,7 @@ public final class PopulationHooks {
 
     public static void jobAdvanced(Character chr) {
         Population population = Population.get();
-        if (population == null || chr == null || chr.getMap() == null) {
+        if (population == null || chr == null || chr.getMap() == null || server.living.resident.ResidentShaper.shaping()) {
             return;
         }
         try {

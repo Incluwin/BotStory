@@ -60,8 +60,19 @@ public final class SocialFabric {
         }
     }
 
+    /** Citizens on a PQ session become eligible for the engine's background KPQ/HPQ parties. */
     void installSeams() {
-        // nothing to install yet; the operator grant for companions stays with the roster
+        java.util.function.Supplier<java.util.Set<Integer>> pqCitizens = () -> {
+            java.util.Set<Integer> ids = new java.util.HashSet<>();
+            for (CitizenSession session : population.presence().sessions()) {
+                if (!session.virtual && session.activity == Activity.PQ) {
+                    ids.add(session.characterId);
+                }
+            }
+            return ids;
+        };
+        server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.installHostManaged(() -> population.config().ENABLED, pqCitizens);
+        server.agents.capabilities.partyquest.hpq.AgentHpqPopulationRuntime.installHostManaged(() -> population.config().ENABLED, pqCitizens);
     }
 
     public int sociability(Citizen citizen) {

@@ -40,15 +40,15 @@ fields:
   - { mapId: 101000003, name: "Magic Library", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 101000004, name: "Hall of Magicians", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 101000005, name: "Hall of Magicians", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 101000100, name: "The Forest of Patience &lt;Step 1&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 101000101, name: "The Forest of Patience &lt;Step 2&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 101000102, name: "The Forest of Patience &lt;Step 3&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 101000103, name: "The Forest of Patience &lt;Step 4&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 18, mobLevel: 200, capacity: 0 }
-  - { mapId: 101000104, name: "The Forest of Patience &lt;Step 5&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 101000100, name: "The Forest of Patience <Step 1>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 101000101, name: "The Forest of Patience <Step 2>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 101000102, name: "The Forest of Patience <Step 3>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 101000103, name: "The Forest of Patience <Step 4>", street: "Hidden Street", region: victoria, town: true, mobs: 18, mobLevel: 200, capacity: 0 }
+  - { mapId: 101000104, name: "The Forest of Patience <Step 5>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 101000200, name: "Mar's Forest", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 101000300, name: "Ellinia Station", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 101000301, name: "Before Takeoff &lt;To Orbis&gt;", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 101000400, name: "Sky Ferry &lt;To Ereve&gt;", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 101000301, name: "Before Takeoff <To Orbis>", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 101000400, name: "Sky Ferry <To Ereve>", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 101010000, name: "The Field Up North of Ellinia", street: "Victoria Road", region: victoria, town: false, mobs: 35, mobLevel: 6, capacity: 6 }
   - { mapId: 101010100, name: "The Tree That Grew I", street: "Victoria Road", region: victoria, town: false, mobs: 30, mobLevel: 6, capacity: 6 }
   - { mapId: 101010101, name: "The Tree That Grew II", street: "Victoria Road", region: victoria, town: false, mobs: 64, mobLevel: 7, capacity: 6 }
@@ -68,11 +68,11 @@ fields:
   - { mapId: 101030100, name: "Rocky Road III", street: "Victoria Road", region: victoria, town: false, mobs: 22, mobLevel: 10, capacity: 5 }
   - { mapId: 101030102, name: "Excavation Site II", street: "Victoria Road", region: victoria, town: false, mobs: 55, mobLevel: 23, capacity: 6 }
   - { mapId: 101030103, name: "Excavation Site III", street: "Victoria Road", region: victoria, town: false, mobs: 25, mobLevel: 24, capacity: 6 }
-  - { mapId: 101030105, name: "Remains &lt;Tomb&gt; I", street: "Victoria Road", region: victoria, town: false, mobs: 23, mobLevel: 45, capacity: 5 }
-  - { mapId: 101030106, name: "Remains &lt;Tomb&gt; II", street: "Victoria Road", region: victoria, town: false, mobs: 25, mobLevel: 46, capacity: 6 }
-  - { mapId: 101030107, name: "Remains &lt;Tomb&gt; III", street: "Victoria Road", region: victoria, town: false, mobs: 21, mobLevel: 47, capacity: 5 }
-  - { mapId: 101030108, name: "Remains &lt;Tomb&gt; IV", street: "Victoria Road", region: victoria, town: false, mobs: 14, mobLevel: 67, capacity: 3 }
-  - { mapId: 101030109, name: "Remains &lt;Cliff&gt;", street: "Victoria Road", region: victoria, town: false, mobs: 17, mobLevel: 71, capacity: 4 }
+  - { mapId: 101030105, name: "Remains <Tomb> I", street: "Victoria Road", region: victoria, town: false, mobs: 23, mobLevel: 45, capacity: 5 }
+  - { mapId: 101030106, name: "Remains <Tomb> II", street: "Victoria Road", region: victoria, town: false, mobs: 25, mobLevel: 46, capacity: 6 }
+  - { mapId: 101030107, name: "Remains <Tomb> III", street: "Victoria Road", region: victoria, town: false, mobs: 21, mobLevel: 47, capacity: 5 }
+  - { mapId: 101030108, name: "Remains <Tomb> IV", street: "Victoria Road", region: victoria, town: false, mobs: 14, mobLevel: 67, capacity: 3 }
+  - { mapId: 101030109, name: "Remains <Cliff>", street: "Victoria Road", region: victoria, town: false, mobs: 17, mobLevel: 71, capacity: 4 }
   - { mapId: 101030110, name: "Camp 1", street: "Victoria Road", region: victoria, town: false, mobs: 25, mobLevel: 58, capacity: 6 }
   - { mapId: 101030111, name: "Camp 2", street: "Victoria Road", region: victoria, town: false, mobs: 20, mobLevel: 59, capacity: 5 }
   - { mapId: 101030112, name: "Camp 3", street: "Victoria Road", region: victoria, town: false, mobs: 20, mobLevel: 61, capacity: 5 }
@@ -114,17 +114,17 @@ fields:
   - { mapId: 103000007, name: "Kerning City Night Market  ", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 103000008, name: "Hall of Thieves", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 103000009, name: "Hall of Thieves", street: "Victoria Road", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 103000101, name: "Line 1 &lt;Area 1&gt;", street: "Kerning City Subway", region: victoria, town: false, mobs: 64, mobLevel: 15, capacity: 6 }
+  - { mapId: 103000101, name: "Line 1 <Area 1>", street: "Kerning City Subway", region: victoria, town: false, mobs: 64, mobLevel: 15, capacity: 6 }
   - { mapId: 103000102, name: "Transfer Area", street: "Kerning City Subway", region: victoria, town: false, mobs: 38, mobLevel: 20, capacity: 6 }
-  - { mapId: 103000103, name: "Line 1 &lt;Area 2&gt;", street: "Kerning City Subway", region: victoria, town: false, mobs: 91, mobLevel: 32, capacity: 6 }
-  - { mapId: 103000104, name: "Line 1 &lt;Area 3&gt;", street: "Kerning City Subway", region: victoria, town: false, mobs: 105, mobLevel: 39, capacity: 6 }
-  - { mapId: 103000105, name: "Line 1 &lt;Area 4&gt;", street: "Kerning City Subway", region: victoria, town: false, mobs: 57, mobLevel: 48, capacity: 6 }
-  - { mapId: 103000200, name: "Line 2 &lt;Area 1&gt;", street: "Kerning City Subway", region: victoria, town: false, mobs: 97, mobLevel: 33, capacity: 6 }
-  - { mapId: 103000201, name: "Line 2 &lt;Area 2&gt;", street: "Kerning City Subway", region: victoria, town: false, mobs: 120, mobLevel: 39, capacity: 6 }
-  - { mapId: 103000202, name: "Line 2 &lt;Area 3&gt;", street: "Kerning City Subway", region: victoria, town: false, mobs: 69, mobLevel: 48, capacity: 6 }
-  - { mapId: 103000901, name: "B1 &lt;Area 2&gt;", street: "Line 3 Construction Site", region: victoria, town: false, mobs: 12, mobLevel: 200, capacity: 3 }
-  - { mapId: 103000904, name: "B2 &lt;Area 2&gt;", street: "Line 3 Construction Site", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 103000906, name: "B3 &lt;Area 1&gt;", street: "Line 3 Construction Site", region: victoria, town: false, mobs: 4, mobLevel: 200, capacity: 1 }
+  - { mapId: 103000103, name: "Line 1 <Area 2>", street: "Kerning City Subway", region: victoria, town: false, mobs: 91, mobLevel: 32, capacity: 6 }
+  - { mapId: 103000104, name: "Line 1 <Area 3>", street: "Kerning City Subway", region: victoria, town: false, mobs: 105, mobLevel: 39, capacity: 6 }
+  - { mapId: 103000105, name: "Line 1 <Area 4>", street: "Kerning City Subway", region: victoria, town: false, mobs: 57, mobLevel: 48, capacity: 6 }
+  - { mapId: 103000200, name: "Line 2 <Area 1>", street: "Kerning City Subway", region: victoria, town: false, mobs: 97, mobLevel: 33, capacity: 6 }
+  - { mapId: 103000201, name: "Line 2 <Area 2>", street: "Kerning City Subway", region: victoria, town: false, mobs: 120, mobLevel: 39, capacity: 6 }
+  - { mapId: 103000202, name: "Line 2 <Area 3>", street: "Kerning City Subway", region: victoria, town: false, mobs: 69, mobLevel: 48, capacity: 6 }
+  - { mapId: 103000901, name: "B1 <Area 2>", street: "Line 3 Construction Site", region: victoria, town: false, mobs: 12, mobLevel: 200, capacity: 3 }
+  - { mapId: 103000904, name: "B2 <Area 2>", street: "Line 3 Construction Site", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 103000906, name: "B3 <Area 1>", street: "Line 3 Construction Site", region: victoria, town: false, mobs: 4, mobLevel: 200, capacity: 1 }
   - { mapId: 103010000, name: "Kerning City Construction Site", street: "Victoria Road", region: victoria, town: false, mobs: 51, mobLevel: 7, capacity: 6 }
   - { mapId: 103010001, name: "Caution Falling Down", street: "Hidden Street", region: victoria, town: false, mobs: 10, mobLevel: 13, capacity: 2 }
   - { mapId: 103020000, name: "L Forest I", street: "Victoria Road", region: victoria, town: false, mobs: 32, mobLevel: 7, capacity: 6 }
@@ -176,13 +176,13 @@ fields:
   - { mapId: 105040304, name: "Sleepy Dungeon IV", street: "Dungeon", region: victoria, town: false, mobs: 10, mobLevel: 56, capacity: 2 }
   - { mapId: 105040305, name: "Sleepy Dungeon V", street: "Dungeon", region: victoria, town: false, mobs: 19, mobLevel: 56, capacity: 4 }
   - { mapId: 105040306, name: "The forest of Golem", street: "Dungeon", region: victoria, town: false, mobs: 30, mobLevel: 59, capacity: 6 }
-  - { mapId: 105040310, name: "The Deep Forest of Patience &lt;Step 1&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 105040311, name: "The Deep Forest of Patience &lt;Step 2&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 105040312, name: "The Deep Forest of Patience &lt;Step 3&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 105040313, name: "The Deep Forest of Patience &lt;Step 4&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 105040314, name: "The Deep Forest of Patience &lt;Step 5&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 27, mobLevel: 200, capacity: 0 }
-  - { mapId: 105040315, name: "The Deep Forest of Patience &lt;Step 6&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 105040316, name: "The Deep Forest of Patience &lt;Step 7&gt;", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 105040310, name: "The Deep Forest of Patience <Step 1>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 105040311, name: "The Deep Forest of Patience <Step 2>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 105040312, name: "The Deep Forest of Patience <Step 3>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 105040313, name: "The Deep Forest of Patience <Step 4>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 105040314, name: "The Deep Forest of Patience <Step 5>", street: "Hidden Street", region: victoria, town: true, mobs: 27, mobLevel: 200, capacity: 0 }
+  - { mapId: 105040315, name: "The Deep Forest of Patience <Step 6>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 105040316, name: "The Deep Forest of Patience <Step 7>", street: "Hidden Street", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 105050000, name: "Ant Tunnel I", street: "Dungeon", region: victoria, town: false, mobs: 26, mobLevel: 23, capacity: 6 }
   - { mapId: 105050100, name: "Ant Tunnel II", street: "Dungeon", region: victoria, town: false, mobs: 47, mobLevel: 23, capacity: 6 }
   - { mapId: 105050200, name: "Ant Tunnel III", street: "Dungeon", region: victoria, town: false, mobs: 100, mobLevel: 23, capacity: 6 }
@@ -257,26 +257,26 @@ fields:
   - { mapId: 200000001, name: "Orbis Weapon Store", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200000002, name: "Orbis Department Store", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200000100, name: "Orbis Station Enterence", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000110, name: "Station Tunnel &lt;To Ellinia&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000111, name: "Station&lt;To Ellinia&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000112, name: "Before Takeoff &lt;To Ellinia&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000120, name: "Station Pathway&lt;Ludibrium&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000121, name: "Station&lt;Ludibrium&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000122, name: "Before the Departure &lt;Ludibrium&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000130, name: "Cabin Path &lt;To Leafre&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000131, name: "Cabin &lt;To Leafre&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000132, name: "Cabin &lt;To Leafre&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000140, name: "Cabin Path &lt;To Mu Lung&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000141, name: "Cabin &lt;To Mu Lung&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000150, name: "Station Tunnel &lt;To Ariant&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000151, name: "Station &lt;To Ariant&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000152, name: "Station &lt;To Ariant&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000110, name: "Station Tunnel <To Ellinia>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000111, name: "Station<To Ellinia>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000112, name: "Before Takeoff <To Ellinia>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000120, name: "Station Pathway<Ludibrium>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000121, name: "Station<Ludibrium>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000122, name: "Before the Departure <Ludibrium>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000130, name: "Cabin Path <To Leafre>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000131, name: "Cabin <To Leafre>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000132, name: "Cabin <To Leafre>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000140, name: "Cabin Path <To Mu Lung>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000141, name: "Cabin <To Mu Lung>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000150, name: "Station Tunnel <To Ariant>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000151, name: "Station <To Ariant>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000152, name: "Station <To Ariant>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200000160, name: "Station Hall", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200000161, name: "Station", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200000202, name: "Orbis Hair Salon", street: "Orbis Park", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200000203, name: "Orbis Skin-Care", street: "Orbis Park", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200000300, name: "Top of the Hill", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200000301, name: "Guild Headquarters &lt;Hall of Fame&gt;", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200000301, name: "Guild Headquarters <Hall of Fame>", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200010000, name: "Cloud Park I", street: "Orbis", region: orbis, town: false, mobs: 36, mobLevel: 35, capacity: 6 }
   - { mapId: 200010100, name: "The Road to Garden of 3 Colors", street: "Orbis", region: orbis, town: false, mobs: 26, mobLevel: 33, capacity: 6 }
   - { mapId: 200010110, name: "Garden of Red I", street: "Orbis", region: orbis, town: false, mobs: 22, mobLevel: 33, capacity: 5 }
@@ -299,31 +299,31 @@ fields:
   - { mapId: 200060001, name: "Neglected Strolling Path", street: "Hidden Street", region: orbis, town: false, mobs: 7, mobLevel: 45, capacity: 1 }
   - { mapId: 200070000, name: "Cloud Park V", street: "Orbis", region: orbis, town: false, mobs: 33, mobLevel: 50, capacity: 6 }
   - { mapId: 200080000, name: "Cloud Park VI", street: "Orbis", region: orbis, town: false, mobs: 35, mobLevel: 51, capacity: 6 }
-  - { mapId: 200080200, name: "Orbis Tower &lt;20th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 23, mobLevel: 23, capacity: 5 }
-  - { mapId: 200080300, name: "Orbis Tower &lt;19th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 19, mobLevel: 23, capacity: 4 }
-  - { mapId: 200080400, name: "Orbis Tower &lt;18th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 17, mobLevel: 23, capacity: 4 }
-  - { mapId: 200080500, name: "Orbis Tower &lt;17th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 16, mobLevel: 28, capacity: 4 }
-  - { mapId: 200080600, name: "Orbis Tower &lt;16th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 21, mobLevel: 28, capacity: 5 }
-  - { mapId: 200080700, name: "Orbis Tower &lt;15th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 18, mobLevel: 30, capacity: 4 }
-  - { mapId: 200080800, name: "Orbis Tower &lt;14th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 14, mobLevel: 30, capacity: 3 }
-  - { mapId: 200080900, name: "Orbis Tower &lt;13th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 19, mobLevel: 30, capacity: 4 }
-  - { mapId: 200081000, name: "Orbis Tower &lt;12th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 19, mobLevel: 30, capacity: 4 }
-  - { mapId: 200081100, name: "Orbis Tower &lt;11th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 17, mobLevel: 30, capacity: 4 }
-  - { mapId: 200081200, name: "Orbis Tower &lt;10th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 22, mobLevel: 30, capacity: 5 }
-  - { mapId: 200081300, name: "Orbis Tower &lt;9th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 13, mobLevel: 28, capacity: 3 }
-  - { mapId: 200081400, name: "Orbis Tower &lt;8th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 18, mobLevel: 27, capacity: 4 }
-  - { mapId: 200081500, name: "Orbis Tower &lt;7th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 19, mobLevel: 32, capacity: 4 }
-  - { mapId: 200081600, name: "Orbis Tower &lt;6th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 14, mobLevel: 32, capacity: 3 }
-  - { mapId: 200081700, name: "Orbis Tower &lt;5th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 27, mobLevel: 32, capacity: 6 }
-  - { mapId: 200081800, name: "Orbis Tower &lt;4th Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 17, mobLevel: 33, capacity: 4 }
-  - { mapId: 200081900, name: "Orbis Tower &lt;3rd Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 26, mobLevel: 33, capacity: 6 }
-  - { mapId: 200082000, name: "Orbis Tower &lt;2nd Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 24, mobLevel: 35, capacity: 6 }
-  - { mapId: 200082100, name: "Orbis Tower &lt;1st Floor&gt;", street: "Orbis", region: orbis, town: false, mobs: 21, mobLevel: 35, capacity: 5 }
-  - { mapId: 200082300, name: "Orbis Tower&lt;B2&gt;", street: "Orbis", region: orbis, town: false, mobs: 18, mobLevel: 36, capacity: 4 }
+  - { mapId: 200080200, name: "Orbis Tower <20th Floor>", street: "Orbis", region: orbis, town: false, mobs: 23, mobLevel: 23, capacity: 5 }
+  - { mapId: 200080300, name: "Orbis Tower <19th Floor>", street: "Orbis", region: orbis, town: false, mobs: 19, mobLevel: 23, capacity: 4 }
+  - { mapId: 200080400, name: "Orbis Tower <18th Floor>", street: "Orbis", region: orbis, town: false, mobs: 17, mobLevel: 23, capacity: 4 }
+  - { mapId: 200080500, name: "Orbis Tower <17th Floor>", street: "Orbis", region: orbis, town: false, mobs: 16, mobLevel: 28, capacity: 4 }
+  - { mapId: 200080600, name: "Orbis Tower <16th Floor>", street: "Orbis", region: orbis, town: false, mobs: 21, mobLevel: 28, capacity: 5 }
+  - { mapId: 200080700, name: "Orbis Tower <15th Floor>", street: "Orbis", region: orbis, town: false, mobs: 18, mobLevel: 30, capacity: 4 }
+  - { mapId: 200080800, name: "Orbis Tower <14th Floor>", street: "Orbis", region: orbis, town: false, mobs: 14, mobLevel: 30, capacity: 3 }
+  - { mapId: 200080900, name: "Orbis Tower <13th Floor>", street: "Orbis", region: orbis, town: false, mobs: 19, mobLevel: 30, capacity: 4 }
+  - { mapId: 200081000, name: "Orbis Tower <12th Floor>", street: "Orbis", region: orbis, town: false, mobs: 19, mobLevel: 30, capacity: 4 }
+  - { mapId: 200081100, name: "Orbis Tower <11th Floor>", street: "Orbis", region: orbis, town: false, mobs: 17, mobLevel: 30, capacity: 4 }
+  - { mapId: 200081200, name: "Orbis Tower <10th Floor>", street: "Orbis", region: orbis, town: false, mobs: 22, mobLevel: 30, capacity: 5 }
+  - { mapId: 200081300, name: "Orbis Tower <9th Floor>", street: "Orbis", region: orbis, town: false, mobs: 13, mobLevel: 28, capacity: 3 }
+  - { mapId: 200081400, name: "Orbis Tower <8th Floor>", street: "Orbis", region: orbis, town: false, mobs: 18, mobLevel: 27, capacity: 4 }
+  - { mapId: 200081500, name: "Orbis Tower <7th Floor>", street: "Orbis", region: orbis, town: false, mobs: 19, mobLevel: 32, capacity: 4 }
+  - { mapId: 200081600, name: "Orbis Tower <6th Floor>", street: "Orbis", region: orbis, town: false, mobs: 14, mobLevel: 32, capacity: 3 }
+  - { mapId: 200081700, name: "Orbis Tower <5th Floor>", street: "Orbis", region: orbis, town: false, mobs: 27, mobLevel: 32, capacity: 6 }
+  - { mapId: 200081800, name: "Orbis Tower <4th Floor>", street: "Orbis", region: orbis, town: false, mobs: 17, mobLevel: 33, capacity: 4 }
+  - { mapId: 200081900, name: "Orbis Tower <3rd Floor>", street: "Orbis", region: orbis, town: false, mobs: 26, mobLevel: 33, capacity: 6 }
+  - { mapId: 200082000, name: "Orbis Tower <2nd Floor>", street: "Orbis", region: orbis, town: false, mobs: 24, mobLevel: 35, capacity: 6 }
+  - { mapId: 200082100, name: "Orbis Tower <1st Floor>", street: "Orbis", region: orbis, town: false, mobs: 21, mobLevel: 35, capacity: 5 }
+  - { mapId: 200082300, name: "Orbis Tower<B2>", street: "Orbis", region: orbis, town: false, mobs: 18, mobLevel: 36, capacity: 4 }
   - { mapId: 200090000, name: "To Ellinia", street: "During the Ride", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200090001, name: "Cabin &lt;To Ellinia&gt;", street: "During the Ride", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200090001, name: "Cabin <To Ellinia>", street: "During the Ride", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200090010, name: "To Orbis", street: "During the Ride", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 200090011, name: "Cabin &lt;To Orbis&gt;", street: "During the Ride", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 200090011, name: "Cabin <To Orbis>", street: "During the Ride", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200090020, name: "To Ereve", street: "Empress' Road", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200090021, name: "To Orbis", street: "Empress' Road", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200090022, name: "To Ereve", street: "Empress' Road", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
@@ -405,8 +405,8 @@ fields:
   - { mapId: 220000005, name: "Ludibrium Skin Care", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000006, name: "Ludibrium Pet Walkway", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000100, name: "Ludibrium Ticketing Place", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 220000110, name: "Station&lt;Orbis&gt;", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 220000111, name: "Before the Departure &lt;Orbis&gt;", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 220000110, name: "Station<Orbis>", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 220000111, name: "Before the Departure <Orbis>", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000300, name: "Ludibrium Village", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000301, name: "Korin's House", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000302, name: "Manager Karl's House", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
@@ -417,48 +417,48 @@ fields:
   - { mapId: 220000307, name: "Mason's House", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000400, name: "Eos Tower Entrance", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 220000500, name: "Helios Tower Entrance", street: "Ludibrium", region: ludibrium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 220010000, name: "Cloud Terrace&lt;5&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 22, mobLevel: 37, capacity: 5 }
-  - { mapId: 220010100, name: "Cloud Terrace&lt;4&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 27, mobLevel: 34, capacity: 6 }
-  - { mapId: 220010200, name: "Cloud Terrace&lt;3&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 29, mobLevel: 33, capacity: 6 }
-  - { mapId: 220010300, name: "Cloud Terrace&lt;2&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 33, mobLevel: 32, capacity: 6 }
-  - { mapId: 220010400, name: "Cloud Terrace&lt;1&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 37, mobLevel: 31, capacity: 6 }
+  - { mapId: 220010000, name: "Cloud Terrace<5>", street: "Ludibrium", region: ludibrium, town: false, mobs: 22, mobLevel: 37, capacity: 5 }
+  - { mapId: 220010100, name: "Cloud Terrace<4>", street: "Ludibrium", region: ludibrium, town: false, mobs: 27, mobLevel: 34, capacity: 6 }
+  - { mapId: 220010200, name: "Cloud Terrace<3>", street: "Ludibrium", region: ludibrium, town: false, mobs: 29, mobLevel: 33, capacity: 6 }
+  - { mapId: 220010300, name: "Cloud Terrace<2>", street: "Ludibrium", region: ludibrium, town: false, mobs: 33, mobLevel: 32, capacity: 6 }
+  - { mapId: 220010400, name: "Cloud Terrace<1>", street: "Ludibrium", region: ludibrium, town: false, mobs: 37, mobLevel: 31, capacity: 6 }
   - { mapId: 220010500, name: "Terrace Hall", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 30, capacity: 6 }
-  - { mapId: 220010600, name: "Sky Terrace&lt;1&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 31, capacity: 6 }
-  - { mapId: 220010700, name: "Sky Terrace&lt;2&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 32, mobLevel: 32, capacity: 6 }
-  - { mapId: 220010800, name: "Sky Terrace&lt;3&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 33, capacity: 6 }
-  - { mapId: 220010900, name: "Sky Terrace&lt;4&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 33, capacity: 6 }
-  - { mapId: 220011000, name: "Sky Terrace&lt;5&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 41, mobLevel: 35, capacity: 6 }
-  - { mapId: 220020000, name: "Toy Factory &lt;Process 1&gt; Zone 1", street: "Ludibrium", region: ludibrium, town: false, mobs: 22, mobLevel: 44, capacity: 5 }
-  - { mapId: 220020100, name: "Toy Factory &lt;Process 1&gt; Zone 2", street: "Ludibrium", region: ludibrium, town: false, mobs: 30, mobLevel: 41, capacity: 6 }
-  - { mapId: 220020200, name: "Toy Factory &lt;Process 1&gt; Zone 3", street: "Ludibrium", region: ludibrium, town: false, mobs: 32, mobLevel: 36, capacity: 6 }
-  - { mapId: 220020300, name: "Toy Factory &lt;Main Process 1&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 28, mobLevel: 36, capacity: 6 }
-  - { mapId: 220020400, name: "Toy Factory &lt;Process 1&gt; Zone 5", street: "Ludibrium", region: ludibrium, town: false, mobs: 35, mobLevel: 37, capacity: 6 }
-  - { mapId: 220020500, name: "Toy Factory &lt;Process 1&gt; Zone 6", street: "Ludibrium", region: ludibrium, town: false, mobs: 38, mobLevel: 40, capacity: 6 }
-  - { mapId: 220020600, name: "Toy Factory &lt;Aparatus Room&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 10, mobLevel: 41, capacity: 2 }
-  - { mapId: 220030000, name: "Toy Factory &lt;Process 2&gt; Zone 1", street: "Ludibrium", region: ludibrium, town: false, mobs: 29, mobLevel: 44, capacity: 6 }
-  - { mapId: 220030100, name: "Toy Factory &lt;Process 2&gt; Zone 2", street: "Ludibrium", region: ludibrium, town: false, mobs: 30, mobLevel: 42, capacity: 6 }
-  - { mapId: 220030200, name: "Toy Factory &lt;Main Process 2&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 35, mobLevel: 36, capacity: 6 }
-  - { mapId: 220030300, name: "Toy Factory &lt;Process 2&gt; Zone 3", street: "Ludibrium", region: ludibrium, town: false, mobs: 31, mobLevel: 37, capacity: 6 }
-  - { mapId: 220030400, name: "Toy Factory &lt;Process 2&gt; Zone 4", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 40, capacity: 6 }
-  - { mapId: 220040000, name: "The Path of Time &lt;1&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 34, mobLevel: 41, capacity: 6 }
-  - { mapId: 220040100, name: "The Path of Time &lt;2&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 46, mobLevel: 37, capacity: 6 }
+  - { mapId: 220010600, name: "Sky Terrace<1>", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 31, capacity: 6 }
+  - { mapId: 220010700, name: "Sky Terrace<2>", street: "Ludibrium", region: ludibrium, town: false, mobs: 32, mobLevel: 32, capacity: 6 }
+  - { mapId: 220010800, name: "Sky Terrace<3>", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 33, capacity: 6 }
+  - { mapId: 220010900, name: "Sky Terrace<4>", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 33, capacity: 6 }
+  - { mapId: 220011000, name: "Sky Terrace<5>", street: "Ludibrium", region: ludibrium, town: false, mobs: 41, mobLevel: 35, capacity: 6 }
+  - { mapId: 220020000, name: "Toy Factory <Process 1> Zone 1", street: "Ludibrium", region: ludibrium, town: false, mobs: 22, mobLevel: 44, capacity: 5 }
+  - { mapId: 220020100, name: "Toy Factory <Process 1> Zone 2", street: "Ludibrium", region: ludibrium, town: false, mobs: 30, mobLevel: 41, capacity: 6 }
+  - { mapId: 220020200, name: "Toy Factory <Process 1> Zone 3", street: "Ludibrium", region: ludibrium, town: false, mobs: 32, mobLevel: 36, capacity: 6 }
+  - { mapId: 220020300, name: "Toy Factory <Main Process 1>", street: "Ludibrium", region: ludibrium, town: false, mobs: 28, mobLevel: 36, capacity: 6 }
+  - { mapId: 220020400, name: "Toy Factory <Process 1> Zone 5", street: "Ludibrium", region: ludibrium, town: false, mobs: 35, mobLevel: 37, capacity: 6 }
+  - { mapId: 220020500, name: "Toy Factory <Process 1> Zone 6", street: "Ludibrium", region: ludibrium, town: false, mobs: 38, mobLevel: 40, capacity: 6 }
+  - { mapId: 220020600, name: "Toy Factory <Aparatus Room>", street: "Ludibrium", region: ludibrium, town: false, mobs: 10, mobLevel: 41, capacity: 2 }
+  - { mapId: 220030000, name: "Toy Factory <Process 2> Zone 1", street: "Ludibrium", region: ludibrium, town: false, mobs: 29, mobLevel: 44, capacity: 6 }
+  - { mapId: 220030100, name: "Toy Factory <Process 2> Zone 2", street: "Ludibrium", region: ludibrium, town: false, mobs: 30, mobLevel: 42, capacity: 6 }
+  - { mapId: 220030200, name: "Toy Factory <Main Process 2>", street: "Ludibrium", region: ludibrium, town: false, mobs: 35, mobLevel: 36, capacity: 6 }
+  - { mapId: 220030300, name: "Toy Factory <Process 2> Zone 3", street: "Ludibrium", region: ludibrium, town: false, mobs: 31, mobLevel: 37, capacity: 6 }
+  - { mapId: 220030400, name: "Toy Factory <Process 2> Zone 4", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 40, capacity: 6 }
+  - { mapId: 220040000, name: "The Path of Time <1>", street: "Ludibrium", region: ludibrium, town: false, mobs: 34, mobLevel: 41, capacity: 6 }
+  - { mapId: 220040100, name: "The Path of Time <2>", street: "Ludibrium", region: ludibrium, town: false, mobs: 46, mobLevel: 37, capacity: 6 }
   - { mapId: 220040200, name: "Crossroad of Time", street: "Ludibrium", region: ludibrium, town: false, mobs: 57, mobLevel: 37, capacity: 6 }
-  - { mapId: 220040300, name: "The Path of Time &lt;3&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 42, mobLevel: 37, capacity: 6 }
-  - { mapId: 220040400, name: "The Path of Time &lt;4&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 34, mobLevel: 46, capacity: 6 }
-  - { mapId: 220050000, name: "Lost Time &lt;1&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 41, capacity: 6 }
+  - { mapId: 220040300, name: "The Path of Time <3>", street: "Ludibrium", region: ludibrium, town: false, mobs: 42, mobLevel: 37, capacity: 6 }
+  - { mapId: 220040400, name: "The Path of Time <4>", street: "Ludibrium", region: ludibrium, town: false, mobs: 34, mobLevel: 46, capacity: 6 }
+  - { mapId: 220050000, name: "Lost Time <1>", street: "Ludibrium", region: ludibrium, town: false, mobs: 36, mobLevel: 41, capacity: 6 }
   - { mapId: 220050100, name: "Whirlpool of Time", street: "Ludibrium", region: ludibrium, town: false, mobs: 33, mobLevel: 40, capacity: 6 }
-  - { mapId: 220050200, name: "Lost Time &lt;2&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 38, mobLevel: 46, capacity: 6 }
-  - { mapId: 220060000, name: "Warped Path of Time&lt;1&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 26, mobLevel: 63, capacity: 6 }
-  - { mapId: 220060100, name: "Warped Path of Time&lt;2&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 24, mobLevel: 75, capacity: 6 }
-  - { mapId: 220060200, name: "Warped Path of Time&lt;3&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 28, mobLevel: 82, capacity: 6 }
+  - { mapId: 220050200, name: "Lost Time <2>", street: "Ludibrium", region: ludibrium, town: false, mobs: 38, mobLevel: 46, capacity: 6 }
+  - { mapId: 220060000, name: "Warped Path of Time<1>", street: "Ludibrium", region: ludibrium, town: false, mobs: 26, mobLevel: 63, capacity: 6 }
+  - { mapId: 220060100, name: "Warped Path of Time<2>", street: "Ludibrium", region: ludibrium, town: false, mobs: 24, mobLevel: 75, capacity: 6 }
+  - { mapId: 220060200, name: "Warped Path of Time<3>", street: "Ludibrium", region: ludibrium, town: false, mobs: 28, mobLevel: 82, capacity: 6 }
   - { mapId: 220060201, name: "Unbalanced Time", street: "Hidden Street", region: ludibrium, town: false, mobs: 21, mobLevel: 87, capacity: 5 }
-  - { mapId: 220060300, name: "Warped Path of Time&lt;4&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 14, mobLevel: 93, capacity: 3 }
+  - { mapId: 220060300, name: "Warped Path of Time<4>", street: "Ludibrium", region: ludibrium, town: false, mobs: 14, mobLevel: 93, capacity: 3 }
   - { mapId: 220060301, name: "Twisted Time", street: "Hidden Street", region: ludibrium, town: false, mobs: 26, mobLevel: 98, capacity: 6 }
-  - { mapId: 220070000, name: "Forgotten Path of Time&lt;1&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 40, mobLevel: 64, capacity: 6 }
-  - { mapId: 220070100, name: "Forgotten Path of Time&lt;2&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 32, mobLevel: 72, capacity: 6 }
-  - { mapId: 220070200, name: "Forgotten Path of Time&lt;3&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 29, mobLevel: 85, capacity: 6 }
+  - { mapId: 220070000, name: "Forgotten Path of Time<1>", street: "Ludibrium", region: ludibrium, town: false, mobs: 40, mobLevel: 64, capacity: 6 }
+  - { mapId: 220070100, name: "Forgotten Path of Time<2>", street: "Ludibrium", region: ludibrium, town: false, mobs: 32, mobLevel: 72, capacity: 6 }
+  - { mapId: 220070200, name: "Forgotten Path of Time<3>", street: "Ludibrium", region: ludibrium, town: false, mobs: 29, mobLevel: 85, capacity: 6 }
   - { mapId: 220070201, name: "Lost Time", street: "Hidden Street", region: ludibrium, town: false, mobs: 15, mobLevel: 89, capacity: 3 }
-  - { mapId: 220070300, name: "Forgotten Path of Time&lt;4&gt;", street: "Ludibrium", region: ludibrium, town: false, mobs: 26, mobLevel: 95, capacity: 6 }
+  - { mapId: 220070300, name: "Forgotten Path of Time<4>", street: "Ludibrium", region: ludibrium, town: false, mobs: 26, mobLevel: 95, capacity: 6 }
   - { mapId: 220070301, name: "Forbidden Time", street: "Hidden Street", region: ludibrium, town: false, mobs: 14, mobLevel: 99, capacity: 3 }
   - { mapId: 221000000, name: "Omega Sector", street: "Omega Sector", region: omega-sector, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 221000001, name: "Tunnel", street: "Omega Sector", region: omega-sector, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
@@ -527,19 +527,19 @@ fields:
   - { mapId: 222000000, name: "Korean Folk Town", street: "Korean Folk Town", region: korean-folk-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 222000001, name: "Pond", street: "Korean Folk Town", region: korean-folk-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 222010000, name: "Entrance to Black Mountain", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 16, mobLevel: 41, capacity: 4 }
-  - { mapId: 222010001, name: "Black Mountain &lt;Corner&gt;", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 29, mobLevel: 44, capacity: 6 }
+  - { mapId: 222010001, name: "Black Mountain <Corner>", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 29, mobLevel: 44, capacity: 6 }
   - { mapId: 222010002, name: "A Small Well", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 26, mobLevel: 42, capacity: 6 }
   - { mapId: 222010100, name: "Around the Pond", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 17, mobLevel: 47, capacity: 4 }
   - { mapId: 222010101, name: "Tiger Forest I", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 25, mobLevel: 47, capacity: 6 }
   - { mapId: 222010102, name: "Tiger Forest II", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 21, mobLevel: 47, capacity: 5 }
   - { mapId: 222010200, name: "Tiger Ridge", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 13, mobLevel: 51, capacity: 3 }
-  - { mapId: 222010201, name: "Black Mountain &lt;Valley&gt;", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 25, mobLevel: 54, capacity: 6 }
+  - { mapId: 222010201, name: "Black Mountain <Valley>", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 25, mobLevel: 54, capacity: 6 }
   - { mapId: 222010300, name: "Fox Ridge", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 22, mobLevel: 56, capacity: 5 }
   - { mapId: 222010310, name: "Moon Ridge", street: "Hidden Street", region: korean-folk-town, town: false, mobs: 18, mobLevel: 56, capacity: 4 }
   - { mapId: 222010400, name: "Top of Black Mountain", street: "Korean Folk Town", region: korean-folk-town, town: false, mobs: 19, mobLevel: 60, capacity: 4 }
   - { mapId: 222010401, name: "Haunted House", street: "Hidden Street", region: korean-folk-town, town: false, mobs: 6, mobLevel: 60, capacity: 1 }
-  - { mapId: 222020100, name: "Helios Tower &lt;2nd Floor&gt;", street: "Ludibrium", region: korean-folk-town, town: false, mobs: 14, mobLevel: 36, capacity: 3 }
-  - { mapId: 222020200, name: "Helios Tower &lt;99th Floor&gt;", street: "Ludibrium", region: korean-folk-town, town: false, mobs: 13, mobLevel: 36, capacity: 3 }
+  - { mapId: 222020100, name: "Helios Tower <2nd Floor>", street: "Ludibrium", region: korean-folk-town, town: false, mobs: 14, mobLevel: 36, capacity: 3 }
+  - { mapId: 222020200, name: "Helios Tower <99th Floor>", street: "Ludibrium", region: korean-folk-town, town: false, mobs: 13, mobLevel: 36, capacity: 3 }
   - { mapId: 222020300, name: "Helios Tower (100th Floor)", street: "Ludibrium", region: korean-folk-town, town: false, mobs: 15, mobLevel: 36, capacity: 3 }
   - { mapId: 222020400, name: "Time Control Room", street: "Hidden Street", region: korean-folk-town, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 230000000, name: "Aquarium", street: "Aquarium", region: aquarium, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
@@ -575,7 +575,7 @@ fields:
   - { mapId: 240000006, name: "Pam's House", street: "Leafre", region: leafre, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 240000100, name: "Leafre Station Enterence", street: "Leafre", region: leafre, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 240000110, name: "Station", street: "Leafre", region: leafre, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 240000111, name: "Before Takeoff &lt;To Orbis&gt;", street: "Leafre", region: leafre, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 240000111, name: "Before Takeoff <To Orbis>", street: "Leafre", region: leafre, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 240010000, name: "West Leafre Forest", street: "Leafre", region: leafre, town: false, mobs: 13, mobLevel: 71, capacity: 3 }
   - { mapId: 240010100, name: "Minar Forest : West Border", street: "Leafre", region: leafre, town: false, mobs: 27, mobLevel: 74, capacity: 6 }
   - { mapId: 240010101, name: "Peach Monkey Forest", street: "Leafre", region: leafre, town: false, mobs: 36, mobLevel: 73, capacity: 6 }
@@ -618,23 +618,6 @@ fields:
   - { mapId: 240040521, name: "Dangerous Dragon Nest", street: "Leafre", region: leafre, town: false, mobs: 18, mobLevel: 106, capacity: 4 }
   - { mapId: 240040600, name: "Peak of the Big Nest", street: "Leafre", region: leafre, town: false, mobs: 6, mobLevel: 112, capacity: 1 }
   - { mapId: 240070000, name: "Tera Forest Time Gate", street: "Tera Forest  ", region: leafre, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 240070100, name: "&lt;Year 2021&gt; Average Town Entrance", street: "Neo City", region: leafre, town: false, mobs: 18, mobLevel: 70, capacity: 4 }
-  - { mapId: 240070101, name: "&lt;Year 2021&gt; Average Town Playground", street: "Neo City", region: leafre, town: false, mobs: 20, mobLevel: 71, capacity: 5 }
-  - { mapId: 240070102, name: "&lt;Year 2021&gt; Average Town Outskirt", street: "Neo City", region: leafre, town: false, mobs: 24, mobLevel: 72, capacity: 6 }
-  - { mapId: 240070200, name: "&lt;Year 2099&gt; Midnight Harbor Entrance", street: "Neo City", region: leafre, town: false, mobs: 13, mobLevel: 75, capacity: 3 }
-  - { mapId: 240070201, name: "&lt;Year 2099&gt; Midnight Harbor Loading Dock", street: "Neo City", region: leafre, town: false, mobs: 16, mobLevel: 75, capacity: 4 }
-  - { mapId: 240070202, name: "&lt;Year 2099&gt; Midnight Harbor Warehouse", street: "Neo City", region: leafre, town: false, mobs: 14, mobLevel: 75, capacity: 3 }
-  - { mapId: 240070300, name: "&lt;Year 2215&gt; Bombed City Center Retail District", street: "Neo City", region: leafre, town: false, mobs: 15, mobLevel: 77, capacity: 3 }
-  - { mapId: 240070301, name: "&lt;Year 2215&gt; Bombed City Center Overpass", street: "Neo City", region: leafre, town: false, mobs: 18, mobLevel: 79, capacity: 4 }
-  - { mapId: 240070302, name: "&lt;Year 2215&gt; Bombed City Center Shopping District", street: "Neo City", region: leafre, town: false, mobs: 14, mobLevel: 79, capacity: 3 }
-  - { mapId: 240070400, name: "&lt;Year 2216&gt; Ruined City Intersection", street: "Neo City", region: leafre, town: false, mobs: 6, mobLevel: 82, capacity: 1 }
-  - { mapId: 240070401, name: "&lt;Year 2216&gt; Ruined City Center", street: "Neo City", region: leafre, town: false, mobs: 12, mobLevel: 83, capacity: 3 }
-  - { mapId: 240070402, name: "&lt;Year 2216&gt; Ruined City Construction Site", street: "Neo City", region: leafre, town: false, mobs: 14, mobLevel: 84, capacity: 3 }
-  - { mapId: 240070500, name: "&lt;Year 2230&gt; Dangerous Tower Lobby", street: "Neo City", region: leafre, town: false, mobs: 4, mobLevel: 86, capacity: 1 }
-  - { mapId: 240070501, name: "&lt;Year 2230&gt; Dangerous Tower Ventilator", street: "Neo City", region: leafre, town: false, mobs: 16, mobLevel: 87, capacity: 4 }
-  - { mapId: 240070600, name: "&lt;Year 2503&gt; Air Battleship Bow", street: "Neo City", region: leafre, town: false, mobs: 16, mobLevel: 91, capacity: 4 }
-  - { mapId: 240070601, name: "&lt;Year 2503&gt; Air Battleship Area A", street: "Neo City", region: leafre, town: false, mobs: 18, mobLevel: 92, capacity: 4 }
-  - { mapId: 240070602, name: "&lt;Year 2503&gt; Air Battleship Area B", street: "Neo City", region: leafre, town: false, mobs: 16, mobLevel: 93, capacity: 4 }
   - { mapId: 250000000, name: "Mu Lung", street: "Mu Lung", region: mu-lung, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 250000001, name: "Tae Sang's House", street: "Mu Lung", region: mu-lung, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 250000002, name: "Mu Lung Department Store", street: "Mu Lung", region: mu-lung, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
@@ -674,7 +657,7 @@ fields:
   - { mapId: 251010500, name: "Isolated Swamp", street: "Herb Town", region: herb-town, town: false, mobs: 22, mobLevel: 64, capacity: 5 }
   - { mapId: 260000000, name: "Ariant", street: "The Burning Road", region: ariant, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 260000100, name: "Ariant Station Platform", street: "Ariant", region: ariant, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 260000110, name: "Before Takeoff &lt;To Orbis&gt;", street: "Ariant", region: ariant, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
+  - { mapId: 260000110, name: "Before Takeoff <To Orbis>", street: "Ariant", region: ariant, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 260000200, name: "The Town of Ariant", street: "Ariant", region: ariant, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 260000201, name: "An Old, Empty House", street: "Town of Ariant", region: ariant, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 260000202, name: "Residential Area 1", street: "Town of Ariant", region: ariant, town: true, mobs: 0, mobLevel: 0, capacity: 0 }

@@ -87,6 +87,9 @@ public final class FieldCatalogMain {
                     capacity = victoriaMax.get(mapId);
                 }
                 String[] name = names.getOrDefault(mapId, new String[]{"", ""});
+                if (name[1].startsWith("<Year") || name[1].startsWith("&lt;Year")) {
+                    continue; // Neo City time-travel maps are quest gated
+                }
                 yaml.append("  - { mapId: ").append(mapId)
                         .append(", name: \"").append(quote(name[1].isEmpty() ? "map " + mapId : name[1]))
                         .append("\", street: \"").append(quote(name[0]))
@@ -170,7 +173,7 @@ public final class FieldCatalogMain {
     }
 
     private static String unescape(String s) {
-        return s == null ? "" : s.replace("&apos;", "'").replace("&quot;", "\"").replace("&amp;", "&");
+        return s == null ? "" : s.replace("&apos;", "'").replace("&quot;", "\"").replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&");
     }
 
     private static String quote(String s) {

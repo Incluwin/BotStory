@@ -19,7 +19,7 @@ import java.util.Locale;
 public class CitizensCommand extends Command {
     {
         setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
-                + "retire <name>|force <n>|sweep|reload|guilds|market|conversation");
+                + "retire <name>|purge confirm|force <n>|sweep|reload|guilds|market|conversation");
     }
 
     @Override
@@ -142,6 +142,20 @@ public class CitizensCommand extends Command {
                         gm.yellowMessage((guild == null ? "guild " + meta.guildId() : guild.getName() + " (" + guild.getMembers().size() + " members)")
                                 + " lv" + meta.levelMin() + "-" + meta.levelMax() + " " + meta.stance() + " - " + meta.motto());
                     }
+                }
+                case "purge" -> {
+                    if (params.length < 2 || !"confirm".equalsIgnoreCase(params[1])) {
+                        gm.yellowMessage("Retires every citizen (characters stay; they never log in again) so the registry reseeds. !citizens purge confirm");
+                        return;
+                    }
+                    int retired = 0;
+                    for (Citizen citizen : List.copyOf(population.citizens())) {
+                        if (citizen.state() == Citizen.State.ACTIVE) {
+                            population.churn().retire(citizen, "purged by " + gm.getName());
+                            retired++;
+                        }
+                    }
+                    gm.yellowMessage("Retired " + retired + " citizens; seeding resumes on the next sweep.");
                 }
                 case "market" -> gm.yellowMessage(population.market().report());
                 case "conversation" -> gm.yellowMessage(population.conversation().report());

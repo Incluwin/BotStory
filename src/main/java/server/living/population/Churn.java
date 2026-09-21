@@ -43,7 +43,9 @@ public final class Churn {
             seeding = true;
             int batch = Math.min(SEED_BATCH, target - active);
             for (int i = 0; i < batch; i++) {
-                int backdate = random.nextInt(Math.max(1, population.config().SEED_BACKDATE_DAYS + 1));
+                // squared so most seeded citizens are newcomers and only a few are veterans
+                double skew = random.nextDouble();
+                int backdate = (int) Math.round(skew * skew * population.config().SEED_BACKDATE_DAYS);
                 if (population.generator().birth(null, backdate) == null) {
                     break;
                 }
