@@ -731,6 +731,7 @@ living_world:
     CONTENT_DIR: scripts/config/living-world
     RESIDENT_SLEEP_AFTER_MS: 300000
     RESIDENT_TICK_MS: 5000
+    ROUTINE_ZONE: "America/New_York"
     ALWAYS_AWAKE_TOWNS: "lith-harbor"
     RESIDENT_BUBBLE_MAX_CHARS: 70
     JEV_PER_PLAYER_PER_DAY: 60

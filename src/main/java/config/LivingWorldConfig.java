@@ -18,6 +18,8 @@ public class LivingWorldConfig {
     public int RESIDENT_SLEEP_AFTER_MS = 300000;
     /** How often the resident runtime reconciles presence, routines and leases. */
     public int RESIDENT_TICK_MS = 5000;
+    /** Time zone for routine hours and rumor schedules (e.g. America/New_York); empty = the JVM default, which Cosmic sets to server.TIMEZONE. */
+    public String ROUTINE_ZONE = "";
     /** Comma-separated TownLife profile ids whose Residents stay materialized even with no players (ops/testing). */
     public String ALWAYS_AWAKE_TOWNS = "";
     /** Reply-length threshold above which a Resident whispers instead of using a chat bubble. */

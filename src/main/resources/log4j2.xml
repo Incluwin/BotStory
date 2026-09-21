@@ -194,6 +194,8 @@
             <AppenderRef ref="MapleLeafFile"/>
         </Logger>
 
+        <!-- flip to debug to see one reconcile decision line per persona per tick -->
+        <Logger name="server.living" level="info"/>
         <Logger name="com.zaxxer.hikari" level="warn"/>
         <Logger name="io.netty" level="warn"/>
         <Logger name="org.jdbi" level="warn"/>

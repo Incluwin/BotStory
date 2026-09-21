@@ -33,7 +33,6 @@ import server.living.store.LivingStore;
 import server.maps.MapleMap;
 
 import java.awt.Point;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -228,7 +227,7 @@ public final class ResidentRuntime {
         if (channel == null) {
             return;
         }
-        int hour = LocalTime.now().getHour();
+        int hour = world.routineHour();
         for (Persona persona : world.content().personas().values()) {
             try {
                 reconcile(persona, channel, hour, now);
@@ -271,6 +270,10 @@ public final class ResidentRuntime {
                 || forcedAwake.containsKey(persona.homeTown()) || alwaysAwake(persona.homeTown());
         RoutineSlot slot = currentSlot(persona, hour);
         boolean want = awake && (slot == null || slot.materialize());
+        if (log.isDebugEnabled()) {
+            log.debug("reconcile {} hour={} humans={} awake={} slot={} want={} session={}", persona.id(), hour, humans, awake,
+                    slot, want, session == null ? "none" : session.materialized() ? "materialized" : "standby");
+        }
         if (want) {
             if (session == null || !session.materialized()) {
                 session = materialize(persona, map, slot, now);

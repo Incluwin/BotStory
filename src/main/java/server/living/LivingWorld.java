@@ -147,6 +147,27 @@ public final class LivingWorld {
         return config;
     }
 
+    /** Current hour (0-23) in the zone routines and rumors are authored in. */
+    public int routineHour() {
+        String zone = config.ROUTINE_ZONE;
+        java.time.ZoneId zoneId;
+        try {
+            zoneId = zone == null || zone.isBlank() ? java.time.ZoneId.systemDefault() : java.time.ZoneId.of(zone);
+        } catch (java.time.DateTimeException invalid) {
+            zoneId = java.time.ZoneId.systemDefault();
+        }
+        return java.time.LocalTime.now(zoneId).getHour();
+    }
+
+    public java.time.LocalDate routineDate() {
+        String zone = config.ROUTINE_ZONE;
+        try {
+            return java.time.LocalDate.now(zone == null || zone.isBlank() ? java.time.ZoneId.systemDefault() : java.time.ZoneId.of(zone));
+        } catch (java.time.DateTimeException invalid) {
+            return java.time.LocalDate.now();
+        }
+    }
+
     public LivingContent content() {
         return content;
     }

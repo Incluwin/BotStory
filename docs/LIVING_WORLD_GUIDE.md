@@ -9,8 +9,11 @@ Implementation of `docs/LIVING_RPG_PLAN.md` (first cut, 2026-09-20). Everything 
 `config.yaml` -> `living_world:` (`ENABLED`, `WORLD`/`CHANNEL`, `CONTENT_DIR`, presence and
 sleep timers, the Jev per-player budget, bond thresholds, roster/bench knobs, rumor pacing).
 `ALWAYS_AWAKE_TOWNS: "lith-harbor"` keeps that town's Residents materialized with nobody around
-(handy for testing; clear it for production so empty towns cost nothing). Tables come from
-Liquibase changeset `29-living-world`.
+(handy for testing; clear it for production so empty towns cost nothing). `ROUTINE_ZONE` is the
+IANA zone persona routines and rumor schedules are read in (the JVM itself runs in GMT, so
+without it "23:00" means 19:00 Eastern). Tables come from Liquibase changeset `29-living-world`.
+Set `<Logger name="server.living" level="debug"/>` in `log4j2.xml` to get one reconcile decision
+line per persona per tick when a Resident does not show up.
 
 ## What players do
 

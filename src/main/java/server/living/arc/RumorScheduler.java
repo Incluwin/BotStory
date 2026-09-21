@@ -16,7 +16,6 @@ import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,8 +53,8 @@ public final class RumorScheduler {
     }
 
     public void tick() {
-        int hour = LocalTime.now().getHour();
-        String today = LocalDate.now().toString();
+        int hour = world.routineHour();
+        String today = world.routineDate().toString();
         Set<String> flags = world.store().worldFlags();
         for (Rumor rumor : world.content().rumors().values()) {
             try {
@@ -164,7 +163,7 @@ public final class RumorScheduler {
                 }
                 world.quests().onRumorHeard(chr, rumor.id());
             }
-            String today = LocalDate.now().toString();
+            String today = world.routineDate().toString();
             world.store().setWorldFlag("rumor." + rumor.id() + ".day." + today, 0);
             world.store().setWorldFlag("rumor." + rumor.id() + ".n" + (performances(rumor.id()) + 1), 0);
             world.store().event(0, cast.get(0).id(), "rumor.performed", rumor.id() + " listeners=" + listeners);
