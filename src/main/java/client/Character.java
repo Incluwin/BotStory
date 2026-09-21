@@ -135,6 +135,7 @@ import server.set.SetBonusTotal;
 import server.set.SetItemManager;
 import server.Storage;
 import server.ThreadManager;
+import server.admin.OperatorMessageTap;
 import server.TimerManager;
 import server.Trade;
 import server.events.Events;
@@ -3232,6 +3233,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void dropMessage(int type, String message) {
+        OperatorMessageTap.offer(this, message);
         sendPacket(PacketCreator.serverNotice(type, message));
     }
 
@@ -8497,6 +8499,7 @@ public class Character extends AbstractCharacterObject {
     }
 
     public void yellowMessage(String m) {
+        OperatorMessageTap.offer(this, m);
         sendPacket(PacketCreator.sendYellowTip(m));
     }
 

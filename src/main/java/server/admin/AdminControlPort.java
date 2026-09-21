@@ -192,6 +192,7 @@ public final class AdminControlPort {
                 case "/runtime/jvm": return rJvm();
                 case "/runtime/gm-online": return rGmOnline();
                 case "/runtime/ping": return "{\"ok\":true,\"pong\":true}";
+                case "/runtime/gm-command": return rGmCommand();
                 case "/runtime/stats/player-samples":    return AdminStatsReader.playerSamples(24);
                 case "/runtime/stats/login-events":      return AdminStatsReader.loginEventsHourly(168);
                 case "/runtime/stats/level-distribution":return AdminStatsReader.levelDistribution();
@@ -233,6 +234,7 @@ public final class AdminControlPort {
                 case "/actions/saveall": return aSaveAll();
                 case "/actions/dcall": return aDcAll();
                 case "/actions/whisper": return aWhisper(body);
+                case "/actions/gm-command": return aGmCommand(body);
                 case "/actions/sql/run": return aSqlRun(body);
                 case "/actions/cosmic-login": return aCosmicLogin(body);
                 case "/actions/cosmic-sso-attest": return aCosmicSsoAttest(body);
@@ -891,6 +893,49 @@ public final class AdminControlPort {
         String password = req.getOrDefault("password", "");
         String character = req.getOrDefault("character", "");
         return AdminSsoAuth.attest(account, password, character);
+    }
+
+    /**
+     * Runs an allowlisted harness command as the headless operator (see HeadlessOperatorService).
+     * Output keeps accumulating after this returns; poll GET /runtime/gm-command for it.
+     */
+    private static String aGmCommand(String body) {
+        Map<String, String> req = AdminJson.parseFlat(body);
+        String command = req.getOrDefault("command", "").trim();
+        if (command.startsWith("!")) command = command.substring(1);
+        if (command.isEmpty()) return "{\"ok\":false,\"error\":\"missing_command\"}";
+        String operator = req.getOrDefault("operator", "").trim();
+        if (operator.isEmpty()) {
+            String admins = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES;
+            operator = admins == null ? "" : admins.split(",")[0].trim();
+        }
+        if (operator.isEmpty()) return "{\"ok\":false,\"error\":\"no_operator\"}";
+        try {
+            return gmRunJson(HeadlessOperatorService.run(operator, command));
+        } catch (Exception e) {
+            log.warn("AdminControlPort: gm-command '{}' as {} failed", command, operator, e);
+            return "{\"ok\":false,\"error\":" + AdminJson.str(String.valueOf(e)) + "}";
+        }
+    }
+
+    private static String rGmCommand() {
+        HeadlessOperatorService.Run run = HeadlessOperatorService.latest();
+        return run == null ? "{\"ok\":true,\"run\":null}" : gmRunJson(run);
+    }
+
+    private static String gmRunJson(HeadlessOperatorService.Run run) {
+        StringBuilder sb = new StringBuilder("{\"ok\":true,\"id\":").append(run.id())
+                .append(",\"operator\":").append(AdminJson.str(run.operator()))
+                .append(",\"command\":").append(AdminJson.str(run.command()))
+                .append(",\"started_at\":").append(run.startedAtMs())
+                .append(",\"lines\":[");
+        boolean first = true;
+        for (String line : run.lines()) {
+            if (!first) sb.append(',');
+            sb.append(AdminJson.str(line));
+            first = false;
+        }
+        return sb.append("]}").toString();
     }
 
     private static String aWhisper(String body) {
