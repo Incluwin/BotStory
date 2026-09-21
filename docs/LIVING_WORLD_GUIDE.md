@@ -105,6 +105,13 @@ Leave the flag off until the WZ is shipped, or clients list nameless quests. The
 
 ## Authoring
 
+MapleEdit has a **Living World** page (`/living`): the content tree with every id, a one-file
+YAML editor, "Save (lint first)" which runs the server's own lint on the whole tree with the edit
+applied and refuses on errors (backups under MapleEdit `backups/`), "Reload on server" and the
+materialized-Residents table through the AdminControlPort (`/runtime/living`,
+`/actions/living-reload`), and "Export quest log" (the two steps above, minus the deploy).
+It needs `cosmic_root` set on the Deploy page and `target/Cosmic.jar` built.
+
 One YAML file per town under `personas/`, `quests/`, `contracts/`, `arcs/`, `rumors/`; each file
 holds a list. `loadouts.yaml` and `command-phrases.yaml` are single files. Schemas are the records
 in `server.living.config.Content`; the plan's section 4 has annotated examples.
@@ -142,6 +149,7 @@ wired yet. The longest explanation wins, then the more specific alias.
 | bonds and contracts | `server.living.bond.*` |
 | roster, bench ledger, haul | `server.living.roster.*` |
 | arcs and rumors (deterministic rumor director: waiting listener, unheard, least performed) | `server.living.arc.*` |
+| MapleEdit page | `MapleEdit/app/routes_living.py`, `templates/living.html`, `static/js/living.js`; server side `AdminControlPort` `/runtime/living`, `/actions/living-reload` |
 | client quest-log mirror and export | `server.living.quest.QuestLog`, `server.living.config.QuestLogExportMain`, `MapleEdit/app/living_world_quests.py` |
 | phrase packs and learned phrases | `server.living.phrases.PhraseMatcher` (installed into `AgentChatIntentRuntime`) |
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |
@@ -151,5 +159,5 @@ wired yet. The longest explanation wins, then the more specific alias.
 Live sessions for GATHER/SELL/STALL (they stay on the offline ledger; live sessions run at
 `BACKGROUND_ACTIVE` priority rather than a true mutation-free `BACKGROUND_ABSTRACT` tick, which
 the Agent runtime only supports for town life), per-step kill counters in the client quest
-log (the mirror tracks start/complete only), and the MapleEdit authoring page for personas and
-quests (content is edited as YAML and checked with `tools\living-world-lint.bat`).
+log (the mirror tracks start/complete only), and form-based editing in MapleEdit (the page edits
+YAML text with lint, not per-field forms).

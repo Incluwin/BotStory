@@ -16,6 +16,9 @@ import scripting.event.EventManager;
 import scripting.event.EventScriptManager;
 import server.ShopFactory;
 import server.TimerManager;
+import server.living.LivingWorld;
+import server.living.config.ContentLint;
+import server.living.resident.ResidentRuntime;
 import tools.PacketCreator;
 
 import java.io.IOException;
@@ -195,6 +198,7 @@ public final class AdminControlPort {
                 case "/runtime/stats/retention":         return AdminStatsReader.retention();
                 case "/runtime/reports/list":            return AdminReportsReader.list(200);
                 case "/runtime/service-bot":             return rServiceBot();
+                case "/runtime/living":                  return rLiving();
                 case "/runtime/sso-pubkey":              return AdminSsoAuth.pubkeyBlob();
                 default:
                     if (path.startsWith("/runtime/character/")) {
@@ -219,6 +223,7 @@ public final class AdminControlPort {
                 case "/actions/broadcast": return aBroadcast(body);
                 case "/actions/shutdown": return aShutdown(body);
                 case "/actions/cancel-shutdown": return aCancelShutdown();
+                case "/actions/living-reload": return aLivingReload();
                 case "/actions/saveall": return aSaveAll();
                 case "/actions/dcall": return aDcAll();
                 case "/actions/whisper": return aWhisper(body);
@@ -447,6 +452,69 @@ public final class AdminControlPort {
             if (mids != null) for (Integer id : mids) mapIds.rawEl(String.valueOf(id));
         } catch (Throwable ignored) {}
         o.raw("mapIds", mapIds.toString());
+    }
+
+    /** Living world (server.living): content census, materialized Residents, roster and bench. */
+    private static String rLiving() {
+        LivingWorld world = LivingWorld.get();
+        if (world == null) {
+            return "{\"ok\":true,\"enabled\":false}";
+        }
+        AdminJson.Arr residents = new AdminJson.Arr();
+        for (ResidentRuntime.Session session : world.residents().sessions()) {
+            Character agent = session.agent();
+            AdminJson.Obj row = residents.obj()
+                    .str("persona", session.persona.id())
+                    .str("name", session.persona.name())
+                    .str("town", session.persona.homeTown())
+                    .bool("materialized", agent != null);
+            if (agent != null) {
+                row.num("map", agent.getMapId()).num("level", agent.getLevel())
+                        .num("x", agent.getPosition().x).num("y", agent.getPosition().y);
+            }
+        }
+        AdminJson.Arr warnings = new AdminJson.Arr();
+        for (String finding : world.content().warnings()) {
+            warnings.rawEl(AdminJson.str(finding));
+        }
+        return new AdminJson.Obj()
+                .bool("ok", true)
+                .bool("enabled", true)
+                .str("census", world.content().census())
+                .num("personas", world.content().personas().size())
+                .num("quests", world.content().quests().size())
+                .num("contracts", world.content().contracts().size())
+                .num("arcs", world.content().arcs().size())
+                .num("rumors", world.content().rumors().size())
+                .num("materialized", world.residents().sessions().stream().filter(session -> session.agent() != null).count())
+                .num("benchLive", world.benchSessions().liveCount())
+                .num("routineHour", world.routineHour())
+                .raw("residents", residents.toString())
+                .raw("warnings", warnings.toString())
+                .finished();
+    }
+
+    /** Re-reads living-world content from disk (same as {@code !world reload}); reports lint findings. */
+    private static String aLivingReload() {
+        LivingWorld world = LivingWorld.get();
+        if (world == null) {
+            return "{\"ok\":false,\"error\":\"living_world_disabled\"}";
+        }
+        try {
+            java.util.List<String> findings = world.reload();
+            AdminJson.Arr arr = new AdminJson.Arr();
+            for (String finding : findings) {
+                arr.rawEl(AdminJson.str(finding));
+            }
+            return new AdminJson.Obj()
+                    .bool("ok", true)
+                    .bool("errors", ContentLint.hasErrors(findings))
+                    .str("census", world.content().census())
+                    .raw("findings", arr.toString())
+                    .finished();
+        } catch (RuntimeException failure) {
+            return "{\"ok\":false,\"error\":" + AdminJson.str(failure.getMessage()) + "}";
+        }
     }
 
     private static String rShutdownStatus() {
