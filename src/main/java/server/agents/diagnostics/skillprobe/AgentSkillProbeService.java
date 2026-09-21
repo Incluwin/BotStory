@@ -46,6 +46,7 @@ import server.agents.capabilities.combat.AgentCombatSpecialMoveState;
 import server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime;
 import server.agents.capabilities.combat.AgentCombatSummonRuntime;
 import server.agents.capabilities.combat.AgentCombatWeaponPolicy;
+import server.agents.capabilities.build.AgentCharacterShaper;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
 import server.agents.capabilities.equipment.AgentEquipmentService;
@@ -69,7 +70,6 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.LifeFactory;
 import server.life.Monster;
-import server.living.resident.ResidentShaper;
 import server.maps.MapleMap;
 import server.security.SecurityEvent;
 import server.security.SecurityEventRuntime;
@@ -189,7 +189,7 @@ public final class AgentSkillProbeService {
             if (level < bot.getLevel()) {
                 notes.add("Agent is already level " + bot.getLevel() + "; shaping never lowers level.");
             }
-            ResidentShaper.shapeTo(bot, target, level, null);
+            AgentCharacterShaper.shapeTo(bot, target, level);
             if (bot.getJob() != target) {
                 notes.add("Job stopped at " + bot.getJob() + " (target " + target
                         + " is not legal at level " + bot.getLevel() + ").");
@@ -376,7 +376,7 @@ public final class AgentSkillProbeService {
      */
     static int learnFullTree(Character bot) {
         List<Integer> jobIds = new ArrayList<>();
-        for (Job job : ResidentShaper.advancementChain(bot.getJob())) {
+        for (Job job : AgentCharacterShaper.advancementChain(bot.getJob())) {
             jobIds.add(job.getId());
         }
         int changed = 0;
