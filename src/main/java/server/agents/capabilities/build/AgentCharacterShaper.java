@@ -20,18 +20,17 @@ import java.util.Map;
  * companions and by hosts that provision pre-levelled Agents. Never lowers a level.
  */
 public final class AgentCharacterShaper {
-    private static final int MAX_LEVEL = 200;
-    private static final int LEVEL_LOOP_GUARD = 250;
 
     private AgentCharacterShaper() {
     }
 
     /** Levels and advances {@code agent} toward {@code target} at {@code level}; returns skill levels learned. */
     public static int shapeTo(Character agent, Job target, int level) {
-        int targetLevel = Math.max(1, Math.min(level, MAX_LEVEL));
+        // 200 is the v83 level cap; the loop bound only guards against a job that can never advance.
+        int targetLevel = Math.max(1, Math.min(level, 200));
         List<Job> chain = advancementChain(target);
         int guard = 0;
-        while (guard++ < LEVEL_LOOP_GUARD) {
+        while (guard++ < 250) {
             advanceIfLegal(agent, chain);
             if (agent.getLevel() >= targetLevel) {
                 break;

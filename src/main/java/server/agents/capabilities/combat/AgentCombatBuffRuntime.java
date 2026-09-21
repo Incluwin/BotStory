@@ -81,6 +81,11 @@ public final class AgentCombatBuffRuntime {
      * Scenario capabilities own the intent; this method deliberately bypasses
      * automatic-buff selection and its blacklist without bypassing execution.
      */
+    /** Casts and special moves are refused mid-jump or on a rope; shared by the summon and debuff runtimes. */
+    static boolean airborneOrClimbing(AgentRuntimeEntry entry) {
+        return AgentMovementStateRuntime.inAir(entry) || AgentMovementStateRuntime.climbing(entry);
+    }
+
     public static boolean tryCastExplicitUtilityBuff(
             AgentRuntimeEntry entry, Character bot, int skillId) {
         if (entry == null

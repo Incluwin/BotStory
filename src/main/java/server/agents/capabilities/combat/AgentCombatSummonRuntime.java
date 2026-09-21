@@ -3,7 +3,6 @@ package server.agents.capabilities.combat;
 import client.Character;
 import client.Skill;
 import server.StatEffect;
-import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentCombatGatewayRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
@@ -38,7 +37,7 @@ public final class AgentCombatSummonRuntime {
             return SummonResult.ALREADY_ACTIVE;
         }
         if (bot.skillIsCooling(skillId) || !effect.canPaySkillCost(bot) || !effect.hasItemCon(bot)
-                || AgentMovementStateRuntime.inAir(entry) || AgentMovementStateRuntime.climbing(entry)) {
+                || AgentCombatBuffRuntime.airborneOrClimbing(entry)) {
             return SummonResult.NOT_READY;
         }
         int timestamp = AgentCombatGatewayRuntime.combat().currentTimestamp();
