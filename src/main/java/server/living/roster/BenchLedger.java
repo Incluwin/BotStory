@@ -19,9 +19,7 @@ import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.QuestState;
 import server.living.store.LivingStore.RosterEntry;
-import server.living.store.LivingStore.RosterState;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +58,7 @@ public final class BenchLedger {
     }
 
     private void accrue(RosterEntry entry, long now) {
-        if (entry.state() != RosterState.BENCHED) {
+        if (!BenchSessions.benchGoverned(entry)) {
             return;
         }
         Persona persona = world.content().persona(entry.personaId());
@@ -72,11 +70,17 @@ public final class BenchLedger {
         if (hours < 0.01d) {
             return;
         }
+        String today = world.routineDate().toString();
+        int farmSecondsToday = today.equals(entry.farmDay()) ? entry.farmSecondsToday() : 0;
         if (world.benchSessions().live(persona.id())) {
-            // training for real at its camp: the fight credits EXP itself; just move the clock
+            // fighting for real at its camp: the fight credits EXP and the harvest takes the loot;
+            // here only the clock moves, and farming time still counts toward the daily cap
+            if (entry.assignment() != Assignment.TRAIN) {
+                farmSecondsToday += (int) (hours * 3600);
+            }
             world.store().saveRoster(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
                     entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), entry.accruedExp(), entry.haulMeso(),
-                    entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, entry.farmSecondsToday(), entry.farmDay()));
+                    entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, farmSecondsToday, today));
             return;
         }
         int botCharacterId = world.residents().characterIdOf(persona.id());
@@ -84,9 +88,6 @@ public final class BenchLedger {
         int ownerLevel = Math.max(1, world.store().characterLevel(entry.characterId()));
         Bond bond = world.bonds().peek(entry.characterId(), persona.id());
         BondStage stage = bond == null ? BondStage.MET : bond.stage();
-
-        String today = LocalDate.now().toString();
-        int farmSecondsToday = today.equals(entry.farmDay()) ? entry.farmSecondsToday() : 0;
         long accruedExp = entry.accruedExp();
         long haulMeso = entry.haulMeso();
         Assignment assignment = entry.assignment();
@@ -165,11 +166,18 @@ public final class BenchLedger {
         }
     }
 
+    /** True when this companion may farm another {@code hours} today under the per-owner cap. */
+    boolean withinDailyCap(RosterEntry entry, double hours) {
+        String today = world.routineDate().toString();
+        return withinDailyCap(entry, today.equals(entry.farmDay()) ? entry.farmSecondsToday() : 0, hours);
+    }
+
     private boolean withinDailyCap(RosterEntry entry, int farmSecondsToday, double hours) {
         int capSeconds = world.config().BENCH_FARM_HOURS_PER_DAY * 3600;
         int total = farmSecondsToday;
+        String today = world.routineDate().toString();
         for (RosterEntry other : world.store().roster(entry.characterId())) {
-            if (!other.personaId().equals(entry.personaId()) && LocalDate.now().toString().equals(other.farmDay())) {
+            if (!other.personaId().equals(entry.personaId()) && today.equals(other.farmDay())) {
                 total += other.farmSecondsToday();
             }
         }
@@ -248,7 +256,7 @@ public final class BenchLedger {
         return total;
     }
 
-    private int haulCount(RosterEntry entry, int itemId) {
+    int haulCount(RosterEntry entry, int itemId) {
         for (HaulItem item : world.store().haul(entry.characterId(), entry.personaId())) {
             if (item.itemId() == itemId) {
                 return item.quantity();
@@ -257,7 +265,7 @@ public final class BenchLedger {
         return 0;
     }
 
-    private int haulStacks(RosterEntry entry) {
+    int haulStacks(RosterEntry entry) {
         return world.store().haul(entry.characterId(), entry.personaId()).size();
     }
 

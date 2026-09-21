@@ -472,15 +472,10 @@ public final class ResidentDialogue {
             return false;
         }
         switch (command) {
-            case "come", "come here", "join me", "call": owner.dropMessage(5, world.roster().call(owner, persona)); return true;
+            case "come", "come here", "join me", "call", "come back", "get back here", "back to me", "return", "rejoin":
+                owner.dropMessage(5, world.roster().call(owner, persona)); return true;
             case "bench", "take a break", "go rest", "go to camp", "rest up": owner.dropMessage(5, world.roster().bench(owner, persona)); return true;
             case "camp here", "make camp here": owner.dropMessage(5, world.roster().setCamp(owner, persona, owner.getMapId())); return true;
-            case "train", "go train", "level up": owner.dropMessage(5, world.roster().assign(owner, persona, Assignment.TRAIN, 0, 0)); return true;
-            case "farm meso", "make money", "earn meso", "farm mesos": owner.dropMessage(5, world.roster().assign(owner, persona, Assignment.FARM_MESO, 0, 0)); return true;
-            case "gather", "gather for my quests", "help with my quests", "farm my quest items": owner.dropMessage(5, world.roster().assign(owner, persona, Assignment.GATHER, 0, 0)); return true;
-            case "go sell", "sell the haul", "sell it all", "sell junk": owner.dropMessage(5, world.roster().assign(owner, persona, Assignment.SELL, 0, 0)); return true;
-            case "set up a stall", "run a stall", "open a stall", "sell in the fm": owner.dropMessage(5, world.roster().assign(owner, persona, Assignment.STALL, 0, 0)); return true;
-            case "rest", "do nothing", "take it easy": owner.dropMessage(5, world.roster().assign(owner, persona, Assignment.REST, 0, 0)); return true;
             case "what did you get", "show me the haul", "haul", "what do you have", "whats in the bag":
                 for (String line : world.roster().haulSummary(owner, persona)) { owner.dropMessage(6, line); } return true;
             case "hand it over", "give me the haul", "give it here", "hand over the haul": owner.dropMessage(5, world.roster().handOver(owner, persona)); return true;
@@ -488,6 +483,36 @@ public final class ResidentDialogue {
             case "bank it", "deposit it", "bank the meso": owner.dropMessage(5, world.roster().bankIt(owner, persona)); return true;
             case "release", "dismiss", "youre free", "go home": owner.dropMessage(5, world.contracts().dismiss(owner, persona)); return true;
             default: break;
+        }
+        // "<name> go farm meso [here]" delegates an active companion (plan 11.2); without "go" it sets the bench assignment
+        boolean go = command.startsWith("go ");
+        String job = go ? command.substring(3).trim() : command;
+        int mapId = 0;
+        if (go && job.endsWith(" here")) {
+            job = job.substring(0, job.length() - " here".length()).trim();
+            mapId = owner.getMapId();
+        }
+        Assignment assignment = assignmentOf(job);
+        int itemId = 0;
+        int count = 0;
+        if (assignment == null) {
+            Matcher farm = FARM_ITEM.matcher(job);
+            if (farm.matches()) {
+                String itemText = farm.group(2).trim();
+                count = farm.group(4) != null ? Integer.parseInt(farm.group(4)) : farm.group(1) != null ? Integer.parseInt(farm.group(1).trim()) : 0;
+                itemId = itemIdFor(itemText);
+                if (itemId <= 0) {
+                    owner.dropMessage(5, persona.name() + ": i don't know what '" + itemText + "' is.");
+                    return true;
+                }
+                assignment = Assignment.FARM_ITEM;
+            }
+        }
+        if (assignment != null) {
+            owner.dropMessage(5, go
+                    ? world.roster().delegate(owner, persona, assignment, itemId, count, mapId)
+                    : world.roster().assign(owner, persona, assignment, itemId, count));
+            return true;
         }
         Matcher wages = WAGES.matcher(command);
         if (wages.matches()) {
@@ -499,19 +524,19 @@ public final class ResidentDialogue {
             }
             return true;
         }
-        Matcher farm = FARM_ITEM.matcher(command);
-        if (farm.matches()) {
-            String itemText = farm.group(2).trim();
-            int count = farm.group(4) != null ? Integer.parseInt(farm.group(4)) : farm.group(1) != null ? Integer.parseInt(farm.group(1).trim()) : 0;
-            int itemId = itemIdFor(itemText);
-            if (itemId <= 0) {
-                owner.dropMessage(5, persona.name() + ": i don't know what '" + itemText + "' is.");
-                return true;
-            }
-            owner.dropMessage(5, world.roster().assign(owner, persona, Assignment.FARM_ITEM, itemId, count));
-            return true;
-        }
         return false;
+    }
+
+    private static Assignment assignmentOf(String job) {
+        return switch (job) {
+            case "train", "level up", "grind" -> Assignment.TRAIN;
+            case "farm meso", "make money", "earn meso", "farm mesos", "farm" -> Assignment.FARM_MESO;
+            case "gather", "gather for my quests", "help with my quests", "farm my quest items" -> Assignment.GATHER;
+            case "sell", "sell the haul", "sell it all", "sell junk", "sell and come back" -> Assignment.SELL;
+            case "set up a stall", "run a stall", "open a stall", "sell in the fm" -> Assignment.STALL;
+            case "rest", "do nothing", "take it easy" -> Assignment.REST;
+            default -> null;
+        };
     }
 
     private boolean owned(Character owner, String name, java.util.function.Consumer<Persona> action) {

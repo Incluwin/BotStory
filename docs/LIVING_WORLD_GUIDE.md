@@ -51,13 +51,24 @@ the companion is with you or benched:
 set up a stall | rest`, `<name> what did you get`, `<name> hand it over | send it | bank it`, `<name> wages` / `<name> pay wages 5000`,
 `release <name>`.
 
+**Delegated remote work.** Prefix a job with `go` to send an *active* companion off without
+giving up its party slot: `<name> go farm meso here`, `<name> go train`, `<name> go farm
+snail shell 30`, `<name> go sell`. `here` means the map you are standing on; otherwise it works
+at its camp (fighting jobs need a field camp, selling works from town). The roster shows it as
+`away`; `<name> come back` recalls it with the usual travel ETA. While away it follows every
+bench rule (ledger, live sessions, haul, no own-quest credit) and `freeSlots` still counts it, so
+two humans sharing a party see each other's away companions in the slot count.
+
 Calling a benched companion is a trip: it whispers an ETA from its camp (Victoria road hops, 20 s
 plus 40 s per town) and appears beside you when it arrives; a recall whistle
 (`living_world.RECALL_WHISTLE_ITEM_ID`, off by default) makes it instant. Up to `BENCH_LIVE_MAX`
-benched companions on TRAIN duty are materialized at their camp maps in rotating slices and fight
-for real (abstractly when nobody is there, visibly when you visit); the offline ledger skips them
-while they are live. Prepaid wages cover upkeep; otherwise the haul pays and an unpaid haul halves
-efficiency. Owners who die three times with a companion whose contract lists `LEADER_DEATH_3X` lose
+benched or away companions on TRAIN, FARM_MESO or FARM_ITEM duty are materialized at their camp
+fields in rotating slices (`BENCH_LIVE_SLICE_MS`, extended while a human watches) and fight for
+real at background priority; every two minutes the meso and stacks a farming session actually
+looted are swept into the haul, and the session ends at the daily farming cap, when the item
+count is met, when it would outlevel you, or when it dies back to town. The offline ledger only
+moves the clock while a companion is live, so nothing is credited twice. Prepaid wages cover
+upkeep; otherwise the haul pays and an unpaid haul halves efficiency. Owners who die three times with a companion whose contract lists `LEADER_DEATH_3X` lose
 it; party quest clears (`eim.clearPQ()`) fire `PARTY_QUEST_CLEAR` steps.
 
 Party cap is 6: with two humans you share four companion slots. Benched companions accrue EXP
@@ -84,7 +95,7 @@ Persona dialogue intents the runtime looks up (chapter overrides first, then the
 `greetFirst`, `greet`, `idle`, `noWork`, `nothingDue`, `who`, `bye`, `thanks`, `smallTalk`,
 `speakPlainly`, `declined`, `offer`, `join`, `bench`, `leave`, `refuse`, `refuse.<blocker>`
 (`bond`, `flags`, `arc`, `taken`, `cooldown`, `roster-full`, `not-recruitable`),
-`refuseOwnErrand`, `questOffer.<quest>`, `questAccept.<quest>`, `questWaiting.<quest>`,
+`refuseOwnErrand`, `delegate`, `onMyWay`, `leaveDeaths`, `questOffer.<quest>`, `questAccept.<quest>`, `questWaiting.<quest>`,
 `questComplete.<quest>`, `about.<persona>`, `aboutUnknown`, `bond.<stage>`, `chapterEnter`.
 
 Quest steps: `TALK`, `KILL_MOBS`, `COLLECT_ITEM` (optional `dropFrom` custom drop and `label`),
@@ -118,7 +129,8 @@ wired yet. The longest explanation wins, then the more specific alias.
 
 ## Not done yet (from the plan)
 
-The Quest.wz patch for the in-game quest log (quest text uses the NPC window instead),
-`BACKGROUND_ABSTRACT` for farming assignments (live bench sessions cover TRAIN only; meso and
-item farming stay on the offline ledger), delegated remote work for active companions,
-Director ranking for rumors, the MapleEdit authoring page, and the upstream contribution split.
+The Quest.wz patch for the in-game quest log (quest text uses the NPC window instead), live
+sessions for GATHER/SELL/STALL (they stay on the offline ledger; live sessions run at
+`BACKGROUND_ACTIVE` priority rather than a true mutation-free `BACKGROUND_ABSTRACT` tick, which
+the Agent runtime only supports for town life), Director ranking for rumors, the MapleEdit
+authoring page, and the upstream contribution split.

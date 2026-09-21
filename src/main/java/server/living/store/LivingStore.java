@@ -91,10 +91,13 @@ public final class LivingStore {
                               long lastLedgerAtMs,
                               int farmSecondsToday,
                               String farmDay) {
+        /** State change; entering bench-governed work also restarts the ledger clock so no idle time is credited. */
         public RosterEntry with(RosterState newState, long nowMs) {
+            boolean benchGoverned = newState == RosterState.BENCHED || newState == RosterState.AWAY;
             return new RosterEntry(characterId, personaId, newState, assignment, assignmentItem, assignmentCount,
                     campMapId, accruedExp, haulMeso, wagesPaidUntilMs, recruitedAtMs,
-                    newState == RosterState.BENCHED ? nowMs : benchedAtMs, lastLedgerAtMs, farmSecondsToday, farmDay);
+                    newState == RosterState.BENCHED ? nowMs : benchedAtMs,
+                    benchGoverned ? nowMs : lastLedgerAtMs, farmSecondsToday, farmDay);
         }
     }
 

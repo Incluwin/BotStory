@@ -106,17 +106,37 @@ public final class RosterService {
         }
     }
 
-    /** Free party slots for this owner: 6 minus humans minus active companions in the party. */
+    /**
+     * Free party slots for this owner: 6 minus everyone in the party minus companions any human
+     * in the party sent away on delegated work, whose slot stays reserved (plan 11.2).
+     */
     public int freeSlots(Character owner) {
         Party party = owner.getParty();
         if (party == null) {
-            return PARTY_CAP - 1;
+            return PARTY_CAP - 1 - awayCount(owner.getId());
         }
         int used = 0;
         for (PartyCharacter member : party.getMembers()) {
             used++;
+            Character human = member.getPlayer();
+            if (human != null && !AgentPresence.isAgent(human)) {
+                used += awayCount(human.getId());
+            }
         }
         return Math.max(0, PARTY_CAP - used);
+    }
+
+    private int awayCount(int characterId) {
+        if (!owners.contains(characterId)) {
+            return 0;
+        }
+        int away = 0;
+        for (RosterEntry entry : world.store().roster(characterId)) {
+            if (entry.state() == RosterState.AWAY) {
+                away++;
+            }
+        }
+        return away;
     }
 
     /** The companion character of a roster entry when it is online, else null. */
@@ -207,7 +227,8 @@ public final class RosterService {
         if (entry.state() == RosterState.ACTIVE && companion(entry) != null) {
             return persona.name() + " is already with you.";
         }
-        if (freeSlots(owner) <= 0) {
+        boolean away = entry.state() == RosterState.AWAY;
+        if (!away && freeSlots(owner) <= 0) {
             return "Your party is full. Bench someone or name who to swap.";
         }
         String key = owner.getId() + ":" + persona.id();
@@ -215,7 +236,7 @@ public final class RosterService {
         if (arriving != null && arriving > System.currentTimeMillis()) {
             return persona.name() + " is already on the way (" + RecallTravel.describe(arriving - System.currentTimeMillis()) + ").";
         }
-        if (entry.state() == RosterState.BENCHED && owner.getMap() != null) {
+        if ((entry.state() == RosterState.BENCHED || away) && owner.getMap() != null) {
             int campMap = entry.campMapId() == 0 ? server.living.resident.ResidentSpots.townMapId(persona.homeTown()) : entry.campMapId();
             long eta = RecallTravel.etaMs(campMap, owner.getMapId());
             if (eta > 0L && !consumeWhistle(owner)) {
@@ -239,10 +260,10 @@ public final class RosterService {
             return;
         }
         RosterEntry entry = world.store().rosterEntry(ownerId, persona.id());
-        if (entry == null || entry.state() != RosterState.BENCHED) {
+        if (entry == null || !(entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY)) {
             return;
         }
-        if (freeSlots(owner) <= 0) {
+        if (entry.state() == RosterState.BENCHED && freeSlots(owner) <= 0) {
             world.residents().whisper(persona, owner, "your party's full. i'll head back to camp.");
             return;
         }
@@ -341,6 +362,47 @@ public final class RosterService {
         world.store().saveRoster(updated);
         world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated));
         return persona.name() + " will " + describeAssignment(updated) + (entry.state() == RosterState.ACTIVE ? " once benched." : ".");
+    }
+
+    /**
+     * Delegated remote work (plan 11.2): an active companion leaves for a work map and keeps its
+     * party slot; from there the bench rules govern it (ledger, live sessions, haul, no own-quest
+     * credit) until {@code come back} calls it. A benched companion is simply reassigned, and
+     * {@code mapId} 0 means "where it already camps".
+     */
+    public String delegate(Character owner, Persona persona, Assignment assignment, int itemId, int count, int mapId) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null || entry.state() == RosterState.RELEASED) {
+            return persona.name() + " is not in your roster.";
+        }
+        if (assignment == Assignment.FARM_ITEM && world.quests().isOwnQuestTarget(owner, persona, itemId)) {
+            List<String> lines = world.arcs().lines(persona, "refuseOwnErrand");
+            return lines.isEmpty() ? persona.name() + ": that one's your errand, not mine." : persona.name() + ": " + lines.get(0);
+        }
+        int workMap = mapId != 0 ? mapId : entry.campMapId() != 0 ? entry.campMapId() : server.living.resident.ResidentSpots.townMapId(persona.homeTown());
+        boolean fighting = assignment == Assignment.TRAIN || assignment == Assignment.FARM_MESO
+                || assignment == Assignment.FARM_ITEM || assignment == Assignment.GATHER;
+        RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
+                itemId, count, workMap, entry.accruedExp(), entry.haulMeso(), entry.wagesPaidUntilMs(),
+                entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay());
+        server.maps.MapleMap map = world.residents().map(workMap);
+        if (fighting && (map == null || map.isTown())) {
+            return persona.name() + ": where? take me to a field and say 'camp here', or send me from one with 'go "
+                    + describeAssignment(updated) + " here'.";
+        }
+        if (entry.state() != RosterState.ACTIVE) {
+            world.store().saveRoster(updated);
+            world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated) + " at map " + workMap);
+            return persona.name() + " will " + describeAssignment(updated) + " at map " + workMap + ".";
+        }
+        List<String> lines = world.arcs().lines(persona, "delegate");
+        world.residents().reply(persona, owner, lines.isEmpty() ? "on it. call me when you want me back." : lines.get(Math.floorMod(owner.getId(), lines.size())));
+        despawn(entry, "delegated");
+        RosterEntry away = updated.with(RosterState.AWAY, System.currentTimeMillis());
+        world.store().saveRoster(away);
+        world.store().event(owner.getId(), persona.id(), "roster.delegate", describeAssignment(away) + " at map " + workMap);
+        return persona.name() + " leaves to " + describeAssignment(away) + (mapId != 0 ? " here" : " at map " + workMap)
+                + ", keeping the party slot. Say '" + persona.name().toLowerCase(Locale.ROOT) + " come back' to recall.";
     }
 
     public String describeAssignment(RosterEntry entry) {
@@ -497,7 +559,7 @@ public final class RosterService {
         }
         long now = System.currentTimeMillis();
         RosterEntry entry = new RosterEntry(owner.getId(), persona.id(), RosterState.AWAY, Assignment.REST, 0, 0,
-                server.living.resident.ResidentSpots.townMapId(persona.homeTown()), 0L, 0L, 0L, now, 0L, now, 0, null);
+                owner.getMapId(), 0L, 0L, 0L, now, 0L, now, 0, null); // camp = here, so the call below is instant
         world.store().saveRoster(entry);
         ownerByPersona.put(persona.id(), owner.getId());
         owners.add(owner.getId());
@@ -590,7 +652,8 @@ public final class RosterService {
             String name = persona == null ? entry.personaId() : persona.name();
             int level = world.store().characterLevel(world.residents().characterIdOf(entry.personaId()));
             lines.add("  " + name + " lv" + level + " " + entry.state().name().toLowerCase(Locale.ROOT)
-                    + (entry.state() == RosterState.BENCHED ? " - " + describeAssignment(entry) + " at map " + entry.campMapId() : "")
+                    + (entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY
+                    ? " - " + describeAssignment(entry) + " at map " + entry.campMapId() : "")
                     + (entry.haulMeso() > 0 ? ", haul " + entry.haulMeso() + " meso" : ""));
         }
         return lines;
