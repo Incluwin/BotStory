@@ -1,0 +1,44 @@
+# Cohorts: who is online when (docs/POPULATED_SERVER_PLAN.md 3.2). Hour weights are 0..10 per hour of the
+# day in the cohort's zone; at weight 10 `peakOnlinePercent` of the cohort is online. `share` is the
+# percent of citizens born into the cohort. Activities are weights for a session's main plan.
+cohorts:
+  - id: evening-na
+    zone: America/New_York
+    share: 40
+    peakOnlinePercent: 35
+    weekday: [1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 5, 8, 10, 10, 9, 6, 3]
+    weekend: [2, 1, 0, 0, 0, 0, 0, 1, 2, 4, 6, 7, 8, 8, 8, 8, 8, 9, 10, 10, 10, 9, 7, 4]
+    sessionMinutes: { min: 60, max: 180 }
+    activities: { TRAIN: 55, TOWN: 15, PQ: 15, MARKET: 10, AFK: 5 }
+  - id: student-afternoon
+    zone: America/New_York
+    share: 20
+    peakOnlinePercent: 30
+    weekday: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6, 10, 9, 5, 4, 3, 1, 0, 0]
+    weekend: [1, 0, 0, 0, 0, 0, 0, 0, 1, 4, 8, 9, 8, 7, 7, 7, 7, 7, 6, 5, 3, 2, 1, 0]
+    sessionMinutes: { min: 30, max: 120 }
+    activities: { TRAIN: 40, TOWN: 15, PQ: 35, MARKET: 5, AFK: 5 }
+  - id: nightowl
+    zone: America/New_York
+    share: 15
+    peakOnlinePercent: 40
+    weekday: [10, 9, 7, 4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 4, 6, 8, 10]
+    weekend: [10, 10, 8, 5, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 3, 4, 6, 8, 9, 10]
+    sessionMinutes: { min: 90, max: 300 }
+    activities: { TRAIN: 40, TOWN: 10, PQ: 5, MARKET: 35, AFK: 10 }
+  - id: weekend-eu
+    zone: Europe/London
+    share: 15
+    peakOnlinePercent: 30
+    weekday: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3, 6, 8, 8, 6, 3, 1]
+    weekend: [1, 0, 0, 0, 0, 0, 0, 0, 2, 5, 8, 9, 9, 8, 8, 8, 8, 9, 10, 10, 9, 7, 4, 2]
+    sessionMinutes: { min: 60, max: 240 }
+    activities: { TRAIN: 50, TOWN: 15, PQ: 20, MARKET: 10, AFK: 5 }
+  - id: afk-townie
+    zone: America/New_York
+    share: 10
+    peakOnlinePercent: 60
+    weekday: [3, 2, 1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 6, 6, 6, 6, 7, 8, 9, 10, 10, 9, 6, 4]
+    weekend: [4, 3, 2, 1, 1, 1, 1, 2, 4, 6, 7, 8, 8, 8, 8, 8, 8, 9, 10, 10, 10, 9, 7, 5]
+    sessionMinutes: { min: 120, max: 480 }
+    activities: { TRAIN: 10, TOWN: 35, PQ: 5, MARKET: 20, AFK: 30 }

@@ -1,0 +1,59 @@
+# Free Market chatter and price talk. {item}/{price} come from the price index (plan 7).
+intents:
+  - id: fm.sell
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 10
+    cooldownMs: 180000
+    lines:
+      - "S> {item} {price}"
+      - "S> {item} {price} whisper me"
+      - "selling {item} {price} come to my shop"
+      - "S> {item} cheap cheap"
+      - "S> {item} {price} or offer"
+  - id: fm.buy
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 6
+    cooldownMs: 240000
+    lines:
+      - "B> {item} paying {price}"
+      - "B> {item}"
+      - "anyone selling {item} whisper me"
+      - "B> {item} good price"
+  - id: fm.price
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 4
+    cooldownMs: 400000
+    lines:
+      - "how much is {item} going for"
+      - "{item} is like {price} now"
+      - "pc {item}?"
+      - "is {price} fair for {item}"
+      - "prices went up so much"
+  - id: fm.smalltalk
+    trigger: dwell
+    where: fm
+    channel: map
+    weight: 3
+    cooldownMs: 600000
+    lines:
+      - "so many shops today"
+      - "anyone wanna trade"
+      - "room 7 has good deals"
+      - "who is selling gloves"
+      - "lol that shop is overpriced"
+  - id: price.talk
+    trigger: price
+    where: any
+    channel: map
+    weight: 5
+    cooldownMs: 900000
+    lines:
+      - "{item} is like {price} now"
+      - "saw {item} for {price} in fm"
+      - "{price} for a {item} is a rip off"

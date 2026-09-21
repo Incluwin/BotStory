@@ -1,0 +1,28 @@
+# Character-name generator for citizens (plan 3.1). A pattern is picked by weight, then every {slot}
+# is replaced by a random entry of that list; {syl2}/{syl3} build a pronounceable made-up name from
+# syllables, {digits} appends 1-3 digits. Names are 4-12 characters, alphanumeric, unique, and run
+# through the Jev name screen when it is on. Era flavour lives here, not in code.
+patterns:
+  - { pattern: "{Syl2}", weight: 22 }
+  - { pattern: "{Syl3}", weight: 14 }
+  - { pattern: "{Adj}{Noun}", weight: 14 }
+  - { pattern: "x{Syl2}x", weight: 6 }
+  - { pattern: "{Syl2}{digits}", weight: 8 }
+  - { pattern: "i{Verb}{Noun}", weight: 5 }
+  - { pattern: "{Noun}{Job}", weight: 8 }
+  - { pattern: "{Adj}{Job}", weight: 6 }
+  - { pattern: "{Syl2}The{Job}", weight: 3 }
+  - { pattern: "{Noun}{digits}", weight: 6 }
+  - { pattern: "Lil{Syl2}", weight: 3 }
+  - { pattern: "{Syl2}kun", weight: 2 }
+  - { pattern: "{Syl2}chan", weight: 2 }
+  - { pattern: "Sir{Syl2}", weight: 1 }
+syllables:
+  start: [ka, ri, so, mi, ta, ne, lu, ve, jo, ha, ke, ro, sa, li, no, da, yu, ze, mo, be, ti, fa, gi, po, wa, ry, el, an, or, is]
+  middle: [ra, na, mi, ko, se, lo, ri, ta, vi, ne, ma, li, do, ru, sha, ki, va, no, re, da]
+  end: [n, s, ra, ki, na, ro, el, is, on, ka, th, ly, x, ri, o, a, e, y, in, us]
+lists:
+  Adj: [Dark, Shadow, Silent, Frost, Ice, Fire, Storm, Lucky, Tiny, Big, Sleepy, Hungry, Angry, Happy, Crazy, Blue, Red, Pink, Golden, Silver, Holy, Evil, Quiet, Swift, Mad, Little, Grumpy, Fluffy, Lazy, Epic]
+  Noun: [Knight, Blade, Wolf, Fox, Cat, Dragon, Bunny, Panda, Cookie, Muffin, Ninja, Pirate, Star, Moon, Sky, Leaf, Snail, Pig, Slime, Mushroom, Arrow, Spear, Sword, Ghost, Angel, Demon, Rose, Storm, Ocean, Pepper]
+  Verb: [Love, Eat, Hate, Like, Need, Want, Kill, Hug]
+  Job: [Cleric, Mage, Archer, Sin, Dit, Warrior, Fighter, Priest, Ranger, Hermit, Sader, Knight, Sniper, Chief, Wiz]

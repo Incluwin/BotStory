@@ -24,6 +24,20 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Builds model-safe dialogue requests from immutable Agent OS projections. */
 public final class AgentSocialDialogueRequestFactory {
     private static final AtomicLong NEXT_REQUEST_ID = new AtomicLong();
+    private static volatile Grounding grounding;
+
+    /**
+     * Host-supplied facts for the model prompt (persona card, journal, scene). Keys become
+     * labelled lines under "Public context"; values are truncated to the snapshot's fact limit.
+     */
+    @FunctionalInterface
+    public interface Grounding {
+        Map<String, String> facts(int agentCharacterId, int speakerCharacterId);
+    }
+
+    public static void installGrounding(Grounding replacement) {
+        grounding = replacement;
+    }
 
     private final SocialDialogueSettings settings;
     private final GenericDialogueIntentClassifier intentClassifier;
@@ -95,7 +109,7 @@ public final class AgentSocialDialogueRequestFactory {
                                 .find(AgentActivityHostState.STATE_KEY)
                                 .map(AgentActivityHostState::activityKind).orElse(null),
                         nowMs).energyPercent(),
-                publicFacts(operational.facts()));
+                publicFacts(operational.facts(), identity.characterId(), speakerId));
         DialogueRequest request = new DialogueRequest(
                 requestId,
                 intentKey,
@@ -132,6 +146,10 @@ public final class AgentSocialDialogueRequestFactory {
     }
 
     private static Map<String, String> publicFacts(Map<String, String> facts) {
+        return publicFacts(facts, 0, 0);
+    }
+
+    private static Map<String, String> publicFacts(Map<String, String> facts, int agentId, int speakerId) {
         Map<String, String> safe = new LinkedHashMap<>();
         for (String key : new String[]{
                 "world.mapId", "progression.level", "progression.jobId",
@@ -139,6 +157,23 @@ public final class AgentSocialDialogueRequestFactory {
             String value = facts.get(key);
             if (value != null && !value.isBlank()) {
                 safe.put(key, value);
+            }
+        }
+        Grounding provider = grounding;
+        if (provider != null && agentId > 0) {
+            try {
+                for (Map.Entry<String, String> fact : provider.facts(agentId, speakerId).entrySet()) {
+                    if (safe.size() >= DialogueContextSnapshot.MAX_PUBLIC_FACTS) {
+                        break;
+                    }
+                    String value = fact.getValue();
+                    if (value != null && !value.isBlank()) {
+                        safe.put(fact.getKey(), value.length() > DialogueContextSnapshot.MAX_FACT_CHARS
+                                ? value.substring(0, DialogueContextSnapshot.MAX_FACT_CHARS) : value);
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // grounding is optional; the prompt still has the operational facts
             }
         }
         return Map.copyOf(safe);

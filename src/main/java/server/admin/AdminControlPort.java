@@ -18,6 +18,10 @@ import server.ShopFactory;
 import server.TimerManager;
 import server.living.LivingWorld;
 import server.living.config.ContentLint;
+import server.living.population.Citizen;
+import server.living.population.CitizenSession;
+import server.living.population.Population;
+import server.living.population.PopulationContent;
 import server.living.resident.ResidentRuntime;
 import tools.PacketCreator;
 
@@ -199,6 +203,7 @@ public final class AdminControlPort {
                 case "/runtime/reports/list":            return AdminReportsReader.list(200);
                 case "/runtime/service-bot":             return rServiceBot();
                 case "/runtime/living":                  return rLiving();
+                case "/runtime/citizens":                return rCitizens();
                 case "/runtime/sso-pubkey":              return AdminSsoAuth.pubkeyBlob();
                 default:
                     if (path.startsWith("/runtime/character/")) {
@@ -491,6 +496,57 @@ public final class AdminControlPort {
                 .num("routineHour", world.routineHour())
                 .raw("residents", residents.toString())
                 .raw("warnings", warnings.toString())
+                .finished();
+    }
+
+    /** Population (server.living.population): census, online sessions, cohorts, chatter/conversation/market counters. */
+    private static String rCitizens() {
+        Population population = Population.get();
+        if (population == null) {
+            return "{\"ok\":true,\"enabled\":false}";
+        }
+        AdminJson.Arr online = new AdminJson.Arr();
+        for (CitizenSession session : population.presence().sessions()) {
+            Character agent = session.agent();
+            AdminJson.Obj row = online.obj().str("name", session.name()).bool("virtual", session.virtual)
+                    .str("activity", session.activity == null ? "" : session.activity.name())
+                    .num("map", session.mapId).num("channel", session.channel).str("cohort", session.citizen.cohort());
+            if (agent != null) {
+                row.num("level", agent.getLevel()).str("mapName", population.fields().name(session.mapId));
+            }
+        }
+        AdminJson.Arr cohorts = new AdminJson.Arr();
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now();
+        for (PopulationContent.Cohort cohort : population.content().cohorts().values()) {
+            int members = 0;
+            int onlineCount = 0;
+            for (Citizen citizen : population.citizens()) {
+                if (citizen.cohort().equals(cohort.id()) && citizen.state() == Citizen.State.ACTIVE) {
+                    members++;
+                    if (population.presence().session(citizen.characterId()) != null) {
+                        onlineCount++;
+                    }
+                }
+            }
+            cohorts.obj().str("id", cohort.id()).num("members", members).num("online", onlineCount).num("hourWeight", cohort.weight(now));
+        }
+        return new AdminJson.Obj()
+                .bool("ok", true)
+                .bool("enabled", true)
+                .num("active", population.activeCount())
+                .num("target", population.config().TARGET_CITIZENS)
+                .num("loaded", population.presence().loadedCount())
+                .num("virtual", population.presence().virtualCount())
+                .num("onlineMax", population.config().ONLINE_MAX)
+                .num("guilds", population.social().guildCount())
+                .num("chatterLines", population.chatter().linesSpoken())
+                .num("sweepMs", population.presence().lastSweepDurationMs())
+                .bool("seeding", population.churn().seeding())
+                .str("census", population.content().census())
+                .str("conversation", population.conversation().report())
+                .str("market", population.market().report())
+                .raw("online", online.toString())
+                .raw("cohorts", cohorts.toString())
                 .finished();
     }
 

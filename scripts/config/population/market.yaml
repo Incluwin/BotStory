@@ -1,0 +1,29 @@
+# Market basket: the goods citizens talk about, sell and look for (plan 7). Prices seed the server
+# price index (living_price_index) the first time; after that the index drifts with what actually sells.
+# permit is the player-shop permit citizens are handed when they open a stall.
+permit: 5140000
+basket:
+  - { itemId: 1002357, price: 25000000 }    # Zakum Helmet
+  - { itemId: 2040002, price: 80000 }       # Scroll for Helmet DEF 60%
+  - { itemId: 2043001, price: 250000 }      # Scroll for One-Handed Sword ATT 60%
+  - { itemId: 2044501, price: 2500000 }     # Scroll for Claw ATT 60%
+  - { itemId: 2044701, price: 1500000 }     # Scroll for Bow ATT 60%
+  - { itemId: 2040802, price: 900000 }      # Scroll for Gloves ATT 60%
+  - { itemId: 4000000, price: 100 }         # Snail Shell
+  - { itemId: 4000019, price: 500 }         # Green Mushroom Cap (per unit)
+  - { itemId: 4000021, price: 400 }         # Leather
+  - { itemId: 4003000, price: 2000 }        # Screw
+  - { itemId: 2000004, price: 5000 }        # Elixir
+  - { itemId: 2000005, price: 15000 }       # Power Elixir
+  - { itemId: 2022179, price: 800000 }      # Onyx Apple
+  - { itemId: 1082149, price: 1500000 }     # Brown Work Gloves
+  - { itemId: 1102041, price: 200000 }      # Pink Adventurer Cape
+  - { itemId: 4001126, price: 20000 }       # Maple Leaf
+  - { itemId: 1302020, price: 20000 }       # Cutlass
+  - { itemId: 1372005, price: 5000 }        # Wooden Wand
+  - { itemId: 2070005, price: 25000 }       # Kumbi Throwing-Stars
+  - { itemId: 2070006, price: 90000 }       # Tobi Throwing-Stars
+  - { itemId: 1302030, price: 300000 }      # Maple Sword
+  - { itemId: 1452016, price: 400000 }      # Maple Bow
+  - { itemId: 2049100, price: 3000000 }     # Chaos Scroll 60%
+  - { itemId: 2049000, price: 400000 }      # Clean Slate Scroll 1%

@@ -1,0 +1,112 @@
+# Reactions to things that happen in range (plan 5.1). Subject = the character the event happened to.
+intents:
+  - id: react.levelup
+    trigger: levelup.other
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 60000
+    lines:
+      - "gratz"
+      - "grats"
+      - "gz"
+      - "ding"
+      - "gratz {name}"
+      - "nice lv {level}"
+      - "congrats!"
+      - "wooo {level}"
+  - id: react.levelup.self
+    trigger: levelup.self
+    where: any
+    channel: map
+    weight: 8
+    cooldownMs: 0
+    lines:
+      - "finally {level}"
+      - "lv {level} lets go"
+      - "ding"
+      - "{level}!!"
+      - "took forever but {level}"
+  - id: react.levelup.guild
+    trigger: levelup.self
+    where: any
+    channel: guild
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "hit {level}"
+      - "lv {level} finally"
+      - "im {level} now"
+  - id: react.death.other
+    trigger: death.other
+    where: any
+    channel: map
+    weight: 8
+    cooldownMs: 90000
+    lines:
+      - "f"
+      - "rip"
+      - "oof"
+      - "rip {name}"
+      - "ouch"
+      - "that mob hits hard"
+  - id: react.death.self
+    trigger: death.self
+    where: any
+    channel: map
+    weight: 8
+    cooldownMs: 0
+    lines:
+      - "ugh"
+      - "lost 5% again"
+      - "nooo"
+      - "ok that hurt"
+      - "rip me"
+      - "brb walking back"
+  - id: react.drop.rare
+    trigger: drop.rare
+    where: any
+    channel: map
+    weight: 9
+    cooldownMs: 60000
+    lines:
+      - "omg"
+      - "nice drop"
+      - "lucky"
+      - "wow {item}"
+      - "gratz on the {item}"
+      - "sell me that"
+  - id: react.drop.rare.self
+    trigger: drop.rare.self
+    where: any
+    channel: map
+    weight: 9
+    cooldownMs: 0
+    lines:
+      - "omg {item}!!"
+      - "finally a {item}"
+      - "YES {item}"
+      - "got a {item} lol"
+  - id: react.boss
+    trigger: boss
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 120000
+    lines:
+      - "boss!"
+      - "{name} is here run"
+      - "who wants to kill {name}"
+      - "omg {name}"
+      - "lf> party for {name}"
+  - id: react.jobadvance
+    trigger: jobadvance.other
+    where: any
+    channel: map
+    weight: 8
+    cooldownMs: 60000
+    lines:
+      - "gratz on the job"
+      - "congrats {name}"
+      - "nice, welcome to {job}"
+      - "gz {job}"

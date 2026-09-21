@@ -1,0 +1,154 @@
+package client.command.commands.gm5;
+
+import client.Character;
+import client.Client;
+import client.command.Command;
+import server.living.population.Citizen;
+import server.living.population.CitizenSession;
+import server.living.population.Population;
+import server.living.population.PopulationContent.Cohort;
+
+import java.time.ZonedDateTime;
+import java.util.List;
+import java.util.Locale;
+
+/**
+ * {@code !citizens} operates the populated server: census, who is online, births and
+ * retirements, content reload, forced online counts for load tests, one citizen's card.
+ */
+public class CitizensCommand extends Command {
+    {
+        setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
+                + "retire <name>|force <n>|sweep|reload|guilds|market|conversation");
+    }
+
+    @Override
+    public void execute(Client c, String[] params) {
+        Character gm = c.getPlayer();
+        Population population = Population.get();
+        if (population == null) {
+            gm.yellowMessage("Population is disabled (population.ENABLED in config.yaml, needs living_world.ENABLED).");
+            return;
+        }
+        String verb = params.length == 0 ? "status" : params[0].toLowerCase(Locale.ROOT);
+        try {
+            switch (verb) {
+                case "status" -> {
+                    gm.yellowMessage("Citizens: " + population.activeCount() + " active of " + population.config().TARGET_CITIZENS
+                            + " target (" + population.citizens().size() + " rows); online " + population.presence().loadedCount()
+                            + " loaded + " + population.presence().virtualCount() + " virtual (max loaded " + population.config().ONLINE_MAX
+                            + (population.presence().forcedOnline() > 0 ? ", forced " + population.presence().forcedOnline() : "") + ")");
+                    gm.yellowMessage("Content: " + population.content().census() + "; guilds " + population.social().guildCount()
+                            + "; chatter lines " + population.chatter().linesSpoken() + "; last sweep " + population.presence().lastSweepDurationMs()
+                            + " ms" + (population.churn().seeding() ? "; seeding" : ""));
+                    gm.yellowMessage(population.conversation().report());
+                    gm.yellowMessage(population.market().report());
+                }
+                case "online" -> {
+                    for (CitizenSession session : population.presence().sessions()) {
+                        Character agent = session.agent();
+                        gm.yellowMessage(session.name() + (session.virtual ? " (ledger)" : " lv" + (agent == null ? "?" : agent.getLevel())
+                                + " " + session.activity + " map " + session.mapId + " ch" + session.channel
+                                + (session.afkUntilMs > 0 ? " afk" : "") + (session.stallOpen ? " stall" : "")));
+                    }
+                    gm.yellowMessage(population.presence().sessions().size() + " online.");
+                }
+                case "cohorts" -> {
+                    ZonedDateTime now = ZonedDateTime.now();
+                    for (Cohort cohort : population.content().cohorts().values()) {
+                        int members = 0;
+                        int online = 0;
+                        for (Citizen citizen : population.citizens()) {
+                            if (citizen.cohort().equals(cohort.id()) && citizen.state() == Citizen.State.ACTIVE) {
+                                members++;
+                                if (population.presence().session(citizen.characterId()) != null) {
+                                    online++;
+                                }
+                            }
+                        }
+                        gm.yellowMessage(cohort.id() + ": " + members + " citizens, " + online + " online, hour weight " + cohort.weight(now)
+                                + "/10 (peak " + cohort.peakOnlinePercent() + "%)");
+                    }
+                }
+                case "who" -> {
+                    if (params.length < 2) {
+                        gm.yellowMessage("Usage: !citizens who <name>");
+                        return;
+                    }
+                    Citizen citizen = population.citizenByName(params[1]);
+                    if (citizen == null) {
+                        gm.yellowMessage("No citizen named " + params[1]);
+                        return;
+                    }
+                    int[] progress = population.store().characterProgress(citizen.characterId());
+                    gm.yellowMessage(citizen.name() + " #" + citizen.characterId() + " lv" + progress[0] + " " + citizen.career()
+                            + " cohort " + citizen.cohort() + " region " + citizen.homeRegion() + " voice " + citizen.voice()
+                            + " personality " + citizen.personality() + " pace " + String.format(Locale.ROOT, "%.2f", citizen.pace())
+                            + " age " + citizen.ageDays(System.currentTimeMillis()) + "d target lv"
+                            + population.ledger().levelTarget(citizen, System.currentTimeMillis()) + " flags " + citizen.flags()
+                            + " guild " + citizen.guildId() + " circle " + citizen.circleId() + " " + citizen.state());
+                    if (!citizen.lifeSummary().isBlank()) {
+                        gm.yellowMessage("life: " + citizen.lifeSummary());
+                    }
+                    CitizenSession session = population.presence().session(citizen.characterId());
+                    if (session != null) {
+                        for (var entry : session.journal.recent(6)) {
+                            gm.yellowMessage("  journal: " + entry.text());
+                        }
+                    }
+                }
+                case "birth" -> {
+                    String cohort = params.length > 1 ? params[1] : null;
+                    int backdate = params.length > 2 ? Integer.parseInt(params[2]) : 0;
+                    Citizen born = population.generator().birth(cohort, backdate);
+                    gm.yellowMessage(born == null ? "Birth failed (see log)." : "Born: " + born.name() + " (" + born.cohort() + ", " + born.career() + ")");
+                }
+                case "retire" -> {
+                    if (params.length < 2) {
+                        gm.yellowMessage("Usage: !citizens retire <name>");
+                        return;
+                    }
+                    Citizen citizen = population.citizenByName(params[1]);
+                    if (citizen == null) {
+                        gm.yellowMessage("No citizen named " + params[1]);
+                        return;
+                    }
+                    population.churn().retire(citizen, "retired by " + gm.getName());
+                    gm.yellowMessage(citizen.name() + " retired.");
+                }
+                case "force" -> {
+                    int count = params.length > 1 ? Integer.parseInt(params[1]) : 0;
+                    population.presence().forceOnline(count);
+                    gm.yellowMessage("Forced online count set to " + count + " (applies on the next sweep; 0 clears).");
+                }
+                case "sweep" -> {
+                    population.presence().sweep();
+                    gm.yellowMessage("Sweep done in " + population.presence().lastSweepDurationMs() + " ms; online "
+                            + population.presence().loadedCount() + " loaded + " + population.presence().virtualCount() + " virtual.");
+                }
+                case "reload" -> {
+                    List<String> findings = population.reload();
+                    gm.yellowMessage("Reloaded: " + population.content().census());
+                    for (String finding : findings) {
+                        if (finding.startsWith("ERROR")) {
+                            gm.yellowMessage(finding);
+                        }
+                    }
+                    gm.yellowMessage(findings.size() + " findings.");
+                }
+                case "guilds" -> {
+                    for (var meta : population.store().guilds()) {
+                        var guild = net.server.Server.getInstance().getGuild(meta.guildId(), population.world().config().WORLD);
+                        gm.yellowMessage((guild == null ? "guild " + meta.guildId() : guild.getName() + " (" + guild.getMembers().size() + " members)")
+                                + " lv" + meta.levelMin() + "-" + meta.levelMax() + " " + meta.stance() + " - " + meta.motto());
+                    }
+                }
+                case "market" -> gm.yellowMessage(population.market().report());
+                case "conversation" -> gm.yellowMessage(population.conversation().report());
+                default -> gm.yellowMessage(getDescription());
+            }
+        } catch (RuntimeException failure) {
+            gm.yellowMessage("citizens " + verb + " failed: " + failure.getMessage());
+        }
+    }
+}

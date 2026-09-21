@@ -1,0 +1,56 @@
+# Regions citizens live in (plan 3.3 / 8). `levels` is the band a citizen's level must fall in to call the
+# region home; towns are the main town maps (sub-maps in fields.yaml are ignored); lobbies are where
+# party-quest parties form; `fm` is the Free Market entrance. A region with a TownLife profile gets
+# ambient visits; the others use standing spots from portals.
+regions:
+  - id: victoria
+    levels: { min: 1, max: 45 }
+    towns: [100000000, 101000000, 102000000, 103000000, 104000000, 105040300, 120000000]
+    lobbies:
+      - { id: kpq, mapId: 103000000, levels: { min: 21, max: 30 }, name: "KPQ" }
+    fm: 910000000
+    weight: 60
+  - id: orbis
+    levels: { min: 40, max: 70 }
+    towns: [200000000]
+    lobbies:
+      - { id: opq, mapId: 200000000, levels: { min: 51, max: 70 }, name: "OPQ" }
+    fm: 910000000
+    weight: 10
+  - id: ludibrium
+    levels: { min: 35, max: 65 }
+    towns: [220000000]
+    lobbies:
+      - { id: lpq, mapId: 220000000, levels: { min: 35, max: 50 }, name: "LPQ" }
+    fm: 910000000
+    weight: 12
+  - id: el-nath
+    levels: { min: 45, max: 90 }
+    towns: [211000000]
+    lobbies: []
+    fm: 910000000
+    weight: 6
+  - id: aquarium
+    levels: { min: 50, max: 80 }
+    towns: [230000000]
+    lobbies: []
+    fm: 910000000
+    weight: 4
+  - id: ariant
+    levels: { min: 35, max: 60 }
+    towns: [260000000]
+    lobbies: []
+    fm: 910000000
+    weight: 3
+  - id: mu-lung
+    levels: { min: 55, max: 90 }
+    towns: [250000000]
+    lobbies: []
+    fm: 910000000
+    weight: 3
+  - id: leafre
+    levels: { min: 70, max: 120 }
+    towns: [240000000]
+    lobbies: []
+    fm: 910000000
+    weight: 2

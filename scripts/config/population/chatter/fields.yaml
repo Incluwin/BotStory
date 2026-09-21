@@ -1,0 +1,62 @@
+# Training-map chatter. Fields are quieter than towns: the engine gives them a third of the town line budget.
+intents:
+  - id: field.claim
+    trigger: enter
+    where: field
+    channel: map
+    weight: 6
+    cooldownMs: 600000
+    lines:
+      - "cc plz"
+      - "is this map taken"
+      - "anyone here?"
+      - "mind if i train here"
+      - "cc?"
+      - "taken?"
+  - id: field.dwell
+    trigger: dwell
+    where: field
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "ks pls no"
+      - "this map is mine"
+      - "so many people here"
+      - "exp is decent here"
+      - "almost {level}"
+      - "pots running low"
+      - "anyone want to party here"
+      - "the spawn here is bad"
+      - "brb"
+      - "back"
+      - "lf> HS"
+      - "does {item} even drop here"
+      - "3 hours here and nothing good"
+  - id: field.party
+    trigger: dwell
+    where: field
+    channel: party
+    weight: 6
+    cooldownMs: 300000
+    lines:
+      - "hp"
+      - "gratz on the drop"
+      - "cc? spawn is dead"
+      - "im gonna go pot"
+      - "brb 2 min"
+      - "back"
+      - "we should do a pq after this"
+      - "nice"
+      - "share the spawn lol"
+  - id: field.leave
+    trigger: logout
+    where: field
+    channel: map
+    weight: 4
+    cooldownMs: 0
+    lines:
+      - "gtg"
+      - "im out, map is free"
+      - "night"
+      - "leaving, take the map"

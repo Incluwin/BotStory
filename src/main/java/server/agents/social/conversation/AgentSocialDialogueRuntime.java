@@ -25,6 +25,21 @@ public final class AgentSocialDialogueRuntime {
     private static final AgentSocialDialogueRequestFactory REQUESTS =
             new AgentSocialDialogueRequestFactory(SETTINGS);
 
+    private static volatile Styler styler;
+
+    /** A styled reply: the text to say and how long to "type" it; null leaves the reply untouched. */
+    public record Styled(String text, long delayMs) { }
+
+    /** Host-supplied transform for generated replies (voice packs). Return null to keep the default path. */
+    @FunctionalInterface
+    public interface Styler {
+        Styled style(int agentCharacterId, int speakerCharacterId, String text, boolean fromModel);
+    }
+
+    public static void installStyler(Styler replacement) {
+        styler = replacement;
+    }
+
     private AgentSocialDialogueRuntime() {
     }
 
@@ -77,12 +92,23 @@ public final class AgentSocialDialogueRuntime {
             return;
         }
         APPLICATION.submit(entry, prepared.request(), result -> {
-            AgentDialogueTransportRuntime.replyNow(entry, result.displayText());
+            String shown = result.displayText();
+            Styler transform = styler;
+            Styled styled = transform == null ? null : transform.style(prepared.request().context().agentId(), speakerId,
+                    shown, result.source() == server.agents.social.contracts.DialogueResult.Source.MODEL);
+            if (styled == null) {
+                AgentDialogueTransportRuntime.replyNow(entry, shown);
+            } else {
+                shown = styled.text();
+                String finalText = shown;
+                server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY,
+                        () -> AgentDialogueTransportRuntime.replyNow(entry, finalText), Math.max(1L, styled.delayMs()));
+            }
             long repliedAtMs = System.currentTimeMillis();
             ConversationTurn agentTurn = new ConversationTurn(
                     ConversationTurn.Role.AGENT,
                     prepared.request().context().agentName(),
-                    result.displayText(),
+                    shown,
                     repliedAtMs);
             SocialMemoryPersistenceRuntime.recordConversation(
                     prepared.relationshipKey(),

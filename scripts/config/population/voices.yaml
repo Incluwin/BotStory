@@ -1,0 +1,69 @@
+# Voice packs: how a citizen types (plan 5.3). A deterministic transform over every line it says,
+# templated or generated. `style` is a dialogue style id from resources/agents/social/dialogue-style-profiles.json
+# and also decides which template variants the chatter engine prefers. Rates are probabilities 0..1.
+voices:
+  - id: casual-typos
+    style: friendly-casual-v1
+    share: 30
+    lowercase: 0.9
+    typoRate: 0.03
+    abbreviationRate: 0.6
+    abbreviations: { you: u, are: r, please: pls, thanks: ty, anyone: ne1, because: cuz, people: ppl, what: wat, really: rly, about: abt }
+    emoticons: ["^^", "xD", ":)", "lol", ":P"]
+    emoticonRate: 0.25
+    petPhrases: [ngl, tbh, lol]
+    petPhraseRate: 0.15
+    delayMsPerChar: 55
+    ignoreRate: 0.15
+  - id: quiet-practical
+    style: quiet-practical-v1
+    share: 25
+    lowercase: 0.85
+    typoRate: 0.01
+    abbreviationRate: 0.4
+    abbreviations: { you: u, thanks: ty, please: pls, right: rn, okay: k }
+    emoticons: []
+    emoticonRate: 0.0
+    petPhrases: [np, k]
+    petPhraseRate: 0.1
+    delayMsPerChar: 45
+    ignoreRate: 0.3
+  - id: playful-caps
+    style: playful-social-v1
+    share: 15
+    lowercase: 0.3
+    typoRate: 0.02
+    abbreviationRate: 0.3
+    abbreviations: { you: u, oh my god: omg, laughing: lmao }
+    emoticons: ["!!", "xD", "LOL", ":D", "<3"]
+    emoticonRate: 0.4
+    petPhrases: [yooo, ayyy, bro]
+    petPhraseRate: 0.2
+    delayMsPerChar: 40
+    ignoreRate: 0.1
+  - id: proper-friendly
+    style: curious-millennial-v1
+    share: 15
+    lowercase: 0.2
+    typoRate: 0.005
+    abbreviationRate: 0.1
+    abbreviations: { thanks: thank you }
+    emoticons: [":)", "haha", "!"]
+    emoticonRate: 0.3
+    petPhrases: [honestly, oh nice]
+    petPhraseRate: 0.1
+    delayMsPerChar: 60
+    ignoreRate: 0.1
+  - id: terse-grinder
+    style: quiet-practical-v1
+    share: 15
+    lowercase: 0.95
+    typoRate: 0.02
+    abbreviationRate: 0.8
+    abbreviations: { you: u, please: pls, thanks: ty, change channel: cc, kill steal: ks, party: pt, level: lv, anyone: ne1 }
+    emoticons: []
+    emoticonRate: 0.0
+    petPhrases: [k, np, ye]
+    petPhraseRate: 0.2
+    delayMsPerChar: 35
+    ignoreRate: 0.4

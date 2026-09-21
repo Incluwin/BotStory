@@ -144,7 +144,7 @@ public final class ContentLoader {
         return nodes;
     }
 
-    static Node read(Path file) {
+    public static Node read(Path file) {
         try (Reader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
             YamlReader yaml = new YamlReader(reader);
             Object value = yaml.read();

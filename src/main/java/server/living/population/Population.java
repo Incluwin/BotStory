@@ -1,0 +1,308 @@
+package server.living.population;
+
+import config.PopulationConfig;
+import config.YamlConfig;
+import net.server.Server;
+import net.server.channel.Channel;
+import net.server.world.World;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import server.TimerManager;
+import server.living.LivingWorld;
+import server.living.config.ContentException;
+import server.maps.MapleMap;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledFuture;
+
+/**
+ * Composition root of the populated server (docs/POPULATED_SERVER_PLAN.md): citizens with lives.
+ * Runs inside the living world and reuses its store, residents and hooks. Started by
+ * {@link LivingWorld#start()} when {@code population.ENABLED}.
+ */
+public final class Population {
+    private static final Logger log = LoggerFactory.getLogger(Population.class);
+    private static volatile Population instance;
+
+    private final LivingWorld world;
+    private final PopulationConfig config;
+    private volatile PopulationContent content;
+    private final CitizenStore store;
+    private final Map<Integer, Citizen> registry = new ConcurrentHashMap<>();
+    private volatile NameGenerator names;
+    private final CitizenGenerator generator;
+    private final FieldCatalog fields;
+    private final ProgressionLedger ledger;
+    private final PresenceScheduler presence;
+    private final Churn churn;
+    private final VoicePacks voices;
+    private final ChatterEngine chatter;
+    private final SocialFabric social;
+    private final Conversation conversation;
+    private final Market market;
+    private final List<ScheduledFuture<?>> timers = new ArrayList<>();
+    private final List<Integer> channels = new ArrayList<>();
+
+    private Population(LivingWorld world, PopulationConfig config, PopulationContent content) {
+        this.world = world;
+        this.config = config;
+        this.content = content;
+        this.store = new CitizenStore();
+        for (String part : config.CHANNELS.split(",")) {
+            try {
+                channels.add(Integer.parseInt(part.trim()));
+            } catch (NumberFormatException ignored) {
+                // lint reports it
+            }
+        }
+        if (channels.isEmpty()) {
+            channels.add(world.config().CHANNEL);
+        }
+        this.names = new NameGenerator(content.names().patterns(), content.names().lists(), content.names().start(),
+                content.names().middle(), content.names().end());
+        this.generator = new CitizenGenerator(this);
+        this.fields = new FieldCatalog(this);
+        this.ledger = new ProgressionLedger(this);
+        this.voices = new VoicePacks(this);
+        this.chatter = new ChatterEngine(this);
+        this.social = new SocialFabric(this);
+        this.conversation = new Conversation(this);
+        this.market = new Market(this);
+        this.presence = new PresenceScheduler(this);
+        this.churn = new Churn(this);
+    }
+
+    public static Population get() {
+        return instance;
+    }
+
+    public static boolean enabled() {
+        return instance != null;
+    }
+
+    public static synchronized void start(LivingWorld world) {
+        PopulationConfig config = YamlConfig.config.population;
+        if (config == null || !config.ENABLED) {
+            log.info("Population disabled (population.ENABLED=false).");
+            return;
+        }
+        if (instance != null) {
+            return;
+        }
+        PopulationContent content;
+        try {
+            content = PopulationLoader.load(Path.of(config.CONTENT_DIR), world.content());
+        } catch (ContentException failure) {
+            log.error("Population content failed to load; citizens stay off: {}", failure.getMessage());
+            return;
+        }
+        for (String warning : content.warnings()) {
+            if (warning.startsWith("ERROR")) {
+                log.warn("Population content: {}", warning);
+            } else {
+                log.debug("Population content: {}", warning);
+            }
+        }
+        Population population = new Population(world, config, content);
+        for (Citizen citizen : population.store.all(null)) {
+            population.registry.put(citizen.characterId(), citizen);
+        }
+        population.social.installSeams();
+        population.conversation.installSeams();
+        TimerManager timers = TimerManager.getInstance();
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
+                15_000L, config.SWEEP_MS));
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.ledger::tick,
+                config.LEDGER_MS, config.LEDGER_MS));
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.churn::tick,
+                90_000L, 3_600_000L));
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.chatter::tick,
+                20_000L, 20_000L));
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.social::tick,
+                45_000L, 60_000L));
+        population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.market::tick,
+                120_000L, 120_000L));
+        instance = population;
+        log.info("Population started: {} citizens ({}), {} target, {} online max, channels {}", population.registry.size(),
+                content.census(), config.TARGET_CITIZENS, config.ONLINE_MAX, population.channels);
+    }
+
+    public static synchronized void stop() {
+        Population population = instance;
+        if (population == null) {
+            return;
+        }
+        instance = null;
+        for (ScheduledFuture<?> timer : population.timers) {
+            timer.cancel(false);
+        }
+        population.timers.clear();
+        population.market.closeAll("server shutdown");
+        population.presence.logoutAll("server shutdown");
+        log.info("Population stopped.");
+    }
+
+    /** Re-reads the content directory; returns lint findings. */
+    public List<String> reload() {
+        PopulationContent fresh = PopulationLoader.load(Path.of(config.CONTENT_DIR), world.content());
+        content = fresh;
+        names = new NameGenerator(fresh.names().patterns(), fresh.names().lists(), fresh.names().start(),
+                fresh.names().middle(), fresh.names().end());
+        voices.reload();
+        chatter.reload();
+        return fresh.warnings();
+    }
+
+    // ---- accessors -----------------------------------------------------------------------
+
+    public LivingWorld world() {
+        return world;
+    }
+
+    public PopulationConfig config() {
+        return config;
+    }
+
+    public PopulationContent content() {
+        return content;
+    }
+
+    public CitizenStore store() {
+        return store;
+    }
+
+    public NameGenerator names() {
+        return names;
+    }
+
+    public CitizenGenerator generator() {
+        return generator;
+    }
+
+    public FieldCatalog fields() {
+        return fields;
+    }
+
+    public ProgressionLedger ledger() {
+        return ledger;
+    }
+
+    public PresenceScheduler presence() {
+        return presence;
+    }
+
+    public Churn churn() {
+        return churn;
+    }
+
+    public VoicePacks voices() {
+        return voices;
+    }
+
+    public ChatterEngine chatter() {
+        return chatter;
+    }
+
+    public SocialFabric social() {
+        return social;
+    }
+
+    public Conversation conversation() {
+        return conversation;
+    }
+
+    public Market market() {
+        return market;
+    }
+
+    public List<Integer> channels() {
+        return channels;
+    }
+
+    // ---- registry ------------------------------------------------------------------------
+
+    public Collection<Citizen> citizens() {
+        return registry.values();
+    }
+
+    public Citizen citizen(int characterId) {
+        return registry.get(characterId);
+    }
+
+    public Citizen citizenByName(String name) {
+        if (name == null) {
+            return null;
+        }
+        for (Citizen citizen : registry.values()) {
+            if (citizen.name().equalsIgnoreCase(name)) {
+                return citizen;
+            }
+        }
+        return null;
+    }
+
+    public boolean isCitizen(int characterId) {
+        return registry.containsKey(characterId);
+    }
+
+    /** Writes through to the store and the in-memory registry. */
+    public void save(Citizen citizen) {
+        registry.put(citizen.characterId(), citizen);
+        store.save(citizen);
+    }
+
+    public void forget(int characterId) {
+        registry.remove(characterId);
+    }
+
+    public int activeCount() {
+        int count = 0;
+        for (Citizen citizen : registry.values()) {
+            if (citizen.state() == Citizen.State.ACTIVE) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    // ---- world helpers -------------------------------------------------------------------
+
+    public MapleMap map(int channel, int mapId) {
+        try {
+            World w = Server.getInstance().getWorld(world.config().WORLD);
+            Channel ch = w == null ? null : w.getChannel(channel);
+            return ch == null || mapId <= 0 ? null : ch.getMapFactory().getMap(mapId);
+        } catch (RuntimeException failure) {
+            return null;
+        }
+    }
+
+    public World gameWorld() {
+        return Server.getInstance().getWorld(world.config().WORLD);
+    }
+
+    /** Humans on this map across the given channel instance. */
+    public static int humansIn(MapleMap map) {
+        return server.living.resident.ResidentRuntime.humansIn(map);
+    }
+
+    /** Maps (any channel) that currently hold a human, for perception-biased planning. */
+    public java.util.Set<Integer> humanMaps() {
+        java.util.Set<Integer> maps = new java.util.HashSet<>();
+        World w = gameWorld();
+        if (w == null) {
+            return maps;
+        }
+        for (client.Character chr : w.getPlayerStorage().getAllCharacters()) {
+            if (!server.integration.AgentPresence.isAgent(chr) && chr.getMap() != null) {
+                maps.add(chr.getMapId());
+            }
+        }
+        return maps;
+    }
+}

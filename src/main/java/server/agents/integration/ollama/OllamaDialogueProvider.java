@@ -108,7 +108,10 @@ public final class OllamaDialogueProvider implements DialogueProvider {
         prompt.append("Energy: ").append(request.context().energyPercent()).append("%\n");
         prompt.append("Relationship: ").append(request.context().relationshipSummary()).append('\n');
         if (!request.context().publicFacts().isEmpty()) {
-            prompt.append("Public context: ").append(request.context().publicFacts()).append('\n');
+            prompt.append("Public context:\n");
+            for (var fact : request.context().publicFacts().entrySet()) {
+                prompt.append("- ").append(fact.getKey()).append(": ").append(fact.getValue()).append('\n');
+            }
         }
         if (!request.recentTurns().isEmpty()) {
             prompt.append("Recent conversation:\n");

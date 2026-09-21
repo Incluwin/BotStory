@@ -119,6 +119,7 @@ public final class LivingWorld {
         instance = world;
         log.info("Living world started: {} (world {} channel {}, content {})", content.census(), config.WORLD,
                 config.CHANNEL, Path.of(config.CONTENT_DIR).toAbsolutePath());
+        server.living.population.Population.start(world);
     }
 
     public static synchronized void stop() {
@@ -127,6 +128,7 @@ public final class LivingWorld {
             return;
         }
         instance = null;
+        server.living.population.Population.stop();
         for (ScheduledFuture<?> timer : world.timers) {
             timer.cancel(false);
         }

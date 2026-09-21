@@ -1362,7 +1362,11 @@ public class Character extends AbstractCharacterObject {
                     id, oldJob, newJob, level);
             return false;
         }
-        return changeJobInternal(newJob, true);
+        boolean changed = changeJobInternal(newJob, true);
+        if (changed && getMap() != null) {
+            server.living.LivingWorldHooks.jobAdvanced(this);
+        }
+        return changed;
     }
 
     /** Administrative override that rebuilds formula HP/MP without AP, SP, or slot rewards. */
@@ -7499,6 +7503,7 @@ public class Character extends AbstractCharacterObject {
         }
 
         getMap().broadcastMessage(this, PacketCreator.showForeignEffect(getId(), 0), false);
+        server.living.LivingWorldHooks.levelUp(this);
         server.observer.ObserverInterestService.publish(
                 this,
                 server.observer.ObserverInterestService.Type.LEVEL_UP,

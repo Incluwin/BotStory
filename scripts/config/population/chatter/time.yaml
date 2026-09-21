@@ -1,0 +1,47 @@
+# Presence-rhythm chatter: arriving, leaving, going idle (plan 5.1 "Time").
+intents:
+  - id: time.logout
+    trigger: logout
+    where: town
+    channel: map
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "gtg"
+      - "night everyone"
+      - "off to bed"
+      - "cya tomorrow"
+      - "gotta go, school"
+      - "bye"
+  - id: time.afk
+    trigger: afk
+    where: any
+    channel: map
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "afk"
+      - "brb dinner"
+      - "afk 10 min"
+      - "brb"
+  - id: time.back
+    trigger: back
+    where: any
+    channel: map
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "back"
+      - "im back"
+      - "ok back"
+  - id: time.lag
+    trigger: lag
+    where: any
+    channel: map
+    weight: 5
+    cooldownMs: 600000
+    lines:
+      - "lag"
+      - "anyone else lagging"
+      - "server lag?"
+      - "laggg"

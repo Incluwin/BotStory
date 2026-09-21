@@ -1,0 +1,26 @@
+# Bot guild generator (plan 4.1): a pattern by weight, slot lists, mottos, and emblem palettes.
+patterns:
+  - { pattern: "{Adj}{Noun}", weight: 30 }
+  - { pattern: "{Noun}s", weight: 10 }
+  - { pattern: "{Adj}", weight: 8 }
+  - { pattern: "{Noun}Of{Place}", weight: 8 }
+  - { pattern: "The{Noun}", weight: 6 }
+  - { pattern: "{Word}", weight: 20 }
+lists:
+  Adj: [Eternal, Silent, Crimson, Golden, Shadow, Frozen, Sacred, Rising, Fallen, Lunar, Solar, Wild, Iron, Velvet, Noble, Chaos, Divine, Ancient]
+  Noun: [Legacy, Knights, Wolves, Phoenix, Dragons, Blade, Order, Guard, Legion, Empire, Haven, Crusade, Storm, Valor, Union, Circle, Pact, Court]
+  Place: [Henesys, Ellinia, Perion, Orbis, Ludi, Victoria, Ossyria, Sleepywood]
+  Word: [Legacy, Reborn, Serenity, Equinox, Zenith, Vanguard, Nostalgia, Genesis, Infinity, Exile, Harmony, Ascend, Remedy, Solace, Insomnia, Fable, Aurora, Nexus]
+mottos:
+  - "active and friendly, all levels welcome"
+  - "we do PQs every night"
+  - "no drama, just maple"
+  - "lv30+ please"
+  - "casual guild, come chill"
+  - "recruiting mages and clerics"
+  - "old school players welcome back"
+  - "help each other, that's it"
+emblems:
+  backgrounds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+  logos: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+  colors: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]

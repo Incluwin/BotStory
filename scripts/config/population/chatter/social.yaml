@@ -1,0 +1,125 @@
+# Guild, buddy, party-forming and megaphone chatter (plan 4, 5.5).
+intents:
+  - id: guild.login
+    trigger: login
+    where: any
+    channel: guild
+    weight: 8
+    cooldownMs: 0
+    lines:
+      - "hey guild"
+      - "hi all"
+      - "yo"
+      - "im on"
+      - "anyone doing anything"
+  - id: guild.logout
+    trigger: logout
+    where: any
+    channel: guild
+    weight: 8
+    cooldownMs: 0
+    lines:
+      - "gtg night"
+      - "off for today"
+      - "later guys"
+      - "cya"
+  - id: guild.chat
+    trigger: dwell
+    where: any
+    channel: guild
+    weight: 4
+    cooldownMs: 900000
+    lines:
+      - "anyone up for {pq}"
+      - "what are you guys training on"
+      - "we need more clerics lol"
+      - "who is doing pq tonight"
+      - "gz to whoever hit {level}"
+      - "guild event this weekend?"
+      - "i need pots, anyone in town"
+  - id: buddy.login
+    trigger: login.buddy
+    where: any
+    channel: buddy
+    weight: 9
+    cooldownMs: 0
+    lines:
+      - "ur on!"
+      - "hey {name}"
+      - "yo {name} finally"
+      - "hi {name} :)"
+  - id: buddy.logout
+    trigger: logout
+    where: any
+    channel: buddy
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "gn {name}"
+      - "off, cya tomorrow"
+      - "gtg"
+  - id: lobby.recruit
+    trigger: dwell
+    where: lobby
+    channel: map
+    weight: 10
+    cooldownMs: 120000
+    lines:
+      - "R> 2 for {pq}"
+      - "R> {pq} lv {levels}"
+      - "{pq} anyone? need 1 more"
+      - "lf> {pq} party"
+      - "R> cleric for {pq}"
+      - "we need 2 more for {pq}, pm me"
+  - id: lobby.join
+    trigger: dwell
+    where: lobby
+    channel: map
+    weight: 5
+    cooldownMs: 300000
+    lines:
+      - "any {pq} party recruiting"
+      - "inv pls {pq}"
+      - "lf> {pq}"
+      - "pt for {pq}?"
+  - id: smega.recruit
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "{guild} is recruiting! {motto}"
+      - "Recruiting for {guild} - {motto}"
+      - "{guild} looking for active members, {motto}"
+  - id: smega.sell
+    trigger: smega
+    where: any
+    channel: smega
+    weight: 4
+    cooldownMs: 0
+    lines:
+      - "S> {item} {price} @ fm"
+      - "S> {item}, whisper {me}"
+      - "B> {item} paying {price}"
+  - id: party.forming
+    trigger: party.forming
+    where: any
+    channel: map
+    weight: 8
+    cooldownMs: 0
+    lines:
+      - "ok lets go"
+      - "party up"
+      - "inv sent"
+      - "we good? lets go"
+  - id: party.invite.human
+    trigger: party.invite
+    where: any
+    channel: map
+    weight: 10
+    cooldownMs: 0
+    lines:
+      - "{name} wanna join us"
+      - "hey {name} we need one more"
+      - "{name} come pq with us"

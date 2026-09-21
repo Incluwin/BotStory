@@ -27,9 +27,26 @@ public final class LivingWorldHooks {
         try {
             world.quests().onMobKilled(monster.getId(), attackerIds, map);
             world.contracts().onMobKilled(monster.getId(), attackerIds, map);
+            server.living.population.PopulationHooks.mobKilled(monster, attackerIds, map);
         } catch (RuntimeException failure) {
             log.warn("living world mobKilled hook failed", failure);
         }
+    }
+
+    /** Any character (human or bot) reached a new level; citizens react and journal it. */
+    public static void levelUp(Character chr) {
+        if (LivingWorld.get() == null) {
+            return;
+        }
+        server.living.population.PopulationHooks.levelUp(chr);
+    }
+
+    /** Any character advanced a job. */
+    public static void jobAdvanced(Character chr) {
+        if (LivingWorld.get() == null) {
+            return;
+        }
+        server.living.population.PopulationHooks.jobAdvanced(chr);
     }
 
     public static void itemGained(Character chr, int itemId, int quantity) {
@@ -39,6 +56,7 @@ public final class LivingWorldHooks {
         }
         try {
             world.quests().onItemGained(chr, itemId);
+            server.living.population.PopulationHooks.itemGained(chr, itemId, quantity);
         } catch (RuntimeException failure) {
             log.warn("living world itemGained hook failed", failure);
         }
@@ -64,7 +82,10 @@ public final class LivingWorldHooks {
             return false;
         }
         try {
-            return world.dialogue().onMapChat(speaker, text);
+            if (world.dialogue().onMapChat(speaker, text)) {
+                return true;
+            }
+            return server.living.population.PopulationHooks.chat(speaker, text);
         } catch (RuntimeException failure) {
             log.warn("living world chat hook failed", failure);
             return false;
@@ -134,6 +155,7 @@ public final class LivingWorldHooks {
         }
         try {
             world.contracts().onOwnerDied(chr);
+            server.living.population.PopulationHooks.died(chr);
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);
         }

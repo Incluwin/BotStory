@@ -1,0 +1,322 @@
+package server.living.population;
+
+import server.living.config.ContentException;
+import server.living.config.ContentLoader;
+import server.living.config.LivingContent;
+import server.living.config.Node;
+import server.living.population.PopulationContent.Career;
+import server.living.population.PopulationContent.Cohort;
+import server.living.population.PopulationContent.Field;
+import server.living.population.PopulationContent.GuildNames;
+import server.living.population.PopulationContent.Intent;
+import server.living.population.PopulationContent.LoadoutBand;
+import server.living.population.PopulationContent.Lobby;
+import server.living.population.PopulationContent.NamePattern;
+import server.living.population.PopulationContent.Names;
+import server.living.population.PopulationContent.Region;
+import server.living.population.PopulationContent.Voice;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.DateTimeException;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
+
+/**
+ * Reads the population content directory: cohorts.yaml, careers.yaml, names.yaml, voices.yaml,
+ * guild-names.yaml, regions.yaml, fields.yaml and chatter/*.yaml. Lint findings ride along as
+ * warnings ({@code ERROR ...} lines fail {@code !citizens reload}).
+ */
+public final class PopulationLoader {
+    private static final Set<String> TRIGGERS = Set.of("enter", "dwell", "levelup.other", "levelup.self", "death.other",
+            "death.self", "drop.rare", "drop.rare.self", "boss", "jobadvance.other", "login", "logout", "login.buddy",
+            "smega", "party.forming", "party.invite", "price", "afk", "back", "lag");
+    private static final Set<String> WHERE = Set.of("town", "field", "fm", "lobby", "any");
+    private static final Set<String> CHANNELS = Set.of("map", "party", "guild", "buddy", "smega");
+
+    private PopulationLoader() {
+    }
+
+    public static PopulationContent load(Path root, LivingContent living) {
+        if (!Files.isDirectory(root)) {
+            throw new ContentException("population content directory not found: " + root.toAbsolutePath());
+        }
+        List<String> warnings = new ArrayList<>();
+        Map<String, Cohort> cohorts = new LinkedHashMap<>();
+        for (Node node : listOf(root.resolve("cohorts.yaml"), "cohorts")) {
+            Cohort cohort = cohort(node);
+            put(cohorts, cohort.id(), cohort, node);
+        }
+        Map<String, Career> careers = new LinkedHashMap<>();
+        for (Node node : listOf(root.resolve("careers.yaml"), "careers")) {
+            Career career = career(node);
+            put(careers, career.id(), career, node);
+        }
+        Names names = names(root.resolve("names.yaml"));
+        Map<String, Voice> voices = new LinkedHashMap<>();
+        for (Node node : listOf(root.resolve("voices.yaml"), "voices")) {
+            Voice voice = voice(node);
+            put(voices, voice.id(), voice, node);
+        }
+        GuildNames guildNames = guildNames(root.resolve("guild-names.yaml"));
+        Map<String, Region> regions = new LinkedHashMap<>();
+        for (Node node : listOf(root.resolve("regions.yaml"), "regions")) {
+            Region region = region(node);
+            put(regions, region.id(), region, node);
+        }
+        Map<Integer, Field> fields = new LinkedHashMap<>();
+        for (Node node : listOf(root.resolve("fields.yaml"), "fields")) {
+            Field field = new Field(node.get("mapId").integer(), node.get("name").string("map"), node.get("street").string(""),
+                    node.get("region").string("victoria"), node.get("town").bool(false), node.get("mobs").integer(0),
+                    node.get("mobLevel").integer(0), node.get("capacity").integer(0));
+            fields.put(field.mapId(), field);
+        }
+        List<Intent> intents = new ArrayList<>();
+        Path chatter = root.resolve("chatter");
+        if (Files.isDirectory(chatter)) {
+            try (Stream<Path> files = Files.list(chatter)) {
+                for (Path file : files.filter(f -> f.toString().endsWith(".yaml")).sorted().toList()) {
+                    for (Node node : ContentLoader.read(file).get("intents").items()) {
+                        intents.add(intent(node, file.getFileName().toString()));
+                    }
+                }
+            } catch (IOException failure) {
+                throw new ContentException("cannot list " + chatter, failure);
+            }
+        }
+        List<PopulationContent.Good> basket = new ArrayList<>();
+        int permit = 5140000;
+        Path market = root.resolve("market.yaml");
+        if (Files.exists(market)) {
+            Node node = ContentLoader.read(market);
+            permit = node.get("permit").integer(permit);
+            for (Node good : node.get("basket").items()) {
+                basket.add(new PopulationContent.Good(good.get("itemId").integer(), good.get("price").longValue(1000L)));
+            }
+        }
+        PopulationContent content = new PopulationContent(cohorts, careers, names, voices, guildNames, regions, fields, intents,
+                basket, permit, warnings);
+        warnings.addAll(lint(content, living));
+        return new PopulationContent(cohorts, careers, names, voices, guildNames, regions, fields, intents, basket, permit, warnings);
+    }
+
+    static List<String> lint(PopulationContent content, LivingContent living) {
+        List<String> out = new ArrayList<>();
+        int share = 0;
+        for (Cohort cohort : content.cohorts().values()) {
+            share += cohort.share();
+            if (cohort.weekday().length != 24 || cohort.weekend().length != 24) {
+                out.add("ERROR cohorts.yaml " + cohort.id() + ": weekday/weekend need 24 hour weights");
+            }
+            if (cohort.sessionMin() < 5 || cohort.sessionMax() < cohort.sessionMin()) {
+                out.add("ERROR cohorts.yaml " + cohort.id() + ": sessionMinutes must be a range >= 5");
+            }
+        }
+        if (!content.cohorts().isEmpty() && share != 100) {
+            out.add("WARN cohorts.yaml: shares sum to " + share + ", not 100");
+        }
+        for (Career career : content.careers().values()) {
+            if (server.living.resident.ResidentShaper.job(career.job()) == client.Job.BEGINNER && !"BEGINNER".equalsIgnoreCase(career.job())) {
+                out.add("ERROR careers.yaml " + career.id() + ": unknown job '" + career.job() + "'");
+            }
+            for (LoadoutBand band : career.loadouts()) {
+                if (living != null && living.loadout(band.loadout()) == null) {
+                    out.add("ERROR careers.yaml " + career.id() + ": loadout '" + band.loadout() + "' not in living-world loadouts.yaml");
+                }
+            }
+        }
+        if (content.names().patterns().isEmpty()) {
+            out.add("ERROR names.yaml: no patterns");
+        }
+        int voiceShare = 0;
+        for (Voice voice : content.voices().values()) {
+            voiceShare += voice.share();
+        }
+        if (!content.voices().isEmpty() && voiceShare != 100) {
+            out.add("WARN voices.yaml: shares sum to " + voiceShare + ", not 100");
+        }
+        for (Region region : content.regions().values()) {
+            for (int town : region.towns()) {
+                Field field = content.field(town);
+                if (field == null) {
+                    out.add("WARN regions.yaml " + region.id() + ": town map " + town + " not in fields.yaml");
+                } else if (!field.town()) {
+                    out.add("ERROR regions.yaml " + region.id() + ": map " + town + " is not a town");
+                }
+            }
+        }
+        Set<String> intentIds = new java.util.HashSet<>();
+        for (Intent intent : content.intents()) {
+            String where = intent.file() + " " + intent.id();
+            if (!intentIds.add(intent.id())) {
+                out.add("ERROR " + where + ": duplicate intent id");
+            }
+            if (!TRIGGERS.contains(intent.trigger())) {
+                out.add("ERROR " + where + ": unknown trigger '" + intent.trigger() + "'");
+            }
+            if (!WHERE.contains(intent.where())) {
+                out.add("ERROR " + where + ": unknown where '" + intent.where() + "'");
+            }
+            if (!CHANNELS.contains(intent.channel())) {
+                out.add("ERROR " + where + ": unknown channel '" + intent.channel() + "'");
+            }
+            if (intent.lines().isEmpty()) {
+                out.add("ERROR " + where + ": no lines");
+            }
+            for (String line : intent.lines()) {
+                for (char c : line.toCharArray()) {
+                    if (c > 0x7e) {
+                        out.add("ERROR " + where + ": non-ASCII character in '" + line + "'");
+                        break;
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    // ---- readers -------------------------------------------------------------------------
+
+    private static List<Node> listOf(Path file, String key) {
+        if (!Files.exists(file)) {
+            return List.of();
+        }
+        return ContentLoader.read(file).get(key).items();
+    }
+
+    private static Cohort cohort(Node node) {
+        ZoneId zone;
+        try {
+            zone = ZoneId.of(node.get("zone").string("America/New_York"));
+        } catch (DateTimeException invalid) {
+            throw new ContentException(node.path() + ": bad zone");
+        }
+        return new Cohort(node.get("id").string(), zone, node.get("share").integer(0), node.get("peakOnlinePercent").integer(30),
+                weights(node.get("weekday")), weights(node.get("weekend")),
+                node.get("sessionMinutes").get("min").integer(60), node.get("sessionMinutes").get("max").integer(180),
+                intMap(node.get("activities")));
+    }
+
+    private static int[] weights(Node node) {
+        List<Integer> values = node.integers();
+        int[] out = new int[values.size()];
+        for (int i = 0; i < out.length; i++) {
+            out[i] = Math.max(0, Math.min(10, values.get(i)));
+        }
+        return out;
+    }
+
+    private static Career career(Node node) {
+        List<LoadoutBand> bands = new ArrayList<>();
+        for (Node band : node.get("loadouts").items()) {
+            bands.add(new LoadoutBand(band.get("maxLevel").integer(200), band.get("loadout").string()));
+        }
+        return new Career(node.get("id").string(), node.get("job").string("BEGINNER"), node.get("popularity").integer(1),
+                node.get("levelCap").integer(70), bands);
+    }
+
+    private static Names names(Path file) {
+        if (!Files.exists(file)) {
+            return new Names(List.of(), Map.of(), List.of(), List.of(), List.of());
+        }
+        Node root = ContentLoader.read(file);
+        Node syllables = root.get("syllables");
+        return new Names(patterns(root.get("patterns")), stringLists(root.get("lists")),
+                syllables.get("start").strings(), syllables.get("middle").strings(), syllables.get("end").strings());
+    }
+
+    private static List<NamePattern> patterns(Node node) {
+        List<NamePattern> out = new ArrayList<>();
+        for (Node item : node.items()) {
+            out.add(new NamePattern(item.get("pattern").string(), item.get("weight").integer(1)));
+        }
+        return out;
+    }
+
+    private static Voice voice(Node node) {
+        return new Voice(node.get("id").string(), node.get("style").string("relaxed-v1"), node.get("share").integer(0),
+                node.get("lowercase").decimal(0.5), node.get("typoRate").decimal(0.0), node.get("abbreviationRate").decimal(0.0),
+                stringMap(node.get("abbreviations")), node.get("emoticons").strings(), node.get("emoticonRate").decimal(0.0),
+                node.get("petPhrases").strings(), node.get("petPhraseRate").decimal(0.0), node.get("delayMsPerChar").integer(50),
+                node.get("ignoreRate").decimal(0.1));
+    }
+
+    private static GuildNames guildNames(Path file) {
+        if (!Files.exists(file)) {
+            return new GuildNames(List.of(), Map.of(), List.of(), List.of(), List.of(), List.of());
+        }
+        Node root = ContentLoader.read(file);
+        Node emblems = root.get("emblems");
+        return new GuildNames(patterns(root.get("patterns")), stringLists(root.get("lists")), root.get("mottos").strings(),
+                emblems.get("backgrounds").integers(), emblems.get("logos").integers(), emblems.get("colors").integers());
+    }
+
+    private static Region region(Node node) {
+        List<Lobby> lobbies = new ArrayList<>();
+        for (Node lobby : node.get("lobbies").items()) {
+            lobbies.add(new Lobby(lobby.get("id").string(), lobby.get("mapId").integer(), lobby.get("levels").get("min").integer(1),
+                    lobby.get("levels").get("max").integer(200), lobby.get("name").string(lobby.get("id").string().toUpperCase(Locale.ROOT))));
+        }
+        return new Region(node.get("id").string(), node.get("levels").get("min").integer(1), node.get("levels").get("max").integer(200),
+                node.get("towns").integers(), lobbies, node.get("fm").integer(910000000), node.get("weight").integer(1));
+    }
+
+    private static Intent intent(Node node, String file) {
+        Map<String, List<String>> styles = new LinkedHashMap<>();
+        Node styleNode = node.get("styles");
+        if (styleNode.isMap()) {
+            for (String key : styleNode.keys()) {
+                styles.put(key, styleNode.get(key).strings());
+            }
+        }
+        return new Intent(node.get("id").string(), node.get("trigger").string("dwell"), node.get("where").string("any"),
+                node.get("mapIds").integers(), node.get("channel").string("map"), node.get("weight").integer(5),
+                node.get("cooldownMs").longValue(300_000L), node.get("lines").strings(), styles, file);
+    }
+
+    private static Map<String, Integer> intMap(Node node) {
+        Map<String, Integer> out = new LinkedHashMap<>();
+        if (node.isMap()) {
+            for (String key : node.keys()) {
+                out.put(key.toUpperCase(Locale.ROOT), node.get(key).integer(0));
+            }
+        }
+        return out;
+    }
+
+    private static Map<String, String> stringMap(Node node) {
+        Map<String, String> out = new LinkedHashMap<>();
+        if (node.isMap()) {
+            for (String key : node.keys()) {
+                out.put(key, node.get(key).string(""));
+            }
+        }
+        return out;
+    }
+
+    private static Map<String, List<String>> stringLists(Node node) {
+        Map<String, List<String>> out = new LinkedHashMap<>();
+        if (node.isMap()) {
+            for (String key : node.keys()) {
+                out.put(key, node.get(key).strings());
+            }
+        }
+        return out;
+    }
+
+    private static <T> void put(Map<String, T> target, String id, T value, Node node) {
+        if (id == null || id.isBlank()) {
+            throw new ContentException(node.path() + ": id is required");
+        }
+        if (target.putIfAbsent(id, value) != null) {
+            throw new ContentException(node.path() + ": duplicate id '" + id + "'");
+        }
+    }
+}

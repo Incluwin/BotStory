@@ -23,7 +23,7 @@ import java.util.Map;
  * allows them (a persona authored as a third job below level 70 stops at its second job),
  * AP by job archetype, then loadout equipment and consumables. Idempotent per shaped version.
  */
-final class ResidentShaper {
+public final class ResidentShaper {
     private static final Logger log = LoggerFactory.getLogger(ResidentShaper.class);
     /** Bump when the shaping recipe changes so existing personas are reshaped once. */
     static final int RECIPE_VERSION = 2;
@@ -31,9 +31,18 @@ final class ResidentShaper {
     private ResidentShaper() {
     }
 
-    static void shape(Character agent, Persona persona, Loadout loadout, int levelSeed) {
-        int targetLevel = Math.max(1, Math.min(persona.level().pick(levelSeed), 200));
-        List<Job> chain = advancementChain(job(persona.job()));
+    public static void shape(Character agent, Persona persona, Loadout loadout, int levelSeed) {
+        shapeTo(agent, job(persona.job()), persona.level().pick(levelSeed), loadout);
+    }
+
+    /**
+     * Levels the character one step at a time to {@code level}, advancing along the legal job chain
+     * toward {@code target}, repairs skipped growth, spends AP and applies the loadout. Used for
+     * Residents and for generated citizens (population).
+     */
+    public static void shapeTo(Character agent, Job target, int level, Loadout loadout) {
+        int targetLevel = Math.max(1, Math.min(level, 200));
+        List<Job> chain = advancementChain(target);
         int guard = 0;
         while (guard++ < 250) {
             advanceIfLegal(agent, chain);
@@ -64,7 +73,7 @@ final class ResidentShaper {
             try {
                 AgentEquipmentService.autoEquip(agent, agent, null, true);
             } catch (RuntimeException failure) {
-                log.debug("autoequip for persona {} failed", persona.id(), failure);
+                log.debug("autoequip for {} failed", agent.getName(), failure);
             }
         }
         agent.healHpMp();
@@ -125,7 +134,7 @@ final class ResidentShaper {
         }
     }
 
-    static Job job(String name) {
+    public static Job job(String name) {
         if (name == null || name.isBlank()) {
             return Job.BEGINNER;
         }

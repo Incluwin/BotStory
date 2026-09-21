@@ -1,0 +1,97 @@
+# Town chatter (plan 5.1). trigger: enter | dwell; where: town | field | fm | lobby | any (or mapIds: [...]).
+# Slots: {me} {name} {level} {item} {price} {map} {guild} {job} {pq} {region}. Lines are templates;
+# the citizen's voice pack lowercases, abbreviates and typos them afterwards.
+intents:
+  - id: town.directions
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 6
+    cooldownMs: 600000
+    lines:
+      - "how do i get to ellinia from here"
+      - "where is the job advancement npc"
+      - "anyone know where the potion shop is"
+      - "how do i get to orbis"
+      - "wheres the taxi"
+      - "which way to kerning"
+      - "is there a shortcut to sleepywood"
+      - "how do you get to the free market"
+  - id: town.lfg
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 7
+    cooldownMs: 300000
+    lines:
+      - "anyone want to train together"
+      - "lf> party for {map} area"
+      - "anyone {level}ish want to party"
+      - "lf> cleric for training"
+      - "pt at pig beach anyone"
+      - "anyone training around here?"
+  - id: town.sell
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 5
+    cooldownMs: 400000
+    lines:
+      - "S> {item} {price}"
+      - "selling {item} for {price} whisper me"
+      - "S> {item} cheap"
+      - "anyone buying {item}"
+  - id: town.buy
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 4
+    cooldownMs: 500000
+    lines:
+      - "B> {item}"
+      - "buying {item} paying {price}"
+      - "anyone selling {item}?"
+      - "B> 10% scrolls"
+  - id: town.smalltalk
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 6
+    cooldownMs: 400000
+    lines:
+      - "this song is so nostalgic"
+      - "anyone else lagging"
+      - "so bored"
+      - "what should i train at lv {level}"
+      - "is the server always this busy"
+      - "brb food"
+      - "back"
+      - "im so tired of snails"
+      - "finally got my {job} advancement today"
+      - "just saw someone with a zhelm, jealous"
+      - "who wants to do a pq"
+      - "does anyone actually read these"
+      - "gm event when"
+      - "my potions are so expensive omg"
+  - id: town.enter
+    trigger: enter
+    where: town
+    channel: map
+    weight: 3
+    cooldownMs: 900000
+    lines:
+      - "hi everyone"
+      - "yo"
+      - "hey {map}"
+      - "back in town finally"
+  - id: town.fame
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 3
+    cooldownMs: 900000
+    lines:
+      - "fame me back?"
+      - "fame for fame anyone"
+      - "who wants fame"
+      - "famed! fame back pls"

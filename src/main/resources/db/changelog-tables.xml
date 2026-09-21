@@ -138,6 +138,15 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="30-population" author="ganre">
+        <!-- Populated server: citizens, circles, guild metadata, price index.
+             Ships behind population.ENABLED (config.yaml). See docs/POPULATED_SERVER_PLAN.md. -->
+        <sqlFile path="db/tables/030-population.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/030-population-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
     <!-- ===== cosmic_agents (Kiwiism) changesets ===== -->
     <changeSet id="25" author="Codex">
         <preConditions onFail="MARK_RAN">

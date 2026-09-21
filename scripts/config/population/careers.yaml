@@ -1,0 +1,99 @@
+# Careers: the job path a citizen follows and the gear it wears by level (plan 3.4). `job` is the final
+# job in the legal advancement chain (ResidentShaper.job names). `popularity` weights births.
+# `levelCap` is where a casual citizen of this career plateaus. Loadout ids come from the living-world
+# loadouts.yaml; `maxLevel` picks the first band the citizen's level fits.
+careers:
+  - id: warrior-fighter
+    job: FIGHTER
+    popularity: 18
+    levelCap: 75
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: dock-worker }
+      - { maxLevel: 200, loadout: perion-warrior-l30 }
+  - id: warrior-spearman
+    job: SPEARMAN
+    popularity: 8
+    levelCap: 70
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: dock-worker }
+      - { maxLevel: 200, loadout: perion-spearman-l32 }
+  - id: warrior-page
+    job: PAGE
+    popularity: 4
+    levelCap: 70
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: sailor-cutlass }
+      - { maxLevel: 200, loadout: sleepywood-guide-l40 }
+  - id: magician-fire
+    job: FP_WIZARD
+    popularity: 10
+    levelCap: 80
+    loadouts:
+      - { maxLevel: 7, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: ellinia-mage-l22 }
+      - { maxLevel: 200, loadout: ellinia-mage-l30 }
+  - id: magician-ice
+    job: IL_WIZARD
+    popularity: 8
+    levelCap: 80
+    loadouts:
+      - { maxLevel: 7, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: ellinia-mage-l22 }
+      - { maxLevel: 200, loadout: ellinia-mage-l30 }
+  - id: magician-cleric
+    job: CLERIC
+    popularity: 12
+    levelCap: 85
+    loadouts:
+      - { maxLevel: 7, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: ellinia-mage-l22 }
+      - { maxLevel: 200, loadout: cleric-l32 }
+  - id: bowman-hunter
+    job: HUNTER
+    popularity: 10
+    levelCap: 75
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: hunter-bowman-l25 }
+      - { maxLevel: 200, loadout: hunter-bowman-l35 }
+  - id: bowman-crossbow
+    job: CROSSBOWMAN
+    popularity: 5
+    levelCap: 70
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: hunter-bowman-l25 }
+      - { maxLevel: 200, loadout: hunter-bowman-l35 }
+  - id: thief-assassin
+    job: ASSASSIN
+    popularity: 12
+    levelCap: 80
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: kerning-thief-l28 }
+      - { maxLevel: 200, loadout: kerning-thief-l35 }
+  - id: thief-bandit
+    job: BANDIT
+    popularity: 6
+    levelCap: 75
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: kerning-thief-l28 }
+      - { maxLevel: 200, loadout: kerning-thief-l35 }
+  - id: pirate-brawler
+    job: BRAWLER
+    popularity: 4
+    levelCap: 70
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 200, loadout: nautilus-pirate-l30 }
+  - id: pirate-gunslinger
+    job: GUNSLINGER
+    popularity: 3
+    levelCap: 70
+    loadouts:
+      - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 200, loadout: nautilus-gunslinger-l28 }
