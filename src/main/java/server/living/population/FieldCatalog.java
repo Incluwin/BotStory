@@ -140,6 +140,12 @@ public final class FieldCatalog {
     }
 
     public String name(int mapId) {
+        if (mapId == FM_ENTRANCE) {
+            return "Free Market";
+        }
+        if (isFreeMarket(mapId)) {
+            return "Free Market room " + (mapId - FM_ENTRANCE);
+        }
         Field field = population.content().field(mapId);
         return field == null ? "map " + mapId : field.name();
     }

@@ -34,11 +34,17 @@ public final class PopulationHooks {
         }
         try {
             CitizenSession self = population.presence().sessionOf(chr);
+            // early levels fly by; only every few of them are worth a "ding" (10+ always are)
+            boolean worthMentioning = chr.getLevel() >= 10 || chr.getLevel() % 5 == 0;
             if (self != null) {
                 self.journal.add("level", "reached level " + chr.getLevel());
-                population.chatter().event(ChatterEngine.Event.of("levelup.self", chr.getMapId(), channelOf(chr)).self(self).subject(chr));
+                if (worthMentioning) {
+                    population.chatter().event(ChatterEngine.Event.of("levelup.self", chr.getMapId(), channelOf(chr)).self(self).subject(chr));
+                }
             }
-            population.chatter().event(ChatterEngine.Event.of("levelup.other", chr.getMapId(), channelOf(chr)).subject(chr));
+            if (worthMentioning) {
+                population.chatter().event(ChatterEngine.Event.of("levelup.other", chr.getMapId(), channelOf(chr)).subject(chr));
+            }
         } catch (RuntimeException failure) {
             log.debug("population levelUp hook failed", failure);
         }
