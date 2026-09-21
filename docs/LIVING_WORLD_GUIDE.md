@@ -1,5 +1,8 @@
 # Living world: how to run it, play it and author it
 
+(For the next stage - thousands of generated citizens with lives, guilds, chatter and grounded
+conversation - see `docs/POPULATED_SERVER_PLAN.md`.)
+
 Implementation of `docs/LIVING_RPG_PLAN.md` (first cut, 2026-09-20). Everything lives under
 `server.living.*` plus small hooks in the engine; content is YAML under
 `scripts/config/living-world/`.
