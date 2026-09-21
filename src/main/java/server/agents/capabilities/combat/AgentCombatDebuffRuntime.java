@@ -22,8 +22,8 @@ import java.util.List;
  * is the caller's; the automatic combat loop does not pick debuffs yet.
  */
 public final class AgentCombatDebuffRuntime {
-    private static final int MAGNET_RANGE_X = 300;
-    private static final int MAGNET_RANGE_Y = 100;
+    private static final int MAGNET_RANGE_X = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentCombatDebuffRuntime.MAGNET_RANGE_X");
+    private static final int MAGNET_RANGE_Y = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentCombatDebuffRuntime.MAGNET_RANGE_Y");
 
     private AgentCombatDebuffRuntime() {
     }

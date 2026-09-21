@@ -18,7 +18,7 @@ public final class AgentSkillConsumablePolicy {
     /** Casts' worth to keep on hand. */
     public static final int STOCK_CASTS = 30;
     /** Below this fraction of the target a shop that sells the item is worth a visit. */
-    private static final int RESTOCK_TRIGGER_DIVISOR = 3;
+    private static final int RESTOCK_TRIGGER_DIVISOR = config.AgentTuning.intValue("server.agents.capabilities.supplies.AgentSkillConsumablePolicy.RESTOCK_TRIGGER_DIVISOR");
 
     private AgentSkillConsumablePolicy() {
     }

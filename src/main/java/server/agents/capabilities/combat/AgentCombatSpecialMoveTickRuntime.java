@@ -23,10 +23,10 @@ import java.util.List;
  */
 public final class AgentCombatSpecialMoveTickRuntime {
     /** Minimum gap between debuff casts so a mob-status roll that misses does not spam. */
-    private static final long DEBUFF_INTERVAL_MS = 4_000L;
-    private static final int DEBUFF_REACH_X = 200;
-    private static final int DEBUFF_REACH_Y = 80;
-    private static final int ATTACKS_BETWEEN_SPECIAL_MOVES = 2;
+    private static final long DEBUFF_INTERVAL_MS = config.AgentTuning.longValue("server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime.DEBUFF_INTERVAL_MS");
+    private static final int DEBUFF_REACH_X = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime.DEBUFF_REACH_X");
+    private static final int DEBUFF_REACH_Y = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime.DEBUFF_REACH_Y");
+    private static final int ATTACKS_BETWEEN_SPECIAL_MOVES = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime.ATTACKS_BETWEEN_SPECIAL_MOVES");
 
     /** Diagnostic kill switch (the skill probe flips it for A/B runs); on by default. */
     private static volatile boolean enabled = true;

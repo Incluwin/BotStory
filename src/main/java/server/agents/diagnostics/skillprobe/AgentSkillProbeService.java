@@ -100,29 +100,29 @@ public final class AgentSkillProbeService {
     private static final Map<Integer, Thread> RUNNING = new ConcurrentHashMap<>();
     private static final Map<Integer, SkillProbeReport> LAST_REPORT = new ConcurrentHashMap<>();
 
-    private static final int EXEC_RETRIES = 8;
-    private static final long EXEC_RETRY_SLEEP_MS = 150L;
-    private static final long SETTLE_MS = 120L;
+    private static final int EXEC_RETRIES = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.EXEC_RETRIES");
+    private static final long EXEC_RETRY_SLEEP_MS = config.AgentTuning.longValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.EXEC_RETRY_SLEEP_MS");
+    private static final long SETTLE_MS = config.AgentTuning.longValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.SETTLE_MS");
     /**
      * Dummy offsets tried in order until a plan exists: melee reach first, then beyond the ranged
      * "degenerate" distance (the planner aims at the nearest hitbox edge, so a 60px dummy is too
      * close for a bow), mirrored to both sides for facing-sensitive hitboxes.
      */
     private static final int[] MOB_OFFSETS_X = {30, 60, -60, 100, 160, -160, 260};
-    private static final int MOB_OFFSET_X = 60;
+    private static final int MOB_OFFSET_X = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.MOB_OFFSET_X");
     /** Highest skill index scanned under each job id (skill id = job * 10000 + index). */
-    private static final int MAX_SKILL_INDEX = 1999;
+    private static final int MAX_SKILL_INDEX = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.MAX_SKILL_INDEX");
     /** Three Snails, Recovery, Nimble Feet. */
     private static final int[] STANDARD_BEGINNER_SKILLS = {1000, 1001, 1002};
     /** Hits landed with Combo Attack up before retrying a finisher; the server grants one orb per hit. */
-    private static final int COMBO_WARMUP_HITS = 2;
-    private static final int MESO_DROP_COUNT = 5;
+    private static final int COMBO_WARMUP_HITS = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.COMBO_WARMUP_HITS");
+    private static final int MESO_DROP_COUNT = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.MESO_DROP_COUNT");
     private static final int ELIXIR_ITEM_ID = 2000004;
     /** Orange Mushroom: 55px tall, covers chest-height hit lines a Snail slips under. */
     private static final int TALL_MOB_ID = 1210102;
     /** Sword, spear, pole arm, wand, bow, crossbow, claw, dagger, knuckle, gun. */
     private static final int[] ALTERNATE_WEAPONS = {1302000, 1432000, 1442000, 1372005, 1452002, 1462000, 1472000, 1332007, 1482000, 1492000};
-    private static final int MESO_DROP_AMOUNT = 1000;
+    private static final int MESO_DROP_AMOUNT = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.MESO_DROP_AMOUNT");
 
     private AgentSkillProbeService() {
     }

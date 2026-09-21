@@ -20,7 +20,7 @@ public record SkillProbeReport(String agentName,
                                long startedAtMs,
                                long finishedAtMs,
                                Path reportPath) {
-    private static final int CHAT_FAILURE_LINES = 12;
+    private static final int CHAT_FAILURE_LINES = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.SkillProbeReport.CHAT_FAILURE_LINES");
 
     public SkillProbeReport {
         notes = List.copyOf(notes);

@@ -26,7 +26,7 @@ public final class AgentSkillAttackPlanRuntime {
     }
 
     /** Character.handleEnergyChargeGain parks the bar at 15000 while the charge is full. */
-    private static final int ENERGY_BAR_FULL = 15000;
+    private static final int ENERGY_BAR_FULL = config.AgentTuning.intValue("server.agents.capabilities.combat.AgentSkillAttackPlanRuntime.ENERGY_BAR_FULL");
 
     private static AgentAttackPlan reject(String gate) {
         LAST_REJECTION.set(gate);
