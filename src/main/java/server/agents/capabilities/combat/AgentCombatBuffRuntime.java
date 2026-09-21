@@ -176,7 +176,13 @@ public final class AgentCombatBuffRuntime {
                         bot.isAlive(),
                         () -> AgentCombatWeaponPolicy.canUseSkillWithWeapon(
                                 skill.getId(), AgentAttackExecutionProvider.getEquippedWeaponType(bot))
-                                && fx.canPaySkillCost(bot));
+                                && fx.canPaySkillCost(bot)
+                                // Shadow Partner burns a Summoning Rock, Mystic Door a Magic Rock: the
+                                // server silently refuses the cast without it.
+                                && fx.hasItemCon(bot)
+                                // Shadow Stars burns a star stack (bulletConsume) the same way.
+                                && (fx.getBulletConsume() <= 0 || AgentCombatAmmoCounter.largestAmmoStack(
+                                        bot, AgentAttackExecutionProvider.getEquippedWeaponType(bot)) >= fx.getBulletConsume()));
         String readinessSummary = readiness.debugSummary(
                 AgentCombatDialogueReporter.combatSkillLabel(skill.getId()));
         if (readinessSummary != null) {

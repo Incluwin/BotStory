@@ -3,10 +3,15 @@ package server.living.resident;
 import client.Character;
 import client.Job;
 import client.JobProgressionPolicy;
+import client.Skill;
+import client.Character.SkillEntry;
+import constants.game.GameConstants;
 import client.inventory.InventoryType;
+import constants.inventory.ItemConstants;
 import client.inventory.manipulator.InventoryManipulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.living.config.Content.ItemStack;
 import server.living.config.Content.Loadout;
@@ -26,7 +31,7 @@ import java.util.Map;
 public final class ResidentShaper {
     private static final Logger log = LoggerFactory.getLogger(ResidentShaper.class);
     /** Bump when the shaping recipe changes so existing personas are reshaped once. */
-    static final int RECIPE_VERSION = 2;
+    static final int RECIPE_VERSION = 5;
 
     private ResidentShaper() {
     }
@@ -70,6 +75,11 @@ public final class ResidentShaper {
         advanceIfLegal(agent, chain);
         repairGrowth(agent);
         assignAp(agent, agent.getJob(), loadout == null ? Map.of() : loadout.stats());
+        int learned = AgentSpBuildProfileService.assignOffline(agent);
+        if (learned > 0) {
+            log.debug("shaped {} learned {} skill levels", agent.getName(), learned);
+        }
+        stockSkillConsumables(agent);
         if (loadout != null) {
             for (int equipId : loadout.equipIds()) {
                 if (agent.getInventory(InventoryType.EQUIP).countById(equipId) == 0
@@ -114,10 +124,68 @@ public final class ResidentShaper {
         if (agent.getMaxMp() < base.mp()) {
             agent.addMaxMP(base.mp() - agent.getMaxMp());
         }
+        repairSp(agent);
     }
 
+    /**
+     * SP earned is 3 per level past the first-job level plus each advancement's grant; anything
+     * not sitting in learned skill levels must still be unspent. An earlier build burned SP on
+     * refused skill levels, so residents shaped before it are topped back up here.
+     */
+    private static void repairSp(Character agent) {
+        Job job = agent.getJob();
+        int branch = GameConstants.getJobBranch(job);
+        if (branch == 0) {
+            return;
+        }
+        int firstJobLevel = job.getId() / 100 == 2 ? 8 : 10;
+        int earned = 3 * Math.max(0, agent.getLevel() - firstJobLevel);
+        for (int b = 1; b <= branch; b++) {
+            earned += GameConstants.getChangeJobSpUpgrade(b);
+        }
+        int spent = 0;
+        for (Map.Entry<Skill, SkillEntry> learned : agent.getSkills().entrySet()) {
+            if (!learned.getKey().isBeginnerSkill()) {
+                spent += Math.max(0, learned.getValue().skillevel);
+            }
+        }
+        int book = GameConstants.getSkillBook(job.getId());
+        int expectedRemaining = Math.max(0, earned - spent);
+        int remaining = agent.getRemainingSps()[book];
+        if (remaining < expectedRemaining) {
+            agent.gainSp(expectedRemaining - remaining, book, true);
+        }
+    }
+
+    /**
+     * Skills that burn an item on cast (Shadow Partner: Summoning Rock, Mystic Door: Magic Rock) are
+     * refused by the server without it, and Agent supply procurement does not know these items yet;
+     * keep a working stock on shaped characters so the buffs are usable.
+     */
+    private static void stockSkillConsumables(Character agent) {
+        for (Map.Entry<Skill, SkillEntry> learned : agent.getSkills().entrySet()) {
+            int level = learned.getValue().skillevel;
+            if (level <= 0) {
+                continue;
+            }
+            server.StatEffect effect = learned.getKey().getEffect(level);
+            if (effect == null || effect.getItemConNo() <= 0) {
+                continue;
+            }
+            int itemId = effect.getItemCon();
+            InventoryType inventory = ItemConstants.getInventoryType(itemId);
+            int have = agent.getInventory(inventory).countById(itemId);
+            int want = effect.getItemConNo() * SKILL_CONSUMABLE_STOCK;
+            if (have < want) {
+                InventoryManipulator.addById(agent.getClient(), itemId, (short) (want - have));
+            }
+        }
+    }
+
+    private static final int SKILL_CONSUMABLE_STOCK = 50;
+
     /** BEGINNER -> first job -> second job -> ... up to the authored job. */
-    static List<Job> advancementChain(Job target) {
+    public static List<Job> advancementChain(Job target) {
         List<Job> chain = new ArrayList<>();
         if (target == null || target == Job.BEGINNER) {
             return chain;
@@ -132,6 +200,11 @@ public final class ResidentShaper {
         }
         if (secondJob != null) {
             chain.add(secondJob);
+        }
+        // Third job sits between second and fourth (x1 -> x2); a fourth-job target must pass it.
+        Job thirdJob = id == second + 2 ? Job.getById(second + 1) : null;
+        if (thirdJob != null) {
+            chain.add(thirdJob);
         }
         if (id != second) {
             chain.add(target);
