@@ -205,6 +205,7 @@ public final class QuestLedger {
         QuestState state = new QuestState(chr.getId(), quest.id(), 0, 0, QuestStatus.ACTIVE, now, 0L,
                 previous == null ? 0 : previous.repeats());
         world.store().saveQuestState(state);
+        world.questLog().started(chr, quest);
         world.store().event(chr.getId(), persona.id(), "quest.start", quest.id());
         List<String> lines = world.arcs().lines(persona, "questAccept." + quest.id());
         if (!lines.isEmpty()) {
@@ -398,6 +399,18 @@ public final class QuestLedger {
         }
     }
 
+    /** True when one of the player's active quests is on a HEAR_RUMOR step for this rumor. */
+    public boolean waitingOnRumor(Character chr, String rumorId) {
+        for (QuestState state : active(chr)) {
+            Quest quest = world.content().quest(state.questId());
+            Step step = quest == null ? null : quest.step(state.stepIndex());
+            if (step != null && step.type() == StepType.HEAR_RUMOR && rumorId.equals(step.rumorId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void onRumorHeard(Character chr, String rumorId) {
         for (QuestState state : active(chr)) {
             Quest quest = world.content().quest(state.questId());
@@ -523,6 +536,7 @@ public final class QuestLedger {
         }
         world.arcs().evaluateGates();
         world.store().event(chr.getId(), quest.persona(), "quest.complete", quest.id());
+        world.questLog().completed(chr, quest);
         chr.dropMessage(5, "Quest complete: " + quest.title() + ".");
         if (giver != null) {
             List<String> lines = world.arcs().lines(giver, "questComplete." + quest.id());

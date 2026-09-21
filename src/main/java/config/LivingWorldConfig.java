@@ -24,6 +24,8 @@ public class LivingWorldConfig {
     public String ALWAYS_AWAKE_TOWNS = "";
     /** Reply-length threshold above which a Resident whispers instead of using a chat bubble. */
     public int RESIDENT_BUBBLE_MAX_CHARS = 70;
+    /** Mirror quest state into the client quest log (needs the Quest.wz patch from tools\living-world-questlog.bat shipped). */
+    public boolean QUEST_LOG_MIRROR = false;
 
     // TypeSafe budget for Resident conversation
     /** Free-form judgments a player may trigger per day before Residents only understand exact phrases. */

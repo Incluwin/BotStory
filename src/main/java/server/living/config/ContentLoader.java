@@ -50,7 +50,7 @@ import java.util.stream.Stream;
  * Reads the content directory into a {@link LivingContent}. Layout:
  * <pre>
  * personas/**.yaml   quests/**.yaml   contracts/**.yaml   arcs/**.yaml   rumors/**.yaml
- * loadouts.yaml      command-phrases.yaml
+ * loadouts.yaml      command-phrases.yaml      quest-log-ids.yaml (written by the quest-log export)
  * </pre>
  * A file holds one object or a list of objects. Every parse error names file and path.
  */
@@ -69,6 +69,7 @@ public final class ContentLoader {
         Map<String, Rumor> rumors = new LinkedHashMap<>();
         Map<String, Loadout> loadouts = new LinkedHashMap<>();
         List<Phrase> phrases = new ArrayList<>();
+        Map<String, Integer> questLogIds = new LinkedHashMap<>();
         List<String> warnings = new ArrayList<>();
 
         for (Node node : documents(root.resolve("personas"))) {
@@ -104,10 +105,19 @@ public final class ContentLoader {
                 phrases.add(phrase(node));
             }
         }
-        LivingContent content = new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, warnings);
+        Path questLogFile = root.resolve(QUEST_LOG_IDS_FILE);
+        if (Files.exists(questLogFile)) {
+            Node ids = read(questLogFile).get("ids");
+            for (Map.Entry<String, Node> entry : ids.entries().entrySet()) {
+                questLogIds.put(entry.getKey(), entry.getValue().integer());
+            }
+        }
+        LivingContent content = new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, warnings);
         warnings.addAll(ContentLint.check(content));
-        return new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, warnings);
+        return new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, warnings);
     }
+
+    public static final String QUEST_LOG_IDS_FILE = "quest-log-ids.yaml";
 
     // ---- files ---------------------------------------------------------------------------
 

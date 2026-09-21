@@ -76,6 +76,23 @@ toward `ownerLevel - paceGap` (banked, granted when called), or meso/items into 
 bench efficiency factor and the daily farming cap; a persona never farms its own quests from
 the bench (24 h haul provenance is checked at turn-in).
 
+### The in-game quest log
+
+Living quests can appear in the client's quest log (in progress / completed tabs, grouped under
+the persona's name). It takes one WZ patch:
+
+1. `tools\living-world-questlog.bat` - assigns every quest a stable client id (30000-32767) in
+   `quest-log-ids.yaml` and exports name/description text to `target/living-quest-log.json`.
+   New quests get the next free id; ids are never renumbered (they live in players' save data).
+2. `cd MapleEditpp && python living_world_quests.py` - writes QuestInfo/Check/Act entries into
+   `out/Quest.wz` (stacking with other edits) and stages the server XML; deploy Quest.wz from the
+   MapleEdit dashboard so the patch server ships it to every client.
+3. `living_world.QUEST_LOG_MIRROR: true` - the server then sets the matching quest STARTED on
+   accept and COMPLETED on completion (`QuestLog`), and reconciles older ledger state at login.
+
+Leave the flag off until the WZ is shipped, or clients list nameless quests. The entries carry
+`lvmin 200` so the client never shows them as "available" - Residents offer them in person.
+
 ## GM commands (`!world`, GM 5)
 
 `status`, `census`, `reload` (re-reads content, reports lint errors), `residents`,
@@ -83,7 +100,8 @@ the bench (24 h haul provenance is checked at turn-in).
 `bond <player> <persona> <points>`, `rumor play <id>`, `phrases [approve|reject <text>]`,
 `teach <canonical> <phrase...>`, `haul <player>`, `events <player>`.
 
-`tools\living-world-lint.bat [dir]` validates content offline (exit 1 on errors).
+`tools\living-world-lint.bat [dir]` validates content offline (exit 1 on errors);
+`tools\living-world-questlog.bat` exports the quest log (above).
 
 ## Authoring
 
@@ -123,14 +141,15 @@ wired yet. The longest explanation wins, then the more specific alias.
 | quest ledger | `server.living.quest.QuestLedger` |
 | bonds and contracts | `server.living.bond.*` |
 | roster, bench ledger, haul | `server.living.roster.*` |
-| arcs and rumors | `server.living.arc.*` |
+| arcs and rumors (deterministic rumor director: waiting listener, unheard, least performed) | `server.living.arc.*` |
+| client quest-log mirror and export | `server.living.quest.QuestLog`, `server.living.config.QuestLogExportMain`, `MapleEdit/app/living_world_quests.py` |
 | phrase packs and learned phrases | `server.living.phrases.PhraseMatcher` (installed into `AgentChatIntentRuntime`) |
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |
 
 ## Not done yet (from the plan)
 
-The Quest.wz patch for the in-game quest log (quest text uses the NPC window instead), live
-sessions for GATHER/SELL/STALL (they stay on the offline ledger; live sessions run at
+Live sessions for GATHER/SELL/STALL (they stay on the offline ledger; live sessions run at
 `BACKGROUND_ACTIVE` priority rather than a true mutation-free `BACKGROUND_ABSTRACT` tick, which
-the Agent runtime only supports for town life), Director ranking for rumors, the MapleEdit
-authoring page, and the upstream contribution split.
+the Agent runtime only supports for town life), per-step kill counters in the client quest
+log (the mirror tracks start/complete only), and the MapleEdit authoring page for personas and
+quests (content is edited as YAML and checked with `tools\living-world-lint.bat`).

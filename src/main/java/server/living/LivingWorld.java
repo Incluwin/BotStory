@@ -14,6 +14,7 @@ import server.living.config.ContentLoader;
 import server.living.config.LivingContent;
 import server.living.phrases.PhraseMatcher;
 import server.living.quest.QuestLedger;
+import server.living.quest.QuestLog;
 import server.living.resident.ResidentDialogue;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchLedger;
@@ -40,6 +41,7 @@ public final class LivingWorld {
     private final BondService bonds;
     private final ArcService arcs;
     private final QuestLedger quests;
+    private final QuestLog questLog;
     private final ContractService contracts;
     private final RosterService roster;
     private final BenchLedger bench;
@@ -57,6 +59,7 @@ public final class LivingWorld {
         this.bonds = new BondService(this);
         this.arcs = new ArcService(this);
         this.quests = new QuestLedger(this);
+        this.questLog = new QuestLog(this);
         this.roster = new RosterService(this);
         this.contracts = new ContractService(this);
         this.bench = new BenchLedger(this);
@@ -182,6 +185,10 @@ public final class LivingWorld {
 
     public ArcService arcs() {
         return arcs;
+    }
+
+    public QuestLog questLog() {
+        return questLog;
     }
 
     public QuestLedger quests() {

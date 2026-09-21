@@ -92,6 +92,7 @@ public final class LivingWorldHooks {
         }
         try {
             world.roster().onOwnerLogin(chr);
+            world.questLog().reconcile(chr);
         } catch (RuntimeException failure) {
             log.warn("living world login hook failed", failure);
         }

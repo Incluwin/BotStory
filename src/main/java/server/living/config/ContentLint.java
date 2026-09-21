@@ -251,6 +251,30 @@ public final class ContentLint {
                 out.add("ERROR command-phrases: '" + phrase.canonical() + "' has no aliases");
             }
         }
+        Set<Integer> logIds = new LinkedHashSet<>();
+        for (var entry : content.questLogIds().entrySet()) {
+            String where = ContentLoader.QUEST_LOG_IDS_FILE + " " + entry.getKey();
+            if (content.quest(entry.getKey()) == null) {
+                out.add("WARN " + where + ": no such quest (stale id " + entry.getValue() + ")");
+            }
+            if (entry.getValue() < QUEST_LOG_ID_MIN || entry.getValue() > QUEST_LOG_ID_MAX) {
+                out.add("ERROR " + where + ": quest-log id " + entry.getValue() + " outside " + QUEST_LOG_ID_MIN + "-" + QUEST_LOG_ID_MAX);
+            }
+            if (!logIds.add(entry.getValue())) {
+                out.add("ERROR " + where + ": quest-log id " + entry.getValue() + " used twice");
+            }
+        }
+        if (!content.questLogIds().isEmpty()) {
+            for (Quest quest : content.quests().values()) {
+                if (content.questLogId(quest.id()) == 0) {
+                    out.add("WARN " + quest.file() + " quest " + quest.id() + ": no quest-log id; run tools/living-world-questlog.bat");
+                }
+            }
+        }
         return out;
     }
+
+    /** Client quest ids are shorts; stock v83 stops below 30000, so the living world owns 30000-32767. */
+    public static final int QUEST_LOG_ID_MIN = 30000;
+    public static final int QUEST_LOG_ID_MAX = 32767;
 }

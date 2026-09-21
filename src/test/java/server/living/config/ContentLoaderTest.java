@@ -75,6 +75,20 @@ class ContentLoaderTest {
     }
 
     @Test
+    void questLogIdsAreStableAndUnique() {
+        LivingContent content = ContentLoader.load(ROOT);
+        java.util.Map<String, Integer> ids = QuestLogExportMain.assignIds(content);
+        assertEquals(content.quests().size(), ids.size());
+        assertEquals(content.quests().size(), new java.util.HashSet<>(ids.values()).size(), "ids are unique");
+        assertTrue(ids.values().stream().allMatch(id -> id >= ContentLint.QUEST_LOG_ID_MIN && id <= ContentLint.QUEST_LOG_ID_MAX));
+        for (var entry : content.questLogIds().entrySet()) {
+            if (content.quest(entry.getKey()) != null) {
+                assertEquals(entry.getValue(), ids.get(entry.getKey()), "existing id kept for " + entry.getKey());
+            }
+        }
+    }
+
+    @Test
     void lintCatchesDanglingReferences() {
         LivingContent content = ContentLoader.load(ROOT);
         Persona broken = new Persona("ghost", "Ghost", "", "BEGINNER", new Content.LevelBand(1, 1), Content.Strength.ROOKIE,
@@ -82,7 +96,7 @@ class ContentLoaderTest {
                 List.of(), List.of(), java.util.Map.of(), -1, -1, -1, List.of(), 0, "test");
         LivingContent withBroken = new LivingContent(
                 java.util.Map.of("ghost", broken), content.quests(), content.contracts(), content.arcs(), content.rumors(),
-                content.loadouts(), content.phrases(), List.of());
+                content.loadouts(), content.phrases(), content.questLogIds(), List.of());
         List<String> findings = ContentLint.check(withBroken);
         assertTrue(ContentLint.hasErrors(findings));
         assertTrue(findings.stream().anyMatch(f -> f.contains("unknown home town")));

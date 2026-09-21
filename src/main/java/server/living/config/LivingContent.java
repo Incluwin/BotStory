@@ -25,6 +25,8 @@ public final class LivingContent {
     private final Map<String, Rumor> rumors;
     private final Map<String, Loadout> loadouts;
     private final List<Phrase> phrases;
+    /** quest id -> client quest-log id (Quest.wz), from quest-log-ids.yaml; empty until exported. */
+    private final Map<String, Integer> questLogIds;
     private final List<String> warnings;
 
     LivingContent(Map<String, Persona> personas,
@@ -34,6 +36,7 @@ public final class LivingContent {
                   Map<String, Rumor> rumors,
                   Map<String, Loadout> loadouts,
                   List<Phrase> phrases,
+                  Map<String, Integer> questLogIds,
                   List<String> warnings) {
         this.personas = Collections.unmodifiableMap(new LinkedHashMap<>(personas));
         Map<String, Persona> byName = new LinkedHashMap<>();
@@ -47,11 +50,22 @@ public final class LivingContent {
         this.rumors = Collections.unmodifiableMap(new LinkedHashMap<>(rumors));
         this.loadouts = Collections.unmodifiableMap(new LinkedHashMap<>(loadouts));
         this.phrases = List.copyOf(phrases);
+        this.questLogIds = Collections.unmodifiableMap(new LinkedHashMap<>(questLogIds));
         this.warnings = List.copyOf(warnings);
     }
 
     public static LivingContent empty() {
-        return new LivingContent(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), List.of(), List.of());
+        return new LivingContent(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), List.of(), Map.of(), List.of());
+    }
+
+    public Map<String, Integer> questLogIds() {
+        return questLogIds;
+    }
+
+    /** The Quest.wz id that mirrors this quest in the client quest log, or 0 when none is assigned. */
+    public int questLogId(String questId) {
+        Integer id = questId == null ? null : questLogIds.get(questId);
+        return id == null ? 0 : id;
     }
 
     public Map<String, Persona> personas() {

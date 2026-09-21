@@ -734,6 +734,9 @@ living_world:
     ROUTINE_ZONE: "America/New_York"
     ALWAYS_AWAKE_TOWNS: "lith-harbor"
     RESIDENT_BUBBLE_MAX_CHARS: 70
+    # true once MapleEdit has shipped the living-world Quest.wz entries (tools\living-world-questlog.bat, then
+    # MapleEdit/app/living_world_quests.py + deploy); otherwise the client would list nameless quests
+    QUEST_LOG_MIRROR: false
     JEV_PER_PLAYER_PER_DAY: 60
     JEV_PERSONA_COOLDOWN_MS: 3000
     JEV_ANSWER_CACHE_MS: 600000

@@ -16,6 +16,9 @@ import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,6 +26,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Performs scripted Resident-to-Resident dialogues in public when their gates and schedule
  * allow and a player is there to hear them; listeners in range get the rumor's flag.
+ *
+ * <p>When several rumors are due at once a deterministic director picks one per map per tick:
+ * first a rumor someone present is waiting on (an active HEAR_RUMOR step), then one somebody
+ * present has not heard yet, then the least performed. Casts never overlap.
  */
 public final class RumorScheduler {
     private static final Logger log = LoggerFactory.getLogger(RumorScheduler.class);
@@ -56,16 +63,55 @@ public final class RumorScheduler {
         int hour = world.routineHour();
         String today = world.routineDate().toString();
         Set<String> flags = world.store().worldFlags();
+        List<Rumor> due = new ArrayList<>();
         for (Rumor rumor : world.content().rumors().values()) {
+            if (due(rumor, hour, today, flags) && rumor.participants().stream().noneMatch(performing::contains)) {
+                due.add(rumor);
+            }
+        }
+        due.sort(Comparator.comparingInt(this::priority).thenComparingInt(rumor -> performances(rumor.id())));
+        Set<Integer> mapsUsed = new HashSet<>();
+        Set<String> castUsed = new HashSet<>();
+        for (Rumor rumor : due) {
+            Character first = world.residents().agentOf(rumor.participants().get(0));
+            int mapId = first == null || first.getMap() == null ? 0 : first.getMap().getId();
+            if (mapId == 0 || mapsUsed.contains(mapId) || rumor.participants().stream().anyMatch(castUsed::contains)) {
+                continue;
+            }
             try {
-                if (due(rumor, hour, today, flags)) {
-                    perform(rumor, false);
+                String outcome = perform(rumor, false);
+                if (outcome.startsWith("performing")) {
+                    mapsUsed.add(mapId);
+                    castUsed.addAll(rumor.participants());
                 }
             } catch (RuntimeException failure) {
                 log.warn("rumor {} failed", rumor.id(), failure);
             }
         }
         world.arcs().evaluateGates();
+    }
+
+    /** 0 when a present player has a quest step waiting on this rumor, 1 when one has not heard it, 2 otherwise. */
+    private int priority(Rumor rumor) {
+        Character first = world.residents().agentOf(rumor.participants().get(0));
+        MapleMap map = first == null ? null : first.getMap();
+        if (map == null) {
+            return 2;
+        }
+        int best = 2;
+        for (Character chr : map.getAllPlayers()) {
+            if (AgentPresence.isAgent(chr)) {
+                continue;
+            }
+            if (world.quests().waitingOnRumor(chr, rumor.id())) {
+                return 0;
+            }
+            if (rumor.setsFlagOnListeners() != null
+                    && !world.bonds().hasFlag(chr.getId(), null, rumor.setsFlagOnListeners(), null)) {
+                best = 1;
+            }
+        }
+        return best;
     }
 
     private boolean due(Rumor rumor, int hour, String today, Set<String> flags) {
