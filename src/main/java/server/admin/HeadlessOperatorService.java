@@ -41,7 +41,7 @@ public final class HeadlessOperatorService {
     private static final int RUN_HISTORY = 50;
 
     /** Only harness commands may run headlessly; this is not a general remote GM console. */
-    static final Set<String> ALLOWED_COMMANDS = Set.of("skillprobe", "spawnbot");
+    static final Set<String> ALLOWED_COMMANDS = Set.of("skillprobe", "spawnbot", "combatarena");
     /** Off unless the server was started with {@code -Dagents.headless-operator=true}. */
     static final boolean ENABLED = Boolean.getBoolean("agents.headless-operator");
 

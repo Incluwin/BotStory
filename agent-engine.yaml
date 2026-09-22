@@ -4540,3 +4540,31 @@ tuning:
     # Purpose: Energy bar value at which the planner considers Energy Charge full and allows Energy Blast, Drain and Orb.
     # Technical: Mirrors the client rule that energy attacks need a full bar: each close-range hit adds 102 up to 10000, then the server sets 15000 until the charge expires; below this value the planner rejects with energy-charge-not-full.
     server.agents.capabilities.combat.AgentSkillAttackPlanRuntime.ENERGY_BAR_FULL: '15000'
+    # Values: a positive integer; unit: seconds. Recommended: 8-20; 12 gives each candidate a dozen attack windows before the top few are confirmed.
+    # Purpose: Length of a first-round arena trial, run once for every candidate attack skill of the scenario.
+    # Technical: The combat arena forces one skill through AgentCombatSkillConstraintState and lets the live loop grind against overridden-HP mobs for this long; damage per second over the window is the reward that ranks candidates.
+    server.agents.diagnostics.arena.ArenaOptions.ROUND_ONE_SECONDS: '12'
+    # Values: a positive integer, at least ROUND_ONE_SECONDS; unit: seconds. Recommended: 20-40; longer confirmation runs average out combo, cooldown and status luck.
+    # Purpose: Length of the confirmation trials the arena runs for the top candidates and for the special-move comparison.
+    # Technical: Round two re-runs the best few skills for this long; if its leader differs from round one a third round of this length decides, so the profile is never written from a single noisy window.
+    server.agents.diagnostics.arena.ArenaOptions.CONFIRM_SECONDS: '25'
+    # Values: a positive integer; unit: monster HP. Recommended: 1000000-20000000; large enough that no candidate kills a mob inside a trial.
+    # Purpose: HP given to every arena mob through OverrideMonsterStats so damage per second is never capped by kills.
+    # Technical: Kills would reset the damage reading and favour skills that one-shot the dummy; with this override the pack survives the trial and the reward is the plain HP removed, comparable across skills.
+    server.agents.diagnostics.arena.ArenaOptions.MOB_HP: '5000000'
+    # Values: an integer from 2 to 8; unit: monsters. Recommended: 4-6; the v83 area skills hit up to six targets.
+    # Purpose: Number of arena mobs in the multi-target scenario's pack; the crossover search runs from two up to one below it.
+    # Technical: Mobs alternate sides of the Agent at growing offsets, so melee reach and area boxes both see them; the winning area skill is then compared with the single-target winner at 2..PACK_SIZE-1 targets to find from how many targets it pays.
+    server.agents.diagnostics.arena.ArenaOptions.PACK_SIZE: '5'
+    # Values: a positive integer; unit: skills. Recommended: 2-4; each extra candidate costs one confirmation trial per scenario.
+    # Purpose: How many of the first-round leaders get a longer confirmation trial in the arena.
+    # Technical: Round one is short and noisy by design; only this many best skills (by mean DPS) are re-run for CONFIRM_SECONDS, and the winner is chosen among them, with a deciding round when the two rounds disagree.
+    server.agents.diagnostics.arena.AgentCombatArenaService.TOP_CANDIDATES: '3'
+    # Values: a non-negative integer; unit: milliseconds. Recommended: 200-1000; enough for spawns and the reset to apply before a trial starts.
+    # Purpose: Pause after the arena spawns a pack or resets the Agent before the trial clock starts.
+    # Technical: The arena runs on its own thread while the Agent scheduler keeps ticking; spawned monsters and cleared cooldowns need a tick or two to be visible to the combat loop, otherwise the first seconds of a trial are lost.
+    server.agents.diagnostics.arena.AgentCombatArenaService.SETTLE_MS: '400'
+    # Values: a positive integer; unit: map pixels. Recommended: 30-70; keeps a five-mob pack inside typical area boxes while leaving melee reach for the nearest.
+    # Purpose: Distance between neighbouring arena mobs; the pack alternates sides of the Agent at this spacing.
+    # Technical: Positions are origin plus or minus spacing times (1 + index/2); a spacing above the smallest area box halves the reachable pack and understates area skills, a spacing below melee reach stacks mobs on the Agent.
+    server.agents.diagnostics.arena.AgentCombatArenaService.PACK_SPACING_PX: '45'

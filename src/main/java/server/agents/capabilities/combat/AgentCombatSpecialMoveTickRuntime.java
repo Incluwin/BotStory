@@ -5,6 +5,7 @@ import client.Skill;
 import constants.skills.Brawler;
 import constants.skills.ChiefBandit;
 import server.StatEffect;
+import server.agents.capabilities.combat.rotation.AgentCombatRotationRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentModeStateRuntime;
@@ -55,6 +56,10 @@ public final class AgentCombatSpecialMoveTickRuntime {
         List<Monster> monsters = AgentMapPerception.monsters(bot.getMap());
         if (monsters.stream().noneMatch(Monster::isAlive)) {
             return;
+        }
+        Monster nearest = nearestHostile(bot);
+        if (!AgentCombatRotationRuntime.specialMovesWanted(bot, nearest != null && nearest.isBoss(), monsters.size())) {
+            return;  // the arena measured summons/debuffs as a loss for this job in this situation
         }
         // This hook runs before the attack decision and would take every cooldown window; attacks keep
         // priority, a special move only spends a window once a couple of attacks have landed since the last.

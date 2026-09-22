@@ -5,6 +5,7 @@ import client.Disease;
 import client.Skill;
 import client.inventory.WeaponType;
 import server.StatEffect;
+import server.agents.capabilities.combat.rotation.AgentCombatRotationRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.monitoring.AgentPerformanceMonitor;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -39,8 +40,14 @@ public final class AgentCombatPlanRuntime {
                 }
             }
             WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
-            return AgentAttackPlanScoringPolicy.selectBestAttackPlan(
-                    bot, preferRangedBossCandidates(target, weaponType, candidates));
+            List<AgentAttackPlan> eligible = preferRangedBossCandidates(target, weaponType, candidates);
+            // A measured rotation profile (combat arena) outranks the estimated-DPS scorer when it
+            // names one of this tick's candidates; otherwise the scorer decides as before.
+            AgentAttackPlan preferred = AgentCombatRotationRuntime.preferredPlan(bot, target, eligible);
+            if (preferred != null) {
+                return preferred;
+            }
+            return AgentAttackPlanScoringPolicy.selectBestAttackPlan(bot, eligible);
         } finally {
             AgentPerformanceMonitor.record("combat-plan", System.nanoTime() - startedAt);
         }
