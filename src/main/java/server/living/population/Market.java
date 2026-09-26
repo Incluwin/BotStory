@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class Market {
     private static final Logger log = LoggerFactory.getLogger(Market.class);
     private static final int FM_ROOMS = 22;
+    private static final double ROOM_SPREAD = 2.5;
     private static final int STALL_MAX_LISTINGS = 8;
     private static final double BUY_BELOW_INDEX = 0.9d;
     private static final double INDEX_STEP = 0.08d;
@@ -133,7 +134,7 @@ public final class Market {
             return;
         }
         if (agent.getMapId() == FieldCatalog.FM_ENTRANCE) {
-            int room = FieldCatalog.FM_ENTRANCE + 1 + random.nextInt(FM_ROOMS);
+            int room = FieldCatalog.FM_ENTRANCE + 1 + pickRoom();
             population.presence().travel(session, Activity.MARKET, room, System.currentTimeMillis());
             return;
         }
@@ -141,6 +142,15 @@ public final class Market {
             server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> openStall(session), 3_000L);
         }
         // otherwise the market tick browses the room's shops
+    }
+
+    /**
+     * Rooms fill like a real server: FM 1 is the busiest and the tail rooms are near-empty.
+     * Exponential with a mean of {@link #ROOM_SPREAD} rooms, clamped to the room count.
+     */
+    int pickRoom() {
+        double draw = -Math.log(1.0 - random.nextDouble()) * ROOM_SPREAD;
+        return (int) Math.min(FM_ROOMS - 1, draw);
     }
 
     void onLeave(CitizenSession session) {

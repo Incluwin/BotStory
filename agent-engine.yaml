@@ -1552,6 +1552,26 @@ tuning:
     # Purpose: Controls the distance or margin used for platform edge inset. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "movement target runtime" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.
     server.agents.capabilities.movement.AgentMovementTargetRuntime.PLATFORM_EDGE_INSET_PX: '12'
+    # Values: a finite positive integer; unit: map pixels. Recommended: 40-90 around the tested baseline 60; benchmark or observe behavior before moving outside this band.
+    # Purpose: Controls how far apart Agents stand when the party gathers around its owner. Wider spots look less crowded; narrower spots keep a bigger party inside the smallest party-buff box.
+    # Technical: the "party gather service" component consumes this as an integer. Spots alternate left and right of the owner at multiples of this distance, buffers innermost; a spot is pulled inward by half this distance until it stands on ground within half this distance of the owner's height.
+    server.agents.capabilities.movement.AgentPartyGatherService.SLOT_SPACING_PX: '60'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 6000-20000 around the tested baseline 12000; benchmark or observe behavior before moving outside this band.
+    # Purpose: Controls how long buffers hold their party buffs for party members who are still walking over. Longer waits catch slow walkers; shorter waits buff sooner and leave stragglers out.
+    # Technical: the "party gather service" component consumes this as an integer. During a gathering a party buff is held while any living party member on the map is outside its box, until this long after the gathering opened; then it is cast regardless.
+    server.agents.capabilities.movement.AgentPartyGatherService.WAIT_FOR_PARTY_MS: '12000'
+    # Values: a finite positive integer; unit: milliseconds. Recommended: 15000-40000 around the tested baseline 25000; keep it above WAIT_FOR_PARTY_MS so buffers can finish casting.
+    # Purpose: Controls the latest time a gathering ends, after which the Agents it moved go back to what they were doing even if a buffer never reported finishing.
+    # Technical: the "party gather service" component consumes this as an integer. A gathering normally closes as soon as every buffer has cast its due buffs; this bounds it so a buffer that died, ran out of MP or left the map cannot keep the party standing still.
+    server.agents.capabilities.movement.AgentPartyGatherService.CLOSE_AFTER_MS: '25000'
+    # Values: a finite positive integer; unit: milliseconds. Recommended: 250-1000 around the tested baseline 500; benchmark or observe behavior before moving outside this band.
+    # Purpose: Controls how often an open gathering checks whether its buffers have finished, which sets how quickly the party goes back to its activity after the last buff.
+    # Technical: the "party gather service" component consumes this as an integer. One watcher per gathering reschedules itself on the opening Agent's scheduler at this interval until the gathering closes or expires.
+    server.agents.capabilities.movement.AgentPartyGatherService.POLL_MS: '500'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 1500-6000 around the tested baseline 3000; benchmark or observe behavior before moving outside this band.
+    # Purpose: Controls how long after one "gather up" a second one for the same owner is treated as the same command, so several Agents reading one message call the party together once.
+    # Technical: the "party gather service" component consumes this as an integer. Untargeted chat and the chat-intent judge run once per Agent; the first assemble inside this window for an owner moves the party and the rest report the command as handled without acting.
+    server.agents.capabilities.movement.AgentPartyGatherService.ASSEMBLE_DEDUPE_MS: '3000'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 250-1000 around the tested baseline 500; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents remain in or wait for grounded stuck threshold. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "stuck detection service" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
@@ -2427,6 +2447,10 @@ tuning:
     # Purpose: Controls the positional leeway for shop arrive dist. Higher values tolerate more separation before Agents correct course; lower values make them align sooner.
     # Technical: the "shop service" component consumes this as an integer. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
     server.agents.capabilities.shop.AgentShopService.SHOP_ARRIVE_DIST: '100'
+    # Values: manhattan map pixels from 100 to 600, never below SHOP_ARRIVE_DIST. Recommended: 300, roughly the shopkeeper's on-screen talk range.
+    # Purpose: Keeps an open shop transaction valid while the Agent stands anywhere near the shopkeeper, so a landing or a step on the floor below a counter does not abort the purchase.
+    # Technical: AgentShopService.isShopSequenceValid passes this radius to AgentShopState.sequenceValid for every scheduled purchase, sale and finish step; SHOP_ARRIVE_DIST still decides when the transaction may begin.
+    server.agents.capabilities.shop.AgentShopService.SHOP_TRANSACTION_RADIUS: '300'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 100-400 around the tested baseline 200; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for shop manhattan radius. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "shop service" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.
@@ -3637,6 +3661,18 @@ tuning:
     # Purpose: Bounds each low-risk income phase while allowing enough time for weak early-game builds to earn a meaningful amount of mesos.
     # Technical: AgentSupplyProcurementState records this deadline; reaching it causes a supplier retry or a typed bounded-recovery stall outcome.
     server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy.INCOME_TIMEOUT_MS: '240000'
+    # Values: integer retries from 0 to 3. Recommended: 1 so a shop visit that ended BLOCKED or CANCELLED is re-requested once before the Agent gives up.
+    # Purpose: Bounds repeated NPC shop attempts inside one resupply so a broken shop visit cannot keep an Agent away from its party indefinitely.
+    # Technical: AgentSupplyProcurementRuntime compares AgentSupplyProcurementState.shopFailures with this limit when the shop workflow ends BLOCKED or CANCELLED; below it the supplier visit is requested again, at it the procurement is abandoned.
+    server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy.SHOP_RETRY_LIMIT: '1'
+    # Values: milliseconds from 1000 to 30000. Recommended: 4000 so the Agent settles and the shop workflow state clears before the visit is re-requested.
+    # Purpose: Spaces consecutive shop attempts apart so a transient failure such as an interrupted approach is not immediately repeated in the same state.
+    # Technical: AgentSupplyProcurementState.retryShopVisit records now plus this delay as shopRetryAtMs, and the SHOPPING phase waits until that time before AgentShopService.requestVisitAtNpc runs again.
+    server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy.SHOP_RETRY_DELAY_MS: '4000'
+    # Values: milliseconds from 60000 to 1800000. Recommended: 300000 so a companion that could not restock stays with its party for five minutes before trying again.
+    # Purpose: Prevents a resupply that just failed from being re-planned on the next low-supply observation, which would pull the Agent out of its party in a loop.
+    # Technical: AgentSupplyProcurementRuntime.stall records now plus this window in AgentSupplyProcurementState.suppress for the failed category, and selectRequest ignores suppressed categories until the window expires.
+    server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy.FAILED_PROCUREMENT_COOLDOWN_MS: '300000'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 50-200 around the tested baseline 100; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for interaction distance. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "victoria quest pack runtime" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.
@@ -4072,6 +4108,18 @@ tuning:
     # Purpose: Controls the positional leeway for autopot health thresh. Higher values tolerate more separation before Agents correct course; lower values make them align sooner.
     # Technical: the "runtime config" component consumes this as a decimal number. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
     server.agents.runtime.AgentRuntimeConfig.AUTOPOT_HP_THRESH: '0.7'
+    # Values: a non-negative integer; unit: percentage points. Recommended: 3-10; far enough under Berserk's threshold that ordinary damage ticks do not push the Agent out of the window between potions.
+    # Purpose: How far below Berserk's HP threshold a Dark Knight Agent aims to sit.
+    # Technical: Berserk doubles damage while hp*100/maxHp is under the skill's X; the Agent's potion trigger is lowered to X minus this margin so it holds the window instead of topping up out of it at the ordinary threshold.
+    server.agents.capabilities.combat.AgentBerserkWindowPolicy.MARGIN_PERCENT: '5'
+    # Values: a fraction between 0 and 1; unit: share of maximum HP. Recommended: 0.2-0.3; low enough to stay inside a typical Berserk window, high enough to survive a hit while the potion lands.
+    # Purpose: The lowest HP fraction the Berserk window is allowed to push an Agent's potion trigger to.
+    # Technical: Berserk thresholds vary with skill level, and a low one would otherwise set a potion trigger that leaves the Agent a single hit from death; the trigger never goes below this floor.
+    server.agents.capabilities.combat.AgentBerserkWindowPolicy.SAFETY_FLOOR: '0.25'
+    # Values: a fraction between 0 and 1; unit: share of maximum HP. Recommended: 0.05-0.15; enough that some potion in the bag matches the request.
+    # Purpose: The smallest restore a Berserk Agent will ask a potion for.
+    # Technical: Holding the Berserk window means asking for a small top-up rather than a full heal; if the window is narrower than this the Agent still asks for this much, so potion selection has something to match instead of falling through.
+    server.agents.capabilities.combat.AgentBerserkWindowPolicy.MIN_DEFICIT: '0.08'
     # Values: a finite non-negative number. Recommended: 0.25-1 around the tested baseline 0.5; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the positional leeway for autopot mana thresh. Higher values tolerate more separation before Agents correct course; lower values make them align sooner.
     # Technical: the "runtime config" component consumes this as a decimal number. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
@@ -4084,10 +4132,18 @@ tuning:
     # Purpose: Sets an Agent's starting base mana recovery before current conditions adjust it. Higher values make that tendency stronger from the start; lower values make it weaker.
     # Technical: the "runtime config" component consumes this as an integer. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values. It participates in bounded failure handling and should remain long enough for the normal operation to complete.
     server.agents.runtime.AgentRuntimeConfig.BASE_MP_RECOVERY: '3'
-    # Values: a finite non-negative integer. Recommended: 30-120 around the tested baseline 60; benchmark or observe behavior before moving outside this band.
-    # Purpose: Sets the separation applied to follow stagger so multiple Agents do not begin or repeat the same action in lockstep.
+    # Values: a finite non-negative integer. Recommended: 130; keep it above FOLLOW_DIST (80) plus half a character body (~25) or followers settle on top of their leader.
+    # Purpose: Sets the separation applied to follow stagger so multiple Agents do not begin or repeat the same action in lockstep, and so a follower's resting slot is visibly beside the leader (a follower counts as arrived anywhere within FOLLOW_DIST of its slot, so a 60 slot let it stop on the leader's pixel while buffing).
     # Technical: the "runtime config" component consumes this as an integer. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
-    server.agents.runtime.AgentRuntimeConfig.FOLLOW_STAGGER: '60'
+    server.agents.runtime.AgentRuntimeConfig.FOLLOW_STAGGER: '130'
+    # Values: 0-200 map pixels. Recommended: 90 (about two character widths); 0 spawns on the leader's exact spot.
+    # Purpose: Places a newly spawned or rejoining Agent this far beside its leader so its arrival and self-buffs are visible next to the player instead of drawn on top of them.
+    # Technical: the "spawn position service" component consumes this as an integer. Unit: MapleStory map pixels; the right side is tried first, then the left, and the leader's spot is the fallback.
+    server.agents.runtime.AgentRuntimeConfig.SPAWN_SIDE_OFFSET: '90'
+    # Values: 0-100 map pixels. Recommended: 30.
+    # Purpose: Largest vertical ground difference that still counts as the leader's platform when choosing the beside-leader spawn spot; larger differences fall back to the leader's own position.
+    # Technical: the "spawn position service" component consumes this as an integer. Unit: MapleStory map pixels.
+    server.agents.runtime.AgentRuntimeConfig.SPAWN_SIDE_MAX_DROP: '30'
     # Values: a finite non-negative number. Recommended: 0.045-0.18 around the tested baseline 0.09; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how strongly grind loot convenience contributes to Agent behavior. Values nearer 1 give it more influence; values nearer 0 give it less.
     # Technical: the "runtime config" component consumes this as a decimal number. Domain: decimal ratio; 0.0 means none and 1.0 means the full reference amount unless the owning policy documents a wider range.
@@ -4432,6 +4488,22 @@ tuning:
     # Purpose: Queue capacity of the dedicated System One pool; requests beyond it are refused and resolve as unavailable.
     # Technical: Refused submissions complete immediately with an empty result so the caller keeps its deterministic path; nothing blocks waiting for queue space.
     server.agents.integration.typesafe.JevClient.ASYNC_QUEUE_CAPACITY: '64'
+    # Values: OFF, SHADOW, or LIVE. Recommended: SHADOW until the shadow agreement and token cost in the typesafe diagnostics look acceptable, then LIVE.
+    # Purpose: Averages every Jev Choice over several option orderings so an answer no longer depends on the order its options were listed in.
+    # Technical: JevChoicePermutations expands each Choice into reordered copies inside the same System One request and averages the label-aligned probabilities; SHADOW also sends the original Choice, returns it unchanged and only counts agreement, LIVE returns the averaged answer. Noul and Score pass through.
+    server.agents.integration.typesafe.JevChoicePermutations.MODE: 'SHADOW'
+    # Values: a positive integer; 1 disables expansion. Recommended: 4-8; 8 enumerates every ordering of three options and samples eight orderings of larger sets.
+    # Purpose: Number of option orderings evaluated per Choice, trading input tokens for probabilities that are less sensitive to option order.
+    # Technical: A Choice with at most this many orderings is fully enumerated; larger sets use a uniform sample without replacement. Every ordering repeats the Choice criteria in the request body, so input tokens grow roughly with this value times the criteria size.
+    server.agents.integration.typesafe.JevChoicePermutations.BUDGET: '8'
+    # Values: a positive integer no greater than 720, the API limit. Recommended: 24-64; 64 fits chat-intent, whose seven Choices expand to 58 questions in SHADOW.
+    # Purpose: Upper bound on questions in one expanded request so a request with many Choices cannot balloon in size, latency, or cost.
+    # Technical: When the expanded question count would exceed this cap, JevChoicePermutations sends the request unchanged and increments skippedOverCap in the typesafe diagnostics instead of failing the judgment.
+    server.agents.integration.typesafe.JevChoicePermutations.MAX_QUESTIONS: '64'
+    # Values: comma-separated request kinds, or none. Recommended: chat-intent, whose seven Choices cost about 7x tokens when expanded; its ASK-band re-ask (chat-intent-unsure) stays covered.
+    # Purpose: Keeps option-order averaging off judgments where the token cost outweighs the gain while leaving it on cheap single-Choice judgments.
+    # Technical: JevChoicePermutations.plan returns no expansion when JevRequest.kind is listed here, so the request is sent exactly as built; AgentChatIntentJudge re-asks unsure messages under the separate chat-intent-unsure kind.
+    server.agents.integration.typesafe.JevChoicePermutations.EXEMPT_KINDS: 'chat-intent,chat-intent-family,chat-intent-branch'
     # Values: a positive integer; unit: characters per token. Recommended: 3-5; 4 matches typical English JSON and errs on the safe side for budgeting.
     # Purpose: Characters-per-token ratio used to estimate how many tokens a state block will cost before the request is sent.
     # Technical: Only drives the pre-send budget that drops low-priority state blocks; the API's returned usage counts are the authoritative token figures.
@@ -4448,10 +4520,18 @@ tuning:
     # Purpose: Token budget for the state object of a chat intent judgment; lowest-priority blocks are dropped first when the estimate exceeds it.
     # Technical: The budget covers state only; question criteria are fixed per catalog revision, and dropped block keys are logged so shadow runs reveal which context was sacrificed.
     server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.STATE_BUDGET_TOKENS: '3000'
+    # Values: true or false. Recommended: false until labeled evaluation supports enabling the two-stage route.
+    # Purpose: Reduces competing intent options by selecting a category then the specific action and its required arguments.
+    # Technical: AgentChatIntentJudge sends at most two unaveraged requests, retains distinct actions and a no-match option, and gates on the lower category and leaf confidence.
+    server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.HIERARCHICAL_ENABLED: 'false'
     # Values: a positive integer; unit: milliseconds. Recommended: 2000-6000; 4000 exceeds the transport timeout plus one retry so the gateway rarely times out first.
     # Purpose: Async gateway deadline for a chat intent judgment before the Agent gives up and treats the message as unhandled.
     # Technical: Enforced by the Agent async gateway on the SYSTEM_ONE_NETWORK lane; a timeout counts as unhandled and never re-dispatches a late answer.
     server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime.TIMEOUT_MS: '4000'
+    # Values: a positive integer; unit: milliseconds. Recommended: 20000-60000; 30000 leaves time to read the question and type a short yes.
+    # Purpose: How long a companion waits for yes or no after asking did you mean, so a confirmation runs the command and teaches the phrase.
+    # Technical: AgentChatPendingAsks keeps one suggestion per Agent entry; the owner's next unmatched message consumes it as CONFIRMED, DECLINED or OTHER, and an expired suggestion is treated as OTHER and judged normally.
+    server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime.PENDING_ASK_TTL_MS: '30000'
     # Values: a probability between 0 and 1. Recommended: 0.5-0.8; 0.6 accepts a clear operator request while sending ambiguous prompts to the fallback provider.
     # Purpose: Minimum Choice confidence for the TypeSafe Director provider to return an action selection instead of deferring to the fallback provider.
     # Technical: Applies to action selection only; training-map ranking always returns when at least one candidate scored, ordered by score then catalog rank.
@@ -4484,6 +4564,18 @@ tuning:
     # Purpose: Base wait after a probe spawns a dummy, casts a buff or commits an attack before it inspects the result.
     # Technical: Multiplied (x2, x4) for buffs, summons and mob debuffs whose server-side application has been observed to land later than the dispatch returns; too small a value reports false BUFF_NOT_APPLIED.
     server.agents.diagnostics.skillprobe.AgentSkillProbeService.SETTLE_MS: '120'
+    # Values: a non-negative integer; unit: milliseconds. Recommended: 900-1500; 1100 lets the client finish a 4th-job attack animation before the next cast.
+    # Purpose: Pause after every cast in !skillprobe showcase mode, which uses each castable skill a few times for filming a class demo.
+    # Technical: Thread.sleep on the probe worker thread after each showcase cast; the normal probe never reads it, so it only changes how fast a showcase walks the skill tree and never any outcome.
+    server.agents.diagnostics.skillprobe.AgentSkillProbeService.SHOWCASE_PACE_MS: '1100'
+    # Values: a non-negative integer; unit: milliseconds. Recommended: 250-600; 400 makes each combo orb visible as it is gained.
+    # Purpose: Pause between the combo warm-up hits a showcase lands before filming a combo finisher such as Panic or Coma.
+    # Technical: Replaces SETTLE_MS in buildComboOrbs only when the probe runs in showcase mode; the normal probe keeps SETTLE_MS, so readiness reports and their timings are unchanged.
+    server.agents.diagnostics.skillprobe.AgentSkillProbeService.SHOWCASE_WARMUP_PACE_MS: '400'
+    # Values: a positive integer; unit: monster HP. Recommended: 10000000-500000000; 100000000 outlasts every Explorer skill used a few times.
+    # Purpose: HP given to the dummy monsters of a showcase so one target survives every cast of a skill and stays on camera.
+    # Technical: Applied through OverrideMonsterStats (exp 0) before the dummy spawns, the same way the combat arena sizes its pack; the normal probe keeps stock HP so its kill-dependent checks are unchanged.
+    server.agents.diagnostics.skillprobe.AgentSkillProbeService.SHOWCASE_MOB_HP: '100000000'
     # Values: a positive integer; unit: map pixels. Recommended: 40-80; 60 sits inside melee reach for every weapon type.
     # Purpose: Horizontal distance from the Agent at which the probe spawns the first dummy monster for a skill.
     # Technical: Used by the mirrored spawn helper; the attack probe itself walks MOB_OFFSETS_X (30..260 px) so ranged skills clear the ranged degenerate distance and melee skills stay in reach.
@@ -4495,7 +4587,7 @@ tuning:
     # Values: a positive integer; unit: hits. Recommended: 1-3; the server grants one combo orb per close-range hit and finishers need one.
     # Purpose: Close-range hits the probe lands with Combo Attack up before it retries Panic or Coma.
     # Technical: CloseRangeDamageHandler.applyCloseRangeEffects adds an orb per hit while BuffStat.COMBO is active; AgentComboFinisherPolicy refuses finishers below one orb, so the warm-up makes the finisher plannable.
-    server.agents.diagnostics.skillprobe.AgentSkillProbeService.COMBO_WARMUP_HITS: '2'
+    server.agents.diagnostics.skillprobe.AgentSkillProbeService.COMBO_WARMUP_HITS: '5'
     # Values: a positive integer; unit: meso drops. Recommended: 3-10; Meso Explosion produces one damage line per exploded drop.
     # Purpose: Number of meso drops the probe places around the dummy before it fires Meso Explosion.
     # Technical: Each drop is spawned through MapleMap.spawnMesoDrop with the Agent as owner; AgentCombatAttackRuntime lists the drops inside the blast as explodedMesos and sizes the damage lines by that count.
@@ -4532,6 +4624,10 @@ tuning:
     # Purpose: Attacks the Agent must land between two automatic special moves (summon, debuff) so attacks keep priority.
     # Technical: The special-move hook runs in the common tick before the attack decision and would otherwise consume every attack cooldown window; the loop smoke showed 0 attacks in 30 s without this rule and 3 attacks plus 2 special moves with it.
     server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime.ATTACKS_BETWEEN_SPECIAL_MOVES: '2'
+    # Values: 1-10 combo orbs. Recommended: 5 (a full Combo Attack stack; clamped to what the bot's Combo Attack can hold).
+    # Purpose: Combo orbs a Hero-line Agent holds before it plans Panic or Coma. Finishers spend the whole stack and scale from x1.2 at two orbs to x2.5 at five on this server, so spending early is a damage loss; 1 restores the client-minimum behaviour.
+    # Technical: the "combo finisher policy" component consumes this as an integer; it is the deterministic prior the combat self-improvement loop starts from (docs/agents/COMBAT_SELF_IMPROVEMENT_PLAN.md).
+    server.agents.capabilities.combat.AgentComboFinisherPolicy.MIN_ORBS: '5'
     # Values: a positive integer; unit: divisor of the stock target. Recommended: 2-4; 3 restocks at a third of the target (10 casts of 30).
     # Purpose: Fraction of the skill consumable target below which a shop that sells the item is worth a visit.
     # Technical: AgentShopService compares the carried quantity with target divided by this value when deciding whether a nearby shop has anything the Agent needs; Summoning Rocks and Magic Rocks are the items in v83.
@@ -4568,3 +4664,111 @@ tuning:
     # Purpose: Distance between neighbouring arena mobs; the pack alternates sides of the Agent at this spacing.
     # Technical: Positions are origin plus or minus spacing times (1 + index/2); a spacing above the smallest area box halves the reachable pack and understates area skills, a spacing below melee reach stacks mobs on the Agent.
     server.agents.diagnostics.arena.AgentCombatArenaService.PACK_SPACING_PX: '45'
+    # Values: a non-negative integer; unit: milliseconds. Recommended: 12000-20000; longer than the gap between two buff casts (measured at roughly 5s) so a bar still being cast is not mistaken for a settled one.
+    # Purpose: How long the arena waits with no new buff cast before it calls the warm-up finished.
+    # Technical: Each buff costs an attack cooldown, so a freshly shaped Agent would spend a whole trial buffing; the arena pre-buffs until the last skill action is older than this, and the same window doubles as the floor when nothing is cast at all.
+    server.agents.diagnostics.arena.AgentCombatArenaService.WARM_UP_SETTLE_MS: '15000'
+    # Values: a positive integer; unit: milliseconds. Recommended: 150000-240000; enough for a full 4th-job buff bar at roughly one cast per five seconds.
+    # Purpose: Hard cap on the arena warm-up so a buff that can never apply cannot stall the run.
+    # Technical: Warm-up ends at whichever comes first, settle or this cap; hitting the cap is reported in the notes so a stuck buff is visible rather than silent.
+    server.agents.diagnostics.arena.AgentCombatArenaService.WARM_UP_CAP_MS: '180000'
+    # Values: a positive integer; unit: runs. Recommended: 3-5; an odd count so the median is a real reading rather than an average of two.
+    # Purpose: How many times each finalist is re-run in the confirmation round before the arena picks a winner.
+    # Technical: Repeated trials of one skill vary by tens of percent, so a single confirmation run can rank a worse skill first; the arena takes the median of this many runs and reports the spread, calling a win a tie when the gap does not clear it.
+    server.agents.diagnostics.arena.AgentCombatArenaService.CONFIRM_REPEATS: '3'
+    # Values: a positive integer; unit: milliseconds. Recommended: 600000-1200000; long enough to screen a full skill list at the configured trial length.
+    # Purpose: Time budget for screening one scenario before the arena stops adding candidates.
+    # Technical: Screening runs one trial per candidate, so a long skill list on a busy server can take far longer than the operator expects; when the budget is spent the arena confirms among what it has measured and records how many candidates it skipped, rather than running unbounded.
+    server.agents.diagnostics.arena.AgentCombatArenaService.SCENARIO_BUDGET_MS: '900000'
+    # Values: a fraction between 0 and 1. Recommended: 0.5-0.7; boosters and attack speed legitimately shorten a cast, so only a rate well under the skill's own animation counts as impossible.
+    # Purpose: How far under a skill's own animation time a measured cast rate may fall before the arena calls the reading impossible.
+    # Technical: The floor is the skill's effect animation plus its keydown charge; an Agent that beats that floor is not paying a cost every player pays, so the trial is reported as an anomaly rather than as a rotation to copy.
+    server.agents.diagnostics.arena.AgentCombatArenaService.CAST_RATE_TOLERANCE: '0.6'
+    # Values: a number above 1. Recommended: 1.4-2.0; high enough that ordinary variation between skills does not read as a finding.
+    # Purpose: How far a skill's share of the damage must exceed its share of the casts before the arena calls it under-used.
+    # Technical: The scorer picks per tick from estimated damage; when a skill repeatedly earns more of the measured damage than its cast share, the estimate is selling it short and firing it more often should raise the rotation's output.
+    server.agents.diagnostics.arena.AgentCombatArenaService.UNDERUSE_RATIO: '1.5'
+    # Values: a number between 0 and 1; unit: discount per second of fighting. Recommended: 0.85-0.95; 0.9 looks about ten seconds ahead.
+    # Purpose: How far ahead the combat learner looks when it judges a skill, so a finisher that spends the Combo stack or a debuff that deals nothing now is judged on the damage that follows it.
+    # Technical: AgentCombatLearner scores each decision with semi-Markov Q-learning, target = own damage + gamma^seconds x value of the next situation; the exponent is the measured time the action took, so slow and fast skills are compared per second.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.GAMMA_PER_SECOND: '0.9'
+    # Values: a number between 0 and 1. Recommended: 0.03-0.1; 0.05 keeps a long memory while still letting new evidence move a value.
+    # Purpose: Smallest step the combat learner takes toward a new reading once a situation/skill pair has been tried many times.
+    # Technical: AgentCombatPolicyTable averages the first visits exactly (step 1/n) and never steps below this floor afterwards, so values keep tracking the game when buffs, gear or level change instead of freezing on the first hundred casts.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.ALPHA_FLOOR: '0.05'
+    # Values: a positive integer; unit: tries per situation and choice. Recommended: 1-4; 2 is enough because every choice starts from the damage formula's estimate, weighted by PRIOR_WEIGHT.
+    # Purpose: How often the learner tries every available choice in a situation before it starts preferring the best one.
+    # Technical: In LEARN mode AgentCombatLearner.explore picks the least-tried option until every candidate attack (and each summon/debuff being weighed) has this many closed decisions in the situation bucket, then switches to epsilon-greedy.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.MIN_TRIES: '2'
+    # Values: a positive integer; unit: arena decisions. Recommended: 3-10; 5 keeps a single odd reading from steering live Agents.
+    # Purpose: Evidence a learned choice needs in a situation before live Agents follow it instead of the estimated-DPS scorer.
+    # Technical: In LIVE mode AgentCombatLearner only returns the table's best action (and only rules on a summon/debuff) when that action has at least this many visits in the situation bucket of an adopted scenario; otherwise the rotation profile and scorer decide as before.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.LIVE_MIN_EVIDENCE: '5'
+    # Values: a positive integer; unit: milliseconds. Recommended: 1000-3000; 2000 covers an attack deferred for a tick or two by cooldown.
+    # Purpose: How old the last planned situation may be when a cast commits and still count as the situation the choice was made in.
+    # Technical: The planner records the situation and candidate list on every plan; AgentCombatLearner.onAttackCommitted and special-move verdicts use it only within this window, and otherwise drop the decision rather than credit it to a stale situation.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.PLAN_FRESH_MS: '2000'
+    # Values: a positive integer; unit: milliseconds. Recommended: 5000-15000; 10000 still charges a skill that knocks the pack away for the walk back.
+    # Purpose: Longest gap between two decisions that is still learned from; longer gaps mean the fight was interrupted, not that the skill was slow.
+    # Technical: AgentCombatLearner.learn discards the open decision when the next one comes later than this (arena reset, map change, stuck pathing), so an interruption is not scored as the damage rate of whatever was cast last.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.MAX_WINDOW_MS: '10000'
+    # Values: a non-negative number; unit: pseudo-visits. Recommended: 2-5; 3 keeps one lucky or unlucky roll from overturning the formula's estimate.
+    # Purpose: How much the damage formula's estimate counts, in visits, before the learner's own readings take over a situation/choice value.
+    # Technical: AgentCombatPolicyTable.seed starts each (situation, choice) at the estimated-DPS prior; update then averages with step 1/(visits + this) for seeded cells, which is the posterior mean of the prior plus the measured returns.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.PRIOR_WEIGHT: '3'
+    # Values: a number between 0 and 1. Recommended: 0.25-0.5; 0.35 drops beginner and first-job skills a 4th-job Agent has no reason to test.
+    # Purpose: Options whose estimated damage rate is below this share of the best option's are not explored or chosen by the learner.
+    # Technical: AgentCombatLearner.estimates compares estimated damage per animation second (AgentAttackPlanScoringPolicy raw damage / plan cooldown) across this tick's candidates; pruning spends the arena's limited decisions on options that can plausibly win.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.PRUNE_RATIO: '0.35'
+    # Values: a positive integer; unit: milliseconds. Recommended: 400-1000; 600 matches a typical buff/debuff cast lock.
+    # Purpose: Least time the learner assumes a summon or debuff cast takes when it prices the cast before any reading exists.
+    # Technical: The special-move prior is gamma^seconds x (best estimated rate / -ln gamma), i.e. carrying on after losing the cast time; the skill's own WZ animation time is used when it is longer than this floor.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.SPECIAL_CAST_FLOOR_MS: '600'
+    # Values: a non-negative number; unit: pseudo-casts. Recommended: 3-10; 5 lets a skill's realized/expected ratio move off 1 after a handful of casts but not after one.
+    # Purpose: How quickly the learner trusts that a skill really deals more or less than the damage formula expects, per skill and per situation.
+    # Technical: AgentCombatPolicyTable.calibratedReward credits a cast with the formula's expected damage times realized/expected; the ratio per situation shrinks toward the skill's ratio and that toward 1 by this many average casts, so roll noise drops out and caps, immunities and unmodelled server edits stay in.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.CALIBRATION_WEIGHT: '5'
+    # Values: a positive integer; unit: decisions. Recommended: 20-60; 30 is about half a minute of fighting.
+    # Purpose: Decisions the learner must have closed before its own measured damage rate replaces the formula's estimate as the rate every option is assumed to carry on at.
+    # Technical: Priors are own damage + gamma^seconds x (rate / -ln gamma); before this many decisions the rate is the best estimated damage per second among skills that spend no Combo stack or Energy Charge, afterwards AgentCombatPolicyTable.observedRate over every closed decision.
+    server.agents.capabilities.combat.learning.AgentCombatLearner.RATE_MIN_DECISIONS: '30'
+    # Values: a positive integer; unit: milliseconds. Recommended: 2000-10000; 5000 picks up a new arena result within seconds without statting the file on every plan.
+    # Purpose: How often the live loop re-checks a job's learned combat policy file for changes.
+    # Technical: AgentCombatPolicyRepository caches each scripts/config/agents/combat-policy/<jobId>.json with its parsed tables and only re-reads the modification time after this interval, because every Agent plan consults it.
+    server.agents.capabilities.combat.learning.AgentCombatPolicyRepository.RECHECK_MS: '5000'
+    # Values: a positive integer; unit: seconds per scenario, at least 60. Recommended: 240-600; 300 gives a Hero about 350 decisions per scenario.
+    # Purpose: How long the arena lets an Agent learn one scenario (policy=learn) before it freezes the policy and measures it against the prior scorer.
+    # Technical: ArenaOptions default for the learn= option; the arena runs exploring episodes of LEARN_EPISODE_SECONDS until this budget is spent, then CONFIRM_REPEATS alternating frozen/prior evaluation runs of CONFIRM_SECONDS each.
+    server.agents.diagnostics.arena.ArenaOptions.LEARN_SECONDS: '300'
+    # Values: a positive integer; unit: seconds. Recommended: 20-60; 30 lets orbs, summons and debuffs play out a few times before the pack is reset.
+    # Purpose: Length of one learning episode in the arena before the pack, cooldowns and position are reset.
+    # Technical: AgentCombatArenaService.learnScenario runs the live combat loop with the learner in LEARN mode for this long per episode; the open decision is dropped at each reset so the reset itself is never learned as a skill outcome.
+    server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EPISODE_SECONDS: '30'
+    # Values: a number between 0 and 1. Recommended: 0.05-0.2; 0.1 keeps re-checking alternatives while mostly playing the best-known choice.
+    # Purpose: Share of arena decisions the learner spends on a random choice once every option has had its minimum tries.
+    # Technical: AgentCombatLearner.explore uses this epsilon in LEARN mode only; FROZEN evaluation and LIVE play never explore, so exploration cost is paid in the arena and never in front of players.
+    server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EPSILON: '0.1'
+    # Values: a positive integer; unit: report rows per scenario. Recommended: 8-20; 12 covers every situation a single-target Hero visits.
+    # Purpose: How many learned situations per scenario the arena report lists, most visited first.
+    # Technical: AgentCombatArenaService.describePolicy writes one row per situation bucket (chosen action, every alternative's value relative to it, tries); rarely visited buckets beyond this count stay in the policy JSON but not in the report.
+    server.agents.diagnostics.arena.AgentCombatArenaService.POLICY_ROWS: '12'
+    # Values: a positive integer; unit: runs per side. Recommended: 3-7; 5 runs of each policy narrow the median enough to tell a 10% difference from noise.
+    # Purpose: How many alternating evaluation runs the arena gives the learned policy and the prior scorer before deciding whether to adopt it.
+    # Technical: AgentCombatArenaService.learnScenario alternates FROZEN (learned table, no exploration) and OFF (prior scorer) runs this many times each and compares medians against the wider spread; adoption requires the learned median to be at least the prior's.
+    server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EVAL_REPEATS: '5'
+    # Values: a positive integer; unit: seconds. Recommended: 30-60; 40 covers several Combo stack cycles per run.
+    # Purpose: Length of each evaluation run that compares a learned policy with the prior scorer.
+    # Technical: A 25-second run of a Hero spread by about 25% between repeats (damage rolls, stack phase at the cut-off); longer runs average over more stack cycles, and the evaluation is what gates adoption for live play.
+    server.agents.diagnostics.arena.AgentCombatArenaService.LEARN_EVAL_SECONDS: '40'
+    # Values: a positive integer; unit: pixels. Recommended: 5-20; 10 finds a ledge or wall within a few pixels without probing every pixel of a 250 px charge.
+    # Purpose: Resolution at which a Rush-style charge checks the ground ahead for walls and ledges before the Agent slides.
+    # Technical: AgentKnockbackMovementService.beginGroundDash walks AgentGroundCollisionService.previewGroundStep in steps of this size toward the skill's WZ distance and stops at the first blocked or ground-losing step, so a charge never carries the Agent off its platform.
+    server.agents.capabilities.movement.AgentKnockbackMovementService.DASH_PROBE_STEP_PX: '10'
+    # Values: a positive integer; unit: milliseconds. Recommended: 1000-2000; players recall the lock as "about a second or two".
+    # Purpose: How long Double Uppercut, Corkscrew Blow, Backspin Blow, Barrage and Snatch stay unusable after one of them lands, as the client enforces.
+    # Technical: AgentClientSkillRules.afterLandedHit starts the lock when an attack with at least one landed line finishes its animation (Barrage alone animates over two seconds); the planner drops locked skills from the candidates and the attack runtime refuses them, so pirates weave another skill in between like players do.
+    server.agents.capabilities.combat.AgentClientSkillRules.REUSE_DELAY_MS: '1500'
+    # Values: a positive integer; unit: milliseconds. Recommended: 1500-2500; about two seconds by player accounts.
+    # Purpose: How long a pirate is untouchable after Corkscrew Blow lands, as the client grants, so Corkscrew followed by quick attacks takes no touch or magic damage.
+    # Technical: AgentClientSkillRules.invincible gates AgentCombatDamageRuntime.applyMobHit (touch damage) and ServerMobDamageService (server-driven mob attacks on Agents) for this long after a landed Corkscrew Blow.
+    server.agents.capabilities.combat.AgentClientSkillRules.CORKSCREW_INVINCIBLE_MS: '2000'

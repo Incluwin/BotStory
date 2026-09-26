@@ -46,6 +46,29 @@ public final class AgentHarnessProvisioning {
         };
     }
 
+    /**
+     * A level-appropriate weapon for arena measurement. The ordinary default is a starter weapon,
+     * which leaves a level 120 Agent swinging 19 watk: absolute damage then says more about the
+     * weapon than the rotation, and two jobs cannot be compared at all. These are the strongest
+     * level 90-120 weapons of each family in the shipped WZ data, so every job is measured on
+     * comparable gear. Every id here exists in both the equip data and the item strings, or the
+     * server refuses to hand it over. Warriors that can hold a sword get one, so their
+     * sword-family charges and boosters apply.
+     */
+    public static int arenaWeaponFor(Job job) {
+        int id = job == null ? 0 : job.getId();
+        int family = id / 100;
+        int branch = (id / 10) % 10;
+        return switch (family) {
+            case 1 -> branch == 3 ? 1432047 : 1402046;   // spear for the Dragon Knight line, else two-handed sword
+            case 2 -> 1382057;                            // staff
+            case 3 -> branch == 2 ? 1462050 : 1452057;   // crossbow for Marksman, else bow
+            case 4 -> branch == 2 ? 1332073 : 1472068;   // dagger for the Bandit line, else claw
+            case 5 -> branch == 2 ? 1492023 : 1482024;   // gun for the Gunslinger line, else knuckle
+            default -> 1402046;
+        };
+    }
+
     public static int defaultAmmoFor(WeaponType weaponType) {
         if (weaponType == null) {
             return 0;

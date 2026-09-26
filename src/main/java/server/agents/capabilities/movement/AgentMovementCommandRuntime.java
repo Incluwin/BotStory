@@ -31,6 +31,11 @@ public final class AgentMovementCommandRuntime {
     public static void followConfiguredTarget(AgentRuntimeEntry entry) {
         Character target = AgentRelationshipRuntime.followTarget(entry);
         if (target == null) {
+            // "stop" clears the follow target, so following again means following the owner;
+            // without this, "follow me" after "stop" re-ran stop and the Agent never moved.
+            target = AgentRelationshipRuntime.interactionTarget(entry);
+        }
+        if (target == null) {
             stop(entry);
             return;
         }

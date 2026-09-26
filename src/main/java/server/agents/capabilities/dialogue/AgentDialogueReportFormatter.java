@@ -35,8 +35,8 @@ public final class AgentDialogueReportFormatter {
 
     public static String stats(int level, String jobName, int str, int dex, int intStat, int luk,
                                int hp, int maxHp, int mp, int maxMp) {
-        return String.format("lv%d %s | str %d dex %d int %d luk %d | hp %d/%d mp %d/%d",
-                level, jobName, str, dex, intStat, luk, hp, maxHp, mp, maxMp);
+        return String.format("lv%d %s, hp %d/%d mp %d/%d, %d str %d dex %d int %d luk",
+                level, jobName, hp, maxHp, mp, maxMp, str, dex, intStat, luk);
     }
 
     public static String range(int minDamage, int maxDamage, String attackLabel, int attackStat,

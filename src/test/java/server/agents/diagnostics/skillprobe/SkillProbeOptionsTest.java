@@ -52,6 +52,40 @@ class SkillProbeOptionsTest {
     }
 
     @Test
+    void showcaseDefaultsToTwoCastsOnTheOperatorsMap() {
+        SkillProbeOptions options = SkillProbeOptions.parse(new String[]{"a", "showcase"});
+        assertTrue(options.showcase());
+        assertEquals(2, options.showcaseCasts());
+        assertEquals(SkillProbeOptions.SHOWCASE_MOB_ID, options.mobId());
+        assertEquals(SkillProbeOptions.OPERATOR_MAP, options.mapId());
+        assertFalse(options.wantsShaping());
+        SkillProbeOptions explicit = SkillProbeOptions.parse(new String[]{"a", "showcase=3", "mob=100100", "map=180000000"});
+        assertEquals(3, explicit.showcaseCasts());
+        assertEquals(100100, explicit.mobId());
+        assertEquals(180000000, explicit.mapId());
+        assertFalse(SkillProbeOptions.parse(new String[]{"a"}).showcase());
+        assertThrows(IllegalArgumentException.class, () -> SkillProbeOptions.parse(new String[]{"a", "showcase=11"}));
+    }
+
+    @Test
+    void skipListsSkillIds() {
+        assertEquals(java.util.Set.of(5221004, 5221006),
+                SkillProbeOptions.parse(new String[]{"a", "showcase", "skip=5221004,5221006"}).skipSkillIds());
+        assertTrue(SkillProbeOptions.parse(new String[]{"a"}).skipSkillIds().isEmpty());
+        assertThrows(IllegalArgumentException.class, () -> SkillProbeOptions.parse(new String[]{"a", "skip=abc"}));
+    }
+
+    @Test
+    void onlyProbesTheListedSkillsAndSkipStillWins() {
+        SkillProbeOptions only = SkillProbeOptions.parse(new String[]{"a", "only=1221003,1221009", "skip=1221003"});
+        assertEquals(java.util.Set.of(1221003, 1221009), only.onlySkillIds());
+        assertTrue(only.skips(1221003));
+        assertFalse(only.skips(1221009));
+        assertTrue(only.skips(1221011));
+        assertFalse(SkillProbeOptions.parse(new String[]{"a"}).skips(1221011));
+    }
+
+    @Test
     void rejectsBadInput() {
         assertThrows(IllegalArgumentException.class, () -> SkillProbeOptions.parse(new String[0]));
         assertThrows(IllegalArgumentException.class, () -> SkillProbeOptions.parse(new String[]{"a", "job=notajob"}));

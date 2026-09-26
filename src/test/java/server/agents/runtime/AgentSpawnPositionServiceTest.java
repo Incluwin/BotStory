@@ -55,4 +55,50 @@ class AgentSpawnPositionServiceTest {
 
         assertEquals(desired, resolved);
     }
+
+    @Test
+    void spawnsBesideLeaderOnTheRightWhenThatGroundIsOnTheSamePlatform() {
+        MapleMap map = mock(MapleMap.class);
+        Point leader = new Point(100, 200);
+
+        Point resolved = AgentSpawnPositionService.resolveSpawnBesideLeader(
+                map, leader, 90, 30, (ignored, point) -> new Point(point.x, 200));
+
+        assertEquals(new Point(190, 200), resolved);
+    }
+
+    @Test
+    void fallsBackToLeftSideWhenRightSideDropsOffThePlatform() {
+        MapleMap map = mock(MapleMap.class);
+        Point leader = new Point(100, 200);
+
+        Point resolved = AgentSpawnPositionService.resolveSpawnBesideLeader(
+                map, leader, 90, 30,
+                (ignored, point) -> point.x > 100 ? new Point(point.x, 400) : new Point(point.x, 210));
+
+        assertEquals(new Point(10, 210), resolved);
+    }
+
+    @Test
+    void fallsBackToLeaderSpotWhenNeitherSideHasPlatformGround() {
+        MapleMap map = mock(MapleMap.class);
+        Point leader = new Point(100, 200);
+
+        Point resolved = AgentSpawnPositionService.resolveSpawnBesideLeader(
+                map, leader, 90, 30,
+                (ignored, point) -> point.x == 100 ? new Point(100, 200) : null);
+
+        assertEquals(new Point(100, 200), resolved);
+    }
+
+    @Test
+    void zeroOffsetKeepsLegacyOnLeaderSpawn() {
+        MapleMap map = mock(MapleMap.class);
+        Point leader = new Point(100, 200);
+
+        Point resolved = AgentSpawnPositionService.resolveSpawnBesideLeader(
+                map, leader, 0, 30, (ignored, point) -> new Point(point.x, 200));
+
+        assertEquals(new Point(100, 200), resolved);
+    }
 }

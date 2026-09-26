@@ -153,6 +153,7 @@ import client.command.commands.gm3.ReloadSkillsCommand;
 import client.command.commands.gm3.RipCommand;
 import client.command.commands.gm3.SeedCommand;
 import client.command.commands.gm3.SpawnBotCommand;
+import client.command.commands.gm3.LeavePartyCommand;
 import client.command.commands.gm3.SpawnCommand;
 import client.command.commands.gm3.StartEventCommand;
 import client.command.commands.gm3.StartMapEventCommand;
@@ -650,6 +651,7 @@ public class CommandsExecutor {
         addCommand("healagent", 6, HealAgentCommand.class);
         addCommand("deleteagent", 6, DeleteAgentCommand.class);
         addCommand("spawnbot", 6, SpawnBotCommand.class);
+        addCommand("leaveparty", 6, LeavePartyCommand.class);
         addCommand("botcfg", 6, BotCfgCommand.class);
         addCommand("airshow", 6, AirshowCommand.class);
         addCommand("regennav", 6, RegenNavCommand.class);

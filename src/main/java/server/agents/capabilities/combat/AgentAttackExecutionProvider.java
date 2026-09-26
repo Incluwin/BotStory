@@ -231,7 +231,29 @@ public final class AgentAttackExecutionProvider {
         if (skill != null && isMagicAttackSkill(skill.getId())) {
             return sampleAttackAction(WAND_MAGIC_CAST_ACTIONS, WAND_MAGIC_CAST_ACTIONS.get(0));
         }
-        return sampleWeaponAttackAction(bot, weaponType);
+        return afterimageSafeAction(skill, equippedWeaponAfterimage(bot), sampleWeaponAttackAction(bot, weaponType));
+    }
+
+    /**
+     * A skill that names no action is drawn with the weapon's own swing, except that watching v83
+     * clients look that swing up under the skill's own afterimage node and exit when it is missing:
+     * Rapid Fire sampled the gun's "handgun" and crashed every client on the map, as it only draws
+     * "shot". Keeps the sampled action when the skill allows it or has no afterimage for the weapon.
+     */
+    static String afterimageSafeAction(Skill skill, String weaponAfterimage, String sampledAction) {
+        if (skill == null || weaponAfterimage == null) {
+            return sampledAction;
+        }
+        List<String> drawnActions = skill.getAfterimageActions(weaponAfterimage);
+        if (drawnActions.isEmpty() || drawnActions.contains(sampledAction)) {
+            return sampledAction;
+        }
+        return sampleAttackAction(drawnActions, drawnActions.get(0));
+    }
+
+    private static String equippedWeaponAfterimage(Character bot) {
+        AgentAttackDataProvider.NormalAttackProfile profile = bot != null ? equippedNormalAttackProfile(bot) : null;
+        return profile != null ? profile.getAfterImage() : null;
     }
 
     private static String sampleDegenerateCloseRangeAction(Character bot, WeaponType weaponType) {
@@ -532,7 +554,7 @@ public final class AgentAttackExecutionProvider {
         int fallbackCooldownMs = fallbackAttackData != null ? fallbackAttackData.cooldownMs() : toCooldownMs(600);
         return resolveSkillAttackTiming(action, resolveWeaponAttackProfile(bot), resolveSkillAttackDelayMillis(skill),
                 resolveSkillEffectiveAttackSpeed(skill, bot),
-                fallbackHitDelayMs, fallbackCooldownMs);
+                fallbackHitDelayMs, Math.max(fallbackCooldownMs, resolveSkillChargeMillis(skill)));
     }
 
     public static SkillAttackTiming resolveSkillAttackTiming(String action,
@@ -710,6 +732,18 @@ public final class AgentAttackExecutionProvider {
         }
 
         return AgentProjectileHitbox.clientProjectileHitBox(bot, facingLeft, 1.0f);
+    }
+
+    /**
+     * The charge a keydown skill costs before it lands. The body action a skill borrows is a
+     * short cast, so without this an Agent fires Big Bang or Hurricane about once a second -
+     * a rate no player can reach, which makes the skill look far stronger than it plays.
+     */
+    private static int resolveSkillChargeMillis(Skill skill) {
+        if (skill == null) {
+            return 0;
+        }
+        return Math.max(0, skill.getKeydownTime());
     }
 
     private static int resolveSkillAttackDelayMillis(Skill skill) {

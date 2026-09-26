@@ -36,6 +36,7 @@ import constants.skills.DragonKnight;
 import constants.skills.Hero;
 import constants.skills.NightWalker;
 import constants.skills.Rogue;
+import constants.skills.WhiteKnight;
 import constants.skills.WindArcher;
 import net.packet.InPacket;
 import server.StatEffect;
@@ -88,6 +89,9 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
      * all game-state changes (orb consume, aggro, damage, drops) still apply.
      */
     public static boolean applyCloseRangeEffects(AttackInfo attack, Character chr, Client c) {
+        if (attack.skill == WhiteKnight.CHARGE_BLOW && chr.getBuffedValue(BuffStat.WK_CHARGE) == null) {
+            return false;   // the client offers Charged Blow only while a charge is on the weapon
+        }
         chr.getMap().broadcastMessage(chr, PacketCreator.closeRangeAttack(chr, attack.skill, attack.skilllevel,
                 attack.stance, attack.numAttackedAndDamage, attack.targets, attack.speed, attack.direction,
                 attack.display), false, true);
@@ -162,7 +166,9 @@ public final class CloseRangeDamageHandler extends AbstractDealDamageHandler {
             boolean advcharge_prob = false;
             int advcharge_level = chr.getSkillLevel(SkillFactory.getSkill(1220010));
             if (advcharge_level > 0) {
-                advcharge_prob = SkillFactory.getSkill(1220010).getEffect(advcharge_level).makeChanceResult();
+                // Advanced Charge keeps the charge x% of the time (10% at level 1, 100% at 10). Its WZ
+                // data has no prop, so makeChanceResult() (default prop 100) kept it every time.
+                advcharge_prob = Math.random() * 100 < SkillFactory.getSkill(1220010).getEffect(advcharge_level).getX();
             }
             if (!advcharge_prob) {
                 chr.cancelEffectFromBuffStat(BuffStat.WK_CHARGE);

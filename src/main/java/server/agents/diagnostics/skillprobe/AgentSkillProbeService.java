@@ -45,11 +45,13 @@ import server.agents.capabilities.combat.AgentCombatSkillUsePolicy;
 import server.agents.capabilities.combat.AgentCombatSpecialMoveState;
 import server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime;
 import server.agents.capabilities.combat.AgentCombatSummonRuntime;
+import server.agents.capabilities.combat.AgentClientSkillRules;
 import server.agents.capabilities.combat.AgentCombatWeaponPolicy;
 import server.agents.capabilities.build.AgentCharacterShaper;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
 import server.agents.capabilities.equipment.AgentEquipmentService;
+import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.capabilities.supplies.AgentSkillConsumablePolicy;
@@ -62,6 +64,7 @@ import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.capabilities.navigation.AgentMovementSkillPolicy;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
+import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.runtime.AgentModeStateRuntime;
@@ -70,6 +73,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.LifeFactory;
 import server.life.Monster;
+import server.life.OverrideMonsterStats;
 import server.maps.MapleMap;
 import server.security.SecurityEvent;
 import server.security.SecurityEventRuntime;
@@ -103,6 +107,9 @@ public final class AgentSkillProbeService {
     private static final int EXEC_RETRIES = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.EXEC_RETRIES");
     private static final long EXEC_RETRY_SLEEP_MS = config.AgentTuning.longValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.EXEC_RETRY_SLEEP_MS");
     private static final long SETTLE_MS = config.AgentTuning.longValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.SETTLE_MS");
+    private static final long SHOWCASE_PACE_MS = config.AgentTuning.longValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.SHOWCASE_PACE_MS");
+    private static final long SHOWCASE_WARMUP_PACE_MS = config.AgentTuning.longValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.SHOWCASE_WARMUP_PACE_MS");
+    private static final int SHOWCASE_MOB_HP = config.AgentTuning.intValue("server.agents.diagnostics.skillprobe.AgentSkillProbeService.SHOWCASE_MOB_HP");
     /**
      * Dummy offsets tried in order until a plan exists: melee reach first, then beyond the ranged
      * "degenerate" distance (the planner aims at the nearest hitbox edge, so a 60px dummy is too
@@ -152,7 +159,12 @@ public final class AgentSkillProbeService {
             try {
                 SkillProbeReport report = run(operator, entry, options);
                 LAST_REPORT.put(operator.getId(), report);
-                report.chatSummary().forEach(operator::yellowMessage);
+                if (options.showcase()) {
+                    operator.yellowMessage("Showcase finished: " + report.outcomes().size() + " skills used by "
+                            + entry.bot().getName() + ".");
+                } else {
+                    report.chatSummary().forEach(operator::yellowMessage);
+                }
             } catch (Exception failure) {
                 log.warn("Skill probe for {} failed", options.agentName(), failure);
                 operator.yellowMessage("Skill probe failed: " + failure);
@@ -210,7 +222,8 @@ public final class AgentSkillProbeService {
             notes.add("WARNING: no weapon equipped; every attack skill will report WEAPON_INCOMPATIBLE.");
         }
 
-        MapleMap map = warpToProbeMap(operator, bot, options.mapId(), notes);
+        int mapId = options.mapId() == SkillProbeOptions.OPERATOR_MAP ? operator.getMapId() : options.mapId();
+        MapleMap map = warpToProbeMap(operator, bot, mapId, notes);
         Thread.sleep(SETTLE_MS);
         AgentCombatSkillCacheRuntime.rebuildSkillCacheIfNeeded(entry, bot);
 
@@ -228,10 +241,15 @@ public final class AgentSkillProbeService {
         boolean wasGrindingMode = AgentModeStateRuntime.grinding(entry);
         AgentModeStateRuntime.setFollowing(entry, false);
         AgentModeStateRuntime.setGrinding(entry, false);
+        Point anchor = bot.getPosition() == null ? null : new Point(bot.getPosition());
         try {
             for (Skill skill : skills) {
                 int level = bot.getSkillLevel(skill);
-                if (level <= 0) {
+                if (level <= 0 || options.skips(skill.getId())) {
+                    continue;
+                }
+                if (options.showcase()) {
+                    showcaseSkill(operator, entry, bot, map, anchor, skill, level, options, probeMobOids, outcomes);
                     continue;
                 }
                 outcomes.add(probeSkill(operator, entry, bot, map, skill, level, options, probeMobOids));
@@ -254,6 +272,9 @@ public final class AgentSkillProbeService {
         }
         SkillProbeReport report = new SkillProbeReport(bot.getName(), bot.getJob(), bot.getLevel(),
                 weaponType, options, notes, outcomes, startedAt, System.currentTimeMillis(), null);
+        if (options.showcase()) {
+            return report;
+        }
         try {
             report = report.withPath(SkillProbeReportWriter.write(report));
         } catch (Exception failure) {
@@ -523,7 +544,8 @@ public final class AgentSkillProbeService {
                 // A 26px Snail sits under some measured hit lines (Iron Arrow); most mobs are taller.
                 SkillProbeOptions tall = new SkillProbeOptions(options.agentName(), options.job(), options.level(),
                         TALL_MOB_ID, options.mapId(), options.weaponItemId(), options.probeBuffs(), options.shape(),
-                        options.keepMobs(), options.profileBuild(), options.loopSeconds(), options.loopSpecialMoves());
+                        options.keepMobs(), options.profileBuild(), options.loopSeconds(), options.loopSpecialMoves(),
+                        options.showcaseCasts(), options.skipSkillIds(), options.onlySkillIds());
                 SkillProbeOutcome retried = probeOnce(operator, entry, bot, map, skill, level, effect, bucket, kind, tall, probeMobOids);
                 if (retried.ok()) {
                     outcome = withDetail(retried, "with dummy " + TALL_MOB_ID + " (taller); " + retried.detail());
@@ -535,6 +557,72 @@ public final class AgentSkillProbeService {
             return new SkillProbeOutcome(skill.getId(), name, level, skill.getMaxLevel(), bucket.name(), kind,
                     SkillProbeOutcome.Stage.ERROR, failure.toString(), 0, 0, 0L, List.of(), 0L);
         }
+    }
+
+    /**
+     * Filming mode: the Agent names the skill in chat, then uses it {@code showcaseCasts} times with
+     * {@code SHOWCASE_PACE_MS} between casts so the client plays every animation. Passives, movement
+     * modes, beginner skills and Resurrection (it kills the operator) are skipped silently.
+     */
+    private static void showcaseSkill(Character operator, AgentRuntimeEntry entry, Character bot, MapleMap map,
+                                      Point anchor, Skill skill, int level, SkillProbeOptions options,
+                                      Set<Integer> probeMobOids, List<SkillProbeOutcome> outcomes) throws InterruptedException {
+        StatEffect effect = skill.getEffect(level);
+        if (!showcaseWorthy(bot, skill, effect)) {
+            return;
+        }
+        AgentPacketGatewayRuntime.packets().broadcastChatText(bot, SkillFactory.getSkillName(skill.getId()), false, 0);
+        boolean operatorHadParty = AgentPartyGatewayRuntime.party().snapshot(operator) != null;
+        SkillProbeOutcome last = null;
+        for (int cast = 0; cast < options.showcaseCasts(); cast++) {
+            // Dashes (Rush, Assaulter) carry the Agent toward the map edge; every cast starts from the anchor.
+            if (anchor != null && (bot.getPosition() == null || bot.getPosition().distance(anchor) > 40)) {
+                AgentMapGatewayRuntime.map().changeMap(bot, map, anchor);
+                Thread.sleep(SETTLE_MS * 2);
+            }
+            // Buccaneer skills cannot be reused right after a landed hit (client rule); wait it out on camera.
+            for (int i = 0; i < 50 && AgentClientSkillRules.reuseLocked(entry, skill.getId()); i++) {
+                Thread.sleep(100L);
+            }
+            if (cast > 0) {
+                // A buff that is still active would be refused; drop it so the recast plays again.
+                for (Pair<BuffStat, Integer> statup : effect.getStatups()) {
+                    bot.cancelEffectFromBuffStat(statup.getLeft());
+                }
+            }
+            last = probeSkill(operator, entry, bot, map, skill, level, options, probeMobOids);
+            Thread.sleep(SHOWCASE_PACE_MS);
+            if (last.stage().name().startsWith("PLAN_") || last.stage() == SkillProbeOutcome.Stage.ERROR
+                    || last.stage() == SkillProbeOutcome.Stage.BUFF_NOT_CAST) {
+                break;  // nothing was cast, so a repeat would only film the Agent standing still
+            }
+        }
+        if (!operatorHadParty && AgentPartyGatewayRuntime.party().snapshot(operator) != null) {
+            // Dragon Roar's ally rule formed a party for the cast; a showcase leaves no party behind.
+            AgentPartyGatewayRuntime.party().leaveCurrentParty(operator);
+        }
+        outcomes.add(last);
+    }
+
+    /** Mirrors {@link #probeOther}'s split: only skills that play a visible cast are worth filming. */
+    private static boolean showcaseWorthy(Character bot, Skill skill, StatEffect effect) {
+        if (skill.isBeginnerSkill() || skill.getId() == Bishop.RESURRECTION
+                || skill.getId() == Pirate.DASH || skill.getId() == Gunslinger.WINGS
+                || skill.getId() == DarkKnight.AURA_OF_BEHOLDER || skill.getId() == DarkKnight.HEX_OF_BEHOLDER) {
+            return false;
+        }
+        // The Axe/Sword/Blunt twins of one skill would need a weapon swap on camera; film the equipped one.
+        if (!AgentCombatWeaponPolicy.canUseSkillWithWeapon(skill.getId(), AgentAttackExecutionProvider.getEquippedWeaponType(bot))) {
+            return false;
+        }
+        AgentCombatSkillClassifier.SkillCacheBucket bucket = AgentCombatSkillClassifier.classifySkillCacheBucket(skill, effect);
+        if (bucket != AgentCombatSkillClassifier.SkillCacheBucket.IGNORE) {
+            return true;
+        }
+        if (AgentMovementSkillPolicy.movementSkillSupport(bot, skill.getId()) != null) {
+            return false;
+        }
+        return effect.isOverTime() && (effect.getMpCon() > 0 || effect.getHpCon() > 0);
     }
 
     private static SkillProbeOutcome probeOnce(Character operator, AgentRuntimeEntry entry, Character bot, MapleMap map,
@@ -669,8 +757,8 @@ public final class AgentSkillProbeService {
         waitGrounded(entry);
         clearProbeMobs(map, bot, probeMobOids);
         // The skill box is relative to the caster's facing; put a dummy on each side.
-        Monster right = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, 40);
-        Monster left = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, -40);
+        Monster right = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, 40, dummyHp(options));
+        Monster left = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, -40, dummyHp(options));
         if (right == null || left == null) {
             return new SkillProbeOutcome(skill.getId(), name, level, skill.getMaxLevel(), bucket,
                     SkillProbeOutcome.Kind.DEBUFF, SkillProbeOutcome.Stage.ERROR,
@@ -763,10 +851,18 @@ public final class AgentSkillProbeService {
         Monster mob = null;
         AgentAttackPlan plan = null;
         String precondition = allyNote;
+        boolean reuseDummy = options.showcase();
         for (int offset : MOB_OFFSETS_X) {
-            // Leftover dummies would be picked as the closest target in a projectile's path.
-            clearProbeMobs(map, bot, probeMobOids);
-            mob = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, offset);
+            // A showcase keeps hitting the same sturdy dummy while the plan still reaches it.
+            Monster kept = reuseDummy ? liveProbeMob(map, probeMobOids) : null;
+            reuseDummy = false;
+            if (kept != null) {
+                mob = kept;
+            } else {
+                // Leftover dummies would be picked as the closest target in a projectile's path.
+                clearProbeMobs(map, bot, probeMobOids);
+                mob = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, offset, dummyHp(options));
+            }
             if (mob == null) {
                 return new SkillProbeOutcome(skill.getId(), name, level, skill.getMaxLevel(), bucket,
                         SkillProbeOutcome.Kind.ATTACK, SkillProbeOutcome.Stage.ERROR,
@@ -776,10 +872,10 @@ public final class AgentSkillProbeService {
                 precondition = fillEnergyCharge(bot) + "; ";
             }
             if (GameConstants.isFinisherSkill(skill.getId()) && precondition.isEmpty()) {
-                precondition = buildComboOrbs(entry, bot, mob) + "; ";
+                precondition = buildComboOrbs(entry, bot, mob, options.showcase() ? SHOWCASE_WARMUP_PACE_MS : SETTLE_MS) + "; ";
                 if (!mob.isAlive()) {
                     // The warm-up hits often kill a low-HP dummy; the finisher needs a live target.
-                    mob = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, offset);
+                    mob = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, offset, dummyHp(options));
                     if (mob == null) {
                         return new SkillProbeOutcome(skill.getId(), name, level, skill.getMaxLevel(), bucket,
                                 SkillProbeOutcome.Kind.ATTACK, SkillProbeOutcome.Stage.ERROR,
@@ -789,6 +885,9 @@ public final class AgentSkillProbeService {
             }
             if (skill.getId() == ChiefBandit.MESO_EXPLOSION) {
                 precondition = dropMesosAround(bot, map, mob) + "; ";
+            }
+            if (!AgentClientSkillRules.chargeReady(bot, skill.getId()) && precondition.isEmpty()) {
+                precondition = putChargeUp(entry, bot) + "; ";
             }
             plan = AgentSkillAttackPlanRuntime.planSkillAttack(bot, mob, skill.getId(), AgentCombatConfig.cfg);
             if (plan != null) {
@@ -802,7 +901,7 @@ public final class AgentSkillProbeService {
             Pair<SkillProbeOutcome.Stage, String> best = null;
             for (int offset : MOB_OFFSETS_X) {
                 clearProbeMobs(map, bot, probeMobOids);
-                Monster candidate = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, offset);
+                Monster candidate = spawnProbeMobAt(map, bot, options.mobId(), probeMobOids, offset, dummyHp(options));
                 if (candidate == null) {
                     continue;
                 }
@@ -859,12 +958,25 @@ public final class AgentSkillProbeService {
                 hpDelta, signals, elapsed);
     }
 
+    /** Charged Blow precondition: the charge the Agent would pick, cast through the normal buff path. */
+    private static String putChargeUp(AgentRuntimeEntry entry, Character bot) throws InterruptedException {
+        int charge = AgentCombatBuffRuntime.pickCharge(entry, bot, AgentSkillGatewayRuntime.skills());
+        if (charge <= 0) {
+            return "no charge to cast";
+        }
+        AgentCombatCooldownStateRuntime.clearAttackCooldown(entry);
+        boolean cast = AgentCombatBuffRuntime.tryCastExplicitUtilityBuff(entry, bot, charge);
+        Thread.sleep(SETTLE_MS);
+        return (cast ? "charged with " : "failed to cast charge ") + charge;
+    }
+
     /**
      * Finisher precondition: Combo Attack up and a few close-range hits landed, because the server
      * grants one orb per hit ({@code CloseRangeDamageHandler.applyCloseRangeEffects}) and the
      * planner refuses Panic/Coma below one orb. Returns a summary for the outcome detail.
      */
-    private static String buildComboOrbs(AgentRuntimeEntry entry, Character bot, Monster mob) throws InterruptedException {
+    private static String buildComboOrbs(AgentRuntimeEntry entry, Character bot, Monster mob, long hitPauseMs)
+            throws InterruptedException {
         int comboSkill = bot.isCygnus() ? DawnWarrior.COMBO : Crusader.COMBO;
         if (bot.getBuffedValue(BuffStat.COMBO) == null) {
             AgentCombatCooldownStateRuntime.clearAttackCooldown(entry);
@@ -885,7 +997,7 @@ public final class AgentSkillProbeService {
             if (warmup != null && AgentCombatAttackRuntime.attackMonster(entry, bot, warmup).committed()) {
                 landed++;
             }
-            Thread.sleep(SETTLE_MS);
+            Thread.sleep(hitPauseMs);
         }
         AgentCombatCooldownStateRuntime.clearAttackCooldown(entry);
         Integer combo = bot.getBuffedValue(BuffStat.COMBO);
@@ -1151,8 +1263,11 @@ public final class AgentSkillProbeService {
     static Pair<SkillProbeOutcome.Stage, String> diagnosePlanFailure(Character bot, Monster mob, Skill skill,
                                                                      int level, StatEffect effect) {
         int skillId = skill.getId();
-        if (!AgentComboFinisherPolicy.canPlan(skillId, bot.getBuffedValue(BuffStat.COMBO))) {
+        if (!AgentComboFinisherPolicy.canPlan(bot, skillId)) {
             return new Pair<>(SkillProbeOutcome.Stage.PLAN_COMBO_ORBS_REQUIRED, "combo finisher without combo orbs");
+        }
+        if (!AgentClientSkillRules.chargeReady(bot, skillId)) {
+            return new Pair<>(SkillProbeOutcome.Stage.PLAN_CHARGE_REQUIRED, "Charged Blow without a charge on the weapon");
         }
         if (bot.skillIsCooling(skillId)) {
             return new Pair<>(SkillProbeOutcome.Stage.PLAN_SKILL_COOLDOWN, "skill cooldown active");
@@ -1262,14 +1377,40 @@ public final class AgentSkillProbeService {
     }
 
     private static Monster spawnProbeMobAt(MapleMap map, Character bot, int mobId, Set<Integer> probeMobOids, int offsetX) {
+        return spawnProbeMobAt(map, bot, mobId, probeMobOids, offsetX, 0);
+    }
+
+    /** {@code hp > 0} overrides the dummy's HP so a showcase never kills it mid-skill. */
+    private static Monster spawnProbeMobAt(MapleMap map, Character bot, int mobId, Set<Integer> probeMobOids,
+                                           int offsetX, int hp) {
         Monster mob = LifeFactory.getMonster(mobId);
         if (mob == null || map == null || bot.getPosition() == null) {
             return null;
         }
+        if (hp > 0) {
+            mob.setOverrideStats(new OverrideMonsterStats(hp, 0, 0));
+        }
         Point at = new Point(bot.getPosition().x + offsetX, bot.getPosition().y);
+        if (map.getPointBelow(at) == null) {
+            at = new Point(bot.getPosition());  // past a platform edge: spawn on the Agent's own ground
+        }
         map.spawnMonsterOnGroundBelow(mob, at);
         probeMobOids.add(mob.getObjectId());
         return mob;
+    }
+
+    private static int dummyHp(SkillProbeOptions options) {
+        return options.showcase() ? SHOWCASE_MOB_HP : 0;
+    }
+
+    private static Monster liveProbeMob(MapleMap map, Set<Integer> probeMobOids) {
+        for (int oid : probeMobOids) {
+            Monster mob = map == null ? null : map.getMonsterByOid(oid);
+            if (mob != null && mob.isAlive()) {
+                return mob;
+            }
+        }
+        return null;
     }
 
     private static void clearProbeMobs(MapleMap map, Character bot, Set<Integer> probeMobOids) {

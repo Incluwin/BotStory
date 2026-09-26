@@ -5,6 +5,7 @@ import client.Skill;
 import constants.skills.Brawler;
 import constants.skills.ChiefBandit;
 import server.StatEffect;
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.capabilities.combat.rotation.AgentCombatRotationRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.perception.AgentMapPerception;
@@ -44,8 +45,12 @@ public final class AgentCombatSpecialMoveTickRuntime {
     }
 
     public static void tick(AgentRuntimeEntry entry, Character bot) {
-        if (!enabled || entry == null || bot == null || !bot.isAlive()
-                || AgentCombatCooldownStateRuntime.hasAttackCooldown(entry)
+        if (!enabled || entry == null || bot == null || !bot.isAlive()) {
+            return;
+        }
+        // Summons attack on their own cycle, whatever their owner is doing.
+        AgentCombatSummonRuntime.tickSummonAttacks(entry, bot);
+        if (AgentCombatCooldownStateRuntime.hasAttackCooldown(entry)
                 || !AgentCombatBuffStateRuntime.skillBuffsEnabled(entry)
                 || !(AgentModeStateRuntime.following(entry) || AgentModeStateRuntime.grinding(entry))) {
             return;
@@ -58,20 +63,31 @@ public final class AgentCombatSpecialMoveTickRuntime {
             return;
         }
         Monster nearest = nearestHostile(bot);
-        if (!AgentCombatRotationRuntime.specialMovesWanted(bot, nearest != null && nearest.isBoss(), monsters.size())) {
-            return;  // the arena measured summons/debuffs as a loss for this job in this situation
-        }
-        // This hook runs before the attack decision and would take every cooldown window; attacks keep
-        // priority, a special move only spends a window once a couple of attacks have landed since the last.
+        // Prior rules, used wherever the learner has no say: the arena profile's on/off verdict, and
+        // attacks keep priority (this hook runs before the attack decision and would otherwise take
+        // every cooldown window) - a special move only spends a window once a couple of attacks landed.
         AgentCombatSpecialMoveState state = entry.capabilityStates().require(AgentCombatSpecialMoveState.STATE_KEY);
-        if (state.specialMovesCast() > 0 && state.attacksSinceLastSpecialMove() < ATTACKS_BETWEEN_SPECIAL_MOVES) {
+        boolean priorAllows = AgentCombatRotationRuntime.specialMovesWanted(
+                bot, nearest != null && nearest.isBoss(), monsters.size())
+                && (state.specialMovesCast() == 0 || state.attacksSinceLastSpecialMove() >= ATTACKS_BETWEEN_SPECIAL_MOVES);
+        int summonId = AgentCombatSummonRuntime.tickSummons(entry, bot,
+                skillId -> allowed(entry, bot, nearest, skillId, priorAllows));
+        if (summonId > 0) {
+            afterCast(entry, bot, summonId);
+            AgentCombatSkillUsageStateRuntime.record(entry, summonId, 0);
+            AgentCombatLearner.onSpecialCast(entry, summonId);
             return;
         }
-        if (AgentCombatSummonRuntime.tickSummons(entry, bot)) {
-            afterCast(entry, bot, AgentCombatSkillCacheStateRuntime.summonSkillIds(entry).get(0));
-            return;
-        }
-        tickDebuffs(entry, bot);
+        tickDebuffs(entry, bot, priorAllows);
+    }
+
+    /** The learner's verdict on one special move, or the prior rules when it defers. */
+    private static boolean allowed(AgentRuntimeEntry entry, Character bot, Monster target, int skillId, boolean priorAllows) {
+        return switch (AgentCombatLearner.special(entry, bot, target, skillId)) {
+            case CAST -> true;
+            case SKIP -> false;
+            case DEFER -> priorAllows;
+        };
     }
 
     /** Chakra below half HP, MP Recovery when MP is low and HP can spare it; survival outranks attack priority. */
@@ -92,7 +108,7 @@ public final class AgentCombatSpecialMoveTickRuntime {
         return false;
     }
 
-    private static void tickDebuffs(AgentRuntimeEntry entry, Character bot) {
+    private static void tickDebuffs(AgentRuntimeEntry entry, Character bot, boolean priorAllows) {
         AgentCombatSpecialMoveState state = entry.capabilityStates().require(AgentCombatSpecialMoveState.STATE_KEY);
         long now = System.currentTimeMillis();
         if (now < state.nextDebuffAtMs()) {
@@ -115,13 +131,20 @@ public final class AgentCombatSpecialMoveTickRuntime {
                     || skillId == constants.skills.Priest.DISPEL) {
                 continue;  // pulls and party dispel are not opening moves
             }
+            if (AgentCrashSkillPolicy.isCrashSkill(skillId) && !AgentCrashSkillPolicy.worthCasting(skillId, target)
+                    && !AgentCombatLearner.priorsRelaxed(bot)) {
+                continue;  // crashes only cancel a monster buff; nothing to cancel here
+            }
             StatEffect effect = skill.getEffect(level);
-            if (alreadyCarries(target, effect) || !facesTarget(bot, target, effect)) {
+            if (alreadyCarries(target, effect) || !facesTarget(bot, target, effect)
+                    || !allowed(entry, bot, target, skillId, priorAllows)) {
                 continue;
             }
             if (AgentCombatDebuffRuntime.tryDebuff(entry, bot, skillId) == AgentCombatDebuffRuntime.DebuffResult.CAST) {
                 state.setNextDebuffAtMs(now + DEBUFF_INTERVAL_MS);
                 afterCast(entry, bot, skillId);
+                AgentCombatSkillUsageStateRuntime.record(entry, skillId, 0);
+                AgentCombatLearner.onSpecialCast(entry, skillId);
                 return;
             }
         }
@@ -166,9 +189,19 @@ public final class AgentCombatSpecialMoveTickRuntime {
 
     private static void afterCast(AgentRuntimeEntry entry, Character bot, int skillId) {
         entry.capabilityStates().require(AgentCombatSpecialMoveState.STATE_KEY).countSpecialMove();
+        AgentSkillShowcase.used(entry, bot, skillId);
+        if (AgentSkillGatewayRuntime.skills().getSkill(skillId) == null) {
+            return;
+        }
+        AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, castLockMs(bot, skillId));
+        AgentCombatAlertRuntime.markAlerted(entry);
+    }
+
+    /** How long a summon/debuff cast locks the Agent out of its next attack; 0 for an unknown skill. */
+    public static int castLockMs(Character bot, int skillId) {
         Skill skill = AgentSkillGatewayRuntime.skills().getSkill(skillId);
         if (skill == null) {
-            return;
+            return 0;
         }
         AgentAttackExecutionProvider.BasicAttackData fallback =
                 AgentAttackExecutionProvider.buildBasicAttackData(bot, bot.getPosition());
@@ -176,8 +209,6 @@ public final class AgentCombatSpecialMoveTickRuntime {
                 AgentAttackExecutionProvider.getEquippedWeaponType(bot));
         AgentAttackExecutionProvider.SkillAttackTiming timing =
                 AgentAttackExecutionProvider.resolveSkillAttackTiming(skill, action, bot, fallback);
-        AgentCombatCooldownStateRuntime.maxAttackCooldown(entry,
-                AgentCombatSupportPolicy.supportCastCooldownMs(timing.cooldownMs(), skill.getAnimationTime()));
-        AgentCombatAlertRuntime.markAlerted(entry);
+        return AgentCombatSupportPolicy.supportCastCooldownMs(timing.cooldownMs(), skill.getAnimationTime());
     }
 }

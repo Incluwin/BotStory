@@ -3,6 +3,9 @@ package server.agents.capabilities.supplies;
 import server.agents.runtime.state.AgentCapabilityStateKey;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 
+import java.util.EnumMap;
+import java.util.Map;
+
 public final class AgentSupplyProcurementState {
     public static final AgentCapabilityStateKey<AgentSupplyProcurementState> STATE_KEY =
             new AgentCapabilityStateKey<>("supplies.procurement-execution", AgentSupplyProcurementState.class,
@@ -26,6 +29,15 @@ public final class AgentSupplyProcurementState {
     private int recoveryBaselineMeso;
     private int recoveryTargetMeso;
     private String stalledReason = "";
+    private int shopFailures;
+    private long shopRetryAtMs;
+    private String abandonedReason = "";
+    private boolean resumeFollow;
+    private boolean resumeGrind;
+    // Survives clear(): a category the Agent just failed to restock stays quiet for a while so
+    // the next low-supply observation does not immediately pull it away from its party again.
+    private final Map<AgentResourceCategory, Long> suppressedUntilMs =
+            new EnumMap<>(AgentResourceCategory.class);
 
     public enum Phase {
         IDLE,
@@ -113,6 +125,49 @@ public final class AgentSupplyProcurementState {
         return stalledReason;
     }
 
+    /** Failed NPC shop visits (BLOCKED/CANCELLED workflows) during this procurement. */
+    public synchronized int shopFailures() {
+        return shopFailures;
+    }
+
+    public synchronized long shopRetryAtMs() {
+        return shopRetryAtMs;
+    }
+
+    /** True once this procurement gave up and is heading back to the suspended plan. */
+    public synchronized boolean abandoned() {
+        return !abandonedReason.isBlank();
+    }
+
+    public synchronized String abandonedReason() {
+        return abandonedReason;
+    }
+
+    /** Movement mode the foreground was in when maintenance began; restored when it finishes. */
+    public synchronized void rememberForegroundMode(boolean following, boolean grinding) {
+        resumeFollow = following;
+        resumeGrind = !following && grinding;
+    }
+
+    public synchronized boolean resumeFollow() {
+        return resumeFollow;
+    }
+
+    public synchronized boolean resumeGrind() {
+        return resumeGrind;
+    }
+
+    public synchronized void suppress(AgentResourceCategory category, long untilMs) {
+        if (category != null) {
+            suppressedUntilMs.merge(category, untilMs, Math::max);
+        }
+    }
+
+    public synchronized boolean suppressed(AgentResourceCategory category, long nowMs) {
+        Long until = category == null ? null : suppressedUntilMs.get(category);
+        return until != null && nowMs < until;
+    }
+
     public synchronized void start(String requestId, String objectiveId, AgentResourceCategory category) {
         start(requestId, objectiveId, category, 0, 0, 0, Phase.SHOPPING);
     }
@@ -154,6 +209,11 @@ public final class AgentSupplyProcurementState {
         recoveryBaselineMeso = 0;
         recoveryTargetMeso = 0;
         stalledReason = "";
+        shopFailures = 0;
+        shopRetryAtMs = 0L;
+        abandonedReason = "";
+        resumeFollow = false;
+        resumeGrind = false;
     }
 
     public synchronized void complete(AgentSupplyProcurementOutcome outcome) {
@@ -203,6 +263,21 @@ public final class AgentSupplyProcurementState {
         phase = Phase.STALLED;
     }
 
+    /** Counts one failed shop visit and schedules another request no earlier than retryAtMs. */
+    public synchronized void retryShopVisit(boolean supplierIsCurrentMap, long retryAtMs) {
+        shopFailures++;
+        shopRequested = false;
+        shopRetryAtMs = retryAtMs;
+        phase = supplierIsCurrentMap ? Phase.SHOPPING : Phase.TRAVEL_TO_SUPPLIER;
+    }
+
+    /** Gives up on this procurement: travel back to the plan, then finish it as failed. */
+    public synchronized void markAbandoned(String reason) {
+        abandonedReason = reason == null || reason.isBlank() ? "resupply abandoned" : reason.trim();
+        shopRequested = false;
+        phase = Phase.RETURNING;
+    }
+
     public synchronized void clear() {
         requestId = "";
         objectiveId = "";
@@ -221,5 +296,10 @@ public final class AgentSupplyProcurementState {
         recoveryBaselineMeso = 0;
         recoveryTargetMeso = 0;
         stalledReason = "";
+        shopFailures = 0;
+        shopRetryAtMs = 0L;
+        abandonedReason = "";
+        resumeFollow = false;
+        resumeGrind = false;
     }
 }

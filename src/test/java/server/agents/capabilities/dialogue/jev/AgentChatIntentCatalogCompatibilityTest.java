@@ -7,6 +7,7 @@ import server.agents.capabilities.dialogue.AgentEquipmentDialogueClassifier;
 import server.agents.capabilities.dialogue.AgentSocialDialogueClassifier;
 import server.agents.capabilities.dialogue.AgentTradeDialogueClassifier;
 import server.agents.capabilities.dialogue.AgentUtilityDialogueClassifier;
+import server.agents.capabilities.movement.AgentPartyGatherService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,6 +67,11 @@ class AgentChatIntentCatalogCompatibilityTest {
             Map.entry("buff_pots_cheap", AgentChatCommandClassifier::isBuffConsumablesCheapCommand),
             Map.entry("buff_pots_max", AgentChatCommandClassifier::isBuffConsumablesMaxCommand));
 
+    private static final Map<String, Predicate<String>> GATHER_PREDICATES = Map.of(
+            "gather", AgentPartyGatherService::matchesAssemble,
+            "buffs", message -> AgentPartyGatherService.matchesAssemble(message)
+                    && AgentPartyGatherService.mentionsBuffs(message));
+
     private static final Map<String, Predicate<String>> SUPPLY_PREDICATES = Map.of(
             "hp", AgentChatCommandClassifier::isNeedHpPotCommand,
             "mp", AgentChatCommandClassifier::isNeedMpPotCommand,
@@ -95,6 +101,7 @@ class AgentChatIntentCatalogCompatibilityTest {
         check(failures, AgentChatIntent.INFO_QUERY, AgentChatIntentArgument.INFO_TOPIC, INFO_PREDICATES);
         check(failures, AgentChatIntent.SUPPORT_TOGGLE, AgentChatIntentArgument.SUPPORT_TARGET, SUPPORT_PREDICATES);
         check(failures, AgentChatIntent.SUPPLY_REQUEST, AgentChatIntentArgument.SUPPLY_KIND, SUPPLY_PREDICATES);
+        check(failures, AgentChatIntent.ASSEMBLE, AgentChatIntentArgument.GATHER_PURPOSE, GATHER_PREDICATES);
         for (String option : AgentChatIntentArgument.ITEM_CATEGORY.criteria().keySet()) {
             String trade = canonical(AgentChatIntent.TRADE_ITEMS, AgentChatIntentArgument.ITEM_CATEGORY, option);
             if (AgentTradeDialogueClassifier.matchTradeCategory(trade) == null) {

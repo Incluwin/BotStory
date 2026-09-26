@@ -5,6 +5,7 @@ import client.Disease;
 import client.Skill;
 import client.inventory.WeaponType;
 import server.StatEffect;
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.capabilities.combat.rotation.AgentCombatRotationRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.monitoring.AgentPerformanceMonitor;
@@ -41,6 +42,17 @@ public final class AgentCombatPlanRuntime {
             }
             WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
             List<AgentAttackPlan> eligible = preferRangedBossCandidates(target, weaponType, candidates);
+            // Filming: rotate through the skills instead of repeating the best one.
+            AgentAttackPlan shown = AgentSkillShowcase.pick(entry, eligible);
+            if (shown != null) {
+                return shown;
+            }
+            // What the Agent learned from its own casts comes first (arena learning, or an adopted
+            // policy with enough evidence for this situation); null leaves the choice to what follows.
+            AgentAttackPlan learned = AgentCombatLearner.choose(entry, bot, target, eligible);
+            if (learned != null) {
+                return learned;
+            }
             // A measured rotation profile (combat arena) outranks the estimated-DPS scorer when it
             // names one of this tick's candidates; otherwise the scorer decides as before.
             AgentAttackPlan preferred = AgentCombatRotationRuntime.preferredPlan(bot, target, eligible);
@@ -72,6 +84,9 @@ public final class AgentCombatPlanRuntime {
         if (bot.hasDisease(Disease.SEAL)) return List.of();
         List<AgentAttackPlan> candidates = new ArrayList<>(3);
         for (int skillId : attackSkillIds(entry)) {
+            if (AgentClientSkillRules.reuseLocked(entry, skillId)) {
+                continue;   // the client would refuse the recast right after it landed
+            }
             AgentAttackPlan skillAttack = AgentSkillAttackPlanRuntime.planSkillAttack(
                     bot, target, skillId, config);
             skillAttack = AgentCombatObjectiveTargetStateRuntime.restrictAttackPlan(entry, skillAttack);
@@ -85,10 +100,13 @@ public final class AgentCombatPlanRuntime {
                 AgentCombatSkillCacheStateRuntime.attackSkillIds(entry),
                 AgentCombatSkillCacheStateRuntime.attackSkillId(entry),
                 AgentCombatSkillCacheStateRuntime.aoeSkillId(entry));
-        int requiredSkillId = entry.capabilityStates()
-                .require(AgentCombatSkillConstraintState.STATE_KEY).requiredSkillId();
-        if (requiredSkillId <= 0) return attackSkillIds;
-        return attackSkillIds.stream().filter(skillId -> skillId == requiredSkillId).toList();
+        AgentCombatSkillConstraintState constraint = entry.capabilityStates()
+                .require(AgentCombatSkillConstraintState.STATE_KEY);
+        int requiredSkillId = constraint.requiredSkillId();
+        if (requiredSkillId > 0) {
+            return attackSkillIds.stream().filter(skillId -> skillId == requiredSkillId).toList();
+        }
+        return attackSkillIds.stream().filter(skillId -> !constraint.banned(skillId)).toList();
     }
 
     static boolean hasUsableMagicSkill(List<AgentAttackPlan> candidates) {

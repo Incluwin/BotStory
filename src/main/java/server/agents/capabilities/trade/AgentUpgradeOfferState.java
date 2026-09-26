@@ -13,6 +13,7 @@ public final class AgentUpgradeOfferState {
     private long pendingGearPromptAt = 0L;
     private boolean spawnUpgradeCheckDone = false;
     private final Set<Integer> requestedUpgradeItemIds = ConcurrentHashMap.newKeySet();
+    private final Set<Integer> declinedOfferItemIds = ConcurrentHashMap.newKeySet();
 
     public boolean proactiveUpgradeOffers() {
         return proactiveUpgradeOffers;
@@ -68,5 +69,13 @@ public final class AgentUpgradeOfferState {
 
     public void clearRequestedUpgradeItems() {
         requestedUpgradeItemIds.clear();
+    }
+
+    public boolean hasDeclinedOfferItem(int itemId) {
+        return declinedOfferItemIds.contains(itemId);
+    }
+
+    public void rememberDeclinedOfferItem(int itemId) {
+        declinedOfferItemIds.add(itemId);
     }
 }

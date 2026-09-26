@@ -173,7 +173,9 @@ public final class AgentLifecycleService {
                                                        AgentControlAccess ownershipService,
                                                        SpawnHooks hooks) throws SQLException {
         return spawnAgentForLeaderAt(
-                leader, agentName, leader.getMap(), leader.getPosition(), ownershipService, hooks, false);
+                leader, agentName, leader.getMap(),
+                AgentSpawnPositionService.resolveSpawnBesideLeader(leader.getMap(), leader.getPosition()),
+                ownershipService, hooks, false);
     }
 
     public static AgentSpawnResult spawnAgentForLeaderAt(Character leader,
@@ -379,7 +381,8 @@ public final class AgentLifecycleService {
         }
 
         MapleMap map = leader.getMap();
-        Point spawnPosition = hooks.resolveSpawnPosition().apply(map, leader.getPosition());
+        Point spawnPosition = hooks.resolveSpawnPosition().apply(
+                map, AgentSpawnPositionService.resolveSpawnBesideLeader(map, leader.getPosition()));
         Character agent = hooks.loadOfflineAgent().load(agentCharId, world, channel, map, spawnPosition);
         AgentRuntimeEntry entry = hooks.registerSpawnedAgent().register(leaderCharId, leader, agent);
         hooks.delayedActionScheduler().schedule(entry, hooks.returnAnnouncementDelayMs().getAsLong(), () -> {

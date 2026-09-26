@@ -131,7 +131,7 @@ class AgentMovementOnlyTickServiceTest {
 
         assertEquals(List.of(
                 "idle", "shopPending", "anchor", "partyRecovery", "targetRecovery",
-                "mapChange", "shopPending", "shopTick", "shopTarget", "shopDelay", "core:false:30,40"), calls);
+                "mapChange", "shopPending", "shopTick", "shopTarget", "shopDelay", "shopHold", "core:false:30,40"), calls);
     }
 
     @Test
@@ -283,7 +283,11 @@ class AgentMovementOnlyTickServiceTest {
                         return followIdleConsumes;
                     },
                     (entry, target, runAiTick) ->
-                            calls.add("core:" + runAiTick + ":" + target.x + "," + target.y));
+                            calls.add("core:" + runAiTick + ":" + target.x + "," + target.y),
+                    (entry, agent) -> {
+                        calls.add("shopHold");
+                        return false;
+                    });
         }
     }
 }

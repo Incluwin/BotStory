@@ -69,6 +69,25 @@ public enum CosmicCombatGateway implements CombatGateway {
     }
 
     @Override
+    public boolean dispatchSummonAttack(Character agent, int summonObjectId, boolean facingLeft,
+                                        java.util.List<SummonHit> hits, int packetTimestamp) {
+        if (hits == null || hits.isEmpty()) {
+            return false;
+        }
+        return dispatchSyntheticPacket(agent,
+                CosmicSummonAttackPacketBuilder.build(summonObjectId, packetTimestamp, facingLeft, hits));
+    }
+
+    @Override
+    public int summonMaxDamage(Character agent, int summonSkillId, int summonSkillLevel) {
+        client.Skill skill = client.SkillFactory.getSkill(summonSkillId);
+        if (agent == null || skill == null || summonSkillLevel <= 0) {
+            return 0;
+        }
+        return net.server.channel.handlers.SummonDamageHandler.maxDamage(skill.getEffect(summonSkillLevel), agent);
+    }
+
+    @Override
     public CombatAttackApplicationResult applyAttackEffects(
             AgentAttackRoute route,
             AbstractDealDamageHandler.AttackInfo attack,

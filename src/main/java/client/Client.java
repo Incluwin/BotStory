@@ -248,7 +248,8 @@ public class Client extends ChannelInboundHandlerAdapter {
             handleMalformedPacket("invalid-opcode", opcode, packet, null);
             return;
         }
-        PacketRateLimiter.Decision rateDecision = packetRateLimiter.allow(opcode, System.currentTimeMillis());
+        PacketRateLimiter.Decision rateDecision = packetRateLimiter.allow(opcode, System.currentTimeMillis(),
+                this::getControlledMonsterCount);
         if (!rateDecision.allowed()) {
             SecurityEventRuntime.record(this, SecurityEventType.PACKET_RATE_LIMIT,
                     rateDecision.disconnect() ? SecuritySeverity.CRITICAL : SecuritySeverity.WARNING,
@@ -419,6 +420,11 @@ public class Client extends ChannelInboundHandlerAdapter {
 
     public EventManager getEventManager(String event) {
         return getChannelServer().getEventSM().getEventManager(event);
+    }
+
+    public int getControlledMonsterCount() {
+        Character chr = player;
+        return chr == null ? 0 : chr.getNumControlledMonsters();
     }
 
     public Character getPlayer() {

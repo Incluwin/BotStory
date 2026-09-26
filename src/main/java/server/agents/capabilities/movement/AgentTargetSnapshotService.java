@@ -1,6 +1,7 @@
 package server.agents.capabilities.movement;
 
 import server.agents.capabilities.follow.AgentFollowAnchorService;
+import server.agents.capabilities.follow.AgentFollowOpportunityTickService;
 
 import client.Character;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -59,6 +60,12 @@ public final class AgentTargetSnapshotService {
         Point moveTargetPos = AgentMoveTargetStateRuntime.moveTarget(entry);
         Point farmAnchorPos = AgentFarmAnchorStateRuntime.farmAnchorInMap(entry, bot.getMapId());
         Monster activeGrindTarget = AgentGrindTargetStateRuntime.activeTargetInMap(entry, bot.getMap());
+        if (activeGrindTarget != null && AgentModeStateRuntime.following(entry) && !AgentModeStateRuntime.grinding(entry)
+                && !AgentFollowOpportunityTickService.withinFollowLeash(
+                        activeGrindTarget.getPosition(), rawFollowAnchorPos, AgentMovementPhysicsConfig.configuredFollowDist())) {
+            // Retaliation stays near the leader: a following Agent never chases an aggressor across the map.
+            activeGrindTarget = null;
+        }
         Point grindTargetPos = activeGrindTarget == null ? null : new Point(activeGrindTarget.getPosition());
         Point primaryTargetPos;
         String primaryTargetSource;

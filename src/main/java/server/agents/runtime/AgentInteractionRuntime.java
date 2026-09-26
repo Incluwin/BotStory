@@ -48,12 +48,19 @@ public final class AgentInteractionRuntime {
     }
 
     public static AgentLifecycleService.AgentSpawnResult spawnAgentForLeader(Character leader, String agentName) {
+        return spawnAgentForLeader(leader, agentName, true);
+    }
+
+    /** {@code joinParty=false} spawns a companion without forming a party with its leader. */
+    public static AgentLifecycleService.AgentSpawnResult spawnAgentForLeader(Character leader, String agentName,
+                                                                            boolean joinParty) {
         return CosmicAgentSpawnCoordinator.spawnAgentForLeader(
                 leader,
                 agentName,
                 AgentInteractionRuntime::tick,
                 AgentMovementCommandRuntime::followOwner,
-                log);
+                log,
+                joinParty);
     }
 
     /** Registers an offline Director selection without implicitly starting grind or follow. */

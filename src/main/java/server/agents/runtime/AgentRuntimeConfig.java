@@ -31,6 +31,11 @@ public final class AgentRuntimeConfig {
         // Follow stagger: each bot is offset this many px from the owner (index-based, alternating left/right)
         public int FOLLOW_STAGGER = config.AgentTuning.intValue("server.agents.runtime.AgentRuntimeConfig.FOLLOW_STAGGER");
 
+        // Spawn beside the leader: horizontal px a freshly spawned/rejoining bot lands from its leader, and the
+        // largest vertical ground difference still treated as "the leader's platform" for that spot.
+        public int SPAWN_SIDE_OFFSET = config.AgentTuning.intValue("server.agents.runtime.AgentRuntimeConfig.SPAWN_SIDE_OFFSET");
+        public int SPAWN_SIDE_MAX_DROP = config.AgentTuning.intValue("server.agents.runtime.AgentRuntimeConfig.SPAWN_SIDE_MAX_DROP");
+
         // Owner inactivity (offline or dead) before bot scrolls/warps to nearest town and idles.
         public long OWNER_INACTIVE_TOWN_RETURN_MS = 5L * 60_000L;
 

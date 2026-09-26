@@ -15,6 +15,8 @@ import java.util.Random;
 public final class Churn {
     private static final Logger log = LoggerFactory.getLogger(Churn.class);
     private static final int SEED_BATCH = 12;
+    /** Fast-seed until the registry is within 1/10 of target; below that, births trickle in at BIRTHS_PER_DAY. */
+    private static final int FAST_SEED_SHORTFALL_DIVISOR = 10;
 
     private final Population population;
     private final Random random;
@@ -31,7 +33,10 @@ public final class Churn {
         return seeding;
     }
 
-    /** Called every presence sweep: seeds fast while the registry is far below target. */
+    /**
+     * Called every presence sweep: seeds fast while the registry is well below target (a raised
+     * TARGET_CITIZENS or a restart mid-seed), and lets BIRTHS_PER_DAY handle the last tenth.
+     */
     void step(long now) {
         int active = population.activeCount();
         int target = population.config().TARGET_CITIZENS;
@@ -39,7 +44,7 @@ public final class Churn {
             seeding = false;
             return;
         }
-        if (active < target / 2 || seeding) {
+        if (active < target - target / FAST_SEED_SHORTFALL_DIVISOR || seeding) {
             seeding = true;
             int batch = Math.min(SEED_BATCH, target - active);
             for (int i = 0; i < batch; i++) {

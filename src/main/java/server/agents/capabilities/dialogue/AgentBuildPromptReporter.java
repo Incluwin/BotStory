@@ -11,16 +11,16 @@ public final class AgentBuildPromptReporter {
             return null;
         }
         if (job.isA(Job.WARRIOR)) {
-            return "what AP build? type 'dexless'/'pure' or e.g. '25 dex' to set a dex target";
+            return "how should i put my ap? dexless, or like 25 dex?";
         }
         if (job.isA(Job.MAGICIAN)) {
-            return "what AP build? type 'lukless'/'pure' or e.g. '25 luk' to set a luk target";
+            return "how should i put my ap? lukless, or like 25 luk?";
         }
         if (job.isA(Job.BOWMAN)) {
-            return "what AP build? type 'strless'/'pure' or e.g. '25 str' to set a str target";
+            return "how should i put my ap? strless, or like 25 str?";
         }
         if (job.isA(Job.THIEF)) {
-            return "what AP build? type 'dexless'/'pure' or e.g. '25 dex' to set a dex target";
+            return "how should i put my ap? dexless, or like 25 dex?";
         }
         return null;
     }

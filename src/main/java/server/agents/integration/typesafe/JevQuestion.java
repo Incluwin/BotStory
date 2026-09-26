@@ -1,8 +1,10 @@
 package server.agents.integration.typesafe;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * One typed System One question. Instructions and criteria accept JSON structure (strings,
@@ -29,7 +31,12 @@ public sealed interface JevQuestion permits JevQuestion.Choice, JevQuestion.Noul
             if (criteria == null || criteria.size() < 2) {
                 throw new IllegalArgumentException("a Choice needs at least two options");
             }
-            criteria = Map.copyOf(new LinkedHashMap<>(criteria));
+            // Keep the caller's option order: Jev's probabilities depend on it (see JevChoicePermutations).
+            criteria.forEach((option, description) -> {
+                Objects.requireNonNull(option, "option id");
+                Objects.requireNonNull(description, "option description");
+            });
+            criteria = Collections.unmodifiableMap(new LinkedHashMap<>(criteria));
         }
 
         @Override

@@ -101,9 +101,14 @@ public final class AgentPotionService {
         long startedAt = AgentPerformanceMonitor.start();
         int maxHp = bot.getCurrentMaxHp();
         int maxMp = bot.getCurrentMaxMp();
+        // A Dark Knight that tops up at the ordinary threshold never enters Berserk's window and
+        // fights at half damage; with Berserk learned the trigger sits just under the threshold.
+        float hpThreshold = server.agents.capabilities.combat.AgentBerserkWindowPolicy
+                .autopotHpThreshold(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);
         int hpDeficit = Math.max(
                 1,
-                Math.round(maxHp * (1.0f - AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH)));
+                Math.round(maxHp * server.agents.capabilities.combat.AgentBerserkWindowPolicy
+                        .autopotHpDeficitFraction(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH)));
         int mpDeficit = Math.max(
                 1,
                 Math.round(maxMp * (1.0f - AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH)));
@@ -140,7 +145,8 @@ public final class AgentPotionService {
 
         if (choice.hpItemId() > 0) {
             bot.changeKeybinding(91, new KeyBinding(7, choice.hpItemId()));
-            bot.setAutopotHpAlert(AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);
+            bot.setAutopotHpAlert(server.agents.capabilities.combat.AgentBerserkWindowPolicy
+                    .autopotHpThreshold(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH));
         } else {
             bot.getKeymap().remove(91);
             bot.setAutopotHpAlert(0f);

@@ -80,6 +80,8 @@ class CosmicAgentOfflineLoadServiceTest {
         verify(agent).setEnteredChannelWorld();
         verify(agent).visitMap(spawnMap);
         verify(agent).diseaseExpireTask();
+        verify(agent).buffExpireTask();
+        verify(agent).skillCooldownTask();
         assertEquals(List.of(
                 "client",
                 "load",

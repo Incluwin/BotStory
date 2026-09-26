@@ -3,8 +3,10 @@ package server.agents.diagnostics.skillprobe;
 import client.Job;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Parsed arguments of {@code !skillprobe <agent> [key=value ...]}.
@@ -12,7 +14,11 @@ import java.util.Locale;
  * <p>Keys: {@code job} (id or enum name), {@code level}, {@code mob} (dummy monster id),
  * {@code map} (probe map id), {@code weapon} (item id to equip before probing).
  * Flags: {@code nobuffs} skips support-skill casts, {@code noshape} probes the Agent as-is even
- * when job/level are given, {@code keepmobs} leaves the dummy monsters alive afterwards.</p>
+ * when job/level are given, {@code keepmobs} leaves the dummy monsters alive afterwards,
+ * {@code showcase[=<casts>]} paces every castable skill for filming instead of probing it once; it
+ * defaults the dummy to {@link #SHOWCASE_MOB_ID} and stays on the operator's current map;
+ * {@code skip=<skillId>[,<skillId>...]} leaves those skills out; {@code only=<skillId>[,<skillId>...]}
+ * probes just those.</p>
  */
 public record SkillProbeOptions(String agentName,
                                 Job job,
@@ -25,22 +31,29 @@ public record SkillProbeOptions(String agentName,
                                 boolean keepMobs,
                                 boolean profileBuild,
                                 int loopSeconds,
-                                boolean loopSpecialMoves) {
+                                boolean loopSpecialMoves,
+                                int showcaseCasts,
+                                Set<Integer> skipSkillIds,
+                                Set<Integer> onlySkillIds) {
     /** Snail: harmless, low HP, spawns anywhere with a foothold. */
     public static final int DEFAULT_MOB_ID = 100100;
     /** GM Map: private, flat, no natural spawns. */
     public static final int DEFAULT_MAP_ID = 180000000;
+    /** Orange Mushroom: tall enough for every hit line, recognisable on camera. */
+    public static final int SHOWCASE_MOB_ID = 1210102;
+    /** Map id meaning "wherever the operator stands". */
+    public static final int OPERATOR_MAP = 0;
 
     public static SkillProbeOptions parse(String[] params) {
         if (params == null || params.length < 1 || params[0].isBlank()) {
             throw new IllegalArgumentException("Syntax: !skillprobe <agent> [job=<id|name>] [level=<n>] "
-                    + "[mob=<id>] [map=<id>] [weapon=<itemId>] [build=max|profile] [loop=<seconds>] [nobuffs] [noshape] [keepmobs]");
+                    + "[mob=<id>] [map=<id>] [weapon=<itemId>] [build=max|profile] [loop=<seconds>] [showcase[=<casts>]] [skip=<skillId,...>] [only=<skillId,...>] [nobuffs] [noshape] [keepmobs]");
         }
         String agentName = params[0];
         Job job = null;
         int level = 0;
-        int mobId = DEFAULT_MOB_ID;
-        int mapId = DEFAULT_MAP_ID;
+        int mobId = 0;
+        int mapId = -1;
         int weaponItemId = 0;
         boolean probeBuffs = true;
         boolean shape = true;
@@ -48,6 +61,9 @@ public record SkillProbeOptions(String agentName,
         boolean profileBuild = false;
         int loopSeconds = 0;
         boolean loopSpecialMoves = true;
+        int showcaseCasts = 0;
+        Set<Integer> skipSkillIds = new LinkedHashSet<>();
+        Set<Integer> onlySkillIds = new LinkedHashSet<>();
         List<String> unknown = new ArrayList<>();
         for (int i = 1; i < params.length; i++) {
             String token = params[i];
@@ -65,6 +81,9 @@ public record SkillProbeOptions(String agentName,
                 case "keepmobs" -> keepMobs = true;
                 case "loop" -> loopSeconds = parseInt(key, value);
                 case "special" -> loopSpecialMoves = !"off".equalsIgnoreCase(value);
+                case "showcase" -> showcaseCasts = value.isEmpty() ? 2 : parseInt(key, value);
+                case "skip" -> addIds(skipSkillIds, key, value);
+                case "only" -> addIds(onlySkillIds, key, value);
                 case "build" -> profileBuild = switch (value.toLowerCase(Locale.ROOT)) {
                     case "profile" -> true;
                     case "max" -> false;
@@ -79,10 +98,37 @@ public record SkillProbeOptions(String agentName,
         if (level < 0 || level > 200) {
             throw new IllegalArgumentException("level must be between 1 and 200");
         }
+        if (showcaseCasts < 0 || showcaseCasts > 10) {
+            throw new IllegalArgumentException("showcase casts must be between 1 and 10");
+        }
+        if (mobId == 0) {
+            mobId = showcaseCasts > 0 ? SHOWCASE_MOB_ID : DEFAULT_MOB_ID;
+        }
+        if (mapId < 0) {
+            mapId = showcaseCasts > 0 ? OPERATOR_MAP : DEFAULT_MAP_ID;
+        }
         if (job != null && level == 0) {
             level = defaultLevelFor(job);
         }
-        return new SkillProbeOptions(agentName, job, level, mobId, mapId, weaponItemId, probeBuffs, shape, keepMobs, profileBuild, loopSeconds, loopSpecialMoves);
+        return new SkillProbeOptions(agentName, job, level, mobId, mapId, weaponItemId, probeBuffs, shape, keepMobs, profileBuild, loopSeconds, loopSpecialMoves, showcaseCasts, Set.copyOf(skipSkillIds), Set.copyOf(onlySkillIds));
+    }
+
+    /** Whether the probe leaves {@code skillId} out ({@code skip=}, or not listed in {@code only=}). */
+    public boolean skips(int skillId) {
+        return skipSkillIds.contains(skillId) || (!onlySkillIds.isEmpty() && !onlySkillIds.contains(skillId));
+    }
+
+    private static void addIds(Set<Integer> ids, String key, String value) {
+        for (String id : value.split(",")) {
+            if (!id.isBlank()) {
+                ids.add(parseInt(key, id.trim()));
+            }
+        }
+    }
+
+    /** True when every castable skill should be used {@link #showcaseCasts()} times at filming pace. */
+    public boolean showcase() {
+        return showcaseCasts > 0;
     }
 
     /** True when the caller asked for the Agent to be shaped to a job/level before probing. */

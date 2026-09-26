@@ -13,7 +13,11 @@ import server.agents.integration.AgentIdentityGatewayRuntime;
 import server.agents.integration.AgentIdentityOrigin;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.capabilities.combat.AgentSkillShowcase;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
+import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.auth.AgentAuthorityService;
 import server.agents.auth.AgentControlService;
 import server.agents.auth.AgentProvisioningPolicy;
@@ -32,13 +36,26 @@ public final class AgentSpawnCommandExecutor {
             return;
         }
         if (params.length < 1) {
-            player.yellowMessage("Syntax: @spawnbot <name> [confirm]");
+            player.yellowMessage("Syntax: @spawnbot <name> [confirm] [noparty] [showcase]");
             return;
         }
 
         String[] rawArgs = player.getLastCommandMessage().trim().split("[ ]", 2);
         String botName = rawArgs[0];
         boolean createRequested = params.length >= 2 && params[1].equals("confirm");
+        boolean joinParty = true;
+        boolean showcase = false;
+        for (int i = 1; i < params.length; i++) {
+            if ("noparty".equalsIgnoreCase(params[i])) {
+                joinParty = false;  // filming and solo demos: no party, so no party HP window on screen
+            } else if ("showcase".equalsIgnoreCase(params[i])) {
+                showcase = true;
+            }
+        }
+        if (showcase && joinParty && AgentPartyGatewayRuntime.party().snapshot(player) != null) {
+            // Filming: every clip is a fresh party of exactly the operator and this Agent.
+            AgentPartyGatewayRuntime.party().leaveCurrentParty(player);
+        }
 
         AgentResolvedCharacter bot = controlService.resolveCharacterByName(botName);
         if (bot == null) {
@@ -87,12 +104,22 @@ public final class AgentSpawnCommandExecutor {
             }
         }
 
-        AgentLifecycleService.AgentSpawnResult result = AgentInteractionRuntime.spawnAgentForLeader(player, botName);
+        AgentLifecycleService.AgentSpawnResult result = AgentInteractionRuntime.spawnAgentForLeader(player, botName, joinParty);
         if (!result.success()) {
             player.yellowMessage(result.errorMessage());
             return;
         }
-        AgentPartyLifecycleService.joinAgentToLeaderParty(player, result.agent());
+        if (joinParty) {
+            AgentPartyLifecycleService.joinAgentToLeaderParty(player, result.agent());
+        }
+        if (showcase) {
+            AgentRuntimeEntry entry = AgentRuntimeRegistry.findByCharacterInstance(result.agent());
+            if (entry != null) {
+                AgentSkillShowcase.start(entry);
+            } else {
+                player.yellowMessage("Showcase mode did not start: no runtime entry for '" + result.agent().getName() + "'.");
+            }
+        }
         player.yellowMessage("Agent '" + result.agent().getName() + "' spawned. Say 'follow me' or 'stop' to direct it.");
     }
 

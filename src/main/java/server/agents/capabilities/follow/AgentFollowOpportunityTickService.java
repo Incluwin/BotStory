@@ -27,6 +27,12 @@ public final class AgentFollowOpportunityTickService {
                       Point followTargetPosition);
     }
 
+    /** Horizontal reach around the follow anchor inside which a following Agent may fight. */
+    public static boolean withinFollowLeash(Point position, Point anchorPosition, int followDistance) {
+        return position != null && anchorPosition != null
+                && Math.abs(position.x - anchorPosition.x) <= followDistance * 5;
+    }
+
     public static Result tickFollowOpportunity(AgentRuntimeEntry entry,
                                                Character agent,
                                                Point agentPosition,
@@ -40,7 +46,7 @@ public final class AgentFollowOpportunityTickService {
                 || AgentMovementStateRuntime.climbing(entry)
                 || followAnchor == null
                 || agent.getMapId() != followAnchor.getMapId()
-                || Math.abs(agentPosition.x - followAnchor.getPosition().x) > hooks.followDistance() * 5) {
+                || !withinFollowLeash(agentPosition, followAnchor.getPosition(), hooks.followDistance())) {
             return new Result(false, currentTargetPosition);
         }
 

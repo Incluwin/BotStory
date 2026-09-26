@@ -1,5 +1,6 @@
 package server.agents.capabilities.combat;
 
+import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.capabilities.supplies.AgentAmmoStateRuntime;
 
 import client.Character;
@@ -52,7 +53,9 @@ public final class AgentCombatAttackRuntime {
                                         AgentAttackExecutionProvider.getEquippedWeaponType(bot))
                                 && (attackPlan.skillId <= 0 || !bot.hasDisease(Disease.SEAL))
                                 && AgentCombatSkillUsePolicy.canPaySkillCost(
-                                        bot, attackPlan.skillId, attackPlan.skillLevel),
+                                        bot, attackPlan.skillId, attackPlan.skillLevel)
+                                && !AgentClientSkillRules.reuseLocked(entry, attackPlan.skillId)
+                                && AgentClientSkillRules.usableInCurrentForm(bot, attackPlan.skillId),
                         () -> entry != null && attackPlan != null && AgentCombatRangePolicy.canUseAttackPlanNow(
                                 AgentMovementStateRuntime.grounded(entry),
                                 AgentAttackExecutionProvider.getEquippedWeaponType(bot),
@@ -136,6 +139,10 @@ public final class AgentCombatAttackRuntime {
             attack.numAttacked = committedTargets.size();
             attack.numAttackedAndDamage = AgentAttackPacketPolicy.packCounts(committedTargets.size(), numDamage);
         }
+        // What the formula expects this exact cast to deal, taken before the attack moves the orb
+        // stack; the learner credits casts with it (calibrated) instead of the noisy roll.
+        double expected = AgentCombatLearner.learning(entry)
+                ? AgentAttackPlanScoringPolicy.scoreAttackPlan(bot, attackPlan).rawDamage() : 0.0d;
         CombatAttackApplicationResult application =
                 AgentAttackExecutionProvider.applyAttackRoute(attackPlan.route, attack, bot);
         if (application == null || !application.applied()) {
@@ -152,7 +159,20 @@ public final class AgentCombatAttackRuntime {
                 hitLines, totalLines - hitLines));
         AgentCombatCooldownStateRuntime.maxAttackCooldown(entry, attackPlan.cooldownMs);
         entry.capabilityStates().require(AgentCombatSpecialMoveState.STATE_KEY).countAttack();
+        // Which skill actually swung, and for how much: the measured rotation is this histogram,
+        // and the same number is the learner's reward for the decision.
+        long dealt = attack.targets.values().stream()
+                .flatMap(target -> target.damageLines().stream())
+                .mapToLong(damage -> damage)
+                .sum();
+        AgentCombatSkillUsageStateRuntime.record(entry, attackPlan.skillId, dealt);
+        AgentCombatLearner.onAttackCommitted(entry, attackPlan.skillId, dealt, expected);
+        AgentSkillShowcase.used(entry, bot, attackPlan.skillId);
         AgentCombatFacingRuntime.rememberAttackFacing(entry, attackPlan.stance);
+        AgentCombatDamageRuntime.dashAfterAttack(entry, bot, attackPlan.skillId, attackPlan.skillLevel, attackPlan.stance);
+        if (hitLines > 0) {
+            AgentClientSkillRules.afterLandedHit(entry, attackPlan.skillId, committedAtMs, attackPlan.cooldownMs);
+        }
         AgentCombatAlertRuntime.markAlerted(entry);
         return AgentAttackTransactionResult.committed(
                 bot.getMapId(),

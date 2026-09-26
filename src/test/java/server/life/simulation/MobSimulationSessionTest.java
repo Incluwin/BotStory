@@ -123,6 +123,32 @@ class MobSimulationSessionTest {
     }
 
     @Test
+    void aChargeCarriesTheMobItsDistanceThenStops() {
+        int originalRecovery = server.agents.capabilities.mobcontrol.AgentMobPhysicsConfig.cfg.MOB_PHYSICS_FLINCH_RECOVERY_MS;
+        try {
+            server.agents.capabilities.mobcontrol.AgentMobPhysicsConfig.cfg.MOB_PHYSICS_FLINCH_RECOVERY_MS = 16;
+            Fixture fixture = fixture(new MobPhysicsProfile(0.08, 0.05, 10,
+                    true, false, false, false));
+            double startX = fixture.session.body().x();
+            // Damage below the "pushed" threshold would not knock back at all; a charge still drags.
+            fixture.session.acceptHit(fixture.agent, 1, 0, 1, 0L, 250.0);
+            int step = 1;
+            fixture.session.advance(8_000_000L);
+            assertTrue(fixture.session.pushing(), "a charge hit starts a push");
+            while (fixture.session.motion() == MobMotionState.KNOCKBACK && step < MobPhysicsSimulator.PUSH_MAX_STEPS + 5) {
+                step++;
+                fixture.session.advance(step * 8_000_000L);
+            }
+            double travelled = fixture.session.body().x() - startX;
+            assertTrue(travelled >= 240.0 && travelled <= 300.0, "pushed " + travelled + " px");
+            // The Agent's own slide covers 95% of 250 px in about 22 ground steps; the mob should keep ahead of it.
+            assertTrue(step <= 35, "push took " + step + " steps");
+        } finally {
+            server.agents.capabilities.mobcontrol.AgentMobPhysicsConfig.cfg.MOB_PHYSICS_FLINCH_RECOVERY_MS = originalRecovery;
+        }
+    }
+
+    @Test
     void additionalHitsCannotRestartOrReverseAnActiveReaction() {
         int originalRecovery = server.agents.capabilities.mobcontrol.AgentMobPhysicsConfig.cfg.MOB_PHYSICS_FLINCH_RECOVERY_MS;
         try {

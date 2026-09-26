@@ -57,6 +57,9 @@ public final class AgentPendingOfferChatRouteService {
             AgentRuntimeEntry entry,
             Character speaker,
             String message) {
+        if (!AgentOfferService.offerAwaitsAnswer(entry)) {
+            return false;  // the Agent asked something newer; let that flow take the answer
+        }
         if (!AgentOfferService.isPendingOfferResponse(message)) {
             judgeFreeFormReply(entry, speaker, message);
             return false;

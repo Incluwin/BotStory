@@ -264,8 +264,10 @@ public final class PopulationLoader {
             lobbies.add(new Lobby(lobby.get("id").string(), lobby.get("mapId").integer(), lobby.get("levels").get("min").integer(1),
                     lobby.get("levels").get("max").integer(200), lobby.get("name").string(lobby.get("id").string().toUpperCase(Locale.ROOT))));
         }
+        Node townWeights = node.get("townWeights");
         return new Region(node.get("id").string(), node.get("levels").get("min").integer(1), node.get("levels").get("max").integer(200),
-                node.get("towns").integers(), lobbies, node.get("fm").integer(910000000), node.get("weight").integer(1));
+                node.get("towns").integers(), townWeights.isMissing() ? List.of() : townWeights.integers(),
+                lobbies, node.get("fm").integer(910000000), node.get("weight").integer(1));
     }
 
     private static Intent intent(Node node, String file) {

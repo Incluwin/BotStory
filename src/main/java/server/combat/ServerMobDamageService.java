@@ -65,6 +65,9 @@ public final class ServerMobDamageService {
                 : defense.rollPhysicalTouchDamage(target, attacker,
                         physicalAttackOverride > 0
                                 ? physicalAttackOverride : attacker.getPADamage());
+        if (damage > 0 && target.getClient() instanceof BotClient && AgentCombatDamageRuntime.invincible(target)) {
+            damage = 0;   // a player's client would have been invincible here (after Corkscrew Blow lands)
+        }
         int mpAttack = 0;
         boolean deadly = deadlyOverride;
         int diseaseSkillId = diseaseSkillOverride;

@@ -1,0 +1,357 @@
+{
+  "jobId" : 112,
+  "jobName" : "HERO",
+  "level" : 145,
+  "build" : "profile",
+  "learnedAt" : "2026-09-22T22:50:38.553864600Z",
+  "gammaPerSecond" : 0.9,
+  "priorsRelaxed" : true,
+  "actionNames" : {
+    "0" : "basic attack",
+    "1000" : "Three Snails (1000)",
+    "1001004" : "Power Strike (1001004)",
+    "1001005" : "Slash Blast (1001005)",
+    "1111003" : "Panic : Sword (1111003)",
+    "1111005" : "Coma: Sword (1111005)",
+    "1111007" : "Armor Crash (1111007)",
+    "1111008" : "Shout (1111008)",
+    "1121006" : "Rush (1121006)",
+    "1121008" : "Brandish (1121008)"
+  },
+  "scenarios" : {
+    "single" : {
+      "adopted" : false,
+      "learnedDps" : 64163.425,
+      "priorDps" : 64336.725,
+      "decisions" : 616,
+      "table" : {
+        "1 target|orbs 0" : {
+          "1111007" : {
+            "visits" : 1,
+            "value" : 482228.9509549461,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 1.864
+          },
+          "1001004" : {
+            "visits" : 10,
+            "value" : 554160.0066594713,
+            "seeded" : true,
+            "meanReward" : 21455.6854979108,
+            "meanSeconds" : 0.8989
+          },
+          "1121008" : {
+            "visits" : 181,
+            "value" : 575001.0355622625,
+            "seeded" : true,
+            "meanReward" : 45171.48923834021,
+            "meanSeconds" : 0.9090055248618785
+          },
+          "1111008" : {
+            "visits" : 8,
+            "value" : 361827.6967236046,
+            "seeded" : true,
+            "meanReward" : 2296.384210133128,
+            "meanSeconds" : 1.5957500000000002
+          }
+        },
+        "1 target|orbs 1-2" : {
+          "1001004" : {
+            "visits" : 11,
+            "value" : 565129.7804263659,
+            "seeded" : true,
+            "meanReward" : 23319.01944386677,
+            "meanSeconds" : 0.9056363636363637
+          },
+          "1121008" : {
+            "visits" : 161,
+            "value" : 583658.2017136193,
+            "seeded" : true,
+            "meanReward" : 45944.51876244001,
+            "meanSeconds" : 0.9524347826086959
+          },
+          "1111003" : {
+            "visits" : 8,
+            "value" : 573765.3656273083,
+            "seeded" : true,
+            "meanReward" : 42057.53127146174,
+            "meanSeconds" : 0.877875
+          },
+          "1111005" : {
+            "visits" : 30,
+            "value" : 579157.1163037372,
+            "seeded" : true,
+            "meanReward" : 53531.05477726332,
+            "meanSeconds" : 0.9157
+          },
+          "1111007" : {
+            "visits" : 5,
+            "value" : 482566.5298712615,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 1.9005999999999998
+          },
+          "1111008" : {
+            "visits" : 4,
+            "value" : 454288.3653685142,
+            "seeded" : true,
+            "meanReward" : 2331.48945948878,
+            "meanSeconds" : 1.60175
+          }
+        },
+        "1 target|orbs 3-4" : {
+          "1111008" : {
+            "visits" : 7,
+            "value" : 361666.32325986895,
+            "seeded" : true,
+            "meanReward" : 2243.318900742115,
+            "meanSeconds" : 1.6017142857142856
+          },
+          "1001004" : {
+            "visits" : 5,
+            "value" : 565464.7833573797,
+            "seeded" : true,
+            "meanReward" : 19296.273517463418,
+            "meanSeconds" : 0.8902
+          },
+          "1121008" : {
+            "visits" : 6,
+            "value" : 604983.7805854364,
+            "seeded" : true,
+            "meanReward" : 44664.81025727141,
+            "meanSeconds" : 0.936
+          },
+          "1111003" : {
+            "visits" : 38,
+            "value" : 596964.5919156023,
+            "seeded" : true,
+            "meanReward" : 72386.45602037595,
+            "meanSeconds" : 0.9042368421052631
+          },
+          "1111005" : {
+            "visits" : 100,
+            "value" : 592804.3602122817,
+            "seeded" : true,
+            "meanReward" : 74335.42173736259,
+            "meanSeconds" : 0.9386400000000004
+          },
+          "1111007" : {
+            "visits" : 2,
+            "value" : 485619.6877641326,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 2.032
+          }
+        },
+        "1 target|orbs 5" : {
+          "1111007" : {
+            "visits" : 2,
+            "value" : 500835.9816265694,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 1.9165
+          },
+          "1001004" : {
+            "visits" : 2,
+            "value" : 614410.1041079486,
+            "seeded" : true,
+            "meanReward" : 21413.33079133705,
+            "meanSeconds" : 0.9245
+          },
+          "1121008" : {
+            "visits" : 2,
+            "value" : 580209.4019283297,
+            "seeded" : true,
+            "meanReward" : 48678.133544754935,
+            "meanSeconds" : 0.977
+          },
+          "1111003" : {
+            "visits" : 2,
+            "value" : 635051.6353445784,
+            "seeded" : true,
+            "meanReward" : 93609.35078956884,
+            "meanSeconds" : 0.8535
+          },
+          "1111005" : {
+            "visits" : 2,
+            "value" : 639331.9745079147,
+            "seeded" : true,
+            "meanReward" : 108071.05818250336,
+            "meanSeconds" : 0.9464999999999999
+          }
+        },
+        "1 target|orbs 6" : {
+          "1001004" : {
+            "visits" : 1,
+            "value" : 664320.4771160921,
+            "seeded" : true,
+            "meanReward" : 25612.28935627462,
+            "meanSeconds" : 0.961
+          },
+          "1121008" : {
+            "visits" : 1,
+            "value" : 694203.1710501417,
+            "seeded" : true,
+            "meanReward" : 55187.7914624703,
+            "meanSeconds" : 0.853
+          },
+          "1111003" : {
+            "visits" : 0,
+            "value" : 757327.4726590752,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1111005" : {
+            "visits" : 1,
+            "value" : 732715.626614409,
+            "seeded" : true,
+            "meanReward" : 137909.2639020875,
+            "meanSeconds" : 0.945
+          },
+          "1111007" : {
+            "visits" : 0,
+            "value" : 413631.1769081839,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          }
+        },
+        "1 target|orbs 7" : {
+          "1001004" : {
+            "visits" : 0,
+            "value" : 330671.7539159318,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1121008" : {
+            "visits" : 0,
+            "value" : 359218.1410424692,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1111003" : {
+            "visits" : 1,
+            "value" : 486207.78178322985,
+            "seeded" : true,
+            "meanReward" : 99541.35119129208,
+            "meanSeconds" : 0.836
+          },
+          "1111005" : {
+            "visits" : 0,
+            "value" : 438909.7539159318,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          }
+        },
+        "1 target|orbs 8" : {
+          "1001004" : {
+            "visits" : 1,
+            "value" : 663739.481721052,
+            "seeded" : true,
+            "meanReward" : 18875.501760974796,
+            "meanSeconds" : 0.9
+          },
+          "1121008" : {
+            "visits" : 0,
+            "value" : 676463.8192063298,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1111003" : {
+            "visits" : 0,
+            "value" : 757327.4726590752,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1111005" : {
+            "visits" : 1,
+            "value" : 731471.162933422,
+            "seeded" : true,
+            "meanReward" : 133231.061809994,
+            "meanSeconds" : 0.946
+          },
+          "1111007" : {
+            "visits" : 0,
+            "value" : 414335.0436756994,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          }
+        },
+        "1 target|orbs 9" : {
+          "1001004" : {
+            "visits" : 1,
+            "value" : 640409.5571597824,
+            "seeded" : true,
+            "meanReward" : 21071.07057947275,
+            "meanSeconds" : 0.853
+          },
+          "1121008" : {
+            "visits" : 0,
+            "value" : 676463.8192063298,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1111003" : {
+            "visits" : 0,
+            "value" : 757327.4726590752,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1111005" : {
+            "visits" : 0,
+            "value" : 757327.4726590752,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          }
+        },
+        "1 target|orbs full" : {
+          "1111007" : {
+            "visits" : 1,
+            "value" : 582183.5213711269,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 1.939
+          },
+          "1001004" : {
+            "visits" : 0,
+            "value" : 649089.4726590752,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1121008" : {
+            "visits" : 0,
+            "value" : 676463.8192063298,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1111003" : {
+            "visits" : 0,
+            "value" : 757327.4726590752,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "1111005" : {
+            "visits" : 1,
+            "value" : 738603.3019809949,
+            "seeded" : true,
+            "meanReward" : 157409.8863409646,
+            "meanSeconds" : 0.902
+          }
+        }
+      }
+    }
+  }
+}

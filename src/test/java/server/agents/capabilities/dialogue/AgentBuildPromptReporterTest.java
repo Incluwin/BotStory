@@ -10,16 +10,16 @@ class AgentBuildPromptReporterTest {
     @Test
     void returnsApPromptsForSupportedJobBranches() {
         assertEquals(
-                "what AP build? type 'dexless'/'pure' or e.g. '25 dex' to set a dex target",
+                "how should i put my ap? dexless, or like 25 dex?",
                 AgentBuildPromptReporter.apPromptForJob(Job.WARRIOR));
         assertEquals(
-                "what AP build? type 'lukless'/'pure' or e.g. '25 luk' to set a luk target",
+                "how should i put my ap? lukless, or like 25 luk?",
                 AgentBuildPromptReporter.apPromptForJob(Job.MAGICIAN));
         assertEquals(
-                "what AP build? type 'strless'/'pure' or e.g. '25 str' to set a str target",
+                "how should i put my ap? strless, or like 25 str?",
                 AgentBuildPromptReporter.apPromptForJob(Job.BOWMAN));
         assertEquals(
-                "what AP build? type 'dexless'/'pure' or e.g. '25 dex' to set a dex target",
+                "how should i put my ap? dexless, or like 25 dex?",
                 AgentBuildPromptReporter.apPromptForJob(Job.THIEF));
         assertNull(AgentBuildPromptReporter.apPromptForJob(Job.PIRATE));
         assertNull(AgentBuildPromptReporter.apPromptForJob(null));

@@ -82,7 +82,34 @@ public final class AgentBuildService {
         String prompt = apPromptForJob(bot.getJob());
         if (prompt == null) return null;
         if (AgentBuildStateRuntime.hasApBuild(entry) || AgentBuildStateRuntime.apPromptSent(entry) || bot.getRemainingAp() < 1) return null;
+        if (adoptEstablishedApBuild(entry, bot)) return null;
         return requestApBuildPrompt(entry, bot);
+    }
+
+    /**
+     * A 3rd/4th-job Agent already has a build; a player that far along would not ask how to spend AP.
+     * Keep the secondary stat where it is, spend the rest on the primary, and say nothing.
+     */
+    private static boolean adoptEstablishedApBuild(AgentRuntimeEntry entry, Character bot) {
+        Job job = bot.getJob();
+        if (GameConstants.getJobBranch(job) < 3) {
+            return false;
+        }
+        ApBuild build;
+        if (job.isA(Job.WARRIOR)) {
+            build = new ApBuild(StatType.STR, StatType.DEX, bot.getDex());
+        } else if (job.isA(Job.THIEF)) {
+            build = new ApBuild(StatType.LUK, StatType.DEX, bot.getDex());
+        } else if (job.isA(Job.MAGICIAN)) {
+            build = new ApBuild(StatType.INT, StatType.LUK, bot.getLuk());
+        } else if (job.isA(Job.BOWMAN)) {
+            build = new ApBuild(StatType.DEX, StatType.STR, bot.getStr());
+        } else {
+            return false;
+        }
+        AgentBuildStateRuntime.setApBuild(entry, build);
+        autoAssignAp(entry, bot);
+        return true;
     }
 
     public static String requestApBuildPrompt(AgentRuntimeEntry entry, Character bot) {

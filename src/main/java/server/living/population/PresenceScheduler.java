@@ -6,6 +6,7 @@ import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
+import server.agents.capabilities.movement.AgentGroundingService;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeAdmissionMode;
 import server.agents.capabilities.townlife.AgentTownLifeEntryRequest;
@@ -47,6 +48,10 @@ public final class PresenceScheduler {
     private static final long LEASE_MS = 20 * 60_000L;
     private static final long REPLAN_MIN_MS = 25 * 60_000L;
     private static final long REPLAN_MAX_MS = 45 * 60_000L;
+    private static final int WANDER_CHANCE_PERCENT = 50;
+    private static final int WANDER_MIN_PX = 120;
+    private static final int WANDER_MAX_PX = 520;
+    private static final int WANDER_MAX_DROP_PX = 40;
     private static final int CIRCLE_BOOST = 3;
     private static final double MAX_LOGIN_CHANCE = 0.5d;
 
@@ -375,6 +380,31 @@ public final class PresenceScheduler {
         }
     }
 
+    /**
+     * Towns and Free Market rooms without an authored town-life profile used to leave citizens
+     * standing on the arrival portal for the whole 25-45 minute session. Between re-plans, a
+     * TOWN or MARKET citizen (not one minding a stall) strolls to a random spot on its own
+     * platform about every other sweep, so crowded maps read as people milling about.
+     */
+    private void idleWander(CitizenSession session) {
+        if (session.entry == null || session.stallOpen
+                || (session.activity != Activity.TOWN && session.activity != Activity.MARKET)) {
+            return;
+        }
+        Character agent = session.agent();
+        MapleMap map = agent == null ? null : agent.getMap();
+        if (map == null || ResidentSpots.profile(map.getId()).isPresent() || random.nextInt(100) >= WANDER_CHANCE_PERCENT) {
+            return;
+        }
+        Point here = agent.getPosition();
+        int dx = (WANDER_MIN_PX + random.nextInt(WANDER_MAX_PX - WANDER_MIN_PX)) * (random.nextBoolean() ? 1 : -1);
+        Point ground = AgentGroundingService.findGroundPoint(map, new Point(here.x + dx, here.y - 1));
+        if (ground == null || Math.abs(ground.y - here.y) > WANDER_MAX_DROP_PX) {
+            return;
+        }
+        AgentMovementCommandRuntime.moveTo(session.entry, ground, false);
+    }
+
     private boolean townLife(CitizenSession session, MapleMap map, long now) {
         if (ResidentSpots.profile(map.getId()).isEmpty() || session.entry == null || session.agent() == null) {
             return false;
@@ -402,6 +432,7 @@ public final class PresenceScheduler {
         }
         long since = now - session.lastPlanAtMs;
         if (since < REPLAN_MIN_MS + random.nextInt((int) (REPLAN_MAX_MS - REPLAN_MIN_MS))) {
+            idleWander(session);
             return;
         }
         session.lastPlanAtMs = now;

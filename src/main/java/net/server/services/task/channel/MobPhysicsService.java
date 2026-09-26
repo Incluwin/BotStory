@@ -153,7 +153,7 @@ public final class MobPhysicsService extends BaseService {
                 directionFallbacks.increment();
             }
             session.acceptHit(attacker, damage, acceptedReaction.delayMs(),
-                    acceptedReaction.pushDirection(), now);
+                    acceptedReaction.pushDirection(), now, chargePushPx(attacker, acceptedReaction.skillId()));
             impacts.increment();
             ensureScheduled();
             return true;
@@ -172,6 +172,20 @@ public final class MobPhysicsService extends BaseService {
         } finally {
             monster.unlockMonster();
         }
+    }
+
+    /**
+     * A forward charge (Rush, Assaulter, Corkscrew Blow) drags the mobs it hits along with the
+     * attacker, who moves the skill's distance; an ordinary hit is a short knockback.
+     */
+    private static double chargePushPx(Character attacker, int skillId) {
+        client.Skill skill = skillId <= 0 ? null : client.SkillFactory.getSkill(skillId);
+        int level = skill == null || attacker == null ? 0 : attacker.getSkillLevel(skill);
+        if (level <= 0) {
+            return 0.0;
+        }
+        return Math.max(0, server.agents.capabilities.combat.AgentCombatDashPolicy.dashDistancePx(
+                skillId, skill.getEffect(level)));
     }
 
     private synchronized void ensureScheduled() {

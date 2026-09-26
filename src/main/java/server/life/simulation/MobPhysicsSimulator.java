@@ -16,6 +16,10 @@ public final class MobPhysicsSimulator {
     public static final int KNOCKBACK_STEPS = 31;
     public static final double GROUND_KNOCKBACK_FORCE = 0.2;
     public static final double AIR_KNOCKBACK_FORCE = 0.1;
+    /** Force of a charge's push (Rush and the like), strong enough to keep the mob ahead of the charging attacker. */
+    public static final double PUSH_FORCE = 4.0;
+    /** Longest a push may run before it ends even short of its distance (e.g. against a mob that will not slide). */
+    public static final int PUSH_MAX_STEPS = 90;
     public static final double JUMP_FORCE = -5.0;
 
     private final MaplePhysicsIntegrator integrator = new MaplePhysicsIntegrator();
@@ -59,7 +63,7 @@ public final class MobPhysicsSimulator {
 
         if (session.motion() == MobMotionState.KNOCKBACK) {
             horizontal = session.knockbackDirection()
-                    * (session.platformConstrainedKnockback()
+                    * (session.pushing() ? PUSH_FORCE : session.platformConstrainedKnockback()
                     ? GROUND_KNOCKBACK_FORCE : AIR_KNOCKBACK_FORCE)
                     * tuning.knockbackMultiplier();
         } else if (session.motion() == MobMotionState.FLINCH) {

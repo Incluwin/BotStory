@@ -103,6 +103,10 @@ public final class CosmicAgentOfflineLoadService {
         hooks.mapPlayerRegistrar().add(spawnMap, agent);
         agent.visitMap(spawnMap);
         agent.diseaseExpireTask();
+        // A real login starts these in PlayerLoggedinHandler; without them an agent's buffs never
+        // expired and every cooldown lasted the session (Holy Shield and Infinity cast once, kept forever).
+        agent.buffExpireTask();
+        agent.skillCooldownTask();
         return agent;
     }
 }

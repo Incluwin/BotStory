@@ -47,9 +47,42 @@ public final class PopulationContent {
 
     public record Lobby(String id, int mapId, int levelMin, int levelMax, String name) { }
 
-    public record Region(String id, int levelMin, int levelMax, List<Integer> towns, List<Lobby> lobbies, int fm, int weight) {
+    /** {@code townWeights} is parallel to {@code towns} (empty = uniform): hub towns draw more of the region's town life. */
+    public record Region(String id, int levelMin, int levelMax, List<Integer> towns, List<Integer> townWeights,
+                         List<Lobby> lobbies, int fm, int weight) {
+        public Region {
+            if (!townWeights.isEmpty() && townWeights.size() != towns.size()) {
+                throw new IllegalArgumentException("region " + id + ": townWeights must have one entry per town");
+            }
+        }
+
         public boolean fits(int level) {
             return level >= levelMin && level <= levelMax;
+        }
+
+        /** Town for a stable seed: weighted by townWeights when present, uniform otherwise. */
+        public int townFor(int seed) {
+            if (towns.isEmpty()) {
+                return 100000000;
+            }
+            if (townWeights.isEmpty()) {
+                return towns.get(Math.floorMod(seed, towns.size()));
+            }
+            int total = 0;
+            for (int weight : townWeights) {
+                total += Math.max(0, weight);
+            }
+            if (total <= 0) {
+                return towns.get(Math.floorMod(seed, towns.size()));
+            }
+            int roll = Math.floorMod(seed, total);
+            for (int i = 0; i < towns.size(); i++) {
+                roll -= Math.max(0, townWeights.get(i));
+                if (roll < 0) {
+                    return towns.get(i);
+                }
+            }
+            return towns.get(towns.size() - 1);
         }
     }
 

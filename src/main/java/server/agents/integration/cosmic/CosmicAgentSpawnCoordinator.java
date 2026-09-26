@@ -28,19 +28,35 @@ public final class CosmicAgentSpawnCoordinator {
             AgentLifecycleService.AgentTickCallback tickCallback,
             Consumer<AgentRuntimeEntry> startFollowLeader,
             Logger log) {
-        AgentLifecycleService.RegisterSpawnedAgent registerSpawnedAgent =
-                (leaderCharId, spawnLeader, agent) -> AgentRegistrationCoordinator.registerAgent(
+        return spawnAgentForLeader(leader, agentName, tickCallback, startFollowLeader, log, true);
+    }
+
+    public static AgentLifecycleService.AgentSpawnResult spawnAgentForLeader(
+            Character leader,
+            String agentName,
+            AgentLifecycleService.AgentTickCallback tickCallback,
+            Consumer<AgentRuntimeEntry> startFollowLeader,
+            Logger log,
+            boolean joinParty) {
+        AgentLifecycleService.RegisterSpawnedAgent registerSpawnedAgent = joinParty
+                ? (leaderCharId, spawnLeader, agent) -> AgentRegistrationCoordinator.registerAgent(
                         leaderCharId,
                         spawnLeader,
                         agent,
                         true,
+                        tickCallback)
+                : (leaderCharId, spawnLeader, agent) -> AgentRegistrationCoordinator.registerStationarySpawnedAgent(
+                        leaderCharId,
+                        spawnLeader,
+                        agent,
                         tickCallback);
         return spawnAgentForLeader(
                 leader,
                 agentName,
                 registerSpawnedAgent,
                 startFollowLeader,
-                log);
+                log,
+                joinParty);
     }
 
     public static AgentLifecycleService.AgentSpawnResult spawnAgentForLeader(
@@ -49,6 +65,16 @@ public final class CosmicAgentSpawnCoordinator {
             AgentLifecycleService.RegisterSpawnedAgent registerSpawnedAgent,
             Consumer<AgentRuntimeEntry> startFollowLeader,
             Logger log) {
+        return spawnAgentForLeader(leader, agentName, registerSpawnedAgent, startFollowLeader, log, true);
+    }
+
+    public static AgentLifecycleService.AgentSpawnResult spawnAgentForLeader(
+            Character leader,
+            String agentName,
+            AgentLifecycleService.RegisterSpawnedAgent registerSpawnedAgent,
+            Consumer<AgentRuntimeEntry> startFollowLeader,
+            Logger log,
+            boolean joinParty) {
         return AgentLifecycleService.spawnAgentForLeaderQuietly(
                 leader,
                 agentName,
@@ -57,7 +83,9 @@ public final class CosmicAgentSpawnCoordinator {
                         AgentSpawnPositionService::resolveSpawnPosition,
                         registerSpawnedAgent,
                         CosmicAgentOfflineLoader::loadOfflineAgent,
-                        AgentSpawnPlacementCoordinator::placeSpawnedOnlineAgent,
+                        joinParty
+                                ? AgentSpawnPlacementCoordinator::placeSpawnedOnlineAgent
+                                : AgentSpawnPlacementCoordinator::placeSpawnedOnlineAgentWithoutParty,
                         startFollowLeader,
                         AgentMapGatewayRuntime.map()::changeMapNear),
                 (failedAgentName, failedLeader, e) -> log.warn(

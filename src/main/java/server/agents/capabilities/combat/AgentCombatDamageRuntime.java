@@ -40,8 +40,30 @@ public final class AgentCombatDamageRuntime {
                 ThreadLocalRandom.current().nextFloat());
     }
 
+    /**
+     * The other half of the client-side reaction a headless Agent cannot simulate: skills whose
+     * animation carries the attacker along the ground (see {@link AgentCombatDashPolicy}) move it
+     * the skill's distance, in the direction the attack faced ({@code stance} bit 0x80 = left).
+     */
+    static void dashAfterAttack(AgentRuntimeEntry entry, Character bot, int skillId, int skillLevel, int stance) {
+        client.Skill skill = skillId <= 0 ? null : server.agents.integration.AgentSkillGatewayRuntime.skills().getSkill(skillId);
+        int distance = skill == null || skillLevel <= 0 ? 0
+                : AgentCombatDashPolicy.dashDistancePx(skillId, skill.getEffect(skillLevel));
+        if (distance == 0) {
+            return;
+        }
+        boolean facingLeft = (stance & 0x80) != 0;
+        AgentKnockbackMovementService.beginGroundDash(entry, bot, facingLeft ? -distance : distance);
+    }
+
+    /** Inside an invincibility window the client grants after certain hits (Corkscrew Blow): no touch or magic damage. */
+    public static boolean invincible(Character agent) {
+        return agent != null && AgentClientSkillRules.invincible(
+                AgentRuntimeRegistry.findByAgentCharacterId(agent.getId()));
+    }
+
     public static void applyMobHit(AgentRuntimeEntry entry, Character bot, Monster mob, AgentCombatConfig.Config config) {
-        if (AgentLpqSessionRegistry.suppressesDarkSightRoomTouch(bot)) {
+        if (AgentLpqSessionRegistry.suppressesDarkSightRoomTouch(bot) || AgentClientSkillRules.invincible(entry)) {
             return;
         }
         if (AgentMobTouchPolicy.ignoresTouchDamage(mob.getId())) {

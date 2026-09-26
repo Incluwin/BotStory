@@ -1853,7 +1853,7 @@ public class StatEffect {
         return morphId;
     }
 
-    private SummonMovementType getSummonMovementType() {
+    public SummonMovementType getSummonMovementType() {
         if (!skill) {
             return null;
         }

@@ -72,7 +72,8 @@ public final class AgentMovementOnlyTickService {
                                     AgentPointSupplier activeShopTargetPosition,
                                     ShopDelaySupplier shopApproachDelayMs,
                                     FollowIdleFastPath followIdleFastPath,
-                                    MovementCore movementCore) {
+                                    MovementCore movementCore,
+                                    AgentTick shopHold) {
     }
 
     private AgentMovementOnlyTickService() {
@@ -115,6 +116,10 @@ public final class AgentMovementOnlyTickService {
             boolean consumed = hooks.shopVisitTick().tick(entry, agent);
             Point activeShopTarget = hooks.activeShopTargetPosition().get(entry);
             if (!consumed && hooks.shopApproachDelayMs().get(entry) > 0) {
+                return;
+            }
+            // While the transaction is open the hook keeps the Agent in place (physics only).
+            if (hooks.shopHold().tick(entry, agent)) {
                 return;
             }
             if (activeShopTarget != null) {

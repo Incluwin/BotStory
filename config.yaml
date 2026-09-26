@@ -497,7 +497,7 @@ server:
     CT_MAX_CONCURRENT_PER_IP: 6           #Max concurrent TCP sockets per IP (2 HWID * 3 channels plus launcher probe).
     CT_MAX_CONNECTS_PER_WINDOW: 20        #Allowed new connects per IP inside CT_CONNECT_WINDOW_MS.
     CT_CONNECT_WINDOW_MS: 10000           #Sliding window for new-connect rate (10 s default).
-    CT_MAX_PACKETS_PER_WINDOW: 120        #Per-channel packet burst cap inside CT_PACKET_WINDOW_MS.
+    CT_MAX_PACKETS_PER_WINDOW: 120        #Per-channel packet burst cap inside CT_PACKET_WINDOW_MS, raised by the PACKET_MOB_CONTROL_RATE_PER_CONTROLLED_MOB allowance (capped by PACKET_MOB_CONTROL_MAX_RATE_PER_SECOND) for each monster the client controls.
     CT_PACKET_WINDOW_MS: 1000             #Sliding window for packet rate (1 s default = 120 pps).
 
     #Server-side anti-cheat (net.security.AntiCheat).
@@ -529,7 +529,10 @@ server:
     PACKET_MAX_FRAME_BYTES: 32768                            # Reject inbound frames larger than this before allocating their payload. Recommended: 16384-65535.
     PACKET_GLOBAL_RATE_PER_SECOND: 300                       # Sustained packet allowance per connection across all packet families. Recommended: 200-500.
     PACKET_GLOBAL_BURST: 600                                 # One-second burst allowance before packets are dropped. Recommended: 2x the global rate.
-    PACKET_MOVEMENT_RATE_PER_SECOND: 120                     # Movement updates allowed per second. Recommended: 60-180.
+    PACKET_MOVEMENT_RATE_PER_SECOND: 120                     # Player, pet, summon and dragon movement updates allowed per second. Recommended: 60-180.
+    PACKET_MOB_CONTROL_RATE_PER_SECOND: 120                  # Mob-control packets (MOVE_LIFE, AUTO_AGGRO, mob-vs-mob damage) the client sends for monsters it controls, with none controlled. Own budget: not drawn from the global rate. Recommended: 60-180.
+    PACKET_MOB_CONTROL_RATE_PER_CONTROLLED_MOB: 6            # Extra mob-control packets per second for each monster the client controls. A lone player controls every mob on the map, e.g. ~60 on Henesys Hunting Ground I. Recommended: 4-10.
+    PACKET_MOB_CONTROL_MAX_RATE_PER_SECOND: 1200             # Ceiling on the scaled mob-control budget. Recommended: 600-2000.
     PACKET_COMBAT_RATE_PER_SECOND: 120                       # Attacks, skills and damage updates allowed per second. Recommended: 60-180.
     PACKET_CHAT_RATE_PER_SECOND: 20                          # Chat-family packets allowed per second. Recommended: 8-30.
     PACKET_ECONOMY_RATE_PER_SECOND: 30                       # Shop, trade, storage, MTS and Duey actions allowed per second. Recommended: 15-60.
@@ -770,23 +773,23 @@ population:
     ENABLED: true
     CONTENT_DIR: scripts/config/population
     SEED: 20260921
-    TARGET_CITIZENS: 120
-    ONLINE_MAX: 30
+    TARGET_CITIZENS: 600
+    ONLINE_MAX: 240
     CHANNELS: "1"
     SWEEP_MS: 60000
     LEDGER_MS: 600000
-    PRESENCE_MULTIPLIER: 1.0
+    PRESENCE_MULTIPLIER: 1.5
     PERCEPTION_HOPS: 1
-    MAP_VISIBLE_MAX: 40
+    MAP_VISIBLE_MAX: 60
     LIFE_PACE: 0.8
-    BIRTHS_PER_DAY: 6
+    BIRTHS_PER_DAY: 20
     LIFE_DAYS_MIN: 60
     LIFE_DAYS_MAX: 400
     SEED_BACKDATE_DAYS: 180
     CHATTER_ENABLED: true
-    CHATTER_TOWN_LINES_PER_MINUTE: 12
+    CHATTER_TOWN_LINES_PER_MINUTE: 18
     CHATTER_CITIZEN_COOLDOWN_MS: 45000
-    CHATTER_SMEGA_PER_HOUR: 2
+    CHATTER_SMEGA_PER_HOUR: 4
     CHATTER_RECENT_MEMORY: 12
     CONVERSATION_ENABLED: true
     CONVERSATION_PER_PLAYER_PER_DAY: 40
@@ -794,9 +797,9 @@ population:
     CONVERSATION_MAX_CONCURRENT: 2
     CONVERSATION_JEV_PER_PLAYER_PER_DAY: 60
     GUILDS_ENABLED: true
-    GUILD_TARGET: 6
+    GUILD_TARGET: 24
     BUDDIES_ENABLED: true
     BUDDY_REQUEST_AFTER_MINUTES: 30
     MARKET_ENABLED: true
-    MARKET_STALLS_MAX: 4
+    MARKET_STALLS_MAX: 30
     MARKET_BUY_BUDGET_PER_DAY: 200000

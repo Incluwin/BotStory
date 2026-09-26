@@ -3,6 +3,8 @@ package server.living.population;
 import client.Character;
 import net.server.Server;
 import net.server.guild.Guild;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.integration.typesafe.JevAnswer;
@@ -14,6 +16,7 @@ import server.agents.social.conversation.AgentSocialDialogueRuntime;
 import server.agents.social.conversation.AgentSocialDialogueRuntime.Styled;
 import server.integration.AgentPresence;
 import server.living.population.PopulationContent.Career;
+import server.maps.MapleMap;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -91,6 +94,9 @@ public final class Conversation {
         }
         CitizenSession addressee = byName(near, normalized);
         boolean explicit = addressee != null;
+        if (!explicit && hasCompanionHere(speaker)) {
+            return false; // a player with a companion here is talking to it unless they name a citizen
+        }
         if (addressee == null) {
             addressee = byProximity(speaker, near, normalized);
         }
@@ -177,6 +183,22 @@ public final class Conversation {
             }
         }
         return null;
+    }
+
+    /** A party member on the speaker's map who is an Agent: the speaker's companion. */
+    static boolean hasCompanionHere(Character speaker) {
+        Party party = speaker.getParty();
+        MapleMap map = speaker.getMap();
+        if (party == null || map == null) {
+            return false;
+        }
+        for (PartyCharacter member : party.getMembers()) {
+            Character here = member.getId() == speaker.getId() ? null : map.getCharacterById(member.getId());
+            if (here != null && AgentPresence.isAgent(here)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private CitizenSession byProximity(Character speaker, List<CitizenSession> near, String normalized) {

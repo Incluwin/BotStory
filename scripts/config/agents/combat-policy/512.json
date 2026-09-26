@@ -1,0 +1,214 @@
+{
+  "jobId" : 512,
+  "jobName" : "BUCCANEER",
+  "level" : 130,
+  "build" : "profile",
+  "learnedAt" : "2026-09-23T02:11:03.207171800Z",
+  "gammaPerSecond" : 0.9,
+  "priorsRelaxed" : false,
+  "actionNames" : {
+    "5001001" : "Flash Fist (5001001)",
+    "5101003" : "Double Uppercut (5101003)",
+    "5111002" : "Energy Blast (5111002)",
+    "5111004" : "Energy Drain (5111004)",
+    "5111006" : "Shockwave (5111006)",
+    "5121001" : "Dragon Strike (5121001)",
+    "5121002" : "Energy Orb (5121002)",
+    "5121004" : "Demolition (5121004)",
+    "5121005" : "Snatch (5121005)",
+    "5121007" : "Barrage (5121007)"
+  },
+  "scenarios" : {
+    "single" : {
+      "adopted" : false,
+      "learnedDps" : 48122.685,
+      "priorDps" : 50803.18000000001,
+      "decisions" : 337,
+      "table" : {
+        "1 target" : {
+          "5121001" : {
+            "visits" : 62,
+            "value" : 185893.34803065055,
+            "seeded" : true,
+            "meanReward" : 22391.28836851393,
+            "meanSeconds" : 1.4345322580645163
+          },
+          "5111006" : {
+            "visits" : 4,
+            "value" : 152095.8490655312,
+            "seeded" : true,
+            "meanReward" : 12758.467073881373,
+            "meanSeconds" : 2.04025
+          },
+          "5121007" : {
+            "visits" : 59,
+            "value" : 192526.43667448024,
+            "seeded" : true,
+            "meanReward" : 49780.71917588916,
+            "meanSeconds" : 2.3357457627118645
+          },
+          "5101003" : {
+            "visits" : 12,
+            "value" : 173993.92529852578,
+            "seeded" : true,
+            "meanReward" : 10342.035599095263,
+            "meanSeconds" : 1.1885000000000001
+          },
+          "5001001" : {
+            "visits" : 5,
+            "value" : 160643.1252004848,
+            "seeded" : true,
+            "meanReward" : 4808.887298209392,
+            "meanSeconds" : 0.7487999999999999
+          }
+        },
+        "1 target|energy full" : {
+          "5121002" : {
+            "visits" : 55,
+            "value" : 455809.9663308452,
+            "seeded" : true,
+            "meanReward" : 95012.59818037505,
+            "meanSeconds" : 1.1725090909090907
+          },
+          "5111002" : {
+            "visits" : 6,
+            "value" : 256456.8173835487,
+            "seeded" : true,
+            "meanReward" : 22976.09028825895,
+            "meanSeconds" : 0.7444999999999999
+          },
+          "5121001" : {
+            "visits" : 4,
+            "value" : 256990.34584727435,
+            "seeded" : true,
+            "meanReward" : 57010.02724778608,
+            "meanSeconds" : 1.3659999999999999
+          },
+          "5111006" : {
+            "visits" : 4,
+            "value" : 274452.8879501299,
+            "seeded" : true,
+            "meanReward" : 47597.08740116817,
+            "meanSeconds" : 2.2655
+          },
+          "5121007" : {
+            "visits" : 44,
+            "value" : 478030.8435375251,
+            "seeded" : true,
+            "meanReward" : 174090.1968190617,
+            "meanSeconds" : 2.3152045454545447
+          },
+          "5101003" : {
+            "visits" : 4,
+            "value" : 236363.38196297555,
+            "seeded" : true,
+            "meanReward" : 31465.19798400088,
+            "meanSeconds" : 1.1565
+          },
+          "5111004" : {
+            "visits" : 3,
+            "value" : 224633.36322917452,
+            "seeded" : true,
+            "meanReward" : 24113.611078570786,
+            "meanSeconds" : 0.781
+          },
+          "5001001" : {
+            "visits" : 4,
+            "value" : 221350.66161527345,
+            "seeded" : true,
+            "meanReward" : 15466.872884695957,
+            "meanSeconds" : 0.776
+          }
+        },
+        "1 target|energy full|transformed" : {
+          "5121007" : {
+            "visits" : 3,
+            "value" : 549336.7551877284,
+            "seeded" : true,
+            "meanReward" : 182716.95392688265,
+            "meanSeconds" : 2.2136666666666667
+          },
+          "5121002" : {
+            "visits" : 2,
+            "value" : 431640.7526992338,
+            "seeded" : true,
+            "meanReward" : 98915.02474305555,
+            "meanSeconds" : 1.1789999999999998
+          },
+          "5121001" : {
+            "visits" : 2,
+            "value" : 413213.42121847894,
+            "seeded" : true,
+            "meanReward" : 78751.11872129852,
+            "meanSeconds" : 1.4745
+          },
+          "5101003" : {
+            "visits" : 0,
+            "value" : 227115.75787220092,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "5111002" : {
+            "visits" : 3,
+            "value" : 460489.2107671219,
+            "seeded" : true,
+            "meanReward" : 31195.15698416879,
+            "meanSeconds" : 0.7503333333333334
+          },
+          "5111004" : {
+            "visits" : 4,
+            "value" : 505922.0457630748,
+            "seeded" : true,
+            "meanReward" : 32855.29472728531,
+            "meanSeconds" : 0.78325
+          },
+          "5121004" : {
+            "visits" : 22,
+            "value" : 885220.2396288797,
+            "seeded" : true,
+            "meanReward" : 341205.05901475163,
+            "meanSeconds" : 2.9891818181818177
+          },
+          "5121005" : {
+            "visits" : 2,
+            "value" : 460189.80176518677,
+            "seeded" : true,
+            "meanReward" : 35779.21330713641,
+            "meanSeconds" : 0.8225
+          }
+        },
+        "1 target|transformed" : {
+          "5121001" : {
+            "visits" : 2,
+            "value" : 258485.68070199384,
+            "seeded" : true,
+            "meanReward" : 16098.927437641723,
+            "meanSeconds" : 1.3255
+          },
+          "5121004" : {
+            "visits" : 7,
+            "value" : 276232.1282436308,
+            "seeded" : true,
+            "meanReward" : 68400.48408112528,
+            "meanSeconds" : 2.843285714285714
+          },
+          "5121005" : {
+            "visits" : 2,
+            "value" : 263468.7981382996,
+            "seeded" : true,
+            "meanReward" : 7515.010487528345,
+            "meanSeconds" : 0.652
+          },
+          "5121007" : {
+            "visits" : 2,
+            "value" : 260119.87374056777,
+            "seeded" : true,
+            "meanReward" : 37234.75595238095,
+            "meanSeconds" : 2.1505
+          }
+        }
+      }
+    }
+  }
+}

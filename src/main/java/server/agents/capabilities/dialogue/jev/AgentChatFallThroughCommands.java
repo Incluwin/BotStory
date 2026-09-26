@@ -3,6 +3,7 @@ package server.agents.capabilities.dialogue.jev;
 import server.agents.capabilities.dialogue.AgentBuildDialogueClassifier;
 import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
 import server.agents.capabilities.dialogue.AgentSocialDialogueClassifier;
+import server.agents.capabilities.movement.AgentPartyGatherService;
 
 /**
  * Messages {@code AgentChatOrchestrator} acts on but reports as unhandled. The movement flow,
@@ -20,7 +21,8 @@ final class AgentChatFallThroughCommands {
         if (message == null || message.isBlank()) {
             return false;
         }
-        return AgentChatCommandClassifier.isFarmHereCommand(message)
+        return AgentPartyGatherService.matchesAssemble(message)
+                || AgentChatCommandClassifier.isFarmHereCommand(message)
                 || AgentChatCommandClassifier.isPatrolCommand(message)
                 || AgentChatCommandClassifier.isMoveHereCommand(message)
                 || AgentChatCommandClassifier.isFollowCommand(message)

@@ -240,7 +240,7 @@ class AgentSkillAttackPlannerTest {
     }
 
     @Test
-    void shouldResolveNonCloseSkillPacketFieldsWithZeroDisplayAndSharedDirection() {
+    void shouldResolveNonCloseSkillPacketFieldsWithZeroDisplayAndFacingOnlyRangedDirection() {
         int expectedDirection = AgentAttackExecutionProvider.bodyActionId("shoot1", "shoot1", WeaponType.BOW);
 
         AgentSkillAttackPlanner.SkillAttackPacketFields fields =
@@ -254,7 +254,9 @@ class AgentSkillAttackPlannerTest {
 
         assertEquals(0, fields.display());
         assertEquals(expectedDirection, fields.direction());
-        assertEquals(expectedDirection, fields.rangedDirection());
+        // Keydown shots broadcast rangedDirection as the action's high byte: an action id there
+        // (0x16 for shoot1) turns the watcher's action into 0x1616.
+        assertEquals(AgentAttackExecutionProvider.attackPacketStance(false), fields.rangedDirection());
         assertEquals(AgentAttackExecutionProvider.attackPacketStance(false), fields.stance());
     }
 }

@@ -297,19 +297,22 @@ public final class AgentDialogueCatalog {
             "wish i had %s but nope",
             "checked, no %s");
     private static final List<String> RELOG_CONFIRM_PROMPTS = List.of(
-            "relog? say yes to confirm",
-            "save and relog? type yes",
-            "relogging? say yes to go ahead");
+            "relog now? u sure?",
+            "want me to relog real quick?",
+            "relog? ok if u say so");
     private static final List<String> LOGOUT_CONFIRM_PROMPTS = List.of(
-            "log off? you sure? say yes to confirm",
-            "save and log off? say yes if you're sure",
-            "logging off? type yes to confirm");
+            "log off now? u sure?",
+            "calling it for today? ill log if u say so",
+            "wait u want me to log off?");
     private static final List<String> RELOG_CONFIRMED_REPLIES = List.of(
             "brb!", "relogging~", "one sec, relogging");
     private static final List<String> LOGOUT_CONFIRMED_REPLIES = List.of(
             "ok! saving and logging off~", "cya!!", "ok bye!!");
     private static final String SUPPORT_OFF_REPLY = "ok, skill buffs off";
     private static final String SUPPORT_ON_REPLY = "ok, skill buffs on";
+    private static final List<String> ASSEMBLE_REPLIES = List.of("omw", "coming", "on my way", "k coming");
+    private static final List<String> CALL_FOR_BUFFS_REPLIES = List.of(
+            "gather up, buffs", "come here for buffs", "buffs, everyone over here");
     private static final String HEALS_OFF_REPLY = "ok, no heals";
     private static final String HEALS_ON_REPLY = "ok, ill heal when needed";
     private static final String BUFF_CONSUMABLES_OFF_REPLY = "ok, no buff pots";
@@ -775,6 +778,16 @@ public final class AgentDialogueCatalog {
 
     public static String supportOnReply() {
         return SUPPORT_ON_REPLY;
+    }
+
+    /** An Agent answering "gather up". */
+    public static List<String> assembleReplies() {
+        return ASSEMBLE_REPLIES;
+    }
+
+    /** A buffer calling the spread-out party over before it rebuffs. */
+    public static List<String> callForBuffsReplies() {
+        return CALL_FOR_BUFFS_REPLIES;
     }
 
     public static String healsOffReply() {

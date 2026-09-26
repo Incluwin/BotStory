@@ -80,7 +80,14 @@ public final class AgentMovementOnlyModeCoordinator {
                         entry,
                         target,
                         coreRunAiTick,
-                        config.stopDistance()));
+                        config.stopDistance()),
+                (entry, agent) -> {
+                    if (!AgentShopStateRuntime.shopSequenceActive(entry)) {
+                        return false;
+                    }
+                    AgentIdlePhysicsService.tickPhysicsOnly(entry, agent);
+                    return true;
+                });
     }
 
     private static boolean handleMapChange(AgentRuntimeEntry entry, Character agent) {

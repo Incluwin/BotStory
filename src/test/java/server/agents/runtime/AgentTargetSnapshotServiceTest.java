@@ -8,6 +8,9 @@ import client.Character;
 import org.junit.jupiter.api.Test;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.capabilities.movement.AgentMoveTargetStateRuntime;
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
+import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
+import server.life.Monster;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -79,6 +82,51 @@ class AgentTargetSnapshotServiceTest {
         assertEquals("Sibling", snapshot.followAnchorName());
         assertEquals(new Point(90, 60), snapshot.followBasePos());
         assertEquals(customFormation, snapshot.formation());
+    }
+
+    @Test
+    void followingAgentIgnoresAnAggressorBeyondTheFollowLeash() {
+        Character owner = character(100, "Leader", new Point(10, 20));
+        Character bot = character(200, "Agent", new Point(1, 2));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, owner, null);
+        AgentModeStateRuntime.setFollowing(entry, true);
+        int beyondLeash = 10 + AgentMovementPhysicsConfig.configuredFollowDist() * 5 + 1;
+        AgentGrindTargetStateRuntime.setTarget(entry, monster(bot, new Point(beyondLeash, 20)));
+
+        AgentTargetSnapshot snapshot = AgentTargetSnapshotService.capture(
+                entry,
+                owner,
+                AgentFormationService.defaultStagger(60, 120),
+                (followBase, followAnchor, followAnchorPos, snapRange, map) -> new Point(followBase));
+
+        assertEquals("follow-target", snapshot.primaryTargetSource());
+    }
+
+    @Test
+    void followingAgentStillRetaliatesNearTheLeader() {
+        Character owner = character(100, "Leader", new Point(10, 20));
+        Character bot = character(200, "Agent", new Point(1, 2));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, owner, null);
+        AgentModeStateRuntime.setFollowing(entry, true);
+        AgentGrindTargetStateRuntime.setTarget(entry, monster(bot, new Point(90, 20)));
+
+        AgentTargetSnapshot snapshot = AgentTargetSnapshotService.capture(
+                entry,
+                owner,
+                AgentFormationService.defaultStagger(60, 120),
+                (followBase, followAnchor, followAnchorPos, snapRange, map) -> new Point(followBase));
+
+        assertEquals("grind-target", snapshot.primaryTargetSource());
+        assertEquals(new Point(90, 20), snapshot.primaryTargetPos());
+    }
+
+    private static Monster monster(Character bot, Point position) {
+        Monster monster = mock(Monster.class);
+        MapleMap map = bot.getMap();
+        when(monster.isAlive()).thenReturn(true);
+        when(monster.getMap()).thenReturn(map);
+        when(monster.getPosition()).thenReturn(new Point(position));
+        return monster;
     }
 
     private static Character character(int id, String name, Point position) {

@@ -16,6 +16,8 @@ import server.agents.capabilities.supplies.AgentSkillConsumablePolicy;
 import server.agents.capabilities.supplies.AgentSupplyConfig;
 
 import client.Character;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
@@ -29,6 +31,7 @@ import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.inventory.demand.AgentEtcSaleCandidate;
 import server.agents.capabilities.inventory.demand.AgentQuestItemDispositionRuntime;
+import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.AgentShopGatewayRuntime;
@@ -58,9 +61,11 @@ import java.util.Map;
 import java.util.Set;
 
 public final class AgentShopService {
+    private static final Logger log = LoggerFactory.getLogger(AgentShopService.class);
 
     private static final int SHOP_MANHATTAN_RADIUS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SHOP_MANHATTAN_RADIUS");
     private static final int SHOP_ARRIVE_DIST = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SHOP_ARRIVE_DIST");
+    private static final int SHOP_TRANSACTION_RADIUS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SHOP_TRANSACTION_RADIUS");
     private static final int SHOP_NPC_SEARCH_DIST = config.AgentTuning.intValue(
             "server.agents.capabilities.shop.AgentShopService.SHOP_NPC_SEARCH_DIST");
     private static final int SHOP_APPROACH_DELAY_MAX_MS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SHOP_APPROACH_DELAY_MAX_MS");
@@ -208,6 +213,7 @@ public final class AgentShopService {
         long now = System.currentTimeMillis();
         if (AgentShopStateRuntime.visitTimedOut(entry, now, SHOP_VISIT_TIMEOUT_MS)) {
             AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
+            logShopFailure(entry, bot, "visit timeout (never reached the shop NPC)");
             clearShopState(entry);
             return false;
         }
@@ -231,6 +237,9 @@ public final class AgentShopService {
         if (reachedApproach || stuckAtNpc) {
             if (!AgentShopStateRuntime.shopSequenceActive(entry)) {
                 AgentShopStateRuntime.markShopSequenceActive(entry, System.currentTimeMillis());
+                // Close enough to trade: drop any committed navigation step so the Agent
+                // stands still for the transaction instead of chasing the exact approach point.
+                AgentMovementStateResetService.clearNavigationState(entry);
                 AgentShopRuntime.sayMapNow(bot, AgentDialogueSelector.randomReply(AgentDialogueCatalog.shoppingReplies()));
                 Point npcPos = AgentShopStateRuntime.shopNpcPosition(entry);
                 scheduleShopStep(entry, () -> executePurchases(entry, bot, inventory, npcPos));
@@ -1157,7 +1166,9 @@ public final class AgentShopService {
         }
         // Accept proximity to the approach point OR the NPC itself: the sequence can start
         // via the stuck-at-NPC fallback, where the bot is near the NPC but not the approach point.
-        return AgentShopStateRuntime.sequenceValid(entry, bot.getPosition(), npcPos, SHOP_ARRIVE_DIST)
+        // The transaction radius is wider than the arrival radius: a shop stays usable from
+        // anywhere on the shopkeeper's screen, and landing from a jump must not void it.
+        return AgentShopStateRuntime.sequenceValid(entry, bot.getPosition(), npcPos, SHOP_TRANSACTION_RADIUS)
                 && findNpcNear(bot, npcPos) != null;
     }
 
@@ -1172,8 +1183,43 @@ public final class AgentShopService {
         if (AgentShopStateRuntime.shopVisitPending(entry)) {
             AgentShopRuntime.sayMapNow(bot, reason);
         }
+        logShopFailure(entry, bot, reason);
         AgentShopStateRuntime.blockWorkflow(entry, reason, System.currentTimeMillis());
         clearShopState(entry);
+    }
+
+    // The spoken reason is only heard on the map; log it with the geometry so a failed
+    // resupply is diagnosable from the server log alone.
+    private static void logShopFailure(AgentRuntimeEntry entry, Character bot, String reason) {
+        AgentShopState state = entry.shopState();
+        Point botPos = bot == null ? null : bot.getPosition();
+        Point npcPos = state.npcPosition();
+        Point target = state.targetPosition();
+        NPC npc = bot != null && bot.getMap() != null && npcPos != null ? findNpcNear(bot, npcPos) : null;
+        long now = System.currentTimeMillis();
+        log.warn("Agent '{}' shop visit failed: reason=\"{}\" phase={} map={} npc={} npcPos={} approachPos={} botPos={}"
+                        + " distToNpc={} distToApproach={} visitPending={} sequenceActive={} visitAgeMs={} sequenceAgeMs={}"
+                        + " sellTrashPending={} mesos={}",
+                bot == null ? "?" : bot.getName(),
+                reason,
+                state.workflow().phase(),
+                bot == null ? -1 : bot.getMapId(),
+                npc == null ? "none" : npc.getId(),
+                fmt(npcPos),
+                fmt(target),
+                fmt(botPos),
+                botPos == null || npcPos == null ? -1 : manhattan(botPos, npcPos),
+                botPos == null || target == null ? -1 : manhattan(botPos, target),
+                state.visitPending(),
+                state.sequenceActive(),
+                state.visitStartedAtMs() > 0 ? now - state.visitStartedAtMs() : -1,
+                state.sequenceStartedAtMs() > 0 ? now - state.sequenceStartedAtMs() : -1,
+                state.sellTrashPending(),
+                bot == null ? -1 : bot.getMeso());
+    }
+
+    private static String fmt(Point point) {
+        return point == null ? "null" : "(" + point.x + "," + point.y + ")";
     }
 
     private static void clearShopState(AgentRuntimeEntry entry) {
@@ -1196,7 +1242,12 @@ public final class AgentShopService {
             try {
                 step.run();
             } catch (RuntimeException exception) {
-                abortShop(entry, AgentRuntimeIdentityRuntime.bot(entry), AgentDialogueCatalog.shopScheduleErrorReply());
+                // The scheduler only reports delayed-action failures at debug level, so the
+                // stack trace would otherwise vanish along with the shop visit.
+                Character bot = AgentRuntimeIdentityRuntime.bot(entry);
+                log.warn("Agent '{}' shop step threw; aborting the shop visit",
+                        bot == null ? "?" : bot.getName(), exception);
+                abortShop(entry, bot, AgentDialogueCatalog.shopScheduleErrorReply());
                 throw exception;
             }
         });

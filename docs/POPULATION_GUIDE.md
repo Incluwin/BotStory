@@ -109,7 +109,7 @@ capacity; Neo City is skipped). Logs: `citizen born`, `citizen X online/offline`
 | `names.yaml` | name patterns with slots and syllable lists; era flavour |
 | `voices.yaml` | how a citizen types: style id, lowercase/typo/abbreviation/emoticon rates, pet phrases, typing speed, ignore rate |
 | `guild-names.yaml` | guild name patterns, mottos, emblem palette |
-| `regions.yaml` | level bands, main town maps, PQ lobbies, FM entrance per region |
+| `regions.yaml` | level bands, main town maps (+ optional `townWeights`, one per town, so hubs like Henesys/Kerning draw most town life), PQ lobbies, FM entrance per region |
 | `fields.yaml` | generated map catalog; prune or add maps freely |
 | `market.yaml` | permit item and the market basket with seed prices |
 | `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega), `weight`, `cooldownMs`, `lines`, optional per-style `styles` |
@@ -119,11 +119,18 @@ triggers, channels and jobs, loadouts that do not exist, and non-ASCII.
 
 ## Sizing and measuring
 
-Start small: the defaults are 120 citizens and 30 loaded. A presence sweep with 6 logins took
-~300 ms; a birth (account, character, shaping) ~250 ms. Raise `TARGET_CITIZENS` and `ONLINE_MAX`
-in steps while watching `sweepMs` in `!citizens status`, GC in `logs/gc/`, and the client on a
-crowded town; `MAP_VISIBLE_MAX` and the field capacities are the per-map brakes. `!citizens force
-<n>` is the load-test knob: it keeps n citizens loaded regardless of the hour.
+The first cut ran 120 citizens and 30 loaded. A presence sweep with 6 logins took ~300 ms; a
+birth (account, character, shaping) ~250 ms. Raise `TARGET_CITIZENS` and `ONLINE_MAX` in steps
+while watching `sweepMs` in `!citizens status`, GC in `logs/gc/`, and the client on a crowded
+town; `MAP_VISIBLE_MAX` and the field capacities are the per-map brakes. `!citizens force <n>`
+is the load-test knob: it keeps n citizens loaded regardless of the hour.
+
+Measured 2026-09-21 (16-core laptop, `-Xmx3072m`): 600 citizens / 240 loaded costs about one
+CPU core per ~130 loaded citizens (grinders dominate) and ~1.4 GB working set at 138 loaded.
+The next lever is `ONLINE_MAX` 320-400 with `-Xmx4096m`, but only with ~2 GB more RAM free than
+this machine had at the time. Crowding is mostly a *distribution* problem: `townWeights` in
+`regions.yaml` concentrates town life in hubs, and the cohort activity mix decides how many are
+in towns/FM versus out grinding, which is where they are neither seen nor cheap.
 
 ## Not done yet (from the plan)
 

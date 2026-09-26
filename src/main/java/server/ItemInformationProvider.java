@@ -22,6 +22,7 @@
 package server;
 
 import client.Character;
+import client.BotClient;
 import client.Client;
 import client.Job;
 import client.Skill;
@@ -1878,8 +1879,16 @@ public class ItemInformationProvider {
             Equip equip = (Equip) item;
             dex += equip.getDex(); str += equip.getStr(); int_ += equip.getInt(); luk += equip.getLuk();
         }
+        if (isBot(chr) && !EquipRequirementChecker.matchesReqJobForBot(chr.getJob(), stats)) {
+            return false;
+        }
         return EquipRequirementChecker.meetsRequirements(chr.getJob(), stats, chr.getLevel(),
                 getEquipLevelReq(itemId), dex, str, int_, luk, chr.getFame());
+    }
+
+    /** Autonomous characters (companions, residents, citizens) are job-gated on gear; players are not. */
+    private static boolean isBot(Character chr) {
+        return chr != null && chr.getClient() instanceof BotClient;
     }
 
     public boolean canWearEquipment(Character chr, Equip equip, int dst) {
@@ -1937,6 +1946,10 @@ public class ItemInformationProvider {
             }
         }
         Map<String, Integer> stats = getEquipStats(equip.getItemId());
+        if (isBot(chr) && !EquipRequirementChecker.matchesReqJobForBot(chr.getJob(), stats)) {
+            equip.wear(false);
+            return false;
+        }
         if (!EquipRequirementChecker.meetsRequirements(
                 chr.getJob(), stats, chr.getLevel(), reqLevel,
                 chr.getTotalDex(), chr.getTotalStr(), chr.getTotalInt(), chr.getTotalLuk(), chr.getFame())) {
@@ -1958,7 +1971,9 @@ public class ItemInformationProvider {
         }
         int reqLevel = getEquipLevelReq(equip.getItemId());
         Map<String, Integer> stats = getEquipStats(equip.getItemId());
-        return EquipRequirementChecker.meetsRequirements(job, stats, level, reqLevel, dex, str, int_, luk, fame);
+        // Bot-only entry point: the job gate applies even though players are exempt from it.
+        return EquipRequirementChecker.matchesReqJobForBot(job, stats)
+                && EquipRequirementChecker.meetsRequirements(job, stats, level, reqLevel, dex, str, int_, luk, fame);
     }
 
     public ArrayList<Pair<Integer, String>> getItemDataByName(String name) { // Pair<ItemID, ItemName>

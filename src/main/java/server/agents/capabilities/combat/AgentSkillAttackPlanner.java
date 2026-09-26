@@ -111,11 +111,10 @@ public final class AgentSkillAttackPlanner {
                     AgentAttackExecutionProvider.attackPacketStance(facingLeft));
         }
 
+        // Keydown shots (Hurricane, Piercing Arrow, Rapid Fire) are broadcast with rangedDirection in
+        // the stance byte (RangedAttackHandler.createAttackPacket), so it carries the facing bit only.
         int direction = AgentAttackExecutionProvider.bodyActionId(action, fallbackAction, weaponType);
-        return new SkillAttackPacketFields(
-                0,
-                direction,
-                direction,
-                AgentAttackExecutionProvider.attackPacketStance(facingLeft));
+        int stance = AgentAttackExecutionProvider.attackPacketStance(facingLeft);
+        return new SkillAttackPacketFields(0, direction, stance, stance);
     }
 }

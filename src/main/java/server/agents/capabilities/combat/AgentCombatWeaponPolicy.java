@@ -7,6 +7,11 @@ import constants.skills.ChiefBandit;
 import constants.skills.DragonKnight;
 import constants.skills.Hermit;
 import constants.skills.NightLord;
+import constants.skills.Fighter;
+import constants.skills.Crusader;
+import constants.skills.Page;
+import constants.skills.WhiteKnight;
+import constants.skills.Paladin;
 import constants.skills.Pirate;
 import constants.skills.Rogue;
 import constants.skills.Shadower;
@@ -64,8 +69,36 @@ public final class AgentCombatWeaponPolicy {
             case Spearman.POLEARM_BOOSTER,
                     DragonKnight.POLE_ARM_CRUSHER, DragonKnight.POLE_ARM_DRAGON_FURY ->
                     isPolearmWeapon(weaponType);
+            // Warrior skills come in a sword variant and an axe/blunt one. Nothing stopped an
+            // Agent holding a sword from picking the blunt variant, and the damage handler only
+            // grants the elemental weakness for the sword charge ids, so a White Knight or
+            // Paladin could stand there with a charge buff up that added nothing to its hits.
+            case Fighter.SWORD_MASTERY, Fighter.SWORD_BOOSTER,
+                    Crusader.SWORD_PANIC, Crusader.SWORD_COMA,
+                    Page.SWORD_MASTERY, Page.SWORD_BOOSTER,
+                    WhiteKnight.SWORD_FIRE_CHARGE, WhiteKnight.SWORD_ICE_CHARGE,
+                    WhiteKnight.SWORD_LIT_CHARGE, Paladin.SWORD_HOLY_CHARGE ->
+                    isSword(weaponType);
+            case Fighter.AXE_MASTERY, Fighter.AXE_BOOSTER,
+                    Crusader.AXE_PANIC, Crusader.AXE_COMA,
+                    Page.BW_MASTERY, Page.BW_BOOSTER,
+                    WhiteKnight.BW_FIRE_CHARGE, WhiteKnight.BW_ICE_CHARGE,
+                    WhiteKnight.BW_LIT_CHARGE, Paladin.BW_HOLY_CHARGE ->
+                    isGeneralWeapon(weaponType);
             default -> true;
         };
+    }
+
+    public static boolean isSword(WeaponType weaponType) {
+        return weaponType == WeaponType.SWORD1H || weaponType == WeaponType.SWORD2H;
+    }
+
+    /** Axes and blunt weapons share Cosmic's "general" weapon types. */
+    public static boolean isGeneralWeapon(WeaponType weaponType) {
+        return weaponType == WeaponType.GENERAL1H_SWING
+                || weaponType == WeaponType.GENERAL1H_STAB
+                || weaponType == WeaponType.GENERAL2H_SWING
+                || weaponType == WeaponType.GENERAL2H_STAB;
     }
 
     public static boolean isSpearWeapon(WeaponType weaponType) {

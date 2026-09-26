@@ -1,7 +1,6 @@
 package server.agents.capabilities.combat;
 
 import client.Character;
-import client.BuffStat;
 import client.Skill;
 import client.inventory.WeaponType;
 import constants.skills.DragonKnight;
@@ -64,8 +63,14 @@ public final class AgentSkillAttackPlanRuntime {
         Skill skill = skills.getSkill(skillId);
         int skillLevel = skill == null ? 0 : bot.getSkillLevel(skill);
         StatEffect effect = skill == null || skillLevel <= 0 ? null : skill.getEffect(skillLevel);
-        if (!AgentComboFinisherPolicy.canPlan(skillId, bot.getBuffedValue(BuffStat.COMBO))) {
+        if (!AgentComboFinisherPolicy.canPlan(bot, skillId)) {
             return reject("combo-orbs");
+        }
+        if (!AgentClientSkillRules.usableInCurrentForm(bot, skillId)) {
+            return reject("needs-super-transformation");
+        }
+        if (!AgentClientSkillRules.chargeReady(bot, skillId)) {
+            return reject("needs-charge");
         }
         if (AgentCombatSkillClassifier.isEnergyAttackSkill(skillId) && bot.getEnergyBar() < ENERGY_BAR_FULL) {
             return reject("energy-charge-not-full");

@@ -86,6 +86,38 @@ class AgentShopVisitTickServiceTest {
                                                          AtomicInteger movementSteps,
                                                          AtomicReference<Point> movedTo,
                                                          boolean shopTickConsumes) {
+        return hooks(shopTicks, movementSteps, movedTo, shopTickConsumes, new AtomicInteger());
+    }
+
+    @Test
+    void openTransactionHoldsPositionInsteadOfWalkingToTheApproachPoint() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(mock(Character.class), mock(Character.class), null);
+        Character agent = mock(Character.class);
+        Point target = new Point(-297, -78);
+        AgentShopStateRuntime.startShopVisit(entry, new Point(-297, -79), target, 0, 1_000L);
+        AgentShopStateRuntime.markShopSequenceActive(entry, 1_500L);
+        AtomicInteger shopTicks = new AtomicInteger();
+        AtomicInteger movementSteps = new AtomicInteger();
+        AtomicInteger holds = new AtomicInteger();
+
+        AgentShopVisitTickService.Result result = AgentShopVisitTickService.tickShopVisitIfPending(
+                entry,
+                agent,
+                true,
+                hooks(shopTicks, movementSteps, new AtomicReference<>(), true, holds));
+
+        assertTrue(result.consumedTick());
+        assertEquals(target, result.targetPos());
+        assertEquals(1, shopTicks.get());
+        assertEquals(0, movementSteps.get());
+        assertEquals(1, holds.get());
+    }
+
+    private static AgentShopVisitTickService.Hooks hooks(AtomicInteger shopTicks,
+                                                         AtomicInteger movementSteps,
+                                                         AtomicReference<Point> movedTo,
+                                                         boolean shopTickConsumes,
+                                                         AtomicInteger holds) {
         return new AgentShopVisitTickService.Hooks(
                 (entry, agent) -> {
                     shopTicks.incrementAndGet();
@@ -94,6 +126,7 @@ class AgentShopVisitTickServiceTest {
                 (entry, targetPosition, runAiTick) -> {
                     movementSteps.incrementAndGet();
                     movedTo.set(targetPosition);
-                });
+                },
+                (entry, agent) -> holds.incrementAndGet());
     }
 }

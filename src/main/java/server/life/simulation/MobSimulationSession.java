@@ -45,6 +45,9 @@ public final class MobSimulationSession {
     private volatile int knockbackDirection = 1;
     private volatile boolean impactFacingLeft;
     private int knockbackStepsRemaining;
+    /** Rush-style hits carry the mob this far (px) instead of an ordinary knockback; 0 = ordinary. */
+    private double pushDistancePx;
+    private double knockbackStartX;
     private int recoveryStepsRemaining;
     private int chaseRampStepsTotal;
     private int chaseRampStepsRemaining;
@@ -147,6 +150,12 @@ public final class MobSimulationSession {
 
     public synchronized long acceptHit(Character newAgent, int damage, long delayMs,
                                        int direction, long nowNanos) {
+        return acceptHit(newAgent, damage, delayMs, direction, nowNanos, 0.0);
+    }
+
+    /** As above; {@code pushDistancePx} > 0 makes the knockback carry the mob that far (a charge dragging it along). */
+    public synchronized long acceptHit(Character newAgent, int damage, long delayMs,
+                                       int direction, long nowNanos, double pushDistancePx) {
         boolean reactionAlreadyInProgress = reactionInProgress();
         agent = newAgent;
         // A hit received during knockback/flinch cannot stack another reaction, but it still
@@ -157,6 +166,7 @@ public final class MobSimulationSession {
             return generation;
         }
         pendingDamage = Math.max(0, damage);
+        this.pushDistancePx = Math.max(0.0, pushDistancePx);
         knockbackDirection = Integer.compare(direction, 0);
         impactFacingLeft = (monster.getStance() & 1) != 0;
         long scaledDelayMs = Math.max(0L, delayMs)
@@ -255,7 +265,7 @@ public final class MobSimulationSession {
         if (motion != MobMotionState.PENDING_IMPACT || stepTimeNanos < impactAtNanos) {
             return;
         }
-        if (pendingDamage >= profile.pushed() && profile.mode() != PhysicsMode.FIXED) {
+        if ((pendingDamage >= profile.pushed() || pushDistancePx > 0) && profile.mode() != PhysicsMode.FIXED) {
             platformConstrainedKnockback = body.grounded() && !profile.flying();
             if (platformConstrainedKnockback) {
                 SIMULATOR.beginGroundedKnockbackSupport(this);
@@ -266,7 +276,9 @@ public final class MobSimulationSession {
                         * tuning.knockbackMultiplier(), body.velocityY());
             }
             motion = MobMotionState.KNOCKBACK;
-            knockbackStepsRemaining = MobPhysicsSimulator.KNOCKBACK_STEPS;
+            knockbackStartX = body.x();
+            knockbackStepsRemaining = pushDistancePx > 0
+                    ? MobPhysicsSimulator.PUSH_MAX_STEPS : MobPhysicsSimulator.KNOCKBACK_STEPS;
         } else {
             motion = MobMotionState.CHASE;
         }
@@ -288,7 +300,9 @@ public final class MobSimulationSession {
         lastHitWall = result.hitWall();
         if (motion == MobMotionState.KNOCKBACK
                 && ((!platformConstrainedKnockback && result.landed())
-                || --knockbackStepsRemaining <= 0)) {
+                || --knockbackStepsRemaining <= 0
+                || (pushing() && (result.hitWall()
+                || Math.abs(body.x() - knockbackStartX) >= pushDistancePx)))) {
             finishKnockback();
         } else if (motion == MobMotionState.FLINCH && --recoveryStepsRemaining <= 0) {
             motion = MobMotionState.CHASE;
@@ -414,6 +428,8 @@ public final class MobSimulationSession {
     public MobMotionState motion() { return motion; }
     public void setMotion(MobMotionState motion) { this.motion = motion; }
     public int knockbackDirection() { return knockbackDirection; }
+    /** In a charge's push rather than an ordinary knockback. */
+    public boolean pushing() { return motion == MobMotionState.KNOCKBACK && pushDistancePx > 0; }
     public boolean impactFacingLeft() { return impactFacingLeft; }
     public boolean platformConstrainedKnockback() { return platformConstrainedKnockback; }
     public boolean initialSupportCorrected() { return initialSupportCorrected; }

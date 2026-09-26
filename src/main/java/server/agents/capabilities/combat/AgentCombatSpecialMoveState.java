@@ -38,6 +38,22 @@ public final class AgentCombatSpecialMoveState {
         this.nextDebuffAtMs = nextDebuffAtMs;
     }
 
+    /** Summon object id -> when that summon may attack next. */
+    private final java.util.Map<Integer, Long> nextSummonAttackAtMs = new java.util.HashMap<>();
+
+    public synchronized long nextSummonAttackAtMs(int summonObjectId) {
+        return nextSummonAttackAtMs.getOrDefault(summonObjectId, 0L);
+    }
+
+    public synchronized void setNextSummonAttackAtMs(int summonObjectId, long atMs) {
+        nextSummonAttackAtMs.put(summonObjectId, atMs);
+    }
+
+    /** Forgets summons that are gone so the map does not grow with every recast. */
+    public synchronized void retainSummons(java.util.Collection<Integer> liveSummonObjectIds) {
+        nextSummonAttackAtMs.keySet().retainAll(liveSummonObjectIds);
+    }
+
     private long attacksAtLastSpecialMove;
 
     public synchronized void countAttack() { attacksCommitted++; }

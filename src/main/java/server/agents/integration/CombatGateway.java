@@ -17,6 +17,17 @@ public interface CombatGateway {
     /** Casts a summon skill at the Agent's position (special move with a position payload). */
     boolean dispatchSummonSpecialMove(Character agent, int skillId, int skillLevel, int packetTimestamp);
 
+    /** One summon hit: the monster, where it stands, how long into the attack it lands, and the damage. */
+    record SummonHit(int monsterOid, java.awt.Point position, int delayMs, int damage) {
+    }
+
+    /** A summon's attack, through the same handler that takes a player's summon attack (cap, statuses, broadcast). */
+    boolean dispatchSummonAttack(Character agent, int summonObjectId, boolean facingLeft,
+                                 java.util.List<SummonHit> hits, int packetTimestamp);
+
+    /** The most one hit of this summon may deal for the Agent: the server's cap on summon damage. */
+    int summonMaxDamage(Character agent, int summonSkillId, int summonSkillLevel);
+
     /** Monster Magnet: the special move carries the pulled monsters' object ids. */
     boolean dispatchMonsterMagnet(Character agent, int skillId, int skillLevel, int packetTimestamp, java.util.List<Integer> monsterOids);
 

@@ -13,7 +13,8 @@ public final class AgentShopVisitTickService {
     }
 
     public record Hooks(ShopVisitTick shopVisitTick,
-                        MovementCore movementCore) {
+                        MovementCore movementCore,
+                        HoldPosition holdPosition) {
     }
 
     @FunctionalInterface
@@ -24,6 +25,12 @@ public final class AgentShopVisitTickService {
     @FunctionalInterface
     public interface MovementCore {
         void step(AgentRuntimeEntry entry, Point targetPosition, boolean runAiTick);
+    }
+
+    /** Physics-only tick (land, idle stance) with no walking toward any target. */
+    @FunctionalInterface
+    public interface HoldPosition {
+        void tick(AgentRuntimeEntry entry, Character agent);
     }
 
     public static Result tickShopVisitIfPending(AgentRuntimeEntry entry,
@@ -37,6 +44,12 @@ public final class AgentShopVisitTickService {
         boolean consumed = hooks.shopVisitTick().tick(entry, agent);
         Point targetPos = AgentShopStateRuntime.activeShopTargetPosition(entry);
         if (!consumed && AgentShopStateRuntime.shopApproachDelayMs(entry) > 0) {
+            return new Result(true, targetPos);
+        }
+        if (AgentShopStateRuntime.shopSequenceActive(entry)) {
+            // The transaction is open: stay put. Walking on toward the exact approach point
+            // (often on the shopkeeper's counter) carried Agents out of range mid-purchase.
+            hooks.holdPosition().tick(entry, agent);
             return new Result(true, targetPos);
         }
         if (targetPos != null) {

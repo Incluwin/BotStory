@@ -518,6 +518,34 @@ class AgentBuildServiceTest {
         assertEquals(0, remainingAp.get());
     }
 
+    @Test
+    void fourthJobAgentKeepsItsBuildInsteadOfAskingHowToSpendAp() {
+        Character bot = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        when(bot.getJob()).thenReturn(Job.HERO);
+        when(bot.getRemainingAp()).thenReturn(10);
+        when(bot.getDex()).thenReturn(139);
+        when(bot.getStr()).thenReturn(573);
+        when(bot.assignStrDexIntLuk(anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(true);
+
+        assertNull(AgentBuildService.buildApPrompt(entry, bot));
+
+        verify(bot).assignStrDexIntLuk(10, 0, 0, 0);
+        assertEquals(139, AgentBuildStateRuntime.apBuild(entry).secondaryTarget());
+    }
+
+    @Test
+    void secondJobAgentStillAsksHowToSpendAp() {
+        Character bot = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        when(bot.getJob()).thenReturn(Job.FIGHTER);
+        when(bot.getRemainingAp()).thenReturn(5);
+
+        assertEquals("how should i put my ap? dexless, or like 25 dex?", AgentBuildService.buildApPrompt(entry, bot));
+
+        verify(bot, never()).assignStrDexIntLuk(anyInt(), anyInt(), anyInt(), anyInt());
+    }
+
     private static void stubSkillState(Character bot, int[] remainingSps, Map<Integer, Integer> skillLevels) {
         when(bot.getRemainingSps()).thenReturn(remainingSps);
         when(bot.getSkillLevel(any(Skill.class))).thenAnswer(invocation -> {

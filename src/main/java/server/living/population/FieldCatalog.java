@@ -70,7 +70,7 @@ public final class FieldCatalog {
         if (region == null || region.towns().isEmpty()) {
             return 100000000;
         }
-        return region.towns().get(Math.floorMod(citizen.characterId() + (random == null ? 0 : random.nextInt(3)), region.towns().size()));
+        return region.townFor(citizen.characterId() * 31 + (random == null ? 0 : random.nextInt(7)));
     }
 
     /** A lobby in the citizen's region whose level band fits, else null. */

@@ -8,6 +8,7 @@ import server.agents.capabilities.combat.AgentScriptedMoveCombatTickService;
 import server.agents.capabilities.combat.AgentGrindModeDispatchService;
 import server.agents.capabilities.combat.AgentAnchoredFarmModeTickService;
 import server.agents.capabilities.movement.AgentFinalMovementTailService;
+import server.agents.capabilities.movement.AgentIdlePhysicsService;
 import server.agents.capabilities.follow.AgentFollowOpportunityTickService;
 import server.agents.capabilities.shop.AgentShopVisitTickService;
 
@@ -85,7 +86,8 @@ public final class AgentLiveModeTickRuntime {
                             new AgentShopVisitTickService.Hooks(
                                     (visitEntry, visitAgent) -> tickShopVisit(visitEntry, visitAgent, perf),
                                     (moveEntry, moveTargetPos, moveRunAiTick) ->
-                                            timedMovementCoreStep(moveEntry, moveTargetPos, moveRunAiTick, perf, movementCoreStep)));
+                                            timedMovementCoreStep(moveEntry, moveTargetPos, moveRunAiTick, perf, movementCoreStep),
+                                    AgentIdlePhysicsService::tickPhysicsOnly));
                     return new AgentLiveModeTickService.PhaseResult(
                             shopVisitResult.consumedTick(),
                             shopVisitResult.targetPos());

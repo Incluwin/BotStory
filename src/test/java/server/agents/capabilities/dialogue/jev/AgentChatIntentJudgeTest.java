@@ -4,14 +4,21 @@ import org.junit.jupiter.api.Test;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.Decision;
 import server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.Outcome;
 import server.agents.integration.typesafe.JevAnswer;
+import server.agents.integration.typesafe.JevChoicePermutations;
+import server.agents.integration.typesafe.JevCircuitBreaker;
 import server.agents.integration.typesafe.JevClient;
+import server.agents.integration.typesafe.JevQuestion;
 import server.agents.integration.typesafe.JevRequest;
 import server.agents.integration.typesafe.JevResponse;
+import server.agents.integration.typesafe.JevUsageMeter;
 import server.agents.integration.typesafe.TypeSafeSettings;
 import server.agents.integration.typesafe.state.JevState;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -93,6 +100,66 @@ class AgentChatIntentJudgeTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> state = (Map<String, Object>) request.state();
         assertEquals("halt", state.get("message"));
+    }
+
+    @Test
+    void liveUnsureAnswerIsReJudgedWithAveragingOnANarrowRequest() {
+        List<JevRequest> sent = new ArrayList<>();
+        AgentChatIntentJudge judge = permutingJudge(JevChoicePermutations.Mode.LIVE, 0.6d, 0.9d, sent);
+
+        Decision decision = judge.judge(state("can u farm around here"));
+
+        assertEquals(Outcome.ACT, decision.outcome(), "the averaged re-ask is confident enough to act");
+        assertEquals(0.9d, decision.confidence(), 1e-9);
+        assertEquals(List.of(AgentChatIntentCatalog.REQUEST_KIND, AgentChatIntentCatalog.UNSURE_REQUEST_KIND),
+                sent.stream().map(JevRequest::kind).toList());
+        assertTrue(sent.get(0).questions().keySet().stream().noneMatch(id -> id.startsWith("__perm_")),
+                "the full chat-intent request is exempt from expansion");
+        assertEquals(9, sent.get(1).questions().size(),
+                "grind has no argument: eight intent orderings plus the addressed Noul");
+    }
+
+    @Test
+    void shadowReAskKeepsTheOriginalDecision() {
+        List<JevRequest> sent = new ArrayList<>();
+        AgentChatIntentJudge judge = permutingJudge(JevChoicePermutations.Mode.SHADOW, 0.6d, 0.9d, sent);
+
+        Decision decision = judge.judge(state("can u farm around here"));
+
+        assertEquals(Outcome.ASK, decision.outcome());
+        assertEquals(2, sent.size(), "the re-ask still runs so shadow stats accumulate");
+    }
+
+    @Test
+    void confidentFirstAnswerIsNotReAsked() {
+        List<JevRequest> sent = new ArrayList<>();
+        AgentChatIntentJudge judge = permutingJudge(JevChoicePermutations.Mode.LIVE, 0.9d, 0.2d, sent);
+
+        assertEquals(Outcome.ACT, judge.judge(state("go kill stuff")).outcome());
+        assertEquals(1, sent.size());
+    }
+
+    /** Answers grind with {@code firstGrind} on the full request and {@code unsureGrind} on the re-ask. */
+    private static AgentChatIntentJudge permutingJudge(JevChoicePermutations.Mode mode, double firstGrind,
+                                                       double unsureGrind, List<JevRequest> sent) {
+        JevClient client = new JevClient(SETTINGS, (request, settings) -> {
+            sent.add(request);
+            double grind = AgentChatIntentCatalog.UNSURE_REQUEST_KIND.equals(request.kind()) ? unsureGrind : firstGrind;
+            Map<String, JevAnswer> answers = new LinkedHashMap<>();
+            request.questions().forEach((id, question) -> {
+                if (question instanceof JevQuestion.Choice choice && choice.criteria().containsKey("grind")) {
+                    Map<String, Double> probabilities = new LinkedHashMap<>();
+                    double rest = (1.0d - grind) / (choice.criteria().size() - 1);
+                    choice.criteria().keySet().forEach(label -> probabilities.put(label, label.equals("grind") ? grind : rest));
+                    answers.put(id, new JevAnswer("choice", "grind", probabilities, null, null, Map.of(), grind));
+                } else if (question instanceof JevQuestion.Noul) {
+                    answers.put(id, new JevAnswer("noul", null, Map.of(), 0.9d, null, Map.of(), null));
+                }
+            });
+            return new JevResponse("jev-1.13.0", answers, 900L, 0L, 95L);
+        }, new JevCircuitBreaker(), new JevUsageMeter(),
+                new JevChoicePermutations(mode, 8, 64, Set.of(AgentChatIntentCatalog.REQUEST_KIND)));
+        return new AgentChatIntentJudge(client, 0.75d, 0.45d, 3_000);
     }
 
     private static AgentChatIntentJudge judge(Map.Entry<String, JevAnswer>... answers) {

@@ -96,6 +96,14 @@ public final class AgentOfferStateRuntime {
         entry.upgradeOfferState().rememberRequestedUpgradeItem(itemId);
     }
 
+    public static boolean hasDeclinedOfferItem(AgentRuntimeEntry entry, int itemId) {
+        return entry.upgradeOfferState().hasDeclinedOfferItem(itemId);
+    }
+
+    public static void rememberDeclinedOfferItem(AgentRuntimeEntry entry, int itemId) {
+        entry.upgradeOfferState().rememberDeclinedOfferItem(itemId);
+    }
+
     public static boolean proactiveUpgradeOffers(AgentRuntimeEntry entry) {
         return entry != null && entry.upgradeOfferState().proactiveUpgradeOffers();
     }

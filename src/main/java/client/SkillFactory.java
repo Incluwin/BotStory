@@ -82,7 +82,9 @@ import provider.wz.WZFiles;
 import server.StatEffect;
 import server.life.Element;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SkillFactory {
@@ -390,7 +392,57 @@ public class SkillFactory {
                 ret.incAnimationTime(DataTool.getIntConvert("delay", effectEntry, 0));
             }
         }
+        // The keydown frames are the charge a player holds through before the attack is sent.
+        int keydownTime = 0;
+        Data keydown = data.getChildByPath("keydown");
+        if (keydown != null) {
+            for (Data keydownEntry : keydown) {
+                keydownTime += DataTool.getIntConvert("delay", keydownEntry, 0);
+            }
+        }
+        ret.setKeydownTime(keydownTime);
+        Data afterimage = data.getChildByPath("afterimage");
+        if (afterimage != null) {
+            for (Data weaponAfterimage : afterimage) {
+                List<String> actions = new ArrayList<>();
+                for (Data action : weaponAfterimage) {
+                    actions.add(action.getName());
+                }
+                ret.setAfterimageActions(weaponAfterimage.getName(), actions);
+            }
+        }
+        ret.setSummonAttack(loadSummonAttack(data.getChildByPath("summon/attack1")));
         return ret;
+    }
+
+    private static Skill.SummonAttack loadSummonAttack(Data attack) {
+        if (attack == null) {
+            return null;
+        }
+        int cycleMs = 0;
+        for (Data frame : attack) {
+            if (frame.getName().chars().allMatch(java.lang.Character::isDigit)) {
+                cycleMs += DataTool.getIntConvert("delay", frame, 0);
+            }
+        }
+        Data info = attack.getChildByPath("info");
+        int hitAfterMs = info == null ? 0 : DataTool.getIntConvert("attackAfter", info, 0);
+        int mobCount = info == null ? 1 : DataTool.getIntConvert("mobCount", info, 1);
+        Data range = info == null ? null : info.getChildByPath("range");
+        java.awt.Rectangle box = null;
+        int radius = 0;
+        java.awt.Point origin = new java.awt.Point(0, 0);
+        if (range != null) {
+            java.awt.Point lt = DataTool.getPoint("lt", range, null);
+            java.awt.Point rb = DataTool.getPoint("rb", range, null);
+            if (lt != null && rb != null) {
+                box = new java.awt.Rectangle(lt.x, lt.y, rb.x - lt.x, rb.y - lt.y);
+            }
+            radius = DataTool.getIntConvert("r", range, 0);
+            origin = DataTool.getPoint("sp", range, origin);
+        }
+        return new Skill.SummonAttack(Math.max(1, cycleMs), Math.max(0, hitAfterMs), Math.max(1, mobCount),
+                box, radius, origin);
     }
 
     private static boolean loadExplicitSkillActions(Skill skill, Data data) {
@@ -450,6 +502,21 @@ public class SkillFactory {
         }
 
         return null;
+    }
+
+    /**
+     * The tooltip line players see for one skill level (String.wz {@code h<level>}), or null. Servers
+     * edit Skill.wz without touching String.wz, so this is what players are told, not what is computed.
+     */
+    public static String getSkillLevelTooltip(int skillid, int level) {
+        Data data = DataProviderFactory.getDataProvider(WZFiles.STRING).getData("Skill.img");
+        String key = String.valueOf(skillid);
+        if (key.length() == 4) {
+            key = "000" + key;
+        }
+        Data skill = data.getChildByPath(key);
+        Data line = skill == null ? null : skill.getChildByPath("h" + level);
+        return line == null ? null : DataTool.getString(line, null);
     }
 
     /**

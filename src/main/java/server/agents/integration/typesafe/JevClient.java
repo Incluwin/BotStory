@@ -33,6 +33,7 @@ public final class JevClient {
     private final JevTransport transport;
     private final JevCircuitBreaker breaker;
     private final JevUsageMeter meter;
+    private final JevChoicePermutations permutations;
     private volatile ExecutorService asyncExecutor;
 
     public JevClient(TypeSafeSettings settings, JevTransport transport) {
@@ -41,10 +42,17 @@ public final class JevClient {
 
     public JevClient(TypeSafeSettings settings, JevTransport transport,
                      JevCircuitBreaker breaker, JevUsageMeter meter) {
+        this(settings, transport, breaker, meter, JevChoicePermutations.off());
+    }
+
+    public JevClient(TypeSafeSettings settings, JevTransport transport,
+                     JevCircuitBreaker breaker, JevUsageMeter meter,
+                     JevChoicePermutations permutations) {
         this.settings = settings;
         this.transport = transport;
         this.breaker = breaker;
         this.meter = meter;
+        this.permutations = permutations;
     }
 
     /** The shared client, configured from the environment on first use. */
@@ -54,7 +62,8 @@ public final class JevClient {
             synchronized (JevClient.class) {
                 current = runtime;
                 if (current == null) {
-                    current = new JevClient(TypeSafeSettings.runtime(), new JevHttpTransport());
+                    current = new JevClient(TypeSafeSettings.runtime(), new JevHttpTransport(),
+                            new JevCircuitBreaker(), new JevUsageMeter(), JevChoicePermutations.fromTuning());
                     runtime = current;
                     log.info("TypeSafe System One client initialised: {}", current.settings);
                 }
@@ -78,6 +87,10 @@ public final class JevClient {
         return meter;
     }
 
+    public JevChoicePermutations.Mode permutationMode() {
+        return permutations.mode();
+    }
+
     public boolean configured() {
         return settings.configured();
     }
@@ -99,7 +112,9 @@ public final class JevClient {
             return Optional.empty();
         }
         try {
-            JevResponse response = transport.send(request, settings);
+            JevChoicePermutations.Plan plan = permutations.plan(request);
+            JevResponse raw = transport.send(plan == null ? request : plan.expanded(), settings);
+            JevResponse response = plan == null ? raw : permutations.aggregate(raw, plan);
             breaker.recordSuccess();
             meter.recordSuccess(request.kind(), response);
             return Optional.of(response);
@@ -138,6 +153,7 @@ public final class JevClient {
         return "typesafe " + (settings.configured() ? "configured" : "unconfigured")
                 + " model=" + settings.model()
                 + " breakerOpen=" + breaker.isOpen(System.currentTimeMillis())
+                + ' ' + permutations.diagnostics()
                 + ' ' + meter.diagnostics();
     }
 

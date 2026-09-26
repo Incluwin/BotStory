@@ -1,10 +1,12 @@
 package net.security;
 
+import client.Client;
 import config.YamlConfig;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.socket.SocketChannel;
+import net.packet.PacketRateLimiter.MobControlBudget;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +42,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  * <p>Designed for a 6–12 friend private server on Tailscale. The numbers
  * accommodate ~3 concurrent clients per friend (2 HWID slots + 1 launcher
  * probe) and burst ~50 pps during map transitions, then sustain < 15 pps
- * during normal play. Tune via {@code config.yaml} if anything legitimate
- * gets clipped.
+ * during normal play. A client also sends movement for every monster it
+ * controls, so the packet cap grows by the mob-control allowance
+ * ({@code PACKET_MOB_CONTROL_*}) of the connected character. Tune via
+ * {@code config.yaml} if anything legitimate gets clipped.
  */
 public final class ConnectionThrottle {
     private static final Logger log = LoggerFactory.getLogger(ConnectionThrottle.class);
@@ -212,7 +216,13 @@ public final class ConnectionThrottle {
             while (!timestamps.isEmpty() && timestamps.peekFirst() < cutoff) {
                 timestamps.pollFirst();
             }
-            if (timestamps.size() >= packetWindowMax()) {
+            int limit = packetWindowMax();
+            if (timestamps.size() >= limit) {
+                // Only look up the character once the base cap is reached, to keep its lock off the hot path.
+                limit = packetWindowAllowance(limit, packetWindowMs(), controlledMonsters(ctx),
+                        MobControlBudget.fromConfig());
+            }
+            if (timestamps.size() >= limit) {
                 String ip = remoteIp(ctx.channel());
                 log.warn("PacketRateGuard: {} sent {} packets in {} ms, closing",
                         ip, timestamps.size(), packetWindowMs());
@@ -225,6 +235,17 @@ public final class ConnectionThrottle {
             timestamps.addLast(now);
             ctx.fireChannelRead(msg);
         }
+    }
+
+    /** Reads allowed per packet window: the base cap plus the mob-control allowance over the same window. */
+    static int packetWindowAllowance(int baseMax, long windowMs, int controlledMonsters, MobControlBudget budget) {
+        long extra = (long) budget.extraRateFor(controlledMonsters) * windowMs / 1_000L;
+        return (int) Math.min(Integer.MAX_VALUE, baseMax + extra);
+    }
+
+    private static int controlledMonsters(ChannelHandlerContext ctx) {
+        Client client = ctx.pipeline().get(Client.class);
+        return client == null ? 0 : client.getControlledMonsterCount();
     }
 
     // --- utility ---------------------------------------------------------

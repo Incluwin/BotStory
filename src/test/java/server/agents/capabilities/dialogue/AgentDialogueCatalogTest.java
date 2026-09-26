@@ -113,7 +113,7 @@ class AgentDialogueCatalogTest {
         assertTrue(AgentDialogueCatalog.weirdTransferReply().contains("weird"));
         assertEquals("cant read my movement stats rn", AgentDialogueCatalog.movementStatsUnavailableReply());
         assertTrue(AgentDialogueCatalog.welcomeBackOfflinePartyTemplates().contains("wb!! we're at %s"));
-        assertTrue(AgentDialogueCatalog.relogConfirmPrompts().contains("save and relog? type yes"));
+        assertTrue(AgentDialogueCatalog.relogConfirmPrompts().contains("want me to relog real quick?"));
         assertTrue(AgentDialogueCatalog.logoutConfirmedReplies().contains("cya!!"));
         assertTrue(AgentDialogueCatalog.supportOffReply().contains("skill buffs off"));
         assertTrue(AgentDialogueCatalog.supportOnReply().contains("skill buffs on"));

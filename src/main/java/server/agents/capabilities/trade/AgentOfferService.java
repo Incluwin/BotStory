@@ -30,6 +30,8 @@ import server.agents.capabilities.equipment.AgentEquipmentService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public final class AgentOfferService {
@@ -39,6 +41,15 @@ public final class AgentOfferService {
     private static final Pattern NEGATIVE_CONFIRM_PATTERN = Pattern.compile(
             "\\b(no|nope|nah|nvm|never\\s*mind|dont|don't|not\\s+now|skip)\\b",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern WORD_SPLIT = Pattern.compile("[^a-z']+");
+    // A pending offer only takes a message made entirely of these ("no thanks, it's all yours",
+    // "sure send it"). Anything else ("ok follow me", "don't budge from there") is a command.
+    private static final Set<String> REPLY_WORDS = Set.of(
+            "yes", "yep", "yeah", "yea", "y", "ok", "okay", "sure", "confirm", "do", "go", "ahead", "for",
+            "no", "nope", "nah", "nvm", "never", "mind", "dont", "don't", "not", "now", "skip",
+            "thanks", "thank", "thx", "ty", "u", "you", "pls", "please", "lol", "im", "i'm", "i", "good",
+            "fine", "keep", "it", "its", "it's", "all", "yours", "still", "send", "give", "me", "to", "that",
+            "want", "need", "then", "man", "bro", "fr");
 
     private enum GearOfferNeed {
         CURRENT,
@@ -55,6 +66,14 @@ public final class AgentOfferService {
 
     public static boolean hasPendingOffer(AgentRuntimeEntry entry) {
         return AgentOfferStateRuntime.hasPendingOffer(entry);
+    }
+
+    /**
+     * Offers are never made while a pending action exists, so a pending action (a logout or relog
+     * confirmation...) is a newer question than the offer and gets the owner's next "yes".
+     */
+    public static boolean offerAwaitsAnswer(AgentRuntimeEntry entry) {
+        return hasPendingOffer(entry) && !AgentPendingActionStateRuntime.hasPendingAction(entry);
     }
 
     public static void notifyOwnerGainedEquip(AgentRuntimeEntry entry, Character bot, Item item) {
@@ -159,6 +178,7 @@ public final class AgentOfferService {
                 || !owner.isLoggedinWorld()
                 || !owner.hasInventoryState()
                 || item == null
+                || AgentOfferStateRuntime.hasDeclinedOfferItem(entry, item.getItemId())
                 || AgentOfferStateRuntime.hasPendingGearPromptAfter(entry, now)
                 || AgentOfferRuntime.isOwnerIdleForOffer(entry)
                 || AgentPendingActionStateRuntime.hasPendingAction(entry)
@@ -207,6 +227,10 @@ public final class AgentOfferService {
             return true;
         }
         if (NEGATIVE_CONFIRM_PATTERN.matcher(message).find()) {
+            Item declined = AgentOfferStateRuntime.pendingLootOfferItem(entry);
+            if (declined != null) {
+                AgentOfferStateRuntime.rememberDeclinedOfferItem(entry, declined.getItemId());
+            }
             clearPendingOffer(entry);
             AgentOfferRuntime.afterRandomDelay(entry, 400, 600, () -> {
                 Character owner = AgentRelationshipRuntime.interactionTarget(entry);
@@ -225,7 +249,10 @@ public final class AgentOfferService {
     public static boolean isPendingOfferResponse(String message) {
         return message != null
                 && (POSITIVE_CONFIRM_PATTERN.matcher(message).find()
-                || NEGATIVE_CONFIRM_PATTERN.matcher(message).find());
+                || NEGATIVE_CONFIRM_PATTERN.matcher(message).find())
+                && WORD_SPLIT.splitAsStream(message.toLowerCase(Locale.ROOT))
+                        .filter(word -> !word.isEmpty())
+                        .allMatch(REPLY_WORDS::contains);
     }
 
     public static void expirePendingOffer(AgentRuntimeEntry entry) {
@@ -253,7 +280,8 @@ public final class AgentOfferService {
     private static boolean offerGearItem(AgentRuntimeEntry entry, Character bot, Character recipient, Item item,
                                          GearOfferNeed need) {
         if (AgentPendingActionStateRuntime.hasPendingAction(entry) || AgentPendingTradeStateRuntime.hasActiveSequence(entry) || hasOfferReservation(entry)
-                || !AgentInventoryItemPolicy.hasItem(bot, item)) {
+                || !AgentInventoryItemPolicy.hasItem(bot, item)
+                || AgentOfferStateRuntime.hasDeclinedOfferItem(entry, item.getItemId())) {
             return false;
         }
         AgentPendingActionStateRuntime.clearPendingDropCategory(entry);

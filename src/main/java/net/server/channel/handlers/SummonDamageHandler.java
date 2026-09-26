@@ -120,6 +120,11 @@ public final class SummonDamageHandler extends AbstractDealDamageHandler {
         }
     }
 
+    /** The most one hit of this summon may deal for {@code player}: the cap a summon attack is held to. */
+    public static int maxDamage(StatEffect summonEffect, Character player) {
+        return calcMaxDamage(summonEffect, player, summonEffect.getWatk() == 0);
+    }
+
     private static int calcMaxDamage(StatEffect summonEffect, Character player, boolean magic) {
         double maxDamage;
 

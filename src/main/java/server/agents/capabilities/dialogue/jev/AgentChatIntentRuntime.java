@@ -17,6 +17,7 @@ import server.agents.runtime.async.AgentAsyncWorkKind;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.regex.Pattern;
 
 /**
  * Runs the chat intent judge for a message none of the deterministic classifiers matched, on the
@@ -27,6 +28,11 @@ public final class AgentChatIntentRuntime {
     private static final Logger log = LoggerFactory.getLogger(AgentChatIntentRuntime.class);
     private static final long TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime.TIMEOUT_MS");
+    private static final long PENDING_ASK_TTL_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.dialogue.jev.AgentChatIntentRuntime.PENDING_ASK_TTL_MS");
+    /** GM commands ("!warp ...", including mistyped ones) are never companion instructions. */
+    private static final Pattern GM_COMMAND = Pattern.compile("(^|\\s)![A-Za-z]");
+    private static final AgentChatPendingAsks PENDING_ASKS = new AgentChatPendingAsks(PENDING_ASK_TTL_MS);
     private static final String REQUEST_KEY = "typesafe-chat-intent";
     private static final String REPLY_PREFIX = "reply:";
     private static volatile AgentChatIntentJudge judge;
@@ -55,10 +61,13 @@ public final class AgentChatIntentRuntime {
         String resolve(String message);
     }
 
-    /** Receives every LIVE ACT the judge produced so confident phrases can be remembered. */
+    /**
+     * Receives every LIVE ACT the judge produced, and every "did you mean" the player confirmed
+     * ({@code confirmedByPlayer}), so phrases can be remembered.
+     */
     @FunctionalInterface
     public interface Learner {
-        void learned(String message, String canonicalCommand, double confidence);
+        void learned(String message, String canonicalCommand, double confidence, boolean confirmedByPlayer);
     }
 
     public static void installPrejudge(Prejudge replacement) {
@@ -91,9 +100,28 @@ public final class AgentChatIntentRuntime {
                                                            ReplyQueue replies) {
         JevJudgmentMode mode = mode();
         if (entry == null || message == null || message.isBlank()
-                || AgentChatFallThroughCommands.handledDeterministically(message)) {
+                || AgentChatFallThroughCommands.handledDeterministically(message)
+                || GM_COMMAND.matcher(message).find()) {
             return CompletableFuture.completedFuture(false);
         }
+        AgentChatPendingAsks.Resolution answer = PENDING_ASKS.resolve(entry, message, System.currentTimeMillis());
+        if (answer.reply() == AgentChatPendingAsks.Reply.CONFIRMED) {
+            String canonical = answer.pending().canonicalCommand();
+            log.info("[typesafe-chat] confirmed \"{}\" -> {}", answer.pending().message(), canonical);
+            return redispatch.handle(entry, canonical, channel).thenApply(handled -> {
+                boolean acted = actHandled(canonical, handled);
+                Learner memory = learner;
+                if (acted && memory != null) {
+                    memory.learned(answer.pending().message(), canonical, 1.0d, true);
+                }
+                return acted;
+            });
+        }
+        if (answer.reply() == AgentChatPendingAsks.Reply.DECLINED) {
+            replies.queue(entry, "okay, never mind.");
+            return CompletableFuture.completedFuture(true);
+        }
+        AgentChatPendingAsks.Pending dropped = answer.pending();
         Prejudge resolver = prejudge;
         if (resolver != null) {
             String canonical = resolver.resolve(message);
@@ -136,7 +164,7 @@ public final class AgentChatIntentRuntime {
                         result.complete(false);
                         return;
                     }
-                    apply(completionEntry, channel, message, decision, redispatch, replies, result);
+                    apply(completionEntry, channel, message, decision, dropped, redispatch, replies, result);
                 });
         if (!submission.accepted()) {
             return CompletableFuture.completedFuture(false);
@@ -144,29 +172,61 @@ public final class AgentChatIntentRuntime {
         return result;
     }
 
-    private static void apply(AgentRuntimeEntry entry,
-                              AgentReplyChannel channel,
-                              String message,
-                              Decision decision,
-                              Redispatch redispatch,
-                              ReplyQueue replies,
-                              CompletableFuture<Boolean> result) {
+    /**
+     * {@code dropped} is the "did you mean" this message replaced without a yes or no. If the
+     * message asks for the same command again ("yeah, bump my reputation up pls" after "did you
+     * mean 'fame me'?"), the restatement is the confirmation: act instead of asking twice.
+     */
+    static void apply(AgentRuntimeEntry entry,
+                      AgentReplyChannel channel,
+                      String message,
+                      Decision decision,
+                      AgentChatPendingAsks.Pending dropped,
+                      Redispatch redispatch,
+                      ReplyQueue replies,
+                      CompletableFuture<Boolean> result) {
+        boolean restated = dropped != null && decision.outcome() == Outcome.ASK
+                && dropped.canonicalCommand().equals(decision.canonicalCommand());
         switch (decision.outcome()) {
-            case ACT -> redispatch.handle(entry, decision.canonicalCommand(), channel)
-                    .whenComplete((handled, failure) -> {
-                        boolean acted = failure == null && actHandled(decision.canonicalCommand(), handled);
-                        Learner memory = learner;
-                        if (acted && memory != null) {
-                            memory.learned(message, decision.canonicalCommand(), decision.confidence());
-                        }
-                        result.complete(acted);
-                    });
-            case ASK -> {
-                replies.queue(entry, "did you mean '" + decision.canonicalCommand() + "'?");
-                result.complete(true);
+            case ACT, ASK -> {
+                if (decision.outcome() == Outcome.ASK && !restated) {
+                    rememberAsk(entry, message, decision.canonicalCommand());
+                    replies.queue(entry, askText(decision.canonicalCommand()));
+                    result.complete(true);
+                    return;
+                }
+                redispatch.handle(entry, decision.canonicalCommand(), channel)
+                        .whenComplete((handled, failure) -> {
+                            boolean acted = failure == null && actHandled(decision.canonicalCommand(), handled);
+                            Learner memory = learner;
+                            if (acted && memory != null && restated) {
+                                memory.learned(dropped.message(), decision.canonicalCommand(), 1.0d, true);
+                                memory.learned(message, decision.canonicalCommand(), 1.0d, true);
+                            } else if (acted && memory != null) {
+                                memory.learned(message, decision.canonicalCommand(), decision.confidence(), false);
+                            }
+                            result.complete(acted);
+                        });
             }
             default -> result.complete(false);
         }
+    }
+
+    /** The clarifying question in a player's voice for everyday commands; the rest keep the literal form. */
+    static String askText(String canonicalCommand) {
+        return switch (canonicalCommand) {
+            case "follow me" -> "u want me to follow u?";
+            case "stop" -> "u want me to stop?";
+            case "move here" -> "u want me to come to u?";
+            case "gather up" -> "u want everyone to gather here?";
+            case "gather up for buffs" -> "u want everyone over here for buffs?";
+            case "grind" -> "u want me to go hunt?";
+            case "patrol" -> "u want me to hunt around this spot?";
+            case "farm here" -> "u want me to farm right here?";
+            case "fame me" -> "u want a fame?";
+            case "logout" -> "u want me to log off?";
+            default -> "did you mean '" + canonicalCommand + "'?";
+        };
     }
 
     /**
@@ -176,6 +236,11 @@ public final class AgentChatIntentRuntime {
      */
     static boolean actHandled(String canonicalCommand, Boolean handled) {
         return Boolean.TRUE.equals(handled) || AgentChatFallThroughCommands.handledDeterministically(canonicalCommand);
+    }
+
+    /** The owner's next message can confirm or decline this suggestion; see {@link AgentChatPendingAsks}. */
+    static void rememberAsk(AgentRuntimeEntry entry, String message, String canonicalCommand) {
+        PENDING_ASKS.remember(entry, message, canonicalCommand, System.currentTimeMillis());
     }
 
     private static AgentChatIntentJudge judge() {

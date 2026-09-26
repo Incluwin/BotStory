@@ -11,7 +11,7 @@ class AgentDialogueReportFormatterTest {
     @Test
     void shouldFormatStatsReportExactlyLikeLegacyChat() {
         assertEquals(
-                "lv42 fighter | str 100 dex 40 int 4 luk 4 | hp 1200/1500 mp 300/400",
+                "lv42 fighter, hp 1200/1500 mp 300/400, 100 str 40 dex 4 int 4 luk",
                 AgentDialogueReportFormatter.stats(42, "fighter", 100, 40, 4, 4, 1200, 1500, 300, 400));
     }
 

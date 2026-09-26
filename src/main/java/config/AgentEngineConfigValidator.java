@@ -118,6 +118,14 @@ final class AgentEngineConfigValidator {
         if (key.endsWith("AgentCombatConfig.AOE_REPOSITION_MODE")) {
             return "OFF".equalsIgnoreCase(value) || "ACTIVE".equalsIgnoreCase(value);
         }
+        if (key.endsWith("JevChoicePermutations.MODE")) {
+            return "OFF".equalsIgnoreCase(value)
+                    || "SHADOW".equalsIgnoreCase(value)
+                    || "LIVE".equalsIgnoreCase(value);
+        }
+        if (key.endsWith("JevChoicePermutations.EXEMPT_KINDS")) {
+            return value.matches("[a-z0-9-]+(,[a-z0-9-]+)*");
+        }
         if (key.endsWith("AgentLpqCombinationOrder.STAGE_8_ATTEMPT_ORDER")) {
             return "GMS".equalsIgnoreCase(value) || "JMS".equalsIgnoreCase(value);
         }

@@ -101,6 +101,35 @@ public final class AgentGroundPhysicsService {
         return new AgentGroundMotion(step.stepX(), false);
     }
 
+    /**
+     * Ground speed (px per client ground step) that friction brings to rest after {@code distancePx}
+     * on flat ground: with no input each step keeps (1 - (FRICTION + SLOPEFACTOR) / GROUNDSLIP) of
+     * the speed, so the slide covers v0 / that loss in total.
+     */
+    public static double slideSpeedFor(double distancePx) {
+        return distancePx * (FRICTION + SLOPEFACTOR) / GROUNDSLIP;
+    }
+
+    /** How far (signed px) the Agent can slide from {@code from} toward {@code deltaX} before a wall or an edge. */
+    static int reachableSlide(MapleMap map, Point from, Foothold foothold, int deltaX, int probeStepPx) {
+        int sign = Integer.signum(deltaX);
+        Point current = from;
+        Foothold currentFoothold = foothold;
+        int moved = 0;
+        while (sign != 0 && Math.abs(moved) < Math.abs(deltaX)) {
+            int step = Math.min(Math.max(1, probeStepPx), Math.abs(deltaX) - Math.abs(moved));
+            AgentGroundCollisionService.GroundStepPreview preview = AgentGroundCollisionService.previewGroundStep(
+                    map, current, currentFoothold, current.x + sign * step);
+            if (preview == null || preview.blocked() || preview.lostGround() || preview.point().x == current.x) {
+                break;
+            }
+            moved += preview.point().x - current.x;
+            current = preview.point();
+            currentFoothold = preview.foothold() == null ? currentFoothold : preview.foothold();
+        }
+        return moved;
+    }
+
     public static void stopGroundMotion(AgentRuntimeEntry entry) {
         AgentMovementPhysicsStateRuntime.setHorizontalSpeed(entry, 0.0);
     }

@@ -1,0 +1,130 @@
+{
+  "jobId" : 232,
+  "jobName" : "BISHOP",
+  "level" : 147,
+  "build" : "profile",
+  "learnedAt" : "2026-09-22T23:40:16.946704500Z",
+  "gammaPerSecond" : 0.9,
+  "priorsRelaxed" : false,
+  "actionNames" : {
+    "2311005" : "Doom (2311005)",
+    "2311006" : "Summon Dragon (2311006)",
+    "2321001" : "Big Bang (2321001)",
+    "2321003" : "Bahamut (2321003)",
+    "2321007" : "Angel Ray (2321007)"
+  },
+  "scenarios" : {
+    "single" : {
+      "adopted" : true,
+      "learnedDps" : 303521.425,
+      "priorDps" : 202140.725,
+      "decisions" : 231,
+      "table" : {
+        "1 target|no summon" : {
+          "2321001" : {
+            "visits" : 2,
+            "value" : 294676.40570794593,
+            "seeded" : true,
+            "meanReward" : 101548.75374988213,
+            "meanSeconds" : 1.3279999999999998
+          },
+          "2321007" : {
+            "visits" : 17,
+            "value" : 762200.0577382322,
+            "seeded" : true,
+            "meanReward" : 363219.9980853598,
+            "meanSeconds" : 1.3081176470588234
+          },
+          "2311006" : {
+            "visits" : 10,
+            "value" : 3325150.724607294,
+            "seeded" : true,
+            "meanReward" : 16460.9,
+            "meanSeconds" : 1.1624000000000003
+          },
+          "2321003" : {
+            "visits" : 0,
+            "value" : 3581968.6545744003,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          },
+          "2311005" : {
+            "visits" : 0,
+            "value" : 3398153.8367352034,
+            "seeded" : true,
+            "meanReward" : 0.0,
+            "meanSeconds" : 0.0
+          }
+        },
+        "1 target|summon up" : {
+          "2321003" : {
+            "visits" : 5,
+            "value" : 3280326.3453781735,
+            "seeded" : true,
+            "meanReward" : 17019.6,
+            "meanSeconds" : 1.9188
+          },
+          "2311005" : {
+            "visits" : 5,
+            "value" : 3326255.882189906,
+            "seeded" : true,
+            "meanReward" : 19181.0,
+            "meanSeconds" : 1.7882
+          },
+          "2321001" : {
+            "visits" : 13,
+            "value" : 3476479.020122746,
+            "seeded" : true,
+            "meanReward" : 178834.32011476843,
+            "meanSeconds" : 1.2910769230769232
+          },
+          "2321007" : {
+            "visits" : 120,
+            "value" : 3491695.7173239114,
+            "seeded" : true,
+            "meanReward" : 401789.5535666627,
+            "meanSeconds" : 1.3026749999999996
+          },
+          "2311006" : {
+            "visits" : 2,
+            "value" : 2284415.438745261,
+            "seeded" : true,
+            "meanReward" : 15524.5,
+            "meanSeconds" : 1.0725
+          }
+        },
+        "1 target|summon up|target debuffed" : {
+          "2321001" : {
+            "visits" : 3,
+            "value" : 3615840.016942333,
+            "seeded" : true,
+            "meanReward" : 190131.96163834157,
+            "meanSeconds" : 1.8163333333333334
+          },
+          "2321007" : {
+            "visits" : 40,
+            "value" : 3793164.1927739023,
+            "seeded" : true,
+            "meanReward" : 407825.1032401709,
+            "meanSeconds" : 1.2643250000000006
+          },
+          "2321003" : {
+            "visits" : 2,
+            "value" : 3554678.4527102937,
+            "seeded" : true,
+            "meanReward" : 12700.0,
+            "meanSeconds" : 1.22
+          },
+          "2311006" : {
+            "visits" : 2,
+            "value" : 3549894.637345066,
+            "seeded" : true,
+            "meanReward" : 16413.0,
+            "meanSeconds" : 1.2345
+          }
+        }
+      }
+    }
+  }
+}

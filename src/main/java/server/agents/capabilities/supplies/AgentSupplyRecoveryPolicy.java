@@ -25,6 +25,9 @@ public final class AgentSupplyRecoveryPolicy {
     private static final int CRITICAL_HP_PERCENT = tuningInt("CRITICAL_HP_PERCENT");
     private static final long REST_TIMEOUT_MS = tuningLong("REST_TIMEOUT_MS");
     private static final long INCOME_TIMEOUT_MS = tuningLong("INCOME_TIMEOUT_MS");
+    private static final int SHOP_RETRY_LIMIT = tuningInt("SHOP_RETRY_LIMIT");
+    private static final long SHOP_RETRY_DELAY_MS = tuningLong("SHOP_RETRY_DELAY_MS");
+    private static final long FAILED_PROCUREMENT_COOLDOWN_MS = tuningLong("FAILED_PROCUREMENT_COOLDOWN_MS");
 
     private AgentSupplyRecoveryPolicy() {
     }
@@ -78,6 +81,20 @@ public final class AgentSupplyRecoveryPolicy {
 
     public static long incomeTimeoutMs() {
         return INCOME_TIMEOUT_MS;
+    }
+
+    /** How many times one procurement re-requests the NPC shop after a failed (blocked/cancelled) visit. */
+    public static int shopRetryLimit() {
+        return SHOP_RETRY_LIMIT;
+    }
+
+    public static long shopRetryDelayMs() {
+        return SHOP_RETRY_DELAY_MS;
+    }
+
+    /** Quiet period for a category after an Agent gave up restocking it and rejoined its party. */
+    public static long failedProcurementCooldownMs() {
+        return FAILED_PROCUREMENT_COOLDOWN_MS;
     }
 
     public static Optional<RecoveryMap> selectRecoveryMap(Character agent) {

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.trade.AgentOfferRuntime;
+import server.agents.capabilities.dialogue.AgentChatPendingAction;
 import server.agents.capabilities.dialogue.AgentPendingActionStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.capabilities.equipment.AgentEquipmentService;
@@ -135,6 +136,31 @@ class AgentOfferServiceTest {
             action.getValue().run();
             offers.verify(() -> AgentOfferRuntime.replyNow(entry, "ok, keeping it for now"));
         }
+        assertTrue(AgentOfferStateRuntime.hasDeclinedOfferItem(entry, 1002000));
+    }
+
+    @Test
+    void aNewerQuestionTakesTheAnswerAwayFromAPendingOffer() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(mock(Character.class), mock(Character.class), null);
+        AgentOfferStateRuntime.setPendingLootOffer(
+                entry, new Item(1002000, (short) 1, (short) 1), 100, Long.MAX_VALUE, false);
+        assertTrue(AgentOfferService.offerAwaitsAnswer(entry));
+
+        AgentPendingActionStateRuntime.setPendingAction(entry, AgentChatPendingAction.LOGOUT);
+
+        assertFalse(AgentOfferService.offerAwaitsAnswer(entry), "'yes' now confirms the logout");
+    }
+
+    @Test
+    void onlyAPureReplyAnswersAPendingOffer() {
+        assertTrue(AgentOfferService.isPendingOfferResponse("no thanks, it's all yours"));
+        assertTrue(AgentOfferService.isPendingOfferResponse("still no thanks lol"));
+        assertTrue(AgentOfferService.isPendingOfferResponse("sure, send it"));
+        assertTrue(AgentOfferService.isPendingOfferResponse("nah keep it"));
+
+        assertFalse(AgentOfferService.isPendingOfferResponse("don't budge from that spot, i'll be right back"));
+        assertFalse(AgentOfferService.isPendingOfferResponse("ok follow me"));
+        assertFalse(AgentOfferService.isPendingOfferResponse("thanks"));
     }
 
     @Test

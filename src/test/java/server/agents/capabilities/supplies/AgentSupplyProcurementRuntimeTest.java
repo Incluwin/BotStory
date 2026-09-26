@@ -8,6 +8,9 @@ import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.shop.AgentShopStateRuntime;
+import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.objectives.AgentObjectiveDefinition;
 import server.agents.objectives.AgentObjectiveKernel;
 import server.agents.objectives.AgentObjectiveSource;
@@ -16,6 +19,7 @@ import server.agents.progression.AgentCareerBuildBundle;
 import server.agents.progression.AgentCareerBuildBundleRepository;
 import server.agents.progression.AgentCareerProgressionState;
 
+import java.awt.Point;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -162,5 +166,196 @@ class AgentSupplyProcurementRuntimeTest {
 
         assertEquals(training, AgentObjectiveKernel.active(entry));
         assertNull(planning.procurement(AgentResourceCategory.HP_POTION));
+    }
+
+    @Test
+    void blockedShopVisitIsRetriedOnceThenAbandonedSoThePlanResumes() {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(92);
+        when(agent.getName()).thenReturn("ProbeHero");
+        when(agent.getMapId()).thenReturn(103000002);
+        when(agent.getChair()).thenReturn(-1);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentObjectiveDefinition follow = new AgentObjectiveDefinition(
+                "follow:leader:92", "companion.follow", 80, Long.MAX_VALUE, 5,
+                AgentObjectiveSource.QUEST_PLAN, "follow-v1", "leader:92");
+        AgentObjectiveDefinition maintenance = new AgentObjectiveDefinition(
+                "maintenance:resupply:supply:HP_POTION:92", "maintenance.resupply", 1_000,
+                Long.MAX_VALUE, 2, AgentObjectiveSource.RECOVERY_POLICY,
+                "supply-procurement-v2", follow.objectiveId());
+        AgentObjectiveKernel.start(entry, follow, 10L);
+        AgentObjectiveKernel.suspendFor(entry, maintenance, "HP potions critical", 20L);
+
+        AgentResourcePlanningState planning = entry.capabilityStates().require(
+                AgentResourcePlanningState.STATE_KEY);
+        AgentSupplyNeed need = new AgentSupplyNeed(AgentResourceCategory.HP_POTION,
+                0, 20, AgentSupplyUrgency.EMPTY, follow.objectiveId(), 100L);
+        AgentProcurementRequest request = new AgentProcurementRequest(
+                "supply:HP_POTION:92", AgentResourceCategory.HP_POTION, 20, Long.MAX_VALUE,
+                List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.EMPTY,
+                follow.objectiveId(), Long.MAX_VALUE);
+        planning.update(need, request);
+        AgentSupplyProcurementState execution = entry.capabilityStates().require(
+                AgentSupplyProcurementState.STATE_KEY);
+        execution.start(request.requestId(), maintenance.objectiveId(), request.category(),
+                103000002, 1051002, 103000002, AgentSupplyProcurementState.Phase.SHOPPING);
+        execution.markShopRequested();
+        // The companion was following its leader before the resupply interrupted it.
+        Character leader = mock(Character.class);
+        AgentRelationshipRuntime.setFollowTarget(entry, leader);
+        execution.rememberForegroundMode(true, false);
+
+        // The shop workflow ends BLOCKED (what abortShop produces) and its visit state clears.
+        AgentShopStateRuntime.startShopVisit(entry, new Point(-297, -79), new Point(-297, -78), 0, 100L);
+        AgentShopStateRuntime.blockWorkflow(entry, "cannot reach the shopkeeper", 150L);
+        AgentShopStateRuntime.clearShopState(entry);
+
+        // First failure: bounded retry, foreground stays suspended.
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 200L));
+        assertEquals(AgentSupplyProcurementState.Phase.SHOPPING, execution.phase());
+        assertEquals(1, execution.shopFailures());
+        assertFalse(execution.shopRequested());
+        assertFalse(execution.abandoned());
+        assertEquals(maintenance, AgentObjectiveKernel.active(entry));
+
+        // The retry waits out its delay before asking for the shop again.
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 300L));
+        assertFalse(execution.shopRequested());
+
+        // Retry fires; without a live map the supplier is unavailable, which exhausts the budget.
+        long retryAt = 200L + AgentSupplyRecoveryPolicy.shopRetryDelayMs();
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, retryAt));
+        assertTrue(execution.abandoned());
+        assertEquals(AgentSupplyProcurementState.Phase.RETURNING, execution.phase());
+        assertTrue(execution.suppressed(AgentResourceCategory.HP_POTION, retryAt));
+        assertFalse(execution.suppressed(AgentResourceCategory.HP_POTION,
+                retryAt + AgentSupplyRecoveryPolicy.failedProcurementCooldownMs()));
+        assertEquals(maintenance, AgentObjectiveKernel.active(entry));
+
+        // Giving up cleared the movement mode but kept the leader as the follow target.
+        assertEquals(leader, AgentRelationshipRuntime.followTarget(entry));
+
+        // Already on the plan map: the maintenance finishes FAILED and the plan resumes.
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, retryAt + 1));
+        assertFalse(execution.isActive());
+        assertEquals(follow, AgentObjectiveKernel.active(entry));
+        assertNull(planning.procurement(AgentResourceCategory.HP_POTION));
+        assertTrue(entry.capabilityStates()
+                .require(server.agents.objectives.AgentObjectiveState.STATE_KEY)
+                .suspendedSnapshot().isEmpty());
+
+        // A fresh critical request for the same category is ignored during the cooldown.
+        planning.update(need, request);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, retryAt + 2));
+        assertFalse(execution.isActive());
+        assertEquals(follow, AgentObjectiveKernel.active(entry));
+    }
+
+    @Test
+    void selfSustainingSessionsKeepTheStickyStallForInspection() {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(93);
+        when(agent.getName()).thenReturn("JourneyProbe");
+        when(agent.getMapId()).thenReturn(103000002);
+        when(agent.getChair()).thenReturn(-1);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        entry.capabilityStates().require(AgentResourceAutonomyState.STATE_KEY).requireSelfSustaining();
+        AgentObjectiveDefinition training = new AgentObjectiveDefinition(
+                "victoria:training:93:30", "progression.victoria-training", 80,
+                Long.MAX_VALUE, 5, AgentObjectiveSource.PROGRESSION_POLICY,
+                "victoria-v1", "93:level-30");
+        AgentObjectiveDefinition maintenance = new AgentObjectiveDefinition(
+                "maintenance:resupply:supply:HP_POTION:93", "maintenance.resupply", 1_000,
+                Long.MAX_VALUE, 2, AgentObjectiveSource.RECOVERY_POLICY,
+                "supply-procurement-v2", training.objectiveId());
+        AgentObjectiveKernel.start(entry, training, 10L);
+        AgentObjectiveKernel.suspendFor(entry, maintenance, "HP potions critical", 20L);
+
+        AgentResourcePlanningState planning = entry.capabilityStates().require(
+                AgentResourcePlanningState.STATE_KEY);
+        AgentProcurementRequest request = new AgentProcurementRequest(
+                "supply:HP_POTION:93", AgentResourceCategory.HP_POTION, 20, Long.MAX_VALUE,
+                List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.EMPTY,
+                training.objectiveId(), Long.MAX_VALUE);
+        planning.update(new AgentSupplyNeed(AgentResourceCategory.HP_POTION,
+                0, 20, AgentSupplyUrgency.EMPTY, training.objectiveId(), 100L), request);
+        AgentSupplyProcurementState execution = entry.capabilityStates().require(
+                AgentSupplyProcurementState.STATE_KEY);
+        execution.start(request.requestId(), maintenance.objectiveId(), request.category(),
+                103000002, 1051002, 103000002, AgentSupplyProcurementState.Phase.SHOPPING);
+
+        // No live map: the supplier is unavailable immediately.
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 200L));
+        assertEquals(AgentSupplyProcurementState.Phase.STALLED, execution.phase());
+        assertFalse(execution.abandoned());
+        assertEquals("selected supplier NPC is unavailable", execution.stalledReason());
+        assertEquals(maintenance, AgentObjectiveKernel.active(entry));
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 300L));
+        assertEquals(maintenance, AgentObjectiveKernel.active(entry));
+    }
+
+    @Test
+    void requestResolvedDuringTheTripHomeStillFinishesTheReturnAsSuccess() {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(94);
+        when(agent.getName()).thenReturn("Restocked");
+        when(agent.getMapId()).thenReturn(101010101);
+        when(agent.getChair()).thenReturn(-1);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentObjectiveDefinition training = new AgentObjectiveDefinition(
+                "victoria:training:94:30", "progression.victoria-training", 80,
+                Long.MAX_VALUE, 5, AgentObjectiveSource.PROGRESSION_POLICY,
+                "victoria-v1", "94:level-30");
+        AgentObjectiveDefinition maintenance = new AgentObjectiveDefinition(
+                "maintenance:resupply:supply:HP_POTION:94", "maintenance.resupply", 1_000,
+                Long.MAX_VALUE, 2, AgentObjectiveSource.RECOVERY_POLICY,
+                "supply-procurement-v2", training.objectiveId());
+        AgentObjectiveKernel.start(entry, training, 10L);
+        AgentObjectiveKernel.suspendFor(entry, maintenance, "HP potions critical", 20L);
+        AgentSupplyProcurementState execution = entry.capabilityStates().require(
+                AgentSupplyProcurementState.STATE_KEY);
+        execution.start("supply:HP_POTION:94", maintenance.objectiveId(),
+                AgentResourceCategory.HP_POTION, 101000002, 1032102, 101010101,
+                AgentSupplyProcurementState.Phase.RETURNING);
+        // The potion check already observed a healthy reserve, so no request is planned.
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, 200L));
+
+        assertFalse(execution.isActive());
+        assertFalse(execution.abandoned());
+        assertEquals(training, AgentObjectiveKernel.active(entry));
+        assertFalse(execution.suppressed(AgentResourceCategory.HP_POTION, 200L));
+    }
+
+    @Test
+    void companionWithoutAPlanObjectiveResumesFollowingAfterTheReturnTrip() {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(95);
+        when(agent.getName()).thenReturn("Companion");
+        when(agent.getMapId()).thenReturn(103000000);
+        when(agent.getChair()).thenReturn(-1);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        Character leader = mock(Character.class);
+        AgentRelationshipRuntime.setFollowTarget(entry, leader);
+        AgentObjectiveDefinition maintenance = new AgentObjectiveDefinition(
+                "maintenance:resupply:supply:HP_POTION:95", "maintenance.resupply", 1_000,
+                Long.MAX_VALUE, 2, AgentObjectiveSource.RECOVERY_POLICY,
+                "supply-procurement-v2", "maintenance:resupply:supply:HP_POTION:95");
+        AgentObjectiveKernel.start(entry, maintenance, 10L);
+        AgentSupplyProcurementState execution = entry.capabilityStates().require(
+                AgentSupplyProcurementState.STATE_KEY);
+        execution.start("supply:HP_POTION:95", maintenance.objectiveId(),
+                AgentResourceCategory.HP_POTION, 103000002, 1051002, 103000000,
+                AgentSupplyProcurementState.Phase.RETURNING);
+        execution.rememberForegroundMode(true, false);
+        assertFalse(AgentModeStateRuntime.following(entry));
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, 200L));
+
+        assertFalse(execution.isActive());
+        assertNull(AgentObjectiveKernel.active(entry));
+        assertTrue(AgentModeStateRuntime.following(entry));
+        assertEquals(leader, AgentRelationshipRuntime.followTarget(entry));
     }
 }

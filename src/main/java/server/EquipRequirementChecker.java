@@ -40,6 +40,15 @@ final class EquipRequirementChecker {
         };
     }
 
+    /**
+     * Bot-only job gate. Players keep the FriendServer "no job gate" rule above, but a bot wearing
+     * another class's gear (a Hero in a pirate hat and an archer overall) breaks the world's
+     * believability, so every autonomous character is held to the item's reqJob mask.
+     */
+    static boolean matchesReqJobForBot(Job job, Map<String, Integer> stats) {
+        return stats == null || matchesReqJob(job, stats.getOrDefault("reqJob", 0));
+    }
+
     static boolean matchesReqJob(Job job, int reqJob) {
         if (reqJob == 0) {
             return true;

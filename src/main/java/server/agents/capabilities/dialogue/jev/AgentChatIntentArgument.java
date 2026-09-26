@@ -68,7 +68,12 @@ public enum AgentChatIntentArgument {
     RESPEC_KIND("respec_kind", "Which points does the speaker want refunded and re-assigned?",
             options(
                     "sp", "skill points", "respec sp",
-                    "ap", "ability points", "respec ap"));
+                    "ap", "ability points", "respec ap")),
+    GATHER_PURPOSE("gather_purpose", "Is the speaker calling the party together so everyone gets buffed?",
+            options(
+                    "gather", "just to have everyone come over and wait beside them", "gather up",
+                    "buffs", "to get buffed: the buffers rebuff the whole party once everyone has arrived",
+                    "gather up for buffs"));
 
     private final String questionId;
     private final String question;

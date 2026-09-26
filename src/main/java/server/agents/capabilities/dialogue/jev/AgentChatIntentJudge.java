@@ -1,5 +1,6 @@
 package server.agents.capabilities.dialogue.jev;
 
+import server.agents.integration.typesafe.JevChoicePermutations;
 import server.agents.integration.typesafe.JevClient;
 import server.agents.integration.typesafe.JevRequest;
 import server.agents.integration.typesafe.JevResponse;
@@ -20,6 +21,9 @@ public final class AgentChatIntentJudge {
             "server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.ASK_CONFIDENCE");
     private static final int STATE_BUDGET_TOKENS = config.AgentTuning.intValue(
             "server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.STATE_BUDGET_TOKENS");
+
+    private static final boolean HIERARCHICAL_ENABLED = config.AgentTuning.booleanValue(
+            "server.agents.capabilities.dialogue.jev.AgentChatIntentJudge.HIERARCHICAL_ENABLED");
 
     public enum Outcome {
         /** Confident, actionable: re-dispatch {@link Decision#canonicalCommand()}. */
@@ -56,16 +60,23 @@ public final class AgentChatIntentJudge {
         }
     }
 
+    private final boolean hierarchical;
     private final JevClient client;
     private final double actConfidence;
     private final double askConfidence;
     private final int stateBudgetTokens;
 
     public AgentChatIntentJudge(JevClient client) {
-        this(client, ACT_CONFIDENCE, ASK_CONFIDENCE, STATE_BUDGET_TOKENS);
+        this(client, ACT_CONFIDENCE, ASK_CONFIDENCE, STATE_BUDGET_TOKENS, HIERARCHICAL_ENABLED);
     }
 
     public AgentChatIntentJudge(JevClient client, double actConfidence, double askConfidence, int stateBudgetTokens) {
+        this(client, actConfidence, askConfidence, stateBudgetTokens, false);
+    }
+
+    public AgentChatIntentJudge(JevClient client, double actConfidence, double askConfidence,
+                               int stateBudgetTokens, boolean hierarchical) {
+        this.hierarchical = hierarchical;
         this.client = client;
         this.actConfidence = actConfidence;
         this.askConfidence = Math.min(askConfidence, actConfidence);
@@ -75,12 +86,66 @@ public final class AgentChatIntentJudge {
     /** Blocking; run it on the async gateway, never on a packet or mailbox thread. */
     public Decision judge(JevState state) {
         JevState.Built built = state.build(stateBudgetTokens);
+        if (hierarchical) return judgeHierarchy(built);
         JevRequest request = AgentChatIntentCatalog.request(built.state());
         Optional<JevResponse> response = client.ask(request);
         if (response.isEmpty()) {
             return Decision.unavailable();
         }
-        return decide(response.get(), String.join(",", built.droppedKeys()));
+        String droppedKeys = String.join(",", built.droppedKeys());
+        Decision decision = decide(response.get(), droppedKeys);
+        if (decision.outcome() != Outcome.ASK || client.permutationMode() == JevChoicePermutations.Mode.OFF) {
+            return decision;
+        }
+        // Unsure: re-judge with option-order averaging, paying for it only on ambiguous messages.
+        // SHADOW only feeds the permutation agreement stats; LIVE lets the averaged answer decide.
+        Optional<JevResponse> averaged = client.ask(
+                AgentChatIntentCatalog.unsureRequest(built.state(), decision.intent()));
+        if (averaged.isEmpty() || client.permutationMode() != JevChoicePermutations.Mode.LIVE) {
+            return decision;
+        }
+        Decision rejudged = decide(averaged.get(), droppedKeys);
+        // A different intent may need an argument the narrow request did not carry; keep asking.
+        return rejudged.intent() == decision.intent() ? rejudged : decision;
+    }
+
+    private Decision judgeHierarchy(JevState.Built built) {
+        String dropped = String.join(",", built.droppedKeys());
+        Optional<JevResponse> first = client.ask(AgentChatIntentCatalog.familyRequest(built.state()));
+        if (first.isEmpty()) return Decision.unavailable();
+        JevResponse route = first.get();
+        var answer = route.answer("family").filter(a -> a.isChoice());
+        if (answer.isEmpty()) return Decision.unavailable();
+        AgentChatIntentFamily family = answer.get().mostLikelyOption()
+                .map(AgentChatIntentFamily::fromOptionId).orElse(null);
+        double confidence = answer.get().confidenceOrZero();
+        if (family == null || !Double.isFinite(confidence) || confidence < 0 || confidence > 1) {
+            return Decision.unavailable();
+        }
+        if (family == AgentChatIntentFamily.CHAT || confidence < askConfidence) {
+            return new Decision(Outcome.IGNORE, AgentChatIntent.CHAT_NOT_A_COMMAND, null, confidence,
+                    0, route.latencyMs(), route.inputTokens(), dropped);
+        }
+        Optional<JevResponse> second = client.ask(AgentChatIntentCatalog.branchRequest(built.state(), family));
+        if (second.isEmpty()) {
+            return new Decision(Outcome.UNAVAILABLE, null, null, 0, 0,
+                    route.latencyMs(), route.inputTokens(), dropped);
+        }
+        JevResponse leaf = second.get();
+        Decision decision = decide(leaf, dropped);
+        if (decision.intent() != null && decision.intent().actionable() && !family.intents().contains(decision.intent())) {
+            return new Decision(Outcome.UNAVAILABLE, null, null, 0, 0,
+                    route.latencyMs() + leaf.latencyMs(), route.inputTokens() + leaf.inputTokens(), dropped);
+        }
+        // Never let a confident leaf hide an uncertain routing decision.
+        double combined = Math.min(confidence, decision.confidence());
+        Outcome outcome = decision.outcome();
+        if (outcome == Outcome.ACT || outcome == Outcome.ASK) {
+            outcome = combined >= actConfidence ? Outcome.ACT : combined >= askConfidence ? Outcome.ASK : Outcome.IGNORE;
+        }
+        return new Decision(outcome, decision.intent(), decision.canonicalCommand(), combined,
+                decision.addressedProbability(), route.latencyMs() + leaf.latencyMs(),
+                route.inputTokens() + leaf.inputTokens(), dropped);
     }
 
     Decision decide(JevResponse response, String droppedKeys) {

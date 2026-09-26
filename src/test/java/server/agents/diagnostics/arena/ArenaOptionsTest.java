@@ -35,6 +35,22 @@ class ArenaOptionsTest {
     }
 
     @Test
+    void parsesLearningOptions() {
+        assertFalse(ArenaOptions.parse(new String[]{"a"}).learn());
+        ArenaOptions learn = ArenaOptions.parse(new String[]{"a", "policy=learn"});
+        assertTrue(learn.learn());
+        assertFalse(learn.relaxPriors());
+        assertTrue(learn.learnSeconds() >= 60);
+        ArenaOptions relaxed = ArenaOptions.parse(new String[]{"a", "learn=240", "priors=off"});
+        assertTrue(relaxed.learn());
+        assertEquals(240, relaxed.learnSeconds());
+        assertTrue(relaxed.relaxPriors());
+        assertThrows(IllegalArgumentException.class, () -> ArenaOptions.parse(new String[]{"a", "priors=off"}));
+        assertThrows(IllegalArgumentException.class, () -> ArenaOptions.parse(new String[]{"a", "learn=30"}));
+        assertThrows(IllegalArgumentException.class, () -> ArenaOptions.parse(new String[]{"a", "policy=guess"}));
+    }
+
+    @Test
     void rejectsBadInput() {
         assertThrows(IllegalArgumentException.class, () -> ArenaOptions.parse(new String[0]));
         assertThrows(IllegalArgumentException.class, () -> ArenaOptions.parse(new String[]{"a", "scenario=raid"}));

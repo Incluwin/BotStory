@@ -31,6 +31,15 @@ public final class AgentSpawnPlacementCoordinator {
         AgentSpawnPlacementService.placeSpawnedOnlineAgent(entry, agent, spawnMap, spawnPosition, hooks());
     }
 
+    /** Same placement without joining (or creating) the leader's party. */
+    public static void placeSpawnedOnlineAgentWithoutParty(AgentRuntimeEntry entry,
+                                                          Character agent,
+                                                          MapleMap spawnMap,
+                                                          Point spawnPosition) {
+        AgentSpawnPlacementService.placeSpawnedOnlineAgent(entry, agent, spawnMap, spawnPosition,
+                hooks((leader, spawned) -> AgentPartyLifecycleService.leaveAgentParty(spawned)));
+    }
+
     public static void normalizeSpawnedAgent(AgentRuntimeEntry entry) {
         AgentSpawnPlacementService.normalizeSpawnedAgent(entry, hooks());
     }

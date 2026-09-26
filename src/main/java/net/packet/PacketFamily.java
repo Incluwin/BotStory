@@ -7,6 +7,7 @@ import java.util.Set;
 public enum PacketFamily {
     AUTH,
     MOVEMENT,
+    MOB_CONTROL,
     COMBAT,
     CHAT,
     ECONOMY,
@@ -14,7 +15,13 @@ public enum PacketFamily {
 
     private static final Set<Integer> MOVEMENT_OPCODES = Set.of(
             value(RecvOpcode.MOVE_PLAYER), value(RecvOpcode.MOVE_PET), value(RecvOpcode.MOVE_SUMMON),
-            value(RecvOpcode.MOVE_DRAGON), value(RecvOpcode.MOVE_LIFE), value(RecvOpcode.AUTO_AGGRO));
+            value(RecvOpcode.MOVE_DRAGON));
+    // Sent by the controller of a monster on the monster's behalf, so their volume scales with how many
+    // monsters the client controls rather than with anything the player does.
+    private static final Set<Integer> MOB_CONTROL_OPCODES = Set.of(
+            value(RecvOpcode.MOVE_LIFE), value(RecvOpcode.AUTO_AGGRO), value(RecvOpcode.FIELD_DAMAGE_MOB),
+            value(RecvOpcode.MOB_DAMAGE_MOB_FRIENDLY), value(RecvOpcode.MONSTER_BOMB),
+            value(RecvOpcode.MOB_DAMAGE_MOB));
     private static final Set<Integer> COMBAT_OPCODES = Set.of(
             value(RecvOpcode.CLOSE_RANGE_ATTACK), value(RecvOpcode.RANGED_ATTACK), value(RecvOpcode.MAGIC_ATTACK),
             value(RecvOpcode.TOUCH_MONSTER_ATTACK), value(RecvOpcode.TAKE_DAMAGE), value(RecvOpcode.SPECIAL_MOVE),
@@ -36,6 +43,9 @@ public enum PacketFamily {
         }
         if (MOVEMENT_OPCODES.contains(value)) {
             return MOVEMENT;
+        }
+        if (MOB_CONTROL_OPCODES.contains(value)) {
+            return MOB_CONTROL;
         }
         if (COMBAT_OPCODES.contains(value)) {
             return COMBAT;

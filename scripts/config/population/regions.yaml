@@ -1,11 +1,14 @@
 # Regions citizens live in (plan 3.3 / 8). `levels` is the band a citizen's level must fall in to call the
 # region home; towns are the main town maps (sub-maps in fields.yaml are ignored); lobbies are where
 # party-quest parties form; `fm` is the Free Market entrance. A region with a TownLife profile gets
-# ambient visits; the others use standing spots from portals.
+# ambient visits; the others use standing spots from portals. Optional `townWeights` (one per town) makes
+# hub towns draw more of the region's town life; absent = uniform.
 regions:
   - id: victoria
     levels: { min: 1, max: 45 }
     towns: [100000000, 101000000, 102000000, 103000000, 104000000, 105040300, 120000000]
+    # Hubs draw the crowd: Henesys and Kerning City carry most of Victoria's town life, like a real server.
+    townWeights: [40, 10, 8, 30, 4, 4, 4]
     lobbies:
       - { id: kpq, mapId: 103000000, levels: { min: 21, max: 30 }, name: "KPQ" }
     fm: 910000000

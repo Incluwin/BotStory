@@ -182,6 +182,7 @@ public final class AdminControlPort {
                 case "/runtime/uptime": return rUptime();
                 case "/runtime/online/summary": return rOnlineSummary();
                 case "/runtime/online/list": return rOnlineList();
+                case "/runtime/positions": return rPositions();
                 case "/runtime/rates": return rRates();
                 case "/runtime/events": return rEvents();
                 case "/runtime/shutdown-status": return rShutdownStatus();
@@ -210,6 +211,9 @@ public final class AdminControlPort {
                     if (path.startsWith("/runtime/character/")) {
                         String idStr = path.substring("/runtime/character/".length());
                         return rCharacter(idStr);
+                    }
+                    if (path.startsWith("/runtime/buffs/")) {
+                        return rBuffs(path.substring("/runtime/buffs/".length()));
                     }
                     if (path.startsWith("/runtime/stats/player-samples/")) {
                         String hoursStr = path.substring("/runtime/stats/player-samples/".length());
@@ -291,6 +295,45 @@ public final class AdminControlPort {
             }
         }
         return "{\"ok\":true,\"players\":" + list + "}";
+    }
+
+    /** Map coordinates of every loaded character (players and bots): lets an operator camera track a bot. */
+    /** Active buffs of one online character: source skill/item, time used and full duration (ms). */
+    private static String rBuffs(String name) {
+        for (World w : Server.getInstance().getWorlds()) {
+            Character chr = w.getPlayerStorage().getCharacterByName(name);
+            if (chr == null) {
+                continue;
+            }
+            AdminJson.Arr list = new AdminJson.Arr();
+            for (net.server.PlayerBuffValueHolder buff : chr.getAllBuffs()) {
+                list.obj().num("source", buff.effect.getBuffSourceId())
+                        .num("usedMs", buff.usedTime)
+                        .num("durationMs", buff.effect.getDuration());
+            }
+            return "{\"ok\":true,\"name\":" + AdminJson.str(chr.getName()) + ",\"buffs\":" + list + "}";
+        }
+        return "{\"ok\":false,\"error\":\"not online\"}";
+    }
+
+    private static String rPositions() {
+        AdminJson.Arr list = new AdminJson.Arr();
+        for (World w : Server.getInstance().getWorlds()) {
+            for (Character chr : w.getPlayerStorage().getAllCharacters()) {
+                java.awt.Point pos = chr.getPosition();
+                net.server.world.Party party = chr.getParty();
+                list.obj().str("name", chr.getName())
+                        .num("map", chr.getMapId())
+                        .num("x", pos == null ? 0 : pos.x)
+                        .num("y", pos == null ? 0 : pos.y)
+                        .num("hp", chr.getHp())
+                        .num("maxHp", chr.getMaxHp())
+                        .num("partySize", party == null ? 0 : party.getMembers().size())
+                        .bool("hidden", chr.isHidden())
+                        .bool("darkSight", chr.getBuffedValue(client.BuffStat.DARKSIGHT) != null);
+            }
+        }
+        return "{\"ok\":true,\"positions\":" + list + "}";
     }
 
     private static void appendPlayer(AdminJson.Obj o, Character chr, World w, boolean brief) {

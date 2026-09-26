@@ -85,6 +85,7 @@ public final class AgentCombatHealRuntime {
         }
 
         if (!fx.canPaySkillCost(bot) || !fx.applyTo(bot)) return false;
+        AgentSkillShowcase.used(entry, bot, healSkillId);
 
         long now = System.currentTimeMillis();
         AgentAttackExecutionProvider.BasicAttackData fallbackAttackData =

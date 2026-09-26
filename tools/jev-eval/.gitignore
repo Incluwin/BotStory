@@ -1,0 +1,4 @@
+results/
+confirmations*.jsonl
+__pycache__/
+confirmations*.audit.json

@@ -3,6 +3,8 @@ package server.agents.integration.cosmic.typesafe;
 import client.Character;
 import constants.game.GameConstants;
 import server.agents.capabilities.follow.AgentActivityStateRuntime;
+import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
+import server.agents.capabilities.shop.AgentShopStateRuntime;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.integration.typesafe.state.JevState;
 import server.agents.integration.typesafe.state.JevStateBands;
@@ -66,8 +68,14 @@ public final class AgentChatJevStateFactory {
         if (entry == null || entry.modeState() == null) {
             return "unknown";
         }
+        // Lets the judge read "stop", "come back" or "stay there" against what the bot is doing now.
+        if (AgentShopStateRuntime.shopVisitPending(entry) || AgentShopStateRuntime.shopSequenceActive(entry)) {
+            return "shopping at an NPC store";
+        }
         if (entry.modeState().grinding()) {
-            return "hunting monsters";
+            return AgentFarmAnchorStateRuntime.hasFarmAnchor(entry)
+                    ? "holding a spot and fighting monsters that come near"
+                    : "hunting monsters";
         }
         if (entry.modeState().following()) {
             return "following its leader";

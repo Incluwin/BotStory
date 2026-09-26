@@ -298,7 +298,7 @@ public final class RangedAttackHandler extends AbstractDealDamageHandler {
         inv.removeItem(slot, bulletConsume, ItemConstants.isRechargeable(item.getItemId()));
     }
 
-    private static Packet createAttackPacket(AttackInfo attack, Character chr, int visibleProjectile) {
+    static Packet createAttackPacket(AttackInfo attack, Character chr, int visibleProjectile) {
         return switch (attack.skill) {
             case 3121004, 3221001, 5221004, 13111002 ->
                     PacketCreator.rangedAttack(chr, attack.skill, attack.skilllevel, attack.rangedirection,

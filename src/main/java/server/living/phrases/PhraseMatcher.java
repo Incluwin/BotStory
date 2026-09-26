@@ -188,8 +188,10 @@ public final class PhraseMatcher {
 
     // ---- learning ------------------------------------------------------------------------
 
-    public void learn(String message, String canonical, double confidence) {
-        if (confidence < world.config().LEARNED_PHRASE_MIN_CONFIDENCE || canonical == null || canonical.isBlank()) {
+    /** A player's confirmation outranks any model confidence and is stored as source PLAYER. */
+    public void learn(String message, String canonical, double confidence, boolean confirmedByPlayer) {
+        if ((!confirmedByPlayer && confidence < world.config().LEARNED_PHRASE_MIN_CONFIDENCE)
+                || canonical == null || canonical.isBlank()) {
             return;
         }
         String normalized = normalize(message);
@@ -197,8 +199,10 @@ public final class PhraseMatcher {
             return;
         }
         learned.put(normalized, canonical);
-        world.store().learnPhrase(normalized, canonical, "JEV");
-        log.info("[phrase] learned \"{}\" -> {} ({})", normalized, canonical, String.format(Locale.ROOT, "%.2f", confidence));
+        String source = confirmedByPlayer ? "PLAYER" : "JEV";
+        world.store().learnPhrase(normalized, canonical, source);
+        log.info("[phrase] learned \"{}\" -> {} ({} {})", normalized, canonical, source,
+                String.format(Locale.ROOT, "%.2f", confidence));
     }
 
     public void teach(String phrase, String canonical) {
