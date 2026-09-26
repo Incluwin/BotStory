@@ -84,7 +84,7 @@ class JevUsageMeterTest {
             assertEquals(kind, request.kind(), "sample tagged with its kind");
             assertTrue(request.questions().size() >= 1);
         });
-        assertEquals(1 + 6 + 1, samples.get("chat-intent").questions().size(), "intent + 6 arguments + addressed");
+        assertEquals(1 + 7 + 1, samples.get("chat-intent").questions().size(), "intent + 7 arguments + addressed");
         assertEquals(5, samples.get("director-rank").questions().size());
     }
 
