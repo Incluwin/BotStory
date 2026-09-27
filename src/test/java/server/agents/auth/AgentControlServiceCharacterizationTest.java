@@ -1,4 +1,4 @@
-// Pins behaviour as of 2026-09-27 for docs/BOT_MANAGEMENT_PLAN.md P1/P2. When the fix lands, flip the assertion and rename the test.
+// Pinned behaviour as of 2026-09-27 for docs/BOT_MANAGEMENT_PLAN.md P1/P2; flipped in P1 by the installed AgentClaimGuard.
 package server.agents.auth;
 
 import client.Character;
@@ -10,6 +10,10 @@ import server.agents.integration.AgentIdentityGateway;
 import server.agents.integration.AgentIdentityGatewayRuntime;
 import server.agents.registry.AgentResolvedCharacter;
 import server.living.LivingWorld;
+import server.living.config.Content.Persona;
+import server.living.resident.ResidentRuntime;
+import server.living.roster.BenchSessions;
+import server.living.roster.CompanionDirectory;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
@@ -27,7 +31,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * Characterizes {@link AgentControlService#ensureCanControl} with the operator grant the living world
- * installs at startup ({@code installOperatorGrant(world.roster::hasCompanions)}, LivingWorld:111).
+ * installs at startup ({@code installOperatorGrant(world.roster::hasCompanions)}) and, since P1, the
+ * claim guard it installs next to it ({@code AgentClaimGuard.install(world.directory)}).
  */
 class AgentControlServiceCharacterizationTest {
     private static final int ALICE = 10;
@@ -36,6 +41,8 @@ class AgentControlServiceCharacterizationTest {
 
     private String oldAdministrators;
     private String oldOperators;
+    private LivingWorld world;
+    private RosterService roster;
 
     @BeforeEach
     void noConfiguredOperators() {
@@ -43,39 +50,60 @@ class AgentControlServiceCharacterizationTest {
         oldOperators = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES;
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = "";
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = "";
+        LivingStore store = mock(LivingStore.class);
+        when(store.allActive()).thenReturn(List.of(active(ALICE, "olwen"), active(BOB, "brin")));
+        world = mock(LivingWorld.class);
+        when(world.store()).thenReturn(store);
+        roster = new RosterService(world);
+        AgentAuthorityService.installOperatorGrant(roster::hasCompanions);
     }
 
     @AfterEach
     void restore() {
         AgentAuthorityService.installOperatorGrant(null);
+        AgentClaimGuard.install(null);
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = oldAdministrators;
         config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_OPERATOR_NAMES = oldOperators;
     }
 
     @Test
-    void anyRecruiterMayControlAnotherPlayersCompanion() throws Exception {
-        LivingStore store = mock(LivingStore.class);
-        when(store.allActive()).thenReturn(List.of(active(ALICE, "olwen"), active(BOB, "brin")));
-        LivingWorld world = mock(LivingWorld.class);
-        when(world.store()).thenReturn(store);
-        RosterService roster = new RosterService(world);
-        AgentAuthorityService.installOperatorGrant(roster::hasCompanions);
+    void recruiterCannotControlAnotherPlayersCompanionOnceTheClaimGuardIsInstalled() throws Exception {
+        Persona olwen = mock(Persona.class);
+        when(olwen.id()).thenReturn("olwen");
+        ResidentRuntime residents = mock(ResidentRuntime.class);
+        when(residents.personaOfCharacterId(OLWEN_CHARACTER)).thenReturn(olwen);
+        when(world.roster()).thenReturn(roster);
+        when(world.residents()).thenReturn(residents);
+        when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+        AgentClaimGuard.install(new CompanionDirectory(world));
+
+        AgentAuthorizationResult result = ensureBobCanControlOlwen();
+
+        // Bob is still an operator through his own recruit, but Olwen is Alice's companion
+        assertFalse(result.allowed());
+        assertEquals("'Olwen' does not take orders from you.", result.failureMessage());
+    }
+
+    @Test
+    void withoutAnInstalledClaimGuardAnyRecruiterMayStillControlAnotherPlayersCompanion() throws Exception {
+        assertEquals(ALICE, roster.ownerOf("olwen"));
+
+        AgentAuthorizationResult result = ensureBobCanControlOlwen();
+
+        // unguarded ensureCanControl checks operator, active identity and self, never whose companion it is
+        assertTrue(result.allowed());
+    }
+
+    private AgentAuthorizationResult ensureBobCanControlOlwen() throws Exception {
         Character bob = character(BOB, "Bob");
         AgentResolvedCharacter olwen = new AgentResolvedCharacter(OLWEN_CHARACTER, "Olwen", 5, null);
         AgentIdentityGateway identities = mock(AgentIdentityGateway.class);
         when(identities.isActiveAgent(OLWEN_CHARACTER)).thenReturn(true);
-        assertEquals(ALICE, roster.ownerOf("olwen"));
         assertFalse(AgentAuthorityService.hasRole(bob, AgentAuthorityRole.OPERATOR));
-
-        AgentAuthorizationResult result;
         try (MockedStatic<AgentIdentityGatewayRuntime> identityRuntime = mockStatic(AgentIdentityGatewayRuntime.class)) {
             identityRuntime.when(AgentIdentityGatewayRuntime::identities).thenReturn(identities);
-            result = AgentControlService.getInstance().ensureCanControl(bob, olwen);
+            return AgentControlService.getInstance().ensureCanControl(bob, olwen);
         }
-
-        // Bob is an operator only through his own recruit (mayOperate, AgentAuthorityService:43-49), and
-        // ensureCanControl:52-71 checks operator, active identity and self, never whose companion it is.
-        assertTrue(result.allowed());
     }
 
     private static RosterEntry active(int ownerId, String personaId) {

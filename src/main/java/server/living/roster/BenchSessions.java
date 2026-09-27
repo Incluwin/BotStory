@@ -79,6 +79,17 @@ public final class BenchSessions {
         return live.size();
     }
 
+    /** Live sessions charged to this owner, for the per-owner bench-live budget. */
+    public int liveCountFor(int ownerId) {
+        int count = 0;
+        for (Session session : live.values()) {
+            if (session.ownerId == ownerId) {
+                count++;
+            }
+        }
+        return count;
+    }
+
     /** Character ids of the live sessions (a copy), for the operator budget. */
     public Set<Integer> liveCharacterIds() {
         Set<Integer> ids = new HashSet<>();

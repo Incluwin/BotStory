@@ -67,6 +67,9 @@ public final class AgentControlService implements AgentControlAccess {
         if (actor.getId() == agent.id()) {
             return AgentAuthorizationResult.denied("You cannot spawn your current character as an Agent.");
         }
+        if (!AgentClaimGuard.mayControl(actor, agent.id())) {
+            return AgentAuthorizationResult.denied("'" + agent.name() + "' does not take orders from you.");
+        }
         return AgentAuthorizationResult.allowed(false);
     }
 

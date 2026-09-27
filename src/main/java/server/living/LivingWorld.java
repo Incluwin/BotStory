@@ -19,6 +19,9 @@ import server.living.quest.QuestMarkers;
 import server.living.resident.ResidentDialogue;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchLedger;
+import server.living.roster.CompanionBudget;
+import server.living.roster.CompanionDirectory;
+import server.living.roster.CompanionLeases;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 
@@ -46,6 +49,9 @@ public final class LivingWorld {
     private final QuestMarkers markers;
     private final ContractService contracts;
     private final RosterService roster;
+    private final CompanionLeases leases;
+    private final CompanionDirectory directory;
+    private final CompanionBudget budget;
     private final BenchLedger bench;
     private final server.living.roster.BenchSessions benchSessions;
     private final ResidentRuntime residents;
@@ -64,6 +70,9 @@ public final class LivingWorld {
         this.questLog = new QuestLog(this);
         this.markers = new QuestMarkers(this);
         this.roster = new RosterService(this);
+        this.leases = new CompanionLeases();
+        this.directory = new CompanionDirectory(this);
+        this.budget = new CompanionBudget(this);
         this.contracts = new ContractService(this);
         this.bench = new BenchLedger(this);
         this.benchSessions = new server.living.roster.BenchSessions(this);
@@ -109,6 +118,7 @@ public final class LivingWorld {
         world.arcs.loadState();
         world.residents.syncLooks();
         server.agents.auth.AgentAuthorityService.installOperatorGrant(world.roster::hasCompanions);
+        server.agents.auth.AgentClaimGuard.install(world.directory);
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.residents::tick,
                 config.RESIDENT_TICK_MS, config.RESIDENT_TICK_MS));
@@ -219,6 +229,18 @@ public final class LivingWorld {
 
     public RosterService roster() {
         return roster;
+    }
+
+    public CompanionLeases leases() {
+        return leases;
+    }
+
+    public CompanionDirectory directory() {
+        return directory;
+    }
+
+    public CompanionBudget budget() {
+        return budget;
     }
 
     public BenchLedger bench() {

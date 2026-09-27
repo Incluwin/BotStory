@@ -4,8 +4,10 @@ import server.agents.capabilities.trade.AgentTransferService;
 
 import client.Character;
 import server.agents.auth.AgentAuthorizationResult;
+import server.agents.auth.AgentClaimGuard;
 import server.agents.capabilities.dialogue.AgentDialogueSelector;
 import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.registry.AgentResolvedCharacter;
 import server.agents.runtime.AgentRandom;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -37,7 +39,7 @@ public final class AgentLeaderTransferCoordinator {
                         AgentRuntimeRegistry::findByName,
                         AgentRuntimeRegistry::unregisterEntry,
                         (candidateLeader, target) -> candidateLeader.getMap().getCharacterByName(target),
-                        (target, agent) -> AgentAuthorizationResult.allowed(false),
+                        AgentLeaderTransferCoordinator::authorizeTransfer,
                         AgentScheduledTaskRuntime::cancelScheduledTask,
                         stopper,
                         registrar,
@@ -49,6 +51,13 @@ public final class AgentLeaderTransferCoordinator {
                                 "sure!",
                                 "hey " + targetName + "!",
                                 "hi " + targetName + "!"))));
+    }
+
+    /** A claimed Agent (a companion, Resident or citizen) keeps its runtime leader; chat never hands it on. */
+    private static AgentAuthorizationResult authorizeTransfer(Character target, AgentResolvedCharacter agent) {
+        return AgentClaimGuard.isClaimed(agent.id())
+                ? AgentAuthorizationResult.denied("Bot '" + agent.name() + "' cannot be transferred.")
+                : AgentAuthorizationResult.allowed(false);
     }
 
     @SuppressWarnings("unchecked")

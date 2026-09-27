@@ -31,6 +31,7 @@ import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.capabilities.movement.AgentPartyGatherService;
 import server.agents.auth.AgentAuthorityService;
+import server.agents.auth.AgentClaimGuard;
 import server.agents.integration.AgentRelationshipRuntime;
 
 import java.util.List;
@@ -112,7 +113,10 @@ public final class AgentChatRouteCoordinator {
                 (commandLeader, text) -> AgentLifecycleCommandCoordinator.handleTransferCommand(
                         commandLeader,
                         text,
-                        transferAction),
+                        (leaderCharId, transferLeader, agentName, targetName) ->
+                                mayControlNamed(entriesByLeader, transferLeader, agentName)
+                                        ? transferAction.transfer(leaderCharId, transferLeader, agentName, targetName)
+                                        : "Bot '" + agentName + "' does not take orders from you."),
                 (commandLeader, text) -> {
                     List<E> leaderAgents = entriesByLeader.get(commandLeader.getId());
                     return leaderAgents != null
@@ -129,7 +133,8 @@ public final class AgentChatRouteCoordinator {
                 (commandLeader, text) -> AgentLifecycleCommandCoordinator.handleDismissCommand(
                         commandLeader,
                         text,
-                        dismissAction),
+                        (leaderCharId, agentName) -> mayControlNamed(entriesByLeader, commandLeader, agentName)
+                                && dismissAction.dismiss(leaderCharId, agentName)),
                 (commandLeader, entries, text, replyChannel) -> AgentTargetedChatRouteService.handleTargetedChat(
                         commandLeader,
                         entries,
@@ -209,12 +214,46 @@ public final class AgentChatRouteCoordinator {
         if (target == null) {
             return;
         }
+        AgentRuntimeEntry refused = null;
         for (AgentRuntimeEntry entry : entries) {
+            if (!mayFollow(leader, target, entry)) {
+                refused = refused == null ? entry : refused;
+                continue;
+            }
             AgentMailboxRuntime.dispatch(entry, ignored -> {
                 AgentFollowTargetCommandCoordinator.applyResolvedFollowTargetCommand(entry, target);
                 return null;
             });
         }
+        if (refused != null) {
+            queueReply(refused, "i'll stay with you.");
+        }
+    }
+
+    /** "follow <other player>" never pulls a claimed Agent (a companion, Resident or citizen) away. */
+    private static boolean mayFollow(Character leader, Character target, AgentRuntimeEntry entry) {
+        if (target.getId() == leader.getId()) {
+            return true;
+        }
+        int agentId = AgentRuntimeIdentityRuntime.botId(entry);
+        return AgentClaimGuard.mayControl(leader, agentId) && !AgentClaimGuard.isClaimed(agentId);
+    }
+
+    /** False when the leader's Agent of that name is one the installed claim guard keeps from this leader. */
+    private static <E extends AgentRuntimeEntry> boolean mayControlNamed(
+            Map<Integer, List<E>> entriesByLeader,
+            Character leader,
+            String agentName) {
+        List<E> entries = entriesByLeader.get(leader.getId());
+        if (entries == null) {
+            return true;
+        }
+        for (E entry : entries) {
+            if (AgentRuntimeIdentityRuntime.botNameEquals(entry, agentName)) {
+                return AgentClaimGuard.mayControl(leader, AgentRuntimeIdentityRuntime.botId(entry));
+            }
+        }
+        return true;
     }
 
     private static <E extends AgentRuntimeEntry> boolean dispatchFormationCommand(

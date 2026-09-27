@@ -776,6 +776,15 @@ living_world:
     APPRENTICE_BONUS_PER_LEVEL: 0.15
     APPRENTICE_MAX_LEVELS: 6
     RECALL_WHISTLE_ITEM_ID: 0
+    # Companion budget v1 (docs/BOT_MANAGEMENT_P0_RESULTS.md): companions per online human, live bench bots
+    # per owner and server-wide (BENCH_LIVE_MAX above stays the bench rotation size), one expedition burst,
+    # the registered Agent ceiling and the per-owner gap between two loads. Revisit after the scheduler fix.
+    COMPANION_PER_HUMAN: 5
+    BENCH_LIVE_PER_OWNER: 2
+    BENCH_LIVE_GLOBAL: 8
+    EXPEDITION_BURST_MAX: 12
+    COMPANION_BUDGET_CEILING: 300
+    COMPANION_SPAWN_INTERVAL_MS: 2000
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 

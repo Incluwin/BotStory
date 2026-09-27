@@ -92,6 +92,20 @@ public class LivingWorldConfig {
     /** Meso cost of an instant recall whistle (item id configured in loadouts.yaml -> whistleItemId). */
     public int RECALL_WHISTLE_ITEM_ID = 0;
 
+    // Companion budget v1 (docs/BOT_MANAGEMENT_P0_RESULTS.md, Measurement); CompanionBudget reads these
+    /** Agents one online human may have following them (their loaded companions); a party holds 5 besides them. */
+    public int COMPANION_PER_HUMAN = 5;
+    /** Live bench bots charged to one owner at once. */
+    public int BENCH_LIVE_PER_OWNER = 2;
+    /** Live bench bots server-wide. BENCH_LIVE_MAX stays the bench rotation size; bench loads that ask the budget are also held under this. */
+    public int BENCH_LIVE_GLOBAL = 8;
+    /** Bots an expedition may load in one burst (split among owners by fair share later). */
+    public int EXPEDITION_BURST_MAX = 12;
+    /** Registered Agents server-wide at which no further companion, bench or expedition load is admitted. */
+    public int COMPANION_BUDGET_CEILING = 300;
+    /** Minimum gap between two companion or bench loads for the same owner. */
+    public int COMPANION_SPAWN_INTERVAL_MS = 2000;
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
@@ -108,6 +122,16 @@ public class LivingWorldConfig {
         }
         if (BOND_ACQUAINTED_POINTS >= BOND_TRUSTED_POINTS || BOND_TRUSTED_POINTS >= BOND_SWORN_POINTS) {
             throw new IllegalArgumentException("living_world bond thresholds must increase");
+        }
+        if (COMPANION_PER_HUMAN < 0 || COMPANION_PER_HUMAN > 5) {
+            throw new IllegalArgumentException("living_world.COMPANION_PER_HUMAN must be within 0..5");
+        }
+        if (BENCH_LIVE_PER_OWNER < 0 || BENCH_LIVE_PER_OWNER > BENCH_LIVE_GLOBAL) {
+            throw new IllegalArgumentException("living_world.BENCH_LIVE_PER_OWNER must be within 0..BENCH_LIVE_GLOBAL");
+        }
+        if (EXPEDITION_BURST_MAX < 0 || COMPANION_BUDGET_CEILING < 1 || COMPANION_SPAWN_INTERVAL_MS < 0) {
+            throw new IllegalArgumentException(
+                    "living_world.EXPEDITION_BURST_MAX and COMPANION_SPAWN_INTERVAL_MS must be >= 0, COMPANION_BUDGET_CEILING >= 1");
         }
     }
 }

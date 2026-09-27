@@ -90,6 +90,15 @@ public final class RosterService {
         return entry.characterId();
     }
 
+    /**
+     * The owner from memory only (0 = unowned), for hot paths: the cache is loaded with every
+     * non-released row at boot and kept in step by recruit, escort and release.
+     */
+    public int cachedOwnerOf(String personaId) {
+        Integer cached = personaId == null ? null : ownerByPersona.get(personaId);
+        return cached == null ? 0 : cached;
+    }
+
     public List<RosterEntry> roster(Character chr) {
         return world.store().roster(chr.getId());
     }
