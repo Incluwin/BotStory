@@ -11,6 +11,7 @@ import net.server.coordinator.world.InviteCoordinator.InviteType;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
 import net.server.world.World;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -19,6 +20,8 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService.AgentSpawnResult;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 import testutil.HandlerTest;
 import testutil.Packets;
 import tools.PacketCreator;
@@ -40,6 +43,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PartyOperationHandlerCharacterizationTest extends HandlerTest {
     private static final int PARTY_ID = 77;
+    private static final int ALICE = 10;
+    private static final int COMPANION = 900;
     private final PartyOperationHandler handler = new PartyOperationHandler();
 
     @Mock
@@ -48,6 +53,11 @@ class PartyOperationHandlerCharacterizationTest extends HandlerTest {
     private PlayerStorage storage;
     @Mock
     private Party party;
+
+    @AfterEach
+    void clearRegistry() {
+        AgentRuntimeRegistry.clear();
+    }
 
     private static InPacket invite(String name) {
         return Packets.buildInPacket(out -> {
@@ -95,10 +105,15 @@ class PartyOperationHandlerCharacterizationTest extends HandlerTest {
     @Test
     void strangersInviteToAnotherPlayersPartylessCompanionIsAccepted() {
         // Alice's companion after Alice left or disbanded her party: online, a BotClient, in no party,
-        // not a lobby waiter and holding no queue ticket.
+        // not a lobby waiter and holding no queue ticket, but still registered under Alice at runtime.
+        Character alice = mock(Character.class);
+        when(alice.getId()).thenReturn(ALICE);
         Character alicesCompanion = mock(Character.class);
-        when(alicesCompanion.getId()).thenReturn(900);
+        when(alicesCompanion.getId()).thenReturn(COMPANION);
         when(alicesCompanion.getClient()).thenReturn(mock(BotClient.class));
+        AgentRuntimeRegistry.clear();
+        AgentRuntimeRegistry.registerEntry(ALICE, new AgentRuntimeEntry(alicesCompanion, alice, null));
+        assertEquals(ALICE, AgentRuntimeRegistry.leaderIdForAgentCharacter(COMPANION));
         when(chr.getName()).thenReturn("Bob");
         when(client.getWorldServer()).thenReturn(world);
         when(world.getPlayerStorage()).thenReturn(storage);
@@ -110,12 +125,13 @@ class PartyOperationHandlerCharacterizationTest extends HandlerTest {
         try (MockedStatic<InviteCoordinator> invites = mockStatic(InviteCoordinator.class);
              MockedStatic<Party> parties = mockStatic(Party.class);
              MockedStatic<AgentInteractionRuntime> interaction = mockStatic(AgentInteractionRuntime.class)) {
-            invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, 900)).thenReturn(true);
+            invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, COMPANION)).thenReturn(true);
 
             handler.handlePacket(invite("Olwen"), client);
 
-            // decidePartyInvite answers NOT_LOBBY_WAITER and :107 treats every answer but REJECT as accept
-            invites.verify(() -> InviteCoordinator.answerInvite(InviteType.PARTY, 900, PARTY_ID, true));
+            // op 4 (:79-136) never asks who owns the invitee; decidePartyInvite answers NOT_LOBBY_WAITER
+            // and :107 treats every answer but REJECT as accept, so Bob takes Alice's companion
+            invites.verify(() -> InviteCoordinator.answerInvite(InviteType.PARTY, COMPANION, PARTY_ID, true));
             parties.verify(() -> Party.joinParty(alicesCompanion, PARTY_ID, false));
             interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(any(), any()), never());
         }
