@@ -189,10 +189,20 @@ public final class BenchSessions {
         if (map == null || map.isTown()) {
             return; // towns have nothing to fight; the ledger covers those camps
         }
+        // never a second copy of a character that is loaded, or leased for something else
+        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(characterId)
+                || !world.leases().tryAcquire(characterId, CompanionLeases.Kind.BENCH_LIVE, entry.characterId())) {
+            return;
+        }
+        if (!world.budget().admit(CompanionBudget.Kind.BENCH_LIVE, entry.characterId(), now).allowed()) {
+            world.leases().release(characterId, CompanionLeases.Kind.BENCH_LIVE);
+            return;
+        }
         try {
             Character agent = CosmicAgentOfflineLoader.loadOfflineAgent(characterId, world.config().WORLD, world.config().CHANNEL,
                     map, ResidentSpots.fallback(map, 0));
             if (agent == null) {
+                world.leases().release(characterId, CompanionLeases.Kind.BENCH_LIVE);
                 return;
             }
             world.bench().applyAccrued(entry, agent);
@@ -205,6 +215,7 @@ public final class BenchSessions {
                     world.roster().describeAssignment(entry) + " live at map " + campMapId);
             log.info("bench session: {} {} live at {} for {}", persona.name(), world.roster().describeAssignment(entry), campMapId, entry.characterId());
         } catch (Exception failure) {
+            world.leases().release(characterId, CompanionLeases.Kind.BENCH_LIVE);
             log.warn("bench session for {} failed", persona.id(), failure);
         }
     }
@@ -288,6 +299,7 @@ public final class BenchSessions {
             agent.saveCharToDB();
             agent.getClient().forceDisconnect();
         }
+        world.leases().release(session.characterId, CompanionLeases.Kind.BENCH_LIVE); // saved first, so the next load sees it
         world.store().event(session.ownerId, session.personaId, "bench.live-end", reason);
     }
 

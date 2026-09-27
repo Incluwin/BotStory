@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
+import server.agents.capabilities.party.JoinOutcome;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyMemberSnapshot;
 import server.agents.integration.AgentPartySnapshot;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -64,6 +66,8 @@ class RosterServiceCharacterizationTest {
     private final Map<String, RosterEntry> rows = new LinkedHashMap<>();
     private final List<RosterEntry> saved = new ArrayList<>();
     private final LivingWorld world = mock(LivingWorld.class);
+    private final CompanionLeases leases = new CompanionLeases();
+    private final ResidentRuntime residents = mock(ResidentRuntime.class);
     private final Character alice = character(ALICE, "Alice");
     private final Character olwenBot = character(OLWEN_CHARACTER, "Olwen");
 
@@ -87,7 +91,6 @@ class RosterServiceCharacterizationTest {
             return null;
         }).when(store).saveRoster(any());
 
-        ResidentRuntime residents = mock(ResidentRuntime.class);
         when(residents.ensureCharacter(OLWEN)).thenReturn(OLWEN_CHARACTER);
         when(residents.characterIdOf(OLWEN.id())).thenReturn(OLWEN_CHARACTER);
         when(world.store()).thenReturn(store);
@@ -95,6 +98,10 @@ class RosterServiceCharacterizationTest {
         when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(new BenchLedger(world));
+        when(world.leases()).thenReturn(leases);
+        CompanionBudget budget = mock(CompanionBudget.class); // BudgetWiringTest covers the real pools
+        when(budget.admit(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
+        when(world.budget()).thenReturn(budget);
 
         registry = mockStatic(AgentRuntimeRegistry.class);
         cleanup = mockStatic(AgentRuntimeCleanupService.class);
@@ -113,46 +120,44 @@ class RosterServiceCharacterizationTest {
     // ---- 1. stale-entry overwrite --------------------------------------------------------
 
     @Test
-    void callSavesTheStaleSnapshotOverTheZeroedAccruedExp() {
+    void callSavesActiveOverTheZeroedAccruedExp() {
         seed(row(ALICE, "olwen", RosterState.BENCHED, 5_000L));
         RosterService roster = new RosterService(world);
 
-        try (MockedStatic<AgentPartyLifecycleService> party = mockStatic(AgentPartyLifecycleService.class)) {
+        try (MockedStatic<AgentPartyLifecycleService> party = joined()) {
             assertEquals("Olwen joins your party.", roster.call(alice, OLWEN));
         }
 
         verify(olwenBot, times(1)).gainExp(5_000, false, false);
         assertEquals(2, saved.size());
-        // BenchLedger.applyAccrued:283-286 writes the row with accruedExp 0 once the EXP is granted ...
+        // BenchLedger.applyAccrued writes the row with accruedExp 0 once the EXP is granted ...
         assertEquals(RosterState.BENCHED, saved.get(0).state());
         assertEquals(0L, saved.get(0).accruedExp());
-        // ... then RosterService.spawnCompanion:305-306 saves entry.with(ACTIVE) built from the pre-call
-        // snapshot, and the upsert (accrued_exp = VALUES(accrued_exp), LivingStore:471) puts the 5000 back.
+        // ... and spawnCompanion re-reads that row before it saves ACTIVE, so the 5000 stays spent
         assertEquals(RosterState.ACTIVE, saved.get(1).state());
-        assertEquals(5_000L, saved.get(1).accruedExp());
-        assertEquals(5_000L, rows.get(key(ALICE, "olwen")).accruedExp());
+        assertEquals(0L, saved.get(1).accruedExp());
+        assertEquals(0L, rows.get(key(ALICE, "olwen")).accruedExp());
     }
 
     @Test
-    void bankedExpIsGrantedAgainOnTheNextCall() {
+    void bankedExpIsGrantedOnlyOnce() {
         seed(row(ALICE, "olwen", RosterState.BENCHED, 5_000L));
         RosterService roster = new RosterService(world);
 
-        try (MockedStatic<AgentPartyLifecycleService> party = mockStatic(AgentPartyLifecycleService.class)) {
+        try (MockedStatic<AgentPartyLifecycleService> party = joined()) {
             roster.call(alice, OLWEN);
-            // bench (:314-329) keeps accruedExp through RosterEntry.with (LivingStore:95-101); no ledger tick runs
             roster.bench(alice, OLWEN);
             roster.call(alice, OLWEN);
         }
 
-        // the same 5000 banked EXP reaches the character twice with zero bench time in between
-        verify(olwenBot, times(2)).gainExp(5_000, false, false);
+        // no ledger tick ran between the calls, so there was nothing new to grant
+        verify(olwenBot, times(1)).gainExp(5_000, false, false);
     }
 
-    // ---- 2. ACTIVE although the party join failed ----------------------------------------
+    // ---- 2. a failed party join ----------------------------------------------------------
 
     @Test
-    void awayCompanionIsSavedActiveWhenThePartyIsFull() {
+    void awayCompanionStaysAwayWhenThePartyIsFull() {
         // AWAY skips the freeSlots gate in call (:230-231); owner.getMap() is null so the RecallTravel
         // branch (:239) is skipped and the companion spawns at once.
         seed(row(ALICE, "olwen", RosterState.AWAY, 0L));
@@ -177,20 +182,23 @@ class RosterServiceCharacterizationTest {
 
         verify(gateway).joinAgentParty(olwenBot, 77);
         verify(olwenBot, never()).updatePartyMemberHP();
-        // joinAgentToLeaderParty (AgentPartyLifecycleService:14-38) returns void, so spawnCompanion:303-306
-        // cannot see the refusal: the row goes ACTIVE and the owner is told the companion joined.
-        assertEquals("Olwen joins your party.", reply);
-        assertEquals(RosterState.ACTIVE, rows.get(key(ALICE, "olwen")).state());
+        // the join reports PARTY_FULL: the companion is despawned, the row keeps its AWAY slot, and it says why
+        assertEquals("Olwen could not join right now (party full).", reply);
+        assertEquals(RosterState.AWAY, rows.get(key(ALICE, "olwen")).state());
+        assertEquals(List.of(), saved);
+        cleanup.verify(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(OLWEN_CHARACTER));
+        assertNull(leases.holder(OLWEN_CHARACTER));
+        verify(residents).whisper(OLWEN, alice, "your party's full. i'll wait at camp.");
     }
 
-    // ---- 3. silent runtime removal -------------------------------------------------------
+    // ---- 3. a runtime held elsewhere -----------------------------------------------------
 
     @Test
-    void existingRuntimeIsRemovedBeforeTheSpawn() {
+    void aRuntimeHeldElsewhereIsRefusedNotRemoved() {
         seed(row(ALICE, "olwen", RosterState.BENCHED, 0L));
         RosterService roster = new RosterService(world);
         List<String> calls = new ArrayList<>();
-        // whatever holds character 900 (a bench-live slice, a population session, a citizen)
+        // whatever holds character 900 without a lease (a spawnbot, a party quest); it does not follow Alice
         registry.when(() -> AgentRuntimeRegistry.hasActiveAgentCharacterId(OLWEN_CHARACTER)).thenReturn(true);
         cleanup.when(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(OLWEN_CHARACTER))
                 .thenAnswer(inv -> calls.add("remove " + OLWEN_CHARACTER));
@@ -200,13 +208,16 @@ class RosterServiceCharacterizationTest {
         });
 
         String reply;
-        try (MockedStatic<AgentPartyLifecycleService> party = mockStatic(AgentPartyLifecycleService.class)) {
+        try (MockedStatic<AgentPartyLifecycleService> party = joined()) {
             reply = roster.call(alice, OLWEN);
         }
 
-        // spawnCompanion:295-298 removes it unconditionally and respawns; the reply says nothing about it
-        assertEquals(List.of("remove " + OLWEN_CHARACTER, "spawn Olwen"), calls);
-        assertEquals("Olwen joins your party.", reply);
+        // nothing is pulled out from under its holder and nothing is loaded; the companion asks for a moment
+        assertEquals(List.of(), calls);
+        assertEquals("Olwen could not join right now (busy).", reply);
+        assertEquals(RosterState.BENCHED, rows.get(key(ALICE, "olwen")).state());
+        assertNull(leases.holder(OLWEN_CHARACTER));
+        verify(residents).whisper(OLWEN, alice, "give me a moment. i'm in the middle of something.");
     }
 
     // ---- 4. freeSlots --------------------------------------------------------------------
@@ -246,6 +257,13 @@ class RosterServiceCharacterizationTest {
     }
 
     // ---- helpers -------------------------------------------------------------------------
+
+    /** The party join stubbed to succeed. */
+    private MockedStatic<AgentPartyLifecycleService> joined() {
+        MockedStatic<AgentPartyLifecycleService> party = mockStatic(AgentPartyLifecycleService.class);
+        party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot)).thenReturn(JoinOutcome.JOINED);
+        return party;
+    }
 
     private void seed(RosterEntry entry) {
         rows.put(key(entry.characterId(), entry.personaId()), entry);

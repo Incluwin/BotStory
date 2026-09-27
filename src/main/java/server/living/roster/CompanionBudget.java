@@ -46,12 +46,17 @@ public final class CompanionBudget {
         if (owner == null) {
             return Admission.deny("no owner");
         }
-        Admission admission = decide(kind, usage(owner.getId()), world.config());
+        return admit(kind, owner.getId(), nowMs);
+    }
+
+    /** The same admission by owner id, for loads charged to an owner who may be offline (a live bench slice). */
+    public Admission admit(Kind kind, int ownerId, long nowMs) {
+        Admission admission = decide(kind, usage(ownerId), world.config());
         if (!admission.allowed()) {
-            world.store().event(owner.getId(), null, "companion.budget_denied", kind + ": " + admission.reason());
+            world.store().event(ownerId, null, "companion.budget_denied", kind + ": " + admission.reason());
             return admission;
         }
-        if (kind != Kind.EXPEDITION && !tryTakeLoadSlot(owner.getId(), nowMs)) {
+        if (kind != Kind.EXPEDITION && !tryTakeLoadSlot(ownerId, nowMs)) {
             return Admission.deny("one load every " + world.config().COMPANION_SPAWN_INTERVAL_MS + " ms");
         }
         return Admission.ALLOW;

@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
+import server.agents.capabilities.party.JoinOutcome;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService;
@@ -44,6 +45,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class RosterService {
     private static final Logger log = LoggerFactory.getLogger(RosterService.class);
     public static final int PARTY_CAP = 6;
+    private static final String BUSY_LINE = "give me a moment. i'm in the middle of something.";
+    private static final String PARTY_FULL_LINE = "your party's full. i'll wait at camp.";
 
     private final LivingWorld world;
     /** persona id -> owner character id, cached from the store. */
@@ -295,29 +298,96 @@ public final class RosterService {
     }
 
     private String spawnCompanion(Character owner, Persona persona, RosterEntry entry) {
+        long waitMs = world.budget().loadDelayMs(owner, System.currentTimeMillis());
+        if (waitMs > 0L) {
+            spawnLater(owner.getId(), persona, entry.state(), waitMs); // loads are spaced per owner: queue, not refuse
+            return persona.name() + " will be right there.";
+        }
         int characterId = world.residents().ensureCharacter(persona);
         if (characterId == 0) {
             return persona.name() + " cannot be reached right now.";
         }
-        world.benchSessions().endFor(persona.id(), "called by owner");
+        CompanionBudget.Admission admission = world.budget().admit(CompanionBudget.Kind.COMPANION, owner);
+        if (!admission.allowed()) {
+            return refuse(owner, persona, entry, "give me a moment. too many of us are out right now.", admission.reason());
+        }
+        world.benchSessions().endFor(persona.id(), "called by owner"); // a live slice ends properly and frees its lease
         world.residents().releaseForRecruit(persona.id());
-        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(characterId)) {
-            AgentRuntimeCleanupService.removeAgentByCharacterId(characterId);
+        // a character loaded for something else is refused, never pulled out from under it
+        if (!world.leases().tryAcquire(characterId, CompanionLeases.Kind.COMPANION, owner.getId())) {
+            return refuse(owner, persona, entry, BUSY_LINE, "busy");
+        }
+        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(characterId)
+                && AgentRuntimeRegistry.leaderIdForAgentCharacter(characterId) != owner.getId()) {
+            world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
+            return refuse(owner, persona, entry, BUSY_LINE, "busy");
         }
         AgentLifecycleService.AgentSpawnResult result = AgentInteractionRuntime.spawnAgentForLeader(owner, persona.name());
         if (!result.success() || result.agent() == null) {
+            world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             log.warn("call {} for {} failed: {}", persona.id(), owner.getName(), result.errorMessage());
-            return persona.name() + " could not join right now (" + result.errorMessage() + ").";
+            return refuse(owner, persona, entry, "i can't get away right now. try again in a bit.", result.errorMessage());
         }
-        AgentPartyLifecycleService.joinAgentToLeaderParty(owner, result.agent());
-        world.bench().applyAccrued(entry, result.agent());
-        RosterEntry active = entry.with(RosterState.ACTIVE, System.currentTimeMillis());
+        JoinOutcome joined = AgentPartyLifecycleService.joinAgentToLeaderParty(owner, result.agent());
+        if (joined != JoinOutcome.JOINED && joined != JoinOutcome.ALREADY_MEMBER) {
+            despawn(entry, "party join " + joined);
+            return refuse(owner, persona, entry, joinRefusal(owner, joined), joined.name().toLowerCase(Locale.ROOT).replace('_', ' '));
+        }
+        // bench slices and the ledger rewrite the row behind the caller's snapshot, and applyAccrued zeroes the
+        // banked EXP: both saves start from the row as it is now, so the EXP can never be granted twice
+        world.bench().applyAccrued(current(entry), result.agent());
+        RosterEntry active = current(entry).with(RosterState.ACTIVE, System.currentTimeMillis());
         world.store().saveRoster(active);
         ownerByPersona.put(persona.id(), owner.getId());
         world.store().event(owner.getId(), persona.id(), "roster.call", null);
         List<String> lines = world.arcs().lines(persona, "join");
         world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(owner.getId(), lines.size())));
         return persona.name() + " joins your party.";
+    }
+
+    /** Retries the spawn once the owner's next load is admitted, if the row is still as it was and nobody is loaded. */
+    private void spawnLater(int ownerId, Persona persona, RosterState state, long delayMs) {
+        server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            Character owner = onlineCharacter(ownerId);
+            RosterEntry entry = owner == null ? null : world.store().rosterEntry(ownerId, persona.id());
+            if (entry == null || entry.state() != state || companion(entry) != null) {
+                return;
+            }
+            // the party may have filled while this one waited; an AWAY companion kept its slot
+            owner.dropMessage(5, state != RosterState.AWAY && freeSlots(owner) <= 0
+                    ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full")
+                    : spawnCompanion(owner, persona, entry));
+        }, delayMs);
+    }
+
+    /**
+     * A call that could not seat the companion: nothing stays loaded for it, the row stays BENCHED (or AWAY)
+     * so the ledger keeps crediting it, and the companion tells the owner why.
+     */
+    private String refuse(Character owner, Persona persona, RosterEntry entry, String line, String reason) {
+        RosterEntry current = current(entry);
+        if (current.state() == RosterState.ACTIVE) {
+            world.store().saveRoster(current.with(RosterState.BENCHED, System.currentTimeMillis()));
+        }
+        world.residents().whisper(persona, owner, line);
+        world.store().event(owner.getId(), persona.id(), "roster.call_refused", reason);
+        return persona.name() + " could not join right now (" + reason + ").";
+    }
+
+    private static String joinRefusal(Character owner, JoinOutcome joined) {
+        if (joined == JoinOutcome.PARTY_FULL) {
+            return PARTY_FULL_LINE;
+        }
+        if (joined == JoinOutcome.NO_PARTY && owner.getLevel() < 10) {
+            return "you need to be level 10 to lead a party.";
+        }
+        return "i couldn't join your party. try again in a bit.";
+    }
+
+    /** The row as stored now (the snapshot when it is gone). */
+    private RosterEntry current(RosterEntry entry) {
+        RosterEntry current = world.store().rosterEntry(entry.characterId(), entry.personaId());
+        return current == null ? entry : current;
     }
 
     public String bench(Character owner, Persona persona) {
@@ -613,6 +683,7 @@ public final class RosterService {
         }
         if (characterId != 0) {
             AgentRuntimeCleanupService.removeAgentByCharacterId(characterId);
+            world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
         }
         if (bot != null && bot.getClient() != null) {
             bot.getClient().forceDisconnect();
