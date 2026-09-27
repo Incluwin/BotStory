@@ -29,6 +29,7 @@ import server.living.config.Content.Chapter;
 import server.living.config.Content.Loadout;
 import server.living.config.Content.Persona;
 import server.living.config.Content.RoutineSlot;
+import server.living.roster.CompanionLeases;
 import server.living.store.LivingStore;
 import server.maps.MapleMap;
 
@@ -297,10 +298,14 @@ public final class ResidentRuntime {
         }
     }
 
-    private Session materialize(Persona persona, MapleMap map, RoutineSlot slot, long now) {
+    /** Package-private for the load-guard test. */
+    Session materialize(Persona persona, MapleMap map, RoutineSlot slot, long now) {
         int characterId = ensureCharacter(persona);
         if (characterId <= 0) {
             return null;
+        }
+        if (!world.leases().tryAcquire(characterId, CompanionLeases.Kind.RESIDENT, 0)) {
+            return null; // leased for a companion, a bench slice or a party quest: never pulled out from under it
         }
         Session session = new Session(persona, characterId);
         int ordinal = Math.floorMod(persona.id().hashCode(), 7);
@@ -313,16 +318,21 @@ public final class ResidentRuntime {
             if (agent == null) {
                 AgentRuntimeCleanupService.removeAgentByCharacterId(characterId);
                 entry = null;
+            } else if (AgentRuntimeRegistry.leaderIdForAgentCharacter(characterId) != characterId) {
+                world.leases().release(characterId, CompanionLeases.Kind.RESIDENT);
+                return null; // loaded for someone else (a spawnbot, a party quest): not ours to take over
             }
         }
         if (entry == null) {
             try {
                 agent = CosmicAgentOfflineLoader.loadOfflineAgent(characterId, world.config().WORLD, world.config().CHANNEL, map, arrival);
             } catch (Exception failure) {
+                world.leases().release(characterId, CompanionLeases.Kind.RESIDENT);
                 log.warn("Persona {}: loading character {} failed", persona.id(), characterId, failure);
                 return null;
             }
             if (agent == null) {
+                world.leases().release(characterId, CompanionLeases.Kind.RESIDENT);
                 return null;
             }
             entry = AgentInteractionRuntime.registerDirectorIdleAgent(agent);
@@ -373,6 +383,7 @@ public final class ResidentRuntime {
         Character agent = session.agent();
         if (agent == null) {
             sessions.remove(session.persona.id());
+            world.leases().release(session.characterId, CompanionLeases.Kind.RESIDENT);
             return;
         }
         if (agent.getMap() == null || agent.getMap().getId() != map.getId()) {
@@ -455,6 +466,7 @@ public final class ResidentRuntime {
             agent.saveCharToDB();
             agent.getClient().forceDisconnect();
         }
+        world.leases().release(session.characterId, CompanionLeases.Kind.RESIDENT); // saved first, so the next load sees it
         log.info("Resident {} to standby: {}", session.persona.id(), reason);
     }
 
