@@ -91,6 +91,8 @@ public final class AdminControlPort {
         }));
         server.start();
         log.info("AdminControlPort listening on 127.0.0.1:{}", port);
+        // LOW_PRIORITY lag for /runtime/budget; if timers are not up yet, the first read starts it.
+        AdminTimerLagProbe.LOW_PRIORITY.ensureStarted();
 
         try {
             AdminSsoKey.ensure();
@@ -125,7 +127,7 @@ public final class AdminControlPort {
                     return;
                 }
                 String body = "GET".equals(method) ? "" : readBody(ex);
-                String result = route(method, path, body);
+                String result = route(method, path, ex.getRequestURI().getRawQuery(), body);
                 if (result == null) {
                     writeJson(ex, 404, "{\"ok\":false,\"error\":\"not_found\"}");
                     return;
@@ -176,7 +178,7 @@ public final class AdminControlPort {
         }
     }
 
-    private static String route(String method, String path, String body) {
+    private static String route(String method, String path, String query, String body) {
         if ("GET".equals(method)) {
             switch (path) {
                 case "/runtime/uptime": return rUptime();
@@ -206,6 +208,8 @@ public final class AdminControlPort {
                 case "/runtime/service-bot":             return rServiceBot();
                 case "/runtime/living":                  return rLiving();
                 case "/runtime/citizens":                return rCitizens();
+                case "/runtime/budget":                  return AdminBudgetReader.budget(AdminBudgetReader.gcRequested(query));
+                case "/runtime/companions":              return AdminCompanionsReader.all();
                 case "/runtime/sso-pubkey":              return AdminSsoAuth.pubkeyBlob();
                 default:
                     if (path.startsWith("/runtime/character/")) {
@@ -214,6 +218,9 @@ public final class AdminControlPort {
                     }
                     if (path.startsWith("/runtime/buffs/")) {
                         return rBuffs(path.substring("/runtime/buffs/".length()));
+                    }
+                    if (path.startsWith("/runtime/companions/")) {
+                        return AdminCompanionsReader.owner(path.substring("/runtime/companions/".length()));
                     }
                     if (path.startsWith("/runtime/stats/player-samples/")) {
                         String hoursStr = path.substring("/runtime/stats/player-samples/".length());

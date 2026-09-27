@@ -146,6 +146,12 @@ have sub-directories last: its directory offsets assume that order.
 `tools\living-world-lint.bat [dir]` validates content offline (exit 1 on errors);
 `tools\living-world-questlog.bat` exports the quest log (above).
 
+**Operator endpoints** (loopback AdminControlPort, Bearer token): `GET /runtime/budget` gives heap and
+old gen after the last GC, CPU, threads, registered Agents by kind, humans online, scheduler registrations
+vs per-shard capacity with lag/tick percentiles, and LOW_PRIORITY timer lag (5 s probe); `?gc=1` forces
+a full GC first (stop-the-world, measurement runs only). `GET /runtime/companions[/{ownerCharacterId}]` is a
+read-only roster/party/registry drift report per online owner; gate on drift seen in two consecutive reads.
+
 ## Authoring
 
 MapleEdit has a **Living World** page (`/living`): the content tree with every id, a one-file
