@@ -68,6 +68,7 @@ import server.agents.diagnostics.MapTransitionPacketTraceRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.life.Monster;
 import server.life.autonomy.BossClientSimulationCapability;
+import server.living.probe.CompanionProbeObserver;
 import server.maps.FieldLimit;
 import server.maps.MapleMap;
 import server.maps.MiniDungeonInfo;
@@ -281,6 +282,8 @@ public class Client extends ChannelInboundHandlerAdapter {
         if (YamlConfig.config.server.USE_DEBUG_SHOW_RCVD_PACKET && !LoggingUtil.isIgnoredRecvPacket(opcode)) {
             log.debug("Received packet id {}", opcode);
         }
+
+        CompanionProbeObserver.recordInbound(this, opcode, packet);
 
         try {
             MobReactionCaptureRuntime.recordInbound(this, opcode, packet);

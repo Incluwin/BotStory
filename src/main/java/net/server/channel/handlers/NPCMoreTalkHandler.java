@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import scripting.npc.NPCConversationManager;
 import scripting.npc.NPCScriptManager;
 import scripting.quest.QuestScriptManager;
+import server.living.probe.CompanionProbeService;
 
 /**
  * @author Matze
@@ -45,6 +46,7 @@ public final class NPCMoreTalkHandler extends AbstractPacketHandler {
         }
         NPCConversationManager conversation = c.getQM() != null ? c.getQM() : c.getCM();
         if (conversation == null) {
+            CompanionProbeService.answerOrphanTalk(c); // a GM probe window has no conversation behind it
             return;
         }
         if (lastMsg == 2) {
