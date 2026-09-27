@@ -187,6 +187,33 @@ public final class RosterService {
         if (roster(owner).size() >= world.config().ROSTER_MAX) {
             return "Your roster is full (" + world.config().ROSTER_MAX + "). Release someone first.";
         }
+        RosterEntry entry = enroll(owner, persona, "roster.recruit");
+        if (freeSlots(owner) <= 0) {
+            return persona.name() + " joins your roster but your party is full; call them when there is room.";
+        }
+        return spawnCompanion(owner, persona, entry);
+    }
+
+    /**
+     * GM grant ({@code !grantcompanion}, for tests and demos): the persona joins the owner's roster
+     * benched at its home-town camp, with no contract and no change to its character. It counts
+     * toward {@code ROSTER_MAX} and keeps one owner per persona like a recruit; the owner calls it
+     * in the normal way.
+     */
+    public String grant(Character owner, Persona persona) {
+        if (isOwned(persona.id())) {
+            return persona.name() + (ownerOf(persona.id()) == owner.getId()
+                    ? " is already on " + owner.getName() + "'s roster." : " already travels with someone else.");
+        }
+        if (roster(owner).size() >= world.config().ROSTER_MAX) {
+            return owner.getName() + "'s roster is full (" + world.config().ROSTER_MAX + ").";
+        }
+        RosterEntry entry = enroll(owner, persona, "roster.grant");
+        return persona.name() + " joins " + owner.getName() + "'s roster, benched at map " + entry.campMapId() + ".";
+    }
+
+    /** Writes a BENCHED roster row and hands the persona over from its Resident life. */
+    private RosterEntry enroll(Character owner, Persona persona, String eventType) {
         long now = System.currentTimeMillis();
         int campMap = server.living.resident.ResidentSpots.townMapId(persona.homeTown());
         RosterEntry entry = new RosterEntry(owner.getId(), persona.id(), RosterState.BENCHED, Assignment.TRAIN, 0, 0,
@@ -197,11 +224,8 @@ public final class RosterService {
         world.store().savePersonaState(world.store().personaState(persona.id()).withEmployer(owner.getId()));
         world.store().setWorldFlag("persona." + persona.id() + ".employed", owner.getId());
         world.residents().releaseForRecruit(persona.id());
-        world.store().event(owner.getId(), persona.id(), "roster.recruit", null);
-        if (freeSlots(owner) <= 0) {
-            return persona.name() + " joins your roster but your party is full; call them when there is room.";
-        }
-        return spawnCompanion(owner, persona, entry);
+        world.store().event(owner.getId(), persona.id(), eventType, null);
+        return entry;
     }
 
     /** Drops the persona from the roster; it goes home as a Resident. */
