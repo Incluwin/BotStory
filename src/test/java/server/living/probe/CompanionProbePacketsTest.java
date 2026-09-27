@@ -1,16 +1,22 @@
 package server.living.probe;
 
+import client.Character;
 import net.opcodes.RecvOpcode;
+import net.server.world.Party;
 import org.junit.jupiter.api.Test;
+import tools.PacketCreator;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.function.IntFunction;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class CompanionProbePacketsTest {
     private static final int PARTY_OPERATION = RecvOpcode.PARTY_OPERATION.getValue();
@@ -89,6 +95,27 @@ class CompanionProbePacketsTest {
         assertEquals("", CompanionProbePackets.summarize(RecvOpcode.GENERAL_CHAT.getValue(), new byte[]{1, 2}, NO_NAMES));
     }
 
+    @Test
+    void theProbeInviteIsTheStockInviteWithTheGivenPartyId() {
+        Party party = mock(Party.class);
+        when(party.getId()).thenReturn(77);
+        Character from = mock(Character.class);
+        when(from.getParty()).thenReturn(party);
+        when(from.getName()).thenReturn("Hadrik");
+
+        assertArrayEquals(PacketCreator.partyInvite(from).getBytes(), CompanionProbePackets.partyInvite(77, "Hadrik").getBytes());
+    }
+
+    @Test
+    void theTemplateTalkIsTheStockTalkWithAnIntAfterTheSpeakerByte() {
+        byte[] stock = PacketCreator.getNPCTalk(9010000, (byte) 0, "Hi", "00 00", (byte) 4).getBytes();
+        int afterSpeaker = 2 + 1 + 4 + 1 + 1; // opcode, 4, npc id, msgType, speaker
+        byte[] expected = new Bytes().raw(Arrays.copyOfRange(stock, 0, afterSpeaker)).i(9010001)
+                .raw(Arrays.copyOfRange(stock, afterSpeaker, stock.length)).array();
+
+        assertArrayEquals(expected, CompanionProbePackets.npcTalkWithTemplate(9010000, 0, 4, 9010001, "Hi", "00 00").getBytes());
+    }
+
     /** Little-endian payload builder, like the v83 client writes. */
     static final class Bytes {
         private final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -109,6 +136,11 @@ class CompanionProbePacketsTest {
         Bytes str(String value) {
             byte[] bytes = value.getBytes(StandardCharsets.US_ASCII);
             s(bytes.length);
+            out.writeBytes(bytes);
+            return this;
+        }
+
+        Bytes raw(byte[] bytes) {
             out.writeBytes(bytes);
             return this;
         }

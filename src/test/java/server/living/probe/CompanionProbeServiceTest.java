@@ -1,9 +1,19 @@
 package server.living.probe;
 
+import client.BotClient;
 import client.Character;
 import client.Client;
 import net.packet.Packet;
+import net.server.PlayerStorage;
+import net.server.channel.Channel;
+import net.server.coordinator.world.InviteCoordinator;
+import net.server.coordinator.world.InviteCoordinator.InviteResultType;
+import net.server.coordinator.world.InviteCoordinator.InviteType;
+import net.server.world.Party;
+import net.server.world.World;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import server.living.probe.CompanionProbeService.GiveItem;
 import server.living.probe.CompanionProbeService.Help;
 import server.living.probe.CompanionProbeService.Imitate;
@@ -14,6 +24,7 @@ import server.living.probe.CompanionProbeService.Request;
 import server.living.probe.CompanionProbeService.Status;
 import server.living.probe.CompanionProbeService.Talk;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -26,12 +37,24 @@ import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class CompanionProbeServiceTest {
+    private static final int GM_ID = 4242;
+    private static final int OTHER_GM_ID = 4343;
+    private static final int NO_TEMPLATE = CompanionProbeService.NO_TEMPLATE;
+
+    @AfterEach
+    void forgetProbeState() {
+        CompanionProbeService.forget(GM_ID);
+        CompanionProbeService.forget(OTHER_GM_ID);
+        InviteCoordinator.removeInvite(InviteType.PARTY, GM_ID);
+    }
+
     private static Request parse(String... params) {
         return CompanionProbeService.parse(params);
     }
@@ -51,22 +74,32 @@ class CompanionProbeServiceTest {
     }
 
     @Test
-    void inviteNeedsAName() {
-        assertEquals(new Invite("Hadrik"), parse("invite", "Hadrik"));
+    void inviteNeedsANameAndOnlyTakesForce() {
+        assertEquals(new Invite("Hadrik", false), parse("invite", "Hadrik"));
+        assertEquals(new Invite("Ann", true), parse("invite", "Ann", "FORCE"));
         assertInstanceOf(Help.class, parse("invite"));
+        assertInstanceOf(Help.class, parse("invite", "Ann", "now"));
     }
 
     @Test
     void talkDefaultsAndBounds() {
-        assertEquals(new Talk(2, CompanionProbeService.DEFAULT_NPC_ID, 0), parse("talk", "2"));
-        assertEquals(new Talk(4, 1012100, 1), parse("talk", "0x04", "1012100", "1"));
-        assertEquals(new Talk(10, 1012100, 12), parse("talk", "010", "1012100", "12")); // decimal, not octal
+        assertEquals(new Talk(2, CompanionProbeService.DEFAULT_NPC_ID, 0, NO_TEMPLATE), parse("talk", "2"));
+        assertEquals(new Talk(4, 1012100, 1, NO_TEMPLATE), parse("talk", "0x04", "1012100", "1"));
+        assertEquals(new Talk(10, 1012100, 12, NO_TEMPLATE), parse("talk", "010", "1012100", "12")); // decimal, not octal
         assertInstanceOf(Help.class, parse("talk"));
         assertInstanceOf(Help.class, parse("talk", "256"));
         assertInstanceOf(Help.class, parse("talk", "-1"));
         assertInstanceOf(Help.class, parse("talk", "x"));
         assertInstanceOf(Help.class, parse("talk", "1", "0"));
         assertInstanceOf(Help.class, parse("talk", "1", "9010000", "3"));
+    }
+
+    @Test
+    void talkTakesATrailingTemplateId() {
+        assertEquals(new Talk(4, CompanionProbeService.DEFAULT_NPC_ID, 0, 9010000), parse("talk", "4", "+9010000"));
+        assertEquals(new Talk(5, 1012100, 1, 0x10), parse("talk", "5", "1012100", "1", "+0x10"));
+        assertInstanceOf(Help.class, parse("talk", "4", "+x"));
+        assertInstanceOf(Help.class, parse("talk", "4", "+-1"));
     }
 
     @Test
@@ -106,14 +139,28 @@ class CompanionProbeServiceTest {
 
     @Test
     void logOnAndOffToggleTheObserver() {
-        Character gm = mock(Character.class);
-        when(gm.getId()).thenReturn(4242);
+        Character gm = gm();
 
         CompanionProbeService.execute(gm, new String[]{"log", "on"});
-        assertTrue(CompanionProbeObserver.isObserving(4242));
+        assertTrue(CompanionProbeObserver.isObserving(GM_ID));
         CompanionProbeService.execute(gm, new String[]{"log", "off"});
-        assertFalse(CompanionProbeObserver.isObserving(4242));
+        assertFalse(CompanionProbeObserver.isObserving(GM_ID));
         verify(gm, atLeastOnce()).dropMessage(anyInt(), anyString());
+    }
+
+    @Test
+    void forgetDropsTheLogAndTheOpenWindow() {
+        CompanionProbeObserver.setObserving(GM_ID, true);
+        long ticket = CompanionProbeService.windowOpened(GM_ID);
+
+        CompanionProbeService.forget(GM_ID);
+
+        assertFalse(CompanionProbeObserver.isObserving(GM_ID));
+        assertFalse(CompanionProbeService.windowOpen(GM_ID));
+        assertFalse(CompanionProbeService.sameWindow(GM_ID, ticket));
+        Client client = mock(Client.class);
+        assertFalse(CompanionProbeService.answerOrphanTalk(client));
+        verifyNoInteractions(client); // back on the empty-map path
     }
 
     @Test
@@ -128,14 +175,159 @@ class CompanionProbeServiceTest {
     @Test
     void theReplyToAProbeWindowReEnablesActionsOnce() {
         Character gm = mock(Character.class);
-        when(gm.getId()).thenReturn(4343);
+        when(gm.getId()).thenReturn(OTHER_GM_ID);
         Client client = mock(Client.class);
         when(client.getPlayer()).thenReturn(gm);
-        CompanionProbeService.windowOpened(4343);
+        CompanionProbeService.windowOpened(OTHER_GM_ID);
 
         assertTrue(CompanionProbeService.answerOrphanTalk(client));
         assertFalse(CompanionProbeService.answerOrphanTalk(client));
 
         verify(client, times(1)).sendPacket(any(Packet.class));
+    }
+
+    @Test
+    void theRefreshOnlyWritesIntoTheSameStillOpenWindow() {
+        Character gm = gm();
+        when(gm.isLoggedinWorld()).thenReturn(true);
+        long first = CompanionProbeService.windowOpened(GM_ID);
+
+        CompanionProbeService.sendRefresh(gm, CompanionProbeService.DEFAULT_NPC_ID, first);
+        verify(gm, times(1)).sendPacket(any(Packet.class));
+        assertTrue(CompanionProbeService.sameWindow(GM_ID, first)); // the second text stays in the same window
+
+        CompanionProbeService.windowOpened(GM_ID); // e.g. talk 3 within the 2 s
+        CompanionProbeService.sendRefresh(gm, CompanionProbeService.DEFAULT_NPC_ID, first);
+
+        verify(gm, times(1)).sendPacket(any(Packet.class));
+        verify(gm).dropMessage(eq(6), contains("answered or replaced"));
+    }
+
+    @Test
+    void aRefreshForALoggedOutGmSendsNothing() {
+        Character gm = gm();
+        long ticket = CompanionProbeService.windowOpened(GM_ID);
+
+        CompanionProbeService.sendRefresh(gm, CompanionProbeService.DEFAULT_NPC_ID, ticket);
+
+        verify(gm, never()).sendPacket(any(Packet.class));
+        verify(gm, never()).dropMessage(anyInt(), anyString());
+    }
+
+    @Test
+    void talkAndRefreshRefuseAnImitateTemplateWithNoLookSent() {
+        Character gm = gm();
+
+        CompanionProbeService.execute(gm, new String[]{"talk", "0", "9901000"});
+        CompanionProbeService.execute(gm, new String[]{"refresh", "9977777"});
+
+        verify(gm, never()).sendPacket(any(Packet.class));
+        verify(gm, times(2)).dropMessage(eq(6), contains("imitate <name>"));
+        assertFalse(CompanionProbeService.windowOpen(GM_ID));
+    }
+
+    @Test
+    void imitateTemplatesAreTheImitateRangeAndCustomDev() {
+        assertTrue(CompanionProbeService.isImitateTemplate(9901000));
+        assertTrue(CompanionProbeService.isImitateTemplate(9906599));
+        assertTrue(CompanionProbeService.isImitateTemplate(9977777));
+        assertFalse(CompanionProbeService.isImitateTemplate(9900999));
+        assertFalse(CompanionProbeService.isImitateTemplate(9906600));
+        assertFalse(CompanionProbeService.isImitateTemplate(CompanionProbeService.DEFAULT_NPC_ID));
+    }
+
+    @Test
+    void inviteFromABotCarriesThePartyIdItWasRegisteredUnder() {
+        Character gm = gm();
+        Character bot = character(9001, "Hadrik", mock(BotClient.class));
+        Party party = party(77);
+        when(bot.getParty()).thenReturn(party, (Party) null); // the bot leaves its party right after the check
+        channelStorage(gm).put("Hadrik", bot);
+
+        CompanionProbeService.execute(gm, new String[]{"invite", "Hadrik"});
+
+        ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
+        verify(gm).sendPacket(sent.capture());
+        assertArrayEquals(CompanionProbePackets.partyInvite(77, "Hadrik").getBytes(), sent.getValue().getBytes());
+        assertEquals(InviteResultType.ACCEPTED, InviteCoordinator.answerInvite(InviteType.PARTY, GM_ID, 77, true).result);
+    }
+
+    @Test
+    void aHumanInviterNeedsForce() {
+        Character gm = gm();
+        Character human = character(9002, "Ann", mock(Client.class));
+        Party party = party(55);
+        when(human.getParty()).thenReturn(party);
+        channelStorage(gm).put("Ann", human);
+
+        CompanionProbeService.execute(gm, new String[]{"invite", "Ann"});
+
+        verify(gm, never()).sendPacket(any(Packet.class));
+        verify(gm).dropMessage(eq(6), contains("Add force"));
+        assertFalse(InviteCoordinator.hasInvite(InviteType.PARTY, GM_ID));
+
+        CompanionProbeService.execute(gm, new String[]{"invite", "Ann", "force"});
+
+        verify(gm, times(1)).sendPacket(any(Packet.class));
+        verify(gm).dropMessage(eq(6), contains("Declining will notify Ann"));
+        assertTrue(InviteCoordinator.hasInvite(InviteType.PARTY, GM_ID));
+    }
+
+    @Test
+    void anInviterOnAnotherChannelIsRefused() {
+        Character gm = gm();
+        channelStorage(gm);
+        Client botClient = mock(BotClient.class);
+        when(botClient.getChannel()).thenReturn(2);
+        Character bot = character(9001, "Hadrik", botClient);
+        World world = mock(World.class);
+        PlayerStorage worldStorage = mock(PlayerStorage.class);
+        when(gm.getWorldServer()).thenReturn(world);
+        when(world.getPlayerStorage()).thenReturn(worldStorage);
+        when(worldStorage.getCharacterByName("Hadrik")).thenReturn(bot);
+
+        CompanionProbeService.execute(gm, new String[]{"invite", "Hadrik"});
+
+        verify(gm, never()).sendPacket(any(Packet.class));
+        verify(gm).dropMessage(eq(6), contains("is on channel 2"));
+        assertFalse(InviteCoordinator.hasInvite(InviteType.PARTY, GM_ID));
+    }
+
+    private static Character gm() {
+        Character gm = mock(Character.class);
+        when(gm.getId()).thenReturn(GM_ID);
+        when(gm.getName()).thenReturn("Gm");
+        return gm;
+    }
+
+    private static Character character(int id, String name, Client client) {
+        Character chr = mock(Character.class);
+        when(chr.getId()).thenReturn(id);
+        when(chr.getName()).thenReturn(name);
+        when(chr.getClient()).thenReturn(client);
+        return chr;
+    }
+
+    private static Party party(int id) {
+        Party party = mock(Party.class);
+        when(party.getId()).thenReturn(id);
+        return party;
+    }
+
+    /** The GM's channel storage; {@code put} makes a character findable by name on it. */
+    private static ChannelStorage channelStorage(Character gm) {
+        Client client = mock(Client.class);
+        Channel channel = mock(Channel.class);
+        PlayerStorage storage = mock(PlayerStorage.class);
+        when(gm.getClient()).thenReturn(client);
+        when(client.getChannelServer()).thenReturn(channel);
+        when(channel.getPlayerStorage()).thenReturn(storage);
+        return new ChannelStorage(storage);
+    }
+
+    private record ChannelStorage(PlayerStorage storage) {
+        void put(String name, Character chr) {
+            when(storage.getCharacterByName(name)).thenReturn(chr);
+        }
     }
 }

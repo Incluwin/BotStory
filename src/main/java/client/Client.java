@@ -69,6 +69,7 @@ import server.agents.runtime.AgentRuntimeCleanupService;
 import server.life.Monster;
 import server.life.autonomy.BossClientSimulationCapability;
 import server.living.probe.CompanionProbeObserver;
+import server.living.probe.CompanionProbeService;
 import server.maps.FieldLimit;
 import server.maps.MapleMap;
 import server.maps.MiniDungeonInfo;
@@ -1143,6 +1144,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             AgentRuntimeCleanupService.cleanupAgentRuntimeState(player);
         }
         if (!(this instanceof BotClient) && player != null) {
+            CompanionProbeService.forget(player.getId());
             server.living.LivingWorldHooks.playerLoggedOut(player);
         }
 

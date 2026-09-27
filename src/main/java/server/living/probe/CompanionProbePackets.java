@@ -2,9 +2,13 @@ package server.living.probe;
 
 import io.netty.buffer.Unpooled;
 import net.opcodes.RecvOpcode;
+import net.opcodes.SendOpcode;
 import net.packet.ByteBufInPacket;
 import net.packet.InPacket;
+import net.packet.OutPacket;
+import net.packet.Packet;
 import net.server.channel.handlers.PlayerInteractionHandler;
+import tools.HexTool;
 
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -15,7 +19,8 @@ import java.util.function.IntFunction;
 /**
  * Names and one-line summaries of the client packets the P0 companion probes watch for
  * (docs/BOT_MANAGEMENT_PLAN.md, P0 f). Pure: it decodes its own wrapper around a copy of the
- * payload that follows the opcode, reading the fields the stock handlers read.
+ * payload that follows the opcode, reading the fields the stock handlers read. It also builds the
+ * two probe packets the stock builders cannot express.
  */
 public final class CompanionProbePackets {
     private static final Map<Integer, RecvOpcode> BY_VALUE = byValue();
@@ -97,6 +102,36 @@ public final class CompanionProbePackets {
         } catch (RuntimeException truncated) { // a short or malformed payload: the real handler decides
             return "(undecodable, " + payload.length + " bytes)";
         }
+    }
+
+    /**
+     * {@code PacketCreator.partyInvite}, but with the party id the invite was registered under
+     * instead of a second read of the inviter's (possibly changed) party.
+     */
+    public static Packet partyInvite(int partyId, String fromName) {
+        OutPacket p = OutPacket.create(SendOpcode.PARTY_OPERATION);
+        p.writeByte(4);
+        p.writeInt(partyId);
+        p.writeString(fromName);
+        p.writeByte(0);
+        return p;
+    }
+
+    /**
+     * {@code PacketCreator.getNPCTalk} with an int after the speaker byte: later clients read a
+     * speaker template id there when the speaker byte has bit 0x04 set (probe 5).
+     */
+    public static Packet npcTalkWithTemplate(int npcId, int msgType, int speaker, int templateId, String text,
+                                             String endBytes) {
+        OutPacket p = OutPacket.create(SendOpcode.NPC_TALK);
+        p.writeByte(4);
+        p.writeInt(npcId);
+        p.writeByte(msgType);
+        p.writeByte(speaker);
+        p.writeInt(templateId);
+        p.writeString(text);
+        p.writeBytes(HexTool.toBytes(endBytes));
+        return p;
     }
 
     private static String partyOperation(InPacket p, IntFunction<String> names) {
