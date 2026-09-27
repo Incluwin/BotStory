@@ -546,6 +546,17 @@ Every live phase uses the `maple-client` skill (cua) and two clients on one PC (
 Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after P2b in parallel with P3-P5; P6b after P6; P7 after P2b + P4 + P6's death policy; P8 after P7.
 
 **P0: Checkpoint, probes and measurement**
+
+> **Done 2026-09-27. Results are in [BOT_MANAGEMENT_P0_RESULTS.md](BOT_MANAGEMENT_P0_RESULTS.md).** What changes downstream:
+> - **Merge (probe 1).** A partied client sends op 3 on accept, so the merge works.
+> - **Make-room (probe 12).** At 6/6 the client refuses to invite locally. Make-room is only the Crew window's "Make room for…", or the friend invites the owner into their party.
+> - **Roster item (probe 2).** It opens by double-click in the inventory, not from a hotkey.
+> - **Crew window speaker (probe 5).** It is speaker 2 (your own avatar) or the Bulletin Board 9040011. Never send speaker bit 0x04: it crashes the client.
+> - **Imitated portraits (probe 4).** They need a per-viewer Player NPC spawn before the look packet, which crashes the client otherwise.
+> - **No in-place refresh (probe 6).** A second NPC_TALK while a window is open disconnects the client.
+> - **Trade (probe 13)** and **two clients on one PC (probe 10)** work.
+> - **Budget v1.** 5 companions per human, 2 live bench per owner and 8 server-wide, a 12-bot expedition burst, and a 300-Agent ceiling until the scheduler is re-measured after the resupply-loop fix.
+> - **Deferred probes:** 3 to P1.5/P3, 8 to P9, 9 to P7, 11 to P1.
 - **Goal:** Freeze a known baseline, answer the client unknowns that decide which surfaces are possible, and measure Agent cost against the decision 20 target before choosing any cap.
 - **Deliverables:**
   - (a) *Only with the user's explicit approval (decision 1):* commit the uncommitted living-world UI and the kaentake sources to branches, record the deployed Kaentake.dll hash against build/Release, and do no DLL rebuild or deploy. Record the known failing tests.
