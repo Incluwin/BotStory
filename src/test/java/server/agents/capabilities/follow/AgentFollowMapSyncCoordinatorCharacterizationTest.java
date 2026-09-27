@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.movement.AgentGroundingService;
+import server.agents.capabilities.movement.AgentIdlePhysicsService;
 import server.agents.capabilities.movement.AgentMovementPoseService;
 import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.integration.AgentMapGatewayRuntime;
@@ -30,11 +31,11 @@ import static org.mockito.Mockito.when;
 
 /**
  * Characterizes the cross-map follow warp as production wires it: the public
- * {@link AgentFollowMapSyncCoordinator#syncFollowMap(AgentRuntimeEntry, Character, Character)} (:18-30, called
+ * {@link AgentFollowMapSyncCoordinator#syncFollowMap(AgentRuntimeEntry, Character, Character)} (:19-32, called
  * from AgentLiveTickGateRuntime:83 and AgentMovementOnlyModeCoordinator:52) builds the hooks from
- * AgentGroundingService::findGroundPoint and AgentMapGatewayRuntime.map()::changeMap and hands them to
- * {@link AgentFollowMapSyncService#syncFollowMap} (:31-51). The grounding, pose and reset statics and the map
- * gateway are mocked.
+ * AgentGroundingService::findGroundPoint, AgentMapGatewayRuntime.map()::changeMap and
+ * AgentIdlePhysicsService::tickPhysicsOnly and hands them to {@link AgentFollowMapSyncService#syncFollowMap}
+ * (:33-59). The grounding, pose, reset and physics statics and the map gateway are mocked.
  */
 class AgentFollowMapSyncCoordinatorCharacterizationTest {
     private final MapGateway gateway = mock(MapGateway.class);
@@ -43,6 +44,7 @@ class AgentFollowMapSyncCoordinatorCharacterizationTest {
     private MockedStatic<AgentMapGatewayRuntime> gatewayRuntime;
     private MockedStatic<AgentMovementPoseService> pose;
     private MockedStatic<AgentMovementStateResetService> reset;
+    private MockedStatic<AgentIdlePhysicsService> physics;
 
     @BeforeEach
     void mockRuntimes() {
@@ -51,10 +53,12 @@ class AgentFollowMapSyncCoordinatorCharacterizationTest {
         gatewayRuntime.when(AgentMapGatewayRuntime::map).thenReturn(gateway);
         pose = mockStatic(AgentMovementPoseService.class);
         reset = mockStatic(AgentMovementStateResetService.class);
+        physics = mockStatic(AgentIdlePhysicsService.class);
     }
 
     @AfterEach
     void closeRuntimes() {
+        physics.close();
         reset.close();
         pose.close();
         gatewayRuntime.close();
@@ -75,7 +79,7 @@ class AgentFollowMapSyncCoordinatorCharacterizationTest {
 
         assertTrue(AgentFollowMapSyncCoordinator.syncFollowMap(entry, agent, anchor));
 
-        // syncFollowMap:43-47 grounds the anchor's current position one pixel up and :49 warps there with the
+        // syncFollowMap:50-54 grounds the anchor's current position one pixel up and :56 warps there with the
         // gateway's plain changeMap; no portal is looked up and changeMapNear (CosmicMapGateway:59-81) is unused
         grounding.verify(() -> AgentGroundingService.findGroundPoint(destination, new Point(840, 149)));
         pose.verify(() -> AgentMovementPoseService.idleOnGround(entry, agent));
@@ -90,28 +94,31 @@ class AgentFollowMapSyncCoordinatorCharacterizationTest {
     }
 
     @Test
-    void followerIsWarpedToTheAnchorsInstanceMapWithoutAnyEventCheck() {
+    void unregisteredFollowerHoldsAtTheEntranceInsteadOfEnteringTheAnchorsInstanceMap() {
         // KPQ stage 1: the owner is registered in the event instance, the companion is not
         MapleMap town = map(103000000);
         MapleMap instanceStage = map(103000800);
         Character agent = character(town, 103000000, new Point(10, 10));
         Character anchor = character(instanceStage, 103000800, new Point(-200, 100));
-        when(anchor.getEventInstance()).thenReturn(mock(EventInstanceManager.class));
+        EventInstanceManager kpq = mock(EventInstanceManager.class);
+        when(anchor.getEventInstance()).thenReturn(kpq);
         when(agent.getEventInstance()).thenReturn(null);
-        when(instanceStage.getEventInstance()).thenReturn(mock(EventInstanceManager.class));
+        when(instanceStage.getEventInstance()).thenReturn(kpq);
+        AgentRuntimeEntry entry = following(agent);
 
-        assertTrue(AgentFollowMapSyncCoordinator.syncFollowMap(following(agent), agent, anchor));
+        // the tick is consumed, so the companion neither warps nor walks toward the anchor's coordinates
+        assertTrue(AgentFollowMapSyncCoordinator.syncFollowMap(entry, agent, anchor));
 
-        // the guards at syncFollowMap:35-38 are mode, anchor, changing-maps and map id only. With no ground
-        // point (:45-47) the anchor's own position is used. The production gateway
-        // (CosmicMapGateway.changeMap:53 -> Character.changeMap(MapleMap, Point), Character.java:1677-1691)
-        // re-resolves the target by id through getWarpMap (:1556-1567, :1681), so an Agent with no event
-        // instance lands in the channel's ordinary copy of 103000800.
-        verify(gateway).changeMap(agent, instanceStage, new Point(-200, 100));
+        // mayWarpInto (syncFollowMap:45, AgentFollowMapSyncService:66-76) sees that 103000800 belongs to an
+        // instance the Agent is not registered in. A warp would re-resolve the id through the Agent's getWarpMap
+        // (Character.java:1556-1567) into the channel's ordinary copy, so :46-48 hold it on the entrance map with
+        // physics only instead.
+        physics.verify(() -> AgentIdlePhysicsService.tickPhysicsOnly(entry, agent));
+        verify(gateway, never()).changeMap(any(), any(), any());
         verify(gateway, never()).changeMapNear(any(), any(), any());
-        verify(anchor, never()).getEventInstance();
-        verify(agent, never()).getEventInstance();
-        verify(instanceStage, never()).getEventInstance();
+        grounding.verifyNoInteractions();
+        pose.verifyNoInteractions();
+        reset.verifyNoInteractions();
     }
 
     private static AgentRuntimeEntry following(Character agent) {

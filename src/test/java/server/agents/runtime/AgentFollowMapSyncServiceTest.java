@@ -116,7 +116,8 @@ class AgentFollowMapSyncServiceTest {
                     counters.changedMap.set(map);
                     counters.changedPosition.set(new Point(point));
                 },
-                entry -> counters.resets.incrementAndGet());
+                entry -> counters.resets.incrementAndGet(),
+                (entry, agent) -> counters.holds.incrementAndGet());
     }
 
     private static AgentRuntimeEntry entry(Character agent) {
@@ -143,6 +144,7 @@ class AgentFollowMapSyncServiceTest {
         private final AtomicInteger idleGrounds = new AtomicInteger();
         private final AtomicInteger mapChanges = new AtomicInteger();
         private final AtomicInteger resets = new AtomicInteger();
+        private final AtomicInteger holds = new AtomicInteger();
         private final AtomicReference<Point> groundQuery = new AtomicReference<>();
         private final AtomicReference<MapleMap> changedMap = new AtomicReference<>();
         private final AtomicReference<Point> changedPosition = new AtomicReference<>();
@@ -156,6 +158,7 @@ class AgentFollowMapSyncServiceTest {
             assertEquals(1, idleGrounds.get());
             assertEquals(1, mapChanges.get());
             assertEquals(1, resets.get());
+            assertEquals(0, holds.get());
         }
 
         private void assertNoSideEffects() {
@@ -163,6 +166,7 @@ class AgentFollowMapSyncServiceTest {
             assertEquals(0, idleGrounds.get());
             assertEquals(0, mapChanges.get());
             assertEquals(0, resets.get());
+            assertEquals(0, holds.get());
         }
     }
 }
