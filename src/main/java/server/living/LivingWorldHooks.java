@@ -4,6 +4,7 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.life.Monster;
+import server.living.roster.CompanionPartyRouter;
 import server.maps.MapleMap;
 
 import java.util.Set;
@@ -177,6 +178,37 @@ public final class LivingWorldHooks {
             return world.dialogue().onCharacterClicked(clicker, target);
         } catch (RuntimeException failure) {
             log.warn("living world characterClicked hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
+     * A party invite by name (op 4), answered before anything is spawned. {@code invited} is the online character
+     * of that name or null. The stock invite runs while the living world is disabled.
+     */
+    public static CompanionPartyRouter.Route partyInvite(Character inviter, Character invited, String name) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || inviter == null) {
+            return CompanionPartyRouter.Route.STOCK;
+        }
+        try {
+            return new CompanionPartyRouter(world).invite(inviter, invited, name);
+        } catch (RuntimeException failure) {
+            log.warn("living world partyInvite hook failed", failure);
+            return CompanionPartyRouter.Route.STOCK;
+        }
+    }
+
+    /** True when {@code target} is one of {@code owner}'s roster companions. */
+    public static boolean ownsCompanion(Character owner, Character target) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || owner == null || target == null) {
+            return false;
+        }
+        try {
+            return world.directory().ownerOfCharacter(target.getId()) == owner.getId();
+        } catch (RuntimeException failure) {
+            log.warn("living world ownsCompanion hook failed", failure);
             return false;
         }
     }

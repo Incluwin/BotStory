@@ -1054,17 +1054,52 @@ public class Client extends ChannelInboundHandlerAdapter {
             chrp.setOnline(false);
             wserv.updateParty(party.getId(), PartyOperation.LOG_ONOFF, chrp);
             if (party.getLeader().getId() == idz && map != null) {
-                PartyCharacter lchr = null;
-                for (PartyCharacter pchr : party.getMembers()) {
-                    if (pchr != null && pchr.getId() != idz && (lchr == null || lchr.getLevel() <= pchr.getLevel()) && map.getCharacterById(pchr.getId()) != null) {
-                        lchr = pchr;
-                    }
-                }
+                PartyCharacter lchr = successor(party, idz, this instanceof BotClient, map);
                 if (lchr != null) {
                     wserv.updateParty(party.getId(), PartyOperation.CHANGE_LEADER, lchr);
                 }
             }
         }
+    }
+
+    /**
+     * The next leader when the leader logs out (docs/BOT_MANAGEMENT_PLAN.md P1): the highest-level human on its map,
+     * else the highest-level human online elsewhere. A bot only takes over from a bot, and only with no human online;
+     * a human leader with no human left online stays leader while offline.
+     */
+    static PartyCharacter successor(Party party, int leaverId, boolean leaverIsBot, MapleMap map) {
+        PartyCharacter humanOnMap = null;
+        PartyCharacter humanElsewhere = null;
+        PartyCharacter botOnMap = null;
+        for (PartyCharacter pchr : party.getMembers()) {
+            Character member = pchr == null || pchr.getId() == leaverId || !pchr.isOnline() ? null : pchr.getPlayer();
+            if (member == null) {
+                continue;
+            }
+            boolean onMap = map.getCharacterById(pchr.getId()) != null;
+            if (member.getClient() instanceof BotClient) {
+                if (onMap && outranks(pchr, botOnMap)) {
+                    botOnMap = pchr;
+                }
+            } else if (onMap) {
+                if (outranks(pchr, humanOnMap)) {
+                    humanOnMap = pchr;
+                }
+            } else if (outranks(pchr, humanElsewhere)) {
+                humanElsewhere = pchr;
+            }
+        }
+        if (humanOnMap != null) {
+            return humanOnMap;
+        }
+        if (humanElsewhere != null) {
+            return humanElsewhere;
+        }
+        return leaverIsBot ? botOnMap : null;
+    }
+
+    private static boolean outranks(PartyCharacter candidate, PartyCharacter best) {
+        return best == null || best.getLevel() <= candidate.getLevel();
     }
 
     private void removePlayer(World wserv, boolean serverTransition) {

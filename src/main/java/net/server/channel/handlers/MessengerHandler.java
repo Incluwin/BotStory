@@ -21,12 +21,10 @@
 */
 package net.server.channel.handlers;
 
+import client.BotClient;
 import client.Character;
 import client.Client;
 import net.AbstractPacketHandler;
-import server.agents.runtime.AgentInteractionRuntime;
-import server.agents.runtime.AgentLifecycleService;
-import server.agents.capabilities.party.AgentPartyLifecycleService;
 import net.packet.InPacket;
 import net.server.coordinator.world.InviteCoordinator;
 import net.server.coordinator.world.InviteCoordinator.InviteResult;
@@ -35,6 +33,7 @@ import net.server.coordinator.world.InviteCoordinator.InviteType;
 import net.server.world.Messenger;
 import net.server.world.MessengerCharacter;
 import net.server.world.World;
+import server.living.LivingWorldHooks;
 import tools.PacketCreator;
 
 public final class MessengerHandler extends AbstractPacketHandler {
@@ -89,7 +88,18 @@ public final class MessengerHandler extends AbstractPacketHandler {
                         } else if (messenger.getMembers().size() < 3) {
                             input = p.readString();
                             Character target = c.getChannelServer().getPlayerStorage().getCharacterByName(input);
-                            if (target != null) {
+                            if (target != null && target.getClient() instanceof BotClient) {
+                                // a bot cannot answer an invite: only the inviter's own loaded companion joins, at once
+                                if (target.getMessenger() == null && LivingWorldHooks.ownsCompanion(player, target)) {
+                                    int position = messenger.getLowestPosition();
+                                    MessengerCharacter companion = new MessengerCharacter(target, position);
+                                    target.setMessenger(messenger);
+                                    target.setMessengerPosition(position);
+                                    world.joinMessenger(messenger.getId(), companion, target.getName(), companion.getChannel());
+                                } else {
+                                    c.sendPacket(PacketCreator.messengerNote(input, 4, 0));
+                                }
+                            } else if (target != null) {
                                 if (target.getMessenger() == null) {
                                     if (InviteCoordinator.createInvite(InviteType.MESSENGER, c.getPlayer(), messenger.getId(), target.getId())) {
                                         target.sendPacket(PacketCreator.messengerInvite(c.getPlayer().getName(), messenger.getId()));
@@ -104,13 +114,7 @@ public final class MessengerHandler extends AbstractPacketHandler {
                                 if (world.find(input) > -1) {
                                     world.messengerInvite(c.getPlayer().getName(), messenger.getId(), input, c.getChannel());
                                 } else {
-                                    AgentLifecycleService.AgentSpawnResult spawnResult =
-                                            AgentInteractionRuntime.spawnAgentForLeader(player, input);
-                                    if (spawnResult.success()) {
-                                        AgentPartyLifecycleService.joinAgentToLeaderParty(player, spawnResult.agent());
-                                    } else {
-                                        c.sendPacket(PacketCreator.messengerNote(input, 4, 0));
-                                    }
+                                    c.sendPacket(PacketCreator.messengerNote(input, 4, 0));
                                 }
                             }
                         } else {
