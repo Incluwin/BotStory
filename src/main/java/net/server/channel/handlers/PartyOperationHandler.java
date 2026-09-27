@@ -37,6 +37,8 @@ import net.server.world.World;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
+import server.living.LivingWorldHooks;
+import server.living.roster.CompanionPartyRouter;
 import tools.PacketCreator;
 
 import java.util.List;
@@ -79,7 +81,17 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
             case 4: { // invite
                 String name = p.readString();
                 Character invited = world.getPlayerStorage().getCharacterByName(name);
+                // the living world answers for companions, Residents and citizens before anything is spawned
+                CompanionPartyRouter.Route route = LivingWorldHooks.partyInvite(player, invited, name);
+                if (route == CompanionPartyRouter.Route.ANSWERED) {
+                    break;
+                }
+                party = player.getParty(); // the router may have made a starter party
                 if (invited == null) {
+                    if (party != null && party.getMembers().size() >= 6) {
+                        c.sendPacket(PacketCreator.partyStatusMessage(17));
+                        break;
+                    }
                     AgentLifecycleService.AgentSpawnResult spawnResult =
                             AgentInteractionRuntime.spawnAgentForLeader(player, name);
                     if (spawnResult.success()) invited = spawnResult.agent();
@@ -97,8 +109,11 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                             if (InviteCoordinator.createInvite(InviteType.PARTY, player, party.getId(), invited.getId())) {
                                 invited.sendPacket(PacketCreator.partyInvite(player));
                                 if (invited.getClient() instanceof BotClient) {
+                                    // ACCEPT: the living world already said yes (own companion, willing citizen)
                                     AgentPartyQuestLobbyRuntime.InviteDecision decision =
-                                            AgentPartyQuestLobbyRuntime.decidePartyInvite(invited, player);
+                                            route == CompanionPartyRouter.Route.ACCEPT
+                                                    ? AgentPartyQuestLobbyRuntime.InviteDecision.NOT_LOBBY_WAITER
+                                                    : AgentPartyQuestLobbyRuntime.decidePartyInvite(invited, player);
                                     if (decision == AgentPartyQuestLobbyRuntime.InviteDecision.DELAY_ACCEPT
                                             && AgentPartyQuestLobbyRuntime.schedulePartyInviteResponse(
                                             invited, player, party.getId())) {
@@ -141,7 +156,20 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
             }
             case 6: { // change leader
                 int newLeader = p.readInt();
+                if (party == null || party.getLeaderId() != player.getId()) {
+                    break;
+                }
                 PartyCharacter newLeadr = party.getMemberById(newLeader);
+                if (newLeadr == null) {
+                    break;
+                }
+                Character candidate = newLeadr.getPlayer();
+                if (candidate != null && candidate.getClient() instanceof BotClient) {
+                    // a bot never leads a party with a human in it
+                    c.sendPacket(PacketCreator.getWhisperReceive(candidate.getName(),
+                            candidate.getClient().getChannel() - 1, false, "nah, you lead"));
+                    break;
+                }
                 world.updateParty(party.getId(), PartyOperation.CHANGE_LEADER, newLeadr);
                 break;
             }

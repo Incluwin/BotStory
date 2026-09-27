@@ -21,6 +21,7 @@
  */
 package net.server.world;
 
+import client.BotClient;
 import client.Character;
 import client.Client;
 import config.YamlConfig;
@@ -59,9 +60,18 @@ public class Party {
 
     private final Lock lock = new ReentrantLock(true);
 
+    /** Created below level 10 for the creator's own companions (decision 9 (a), docs/BOT_MANAGEMENT_PLAN.md). */
+    private volatile boolean starter;
+
     public Party(int id, PartyCharacter chrfor) {
         this.leaderId = chrfor.getId();
         this.id = id;
+    }
+
+    /** A starter party takes no other human while its leader is below level 10. */
+    public boolean isStarterParty() {
+        PartyCharacter leader = starter ? getLeader() : null;
+        return leader != null && leader.getLevel() < 10;
     }
 
     public boolean containsMembers(PartyCharacter member) {
@@ -331,9 +341,18 @@ public class Party {
     }
 
     public static boolean createParty(Character player, boolean silentCheck) {
+        return createParty(player, silentCheck, false);
+    }
+
+    /**
+     * {@code forOwnCompanions}: every other member will be the creator's own companion (the companion-call path),
+     * so a player below level 10 may create it as a starter party (decision 9 (a), docs/BOT_MANAGEMENT_PLAN.md).
+     */
+    public static boolean createParty(Character player, boolean silentCheck, boolean forOwnCompanions) {
         Party party = player.getParty();
         if (party == null) {
-            if (player.getLevel() < 10 && !YamlConfig.config.server.USE_PARTY_FOR_STARTERS) {
+            boolean starter = player.getLevel() < 10 && !YamlConfig.config.server.USE_PARTY_FOR_STARTERS;
+            if (starter && !forOwnCompanions) {
                 player.sendPacket(PacketCreator.partyStatusMessage(10));
                 return false;
             } else if (player.getAriantColiseum() != null) {
@@ -343,6 +362,7 @@ public class Party {
 
             PartyCharacter partyplayer = new PartyCharacter(player);
             party = player.getWorldServer().createParty(partyplayer);
+            party.starter = starter;
             player.setParty(party);
             player.setMPC(partyplayer);
             player.getMap().addPartyMember(player, party.getId());
@@ -370,7 +390,11 @@ public class Party {
         if (party == null) {
             party = world.getParty(partyid);
             if (party != null) {
-                if (party.getMembers().size() < 6) {
+                if (party.isStarterParty() && !(player.getClient() instanceof BotClient)) {
+                    if (!silentCheck) {
+                        player.sendPacket(PacketCreator.partyStatusMessage(10));
+                    }
+                } else if (party.getMembers().size() < 6) {
                     PartyCharacter partyplayer = new PartyCharacter(player);
                     player.getMap().addPartyMember(player, party.getId());
 

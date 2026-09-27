@@ -53,10 +53,8 @@ class ClaimGuardBoundaryTest {
             "server/living/roster/RosterService.java spawn 1",
             "server/living/roster/RosterService.java join 1",
             "server/living/population/SocialFabric.java join 1",
-            // stock client handlers
+            // stock client handlers; op 4 asks CompanionPartyRouter first, so it loads only a plain Agent the inviter controls
             "net/server/channel/handlers/PartyOperationHandler.java spawn 1",
-            "net/server/channel/handlers/MessengerHandler.java spawn 1",
-            "net/server/channel/handlers/MessengerHandler.java join 1",
             "net/server/channel/handlers/WhisperHandler.java whisper 1",
             // GM tools, test fixtures and diagnostics (operator-run, administrators in practice)
             "server/agents/commands/AgentSpawnCommandExecutor.java spawn 1",
@@ -110,6 +108,7 @@ class ClaimGuardBoundaryTest {
         assertContains("server/agents/capabilities/dialogue/AgentChatRouteCoordinator.java", "!mayFollow(leader, target, entry)");
         assertContains("server/agents/commands/AgentLeaderTransferCoordinator.java", "AgentClaimGuard.isClaimed(agent.id())");
         assertContains("server/living/LivingWorld.java", "AgentClaimGuard.install(world.directory)");
+        assertContains("net/server/channel/handlers/PartyOperationHandler.java", "LivingWorldHooks.partyInvite(player, invited, name)");
     }
 
     private static int count(Pattern pattern, String source) {

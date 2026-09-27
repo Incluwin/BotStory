@@ -6,6 +6,7 @@ import net.server.coordinator.world.InviteCoordinator;
 import net.server.coordinator.world.InviteCoordinator.InviteResultType;
 import net.server.coordinator.world.InviteCoordinator.InviteType;
 import net.server.world.Party;
+import server.agents.auth.AgentClaimGuard;
 import server.agents.capabilities.movement.AgentChairService;
 import server.agents.capabilities.movement.AgentMovementPoseService;
 import server.agents.integration.AgentCharacterGatewayRuntime;
@@ -102,8 +103,10 @@ public final class AgentPartyQuestLobbyRuntime {
         if (lobby == null || !lobby.active() || lobby.paused() || member == null
                 || member.type() != AgentPartyQuestLobbySession.MemberType.AGENT
                 || member.role() != AgentPartyQuestLobbySession.MemberRole.LOOKING_FOR_PARTY) {
-            return AgentPartyQuestQueueRuntime.canAcceptInvite(agent, inviter)
-                    ? InviteDecision.DELAY_ACCEPT : InviteDecision.NOT_LOBBY_WAITER;
+            if (AgentPartyQuestQueueRuntime.canAcceptInvite(agent, inviter)) return InviteDecision.DELAY_ACCEPT;
+            // a companion (bench-live included), Resident or citizen answers only whom the host lets control it
+            return AgentClaimGuard.isClaimed(agent.getId()) && !AgentClaimGuard.mayControl(inviter, agent.getId())
+                    ? InviteDecision.REJECT : InviteDecision.NOT_LOBBY_WAITER;
         }
         if (!eligibleHuman(lobby, inviter) || agent.getMapId() != lobby.profile().mapId()
                 || !sameWorldAndChannel(inviter, agent)) return InviteDecision.REJECT;
