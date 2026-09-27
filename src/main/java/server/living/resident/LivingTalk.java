@@ -15,8 +15,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * A tiny NPC-window conversation for Residents: the client renders any NPC id we send, so a
  * Persona borrows a townsperson's portrait (plan 5.2) and quest text gets the familiar dialog
- * instead of chat bubbles. Pages first (Next / Prev), then one final prompt: OK, Yes/No or a
- * menu. Responses arrive through {@code NPCMoreTalkHandler} -> {@link #respond}.
+ * instead of chat bubbles. Pages first (Next / Prev), then one final prompt: OK, Yes/No,
+ * Accept/Decline (the quest-start window) or a menu. Responses arrive through {@code NPCMoreTalkHandler} -> {@link #respond}.
  */
 public final class LivingTalk {
     private static final Logger log = LoggerFactory.getLogger(LivingTalk.class);
@@ -24,7 +24,7 @@ public final class LivingTalk {
 
     public record Option(String label, Runnable action) { }
 
-    private enum Kind { OK, YES_NO, MENU }
+    private enum Kind { OK, YES_NO, ACCEPT_DECLINE, MENU }
 
     private final Character chr;
     private final int npcId;
@@ -86,6 +86,13 @@ public final class LivingTalk {
         return this;
     }
 
+    /** The window NPCs use to start a quest: Accept runs {@code accept}, Decline {@code decline}. */
+    public LivingTalk acceptDecline(String text, Runnable accept, Runnable decline) {
+        yesNo(text, accept, decline);
+        kind = Kind.ACCEPT_DECLINE;
+        return this;
+    }
+
     public LivingTalk menu(String text, List<Option> choices) {
         kind = Kind.MENU;
         promptText = text;
@@ -122,6 +129,7 @@ public final class LivingTalk {
             case OK -> client.sendPacket(PacketCreator.getNPCTalk(npcId, (byte) 0, promptText == null ? "" : promptText,
                     pages.isEmpty() ? "00 00" : "01 00", (byte) 0));
             case YES_NO -> client.sendPacket(PacketCreator.getNPCTalk(npcId, (byte) 1, promptText, "", (byte) 0));
+            case ACCEPT_DECLINE -> client.sendPacket(PacketCreator.getNPCTalk(npcId, (byte) 0x0C, promptText, "", (byte) 0));
             case MENU -> {
                 StringBuilder text = new StringBuilder(promptText == null ? "" : promptText);
                 for (int index = 0; index < options.size(); index++) {
@@ -186,7 +194,7 @@ public final class LivingTalk {
         }
         switch (kind) {
             case OK -> close();
-            case YES_NO -> {
+            case YES_NO, ACCEPT_DECLINE -> {
                 Runnable next = action == 1 ? onYes : onNo;
                 close();
                 if (next != null) {

@@ -130,7 +130,12 @@ public final class QuestLedger {
         if (quests.isEmpty()) {
             return false;
         }
-        Quest quest = quests.get(0);
+        offer(chr, persona, quests.get(0));
+        return true;
+    }
+
+    /** Pitches one quest the way an NPC does: the ask, then the client's Accept/Decline window. */
+    public void offer(Character chr, Persona persona, Quest quest) {
         offers.put(key(chr, persona), new Offer(quest.id(), System.currentTimeMillis()));
         List<String> lines = world.arcs().lines(persona, "questOffer." + quest.id());
         if (lines.isEmpty() && !quest.steps().isEmpty()) {
@@ -150,35 +155,36 @@ public final class QuestLedger {
             }
         }
         details.append("\r\n\r\n").append(rewardSummary(quest.rewards()));
-        Quest chosen = quest;
         LivingTalk.open(chr, ResidentDialogue.portraitOf(persona))
                 .say(pitch)
-                .say(details.toString())
-                .yesNo("Take it on?", () -> accept(chr, persona), () -> {
+                .acceptDecline(details.toString(), () -> accept(chr, persona), () -> {
                     offers.remove(key(chr, persona));
                     List<String> declined = world.arcs().lines(persona, "declined");
                     world.residents().reply(persona, chr, declined.isEmpty() ? "suit yourself." : pick(declined, chr));
                 })
                 .show();
-        chr.dropMessage(5, "[" + persona.name() + "] offers: " + chosen.title() + ". Say 'accept' to take it.");
-        return true;
+        chr.dropMessage(5, "[" + persona.name() + "] offers: " + quest.title() + ". Say 'accept' to take it.");
     }
 
+    /** The reward block in the client's own quest-window style (Quest scripts use the same icons). */
     private String rewardSummary(Reward reward) {
-        List<String> parts = new ArrayList<>();
+        StringBuilder out = new StringBuilder("#fUI/UIWindow.img/QuestIcon/4/0#\r\n");
+        for (ItemStack stack : reward.items()) {
+            out.append("\r\n#v").append(stack.itemId()).append("# ").append(stack.count()).append(" #t").append(stack.itemId()).append('#');
+        }
         if (reward.meso() > 0) {
-            parts.add(reward.meso() + " meso");
+            out.append("\r\n#fUI/UIWindow.img/QuestIcon/7/0# ").append(reward.meso()).append(" meso");
         }
         if (reward.exp() > 0) {
-            parts.add(reward.exp() + " exp");
-        }
-        for (ItemStack stack : reward.items()) {
-            parts.add(itemName(stack.itemId()) + (stack.count() > 1 ? " x" + stack.count() : ""));
+            out.append("\r\n#fUI/UIWindow.img/QuestIcon/8/0# ").append(reward.exp()).append(" exp");
         }
         if (reward.fame() != 0) {
-            parts.add(reward.fame() + " fame");
+            out.append("\r\n#fUI/UIWindow.img/QuestIcon/6/0# ").append(reward.fame()).append(" fame");
         }
-        return parts.isEmpty() ? "Reward: their gratitude." : "Reward: " + String.join(", ", parts) + ".";
+        if (reward.items().isEmpty() && reward.meso() <= 0 && reward.exp() <= 0 && reward.fame() == 0) {
+            out.append("\r\ntheir gratitude");
+        }
+        return out.toString();
     }
 
     public Quest pendingOffer(Character chr, Persona persona) {
@@ -205,6 +211,7 @@ public final class QuestLedger {
         QuestState state = new QuestState(chr.getId(), quest.id(), 0, 0, QuestStatus.ACTIVE, now, 0L,
                 previous == null ? 0 : previous.repeats());
         world.store().saveQuestState(state);
+        world.markers().forget(chr);
         world.questLog().started(chr, quest);
         world.store().event(chr.getId(), persona.id(), "quest.start", quest.id());
         List<String> lines = world.arcs().lines(persona, "questAccept." + quest.id());
@@ -285,6 +292,37 @@ public final class QuestLedger {
             }
         }
         return any;
+    }
+
+    /** True when {@link #turnIn} would move a quest forward right now (no side effects). */
+    public boolean readyToHandIn(Character chr, Persona persona) {
+        for (QuestState state : active(chr)) {
+            Quest quest = world.content().quest(state.questId());
+            Step step = quest == null ? null : quest.step(state.stepIndex());
+            if (step == null) {
+                continue;
+            }
+            if (step.type() == StepType.TALK_TO && persona.id().equals(step.persona())) {
+                return true;
+            }
+            if (!quest.persona().equals(persona.id())) {
+                continue;
+            }
+            boolean ready = switch (step.type()) {
+                case TALK -> true;
+                case DELIVER -> step.to().equals(persona.id())
+                        && (step.take() == null || countEligible(chr, quest, step.take().itemId()) >= step.take().count());
+                case REACH_LEVEL -> chr.getLevel() >= step.level();
+                case WAIT -> System.currentTimeMillis() - state.startedAtMs() >= step.hours() * 3_600_000L;
+                case PAY -> chr.getMeso() >= step.meso();
+                case GIVE_ITEM -> chr.getInventory(ItemConstants.getInventoryType(step.itemId())).countById(step.itemId()) >= step.count();
+                default -> false;
+            };
+            if (ready) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean deliver(Character chr, Persona persona, Quest quest, QuestState state, Step step) {
@@ -487,6 +525,7 @@ public final class QuestLedger {
                     countEligible(chr, quest, step.itemId())), QuestStatus.ACTIVE, state.startedAtMs(), 0L, state.repeats());
         }
         world.store().saveQuestState(updated);
+        world.markers().forget(chr);
         world.store().event(chr.getId(), quest.persona(), "quest.step", quest.id() + " -> " + step.id());
         describeStep(chr, quest, updated);
         if (step.type() == StepType.COLLECT_ITEM && updated.progress() >= step.count()) {
@@ -503,6 +542,7 @@ public final class QuestLedger {
         QuestState done = new QuestState(chr.getId(), quest.id(), state.stepIndex(), state.progress(),
                 QuestStatus.COMPLETED, state.startedAtMs(), now, state.repeats() + 1);
         world.store().saveQuestState(done);
+        world.markers().forget(chr);
         Reward reward = quest.rewards();
         if (reward.meso() > 0) {
             chr.gainMeso(reward.meso(), true);

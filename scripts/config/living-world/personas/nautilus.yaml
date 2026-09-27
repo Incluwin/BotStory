@@ -1,6 +1,7 @@
 # Nautilus cast: a crew that lost its captain. 6 residents, 1 recruitable (Kettle, for a special item), 1 arc.
 - id: kettle
   name: Kettle
+  look: { gender: male }
   title: "Bosun Without a Captain"
   job: BRAWLER
   level: { min: 30, max: 33 }
@@ -51,6 +52,7 @@
 
 - id: mae
   name: Mae
+  look: { gender: female }
   title: "Gunner"
   job: GUNSLINGER
   level: { min: 28, max: 31 }

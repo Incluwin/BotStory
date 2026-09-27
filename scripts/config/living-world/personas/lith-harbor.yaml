@@ -41,6 +41,7 @@
 
 - id: brannock
   name: Brannock
+  look: { gender: male }
   title: "Deckhand"
   job: WARRIOR
   level: { min: 13, max: 16 }
@@ -93,6 +94,7 @@
 
 - id: mirel
   name: Mirel
+  look: { gender: female }
   title: "Ship's Cook"
   job: BEGINNER
   level: { min: 15, max: 18 }
@@ -126,6 +128,7 @@
 
 - id: tobin
   name: Tobin
+  look: { gender: male }
   title: "Runaway Cabin Boy"
   job: BEGINNER
   level: { min: 9, max: 11 }
@@ -193,6 +196,7 @@
 
 - id: hadrik
   name: Hadrik
+  look: { gender: male }
   title: "Retired First Mate"
   job: FIGHTER
   level: { min: 30, max: 33 }
@@ -244,6 +248,7 @@
 
 - id: pim
   name: Pim
+  look: { gender: male }
   title: "Street Kid"
   job: BEGINNER
   level: { min: 6, max: 8 }

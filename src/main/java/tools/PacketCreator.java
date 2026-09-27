@@ -1384,6 +1384,21 @@ public class PacketCreator {
         return p;
     }
 
+    /** An NPC the server tracks outside the map's objects (e.g. a click target sent to one player). */
+    public static Packet spawnNPC(int objectId, int npcId, int x, int cy, int fh) {
+        OutPacket p = OutPacket.create(SendOpcode.SPAWN_NPC);
+        p.writeInt(objectId);
+        p.writeInt(npcId);
+        p.writeShort(x);
+        p.writeShort(cy);
+        p.writeBool(true);
+        p.writeShort(fh);
+        p.writeShort(x);
+        p.writeShort(x);
+        p.writeByte(1);
+        return p;
+    }
+
     public static Packet spawnNPCRequestController(NPC life, boolean miniMap) {
         OutPacket p = OutPacket.create(SendOpcode.SPAWN_NPC_REQUEST_CONTROLLER);
         p.writeByte(1);

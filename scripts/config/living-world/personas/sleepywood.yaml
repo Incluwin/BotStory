@@ -1,6 +1,7 @@
 # Sleepywood cast: the dungeon's toll. 5 residents, 2 recruitable (Thane the guide via an escort, Orrin the miner via a long chain), 1 arc.
 - id: thane
   name: Thane
+  look: { gender: male }
   title: "Dungeon Guide"
   job: CRUSADER
   level: { min: 40, max: 43 }
@@ -51,6 +52,7 @@
 
 - id: orrin
   name: Orrin
+  look: { gender: male }
   title: "Tunnel Miner"
   job: PAGE
   level: { min: 36, max: 39 }
@@ -99,6 +101,7 @@
 
 - id: wilhelmina
   name: Wilhelmina
+  look: { gender: female }
   title: "Hotel Keeper"
   job: BEGINNER
   level: { min: 30, max: 30 }
@@ -128,6 +131,7 @@
 
 - id: hesper
   name: Hesper
+  look: { gender: male }
   title: "Hermit of the Roots"
   job: BEGINNER
   level: { min: 30, max: 30 }

@@ -10,8 +10,10 @@ import server.living.config.Content.Step;
 import server.living.config.Content.StepType;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -53,6 +55,19 @@ public final class ContentLint {
                 } else if (!arc.persona().equals(persona.id())) {
                     out.add("ERROR " + where + ": arc '" + arc.id() + "' belongs to persona " + arc.persona());
                 }
+            }
+            Content.Look look = persona.look();
+            if (look.gender() != null && !look.gender().equals("male") && !look.gender().equals("female")) {
+                out.add("ERROR " + where + ": look.gender must be male or female, not '" + look.gender() + "'");
+            }
+            if (look.skin() > 11 || look.skin() < -1) {
+                out.add("ERROR " + where + ": look.skin " + look.skin() + " is not a skin color (0-11)");
+            }
+            if (look.face() != 0 && (look.face() < 20000 || look.face() >= 22000)) {
+                out.add("ERROR " + where + ": look.face " + look.face() + " is not a face id (20000-21999)");
+            }
+            if (look.hair() != 0 && (look.hair() < 30000 || look.hair() >= 35000)) {
+                out.add("ERROR " + where + ": look.hair " + look.hair() + " is not a hair id (30000-34999)");
             }
             if (persona.loadout() != null && content.loadout(persona.loadout()) == null) {
                 out.add("ERROR " + where + ": loadout '" + persona.loadout() + "' not found");
@@ -271,7 +286,36 @@ public final class ContentLint {
                 }
             }
         }
+        for (Content.Loadout loadout : content.loadouts().values()) {
+            for (Map.Entry<String, List<Integer>> slot : loadout.outfit().entrySet()) {
+                List<Integer> prefixes = OUTFIT_SLOTS.get(slot.getKey());
+                if (prefixes == null) {
+                    out.add("ERROR loadouts.yaml loadout " + loadout.id() + ": unknown outfit slot '" + slot.getKey()
+                            + "' (use " + String.join(", ", OUTFIT_SLOTS.keySet()) + ")");
+                    continue;
+                }
+                for (int itemId : slot.getValue()) {
+                    if (itemId != 0 && !prefixes.contains(itemId / 10000)) {
+                        out.add("ERROR loadouts.yaml loadout " + loadout.id() + ": outfit " + slot.getKey() + " item " + itemId
+                                + " is not a " + slot.getKey() + " item");
+                    }
+                }
+            }
+        }
         return out;
+    }
+
+    /** Outfit slot -> item id prefixes (id / 10000) that belong in it; 0 in a pool means nothing. */
+    private static final Map<String, List<Integer>> OUTFIT_SLOTS = new LinkedHashMap<>();
+
+    static {
+        OUTFIT_SLOTS.put("hat", List.of(100));
+        OUTFIT_SLOTS.put("top", List.of(104, 105));
+        OUTFIT_SLOTS.put("bottom", List.of(106));
+        OUTFIT_SLOTS.put("shoes", List.of(107));
+        OUTFIT_SLOTS.put("gloves", List.of(108));
+        OUTFIT_SLOTS.put("cape", List.of(110));
+        OUTFIT_SLOTS.put("weapon", java.util.stream.IntStream.rangeClosed(130, 149).boxed().toList()); // not cash weapons (170)
     }
 
     /** Client quest ids are shorts; stock v83 stops below 30000, so the living world owns 30000-32767. */

@@ -15,6 +15,7 @@ import server.living.config.LivingContent;
 import server.living.phrases.PhraseMatcher;
 import server.living.quest.QuestLedger;
 import server.living.quest.QuestLog;
+import server.living.quest.QuestMarkers;
 import server.living.resident.ResidentDialogue;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchLedger;
@@ -42,6 +43,7 @@ public final class LivingWorld {
     private final ArcService arcs;
     private final QuestLedger quests;
     private final QuestLog questLog;
+    private final QuestMarkers markers;
     private final ContractService contracts;
     private final RosterService roster;
     private final BenchLedger bench;
@@ -60,6 +62,7 @@ public final class LivingWorld {
         this.arcs = new ArcService(this);
         this.quests = new QuestLedger(this);
         this.questLog = new QuestLog(this);
+        this.markers = new QuestMarkers(this);
         this.roster = new RosterService(this);
         this.contracts = new ContractService(this);
         this.bench = new BenchLedger(this);
@@ -104,6 +107,7 @@ public final class LivingWorld {
         LivingWorld world = new LivingWorld(config, content);
         world.phrases.reload();
         world.arcs.loadState();
+        world.residents.syncLooks();
         server.agents.auth.AgentAuthorityService.installOperatorGrant(world.roster::hasCompanions);
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.residents::tick,
@@ -116,6 +120,14 @@ public final class LivingWorld {
                 60_000L, 60_000L));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.benchSessions::tick,
                 120_000L, 120_000L));
+        if (config.QUEST_MARKER_PULSE_MS > 0) {
+            world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.markers::tick,
+                    config.QUEST_MARKER_PULSE_MS, config.QUEST_MARKER_PULSE_MS));
+            if (config.QUEST_MARKER_HITBOX_NPC > 0) {
+                world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.markers::trackHitboxes,
+                        config.QUEST_MARKER_HITBOX_TRACK_MS, config.QUEST_MARKER_HITBOX_TRACK_MS));
+            }
+        }
         instance = world;
         log.info("Living world started: {} (world {} channel {}, content {})", content.census(), config.WORLD,
                 config.CHANNEL, Path.of(config.CONTENT_DIR).toAbsolutePath());
@@ -191,6 +203,10 @@ public final class LivingWorld {
 
     public QuestLog questLog() {
         return questLog;
+    }
+
+    public QuestMarkers markers() {
+        return markers;
     }
 
     public QuestLedger quests() {

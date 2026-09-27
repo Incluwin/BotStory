@@ -35,9 +35,11 @@ public final class LivingWorldHooks {
 
     /** Any character (human or bot) reached a new level; citizens react and journal it. */
     public static void levelUp(Character chr) {
-        if (LivingWorld.get() == null) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null) {
             return;
         }
+        world.markers().forget(chr);
         server.living.population.PopulationHooks.levelUp(chr);
     }
 
@@ -56,6 +58,7 @@ public final class LivingWorldHooks {
         }
         try {
             world.quests().onItemGained(chr, itemId);
+            world.markers().forget(chr);
             server.living.population.PopulationHooks.itemGained(chr, itemId, quantity);
         } catch (RuntimeException failure) {
             log.warn("living world itemGained hook failed", failure);
@@ -69,6 +72,8 @@ public final class LivingWorldHooks {
         }
         try {
             world.quests().onMapEntered(chr, map.getId());
+            world.markers().forget(chr);
+            world.markers().enteredMap(chr);
             world.residents().onPlayerPresence(chr, map);
         } catch (RuntimeException failure) {
             log.warn("living world mapEntered hook failed", failure);
@@ -126,6 +131,7 @@ public final class LivingWorldHooks {
         }
         try {
             world.roster().onOwnerLogout(chr);
+            world.markers().loggedOut(chr);
         } catch (RuntimeException failure) {
             log.warn("living world logout hook failed", failure);
         }
@@ -158,6 +164,41 @@ public final class LivingWorldHooks {
             server.living.population.PopulationHooks.died(chr);
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);
+        }
+    }
+
+    /** A player double-clicked a character. True when it was a Resident and its NPC window opened instead of character info. */
+    public static boolean characterClicked(Character clicker, Character target) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || clicker == null || target == null) {
+            return false;
+        }
+        try {
+            return world.dialogue().onCharacterClicked(clicker, target);
+        } catch (RuntimeException failure) {
+            log.warn("living world characterClicked hook failed", failure);
+            return false;
+        }
+    }
+
+    /** An NPC click on a quest marker's hitbox; true when it was one (the Resident's menu opens instead). */
+    public static boolean markerClicked(Character clicker, int objectId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || clicker == null) {
+            return false;
+        }
+        try {
+            if (!world.markers().isHitbox(clicker, objectId)) {
+                return false;
+            }
+            Character resident = world.markers().hitboxOwner(clicker, objectId);
+            if (resident == null || !world.dialogue().onCharacterClicked(clicker, resident)) {
+                clicker.sendPacket(tools.PacketCreator.enableActions());
+            }
+            return true;
+        } catch (RuntimeException failure) {
+            log.warn("living world markerClicked hook failed", failure);
+            return false;
         }
     }
 

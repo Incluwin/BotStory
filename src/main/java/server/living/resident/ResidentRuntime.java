@@ -76,6 +76,7 @@ public final class ResidentRuntime {
 
     private final LivingWorld world;
     private final ResidentProvisioner provisioner;
+    private final ResidentLooks looks = new ResidentLooks();
     private final Map<String, Session> sessions = new ConcurrentHashMap<>();
     private final Map<Integer, String> personaByCharacter = new ConcurrentHashMap<>();
     /** Agent character ids known not to be personas (spawnbot companions, ambient pool), so kills skip the DB. */
@@ -160,8 +161,16 @@ public final class ResidentRuntime {
         if (id > 0) {
             personaByCharacter.put(id, persona.id());
             notPersona.remove(id);
+            looks.apply(persona, id);
         }
         return id;
+    }
+
+    /** Writes every provisioned persona's look to its character (those not loaded right now). */
+    public void syncLooks() {
+        for (Persona persona : world.content().personas().values()) {
+            looks.apply(persona, world.store().personaState(persona.id()).characterId());
+        }
     }
 
     // ---- speech --------------------------------------------------------------------------
@@ -325,6 +334,7 @@ public final class ResidentRuntime {
         sessions.put(persona.id(), session);
         personaByCharacter.put(characterId, persona.id());
         shapeIfNeeded(session, agent);
+        dress(session.persona, agent);
         applySlot(session, map, slot, now);
         log.info("Resident {} ({}) materialized in {} {}", persona.id(), persona.name(), persona.homeTown(),
                 spot == null ? "(town life)" : "at " + spot.x + "," + spot.y);
@@ -333,8 +343,7 @@ public final class ResidentRuntime {
 
     private void shapeIfNeeded(Session session, Character agent) {
         LivingStore.PersonaState state = world.store().personaState(session.persona.id());
-        Chapter chapter = world.arcs().currentChapter(session.persona);
-        String loadoutId = chapter != null && chapter.loadout() != null ? chapter.loadout() : session.persona.loadout();
+        String loadoutId = currentLoadoutId(session.persona);
         int wanted = ResidentShaper.RECIPE_VERSION * 1000 + Math.abs(loadoutId == null ? 0 : loadoutId.hashCode() % 1000);
         if (state.shapedVersion() == wanted) {
             return;
@@ -344,6 +353,20 @@ public final class ResidentRuntime {
         world.store().savePersonaState(state.withCharacter(session.characterId).withShaped(wanted));
         world.store().event(0, session.persona.id(), "persona.shaped", "level " + agent.getLevel() + " job " + agent.getJob()
                 + (loadoutId == null ? "" : " loadout " + loadoutId));
+    }
+
+    /** The persona's loadout, or its arc chapter's while that chapter overrides it. */
+    private String currentLoadoutId(Persona persona) {
+        Chapter chapter = world.arcs().currentChapter(persona);
+        return chapter != null && chapter.loadout() != null ? chapter.loadout() : persona.loadout();
+    }
+
+    private void dress(Persona persona, Character agent) {
+        try {
+            ResidentWardrobe.dress(agent, persona, world.content().loadout(currentLoadoutId(persona)));
+        } catch (RuntimeException failure) {
+            log.warn("Resident {}: dressing failed", persona.id(), failure);
+        }
     }
 
     private void maintain(Session session, MapleMap map, RoutineSlot slot, long now) {
@@ -454,9 +477,19 @@ public final class ResidentRuntime {
             Persona current = world.content().persona(session.persona.id());
             if (current == null || !current.homeTown().equals(session.persona.homeTown())) {
                 standby(session, "content reloaded");
+            } else if (!wearsLook(session.agent(), looks.resolve(current))) {
+                standby(session, "look changed"); // reloads from the database with the new look
+            } else {
+                dress(current, session.agent());
             }
         }
         retryAfterMs.clear();
+        syncLooks();
+    }
+
+    private static boolean wearsLook(Character agent, ResidentLooks.Resolved look) {
+        return agent == null || (agent.getGender() == look.gender() && agent.getSkinColor().getId() == look.skin()
+                && agent.getFace() == look.face() && agent.getHair() == look.hair());
     }
 
     // ---- helpers -------------------------------------------------------------------------

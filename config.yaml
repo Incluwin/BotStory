@@ -740,6 +740,18 @@ living_world:
     # true once MapleEdit has shipped the living-world Quest.wz entries (tools\living-world-questlog.bat, then
     # MapleEdit/app/living_world_quests.py + deploy); otherwise the client would list nameless quests
     QUEST_LOG_MIRROR: false
+    # quest icons replayed over Residents, only for the player they concern: something to take / something to hand in.
+    # The Custom.wz paths are head-height copies of the NPC icons (MapleEdit/app/living_world_markers.py).
+    QUEST_MARKER_AVAILABLE: "Custom/UI/UIWindow.img/QuestMarker/available"
+    QUEST_MARKER_READY: "Custom/UI/UIWindow.img/QuestMarker/ready"
+    QUEST_MARKER_PULSE_MS: 1100
+    QUEST_MARKER_REFRESH_MS: 10000
+    # Clicking a marker opens the Resident's menu: an invisible NPC the icon's size (written by
+    # MapleEdit/app/living_world_portraits.py) is spawned under it for that player only. 0 = not clickable.
+    # The client hit-tests an NPC as standing on its position, so LIFT raises it from the feet to the icon.
+    QUEST_MARKER_HITBOX_NPC: 9970999
+    QUEST_MARKER_HITBOX_LIFT: 72
+    QUEST_MARKER_HITBOX_TRACK_MS: 250
     JEV_PER_PLAYER_PER_DAY: 60
     JEV_PERSONA_COOLDOWN_MS: 3000
     JEV_ANSWER_CACHE_MS: 600000

@@ -1,6 +1,7 @@
 # Henesys cast: hunters and the guild that failed. 10 residents, 3 recruitable (Fenna, Dorran, Ilse), 2 arcs.
 - id: fenna
   name: Fenna
+  look: { gender: female }
   title: "Hunter of the Boar Road"
   job: HUNTER
   level: { min: 24, max: 27 }
@@ -50,6 +51,7 @@
 
 - id: dorran
   name: Dorran
+  look: { gender: male }
   title: "Last of the Sable Hunters"
   job: FIGHTER
   level: { min: 33, max: 36 }
@@ -102,6 +104,7 @@
 
 - id: ilse
   name: Ilse
+  look: { gender: female }
   title: "Field Medic"
   job: CLERIC
   level: { min: 31, max: 34 }
@@ -150,6 +153,7 @@
 
 - id: marrow
   name: Marrow
+  look: { gender: male }
   title: "Old Bowmaster"
   job: RANGER
   level: { min: 44, max: 47 }
@@ -273,6 +277,7 @@
 
 - id: quill
   name: Quill
+  look: { gender: male }
   title: "Wandering Storyteller"
   job: BEGINNER
   level: { min: 17, max: 19 }

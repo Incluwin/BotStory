@@ -7,6 +7,7 @@ import server.ItemInformationProvider;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.config.Content.StepType;
 import server.living.phrases.PhraseMatcher;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
@@ -45,7 +46,7 @@ public final class ResidentDialogue {
     private static final Pattern ASK_ABOUT = Pattern.compile("^(tell me about|who is|what about|whats with|know anything about|heard about) (\\w+)$");
     private static final Pattern TALK = Pattern.compile("^(talk|lets talk|menu|options|speak|chat|talk to me|can we talk|got a minute|a word)$");
 
-    /** Portrait NPCs per town for personas that do not name their own. */
+    /** Borrowed townsperson portraits for personas with neither portraitNpcId nor a generated one (portrait-npc-ids.yaml). */
     private static final Map<String, int[]> PORTRAITS = Map.of(
             "lith-harbor", new int[] {1002000, 1002001, 1002002, 1002003, 1002005},
             "henesys", new int[] {1010100, 1012003, 1012106, 1012108, 1012109},
@@ -58,6 +59,11 @@ public final class ResidentDialogue {
     public static int portraitOf(Persona persona) {
         if (persona.portraitNpcId() > 0) {
             return persona.portraitNpcId();
+        }
+        LivingWorld world = LivingWorld.get();
+        int ownLook = world == null ? 0 : world.content().portraitNpcId(persona.id());
+        if (ownLook > 0) {
+            return ownLook;
         }
         int[] town = PORTRAITS.getOrDefault(persona.homeTown(), new int[] {9010000});
         return town[Math.floorMod(persona.id().hashCode(), town.length)];
@@ -312,17 +318,32 @@ public final class ResidentDialogue {
         return true;
     }
 
+    /** Double-clicking a Resident opens its NPC window, as clicking an NPC does; companions keep the character info window. */
+    public boolean onCharacterClicked(Character clicker, Character target) {
+        if (AgentPresence.isAgent(clicker) || !AgentPresence.isAgent(target)) {
+            return false;
+        }
+        Persona persona = world.residents().personaOf(target);
+        if (persona == null || world.roster().isOwned(persona.id())) {
+            return false;
+        }
+        openMenu(clicker, persona);
+        return true;
+    }
+
     /** The structured conversation: what this persona can do for the player right now. */
     public void openMenu(Character speaker, Persona persona) {
         world.bonds().bond(speaker, persona);
         List<LivingTalk.Option> options = new ArrayList<>();
-        if (!world.quests().available(speaker, persona).isEmpty()) {
-            options.add(new LivingTalk.Option("Got any work for me?", () -> world.quests().offer(speaker, persona)));
+        for (var quest : world.quests().available(speaker, persona)) {
+            options.add(new LivingTalk.Option("#b" + quest.title() + "#k", () -> world.quests().offer(speaker, persona, quest)));
         }
-        for (var state : world.quests().activeFrom(speaker, persona)) {
+        for (var state : world.quests().active(speaker)) {
             var quest = world.content().quest(state.questId());
-            if (quest != null) {
-                options.add(new LivingTalk.Option("About " + quest.title() + "...", () -> {
+            var step = quest == null ? null : quest.step(state.stepIndex());
+            boolean sentHere = step != null && step.type() == StepType.TALK_TO && persona.id().equals(step.persona());
+            if (quest != null && (quest.persona().equals(persona.id()) || sentHere)) {
+                options.add(new LivingTalk.Option("#d" + quest.title() + " (in progress)#k", () -> {
                     if (!world.quests().turnIn(speaker, persona)) {
                         LivingTalk.open(speaker, portraitOf(persona))
                                 .ok(quest.title() + ": " + world.quests().describe(quest.step(state.stepIndex()), state)).show();

@@ -26,6 +26,24 @@ public class LivingWorldConfig {
     public int RESIDENT_BUBBLE_MAX_CHARS = 70;
     /** Mirror quest state into the client quest log (needs the Quest.wz patch from tools\living-world-questlog.bat shipped). */
     public boolean QUEST_LOG_MIRROR = false;
+    /** Effect path drawn over a Resident for a player who can take one of its quests; empty = none. */
+    public String QUEST_MARKER_AVAILABLE = "Custom/UI/UIWindow.img/QuestMarker/available";
+    /** Effect path drawn over a Resident for a player who can hand something in to it; empty = none. */
+    public String QUEST_MARKER_READY = "Custom/UI/UIWindow.img/QuestMarker/ready";
+    /** How often a marker is replayed; about one animation length so it reads as continuous. 0 = markers off. */
+    public int QUEST_MARKER_PULSE_MS = 1100;
+    /** How long a player's marker states are reused before being recomputed (quest events recompute sooner). */
+    public int QUEST_MARKER_REFRESH_MS = 10000;
+    /** Invisible NPC placed under each marker, for that player only, so clicking the icon opens the Resident's menu; 0 = icons are not clickable. */
+    public int QUEST_MARKER_HITBOX_NPC = 9970999;
+    /**
+     * Px from the Resident's feet up to where the hitbox NPC stands. The client hit-tests an NPC as its
+     * image standing on its position (a raised origin is ignored), so the NPC itself is lifted: 72 puts the
+     * 46 px hitbox over the icon, whose centre living_world_markers.py draws 95 px up. 0 = on the foothold.
+     */
+    public int QUEST_MARKER_HITBOX_LIFT = 72;
+    /** How often hitboxes catch up with walking Residents. */
+    public int QUEST_MARKER_HITBOX_TRACK_MS = 250;
 
     // TypeSafe budget for Resident conversation
     /** Free-form judgments a player may trigger per day before Residents only understand exact phrases. */

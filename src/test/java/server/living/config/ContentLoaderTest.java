@@ -93,10 +93,10 @@ class ContentLoaderTest {
         LivingContent content = ContentLoader.load(ROOT);
         Persona broken = new Persona("ghost", "Ghost", "", "BEGINNER", new Content.LevelBand(1, 1), Content.Strength.ROOKIE,
                 "no-such-loadout", "relaxed-v1", null, "atlantis", List.of(), true, null, List.of("nope"), "no-arc",
-                List.of(), List.of(), java.util.Map.of(), -1, -1, -1, List.of(), 0, "test");
+                List.of(), List.of(), java.util.Map.of(), -1, -1, -1, List.of(), 0, Content.Look.NONE, "test");
         LivingContent withBroken = new LivingContent(
                 java.util.Map.of("ghost", broken), content.quests(), content.contracts(), content.arcs(), content.rumors(),
-                content.loadouts(), content.phrases(), content.questLogIds(), List.of());
+                content.loadouts(), content.phrases(), content.questLogIds(), content.portraitNpcIds(), List.of());
         List<String> findings = ContentLint.check(withBroken);
         assertTrue(ContentLint.hasErrors(findings));
         assertTrue(findings.stream().anyMatch(f -> f.contains("unknown home town")));
@@ -113,5 +113,22 @@ class ContentLoaderTest {
         assertTrue(failure.getMessage().startsWith("t.yaml.level.min"));
         assertEquals(7, root.get("missing").integer(7));
         assertTrue(root.get("level").get("nothing").isMissing());
+    }
+
+    @Test
+    void lintCatchesOutfitItemsInTheWrongSlot() {
+        LivingContent content = ContentLoader.load(ROOT);
+        java.util.Map<String, Content.Loadout> loadouts = new java.util.LinkedHashMap<>(content.loadouts());
+        loadouts.put("bad-outfit", new Content.Loadout("bad-outfit", List.of(), List.of(), java.util.Map.of(),
+                java.util.Map.of("hat", List.of(0, 1002026, 1041000), "sleeves", List.of(1040002),
+                        "weapon", List.of(1312004, 1702000))));
+        LivingContent withBad = new LivingContent(content.personas(), content.quests(), content.contracts(), content.arcs(),
+                content.rumors(), loadouts, content.phrases(), content.questLogIds(), content.portraitNpcIds(), List.of());
+        List<String> findings = ContentLint.check(withBad);
+        assertTrue(findings.stream().anyMatch(f -> f.contains("outfit hat item 1041000 is not a hat item")), findings.toString());
+        assertTrue(findings.stream().anyMatch(f -> f.contains("unknown outfit slot 'sleeves'")), findings.toString());
+        assertFalse(findings.stream().anyMatch(f -> f.contains("1002026")), findings.toString());
+        assertTrue(findings.stream().anyMatch(f -> f.contains("outfit weapon item 1702000 is not a weapon item")), findings.toString());
+        assertFalse(findings.stream().anyMatch(f -> f.contains("1312004")), findings.toString());
     }
 }

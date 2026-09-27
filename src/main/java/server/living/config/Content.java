@@ -72,11 +72,17 @@ public final class Content {
                           int maxLag,
                           List<Integer> giftItemIds,
                           int portraitNpcId,
+                          Look look,
                           String file) {
         public List<String> lines(String intent) {
             List<String> lines = dialogue.get(intent);
             return lines == null ? List.of() : lines;
         }
+    }
+
+    /** Appearance overrides; unset fields (null gender, skin -1, face/hair 0) are picked per persona id. */
+    public record Look(String gender, int skin, int face, int hair) {
+        public static final Look NONE = new Look(null, -1, 0, 0);
     }
 
     public record Requirements(int minLevel, int maxLevel, BondStage minBondStage, List<String> flags,
@@ -184,7 +190,12 @@ public final class Content {
                         String setsFlagOnListeners,
                         String file) { }
 
-    public record Loadout(String id, List<Integer> equipIds, List<ItemStack> consumables, Map<String, Integer> stats) { }
+    /**
+     * {@code outfit}: slot (hat, top, bottom, shoes, gloves, cape, weapon) -> pool of item ids a wearer picks one from
+     * (0 = nothing in that slot); see ResidentWardrobe.
+     */
+    public record Loadout(String id, List<Integer> equipIds, List<ItemStack> consumables, Map<String, Integer> stats,
+                          Map<String, List<Integer>> outfit) { }
 
     public record Phrase(String canonical, List<String> aliases, List<String> prefixes, List<String> tails,
                          Map<String, String> slots, String status, String reply) { }

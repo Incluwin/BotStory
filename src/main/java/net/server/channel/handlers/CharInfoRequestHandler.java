@@ -37,7 +37,9 @@ public final class CharInfoRequestHandler extends AbstractPacketHandler {
         MapObject target = c.getPlayer().getMap().getMapObject(cid);
         if (target != null) {
             if (target instanceof Character player) {
-
+                if (server.living.LivingWorldHooks.characterClicked(c.getPlayer(), player)) {
+                    return; // a Resident answers with its NPC window, like clicking an NPC
+                }
                 if (c.getPlayer().getId() != player.getId()) {
                     player.exportExcludedItems(c);
                 }

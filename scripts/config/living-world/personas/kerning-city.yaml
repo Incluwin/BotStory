@@ -49,6 +49,7 @@
 
 - id: lorca
   name: Lorca
+  look: { gender: female }
   title: "The Fence"
   job: BEGINNER
   level: { min: 30, max: 30 }
@@ -87,6 +88,7 @@
 
 - id: jinx
   name: Jinx
+  look: { gender: female }
   title: "Nobody in Particular"
   job: ASSASSIN
   level: { min: 34, max: 37 }
@@ -232,6 +234,7 @@
 
 - id: nico
   name: Nico
+  look: { gender: male }
   title: "Pickpocket"
   job: BEGINNER
   level: { min: 9, max: 11 }
@@ -289,6 +292,7 @@
 
 - id: dario
   name: Dario
+  look: { gender: male }
   title: "Detective's Assistant"
   job: BEGINNER
   level: { min: 24, max: 26 }

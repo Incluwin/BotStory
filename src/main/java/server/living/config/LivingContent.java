@@ -27,6 +27,8 @@ public final class LivingContent {
     private final List<Phrase> phrases;
     /** quest id -> client quest-log id (Quest.wz), from quest-log-ids.yaml; empty until exported. */
     private final Map<String, Integer> questLogIds;
+    /** persona id -> NPC id showing that Resident's own look (Npc.wz/String.wz), from portrait-npc-ids.yaml. */
+    private final Map<String, Integer> portraitNpcIds;
     private final List<String> warnings;
 
     LivingContent(Map<String, Persona> personas,
@@ -37,6 +39,7 @@ public final class LivingContent {
                   Map<String, Loadout> loadouts,
                   List<Phrase> phrases,
                   Map<String, Integer> questLogIds,
+                  Map<String, Integer> portraitNpcIds,
                   List<String> warnings) {
         this.personas = Collections.unmodifiableMap(new LinkedHashMap<>(personas));
         Map<String, Persona> byName = new LinkedHashMap<>();
@@ -51,11 +54,12 @@ public final class LivingContent {
         this.loadouts = Collections.unmodifiableMap(new LinkedHashMap<>(loadouts));
         this.phrases = List.copyOf(phrases);
         this.questLogIds = Collections.unmodifiableMap(new LinkedHashMap<>(questLogIds));
+        this.portraitNpcIds = Collections.unmodifiableMap(new LinkedHashMap<>(portraitNpcIds));
         this.warnings = List.copyOf(warnings);
     }
 
     public static LivingContent empty() {
-        return new LivingContent(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), List.of(), Map.of(), List.of());
+        return new LivingContent(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), List.of(), Map.of(), Map.of(), List.of());
     }
 
     public Map<String, Integer> questLogIds() {
@@ -65,6 +69,16 @@ public final class LivingContent {
     /** The Quest.wz id that mirrors this quest in the client quest log, or 0 when none is assigned. */
     public int questLogId(String questId) {
         Integer id = questId == null ? null : questLogIds.get(questId);
+        return id == null ? 0 : id;
+    }
+
+    public Map<String, Integer> portraitNpcIds() {
+        return portraitNpcIds;
+    }
+
+    /** The NPC id rendered from this Resident's own look, or 0 when none is generated yet. */
+    public int portraitNpcId(String personaId) {
+        Integer id = personaId == null ? null : portraitNpcIds.get(personaId);
         return id == null ? 0 : id;
     }
 

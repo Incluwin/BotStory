@@ -45,23 +45,48 @@ public final class AgentEquipmentService {
     }
 
     static boolean equipPreferredWeapon(Character agent, int itemId, InventoryGateway inventory) {
+        return equipInSlot(agent, itemId, (short) -11, inventory);
+    }
+
+    /** Wears an owned equip in one slot (including the cosmetic cash slots, -1xx) when the agent can wear it there. */
+    public static boolean equipInSlot(Character agent, int itemId, short slot) {
+        boolean equipped = equipInSlot(agent, itemId, slot, AgentInventoryGatewayRuntime.inventory());
+        refreshReservations(agent);
+        return equipped;
+    }
+
+    static boolean equipInSlot(Character agent, int itemId, short slot, InventoryGateway inventory) {
         if (agent == null || itemId <= 0 || inventory == null) {
             return false;
         }
-        Item equipped = agent.getInventory(InventoryType.EQUIPPED).getItem((short) -11);
+        Item equipped = agent.getInventory(InventoryType.EQUIPPED).getItem(slot);
         if (equipped != null && equipped.getItemId() == itemId) {
             return true;
         }
         Inventory equipInventory = agent.getInventory(InventoryType.EQUIP);
         for (Item item : equipInventory.list()) {
             if (item instanceof Equip equip && equip.getItemId() == itemId && equip.getPosition() > 0
-                    && inventory.canWearEquipment(agent, equip, (short) -11)) {
-                inventory.moveItem(agent, InventoryType.EQUIP, equip.getPosition(), (short) -11, (short) 1);
-                Item selected = agent.getInventory(InventoryType.EQUIPPED).getItem((short) -11);
+                    && inventory.canWearEquipment(agent, equip, slot)) {
+                inventory.moveItem(agent, InventoryType.EQUIP, equip.getPosition(), slot, (short) 1);
+                Item selected = agent.getInventory(InventoryType.EQUIPPED).getItem(slot);
                 return selected != null && selected.getItemId() == itemId;
             }
         }
         return false;
+    }
+
+    /** Moves whatever is worn in a slot back to the equip inventory; true when the slot ends up empty. */
+    public static boolean clearSlot(Character agent, short slot) {
+        if (agent == null || agent.getInventory(InventoryType.EQUIPPED).getItem(slot) == null) {
+            return true;
+        }
+        short free = agent.getInventory(InventoryType.EQUIP).getNextFreeSlot();
+        if (free <= 0) {
+            return false;
+        }
+        AgentInventoryGatewayRuntime.inventory().moveItem(agent, InventoryType.EQUIPPED, slot, free, (short) 1);
+        refreshReservations(agent);
+        return agent.getInventory(InventoryType.EQUIPPED).getItem(slot) == null;
     }
 
     public static List<String> autoEquipDebug(Character agent) {

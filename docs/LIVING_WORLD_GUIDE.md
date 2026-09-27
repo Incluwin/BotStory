@@ -36,9 +36,16 @@ chat with their name anywhere in the line, or stand next to one and speak, or wh
 | `@quests` | your active resident quests and current step |
 | `@roster` / `@bond <name>` | companions; relationship and haul with one persona |
 | `Olwen talk` / `menu` | opens the persona's NPC window: work, quests in progress, travel, who are you |
+| double-click the Resident | the same NPC window (instead of character info); companions keep character info |
 
-Quest offers, completions, contract terms and `@quests` open a real NPC dialog window (the persona
-borrows a townsperson's portrait; set `portraitNpcId` on a persona to pick one). Progress messages
+Residents carry the NPC quest icons over their heads, per player: the lightbulb when that player
+can take one of its quests, the book when they can hand something in (`QuestMarkers`).
+
+Quest offers, completions, contract terms and `@quests` open a real NPC dialog window showing the
+Resident's own look and name (see Portraits below; until a Resident has one it borrows a
+townsperson's portrait, and `portraitNpcId` on a persona picks one explicitly). The menu lists
+each quest by name; an offer is the ask followed by the client's Accept/Decline quest window with
+the REWARD/MESO/EXP icons. Progress messages
 appear as pink system text; long chat replies arrive as whispers from the persona.
 Anything the regexes miss goes to the `resident-intent` Jev judge (budgeted per player per day)
 which either acts, hints (`looking for work? say 'quest'`) or lets the Resident shrug.
@@ -96,6 +103,39 @@ the persona's name). It takes one WZ patch:
 Leave the flag off until the WZ is shipped, or clients list nameless quests. The entries carry
 `lvmin 200` so the client never shows them as "available" - Residents offer them in person.
 
+### Quest markers
+
+The server replays the icon over a Resident as a foreign avatar effect every
+`QUEST_MARKER_PULSE_MS` (about one animation length), only to the players it concerns; states
+are cached per player for `QUEST_MARKER_REFRESH_MS` and recomputed after quest events, map
+changes, pickups and level-ups. The client anchors such effects at the feet, so the icons are
+head-height copies of `UI/UIWindow.img/QuestIcon/0` and `/2` in Custom.wz
+(`Custom/UI/UIWindow.img/QuestMarker/available|ready`), written by
+`MapleEdit/app/living_world_markers.py [--lift PX] --install` (backs the live Custom.wz up,
+installs it, regenerates the patch manifest; keep `kaentake/src/Custom.wz` in step). Setting
+`QUEST_MARKER_AVAILABLE`/`_READY` to the stock `UI/UIWindow.img/QuestIcon/0`/`2` works without
+Custom.wz but draws at the feet. Do not use `Effect/BasicEff.img/QuestAlert`: the v83 client
+crashes on it as an avatar effect.
+
+### Portraits
+
+The v83 NPC window can only draw an NPC (or the viewer's own avatar), so each Resident gets an NPC
+of its own: `MapleEdit/app/living_world_portraits.py` renders the Resident's character (skin, face,
+hair, visible equipment, standing pose) from Character.wz using its database look, and writes
+`Npc.wz <id>.img` (the render as `stand/0`) plus `String.wz Npc.img/<id>/name`. Ids start at
+9970000, never change once assigned and live in `portrait-npc-ids.yaml` next to the content, which
+the server reads (`!world reload` after a run). `--preview DIR` writes PNGs, `--only a,b --preview
+DIR` renders just those, `--install` backs up and replaces the live Npc.wz/String.wz and regenerates
+the patch manifest (Npc.wz is ~580 MB, so friends download it again after every run). It patches the
+live client files, not MapleEdit `out/`. Re-run after Residents' gear changes or after new
+Residents have materialized once (a persona without a character yet is skipped and keeps a
+borrowed portrait).
+
+Client rules found the hard way: every NPC name in String.wz needs an image in Npc.wz (a name
+alone makes the client quit seconds after entering the game), and an NPC image only in Custom.wz is
+not enough either. When adding a directory to a WZ with MapleEdit's writer, keep directories that
+have sub-directories last: its directory offsets assume that order.
+
 ## GM commands (`!world`, GM 5)
 
 `status`, `census`, `reload` (re-reads content, reports lint errors), `residents`,
@@ -136,6 +176,25 @@ Contracts: `offerWhen` (bond stage, flags, arc chapter), `price` (`meso`, `items
 `cooldownHoursAfterLeave`, `rejoinPrice`, `ownDropsPercent`). Personas: `benchToleranceDays`
 (0 = leaves after an hour on the bench, -1 = never), `paceGap`, `maxLag`, `giftItemIds`.
 
+Looks: `look: { gender: female|male, skin: 0-11, face: <id>, hair: <id> }`, every field optional.
+Unset fields get a pick that is stable for the persona id (natural skin tone, a regular face and
+hairstyle for the gender with an eye and hair color, from the server's Character.wz, which every
+client has); an unset gender is picked the same way, so set it wherever the writing says he or she.
+`ResidentLooks` writes the look to the character at startup, on `!world reload` (a materialized
+Resident whose look changed goes to standby and comes back with it) and when one is provisioned;
+re-run the portrait tool afterwards so the NPC window matches.
+
+Outfits: a loadout's `outfit:` maps slots (`hat`, `top`, `bottom`, `shoes`, `gloves`, `cape`, `weapon`) to pools
+of item ids; `0` means nothing in that slot and a `top` may be an overall (the bottom then stays empty).
+Each Resident walks every pool in an order that is stable for its persona id and wears the first item
+it can (its gender, and the game's job/level/stat check), so Residents sharing a loadout still dress
+differently. Cash (NX) items go into the cosmetic cash slots over the real gear and have no
+requirements. `ResidentWardrobe` dresses a Resident when it materializes and on `!world reload`;
+`loadouts` lint rejects unknown slots and items that do not belong in their slot. Re-run the portrait
+tool after changing pools (a Resident has to materialize once to be dressed). The townsfolk carry work tools (axe, knife, mop, broom, fish spear, frying pan, paint
+brush) from their `weapon` pool rather than swords; `weapon` takes regular weapons only (no cash covers), and a Resident given one discards its other weapons, since the
+Agent gear optimizer would otherwise switch back to whichever hits harder.
+
 Phrase packs: `canonical` must be a phrase the companion classifiers accept whole; `aliases`,
 `prefixes`, `tails`; `status: PLANNED` + `reply` answers deterministically for behaviours not
 wired yet. The longest explanation wins, then the more specific alias.
@@ -153,6 +212,8 @@ wired yet. The longest explanation wins, then the more specific alias.
 | roster, bench ledger, haul | `server.living.roster.*` |
 | arcs and rumors (deterministic rumor director: waiting listener, unheard, least performed) | `server.living.arc.*` |
 | MapleEdit page | `MapleEdit/app/routes_living.py`, `templates/living.html`, `static/js/living.js`; server side `AdminControlPort` `/runtime/living`, `/actions/living-reload` |
+| Resident portraits in the NPC window | `MapleEdit/app/living_world_portraits.py`, `portrait-npc-ids.yaml`, `ResidentDialogue.portraitOf` |
+| quest markers over Residents, click-to-talk | `server.living.quest.QuestMarkers`, `ResidentDialogue.onCharacterClicked` (via `CharInfoRequestHandler`), `MapleEdit/app/living_world_markers.py` |
 | client quest-log mirror and export | `server.living.quest.QuestLog`, `server.living.config.QuestLogExportMain`, `MapleEdit/app/living_world_quests.py` |
 | phrase packs and learned phrases | `server.living.phrases.PhraseMatcher` (installed into `AgentChatIntentRuntime`) |
 | commands | `client.command.commands.gm5.LivingWorldCommand`, `gm0.LivingQuestsCommand`, `gm0.LivingRosterCommand` |

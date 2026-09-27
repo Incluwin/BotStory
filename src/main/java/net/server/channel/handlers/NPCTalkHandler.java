@@ -51,6 +51,9 @@ public final class NPCTalkHandler extends AbstractPacketHandler {
         }
 
         int oid = p.readInt();
+        if (server.living.LivingWorldHooks.markerClicked(c.getPlayer(), oid)) {
+            return; // a Resident's quest icon: its menu opens, like double-clicking the Resident
+        }
         MapObject obj = c.getPlayer().getMap().getMapObject(oid);
         if (obj instanceof NPC npc) {
             if (YamlConfig.config.server.USE_DEBUG) {

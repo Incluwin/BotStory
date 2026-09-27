@@ -15,6 +15,7 @@ import server.living.config.Content.ItemStack;
 import server.living.config.Content.KillProof;
 import server.living.config.Content.LeaveRule;
 import server.living.config.Content.LevelBand;
+import server.living.config.Content.Look;
 import server.living.config.Content.Loadout;
 import server.living.config.Content.LootShare;
 import server.living.config.Content.OfferWhen;
@@ -51,6 +52,7 @@ import java.util.stream.Stream;
  * <pre>
  * personas/**.yaml   quests/**.yaml   contracts/**.yaml   arcs/**.yaml   rumors/**.yaml
  * loadouts.yaml      command-phrases.yaml      quest-log-ids.yaml (written by the quest-log export)
+ * portrait-npc-ids.yaml (written by MapleEdit/app/living_world_portraits.py)
  * </pre>
  * A file holds one object or a list of objects. Every parse error names file and path.
  */
@@ -70,6 +72,7 @@ public final class ContentLoader {
         Map<String, Loadout> loadouts = new LinkedHashMap<>();
         List<Phrase> phrases = new ArrayList<>();
         Map<String, Integer> questLogIds = new LinkedHashMap<>();
+        Map<String, Integer> portraitNpcIds = new LinkedHashMap<>();
         List<String> warnings = new ArrayList<>();
 
         for (Node node : documents(root.resolve("personas"))) {
@@ -112,12 +115,21 @@ public final class ContentLoader {
                 questLogIds.put(entry.getKey(), entry.getValue().integer());
             }
         }
-        LivingContent content = new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, warnings);
+        Path portraitFile = root.resolve(PORTRAIT_NPC_IDS_FILE);
+        if (Files.exists(portraitFile)) {
+            for (Map.Entry<String, Node> entry : read(portraitFile).get("ids").entries().entrySet()) {
+                portraitNpcIds.put(entry.getKey(), entry.getValue().integer());
+            }
+        }
+        LivingContent content = new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds,
+                portraitNpcIds, warnings);
         warnings.addAll(ContentLint.check(content));
-        return new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, warnings);
+        return new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, portraitNpcIds,
+                warnings);
     }
 
     public static final String QUEST_LOG_IDS_FILE = "quest-log-ids.yaml";
+    public static final String PORTRAIT_NPC_IDS_FILE = "portrait-npc-ids.yaml";
 
     // ---- files ---------------------------------------------------------------------------
 
@@ -213,7 +225,17 @@ public final class ContentLoader {
                 node.get("maxLag").integer(-1),
                 node.get("giftItemIds").integers(),
                 node.get("portraitNpcId").integer(0),
+                look(node.get("look")),
                 node.path());
+    }
+
+    static Look look(Node node) {
+        if (node.isMissing()) {
+            return Look.NONE;
+        }
+        String gender = node.get("gender").string(null);
+        return new Look(gender == null ? null : gender.toLowerCase(java.util.Locale.ROOT), node.get("skin").integer(-1),
+                node.get("face").integer(0), node.get("hair").integer(0));
     }
 
     static RoutineSlot routineSlot(Node slot) {
@@ -478,7 +500,11 @@ public final class ContentLoader {
         for (Map.Entry<String, Node> entry : node.get("stats").entries().entrySet()) {
             stats.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue().integer());
         }
-        return new Loadout(node.get("id").string(), node.get("equips").integers(), consumables, stats);
+        Map<String, List<Integer>> outfit = new LinkedHashMap<>();
+        for (Map.Entry<String, Node> entry : node.get("outfit").entries().entrySet()) {
+            outfit.put(entry.getKey().toLowerCase(Locale.ROOT), entry.getValue().integers());
+        }
+        return new Loadout(node.get("id").string(), node.get("equips").integers(), consumables, stats, outfit);
     }
 
     static Phrase phrase(Node node) {

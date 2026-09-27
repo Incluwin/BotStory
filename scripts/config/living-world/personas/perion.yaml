@@ -1,6 +1,7 @@
 # Perion cast: the guard that deserted. 8 residents, 2 recruitable (Garrick through his arc, Halvard for meso and a kill proof), 1 arc.
 - id: garrick
   name: Garrick
+  look: { gender: male }
   title: "Deserter of Perion"
   job: FIGHTER
   level: { min: 28, max: 32 }
@@ -56,6 +57,7 @@
 
 - id: yona
   name: Yona
+  look: { gender: female }
   title: "Smith"
   job: BEGINNER
   level: { min: 30, max: 30 }
@@ -92,6 +94,7 @@
 
 - id: tamsin
   name: Tamsin
+  look: { gender: female }
   title: "Guard Captain"
   job: PAGE
   level: { min: 38, max: 41 }

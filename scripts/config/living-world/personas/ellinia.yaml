@@ -1,6 +1,7 @@
 # Ellinia cast: what the archive hides. 8 residents, 2 recruitable (Casse early via a rare item, Lioren through the archive arc), 2 arcs.
 - id: wren
   name: Wren
+  look: { gender: female }
   title: "Archivist of the Upper Tree"
   job: BEGINNER
   level: { min: 28, max: 30 }
@@ -43,6 +44,7 @@
 
 - id: lioren
   name: Lioren
+  look: { gender: male }
   title: "Fire Reader"
   job: FP_WIZARD
   level: { min: 31, max: 34 }
@@ -94,6 +96,7 @@
 
 - id: casse
   name: Casse
+  look: { gender: female }
   title: "Ice Apprentice"
   job: IL_WIZARD
   level: { min: 21, max: 24 }
