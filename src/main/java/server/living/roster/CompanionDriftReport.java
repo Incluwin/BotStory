@@ -16,13 +16,20 @@ import java.util.Set;
  */
 public final class CompanionDriftReport {
     public enum Code {
-        /** ACTIVE row, companion loaded, but not a member of the owner's party. */
+        /**
+         * ACTIVE row, companion loaded, but not a member of the owner's party, or listed in it while
+         * its own party pointer (what EXP share and party HP read) names another party or none.
+         */
         ACTIVE_NOT_IN_PARTY,
         /** ACTIVE row, companion character not loaded. */
         ACTIVE_NOT_LOADED,
         /** BENCHED or AWAY row, yet the companion is a member of the owner's party. */
         IN_PARTY_NOT_ACTIVE,
-        /** ACTIVE row, companion loaded, but its runtime is registered to someone else (or to nobody). */
+        /**
+         * ACTIVE row, companion loaded, but its runtime is registered to someone else (or to nobody);
+         * or a BENCHED or AWAY row whose loaded runtime is still registered to the owner (the despawn
+         * failed, so it keeps following the owner and holding a scheduler slot).
+         */
         LEADER_MISMATCH,
         /** ACTIVE row, companion loaded on another channel than its owner. */
         CHANNEL_MISMATCH,
@@ -111,6 +118,10 @@ public final class CompanionDriftReport {
             if (inParty) {
                 out.add(drift(Code.IN_PARTY_NOT_ACTIVE, row, "row is " + row.state() + " but the companion is in the owner's party"));
             }
+            // A live bench session registers under the companion's own id, so it does not trip this.
+            if (live.loaded() && live.registeredLeaderId() == owner.id()) {
+                out.add(drift(Code.LEADER_MISMATCH, row, "row is " + row.state() + " but its runtime is still registered to the owner"));
+            }
             return;
         }
         if (!live.loaded()) {
@@ -119,6 +130,9 @@ public final class CompanionDriftReport {
         }
         if (!inParty) {
             out.add(drift(Code.ACTIVE_NOT_IN_PARTY, row, live.partyId() == 0 ? "companion has no party" : "companion is in party " + live.partyId()));
+        } else if (live.partyId() != owner.partyId()) {
+            out.add(drift(Code.ACTIVE_NOT_IN_PARTY, row, "party lists the companion but "
+                    + (live.partyId() == 0 ? "it has no party" : "its party is " + live.partyId())));
         }
         if (live.registeredLeaderId() != owner.id()) {
             out.add(drift(Code.LEADER_MISMATCH, row, live.registeredLeaderId() <= 0 ? "no Agent runtime holds the companion"

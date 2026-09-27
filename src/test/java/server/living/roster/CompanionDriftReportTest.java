@@ -78,6 +78,16 @@ class CompanionDriftReportTest {
     }
 
     @Test
+    void activeListedInThePartyWhileItsOwnPartyPointerDisagrees() {
+        CompanionDriftReport noPointer = CompanionDriftReport.of(owner(PARTY, COMPANION), 4,
+                List.of(new Companion(row(RosterState.ACTIVE, COMPANION), loaded(CHANNEL, 0, OWNER))), List.of());
+        assertEquals(List.of(Code.ACTIVE_NOT_IN_PARTY), codes(noPointer));
+        assertTrue(noPointer.drift().get(0).detail().contains("party lists the companion"));
+        assertEquals(List.of(Code.ACTIVE_NOT_IN_PARTY), codes(owner(PARTY, COMPANION), row(RosterState.ACTIVE, COMPANION), loaded(CHANNEL, 77, OWNER)),
+                "its pointer names another party");
+    }
+
+    @Test
     void activeRegisteredToSomeoneElseOrToNobody() {
         assertEquals(List.of(Code.LEADER_MISMATCH), codes(owner(PARTY, COMPANION), row(RosterState.ACTIVE, COMPANION), loaded(CHANNEL, PARTY, 2)));
         CompanionDriftReport unregistered = CompanionDriftReport.of(owner(PARTY, COMPANION), 4,
@@ -100,9 +110,22 @@ class CompanionDriftReportTest {
     @ParameterizedTest
     @EnumSource(value = RosterState.class, names = {"BENCHED", "AWAY"})
     void notActiveButStillInTheOwnersParty(RosterState state) {
-        assertEquals(List.of(Code.IN_PARTY_NOT_ACTIVE), codes(owner(PARTY, COMPANION), row(state, COMPANION), loaded(CHANNEL, PARTY, OWNER)));
+        assertEquals(List.of(Code.IN_PARTY_NOT_ACTIVE), codes(owner(PARTY, COMPANION), row(state, COMPANION), loaded(CHANNEL, PARTY, COMPANION)),
+                "a bench session registered to itself that never left the party");
+        assertEquals(List.of(Code.IN_PARTY_NOT_ACTIVE, Code.LEADER_MISMATCH),
+                codes(owner(PARTY, COMPANION), row(state, COMPANION), loaded(CHANNEL, PARTY, OWNER)), "neither the despawn nor the party leave happened");
         assertEquals(List.of(Code.IN_PARTY_NOT_ACTIVE), codes(owner(PARTY, COMPANION), row(state, COMPANION), Live.unloaded(-1)),
                 "an offline member still holds the party slot");
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = RosterState.class, names = {"BENCHED", "AWAY"})
+    void notActiveButStillRegisteredToTheOwner(RosterState state) {
+        CompanionDriftReport report = CompanionDriftReport.of(owner(PARTY), 4,
+                List.of(new Companion(row(state, COMPANION), loaded(CHANNEL, 0, OWNER))), List.of(new AgentRef(COMPANION, "Dorran")));
+        assertEquals(List.of(Code.LEADER_MISMATCH), codes(report), "the despawn failed: the runtime still follows the owner");
+        assertTrue(report.drift().get(0).detail().contains("still registered to the owner"));
+        assertFalse(report.clean());
     }
 
     @ParameterizedTest

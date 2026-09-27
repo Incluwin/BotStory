@@ -18,7 +18,6 @@ import server.living.LivingWorld;
 import server.living.population.CitizenSession;
 import server.living.population.Population;
 import server.living.resident.ResidentRuntime;
-import server.living.store.LivingStore.RosterEntry;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -137,6 +136,7 @@ final class AdminBudgetReader {
                 .num("overdueMs", probe.overdueMs(nowNanos))
                 .num("samples", probe.samples())
                 .num("periodMs", AdminTimerLagProbe.PERIOD_MS)
+                .num("rearms", probe.rearms())
                 .bool("running", probe.running());
         String diagnostics;
         try {
@@ -181,6 +181,11 @@ final class AdminBudgetReader {
         }
     }
 
+    /**
+     * Starts from the registry, so the work is bounded by live Agents and needs no roster query:
+     * a companion is a persona character registered under an online human (the persona lookup is
+     * an in-memory cache that only goes to the database on its first miss for an id).
+     */
     private static String agents() {
         Set<Integer> humans = new HashSet<>();
         for (World w : Server.getInstance().getWorlds()) {
@@ -188,7 +193,6 @@ final class AdminBudgetReader {
                 if (!(chr.getClient() instanceof BotClient)) humans.add(chr.getId());
             }
         }
-        Set<Integer> companionIds = new HashSet<>();
         Set<Integer> benchLiveIds = new HashSet<>();
         Set<Integer> residentIds = new HashSet<>();
         Set<Integer> citizenIds = new HashSet<>();
@@ -197,19 +201,7 @@ final class AdminBudgetReader {
         int citizensLoaded = 0;
         LivingWorld world = LivingWorld.get();
         if (world != null) {
-            List<RosterEntry> rows = new ArrayList<>(world.store().allActive());
-            rows.addAll(world.store().allBenched());
-            for (RosterEntry row : rows) {
-                int characterId = world.residents().characterIdOf(row.personaId());
-                if (characterId <= 0) continue;
-                // The registry cohort is the leader's id for leader-registered Agents (other cohorts may exceed int range).
-                long leader = AgentRuntimeRegistry.cohortIdForAgentCharacter(characterId);
-                if (world.benchSessions().live(row.personaId())) {
-                    benchLiveIds.add(characterId);
-                } else if (leader > 0 && leader <= Integer.MAX_VALUE && humans.contains((int) leader)) {
-                    companionIds.add(characterId); // roster-owned and registered under an online human
-                }
-            }
+            benchLiveIds.addAll(world.benchSessions().liveCharacterIds());
             benchLiveSessions = world.benchSessions().liveCount();
             for (ResidentRuntime.Session session : world.residents().sessions()) {
                 if (session.materialized()) residentIds.add(session.characterId);
@@ -224,9 +216,18 @@ final class AdminBudgetReader {
             citizensLoaded = population.presence().loadedCount();
         }
         List<Integer> active = new ArrayList<>();
+        Set<Integer> companionIds = new HashSet<>();
         for (AgentRuntimeEntry entry : AgentRuntimeRegistry.activeEntriesSnapshot()) {
             int id = AgentRuntimeIdentityRuntime.botId(entry);
-            if (id >= 0) active.add(id);
+            if (id < 0) continue;
+            active.add(id);
+            if (world == null || benchLiveIds.contains(id) || residentIds.contains(id) || citizenIds.contains(id)) continue;
+            // The registry cohort is the leader's id for leader-registered Agents (other cohorts may exceed int range).
+            long leader = AgentRuntimeRegistry.cohortIdForAgentCharacter(id);
+            if (leader > 0 && leader <= Integer.MAX_VALUE && humans.contains((int) leader)
+                    && world.residents().personaOfCharacterId(id) != null) {
+                companionIds.add(id); // a persona following an online human
+            }
         }
         AgentKinds kinds = AgentKinds.classify(active, companionIds, benchLiveIds, residentIds, citizenIds);
         return new AdminJson.Obj()

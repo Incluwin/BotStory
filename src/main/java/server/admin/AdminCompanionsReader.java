@@ -2,6 +2,7 @@ package server.admin;
 
 import client.BotClient;
 import client.Character;
+import client.Client;
 import net.server.Server;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
@@ -46,7 +47,8 @@ final class AdminCompanionsReader {
         for (World w : Server.getInstance().getWorlds()) {
             for (Character chr : w.getPlayerStorage().getAllCharacters()) {
                 if (isBot(chr)) continue;
-                List<RosterEntry> rows = living == null ? List.of() : living.store().roster(chr.getId());
+                // hasCompanions is an in-memory owners set, so humans without a roster cost no query.
+                List<RosterEntry> rows = living == null || !living.roster().hasCompanions(chr) ? List.of() : living.store().roster(chr.getId());
                 List<AgentRuntimeEntry> registered = AgentRuntimeRegistry.entriesForLeader(chr.getId());
                 if (rows.isEmpty() && registered.isEmpty()) continue;
                 CompanionDriftReport report = report(living, w, chr, rows, registered);
@@ -120,8 +122,9 @@ final class AdminCompanionsReader {
             bot = w.getPlayerStorage().getCharacterById(characterId); // loaded without an Agent runtime
         }
         if (bot == null) return Live.unloaded(leaderId);
+        Party botParty = bot.getParty(); // read once: a game thread may clear it between two calls
         return new Live(true, channelOf(bot), bot.getMapId(), bot.getHp(), bot.getMaxHp(),
-                bot.getParty() == null ? 0 : bot.getParty().getId(), leaderId);
+                botParty == null ? 0 : botParty.getId(), leaderId);
     }
 
     static String json(CompanionDriftReport report) {
@@ -168,6 +171,7 @@ final class AdminCompanionsReader {
     }
 
     private static int channelOf(Character chr) {
-        return chr.getClient() == null ? -1 : chr.getClient().getChannel();
+        Client client = chr.getClient();
+        return client == null ? -1 : client.getChannel();
     }
 }

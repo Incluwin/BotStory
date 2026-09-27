@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,9 +17,13 @@ class AdminTimerLagProbeTest {
     private final AtomicLong clock = new AtomicLong(1_000_000 * MS);
     private final List<Runnable> scheduled = new ArrayList<>();
     private final List<Long> delays = new ArrayList<>();
+    private final List<CompletableFuture<Void>> futures = new ArrayList<>();
     private final AdminTimerLagProbe probe = new AdminTimerLagProbe(clock::get, (task, delayMs) -> {
         scheduled.add(task);
         delays.add(delayMs);
+        CompletableFuture<Void> future = new CompletableFuture<>();
+        futures.add(future);
+        return future;
     });
 
     /** Lets the lane run the outstanding probe task {@code lateMs} after its intended start. */
@@ -98,6 +103,7 @@ class AdminTimerLagProbeTest {
                 throw new IllegalStateException("timers stopped");
             }
             accepted.add(task);
+            return new CompletableFuture<Void>();
         });
         fragile.ensureStarted();
         assertFalse(fragile.running());
@@ -106,5 +112,54 @@ class AdminTimerLagProbeTest {
         fragile.ensureStarted();
         assertTrue(fragile.running());
         assertEquals(1, accepted.size());
+    }
+
+    @Test
+    void rearmsWhenTimersDroppedTheQueuedTask() {
+        probe.ensureStarted();
+        scheduled.clear(); // TimerManager.stop() drained it: never runs, never cancelled
+        clock.addAndGet((AdminTimerLagProbe.PERIOD_MS + AdminTimerLagProbe.REARM_AFTER_MS) * MS);
+        probe.ensureStarted();
+        assertTrue(scheduled.isEmpty(), "exactly at the bound it is still just late");
+        assertEquals(AdminTimerLagProbe.REARM_AFTER_MS, probe.overdueMs(clock.get()));
+
+        clock.addAndGet(MS);
+        probe.ensureStarted();
+        assertEquals(1, scheduled.size(), "past the bound the chain is re-armed");
+        assertEquals(1L, probe.rearms());
+        assertEquals(0L, probe.overdueMs(clock.get()));
+        assertTrue(probe.running());
+        runLate(20);
+        assertEquals(20L, probe.lastLagMs());
+        assertEquals(1, scheduled.size(), "the re-armed chain keeps itself going");
+    }
+
+    @Test
+    void rearmsWhenTheOutstandingTaskIsDone() {
+        probe.ensureStarted();
+        futures.get(0).cancel(false);
+        probe.ensureStarted();
+        assertEquals(2, scheduled.size());
+        assertEquals(1L, probe.rearms());
+        probe.ensureStarted();
+        assertEquals(2, scheduled.size(), "a pending, on-time task is left alone");
+    }
+
+    @Test
+    void supersededTaskRecordsItsLagButDoesNotReschedule() {
+        probe.ensureStarted();
+        Runnable stalled = scheduled.remove(0);
+        long overdueMs = AdminTimerLagProbe.REARM_AFTER_MS + 1;
+        clock.addAndGet((AdminTimerLagProbe.PERIOD_MS + overdueMs) * MS);
+        probe.ensureStarted();
+        assertEquals(1, scheduled.size());
+
+        stalled.run(); // the lane recovers and runs the old task too
+        assertEquals(overdueMs, probe.lastLagMs(), "the real stall is still measured");
+        assertEquals(1, scheduled.size(), "only the current task reschedules");
+        runLate(0);
+        assertEquals(1, scheduled.size());
+        assertEquals(2L, probe.samples());
+        assertEquals(1L, probe.rearms());
     }
 }

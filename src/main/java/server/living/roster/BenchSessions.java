@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,6 +77,15 @@ public final class BenchSessions {
 
     public int liveCount() {
         return live.size();
+    }
+
+    /** Character ids of the live sessions (a copy), for the operator budget. */
+    public Set<Integer> liveCharacterIds() {
+        Set<Integer> ids = new HashSet<>();
+        for (Session session : live.values()) {
+            ids.add(session.characterId);
+        }
+        return ids;
     }
 
     /** True for roster rows the bench model governs: benched, or away on delegated work (plan 11.2). */

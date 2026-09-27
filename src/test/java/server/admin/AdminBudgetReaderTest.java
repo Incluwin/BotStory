@@ -90,7 +90,7 @@ class AdminBudgetReaderTest {
 
     @Test
     void timersSectionExposesTheLowPriorityProbe() throws Exception {
-        AdminTimerLagProbe probe = new AdminTimerLagProbe(() -> 0L, (task, delayMs) -> { });
+        AdminTimerLagProbe probe = new AdminTimerLagProbe(() -> 0L, (task, delayMs) -> null);
         probe.record(0L, 30_000_000L);
         JsonNode timers = parse(AdminBudgetReader.timers(probe, 30_000_000L));
         JsonNode lag = timers.get("lowPriorityLag");
@@ -99,6 +99,7 @@ class AdminBudgetReaderTest {
         assertEquals(0L, lag.get("overdueMs").asLong());
         assertEquals(1L, lag.get("samples").asLong());
         assertEquals(AdminTimerLagProbe.PERIOD_MS, lag.get("periodMs").asLong());
+        assertEquals(0L, lag.get("rearms").asLong());
         assertFalse(lag.get("running").asBoolean());
         assertTrue(timers.has("lanes"));
     }
