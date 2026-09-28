@@ -77,6 +77,7 @@ class ClaimGuardBoundaryTest {
             // the living world: roster calls, citizens forming their own parties, a willing citizen's delayed
             // accept, and the loads that materialize its own characters, each behind the lease and loaded checks
             "server/living/roster/RosterService.java spawn 1",
+            "server/living/roster/RosterService.java stationary 1", // the P1.5 walk-in: same ensureCanControl chain
             "server/living/roster/RosterService.java join 1",
             "server/living/roster/CompanionPartyRouter.java partyjoin 1",
             "server/living/roster/BenchSessions.java load 1",
