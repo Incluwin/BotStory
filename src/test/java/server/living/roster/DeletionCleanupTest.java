@@ -83,6 +83,7 @@ class DeletionCleanupTest {
         List<String> hires = new ArrayList<>();
         roster.installHiredHandRelease((ownerId, personaId, reason) -> hires.add(ownerId + " " + personaId + " " + reason));
         assertTrue(game.slots.reservation("vex") != null, "the errand held its seat");
+        game.annOnline = false; // a character is deleted at character select: nobody sees its companions go
 
         roster.ownerDeleted(ANN);
 

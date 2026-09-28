@@ -116,7 +116,9 @@ final class CompanionChannelFollow {
 
     /**
      * The owner is in on the new channel (on companion-ops, at login): each marked companion moves over, 1-3 s apart,
-     * and the fallback is due {@link #FALLBACK_MS} later. Returns the marked persona ids (empty with no change under way).
+     * and the fallback is due {@link #FALLBACK_MS} later. One loaded on the old channel after the change was noted (a
+     * call or a restore queued behind it, which still saw the old session) is marked now. Returns the marked persona
+     * ids (empty with no change under way).
      */
     Set<String> ownerArrived(Character owner) {
         int ownerId = owner.getId();
@@ -126,6 +128,13 @@ final class CompanionChannelFollow {
         }
         if (!transfer.arrived) {
             transfer.arrived = true;
+            for (RosterEntry entry : roster.store().roster(ownerId)) {
+                Character bot = CompanionSeatState.partyMember(entry.state()) ? roster.companion(entry) : null;
+                if (bot != null && !RosterService.sameChannel(owner, bot)) {
+                    transfer.marked.add(entry.personaId());
+                    transfer.pending.add(entry.personaId());
+                }
+            }
             long delayMs = 0L;
             for (String personaId : List.copyOf(transfer.marked)) {
                 delayMs += ThreadLocalRandom.current().nextLong(STAGGER_MIN_MS, STAGGER_MAX_MS + 1L);

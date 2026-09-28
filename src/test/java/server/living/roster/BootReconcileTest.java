@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.verify;
 import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.HENESYS_FIELD;
 import static server.living.roster.LifecycleHarness.KERNING;
@@ -27,7 +28,7 @@ import static server.living.roster.LifecycleHarness.PARTY_ID;
  * every companion that was out (ACTIVE, TRAVELLING, HOLD) is PARKED from now, in its old lineup order, and a PARKED one
  * whose grace had run out goes to its duty from its deadline; benched and away rows are untouched and nothing is
  * loaded. The auditor's drift classification is clean then, and again once the login path has walked the parked ones
- * back in.
+ * back in. The first login's whisper sums up only what the bench earned since the restart.
  */
 class BootReconcileTest {
     private final LifecycleHarness game = new LifecycleHarness();
@@ -139,6 +140,28 @@ class BootReconcileTest {
         }
         assertEquals(RosterState.BENCHED, game.row(olwen).state(), "the lineup is not called while others come back");
         assertTrue(report(PARTY_ID).clean(), String.valueOf(report(PARTY_ID).drift()));
+    }
+
+    @Test
+    void theFirstLoginAfterTheRestartSumsUpOnlyWhatTheBenchEarnedSinceTheRestart() {
+        game.store.seed(banked(game.row(sadie), 5_000L)); // banked before the restart
+        game.store.levels.put(905, 12); // 2,144 exp to its next level
+        game.roster().reconcileAtBoot();
+        game.store.seed(banked(game.row(sadie), 5_000L + 1_072L)); // half a level on its duty since
+        game.members.clear();
+        game.members.add(ANN);
+        game.annOnline = true;
+
+        game.roster().onOwnerLogin(game.ann);
+
+        verify(game.residents).whisper(sadie, game.ann, "while you were away: me +50% exp.");
+    }
+
+    private static RosterEntry banked(RosterEntry row, long exp) {
+        return new RosterEntry(row.characterId(), row.personaId(), row.state(), row.assignment(), row.assignmentItem(),
+                row.assignmentCount(), row.campMapId(), exp, row.haulMeso(), row.wagesPaidUntilMs(), row.recruitedAtMs(),
+                row.benchedAtMs(), row.lastLedgerAtMs(), row.farmSecondsToday(), row.farmDay(), row.etaAtMs(),
+                row.holdMapId(), row.parkedAtMs());
     }
 
     /** Ann's drift report as the auditor builds it, from the harness's party and registry. */

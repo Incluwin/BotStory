@@ -23,8 +23,9 @@ import static server.living.roster.LifecycleHarness.LITH;
  * Decision 8b, the instance logout handoff (docs/BOT_MANAGEMENT_PLAN.md flow 3 step 11, flow 7 step 4), as a seam:
  * companions cannot enter instances before P6, whose PQ service installs the runtime-leader move. Ann logs off inside
  * a run her friend Ben is still in: her companions committed to it finish it for Ben (their rows, their owner and their
- * commitments stay), and once the run ends for one (its commitment ends) it leaves Ben's party and parks, or walks back
- * in to Ann when she is online again. With no human of her party left in the run, no delegation installed, or a
+ * commitments stay), and once the run ends for one (its commitment ends) it leaves Ben's party and parks (the first says
+ * the goodbye nobody said at the logout), or walks back in to Ann when she is online again. With no human of her party
+ * left in the run, no delegation installed, or a
  * companion not committed to the run, they leave with her under stock eim rules and their commitments end.
  */
 class InstanceLogoutHandoffTest {
@@ -88,6 +89,28 @@ class InstanceLogoutHandoffTest {
         assertEquals(RosterState.PARKED, game.row(jinx).state());
         assertFalse(game.roster().inFlight(ANN, "hadrik"));
         assertTrue(game.timers.isEmpty(), "with Ann away nobody walks back in");
+    }
+
+    @Test
+    void withEveryoneFinishingTheRunTheFirstToLeaveItSaysTheGoodbye() {
+        game.roster().onOwnerLogout(game.ann, instance);
+        assertEquals(List.of(), game.partyChat, "all of them stay in the run: nobody has said it yet");
+        game.annOnline = false;
+
+        game.commitments.releaseKey(RUN);
+
+        assertEquals(List.of("Hadrik: gn!"), game.partyChat, "one goodbye, as they leave Ben's party");
+    }
+
+    @Test
+    void aGoodbyeSaidAtTheLogoutIsNotSaidAgainAfterTheRun() {
+        game.commitments.releaseMember(902); // Jinx is not in the run: it logs off with her and says it
+
+        game.roster().onOwnerLogout(game.ann, instance);
+        game.annOnline = false;
+        game.commitments.releaseKey(RUN);
+
+        assertEquals(List.of("Jinx: gn!"), game.partyChat);
     }
 
     @Test

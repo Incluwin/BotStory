@@ -42,7 +42,8 @@ import static server.living.roster.LifecycleHarness.portalX;
  * Where the P2b tracks meet on the same logout, login and arrival paths (docs/BOT_MANAGEMENT_PLAN.md P2b): the follow
  * guards with channel follow (a trip that changes channel stays off follow until it arrives) and with the logout (a
  * companion waiting outside a run parks, and walks in following at the login); the deletion cleanup with the instance
- * handoff (a companion finishing a run for a friend is released, not parked back) and with a party of offline members
+ * handoff (a companion finishing a run for a friend stays in it, and is released once it is over, not parked back) and
+ * with a party of offline members
  * (they leave it); and a contract walk-out waiting for a run with the logout that ends the run for it (it goes home).
  */
 class TrackCombinationTest {
@@ -138,7 +139,7 @@ class TrackCombinationTest {
     }
 
     @Test
-    void deletingAnOwnerWhoseCompanionFinishesARunForAFriendReleasesItInsteadOfParkingIt() {
+    void deletingAnOwnerWhoseCompanionFinishesARunForAFriendReleasesItOnceTheRunIsOver() {
         Persona hadrik = game.companion("hadrik", "Hadrik", 901, RosterState.ACTIVE, LITH);
         game.outWithAnn(hadrik);
         game.humans.add(BEN);
@@ -158,6 +159,13 @@ class TrackCombinationTest {
         game.calls.clear();
 
         game.roster().ownerDeleted(ANN);
+
+        assertEquals(RosterState.ACTIVE, game.row(hadrik).state(), "deleting one friend never touches another's run");
+        assertTrue(game.commitments.isCommitted(901));
+        assertTrue(game.members.contains(901), "still in Ben's party");
+        assertEquals(List.of(), game.calls);
+
+        game.commitments.releaseKey(RUN); // the run is over
 
         assertNull(game.row(hadrik), "released, not parked back");
         assertFalse(game.commitments.isCommitted(901), "its commitment went back");

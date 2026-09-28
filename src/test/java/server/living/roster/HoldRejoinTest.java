@@ -17,7 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.KERNING;
 import static server.living.roster.LifecycleHarness.LITH;
@@ -28,7 +31,8 @@ import static server.living.roster.LifecycleHarness.portalX;
  * HOLD and its rejoin (docs/BOT_MANAGEMENT_PLAN.md, "Seat states", flow 3 steps 4 and 9): a companion waiting outside
  * a run is loaded without follow, out of the party, standing where it was told, its seat kept as a HOLD reservation;
  * it refuses every party join but the roster's own rejoin. When its owner is out of the run (they come into a map
- * that is no event instance's copy) every hold rejoins: it walks over on the same map, or travels from another.
+ * that is no event instance's copy) every hold rejoins: it walks over on the same map, or travels from another, once
+ * the party changes that waited for the run are reconciled.
  */
 class HoldRejoinTest {
     private static final Point BY_LAKELIS = new Point(1450, 120);
@@ -156,6 +160,23 @@ class HoldRejoinTest {
         assertEquals(RosterState.BENCHED, game.row(olwen).state());
         assertNull(game.slots.reservation("olwen"));
         assertEquals(List.of("walk Olwen to " + portalX(KERNING) + ",200"), game.calls, "it walks to the portal on Ann's map");
+    }
+
+    @Test
+    void aShareChangeThatWaitedForTheRunIsReconciledBeforeTheHoldsRejoin() {
+        game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS);
+        CompanionPartySync sync = mock(CompanionPartySync.class);
+        when(game.world.partySync()).thenReturn(sync);
+        // a friend joined her friend's party during the run: its deferred rebalance puts Olwen's hold past her share
+        doAnswer(inv -> game.roster().standDown(game.ann, olwen, "party's full.", "companion.overflow"))
+                .when(sync).resumeDeferred();
+        game.calls.clear();
+
+        game.roster().ownerEnteredMap(game.ann, game.map(KERNING)); // out of the run
+
+        verify(sync).resumeDeferred();
+        assertEquals(RosterState.BENCHED, game.row(olwen).state());
+        assertFalse(game.calls.contains("join Olwen"), "no join and a step-out seconds later: " + game.calls);
     }
 
     @Test

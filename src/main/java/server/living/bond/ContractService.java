@@ -380,7 +380,8 @@ public final class ContractService {
             if (persona.benchToleranceDays() == 0 && now - entry.benchedAtMs() > 3_600_000L
                     || persona.benchToleranceDays() > 0 && now - entry.benchedAtMs() > persona.benchToleranceDays() * 86_400_000L) {
                 Character owner = world.roster().onlineCharacter(entry.characterId());
-                if (owner != null && authoredTermsHold(owner.getId(), persona.id())) {
+                // an owner just back, whose login has not called the crew back yet: a bench the logout made waits for it
+                if (owner != null && !world.roster().awaitingLogin(owner.getId()) && authoredTermsHold(owner.getId(), persona.id())) {
                     end(owner, persona, "walked out");
                 }
             }

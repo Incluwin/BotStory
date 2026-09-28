@@ -627,6 +627,28 @@ class CompanionPartySyncTest {
     }
 
     @Test
+    void aFriendLoggingBackOnWithParkedCompanionsGetsTheirShareBackBeforeTheyWalkIn() {
+        out(BEN, "kai", "lune", "sol");
+        world.accept(ANN, party(BEN)); // Ben's Sol steps out
+        world.settle();
+        world.call(ANN, "vex");
+        world.call(ANN, "olwen");
+        world.settle();
+        world.logOff(ANN);
+        world.settle(); // Ben has Sol back in her seats
+        world.companion("vex").state = RosterState.PARKED; // P2b: they logged off with her, roster-only
+        world.companion("olwen").state = RosterState.PARKED;
+        world.changes.clear();
+
+        world.logOn(ANN);
+        world.settle();
+
+        assertEquals(List.of("OVERFLOW sol"), world.changes, "her log-on rebalances as a joiner's does");
+        assertEquals(2, world.free(ANN), "her two seats wait for her staggered restore");
+        assertEquals(0, world.waiting.get("sol"));
+    }
+
+    @Test
     void aRestoreThatFoundNoSeatWaitsBenchedAndComesBackOnceTheLogOnIsReconciled() {
         out(BEN, "kai", "lune", "sol");
         world.accept(ANN, party(BEN));

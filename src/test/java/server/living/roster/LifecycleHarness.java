@@ -247,6 +247,11 @@ final class LifecycleHarness implements AutoCloseable {
 
     /** A companion of Ann's (character id {@code characterId}) in {@code state}, camping at {@code campMapId}. */
     Persona companion(String id, String name, int characterId, RosterState state, int campMapId) {
+        return companionOf(ANN, id, name, characterId, state, campMapId);
+    }
+
+    /** A companion of {@code ownerId}'s (a friend's crew), as {@link #companion}. */
+    Persona companionOf(int ownerId, String id, String name, int characterId, RosterState state, int campMapId) {
         Persona persona = new Persona(id, name, "", "BEGINNER", new Content.LevelBand(1, 1), Content.Strength.ROOKIE, null,
                 "relaxed-v1", null, "lith-harbor", List.of(), false, null, List.of(), null, List.of(), List.of(), Map.of(),
                 -1, -1, -1, List.of(), 0, Look.NONE, "test");
@@ -271,7 +276,7 @@ final class LifecycleHarness implements AutoCloseable {
         when(residents.characterIdOf(id)).thenReturn(characterId);
         when(residents.personaOfCharacterId(characterId)).thenReturn(persona);
         when(content.persona(id)).thenReturn(persona);
-        store.seed(new RosterEntry(ANN, id, state, Assignment.TRAIN, 0, 0, campMapId, 0L, 0L, 0L, 1_000L, 1_000L, 1_000L, 0, null));
+        store.seed(new RosterEntry(ownerId, id, state, Assignment.TRAIN, 0, 0, campMapId, 0L, 0L, 0L, 1_000L, 1_000L, 1_000L, 0, null));
         return persona;
     }
 

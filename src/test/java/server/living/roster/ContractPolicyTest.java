@@ -212,6 +212,28 @@ class ContractPolicyTest {
     }
 
     @Test
+    void aBenchTheLogoutMadeWaitsForTheLoginToCallTheCrewBack() {
+        try (Game game = new Game(Setting.AUTHORED, 0)) {
+            Persona hadrik = game.hadrik(RosterState.ACTIVE);
+            when(game.h.residents.ensureCharacter(hadrik)).thenReturn(HADRIK); // the lineup call loads it
+            game.h.roster().onOwnerLogout(game.h.ann, null); // her own party: it logs off with her
+            game.h.offline.add(HADRIK);
+            game.h.annOnline = false;
+            ParkGraceTest.parkedAgo(game.h, hadrik, game.h.config.LEADER_OFFLINE_BENCH_MS + 2 * 3_600_000L);
+            game.h.roster().benchParkedPastGrace(); // to its duty two hours ago: past its hour on the bench
+            game.h.annOnline = true; // back; a contracts.tick queued ahead of her login restore runs first
+
+            game.contracts.tick();
+
+            assertNotNull(game.h.row(hadrik), "no walk-out before the login has called the crew back");
+            game.h.roster().onOwnerLogin(game.h.ann);
+            assertEquals(RosterState.TRAVELLING, game.h.row(hadrik).state());
+            game.contracts.tick();
+            assertNotNull(game.h.row(hadrik));
+        }
+    }
+
+    @Test
     void aCompanionTurnedBackOnItsWayWhispersTheWarning() {
         try (Game game = new Game(Setting.AUTHORED, 1)) {
             Persona hadrik = game.hadrik(RosterState.TRAVELLING);

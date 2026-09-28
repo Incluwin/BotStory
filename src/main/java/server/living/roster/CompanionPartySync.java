@@ -143,6 +143,12 @@ public final class CompanionPartySync {
          */
         List<String> waiting(int ownerId, int partyId);
 
+        /**
+         * True while the owner has companions that logged off with them (PARKED) and are not loaded yet: their login
+         * restore walks them in shortly, into the owner's fair share.
+         */
+        boolean restoring(int ownerId);
+
         /** Committed to an event instance: the sync does not move it until the instance ends. */
         boolean committed(int characterId);
 
@@ -413,15 +419,17 @@ public final class CompanionPartySync {
 
     /**
      * Which way it went is the event's (the player may still be in storage). A human coming online with companions
-     * to restore gets their share back as a joiner does: the others' claims past their shares step out, guests first,
-     * and theirs come back; one with nothing to restore changes nothing, and a bot's log-on is nothing. A human going
-     * offline takes their guests out of the party and leaves the others room.
+     * to restore (out, waiting for room, or parked and about to walk back in) gets their share back as a joiner does:
+     * the others' claims past their shares step out, guests first, and theirs come back; one with nothing to restore
+     * changes nothing, and a bot's log-on is nothing. A human going offline takes their guests out of the party and
+     * leaves the others room.
      */
     private boolean loggedOnOrOff(PartyChangeEvent event) {
         int target = event.targetId();
         int partyId = event.partyId();
         if (event.targetOnline()) {
-            if (!crew.onlineHuman(target) || crew.active(target).isEmpty() && crew.waiting(target, partyId).isEmpty()) {
+            if (!crew.onlineHuman(target) || crew.active(target).isEmpty() && crew.waiting(target, partyId).isEmpty()
+                    && !crew.restoring(target)) {
                 return false;
             }
             boolean changed = rebalance(partyId);

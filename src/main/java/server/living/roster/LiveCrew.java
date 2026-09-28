@@ -139,6 +139,17 @@ final class LiveCrew implements CompanionPartySync.Crew {
         return out;
     }
 
+    /** PARKED rows not loaded yet: the owner's login restore walks them in 2-8 s apart, so they are not recalled here. */
+    @Override
+    public boolean restoring(int ownerId) {
+        for (RosterEntry entry : world.store().roster(ownerId)) {
+            if (entry.state() == RosterState.PARKED && world.roster().loaded(entry.personaId()) == null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * A companion tied to a run by Commitments, or any character (an owner, a companion no commitment names yet) that
      * is registered in an event instance.

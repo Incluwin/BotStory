@@ -13,7 +13,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.HENESYS_FIELD;
@@ -26,8 +33,12 @@ import static server.living.roster.LifecycleHarness.portalX;
  * Once Ann is in on channel 2, each companion out moves there 1-3 s apart: it logs off on channel 1 as an offline
  * member of her party, logs in on 2 at the portal nearest her and walks in (a traveller where it stood, arriving on
  * time); the party row updates without a leave or a join. One not there 30 s after her login is moved the hard way.
- * The bench slice stays on its channel. A Cash Shop visit leaves them idle; past the grace they log off as at a
- * logout. An owner who never comes in on the new channel logged off after all.
+ * The bench slice stays on its channel, and one loaded on the old channel after the change was noted moves too. A trip
+ * that ends before its move has had its turn still arrives; one left on another channel never crosses channels to wait
+ * outside a run; one moved the hard way keeps its seat and its ETA without a second whisper. A change or a Cash Shop
+ * exit never calls the benched usual lineup. A Cash Shop visit leaves them idle; past the grace they log off as at a
+ * logout, and a logout after that keeps the usual lineup. An owner who never comes in on the new channel logged off
+ * after all.
  */
 class ChannelFollowTest {
     private final LifecycleHarness game = new LifecycleHarness();
@@ -210,6 +221,121 @@ class ChannelFollowTest {
 
         assertEquals(RosterState.PARKED, game.row(hadrik).state());
         assertEquals(RosterState.PARKED, game.row(jinx).state());
+    }
+
+    @Test
+    void aTripThatEndsBeforeTheCashShopExitMovedItStillArrives() {
+        Persona vex = game.companion("vex", "Vexa", 903, RosterState.BENCHED, LITH);
+        game.companionOnChannel(vex, 1);
+        game.roster().call(game.ann, vex); // join-then-travel from Lith Harbor
+        List<LifecycleHarness.Timer> trip = List.copyOf(game.timers);
+        game.timers.clear();
+
+        changeChannel(1); // the Cash Shop's way out: a change to the same channel
+        trip.forEach(timer -> timer.task().run()); // its ETA ends before its move has had its turn
+        assertEquals(RosterState.TRAVELLING, game.row(vex).state(), "it waits for the move");
+
+        game.runTimers();
+
+        assertEquals(RosterState.ACTIVE, game.row(vex).state(), "it arrives all the same");
+        assertTrue(game.calls.contains("follow Vexa"), String.valueOf(game.calls));
+    }
+
+    @Test
+    void aChannelChangeOrACashShopExitWithEveryoneBenchedCallsNobody() {
+        game.roster().bench(game.ann, hadrik);
+        game.roster().bench(game.ann, jinx);
+        game.runTimers(); // they walked out
+        game.store.lineup.put(FakeLivingStore.key(ANN, "hadrik"), 1); // the usual lineup from the last logout
+        game.store.lineup.put(FakeLivingStore.key(ANN, "jinx"), 2);
+        game.calls.clear();
+        clearInvocations(game.residents);
+
+        changeChannel(2);
+        game.roster().onOwnerLogin(game.ann); // the logout hook's own restore for the same session
+        changeChannel(2); // the Cash Shop's way out
+        game.runTimers();
+
+        assertEquals(RosterState.BENCHED, game.row(hadrik).state());
+        assertEquals(RosterState.BENCHED, game.row(jinx).state());
+        assertEquals(List.of(), game.calls, "nobody joins, nobody travels");
+        verify(game.residents, never()).whisper(any(), any(), anyString());
+    }
+
+    @Test
+    void oneLoadedOnTheOldChannelAfterTheChangeWasNotedMovesToo() {
+        Persona vex = game.companion("vex", "Vexa", 903, RosterState.BENCHED, HENESYS_FIELD); // camps here: no trip
+        game.companionOnChannel(vex, 1);
+        game.roster().ownerChangingChannel(game.ann, 2);
+        game.roster().call(game.ann, vex); // queued behind the change: it still saw her on channel 1
+        game.roster().onOwnerLogout(game.ann, null);
+        game.annOnChannel(2);
+        game.roster().onOwnerLogin(game.ann);
+
+        assertEquals(3, moves().size());
+        moves().forEach(timer -> timer.task().run());
+
+        assertEquals(2, game.companionChannel(vex));
+        assertEquals(RosterState.ACTIVE, game.row(vex).state());
+    }
+
+    @Test
+    void aTravellerLeftOnAnotherChannelWaitsOutsideTheRunWithoutCrossingChannels() {
+        Persona vex = game.companion("vex", "Vexa", 903, RosterState.BENCHED, LITH);
+        game.companionOnChannel(vex, 1);
+        game.roster().call(game.ann, vex); // on its way from Lith Harbor on channel 1
+        List<LifecycleHarness.Timer> trip = List.copyOf(game.timers);
+        game.timers.clear();
+        game.roster().ownerEnteredMap(game.ann, game.map(HENESYS_FIELD)); // the way into her run
+        game.annOnChannel(2); // nothing moved Vexa over
+        game.annEntersInstance(HENESYS_FIELD);
+        game.calls.clear();
+
+        trip.forEach(timer -> timer.task().run()); // its ETA ends while she is in the run
+
+        assertEquals(RosterState.HOLD, game.row(vex).state());
+        assertTrue(game.calls.stream().noneMatch(call -> call.startsWith("warp Vexa")), String.valueOf(game.calls));
+        assertFalse(game.loaded.contains(903), "it logged off on channel 1 and sets off from the entrance at the rejoin");
+        assertEquals(CompanionSlots.Kind.HOLD, game.slots.reservation("vex").kind());
+    }
+
+    @Test
+    void aTravellerMovedTheHardWayKeepsItsSeatAndItsTripWithoutASecondWhisper() {
+        Persona vex = game.companion("vex", "Vexa", 903, RosterState.BENCHED, LITH);
+        game.companionOnChannel(vex, 1);
+        game.roster().call(game.ann, vex);
+        long eta = game.row(vex).etaAtMs();
+        game.members.addAll(List.of(950, 951)); // two guests joined: 6/6 with Vexa in it
+        game.loaded.remove(903); // it logged off on channel 1 and its login on 2 failed: an offline member
+        game.offline.add(903);
+        game.leases.release(903, CompanionLeases.Kind.COMPANION);
+        game.annOnChannel(2);
+
+        game.roster().followChannelFallback(game.ann, vex);
+
+        assertEquals(RosterState.TRAVELLING, game.row(vex).state());
+        assertTrue(game.loaded.contains(903), "loaded on her channel, on the seat it kept");
+        assertTrue(Math.abs(game.row(vex).etaAtMs() - eta) < 1_000L, "still due when it was");
+        assertEquals(6, game.members.size());
+        verify(game.residents, times(1)).whisper(eq(vex), eq(game.ann), startsWith("on my way"));
+    }
+
+    @Test
+    void aCashShopVisitPastTheGraceThenALogoutKeepsTheUsualLineup() {
+        CashShop shop = mock(CashShop.class);
+        when(shop.isOpened()).thenReturn(true);
+        when(game.ann.getCashShop()).thenReturn(shop);
+        game.roster().ownerEnteredCashShop(game.ann);
+        game.runTimers(); // past the grace in the Cash Shop: they log off
+        game.roster().onOwnerLogout(game.ann, null); // then she closes the client
+        game.offline.addAll(List.of(901, 902));
+        ParkGraceTest.parkedAgo(game, hadrik, game.config.LEADER_OFFLINE_BENCH_MS + 60_000L);
+        ParkGraceTest.parkedAgo(game, jinx, game.config.LEADER_OFFLINE_BENCH_MS + 60_000L);
+
+        game.roster().onOwnerLogin(game.ann);
+
+        assertEquals(RosterState.TRAVELLING, game.row(hadrik).state());
+        assertEquals(RosterState.TRAVELLING, game.row(jinx).state());
     }
 
     @Test

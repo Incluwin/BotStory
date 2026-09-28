@@ -591,6 +591,16 @@ final class FakeParties implements CompanionPartySync.Crew {
     }
 
     @Override
+    public boolean restoring(int ownerId) {
+        for (Companion companion : crewOf(ownerId)) {
+            if (companion.state == RosterState.PARKED && !companion.loaded) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public boolean committed(int characterId) {
         return committed.contains(characterId);
     }
