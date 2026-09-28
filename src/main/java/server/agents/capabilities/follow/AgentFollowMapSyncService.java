@@ -42,12 +42,21 @@ public final class AgentFollowMapSyncService {
         }
 
         MapleMap targetMap = followAnchor.getMap();
-        if (!mayWarpInto(agent, followAnchor, targetMap)) {
-            // Stay on this map (an instance entrance, or the old channel) until the anchor is reachable again.
+        if (AgentFollowGuard.holdsOffFollow(agent.getId()) || !mayWarpInto(agent, followAnchor, targetMap)) {
+            // Stay on this map: the host keeps it off follow, or the anchor is out of reach (an instance
+            // entrance, or the old channel) until it is reachable again.
             hooks.holdInPlace().accept(entry, agent);
             return true;
         }
         Point anchorPosition = followAnchor.getPosition();
+        AgentFollowGuard.Crossing crossing = AgentFollowGuard.crossing(agent.getId(), followAnchor);
+        if (crossing != null) {
+            if (System.currentTimeMillis() < crossing.notBeforeMs()) {
+                hooks.holdInPlace().accept(entry, agent); // the followers ahead of it come through first
+                return true;
+            }
+            anchorPosition = crossing.at(); // where the anchor came in, not where it stands now
+        }
         Point spawn = hooks.groundPointFinder().apply(targetMap, new Point(anchorPosition.x, anchorPosition.y - 1));
         if (spawn == null) {
             spawn = anchorPosition;

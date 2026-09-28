@@ -13,6 +13,7 @@ import net.server.world.PartyEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.agents.capabilities.follow.AgentFollowGuard;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
@@ -82,6 +83,14 @@ public final class RosterService {
     private final java.util.Set<String> seating = ConcurrentHashMap.newKeySet();
     /** Persona id -> the walk-out of a companion benched a moment ago; any despawn or a new seat ends it. */
     private final Map<String, Object> leaving = new ConcurrentHashMap<>();
+    /**
+     * Persona ids whose rows are TRAVELLING, HOLD or AWAY: kept off follow (CompanionFollowGuard, any thread) until
+     * the roster's own arrival, rejoin or call walks them over. Kept in step by {@link #write}; {@link #walkToOwner}
+     * (and a call's spawn beside the owner) let one follow again.
+     */
+    private final java.util.Set<String> offFollow = ConcurrentHashMap.newKeySet();
+    /** Where each owner came into the map they are on: their companions follow them in there. */
+    private final PortalFollow portalFollow = new PortalFollow();
 
     public RosterService(LivingWorld world) {
         this.world = world;
@@ -94,11 +103,15 @@ public final class RosterService {
             owners.add(entry.characterId());
             if (entry.state() == RosterState.AWAY) {
                 keepAwaySeat(entry.characterId(), entry.personaId()); // reservations live in memory: rebuilt at boot
+                offFollow.add(entry.personaId());
             }
         }
         for (RosterEntry entry : world.store().allInTransit()) {
             ownerByPersona.put(entry.personaId(), entry.characterId());
             owners.add(entry.characterId());
+            if (offFollowState(entry.state())) {
+                offFollow.add(entry.personaId());
+            }
             if (entry.state() == RosterState.HOLD) {
                 world.slots().reserve(entry.characterId(), entry.personaId(), CompanionSlots.Kind.HOLD, Long.MAX_VALUE);
             }
@@ -561,7 +574,7 @@ public final class RosterService {
             Point portal = ArrivalPlacement.nearestPortal(map, owner.getPosition());
             bot.changeMap(map, portal != null ? portal : owner.getPosition()); // no usable portal: beside them, as P1.5
         }
-        walkToOwner(bot);
+        walkToOwner(persona, bot);
         write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()));
         world.store().event(ownerId, persona.id(), "roster.arrive", "map " + owner.getMapId());
         List<String> lines = world.arcs().lines(persona, "join");
@@ -655,6 +668,9 @@ public final class RosterService {
         // a walk-in is loaded standing still where it comes from; a map without a usable portal keeps the beside-owner spawn
         MapleMap map = owner.getMap();
         Point arrival = from != null ? from : ArrivalPlacement.nearestPortal(map, owner.getPosition());
+        if (arrival == null) {
+            offFollow.remove(persona.id()); // it spawns beside its owner following already, so an AWAY row may too
+        }
         AgentLifecycleService.AgentSpawnResult result = arrival == null
                 ? AgentInteractionRuntime.spawnAgentForLeader(owner, persona.name())
                 : spawnAt(owner, persona, map, arrival);
@@ -670,7 +686,7 @@ public final class RosterService {
                     couldNotJoin(persona));
         }
         if (arrival != null) {
-            walkToOwner(result.agent()); // only once it is in the party
+            walkToOwner(persona, result.agent()); // only once it is in the party
         }
         RosterEntry row = world.store().rosterEntry(entry.characterId(), entry.personaId());
         if (row == null || row.state() == RosterState.RELEASED) {
@@ -748,8 +764,12 @@ public final class RosterService {
         return ours == null || its == null || ours.getChannel() == its.getChannel();
     }
 
-    /** A companion loaded at its arrival point stands still until it is seated; then it follows, so it walks to its owner. */
-    private static void walkToOwner(Character bot) {
+    /**
+     * A companion loaded at its arrival point stands still until it is seated; then it follows, so it walks to its owner.
+     * The one way the roster lets a TRAVELLING, HOLD or AWAY companion follow again (its arrival, a rejoin, a call).
+     */
+    private void walkToOwner(Persona persona, Character bot) {
+        offFollow.remove(persona.id());
         AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
         if (runtime != null) {
             AgentMovementCommandRuntime.followConfiguredTarget(runtime);
@@ -1062,7 +1082,7 @@ public final class RosterService {
         if (eta > 0L) {
             called = onItsWay(owner, in, coming, campMap, eta);
         } else {
-            walkToOwner(inBot);
+            walkToOwner(in, inBot);
             write(current(coming).with(RosterState.ACTIVE, System.currentTimeMillis()));
             List<String> lines = world.arcs().lines(in, "join");
             world.residents().reply(in, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(owner.getId(), lines.size())));
@@ -1488,21 +1508,31 @@ public final class RosterService {
         if (bot.getMap() != owner.getMap()) {
             return onItsWay(owner, persona, entry, bot.getMapId(), recallEtaMs(bot.getMapId(), owner.getMapId()));
         }
-        walkToOwner(bot);
+        walkToOwner(persona, bot);
         write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()));
         return new RosterResult.Ok(persona.name() + " rejoins your party.");
     }
 
+    /** As {@link #ownerEnteredMap(Character, MapleMap, Point)}, for an owner already standing where they came in. */
+    public void ownerEnteredMap(Character owner, MapleMap map) {
+        ownerEnteredMap(owner, map, owner.getPosition());
+    }
+
     /**
-     * The owner came into {@code map} (LivingWorldHooks.mapEntered, on the thread that moved them: memory only). An
+     * The owner came into {@code map} at {@code at} (LivingWorldHooks.mapEntered, on the thread that moves them, before
+     * they stand there: memory only). Their following companions come in after them there (portal-true follow). An
      * open map, not an event instance's copy, is remembered as the way into their next run; coming into one, their
      * companions waiting outside a run rejoin them, on companion-ops.
      */
-    public void ownerEnteredMap(Character owner, MapleMap map) {
-        if (!owners.contains(owner.getId()) || map.getEventInstance() != null) {
+    public void ownerEnteredMap(Character owner, MapleMap map, Point at) {
+        if (!owners.contains(owner.getId())) {
             return;
         }
-        lastOpenMap.put(owner.getId(), new Spot(map.getId(), owner.getPosition() == null ? null : new Point(owner.getPosition())));
+        portalFollow.entered(owner.getId(), map.getId(), at);
+        if (map.getEventInstance() != null) {
+            return;
+        }
+        lastOpenMap.put(owner.getId(), new Spot(map.getId(), at == null ? null : new Point(at)));
         boolean holding = false;
         for (CompanionSlots.Reservation held : world.slots().reservations(owner.getId())) {
             holding |= held.kind() == CompanionSlots.Kind.HOLD;
@@ -1627,7 +1657,32 @@ public final class RosterService {
             return false;
         }
         world.store().saveRoster(next);
+        if (offFollowState(next.state())) {
+            offFollow.add(next.personaId());
+        } else {
+            offFollow.remove(next.personaId());
+        }
         return true;
+    }
+
+    /** The seat states whose companion no follow path may start following or warp (plan "Follow guards"). */
+    private static boolean offFollowState(RosterState state) {
+        return state == RosterState.TRAVELLING || state == RosterState.HOLD || state == RosterState.AWAY;
+    }
+
+    /** True when some row keeps its companion off follow: the follow guard's fast path. */
+    boolean keepsAnyOffFollow() {
+        return !offFollow.isEmpty();
+    }
+
+    /** True while the persona's row keeps it off follow and no arrival or rejoin has walked it over yet. */
+    boolean keepsOffFollow(String personaId) {
+        return offFollow.contains(personaId);
+    }
+
+    /** How the owner's companion {@code companionId} follows them into their current map (null: beside them). */
+    AgentFollowGuard.Crossing crossing(Character owner, int companionId, long nowMs) {
+        return portalFollow.crossing(owner.getId(), owner.getMapId(), companionId, nowMs);
     }
 
     /** The companion leaves its party under the roster's cause token (the sync takes the event as an echo). */

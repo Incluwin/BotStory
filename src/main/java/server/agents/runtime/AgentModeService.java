@@ -5,6 +5,7 @@ import server.agents.capabilities.combat.AgentGrindSearchStateRuntime;
 import client.Character;
 import server.agents.capabilities.combat.AgentCombatCooldownStateRuntime;
 import server.agents.capabilities.combat.AgentDegenerateAttackStateRuntime;
+import server.agents.capabilities.follow.AgentFollowGuard;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
@@ -21,6 +22,11 @@ import java.util.function.Consumer;
 
 public final class AgentModeService {
     private AgentModeService() {
+    }
+
+    /** False while the host keeps this Agent off follow ({@link AgentFollowGuard}): a follow command leaves it as it is. */
+    public static boolean mayStartFollow(AgentRuntimeEntry entry) {
+        return !AgentFollowGuard.holdsOffFollow(AgentRuntimeIdentityRuntime.botId(entry));
     }
 
     public static void startFollow(AgentRuntimeEntry entry, Character target) {

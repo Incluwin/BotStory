@@ -45,6 +45,7 @@ public final class AgentMovementCommandRuntime {
     public static void follow(AgentRuntimeEntry entry, Character target) {
         AgentCommandModeService.runPreparedModeCommand(
                 entry,
+                () -> AgentModeService.mayStartFollow(entry),
                 () -> AgentScriptTaskQueueService.clearTasks(entry),
                 () -> AgentShopService.cancelShopVisit(entry),
                 () -> AgentModeService.startFollow(entry, target));
