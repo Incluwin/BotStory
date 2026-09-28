@@ -46,7 +46,20 @@ final class ArrivalPlacement {
         if (portals == null || owner == null) {
             return null;
         }
-        double reach = REACH_SHARE * AgentMovementPhysicsConfig.configuredTeleportDist();
+        return best(portals, owner, REACH_SHARE * AgentMovementPhysicsConfig.configuredTeleportDist());
+    }
+
+    /**
+     * Where a companion that does not follow anyone yet comes into {@code map} (its camp when it sets off, the map it
+     * waits on outside a run): the usable portal nearest {@code near}, with no reach limit since no follow recovery
+     * runs; the best-ranked one when {@code near} is null. Null when the map has no usable portal.
+     */
+    static Point portalNear(MapleMap map, Point near) {
+        return map == null || map.getPortals() == null ? null
+                : best(map.getPortals(), near == null ? new Point() : near, Double.POSITIVE_INFINITY);
+    }
+
+    private static Point best(Collection<Portal> portals, Point owner, double reach) {
         Portal best = null;
         int bestRank = UNUSABLE;
         double bestDistance = Double.POSITIVE_INFINITY;

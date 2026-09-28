@@ -102,7 +102,9 @@ class CompanionAuditorTest {
     @ParameterizedTest(name = "{0} -> {1}")
     @CsvSource({"ACTIVE, RESEAT", "BENCHED, UNSEAT", "AWAY, UNSEAT", "TRAVELLING, NONE", "HOLD, NONE", "PARKED, NONE"})
     void driftSeenTwiceIsRepairedTowardTheRosterRow(RosterState state, Repair repair) {
-        CompanionDriftReport report = state == RosterState.ACTIVE ? notLoaded() : stillInParty(state);
+        // P2b: a TRAVELLING companion in the party is legal; one that lost its party is drift, reported only
+        CompanionDriftReport report = state == RosterState.ACTIVE ? notLoaded()
+                : state == RosterState.TRAVELLING ? outOfTheParty(state) : stillInParty(state);
         review(report);
 
         List<Finding> findings = review(report);
@@ -397,6 +399,11 @@ class CompanionAuditorTest {
     private static CompanionDriftReport stillInParty(RosterState state) {
         return CompanionDriftReport.of(owner(PARTY, OLWEN_CHARACTER), 4,
                 List.of(new Companion(rowOf(state), new Live(true, 1, 100000000, 500, 800, PARTY, ALICE))), List.of());
+    }
+
+    private static CompanionDriftReport outOfTheParty(RosterState state) {
+        return CompanionDriftReport.of(owner(PARTY), 4,
+                List.of(new Companion(rowOf(state), new Live(true, 1, 104000000, 500, 800, 0, ALICE))), List.of());
     }
 
     private static CompanionDriftReport clean() {

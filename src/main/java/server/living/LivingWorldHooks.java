@@ -77,6 +77,7 @@ public final class LivingWorldHooks {
             world.markers().forget(chr);
             world.markers().enteredMap(chr);
             world.residents().onPlayerPresence(chr, map);
+            world.roster().ownerEnteredMap(chr, map); // out of a run: companions waiting outside it rejoin (companion-ops)
         } catch (RuntimeException failure) {
             log.warn("living world mapEntered hook failed", failure);
         }

@@ -92,6 +92,11 @@ public class LivingWorldConfig {
     /** Meso cost of an instant recall whistle (item id configured in loadouts.yaml -> whistleItemId). */
     public int RECALL_WHISTLE_ITEM_ID = 0;
     /**
+     * Decision 7: a companion called from its camp on the same continent arrives within this many ms (the road
+     * estimate is capped here); off-island trips keep their 180 s.
+     */
+    public int RECALL_MAX_ETA_MS = 60000;
+    /**
      * The Adventurer's Roster: double-clicking this USE item in the inventory opens the Crew window and does not use
      * it up (a hotkey sends nothing, P0 probe 2). A recruit or grant, and a login, hand one to a roster owner without
      * it. 0 = off. The client still names 2430011 "Agent Summon" until its String.wz / Custom.wz rename ships (P3).
@@ -133,6 +138,9 @@ public class LivingWorldConfig {
         }
         if (ROSTER_MAX < 1 || ROSTER_MAX > 50) {
             throw new IllegalArgumentException("living_world.ROSTER_MAX must be within 1..50");
+        }
+        if (RECALL_MAX_ETA_MS < 0) {
+            throw new IllegalArgumentException("living_world.RECALL_MAX_ETA_MS must be >= 0");
         }
         if (ROSTER_BOOK_ITEM_ID < 0) {
             throw new IllegalArgumentException("living_world.ROSTER_BOOK_ITEM_ID must be >= 0 (0 = off)");

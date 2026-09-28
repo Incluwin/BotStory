@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import net.server.world.CauseScope;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
 import net.server.world.PartyEvents.PartyChangeEvent;
@@ -45,8 +46,6 @@ public final class CompanionSlots {
     public static final int PARTY_CAP = 6;
     /** A seat taken for a load that joins at once; the spawn and the join run inside it, so this only bounds a crash. */
     public static final long SEAT_HOLD_MS = 30_000L;
-    /** A travel seat is kept this long past the ETA, in case the arrival runs late. */
-    public static final long TRAVEL_GRACE_MS = 30_000L;
     private static final Logger log = LoggerFactory.getLogger(CompanionSlots.class);
     private static final String CHARACTER_KEY = "character:";
 
@@ -336,7 +335,8 @@ public final class CompanionSlots {
      * The seat gate ({@code PartySeatGate}): a bot joining a party with a human must hold a reservation charged to a
      * human in it, unless the party is bot-only, the bot is nobody's (a GM tool or a fixture), or an Agent PQ runs
      * the party (a lobby waiter's DELAY_ACCEPT, a registered engagement such as {@code !kpqtest}, or a citizen a PQ
-     * coordinator's lobby sends in). A refusal is logged as {@code companion.unseated_join}.
+     * coordinator's lobby sends in). A refusal is logged as {@code companion.unseated_join}. A companion waiting
+     * outside a run (HOLD) joins no party with a human in it but its owner's, and that only when the roster rejoins it.
      */
     public boolean admitsJoin(Character bot, Party party) {
         Set<Integer> humans = new HashSet<>();
@@ -349,8 +349,13 @@ public final class CompanionSlots {
             return true; // decideJoin's ADMIT_BOT_ONLY, before any lookup: citizens party up all the time
         }
         String key = keyOf(bot.getId());
+        Reservation held = reservation(key);
+        if (held != null && held.kind() == Kind.HOLD && !RosterService.CAUSE.equals(CauseScope.current())) {
+            log.warn("companion.hold_refused: {} into party {} while it waits outside a run", bot.getName(), party.getId());
+            return false;
+        }
         JoinVerdict verdict = decideJoin(!humans.isEmpty(), world.directory().isClaimed(bot.getId()),
-                reservation(key), humans, () -> runByPartyQuest(bot, party)
+                held, humans, () -> runByPartyQuest(bot, party)
                         || world.directory().ownerOfCharacter(bot.getId()) == 0 && ledByPartyQuest(party));
         if (verdict.admits()) {
             return true;

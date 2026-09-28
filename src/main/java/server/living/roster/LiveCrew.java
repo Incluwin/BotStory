@@ -108,11 +108,12 @@ final class LiveCrew implements CompanionPartySync.Crew {
         return owner == null ? 0 : world.slots().free(owner);
     }
 
+    /** ACTIVE ones, and TRAVELLING ones: those are in the party already, on their way over. */
     @Override
     public List<String> active(int ownerId) {
         List<String> out = new ArrayList<>();
         for (RosterEntry entry : byLineup(ownerId)) {
-            if (entry.state() == RosterState.ACTIVE) {
+            if (CompanionSeatState.partyMember(entry.state())) {
                 out.add(entry.personaId());
             }
         }
@@ -124,7 +125,7 @@ final class LiveCrew implements CompanionPartySync.Crew {
         List<RosterEntry> rows = byLineup(ownerId);
         List<String> out = new ArrayList<>();
         for (RosterEntry entry : rows) {
-            if (entry.state() == RosterState.ACTIVE && world.roster().loaded(entry.personaId()) == null) {
+            if (CompanionSeatState.partyMember(entry.state()) && world.roster().loaded(entry.personaId()) == null) {
                 out.add(entry.personaId());
             }
         }
@@ -138,8 +139,16 @@ final class LiveCrew implements CompanionPartySync.Crew {
         return out;
     }
 
+    /**
+     * A companion tied to a run by Commitments, or any character (an owner, a companion no commitment names yet) that
+     * is registered in an event instance.
+     */
     @Override
     public boolean committed(int characterId) {
+        Commitments commitments = world.commitments();
+        if (commitments != null && commitments.isCommitted(characterId)) {
+            return true;
+        }
         Character character = online(characterId);
         return character != null && character.getEventInstance() != null;
     }

@@ -27,6 +27,7 @@ import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionLeases;
 import server.living.roster.CompanionPartySync;
 import server.living.roster.CompanionSlots;
+import server.living.roster.Commitments;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 
@@ -54,6 +55,7 @@ public final class LivingWorld {
     private final QuestMarkers markers;
     private final ContractService contracts;
     private final CompanionExecutor executor;
+    private final Commitments commitments;
     private final CompanionSlots slots;
     private final CompanionPartySync partySync;
     private final RosterService roster;
@@ -80,6 +82,7 @@ public final class LivingWorld {
         this.questLog = new QuestLog(this);
         this.markers = new QuestMarkers(this);
         this.executor = new CompanionExecutor();
+        this.commitments = new Commitments();
         this.slots = new CompanionSlots(this); // before the roster, which rebuilds its reservations
         this.partySync = CompanionPartySync.live(this);
         this.roster = new RosterService(this);
@@ -152,6 +155,9 @@ public final class LivingWorld {
         // party events that waited for an event instance to end are reconciled on companion-ops
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("companion.resume", world.partySync::resumeDeferred), 30_000L, 30_000L));
+        // and at once when a commitment ends (the member left the run, or the run ended)
+        world.commitments.addListener(ended -> world.executor.submit("commitment.ended " + ended.key(),
+                world.partySync::resumeDeferred));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("companion.audit", world.auditor::run),
                 CompanionAuditor.INTERVAL_MS, CompanionAuditor.INTERVAL_MS));
@@ -266,6 +272,11 @@ public final class LivingWorld {
     /** The companion-ops thread every companion mutation runs on. */
     public CompanionExecutor executor() {
         return executor;
+    }
+
+    /** Companions tied to an event instance or expedition: frozen for the roster and the party sync meanwhile. */
+    public Commitments commitments() {
+        return commitments;
     }
 
     /** The only slot authority. */

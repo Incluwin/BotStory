@@ -77,9 +77,11 @@ class ClaimGuardBoundaryTest {
             // the living world: roster calls, citizens forming their own parties, a willing citizen's delayed
             // accept, and the loads that materialize its own characters, each behind the lease and loaded checks
             "server/living/roster/RosterService.java spawn 1",
-            "server/living/roster/RosterService.java stationary 1", // the P1.5 walk-in: same ensureCanControl chain
-            // (the second join: the auditor's in-place rejoin of the owner's own companion, on a seat held for it)
-            "server/living/roster/RosterService.java join 2",
+            // P2b: every stationary load (the P1.5 walk-in, a join-then-travel load at camp, a swap's incoming one) goes
+            // through RosterService.spawnAt, the same ensureCanControl chain; every roster join (a call, a traveller,
+            // a swap and its rollback, a HOLD rejoin, the auditor's in-place rejoin) through joinOwner, on a seat held
+            "server/living/roster/RosterService.java stationary 1",
+            "server/living/roster/RosterService.java join 1",
             "server/living/roster/CompanionPartyRouter.java partyjoin 1",
             // the party sync on companion-ops: an owner's own loaded companion rejoins them on a seat held for it,
             // and a human's routed accept (a merge or make-room) joins the party that invited them

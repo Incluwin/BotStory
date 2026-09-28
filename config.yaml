@@ -776,6 +776,9 @@ living_world:
     APPRENTICE_BONUS_PER_LEVEL: 0.15
     APPRENTICE_MAX_LEVELS: 6
     RECALL_WHISTLE_ITEM_ID: 0
+    # Decision 7: a companion called from camp on the same continent arrives within this many ms; off-island
+    # trips keep their 180 s.
+    RECALL_MAX_ETA_MS: 60000
     # Adventurer's Roster: double-clicking this USE item in the inventory opens the Crew window; it is not used up.
     # A recruit or grant, and a login, hand one to a roster owner without it. 0 = off. The client still shows
     # 2430011 as "Agent Summon" until its name/description rename ships (P3).

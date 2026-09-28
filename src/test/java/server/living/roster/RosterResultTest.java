@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import client.Client;
 import config.LivingWorldConfig;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
@@ -10,7 +11,12 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.TimerManager;
+import server.agents.capabilities.party.AgentPartyLifecycleService;
+import server.agents.capabilities.party.JoinOutcome;
+import server.agents.runtime.AgentInteractionRuntime;
+import server.agents.runtime.AgentLifecycleService;
 import server.agents.runtime.AgentRuntimeCleanupService;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.arc.ArcService;
@@ -21,8 +27,11 @@ import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.GenericPortal;
 import server.maps.MapleMap;
+import server.maps.Portal;
 
+import java.awt.Point;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +46,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -55,6 +65,7 @@ class RosterResultTest {
     private static final int ANN = 10;
     private static final int LITH_HARBOR = 104000000;
     private static final int HENESYS = 100000000;
+    private static final int OLWEN_CHARACTER = 900;
 
     // ---- the voice ------------------------------------------------------------------------
 
@@ -195,6 +206,9 @@ class RosterResultTest {
         verify(residents, never()).whisper(olwen, ann, RosterService.LEADER_CAP_LINE);
     }
 
+    // P2b join-then-travel changed the two trips below: a call from a far camp loads the companion at its camp at once
+    // and it joins on the seat held for the load (P2a kept a TRAVEL seat and loaded nothing until the arrival)
+
     @Test
     void benchingACompanionOnItsWayTurnsItBackAndItNeverArrives() {
         seed(RosterState.BENCHED);
@@ -202,42 +216,97 @@ class RosterResultTest {
         when(ann.getMap()).thenReturn(henesys);
         when(ann.getMapId()).thenReturn(HENESYS);
         CompanionExecutor ops = DirectExecutor.inline();
-        CompanionBudget budget = mock(CompanionBudget.class);
         when(world.executor()).thenReturn(ops);
-        when(world.budget()).thenReturn(budget);
         RosterService roster = spy(new RosterService(world));
         doReturn(ann).when(roster).onlineCharacter(ANN);
-        assertInstanceOf(RosterResult.Travelling.class, roster.call(ann, olwen)); // "call the usual", far from camp
+        try (MockedStatic<AgentInteractionRuntime> interaction = mockStatic(AgentInteractionRuntime.class);
+             MockedStatic<AgentPartyLifecycleService> party = mockStatic(AgentPartyLifecycleService.class);
+             MockedStatic<Party> parties = mockStatic(Party.class)) {
+            Character bot = travellerLoads(interaction, party);
+            assertInstanceOf(RosterResult.Travelling.class, roster.call(ann, olwen)); // "call the usual", far from camp
 
-        RosterResult benched = roster.bench(ann, olwen); // then "logout" and "yes"
+            RosterResult benched = roster.bench(ann, olwen); // then "logout" and "yes"
 
-        assertEquals(new RosterResult.Ok("Olwen turns back to camp."), benched);
-        assertNull(slots.reservation("olwen"), "its travel seat goes back");
-        assertEquals(0L, roster.travelMsLeft(ANN, "olwen"));
-        ArgumentCaptor<Runnable> arrival = ArgumentCaptor.forClass(Runnable.class);
-        verify(timer).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), arrival.capture(), anyLong());
-        arrival.getValue().run(); // the trip's arrival comes due anyway
+            assertEquals(new RosterResult.Ok("Olwen turns back to camp."), benched);
+            party.verify(() -> AgentPartyLifecycleService.leaveAgentParty(bot)); // it leaves the party window at once
+            cleanup.verify(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(OLWEN_CHARACTER)); // off the owner's map: gone
+            assertNull(slots.reservation("olwen"), "no seat is kept for it");
+            assertEquals(0L, roster.travelMsLeft(ANN, "olwen"));
+            ArgumentCaptor<Runnable> arrival = ArgumentCaptor.forClass(Runnable.class);
+            verify(timer).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), arrival.capture(), anyLong());
+            arrival.getValue().run(); // the trip's arrival comes due anyway
 
-        verify(residents, never()).ensureCharacter(any()); // nobody is loaded or seated in the owner's party
+            interaction.verify(() -> AgentInteractionRuntime.spawnStationaryAgentForLeaderAt(any(), anyString(), any(), any()));
+            party.verify(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(ann, bot)); // once: nobody is seated again
+        }
         assertEquals(RosterState.BENCHED, rows.get("olwen").state());
         assertNull(slots.reservation("olwen"));
     }
 
     @Test
-    void aCallFromAFarCampTravelsOnAHeldSeat() {
+    void aCallFromAFarCampJoinsAtOnceAndTravels() {
         seed(RosterState.BENCHED);
         MapleMap henesys = mock(MapleMap.class);
         when(ann.getMap()).thenReturn(henesys);
         when(ann.getMapId()).thenReturn(HENESYS);
+        CompanionExecutor ops = DirectExecutor.inline();
+        when(world.executor()).thenReturn(ops);
+        RosterService roster = new RosterService(world);
 
-        RosterResult result = new RosterService(world).call(ann, olwen);
+        RosterResult result;
+        try (MockedStatic<AgentInteractionRuntime> interaction = mockStatic(AgentInteractionRuntime.class);
+             MockedStatic<AgentPartyLifecycleService> party = mockStatic(AgentPartyLifecycleService.class);
+             MockedStatic<Party> parties = mockStatic(Party.class)) {
+            travellerLoads(interaction, party);
+            result = roster.call(ann, olwen);
+        }
 
         RosterResult.Travelling travelling = assertInstanceOf(RosterResult.Travelling.class, result);
-        assertEquals(RecallTravel.etaMs(LITH_HARBOR, HENESYS), travelling.etaMs());
+        assertEquals(RecallTravel.etaMs(LITH_HARBOR, HENESYS, config.RECALL_MAX_ETA_MS), travelling.etaMs());
         assertEquals(LITH_HARBOR, travelling.fromMapId());
-        assertEquals(CompanionSlots.Kind.TRAVEL, slots.reservation("olwen").kind());
-        assertEquals(4, slots.free(ann)); // the traveller's seat is kept for it
+        assertNull(slots.reservation("olwen"), "a member now: the seat held for the load went with the join");
+        assertEquals(RosterState.TRAVELLING, rows.get("olwen").state());
+        assertTrue(rows.get("olwen").etaAtMs() > 0L);
         assertTrue(RosterVoice.line(olwen, result).startsWith("Olwen is on the way ("));
+    }
+
+    /** Olwen loads at her Lith Harbor camp and joins Ann's party (while the seat is held for her). */
+    private Character travellerLoads(MockedStatic<AgentInteractionRuntime> interaction,
+                                     MockedStatic<AgentPartyLifecycleService> party) {
+        CompanionBudget budget = mock(CompanionBudget.class);
+        when(budget.admit(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
+        when(world.budget()).thenReturn(budget);
+        when(world.bench()).thenReturn(mock(BenchLedger.class));
+        when(residents.ensureCharacter(olwen)).thenReturn(OLWEN_CHARACTER);
+        when(residents.characterIdOf("olwen")).thenReturn(OLWEN_CHARACTER);
+        MapleMap camp = mock(MapleMap.class);
+        when(camp.getId()).thenReturn(LITH_HARBOR);
+        GenericPortal portal = new GenericPortal(Portal.MAP_PORTAL);
+        portal.setPosition(new Point(300, 150));
+        portal.setTargetMapId(HENESYS);
+        portal.setPortalStatus(true);
+        when(camp.getPortals()).thenReturn(List.of(portal));
+        Client client = mock(Client.class, RETURNS_DEEP_STUBS); // Ann's channel, where the camp map is loaded
+        when(client.getChannelServer().getMapFactory().getMap(LITH_HARBOR)).thenReturn(camp);
+        when(ann.getClient()).thenReturn(client);
+        Character bot = mock(Character.class);
+        when(bot.getId()).thenReturn(OLWEN_CHARACTER);
+        interaction.when(() -> AgentInteractionRuntime.spawnStationaryAgentForLeaderAt(eq(ann), eq("Olwen"), eq(camp), any()))
+                .thenAnswer(inv -> {
+                    AgentRuntimeEntry runtime = new AgentRuntimeEntry(bot, ann, null);
+                    registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(OLWEN_CHARACTER)).thenReturn(runtime);
+                    registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(OLWEN_CHARACTER)).thenReturn(ANN);
+                    return AgentLifecycleService.AgentSpawnResult.ok(bot, true);
+                });
+        party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(ann, bot)).thenAnswer(inv -> {
+            assertEquals(CompanionSlots.Kind.TRAVEL, slots.reservation("olwen").kind()); // the gate sees a seat for it
+            return JoinOutcome.JOINED;
+        });
+        cleanup.when(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(OLWEN_CHARACTER)).thenAnswer(inv -> {
+            registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(OLWEN_CHARACTER)).thenReturn(null);
+            return null;
+        });
+        return bot;
     }
 
     @Test

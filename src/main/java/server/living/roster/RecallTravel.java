@@ -55,6 +55,18 @@ public final class RecallTravel {
         return BASE_MS + PER_HOP_MS * hops + (isTown(toMapId) ? 0L : FIELD_EXTRA_MS);
     }
 
+    /**
+     * Decision 7: the road estimate capped at {@code sameContinentCapMs} while both maps are on the island's road graph;
+     * an off-island trip keeps its full time.
+     */
+    public static long etaMs(int fromMapId, int toMapId, long sameContinentCapMs) {
+        long eta = etaMs(fromMapId, toMapId);
+        int from = region(fromMapId);
+        int to = region(toMapId);
+        boolean onIsland = ROADS.containsKey(from) && ROADS.containsKey(to) && hops(from, to) >= 0;
+        return onIsland ? Math.min(eta, Math.max(0L, sameContinentCapMs)) : eta;
+    }
+
     static int hops(int from, int to) {
         if (from == to) {
             return 0;

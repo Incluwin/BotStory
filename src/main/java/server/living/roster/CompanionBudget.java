@@ -58,7 +58,24 @@ public final class CompanionBudget {
 
     /** The same admission by owner id, for loads charged to an owner who may be offline (a live bench slice). */
     public Admission admit(Kind kind, int ownerId, long nowMs) {
-        Admission admission = decide(kind, usage(ownerId), world.config());
+        return admit(kind, ownerId, nowMs, usage(ownerId));
+    }
+
+    /**
+     * A swap's load (plan flow 1): the companion it replaces goes in the same command, so it is not counted against the
+     * owner's companions or the Agent ceiling.
+     */
+    public Admission admitReplacing(Kind kind, Character owner) {
+        if (owner == null) {
+            return Admission.deny("no owner");
+        }
+        Usage now = usage(owner.getId());
+        return admit(kind, owner.getId(), System.currentTimeMillis(), new Usage(Math.max(0, now.agents() - 1),
+                Math.max(0, now.ownerCompanions() - 1), now.benchLive(), now.ownerBenchLive(), now.expedition()));
+    }
+
+    private Admission admit(Kind kind, int ownerId, long nowMs, Usage usage) {
+        Admission admission = decide(kind, usage, world.config());
         if (!admission.allowed()) {
             world.store().event(ownerId, null, "companion.budget_denied", kind + ": " + admission.reason());
             return admission;

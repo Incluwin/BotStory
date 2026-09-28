@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 /**
  * An in-memory {@code living_roster}, haul, persona state and event log behind a mocked {@link LivingStore}, with the
  * same write semantics as the SQL: saveRoster is an upsert, saveRosterProgress an UPDATE that keeps the row's state,
- * recruited_at and lineup slot, and removeHaul never goes below zero. Everything else the store does answers the
+ * recruited_at, lineup slot and eta/hold/park columns, and removeHaul never goes below zero. Everything else the store does answers the
  * Mockito default.
  */
 final class FakeLivingStore {
@@ -48,6 +48,8 @@ final class FakeLivingStore {
         when(store.allActive()).thenAnswer(inv -> rows.values().stream().filter(e -> e.state() == RosterState.ACTIVE).toList());
         when(store.allBenched()).thenAnswer(inv -> rows.values().stream()
                 .filter(e -> e.state() == RosterState.BENCHED || e.state() == RosterState.AWAY).toList());
+        when(store.allInTransit()).thenAnswer(inv -> rows.values().stream().filter(e -> e.state() == RosterState.TRAVELLING
+                || e.state() == RosterState.HOLD || e.state() == RosterState.PARKED).toList());
         when(store.lineupSlots(anyInt())).thenReturn(Map.of());
         doAnswer(inv -> {
             RosterEntry entry = inv.getArgument(0);
@@ -63,7 +65,7 @@ final class FakeLivingStore {
                         progress.personaId(), stored.state(), progress.assignment(), progress.assignmentItem(),
                         progress.assignmentCount(), progress.campMapId(), progress.accruedExp(), progress.haulMeso(),
                         progress.wagesPaidUntilMs(), stored.recruitedAtMs(), progress.benchedAtMs(), progress.lastLedgerAtMs(),
-                        progress.farmSecondsToday(), progress.farmDay()));
+                        progress.farmSecondsToday(), progress.farmDay(), stored.etaAtMs(), stored.holdMapId(), stored.parkedAtMs()));
             }
             return null;
         }).when(store).saveRosterProgress(any());

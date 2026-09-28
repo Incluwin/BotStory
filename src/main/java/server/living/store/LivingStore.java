@@ -75,12 +75,16 @@ public final class LivingStore {
 
     /**
      * A companion's seat state (docs/BOT_MANAGEMENT_PLAN.md, "Seat states"). TRAVELLING, HOLD and PARKED come with
-     * changeset 40 and are not entered before P2b. Only RosterService writes it.
+     * changeset 40 and are entered from P2b on; the legal moves are CompanionSeatState's. Only RosterService writes it.
      */
     public enum RosterState { ACTIVE, BENCHED, AWAY, RELEASED, TRAVELLING, HOLD, PARKED }
 
     public enum Assignment { TRAIN, FARM_MESO, FARM_ITEM, GATHER, SELL, STALL, REST }
 
+    /**
+     * One living_roster row. {@code etaAtMs} is set only while TRAVELLING (when it arrives), {@code holdMapId} only
+     * while HOLD (where it waits) and {@code parkedAtMs} only while PARKED (when its owner went offline); 0 otherwise.
+     */
     public record RosterEntry(int characterId,
                               String personaId,
                               RosterState state,
@@ -95,14 +99,54 @@ public final class LivingStore {
                               long benchedAtMs,
                               long lastLedgerAtMs,
                               int farmSecondsToday,
-                              String farmDay) {
-        /** State change; entering bench-governed work also restarts the ledger clock so no idle time is credited. */
+                              String farmDay,
+                              long etaAtMs,
+                              int holdMapId,
+                              long parkedAtMs) {
+        /** A row with no travel, hold or park under way. */
+        public RosterEntry(int characterId, String personaId, RosterState state, Assignment assignment, int assignmentItem,
+                           int assignmentCount, int campMapId, long accruedExp, long haulMeso, long wagesPaidUntilMs,
+                           long recruitedAtMs, long benchedAtMs, long lastLedgerAtMs, int farmSecondsToday, String farmDay) {
+            this(characterId, personaId, state, assignment, assignmentItem, assignmentCount, campMapId, accruedExp,
+                    haulMeso, wagesPaidUntilMs, recruitedAtMs, benchedAtMs, lastLedgerAtMs, farmSecondsToday, farmDay,
+                    0L, 0, 0L);
+        }
+
+        /**
+         * State change; entering bench-governed work also restarts the ledger clock so no idle time is credited (a
+         * PARKED row benched once its grace ends passes the grace deadline as {@code nowMs}, so only the time after it
+         * is credited). The travel, hold and park columns are cleared, except the one the new state keeps.
+         */
         public RosterEntry with(RosterState newState, long nowMs) {
             boolean benchGoverned = newState == RosterState.BENCHED || newState == RosterState.AWAY;
             return new RosterEntry(characterId, personaId, newState, assignment, assignmentItem, assignmentCount,
                     campMapId, accruedExp, haulMeso, wagesPaidUntilMs, recruitedAtMs,
                     newState == RosterState.BENCHED ? nowMs : benchedAtMs,
-                    benchGoverned ? nowMs : lastLedgerAtMs, farmSecondsToday, farmDay);
+                    benchGoverned ? nowMs : lastLedgerAtMs, farmSecondsToday, farmDay,
+                    newState == RosterState.TRAVELLING ? etaAtMs : 0L,
+                    newState == RosterState.HOLD ? holdMapId : 0,
+                    newState == RosterState.PARKED ? parkedAtMs : 0L);
+        }
+
+        /** TRAVELLING, arriving at {@code arrivesAtMs}. */
+        public RosterEntry withTravel(long arrivesAtMs, long nowMs) {
+            return with(RosterState.TRAVELLING, nowMs).withLifecycle(arrivesAtMs, 0, 0L);
+        }
+
+        /** HOLD on {@code mapId}. */
+        public RosterEntry withHold(int mapId, long nowMs) {
+            return with(RosterState.HOLD, nowMs).withLifecycle(0L, mapId, 0L);
+        }
+
+        /** PARKED since {@code nowMs}. */
+        public RosterEntry withPark(long nowMs) {
+            return with(RosterState.PARKED, nowMs).withLifecycle(0L, 0, nowMs);
+        }
+
+        private RosterEntry withLifecycle(long eta, int holdMap, long parkedAt) {
+            return new RosterEntry(characterId, personaId, state, assignment, assignmentItem, assignmentCount, campMapId,
+                    accruedExp, haulMeso, wagesPaidUntilMs, recruitedAtMs, benchedAtMs, lastLedgerAtMs, farmSecondsToday,
+                    farmDay, eta, holdMap, parkedAt);
         }
     }
 
@@ -428,8 +472,8 @@ public final class LivingStore {
 
     private static final String ROSTER_COLUMNS = "character_id, persona_id, state, assignment, assignment_item,"
             + " assignment_count, camp_map_id, accrued_exp, haul_meso, wages_paid_until, recruited_at, benched_at,"
-            + " last_ledger_at, farm_seconds_today, farm_day";
-    /** Every column saveRosterProgress writes: all but the keys, state, recruited_at and lineup_slot. */
+            + " last_ledger_at, farm_seconds_today, farm_day, eta_at, hold_map_id, parked_at";
+    /** Every column saveRosterProgress writes: all but the keys, state, recruited_at, lineup_slot and eta/hold/park. */
     private static final String ROSTER_PROGRESS_COLUMNS = "assignment = ?, assignment_item = ?, assignment_count = ?,"
             + " camp_map_id = ?, accrued_exp = ?, haul_meso = ?, wages_paid_until = ?, benched_at = ?,"
             + " last_ledger_at = ?, farm_seconds_today = ?, farm_day = ?";
@@ -467,6 +511,11 @@ public final class LivingStore {
         return rosterWhere("state = 'ACTIVE'", ps -> { });
     }
 
+    /** Rows between the party and the bench: on the way (TRAVELLING), waiting outside a run (HOLD), or PARKED. */
+    public List<RosterEntry> allInTransit() {
+        return rosterWhere("state IN ('TRAVELLING','HOLD','PARKED')", ps -> { });
+    }
+
     private interface Binder {
         void bind(PreparedStatement ps) throws SQLException;
     }
@@ -488,12 +537,13 @@ public final class LivingStore {
     }
 
     public void saveRoster(RosterEntry entry) {
-        String sql = "INSERT INTO living_roster (" + ROSTER_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        String sql = "INSERT INTO living_roster (" + ROSTER_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 + " ON DUPLICATE KEY UPDATE state = VALUES(state), assignment = VALUES(assignment),"
                 + " assignment_item = VALUES(assignment_item), assignment_count = VALUES(assignment_count),"
                 + " camp_map_id = VALUES(camp_map_id), accrued_exp = VALUES(accrued_exp), haul_meso = VALUES(haul_meso),"
                 + " wages_paid_until = VALUES(wages_paid_until), benched_at = VALUES(benched_at),"
-                + " last_ledger_at = VALUES(last_ledger_at), farm_seconds_today = VALUES(farm_seconds_today), farm_day = VALUES(farm_day)";
+                + " last_ledger_at = VALUES(last_ledger_at), farm_seconds_today = VALUES(farm_seconds_today), farm_day = VALUES(farm_day),"
+                + " eta_at = VALUES(eta_at), hold_map_id = VALUES(hold_map_id), parked_at = VALUES(parked_at)";
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, entry.characterId());
             ps.setString(2, entry.personaId());
@@ -510,6 +560,9 @@ public final class LivingStore {
             setNullableTime(ps, 13, entry.lastLedgerAtMs());
             ps.setInt(14, entry.farmSecondsToday());
             ps.setString(15, entry.farmDay());
+            setNullableTime(ps, 16, entry.etaAtMs());
+            setNullableInt(ps, 17, entry.holdMapId());
+            setNullableTime(ps, 18, entry.parkedAtMs());
             ps.executeUpdate();
         } catch (SQLException failure) {
             log.warn("living_roster write failed for {}/{}", entry.characterId(), entry.personaId(), failure);
@@ -518,8 +571,8 @@ public final class LivingStore {
 
     /**
      * Saves a row's bench progress (assignment, camp, banked EXP, haul meso, wages, ledger clocks) but never its
-     * state: only RosterService moves a companion between states (plan P2a, "Data model"). A row that is gone
-     * stays gone.
+     * state or the travel, hold and park columns that go with it: only RosterService moves a companion between states
+     * (plan P2a, "Data model"). A row that is gone stays gone.
      */
     public void saveRosterProgress(RosterEntry entry) {
         String sql = "UPDATE living_roster SET " + ROSTER_PROGRESS_COLUMNS + " WHERE character_id = ? AND persona_id = ?";
@@ -595,7 +648,8 @@ public final class LivingStore {
                 rs.getInt("assignment_item"), rs.getInt("assignment_count"), rs.getInt("camp_map_id"),
                 rs.getLong("accrued_exp"), rs.getLong("haul_meso"), time(rs.getTimestamp("wages_paid_until")),
                 time(rs.getTimestamp("recruited_at")), time(rs.getTimestamp("benched_at")),
-                time(rs.getTimestamp("last_ledger_at")), rs.getInt("farm_seconds_today"), rs.getString("farm_day"));
+                time(rs.getTimestamp("last_ledger_at")), rs.getInt("farm_seconds_today"), rs.getString("farm_day"),
+                time(rs.getTimestamp("eta_at")), rs.getInt("hold_map_id"), time(rs.getTimestamp("parked_at")));
     }
 
     // ---- haul ----------------------------------------------------------------------------

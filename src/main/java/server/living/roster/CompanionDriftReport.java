@@ -17,21 +17,21 @@ import java.util.Set;
 public final class CompanionDriftReport {
     public enum Code {
         /**
-         * ACTIVE row, companion loaded, but not a member of the owner's party, or listed in it while
+         * ACTIVE or TRAVELLING row, companion loaded, but not a member of the owner's party, or listed in it while
          * its own party pointer (what EXP share and party HP read) names another party or none.
          */
         ACTIVE_NOT_IN_PARTY,
-        /** ACTIVE row, companion character not loaded. */
+        /** ACTIVE or TRAVELLING row, companion character not loaded. */
         ACTIVE_NOT_LOADED,
-        /** BENCHED or AWAY row, yet the companion is a member of the owner's party. */
+        /** BENCHED, AWAY or HOLD row, yet the companion is a member of the owner's party. */
         IN_PARTY_NOT_ACTIVE,
         /**
-         * ACTIVE row, companion loaded, but its runtime is registered to someone else (or to nobody);
-         * or a BENCHED or AWAY row whose loaded runtime is still registered to the owner (the despawn
+         * ACTIVE or TRAVELLING row, companion loaded, but its runtime is registered to someone else (or to nobody);
+         * or a BENCHED, AWAY or PARKED row whose loaded runtime is still registered to the owner (the despawn
          * failed, so it keeps following the owner and holding a scheduler slot).
          */
         LEADER_MISMATCH,
-        /** ACTIVE row, companion loaded on another channel than its owner. */
+        /** ACTIVE or TRAVELLING row, companion loaded on another channel than its owner. */
         CHANNEL_MISMATCH,
         /** An Agent registered under the owner that has no roster row (a hand-spawned bot); informational. */
         UNROSTERED_AGENT;
@@ -112,9 +112,26 @@ public final class CompanionDriftReport {
         return new CompanionDriftReport(owner, freeSlots, companions, unrostered, drift);
     }
 
+    /**
+     * ACTIVE and TRAVELLING companions are party members led by the owner on the owner's channel; a TRAVELLING one does
+     * not follow yet and may stand on another map. A HOLD one waits out of the party, still loaded and led by the
+     * owner. A PARKED one may stay in its offline owner's own party as an offline member, and is not loaded.
+     */
     private static void classify(Owner owner, Row row, Live live, List<Drift> out) {
         boolean inParty = owner.inParty(row.characterId());
-        if (row.state() != RosterState.ACTIVE) {
+        if (row.state() == RosterState.HOLD) {
+            if (inParty) {
+                out.add(drift(Code.IN_PARTY_NOT_ACTIVE, row, "row is HOLD but the companion is in the owner's party"));
+            }
+            return;
+        }
+        if (row.state() == RosterState.PARKED) {
+            if (live.loaded() && live.registeredLeaderId() == owner.id()) {
+                out.add(drift(Code.LEADER_MISMATCH, row, "row is PARKED but its runtime is still registered to the owner"));
+            }
+            return;
+        }
+        if (!CompanionSeatState.partyMember(row.state())) {
             if (inParty) {
                 out.add(drift(Code.IN_PARTY_NOT_ACTIVE, row, "row is " + row.state() + " but the companion is in the owner's party"));
             }
@@ -125,7 +142,7 @@ public final class CompanionDriftReport {
             return;
         }
         if (!live.loaded()) {
-            out.add(drift(Code.ACTIVE_NOT_LOADED, row, "row is ACTIVE but the companion is not loaded"));
+            out.add(drift(Code.ACTIVE_NOT_LOADED, row, "row is " + row.state() + " but the companion is not loaded"));
             return;
         }
         if (!inParty) {

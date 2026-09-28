@@ -272,9 +272,26 @@ class ArrivalPlacementTest {
     }
 
     @Test
-    void aCompanionTravellingFromCampWalksInFromThePortalWhenItArrives() {
+    void aCompanionTravellingFromCampJoinsAtOnceAndWalksInFromThePortalWhenItArrives() {
+        // P2b join-then-travel (this replaced P1.5's load at the arrival): it is loaded at its camp without follow and
+        // is in the party at once; when the ETA ends it comes into the owner's map at the portal nearest them and only
+        // then follows
         seed("olwen", RosterState.BENCHED);
         when(alice.getMapId()).thenReturn(FIELD); // a field one road from the camp: a real ETA
+        when(map.getId()).thenReturn(FIELD);
+        MapleMap camp = mock(MapleMap.class);
+        when(camp.getId()).thenReturn(CAMP);
+        when(camp.getPortals()).thenReturn(List.of(portal(Portal.MAP_PORTAL, 300, 150, FIELD, null, true)));
+        client.Client client = mock(client.Client.class, RETURNS_DEEP_STUBS);
+        when(client.getChannelServer().getMapFactory().getMap(CAMP)).thenReturn(camp);
+        when(alice.getClient()).thenReturn(client);
+        interaction.when(() -> AgentInteractionRuntime.spawnStationaryAgentForLeaderAt(eq(alice), anyString(), eq(camp), any()))
+                .thenAnswer(inv -> {
+                    Point at = inv.getArgument(3);
+                    return load(inv.getArgument(1), "spawn at camp " + at.x + "," + at.y);
+                });
+        Character olwen = bots.get("Olwen");
+        when(olwen.getMap()).thenReturn(camp);
         TimerManager timers = mock(TimerManager.class);
         ArgumentCaptor<Runnable> arrival = ArgumentCaptor.forClass(Runnable.class);
         RosterService roster = new RosterService(world);
@@ -284,11 +301,17 @@ class ArrivalPlacementTest {
             timer.when(TimerManager::getInstance).thenReturn(timers);
             assertTrue(RosterVoice.line(OLWEN, roster.call(alice, OLWEN)).startsWith("Olwen is on the way"));
             verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), arrival.capture(), anyLong());
-            assertEquals(List.of(), calls);
+            assertEquals(List.of("spawn at camp 300,150", "join Olwen"), calls); // no follow while it travels
+            assertEquals(RosterState.TRAVELLING, rows.get(ALICE + ":olwen").state());
+            Party together = mock(Party.class);
+            when(together.getId()).thenReturn(7);
+            when(alice.getParty()).thenReturn(together);
+            when(olwen.getParty()).thenReturn(together);
             arrival.getValue().run();
         }
 
-        assertEquals(List.of("spawn at 800,200", "join Olwen", "follow Olwen"), calls);
+        assertEquals(List.of("spawn at camp 300,150", "join Olwen", "follow Olwen"), calls);
+        verify(olwen).changeMap(map, new Point(800, 200));
         assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
     }
 

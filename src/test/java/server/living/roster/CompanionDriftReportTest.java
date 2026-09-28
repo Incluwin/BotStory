@@ -136,6 +136,37 @@ class CompanionDriftReportTest {
                 "a live bench session registered to itself is not drift");
     }
 
+    // ---- P2b: TRAVELLING, HOLD and PARKED ----------------------------------------------------
+
+    @Test
+    void aTravellerInThePartyLedByTheOwnerIsCleanOnAnyMap() {
+        Live atCamp = new Live(true, CHANNEL, 104040000, 500, 800, PARTY, OWNER); // not following yet, on another map
+        assertEquals(List.of(), codes(owner(PARTY, COMPANION), row(RosterState.TRAVELLING, COMPANION), atCamp));
+    }
+
+    @Test
+    void aTravellerIsCheckedAsAPartyMember() {
+        assertEquals(List.of(Code.ACTIVE_NOT_LOADED), codes(owner(PARTY), row(RosterState.TRAVELLING, COMPANION), Live.unloaded(-1)));
+        assertEquals(List.of(Code.ACTIVE_NOT_IN_PARTY), codes(owner(PARTY), row(RosterState.TRAVELLING, COMPANION), loaded(CHANNEL, 0, OWNER)));
+        assertEquals(List.of(Code.CHANNEL_MISMATCH), codes(owner(PARTY, COMPANION), row(RosterState.TRAVELLING, COMPANION),
+                loaded(2, PARTY, OWNER)));
+    }
+
+    @Test
+    void aHoldOutOfThePartyLedByTheOwnerIsClean() {
+        assertEquals(List.of(), codes(owner(PARTY), row(RosterState.HOLD, COMPANION), loaded(CHANNEL, 0, OWNER)),
+                "waiting outside a run: loaded, led by its owner, its seat reserved");
+        assertEquals(List.of(), codes(owner(PARTY), row(RosterState.HOLD, COMPANION), Live.unloaded(-1)));
+        assertEquals(List.of(Code.IN_PARTY_NOT_ACTIVE), codes(owner(PARTY, COMPANION), row(RosterState.HOLD, COMPANION),
+                loaded(CHANNEL, PARTY, OWNER)), "a hold never sits in the party");
+    }
+
+    @Test
+    void aParkedCompanionMayStayAnOfflineMemberButNotLoaded() {
+        assertEquals(List.of(), codes(owner(PARTY, COMPANION), row(RosterState.PARKED, COMPANION), Live.unloaded(-1)));
+        assertEquals(List.of(Code.LEADER_MISMATCH), codes(owner(PARTY), row(RosterState.PARKED, COMPANION), loaded(CHANNEL, 0, OWNER)));
+    }
+
     @Test
     void unrosteredAgentIsInformationalOnly() {
         CompanionDriftReport report = CompanionDriftReport.of(owner(PARTY, 202), 4, List.of(), List.of(new AgentRef(202, "Spawned")));

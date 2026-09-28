@@ -25,8 +25,9 @@ class RosterStateWriterBoundaryTest {
     private static final Path MAIN = Path.of("src/main/java");
     private static final Path LIVING_STORE = MAIN.resolve("server/living/store/LivingStore.java");
     private static final Path ROSTER_SERVICE = MAIN.resolve("server/living/roster/RosterService.java");
-    /** A full-row upsert (which writes state), a delete, or a state change on a row. */
-    private static final Pattern STATE_WRITE = Pattern.compile("\\.saveRoster\\(|\\.deleteRoster\\(|\\.with\\(RosterState\\.");
+    /** A full-row upsert (which writes state), a delete, or a state change on a row (P2b: to travel, hold or park too). */
+    private static final Pattern STATE_WRITE = Pattern.compile(
+            "\\.saveRoster\\(|\\.deleteRoster\\(|\\.with\\(RosterState\\.|\\.with(Travel|Hold|Park)\\(");
     private static final Path CHANGELOG = Path.of("src/main/resources/db/changelog-tables.xml");
     private static final Path UP = Path.of("src/main/resources/db/tables/031-companion-manager.sql");
     private static final Path DOWN = Path.of("src/main/resources/db/tables/031-companion-manager-down.sql");
