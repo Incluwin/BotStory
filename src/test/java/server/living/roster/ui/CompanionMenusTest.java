@@ -425,6 +425,15 @@ class CompanionMenusTest {
     }
 
     @Test
+    void bankedExpPastTheNextLevelReadsReadyToLevelNeverOverAHundredPercent() {
+        rows.add(row("mira", RosterState.BENCHED, 50_000_000L));
+
+        menus.rosterBook(owner);
+
+        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel - ready to level"), lastTalk().labels());
+    }
+
+    @Test
     void theRosterBookWithNoRosterIsAShortPinkLine() {
         menus.rosterBook(owner);
 

@@ -23,7 +23,8 @@ import java.util.function.LongSupplier;
  * the state as it is now:
  * <ul>
  *   <li>a companion expelled by its owner is benched; by another leader, it is benched with returnWhenRoom and that
- *       leader's party lowers its owner's cap (the leader cap), so the seat is not refilled in a loop;</li>
+ *       leader's party caps its owner at one seat fewer than they used (the leader cap), so the seat is not
+ *       refilled in a loop;</li>
  *   <li>an owner who leaves or is expelled takes the crew along: it re-forms around the owner, and the owner's guests
  *       step out; the humans left behind may have room for companions waiting for it;</li>
  *   <li>a disband re-forms each human's crew around its own owner;</li>
@@ -169,7 +170,8 @@ public final class CompanionPartySync {
         /** A roster call: the companion comes back (it may travel). */
         void recall(int ownerId, String key);
 
-        void recordLeaderExpel(int partyId, int ownerId);
+        /** Another leader expelled one of the owner's companions: the owner may use at most {@code cap} seats there. */
+        void recordLeaderExpel(int partyId, int ownerId, int cap);
 
         /** The stock refusal of an accept: the party is full, or the player is already in one. */
         void refuse(int humanId, boolean partyFull);
@@ -382,8 +384,11 @@ public final class CompanionPartySync {
             return changed; // back with its owner already
         }
         boolean byLeader = event.op() == PartyOperation.EXPEL && event.actorId() != 0 && event.actorId() != owner;
-        if (byLeader) {
-            crew.recordLeaderExpel(partyId, owner);
+        if (byLeader && crew.members(partyId).contains(owner)) {
+            // the seats the owner used with it still in, less the one the leader emptied: it stays empty
+            CompanionSlots.View before = crew.view(partyId)
+                    .with(new CompanionSlots.Member(key, target, false, owner, false));
+            crew.recordLeaderExpel(partyId, owner, CompanionSlots.capAfterExpel(before, owner));
         } else if (event.op() == PartyOperation.LEAVE) {
             crew.drift(partyId, key + " left its owner's party on its own");
         }

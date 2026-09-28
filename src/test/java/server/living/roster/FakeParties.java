@@ -74,7 +74,8 @@ final class FakeParties implements CompanionPartySync.Crew {
      * LOG_ONOFF (a logout publishes it before the player leaves storage): the sync still reads them as online.
      */
     final Set<Integer> stillInStorage = new HashSet<>();
-    final Map<Integer, Map<Integer, Integer>> cuts = new HashMap<>();
+    /** Leader caps: party id -> owner id -> the most seats that owner may use there. */
+    final Map<Integer, Map<Integer, Integer>> caps = new HashMap<>();
     /** returnWhenRoom: key -> the party it may not come back into (0 = none). */
     final Map<String, Integer> waiting = new HashMap<>();
     final Deque<PartyChangeEvent> events = new ArrayDeque<>();
@@ -383,15 +384,18 @@ final class FakeParties implements CompanionPartySync.Crew {
 
     /**
      * Runs the queued events through companion-ops until none is left: CompanionSlots takes each first (guest seats
-     * back, the party's leader caps and blocks gone with it), then the sync.
+     * back, a leaving owner's leader cap gone, the party's leader caps and blocks gone with it), then the sync.
      */
     void settle() {
         while (!events.isEmpty()) {
             PartyChangeEvent event = events.poll();
             switch (event.op()) {
-                case LEAVE, EXPEL -> guests.remove(event.targetId());
+                case LEAVE, EXPEL -> {
+                    guests.remove(event.targetId());
+                    caps.getOrDefault(event.partyId(), new HashMap<>()).remove(event.targetId());
+                }
                 case DISBAND -> {
-                    cuts.remove(event.partyId());
+                    caps.remove(event.partyId());
                     waiting.replaceAll((key, blocked) -> blocked == event.partyId() ? 0 : blocked);
                     event.before().memberIds().forEach(guests::remove);
                 }
@@ -518,7 +522,7 @@ final class FakeParties implements CompanionPartySync.Crew {
                 held.addAll(guestSeats(human, group.members));
             }
         }
-        return new CompanionSlots.View(members, held, cuts.getOrDefault(partyId, Map.of()), lineup);
+        return new CompanionSlots.View(members, held, caps.getOrDefault(partyId, Map.of()), lineup);
     }
 
     /** The host's GUEST seats of guests not among {@code members}: CompanionSlots counts them until it releases them. */
@@ -645,9 +649,9 @@ final class FakeParties implements CompanionPartySync.Crew {
     }
 
     @Override
-    public void recordLeaderExpel(int partyId, int ownerId) {
+    public void recordLeaderExpel(int partyId, int ownerId, int cap) {
         changes.add("cap " + ownerId);
-        cuts.computeIfAbsent(partyId, id -> new HashMap<>()).merge(ownerId, 1, Integer::sum);
+        caps.computeIfAbsent(partyId, id -> new HashMap<>()).merge(ownerId, cap, Math::min);
     }
 
     @Override

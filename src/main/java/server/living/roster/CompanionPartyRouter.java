@@ -252,14 +252,16 @@ public final class CompanionPartyRouter {
 
     /**
      * No seat for one more of the owner's: the stock "full" (17) while the party is at 6/6. With seats open they are a
-     * friend's share (P2a's share is a cap; lending is P9), so the companion says so in character, or pink text.
+     * friend's share (P2a's share is a cap; lending is P9) or held empty by the leader's expel (the leader cap), so
+     * the companion says so in character, or pink text.
      */
     private Route noSeat(Character owner, Persona speaker) {
         if (world.slots().occupied(owner) >= CompanionSlots.PARTY_CAP) {
             return answer(owner, PacketCreator.partyStatusMessage(17));
         }
         if (speaker != null) {
-            world.residents().whisper(speaker, owner, SHARE_USED_LINE);
+            world.residents().whisper(speaker, owner,
+                    world.slots().leaderCapped(owner) ? RosterService.LEADER_CAP_LINE : SHARE_USED_LINE);
         } else {
             owner.dropMessage(5, "The other seats in this party are your friend's.");
         }

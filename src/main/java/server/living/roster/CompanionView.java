@@ -66,10 +66,10 @@ public record CompanionView(String personaId,
         return maxHp <= 0 ? 0 : (int) Math.round(100.0d * hp / maxHp);
     }
 
-    /** Banked bench EXP as a share of the next level. */
+    /** Banked bench EXP as a share of the next level; 100 once it would level the companion (it is never more). */
     static int bankedPercent(long exp, int level) {
         int needed = level <= 0 ? 0 : ExpTable.getExpNeededForLevel(level);
-        return needed <= 0 || exp <= 0 ? 0 : (int) Math.min(999L, exp * 100L / needed);
+        return needed <= 0 || exp <= 0 ? 0 : (int) Math.min(100L, exp * 100L / needed);
     }
 
     /** "Fighter", "F/P Wizard", "Dawn Warrior", "Maple Leaf Brigadier"; empty when unknown. */

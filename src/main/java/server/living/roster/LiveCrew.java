@@ -155,7 +155,8 @@ final class LiveCrew implements CompanionPartySync.Crew {
         }
         RosterEntry row = world.roster().entry(ownerId, key);
         boolean out = row != null && row.state() != RosterState.BENCHED;
-        String line = reason == Reason.OVERFLOW && out ? overflowLine(owner, persona) : reason.line();
+        String line = reason != Reason.OVERFLOW || !out ? reason.line()
+                : world.slots().leaderCapped(owner) ? RosterService.LEADER_CAP_LINE : overflowLine(owner, persona);
         RosterResult result = world.roster().standDown(owner, persona, line, reason.event());
         if (line != null && line.isEmpty() && result.ok()) {
             owner.dropMessage(5, RosterVoice.line(persona, result)); // the first one of the burst said it already
@@ -258,8 +259,8 @@ final class LiveCrew implements CompanionPartySync.Crew {
     }
 
     @Override
-    public void recordLeaderExpel(int partyId, int ownerId) {
-        world.slots().recordLeaderExpel(partyId, ownerId);
+    public void recordLeaderExpel(int partyId, int ownerId, int cap) {
+        world.slots().recordLeaderExpel(partyId, ownerId, cap);
     }
 
     @Override

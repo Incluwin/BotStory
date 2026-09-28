@@ -285,7 +285,10 @@ public final class CompanionMenus {
                 ? " - " + view.where() + " - HP " + view.hpPercent() + "%" : " - on the way");
     }
 
-    /** "Mira, Lv28 Hunter - train @ Ant Tunnel I - 12% EXP banked", or "... - on the way (~40 s)" once called. */
+    /**
+     * "Mira, Lv28 Hunter - train @ Ant Tunnel I - 12% EXP banked" ("- ready to level" once it would level her), or
+     * "... - on the way (~40 s)" once called.
+     */
     static String benchRow(CompanionView view) {
         return view.name() + levelJob(view) + " - " + (view.travelMs() > 0 ? onTheWay(view) : duty(view));
     }
@@ -299,7 +302,8 @@ public final class CompanionMenus {
     private static String duty(CompanionView view) {
         return (view.state() == RosterState.AWAY ? "away: " : "") + view.duty()
                 + (view.where().isEmpty() ? "" : " @ " + view.where())
-                + (view.bankedExpPercent() > 0 ? " - " + view.bankedExpPercent() + "% EXP banked" : "");
+                + (view.bankedExpPercent() >= 100 ? " - ready to level"
+                : view.bankedExpPercent() > 0 ? " - " + view.bankedExpPercent() + "% EXP banked" : "");
     }
 
     private static String onTheWay(CompanionView view) {

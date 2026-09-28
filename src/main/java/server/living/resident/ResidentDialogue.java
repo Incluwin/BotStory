@@ -454,6 +454,15 @@ public final class ResidentDialogue {
     /** Every verb runs on companion-ops through {@link CompanionChatVerbs}; only the parsing happens on the chat thread. */
     private boolean rosterCommand(Character owner, String normalized) {
         CompanionChatVerbs verbs = world.chatVerbs();
+        // an untargeted "logout", then its "yes": first, so nothing nearby answers the "yes" instead
+        CompanionChatVerbs.LogoutTurn logout = verbs.logoutTurn(owner, normalized);
+        if (logout == CompanionChatVerbs.LogoutTurn.CONFIRMED) {
+            verbs.show(owner, "roster.logout", 5, () -> everyone(owner, RosterState.ACTIVE, true,
+                    persona -> world.roster().bench(owner, persona)));
+        }
+        if (logout != CompanionChatVerbs.LogoutTurn.NONE) {
+            return true;
+        }
         if (ROSTER.matcher(normalized).matches()) {
             verbs.show(owner, "roster.list", 6, () -> world.roster().summary(owner));
             return true;

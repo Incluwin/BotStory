@@ -33,8 +33,9 @@ import java.util.function.LongSupplier;
  * <p>Fair share (decision 14): with H online humans each is guaranteed floor((6-H)/H) seats for companions and
  * guests; the leftover seats go first come. The share is also a cap: seats a friend leaves unused stay theirs, so
  * they can call their own at any time (lending them is P9). Within one human's crew the usual lineup keeps its seats
- * first and guests are the first to step out. A leader who expels another human's companion lowers that human's cap
- * in the party until it disbands. Offline members and Agents nobody is charged for just occupy a seat.</p>
+ * first and guests are the first to step out. A leader who expels another human's companion caps that human's seats
+ * in the party at one fewer than they were using, so the seat stays empty until the party disbands or that human
+ * leaves it. Offline members and Agents nobody is charged for just occupy a seat.</p>
  *
  * <p>The seat arithmetic is pure ({@link #allocate}, {@link #free(View, int)}, {@link #makeRoom(View, int)},
  * {@link #canAdmit(View, boolean)}, {@link #decideJoin}) over a {@link View} the live methods build from a party.
@@ -64,20 +65,23 @@ public final class CompanionSlots {
      */
     public record Member(String key, int characterId, boolean human, int chargedTo, boolean guest) { }
 
-    /** A party for the seat arithmetic: members in join order, counted reservations, leader cuts, usual lineups. */
-    public record View(List<Member> members, List<Reservation> reservations, Map<Integer, Integer> cuts,
+    /**
+     * A party for the seat arithmetic: members in join order, counted reservations, leader caps (owner id -> the most
+     * seats that owner may use), usual lineups.
+     */
+    public record View(List<Member> members, List<Reservation> reservations, Map<Integer, Integer> caps,
                        Map<String, Integer> lineup) {
         public View {
             members = List.copyOf(members);
             reservations = List.copyOf(reservations);
-            cuts = Map.copyOf(cuts);
+            caps = Map.copyOf(caps);
             lineup = Map.copyOf(lineup);
         }
 
         View with(Member member) {
             List<Member> joined = new ArrayList<>(members);
             joined.add(member);
-            return new View(joined, reservations, cuts, lineup);
+            return new View(joined, reservations, caps, lineup);
         }
     }
 
@@ -89,7 +93,7 @@ public final class CompanionSlots {
     }
 
     /**
-     * The seats of a view. {@code share}: each human's cap (its base share less leader cuts, plus the leftover it
+     * The seats of a view. {@code share}: each human's cap (its base share within its leader cap, plus the leftover it
      * holds); {@code leftoverFree}: leftover seats nobody holds yet; {@code overflow}: claims past their owner's cap,
      * and {@code kept} the others, both in step-out order (guests first, then each crew from the back of its lineup).
      */
@@ -121,8 +125,8 @@ public final class CompanionSlots {
     private final LivingWorld world;
     private final LongSupplier clock;
     private final Map<String, Reservation> reservations = new ConcurrentHashMap<>();
-    /** party id -> owner id -> seats its leader's expels took from that owner. */
-    private final Map<Integer, Map<Integer, Integer>> leaderCuts = new ConcurrentHashMap<>();
+    /** party id -> owner id -> the most seats its leader's expels left that owner there. */
+    private final Map<Integer, Map<Integer, Integer>> leaderCaps = new ConcurrentHashMap<>();
     /** returnWhenRoom: companion key -> the party it may not come back into until that party disbands (0 = none). */
     private final Map<String, Integer> waitingForRoom = new ConcurrentHashMap<>();
     private final AtomicLong sequence = new AtomicLong();
@@ -237,22 +241,28 @@ public final class CompanionSlots {
 
     // ---- leader caps ----------------------------------------------------------------------
 
-    /** {@code party}'s leader expelled one of {@code ownerId}'s companions: that owner's cap there drops by one. */
-    public void recordLeaderExpel(Party party, int ownerId) {
-        if (party != null) {
-            recordLeaderExpel(party.getId(), ownerId);
-        }
-    }
-
-    public void recordLeaderExpel(int partyId, int ownerId) {
+    /**
+     * The leader of {@code partyId} expelled one of {@code ownerId}'s companions: that owner may use at most
+     * {@code cap} seats there ({@link #capAfterExpel}) until the party disbands or the owner leaves it.
+     */
+    public void recordLeaderExpel(int partyId, int ownerId, int cap) {
         if (partyId != 0 && ownerId != 0) {
-            leaderCuts.computeIfAbsent(partyId, id -> new ConcurrentHashMap<>()).merge(ownerId, 1, Integer::sum);
+            leaderCaps.computeIfAbsent(partyId, id -> new ConcurrentHashMap<>())
+                    .merge(ownerId, Math.max(0, cap), Math::min);
         }
     }
 
-    public int leaderCut(int partyId, int ownerId) {
-        Map<Integer, Integer> cuts = leaderCuts.get(partyId);
-        return cuts == null ? 0 : cuts.getOrDefault(ownerId, 0);
+    /** The owner's leader cap in the party, or -1 when its leader has not capped them. */
+    public int leaderCap(int partyId, int ownerId) {
+        Map<Integer, Integer> caps = leaderCaps.get(partyId);
+        return caps == null ? -1 : caps.getOrDefault(ownerId, -1);
+    }
+
+    /** True when a leader cap is what keeps the owner from seating one more in their party. */
+    public boolean leaderCapped(Character owner) {
+        Party party = owner.getParty();
+        int cap = party == null ? -1 : leaderCap(party.getId(), owner.getId());
+        return cap >= 0 && allocate(view(party, false)).usageOf(owner.getId()) >= cap;
     }
 
     // ---- returnWhenRoom -------------------------------------------------------------------
@@ -289,7 +299,8 @@ public final class CompanionSlots {
 
     /**
      * A committed party change, on companion-ops. A join uses up the joiner's reservation (a guest keeps its GUEST
-     * seat, which charges it to its host); a guest that leaves gives its seat back; a disband resets the leader caps.
+     * seat, which charges it to its host); a guest that leaves gives its seat back; an owner who leaves takes their
+     * leader cap along (a leader who invites them back starts them afresh), and a disband resets them all.
      */
     public void onPartyChanged(PartyChangeEvent event) {
         switch (event.op()) {
@@ -300,9 +311,15 @@ public final class CompanionSlots {
                     release(key);
                 }
             }
-            case LEAVE, EXPEL -> release(keyOf(event.targetId()), Kind.GUEST);
+            case LEAVE, EXPEL -> {
+                release(keyOf(event.targetId()), Kind.GUEST);
+                Map<Integer, Integer> caps = leaderCaps.get(event.partyId());
+                if (caps != null) {
+                    caps.remove(event.targetId());
+                }
+            }
             case DISBAND -> {
-                leaderCuts.remove(event.partyId());
+                leaderCaps.remove(event.partyId());
                 waitingForRoom.replaceAll((key, blocked) -> blocked == event.partyId() ? 0 : blocked);
                 for (int memberId : event.before().memberIds()) {
                     release(keyOf(memberId), Kind.GUEST);
@@ -365,7 +382,7 @@ public final class CompanionSlots {
     private View withReservationsOf(View view, int ownerId) {
         List<Reservation> held = new ArrayList<>(view.reservations());
         held.addAll(reservations(ownerId));
-        return new View(view.members(), held, view.cuts(), view.lineup());
+        return new View(view.members(), held, view.caps(), view.lineup());
     }
 
     /** {@code withLineup}: read the usual lineups (the step-out order needs them; the seat counts do not). */
@@ -404,7 +421,7 @@ public final class CompanionSlots {
                 lineup.putAll(world.store().lineupSlots(human));
             }
         }
-        return new View(members, counted, leaderCuts.getOrDefault(party.getId(), Map.of()), lineup);
+        return new View(members, counted, leaderCaps.getOrDefault(party.getId(), Map.of()), lineup);
     }
 
     private boolean memberNow(int characterId, int partyId) {
@@ -495,7 +512,7 @@ public final class CompanionSlots {
         for (Map.Entry<Integer, List<Ranked>> crew : crews.entrySet()) {
             List<Ranked> claims = crew.getValue();
             claims.sort(KEEP_ORDER);
-            int within = Math.max(0, base - view.cuts().getOrDefault(crew.getKey(), 0));
+            int within = Math.min(base, capOf(view, crew.getKey()));
             share.put(crew.getKey(), within);
             usage.put(crew.getKey(), claims.size());
             for (int i = 0; i < claims.size(); i++) {
@@ -508,9 +525,10 @@ public final class CompanionSlots {
         overBase.sort(FIRST_COME);
         Set<Claim> overflowing = new HashSet<>();
         for (Ranked over : overBase) {
-            if (leftover > 0) {
+            int owner = over.claim().ownerId();
+            if (leftover > 0 && share.get(owner) < capOf(view, owner)) {
                 leftover--;
-                share.merge(over.claim().ownerId(), 1, Integer::sum);
+                share.merge(owner, 1, Integer::sum);
             } else {
                 overflowing.add(over.claim());
             }
@@ -531,18 +549,26 @@ public final class CompanionSlots {
     }
 
     /**
-     * Seats {@code ownerId} may still fill: their cap plus unheld leftover, less what they use, within the room left.
-     * Leader cuts past the base share come off the leftover they could take, so every cut lowers the cap.
+     * Seats {@code ownerId} may still fill: their cap plus unheld leftover, never past their leader cap, less what
+     * they use, within the room left.
      */
     public static int free(View view, int ownerId) {
         if (!isHuman(view, ownerId)) {
             return 0;
         }
         Allocation seats = allocate(view);
-        int base = (PARTY_CAP - seats.humans()) / seats.humans();
-        int cutPastBase = Math.max(0, view.cuts().getOrDefault(ownerId, 0) - base);
-        int byShare = seats.shareOf(ownerId) + seats.leftoverFree() - cutPastBase - seats.usageOf(ownerId);
+        int byShare = Math.min(seats.shareOf(ownerId) + seats.leftoverFree(), capOf(view, ownerId))
+                - seats.usageOf(ownerId);
         return Math.max(0, Math.min(byShare, PARTY_CAP - seats.occupied()));
+    }
+
+    /**
+     * The leader cap an expel leaves {@code ownerId}: one seat fewer than they were using in {@code before} (the
+     * party with the expelled companion still in it), never more than their share less one, and never below 0.
+     */
+    public static int capAfterExpel(View before, int ownerId) {
+        Allocation seats = allocate(before);
+        return Math.max(0, Math.min(seats.shareOf(ownerId), seats.usageOf(ownerId)) - 1);
     }
 
     /**
@@ -586,6 +612,11 @@ public final class CompanionSlots {
             return JoinVerdict.ADMIT_SEATED;
         }
         return partyQuest.getAsBoolean() ? JoinVerdict.ADMIT_PQ : JoinVerdict.REFUSE_UNSEATED;
+    }
+
+    /** The owner's leader cap in the view, or the whole party when no leader capped them. */
+    private static int capOf(View view, int ownerId) {
+        return view.caps().getOrDefault(ownerId, PARTY_CAP);
     }
 
     private static int slot(View view, String key) {

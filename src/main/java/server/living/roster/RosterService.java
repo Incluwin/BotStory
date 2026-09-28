@@ -55,6 +55,8 @@ public final class RosterService {
     public static final String CAUSE = "companion.roster";
     private static final String BUSY_LINE = "give me a moment. i'm in the middle of something.";
     private static final String PARTY_FULL_LINE = "your party's full. i'll wait at camp.";
+    /** A companion refused a seat its owner's leader cap holds empty (CompanionSlots, the leader cap). */
+    static final String LEADER_CAP_LINE = "the leader sent one of us out. i'll sit this party out at camp.";
     private static final String ROSTER_BOOK_LINE = "double-click me or the book to manage the crew.";
 
     private final LivingWorld world;
@@ -336,6 +338,9 @@ public final class RosterService {
             return new RosterResult.Ok(persona.name() + " is already with you.");
         }
         if (!canSeat(owner, entry)) {
+            if (world.slots().leaderCapped(owner)) {
+                world.residents().whisper(persona, owner, LEADER_CAP_LINE); // the leader's expel holds, in its words
+            }
             return new RosterResult.PartyFull();
         }
         boolean away = entry.state() == RosterState.AWAY;

@@ -134,6 +134,33 @@ class MergeTest {
     }
 
     @Test
+    void aFriendWhoLeftAndIsInvitedBackGetsTheirWholeShareAgain() {
+        // the P2a live run: Ann led one party throughout; Ben merged in, she expelled his companion, he left with his
+        // crew, called a second one, and merged back into the same party
+        int anns = out(ANN, "vex", "olwen", "brin", "hadrik"); // 5/6
+        out(BEN, "kai");
+        world.accept(BEN, anns);
+        world.settle();
+        world.expel(ANN, 201);
+        world.settle();
+        world.quit(BEN);
+        world.settle();
+        assertTrue(world.call(BEN, "lune"));
+        world.settle();
+        assertEquals(List.of(BEN, 201, 202), world.members(world.partyOf(BEN)));
+        world.changes.clear();
+
+        world.accept(BEN, anns);
+        world.settle();
+
+        // her overflow steps out, his crew fills his share: nobody walks out while his seats are free
+        assertEquals(List.of(ANN, 101, 102, BEN, 201, 202), world.members(anns));
+        assertEquals(RosterState.ACTIVE, world.companion("lune").state);
+        assertEquals(List.of("leave 2", "join 2 " + anns, "OVERFLOW hadrik", "OVERFLOW brin", "seat kai", "seat lune"),
+                world.changes);
+    }
+
+    @Test
     void aSharedPartyIsNotMergedAndKeepsTheStockRefusal() {
         int anns = out(ANN, "vex");
         world.accept(CARL, anns); // Ann's party now has another human: it is not hers alone

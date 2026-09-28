@@ -158,6 +158,30 @@ class CompanionSlotsTest {
     }
 
     @Test
+    void anExpelCapsTheSeatsInUseLessOneNotTheShare() {
+        View oneOfTwo = view(List.of(human(ANN), companion("a", 101, ANN), human(BEN)));
+        View twoOfTwo = view(List.of(human(ANN), companion("a", 101, ANN), companion("b", 102, ANN), human(BEN)));
+        View pastShare = view(List.of(human(ANN), companion("a", 101, ANN), companion("b", 102, ANN),
+                companion("c", 103, ANN), human(BEN)));
+        View leftoverOnly = view(List.of(human(ANN), human(BEN), human(CLEO), human(DAN), companion("a", 101, ANN)));
+
+        assertEquals(0, CompanionSlots.capAfterExpel(oneOfTwo, ANN)); // the only one out: its seat stays empty
+        assertEquals(1, CompanionSlots.capAfterExpel(twoOfTwo, ANN));
+        assertEquals(1, CompanionSlots.capAfterExpel(pastShare, ANN)); // never more than the share less one
+        assertEquals(0, CompanionSlots.capAfterExpel(leftoverOnly, ANN));
+        assertEquals(0, CompanionSlots.capAfterExpel(oneOfTwo, BEN)); // floored at 0
+    }
+
+    @Test
+    void aLeaderCapAlsoKeepsTheLeftoverSeatsFromThatOwner() {
+        View capped = new View(List.of(human(ANN), human(BEN), human(CLEO), human(DAN)), List.of(),
+                Map.of(ANN, 0), Map.of());
+
+        assertEquals(0, CompanionSlots.free(capped, ANN));
+        assertEquals(2, CompanionSlots.free(capped, BEN));
+    }
+
+    @Test
     void aLeaderCapLowersThatOwnersShareInThatParty() {
         View capped = new View(List.of(human(ANN), human(BEN), companion("a", 101, ANN)), List.of(),
                 Map.of(ANN, 1), Map.of());
@@ -342,14 +366,30 @@ class CompanionSlotsTest {
         Character ann = character(ANN, party);
         assertEquals(1, slots.free(ann));
 
-        slots.recordLeaderExpel(party, ANN);
-        assertEquals(1, slots.leaderCut(party.getId(), ANN));
+        slots.recordLeaderExpel(party.getId(), ANN, 1);
+        assertEquals(1, slots.leaderCap(party.getId(), ANN));
         assertEquals(0, slots.free(ann));
+        assertTrue(slots.leaderCapped(ann));
 
         slots.onPartyChanged(new PartyChangeEvent(party.getId(), PartyOperation.DISBAND, BEN, BEN,
                 new Snapshot(List.of(ANN, BEN, 101), BEN), Snapshot.EMPTY, null, true));
-        assertEquals(0, slots.leaderCut(party.getId(), ANN));
+        assertEquals(-1, slots.leaderCap(party.getId(), ANN));
         assertEquals(1, slots.free(ann));
+        assertFalse(slots.leaderCapped(ann));
+    }
+
+    @Test
+    void anOwnerWhoLeavesThePartyTakesTheirLeaderCapAlong() {
+        Party party = party(member(BEN, false), member(ANN, false), member(101, true));
+        slots.recordLeaderExpel(party.getId(), ANN, 0);
+        slots.recordLeaderExpel(party.getId(), CLEO, 1);
+
+        slots.onPartyChanged(new PartyChangeEvent(party.getId(), PartyOperation.LEAVE, ANN, ANN,
+                new Snapshot(List.of(BEN, ANN, 101), BEN), new Snapshot(List.of(BEN, 101), BEN), null, true));
+
+        // invited back into the same party later (a merge), they start with their whole share
+        assertEquals(-1, slots.leaderCap(party.getId(), ANN));
+        assertEquals(1, slots.leaderCap(party.getId(), CLEO), "only the owner who left");
     }
 
     @Test

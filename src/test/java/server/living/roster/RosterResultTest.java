@@ -2,6 +2,8 @@ package server.living.roster;
 
 import client.Character;
 import config.LivingWorldConfig;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -147,6 +150,22 @@ class RosterResultTest {
     }
 
     @Test
+    void aCallIntoASeatTheLeaderCapHoldsEmptyIsRefusedInTheCompanionsWords() {
+        seed(RosterState.BENCHED);
+        Party shared = new Party(77, human(20));
+        shared.addMember(human(20));
+        shared.addMember(human(ANN)); // two humans: two seats each, but the leader's expel left Ann none
+        when(ann.getParty()).thenReturn(shared);
+        slots.recordLeaderExpel(77, ANN, 0);
+
+        RosterResult result = new RosterService(world).call(ann, olwen);
+
+        assertInstanceOf(RosterResult.PartyFull.class, result);
+        verify(residents).whisper(olwen, ann, RosterService.LEADER_CAP_LINE);
+        assertNull(slots.reservation("olwen"), "no trip starts toward a seat it may not take");
+    }
+
+    @Test
     void aCallFromAFarCampTravelsOnAHeldSeat() {
         seed(RosterState.BENCHED);
         MapleMap henesys = mock(MapleMap.class);
@@ -216,6 +235,13 @@ class RosterResultTest {
         assertInstanceOf(RosterResult.Failed.class, result);
         assertTrue(RosterVoice.line(olwen, result).startsWith("Olwen: where?"));
         assertNull(slots.reservation("olwen"));
+    }
+
+    private static PartyCharacter human(int id) {
+        PartyCharacter member = mock(PartyCharacter.class);
+        when(member.getId()).thenReturn(id);
+        when(member.isOnline()).thenReturn(true);
+        return member;
     }
 
     private void seed(RosterState state) {

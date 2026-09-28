@@ -292,7 +292,7 @@ class CompanionPartySyncTest {
 
         assertEquals(List.of("BENCHED vex"), world.changes);
         assertFalse(world.waiting.containsKey("vex"));
-        assertEquals(0, world.cuts.size());
+        assertEquals(0, world.caps.size());
         assertEquals(List.of(), world.drifts);
     }
 
@@ -311,7 +311,7 @@ class CompanionPartySyncTest {
         world.settle();
 
         assertEquals(List.of("cap " + ANN, "EXPELLED vex"), world.changes);
-        assertEquals(1, world.cuts.get(shared).get(ANN));
+        assertEquals(1, world.caps.get(shared).get(ANN));
         assertEquals(shared, world.waiting.get("vex")); // not back into this party until it disbands
         assertEquals(0, world.free(ANN));
     }
@@ -344,6 +344,25 @@ class CompanionPartySyncTest {
     }
 
     @Test
+    void anExpelSticksEvenWhenThatWasTheOnlyCompanionOut() {
+        out(BEN, "kai");
+        world.accept(ANN, party(BEN));
+        world.settle();
+        world.call(ANN, "vex"); // one of her two seats in use
+        world.settle();
+
+        world.expel(BEN, 101);
+        world.settle();
+
+        // the cap counts the seats she used, not her share: the one the leader emptied stays empty
+        assertEquals(0, world.caps.get(party(BEN)).get(ANN));
+        assertEquals(0, world.free(ANN));
+        assertFalse(world.call(ANN, "vex"));
+        assertFalse(world.call(ANN, "olwen"));
+        assertEquals(List.of(BEN, 201, ANN), world.members(party(BEN)));
+    }
+
+    @Test
     void theLeaderCapAlsoBitesWhereOnlyLeftoverSeatsAreLeft() {
         world.human(4);
         world.companion("ash", 401, 4, 0);
@@ -359,13 +378,9 @@ class CompanionPartySyncTest {
         world.expel(BEN, 101);
         world.settle();
 
-        assertEquals(1, world.free(ANN)); // two leftover seats, one lost to the cap
-        assertTrue(world.call(ANN, "olwen"));
-        world.settle();
-        world.expel(BEN, 102);
-        world.settle();
-        assertEquals(0, world.free(ANN)); // each expel lowers the cap: the refills run out
-        assertEquals(2, world.free(4));
+        assertEquals(0, world.free(ANN)); // two leftover seats are open, but the seat the leader emptied is not refilled
+        assertFalse(world.call(ANN, "olwen"));
+        assertEquals(2, world.free(4)); // the leftover seats go to the others
     }
 
     @Test
@@ -383,7 +398,7 @@ class CompanionPartySyncTest {
         assertEquals(List.of(ANN, 101), world.members(party(ANN)));
         assertEquals(List.of(BEN, 201), world.members(party(BEN)));
         assertEquals(List.of("seat vex"), world.changes);
-        assertEquals(0, world.cuts.size()); // expelling a human caps nobody
+        assertEquals(0, world.caps.size()); // expelling a human caps nobody
     }
 
     @Test

@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Job;
+import constants.game.ExpTable;
 import org.junit.jupiter.api.Test;
 
 import java.util.EnumMap;
@@ -73,6 +74,18 @@ class CompanionViewTest {
         for (Job job : Job.values()) {
             assertEquals(expected.get(job), CompanionView.jobName(job.getId()), job.name());
         }
+    }
+
+    @Test
+    void bankedExpIsAShareOfTheNextLevelNeverOverAHundredPercent() {
+        int needed = ExpTable.getExpNeededForLevel(28);
+
+        assertEquals(10, CompanionView.bankedPercent(needed / 10, 28));
+        assertEquals(99, CompanionView.bankedPercent(needed - 1, 28));
+        assertEquals(100, CompanionView.bankedPercent(needed, 28));
+        assertEquals(100, CompanionView.bankedPercent(needed * 50L, 28));
+        assertEquals(0, CompanionView.bankedPercent(0L, 28));
+        assertEquals(0, CompanionView.bankedPercent(1_000L, 0)); // never loaded: no level to measure against
     }
 
     @Test
