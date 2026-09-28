@@ -78,6 +78,11 @@ final class FakeParties implements CompanionPartySync.Crew {
     final Map<Integer, Map<Integer, Integer>> caps = new HashMap<>();
     /** returnWhenRoom: key -> the party it may not come back into (0 = none). */
     final Map<String, Integer> waiting = new HashMap<>();
+    /**
+     * TRAVEL seats CompanionSlots still holds (key -> owner): a view counts one while its companion is not a member,
+     * as for a companion expelled before companion-ops took its JOIN; a stand-down gives it back.
+     */
+    final Map<String, Integer> travelSeats = new LinkedHashMap<>();
     final Deque<PartyChangeEvent> events = new ArrayDeque<>();
     final List<PartyChangeEvent> published = new ArrayList<>();
     /** The sync's changes, in order ("OVERFLOW brin", "seat olwen", "guest 950", ...). */
@@ -522,6 +527,15 @@ final class FakeParties implements CompanionPartySync.Crew {
                 held.addAll(guestSeats(human, group.members));
             }
         }
+        long seq = held.size();
+        for (Map.Entry<String, Integer> seat : travelSeats.entrySet()) {
+            int owner = seat.getValue();
+            boolean member = members.stream().anyMatch(m -> m.key().equals(seat.getKey()));
+            if (!member && recordOnline(owner) && group.members.contains(owner)) {
+                held.add(new CompanionSlots.Reservation(owner, seat.getKey(), CompanionSlots.Kind.TRAVEL,
+                        Long.MAX_VALUE, ++seq));
+            }
+        }
         return new CompanionSlots.View(members, held, caps.getOrDefault(partyId, Map.of()), lineup);
     }
 
@@ -588,6 +602,7 @@ final class FakeParties implements CompanionPartySync.Crew {
         if (companion == null || companion.owner != ownerId) {
             return;
         }
+        travelSeats.remove(key); // RosterService.standDown gives its seat back
         benchRow(companion);
         if (reason.returnWhenRoom()) {
             waiting.put(key, reason == Reason.EXPELLED ? partyId : 0);

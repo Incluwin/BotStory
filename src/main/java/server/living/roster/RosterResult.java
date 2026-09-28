@@ -15,6 +15,12 @@ public sealed interface RosterResult {
     /** No seat for it in the owner's party. */
     record PartyFull() implements RosterResult { }
 
+    /**
+     * The seat is one the party's leader emptied by expelling one of the owner's (CompanionSlots, the leader cap); the
+     * companion said so in its own words.
+     */
+    record LeaderCapped() implements RosterResult { }
+
     /** The owner's own companion quota is used up (CompanionBudget, COMPANION pool). */
     record QuotaFull() implements RosterResult { }
 

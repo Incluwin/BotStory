@@ -56,7 +56,9 @@ public final class RosterService {
     private static final String BUSY_LINE = "give me a moment. i'm in the middle of something.";
     private static final String PARTY_FULL_LINE = "your party's full. i'll wait at camp.";
     /** A companion refused a seat its owner's leader cap holds empty (CompanionSlots, the leader cap). */
-    static final String LEADER_CAP_LINE = "the leader sent one of us out. i'll sit this party out at camp.";
+    public static final String LEADER_CAP_LINE = "the leader sent one of us out. i'll sit this party out at camp.";
+    /** Leader-cap refusals to one owner this close together are one burst: only the first whispers. */
+    static final long LEADER_CAP_BURST_MS = 3_000L;
     private static final String ROSTER_BOOK_LINE = "double-click me or the book to manage the crew.";
 
     private final LivingWorld world;
@@ -65,6 +67,8 @@ public final class RosterService {
     private final Map<String, Long> ownerLogoutAtMs = new ConcurrentHashMap<>();
     /** owner:persona -> arrival time of a companion travelling from its camp. */
     private final Map<String, Long> travelling = new ConcurrentHashMap<>();
+    /** owner id -> when a companion last whispered them the leader cap. */
+    private final Map<Integer, Long> leaderCapSaidAtMs = new ConcurrentHashMap<>();
     /** Character ids with at least one roster entry; consulted on every chat line, so cached. */
     private final java.util.Set<Integer> owners = ConcurrentHashMap.newKeySet();
     /** Persona ids being seated right now: one load per companion, whichever thread calls it. */
@@ -338,10 +342,7 @@ public final class RosterService {
             return new RosterResult.Ok(persona.name() + " is already with you.");
         }
         if (!canSeat(owner, entry)) {
-            if (world.slots().leaderCapped(owner)) {
-                world.residents().whisper(persona, owner, LEADER_CAP_LINE); // the leader's expel holds, in its words
-            }
-            return new RosterResult.PartyFull();
+            return world.slots().leaderCapped(owner) ? leaderCapped(owner, persona) : new RosterResult.PartyFull();
         }
         boolean away = entry.state() == RosterState.AWAY;
         String key = owner.getId() + ":" + persona.id();
@@ -355,7 +356,8 @@ public final class RosterService {
             long eta = RecallTravel.etaMs(campMap, owner.getMapId());
             if (eta > 0L && !consumeWhistle(owner)) {
                 long now = System.currentTimeMillis();
-                travelling.put(key, now + eta);
+                long arrivesAt = now + eta;
+                travelling.put(key, arrivesAt);
                 if (world.slots().reservation(persona.id()) == null) { // an AWAY companion keeps its own seat meanwhile
                     world.slots().reserve(owner.getId(), persona.id(), CompanionSlots.Kind.TRAVEL,
                             now + eta + CompanionSlots.TRAVEL_GRACE_MS);
@@ -364,7 +366,7 @@ public final class RosterService {
                 world.residents().whisper(persona, owner, (lines.isEmpty() ? "on my way." : lines.get(Math.floorMod(owner.getId(), lines.size())))
                         + " " + RecallTravel.describe(eta) + ".");
                 world.store().event(owner.getId(), persona.id(), "roster.travel", "eta " + eta + " ms from map " + campMap);
-                later("roster.arrive " + persona.id(), () -> arrive(owner.getId(), persona), eta);
+                later("roster.arrive " + persona.id(), () -> arrive(owner.getId(), persona, arrivesAt), eta);
                 return new RosterResult.Travelling(eta, campMap);
             }
         }
@@ -372,8 +374,24 @@ public final class RosterService {
         return spawnCompanion(owner, persona, entry, standing);
     }
 
-    private void arrive(int ownerId, Persona persona) {
-        travelling.remove(ownerId + ":" + persona.id());
+    /**
+     * The leader's expel holds the seat empty: the companion says so in its words, once for a burst of refusals to
+     * the same owner ("call the usual", the Crew window and chat in one breath).
+     */
+    private RosterResult leaderCapped(Character owner, Persona persona) {
+        long now = System.currentTimeMillis();
+        Long last = leaderCapSaidAtMs.put(owner.getId(), now);
+        if (last == null || now - last >= LEADER_CAP_BURST_MS) {
+            world.residents().whisper(persona, owner, LEADER_CAP_LINE);
+        }
+        return new RosterResult.LeaderCapped();
+    }
+
+    /** Ends the trip due {@code arrivesAt}; a trip called off (benched on the way) or replaced does nothing. */
+    private void arrive(int ownerId, Persona persona, long arrivesAt) {
+        if (!travelling.remove(ownerId + ":" + persona.id(), arrivesAt)) {
+            return; // bench() gave its seat back when it called the trip off; a newer trip holds its own
+        }
         Character owner = onlineCharacter(ownerId);
         RosterEntry entry = owner == null ? null : world.store().rosterEntry(ownerId, persona.id());
         if (entry == null || !(entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY)) {
@@ -607,8 +625,17 @@ public final class RosterService {
         return current == null ? entry : current;
     }
 
+    /** Benches a companion that is out; one called and still on its way turns back and never arrives. */
     public RosterResult bench(Character owner, Persona persona) {
         world.slots().stopWaiting(persona.id()); // benched on purpose: it does not come back by itself
+        if (travelling.remove(owner.getId() + ":" + persona.id()) != null) {
+            world.slots().release(persona.id(), CompanionSlots.Kind.TRAVEL); // an AWAY one's own seat goes below
+            RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+            if (entry != null && entry.state() == RosterState.BENCHED) {
+                world.store().event(owner.getId(), persona.id(), "roster.bench", "turned back on the way");
+                return new RosterResult.Ok(persona.name() + " turns back to camp.");
+            }
+        }
         return standDown(owner, persona, null, "roster.bench");
     }
 

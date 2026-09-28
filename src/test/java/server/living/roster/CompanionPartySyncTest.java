@@ -363,6 +363,39 @@ class CompanionPartySyncTest {
     }
 
     @Test
+    void anExpelBeforeCompanionOpsTookTheJoinCountsTheExpelledCompanionOnce() {
+        out(BEN, "kai");
+        world.accept(ANN, party(BEN));
+        world.settle();
+        world.call(ANN, "vex"); // one of her two seats in use
+        world.travelSeats.put("vex", ANN); // its TRAVEL seat is still held: CompanionSlots has not taken its JOIN
+
+        world.expel(BEN, 101);
+        world.settle();
+
+        // counted once (the seat it held is the one it sat in): the seat the leader emptied stays empty
+        assertEquals(0, world.caps.get(party(BEN)).get(ANN));
+        assertEquals(0, world.free(ANN));
+        assertFalse(world.call(ANN, "olwen"));
+    }
+
+    @Test
+    void aLeaderExpellingACompanionWhoseOwnerIsNotInThePartyCapsNobody() {
+        int anns = out(ANN, "vex");
+        int bens = out(BEN, "kai");
+        world.parties.get(anns).members.remove(Integer.valueOf(101)); // past the seat gate somehow
+        world.parties.get(bens).members.add(101);
+        world.partyOf.put(101, bens);
+
+        world.expel(BEN, 101);
+        world.settle();
+
+        assertFalse(world.changes.contains("cap " + ANN), world.changes.toString());
+        assertEquals(0, world.caps.size());
+        assertEquals(RosterState.BENCHED, world.companion("vex").state);
+    }
+
+    @Test
     void theLeaderCapAlsoBitesWhereOnlyLeftoverSeatsAreLeft() {
         world.human(4);
         world.companion("ash", 401, 4, 0);

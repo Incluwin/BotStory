@@ -10,6 +10,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import server.agents.auth.AgentClaimGuard;
+import server.agents.capabilities.dialogue.AgentPendingChatActionFlow;
+import server.agents.commands.AgentReplyChannel;
+import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
@@ -45,6 +48,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -238,18 +242,75 @@ class CompanionChatVerbsTest {
         assertEquals(List.of("bench olwen " + CompanionExecutor.THREAD_NAME), ran);
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"yeah", "ok", "Yes!", "'sure, go ahead'"})
+    void aConfirmNormalizingWouldDropStillParksEveryoneOut(String confirm) throws Exception {
+        assertTrue(dialogue.onMapChat(alice, "logout"));
+        assertTrue(dialogue.onMapChat(alice, confirm), "the raw line is read: '" + confirm + "' is a yes");
+        drain();
+
+        assertEquals(List.of("bench olwen " + CompanionExecutor.THREAD_NAME), ran);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"no", "nah", "nvm", "yes nvm", "'sure, nvm'", "yes... actually no"})
+    void aNoToTheLogoutIsAnsweredByTheCompanionThatAskedAndBenchesNobody(String answer) throws Exception {
+        assertTrue(dialogue.onMapChat(alice, "logout"));
+        assertTrue(dialogue.onMapChat(alice, answer), "a no is tested first and goes no further");
+        assertFalse(dialogue.onMapChat(alice, "yes"), "the question is gone");
+        drain();
+
+        assertEquals(List.of(), ran);
+        verify(residents).reply(OLWEN, alice, AgentPendingChatActionFlow.pendingActionCancelReply(false));
+    }
+
     @Test
-    void anOwnerWhoAlsoLeadsAPlainAgentKeepsTheAgentRoutesLogout() {
+    void aConfirmedLogoutAlsoTurnsBackACompanionOnItsWay() throws Exception {
+        when(roster.travelMsLeft(ALICE, "brin")).thenReturn(40_000L); // "call the usual" just now: benched, on its way
+
+        assertTrue(dialogue.onMapChat(alice, "logout"));
+        assertTrue(dialogue.onMapChat(alice, "yes"));
+        drain();
+
+        assertEquals(List.of("bench olwen " + CompanionExecutor.THREAD_NAME, "bench brin " + CompanionExecutor.THREAD_NAME),
+                ran);
+    }
+
+    @Test
+    void anOwnerWhoAlsoLeadsAPlainAgentHasTheLogoutAndItsYesGoStraightToTheAgentRoutes() {
         AgentRuntimeEntry probe = new AgentRuntimeEntry(owner(PROBE_CHARACTER, "Probe"), alice, null);
         CompanionDirectory directory = mock(CompanionDirectory.class); // claims nobody: a GM's own Agent
         when(world.directory()).thenReturn(directory);
-        try (MockedStatic<AgentRuntimeRegistry> registry = mockStatic(AgentRuntimeRegistry.class)) {
+        try (MockedStatic<AgentRuntimeRegistry> registry = mockStatic(AgentRuntimeRegistry.class);
+             MockedStatic<AgentInteractionRuntime> agents = mockStatic(AgentInteractionRuntime.class)) {
             registry.when(() -> AgentRuntimeRegistry.entriesForLeader(ALICE)).thenReturn(List.of(probe));
 
-            assertFalse(dialogue.onMapChat(alice, "logout"), "every Agent asks for itself, as before");
-            assertFalse(dialogue.onMapChat(alice, "yes"));
+            // every Agent asks for itself, as before; no Resident or citizen hears the "yes" first
+            assertTrue(dialogue.onMapChat(alice, "logout"));
+            assertTrue(dialogue.onMapChat(alice, "Yeah"));
+            assertFalse(dialogue.onMapChat(alice, "yes"), "answered: an ordinary yes");
+
+            agents.verify(() -> AgentInteractionRuntime.handleLeaderChat(alice, "logout", AgentReplyChannel.MAP));
+            agents.verify(() -> AgentInteractionRuntime.handleLeaderChat(alice, "Yeah", AgentReplyChannel.MAP));
+            agents.verify(() -> AgentInteractionRuntime.handleLeaderChat(any(), anyString(), any()), times(2));
         }
         verify(residents, never()).reply(any(), any(), anyString());
+    }
+
+    @Test
+    void callTheUsualSaysTheLeaderCapOnce() throws Exception {
+        when(roster.roster(alice)).thenReturn(List.of(row("olwen", RosterState.BENCHED), row("brin", RosterState.BENCHED)));
+        when(roster.call(eq(alice), any())).thenAnswer(inv -> {
+            record("call", inv.getArgument(1));
+            return new RosterResult.LeaderCapped();
+        });
+
+        assertTrue(dialogue.onMapChat(alice, "call the usual"));
+        drain();
+
+        assertEquals(2, ran.size(), "each is still asked: one holding its own seat would come");
+        verify(alice).dropMessage(5, RosterVoice.line(OLWEN, new RosterResult.LeaderCapped()));
+        verify(alice).dropMessage(anyInt(), anyString());
     }
 
     // ---- the Agent routes' dismiss and confirmed logout ---------------------------------

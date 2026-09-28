@@ -14,10 +14,12 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -184,6 +186,38 @@ class MakeRoomTest {
         verify(ann).dropMessage(5, "Tobi heads back to camp to train.");
         verify(slots).waitForRoom("brin", 0);
         verify(slots).waitForRoom("tobi", 0);
+    }
+
+    @Test
+    void companionsALeaderCapPutsOutSaySoOnceABurst() {
+        LivingWorld living = mock(LivingWorld.class);
+        RosterService roster = mock(RosterService.class);
+        CompanionSlots slots = mock(CompanionSlots.class);
+        LivingContent content = mock(LivingContent.class);
+        Persona brin = mock(Persona.class);
+        Persona tobi = mock(Persona.class);
+        Character ann = mock(Character.class);
+        when(ann.getId()).thenReturn(ANN);
+        when(living.roster()).thenReturn(roster);
+        when(living.slots()).thenReturn(slots);
+        when(living.content()).thenReturn(content);
+        when(content.persona("brin")).thenReturn(brin);
+        when(content.persona("tobi")).thenReturn(tobi);
+        when(roster.onlineCharacter(ANN)).thenReturn(ann);
+        when(roster.entry(ANN, "brin")).thenReturn(active("brin"));
+        when(roster.entry(ANN, "tobi")).thenReturn(active("tobi"));
+        when(slots.leaderCapped(ann)).thenReturn(true); // a regroup back into the party whose leader capped Ann
+        when(roster.standDown(eq(ann), eq(tobi), anyString(), anyString()))
+                .thenReturn(new RosterResult.Ok("Tobi heads back to camp to train."));
+        LiveCrew crew = new LiveCrew(living);
+
+        crew.standDown(ANN, "brin", Reason.OVERFLOW, 77);
+        crew.standDown(ANN, "tobi", Reason.OVERFLOW, 77);
+
+        verify(roster).standDown(ann, brin, RosterService.LEADER_CAP_LINE, "companion.overflow");
+        verify(roster).standDown(ann, tobi, "", "companion.overflow"); // the leader's doing is said once
+        verify(ann).dropMessage(5, "Tobi heads back to camp to train.");
+        verify(roster, never()).overflowLine(any(), anyInt());
     }
 
     private static LivingStore.RosterEntry active(String key) {

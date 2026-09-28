@@ -41,6 +41,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -313,6 +314,38 @@ class CompanionMenusTest {
 
         assertTrue(lastTalk().text().startsWith("the other seats are your friend's. who should i take over from?\r\n"),
                 lastTalk().text());
+        verify(roster, never()).call(any(), any());
+    }
+
+    @Test
+    void comeJoinMeUnderTheLeaderCapSaysItIsTheLeadersDoingAndOffersTheSwap() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        when(roster.freeSlots(owner)).thenReturn(0);
+        when(slots.occupied(owner)).thenReturn(4); // the leader expelled one of Ann's two: its seat stays empty
+        when(slots.leaderCapped(owner)).thenReturn(true);
+        menus.card(owner, miraRow);
+
+        pick("Come join me");
+
+        Talk picker = lastTalk();
+        assertTrue(picker.text().startsWith("the leader sent one of us out. who should i take over from?\r\n"),
+                picker.text());
+        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Never mind"), picker.labels());
+        verify(roster, never()).call(any(), any());
+    }
+
+    @Test
+    void comeJoinMeUnderTheLeaderCapWithNobodyOutStaysAtCampInItsOwnWords() {
+        rows.add(miraRow);
+        when(roster.freeSlots(owner)).thenReturn(0);
+        when(slots.occupied(owner)).thenReturn(3); // the leader left Ann none of her seats
+        when(slots.leaderCapped(owner)).thenReturn(true);
+        menus.card(owner, miraRow);
+
+        pick("Come join me");
+
+        assertEquals(RosterService.LEADER_CAP_LINE, lastTalk().text());
+        assertNotEquals(CompanionMenus.NOTES_SPEAKER, lastTalk().speaker(), "Mira says it, not the player's notes");
         verify(roster, never()).call(any(), any());
     }
 

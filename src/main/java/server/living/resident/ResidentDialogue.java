@@ -4,6 +4,8 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.agents.commands.AgentReplyChannel;
+import server.agents.runtime.AgentInteractionRuntime;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
@@ -27,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -103,10 +106,16 @@ public final class ResidentDialogue {
 
     // ---- entry points --------------------------------------------------------------------
 
-    /** Map chat; true when a Resident or the roster took the message. */
+    /**
+     * Map chat; true when a Resident or the roster took the message, or it was handed to the speaker's Agents (the
+     * answer to their own logout question).
+     */
     public boolean onMapChat(Character speaker, String text) {
         if (AgentPresence.isAgent(speaker)) {
             return false;
+        }
+        if (logoutTurn(speaker, text)) {
+            return true;
         }
         String normalized = PhraseMatcher.normalize(text);
         if (normalized.isEmpty()) {
@@ -451,18 +460,27 @@ public final class ResidentDialogue {
 
     // ---- roster commands -----------------------------------------------------------------
 
+    /**
+     * An untargeted "logout", then its "yes" or "no" ({@link CompanionChatVerbs#logoutTurn}): first, and on the raw
+     * line (normalizing drops "yeah" and "ok" as fillers), so nothing nearby answers the "yes" instead. An owner who
+     * also leads a plain Agent is asked by that Agent: the line goes straight to the Agent routes. True when the line
+     * goes no further.
+     */
+    private boolean logoutTurn(Character owner, String text) {
+        CompanionChatVerbs verbs = world.chatVerbs();
+        CompanionChatVerbs.LogoutTurn logout = verbs.logoutTurn(owner, text.toLowerCase(Locale.ROOT).trim());
+        if (logout == CompanionChatVerbs.LogoutTurn.CONFIRMED) {
+            verbs.show(owner, "roster.logout", 5, () -> everyone(owner, entry -> outOrOnTheWay(owner, entry),
+                    persona -> world.roster().bench(owner, persona)));
+        } else if (logout == CompanionChatVerbs.LogoutTurn.TO_AGENTS) {
+            AgentInteractionRuntime.handleLeaderChat(owner, text, AgentReplyChannel.MAP);
+        }
+        return logout != CompanionChatVerbs.LogoutTurn.NONE;
+    }
+
     /** Every verb runs on companion-ops through {@link CompanionChatVerbs}; only the parsing happens on the chat thread. */
     private boolean rosterCommand(Character owner, String normalized) {
         CompanionChatVerbs verbs = world.chatVerbs();
-        // an untargeted "logout", then its "yes": first, so nothing nearby answers the "yes" instead
-        CompanionChatVerbs.LogoutTurn logout = verbs.logoutTurn(owner, normalized);
-        if (logout == CompanionChatVerbs.LogoutTurn.CONFIRMED) {
-            verbs.show(owner, "roster.logout", 5, () -> everyone(owner, RosterState.ACTIVE, true,
-                    persona -> world.roster().bench(owner, persona)));
-        }
-        if (logout != CompanionChatVerbs.LogoutTurn.NONE) {
-            return true;
-        }
         if (ROSTER.matcher(normalized).matches()) {
             verbs.show(owner, "roster.list", 6, () -> world.roster().summary(owner));
             return true;
@@ -478,7 +496,7 @@ public final class ResidentDialogue {
                     () -> RosterVoice.line(persona, world.roster().bench(owner, persona))));
         }
         if (EVERYONE_PARK.matcher(normalized).matches() && world.roster().hasCompanions(owner)) {
-            verbs.show(owner, "roster.park_all", 5, () -> everyone(owner, RosterState.ACTIVE, true,
+            verbs.show(owner, "roster.park_all", 5, () -> everyone(owner, entry -> outOrOnTheWay(owner, entry),
                     persona -> world.roster().bench(owner, persona)));
             return true;
         }
@@ -502,12 +520,12 @@ public final class ResidentDialogue {
                     () -> world.contracts().dismiss(owner, persona)));
         }
         if (EVERYONE_BENCH.matcher(normalized).matches()) {
-            verbs.show(owner, "roster.bench_all", 5, () -> everyone(owner, RosterState.ACTIVE, true,
+            verbs.show(owner, "roster.bench_all", 5, () -> everyone(owner, entry -> outOrOnTheWay(owner, entry),
                     persona -> world.roster().bench(owner, persona)));
             return true;
         }
         if (CALL_USUAL.matcher(normalized).matches()) {
-            verbs.show(owner, "roster.call_all", 5, () -> everyone(owner, RosterState.ACTIVE, false,
+            verbs.show(owner, "roster.call_all", 5, () -> everyone(owner, entry -> entry.state() != RosterState.ACTIVE,
                     persona -> world.roster().call(owner, persona)));
             return true;
         }
@@ -597,17 +615,35 @@ public final class ResidentDialogue {
         return false;
     }
 
-    /** Runs {@code verb} (on companion-ops) for each companion that is in {@code state} ({@code in}) or is not; one line each. */
-    private List<String> everyone(Character owner, RosterState state, boolean in,
+    /**
+     * Runs {@code verb} (on companion-ops) for each companion {@code which} picks; one line each, except that the
+     * leader cap is said once (the rest would only repeat it).
+     */
+    private List<String> everyone(Character owner, Predicate<RosterEntry> which,
                                   Function<Persona, RosterResult> verb) {
         List<String> lines = new ArrayList<>();
+        boolean leaderCapSaid = false;
         for (RosterEntry entry : world.roster().roster(owner)) {
             Persona persona = world.content().persona(entry.personaId());
-            if (persona != null && (entry.state() == state) == in) {
-                lines.add(RosterVoice.line(persona, verb.apply(persona)));
+            if (persona == null || !which.test(entry)) {
+                continue;
             }
+            RosterResult result = verb.apply(persona);
+            if (result instanceof RosterResult.LeaderCapped) {
+                if (leaderCapSaid) {
+                    continue;
+                }
+                leaderCapSaid = true;
+            }
+            lines.add(RosterVoice.line(persona, result));
         }
         return lines;
+    }
+
+    /** Out with the owner, or called and on its way over: a logout, "park" and "everyone bench" send it to camp. */
+    private boolean outOrOnTheWay(Character owner, RosterEntry entry) {
+        return entry.state() == RosterState.ACTIVE
+                || world.roster().travelMsLeft(owner.getId(), entry.personaId()) > 0L;
     }
 
     private static Assignment assignmentOf(String job) {

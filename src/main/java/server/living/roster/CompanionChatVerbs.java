@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import server.agents.auth.AgentClaimGuard;
 import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
 import server.agents.capabilities.dialogue.AgentChatSessionRequestFlow;
+import server.agents.capabilities.dialogue.AgentPendingChatActionFlow;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -50,13 +51,23 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
         /** "logout" with a companion out: one of them asks, and the line goes no further. */
         ASKED,
         /** Its confirm, in time: the caller parks everyone out, and the line goes no further. */
-        CONFIRMED
+        CONFIRMED,
+        /** A "no" to it, in time: the companion that asked says so, and the line goes no further. */
+        CANCELLED,
+        /**
+         * The owner also leads a plain Agent, which asks for itself: "logout" and its answer go straight to the Agent
+         * routes (the caller hands them over), so no Resident or citizen answers the "yes" first.
+         */
+        TO_AGENTS
     }
+
+    /** An untargeted "logout" asked at {@code atMs} by {@code asker}; null when the owner's plain Agent asks. */
+    private record LogoutAsked(long atMs, Persona asker) { }
 
     private final LivingWorld world;
     private final LongSupplier clock;
-    /** owner id -> when their untargeted "logout" was asked; written from the chat threads. */
-    private final Map<Integer, Long> logoutAskedAtMs = new ConcurrentHashMap<>();
+    /** owner id -> their untargeted "logout" question; written from the chat threads. */
+    private final Map<Integer, LogoutAsked> logoutAsked = new ConcurrentHashMap<>();
 
     public CompanionChatVerbs(LivingWorld world) {
         this(world, System::currentTimeMillis);
@@ -90,26 +101,43 @@ public final class CompanionChatVerbs implements AgentClaimGuard.VerbRoute {
     /**
      * An owner's untargeted "logout" + "yes" in map chat (park for companions), asked ahead of every other route: no
      * Resident, citizen or Agent offer can answer the "yes" first, and no companion is left holding an Agent route's
-     * logout prompt that never expires. "logout" asks when a companion is out (one of them says it), and a newer
-     * "logout" asks again; a confirm within {@link #LOGOUT_CONFIRM_MS} is CONFIRMED; any other line drops the question.
-     * An owner who also leads a plain Agent is left to the Agent routes, which log that Agent off as before and hand
-     * each companion to {@link #take}.
+     * logout prompt that never expires. {@code line} is the raw line, lower-cased (normalizing drops "yeah" and "ok"
+     * as fillers). "logout" asks when a companion is out (one of them says it), and a newer "logout" asks again;
+     * within {@link #LOGOUT_CONFIRM_MS} a "no" is CANCELLED (tested first, so "yes nvm" is a no) and a confirm is
+     * CONFIRMED; any other line drops the question. An owner who also leads a plain Agent is left to the Agent
+     * routes, which log that Agent off as before and hand each companion to {@link #take}: TO_AGENTS.
      */
-    public LogoutTurn logoutTurn(Character owner, String normalized) {
-        Long askedAt = logoutAskedAtMs.remove(owner.getId()); // this line answers the question or drops it
+    public LogoutTurn logoutTurn(Character owner, String line) {
+        LogoutAsked asked = logoutAsked.remove(owner.getId()); // this line answers the question or drops it
         long now = clock.getAsLong();
-        if (AgentChatCommandClassifier.isLogoutRequest(normalized)) {
+        if (AgentChatCommandClassifier.isLogoutRequest(line)) {
             Persona asker = firstOut(owner);
-            if (asker == null || leadsPlainAgent(owner)) {
+            if (asker == null) {
                 return LogoutTurn.NONE;
             }
-            logoutAskedAtMs.put(owner.getId(), now);
+            if (leadsPlainAgent(owner)) {
+                logoutAsked.put(owner.getId(), new LogoutAsked(now, null));
+                return LogoutTurn.TO_AGENTS;
+            }
+            logoutAsked.put(owner.getId(), new LogoutAsked(now, asker));
             world.residents().reply(asker, owner, AgentChatSessionRequestFlow.logoutConfirmPrompt());
             return LogoutTurn.ASKED;
         }
-        boolean confirmed = askedAt != null && now - askedAt <= LOGOUT_CONFIRM_MS
-                && AgentChatCommandClassifier.isLogoutConfirm(normalized);
-        return confirmed ? LogoutTurn.CONFIRMED : LogoutTurn.NONE;
+        if (asked == null || now - asked.atMs() > LOGOUT_CONFIRM_MS) {
+            return LogoutTurn.NONE;
+        }
+        boolean no = AgentChatCommandClassifier.isNegativeConfirm(line);
+        if (!no && !AgentChatCommandClassifier.isLogoutConfirm(line)) {
+            return LogoutTurn.NONE;
+        }
+        if (asked.asker() == null) {
+            return LogoutTurn.TO_AGENTS;
+        }
+        if (no) {
+            world.residents().reply(asked.asker(), owner, AgentPendingChatActionFlow.pendingActionCancelReply(false));
+            return LogoutTurn.CANCELLED;
+        }
+        return LogoutTurn.CONFIRMED;
     }
 
     /** The owner's first companion out (ACTIVE), which asks; null when none is. */

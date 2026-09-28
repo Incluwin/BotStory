@@ -182,6 +182,35 @@ class CompanionSlotsTest {
     }
 
     @Test
+    void theLeaderCapIsTheReasonOnlyWhenItHoldsTheOwnerBelowWhatTheyWouldGetWithoutIt() {
+        View noneLeft = new View(List.of(human(ANN), human(BEN), companion("b", 201, BEN)), List.of(),
+                Map.of(ANN, 0), Map.of());
+        View notReached = new View(List.of(human(ANN), human(BEN)), List.of(), Map.of(ANN, 1), Map.of());
+        // Ben was capped at 1 of 2; two friends joined, and the two leftover seats went first come to Cleo's
+        View friendsJoined = new View(List.of(human(CLEO), companion("c1", 301, CLEO), companion("c2", 302, CLEO),
+                human(BEN), companion("b", 201, BEN), human(ANN), human(DAN)), List.of(), Map.of(BEN, 1), Map.of());
+        View full = new View(List.of(human(ANN), companion("a", 101, ANN), human(BEN), companion("b1", 201, BEN),
+                companion("b2", 202, BEN), companion("x", 900, 0)), List.of(), Map.of(ANN, 1), Map.of());
+
+        assertTrue(CompanionSlots.leaderCapped(noneLeft, ANN), "the leader left Ann none of her two seats");
+        assertFalse(CompanionSlots.leaderCapped(notReached, ANN), "a seat the cap leaves her is still free");
+        assertFalse(CompanionSlots.leaderCapped(friendsJoined, BEN), "fair share put Ben out, not the leader");
+        assertFalse(CompanionSlots.leaderCapped(full, ANN), "a full party");
+        assertFalse(CompanionSlots.leaderCapped(noneLeft, BEN), "no cap");
+    }
+
+    @Test
+    void aMemberAddedBackIsNotAlsoCountedByTheSeatStillHeldForIt() {
+        // expelled before companion-ops took its JOIN: its TRAVEL seat is still held
+        View expelled = view(List.of(human(ANN), human(BEN)), held(ANN, "a", Kind.TRAVEL, 1));
+
+        View before = expelled.with(companion("a", 101, ANN));
+
+        assertEquals(1, CompanionSlots.allocate(before).usageOf(ANN));
+        assertEquals(0, CompanionSlots.capAfterExpel(before, ANN)); // its only seat: it stays empty
+    }
+
+    @Test
     void aLeaderCapLowersThatOwnersShareInThatParty() {
         View capped = new View(List.of(human(ANN), human(BEN), companion("a", 101, ANN)), List.of(),
                 Map.of(ANN, 1), Map.of());

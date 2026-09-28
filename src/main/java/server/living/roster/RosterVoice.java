@@ -20,6 +20,7 @@ public final class RosterVoice {
             case RosterResult.Ok ok -> ok.line();
             case RosterResult.Travelling travelling -> name + " is on the way (" + RecallTravel.describe(travelling.etaMs()) + ").";
             case RosterResult.PartyFull full -> "Your party is full. Bench someone or name who to swap.";
+            case RosterResult.LeaderCapped capped -> "The party leader sent one of yours out: that seat stays empty here.";
             case RosterResult.QuotaFull quota -> name + " could not join right now.";
             case RosterResult.BudgetExhausted budget -> name + " could not join right now.";
             case RosterResult.Busy busy -> name + " could not join right now.";

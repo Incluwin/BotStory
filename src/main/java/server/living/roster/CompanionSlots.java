@@ -78,10 +78,13 @@ public final class CompanionSlots {
             lineup = Map.copyOf(lineup);
         }
 
+        /** With {@code member} in it; a seat still held for it is its own seat, not a second claim (as in view()). */
         View with(Member member) {
             List<Member> joined = new ArrayList<>(members);
             joined.add(member);
-            return new View(joined, reservations, caps, lineup);
+            List<Reservation> held = new ArrayList<>(reservations);
+            held.removeIf(reservation -> reservation.key().equals(member.key()));
+            return new View(joined, held, caps, lineup);
         }
     }
 
@@ -261,8 +264,8 @@ public final class CompanionSlots {
     /** True when a leader cap is what keeps the owner from seating one more in their party. */
     public boolean leaderCapped(Character owner) {
         Party party = owner.getParty();
-        int cap = party == null ? -1 : leaderCap(party.getId(), owner.getId());
-        return cap >= 0 && allocate(view(party, false)).usageOf(owner.getId()) >= cap;
+        return party != null && leaderCap(party.getId(), owner.getId()) >= 0
+                && leaderCapped(view(party, false), owner.getId());
     }
 
     // ---- returnWhenRoom -------------------------------------------------------------------
@@ -560,6 +563,25 @@ public final class CompanionSlots {
         int byShare = Math.min(seats.shareOf(ownerId) + seats.leftoverFree(), capOf(view, ownerId))
                 - seats.usageOf(ownerId);
         return Math.max(0, Math.min(byShare, PARTY_CAP - seats.occupied()));
+    }
+
+    /**
+     * True when {@code ownerId}'s leader cap is what holds them back: they use every seat it leaves them, and without
+     * it their share, the leftover nobody holds and the room left would give them more. A friend's share or a full
+     * party is not the leader's doing.
+     */
+    static boolean leaderCapped(View view, int ownerId) {
+        Integer cap = view.caps().get(ownerId);
+        if (cap == null) {
+            return false;
+        }
+        Map<Integer, Integer> others = new HashMap<>(view.caps());
+        others.remove(ownerId);
+        Allocation uncapped = allocate(new View(view.members(), view.reservations(), others, view.lineup()));
+        int usage = uncapped.usageOf(ownerId);
+        int withoutCap = Math.min(uncapped.shareOf(ownerId) + uncapped.leftoverFree(),
+                usage + Math.max(0, PARTY_CAP - uncapped.occupied()));
+        return usage >= cap && withoutCap > cap;
     }
 
     /**

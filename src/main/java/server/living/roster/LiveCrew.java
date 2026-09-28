@@ -155,8 +155,7 @@ final class LiveCrew implements CompanionPartySync.Crew {
         }
         RosterEntry row = world.roster().entry(ownerId, key);
         boolean out = row != null && row.state() != RosterState.BENCHED;
-        String line = reason != Reason.OVERFLOW || !out ? reason.line()
-                : world.slots().leaderCapped(owner) ? RosterService.LEADER_CAP_LINE : overflowLine(owner, persona);
+        String line = reason == Reason.OVERFLOW && out ? overflowLine(owner, persona) : reason.line();
         RosterResult result = world.roster().standDown(owner, persona, line, reason.event());
         if (line != null && line.isEmpty() && result.ok()) {
             owner.dropMessage(5, RosterVoice.line(persona, result)); // the first one of the burst said it already
@@ -167,13 +166,18 @@ final class LiveCrew implements CompanionPartySync.Crew {
     }
 
     /**
-     * A companion with no seat left says where it goes, in its own words or its duty at camp; when several step out
-     * at once only the first whispers, and the rest are noted in pink ("" whispers nothing).
+     * A companion with no seat left says where it goes, in its own words or its duty at camp, or that the leader's
+     * expel holds the seat (the leader cap); when several step out at once only the first whispers, and the rest are
+     * noted in pink ("" whispers nothing).
      */
     private String overflowLine(Character owner, Persona persona) {
         long now = System.currentTimeMillis();
         Long last = overflowWhisperAtMs.put(owner.getId(), now);
-        return last != null && now - last < OVERFLOW_BURST_MS ? "" : world.roster().overflowLine(persona, owner.getId());
+        if (last != null && now - last < OVERFLOW_BURST_MS) {
+            return "";
+        }
+        return world.slots().leaderCapped(owner) ? RosterService.LEADER_CAP_LINE
+                : world.roster().overflowLine(persona, owner.getId());
     }
 
     @Override

@@ -150,12 +150,19 @@ public final class CompanionMenus {
 
     /**
      * With no seat for it the companion asks whom to take over from; it is never sent for a seat that is not there.
-     * In a shared party the open seats may be a friend's share (lending them is P9), and it says so.
+     * In a shared party the open seats may be a friend's share (lending them is P9) or held empty by the leader's
+     * expel (the leader cap), and it says which; with the leader cap and nobody out to take over from, it stays.
      */
     private void join(Character owner, Persona persona, RosterEntry entry) {
         if (!world.roster().canSeat(owner, entry)) {
-            swapPicker(owner, persona, false, world.slots().occupied(owner) >= RosterService.PARTY_CAP
-                    ? "your party's full. who should i take over from?"
+            boolean full = world.slots().occupied(owner) >= RosterService.PARTY_CAP;
+            boolean leaderCapped = !full && world.slots().leaderCapped(owner);
+            if (leaderCapped && rows(owner, true).isEmpty()) {
+                LivingTalk.open(owner, portrait(persona)).ok(RosterService.LEADER_CAP_LINE).show();
+                return;
+            }
+            swapPicker(owner, persona, false, full ? "your party's full. who should i take over from?"
+                    : leaderCapped ? "the leader sent one of us out. who should i take over from?"
                     : "the other seats are your friend's. who should i take over from?");
             return;
         }

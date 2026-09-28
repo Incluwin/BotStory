@@ -104,6 +104,8 @@ class ChatVerbBoundaryTest {
             entry("roster.haulSummary", Door.ROSTER), entry("roster.handOver", Door.ROSTER), entry("roster.sendIt", Door.ROSTER),
             entry("roster.bankIt", Door.ROSTER), entry("roster.wagesStatus", Door.ROSTER), entry("roster.payWages", Door.ROSTER),
             entry("roster.summary", Door.ROSTER), entry("roster.roster", Door.ROSTER), entry("contracts.dismiss", Door.ROSTER),
+            // a read inside those verbs: a logout, "park" and "everyone bench" also turn back a companion on its way
+            entry("roster.travelMsLeft", Door.ROSTER),
             // reads that parse the line and check ownership on the chat thread
             entry("roster.ownerOf", Door.NONE), entry("roster.entry", Door.NONE), entry("roster.isOwned", Door.NONE),
             entry("roster.hasCompanions", Door.NONE),

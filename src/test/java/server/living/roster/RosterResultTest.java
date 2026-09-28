@@ -7,6 +7,7 @@ import net.server.world.PartyCharacter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.TimerManager;
 import server.agents.runtime.AgentRuntimeCleanupService;
@@ -33,10 +34,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -57,6 +63,8 @@ class RosterResultTest {
         assertEquals("Olwen joins your party.", RosterVoice.line("Olwen", new RosterResult.Ok("Olwen joins your party.")));
         assertEquals("Olwen is on the way (~2 min).", RosterVoice.line("Olwen", new RosterResult.Travelling(120_000L, LITH_HARBOR)));
         assertEquals("Your party is full. Bench someone or name who to swap.", RosterVoice.line("Olwen", new RosterResult.PartyFull()));
+        assertEquals("The party leader sent one of yours out: that seat stays empty here.",
+                RosterVoice.line("Olwen", new RosterResult.LeaderCapped()));
         assertEquals("Olwen could not join right now.", RosterVoice.line("Olwen", new RosterResult.QuotaFull()));
         assertEquals("Olwen could not join right now.", RosterVoice.line("Olwen", new RosterResult.BudgetExhausted()));
         assertEquals("Olwen could not join right now.", RosterVoice.line("Olwen", new RosterResult.Busy()));
@@ -71,7 +79,8 @@ class RosterResultTest {
     void onlyDoneAndOnTheWayCountAsGoingThrough() {
         assertTrue(new RosterResult.Ok("x").ok());
         assertTrue(new RosterResult.Travelling(1L, 1).ok());
-        for (RosterResult refused : List.of(new RosterResult.PartyFull(), new RosterResult.QuotaFull(),
+        for (RosterResult refused : List.of(new RosterResult.PartyFull(), new RosterResult.LeaderCapped(),
+                new RosterResult.QuotaFull(),
                 new RosterResult.RosterFull(10), new RosterResult.NotOwned(), new RosterResult.InEventInstance(),
                 new RosterResult.BudgetExhausted(), new RosterResult.Busy(), new RosterResult.Failed("x"))) {
             assertFalse(refused.ok(), refused.toString());
@@ -89,6 +98,7 @@ class RosterResultTest {
     private final LivingWorldConfig config = new LivingWorldConfig();
     private CompanionSlots slots;
     private MockedStatic<TimerManager> timers;
+    private final TimerManager timer = mock(TimerManager.class);
     private MockedStatic<AgentRuntimeRegistry> registry;
     private MockedStatic<AgentRuntimeCleanupService> cleanup;
 
@@ -118,7 +128,7 @@ class RosterResultTest {
         slots = new CompanionSlots(world);
         when(world.slots()).thenReturn(slots);
         timers = mockStatic(TimerManager.class);
-        timers.when(TimerManager::getInstance).thenReturn(mock(TimerManager.class));
+        timers.when(TimerManager::getInstance).thenReturn(timer);
         registry = mockStatic(AgentRuntimeRegistry.class);
         cleanup = mockStatic(AgentRuntimeCleanupService.class);
     }
@@ -157,12 +167,60 @@ class RosterResultTest {
         shared.addMember(human(ANN)); // two humans: two seats each, but the leader's expel left Ann none
         when(ann.getParty()).thenReturn(shared);
         slots.recordLeaderExpel(77, ANN, 0);
+        RosterService roster = new RosterService(world);
 
-        RosterResult result = new RosterService(world).call(ann, olwen);
+        RosterResult result = roster.call(ann, olwen);
+        RosterResult again = roster.call(ann, olwen); // "call the usual", the Crew window and chat in one breath
 
-        assertInstanceOf(RosterResult.PartyFull.class, result);
-        verify(residents).whisper(olwen, ann, RosterService.LEADER_CAP_LINE);
+        // not "your party is full": at 3/6 with nobody out there is nobody to bench
+        assertInstanceOf(RosterResult.LeaderCapped.class, result);
+        assertInstanceOf(RosterResult.LeaderCapped.class, again);
+        verify(residents).whisper(olwen, ann, RosterService.LEADER_CAP_LINE); // once for the burst
         assertNull(slots.reservation("olwen"), "no trip starts toward a seat it may not take");
+    }
+
+    @Test
+    void aFriendsShareIsNotBlamedOnTheLeader() {
+        seed(RosterState.BENCHED);
+        Party shared = new Party(77, human(20));
+        shared.addMember(human(20));
+        shared.addMember(human(ANN));
+        when(ann.getParty()).thenReturn(shared);
+        slots.reserve(ANN, "brin", CompanionSlots.Kind.AWAY, Long.MAX_VALUE); // Brin's errand keeps one of Ann's seats
+        slots.recordLeaderExpel(77, ANN, 1); // the leader left Ann one of her two seats
+        shared.addMember(human(30)); // then a friend joins: three humans, one seat each
+
+        // Ann is at her share: the open seat is the friend's, whatever the leader did
+        assertInstanceOf(RosterResult.PartyFull.class, new RosterService(world).call(ann, olwen));
+        verify(residents, never()).whisper(olwen, ann, RosterService.LEADER_CAP_LINE);
+    }
+
+    @Test
+    void benchingACompanionOnItsWayTurnsItBackAndItNeverArrives() {
+        seed(RosterState.BENCHED);
+        MapleMap henesys = mock(MapleMap.class);
+        when(ann.getMap()).thenReturn(henesys);
+        when(ann.getMapId()).thenReturn(HENESYS);
+        CompanionExecutor ops = DirectExecutor.inline();
+        CompanionBudget budget = mock(CompanionBudget.class);
+        when(world.executor()).thenReturn(ops);
+        when(world.budget()).thenReturn(budget);
+        RosterService roster = spy(new RosterService(world));
+        doReturn(ann).when(roster).onlineCharacter(ANN);
+        assertInstanceOf(RosterResult.Travelling.class, roster.call(ann, olwen)); // "call the usual", far from camp
+
+        RosterResult benched = roster.bench(ann, olwen); // then "logout" and "yes"
+
+        assertEquals(new RosterResult.Ok("Olwen turns back to camp."), benched);
+        assertNull(slots.reservation("olwen"), "its travel seat goes back");
+        assertEquals(0L, roster.travelMsLeft(ANN, "olwen"));
+        ArgumentCaptor<Runnable> arrival = ArgumentCaptor.forClass(Runnable.class);
+        verify(timer).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), arrival.capture(), anyLong());
+        arrival.getValue().run(); // the trip's arrival comes due anyway
+
+        verify(residents, never()).ensureCharacter(any()); // nobody is loaded or seated in the owner's party
+        assertEquals(RosterState.BENCHED, rows.get("olwen").state());
+        assertNull(slots.reservation("olwen"));
     }
 
     @Test

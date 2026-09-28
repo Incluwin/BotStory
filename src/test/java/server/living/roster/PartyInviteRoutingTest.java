@@ -205,6 +205,23 @@ class PartyInviteRoutingTest extends HandlerTest {
     }
 
     @Test
+    void yourCompanionIntoASeatTheLeaderCapHoldsEmptySaysItIsTheLeadersDoing() {
+        offline("Olwen", new Relation.OwnCompanion(row(RosterState.BENCHED)));
+        when(roster.freeSlots(chr)).thenReturn(0);
+        when(slots.occupied(chr)).thenReturn(4); // 4/6: the leader expelled one of Ann's
+        when(slots.leaderCapped(chr)).thenReturn(true);
+
+        invite("Olwen");
+
+        verify(residents).whisper(olwen, chr, RosterService.LEADER_CAP_LINE);
+        verify(residents, never()).whisper(olwen, chr, CompanionPartyRouter.SHARE_USED_LINE);
+        verify(chr, never()).sendPacket(any()); // not the stock "full" while the party window shows a seat
+        verify(slots, never()).reserve(anyInt(), anyString(), any(), anyLong());
+        verify(roster, never()).call(any(), any());
+        nothingSpawnedOrSeated();
+    }
+
+    @Test
     void anAwayCompanionKeepsItsReservedSeat() {
         offline("Olwen", new Relation.OwnCompanion(row(RosterState.AWAY)));
         when(roster.freeSlots(chr)).thenReturn(0);
