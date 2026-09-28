@@ -247,3 +247,59 @@ Run 2026-09-28 on the Jevelopers client with Hadrik and Olwen (granted with `!gr
 - **Swap is bench-then-call.** The party shows a hole during the ETA. P2a/P2b fixes this with join-then-travel and an atomic swap.
 - **The item still reads "Agent Summon".** The String rename ships in P3.
 - **Bench rows can show stale data while a bot walks out.** A benched companion's row can still show its map for up to 8 s while it walks out.
+
+---
+
+# P2a results (2026-09-28)
+
+## Branch, suite and migration
+P2a is merged into `feat/companion-manager` by fast-forward to `ff190d85a`.
+- **Full suite:** 7672 tests with 25 failures and 4 errors, exactly the baseline's 29 failing tests. There are 0 new failures.
+- **Migration:** changeset `40-companion-manager` applied on boot. `living_roster` gained `lineup_slot` and the other new columns, and the existing rows are intact.
+- **Merge:** one uncommitted change from another session (`AdminBudgetReader` headlessNpcScripts) was re-applied on top by `git apply -3`, cleanly.
+
+## What P2a adds
+- **CompanionExecutor.** A single serial `companion-ops` thread runs every roster mutation, including chat verbs, menus, bench and contract ticks, and logout.
+- **PartyEvents.** Every party change is published after it commits, carrying the state before the change and who made it (actor and cause).
+- **CompanionSlots.** The only seat authority:
+  - fair share floor((6-H)/H);
+  - HOLD, AWAY, TRAVEL and GUEST reservations;
+  - leader caps;
+  - make-room.
+- **Party.joinParty seat gate**, with exemptions.
+- **CompanionPartySync:**
+  - An expelled companion goes to the bench.
+  - When its owner leaves or is expelled, the crew re-forms around the owner.
+  - A disband re-forms each human's crew.
+  - When a human joins, the party is rebalanced by fair share, with guests stepping out first.
+  - returnWhenRoom, echo suppression and a circuit breaker.
+- **Merge on accept.** A player standing in their own companion party can accept a friend's invite.
+- **Citizen guests.** `CitizenInviteDecision` handles citizen invites, and an accepted citizen takes a GUEST seat.
+- **"Make room for..."** is added to the Crew window.
+- **Chat verbs.** CompanionChatVerbs routes dismiss and logout+yes through the roster.
+- **CompanionAuditor:** a 60 s drift audit with repair, plus `/runtime/companions/audit`.
+- **Supporting pieces:** `RosterResult`/`RosterVoice`, and `COMPANION_EXP_SHARE` (the human's EXP is not diluted by companions).
+
+## Live checks
+Run 2026-09-28 with two clients: Jevelopers (Hadrik, Jinx, Sadie, Vex, Olwen) and ohboy (Brannock, Garrick).
+
+| Check | Result |
+|---|---|
+| Call an own companion by party invite (Jinx, Sadie) and by the Crew window (Vex) | **Pass.** Jevelopers reached 5 in party with 0 drift. Vex's 3-letter name can't go in the stock invite box, which needs at least 4 characters, so it has to be called from the Crew window. |
+| Merge: ohboy (own party with Brannock) accepts Jevelopers' invite | **Pass.** ohboy left his party and joined Jevelopers'. Brannock followed. Jevelopers went down to his fair share of 2: Sadie and Vex stepped out to camp with returnWhenRoom. |
+| The leader expels the other owner (ohboy) | **Pass.** ohboy and Brannock re-formed their own party. Jevelopers' Sadie and Vex came back automatically (returnWhenRoom). |
+| The leader expels the other owner's companion (Brannock) | **Pass.** Brannock went to the bench with 0 drift. Jevelopers stayed at share. |
+| Owner leaves a friend's party | **Pass.** ohboy led a new party, and the travelling Brannock followed him. |
+| A citizen accepts an invite (ohboy invites RedCookie, Lv20) | **Pass.** RedCookie joined as a guest: party ohboy, Brannock, RedCookie. |
+| Guest steps out first on a merge over share | **Pass.** RedCookie stepped out first. |
+| Auditor | **Pass.** 23 or more runs with driftNow 0, 0 repairs and 0 stuck. Every `/runtime/companions` read during the session showed drift 0. |
+| Video | `docs/agents/evidence/video/p2a-two-friends.mp4` (45 s merge take). The "party window is your crew manager" take still needs a clean re-shoot. |
+
+## Bugs found live (fixed in the P2a follow-up)
+1. **A merge leaves the joining friend below their fair share.** The accept path rebalances right after the join, while the host's overflow is still seated. It then regroups the joiner's crew. About 8 s later Garrick (ohboy's second companion) walked out even though two seats were free, so ohboy ended with 1 of his 2 seats.
+2. **The leader cap works from fair share, not from seats in use.** After the leader expelled Brannock, ohboy (cap 2 → 1, but only 1 companion out) could immediately re-call him ("Brannock is already on the way (~72 s)"). An expel only sticks after two.
+3. **"logout" then "yes" in map chat did nothing** for the owner's rostered companions while in a shared party. No bot replied, and Hadrik and Jinx stayed ACTIVE. The chat log confirms both lines reached the server. Separately, a pending logout confirmation survives across the GM-hidden chat channel: the next "logout" cancelled it with Hadrik's "ok nvm, staying!".
+4. **The Crew window can show "999% EXP banked"** (Olwen). Banked EXP should be capped, or shown as "ready to level".
+
+## Found live, belongs to other sessions
+**Debug text in player chat.** A pink line, "Jinx is warming map navigation cache, using fallback movement.", reaches the player. It comes from the navigation work in this tree, and that session has been told.
