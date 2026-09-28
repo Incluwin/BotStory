@@ -5,29 +5,66 @@ import client.Client;
 import net.packet.InPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.npc.NPCConversationManager;
 import tools.PacketCreator;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A tiny NPC-window conversation for Residents: the client renders any NPC id we send, so a
  * Persona borrows a townsperson's portrait (plan 5.2) and quest text gets the familiar dialog
  * instead of chat bubbles. Pages first (Next / Prev), then one final prompt: OK, Yes/No,
  * Accept/Decline (the quest-start window) or a menu. Responses arrive through {@code NPCMoreTalkHandler} -> {@link #respond}.
+ *
+ * <p>The v83 client drops the connection when a second NPC_TALK arrives while a window waits for the
+ * player's answer (docs/BOT_MANAGEMENT_P0_RESULTS.md, probe 6). So a window is only ever sent as the answer
+ * to the player's click, or when nothing is on screen: {@link #show} refuses (and re-enables the client's
+ * actions) while a talk or an NPC script window awaits a reply, and a talk is never re-rendered in place.
+ * Every path ends in a window or in enableActions.</p>
  */
 public final class LivingTalk {
     private static final Logger log = LoggerFactory.getLogger(LivingTalk.class);
     private static final Map<Integer, LivingTalk> OPEN = new ConcurrentHashMap<>();
+    /** Menu options per window; a longer menu gets a "More..." option that shows the next ones. */
+    static final int MENU_PAGE_SIZE = 10;
+    /**
+     * A menu selection is {@code stamp * OPTION_SLOTS + option id} (at most 9 digits, like the map ids stock scripts
+     * put in #L); the last slot is "More...".
+     */
+    private static final int OPTION_SLOTS = 1000;
+    private static final int MORE_ID = OPTION_SLOTS - 1;
+    private static final int MAX_STAMP = 200_000;
+    private static final AtomicInteger STAMPS = new AtomicInteger();
+    /**
+     * Speaker bit 0x04 makes the v83 client read a template id int after the speaker byte, which this packet
+     * does not carry: it misreads the text and crashes (P0 probe 5). It is refused, never sent.
+     */
+    private static final int SPEAKER_TEMPLATE_BIT = 0x04;
+    /** The character whose window answer is being handled on this thread: its next window is that answer. */
+    private static final ThreadLocal<Integer> ANSWERING = new ThreadLocal<>();
+    private static final Runnable HEADING = () -> { };
 
-    public record Option(String label, Runnable action) { }
+    /** A menu option; a null action just closes the window. */
+    public record Option(String label, Runnable action) {
+        /** A line of text between options (a block title); it cannot be chosen. */
+        public static Option heading(String text) {
+            return new Option(text, HEADING);
+        }
+
+        boolean selectable() {
+            return action != HEADING;
+        }
+    }
 
     private enum Kind { OK, YES_NO, ACCEPT_DECLINE, MENU }
 
     private final Character chr;
     private final int npcId;
+    private byte speaker;
     private final List<String> pages = new ArrayList<>();
     private int page;
     private Kind kind = Kind.OK;
@@ -35,19 +72,19 @@ public final class LivingTalk {
     private Runnable onYes;
     private Runnable onNo;
     private final List<Option> options = new ArrayList<>();
-    private boolean shown;
+    private int menuPage;
+    /** The message type of the window on screen; an answer of any other type belongs to an older window. */
+    private byte awaitingType;
+    /** Stamps this window's menu selections, so a click on an older window can never pick one of its options. */
+    private int stamp;
 
     private LivingTalk(Character chr, int npcId) {
         this.chr = chr;
         this.npcId = npcId;
     }
 
-    /** Starts a new talk for the player, replacing any open one. */
+    /** Starts building a talk for the player; nothing is sent (or replaced) until {@link #show}. */
     public static LivingTalk open(Character chr, int npcId) {
-        LivingTalk previous = OPEN.remove(chr.getId());
-        if (previous != null) {
-            previous.release();
-        }
         return new LivingTalk(chr, npcId);
     }
 
@@ -63,7 +100,25 @@ public final class LivingTalk {
         }
     }
 
+    /** Drops the player's talk without a packet: a map change or a logout already closed the window. */
+    public static void forget(Character chr) {
+        OPEN.remove(chr.getId());
+    }
+
     // ---- building ------------------------------------------------------------------------
+
+    /**
+     * The NPC_TALK speaker byte (P0 probe 5): 0 or 8 = the NPC portrait on the left, 1 = no End Chat,
+     * 2 = the viewing player's own avatar on the right, 3 = the avatar with no End Chat. Anything with
+     * bit 0x04 crashes the client and is rejected.
+     */
+    public LivingTalk speaker(int value) {
+        if (value < 0 || value > 0xFF || (value & SPEAKER_TEMPLATE_BIT) != 0) {
+            throw new IllegalArgumentException("NPC talk speaker " + value + " is not a byte without bit 0x04");
+        }
+        speaker = (byte) value;
+        return this;
+    }
 
     public LivingTalk say(String text) {
         if (text != null && !text.isBlank()) {
@@ -93,6 +148,7 @@ public final class LivingTalk {
         return this;
     }
 
+    /** Past {@link #MENU_PAGE_SIZE} options the menu pages with "More..."; {@link Option#heading} lines ride along. */
     public LivingTalk menu(String text, List<Option> choices) {
         kind = Kind.MENU;
         promptText = text;
@@ -101,43 +157,110 @@ public final class LivingTalk {
         return this;
     }
 
-    /** Sends the first page or the prompt when there are no pages. */
+    /**
+     * Sends the first page or the prompt when there are no pages. Refused with enableActions while the
+     * player has another window awaiting a reply, and (unless this answers the player's click) within
+     * 500 ms of the last NPC click, like stock NPC clicks. A leftover script conversation that sent no
+     * window is disposed first.
+     */
     public void show() {
-        if (pages.isEmpty() && promptText == null) {
+        Client client = chr.getClient();
+        if (client == null) {
             return;
         }
+        if ((pages.isEmpty() && promptText == null) || !mayOpen(client)) {
+            client.sendPacket(PacketCreator.enableActions());
+            return;
+        }
+        client.setClickedNPC();
         OPEN.put(chr.getId(), this);
-        shown = true;
         page = 0;
+        menuPage = 0;
         render();
+    }
+
+    private boolean mayOpen(Client client) {
+        LivingTalk open = OPEN.get(chr.getId());
+        if (open != null) {
+            if (open.chr == chr) {
+                return false; // its window is on screen: a second NPC_TALK disconnects the client
+            }
+            OPEN.remove(chr.getId(), open); // left over from an earlier login
+        }
+        NPCConversationManager script = client.getQM() != null ? client.getQM() : client.getCM();
+        if (script != null && script.awaitingReply()) {
+            return false;
+        }
+        boolean answer = Integer.valueOf(chr.getId()).equals(ANSWERING.get());
+        if (!answer && !client.canClickNPC()) {
+            return false;
+        }
+        if (script != null) {
+            script.dispose(); // a script conversation with no window on screen
+        }
+        return true;
     }
 
     private void render() {
         Client client = chr.getClient();
         if (client == null) {
-            release();
+            OPEN.remove(chr.getId(), this);
             return;
         }
+        stamp = STAMPS.updateAndGet(value -> value >= MAX_STAMP ? 1 : value + 1);
         if (page < pages.size()) {
             boolean hasPrev = page > 0;
             boolean hasNext = page + 1 < pages.size() || promptText != null;
             String end = hasPrev ? (hasNext ? "01 01" : "01 00") : (hasNext ? "00 01" : "00 00");
-            client.sendPacket(PacketCreator.getNPCTalk(npcId, (byte) 0, pages.get(page), end, (byte) 0));
+            send(client, (byte) 0, pages.get(page), end);
             return;
         }
         switch (kind) {
-            case OK -> client.sendPacket(PacketCreator.getNPCTalk(npcId, (byte) 0, promptText == null ? "" : promptText,
-                    pages.isEmpty() ? "00 00" : "01 00", (byte) 0));
-            case YES_NO -> client.sendPacket(PacketCreator.getNPCTalk(npcId, (byte) 1, promptText, "", (byte) 0));
-            case ACCEPT_DECLINE -> client.sendPacket(PacketCreator.getNPCTalk(npcId, (byte) 0x0C, promptText, "", (byte) 0));
-            case MENU -> {
-                StringBuilder text = new StringBuilder(promptText == null ? "" : promptText);
-                for (int index = 0; index < options.size(); index++) {
-                    text.append("\r\n#L").append(index).append("#").append(options.get(index).label()).append("#l");
-                }
-                client.sendPacket(PacketCreator.getNPCTalk(npcId, (byte) 4, text.toString(), "", (byte) 0));
-            }
+            case OK -> send(client, (byte) 0, promptText == null ? "" : promptText, pages.isEmpty() ? "00 00" : "01 00");
+            case YES_NO -> send(client, (byte) 1, promptText, "");
+            case ACCEPT_DECLINE -> send(client, (byte) 0x0C, promptText, "");
+            case MENU -> send(client, (byte) 4, menuText(), "");
         }
+    }
+
+    private void send(Client client, byte msgType, String text, String end) {
+        awaitingType = msgType;
+        client.sendPacket(PacketCreator.getNPCTalk(npcId, msgType, text, end, speaker));
+    }
+
+    private String menuText() {
+        StringBuilder text = new StringBuilder(promptText == null ? "" : promptText);
+        int pageCount = menuPageCount();
+        int from = menuPage * MENU_PAGE_SIZE;
+        int to = pageCount > 1 ? from + MENU_PAGE_SIZE : Integer.MAX_VALUE;
+        int next = 0; // position of the next selectable option; a heading shows on the page of the option after it
+        for (int id = 0; id < options.size(); id++) {
+            Option option = options.get(id);
+            boolean onPage = next >= from && next < to;
+            if (!option.selectable()) {
+                if (onPage) {
+                    text.append("\r\n").append(option.label());
+                }
+                continue;
+            }
+            if (onPage) {
+                text.append("\r\n#L").append(selectionOf(id)).append("#").append(option.label()).append("#l");
+            }
+            next++;
+        }
+        if (pageCount > 1) {
+            text.append("\r\n#L").append(selectionOf(MORE_ID)).append("#More...#l");
+        }
+        return text.toString();
+    }
+
+    private int menuPageCount() {
+        long selectable = options.stream().filter(Option::selectable).count();
+        return (int) Math.max(1, (selectable + MENU_PAGE_SIZE - 1) / MENU_PAGE_SIZE);
+    }
+
+    private int selectionOf(int optionId) {
+        return stamp * OPTION_SLOTS + optionId;
     }
 
     // ---- responses -----------------------------------------------------------------------
@@ -152,6 +275,10 @@ public final class LivingTalk {
         if (talk == null) {
             return false;
         }
+        if (talk.chr != player) {
+            OPEN.remove(player.getId(), talk); // left over from an earlier login
+            return false;
+        }
         int selection = -1;
         if (lastMsg == 2) {
             if (action != 0 && packet.available() > 0) {
@@ -162,19 +289,26 @@ public final class LivingTalk {
         } else if (packet.available() > 0) {
             selection = packet.readUnsignedByte();
         }
+        Integer outer = ANSWERING.get();
+        ANSWERING.set(player.getId());
         try {
             talk.handle(lastMsg, action, selection);
         } catch (RuntimeException failure) {
             log.warn("living talk response failed for {}", player.getName(), failure);
             talk.close();
+        } finally {
+            if (outer == null) {
+                ANSWERING.remove();
+            } else {
+                ANSWERING.set(outer);
+            }
         }
         return true;
     }
 
     private void handle(byte lastMsg, byte action, int selection) {
-        if (!shown) {
-            close();
-            return;
+        if (lastMsg != awaitingType) {
+            return; // the answer to an older window (a double click); this one is still on screen
         }
         if (page < pages.size()) {
             if (action == 1) {
@@ -184,7 +318,7 @@ public final class LivingTalk {
                 } else {
                     close();
                 }
-            } else if (action == 0 && page > 0 && lastMsg == 0) {
+            } else if (action == 0 && page > 0) {
                 page--;
                 render();
             } else {
@@ -194,20 +328,45 @@ public final class LivingTalk {
         }
         switch (kind) {
             case OK -> close();
-            case YES_NO, ACCEPT_DECLINE -> {
-                Runnable next = action == 1 ? onYes : onNo;
-                close();
-                if (next != null) {
-                    next.run();
-                }
+            case YES_NO, ACCEPT_DECLINE -> finish(action == 1 ? onYes : onNo);
+            case MENU -> choose(action, selection);
+        }
+    }
+
+    private void choose(byte action, int selection) {
+        if (action != 1 || selection < 0) {
+            close(); // End Chat
+            return;
+        }
+        int clicked = selection / OPTION_SLOTS;
+        int id = selection % OPTION_SLOTS;
+        if (clicked != stamp) {
+            if (clicked > 0 && clicked < stamp) {
+                return; // a click on an older window: never its option, never twice; this window stays
             }
-            case MENU -> {
-                Option chosen = selection >= 0 && selection < options.size() ? options.get(selection) : null;
-                close();
-                if (chosen != null && chosen.action() != null) {
-                    chosen.action().run();
-                }
+            close();
+            return;
+        }
+        if (id == MORE_ID) {
+            menuPage = (menuPage + 1) % menuPageCount();
+            render(); // the answer to the click: the next page of the same menu
+            return;
+        }
+        Option chosen = id < options.size() && options.get(id).selectable() ? options.get(id) : null;
+        finish(chosen == null ? null : chosen.action());
+    }
+
+    /** Closes this window and runs the answer, which may open the next window; otherwise the client's actions come back. */
+    private void finish(Runnable next) {
+        if (!OPEN.remove(chr.getId(), this)) {
+            return;
+        }
+        try {
+            if (next != null) {
+                next.run();
             }
+        } finally {
+            release();
         }
     }
 
@@ -219,7 +378,6 @@ public final class LivingTalk {
     }
 
     private void release() {
-        shown = false;
         Client client = chr.getClient();
         if (client != null && !OPEN.containsKey(chr.getId())) {
             client.sendPacket(PacketCreator.enableActions());

@@ -269,6 +269,20 @@ public final class LivingStore {
         }
     }
 
+    /** {level, job id} of any character (online or not) from the characters table; {0, -1} if unknown. */
+    public int[] characterLevelAndJob(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT level, job FROM characters WHERE id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? new int[] {rs.getInt(1), rs.getInt(2)} : new int[] {0, -1};
+            }
+        } catch (SQLException failure) {
+            log.warn("character level/job lookup failed for {}", characterId, failure);
+            return new int[] {0, -1};
+        }
+    }
+
     /** Mobs dropping an item with their per-million chance, from Cosmic's drop_data table. */
     public List<int[]> mobsDropping(int itemId) {
         List<int[]> out = new ArrayList<>();

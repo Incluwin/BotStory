@@ -91,6 +91,12 @@ public class LivingWorldConfig {
     public int APPRENTICE_MAX_LEVELS = 6;
     /** Meso cost of an instant recall whistle (item id configured in loadouts.yaml -> whistleItemId). */
     public int RECALL_WHISTLE_ITEM_ID = 0;
+    /**
+     * The Adventurer's Roster: double-clicking this USE item in the inventory opens the Crew window and does not use
+     * it up (a hotkey sends nothing, P0 probe 2). 0 = off. The client still names 2430011 "Agent Summon" until its
+     * String.wz / Custom.wz rename ships (P3).
+     */
+    public int ROSTER_BOOK_ITEM_ID = 2430011;
 
     // Companion budget v1 (docs/BOT_MANAGEMENT_P0_RESULTS.md, Measurement); CompanionBudget reads these
     /** Agents one online human may have following them (their loaded companions); a party holds 5 besides them. */
@@ -122,6 +128,9 @@ public class LivingWorldConfig {
         }
         if (ROSTER_MAX < 1 || ROSTER_MAX > 50) {
             throw new IllegalArgumentException("living_world.ROSTER_MAX must be within 1..50");
+        }
+        if (ROSTER_BOOK_ITEM_ID < 0) {
+            throw new IllegalArgumentException("living_world.ROSTER_BOOK_ITEM_ID must be >= 0 (0 = off)");
         }
         if (BOND_ACQUAINTED_POINTS >= BOND_TRUSTED_POINTS || BOND_TRUSTED_POINTS >= BOND_SWORN_POINTS) {
             throw new IllegalArgumentException("living_world bond thresholds must increase");

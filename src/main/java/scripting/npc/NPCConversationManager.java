@@ -264,6 +264,11 @@ public class NPCConversationManager extends AbstractPlayerInteraction {
         return prompt != null && prompt.accepts(responseType, action, selection);
     }
 
+    /** True while a window this conversation sent is on the client's screen, waiting for the player's answer. */
+    public boolean awaitingReply() {
+        return expectedPrompt.get() != null;
+    }
+
     private void expectPrompt(NpcPromptState prompt) {
         expectedPrompt.set(prompt);
     }
