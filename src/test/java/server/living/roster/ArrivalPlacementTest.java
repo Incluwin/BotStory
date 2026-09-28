@@ -143,6 +143,8 @@ class ArrivalPlacementTest {
         when(world.bench()).thenReturn(ledger);
         when(world.leases()).thenReturn(leases);
         when(world.slots()).thenReturn(new CompanionSlots(world));
+        CompanionExecutor ops = DirectExecutor.inline(); // the roster's timers hand their work to companion-ops
+        when(world.executor()).thenReturn(ops);
         when(world.budget()).thenReturn(budget);
 
         // Alice stands in a field next to the companions' camp map, so a call is instant unless a test moves her

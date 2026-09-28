@@ -20,6 +20,9 @@ import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionDirectory.Relation;
+import server.living.roster.CompanionExecutor;
+import server.living.roster.CompanionPartySync;
+import server.living.roster.DirectExecutor;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
@@ -53,7 +56,9 @@ import static org.mockito.Mockito.when;
  * Crew window v0 screens (docs/BOT_MANAGEMENT_PLAN.md P1.5): the options a card offers per state and roster, the
  * swap pickers, and that bench, call and swap go to {@link RosterService} for the owner's own companions only. An
  * outcome is the player's notes, a full party asks whom to take over from, the last one out is never benched into a
- * spot only typing gets back from, and nothing is read while a window awaits its reply.
+ * spot only typing gets back from, and nothing is read while a window awaits its reply. P2a: the actions run on
+ * companion-ops (a companion whispers the outcome when a window cannot open by then), and a full party offers
+ * "Make room for a friend...".
  */
 class CompanionMenusTest {
     private static final int ANN = 10;
@@ -68,6 +73,7 @@ class CompanionMenusTest {
     private final LivingStore store = mock(LivingStore.class);
     private final ResidentRuntime residents = mock(ResidentRuntime.class);
     private final CompanionDirectory directory = mock(CompanionDirectory.class);
+    private final CompanionPartySync sync = mock(CompanionPartySync.class);
     private final Character owner = mock(Character.class);
     private final Client client = mock(Client.class);
     private final Persona hadrik = persona("hadrik", "Hadrik");
@@ -96,6 +102,9 @@ class CompanionMenusTest {
         when(world.residents()).thenReturn(residents);
         when(world.directory()).thenReturn(directory);
         when(world.config()).thenReturn(new LivingWorldConfig());
+        CompanionExecutor ops = DirectExecutor.inline();
+        when(world.executor()).thenReturn(ops);
+        when(world.partySync()).thenReturn(sync);
         when(content.portraitNpcId("hadrik")).thenReturn(HADRIK_PORTRAIT);
         when(roster.roster(owner)).thenReturn(rows);
         when(roster.describeAssignment(any())).thenReturn("train");
@@ -472,7 +481,85 @@ class CompanionMenusTest {
         verify(client, never()).sendPacket(any());
     }
 
+    // ---- on companion-ops (P2a) -----------------------------------------------------------
+
+    @Test
+    void anActionRunsOnCompanionOpsAfterTheClickReleasedTheClient() {
+        List<Runnable> queue = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(queue);
+        when(world.executor()).thenReturn(queued);
+        rows.add(hadrikRow);
+        menus.card(owner, hadrikRow);
+
+        pick("Take a break at camp");
+
+        verify(roster, never()).bench(any(), any()); // not on the packet thread
+        assertFalse(LivingTalk.active(client));
+        assertEquals(1, queue.size());
+        queue.get(0).run();
+        verify(roster).bench(owner, hadrik);
+        assertEquals("Hadrik heads back to camp to train.", lastTalk().text());
+    }
+
+    @Test
+    void anOutcomeReadyWhileAnotherWindowWaitsIsWhisperedInstead() {
+        List<Runnable> queue = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(queue);
+        when(world.executor()).thenReturn(queued);
+        rows.add(hadrikRow);
+        menus.card(owner, hadrikRow);
+        pick("Take a break at camp");
+        LivingTalk.open(owner, 9000000).ok("a stock window the player opened meanwhile").show();
+        clearInvocations(client);
+
+        queue.get(0).run();
+
+        verify(residents).whisper(hadrik, owner, "Hadrik heads back to camp to train.");
+        verify(client, never()).sendPacket(any()); // nothing over the window awaiting its reply
+    }
+
+    @Test
+    void aFullPartyOffersToMakeRoomForAFriend() {
+        rows.addAll(List.of(hadrikRow, tobiRow));
+        when(roster.companion(tobiRow)).thenReturn(null);
+        fullParty(6);
+        when(sync.makeRoom(ANN, "tobi")).thenReturn(true);
+
+        menus.crew(owner);
+        pick("Make room for a friend...");
+
+        Talk picker = lastTalk();
+        assertEquals(CompanionMenus.NOTES_SPEAKER, picker.speaker());
+        assertTrue(picker.text().startsWith("Who steps out for your friend?\r\n"), picker.text());
+        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Tobi, Lv30 Cleric - on the way", "Never mind"),
+                picker.labels());
+        pick("Tobi, Lv30 Cleric - on the way");
+
+        verify(sync).makeRoom(ANN, "tobi");
+        assertEquals("Tobi steps out to make room for your friend.", lastTalk().text());
+    }
+
+    @Test
+    void aPartyWithRoomHasNoMakeRoom() {
+        rows.addAll(List.of(hadrikRow, tobiRow));
+        fullParty(5);
+
+        menus.crew(owner);
+
+        assertFalse(lastTalk().labels().contains("Make room for a friend..."));
+    }
+
     // ---- helpers -------------------------------------------------------------------------
+
+    private void fullParty(int members) {
+        Party party = mock(Party.class);
+        List<PartyCharacter> list = new ArrayList<>();
+        for (int i = 0; i < members; i++) {
+            list.add(mock(PartyCharacter.class));
+        }
+        when(party.getMembers()).thenReturn(list);
+        when(owner.getParty()).thenReturn(party);
+    }
 
     private void pick(String label) {
         answer(MENU, 1, lastTalk().selection(label));

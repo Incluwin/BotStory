@@ -133,7 +133,8 @@ public final class LivingWorldHooks {
         }
         try {
             server.living.resident.LivingTalk.forget(chr);
-            world.roster().onOwnerLogout(chr);
+            // on companion-ops ahead of the owner's LOG_ONOFF, which the logout publishes right after this hook
+            world.executor().submit("roster.logout " + chr.getId(), () -> world.roster().onOwnerLogout(chr));
             world.markers().loggedOut(chr);
         } catch (RuntimeException failure) {
             log.warn("living world logout hook failed", failure);
@@ -204,9 +205,27 @@ public final class LivingWorldHooks {
     }
 
     /**
+     * A party invite accepted (op 3) after the invite was answered. True when the living world seats the player itself
+     * on companion-ops: an owner alone with their companions merging into the inviter's party (P0 probe 1), or a full
+     * party making room (probe 12). False leaves the stock join.
+     */
+    public static boolean partyAccept(Character player, int partyId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || player == null) {
+            return false;
+        }
+        try {
+            return new CompanionPartyRouter(world).accept(player, partyId);
+        } catch (RuntimeException failure) {
+            log.warn("living world partyAccept hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
      * A committed party change ({@code PartyEvents} listener, on the thread that made it). It is queued for the
      * companion-ops thread and never handled here, so nothing re-enters {@code World.updateParty} or takes the roster's
-     * locks under the party's.
+     * locks under the party's. The seat caches take it first, then the roster is reconciled.
      */
     public static void partyChanged(net.server.world.PartyEvents.PartyChangeEvent event) {
         LivingWorld world = LivingWorld.get();
@@ -214,7 +233,10 @@ public final class LivingWorldHooks {
             return;
         }
         try {
-            world.executor().submit("party " + event.op() + " " + event.partyId(), () -> world.slots().onPartyChanged(event));
+            world.executor().submit("party " + event.op() + " " + event.partyId(), () -> {
+                world.slots().onPartyChanged(event);
+                world.partySync().onPartyChanged(event);
+            });
         } catch (RuntimeException failure) {
             log.warn("living world partyChanged hook failed", failure);
         }

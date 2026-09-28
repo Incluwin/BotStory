@@ -9,6 +9,8 @@ import net.packet.Packet;
 import net.server.PlayerStorage;
 import net.server.channel.handlers.PartyOperationHandler;
 import net.server.coordinator.world.InviteCoordinator;
+import net.server.coordinator.world.InviteCoordinator.InviteResult;
+import net.server.coordinator.world.InviteCoordinator.InviteResultType;
 import net.server.coordinator.world.InviteCoordinator.InviteType;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
@@ -23,6 +25,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import scripting.event.EventInstanceManager;
 import server.TimerManager;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
@@ -40,6 +43,7 @@ import testutil.HandlerTest;
 import testutil.Packets;
 import tools.PacketCreator;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -96,6 +100,8 @@ class PartyInviteRoutingTest extends HandlerTest {
     private LivingStore store;
     @Mock
     private Persona olwen;
+    @Mock
+    private CompanionPartySync sync;
 
     private MockedStatic<LivingWorld> livingWorld;
     private MockedStatic<AgentInteractionRuntime> interaction;
@@ -121,6 +127,10 @@ class PartyInviteRoutingTest extends HandlerTest {
         when(living.content()).thenReturn(content);
         when(living.residents()).thenReturn(residents);
         when(living.store()).thenReturn(store);
+        CompanionExecutor ops = DirectExecutor.inline(); // the roster's calls run on companion-ops
+        when(living.executor()).thenReturn(ops);
+        when(living.partySync()).thenReturn(sync);
+        when(chr.getWorldServer()).thenReturn(world);
         when(budget.usage(ANN)).thenReturn(new CompanionBudget.Usage(10, 1, 0, 0, 0));
         when(roster.freeSlots(chr)).thenReturn(4);
         // the stock seat rule under this mock: an AWAY companion kept its seat, anyone else needs a free one
@@ -516,7 +526,128 @@ class PartyInviteRoutingTest extends HandlerTest {
         nothingSpawnedOrSeated();
     }
 
+    // ---- humans alone with their companions: the merge (P0 probe 1) and make-room (probe 12) ------
+
+    @Test
+    void aHumanAloneWithTheirCompanionsGetsTheStockInviteInsteadOfAlreadyInAParty() {
+        Character ben = human(20, "Ben");
+        Party bens = partyOf(ben, 88, 3);
+        when(directory.isCompanionParty(bens)).thenReturn(true);
+        online("Ben", ben, new Relation.Human(20));
+        invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, 20)).thenReturn(true);
+
+        invite("Ben");
+
+        ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
+        verify(ben).sendPacket(sent.capture());
+        assertArrayEquals(PacketCreator.partyInvite(chr).getBytes(), sent.getValue().getBytes());
+        verify(chr, never()).sendPacket(any());
+        verify(client, never()).sendPacket(any());
+    }
+
+    @Test
+    void aHumanInAPartyWithAnotherHumanStillGetsAlreadyInAParty() {
+        Character ben = human(20, "Ben");
+        partyOf(ben, 88, 3); // shared: isCompanionParty is false
+        online("Ben", ben, new Relation.Human(20));
+
+        invite("Ben");
+
+        ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
+        verify(client).sendPacket(sent.capture());
+        assertArrayEquals(PacketCreator.partyStatusMessage(16).getBytes(), sent.getValue().getBytes());
+        verify(ben, never()).sendPacket(any());
+    }
+
+    @Test
+    void acceptingFromYourOwnCompanionPartyMergesOnCompanionOps() throws Exception {
+        partyOf(null, 88, 3);
+        when(directory.isCompanionParty(party)).thenReturn(true);
+
+        accept(88);
+
+        verify(sync).accept(ANN, 88);
+        parties.verify(() -> Party.joinParty(any(), anyInt(), anyBoolean()), never());
+    }
+
+    @Test
+    void acceptingFromAPartyWithOtherHumansIsTheStockRefusal() throws Exception {
+        partyOf(null, 88, 3);
+
+        accept(88);
+
+        verify(sync, never()).accept(anyInt(), anyInt());
+        parties.verify(() -> Party.joinParty(chr, 88, false)); // which answers "already in one"
+    }
+
+    @Test
+    void aPartylessPlayerAcceptingIntoAFullPartyMakesRoomOnCompanionOps() throws Exception {
+        when(chr.getParty()).thenReturn(null);
+        partyOf(null, 88, 6);
+
+        accept(88);
+
+        verify(sync).accept(ANN, 88);
+        parties.verify(() -> Party.joinParty(any(), anyInt(), anyBoolean()), never());
+    }
+
+    @Test
+    void aHumanJoinsACitizenLedLobbyPartyTheStockWay() throws Exception {
+        when(chr.getParty()).thenReturn(null);
+        partyOf(null, 88, 4); // a PQ lobby a citizen leads, with room
+
+        accept(88);
+
+        parties.verify(() -> Party.joinParty(chr, 88, false));
+        verify(sync, never()).accept(anyInt(), anyInt());
+    }
+
+    @Test
+    void aCitizenBusyInAnEventInstanceIsTakingCareOfAnotherInvitation() {
+        Character mira = bot(MIRA, "Mira", 30);
+        when(mira.getEventInstance()).thenReturn(mock(EventInstanceManager.class));
+        online("Mira", mira, new Relation.Citizen(MIRA));
+        when(chr.isLoggedinWorld()).thenReturn(true);
+
+        invite("Mira");
+        verify(chr, never()).sendPacket(any());
+        answerLater();
+
+        assertStatus(PacketCreator.partyStatusMessage(22, "Mira"));
+        nothingSpawnedOrSeated();
+        verify(slots, never()).reserve(anyInt(), anyString(), any(), anyLong());
+    }
+
     // ---- helpers -------------------------------------------------------------------------
+
+    /** Op 3 for {@code partyId}, its invite answered as accepted. */
+    private void accept(int partyId) throws ReflectiveOperationException {
+        Constructor<InviteResult> result = InviteResult.class.getDeclaredConstructor(InviteResultType.class,
+                Character.class, Object[].class);
+        result.setAccessible(true);
+        InviteResult accepted = result.newInstance(InviteResultType.ACCEPTED, null, new Object[0]);
+        invites.when(() -> InviteCoordinator.answerInvite(InviteType.PARTY, ANN, partyId, true)).thenReturn(accepted);
+        handler.handlePacket(Packets.buildInPacket(out -> {
+            out.writeByte(3);
+            out.writeInt(partyId);
+        }), client);
+    }
+
+    /** A party {@code id} of {@code size} members that {@code member} is in (null: nobody given), known to the world. */
+    private Party partyOf(Character member, int id, int size) {
+        Party other = mock(Party.class);
+        when(other.getId()).thenReturn(id);
+        List<PartyCharacter> members = new java.util.ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            members.add(mock(PartyCharacter.class));
+        }
+        when(other.getMembers()).thenReturn(members);
+        when(world.getParty(id)).thenReturn(other);
+        if (member != null) {
+            when(member.getParty()).thenReturn(other);
+        }
+        return other;
+    }
 
     private void invite(String name) {
         InPacket packet = Packets.buildInPacket(out -> {

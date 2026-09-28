@@ -18,6 +18,7 @@ import server.TimerManager;
 import server.living.LivingWorld;
 import server.living.LivingWorldHooks;
 import server.living.roster.CompanionExecutor;
+import server.living.roster.CompanionPartySync;
 import server.living.roster.CompanionSlots;
 import testutil.Packets;
 
@@ -35,6 +36,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -216,6 +219,8 @@ class PartyEventsTest {
         LivingWorld living = mock(LivingWorld.class);
         when(living.executor()).thenReturn(executor);
         when(living.slots()).thenReturn(slots);
+        CompanionPartySync sync = mock(CompanionPartySync.class);
+        when(living.partySync()).thenReturn(sync);
         AtomicReference<String> handledOn = new AtomicReference<>();
         AtomicReference<Integer> sizeWhenHandled = new AtomicReference<>();
         CountDownLatch handled = new CountDownLatch(1);
@@ -235,6 +240,7 @@ class PartyEventsTest {
             executor.shutdown();
         }
 
+        verify(sync, timeout(5_000)).onPartyChanged(any()); // after the seat caches, on the same thread
         assertEquals(CompanionExecutor.THREAD_NAME, handledOn.get());
         assertNotEquals(Thread.currentThread().getName(), handledOn.get());
         assertEquals(2, sizeWhenHandled.get());

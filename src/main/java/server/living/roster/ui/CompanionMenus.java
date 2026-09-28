@@ -19,15 +19,17 @@ import tools.PacketCreator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.IntFunction;
+import java.util.function.Supplier;
 
 /**
  * Crew window v0 (docs/BOT_MANAGEMENT_PLAN.md P1.5) in the stock NPC window: the companion card, the bench card,
  * the Crew window and the swap pickers. Each window is the answer to the player's own click (a double-click on
  * the companion, the Adventurer's Roster, a menu pick), so {@link LivingTalk} never pushes one over another, and an
  * entry point asks {@link LivingTalk#mayShow} before it reads any rows. Only the viewer's own companions are listed;
- * every action goes through {@link RosterService} (bench, call, swap) and so behind the P1 guards. The companion
- * speaks on its card and its pickers; what an action did is the last window, written in the player's notes like the
- * Crew window; OK closes it.
+ * every action goes through {@link RosterService} (bench, call, swap) and so behind the P1 guards, as a command on
+ * companion-ops (plan P2a). The companion speaks on its card and its pickers; what an action did is the last window,
+ * written in the player's notes like the Crew window (OK closes it), or the companion's whisper when a window cannot
+ * open by the time the command is done.
  */
 public final class CompanionMenus {
     /** The Crew window reads as the player's own notes: their avatar on the right (P0 probe 5b). */
@@ -68,7 +70,8 @@ public final class CompanionMenus {
         List<Option> options = new ArrayList<>();
         // the last one out is benched only by someone holding the Roster, which calls anyone back; else it is rotated
         if (rows(owner, true).size() != 1 || holdsRosterBook(owner)) {
-            options.add(new Option("Take a break at camp", () -> outcome(owner, RosterVoice.line(persona, world.roster().bench(owner, persona)))));
+            options.add(new Option("Take a break at camp", () -> command(owner, persona, "menu.bench",
+                    () -> RosterVoice.line(persona, world.roster().bench(owner, persona)))));
         }
         if (!rows(owner, false).isEmpty()) {
             options.add(new Option("Let someone take your place...", () -> swapPicker(owner, persona, true, "who takes my place?")));
@@ -116,6 +119,10 @@ public final class CompanionMenus {
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
         }
+        // a full party cannot invite (P0 probe 12): one of yours steps out so a friend can be asked
+        if (!party.isEmpty() && owner.getParty() != null && owner.getParty().getMembers().size() >= RosterService.PARTY_CAP) {
+            options.add(new Option("Make room for a friend...", () -> makeRoomPicker(owner)));
+        }
         int seats = RosterService.PARTY_CAP - world.roster().freeSlots(owner); // a companion sent away keeps its seat
         LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER)
                 .menu("#eParty " + seats + "/" + RosterService.PARTY_CAP + "#n", options)
@@ -144,7 +151,23 @@ public final class CompanionMenus {
             swapPicker(owner, persona, false, "your party's full. who should i take over from?");
             return;
         }
-        outcome(owner, RosterVoice.line(persona, world.roster().call(owner, persona)));
+        command(owner, persona, "menu.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
+    }
+
+    /** Whom of yours to step out for a friend: they bench and come back once there is room again. */
+    private void makeRoomPicker(Character owner) {
+        List<Option> options = new ArrayList<>();
+        for (RosterEntry entry : rows(owner, true)) {
+            Persona persona = world.content().persona(entry.personaId());
+            if (persona != null) {
+                options.add(new Option(partyRow(view(entry)), () -> command(owner, persona, "menu.make_room",
+                        () -> world.partySync().makeRoom(owner.getId(), persona.id())
+                                ? persona.name() + " steps out to make room for your friend."
+                                : persona.name() + " is not out with you right now.")));
+            }
+        }
+        options.add(new Option("Never mind", null));
+        LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER).menu("Who steps out for your friend?\r\n", options).show();
     }
 
     /**
@@ -159,8 +182,9 @@ public final class CompanionMenus {
                 continue;
             }
             CompanionView view = view(entry);
-            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> outcome(owner, RosterVoice.line(fixed,
-                    outgoing ? world.roster().swap(owner, fixed, other) : world.roster().swap(owner, other, fixed)))));
+            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> command(owner, fixed, "menu.swap",
+                    () -> RosterVoice.line(fixed, outgoing ? world.roster().swap(owner, fixed, other)
+                            : world.roster().swap(owner, other, fixed)))));
         }
         if (options.isEmpty()) {
             outcome(owner, "Nobody to swap with right now.");
@@ -186,6 +210,22 @@ public final class CompanionMenus {
     /** What the action did, as the window's last page in the player's notes: the answer to the click; OK closes it. */
     private void outcome(Character owner, String line) {
         LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER).ok(line).show();
+    }
+
+    /**
+     * Runs a roster action on companion-ops; the click's window has closed by then (the client's actions came back).
+     * Its line is the notes' last page when a window may open now, else {@code speaker} whispers it: nothing is ever
+     * sent over a window awaiting its reply.
+     */
+    private void command(Character owner, Persona speaker, String name, Supplier<String> action) {
+        world.executor().submit(name, () -> {
+            String line = action.get();
+            if (LivingTalk.mayShow(owner)) {
+                outcome(owner, line);
+            } else {
+                world.residents().whisper(speaker, owner, line);
+            }
+        });
     }
 
     /** The stock character info, as double-clicking a stranger shows it, of the companion as it is out now. */
