@@ -303,3 +303,17 @@ Run 2026-09-28 with two clients: Jevelopers (Hadrik, Jinx, Sadie, Vex, Olwen) an
 
 ## Found live, belongs to other sessions
 **Debug text in player chat.** A pink line, "Jinx is warming map navigation cache, using fallback movement.", reaches the player. It comes from the navigation work in this tree, and that session has been told.
+
+## P2a follow-up: the four live bugs, fixed and re-verified (2026-09-28)
+The fix is `0711cfb58`, merged by fast-forward. Full suite: 7705 tests, still only the baseline's 29 failing tests. Each bug has a regression test that fails on the old code. Each fix was re-checked live with two clients (Jevelopers and ohboy):
+
+| Bug | Root cause | Live re-check |
+|---|---|---|
+| 1. A merge left the joiner under their share | A leader cap outlived the owner leaving the party. Caps were cleared only on disband, and the party id was reused when the owner was invited back. | **Pass.** ohboy was expelled, left, called Brannock again in his own party, and merged back into the same never-disbanded party. The result was Jevelopers, Hadrik, Jinx, ohboy, Brannock, Garrick (6/6) with 0 drift. |
+| 2. A leader cap didn't stick | The cap was a count of expels subtracted from fair share, not a cap on seats in use. | **Pass.** After the leader expelled Brannock, ohboy's "call Brannock" was refused with "The party leader sent one of yours out; that seat stays empty here." and Brannock stayed BENCHED. Caps are now absolute, min(share, in use) - 1, and they reset when the owner leaves or the party disbands. |
+| 3. "logout" then "yes" did nothing | The yes was answered first by other handlers (a nearby Resident's accept fallback, or the Agent offer route), and filler words ("yeah", "ok") were normalized away before the check. | **Pass.** It worked even from GM-hidden chat. Hadrik and Jinx left the party ("Hadrik heads back to camp to train.", "Jinx>> i don't wait. a day, and you won't find me.") and ohboy's companions were untouched, with 0 drift. The logout question now expires after 30 s, and a newer "logout" asks again. |
+| 4. The Crew window showed "999% EXP banked" | The percentage was capped at 999. | **Pass.** The row reads "Olwen, Lv12 Beginner - train @ Lith Harbor - ready to level". |
+
+**Remaining P2a items:**
+- **Sign-off.** The user's immersion sign-off on `p2a-two-friends.mp4`.
+- **Re-shoot.** A clean re-shoot of the "party window is your crew manager" clip.
