@@ -121,6 +121,8 @@ public final class CompanionSlots {
     private final Map<String, Reservation> reservations = new ConcurrentHashMap<>();
     /** party id -> owner id -> seats its leader's expels took from that owner. */
     private final Map<Integer, Map<Integer, Integer>> leaderCuts = new ConcurrentHashMap<>();
+    /** returnWhenRoom: companion key -> the party it may not come back into until that party disbands (0 = none). */
+    private final Map<String, Integer> waitingForRoom = new ConcurrentHashMap<>();
     private final AtomicLong sequence = new AtomicLong();
 
     public CompanionSlots(LivingWorld world) {
@@ -225,14 +227,50 @@ public final class CompanionSlots {
 
     /** {@code party}'s leader expelled one of {@code ownerId}'s companions: that owner's cap there drops by one. */
     public void recordLeaderExpel(Party party, int ownerId) {
-        if (party != null && ownerId != 0) {
-            leaderCuts.computeIfAbsent(party.getId(), id -> new ConcurrentHashMap<>()).merge(ownerId, 1, Integer::sum);
+        if (party != null) {
+            recordLeaderExpel(party.getId(), ownerId);
+        }
+    }
+
+    public void recordLeaderExpel(int partyId, int ownerId) {
+        if (partyId != 0 && ownerId != 0) {
+            leaderCuts.computeIfAbsent(partyId, id -> new ConcurrentHashMap<>()).merge(ownerId, 1, Integer::sum);
         }
     }
 
     public int leaderCut(int partyId, int ownerId) {
         Map<Integer, Integer> cuts = leaderCuts.get(partyId);
         return cuts == null ? 0 : cuts.getOrDefault(ownerId, 0);
+    }
+
+    // ---- returnWhenRoom -------------------------------------------------------------------
+
+    /**
+     * A companion the party pushed out (a merge, a rebalance, make-room, another leader's expel) comes back by itself
+     * once its owner has room again, except into {@code blockedPartyId} (the party whose leader expelled it) until
+     * that party disbands.
+     */
+    public void waitForRoom(String key, int blockedPartyId) {
+        if (key != null) {
+            waitingForRoom.put(key, blockedPartyId);
+        }
+    }
+
+    /** Called or benched on purpose: it no longer waits for room. */
+    public void stopWaiting(String key) {
+        if (key != null) {
+            waitingForRoom.remove(key);
+        }
+    }
+
+    public boolean waitingForRoom(String key) {
+        return key != null && waitingForRoom.containsKey(key);
+    }
+
+    /** True when {@code key} waits for room but may not come back into {@code partyId} yet. */
+    public boolean returnBlocked(String key, int partyId) {
+        Integer blocked = key == null ? null : waitingForRoom.get(key);
+        return blocked != null && blocked != 0 && blocked == partyId;
     }
 
     // ---- party events and the seat gate ---------------------------------------------------
@@ -253,6 +291,7 @@ public final class CompanionSlots {
             case LEAVE, EXPEL -> release(keyOf(event.targetId()), Kind.GUEST);
             case DISBAND -> {
                 leaderCuts.remove(event.partyId());
+                waitingForRoom.replaceAll((key, blocked) -> blocked == event.partyId() ? 0 : blocked);
                 for (int memberId : event.before().memberIds()) {
                     release(keyOf(memberId), Kind.GUEST);
                 }
@@ -467,13 +506,18 @@ public final class CompanionSlots {
         return new Allocation(humans.size(), occupied, share, usage, leftover, overflow, kept);
     }
 
-    /** Seats {@code ownerId} may still fill: their cap plus unheld leftover, less what they use, within the room left. */
+    /**
+     * Seats {@code ownerId} may still fill: their cap plus unheld leftover, less what they use, within the room left.
+     * Leader cuts past the base share come off the leftover they could take, so every cut lowers the cap.
+     */
     public static int free(View view, int ownerId) {
         if (!isHuman(view, ownerId)) {
             return 0;
         }
         Allocation seats = allocate(view);
-        int byShare = seats.shareOf(ownerId) + seats.leftoverFree() - seats.usageOf(ownerId);
+        int base = (PARTY_CAP - seats.humans()) / seats.humans();
+        int cutPastBase = Math.max(0, view.cuts().getOrDefault(ownerId, 0) - base);
+        int byShare = seats.shareOf(ownerId) + seats.leftoverFree() - cutPastBase - seats.usageOf(ownerId);
         return Math.max(0, Math.min(byShare, PARTY_CAP - seats.occupied()));
     }
 

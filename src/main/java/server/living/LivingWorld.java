@@ -23,6 +23,7 @@ import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionLeases;
+import server.living.roster.CompanionPartySync;
 import server.living.roster.CompanionSlots;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
@@ -52,6 +53,7 @@ public final class LivingWorld {
     private final ContractService contracts;
     private final CompanionExecutor executor;
     private final CompanionSlots slots;
+    private final CompanionPartySync partySync;
     private final RosterService roster;
     private final CompanionLeases leases;
     private final CompanionDirectory directory;
@@ -75,6 +77,7 @@ public final class LivingWorld {
         this.markers = new QuestMarkers(this);
         this.executor = new CompanionExecutor();
         this.slots = new CompanionSlots(this); // before the roster, which rebuilds its reservations
+        this.partySync = CompanionPartySync.live(this);
         this.roster = new RosterService(this);
         this.leases = new CompanionLeases();
         this.directory = new CompanionDirectory(this);
@@ -136,6 +139,9 @@ public final class LivingWorld {
                 60_000L, 60_000L));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.benchSessions::tick,
                 120_000L, 120_000L));
+        // party events that waited for an event instance to end are reconciled on companion-ops
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("companion.resume", world.partySync::resumeDeferred), 30_000L, 30_000L));
         if (config.QUEST_MARKER_PULSE_MS > 0) {
             world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.markers::tick,
                     config.QUEST_MARKER_PULSE_MS, config.QUEST_MARKER_PULSE_MS));
@@ -251,6 +257,11 @@ public final class LivingWorld {
     /** The only slot authority. */
     public CompanionSlots slots() {
         return slots;
+    }
+
+    /** Keeps the roster in step with the party window (runs on companion-ops). */
+    public CompanionPartySync partySync() {
+        return partySync;
     }
 
     public CompanionLeases leases() {

@@ -75,7 +75,10 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                 InviteResult inviteRes = InviteCoordinator.answerInvite(InviteType.PARTY, player.getId(), partyid, true);
                 InviteResultType res = inviteRes.result;
                 if (res == InviteResultType.ACCEPTED) {
-                    Party.joinParty(player, partyid, false);
+                    // an owner alone with their companions merges, and a full party makes room, on companion-ops
+                    if (!LivingWorldHooks.partyAccept(player, partyid)) {
+                        Party.joinParty(player, partyid, false);
+                    }
                 } else {
                     c.sendPacket(PacketCreator.serverNotice(5, "You couldn't join the party due to an expired invitation request."));
                 }

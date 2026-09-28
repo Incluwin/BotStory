@@ -6,6 +6,7 @@ import net.server.coordinator.world.InviteCoordinator;
 import net.server.coordinator.world.InviteCoordinator.InviteType;
 import net.server.world.Party;
 import server.TimerManager;
+import server.integration.AgentPresence;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRegistry;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestQueueRuntime;
 import server.living.LivingWorld;
@@ -20,10 +21,12 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Party invite by name (op 4), decided before anything is loaded (docs/BOT_MANAGEMENT_PLAN.md P1,
- * "CompanionPartyRouter"). Your own companion is called through the roster; another player's companion or a
- * Resident denies the invite (23); an Agent you may not control is not found (19); a citizen answers for itself
- * ({@link CitizenInviteDecision}) after a moment, like a player; a starter party takes nobody but your own
- * companions (10). Humans, Agents you control and PQ lobby waiters keep the stock invite.
+ * "CompanionPartyRouter"). Your own companion is called through the roster (on companion-ops); another player's
+ * companion or a Resident denies the invite (23); an Agent you may not control is not found (19); a citizen answers
+ * for itself ({@link CitizenInviteDecision}) after a moment, like a player; a starter party takes nobody but your own
+ * companions (10). A human alone with their companions gets the stock invite instead of "already in a party" (P0
+ * probe 1), and their accept (op 3, {@link #accept}) merges the two parties. Other humans, Agents you control and PQ
+ * lobby waiters keep the stock invite.
  */
 public final class CompanionPartyRouter {
     /** What the party handler does next. */
@@ -54,7 +57,7 @@ public final class CompanionPartyRouter {
             case Relation.Citizen citizen -> citizen(inviter, invited);
             case Relation.PlainAgent agent -> plainAgent(inviter, invited, agent.characterId());
             case Relation.Human human -> invited == null ? notFound(inviter)
-                    : inStarterParty(inviter) ? beginner(inviter) : Route.STOCK;
+                    : inStarterParty(inviter) ? beginner(inviter) : mergeInvite(inviter, invited) ? Route.ANSWERED : Route.STOCK;
             case Relation.Unknown unknown -> notFound(inviter);
         };
     }
@@ -92,12 +95,66 @@ public final class CompanionPartyRouter {
             return Route.ANSWERED;
         }
         if (ownParty(owner)) {
-            world.roster().call(owner, persona);
+            world.executor().submit("roster.call " + persona.id(), () -> world.roster().call(owner, persona));
         }
         return Route.ANSWERED;
     }
 
-    /** A willing citizen gets the stock invite and accepts a moment later; an unwilling one denies (23) as late. */
+    /**
+     * A human in an own party (alone with their companions) is sent the stock invite, as a partyless one would be,
+     * where the stock answer is "already in a party" (16); P0 probe 1: their client shows it and accepts with op 3.
+     * False when that is not the case, for the stock invite.
+     */
+    private boolean mergeInvite(Character inviter, Character invited) {
+        Party theirs = invited.getParty();
+        Party ours = inviter.getParty();
+        if (theirs == null || ours != null && ours.getId() == theirs.getId() || !world.directory().isCompanionParty(theirs)) {
+            return false;
+        }
+        if (ours == null && !Party.createParty(inviter, false)) {
+            return true; // the stock refusal (a beginner, a coliseum) was sent
+        }
+        ours = inviter.getParty();
+        if (ours.getMembers().size() >= CompanionSlots.PARTY_CAP) {
+            answer(inviter, PacketCreator.partyStatusMessage(17));
+        } else if (InviteCoordinator.createInvite(InviteType.PARTY, inviter, ours.getId(), invited.getId())) {
+            invited.sendPacket(PacketCreator.partyInvite(inviter));
+        } else {
+            answer(inviter, PacketCreator.partyStatusMessage(22, invited.getName()));
+        }
+        return true;
+    }
+
+    /**
+     * Op 3, after the invite was answered: true when the living world seats the player on companion-ops
+     * ({@link CompanionPartySync#accept}). That is an owner in an own party merging into the inviter's (P0 probe 1),
+     * or any partyless player joining a full party, where someone steps out first (make-room, probe 12). Anything
+     * else is the stock join, whose JOIN the sync rebalances afterwards.
+     */
+    public boolean accept(Character player, int partyId) {
+        if (AgentPresence.isAgent(player)) {
+            return false;
+        }
+        Party target = player.getWorldServer().getParty(partyId);
+        Party own = player.getParty();
+        if (target == null || own != null && own.getId() == partyId) {
+            return false;
+        }
+        boolean merge = own != null && world.directory().isCompanionParty(own);
+        boolean full = target.getMembers().size() >= CompanionSlots.PARTY_CAP;
+        if (!merge && (own != null || !full)) {
+            return false; // the stock join, or its "already in a party"
+        }
+        int playerId = player.getId();
+        world.executor().submit("companion.accept " + playerId + " -> " + partyId,
+                () -> world.partySync().accept(playerId, partyId));
+        return true;
+    }
+
+    /**
+     * A willing citizen gets the stock invite and accepts a moment later; one too far from your level denies (23)
+     * and a busy one is taking care of something else (22), as late.
+     */
     private Route citizen(Character inviter, Character citizen) {
         if (citizen == null) {
             return notFound(inviter);
@@ -108,8 +165,9 @@ public final class CompanionPartyRouter {
         if (inStarterParty(inviter)) {
             return beginner(inviter);
         }
-        if (!CitizenInviteDecision.accepts(inviter, citizen)) {
-            Packet denied = PacketCreator.partyStatusMessage(23, citizen.getName());
+        CitizenInviteDecision.Answer answer = CitizenInviteDecision.decide(inviter, citizen);
+        if (answer != CitizenInviteDecision.Answer.ACCEPT) {
+            Packet denied = PacketCreator.partyStatusMessage(answer.status(), citizen.getName());
             later(() -> {
                 if (inviter.isLoggedinWorld()) {
                     inviter.sendPacket(denied);

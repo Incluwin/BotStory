@@ -105,6 +105,8 @@ class BudgetWiringTest {
         when(world.bench()).thenReturn(mock(BenchLedger.class));
         when(world.leases()).thenReturn(leases);
         when(world.slots()).thenReturn(new CompanionSlots(world));
+        CompanionExecutor ops = DirectExecutor.inline(); // the roster's timers hand their work to companion-ops
+        when(world.executor()).thenReturn(ops);
 
         registry = mockStatic(AgentRuntimeRegistry.class);
         cleanup = mockStatic(AgentRuntimeCleanupService.class);

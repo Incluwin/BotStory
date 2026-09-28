@@ -80,6 +80,10 @@ class ClaimGuardBoundaryTest {
             "server/living/roster/RosterService.java stationary 1", // the P1.5 walk-in: same ensureCanControl chain
             "server/living/roster/RosterService.java join 1",
             "server/living/roster/CompanionPartyRouter.java partyjoin 1",
+            // the party sync on companion-ops: an owner's own loaded companion rejoins them on a seat held for it,
+            // and a human's routed accept (a merge or make-room) joins the party that invited them
+            "server/living/roster/LiveCrew.java join 1",
+            "server/living/roster/LiveCrew.java partyjoin 1",
             "server/living/roster/BenchSessions.java load 1",
             "server/living/resident/ResidentRuntime.java load 1",
             "server/living/population/SocialFabric.java join 1",
