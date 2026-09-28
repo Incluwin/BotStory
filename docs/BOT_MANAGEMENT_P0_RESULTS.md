@@ -153,3 +153,48 @@ With about 254 Agents, `/runtime/budget` showed:
 - On shop maps an uncached getItemEffect NPE re-parses WZ XML at about 400 ms a time.
 
 The queue-lag numbers above were measured with that bug live and must be re-measured after the fix.
+
+---
+
+# P1 results (2026-09-27)
+
+**Branch and suite.** P1 is merged into `feat/companion-manager` by fast-forward (`844bc9f4a`). The integration and fix stages ran the full suite: 7326 tests, 25 failures and 4 errors, the same 29 tests as the P0 baseline. There are 0 new failures and no new lint or boundary violations.
+
+**What P1 contains:**
+- **Ownership.** `CompanionDirectory` is the ownership lookup, and `AgentClaimGuard` (`mayControl`, `mayLoad`, `isClaimed`) enforces it. The guard is wired into:
+  - `ensureCanControl`
+  - the whisper bridge
+  - the chat transfer, dismiss and follow-retarget routes
+  - `AgentLeaderTransferCoordinator`
+  - `decidePartyInvite`
+
+  `ClaimGuardBoundaryTest` pins all 48 spawn, join, whisper and transfer call sites.
+- **Budget and leases.** `CompanionBudget` enforces 5 companions per human, 2 bench-live per owner and 8 globally, a 12-slot expedition burst, a 300-Agent ceiling, and 2 s load spacing. `CompanionLeases` gives each character at most one materialization lease.
+- **Party window:**
+  - Op 4 resolves the name before any spawn: your own companion becomes a call, while another player's companion or a Resident gets the stock deny 23.
+  - Op 6 refuses a bot target, which answers "nah, you lead".
+  - Leader succession is human-first (`Party.successor`, and `World.updateParty(CHANGE_LEADER)` fixed).
+  - Messenger no longer spawns anyone.
+  - A starter party below level 10 is allowed for companion calls.
+- **Roster integrity.** `JoinOutcome` means a row is ACTIVE only after a real join. The stale-entry double grant is fixed. `spawnCompanion` refuses instead of removing a runtime held by someone else. The BenchSessions and ResidentRuntime load sites are guarded.
+- **Follow.** The follow instance guard stops ghost-map warps.
+- **GM tool.** `!grantcompanion <personaId> [name]` / `!grantcompanion release <personaId>`.
+
+**Live checks.** These ran on the live server with two clients: Jevelopers (GM6, owner of Hadrik) and ohboy (Lv15 test account, owner of Brannock).
+
+| Check | Result |
+|---|---|
+| Owner invites their own companion by name from the party window | **Pass.** Hadrik (benched) joined Jevelopers' party. |
+| Friend invites another player's companion | **Pass.** "Hadrik have denied request to the party.", nothing was spawned, and Hadrik stayed in the owner's party. |
+| Friend (an operator through its own companion) whispers "follow me" or chats "transfer Hadrik to ohboy" | **Pass on state.** Hadrik stayed ACTIVE, registered to its owner and in its owner's party; `/runtime/companions` showed no drift. The transfer line was caught by the resident dialogue layer (read as ASK_JOIN) before the agent router, so the router-level refusal is covered by unit tests only. |
+| GM6 `!spawnbot` of another player's companion | **Pass.** "'Brannock' does not take orders from you." |
+| Change leader to a bot | **Pass.** Hadrik whispered "nah, you lead"; the leader was unchanged. |
+| Leader logs out in a party with a human and a higher-level bot | **Pass.** ohboy (Lv15 human) became leader, not Hadrik (Lv31). Jevelopers shows in the stock offline section, and Hadrik left with its owner. |
+| Starter party below level 10 | Unit tests only. |
+| GM-started KPQ keeps an unregistered companion outside the instance | Unit tests only (`FollowInstanceGuardTest`). |
+
+**Findings:**
+- **Mushroom Town crash.** The ohboy client quit silently (no dump) a few seconds after entering Mushroom Town (map 10000). After ohboy was moved to Lith Harbor it was stable. Not investigated.
+- **The v83 login box truncates passwords to 12 characters.** Test passwords must be 12 characters or fewer.
+- **kaentake `rememberpw` shares one saved login.** It saves the last typed login (`HKCU\Software\Wizet\MapleStory` `LastPassword`/`LMA`) for every client on the PC. A second-account login therefore overwrites the owner's remembered password. After the test, the ID was restored and the test password removed. The owner types their password once.
+- **Residents route commands through their own dialogue.** A resident persona's "i don't travel" refusal is used even when the persona is already someone's companion. Commands aimed at a named persona go through ResidentDialogue first.
