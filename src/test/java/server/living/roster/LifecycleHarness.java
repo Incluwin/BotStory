@@ -96,6 +96,10 @@ final class LifecycleHarness implements AutoCloseable {
     final Map<Integer, Character> bots = new LinkedHashMap<>();
     final Map<Integer, MapleMap> maps = new HashMap<>();
     final Set<Integer> loaded = new HashSet<>();
+    /** Loaded characters that lead themselves (a live bench slice) instead of Ann. */
+    final Set<Integer> selfLed = new HashSet<>();
+    /** Told of every companion the moment it is loaded, before the roster goes on. */
+    java.util.function.Consumer<Character> onSpawn = bot -> { };
     /** What the next companion join answers; JOINED unless a test says otherwise. */
     JoinOutcome nextJoin = null;
     boolean annOnline = true;
@@ -153,8 +157,10 @@ final class LifecycleHarness implements AutoCloseable {
             int id = inv.getArgument(0);
             return loaded.contains(id) ? new AgentRuntimeEntry(bots.get(id), ann, null) : null;
         });
-        registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(anyInt()))
-                .thenAnswer(inv -> loaded.contains((Integer) inv.getArgument(0)) ? ANN : 0);
+        registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(anyInt())).thenAnswer(inv -> {
+            int id = inv.getArgument(0);
+            return !loaded.contains(id) ? 0 : selfLed.contains(id) ? id : ANN;
+        });
         MockedStatic<AgentRuntimeCleanupService> cleanup = open(AgentRuntimeCleanupService.class);
         cleanup.when(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(anyInt())).thenAnswer(inv -> {
             int id = inv.getArgument(0);
@@ -360,6 +366,7 @@ final class LifecycleHarness implements AutoCloseable {
         botMaps.put(bot.getId(), map);
         botPositions.put(bot.getId(), at);
         calls.add("spawn " + name + " at " + map.getId() + " " + at.x + "," + at.y);
+        onSpawn.accept(bot);
         return AgentSpawnResult.ok(bot, true);
     }
 

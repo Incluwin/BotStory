@@ -7,6 +7,7 @@ import server.life.Monster;
 import server.living.roster.CompanionPartyRouter;
 import server.maps.MapleMap;
 
+import java.awt.Point;
 import java.util.Set;
 
 /**
@@ -66,7 +67,8 @@ public final class LivingWorldHooks {
         }
     }
 
-    public static void mapEntered(Character chr, MapleMap map) {
+    /** {@code chr} is moving into {@code map}, to stand at {@code at} (it is not there yet). */
+    public static void mapEntered(Character chr, MapleMap map, Point at) {
         LivingWorld world = LivingWorld.get();
         if (world == null || chr == null || map == null) {
             return;
@@ -77,7 +79,7 @@ public final class LivingWorldHooks {
             world.markers().forget(chr);
             world.markers().enteredMap(chr);
             world.residents().onPlayerPresence(chr, map);
-            world.roster().ownerEnteredMap(chr, map); // out of a run: companions waiting outside it rejoin (companion-ops)
+            world.roster().ownerEnteredMap(chr, map, at); // out of a run: companions waiting outside it rejoin (companion-ops)
         } catch (RuntimeException failure) {
             log.warn("living world mapEntered hook failed", failure);
         }

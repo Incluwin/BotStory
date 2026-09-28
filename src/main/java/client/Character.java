@@ -1971,7 +1971,7 @@ public class Character extends AbstractCharacterObject {
         if (!canWarpMap) {
             return;
         }
-        server.living.LivingWorldHooks.mapEntered(this, to);
+        server.living.LivingWorldHooks.mapEntered(this, to, pos);
 
         this.mapTransitioning.set(true);
         MapTransitionPacketTraceRuntime.begin(client, map == null ? -1 : map.getId(), to.getId());

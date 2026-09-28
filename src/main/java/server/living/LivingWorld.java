@@ -138,6 +138,8 @@ public final class LivingWorld {
         server.agents.auth.AgentAuthorityService.installOperatorGrant(world.roster::hasCompanions);
         server.agents.auth.AgentClaimGuard.install(world.directory);
         server.agents.auth.AgentClaimGuard.installVerbs(world.chatVerbs); // chat dismiss/logout of a companion bench it
+        // travelling, held and away companions never follow; the rest come into their owner's new map where they came in
+        server.agents.capabilities.follow.AgentFollowGuard.install(new server.living.roster.CompanionFollowGuard(world));
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.residents::tick,
                 config.RESIDENT_TICK_MS, config.RESIDENT_TICK_MS));
@@ -187,6 +189,7 @@ public final class LivingWorld {
         net.server.world.PartyEvents.install(null);
         net.server.world.PartySeatGate.install(null);
         server.agents.auth.AgentClaimGuard.installVerbs(null);
+        server.agents.capabilities.follow.AgentFollowGuard.install(null);
         server.living.population.Population.stop();
         for (ScheduledFuture<?> timer : world.timers) {
             timer.cancel(false);
