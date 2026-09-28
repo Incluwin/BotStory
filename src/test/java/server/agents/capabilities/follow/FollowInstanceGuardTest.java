@@ -64,11 +64,22 @@ class FollowInstanceGuardTest {
     }
 
     @Test
-    void agentStillInAnInstanceFollowsTheAnchorOutOfIt() {
-        // the stock warp runs the event's changedMap, which lets the Agent out with the anchor
+    void agentStillInAnInstanceHoldsWhenTheAnchorLeavesIt() {
+        // the warp would resolve the town through the Agent's own instance (a ghost copy) unless the event's
+        // changedMap happens to let it out; it holds until the instance ends and unregisters it
         EventInstanceManager kpq = mock(EventInstanceManager.class);
         when(entrance.getEventInstance()).thenReturn(kpq);
         when(agent.getEventInstance()).thenReturn(kpq);
+        MapleMap town = map(KERNING + 1);
+        Character outside = character(town, KERNING + 1);
+
+        assertTrue(AgentFollowMapSyncService.syncFollowMap(entry, agent, outside, hooks()));
+
+        assertEquals(List.of("hold"), calls);
+    }
+
+    @Test
+    void agentFollowsOutOnceTheInstanceHasLetItGo() {
         MapleMap town = map(KERNING + 1);
         Character outside = character(town, KERNING + 1);
 

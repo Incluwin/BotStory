@@ -10,8 +10,16 @@ import client.Character;
 public final class AgentClaimGuard {
     /** The installed ownership rule. */
     public interface Rule {
-        /** True when the actor may spawn, adopt, whisper-command or dismiss this Agent character. */
+        /** True when the actor may whisper-command, dismiss or otherwise order this loaded Agent character. */
         boolean mayControl(Character actor, int agentCharacterId);
+
+        /**
+         * True when the actor may spawn, recruit or pull this Agent character into their party. A host may refuse
+         * here what it allows in {@link #mayControl}, so no administrator loads a character the host claims.
+         */
+        default boolean mayLoad(Character actor, int agentCharacterId) {
+            return mayControl(actor, agentCharacterId);
+        }
 
         /** True when the host claims this character, so chat may never re-point its runtime leader. */
         boolean isClaimed(int agentCharacterId);
@@ -29,6 +37,11 @@ public final class AgentClaimGuard {
     public static boolean mayControl(Character actor, int agentCharacterId) {
         Rule current = rule;
         return current == null || current.mayControl(actor, agentCharacterId);
+    }
+
+    public static boolean mayLoad(Character actor, int agentCharacterId) {
+        Rule current = rule;
+        return current == null || current.mayLoad(actor, agentCharacterId);
     }
 
     public static boolean isClaimed(int agentCharacterId) {

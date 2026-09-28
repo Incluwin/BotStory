@@ -23,6 +23,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import server.TimerManager;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService.AgentSpawnResult;
@@ -42,6 +43,7 @@ import tools.PacketCreator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -96,6 +98,8 @@ class PartyInviteRoutingTest extends HandlerTest {
     private MockedStatic<AgentInteractionRuntime> interaction;
     private MockedStatic<InviteCoordinator> invites;
     private MockedStatic<Party> parties;
+    private MockedStatic<TimerManager> timers;
+    private final TimerManager timer = mock(TimerManager.class);
 
     @BeforeEach
     void wire() {
@@ -124,10 +128,13 @@ class PartyInviteRoutingTest extends HandlerTest {
         interaction = mockStatic(AgentInteractionRuntime.class);
         invites = mockStatic(InviteCoordinator.class);
         parties = mockStatic(Party.class);
+        timers = mockStatic(TimerManager.class);
+        timers.when(TimerManager::getInstance).thenReturn(timer);
     }
 
     @AfterEach
     void close() {
+        timers.close();
         parties.close();
         invites.close();
         interaction.close();
@@ -144,7 +151,8 @@ class PartyInviteRoutingTest extends HandlerTest {
         invite("Olwen");
 
         verify(roster).call(chr, olwen);
-        verify(chr).dropMessage(5, "Olwen is on the way (1 min).");
+        // the companion whispers its ETA itself; the roster's summary line is not printed on top of it
+        verify(chr, never()).dropMessage(anyInt(), anyString());
         nothingSpawnedOrSeated();
     }
 
@@ -178,7 +186,7 @@ class PartyInviteRoutingTest extends HandlerTest {
 
         invite("Olwen");
 
-        verify(residents).whisper(olwen, chr, "it's crowded out here, i'll come when i can.");
+        verify(residents).whisper(olwen, chr, "it's too crowded out here right now. ask me again in a bit.");
         verify(store).event(eq(ANN), eq("olwen"), eq("companion.budget_denied"), anyString());
         verify(roster, never()).call(any(), any());
         nothingSpawnedOrSeated();
@@ -279,31 +287,91 @@ class PartyInviteRoutingTest extends HandlerTest {
 
         invite("Probe");
 
-        verify(chr).dropMessage(anyInt(), anyString());
+        verify(chr).dropMessage(5, "No Agent can be loaded for you right now.");
         nothingSpawnedOrSeated();
     }
 
     @Test
-    void aCitizenNearYourLevelAcceptsWithoutAskingTheLobby() {
+    void anAgentTheClaimGuardDeniesGetsTheStockDenyNotAgentText() {
+        Character probe = bot(PROBE, "Probe", 30);
+        online("Probe", probe, new Relation.PlainAgent(PROBE));
+        when(directory.mayControl(chr, PROBE)).thenReturn(true);
+        invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, PROBE)).thenReturn(true);
+
+        try (MockedStatic<AgentPartyQuestLobbyRuntime> lobby = mockStatic(AgentPartyQuestLobbyRuntime.class)) {
+            lobby.when(() -> AgentPartyQuestLobbyRuntime.decidePartyInvite(probe, chr))
+                    .thenReturn(AgentPartyQuestLobbyRuntime.InviteDecision.DENY);
+
+            invite("Probe");
+        }
+
+        invites.verify(() -> InviteCoordinator.answerInvite(InviteType.PARTY, PROBE, PARTY_ID, false));
+        parties.verify(() -> Party.joinParty(any(), anyInt(), anyBoolean()), never());
+        ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
+        verify(client).sendPacket(sent.capture()); // the handler answers through the inviter's client
+        assertArrayEquals(PacketCreator.partyStatusMessage(23, "Probe").getBytes(), sent.getValue().getBytes());
+        verify(chr, never()).dropMessage(anyInt(), anyString());
+    }
+
+    @Test
+    void aRoutingFailureFailsClosedWithNotFound() {
+        when(storage.getCharacterByName("Olwen")).thenReturn(null);
+        when(directory.resolveName(chr, "Olwen")).thenThrow(new IllegalStateException("store down"));
+
+        invite("Olwen");
+
+        assertStatus(PacketCreator.partyStatusMessage(19));
+        nothingSpawnedOrSeated();
+    }
+
+    @Test
+    void aCitizenNearYourLevelAcceptsAMomentLaterWithoutAskingTheLobby() {
         Character mira = bot(MIRA, "Mira", 30 + 5);
         online("Mira", mira, new Relation.Citizen(MIRA));
         invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, MIRA)).thenReturn(true);
+        when(chr.isLoggedinWorld()).thenReturn(true);
+        when(mira.isLoggedinWorld()).thenReturn(true);
 
         try (MockedStatic<AgentPartyQuestLobbyRuntime> lobby = mockStatic(AgentPartyQuestLobbyRuntime.class)) {
             invite("Mira");
 
             lobby.verify(() -> AgentPartyQuestLobbyRuntime.decidePartyInvite(any(), any()), never());
         }
+        invites.verify(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, MIRA));
+        parties.verify(() -> Party.joinParty(any(), anyInt(), anyBoolean()), never()); // not in the same tick
+
+        answerLater();
+
         invites.verify(() -> InviteCoordinator.answerInvite(InviteType.PARTY, MIRA, PARTY_ID, true));
         parties.verify(() -> Party.joinParty(mira, PARTY_ID, false));
+        verify(chr, never()).sendPacket(any());
     }
 
     @Test
-    void aCitizenFarFromYourLevelDenies() {
-        Character mira = bot(MIRA, "Mira", 30 + 6);
+    void aCitizenWhoFoundAPartyMeanwhileDoesNotJoin() {
+        Character mira = bot(MIRA, "Mira", 30);
         online("Mira", mira, new Relation.Citizen(MIRA));
+        invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, MIRA)).thenReturn(true);
+        when(chr.isLoggedinWorld()).thenReturn(true);
+        when(mira.isLoggedinWorld()).thenReturn(true);
 
         invite("Mira");
+        when(mira.getParty()).thenReturn(mock(Party.class));
+        answerLater();
+
+        invites.verify(() -> InviteCoordinator.answerInvite(InviteType.PARTY, MIRA, PARTY_ID, false));
+        parties.verify(() -> Party.joinParty(any(), anyInt(), anyBoolean()), never());
+    }
+
+    @Test
+    void aCitizenFarFromYourLevelDeniesAMomentLater() {
+        Character mira = bot(MIRA, "Mira", 30 + 6);
+        online("Mira", mira, new Relation.Citizen(MIRA));
+        when(chr.isLoggedinWorld()).thenReturn(true);
+
+        invite("Mira");
+        verify(chr, never()).sendPacket(any());
+        answerLater();
 
         assertStatus(PacketCreator.partyStatusMessage(23, "Mira"));
         nothingSpawnedOrSeated();
@@ -375,6 +443,16 @@ class PartyInviteRoutingTest extends HandlerTest {
             out.writeString(name);
         });
         handler.handlePacket(packet, client);
+    }
+
+    /** Runs the citizen's answer, scheduled after the configured reply delay. */
+    private void answerLater() {
+        ArgumentCaptor<Runnable> answer = ArgumentCaptor.forClass(Runnable.class);
+        ArgumentCaptor<Long> delay = ArgumentCaptor.forClass(Long.class);
+        verify(timer).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), answer.capture(), delay.capture());
+        assertTrue(delay.getValue() >= config.CITIZEN_INVITE_REPLY_MIN_MS
+                && delay.getValue() <= config.CITIZEN_INVITE_REPLY_MAX_MS, "delay " + delay.getValue());
+        answer.getValue().run();
     }
 
     private void offline(String name, Relation relation) {

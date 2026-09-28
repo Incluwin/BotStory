@@ -26,6 +26,12 @@ public final class AgentDismissCommandService {
         void send(Character leader, String message);
     }
 
+    /** The Agent name a dismiss command names, or null when the message is not one. */
+    public static String dismissTarget(String message) {
+        Matcher matcher = DISMISS_PATTERN.matcher(message);
+        return matcher.find() ? matcher.group(2) : null;
+    }
+
     public static boolean handleDismissCommand(Character leader, String message, Hooks hooks) {
         Matcher matcher = DISMISS_PATTERN.matcher(message);
         if (!matcher.find()) {

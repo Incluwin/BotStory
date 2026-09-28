@@ -184,7 +184,8 @@ public final class LivingWorldHooks {
 
     /**
      * A party invite by name (op 4), answered before anything is spawned. {@code invited} is the online character
-     * of that name or null. The stock invite runs while the living world is disabled.
+     * of that name or null. The stock invite runs while the living world is disabled; while it is enabled a
+     * failure answers "not found" (19) instead, so nothing is loaded or seated past the router.
      */
     public static CompanionPartyRouter.Route partyInvite(Character inviter, Character invited, String name) {
         LivingWorld world = LivingWorld.get();
@@ -195,7 +196,8 @@ public final class LivingWorldHooks {
             return new CompanionPartyRouter(world).invite(inviter, invited, name);
         } catch (RuntimeException failure) {
             log.warn("living world partyInvite hook failed", failure);
-            return CompanionPartyRouter.Route.STOCK;
+            inviter.sendPacket(tools.PacketCreator.partyStatusMessage(19));
+            return CompanionPartyRouter.Route.ANSWERED;
         }
     }
 

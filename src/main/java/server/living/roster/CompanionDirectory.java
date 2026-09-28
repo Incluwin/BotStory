@@ -142,9 +142,9 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
     // ---- claim guard ---------------------------------------------------------------------
 
     /**
-     * Administrators control anything; an owner controls their companion unless it is on a live
+     * Administrators command any loaded Agent; an owner commands their companion unless it is on a live
      * bench slice (the bench session owns it until a call ends the slice); the runtime leader
-     * controls a plain Agent it leads. Residents and citizens take orders from no player.
+     * commands a plain Agent it leads. Residents and citizens take orders from no player.
      */
     @Override
     public boolean mayControl(Character actor, int agentCharacterId) {
@@ -162,6 +162,26 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
             return AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) == actor.getId();
         }
         return world.roster().cachedOwnerOf(personaId) == actor.getId() && !world.benchSessions().live(personaId);
+    }
+
+    /**
+     * Loading (a spawn, a chat recruit, a party join) has no administrator override for a claimed character.
+     * A companion loads only for its owner through the roster, which takes the COMPANION lease before it
+     * spawns; nobody loads a Resident (ResidentRuntime materializes it) or a citizen (the population does).
+     * A plain Agent loads for whoever may control it.
+     */
+    @Override
+    public boolean mayLoad(Character actor, int agentCharacterId) {
+        if (actor == null || isCitizen(agentCharacterId)) {
+            return false;
+        }
+        String personaId = personaIdOf(agentCharacterId);
+        if (personaId == null) {
+            return mayControl(actor, agentCharacterId);
+        }
+        return world.roster().cachedOwnerOf(personaId) == actor.getId() && !world.benchSessions().live(personaId)
+                && new CompanionLeases.Lease(CompanionLeases.Kind.COMPANION, actor.getId())
+                .equals(world.leases().holder(agentCharacterId));
     }
 
     /** Companions, Residents and citizens belong to the living world; chat never hands them to another leader. */

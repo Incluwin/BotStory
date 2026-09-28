@@ -3,9 +3,11 @@ package net.server.channel.handlers;
 import client.BotClient;
 import client.Character;
 import client.Client;
+import config.YamlConfig;
 import net.packet.InPacket;
 import net.packet.Packet;
 import net.server.PlayerStorage;
+import net.server.Server;
 import net.server.channel.Channel;
 import net.server.coordinator.world.InviteCoordinator;
 import net.server.world.Messenger;
@@ -20,6 +22,7 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import server.TimerManager;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.living.LivingWorldHooks;
@@ -27,12 +30,18 @@ import testutil.HandlerTest;
 import testutil.Packets;
 import tools.PacketCreator;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -103,6 +112,49 @@ class MessengerInviteTest extends HandlerTest {
         verify(olwen).setMessenger(messenger);
         verify(world).joinMessenger(eq(MESSENGER_ID), argThat(member -> member.getId() == 900), eq("Olwen"), eq(1));
         verify(client, never()).sendPacket(any());
+    }
+
+    @Test
+    void aCompanionLeavesTheMessengerWithItsOwnerSoTheNextInviteReachesIt() {
+        boolean families = YamlConfig.config.server.USE_FAMILY_SYSTEM;
+        YamlConfig.config.server.USE_FAMILY_SYSTEM = false;
+        try (MockedStatic<TimerManager> timers = mockStatic(TimerManager.class);
+             MockedStatic<Server> servers = mockStatic(Server.class);
+             MockedStatic<LivingWorldHooks> hooks = mockStatic(LivingWorldHooks.class)) {
+            timers.when(TimerManager::getInstance).thenReturn(mock(TimerManager.class));
+            servers.when(Server::getInstance).thenReturn(mock(Server.class));
+            World live = new World(0, 0, "", 1, 1, 1, 1, 1, 1, 1, 1f, 1);
+            when(client.getWorldServer()).thenReturn(live);
+            Character olwen = character(900, "Olwen", true);
+            AtomicReference<Messenger> olwensMessenger = new AtomicReference<>();
+            when(olwen.getMessenger()).thenAnswer(inv -> olwensMessenger.get());
+            doAnswer(inv -> {
+                olwensMessenger.set(inv.getArgument(0));
+                return null;
+            }).when(olwen).setMessenger(any());
+            live.getPlayerStorage().addPlayer(olwen);
+            when(storage.getCharacterByName("Olwen")).thenReturn(olwen);
+            hooks.when(() -> LivingWorldHooks.ownsCompanion(chr, olwen)).thenReturn(true);
+
+            Messenger first = live.createMessenger(new MessengerCharacter(chr, 0));
+            when(chr.getMessenger()).thenReturn(first);
+            invite("Olwen");
+            assertSame(first, olwen.getMessenger());
+
+            live.leaveMessenger(first.getId(), new MessengerCharacter(chr, 0)); // Ann closes the window
+
+            assertNull(olwen.getMessenger());
+            assertNull(live.getMessenger(first.getId()));
+
+            Messenger second = live.createMessenger(new MessengerCharacter(chr, 0));
+            when(chr.getMessenger()).thenReturn(second);
+            invite("Olwen");
+
+            assertSame(second, olwen.getMessenger());
+            assertEquals(2, second.getMembers().size());
+        } finally {
+            YamlConfig.config.server.USE_FAMILY_SYSTEM = families;
+        }
     }
 
     @Test

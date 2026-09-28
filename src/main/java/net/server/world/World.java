@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package net.server.world;
 
+import client.BotClient;
 import client.BuddyList;
 import client.BuddyList.BuddyAddResult;
 import client.BuddyList.BuddyOperation;
@@ -1096,8 +1097,9 @@ public class World {
                             }
                         }
                     }
-                    party.setLeader(target);
                 }
+                // also when the old leader just logged out (LOG_ONOFF cleared its character first)
+                party.setLeader(target);
                 break;
             default:
                 log.warn("Unhandled updateParty operation: {}", operation.name());
@@ -1185,9 +1187,27 @@ public class World {
         int position = messenger.getPositionByName(target.getName());
         messenger.removeMember(target);
         removeMessengerPlayer(messenger, position);
+        releaseBotsWithoutHuman(messenger);
         if (messenger.isEmpty()) {
             messengers.remove(messengerid, messenger);
         }
+    }
+
+    /** A companion cannot close the window, so it leaves with the last human (docs/BOT_MANAGEMENT_PLAN.md P1). */
+    private void releaseBotsWithoutHuman(Messenger messenger) {
+        Map<MessengerCharacter, Character> bots = new LinkedHashMap<>();
+        for (MessengerCharacter member : messenger.getMembers()) {
+            Character chr = getPlayerStorage().getCharacterByName(member.getName());
+            if (chr == null || !(chr.getClient() instanceof BotClient)) {
+                return; // a human (or someone this world cannot see) is still in it
+            }
+            bots.put(member, chr);
+        }
+        bots.forEach((member, bot) -> {
+            messenger.removeMember(member);
+            bot.setMessenger(null);
+            bot.setMessengerPosition(4);
+        });
     }
 
     public void messengerInvite(String sender, int messengerid, String target, int fromchannel) {

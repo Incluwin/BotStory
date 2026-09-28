@@ -57,6 +57,7 @@ class CompanionDirectoryTest {
     private final BenchSessions bench = mock(BenchSessions.class);
     private final LivingContent content = mock(LivingContent.class);
     private final Population population = mock(Population.class);
+    private final CompanionLeases leases = new CompanionLeases();
     private final RosterEntry olwenRow = row(ALICE, "olwen");
     private final Character alice = character(ALICE, "Alice");
     private final Character bob = character(BOB, "Bob");
@@ -78,6 +79,7 @@ class CompanionDirectoryTest {
         when(world.residents()).thenReturn(residents);
         when(world.benchSessions()).thenReturn(bench);
         when(world.content()).thenReturn(content);
+        when(world.leases()).thenReturn(leases);
         RosterService roster = new RosterService(world);
         when(world.roster()).thenReturn(roster);
         Citizen mira = mock(Citizen.class);
@@ -141,6 +143,35 @@ class CompanionDirectoryTest {
     @Test
     void nobodyIsNeverInControl() {
         assertFalse(directory.mayControl(null, PROBE));
+    }
+
+    // ---- mayLoad: no administrator override for a claimed character -----------------------
+
+    @Test
+    void anAdministratorLoadsNoCompanionResidentOrCitizen() {
+        assertFalse(directory.mayLoad(admin, OLWEN));
+        assertFalse(directory.mayLoad(admin, CATO));
+        assertFalse(directory.mayLoad(admin, MIRA));
+        assertTrue(directory.mayLoad(admin, IDLE));
+    }
+
+    @Test
+    void anOwnerLoadsTheirCompanionOnlyThroughTheRosterWhichHoldsItsLease() {
+        assertFalse(directory.mayLoad(alice, OLWEN)); // an @spawnbot of it: the roster did not take the lease
+
+        leases.tryAcquire(OLWEN, CompanionLeases.Kind.COMPANION, ALICE);
+
+        assertTrue(directory.mayLoad(alice, OLWEN));
+        assertFalse(directory.mayLoad(bob, OLWEN));
+        when(bench.live("olwen")).thenReturn(true);
+        assertFalse(directory.mayLoad(alice, OLWEN));
+    }
+
+    @Test
+    void aPlainAgentLoadsForWhoeverMayControlIt() {
+        assertTrue(directory.mayLoad(alice, PROBE));
+        assertFalse(directory.mayLoad(bob, PROBE));
+        assertFalse(directory.mayLoad(null, PROBE));
     }
 
     @Test

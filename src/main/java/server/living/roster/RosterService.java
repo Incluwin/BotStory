@@ -56,6 +56,8 @@ public final class RosterService {
     private final Map<String, Long> travelling = new ConcurrentHashMap<>();
     /** Character ids with at least one roster entry; consulted on every chat line, so cached. */
     private final java.util.Set<Integer> owners = ConcurrentHashMap.newKeySet();
+    /** Persona ids being seated right now: one load per companion, whichever thread calls it. */
+    private final java.util.Set<String> seating = ConcurrentHashMap.newKeySet();
 
     public RosterService(LivingWorld world) {
         this.world = world;
@@ -303,7 +305,7 @@ public final class RosterService {
             world.residents().whisper(persona, owner, "your party's full. i'll head back to camp.");
             return;
         }
-        owner.dropMessage(5, spawnCompanion(owner, persona, entry));
+        seatQuietly(ownerId, persona, entry.state());
     }
 
     /** True when the owner carried a recall whistle and one was consumed. */
@@ -327,6 +329,17 @@ public final class RosterService {
             spawnLater(owner.getId(), persona, entry.state(), waitMs); // loads are spaced per owner: queue, not refuse
             return persona.name() + " will be right there.";
         }
+        if (!seating.add(persona.id())) {
+            return persona.name() + " is on the way."; // another call is loading this companion right now
+        }
+        try {
+            return seat(owner, persona, entry);
+        } finally {
+            seating.remove(persona.id());
+        }
+    }
+
+    private String seat(Character owner, Persona persona, RosterEntry entry) {
         int characterId = world.residents().ensureCharacter(persona);
         if (characterId == 0) {
             return persona.name() + " cannot be reached right now.";
@@ -346,14 +359,15 @@ public final class RosterService {
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             return refuse(owner, persona, entry, BUSY_LINE, "busy");
         }
+        // before the spawn: its registration joins the owner's party, and would make one without the exemption
+        if (owner.getParty() == null) {
+            Party.createParty(owner, true, true); // decision 9 (a): below level 10 a starter party of their own companions
+        }
         AgentLifecycleService.AgentSpawnResult result = AgentInteractionRuntime.spawnAgentForLeader(owner, persona.name());
         if (!result.success() || result.agent() == null) {
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             log.warn("call {} for {} failed: {}", persona.id(), owner.getName(), result.errorMessage());
             return refuse(owner, persona, entry, "i can't get away right now. try again in a bit.", result.errorMessage());
-        }
-        if (owner.getParty() == null) {
-            Party.createParty(owner, true, true); // decision 9 (a): below level 10 a starter party of their own companions
         }
         JoinOutcome joined = AgentPartyLifecycleService.joinAgentToLeaderParty(owner, result.agent());
         if (joined != JoinOutcome.JOINED && joined != JoinOutcome.ALREADY_MEMBER) {
@@ -374,31 +388,53 @@ public final class RosterService {
 
     /** Retries the spawn once the owner's next load is admitted, if the row is still as it was and nobody is loaded. */
     private void spawnLater(int ownerId, Persona persona, RosterState state, long delayMs) {
-        server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
-            Character owner = onlineCharacter(ownerId);
-            RosterEntry entry = owner == null ? null : world.store().rosterEntry(ownerId, persona.id());
-            if (entry == null || entry.state() != state || companion(entry) != null) {
-                return;
-            }
-            // the party may have filled while this one waited; an AWAY companion kept its slot
-            owner.dropMessage(5, state != RosterState.AWAY && freeSlots(owner) <= 0
-                    ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full")
-                    : spawnCompanion(owner, persona, entry));
-        }, delayMs);
+        server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> seatQuietly(ownerId, persona, state), delayMs);
+    }
+
+    /**
+     * Seats a queued or arriving companion. While another load holds the owner's slot it waits for the next one
+     * without a word; only a refusal is printed, since the stock "has joined the party" notice announces a seat.
+     */
+    private void seatQuietly(int ownerId, Persona persona, RosterState state) {
+        Character owner = onlineCharacter(ownerId);
+        RosterEntry entry = owner == null ? null : world.store().rosterEntry(ownerId, persona.id());
+        if (entry == null || entry.state() != state || companion(entry) != null || seating.contains(persona.id())) {
+            return;
+        }
+        long waitMs = world.budget().loadDelayMs(owner, System.currentTimeMillis());
+        if (waitMs > 0L) {
+            spawnLater(ownerId, persona, state, waitMs);
+            return;
+        }
+        // the party may have filled while this one waited; an AWAY companion kept its slot
+        String outcome = state != RosterState.AWAY && freeSlots(owner) <= 0
+                ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full")
+                : spawnCompanion(owner, persona, entry);
+        if (!seatedWith(owner, current(entry))) {
+            owner.dropMessage(5, outcome);
+        }
+    }
+
+    /** True when the companion is loaded and follows this owner, whichever call seated it. */
+    private boolean seatedWith(Character owner, RosterEntry entry) {
+        Character bot = companion(entry);
+        return bot != null && AgentRuntimeRegistry.leaderIdForAgentCharacter(bot.getId()) == owner.getId();
     }
 
     /**
      * A call that could not seat the companion: nothing stays loaded for it, the row stays BENCHED (or AWAY)
-     * so the ledger keeps crediting it, and the companion tells the owner why.
+     * so the ledger keeps crediting it, and the companion tells the owner why (the reason goes to the event log).
+     * A row that another call seated meanwhile stays ACTIVE.
      */
     private String refuse(Character owner, Persona persona, RosterEntry entry, String line, String reason) {
         RosterEntry current = current(entry);
-        if (current.state() == RosterState.ACTIVE) {
+        if (current.state() == RosterState.ACTIVE && !seatedWith(owner, current)) {
             world.store().saveRoster(current.with(RosterState.BENCHED, System.currentTimeMillis()));
         }
         world.residents().whisper(persona, owner, line);
         world.store().event(owner.getId(), persona.id(), "roster.call_refused", reason);
-        return persona.name() + " could not join right now (" + reason + ").";
+        return persona.name() + " could not join right now.";
     }
 
     private static String joinRefusal(JoinOutcome joined) {

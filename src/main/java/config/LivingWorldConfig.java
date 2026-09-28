@@ -105,6 +105,9 @@ public class LivingWorldConfig {
     public int COMPANION_BUDGET_CEILING = 300;
     /** Minimum gap between two companion or bench loads for the same owner. */
     public int COMPANION_SPAWN_INTERVAL_MS = 2000;
+    /** A citizen answers a party invite after a random delay in MIN..MAX, like a player would. */
+    public int CITIZEN_INVITE_REPLY_MIN_MS = 900;
+    public int CITIZEN_INVITE_REPLY_MAX_MS = 1800;
 
     // Rumors
     public int RUMOR_TICK_MS = 60000;
@@ -132,6 +135,10 @@ public class LivingWorldConfig {
         if (EXPEDITION_BURST_MAX < 0 || COMPANION_BUDGET_CEILING < 1 || COMPANION_SPAWN_INTERVAL_MS < 0) {
             throw new IllegalArgumentException(
                     "living_world.EXPEDITION_BURST_MAX and COMPANION_SPAWN_INTERVAL_MS must be >= 0, COMPANION_BUDGET_CEILING >= 1");
+        }
+        if (CITIZEN_INVITE_REPLY_MIN_MS < 0 || CITIZEN_INVITE_REPLY_MAX_MS < CITIZEN_INVITE_REPLY_MIN_MS) {
+            throw new IllegalArgumentException(
+                    "living_world.CITIZEN_INVITE_REPLY_MIN_MS must be >= 0 and <= CITIZEN_INVITE_REPLY_MAX_MS");
         }
     }
 }

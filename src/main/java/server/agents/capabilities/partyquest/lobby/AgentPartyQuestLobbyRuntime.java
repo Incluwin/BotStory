@@ -29,7 +29,8 @@ import java.util.concurrent.ScheduledFuture;
 
 /** Shared presentation and invitation behavior for durable party-quest lobby sessions. */
 public final class AgentPartyQuestLobbyRuntime {
-    public enum InviteDecision { NOT_LOBBY_WAITER, DELAY_ACCEPT, REJECT }
+    /** DENY: a claimed Agent turns the inviter down like a player would (the stock "has denied" notice). */
+    public enum InviteDecision { NOT_LOBBY_WAITER, DELAY_ACCEPT, REJECT, DENY }
 
     private static final long CHAT_MINIMUM_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime.CHAT_MINIMUM_MS");
@@ -104,9 +105,9 @@ public final class AgentPartyQuestLobbyRuntime {
                 || member.type() != AgentPartyQuestLobbySession.MemberType.AGENT
                 || member.role() != AgentPartyQuestLobbySession.MemberRole.LOOKING_FOR_PARTY) {
             if (AgentPartyQuestQueueRuntime.canAcceptInvite(agent, inviter)) return InviteDecision.DELAY_ACCEPT;
-            // a companion (bench-live included), Resident or citizen answers only whom the host lets control it
-            return AgentClaimGuard.isClaimed(agent.getId()) && !AgentClaimGuard.mayControl(inviter, agent.getId())
-                    ? InviteDecision.REJECT : InviteDecision.NOT_LOBBY_WAITER;
+            // a companion (bench-live included), Resident or citizen joins only whom the host lets load it
+            return AgentClaimGuard.isClaimed(agent.getId()) && !AgentClaimGuard.mayLoad(inviter, agent.getId())
+                    ? InviteDecision.DENY : InviteDecision.NOT_LOBBY_WAITER;
         }
         if (!eligibleHuman(lobby, inviter) || agent.getMapId() != lobby.profile().mapId()
                 || !sameWorldAndChannel(inviter, agent)) return InviteDecision.REJECT;

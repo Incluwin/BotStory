@@ -28,7 +28,7 @@ class AgentPartyQuestLobbyRuntimeCharacterizationTest {
     }
 
     @Test
-    void anotherPlayersCompanionRejectsAStrangerButNotItsOwner() {
+    void anotherPlayersCompanionDeniesAStrangerLikeAPlayerButNotItsOwner() {
         Character alice = character(ALICE);
         Character bob = character(BOB);
         Character companion = character(COMPANION);
@@ -48,8 +48,8 @@ class AgentPartyQuestLobbyRuntimeCharacterizationTest {
             }
         });
 
-        // no lobby and no ticket, so the claim decides: a stranger is rejected, the owner is not
-        assertEquals(AgentPartyQuestLobbyRuntime.InviteDecision.REJECT,
+        // no lobby and no ticket, so the claim decides: a stranger gets the stock deny, the owner does not
+        assertEquals(AgentPartyQuestLobbyRuntime.InviteDecision.DENY,
                 AgentPartyQuestLobbyRuntime.decidePartyInvite(companion, bob));
         assertEquals(AgentPartyQuestLobbyRuntime.InviteDecision.NOT_LOBBY_WAITER,
                 AgentPartyQuestLobbyRuntime.decidePartyInvite(companion, alice));

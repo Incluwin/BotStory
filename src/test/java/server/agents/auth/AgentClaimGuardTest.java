@@ -39,6 +39,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -77,6 +78,7 @@ class AgentClaimGuardTest {
     void withNothingInstalledEveryRouteBehavesAsBefore() {
         assertTrue(AgentClaimGuard.mayControl(kiwi, OLWEN));
         assertTrue(AgentClaimGuard.mayControl(null, OLWEN));
+        assertTrue(AgentClaimGuard.mayLoad(kiwi, OLWEN));
         assertFalse(AgentClaimGuard.isClaimed(OLWEN));
     }
 
@@ -88,6 +90,33 @@ class AgentClaimGuardTest {
         assertTrue(AgentClaimGuard.mayControl(kiwi, PROBE));
         assertTrue(AgentClaimGuard.isClaimed(OLWEN));
         assertFalse(AgentClaimGuard.isClaimed(PROBE));
+    }
+
+    @Test
+    void loadingFollowsControlUnlessTheRuleSaysOtherwise() {
+        install(Set.of(PROBE, OLWEN), Set.of(OLWEN));
+        assertTrue(AgentClaimGuard.mayLoad(kiwi, OLWEN)); // the default: whoever may control it
+
+        AgentClaimGuard.install(new AgentClaimGuard.Rule() {
+            @Override
+            public boolean mayControl(Character actor, int agentCharacterId) {
+                return true; // an administrator commands anything loaded
+            }
+
+            @Override
+            public boolean mayLoad(Character actor, int agentCharacterId) {
+                return agentCharacterId != OLWEN; // but never loads a claimed character
+            }
+
+            @Override
+            public boolean isClaimed(int agentCharacterId) {
+                return agentCharacterId == OLWEN;
+            }
+        });
+
+        assertTrue(AgentClaimGuard.mayControl(kiwi, OLWEN));
+        assertFalse(AgentClaimGuard.mayLoad(kiwi, OLWEN));
+        assertTrue(AgentClaimGuard.mayLoad(kiwi, PROBE));
     }
 
     // ---- whisper bridge ------------------------------------------------------------------
@@ -162,18 +191,39 @@ class AgentClaimGuardTest {
     // ---- chat routes ---------------------------------------------------------------------
 
     @Test
-    void chatTransferAndDismissOfAnAgentTheLeaderMayNotControlAreRefused() {
+    void chatTransferAndDismissOfAnAgentTheLeaderMayNotControlAreRefusedByTheAgentItself() {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(olwen, kiwi, null);
         install(Set.of(), Set.of(OLWEN));
         List<String> calls = new ArrayList<>();
         AgentChatIngressService.Hooks<AgentRuntimeEntry> hooks = chatHooks(Map.of(KIWI, List.of(entry)), calls);
 
-        assertTrue(hooks.transferRoute().handle(kiwi, "transfer Olwen to Bob"));
-        assertTrue(hooks.dismissRoute().handle(kiwi, "dismiss Olwen"));
+        try (MockedStatic<AgentDialogueTransportRuntime> transport = mockStatic(AgentDialogueTransportRuntime.class)) {
+            assertTrue(hooks.transferRoute().handle(kiwi, "transfer Olwen to Bob"));
+            assertTrue(hooks.dismissRoute().handle(kiwi, "dismiss Olwen"));
+            AgentMailboxRuntime.drain(entry);
 
+            transport.verify(() -> AgentDialogueTransportRuntime.queueReply(entry, "i'm sticking with you."), times(2));
+        }
         assertEquals(List.of(), calls);
-        verify(kiwi).yellowMessage("Bot 'Olwen' does not take orders from you.");
-        verify(kiwi).yellowMessage("No bot named 'Olwen' in your group.");
+        verify(kiwi, never()).yellowMessage(any());
+    }
+
+    @Test
+    void chatTransferOfYourOwnCompanionIsRefusedByTheCompanion() {
+        // Kiwi controls Olwen, but a claimed Agent is never handed to another leader
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(olwen, kiwi, null);
+        install(Set.of(OLWEN), Set.of(OLWEN));
+        List<String> calls = new ArrayList<>();
+        AgentChatIngressService.Hooks<AgentRuntimeEntry> hooks = chatHooks(Map.of(KIWI, List.of(entry)), calls);
+
+        try (MockedStatic<AgentDialogueTransportRuntime> transport = mockStatic(AgentDialogueTransportRuntime.class)) {
+            assertTrue(hooks.transferRoute().handle(kiwi, "transfer Olwen to Bob"));
+            AgentMailboxRuntime.drain(entry);
+
+            transport.verify(() -> AgentDialogueTransportRuntime.queueReply(entry, "i'm sticking with you."));
+        }
+        assertEquals(List.of(), calls);
+        verify(kiwi, never()).yellowMessage(any());
     }
 
     @Test

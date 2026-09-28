@@ -109,7 +109,7 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                             if (InviteCoordinator.createInvite(InviteType.PARTY, player, party.getId(), invited.getId())) {
                                 invited.sendPacket(PacketCreator.partyInvite(player));
                                 if (invited.getClient() instanceof BotClient) {
-                                    // ACCEPT: the living world already said yes (own companion, willing citizen)
+                                    // ACCEPT: the living world already said yes (your own companion, already out)
                                     AgentPartyQuestLobbyRuntime.InviteDecision decision =
                                             route == CompanionPartyRouter.Route.ACCEPT
                                                     ? AgentPartyQuestLobbyRuntime.InviteDecision.NOT_LOBBY_WAITER
@@ -119,11 +119,14 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                                             invited, player, party.getId())) {
                                         break;
                                     }
-                                    boolean accept = decision != AgentPartyQuestLobbyRuntime.InviteDecision.REJECT;
+                                    boolean deny = decision == AgentPartyQuestLobbyRuntime.InviteDecision.DENY;
+                                    boolean accept = !deny && decision != AgentPartyQuestLobbyRuntime.InviteDecision.REJECT;
                                     InviteCoordinator.answerInvite(InviteType.PARTY,
                                             invited.getId(), party.getId(), accept);
                                     if (accept) {
                                         Party.joinParty(invited, party.getId(), false);
+                                    } else if (deny) {
+                                        c.sendPacket(PacketCreator.partyStatusMessage(23, invited.getName()));
                                     } else {
                                         player.dropMessage(5,
                                                 AgentPartyQuestLobbyRuntime.inviteRejectionMessage(invited));
@@ -160,11 +163,11 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                     break;
                 }
                 PartyCharacter newLeadr = party.getMemberById(newLeader);
-                if (newLeadr == null) {
-                    break;
+                Character candidate = newLeadr == null || !newLeadr.isOnline() ? null : newLeadr.getPlayer();
+                if (candidate == null) {
+                    break; // the lead goes only to a member who is online (an offline one may be a bot)
                 }
-                Character candidate = newLeadr.getPlayer();
-                if (candidate != null && candidate.getClient() instanceof BotClient) {
+                if (candidate.getClient() instanceof BotClient) {
                     // a bot never leads a party with a human in it
                     c.sendPacket(PacketCreator.getWhisperReceive(candidate.getName(),
                             candidate.getClient().getChannel() - 1, false, "nah, you lead"));

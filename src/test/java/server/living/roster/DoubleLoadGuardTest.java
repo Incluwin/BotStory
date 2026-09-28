@@ -15,6 +15,7 @@ import server.agents.capabilities.party.JoinOutcome;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService.AgentSpawnResult;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -138,7 +140,8 @@ class DoubleLoadGuardTest {
 
         String reply = new RosterService(world).call(alice, OLWEN);
 
-        assertEquals("Olwen could not join right now (busy).", reply);
+        assertEquals("Olwen could not join right now.", reply);
+        verify(store).event(ALICE, "olwen", "roster.call_refused", "busy");
         assertEquals(List.of(), calls);
         assertEquals(holder, leases.holder(OLWEN_CHARACTER).kind());
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
@@ -150,7 +153,8 @@ class DoubleLoadGuardTest {
         seed(row(RosterState.BENCHED));
         leases.tryAcquire(OLWEN_CHARACTER, CompanionLeases.Kind.COMPANION, BOB);
 
-        assertEquals("Olwen could not join right now (busy).", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+        verify(store).event(ALICE, "olwen", "roster.call_refused", "busy");
         assertEquals(List.of(), calls);
         assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.COMPANION, BOB), leases.holder(OLWEN_CHARACTER));
     }
@@ -193,21 +197,66 @@ class DoubleLoadGuardTest {
 
         String reply = new RosterService(world).call(alice, OLWEN);
 
-        assertEquals("Olwen could not join right now (No character named 'Olwen' exists.).", reply);
+        assertEquals("Olwen could not join right now.", reply);
+        verify(store).event(ALICE, "olwen", "roster.call_refused", "No character named 'Olwen' exists.");
         assertNull(leases.holder(OLWEN_CHARACTER));
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
     }
 
     @Test
     void anOwnerBelowLevelTenLeadsAStarterPartyOfTheirOwnCompanions() {
-        // decision 9 (a): every call path, not only the party window, forms the starter party before the join
+        // decision 9 (a): every call path, not only the party window, forms the starter party, and before the
+        // spawn, whose registration would otherwise make an ordinary party and show a lv8 owner the beginner notice
         seed(row(RosterState.BENCHED));
         when(alice.getLevel()).thenReturn(8);
+        parties.when(() -> Party.createParty(alice, true, true)).thenAnswer(inv -> calls.add("starter party"));
 
         assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
 
-        parties.verify(() -> Party.createParty(alice, true, true));
+        assertEquals(List.of("starter party", "spawn Olwen"), calls);
         assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
+    }
+
+    @Test
+    void aSecondCallWhileTheFirstIsLoadingIsNotASecondLoad() {
+        // a party-window call and a queued retry for the same companion, one inside the other's load
+        seed(row(RosterState.BENCHED));
+        RosterService roster = new RosterService(world);
+        String[] second = new String[1];
+        interaction.when(() -> AgentInteractionRuntime.spawnAgentForLeader(alice, "Olwen")).thenAnswer(inv -> {
+            calls.add("spawn Olwen");
+            second[0] = roster.call(alice, OLWEN);
+            return AgentSpawnResult.ok(olwenBot, true);
+        });
+        calls.clear(); // re-stubbing ran the setup's spawn answer once
+
+        assertEquals("Olwen joins your party.", roster.call(alice, OLWEN));
+
+        assertEquals("Olwen is on the way.", second[0]);
+        assertEquals(List.of("spawn Olwen"), calls);
+        verify(world.bench()).applyAccrued(any(), eq(olwenBot)); // once: the banked EXP is granted a single time
+        assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
+    }
+
+    @Test
+    void aRefusalNeverBenchesACompanionAnotherCallSeatedMeanwhile() {
+        // a login restore of an ACTIVE row is refused its load slot because another call just seated Olwen
+        seed(row(RosterState.ACTIVE));
+        AtomicBoolean seated = new AtomicBoolean();
+        registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(OLWEN_CHARACTER))
+                .thenAnswer(inv -> seated.get() ? new AgentRuntimeEntry(olwenBot, alice, null) : null);
+        registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(OLWEN_CHARACTER)).thenReturn(ALICE);
+        CompanionBudget budget = mock(CompanionBudget.class);
+        when(budget.admit(any(), any(Character.class))).thenAnswer(inv -> {
+            seated.set(true);
+            return CompanionBudget.Admission.deny("one load every 2000 ms");
+        });
+        when(world.budget()).thenReturn(budget);
+
+        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+
+        assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
+        assertEquals(List.of(), calls);
     }
 
     @Test
@@ -217,7 +266,8 @@ class DoubleLoadGuardTest {
 
         String reply = new RosterService(world).call(alice, OLWEN);
 
-        assertEquals("Olwen could not join right now (no party).", reply);
+        assertEquals("Olwen could not join right now.", reply);
+        verify(store).event(ALICE, "olwen", "roster.call_refused", "no party");
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
         assertEquals(List.of("spawn Olwen", "remove " + OLWEN_CHARACTER), calls);
         assertNull(leases.holder(OLWEN_CHARACTER));
@@ -230,7 +280,8 @@ class DoubleLoadGuardTest {
         seed(row(RosterState.ACTIVE));
         party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot)).thenReturn(JoinOutcome.FAILED);
 
-        assertEquals("Olwen could not join right now (failed).", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+        verify(store).event(ALICE, "olwen", "roster.call_refused", "failed");
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
         verify(residents).whisper(OLWEN, alice, "i couldn't join your party. try again in a bit.");
     }

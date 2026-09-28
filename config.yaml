@@ -785,6 +785,9 @@ living_world:
     EXPEDITION_BURST_MAX: 12
     COMPANION_BUDGET_CEILING: 300
     COMPANION_SPAWN_INTERVAL_MS: 2000
+    # A citizen answers a party invite after a random delay in this range, like a player would.
+    CITIZEN_INVITE_REPLY_MIN_MS: 900
+    CITIZEN_INVITE_REPLY_MAX_MS: 1800
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 

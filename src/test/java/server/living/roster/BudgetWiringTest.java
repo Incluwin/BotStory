@@ -17,6 +17,7 @@ import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService.AgentSpawnResult;
 import server.agents.runtime.AgentRuntimeCleanupService;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.arc.ArcService;
@@ -75,6 +76,7 @@ class BudgetWiringTest {
     private final Character alice = character(ALICE);
     private final Character olwenBot = character(OLWEN_CHARACTER);
     private final Character brinBot = character(BRIN_CHARACTER);
+    private final java.util.Set<String> seatedRows = new java.util.HashSet<>();
 
     private MockedStatic<AgentRuntimeRegistry> registry;
     private MockedStatic<AgentRuntimeCleanupService> cleanup;
@@ -132,7 +134,8 @@ class BudgetWiringTest {
 
         String reply = new RosterService(world).call(alice, OLWEN);
 
-        assertEquals("Olwen could not join right now (5 companions already out).", reply);
+        assertEquals("Olwen could not join right now.", reply);
+        verify(store).event(ALICE, "olwen", "roster.call_refused", "5 companions already out");
         interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(any(), anyString()), never());
         verify(benchSessions, never()).endFor(anyString(), anyString());
         assertNull(leases.holder(OLWEN_CHARACTER));
@@ -146,7 +149,8 @@ class BudgetWiringTest {
         when(world.budget()).thenReturn(new CompanionBudget(world));
         registry.when(AgentRuntimeRegistry::activeAgentCount).thenReturn(300);
 
-        assertEquals("Olwen could not join right now (Agent ceiling 300 reached).", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+        verify(store).event(ALICE, "olwen", "roster.call_refused", "Agent ceiling 300 reached");
         interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(any(), anyString()), never());
     }
 
@@ -158,6 +162,7 @@ class BudgetWiringTest {
         when(budget.admit(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
         when(budget.loadDelayMs(eq(alice), anyLong())).thenReturn(0L, 1_500L, 0L);
         when(world.budget()).thenReturn(budget);
+        seatedOnceActive(BRIN_CHARACTER, brinBot, "brin");
         RosterService roster = new RosterService(world);
         TimerManager timers = mock(TimerManager.class);
         ArgumentCaptor<Runnable> retry = ArgumentCaptor.forClass(Runnable.class);
@@ -176,7 +181,41 @@ class BudgetWiringTest {
 
         assertEquals("Brin will be right there.", brinReply);
         interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(alice, "Brin"));
-        verify(alice).dropMessage(5, "Brin joins your party.");
+        // the stock "has joined the party" notice announces Brin; no pink line on top of it
+        verify(alice, never()).dropMessage(anyInt(), anyString());
+        assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":brin").state());
+    }
+
+    @Test
+    void aQueuedCallWaitsQuietlyWhileAnotherLoadHoldsTheSlot() {
+        // five companions restored at login: every queued one fires together, one takes the slot, the rest wait
+        seed(row("brin", RosterState.ACTIVE));
+        when(store.roster(ALICE)).thenAnswer(inv -> List.copyOf(rows.values()));
+        LivingContent content = mock(LivingContent.class);
+        when(content.persona("brin")).thenReturn(BRIN);
+        when(world.content()).thenReturn(content);
+        CompanionBudget budget = mock(CompanionBudget.class);
+        when(budget.admit(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
+        when(budget.loadDelayMs(eq(alice), anyLong())).thenReturn(1_500L, 1_200L, 0L);
+        when(world.budget()).thenReturn(budget);
+        seatedOnceActive(BRIN_CHARACTER, brinBot, "brin");
+        RosterService roster = new RosterService(world);
+        TimerManager timers = mock(TimerManager.class);
+        ArgumentCaptor<Runnable> retry = ArgumentCaptor.forClass(Runnable.class);
+
+        try (MockedStatic<TimerManager> timer = mockStatic(TimerManager.class);
+             MockedStatic<Server> server = online(alice)) {
+            timer.when(TimerManager::getInstance).thenReturn(timers);
+            roster.onOwnerLogin(alice);
+            verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), retry.capture(), eq(1_500L));
+            retry.getValue().run(); // the slot is still taken: wait again, say nothing
+            verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), retry.capture(), eq(1_200L));
+            interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(any(), anyString()), never());
+            retry.getValue().run();
+        }
+
+        interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(alice, "Brin"));
+        verify(alice, never()).dropMessage(anyInt(), anyString());
         assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":brin").state());
     }
 
@@ -203,7 +242,7 @@ class BudgetWiringTest {
         }
 
         interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(any(), anyString()), never());
-        verify(alice).dropMessage(5, "Brin could not join right now (party full).");
+        verify(alice).dropMessage(5, "Brin could not join right now.");
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":brin").state());
     }
 
@@ -252,6 +291,18 @@ class BudgetWiringTest {
         MockedStatic<Server> server = mockStatic(Server.class);
         server.when(Server::getInstance).thenReturn(instance);
         return server;
+    }
+
+    /** The registry holds the companion once its row is ACTIVE with it loaded, as after a real call. */
+    private void seatedOnceActive(int characterId, Character bot, String personaId) {
+        registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(characterId)).thenAnswer(inv ->
+                seatedRows.contains(personaId) ? new AgentRuntimeEntry(bot, alice, null) : null);
+        registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(characterId)).thenReturn(ALICE);
+        interaction.when(() -> AgentInteractionRuntime.spawnAgentForLeader(eq(alice), eq(bot == brinBot ? "Brin" : "Olwen")))
+                .thenAnswer(inv -> {
+                    seatedRows.add(personaId);
+                    return AgentSpawnResult.ok(bot, true);
+                });
     }
 
     private void seed(RosterEntry entry) {

@@ -1,7 +1,9 @@
 package client;
 
+import config.YamlConfig;
 import net.packet.InPacket;
 import net.packet.Packet;
+import net.server.Server;
 import net.server.channel.handlers.PartyOperationHandler;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
@@ -9,6 +11,8 @@ import net.server.world.PartyOperation;
 import net.server.world.World;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import server.TimerManager;
 import server.maps.MapleMap;
 import testutil.Packets;
 import tools.PacketCreator;
@@ -16,30 +20,37 @@ import tools.PacketCreator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
  * Leadership never passes to a bot while a human is in the party (docs/BOT_MANAGEMENT_PLAN.md P1): the successor
- * when the leader logs out ({@code Client.removePartyPlayer}) and party operation 6 (change leader).
+ * when the leader logs out ({@code Client.removePartyPlayer}) or leaves ({@code Party.assignNewLeader}), and party
+ * operation 6 (change leader).
  */
 class LeaderSuccessionTest {
     private static final int LEAVER = 1;
+    private static final boolean LOGS_OUT = true;
+    private static final boolean LEAVES = false;
 
     private final MapleMap map = mock(MapleMap.class);
+
+    // ---- the leader logs out (stays a member) --------------------------------------------
 
     @Test
     void aHumanOnTheMapLeadsEvenWhenABotOutlevelsThem() {
         PartyCharacter bot = member(2, 120, true, true);
         PartyCharacter ben = member(3, 30, false, true);
 
-        assertSame(ben, Client.successor(party(leaver(), bot, ben), LEAVER, false, map));
+        assertSame(ben, party(leaver(false), bot, ben).successor(LEAVER, map, LOGS_OUT));
     }
 
     @Test
@@ -47,7 +58,7 @@ class LeaderSuccessionTest {
         PartyCharacter bot = member(2, 120, true, true);
         PartyCharacter ben = member(3, 30, false, false);
 
-        assertSame(ben, Client.successor(party(leaver(), bot, ben), LEAVER, false, map));
+        assertSame(ben, party(leaver(false), bot, ben).successor(LEAVER, map, LOGS_OUT));
     }
 
     @Test
@@ -56,15 +67,15 @@ class LeaderSuccessionTest {
         PartyCharacter cleo = member(4, 45, false, true);
         PartyCharacter dan = member(5, 90, false, false);
 
-        assertSame(cleo, Client.successor(party(leaver(), ben, cleo, dan), LEAVER, false, map));
+        assertSame(cleo, party(leaver(false), ben, cleo, dan).successor(LEAVER, map, LOGS_OUT));
     }
 
     @Test
     void aHumanLeaderWithOnlyBotsOnlineStaysLeader() {
         PartyCharacter bot = member(2, 120, true, true);
-        PartyCharacter offlineHuman = offline(3);
+        PartyCharacter offlineHuman = offline(3, 50, false);
 
-        assertNull(Client.successor(party(leaver(), bot, offlineHuman), LEAVER, false, map));
+        assertNull(party(leaver(false), bot, offlineHuman).successor(LEAVER, map, LOGS_OUT));
     }
 
     @Test
@@ -72,7 +83,15 @@ class LeaderSuccessionTest {
         PartyCharacter bot = member(2, 120, true, true);
         PartyCharacter ben = member(3, 30, false, true);
 
-        assertSame(ben, Client.successor(party(leaver(), bot, ben), LEAVER, true, map));
+        assertSame(ben, party(leaver(true), bot, ben).successor(LEAVER, map, LOGS_OUT));
+    }
+
+    @Test
+    void aBotLeaderWithOnlyAnOfflineHumanLeftHandsTheLeadToThatHuman() {
+        PartyCharacter bot = member(2, 120, true, true);
+        PartyCharacter offlineHuman = offline(3, 50, false);
+
+        assertSame(offlineHuman, party(leaver(true), bot, offlineHuman).successor(LEAVER, map, LOGS_OUT));
     }
 
     @Test
@@ -81,7 +100,71 @@ class LeaderSuccessionTest {
         PartyCharacter high = member(3, 60, true, true);
         PartyCharacter away = member(4, 90, true, false);
 
-        assertSame(high, Client.successor(party(leaver(), low, high, away), LEAVER, true, map));
+        assertSame(high, party(leaver(true), low, high, away).successor(LEAVER, map, LOGS_OUT));
+    }
+
+    // ---- the leader leaves the party (deleted, or level 10 out of a starter party) -------
+
+    @Test
+    void aLeaderLeavingHandsTheLeadToAnOfflineHumanBeforeAnyBot() {
+        PartyCharacter bot = member(2, 120, true, true);
+        PartyCharacter offlineHuman = offline(3, 20, false);
+
+        assertSame(offlineHuman, party(leaver(false), bot, offlineHuman).successor(LEAVER, null, LEAVES));
+    }
+
+    @Test
+    void aLeaderLeavingOnlyBotsHandsTheLeadToTheHighestOne() {
+        PartyCharacter low = member(2, 20, true, true);
+        PartyCharacter offlineBot = offline(3, 90, true);
+
+        assertSame(offlineBot, party(leaver(false), low, offlineBot).successor(LEAVER, null, LEAVES));
+    }
+
+    @Test
+    void assignNewLeaderUsesTheHumanFirstRule() {
+        PartyCharacter bot = member(2, 120, true, true);
+        PartyCharacter offlineHuman = offline(3, 20, false);
+        Party party = party(leaver(false), bot, offlineHuman);
+        Client leaving = mock(Client.class);
+        World world = mock(World.class);
+        when(leaving.getWorldServer()).thenReturn(world);
+
+        party.assignNewLeader(leaving);
+
+        verify(world).updateParty(party.getId(), PartyOperation.CHANGE_LEADER, offlineHuman);
+    }
+
+    // ---- the whole logout, against a real party and world --------------------------------
+
+    @Test
+    void theLeadersLogoutReallyHandsThePartyToTheHuman() {
+        boolean families = YamlConfig.config.server.USE_FAMILY_SYSTEM;
+        YamlConfig.config.server.USE_FAMILY_SYSTEM = false;
+        try (MockedStatic<TimerManager> timers = mockStatic(TimerManager.class);
+             MockedStatic<Server> servers = mockStatic(Server.class)) {
+            timers.when(TimerManager::getInstance).thenReturn(mock(TimerManager.class));
+            servers.when(Server::getInstance).thenReturn(mock(Server.class));
+            World world = new World(0, 0, "", 1, 1, 1, 1, 1, 1, 1, 1f, 1);
+            Client annClient = new Client(Client.Type.CHANNEL, -1, "test", null, 0, 1);
+            Character ann = player(LEAVER, "Ann", 30, annClient);
+            Character bot = player(2, "Olwen", 120, new BotClient(0, 1));
+            Character ben = player(3, "Ben", 20, new Client(Client.Type.CHANNEL, -1, "test", null, 0, 1));
+            Party party = world.createParty(new PartyCharacter(ann));
+            party.addMember(new PartyCharacter(bot));
+            party.addMember(new PartyCharacter(ben));
+            when(ann.getParty()).thenReturn(party);
+            when(map.getCharacterById(2)).thenReturn(bot);
+            when(map.getCharacterById(3)).thenReturn(ben);
+            annClient.setPlayer(ann);
+
+            annClient.removePartyPlayer(world);
+
+            assertEquals(3, party.getLeaderId());
+            assertEquals(3, party.getLeader().getId());
+        } finally {
+            YamlConfig.config.server.USE_FAMILY_SYSTEM = families;
+        }
     }
 
     // ---- op 6, change leader -------------------------------------------------------------
@@ -97,8 +180,7 @@ class LeaderSuccessionTest {
 
     @Test
     void onlyTheLeaderMayHandOverLeadership() {
-        Party party = party(leaver(), member(3, 30, false, true));
-        when(party.getLeaderId()).thenReturn(3);
+        Party party = mockParty(3, member(3, 30, false, true));
         Client client = leaderClient(party);
 
         changeLeader(client, 3);
@@ -111,9 +193,7 @@ class LeaderSuccessionTest {
         PartyCharacter bot = member(2, 120, true, true);
         when(bot.getPlayer().getName()).thenReturn("Olwen");
         when(bot.getPlayer().getClient().getChannel()).thenReturn(1);
-        Party party = party(leaver(), bot);
-        when(party.getLeaderId()).thenReturn(LEAVER);
-        when(party.getMemberById(2)).thenReturn(bot);
+        Party party = mockParty(LEAVER, bot);
         Client client = leaderClient(party);
 
         changeLeader(client, 2);
@@ -126,12 +206,23 @@ class LeaderSuccessionTest {
     }
 
     @Test
+    void anOfflineMemberIsNeverMadeLeader() {
+        // an offline member's character is gone, so it could be a bot the handler can no longer recognise
+        PartyCharacter offlineBot = offline(2, 120, true);
+        Party party = mockParty(LEAVER, offlineBot);
+        Client client = leaderClient(party);
+
+        changeLeader(client, 2);
+
+        verify(client.getWorldServer(), never()).updateParty(anyInt(), any(), any());
+        verify(client, never()).sendPacket(any());
+    }
+
+    @Test
     void aHumanMayBeMadeLeader() {
         PartyCharacter ben = member(3, 30, false, true);
-        Party party = party(leaver(), ben);
+        Party party = mockParty(LEAVER, ben);
         when(party.getId()).thenReturn(77);
-        when(party.getLeaderId()).thenReturn(LEAVER);
-        when(party.getMemberById(3)).thenReturn(ben);
         Client client = leaderClient(party);
 
         changeLeader(client, 3);
@@ -165,26 +256,52 @@ class LeaderSuccessionTest {
         PartyCharacter member = mock(PartyCharacter.class);
         when(member.getId()).thenReturn(id);
         when(member.getLevel()).thenReturn(level);
+        when(member.isBot()).thenReturn(bot);
         when(member.isOnline()).thenReturn(true);
         when(member.getPlayer()).thenReturn(player);
         when(map.getCharacterById(id)).thenReturn(onMap ? player : null);
         return member;
     }
 
-    private static PartyCharacter offline(int id) {
+    /** An offline member: its character is gone (PartyCharacter.setOnline(false)), its bot flag stays. */
+    private static PartyCharacter offline(int id, int level, boolean bot) {
         PartyCharacter member = mock(PartyCharacter.class);
         when(member.getId()).thenReturn(id);
+        when(member.getLevel()).thenReturn(level);
+        when(member.isBot()).thenReturn(bot);
         return member;
     }
 
-    /** The leaver's own entry is already offline (LOG_ONOFF runs first). */
-    private static PartyCharacter leaver() {
-        return offline(LEAVER);
+    /** The leaver's own entry is already offline when it logs out (LOG_ONOFF runs first). */
+    private static PartyCharacter leaver(boolean bot) {
+        return offline(LEAVER, 50, bot);
     }
 
-    private static Party party(PartyCharacter... members) {
-        Party party = mock(Party.class);
-        when(party.getMembers()).thenReturn(List.of(members));
+    private static Party party(PartyCharacter leader, PartyCharacter... others) {
+        Party party = new Party(5, leader);
+        party.addMember(leader);
+        for (PartyCharacter other : others) {
+            party.addMember(other);
+        }
         return party;
+    }
+
+    private static Party mockParty(int leaderId, PartyCharacter member) {
+        Party party = mock(Party.class);
+        when(party.getMembers()).thenReturn(List.of(member));
+        when(party.getLeaderId()).thenReturn(leaderId);
+        when(party.getMemberById(member.getId())).thenReturn(member);
+        return party;
+    }
+
+    private Character player(int id, String name, int level, Client client) {
+        Character player = mock(Character.class);
+        when(player.getId()).thenReturn(id);
+        when(player.getName()).thenReturn(name);
+        when(player.getLevel()).thenReturn(level);
+        when(player.getClient()).thenReturn(client);
+        when(player.getJob()).thenReturn(Job.BEGINNER);
+        when(player.getMap()).thenReturn(map);
+        return player;
     }
 }

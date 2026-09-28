@@ -2,7 +2,10 @@ package server.living.roster;
 
 import client.Character;
 import net.packet.Packet;
+import net.server.coordinator.world.InviteCoordinator;
+import net.server.coordinator.world.InviteCoordinator.InviteType;
 import net.server.world.Party;
+import server.TimerManager;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRegistry;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestQueueRuntime;
 import server.living.LivingWorld;
@@ -13,19 +16,21 @@ import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import tools.PacketCreator;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * Party invite by name (op 4), decided before anything is loaded (docs/BOT_MANAGEMENT_PLAN.md P1,
  * "CompanionPartyRouter"). Your own companion is called through the roster; another player's companion or a
  * Resident denies the invite (23); an Agent you may not control is not found (19); a citizen answers for itself
- * ({@link CitizenInviteDecision}); a starter party takes nobody but your own companions (10). Humans, Agents you
- * control and PQ lobby waiters keep the stock invite.
+ * ({@link CitizenInviteDecision}) after a moment, like a player; a starter party takes nobody but your own
+ * companions (10). Humans, Agents you control and PQ lobby waiters keep the stock invite.
  */
 public final class CompanionPartyRouter {
     /** What the party handler does next. */
     public enum Route {
         /** The stock invite, unchanged. */
         STOCK,
-        /** The invitee already said yes: the stock invite seats it without asking the Agent lobby again. */
+        /** Your own companion is already out: the stock invite seats it without asking the Agent lobby again. */
         ACCEPT,
         /** Answered here (a call or a status message); nothing more to do. */
         ANSWERED
@@ -54,7 +59,10 @@ public final class CompanionPartyRouter {
         };
     }
 
-    /** Benched, away, offline or bench-live: call it (a load). Already out with you: the stock invite seats it. */
+    /**
+     * Benched, away, offline or bench-live: call it (a load). Already out with you: the stock invite seats it.
+     * The companion answers for itself (a whisper), and the stock join notice announces it; nothing is printed.
+     */
     private Route ownCompanion(Character owner, Character loaded, RosterEntry entry) {
         if (loaded != null && entry.state() == RosterState.ACTIVE) {
             return ownParty(owner) ? Route.ACCEPT : Route.ANSWERED;
@@ -72,15 +80,16 @@ public final class CompanionPartyRouter {
         if (!admission.allowed()) {
             world.store().event(owner.getId(), persona.id(), "companion.budget_denied",
                     CompanionBudget.Kind.COMPANION + ": " + admission.reason());
-            world.residents().whisper(persona, owner, "it's crowded out here, i'll come when i can.");
+            world.residents().whisper(persona, owner, "it's too crowded out here right now. ask me again in a bit.");
             return Route.ANSWERED;
         }
         if (ownParty(owner)) {
-            owner.dropMessage(5, world.roster().call(owner, persona));
+            world.roster().call(owner, persona);
         }
         return Route.ANSWERED;
     }
 
+    /** A willing citizen gets the stock invite and accepts a moment later; an unwilling one denies (23) as late. */
     private Route citizen(Character inviter, Character citizen) {
         if (citizen == null) {
             return notFound(inviter);
@@ -91,8 +100,46 @@ public final class CompanionPartyRouter {
         if (inStarterParty(inviter)) {
             return beginner(inviter);
         }
-        return CitizenInviteDecision.accepts(inviter, citizen) ? Route.ACCEPT
-                : answer(inviter, PacketCreator.partyStatusMessage(23, citizen.getName()));
+        if (!CitizenInviteDecision.accepts(inviter, citizen)) {
+            Packet denied = PacketCreator.partyStatusMessage(23, citizen.getName());
+            later(() -> {
+                if (inviter.isLoggedinWorld()) {
+                    inviter.sendPacket(denied);
+                }
+            });
+            return Route.ANSWERED;
+        }
+        if (inviter.getParty() == null && !Party.createParty(inviter, false)) {
+            return Route.ANSWERED; // the stock refusal (a beginner, a coliseum) was sent
+        }
+        Party party = inviter.getParty();
+        if (party.getMembers().size() >= 6) {
+            return answer(inviter, PacketCreator.partyStatusMessage(17));
+        }
+        if (!InviteCoordinator.createInvite(InviteType.PARTY, inviter, party.getId(), citizen.getId())) {
+            return answer(inviter, PacketCreator.partyStatusMessage(22, citizen.getName()));
+        }
+        int partyId = party.getId();
+        later(() -> acceptInvite(inviter, citizen, partyId));
+        return Route.ANSWERED;
+    }
+
+    /** The citizen's yes, if it still stands: both online, the citizen partyless, the inviter's party with room. */
+    private static void acceptInvite(Character inviter, Character citizen, int partyId) {
+        Party party = inviter.getParty();
+        boolean stands = inviter.isLoggedinWorld() && citizen.isLoggedinWorld() && citizen.getParty() == null
+                && party != null && party.getId() == partyId && party.getMembers().size() < 6;
+        InviteCoordinator.answerInvite(InviteType.PARTY, citizen.getId(), partyId, stands);
+        if (stands) {
+            Party.joinParty(citizen, partyId, false);
+        }
+    }
+
+    /** A citizen's answer comes after a short random delay, like a player's. */
+    private void later(Runnable answer) {
+        long delayMs = ThreadLocalRandom.current().nextLong(world.config().CITIZEN_INVITE_REPLY_MIN_MS,
+                world.config().CITIZEN_INVITE_REPLY_MAX_MS + 1L);
+        TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, answer, delayMs);
     }
 
     /** Admins and runtime leaders keep the stock invite (an offline Agent is loaded, after the seat and budget checks). */
@@ -109,9 +156,8 @@ public final class CompanionPartyRouter {
         if (world.roster().freeSlots(inviter) <= 0) {
             return answer(inviter, PacketCreator.partyStatusMessage(17));
         }
-        CompanionBudget.Admission admission = world.budget().admit(CompanionBudget.Kind.COMPANION, inviter);
-        if (!admission.allowed()) {
-            inviter.dropMessage(5, "No Agent can be loaded for you right now (" + admission.reason() + ").");
+        if (!world.budget().admit(CompanionBudget.Kind.COMPANION, inviter).allowed()) {
+            inviter.dropMessage(5, "No Agent can be loaded for you right now.");
             return Route.ANSWERED;
         }
         return Route.STOCK;

@@ -21,6 +21,7 @@
 */
 package net.server.world;
 
+import client.BotClient;
 import client.Character;
 import client.Job;
 
@@ -32,6 +33,8 @@ public class PartyCharacter {
     private int jobid;
     private int mapid;
     private boolean online;
+    /** Kept when the member goes offline, so succession and op 6 can tell an offline bot from an offline human. */
+    private boolean bot;
     private Job job;
     private Character character;
 
@@ -45,6 +48,7 @@ public class PartyCharacter {
         this.jobid = maplechar.getJob().getId();
         this.mapid = maplechar.getMapId();
         this.online = true;
+        this.bot = maplechar.getClient() instanceof BotClient;
         this.job = maplechar.getJob();
     }
 
@@ -78,6 +82,10 @@ public class PartyCharacter {
 
     public boolean isOnline() {
         return online;
+    }
+
+    public boolean isBot() {
+        return bot;
     }
 
     public void setOnline(boolean online) {

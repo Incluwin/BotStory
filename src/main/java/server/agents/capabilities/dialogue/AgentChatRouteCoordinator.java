@@ -12,6 +12,7 @@ import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 
 import client.Character;
 import server.agents.commands.AgentTargetedCommandMatch;
+import server.agents.commands.AgentTransferCommand;
 import server.agents.social.conversation.AgentSocialDialogueRuntime;
 import server.agents.social.policy.AgentSocialResponderElection;
 import server.agents.capabilities.supplies.AgentGroupSupplyResponderSelector;
@@ -110,13 +111,13 @@ public final class AgentChatRouteCoordinator {
                         commandLeader,
                         text,
                         recruitAction),
-                (commandLeader, text) -> AgentLifecycleCommandCoordinator.handleTransferCommand(
-                        commandLeader,
-                        text,
-                        (leaderCharId, transferLeader, agentName, targetName) ->
-                                mayControlNamed(entriesByLeader, transferLeader, agentName)
-                                        ? transferAction.transfer(leaderCharId, transferLeader, agentName, targetName)
-                                        : "Bot '" + agentName + "' does not take orders from you."),
+                (commandLeader, text) -> {
+                    AgentTransferCommand command = AgentCommandTargetResolver.matchAgentTransferCommand(text);
+                    E refused = command == null
+                            ? null : refusedNamed(entriesByLeader, commandLeader, command.botName(), true);
+                    return refused != null ? stayWithLeader(refused)
+                            : AgentLifecycleCommandCoordinator.handleTransferCommand(commandLeader, text, transferAction);
+                },
                 (commandLeader, text) -> {
                     List<E> leaderAgents = entriesByLeader.get(commandLeader.getId());
                     return leaderAgents != null
@@ -130,11 +131,13 @@ public final class AgentChatRouteCoordinator {
                         defaultFollowStaggerPx,
                         defaultSnapRangePx),
                 entriesByLeader::get,
-                (commandLeader, text) -> AgentLifecycleCommandCoordinator.handleDismissCommand(
-                        commandLeader,
-                        text,
-                        (leaderCharId, agentName) -> mayControlNamed(entriesByLeader, commandLeader, agentName)
-                                && dismissAction.dismiss(leaderCharId, agentName)),
+                (commandLeader, text) -> {
+                    String agentName = AgentDismissCommandService.dismissTarget(text);
+                    E refused = agentName == null
+                            ? null : refusedNamed(entriesByLeader, commandLeader, agentName, false);
+                    return refused != null ? stayWithLeader(refused)
+                            : AgentLifecycleCommandCoordinator.handleDismissCommand(commandLeader, text, dismissAction);
+                },
                 (commandLeader, entries, text, replyChannel) -> AgentTargetedChatRouteService.handleTargetedChat(
                         commandLeader,
                         entries,
@@ -239,20 +242,33 @@ public final class AgentChatRouteCoordinator {
         return AgentClaimGuard.mayControl(leader, agentId) && !AgentClaimGuard.isClaimed(agentId);
     }
 
-    /** False when the leader's Agent of that name is one the installed claim guard keeps from this leader. */
-    private static <E extends AgentRuntimeEntry> boolean mayControlNamed(
+    /**
+     * The leader's Agent of that name when the installed claim guard keeps it from this leader, or when it is
+     * claimed and would be handed on (a transfer); null when the command may go ahead.
+     */
+    private static <E extends AgentRuntimeEntry> E refusedNamed(
             Map<Integer, List<E>> entriesByLeader,
             Character leader,
-            String agentName) {
+            String agentName,
+            boolean handOver) {
         List<E> entries = entriesByLeader.get(leader.getId());
         if (entries == null) {
-            return true;
+            return null;
         }
         for (E entry : entries) {
             if (AgentRuntimeIdentityRuntime.botNameEquals(entry, agentName)) {
-                return AgentClaimGuard.mayControl(leader, AgentRuntimeIdentityRuntime.botId(entry));
+                int agentId = AgentRuntimeIdentityRuntime.botId(entry);
+                boolean refused = !AgentClaimGuard.mayControl(leader, agentId)
+                        || handOver && AgentClaimGuard.isClaimed(agentId);
+                return refused ? entry : null;
             }
         }
+        return null;
+    }
+
+    /** A refused transfer or dismiss: the Agent answers for itself, with no system line. */
+    private static boolean stayWithLeader(AgentRuntimeEntry entry) {
+        queueReply(entry, "i'm sticking with you.");
         return true;
     }
 

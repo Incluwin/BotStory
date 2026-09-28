@@ -14,6 +14,7 @@ import server.living.config.Content.Persona;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchSessions;
 import server.living.roster.CompanionDirectory;
+import server.living.roster.CompanionLeases;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
@@ -68,20 +69,36 @@ class AgentControlServiceCharacterizationTest {
 
     @Test
     void recruiterCannotControlAnotherPlayersCompanionOnceTheClaimGuardIsInstalled() throws Exception {
-        Persona olwen = mock(Persona.class);
-        when(olwen.id()).thenReturn("olwen");
-        ResidentRuntime residents = mock(ResidentRuntime.class);
-        when(residents.personaOfCharacterId(OLWEN_CHARACTER)).thenReturn(olwen);
-        when(world.roster()).thenReturn(roster);
-        when(world.residents()).thenReturn(residents);
-        when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
-        AgentClaimGuard.install(new CompanionDirectory(world));
+        installDirectory();
 
         AgentAuthorizationResult result = ensureBobCanControlOlwen();
 
         // Bob is still an operator through his own recruit, but Olwen is Alice's companion
         assertFalse(result.allowed());
         assertEquals("'Olwen' does not take orders from you.", result.failureMessage());
+    }
+
+    @Test
+    void anAdministratorCannotSpawnAnotherPlayersRosteredCompanion() throws Exception {
+        // the P1 live check: @spawnbot (GM6) of a rostered character is refused
+        config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = "Gm";
+        installDirectory();
+
+        AgentAuthorizationResult result = ensureCanControlOlwen(character(30, "Gm"));
+
+        assertFalse(result.allowed());
+        assertEquals("'Olwen' does not take orders from you.", result.failureMessage());
+    }
+
+    @Test
+    void theOwnerCannotSpawnTheirCompanionAroundTheRoster() throws Exception {
+        installDirectory();
+        Character alice = character(ALICE, "Alice");
+
+        assertFalse(ensureCanControlOlwen(alice).allowed()); // an @spawnbot: no COMPANION lease
+
+        world.leases().tryAcquire(OLWEN_CHARACTER, CompanionLeases.Kind.COMPANION, ALICE);
+        assertTrue(ensureCanControlOlwen(alice).allowed()); // RosterService.spawnCompanion took it first
     }
 
     @Test
@@ -94,15 +111,32 @@ class AgentControlServiceCharacterizationTest {
         assertTrue(result.allowed());
     }
 
+    private void installDirectory() {
+        Persona olwen = mock(Persona.class);
+        when(olwen.id()).thenReturn("olwen");
+        ResidentRuntime residents = mock(ResidentRuntime.class);
+        when(residents.personaOfCharacterId(OLWEN_CHARACTER)).thenReturn(olwen);
+        when(world.roster()).thenReturn(roster);
+        when(world.residents()).thenReturn(residents);
+        when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+        CompanionLeases leases = new CompanionLeases();
+        when(world.leases()).thenReturn(leases);
+        AgentClaimGuard.install(new CompanionDirectory(world));
+    }
+
     private AgentAuthorizationResult ensureBobCanControlOlwen() throws Exception {
         Character bob = character(BOB, "Bob");
+        assertFalse(AgentAuthorityService.hasRole(bob, AgentAuthorityRole.OPERATOR));
+        return ensureCanControlOlwen(bob);
+    }
+
+    private AgentAuthorizationResult ensureCanControlOlwen(Character actor) throws Exception {
         AgentResolvedCharacter olwen = new AgentResolvedCharacter(OLWEN_CHARACTER, "Olwen", 5, null);
         AgentIdentityGateway identities = mock(AgentIdentityGateway.class);
         when(identities.isActiveAgent(OLWEN_CHARACTER)).thenReturn(true);
-        assertFalse(AgentAuthorityService.hasRole(bob, AgentAuthorityRole.OPERATOR));
         try (MockedStatic<AgentIdentityGatewayRuntime> identityRuntime = mockStatic(AgentIdentityGatewayRuntime.class)) {
             identityRuntime.when(AgentIdentityGatewayRuntime::identities).thenReturn(identities);
-            return AgentControlService.getInstance().ensureCanControl(bob, olwen);
+            return AgentControlService.getInstance().ensureCanControl(actor, olwen);
         }
     }
 

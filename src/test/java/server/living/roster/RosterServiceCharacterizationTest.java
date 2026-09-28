@@ -184,7 +184,7 @@ class RosterServiceCharacterizationTest {
         verify(gateway).joinAgentParty(olwenBot, 77);
         verify(olwenBot, never()).updatePartyMemberHP();
         // the join reports PARTY_FULL: the companion is despawned, the row keeps its AWAY slot, and it says why
-        assertEquals("Olwen could not join right now (party full).", reply);
+        assertEquals("Olwen could not join right now.", reply); // the reason goes to the event log
         assertEquals(RosterState.AWAY, rows.get(key(ALICE, "olwen")).state());
         assertEquals(List.of(), saved);
         cleanup.verify(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(OLWEN_CHARACTER));
@@ -215,7 +215,7 @@ class RosterServiceCharacterizationTest {
 
         // nothing is pulled out from under its holder and nothing is loaded; the companion asks for a moment
         assertEquals(List.of(), calls);
-        assertEquals("Olwen could not join right now (busy).", reply);
+        assertEquals("Olwen could not join right now.", reply); // the reason goes to the event log
         assertEquals(RosterState.BENCHED, rows.get(key(ALICE, "olwen")).state());
         assertNull(leases.holder(OLWEN_CHARACTER));
         verify(residents).whisper(OLWEN, alice, "give me a moment. i'm in the middle of something.");

@@ -288,22 +288,69 @@ public class Party {
 
     public void assignNewLeader(Client c) {
         World world = c.getWorldServer();
-        PartyCharacter newLeadr = null;
+        Character leaver = c.getPlayer();
+        PartyCharacter newLeadr = successor(leaderId, leaver == null ? null : leaver.getMap(), false);
+
+        if (newLeadr != null) {
+            world.updateParty(this.getId(), PartyOperation.CHANGE_LEADER, newLeadr);
+        }
+    }
+
+    /**
+     * The next leader after {@code leaverId} (docs/BOT_MANAGEMENT_PLAN.md P1, "Leadership fixes"): a human while
+     * any human is a member. The highest-level online human leads, one on {@code map} first. With no other human
+     * online, a human leader who {@code stays} a member (logs out) keeps the lead; otherwise the highest-level
+     * offline human takes it. Only with no human left does a bot lead: the highest-level one on {@code map} when
+     * the leader stays (the stock logout rule), else any. Null keeps the current leader.
+     */
+    public PartyCharacter successor(int leaverId, MapleMap map, boolean stays) {
+        boolean leaverIsBot = false;
+        PartyCharacter humanOnMap = null;
+        PartyCharacter humanOnline = null;
+        PartyCharacter humanOffline = null;
+        PartyCharacter botOnMap = null;
+        PartyCharacter anyBot = null;
 
         lock.lock();
         try {
             for (PartyCharacter mpc : members) {
-                if (mpc.getId() != leaderId && (newLeadr == null || newLeadr.getLevel() < mpc.getLevel())) {
-                    newLeadr = mpc;
+                if (mpc.getId() == leaverId) {
+                    leaverIsBot = mpc.isBot();
+                    continue;
+                }
+                boolean onMap = mpc.isOnline() && map != null && map.getCharacterById(mpc.getId()) != null;
+                if (mpc.isBot()) {
+                    botOnMap = onMap && outranks(mpc, botOnMap) ? mpc : botOnMap;
+                    anyBot = outranks(mpc, anyBot) ? mpc : anyBot;
+                } else if (!mpc.isOnline()) {
+                    humanOffline = outranks(mpc, humanOffline) ? mpc : humanOffline;
+                } else if (onMap) {
+                    humanOnMap = outranks(mpc, humanOnMap) ? mpc : humanOnMap;
+                } else {
+                    humanOnline = outranks(mpc, humanOnline) ? mpc : humanOnline;
                 }
             }
         } finally {
             lock.unlock();
         }
 
-        if (newLeadr != null) {
-            world.updateParty(this.getId(), PartyOperation.CHANGE_LEADER, newLeadr);
+        if (humanOnMap != null) {
+            return humanOnMap;
         }
+        if (humanOnline != null) {
+            return humanOnline;
+        }
+        if (stays && !leaverIsBot) {
+            return null;
+        }
+        if (humanOffline != null) {
+            return humanOffline;
+        }
+        return stays ? botOnMap : anyBot;
+    }
+
+    private static boolean outranks(PartyCharacter candidate, PartyCharacter best) {
+        return best == null || best.getLevel() <= candidate.getLevel();
     }
 
     @Override

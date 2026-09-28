@@ -61,7 +61,9 @@ public final class AgentFollowMapSyncService {
     /**
      * The warp re-resolves the anchor's map id through the Agent's own channel and event instance
      * (Character.changeMap -> getWarpMap), so it lands beside the anchor only when both are the anchor's.
-     * An Agent that is not registered in the anchor's instance would land in the ordinary copy of the map.
+     * An Agent that is not registered in the anchor's instance would land in the ordinary copy of the map,
+     * and one still registered in an instance the anchor has left would land in that instance's copy unless
+     * the event script happens to let it out; it holds until the instance ends and unregisters it.
      */
     static boolean mayWarpInto(Character agent, Character followAnchor, MapleMap targetMap) {
         if (followAnchor.isAwayFromWorld()) {
@@ -72,6 +74,6 @@ public final class AgentFollowMapSyncService {
             return false;
         }
         EventInstanceManager instance = targetMap.getEventInstance();
-        return instance == null || instance == agent.getEventInstance();
+        return instance == agent.getEventInstance();
     }
 }
