@@ -11,6 +11,7 @@ import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
@@ -29,7 +30,9 @@ import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapleMap;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -196,7 +199,7 @@ public final class RosterService {
         if (freeSlots(owner) <= 0) {
             return persona.name() + " joins your roster but your party is full; call them when there is room.";
         }
-        return spawnCompanion(owner, persona, entry);
+        return spawnCompanion(owner, persona, entry, false); // already here talking to the owner: no walk-in
     }
 
     /**
@@ -288,7 +291,7 @@ public final class RosterService {
             }
         }
         travelling.remove(key);
-        return spawnCompanion(owner, persona, entry);
+        return spawnCompanion(owner, persona, entry, true);
     }
 
     private void arrive(int ownerId, Persona persona) {
@@ -323,7 +326,8 @@ public final class RosterService {
         return true;
     }
 
-    private String spawnCompanion(Character owner, Persona persona, RosterEntry entry) {
+    /** {@code walkIn}: it arrives through the portal nearest the owner and walks over (plan P1.5), else beside them. */
+    private String spawnCompanion(Character owner, Persona persona, RosterEntry entry, boolean walkIn) {
         long waitMs = world.budget().loadDelayMs(owner, System.currentTimeMillis());
         if (waitMs > 0L) {
             spawnLater(owner.getId(), persona, entry.state(), waitMs); // loads are spaced per owner: queue, not refuse
@@ -333,13 +337,13 @@ public final class RosterService {
             return persona.name() + " is on the way."; // another call is loading this companion right now
         }
         try {
-            return seat(owner, persona, entry);
+            return seat(owner, persona, entry, walkIn);
         } finally {
             seating.remove(persona.id());
         }
     }
 
-    private String seat(Character owner, Persona persona, RosterEntry entry) {
+    private String seat(Character owner, Persona persona, RosterEntry entry, boolean walkIn) {
         int characterId = world.residents().ensureCharacter(persona);
         if (characterId == 0) {
             return persona.name() + " cannot be reached right now.";
@@ -359,11 +363,16 @@ public final class RosterService {
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             return refuse(owner, persona, entry, BUSY_LINE, "busy");
         }
-        // before the spawn: its registration joins the owner's party, and would make one without the exemption
+        // before the spawn: its registration (or the join below) joins the owner's party, and would make one without the exemption
         if (owner.getParty() == null) {
             Party.createParty(owner, true, true); // decision 9 (a): below level 10 a starter party of their own companions
         }
-        AgentLifecycleService.AgentSpawnResult result = AgentInteractionRuntime.spawnAgentForLeader(owner, persona.name());
+        // a walk-in is loaded standing at the portal nearest the owner; a map without a usable one keeps the beside-owner spawn
+        MapleMap map = owner.getMap();
+        Point portal = walkIn ? ArrivalPlacement.nearestPortal(map, owner.getPosition()) : null;
+        AgentLifecycleService.AgentSpawnResult result = portal == null
+                ? AgentInteractionRuntime.spawnAgentForLeader(owner, persona.name())
+                : AgentInteractionRuntime.spawnStationaryAgentForLeaderAt(owner, persona.name(), map, portal);
         if (!result.success() || result.agent() == null) {
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             log.warn("call {} for {} failed: {}", persona.id(), owner.getName(), result.errorMessage());
@@ -373,6 +382,9 @@ public final class RosterService {
         if (joined != JoinOutcome.JOINED && joined != JoinOutcome.ALREADY_MEMBER) {
             despawn(entry, "party join " + joined);
             return refuse(owner, persona, entry, joinRefusal(joined), joined.name().toLowerCase(Locale.ROOT).replace('_', ' '));
+        }
+        if (portal != null) {
+            walkToOwner(result.agent()); // only once it is in the party
         }
         // bench slices and the ledger rewrite the row behind the caller's snapshot, and applyAccrued zeroes the
         // banked EXP: both saves start from the row as it is now, so the EXP can never be granted twice
@@ -384,6 +396,14 @@ public final class RosterService {
         List<String> lines = world.arcs().lines(persona, "join");
         world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(owner.getId(), lines.size())));
         return persona.name() + " joins your party.";
+    }
+
+    /** A companion loaded at a portal stands still until it is seated; then it follows, so it walks to its owner. */
+    private static void walkToOwner(Character bot) {
+        AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+        if (runtime != null) {
+            AgentMovementCommandRuntime.followConfiguredTarget(runtime);
+        }
     }
 
     /** Retries the spawn once the owner's next load is admitted, if the row is still as it was and nobody is loaded. */
@@ -410,7 +430,7 @@ public final class RosterService {
         // the party may have filled while this one waited; an AWAY companion kept its slot
         String outcome = state != RosterState.AWAY && freeSlots(owner) <= 0
                 ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full")
-                : spawnCompanion(owner, persona, entry);
+                : spawnCompanion(owner, persona, entry, true);
         if (!seatedWith(owner, current(entry))) {
             owner.dropMessage(5, outcome);
         }
@@ -708,11 +728,17 @@ public final class RosterService {
 
     public void onOwnerLogin(Character owner) {
         ownerLogoutAtMs.remove(String.valueOf(owner.getId()));
+        long staggerMs = 0L; // the first comes at once, the others a moment apart so they do not arrive stacked
         for (RosterEntry entry : roster(owner)) {
             if (entry.state() == RosterState.ACTIVE) {
                 Persona persona = world.content().persona(entry.personaId());
                 if (persona != null && companion(entry) == null) {
-                    call(owner, persona);
+                    if (staggerMs == 0L) {
+                        call(owner, persona);
+                    } else {
+                        spawnLater(owner.getId(), persona, RosterState.ACTIVE, staggerMs); // the load spacing still applies when it fires
+                    }
+                    staggerMs += ArrivalPlacement.staggerMs();
                 }
             }
         }
