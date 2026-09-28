@@ -104,7 +104,23 @@ public final class BenchSessions {
         return entry != null && (entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY);
     }
 
+    /**
+     * Character loads and unloads run on companion-ops like every companion load (plan "CompanionExecutor"): called
+     * from any other thread (a timer, a shutdown), the work is handed over there and this returns true.
+     */
+    private boolean handedOver(String name, Runnable work) {
+        CompanionExecutor ops = world.executor();
+        if (ops == null || ops.onExecutorThread()) {
+            return false;
+        }
+        ops.submit(name, work);
+        return true;
+    }
+
     public void tick() {
+        if (handedOver("bench_sessions.tick", this::tick)) {
+            return;
+        }
         long now = System.currentTimeMillis();
         int max = world.config().BENCH_LIVE_MAX;
         for (Session session : new ArrayList<>(live.values())) {
@@ -305,6 +321,9 @@ public final class BenchSessions {
 
     /** Ends a live session before the character is needed elsewhere (call, release, shutdown). */
     public void endFor(String personaId, String reason) {
+        if (handedOver("bench_sessions.end " + personaId, () -> endFor(personaId, reason))) {
+            return;
+        }
         Session session = live.get(personaId);
         if (session != null) {
             end(session, reason);
@@ -312,6 +331,9 @@ public final class BenchSessions {
     }
 
     public void endAll(String reason) {
+        if (handedOver("bench_sessions.end_all", () -> endAll(reason))) {
+            return;
+        }
         for (Session session : new ArrayList<>(live.values())) {
             end(session, reason);
         }

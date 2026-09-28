@@ -14,6 +14,7 @@ import server.living.config.Content.Contract;
 import server.living.config.Content.ContractItem;
 import server.living.config.Content.LeaveRule;
 import server.living.config.Content.Persona;
+import server.living.roster.Commitments;
 import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.ContractState;
 import server.living.store.LivingStore.RosterEntry;
@@ -22,7 +23,10 @@ import server.maps.MapleMap;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Recruitment: when a Persona offers its terms, what the player must pay or prove, the join
@@ -30,8 +34,56 @@ import java.util.Set;
  */
 public final class ContractService {
     private static final Logger log = LoggerFactory.getLogger(ContractService.class);
+    /** What a companion committed to a run says once when its walk-out comes due (it goes when the run is over). */
+    public static final String AFTER_THIS_RUN_LINE = "after this run, i'm heading home.";
+    /** A bench tolerance this short, in days (0 is one hour), is warned about before a bench (plan flow 10). */
+    static final int LOW_BENCH_TOLERANCE_DAYS = 1;
+
+    /**
+     * ROSTER_CONTRACT_MODE (decision 3): whether a rostered companion's authored terms still end its contract on
+     * their own. The authored end rules, and what each mode does with them:
+     * <ul>
+     *   <li>CONTRACT_END: the contract's {@code durationHours} of travel together are up (its {@code leavesOn} lists
+     *   CONTRACT_END);</li>
+     *   <li>outlevelled: the owner is more than the contract's {@code maxLevelGap} levels above the companion out with
+     *   them;</li>
+     *   <li>LEADER_DEATH_3X: the owner's third death while the companion is out (its {@code leavesOn} lists it);</li>
+     *   <li>bench tolerance: the persona's {@code benchToleranceDays} on the bench (0 is one hour, like Dorran's; below
+     *   0 never).</li>
+     * </ul>
+     * AUTHORED applies all four, PERMANENT_ON_ROSTER none, PERMANENT_AT_SWORN all four until the owner's bond with the
+     * persona reaches SWORN and none from then on. In every mode an explicit end ({@link #end}, which arcs use) and a
+     * dismissal still end a contract, wages keep working, LEADER_OFFLINE_20M is never a walk-out (the owner's logout
+     * parks and benches, decision 8a), and a walk-out due while the companion is committed to a run waits for the run.
+     */
+    public enum Mode {
+        AUTHORED, PERMANENT_ON_ROSTER, PERMANENT_AT_SWORN;
+
+        /** The configured mode; anything else is the default, PERMANENT_ON_ROSTER. */
+        public static Mode of(String configured) {
+            try {
+                return configured == null ? PERMANENT_ON_ROSTER : valueOf(configured.trim().toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException unknown) {
+                return PERMANENT_ON_ROSTER;
+            }
+        }
+
+        /** True while the authored end rules apply to a companion whose owner's bond with it is at {@code stage}. */
+        public boolean authoredTermsHold(BondStage stage) {
+            return switch (this) {
+                case AUTHORED -> true;
+                case PERMANENT_ON_ROSTER -> false;
+                case PERMANENT_AT_SWORN -> stage == null || !stage.atLeast(BondStage.SWORN);
+            };
+        }
+    }
+
+    /** A walk-out waiting for its companion's run to end: whose companion it is, and why it goes. */
+    private record AfterTheRun(int ownerId, String personaId, String reason) { }
 
     private final LivingWorld world;
+    /** Companion character id -> its walk-out that waits for its commitment to end (Commitments). */
+    private final Map<Integer, AfterTheRun> afterTheRun = new ConcurrentHashMap<>();
 
     public ContractService(LivingWorld world) {
         this.world = world;
@@ -260,15 +312,15 @@ public final class ContractService {
             }
             Persona persona = world.content().persona(entry.personaId());
             Contract contract = persona == null ? null : contractOf(persona);
-            if (contract == null || !contract.terms().leavesOn().contains(LeaveRule.LEADER_DEATH_3X)) {
+            if (contract == null || !contract.terms().leavesOn().contains(LeaveRule.LEADER_DEATH_3X)
+                    || !authoredTermsHold(owner.getId(), persona.id())) {
                 continue;
             }
             int count = deaths.merge(owner.getId() + ":" + persona.id(), 1, Integer::sum);
             if (count >= 3) {
                 deaths.remove(owner.getId() + ":" + persona.id());
                 List<String> lines = world.arcs().lines(persona, "leaveDeaths");
-                world.residents().reply(persona, owner, lines.isEmpty() ? "three times. i'm not dying for this." : lines.get(0));
-                owner.dropMessage(5, world.roster().release(owner, persona, "leader died three times"));
+                leave(owner, persona, "leader died three times", lines.isEmpty() ? "three times. i'm not dying for this." : lines.get(0));
             } else {
                 List<String> lines = world.arcs().lines(persona, "ownerDied");
                 if (!lines.isEmpty()) {
@@ -280,9 +332,15 @@ public final class ContractService {
 
     // ---- clock ---------------------------------------------------------------------------
 
+    /**
+     * The contract clocks (companion-ops, every minute): travel time accrues for companions out with their owner (in the
+     * party, on the way or waiting outside a run), and the authored end rules the mode keeps (see {@link Mode}) end a
+     * contract whose time, level gap or bench tolerance is up.
+     */
     public void tick() {
         long now = System.currentTimeMillis();
-        for (RosterEntry entry : world.store().allActive()) {
+        Mode mode = mode();
+        for (RosterEntry entry : outWithOwners()) {
             Persona persona = world.content().persona(entry.personaId());
             Bond bond = world.bonds().peek(entry.characterId(), entry.personaId());
             if (persona == null || bond == null || bond.contractState() != ContractState.ACTIVE) {
@@ -300,6 +358,9 @@ public final class ContractService {
             world.bonds().save(new Bond(bond.characterId(), bond.personaId(), bond.stage(), bond.points(), bond.flags(),
                     bond.contractState(), bond.contractStartedAtMs(), bond.offerExpiresAtMs(), bond.proofProgress(),
                     bond.paidMeso(), seconds, bond.leftAtMs(), now));
+            if (!mode.authoredTermsHold(bond.stage())) {
+                continue; // decision 3: permanent, so the clock only counts
+            }
             if (contract.terms().durationHours() > 0 && seconds >= contract.terms().durationHours() * 3600
                     && contract.terms().leavesOn().contains(LeaveRule.CONTRACT_END)) {
                 end(owner, persona, "contract ended");
@@ -319,32 +380,154 @@ public final class ContractService {
             if (persona.benchToleranceDays() == 0 && now - entry.benchedAtMs() > 3_600_000L
                     || persona.benchToleranceDays() > 0 && now - entry.benchedAtMs() > persona.benchToleranceDays() * 86_400_000L) {
                 Character owner = world.roster().onlineCharacter(entry.characterId());
-                if (owner != null) {
+                if (owner != null && authoredTermsHold(owner.getId(), persona.id())) {
                     end(owner, persona, "walked out");
                 }
             }
         }
     }
 
-    public void end(Character owner, Persona persona, String reason) {
-        List<String> lines = world.arcs().lines(persona, "leave");
-        world.residents().reply(persona, owner, lines.isEmpty() ? "that's it for me. see you around." : lines.get(Math.floorMod(owner.getId(), lines.size())));
-        owner.dropMessage(5, world.roster().release(owner, persona, reason));
+    /** The owners' companions out with them: in the party (ACTIVE, TRAVELLING) or waiting outside a run (HOLD). */
+    private List<RosterEntry> outWithOwners() {
+        List<RosterEntry> out = new ArrayList<>(world.store().allActive());
+        for (RosterEntry entry : world.store().allInTransit()) {
+            if (entry.state() == RosterState.TRAVELLING || entry.state() == RosterState.HOLD) {
+                out.add(entry);
+            }
+        }
+        return out;
     }
 
+    /** ROSTER_CONTRACT_MODE, as configured now. */
+    public Mode mode() {
+        return Mode.of(world.config().ROSTER_CONTRACT_MODE);
+    }
+
+    /** True while the owner's authored terms with the persona still end its contract (the bond is read only when the mode asks). */
+    private boolean authoredTermsHold(int ownerId, String personaId) {
+        Mode mode = mode();
+        if (mode != Mode.PERMANENT_AT_SWORN) {
+            return mode == Mode.AUTHORED;
+        }
+        Bond bond = world.bonds().peek(ownerId, personaId);
+        return mode.authoredTermsHold(bond == null ? BondStage.NONE : bond.stage());
+    }
+
+    /**
+     * Ends the contract (a rule the mode keeps, or an arc ending it explicitly in any mode): the companion says goodbye
+     * and goes home by the release path, or once its run is over when it is committed to one.
+     */
+    public void end(Character owner, Persona persona, String reason) {
+        leave(owner, persona, reason, leaveLine(persona, owner, "that's it for me. see you around."));
+    }
+
+    /** The owner parts ways with the companion; one committed to a run goes home when the run is over. */
     public String dismiss(Character owner, Persona persona) {
         RosterEntry entry = world.roster().entry(owner.getId(), persona.id());
         if (entry == null) {
             return persona.name() + " is not in your roster.";
         }
-        List<String> lines = world.arcs().lines(persona, "leave");
-        world.residents().reply(persona, owner, lines.isEmpty() ? "fine." : lines.get(Math.floorMod(owner.getId(), lines.size())));
+        if (afterTheRun(owner.getId(), owner, persona, "dismissed")) {
+            return persona.name() + " heads home once this run is over.";
+        }
+        world.residents().reply(persona, owner, leaveLine(persona, owner, "fine."));
         return world.roster().release(owner, persona, "dismissed");
     }
 
-    /** Called by the roster whenever a persona leaves a roster, whatever the reason. */
-    public void onReleased(Character owner, Persona persona, String reason) {
-        Bond bond = world.bonds().peek(owner.getId(), persona.id());
+    private void leave(Character owner, Persona persona, String reason, String farewell) {
+        if (afterTheRun(owner.getId(), owner, persona, reason)) {
+            return;
+        }
+        world.residents().reply(persona, owner, farewell);
+        owner.dropMessage(5, world.roster().release(owner, persona, reason));
+    }
+
+    private String leaveLine(Persona persona, Character owner, String fallback) {
+        List<String> lines = world.arcs().lines(persona, "leave");
+        return lines.isEmpty() ? fallback : lines.get(Math.floorMod(owner.getId(), lines.size()));
+    }
+
+    // ---- walk-outs after a run (Commitments) ---------------------------------------------
+
+    /**
+     * True when the companion is committed to a run (Commitments): its walk-out waits for the commitment to end, and
+     * the first time it comes due the companion says so in its own words ("after this run, i'm heading home."), to its
+     * owner when they are online. The first reason due is the one it goes for.
+     */
+    private boolean afterTheRun(int ownerId, Character owner, Persona persona, String reason) {
+        int characterId = world.residents().characterIdOf(persona.id());
+        Commitments commitments = world.commitments();
+        if (characterId == 0 || commitments == null || !commitments.isCommitted(characterId)) {
+            return false;
+        }
+        if (afterTheRun.putIfAbsent(characterId, new AfterTheRun(ownerId, persona.id(), reason)) == null) {
+            if (owner != null) {
+                List<String> lines = world.arcs().lines(persona, "leaveAfterRun");
+                world.residents().reply(persona, owner, lines.isEmpty() ? AFTER_THIS_RUN_LINE
+                        : lines.get(Math.floorMod(ownerId, lines.size())));
+            }
+            world.store().event(ownerId, persona.id(), "contract.after_the_run", reason);
+        }
+        return true;
+    }
+
+    /**
+     * A commitment ended (the Commitments listener LivingWorld hands to companion-ops): each member's walk-out that
+     * waited for it goes now by the normal release path, with its goodbye; one committed to another run meanwhile
+     * waits for that one. With its owner offline by then it goes home all the same, without a word.
+     */
+    public void commitmentEnded(Commitments.Ended ended) {
+        for (Commitments.Member member : ended.members()) {
+            AfterTheRun due = afterTheRun.remove(member.characterId());
+            Persona persona = due == null ? null : world.content().persona(due.personaId());
+            RosterEntry entry = persona == null ? null : world.store().rosterEntry(due.ownerId(), persona.id());
+            if (entry == null || entry.state() == RosterState.RELEASED) {
+                continue;
+            }
+            Character owner = world.roster().onlineCharacter(due.ownerId());
+            if (afterTheRun(due.ownerId(), owner, persona, due.reason())) {
+                continue;
+            }
+            if (owner == null) {
+                world.roster().release(due.ownerId(), persona, due.reason());
+                continue;
+            }
+            world.residents().reply(persona, owner, leaveLine(persona, owner, "that's it for me. see you around."));
+            owner.dropMessage(5, world.roster().release(owner, persona, due.reason()));
+        }
+    }
+
+    // ---- bench warning -------------------------------------------------------------------
+
+    /**
+     * How long the companion sits on the bench before it walks out ("an hour", "a day"), when a bench could end its
+     * contract: a low-tolerance persona (benchToleranceDays 0 or 1) whose authored terms still hold under
+     * ROSTER_CONTRACT_MODE (AUTHORED, or PERMANENT_AT_SWORN before SWORN). Null when benching it risks nothing, which
+     * is always so in PERMANENT_ON_ROSTER. The menus ask Yes/No before such a bench.
+     */
+    public String benchWalkOutAfter(int ownerId, Persona persona) {
+        int days = persona.benchToleranceDays();
+        if (days < 0 || days > LOW_BENCH_TOLERANCE_DAYS || !authoredTermsHold(ownerId, persona.id())) {
+            return null;
+        }
+        return days == 0 ? "an hour" : "a day";
+    }
+
+    /** What such a companion says as it goes to camp, in its own words (the warning a chat bench gets); else null. */
+    public String benchWarning(int ownerId, Persona persona) {
+        String after = benchWalkOutAfter(ownerId, persona);
+        if (after == null) {
+            return null;
+        }
+        List<String> lines = world.arcs().lines(persona, "benchWarning");
+        return lines.isEmpty() ? after + " at camp with nothing to do and i walk."
+                : lines.get(Math.floorMod(ownerId, lines.size()));
+    }
+
+    /** Called by the roster whenever a persona leaves a roster, whatever the reason (its owner may be offline or gone). */
+    public void onReleased(int ownerId, Persona persona, String reason) {
+        afterTheRun.values().removeIf(due -> due.ownerId() == ownerId && due.personaId().equals(persona.id()));
+        Bond bond = world.bonds().peek(ownerId, persona.id());
         if (bond == null) {
             return;
         }
@@ -352,7 +535,7 @@ public final class ContractService {
         int penalty = "dismissed".equals(reason) ? -5 : 0;
         world.bonds().save(new Bond(bond.characterId(), bond.personaId(), bond.stage(), Math.max(0, bond.points() + penalty),
                 bond.flags(), ContractState.ENDED, bond.contractStartedAtMs(), 0L, 0, 0L, bond.partySeconds(), now, now));
-        world.store().event(owner.getId(), persona.id(), "contract.ended", reason);
+        world.store().event(ownerId, persona.id(), "contract.ended", reason);
     }
 
     // ---- text ----------------------------------------------------------------------------

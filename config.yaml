@@ -763,6 +763,10 @@ living_world:
     BOND_SWORN_POINTS: 150
     CONTRACT_OFFER_MINUTES: 10
     LEADER_OFFLINE_BENCH_MS: 1200000
+    # Decision 3: AUTHORED (the contract hours, outlevelled, three leader deaths and bench tolerance end a
+    # contract), PERMANENT_ON_ROSTER (none of them do; arcs and a dismissal still can, wages keep working) or
+    # PERMANENT_AT_SWORN (authored terms until the bond is SWORN). A walk-out always waits for a run to end.
+    ROSTER_CONTRACT_MODE: PERMANENT_ON_ROSTER
     ROSTER_MAX: 10
     BENCH_LEDGER_INTERVAL_MS: 600000
     BENCH_FARM_EFFICIENCY: 0.6

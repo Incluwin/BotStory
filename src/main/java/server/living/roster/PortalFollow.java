@@ -52,6 +52,11 @@ final class PortalFollow {
         }
     }
 
+    /** The owner is gone (deleted): nothing of theirs is kept. */
+    void forget(int ownerId) {
+        byOwner.remove(ownerId);
+    }
+
     /**
      * How companion {@code companionId} comes into {@code mapId} after its owner: at their arrival point, on its turn
      * (given the first time it asks, and kept). Null when the owner's arrival on that map is not known.
