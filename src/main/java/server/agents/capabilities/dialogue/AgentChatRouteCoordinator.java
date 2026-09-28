@@ -135,8 +135,14 @@ public final class AgentChatRouteCoordinator {
                     String agentName = AgentDismissCommandService.dismissTarget(text);
                     E refused = agentName == null
                             ? null : refusedNamed(entriesByLeader, commandLeader, agentName, false);
-                    return refused != null ? stayWithLeader(refused)
-                            : AgentLifecycleCommandCoordinator.handleDismissCommand(commandLeader, text, dismissAction);
+                    if (refused != null) {
+                        return stayWithLeader(refused);
+                    }
+                    E named = agentName == null ? null : named(entriesByLeader, commandLeader, agentName);
+                    // a claimed Agent the host keeps a roster for is benched there, never unregistered and left online
+                    return named != null && AgentClaimGuard.takeVerb(commandLeader,
+                            AgentRuntimeIdentityRuntime.botId(named), AgentClaimGuard.Verb.DISMISS)
+                            || AgentLifecycleCommandCoordinator.handleDismissCommand(commandLeader, text, dismissAction);
                 },
                 (commandLeader, entries, text, replyChannel) -> AgentTargetedChatRouteService.handleTargetedChat(
                         commandLeader,
@@ -251,16 +257,28 @@ public final class AgentChatRouteCoordinator {
             Character leader,
             String agentName,
             boolean handOver) {
+        E entry = named(entriesByLeader, leader, agentName);
+        if (entry == null) {
+            return null;
+        }
+        int agentId = AgentRuntimeIdentityRuntime.botId(entry);
+        boolean refused = !AgentClaimGuard.mayControl(leader, agentId)
+                || handOver && AgentClaimGuard.isClaimed(agentId);
+        return refused ? entry : null;
+    }
+
+    /** The leader's Agent of that name, or null. */
+    private static <E extends AgentRuntimeEntry> E named(
+            Map<Integer, List<E>> entriesByLeader,
+            Character leader,
+            String agentName) {
         List<E> entries = entriesByLeader.get(leader.getId());
         if (entries == null) {
             return null;
         }
         for (E entry : entries) {
             if (AgentRuntimeIdentityRuntime.botNameEquals(entry, agentName)) {
-                int agentId = AgentRuntimeIdentityRuntime.botId(entry);
-                boolean refused = !AgentClaimGuard.mayControl(leader, agentId)
-                        || handOver && AgentClaimGuard.isClaimed(agentId);
-                return refused ? entry : null;
+                return entry;
             }
         }
         return null;

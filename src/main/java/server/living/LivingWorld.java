@@ -19,7 +19,9 @@ import server.living.quest.QuestMarkers;
 import server.living.resident.ResidentDialogue;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchLedger;
+import server.living.roster.CompanionAuditor;
 import server.living.roster.CompanionBudget;
+import server.living.roster.CompanionChatVerbs;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionLeases;
@@ -56,6 +58,8 @@ public final class LivingWorld {
     private final CompanionLeases leases;
     private final CompanionDirectory directory;
     private final CompanionBudget budget;
+    private final CompanionChatVerbs chatVerbs;
+    private final CompanionAuditor auditor;
     private final BenchLedger bench;
     private final server.living.roster.BenchSessions benchSessions;
     private final ResidentRuntime residents;
@@ -79,6 +83,8 @@ public final class LivingWorld {
         this.leases = new CompanionLeases();
         this.directory = new CompanionDirectory(this);
         this.budget = new CompanionBudget(this);
+        this.chatVerbs = new CompanionChatVerbs(this);
+        this.auditor = new CompanionAuditor(this);
         this.contracts = new ContractService(this);
         this.bench = new BenchLedger(this);
         this.benchSessions = new server.living.roster.BenchSessions(this);
@@ -125,6 +131,7 @@ public final class LivingWorld {
         world.residents.syncLooks();
         server.agents.auth.AgentAuthorityService.installOperatorGrant(world.roster::hasCompanions);
         server.agents.auth.AgentClaimGuard.install(world.directory);
+        server.agents.auth.AgentClaimGuard.installVerbs(world.chatVerbs); // chat dismiss/logout of a companion bench it
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.residents::tick,
                 config.RESIDENT_TICK_MS, config.RESIDENT_TICK_MS));
@@ -136,6 +143,9 @@ public final class LivingWorld {
                 60_000L, 60_000L));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.benchSessions::tick,
                 120_000L, 120_000L));
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("companion.audit", world.auditor::run),
+                CompanionAuditor.INTERVAL_MS, CompanionAuditor.INTERVAL_MS));
         if (config.QUEST_MARKER_PULSE_MS > 0) {
             world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.markers::tick,
                     config.QUEST_MARKER_PULSE_MS, config.QUEST_MARKER_PULSE_MS));
@@ -161,6 +171,7 @@ public final class LivingWorld {
         instance = null;
         net.server.world.PartyEvents.install(null);
         net.server.world.PartySeatGate.install(null);
+        server.agents.auth.AgentClaimGuard.installVerbs(null);
         server.living.population.Population.stop();
         for (ScheduledFuture<?> timer : world.timers) {
             timer.cancel(false);
@@ -263,6 +274,16 @@ public final class LivingWorld {
 
     public CompanionBudget budget() {
         return budget;
+    }
+
+    /** The one door from chat into the roster. */
+    public CompanionChatVerbs chatVerbs() {
+        return chatVerbs;
+    }
+
+    /** The zero-drift auditor. */
+    public CompanionAuditor auditor() {
+        return auditor;
     }
 
     public BenchLedger bench() {

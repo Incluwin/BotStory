@@ -3,8 +3,10 @@ package server.admin;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import server.living.roster.CompanionAuditor;
 import server.living.roster.CompanionDriftReport;
 import server.living.roster.CompanionDriftReport.AgentRef;
+import server.living.roster.CompanionDriftReport.Code;
 import server.living.roster.CompanionDriftReport.Companion;
 import server.living.roster.CompanionDriftReport.Live;
 import server.living.roster.CompanionDriftReport.Member;
@@ -14,6 +16,7 @@ import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterState;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -62,5 +65,28 @@ class AdminCompanionsReaderTest {
         assertTrue(json.get("drift").get(1).get("personaId").isNull());
         assertEquals(1, json.get("driftCount").asInt());
         assertFalse(json.get("clean").asBoolean());
+    }
+
+    @Test
+    void auditStatusRendersTheLastRunTheTotalsAndTheOpenEpisodes() throws Exception {
+        CompanionAuditor.Status status = new CompanionAuditor.Status(60_000L, 3L, 1_000L, 12L, 2, 1, 1,
+                Map.of(Code.ACTIVE_NOT_LOADED, 1), 1L, 1L, 0L,
+                List.of(new CompanionAuditor.Open(10, "olwen", List.of(Code.ACTIVE_NOT_LOADED), 500L, 2, true, false)));
+
+        JsonNode json = new ObjectMapper().readTree(AdminCompanionsReader.auditJson(status));
+
+        assertEquals(60_000, json.get("intervalMs").asInt());
+        assertEquals(3, json.get("runs").asInt());
+        assertEquals(2, json.get("ownersChecked").asInt());
+        assertEquals(1, json.get("ownersDeferred").asInt());
+        assertEquals(1, json.get("driftNow").asInt());
+        assertEquals(1, json.get("driftByCode").get("ACTIVE_NOT_LOADED").asInt());
+        assertEquals(1, json.get("repairs").asInt());
+        assertEquals(0, json.get("stuck").asInt());
+        JsonNode open = json.get("open").get(0);
+        assertEquals("olwen", open.get("personaId").asText());
+        assertEquals("ACTIVE_NOT_LOADED", open.get("codes").get(0).asText());
+        assertTrue(open.get("repaired").asBoolean());
+        assertFalse(open.get("stuck").asBoolean());
     }
 }

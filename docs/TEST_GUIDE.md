@@ -89,14 +89,14 @@ Prerequisite: complete `brannock-crates` (LW-03..06 with Brannock, level 5) and 
 | ID | Steps | Expected | Verified |
 |---|---|---|---|
 | CO-01 | `Brannock join me` | NPC window with contract terms (15,000 meso, 4 h, OWN_DROPS 10%); "I have it. Let's go." | not yet |
-| CO-02 | Accept with the meso | Brannock joins your party; `@roster` lists him ACTIVE; companion commands (`follow me`, `grind`, `stop`) work; `!typesafe` shows no request for exact phrases | not yet |
+| CO-02 | Accept with the meso | Brannock joins your party; `@roster` lists him ACTIVE; companion commands (`follow me`, `grind`, `stop`) work; `!typesafe` shows no request for exact phrases | partly (unit: CompanionTestGuideTest) |
 | CO-03 | Phrase pack: `can u farm around here pls`, `stop buffing` | `[phrase]` log line, no Jev request, correct canonical (`grind`, `stop buff`) | partly (unit tests) |
 | CO-04 | Free-form command with the key (`go whack those pigs`) | `[typesafe-chat]` ACT/ASK/IGNORE; a LIVE ACT is redispatched once (no double action) | yes (earlier session) |
-| CO-05 | `bench Brannock` | leaves the party, heads to camp; `@roster` BENCHED with assignment | not yet |
-| CO-06 | `Brannock train` then wait 10 min | `living_roster.accrued_exp` grows toward `ownerLevel - paceGap`; `call Brannock` applies it (level-up effects) | not yet |
-| CO-07 | Camp at a field: walk to pig beach, `Brannock camp here`, `bench Brannock` | within 2 min `bench session: Brannock train live at 104010001` in the log; you can walk in and watch him fight; leaving the map keeps him fighting (BACKGROUND_ACTIVE) | not yet |
-| CO-08 | `Brannock farm meso` while camped at a field | live farming session; `bench.harvest` events with meso/stacks; `Brannock what did you get` shows the haul; `Brannock hand it over` transfers | not yet |
-| CO-09 | `Brannock farm snail shell 20` when Olwen's manifest quest is active for you | refused as your own errand only if Brannock is the giver; Olwen's item is allowed | not yet |
+| CO-05 | `bench Brannock` | leaves the party, heads to camp; `@roster` BENCHED with assignment | partly (unit: CompanionTestGuideTest) |
+| CO-06 | `Brannock train` then wait 10 min | `living_roster.accrued_exp` grows toward `ownerLevel - paceGap`; `call Brannock` applies it (level-up effects) | partly (unit: CompanionTestGuideTest) |
+| CO-07 | Camp at a field: walk to pig beach, `Brannock camp here`, `bench Brannock` | within 2 min `bench session: Brannock train live at 104010001` in the log; you can walk in and watch him fight; leaving the map keeps him fighting (BACKGROUND_ACTIVE) | partly (unit: CompanionTestGuideTest) |
+| CO-08 | `Brannock farm meso` while camped at a field | live farming session; `bench.harvest` events with meso/stacks; `Brannock what did you get` shows the haul; `Brannock hand it over` transfers | partly (unit: CompanionTestGuideTest) |
+| CO-09 | `Brannock farm snail shell 20` when Olwen's manifest quest is active for you | refused as your own errand only if Brannock is the giver; Olwen's item is allowed | partly (unit: CompanionTestGuideTest) |
 | CO-10 | Delegation: with Brannock active, `Brannock go farm meso here` on a field | he despawns, `@roster` shows AWAY with the map; `freeSlots` in `@roster` is one lower; `Brannock come back` gives an ETA whisper then he rejoins | not yet |
 | CO-11 | Recall travel: bench him in Henesys, call from Lith | "on my way, ~60 s" whisper, arrives after the ETA; `RECALL_WHISTLE_ITEM_ID` set to an item you hold makes it instant | not yet |
 | CO-12 | Wages: `Brannock wages`, `Brannock pay wages 5000` | status line; paid-until advances; ledger stops charging upkeep | not yet |

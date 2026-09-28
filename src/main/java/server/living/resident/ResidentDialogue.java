@@ -9,7 +9,9 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.Content.StepType;
 import server.living.phrases.PhraseMatcher;
+import server.living.roster.CompanionChatVerbs;
 import server.living.roster.CompanionDirectory;
+import server.living.roster.RosterResult;
 import server.living.roster.RosterVoice;
 import server.living.roster.ui.CompanionMenus;
 import server.living.store.LivingStore.Assignment;
@@ -24,6 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -79,10 +82,12 @@ public final class ResidentDialogue {
 
     private static final Pattern ROSTER = Pattern.compile("^(roster|who do i have|my companions|my crew|who travels with me|list companions)$");
     private static final Pattern CALL = Pattern.compile("^(call|summon|bring) (\\w+)$");
-    private static final Pattern BENCH = Pattern.compile("^(bench|rest|dismiss to camp) (\\w+)$");
+    private static final Pattern BENCH = Pattern.compile("^(bench|rest|dismiss|dismiss to camp) (\\w+)$");
+    private static final Pattern PARK = Pattern.compile("^park (\\w+)$");
     private static final Pattern SWAP = Pattern.compile("^swap (\\w+) (for|with) (\\w+)$");
-    private static final Pattern RELEASE = Pattern.compile("^(release|dismiss|fire|let go) (\\w+)$");
+    private static final Pattern RELEASE = Pattern.compile("^(release|fire|let go) (\\w+)$");
     private static final Pattern EVERYONE_BENCH = Pattern.compile("^(everyone|all|everybody) (bench|rest|go to camp)$");
+    private static final Pattern EVERYONE_PARK = Pattern.compile("^(park|park (everyone|all|everybody)|(everyone|all|everybody) park)$");
     private static final Pattern CALL_USUAL = Pattern.compile("^(call|bring) (the usual|everyone|all|everybody)$");
     private static final Pattern FARM_ITEM = Pattern.compile("^farm (\\d+ )?(.+?)( x?(\\d+))?$");
     private static final Pattern WAGES = Pattern.compile("^(wages|pay wages|heres your pay|your pay|payday)( (\\d+)k?)?$");
@@ -446,20 +451,31 @@ public final class ResidentDialogue {
 
     // ---- roster commands -----------------------------------------------------------------
 
+    /** Every verb runs on companion-ops through {@link CompanionChatVerbs}; only the parsing happens on the chat thread. */
     private boolean rosterCommand(Character owner, String normalized) {
+        CompanionChatVerbs verbs = world.chatVerbs();
         if (ROSTER.matcher(normalized).matches()) {
-            for (String line : world.roster().summary(owner)) {
-                owner.dropMessage(6, line);
-            }
+            verbs.show(owner, "roster.list", 6, () -> world.roster().summary(owner));
             return true;
         }
         Matcher m = CALL.matcher(normalized);
         if (m.matches()) {
-            return owned(owner, m.group(2), persona -> owner.dropMessage(5, RosterVoice.line(persona, world.roster().call(owner, persona))));
+            return owned(owner, m.group(2), persona -> verbs.say(owner, "roster.call",
+                    () -> RosterVoice.line(persona, world.roster().call(owner, persona))));
         }
         m = BENCH.matcher(normalized);
         if (m.matches()) {
-            return owned(owner, m.group(2), persona -> owner.dropMessage(5, RosterVoice.line(persona, world.roster().bench(owner, persona))));
+            return owned(owner, m.group(2), persona -> verbs.say(owner, "roster.bench",
+                    () -> RosterVoice.line(persona, world.roster().bench(owner, persona))));
+        }
+        if (EVERYONE_PARK.matcher(normalized).matches() && world.roster().hasCompanions(owner)) {
+            verbs.show(owner, "roster.park_all", 5, () -> everyone(owner, RosterState.ACTIVE, true,
+                    persona -> world.roster().bench(owner, persona)));
+            return true;
+        }
+        m = PARK.matcher(normalized);
+        if (m.matches()) {
+            return owned(owner, m.group(1), persona -> verbs.park(owner, persona));
         }
         m = SWAP.matcher(normalized);
         if (m.matches()) {
@@ -468,29 +484,22 @@ public final class ResidentDialogue {
             if (out == null || in == null) {
                 return false;
             }
-            owner.dropMessage(5, RosterVoice.line(in, world.roster().swap(owner, out, in)));
+            verbs.say(owner, "roster.swap", () -> RosterVoice.line(in, world.roster().swap(owner, out, in)));
             return true;
         }
         m = RELEASE.matcher(normalized);
         if (m.matches()) {
-            return owned(owner, m.group(2), persona -> owner.dropMessage(5, world.contracts().dismiss(owner, persona)));
+            return owned(owner, m.group(2), persona -> verbs.say(owner, "roster.release",
+                    () -> world.contracts().dismiss(owner, persona)));
         }
         if (EVERYONE_BENCH.matcher(normalized).matches()) {
-            for (RosterEntry entry : world.roster().roster(owner)) {
-                Persona persona = world.content().persona(entry.personaId());
-                if (persona != null && entry.state() == RosterState.ACTIVE) {
-                    owner.dropMessage(5, RosterVoice.line(persona, world.roster().bench(owner, persona)));
-                }
-            }
+            verbs.show(owner, "roster.bench_all", 5, () -> everyone(owner, RosterState.ACTIVE, true,
+                    persona -> world.roster().bench(owner, persona)));
             return true;
         }
         if (CALL_USUAL.matcher(normalized).matches()) {
-            for (RosterEntry entry : world.roster().roster(owner)) {
-                Persona persona = world.content().persona(entry.personaId());
-                if (persona != null && entry.state() != RosterState.ACTIVE) {
-                    owner.dropMessage(5, RosterVoice.line(persona, world.roster().call(owner, persona)));
-                }
-            }
+            verbs.show(owner, "roster.call_all", 5, () -> everyone(owner, RosterState.ACTIVE, false,
+                    persona -> world.roster().call(owner, persona)));
             return true;
         }
         // "<name> <assignment or haul command>"
@@ -514,17 +523,22 @@ public final class ResidentDialogue {
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return false;
         }
+        CompanionChatVerbs verbs = world.chatVerbs();
+        int here = owner.getMapId(); // where the owner stands now, not when the verb runs
         switch (command) {
             case "come", "come here", "join me", "call", "come back", "get back here", "back to me", "return", "rejoin":
-                owner.dropMessage(5, RosterVoice.line(persona, world.roster().call(owner, persona))); return true;
-            case "bench", "take a break", "go rest", "go to camp", "rest up": owner.dropMessage(5, RosterVoice.line(persona, world.roster().bench(owner, persona))); return true;
-            case "camp here", "make camp here": owner.dropMessage(5, RosterVoice.line(persona, world.roster().setCamp(owner, persona, owner.getMapId()))); return true;
+                verbs.say(owner, "roster.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona))); return true;
+            case "bench", "dismiss", "take a break", "go rest", "go to camp", "rest up":
+                verbs.say(owner, "roster.bench", () -> RosterVoice.line(persona, world.roster().bench(owner, persona))); return true;
+            case "park": verbs.park(owner, persona); return true;
+            case "camp here", "make camp here":
+                verbs.say(owner, "roster.camp", () -> RosterVoice.line(persona, world.roster().setCamp(owner, persona, here))); return true;
             case "what did you get", "show me the haul", "haul", "what do you have", "whats in the bag":
-                for (String line : world.roster().haulSummary(owner, persona)) { owner.dropMessage(6, line); } return true;
-            case "hand it over", "give me the haul", "give it here", "hand over the haul": owner.dropMessage(5, world.roster().handOver(owner, persona)); return true;
-            case "send it", "mail it", "duey it", "send the haul": owner.dropMessage(5, world.roster().sendIt(owner, persona)); return true;
-            case "bank it", "deposit it", "bank the meso": owner.dropMessage(5, world.roster().bankIt(owner, persona)); return true;
-            case "release", "dismiss", "youre free", "go home": owner.dropMessage(5, world.contracts().dismiss(owner, persona)); return true;
+                verbs.show(owner, "roster.haul", 6, () -> world.roster().haulSummary(owner, persona)); return true;
+            case "hand it over", "give me the haul", "give it here", "hand over the haul": verbs.say(owner, "roster.hand_over", () -> world.roster().handOver(owner, persona)); return true;
+            case "send it", "mail it", "duey it", "send the haul": verbs.say(owner, "roster.send", () -> world.roster().sendIt(owner, persona)); return true;
+            case "bank it", "deposit it", "bank the meso": verbs.say(owner, "roster.bank", () -> world.roster().bankIt(owner, persona)); return true;
+            case "release", "youre free", "go home": verbs.say(owner, "roster.release", () -> world.contracts().dismiss(owner, persona)); return true;
             default: break;
         }
         // "<name> go farm meso [here]" delegates an active companion (plan 11.2); without "go" it sets the bench assignment
@@ -552,22 +566,39 @@ public final class ResidentDialogue {
             }
         }
         if (assignment != null) {
-            owner.dropMessage(5, RosterVoice.line(persona, go
-                    ? world.roster().delegate(owner, persona, assignment, itemId, count, mapId)
-                    : world.roster().assign(owner, persona, assignment, itemId, count)));
+            Assignment duty = assignment;
+            int item = itemId;
+            int amount = count;
+            int workMap = mapId;
+            verbs.say(owner, go ? "roster.delegate" : "roster.assign", () -> RosterVoice.line(persona, go
+                    ? world.roster().delegate(owner, persona, duty, item, amount, workMap)
+                    : world.roster().assign(owner, persona, duty, item, amount)));
             return true;
         }
         Matcher wages = WAGES.matcher(command);
         if (wages.matches()) {
             if (wages.group(3) == null) {
-                owner.dropMessage(5, world.roster().wagesStatus(owner, persona));
+                verbs.say(owner, "roster.wages", () -> world.roster().wagesStatus(owner, persona));
             } else {
                 long amount = Long.parseLong(wages.group(3)) * (command.endsWith("k") ? 1000L : 1L);
-                owner.dropMessage(5, world.roster().payWages(owner, persona, amount));
+                verbs.say(owner, "roster.pay_wages", () -> world.roster().payWages(owner, persona, amount));
             }
             return true;
         }
         return false;
+    }
+
+    /** Runs {@code verb} (on companion-ops) for each companion that is in {@code state} ({@code in}) or is not; one line each. */
+    private List<String> everyone(Character owner, RosterState state, boolean in,
+                                  Function<Persona, RosterResult> verb) {
+        List<String> lines = new ArrayList<>();
+        for (RosterEntry entry : world.roster().roster(owner)) {
+            Persona persona = world.content().persona(entry.personaId());
+            if (persona != null && (entry.state() == state) == in) {
+                lines.add(RosterVoice.line(persona, verb.apply(persona)));
+            }
+        }
+        return lines;
     }
 
     private static Assignment assignmentOf(String job) {

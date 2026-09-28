@@ -56,10 +56,14 @@ When a contract is met the persona joins your party as a companion (the normal `
 `stop` / `grind` companion commands work, plus the phrase packs). Roster commands work whether
 the companion is with you or benched:
 
-`call <name>`, `bench <name>`, `swap <a> for <b>`, `roster`, `everyone bench`, `call the usual`,
+`call <name>`, `bench <name>` (also `dismiss <name>` and `park <name>`), `swap <a> for <b>`, `roster`,
+`everyone bench`, `park` (everyone), `call the usual`,
 `<name> camp here`, `<name> train | farm meso | farm <item> [n] | gather for my quests | go sell |
 set up a stall | rest`, `<name> what did you get`, `<name> hand it over | send it | bank it`, `<name> wages` / `<name> pay wages 5000`,
-`release <name>`.
+`release <name>`. Every one runs on the companion-ops thread (the reply follows a moment later). The
+companion commands that would unload one (`dismiss <name>` in party chat, `logout` + `yes`) bench it
+through the roster instead; plain GM Agents keep the old behaviour. `park` is a bench until P2b adds
+the PARKED state.
 
 **Delegated remote work.** Prefix a job with `go` to send an *active* companion off without
 giving up its party slot: `<name> go farm meso here`, `<name> go train`, `<name> go farm
@@ -151,6 +155,10 @@ old gen after the last GC, CPU, threads, registered Agents by kind, humans onlin
 vs per-shard capacity with lag/tick percentiles, and LOW_PRIORITY timer lag (5 s probe); `?gc=1` forces
 a full GC first (stop-the-world, measurement runs only). `GET /runtime/companions[/{ownerCharacterId}]` is a
 read-only roster/party/registry drift report per online owner; gate on drift seen in two consecutive reads.
+It also carries the auditor's status, which `GET /runtime/companions/audit` returns alone: every 60 s
+`CompanionAuditor` compares the same three on companion-ops, repairs drift seen on two runs in a row toward
+the roster row (ACTIVE: seated again; BENCHED/AWAY: taken out of the party), logs `companion.drift` to
+`living_event_log`, and tries once per episode (a repair that does not hold is logged once more as stuck).
 
 ## Authoring
 

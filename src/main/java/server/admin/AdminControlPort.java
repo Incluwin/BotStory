@@ -210,6 +210,7 @@ public final class AdminControlPort {
                 case "/runtime/citizens":                return rCitizens();
                 case "/runtime/budget":                  return AdminBudgetReader.budget(AdminBudgetReader.gcRequested(query));
                 case "/runtime/companions":              return AdminCompanionsReader.all();
+                case "/runtime/companions/audit":        return AdminCompanionsReader.audit();
                 case "/runtime/sso-pubkey":              return AdminSsoAuth.pubkeyBlob();
                 default:
                     if (path.startsWith("/runtime/character/")) {
