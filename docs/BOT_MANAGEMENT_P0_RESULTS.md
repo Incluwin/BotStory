@@ -198,3 +198,52 @@ The queue-lag numbers above were measured with that bug live and must be re-meas
 - **The v83 login box truncates passwords to 12 characters.** Test passwords must be 12 characters or fewer.
 - **kaentake `rememberpw` shares one saved login.** It saves the last typed login (`HKCU\Software\Wizet\MapleStory` `LastPassword`/`LMA`) for every client on the PC. A second-account login therefore overwrites the owner's remembered password. After the test, the ID was restored and the test password removed. The owner types their password once.
 - **Residents route commands through their own dialogue.** A resident persona's "i don't travel" refusal is used even when the persona is already someone's companion. Commands aimed at a named persona go through ResidentDialogue first.
+
+---
+
+# P1.5 results (2026-09-28)
+
+## Branch and suite
+P1.5 is merged into `feat/companion-manager` by fast-forward to `fcd6e4f62`.
+- **Full suite:** 7415 tests with 25 failures and 4 errors, which is exactly the baseline's 29 failing tests. There are 0 new failures.
+- **After merging into the shared tree:** the P1.5 tests and the NPC-script prep tests pass. The P1.5 guard lives in `NPCScriptManager.start(...)`, which the KPQ-script session had left uncommitted. I kept that session's change and re-applied it on top by hand.
+
+## What P1.5 adds
+- **LivingTalk safety:**
+  - A speaker byte can be set per talk; bit 0x04 is refused.
+  - "More..." paging.
+  - Version-stamped option ids, so stale clicks and double clicks are ignored.
+  - No NPC_TALK is sent while a window is awaiting its reply.
+  - Stock NPC, quest and item scripts can't open over a living-world window (`StockWindowGuardTest`).
+  - Every path ends in a talk or in enableActions.
+- **Companion card.** Double-click your own companion. It shows the companion's rendered portrait and Lv, job and HP, with these options: Take a break at camp, Let someone take your place, The whole crew..., Let me see your gear, Never mind.
+- **Bench card:** Come join me, Swap in for..., Never mind.
+- **Crew window.** It opens from a card or by double-clicking the Adventurer's Roster (item 2430011) in the inventory.
+  - Speaker 2 (your own avatar).
+  - A "Party n/6" block.
+  - A "Bench (x of 9)" block with duty @ camp and banked EXP.
+  - Party rows open the companion card; bench rows open the bench card.
+- **Walk-ins and walk-outs.**
+  - A called companion loads at the nearest usable visible portal and walks in, instead of popping in.
+  - A benched companion walks out.
+  - Login restores are staggered.
+
+## Live checks
+Run 2026-09-28 on the Jevelopers client with Hadrik and Olwen (granted with `!grantcompanion`), mouse only.
+
+| Check | Result |
+|---|---|
+| Double-click own companion | **Pass.** Hadrik's own portrait appears, with the header "Hadrik, Lv31 Fighter - HP 2911/2911" and 5 options. |
+| The whole crew... | **Pass.** Party 2/6, then Hadrik; Bench (1 of 9), then "Olwen, Lv12 Beginner - train @ Lith Harbor". |
+| Bench card, then Swap in for..., then pick the outgoing member | **Pass.** Olwen asks "who should i take over from?". The outcome page reads "Hadrik heads back to camp to train. Olwen is on the way (~2 min)." Hadrik whispers "i'll be on the deck. don't take long.", then the stock "'Hadrik' have left the party.", then "Olwen>> on my way. ~2 min." |
+| Arrival | **Pass.** Olwen arrived about 110 s later ("'Olwen' has joined the party.", then "Olwen>> here."). On camera, Hadrik (swapped back) loads at Kerning's west portal (`west00`, the nearest visible portal to the owner) and walks in. |
+| 20 consecutive menu actions (5 × card, crew, bench row, close) | **Pass.** 20 NPC_TALK_MORE packets with a fresh stamp each, no stuck window, and the client stayed responsive afterwards. |
+| Roster item double-click | **Pass.** `SCRIPTED_ITEM slot=1 item=2430011` opens the Crew window. |
+| Login restore | **Pass.** Hadrik was ACTIVE at login and was already back beside the owner and in the party when first checked, a few seconds after login. |
+
+**Video:** `docs/agents/evidence/video/p15-crew-window-v0.mp4` (60 s: menus and swap, then the walk-in), cut from the 170 s raw take `p15-crew-window-v0-raw.mp4`.
+
+## Known v0 limits
+- **Swap is bench-then-call.** The party shows a hole during the ETA. P2a/P2b fixes this with join-then-travel and an atomic swap.
+- **The item still reads "Agent Summon".** The String rename ships in P3.
+- **Bench rows can show stale data while a bot walks out.** A benched companion's row can still show its map for up to 8 s while it walks out.
