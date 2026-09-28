@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  *   <li>no character is loaded twice;</li>
  *   <li>the roster matches the parties: a companion in a party is loaded, ACTIVE, and in the same party as its online
  *       owner; a loaded companion is in a party; an ACTIVE companion of an offline owner is not loaded, and one of an
- *       online owner is loaded unless a login restore found no seat for it;</li>
+ *       online owner is loaded (a login restore that finds no seat benches it with returnWhenRoom);</li>
  *   <li>a guest is in its host's party; the circuit breaker never opens and no drift is reported.</li>
  * </ul>
  */
@@ -225,8 +225,7 @@ class CompanionPartySyncPropertyTest {
             if (companion.loaded && party == 0) {
                 broken.add(companion.key + " is loaded with no party");
             }
-            if (companion.state == RosterState.ACTIVE && !companion.loaded && ownerOnline
-                    && !world.restoring.contains(companion.key)) {
+            if (companion.state == RosterState.ACTIVE && !companion.loaded && ownerOnline) {
                 broken.add(companion.key + " is ACTIVE for an online owner but not out");
             }
             if (companion.state == RosterState.ACTIVE && companion.loaded && !ownerOnline) {

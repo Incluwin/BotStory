@@ -201,7 +201,7 @@ public final class LivingTalk {
      * Sends the first page or the prompt when there are no pages. Refused with enableActions while the
      * player has another window awaiting a reply, and (unless this answers the player's click) within
      * 500 ms of the last NPC click, like stock NPC clicks. A leftover script conversation that sent no
-     * window is disposed first.
+     * window is disposed first, only on the player's own I/O thread; anywhere else it is refused.
      */
     public void show() {
         Client client = chr.getClient();
@@ -230,6 +230,9 @@ public final class LivingTalk {
     private boolean mayOpen(Client client) {
         if (!mayShow(chr)) {
             return false; // a window on screen: a second NPC_TALK disconnects the client
+        }
+        if ((client.getQM() != null || client.getCM() != null) && !client.onIoThread()) {
+            return false; // a script the player's own thread is starting may not have sent its window yet
         }
         // script conversations with no window on screen
         if (client.getQM() != null) {

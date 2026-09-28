@@ -76,7 +76,10 @@ public final class ContractService {
         return null;
     }
 
-    /** The player asked the persona to join. States terms, or completes the join when they are met. */
+    /**
+     * The player asked the persona to join. States terms, or completes the join when they are met: then the join
+     * runs on companion-ops and the persona answers from there, and this returns null (nothing to say yet).
+     */
     public String askToJoin(Character chr, Persona persona) {
         String blocker = blocker(chr, persona);
         if (blocker != null) {
@@ -112,7 +115,30 @@ public final class ContractService {
         if (!missing.isEmpty()) {
             return "not yet: " + String.join(", ", missing) + ".";
         }
-        return execute(chr, persona, contract, bond, mesoDue);
+        // the recruit writes the roster: on companion-ops (plan "CompanionExecutor"), which answers for itself
+        world.executor().submit("contract.join " + persona.id(),
+                () -> world.residents().reply(persona, chr, join(chr, persona)));
+        return null;
+    }
+
+    /**
+     * On companion-ops: the join, if the terms still stand there (a second click, a payment or another join may
+     * have come first, so nothing is charged twice).
+     */
+    private String join(Character chr, Persona persona) {
+        String blocker = blocker(chr, persona);
+        if (blocker != null) {
+            return refusal(persona, blocker, chr);
+        }
+        Contract contract = contractOf(persona);
+        Bond bond = world.bonds().bond(chr, persona);
+        if (bond.contractState() != ContractState.OFFERED || bond.offerExpiresAtMs() < System.currentTimeMillis()) {
+            return null; // the offer lapsed meanwhile; asking again names the price again
+        }
+        long mesoDue = bond.leftAtMs() > 0 ? contract.terms().rejoinMeso() : contract.price().meso();
+        List<String> missing = missing(chr, contract, bond, mesoDue);
+        return missing.isEmpty() ? execute(chr, persona, contract, bond, mesoDue)
+                : "not yet: " + String.join(", ", missing) + ".";
     }
 
     private String execute(Character chr, Persona persona, Contract contract, Bond bond, long mesoDue) {

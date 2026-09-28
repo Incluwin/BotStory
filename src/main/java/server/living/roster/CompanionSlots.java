@@ -7,6 +7,7 @@ import net.server.world.PartyEvents.PartyChangeEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRegistry;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
@@ -30,9 +31,10 @@ import java.util.function.LongSupplier;
  * (a citizen charged to the human who invited it). A reservation counts only while its holder is not a member.
  *
  * <p>Fair share (decision 14): with H online humans each is guaranteed floor((6-H)/H) seats for companions and
- * guests; the leftover seats go first come. Within one human's crew the usual lineup keeps its seats first and
- * guests are the first to step out. A leader who expels another human's companion lowers that human's cap in the
- * party until it disbands. Offline members and Agents nobody is charged for just occupy a seat.</p>
+ * guests; the leftover seats go first come. The share is also a cap: seats a friend leaves unused stay theirs, so
+ * they can call their own at any time (lending them is P9). Within one human's crew the usual lineup keeps its seats
+ * first and guests are the first to step out. A leader who expels another human's companion lowers that human's cap
+ * in the party until it disbands. Offline members and Agents nobody is charged for just occupy a seat.</p>
  *
  * <p>The seat arithmetic is pure ({@link #allocate}, {@link #free(View, int)}, {@link #makeRoom(View, int)},
  * {@link #canAdmit(View, boolean)}, {@link #decideJoin}) over a {@link View} the live methods build from a party.
@@ -143,6 +145,16 @@ public final class CompanionSlots {
     /** Seats this owner may still fill with companions or guests: in their party, or in one they would make. */
     public int free(Character owner) {
         return free(view(owner), owner.getId());
+    }
+
+    /**
+     * Seats taken where the owner is: the party's members and the seats held for its humans' companions and guests
+     * not in it yet (the owner and theirs, when partyless). Below 6 while {@link #free} is 0, the rest are a friend's
+     * share: P2a's share is a cap, and lending unused seats is P9.
+     */
+    public int occupied(Character owner) {
+        View view = view(owner);
+        return view.members().size() + view.reservations().size();
     }
 
     /** The owner's cap in {@code party} (as if they joined it, when they are not in it). */
@@ -303,8 +315,8 @@ public final class CompanionSlots {
     /**
      * The seat gate ({@code PartySeatGate}): a bot joining a party with a human must hold a reservation charged to a
      * human in it, unless the party is bot-only, the bot is nobody's (a GM tool or a fixture), or an Agent PQ runs
-     * the party (a lobby waiter's DELAY_ACCEPT, a registered engagement such as {@code !kpqtest}). A refusal is logged
-     * as {@code companion.unseated_join}.
+     * the party (a lobby waiter's DELAY_ACCEPT, a registered engagement such as {@code !kpqtest}, or a citizen a PQ
+     * coordinator's lobby sends in). A refusal is logged as {@code companion.unseated_join}.
      */
     public boolean admitsJoin(Character bot, Party party) {
         Set<Integer> humans = new HashSet<>();
@@ -318,7 +330,8 @@ public final class CompanionSlots {
         }
         String key = keyOf(bot.getId());
         JoinVerdict verdict = decideJoin(!humans.isEmpty(), world.directory().isClaimed(bot.getId()),
-                reservation(key), humans, () -> runByPartyQuest(bot, party));
+                reservation(key), humans, () -> runByPartyQuest(bot, party)
+                        || world.directory().ownerOfCharacter(bot.getId()) == 0 && ledByPartyQuest(party));
         if (verdict.admits()) {
             return true;
         }
@@ -408,6 +421,17 @@ public final class CompanionSlots {
         Character inviter = leader == null ? null : leader.getPlayer();
         return inviter != null && AgentPartyQuestLobbyRuntime.decidePartyInvite(bot, inviter)
                 == AgentPartyQuestLobbyRuntime.InviteDecision.DELAY_ACCEPT;
+    }
+
+    /**
+     * The party's leader coordinates an Agent PQ lobby or engagement. Its directed joins (the KPQ/HPQ/EPQ/LMPQ lobby
+     * admissions, AgentPartyQuestDirectedAdmissionRuntime) join first and index the member after, so the joiner is
+     * not registered yet; the gate asks this only for a bot that is nobody's roster companion.
+     */
+    private static boolean ledByPartyQuest(Party party) {
+        int leaderId = party.getLeaderId();
+        return AgentPartyQuestEngagementRegistry.forMember(leaderId) != null
+                || AgentPartyQuestLobbyRegistry.forMember(leaderId) != null;
     }
 
     // ---- pure seat arithmetic -------------------------------------------------------------

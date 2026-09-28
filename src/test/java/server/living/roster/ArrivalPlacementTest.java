@@ -465,7 +465,7 @@ class ArrivalPlacementTest {
     }
 
     @Test
-    void aRestoredCompanionFindingThePartyFullKeepsItsRowAndSaysNothing() {
+    void aRestoredCompanionFindingThePartyFullIsBenchedToWaitForRoomAndSaysSo() {
         seed("olwen", RosterState.ACTIVE);
         Party full = mock(Party.class);
         when(full.getMembers()).thenReturn(java.util.Collections.nCopies(6, mock(net.server.world.PartyCharacter.class)));
@@ -482,11 +482,11 @@ class ArrivalPlacementTest {
             later.getValue().run();
         }
 
-        // as a call leaves an ACTIVE row with no room: not benched, no whisper, no pink line
-        assertEquals(List.of(), calls);
-        assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
-        verify(residents, never()).whisper(any(), any(), anyString());
-        verify(alice, never()).dropMessage(anyInt(), anyString());
+        // its row says where it is (the auditor sees no ACTIVE row left unloaded), and it comes back by itself
+        assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
+        assertTrue(world.slots().waitingForRoom("olwen"));
+        verify(residents).whisper(OLWEN, alice, "party's full. i'll train at camp till there's room.");
+        verify(alice).dropMessage(5, "Olwen heads back to camp to train.");
     }
 
     // ---- a benched companion walks out ----------------------------------------------------------

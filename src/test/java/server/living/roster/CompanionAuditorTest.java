@@ -37,6 +37,7 @@ import server.living.roster.CompanionDriftReport.Row;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapleMap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -275,6 +276,39 @@ class CompanionAuditorTest {
             party.verify(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot));
             assertEquals(RosterState.ACTIVE, rows.row(ALICE, "olwen").state(), "the row is the truth: it stays ACTIVE");
             assertTrue(rows.saved.stream().allMatch(saved -> saved.state() == RosterState.ACTIVE), "never benched toward the party");
+        }
+
+        @Test
+        void reseatRejoinsInPlaceACompanionStandingWithItsOwnerOutsideTheParty() {
+            rows.seed(row(RosterState.ACTIVE));
+            real = new RosterService(world);
+            loaded(ALICE);
+            MapleMap field = mock(MapleMap.class);
+            when(alice.getMap()).thenReturn(field);
+            when(olwenBot.getMap()).thenReturn(field);
+            client.Client aliceClient = mock(client.Client.class);
+            when(aliceClient.getChannel()).thenReturn(1);
+            client.BotClient olwenClient = mock(client.BotClient.class);
+            when(olwenClient.getChannel()).thenReturn(1);
+            when(alice.getClient()).thenReturn(aliceClient);
+            when(olwenBot.getClient()).thenReturn(olwenClient);
+            Party ownerParty = party(PARTY);
+            PartyCharacter aliceMember = mock(PartyCharacter.class);
+            when(aliceMember.getId()).thenReturn(ALICE);
+            when(aliceMember.isOnline()).thenReturn(true);
+            when(ownerParty.getMembers()).thenReturn(List.of(aliceMember));
+            when(alice.getParty()).thenReturn(ownerParty);
+            party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot)).thenAnswer(inv -> {
+                assertEquals(CompanionSlots.Kind.TRAVEL, world.slots().reservation("olwen").kind()); // the seat gate's seat
+                return JoinOutcome.JOINED;
+            });
+
+            real.reseat(alice, OLWEN);
+
+            party.verify(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot));
+            cleanup.verifyNoInteractions(); // never unloaded in front of its owner: no pop-out
+            interaction.verifyNoInteractions(); // and never loaded again at a portal
+            assertEquals(List.of(), rows.saved, "the row is never written");
         }
 
         @Test

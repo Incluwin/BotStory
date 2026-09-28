@@ -28,13 +28,19 @@ import java.util.function.LongSupplier;
  *       step out; the humans left behind may have room for companions waiting for it;</li>
  *   <li>a disband re-forms each human's crew around its own owner;</li>
  *   <li>a human joining rebalances to fair share: guests step out first, then companions past their owner's cap are
- *       benched with returnWhenRoom;</li>
- *   <li>a leader change or a log-on changes nothing (a log-off may give the others room).</li>
+ *       benched with returnWhenRoom; a human logging back on with companions to restore does the same, so they get
+ *       their share back;</li>
+ *   <li>a seat that opens (a human leaving or logging off, a guest or an offline friend going) lets the humans left
+ *       have their waiting companions back; a host who logs off takes their guests out of the party;</li>
+ *   <li>a leader change changes nothing.</li>
  * </ul>
  * Events carrying a companion cause token are this layer's own echoes: CompanionSlots takes them into its seat
  * caches and nothing is reconciled. A circuit breaker skips a party's reconciliation after {@link #BREAKER_OPS}
- * corrections within {@link #BREAKER_WINDOW_MS} and logs {@code companion.drift}; while a member is committed to an
- * event instance its party's events wait (P2a's commitment is being in an event instance).
+ * corrections within {@link #BREAKER_WINDOW_MS} and logs {@code companion.drift}. A correction is one reconciled
+ * event, accept or make-room that changed something, however many companions it moved (a merge alone moves up to
+ * seven), so ordinary play never trips it and a loop of events does. A character committed to an event instance
+ * (P2a's commitment) is never moved: an event whose target is committed waits whole, and any other event is
+ * reconciled around the committed characters and then waits to finish once the instance ends.
  *
  * <p>It also carries out the two ways a human's accept is routed here (P0 probes 1 and 12): the merge of an owner's
  * own party into a friend's, and make-room when the friend's party is full.</p>
@@ -49,8 +55,10 @@ public final class CompanionPartySync {
     public static final String CAUSE_PREFIX = "companion.";
     public static final int BREAKER_OPS = 6;
     public static final long BREAKER_WINDOW_MS = 60_000L;
-    /** The whisper of a citizen guest stepping out for its host's crew. */
+    /** The whisper of a citizen guest stepping out for its host's crew (fair share, make-room, a merge). */
     public static final String GUEST_LINE = "you've got a full crew, catch you later!";
+    /** The whisper of a citizen guest staying behind when its host leaves the party or is expelled. */
+    public static final String HOST_LEFT_LINE = "heading off? i'll hang around here. see ya!";
     /** Events kept per party while a member is committed; the oldest go first (reconciliation reads the state as it is). */
     private static final int DEFERRED_PER_PARTY = 32;
 
@@ -128,19 +136,23 @@ public final class CompanionPartySync {
         List<String> active(int ownerId);
 
         /**
-         * Companions waiting for room, usual lineup first: ACTIVE ones not loaded (a restore that found no seat),
-         * then benched ones with returnWhenRoom that may come back into {@code partyId}.
+         * Companions waiting for room, usual lineup first: ACTIVE ones not loaded (a login restore not run yet, or
+         * one the auditor let go with no seat for it), then benched ones with returnWhenRoom that may come back into
+         * {@code partyId}.
          */
         List<String> waiting(int ownerId, int partyId);
 
-        /** Committed to an event instance: its party's events wait. */
+        /** Committed to an event instance: the sync does not move it until the instance ends. */
         boolean committed(int characterId);
 
         /** Benches the companion for {@code reason}; {@code partyId} is the party it stood down from. */
         void standDown(int ownerId, String key, Reason reason, int partyId);
 
-        /** A citizen guest leaves its host's party with {@link #GUEST_LINE}; its seat goes back. */
-        void guestLeaves(int hostId, int guestId);
+        /**
+         * A citizen guest leaves its host's party and whispers {@code line} to the host (null: nothing, the host is
+         * offline); its seat goes back.
+         */
+        void guestLeaves(int hostId, int guestId, String line);
 
         /** Gives back a seat held for someone not in the party yet. */
         void releaseSeat(String key);
@@ -172,6 +184,8 @@ public final class CompanionPartySync {
     private final Map<Integer, Deque<Long>> corrections = new HashMap<>();
     /** party id -> events waiting while a member is committed, in order. */
     private final Map<Integer, List<PartyChangeEvent>> deferred = new LinkedHashMap<>();
+    /** The reconciliation running now left a committed character alone: its event is replayed once that ends. */
+    private boolean skipped;
 
     public CompanionPartySync(Crew crew) {
         this(crew, System::currentTimeMillis);
@@ -236,12 +250,8 @@ public final class CompanionPartySync {
         boolean corrected = false;
         boolean disbanded = false;
         for (PartyChangeEvent event : events) {
-            if (committed(event)) {
-                List<PartyChangeEvent> waiting = deferred.computeIfAbsent(partyId, id -> new ArrayList<>());
-                if (waiting.size() >= DEFERRED_PER_PARTY) {
-                    waiting.remove(0);
-                }
-                waiting.add(event);
+            if (crew.committed(event.targetId())) {
+                defer(event); // its target is in an event instance: all of it waits
                 continue;
             }
             if (tripped(partyId, now)) {
@@ -249,6 +259,7 @@ public final class CompanionPartySync {
                         + BREAKER_WINDOW_MS / 1000 + " s): skipped " + event.op() + " of " + event.targetId());
                 continue;
             }
+            skipped = false;
             try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
                 corrected |= switch (event.op()) {
                     case JOIN -> joined(event);
@@ -258,11 +269,28 @@ public final class CompanionPartySync {
                     case CHANGE_LEADER, SILENT_UPDATE -> false;
                 };
             }
+            if (skipped) {
+                defer(event); // what it left alone for an event instance is reconciled once that ends
+            }
             disbanded |= event.op() == PartyOperation.DISBAND;
         }
         if (disbanded) {
             corrections.remove(partyId); // a party id is never used again
         } else if (corrected) {
+            record(partyId, now);
+        }
+    }
+
+    private void defer(PartyChangeEvent event) {
+        List<PartyChangeEvent> waiting = deferred.computeIfAbsent(event.partyId(), id -> new ArrayList<>());
+        if (waiting.size() >= DEFERRED_PER_PARTY) {
+            waiting.remove(0);
+        }
+        waiting.add(event);
+    }
+
+    private void record(int partyId, long now) {
+        if (partyId != 0) {
             corrections.computeIfAbsent(partyId, id -> new ArrayDeque<>()).addLast(now);
         }
     }
@@ -296,6 +324,15 @@ public final class CompanionPartySync {
         return false;
     }
 
+    /** True for a character committed to an event instance: it is left alone, and its event replayed later. */
+    private boolean busy(int characterId) {
+        if (characterId != 0 && crew.committed(characterId)) {
+            skipped = true;
+            return true;
+        }
+        return false;
+    }
+
     private boolean joined(PartyChangeEvent event) {
         int joiner = event.targetId();
         if (crew.onlineHuman(joiner)) {
@@ -304,7 +341,8 @@ public final class CompanionPartySync {
         }
         String key = crew.keyOf(joiner);
         int owner = crew.ownerOf(key);
-        if (owner == 0 || crew.partyOf(joiner) != event.partyId() || crew.members(event.partyId()).contains(owner)) {
+        if (owner == 0 || crew.partyOf(joiner) != event.partyId() || crew.members(event.partyId()).contains(owner)
+                || busy(owner)) {
             return false; // a guest, a citizen, an Agent, or a companion joining its owner
         }
         crew.drift(event.partyId(), key + " joined a party without its owner " + owner);
@@ -317,25 +355,26 @@ public final class CompanionPartySync {
         int target = event.targetId();
         int partyId = event.partyId();
         boolean changed = false;
+        String line = crew.onlineHuman(target) ? HOST_LEFT_LINE : null;
         for (int member : crew.members(partyId)) {
-            if (crew.hostOf(member) == target) {
-                crew.guestLeaves(target, member); // its host is gone (even offline, expelled): it does not follow
+            if (crew.hostOf(member) == target && !busy(member)) {
+                crew.guestLeaves(target, member, line); // its host is gone (even offline, expelled): it does not follow
                 changed = true;
             }
         }
         if (crew.onlineHuman(target)) {
             changed |= regroup(target);
-            for (int member : crew.members(partyId)) {
-                if (crew.onlineHuman(member)) {
-                    changed |= recallWaiting(member); // one human fewer: a bigger share for the others
-                }
-            }
-            return changed;
+            return recallOthers(partyId, 0) | changed; // one human fewer: a bigger share for the others
         }
         String key = crew.keyOf(target);
         int owner = crew.ownerOf(key);
         if (owner == 0 || !crew.onlineHuman(owner) || !crew.active(owner).contains(key)) {
-            return changed; // not a companion, its owner logged off, or the roster benched it already
+            // an offline friend, a guest, a citizen, a companion whose owner logged off or that is benched already:
+            // either way a seat opened
+            return recallOthers(partyId, 0) | changed;
+        }
+        if (busy(owner)) {
+            return changed;
         }
         int companion = crew.loaded(key);
         int at = companion == 0 ? 0 : crew.partyOf(companion);
@@ -367,18 +406,30 @@ public final class CompanionPartySync {
         return changed;
     }
 
-    /** Nothing destructive: a human coming online keeps what room there is; one going offline leaves the others room. */
+    /**
+     * Which way it went is the event's (the player may still be in storage). A human coming online with companions
+     * to restore gets their share back as a joiner does: the others' claims past their shares step out, guests first,
+     * and theirs come back; one with nothing to restore changes nothing, and a bot's log-on is nothing. A human going
+     * offline takes their guests out of the party and leaves the others room.
+     */
     private boolean loggedOnOrOff(PartyChangeEvent event) {
-        if (crew.onlineHuman(event.targetId())) {
-            return false;
+        int target = event.targetId();
+        int partyId = event.partyId();
+        if (event.targetOnline()) {
+            if (!crew.onlineHuman(target) || crew.active(target).isEmpty() && crew.waiting(target, partyId).isEmpty()) {
+                return false;
+            }
+            boolean changed = rebalance(partyId);
+            return regroup(target) | changed;
         }
         boolean changed = false;
-        for (int member : crew.members(event.partyId())) {
-            if (crew.onlineHuman(member)) {
-                changed |= recallWaiting(member);
+        for (int member : crew.members(partyId)) {
+            if (crew.hostOf(member) == target && !busy(member)) {
+                crew.guestLeaves(target, member, null); // its host is gone: it does not wait in their party
+                changed = true;
             }
         }
-        return changed;
+        return recallOthers(partyId, target) | changed;
     }
 
     // ---- accept routing (P0 probes 1 and 12) ------------------------------------------------
@@ -388,7 +439,7 @@ public final class CompanionPartySync {
      * make-room steps someone out first (guests, then companions past their owner's share). An owner in an own party
      * merges: they leave it and join, and their companions follow up to their fair share there; the rest stand
      * down with returnWhenRoom. Refused with the stock message when the player's party is shared or committed, or
-     * when nobody can step out.
+     * when nobody can step out, or while the circuit breaker is open for the party. Each accept is a correction.
      */
     public void accept(int humanId, int partyId) {
         List<Integer> target = crew.members(partyId);
@@ -406,6 +457,14 @@ public final class CompanionPartySync {
             crew.refuse(humanId, true);
             return;
         }
+        long now = clock.getAsLong();
+        if (tripped(partyId, now)) {
+            crew.drift(partyId, "circuit breaker open (" + BREAKER_OPS + " corrections within "
+                    + BREAKER_WINDOW_MS / 1000 + " s): refused the accept of " + humanId);
+            crew.refuse(humanId, full);
+            return;
+        }
+        record(partyId, now);
         try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
             if (full) {
                 CompanionSlots.MakeRoom room = CompanionSlots.makeRoom(crew.view(partyId), humanId);
@@ -416,6 +475,12 @@ public final class CompanionPartySync {
                 stepOut(room.stepOut(), partyId, Reason.MAKE_ROOM);
             }
             if (merge) {
+                // their guests step out now: the disband's echo would give their seats back only after this runs
+                for (int member : crew.members(own)) {
+                    if (crew.hostOf(member) == humanId) {
+                        crew.guestLeaves(humanId, member, GUEST_LINE);
+                    }
+                }
                 crew.leave(humanId); // their own party: as its leader this disbands it, and the echo is ignored
             }
             if (!crew.join(humanId, partyId)) {
@@ -429,15 +494,17 @@ public final class CompanionPartySync {
 
     /**
      * The Crew window's "Make room for a friend..." (P0 probe 12: a full party cannot invite): the companion steps out
-     * with returnWhenRoom. False when it is not out with its owner.
+     * with returnWhenRoom. False when it is not out with its owner. It counts as a correction in the owner's party.
      */
     public boolean makeRoom(int ownerId, String key) {
         if (!crew.active(ownerId).contains(key) || crew.loaded(key) == 0) {
             return false;
         }
+        int partyId = crew.partyOf(ownerId);
         try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
-            crew.standDown(ownerId, key, Reason.MAKE_ROOM, crew.partyOf(ownerId));
+            crew.standDown(ownerId, key, Reason.MAKE_ROOM, partyId);
         }
+        record(partyId, clock.getAsLong());
         return true;
     }
 
@@ -447,25 +514,29 @@ public final class CompanionPartySync {
     private boolean rebalance(int partyId) {
         boolean changed = false;
         for (CompanionSlots.Claim claim : CompanionSlots.allocate(crew.view(partyId)).overflow()) {
-            stepOut(claim, partyId, Reason.OVERFLOW);
-            changed = true;
+            changed |= stepOut(claim, partyId, Reason.OVERFLOW);
         }
         return changed;
     }
 
-    private void stepOut(CompanionSlots.Claim claim, int partyId, Reason reason) {
+    /** False when the claim is in an event instance, or its owner is: it steps out once that ends. */
+    private boolean stepOut(CompanionSlots.Claim claim, int partyId, Reason reason) {
+        if (busy(claim.ownerId()) || claim.member() && busy(claim.characterId())) {
+            return false;
+        }
         if (claim.guest()) {
             if (claim.member()) {
-                crew.guestLeaves(claim.ownerId(), claim.characterId());
+                crew.guestLeaves(claim.ownerId(), claim.characterId(), GUEST_LINE);
             } else {
                 crew.releaseSeat(claim.key()); // a guest that has not joined yet
             }
-            return;
+            return true;
         }
         if (!claim.member()) {
             crew.releaseSeat(claim.key()); // a seat held for a companion on its way, or away
         }
         crew.standDown(claim.ownerId(), claim.key(), reason, partyId);
+        return true;
     }
 
     /**
@@ -473,14 +544,14 @@ public final class CompanionPartySync {
      * lineup first; one with no seat left stands down with returnWhenRoom. Then the waiting ones come back.
      */
     private boolean regroup(int ownerId) {
-        if (!crew.onlineHuman(ownerId)) {
+        if (!crew.onlineHuman(ownerId) || busy(ownerId)) {
             return false;
         }
         boolean changed = false;
         for (String key : crew.active(ownerId)) {
             int companion = crew.loaded(key);
-            if (companion == 0) {
-                continue; // not out yet: a restore still waiting for room
+            if (companion == 0 || busy(companion)) {
+                continue; // not out yet (recalled below while there is room), or in an event instance
             }
             int at = crew.partyOf(companion);
             if (at != 0 && at == crew.partyOf(ownerId)) {
@@ -494,8 +565,22 @@ public final class CompanionPartySync {
         return recallWaiting(ownerId) | changed;
     }
 
+    /** A seat opened in {@code partyId}: its online humans but {@code except} have their waiting companions back. */
+    private boolean recallOthers(int partyId, int except) {
+        boolean changed = false;
+        for (int member : crew.members(partyId)) {
+            if (member != except && crew.onlineHuman(member)) {
+                changed |= recallWaiting(member);
+            }
+        }
+        return changed;
+    }
+
     /** The owner's companions waiting for room come back while the owner has seats for them. */
     private boolean recallWaiting(int ownerId) {
+        if (busy(ownerId)) {
+            return false; // not into an event instance: they come back once it ends
+        }
         boolean changed = false;
         for (String key : crew.waiting(ownerId, crew.partyOf(ownerId))) {
             if (crew.free(ownerId) <= 0) {

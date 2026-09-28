@@ -5,6 +5,7 @@ import net.packet.Packet;
 import net.server.coordinator.world.InviteCoordinator;
 import net.server.coordinator.world.InviteCoordinator.InviteType;
 import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import server.TimerManager;
 import server.integration.AgentPresence;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRegistry;
@@ -39,6 +40,9 @@ public final class CompanionPartyRouter {
         ANSWERED
     }
 
+    /** A companion's answer when its owner's share of a shared party is used and the other seats are a friend's. */
+    static final String SHARE_USED_LINE = "the other seats are your friend's. bench one of us first.";
+
     private final LivingWorld world;
 
     public CompanionPartyRouter(LivingWorld world) {
@@ -67,6 +71,7 @@ public final class CompanionPartyRouter {
      * The companion answers for itself (a whisper), and the stock join notice announces it; nothing is printed.
      */
     private Route ownCompanion(Character owner, Character loaded, RosterEntry entry) {
+        Persona persona = world.content().persona(entry.personaId());
         if (loaded != null && entry.state() == RosterState.ACTIVE) {
             if (!ownParty(owner)) {
                 return Route.ANSWERED;
@@ -74,16 +79,15 @@ public final class CompanionPartyRouter {
             // out with you but not in the party: the stock invite seats it on a seat held for the join
             if (loaded.getParty() == null && !(world.roster().canSeat(owner, entry) && world.slots().reserve(owner.getId(),
                     entry.personaId(), CompanionSlots.Kind.TRAVEL, System.currentTimeMillis() + CompanionSlots.SEAT_HOLD_MS))) {
-                return answer(owner, PacketCreator.partyStatusMessage(17));
+                return noSeat(owner, persona);
             }
             return Route.ACCEPT;
         }
-        Persona persona = world.content().persona(entry.personaId());
         if (persona == null) {
             return notFound(owner);
         }
         if (!world.roster().canSeat(owner, entry)) {
-            return answer(owner, PacketCreator.partyStatusMessage(17));
+            return noSeat(owner, persona);
         }
         // checked, not admitted: the roster load itself takes the owner's load slot
         CompanionBudget.Admission admission = CompanionBudget.decide(CompanionBudget.Kind.COMPANION,
@@ -108,8 +112,9 @@ public final class CompanionPartyRouter {
     private boolean mergeInvite(Character inviter, Character invited) {
         Party theirs = invited.getParty();
         Party ours = inviter.getParty();
-        if (theirs == null || ours != null && ours.getId() == theirs.getId() || !world.directory().isCompanionParty(theirs)) {
-            return false;
+        if (theirs == null || ours != null && ours.getId() == theirs.getId() || !world.directory().isCompanionParty(theirs)
+                || inEventInstance(theirs)) {
+            return false; // the stock "already in a party": a party in a run is not asked to merge (its accept could not)
         }
         if (ours == null && !Party.createParty(inviter, false)) {
             return true; // the stock refusal (a beginner, a coliseum) was sent
@@ -180,20 +185,25 @@ public final class CompanionPartyRouter {
         }
         Party party = inviter.getParty();
         if (world.roster().freeSlots(inviter) <= 0) { // a guest takes one of the inviter's own seats
-            return answer(inviter, PacketCreator.partyStatusMessage(17));
+            // at 6/6 the stock "full"; with the open seats a friend's share, the citizen declines like a player
+            return world.slots().occupied(inviter) >= CompanionSlots.PARTY_CAP
+                    ? answer(inviter, PacketCreator.partyStatusMessage(17))
+                    : answer(inviter, PacketCreator.partyStatusMessage(23, citizen.getName()));
         }
         if (!InviteCoordinator.createInvite(InviteType.PARTY, inviter, party.getId(), citizen.getId())) {
             return answer(inviter, PacketCreator.partyStatusMessage(22, citizen.getName()));
         }
         int partyId = party.getId();
-        later(() -> acceptInvite(inviter, citizen, partyId));
+        // the GUEST seat and the join are companion mutations: on companion-ops, the timer only hands them over
+        later(() -> world.executor().submit("citizen.accept " + citizen.getId(),
+                () -> acceptInvite(inviter, citizen, partyId)));
         return Route.ANSWERED;
     }
 
     /**
-     * The citizen's yes, if it still stands: both online, the citizen partyless, the inviter's party with a seat for
-     * it. The seat is a GUEST reservation charged to the inviter, taken before the join (the party's seat gate asks
-     * for it) and given back when the guest leaves the party.
+     * The citizen's yes, if it still stands, on companion-ops: both online, the citizen partyless, the inviter's party
+     * with a seat for it. The seat is a GUEST reservation charged to the inviter, taken before the join (the party's
+     * seat gate asks for it) and given back when the guest leaves the party.
      */
     private void acceptInvite(Character inviter, Character citizen, int partyId) {
         Party party = inviter.getParty();
@@ -226,7 +236,7 @@ public final class CompanionPartyRouter {
             return Route.STOCK;
         }
         if (world.roster().freeSlots(inviter) <= 0) {
-            return answer(inviter, PacketCreator.partyStatusMessage(17));
+            return noSeat(inviter, null);
         }
         if (!world.budget().admit(CompanionBudget.Kind.COMPANION, inviter).allowed()) {
             inviter.dropMessage(5, "No Agent can be loaded for you right now.");
@@ -238,6 +248,32 @@ public final class CompanionPartyRouter {
     /** Like stock op 4, the inviter's party is made first; below level 10 it is a starter party for their companions. */
     private static boolean ownParty(Character owner) {
         return owner.getParty() != null || Party.createParty(owner, false, true);
+    }
+
+    /**
+     * No seat for one more of the owner's: the stock "full" (17) while the party is at 6/6. With seats open they are a
+     * friend's share (P2a's share is a cap; lending is P9), so the companion says so in character, or pink text.
+     */
+    private Route noSeat(Character owner, Persona speaker) {
+        if (world.slots().occupied(owner) >= CompanionSlots.PARTY_CAP) {
+            return answer(owner, PacketCreator.partyStatusMessage(17));
+        }
+        if (speaker != null) {
+            world.residents().whisper(speaker, owner, SHARE_USED_LINE);
+        } else {
+            owner.dropMessage(5, "The other seats in this party are your friend's.");
+        }
+        return Route.ANSWERED;
+    }
+
+    private static boolean inEventInstance(Party party) {
+        for (PartyCharacter member : party.getPartyMembersOnline()) {
+            Character player = member.getPlayer();
+            if (player != null && player.getEventInstance() != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** A PQ lobby or queue decides this Agent's invites, as before. */

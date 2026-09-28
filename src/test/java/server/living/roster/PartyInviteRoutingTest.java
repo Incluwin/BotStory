@@ -47,6 +47,7 @@ import java.lang.reflect.Constructor;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -137,6 +138,8 @@ class PartyInviteRoutingTest extends HandlerTest {
         when(roster.canSeat(any(), any())).thenAnswer(inv -> ((RosterEntry) inv.getArgument(1)).state() == RosterState.AWAY
                 || roster.freeSlots(inv.getArgument(0)) > 0);
         when(living.slots()).thenReturn(slots);
+        // a party of Ann and her own crew unless a test says otherwise: no seat left means 6/6
+        when(slots.occupied(chr)).thenAnswer(inv -> CompanionSlots.PARTY_CAP - roster.freeSlots(chr));
         when(slots.keyOf(anyInt())).thenAnswer(inv -> CompanionSlots.characterKey(inv.getArgument(0)));
         when(slots.reserve(anyInt(), anyString(), any(), anyLong())).thenReturn(true);
         when(olwen.id()).thenReturn("olwen");
@@ -183,6 +186,20 @@ class PartyInviteRoutingTest extends HandlerTest {
         invite("Olwen");
 
         assertStatus(PacketCreator.partyStatusMessage(17));
+        verify(roster, never()).call(any(), any());
+        nothingSpawnedOrSeated();
+    }
+
+    @Test
+    void yourCompanionPastYourShareOfASharedPartySaysTheOtherSeatsAreYourFriends() {
+        offline("Olwen", new Relation.OwnCompanion(row(RosterState.BENCHED)));
+        when(roster.freeSlots(chr)).thenReturn(0);
+        when(slots.occupied(chr)).thenReturn(5); // 5/6: the open seat is Ben's share
+
+        invite("Olwen");
+
+        verify(residents).whisper(olwen, chr, CompanionPartyRouter.SHARE_USED_LINE);
+        verify(chr, never()).sendPacket(any()); // not the stock "full" while the party window shows a seat
         verify(roster, never()).call(any(), any());
         nothingSpawnedOrSeated();
     }
@@ -439,6 +456,41 @@ class PartyInviteRoutingTest extends HandlerTest {
     }
 
     @Test
+    void aCitizenPastYourShareOfASharedPartyDeclinesLikeAPlayer() {
+        Character mira = bot(MIRA, "Mira", 30);
+        online("Mira", mira, new Relation.Citizen(MIRA));
+        when(roster.freeSlots(chr)).thenReturn(0);
+        when(slots.occupied(chr)).thenReturn(4);
+
+        invite("Mira");
+
+        assertStatus(PacketCreator.partyStatusMessage(23, "Mira"));
+        nothingSpawnedOrSeated();
+    }
+
+    @Test
+    void aCitizensYesRunsOnCompanionOpsNotOnTheTimer() {
+        Character mira = bot(MIRA, "Mira", 30);
+        online("Mira", mira, new Relation.Citizen(MIRA));
+        invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, MIRA)).thenReturn(true);
+        when(chr.isLoggedinWorld()).thenReturn(true);
+        when(mira.isLoggedinWorld()).thenReturn(true);
+        List<Runnable> queue = DirectExecutor.queue();
+        CompanionExecutor ops = DirectExecutor.queued(queue);
+        when(living.executor()).thenReturn(ops);
+
+        invite("Mira");
+        answerLater(); // the timer only hands the answer over
+
+        verify(slots, never()).reserve(anyInt(), anyString(), any(), anyLong());
+        parties.verify(() -> Party.joinParty(any(), anyInt(), anyBoolean()), never());
+        assertEquals(1, queue.size());
+        queue.get(0).run();
+        verify(slots).reserve(ANN, CompanionSlots.characterKey(MIRA), CompanionSlots.Kind.GUEST, Long.MAX_VALUE);
+        parties.verify(() -> Party.joinParty(mira, PARTY_ID, false));
+    }
+
+    @Test
     void aCitizenWhoFoundAPartyMeanwhileDoesNotJoin() {
         Character mira = bot(MIRA, "Mira", 30);
         online("Mira", mira, new Relation.Citizen(MIRA));
@@ -543,6 +595,26 @@ class PartyInviteRoutingTest extends HandlerTest {
         assertArrayEquals(PacketCreator.partyInvite(chr).getBytes(), sent.getValue().getBytes());
         verify(chr, never()).sendPacket(any());
         verify(client, never()).sendPacket(any());
+    }
+
+    @Test
+    void aHumanRunningAnEventWithTheirCompanionsIsNotAskedToMerge() {
+        Character ben = human(20, "Ben");
+        Party bens = partyOf(ben, 88, 3);
+        when(directory.isCompanionParty(bens)).thenReturn(true);
+        PartyCharacter inTheRun = mock(PartyCharacter.class);
+        Character benInside = human(20, "Ben");
+        when(benInside.getEventInstance()).thenReturn(mock(EventInstanceManager.class));
+        when(inTheRun.getPlayer()).thenReturn(benInside);
+        when(bens.getPartyMembersOnline()).thenReturn(List.of(inTheRun));
+        online("Ben", ben, new Relation.Human(20));
+
+        invite("Ben");
+
+        ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
+        verify(client).sendPacket(sent.capture()); // the stock "already in a party", as without companions
+        assertArrayEquals(PacketCreator.partyStatusMessage(16).getBytes(), sent.getValue().getBytes());
+        verify(ben, never()).sendPacket(any());
     }
 
     @Test

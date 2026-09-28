@@ -497,6 +497,11 @@ public final class RosterService {
         if (arrival != null) {
             walkToOwner(result.agent()); // only once it is in the party
         }
+        RosterEntry row = world.store().rosterEntry(entry.characterId(), entry.personaId());
+        if (row == null || row.state() == RosterState.RELEASED) {
+            despawn(entry, "released meanwhile"); // never write a released row back from the snapshot
+            return new RosterResult.NotOwned();
+        }
         // bench slices and the ledger rewrite the row behind the caller's snapshot, and applyAccrued zeroes the
         // banked EXP: both saves start from the row as it is now, so the EXP can never be granted twice
         world.bench().applyAccrued(current(entry), result.agent());
@@ -544,13 +549,17 @@ public final class RosterService {
             return;
         }
         // the party may have filled while this one waited; an AWAY or travelling companion kept its seat, and a
-        // restored ACTIVE one keeps its row and waits for room as call() leaves it, instead of being benched
+        // restored ACTIVE one with no seat left is benched with returnWhenRoom, so its row says where it is and it
+        // comes back by itself once there is room
         boolean full = !canSeat(owner, entry);
+        RosterResult outcome;
         if (full && state == RosterState.ACTIVE) {
-            return;
+            outcome = standDown(owner, persona, overflowLine(persona, ownerId), "companion.overflow");
+            world.slots().waitForRoom(persona.id(), 0);
+        } else {
+            outcome = full ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full", couldNotJoin(persona))
+                    : spawnCompanion(owner, persona, entry, null);
         }
-        RosterResult outcome = full ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full", couldNotJoin(persona))
-                : spawnCompanion(owner, persona, entry, null);
         if (!seatedWith(owner, current(entry))) {
             owner.dropMessage(5, RosterVoice.line(persona, outcome));
         }
@@ -596,6 +605,16 @@ public final class RosterService {
     public RosterResult bench(Character owner, Persona persona) {
         world.slots().stopWaiting(persona.id()); // benched on purpose: it does not come back by itself
         return standDown(owner, persona, null, "roster.bench");
+    }
+
+    /** What a companion with no seat left whispers: its own words for it, else where its duty takes it. */
+    public String overflowLine(Persona persona, int ownerId) {
+        List<String> lines = world.arcs().lines(persona, "overflow");
+        if (!lines.isEmpty()) {
+            return lines.get(Math.floorMod(ownerId, lines.size()));
+        }
+        RosterEntry entry = world.store().rosterEntry(ownerId, persona.id());
+        return "party's full. i'll " + (entry == null ? "train" : describeAssignment(entry)) + " at camp till there's room.";
     }
 
     /**
@@ -966,16 +985,44 @@ public final class RosterService {
 
     /**
      * An ACTIVE row whose companion is not loaded, not in the owner's party, not led by the owner or on another
-     * channel: whatever holds it lets go, and it is seated again the way login restores it, in the owner's party now.
+     * channel. One that follows the owner on their map and channel and is only out of the party rejoins where it
+     * stands (no pop-out). Anything else: whatever holds it lets go, and it is seated again the way login restores
+     * it, in the owner's party now.
      */
     public void reseat(Character owner, Persona persona) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() != RosterState.ACTIVE || inFlight(owner.getId(), persona.id())) {
             return;
         }
+        Character bot = companion(entry);
+        if (bot != null && owner.getMap() != null && bot.getMap() == owner.getMap() && bot.getClient() != null
+                && owner.getClient() != null && bot.getClient().getChannel() == owner.getClient().getChannel()
+                && AgentRuntimeRegistry.leaderIdForAgentCharacter(bot.getId()) == owner.getId()
+                && !sameParty(owner, bot) && canSeat(owner, entry)) {
+            rejoin(owner, entry, bot);
+            return;
+        }
         despawn(entry, "audit: reseat");
-        if (canSeat(owner, entry)) { // with no room the row waits for it, as a login restore leaves it
+        if (canSeat(owner, entry)) { // with no room the row waits: the sync recalls it once its owner has room
             spawnCompanion(owner, persona, entry, null);
+        }
+    }
+
+    /** The companion standing with its owner joins the owner's party again on a seat held for the join. */
+    private void rejoin(Character owner, RosterEntry entry, Character bot) {
+        if (owner.getParty() == null && !Party.createParty(owner, true, true)) {
+            return;
+        }
+        if (!world.slots().reserve(owner.getId(), entry.personaId(), CompanionSlots.Kind.TRAVEL,
+                System.currentTimeMillis() + CompanionSlots.SEAT_HOLD_MS)) {
+            return;
+        }
+        if (bot.getParty() != null) {
+            leaveParty(bot, entry);
+        }
+        JoinOutcome joined = AgentPartyLifecycleService.joinAgentToLeaderParty(owner, bot);
+        if (joined != JoinOutcome.JOINED && joined != JoinOutcome.ALREADY_MEMBER) {
+            world.slots().release(entry.personaId(), CompanionSlots.Kind.TRAVEL);
         }
     }
 

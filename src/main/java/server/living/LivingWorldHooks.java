@@ -119,7 +119,8 @@ public final class LivingWorldHooks {
             return;
         }
         try {
-            world.roster().onOwnerLogin(chr);
+            // on companion-ops behind any logout still queued (a channel change), so the restore sees it done
+            world.executor().submit("roster.login " + chr.getId(), () -> world.roster().onOwnerLogin(chr));
             world.questLog().reconcile(chr);
         } catch (RuntimeException failure) {
             log.warn("living world login hook failed", failure);
@@ -134,7 +135,13 @@ public final class LivingWorldHooks {
         try {
             server.living.resident.LivingTalk.forget(chr);
             // on companion-ops ahead of the owner's LOG_ONOFF, which the logout publishes right after this hook
-            world.executor().submit("roster.logout " + chr.getId(), () -> world.roster().onOwnerLogout(chr));
+            world.executor().submit("roster.logout " + chr.getId(), () -> {
+                Character back = world.roster().onlineCharacter(chr.getId());
+                world.roster().onOwnerLogout(chr); // its companions follow this session: they go with it
+                if (back != null && back != chr) {
+                    world.roster().onOwnerLogin(back); // logged in again meanwhile (a channel change): restored there
+                }
+            });
             world.markers().loggedOut(chr);
         } catch (RuntimeException failure) {
             log.warn("living world logout hook failed", failure);
@@ -164,7 +171,8 @@ public final class LivingWorldHooks {
             return;
         }
         try {
-            world.contracts().onOwnerDied(chr);
+            // a third death releases a companion: the roster is written on companion-ops
+            world.executor().submit("contract.owner_died " + chr.getId(), () -> world.contracts().onOwnerDied(chr));
             server.living.population.PopulationHooks.died(chr);
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);

@@ -69,7 +69,9 @@ public final class GrantCompanionCommand extends Command {
             gm.yellowMessage("'" + owner.getName() + "' is a bot; companions belong to players.");
             return;
         }
-        gm.yellowMessage(world.roster().grant(owner, persona));
+        // roster rows are written on companion-ops (plan "CompanionExecutor")
+        world.executor().submit("gm.grant " + persona.id(),
+                () -> gm.yellowMessage(world.roster().grant(owner, persona)));
     }
 
     /** A content persona by id. Hired citizens ({@code hire:<cid>}) and citizens are refused until P4. */
@@ -100,6 +102,7 @@ public final class GrantCompanionCommand extends Command {
             gm.yellowMessage(persona.name() + "'s owner (character " + ownerId + ") must be online.");
             return;
         }
-        gm.yellowMessage(owner.getName() + ": " + world.roster().release(owner, persona, "gm release"));
+        world.executor().submit("gm.release " + persona.id(),
+                () -> gm.yellowMessage(owner.getName() + ": " + world.roster().release(owner, persona, "gm release")));
     }
 }

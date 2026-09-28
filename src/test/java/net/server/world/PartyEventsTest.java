@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -144,6 +145,22 @@ class PartyEventsTest {
         assertEquals(List.of(ANN, BEN), events.get(0).after().memberIds());
         assertEquals(PartyOperation.LEAVE, events.get(1).op());
         assertEquals(List.of(ANN), events.get(1).after().memberIds());
+    }
+
+    @Test
+    void aLogOnOrOffSaysWhichWayItWentFromThePartyRecord() {
+        party.addMember(new PartyCharacter(ben));
+        PartyCharacter leaving = new PartyCharacter(ben);
+        leaving.setOnline(false); // as the logout writes it, while Ben may still be in player storage
+        PartyCharacter back = new PartyCharacter(ben);
+        back.setOnline(true);
+
+        world.updateParty(party.getId(), PartyOperation.LOG_ONOFF, leaving);
+        world.updateParty(party.getId(), PartyOperation.LOG_ONOFF, back);
+
+        assertEquals(2, events.size());
+        assertFalse(events.get(0).targetOnline());
+        assertTrue(events.get(1).targetOnline());
     }
 
     @Test

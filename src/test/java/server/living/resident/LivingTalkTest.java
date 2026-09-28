@@ -55,6 +55,7 @@ class LivingTalkTest {
         when(chr.getClient()).thenReturn(client);
         when(client.getPlayer()).thenReturn(chr);
         when(client.canClickNPC()).thenReturn(true);
+        when(client.onIoThread()).thenReturn(true); // shown on the player's own packet thread unless a test says not
     }
 
     @AfterEach
@@ -238,6 +239,20 @@ class LivingTalkTest {
 
         verify(script).dispose();
         assertEquals("hi", lastTalk().text());
+    }
+
+    @Test
+    void offThePlayersOwnThreadAScriptConversationIsNeverDisposedAndTheTalkIsRefused() {
+        NPCConversationManager starting = mock(NPCConversationManager.class); // its engine still building, no window yet
+        when(client.getCM()).thenReturn(starting);
+        when(client.onIoThread()).thenReturn(false);
+
+        LivingTalk.open(chr, NPC).ok("from companion-ops").show();
+
+        verify(starting, never()).dispose();
+        assertTrue(NpcTalks.isEnableActions(lastPacket()));
+        assertEquals(0, NpcTalks.talks(sent()).size());
+        assertFalse(LivingTalk.active(client));
     }
 
     @Test

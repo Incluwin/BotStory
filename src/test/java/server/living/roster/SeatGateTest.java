@@ -21,7 +21,11 @@ import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestCandidateScope;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyProfile;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRegistry;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbySession;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService.AgentSpawnResult;
 import server.agents.runtime.AgentRuntimeCleanupService;
@@ -276,6 +280,29 @@ class SeatGateTest {
                     .thenReturn(AgentPartyQuestLobbyRuntime.InviteDecision.DELAY_ACCEPT);
 
             assertTrue(slots.admitsJoin(mira, party(leader)));
+        }
+    }
+
+    @Test
+    void aCitizenACoordinatorsLobbySendsInJoinsBeforeTheLobbyIndexesIt() {
+        int recruiter = 951; // a citizen leading a KPQ lobby party a human has joined
+        AgentPartyQuestLobbySession lobby = new AgentPartyQuestLobbySession("engagement-seat-gate",
+                new AgentPartyQuestLobbyProfile("kpq", 1000, 9000, 21, 30, 4, -50, 50, List.of(), List.of(), List.of()),
+                7L, recruiter, 4, AgentPartyQuestCandidateScope.ANY_ELIGIBLE_HUMAN, 1_000L);
+        lobby.addMember(recruiter, AgentPartyQuestLobbySession.MemberType.AGENT,
+                AgentPartyQuestLobbySession.MemberRole.RECRUITING_LEADER, 1_000L);
+        AgentPartyQuestLobbyRegistry.register(lobby);
+        try {
+            Party party = party(member(recruiter, true), member(ANN, false));
+            when(directory.isClaimed(recruiter)).thenReturn(true);
+
+            // the directed join (AgentKpqLobbyAdmissionRuntime.join) joins first and indexes the member after
+            assertNull(AgentPartyQuestLobbyRegistry.forMember(MIRA));
+            assertTrue(slots.admitsJoin(bot(MIRA), party));
+            // a roster companion is still nobody a lobby may send in
+            assertFalse(slots.admitsJoin(bot(OLWEN_CHARACTER), party));
+        } finally {
+            AgentPartyQuestLobbyRegistry.remove(lobby);
         }
     }
 

@@ -28,7 +28,8 @@ class MergeTest {
             .companion("hadrik", 104, ANN, 3).companion("tobi", 105, ANN, 4)
             .companion("kai", 201, BEN, 0).companion("lune", 202, BEN, 1).companion("sol", 203, BEN, 2)
             .companion("pip", 204, BEN, 3)
-            .companion("ash", 301, CARL, 0).companion("elm", 302, CARL, 1);
+            .companion("ash", 301, CARL, 0).companion("elm", 302, CARL, 1)
+            .citizen(950);
 
     @Test
     void twoFriendsOneParty() {
@@ -48,6 +49,25 @@ class MergeTest {
         assertEquals(List.of("leave 1", "join 1 " + bens, "seat vex", "seat olwen",
                 "OVERFLOW brin", "OVERFLOW hadrik", "OVERFLOW tobi"), world.changes);
         assertEquals(List.of(), world.drifts);
+    }
+
+    @Test
+    void herGuestStepsOutBeforeTheMergeSoItsSeatIsNotHeldAgainstHerShare() {
+        int anns = out(ANN, "vex", "olwen", "brin", "hadrik");
+        assertTrue(world.inviteCitizen(ANN, 950)); // 6/6: Ann, four of hers and her guest
+        world.settle();
+        int bens = out(BEN, "kai", "lune");
+
+        world.accept(ANN, bens);
+        world.settle();
+
+        assertFalse(world.parties.containsKey(anns));
+        assertEquals(0, world.partyOf(950));
+        assertEquals(List.of(CompanionPartySync.GUEST_LINE), world.guestLines);
+        // her two seats go to Vex and Olwen, not to a seat still held for the guest: the party is full, not 5/6
+        assertEquals(List.of(BEN, 201, 202, ANN, 101, 102), world.members(bens));
+        assertEquals(List.of("guest 950", "leave 1", "join 1 " + bens, "seat vex", "seat olwen",
+                "OVERFLOW brin", "OVERFLOW hadrik"), world.changes);
     }
 
     @Test

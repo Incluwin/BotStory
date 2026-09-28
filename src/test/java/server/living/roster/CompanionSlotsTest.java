@@ -347,7 +347,7 @@ class CompanionSlotsTest {
         assertEquals(0, slots.free(ann));
 
         slots.onPartyChanged(new PartyChangeEvent(party.getId(), PartyOperation.DISBAND, BEN, BEN,
-                new Snapshot(List.of(ANN, BEN, 101), BEN), Snapshot.EMPTY, null));
+                new Snapshot(List.of(ANN, BEN, 101), BEN), Snapshot.EMPTY, null, true));
         assertEquals(0, slots.leaderCut(party.getId(), ANN));
         assertEquals(1, slots.free(ann));
     }
@@ -359,7 +359,7 @@ class CompanionSlotsTest {
         slots.reserve(ANN, "hadrik", Kind.AWAY, FOREVER);
 
         slots.onPartyChanged(new PartyChangeEvent(party.getId(), PartyOperation.DISBAND, ANN, ANN,
-                new Snapshot(List.of(ANN, 950), ANN), Snapshot.EMPTY, null));
+                new Snapshot(List.of(ANN, 950), ANN), Snapshot.EMPTY, null, true));
 
         assertNull(slots.reservation(CompanionSlots.characterKey(950)));
         assertEquals(Kind.AWAY, slots.reservation("hadrik").kind()); // an errand's seat goes with its owner
@@ -443,6 +443,6 @@ class CompanionSlotsTest {
 
     private static PartyChangeEvent event(Party party, PartyOperation op, int targetId) {
         Snapshot now = new Snapshot(List.of(), party.getLeaderId());
-        return new PartyChangeEvent(party.getId(), op, targetId, 0, now, now, null);
+        return new PartyChangeEvent(party.getId(), op, targetId, 0, now, now, null, true);
     }
 }

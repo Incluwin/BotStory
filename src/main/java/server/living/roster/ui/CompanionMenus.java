@@ -1,6 +1,7 @@
 package server.living.roster.ui;
 
 import client.Character;
+import client.Client;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.resident.LivingTalk;
@@ -28,8 +29,8 @@ import java.util.function.Supplier;
  * entry point asks {@link LivingTalk#mayShow} before it reads any rows. Only the viewer's own companions are listed;
  * every action goes through {@link RosterService} (bench, call, swap) and so behind the P1 guards, as a command on
  * companion-ops (plan P2a). The companion speaks on its card and its pickers; what an action did is the last window,
- * written in the player's notes like the Crew window (OK closes it), or the companion's whisper when a window cannot
- * open by the time the command is done.
+ * written in the player's notes like the Crew window (OK closes it), or pink text when a window cannot open by the
+ * time the command is done or the command took long.
  */
 public final class CompanionMenus {
     /** The Crew window reads as the player's own notes: their avatar on the right (P0 probe 5b). */
@@ -39,6 +40,8 @@ public final class CompanionMenus {
      * rendered portrait of its own. Never a borrowed townsperson, never 9010000 (the portrait policy).
      */
     static final int BOARD_NPC = 9040011;
+    /** An action done later than this after its click answers in pink text: no window pops up mid-fight. */
+    static final long LATE_OUTCOME_MS = 1_000L;
 
     private final LivingWorld world;
     private final IntFunction<String> placeNames;
@@ -70,7 +73,7 @@ public final class CompanionMenus {
         List<Option> options = new ArrayList<>();
         // the last one out is benched only by someone holding the Roster, which calls anyone back; else it is rotated
         if (rows(owner, true).size() != 1 || holdsRosterBook(owner)) {
-            options.add(new Option("Take a break at camp", () -> command(owner, persona, "menu.bench",
+            options.add(new Option("Take a break at camp", () -> command(owner, "menu.bench",
                     () -> RosterVoice.line(persona, world.roster().bench(owner, persona)))));
         }
         if (!rows(owner, false).isEmpty()) {
@@ -123,7 +126,7 @@ public final class CompanionMenus {
         if (!party.isEmpty() && owner.getParty() != null && owner.getParty().getMembers().size() >= RosterService.PARTY_CAP) {
             options.add(new Option("Make room for a friend...", () -> makeRoomPicker(owner)));
         }
-        int seats = RosterService.PARTY_CAP - world.roster().freeSlots(owner); // a companion sent away keeps its seat
+        int seats = world.slots().occupied(owner); // the members, and the seats kept for those away or on their way
         LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER)
                 .menu("#eParty " + seats + "/" + RosterService.PARTY_CAP + "#n", options)
                 .show();
@@ -145,13 +148,18 @@ public final class CompanionMenus {
         LivingTalk.open(owner, portrait(persona)).menu(header(view) + status + "\r\n", options).show();
     }
 
-    /** With the party full the companion asks whom to take over from; it is never sent for a seat that is not there. */
+    /**
+     * With no seat for it the companion asks whom to take over from; it is never sent for a seat that is not there.
+     * In a shared party the open seats may be a friend's share (lending them is P9), and it says so.
+     */
     private void join(Character owner, Persona persona, RosterEntry entry) {
         if (!world.roster().canSeat(owner, entry)) {
-            swapPicker(owner, persona, false, "your party's full. who should i take over from?");
+            swapPicker(owner, persona, false, world.slots().occupied(owner) >= RosterService.PARTY_CAP
+                    ? "your party's full. who should i take over from?"
+                    : "the other seats are your friend's. who should i take over from?");
             return;
         }
-        command(owner, persona, "menu.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
+        command(owner, "menu.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
     }
 
     /** Whom of yours to step out for a friend: they bench and come back once there is room again. */
@@ -160,7 +168,7 @@ public final class CompanionMenus {
         for (RosterEntry entry : rows(owner, true)) {
             Persona persona = world.content().persona(entry.personaId());
             if (persona != null) {
-                options.add(new Option(partyRow(view(entry)), () -> command(owner, persona, "menu.make_room",
+                options.add(new Option(partyRow(view(entry)), () -> command(owner, "menu.make_room",
                         () -> world.partySync().makeRoom(owner.getId(), persona.id())
                                 ? persona.name() + " steps out to make room for your friend."
                                 : persona.name() + " is not out with you right now.")));
@@ -182,7 +190,7 @@ public final class CompanionMenus {
                 continue;
             }
             CompanionView view = view(entry);
-            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> command(owner, fixed, "menu.swap",
+            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> command(owner, "menu.swap",
                     () -> RosterVoice.line(fixed, outgoing ? world.roster().swap(owner, fixed, other)
                             : world.roster().swap(owner, other, fixed)))));
         }
@@ -214,17 +222,26 @@ public final class CompanionMenus {
 
     /**
      * Runs a roster action on companion-ops; the click's window has closed by then (the client's actions came back).
-     * Its line is the notes' last page when a window may open now, else {@code speaker} whispers it: nothing is ever
-     * sent over a window awaiting its reply.
+     * Its line is answered on the owner's own packet thread, so the check and the window are one step against their
+     * NPC clicks: the notes' last page when a window may open and the action was quick, else pink text (the
+     * companion's own words were said by the verb). Nothing is ever sent over a window awaiting its reply, and no
+     * window pops up long after the click.
      */
-    private void command(Character owner, Persona speaker, String name, Supplier<String> action) {
+    private void command(Character owner, String name, Supplier<String> action) {
+        long clickedAtMs = System.currentTimeMillis();
         world.executor().submit(name, () -> {
             String line = action.get();
-            if (LivingTalk.mayShow(owner)) {
-                outcome(owner, line);
-            } else {
-                world.residents().whisper(speaker, owner, line);
+            Client client = owner.getClient();
+            if (client == null) {
+                return; // logged off meanwhile
             }
+            client.runOnIoThread(() -> {
+                if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS && LivingTalk.mayShow(owner)) {
+                    outcome(owner, line);
+                } else {
+                    owner.dropMessage(5, line);
+                }
+            });
         });
     }
 

@@ -101,7 +101,8 @@ class CompanionPartySyncTest {
         world.partyOf.put(101, bens);
 
         world.sync.onPartyChanged(new PartyChangeEvent(bens, PartyOperation.JOIN, 101, 0,
-                new PartyEvents.Snapshot(List.of(BEN, 201), BEN), new PartyEvents.Snapshot(List.of(BEN, 201, 101), BEN), null));
+                new PartyEvents.Snapshot(List.of(BEN, 201), BEN), new PartyEvents.Snapshot(List.of(BEN, 201, 101), BEN), null,
+                true));
         world.settle();
 
         assertEquals(1, world.drifts.size());
@@ -151,6 +152,7 @@ class CompanionPartySyncTest {
         assertEquals(List.of(ANN, 101), world.members(anns));
         assertEquals(List.of(BEN, 201), world.members(shared));
         assertEquals(List.of("guest " + MIRA, "seat vex"), world.changes); // her guest does not follow
+        assertEquals(List.of(CompanionPartySync.HOST_LEFT_LINE), world.guestLines); // and does not claim a full crew
         assertEquals(RosterState.ACTIVE, world.companion("vex").state);
     }
 
@@ -248,6 +250,34 @@ class CompanionPartySyncTest {
 
         assertEquals(List.of("seat vex"), world.changes);
         assertEquals(List.of(ANN, 101), world.members(party(ANN)));
+    }
+
+    @Test
+    void aFriendAloneInAnEventInstanceDoesNotHoldUpTheCrewOfSomeoneWhoLeaves() {
+        out(BEN, "kai", "lune", "sol");
+        world.accept(ANN, party(BEN)); // Ben's Sol steps out for fair share
+        world.settle();
+        world.call(ANN, "vex");
+        world.settle();
+        int shared = party(BEN);
+        world.committed.add(BEN); // Ben is in a solo quest instance; Ann and her crew are outside
+        world.changes.clear();
+
+        world.quit(ANN);
+        world.settle();
+
+        assertEquals(List.of("seat vex"), world.changes); // Ann's crew re-forms around her at once
+        assertEquals(List.of(ANN, 101), world.members(party(ANN)));
+        assertEquals(List.of(BEN, 201, 202), world.members(shared));
+        assertEquals(1, world.sync.deferredCount()); // Ben's own part waits for his instance to end
+
+        world.committed.clear();
+        world.sync.resumeDeferred();
+        world.settle();
+
+        assertEquals(List.of("seat vex", "recall sol"), world.changes);
+        assertEquals(List.of(BEN, 201, 202, 203), world.members(shared));
+        assertEquals(0, world.sync.deferredCount());
     }
 
     // ---- EXPEL ------------------------------------------------------------------------------
@@ -370,21 +400,46 @@ class CompanionPartySyncTest {
     }
 
     @Test
-    void anOfflineHostExpelledTakesTheirGuestsSeatAlong() {
+    void aHostWhoLogsOffTakesTheirGuestOutOfTheParty() {
         int bens = out(BEN, "kai");
         world.accept(ANN, bens);
         assertTrue(world.inviteCitizen(ANN, MIRA));
         world.settle();
+        world.changes.clear();
+
         world.logOff(ANN);
         world.settle();
-        world.changes.clear();
+
+        assertEquals(List.of("guest " + MIRA), world.changes);
+        assertEquals(List.of("-"), world.guestLines); // nobody to whisper: Ann is gone
+        assertEquals(0, world.partyOf(MIRA));
+        assertFalse(world.guests.containsKey(MIRA));
 
         world.expel(BEN, ANN);
         world.settle();
 
         assertEquals(List.of("guest " + MIRA), world.changes);
-        assertEquals(0, world.partyOf(MIRA));
         assertEquals(List.of(BEN, 201), world.members(bens));
+    }
+
+    @Test
+    void anOfflineFriendExpelledGivesTheSeatBackToTheOthersWaitingCompanions() {
+        world.companion("pip", 204, BEN, 3).companion("rue", 205, BEN, 4);
+        int bens = out(BEN, "kai", "lune", "sol", "pip");
+        world.accept(CARL, bens); // two humans: Sol and Pip step out for fair share
+        world.settle();
+        world.logOff(CARL); // one human left: they come back, and the party is full with Carl offline
+        world.settle();
+        assertEquals(List.of(BEN, 201, 202, CARL, 203, 204), world.members(bens));
+        world.companion("rue").state = RosterState.BENCHED; // pushed out earlier, waiting for room
+        world.waiting.put("rue", 0);
+        world.changes.clear();
+
+        world.expel(BEN, CARL);
+        world.settle();
+
+        assertEquals(List.of("recall rue"), world.changes);
+        assertEquals(List.of(BEN, 201, 202, 203, 204, 205), world.members(bens));
     }
 
     @Test
@@ -394,7 +449,7 @@ class CompanionPartySyncTest {
         world.settle();
         world.call(ANN, "vex");
         world.settle();
-        world.committed.add(BEN);
+        world.committed.addAll(List.of(BEN, 101)); // the run: Ben and Vex are in the instance
         world.changes.clear();
 
         world.expel(BEN, 101);
@@ -503,6 +558,79 @@ class CompanionPartySyncTest {
     }
 
     @Test
+    void aFriendLoggingBackOnGetsTheirShareBack() {
+        out(BEN, "kai", "lune", "sol");
+        world.accept(ANN, party(BEN)); // Ben's Sol steps out; Vex and Olwen are not out yet
+        world.settle();
+        world.call(ANN, "vex");
+        world.call(ANN, "olwen");
+        world.settle();
+        world.logOff(ANN); // her crew goes with her (ACTIVE rows) and Ben has Sol back in her seats
+        world.settle();
+        assertEquals(List.of(BEN, 201, 202, ANN, 203), world.members(party(BEN)));
+        world.changes.clear();
+
+        world.logOn(ANN);
+        world.settle();
+
+        assertEquals(List.of("OVERFLOW sol", "recall vex", "recall olwen"), world.changes);
+        assertEquals(List.of(BEN, 201, 202, ANN, 101, 102), world.members(party(BEN)));
+        assertEquals(0, world.waiting.get("sol")); // it comes back when Ben has room again
+    }
+
+    @Test
+    void aRestoreThatFoundNoSeatWaitsBenchedAndComesBackOnceTheLogOnIsReconciled() {
+        out(BEN, "kai", "lune", "sol");
+        world.accept(ANN, party(BEN));
+        world.settle();
+        world.call(ANN, "vex");
+        world.call(ANN, "olwen");
+        world.settle();
+        world.logOff(ANN);
+        world.settle();
+        world.changes.clear();
+
+        world.logOn(ANN, true); // the restore runs first: one seat left for Ann, Olwen waits benched
+        assertTrue(world.companion("vex").loaded);
+        assertEquals(RosterState.BENCHED, world.companion("olwen").state);
+        world.settle();
+
+        assertEquals(List.of("OVERFLOW sol", "recall olwen"), world.changes);
+        assertEquals(List.of(BEN, 201, 202, ANN, 101, 102), world.members(party(BEN)));
+    }
+
+    @Test
+    void aLogOffIsReadFromTheEventEvenWhileTheLeaverIsStillInStorage() {
+        out(BEN, "kai", "lune", "sol");
+        world.accept(ANN, party(BEN)); // Ben's Sol steps out
+        world.settle();
+        world.call(ANN, "vex");
+        world.settle();
+        world.changes.clear();
+
+        world.logOff(ANN);
+        world.stillInStorage.add(ANN); // the logout published LOG_ONOFF before Ann left storage
+        world.settle();
+
+        assertEquals(List.of("recall sol"), world.changes); // not taken for a log-on
+        assertFalse(world.companion("vex").loaded); // and nothing is recalled for the one logging off
+    }
+
+    @Test
+    void aBotLoggingOnChangesNothing() {
+        int bens = out(BEN, "kai");
+        world.companion("sol").state = RosterState.BENCHED; // waiting for room, with room
+        world.waiting.put("sol", 0);
+        PartyEvents.Snapshot now = new PartyEvents.Snapshot(List.of(BEN, 201), BEN);
+
+        // publishAgentOnline on every ALREADY_MEMBER join
+        world.sync.onPartyChanged(new PartyChangeEvent(bens, PartyOperation.LOG_ONOFF, 201, 0, now, now, null, true));
+        world.settle();
+
+        assertEquals(List.of(), world.changes);
+    }
+
+    @Test
     void aLogOffGivesTheOthersTheirWaitingCompanionsBack() {
         out(BEN, "kai", "lune", "sol");
         world.accept(ANN, party(BEN));
@@ -554,6 +682,24 @@ class CompanionPartySyncTest {
         world.leaveParty(102);
         world.settle();
         assertEquals(RosterState.BENCHED, world.companion("olwen").state); // a minute later it reconciles again
+    }
+
+    @Test
+    void anAcceptIsACorrectionAndIsRefusedWhileTheBreakerIsOpen() {
+        int anns = out(ANN, "vex", "olwen");
+        int bens = out(BEN, "kai");
+        for (int i = 0; i < CompanionPartySync.BREAKER_OPS; i++) {
+            world.leaveParty(101); // Vex keeps wandering off
+            world.settle();
+            assertTrue(world.call(ANN, "vex"));
+            world.settle();
+        }
+
+        world.accept(BEN, anns); // a merge into the party whose breaker is open
+
+        assertTrue(breakerOpened(), world.drifts.toString());
+        assertEquals(List.of("already in a party " + BEN), world.refusals);
+        assertEquals(List.of(BEN, 201), world.members(bens));
     }
 
     private boolean breakerOpened() {

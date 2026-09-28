@@ -138,14 +138,17 @@ public final class LivingWorld {
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.residents::tick,
                 config.RESIDENT_TICK_MS, config.RESIDENT_TICK_MS));
-        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.bench::tick,
+        // the ledger, the contract clocks and the bench slices write roster rows: they run on companion-ops, the
+        // timer only hands them over
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("bench.tick", world.bench::tick),
                 config.BENCH_LEDGER_INTERVAL_MS, config.BENCH_LEDGER_INTERVAL_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.rumors::tick,
                 config.RUMOR_TICK_MS, config.RUMOR_TICK_MS));
-        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.contracts::tick,
-                60_000L, 60_000L));
-        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.benchSessions::tick,
-                120_000L, 120_000L));
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("contracts.tick", world.contracts::tick), 60_000L, 60_000L));
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("bench_sessions.tick", world.benchSessions::tick), 120_000L, 120_000L));
         // party events that waited for an event instance to end are reconciled on companion-ops
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("companion.resume", world.partySync::resumeDeferred), 30_000L, 30_000L));

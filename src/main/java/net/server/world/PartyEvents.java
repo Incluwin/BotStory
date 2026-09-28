@@ -40,10 +40,12 @@ public final class PartyEvents {
 
     /**
      * One committed change. {@code targetId} is the operation's target (the joiner, the leaver, the new leader);
-     * {@code actorId} 0 = not asked for by a player; {@code cause} null = not companion code.
+     * {@code actorId} 0 = not asked for by a player; {@code cause} null = not companion code. {@code targetOnline} is
+     * the target's party record as the operation wrote it (a LOG_ONOFF says which way it went; the player may still
+     * be in storage when a listener reads it).
      */
     public record PartyChangeEvent(int partyId, PartyOperation op, int targetId, int actorId, Snapshot before,
-                                   Snapshot after, String cause) {
+                                   Snapshot after, String cause, boolean targetOnline) {
     }
 
     /** Receives every committed event on the thread that made the change; it must hand the work off, not do it. */
@@ -108,7 +110,7 @@ public final class PartyEvents {
         }
         Snapshot after = operation == PartyOperation.DISBAND ? Snapshot.EMPTY : snapshot(party);
         PartyChangeEvent event = new PartyChangeEvent(party.getId(), operation, target == null ? 0 : target.getId(),
-                currentActor(), before, after, CauseScope.current());
+                currentActor(), before, after, CauseScope.current(), target != null && target.isOnline());
         DISPATCHING.set(Boolean.TRUE);
         try {
             current.partyChanged(event);

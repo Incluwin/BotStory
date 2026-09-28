@@ -6,6 +6,7 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.roster.CompanionPartySync.Reason;
+import server.living.store.LivingStore;
 import server.living.store.LivingStore.RosterState;
 
 import java.util.List;
@@ -14,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -149,6 +151,44 @@ class MakeRoomTest {
         verify(slots).waitForRoom("tobi", 77); // not back into the party whose leader expelled it
         verify(roster).standDown(ann, tobi, null, "companion.bench");
         verify(slots, times(2)).waitForRoom(eq("tobi"), anyInt()); // the owner's own bench does not come back by itself
+    }
+
+    @Test
+    void companionsWithNoSeatLeftSayWhereTheyGoAndOnlyTheFirstOfABurstWhispers() {
+        LivingWorld living = mock(LivingWorld.class);
+        RosterService roster = mock(RosterService.class);
+        CompanionSlots slots = mock(CompanionSlots.class);
+        LivingContent content = mock(LivingContent.class);
+        Persona brin = mock(Persona.class);
+        Persona tobi = mock(Persona.class);
+        Character ann = mock(Character.class);
+        when(ann.getId()).thenReturn(ANN);
+        when(living.roster()).thenReturn(roster);
+        when(living.slots()).thenReturn(slots);
+        when(living.content()).thenReturn(content);
+        when(content.persona("brin")).thenReturn(brin);
+        when(content.persona("tobi")).thenReturn(tobi);
+        when(roster.onlineCharacter(ANN)).thenReturn(ann);
+        when(roster.entry(ANN, "brin")).thenReturn(active("brin"));
+        when(roster.entry(ANN, "tobi")).thenReturn(active("tobi"));
+        when(roster.overflowLine(brin, ANN)).thenReturn("party's full. i'll farm meso at camp till there's room.");
+        when(roster.standDown(eq(ann), eq(tobi), anyString(), anyString()))
+                .thenReturn(new RosterResult.Ok("Tobi heads back to camp to train."));
+        LiveCrew crew = new LiveCrew(living);
+
+        crew.standDown(ANN, "brin", Reason.OVERFLOW, 77); // a merge benches two of Ann's at once
+        crew.standDown(ANN, "tobi", Reason.OVERFLOW, 77);
+
+        verify(roster).standDown(ann, brin, "party's full. i'll farm meso at camp till there's room.", "companion.overflow");
+        verify(roster).standDown(ann, tobi, "", "companion.overflow"); // no second whisper in the same breath
+        verify(ann).dropMessage(5, "Tobi heads back to camp to train.");
+        verify(slots).waitForRoom("brin", 0);
+        verify(slots).waitForRoom("tobi", 0);
+    }
+
+    private static LivingStore.RosterEntry active(String key) {
+        return new LivingStore.RosterEntry(ANN, key, RosterState.ACTIVE, LivingStore.Assignment.FARM_MESO, 0, 0,
+                104000000, 0L, 0L, 0L, 1_000L, 1_000L, 1_000L, 0, null);
     }
 
     /** Ann's own party with these companions out, settled; its id. */

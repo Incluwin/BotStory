@@ -78,7 +78,8 @@ class ClaimGuardBoundaryTest {
             // accept, and the loads that materialize its own characters, each behind the lease and loaded checks
             "server/living/roster/RosterService.java spawn 1",
             "server/living/roster/RosterService.java stationary 1", // the P1.5 walk-in: same ensureCanControl chain
-            "server/living/roster/RosterService.java join 1",
+            // (the second join: the auditor's in-place rejoin of the owner's own companion, on a seat held for it)
+            "server/living/roster/RosterService.java join 2",
             "server/living/roster/CompanionPartyRouter.java partyjoin 1",
             // the party sync on companion-ops: an owner's own loaded companion rejoins them on a seat held for it,
             // and a human's routed accept (a merge or make-room) joins the party that invited them

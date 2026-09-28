@@ -17,6 +17,8 @@ import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.population.Citizen;
 import server.living.population.Population;
+import server.living.roster.CompanionExecutor;
+import server.living.roster.DirectExecutor;
 import server.living.roster.RosterService;
 
 import java.util.List;
@@ -57,6 +59,8 @@ class GrantCompanionCommandTest {
         when(players.getCharacterByName("Reluctant")).thenReturn(friend);
         when(world.content()).thenReturn(content);
         when(world.roster()).thenReturn(roster);
+        CompanionExecutor ops = DirectExecutor.inline(); // the roster is written on companion-ops
+        when(world.executor()).thenReturn(ops);
         when(content.persona("olwen")).thenReturn(OLWEN);
         when(roster.grant(any(), any())).thenReturn("granted");
         when(roster.release(any(), any(), anyString())).thenReturn("released");

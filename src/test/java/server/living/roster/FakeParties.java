@@ -23,10 +23,12 @@ import java.util.Set;
 /**
  * A small party world for {@link CompanionPartySync} in plain Java: humans, companions, citizen guests and parties.
  * Party changes publish events the way {@code World.updateParty} does (the actor and cause of the thread, a
- * pre-mutation snapshot), and the seat caches CompanionSlots keeps are applied at once. The roster side mirrors
- * RosterService: a call loads and seats a companion under the roster's cause token, a bench unloads it, a logout
- * unloads the ACTIVE ones and a login restores them while there is room. {@link #settle} runs every queued event
- * through the sync, as companion-ops would, until none is left.
+ * pre-mutation snapshot, the target's online flag). As in production, what CompanionSlots does with an event (guest
+ * seats back, leader caps and blocks reset) happens when companion-ops takes the event, after the task that made it,
+ * and a view counts a host's GUEST seat until then. The roster side mirrors RosterService: a call loads and seats a
+ * companion under the roster's cause token, a bench unloads it, a logout unloads the ACTIVE ones and a login restores
+ * them while there is room, benching the rest with returnWhenRoom. {@link #settle} runs every queued event through
+ * the sync, as companion-ops would, until none is left.
  */
 final class FakeParties implements CompanionPartySync.Crew {
     static final int CAP = CompanionSlots.PARTY_CAP;
@@ -62,20 +64,25 @@ final class FakeParties implements CompanionPartySync.Crew {
     final Map<String, Companion> companions = new LinkedHashMap<>();
     private final Map<Integer, Companion> byId = new HashMap<>();
     final Set<Integer> citizens = new LinkedHashSet<>();
-    /** guest -> host: the GUEST seats. */
-    final Map<Integer, Integer> guests = new HashMap<>();
+    /** guest -> host: the GUEST seats, oldest first. */
+    final Map<Integer, Integer> guests = new LinkedHashMap<>();
     final Map<Integer, Group> parties = new LinkedHashMap<>();
     final Map<Integer, Integer> partyOf = new HashMap<>();
     final Set<Integer> committed = new HashSet<>();
+    /**
+     * Humans whose party record went offline while they are still in player storage when companion-ops takes their
+     * LOG_ONOFF (a logout publishes it before the player leaves storage): the sync still reads them as online.
+     */
+    final Set<Integer> stillInStorage = new HashSet<>();
     final Map<Integer, Map<Integer, Integer>> cuts = new HashMap<>();
     /** returnWhenRoom: key -> the party it may not come back into (0 = none). */
     final Map<String, Integer> waiting = new HashMap<>();
-    /** ACTIVE rows a login restore found no seat for (RosterService.seatQuietly keeps them ACTIVE). */
-    final Set<String> restoring = new HashSet<>();
     final Deque<PartyChangeEvent> events = new ArrayDeque<>();
     final List<PartyChangeEvent> published = new ArrayList<>();
     /** The sync's changes, in order ("OVERFLOW brin", "seat olwen", "guest 950", ...). */
     final List<String> changes = new ArrayList<>();
+    /** What each guest that stepped out whispered its host ("-" for nothing). */
+    final List<String> guestLines = new ArrayList<>();
     final List<String> drifts = new ArrayList<>();
     final List<String> refusals = new ArrayList<>();
     int loads;
@@ -206,7 +213,7 @@ final class FakeParties implements CompanionPartySync.Crew {
             return;
         }
         try (PartyEvents.Scope actor = PartyEvents.actor(humanId)) {
-            publish(group, PartyOperation.LOG_ONOFF, humanId, snapshot(group));
+            publish(group, PartyOperation.LOG_ONOFF, humanId, snapshot(group), false);
             if (group.leader == humanId) {
                 for (int member : group.members) {
                     if (member != humanId && humans.getOrDefault(member, false)) {
@@ -220,21 +227,33 @@ final class FakeParties implements CompanionPartySync.Crew {
         }
     }
 
-    /** The login: LOG_ONOFF, then the restore seats ACTIVE rows while there is room and leaves the rest waiting. */
+    /**
+     * The login: LOG_ONOFF, then the restore (RosterService.seatQuietly, a moment later) seats ACTIVE rows while there
+     * is room and benches the rest with returnWhenRoom. In production the restore is scheduled behind the LOG_ONOFF;
+     * {@code restoreFirst} runs it before companion-ops has taken the LOG_ONOFF, to show both orders.
+     */
     void logOn(int humanId) {
+        logOn(humanId, false);
+    }
+
+    void logOn(int humanId, boolean restoreFirst) {
         humans.put(humanId, true);
         Group group = parties.get(partyOf.getOrDefault(humanId, 0));
         if (group != null) {
             try (PartyEvents.Scope actor = PartyEvents.actor(humanId)) {
-                publish(group, PartyOperation.LOG_ONOFF, humanId, snapshot(group));
+                publish(group, PartyOperation.LOG_ONOFF, humanId, snapshot(group), true);
             }
+        }
+        if (!restoreFirst) {
+            settle();
         }
         for (Companion companion : crewOf(humanId)) {
             if (companion.state == RosterState.ACTIVE && !companion.loaded) {
                 if (free(humanId) > 0) {
                     seatByRoster(companion);
                 } else {
-                    restoring.add(companion.key);
+                    benchRow(companion);
+                    waiting.put(companion.key, 0);
                 }
             }
         }
@@ -318,7 +337,6 @@ final class FakeParties implements CompanionPartySync.Crew {
             }
             if (joinParty(companion.id, partyOf.get(companion.owner))) {
                 companion.state = RosterState.ACTIVE;
-                restoring.remove(companion.key);
             } else {
                 unload(companion); // RosterService.refuse: nothing stays loaded, the row stays as it was
             }
@@ -348,7 +366,6 @@ final class FakeParties implements CompanionPartySync.Crew {
             unload(companion);
         }
         companion.state = RosterState.BENCHED;
-        restoring.remove(companion.key);
     }
 
     List<Companion> crewOf(int ownerId) {
@@ -364,10 +381,23 @@ final class FakeParties implements CompanionPartySync.Crew {
 
     // ---- events -------------------------------------------------------------------------------
 
-    /** Runs the queued events through the sync until none is left. */
+    /**
+     * Runs the queued events through companion-ops until none is left: CompanionSlots takes each first (guest seats
+     * back, the party's leader caps and blocks gone with it), then the sync.
+     */
     void settle() {
         while (!events.isEmpty()) {
-            sync.onPartyChanged(events.poll());
+            PartyChangeEvent event = events.poll();
+            switch (event.op()) {
+                case LEAVE, EXPEL -> guests.remove(event.targetId());
+                case DISBAND -> {
+                    cuts.remove(event.partyId());
+                    waiting.replaceAll((key, blocked) -> blocked == event.partyId() ? 0 : blocked);
+                    event.before().memberIds().forEach(guests::remove);
+                }
+                default -> { }
+            }
+            sync.onPartyChanged(event);
         }
     }
 
@@ -376,19 +406,13 @@ final class FakeParties implements CompanionPartySync.Crew {
     }
 
     private void publish(Group group, PartyOperation op, int targetId, Snapshot before) {
+        publish(group, op, targetId, before, !humans.containsKey(targetId) || recordOnline(targetId));
+    }
+
+    private void publish(Group group, PartyOperation op, int targetId, Snapshot before, boolean targetOnline) {
         Snapshot after = op == PartyOperation.DISBAND ? Snapshot.EMPTY : snapshot(group);
         PartyChangeEvent event = new PartyChangeEvent(group.id, op, targetId, PartyEvents.currentActor(), before, after,
-                CauseScope.current());
-        // CompanionSlots.onPartyChanged: guest seats go back with the guest, leader caps and blocks with the party
-        switch (op) {
-            case LEAVE, EXPEL -> guests.remove(targetId);
-            case DISBAND -> {
-                cuts.remove(group.id);
-                waiting.replaceAll((key, blocked) -> blocked == group.id ? 0 : blocked);
-                before.memberIds().forEach(guests::remove);
-            }
-            default -> { }
-        }
+                CauseScope.current(), targetOnline);
         events.add(event);
         if (keepPublished) {
             published.add(event);
@@ -399,6 +423,11 @@ final class FakeParties implements CompanionPartySync.Crew {
 
     @Override
     public boolean onlineHuman(int characterId) {
+        return recordOnline(characterId) || stillInStorage.contains(characterId);
+    }
+
+    /** The party record's online flag of a human, as the seat arithmetic reads it. */
+    private boolean recordOnline(int characterId) {
         return humans.getOrDefault(characterId, false);
     }
 
@@ -470,20 +499,40 @@ final class FakeParties implements CompanionPartySync.Crew {
         Map<String, Integer> lineup = new HashMap<>();
         for (int member : group.members) {
             if (humans.containsKey(member)) {
-                members.add(new CompanionSlots.Member(CompanionSlots.characterKey(member), member, onlineHuman(member), 0, false));
+                members.add(new CompanionSlots.Member(CompanionSlots.characterKey(member), member, recordOnline(member), 0, false));
                 continue;
             }
             Integer host = guests.get(member);
             int owner = host != null ? host : ownerOf(keyOf(member));
-            boolean charged = owner != 0 && onlineHuman(owner) && group.members.contains(owner);
+            boolean charged = owner != 0 && recordOnline(owner) && group.members.contains(owner);
             members.add(new CompanionSlots.Member(keyOf(member), member, false, charged ? owner : 0, host != null));
         }
         for (Companion companion : companions.values()) {
-            if (onlineHuman(companion.owner) && group.members.contains(companion.owner)) {
+            if (recordOnline(companion.owner) && group.members.contains(companion.owner)) {
                 lineup.put(companion.key, companion.slot);
             }
         }
-        return new CompanionSlots.View(members, List.of(), cuts.getOrDefault(partyId, Map.of()), lineup);
+        List<CompanionSlots.Reservation> held = new ArrayList<>();
+        for (int human : group.members) {
+            if (recordOnline(human)) {
+                held.addAll(guestSeats(human, group.members));
+            }
+        }
+        return new CompanionSlots.View(members, held, cuts.getOrDefault(partyId, Map.of()), lineup);
+    }
+
+    /** The host's GUEST seats of guests not among {@code members}: CompanionSlots counts them until it releases them. */
+    private List<CompanionSlots.Reservation> guestSeats(int host, List<Integer> members) {
+        List<CompanionSlots.Reservation> held = new ArrayList<>();
+        long seq = 0;
+        for (Map.Entry<Integer, Integer> guest : guests.entrySet()) {
+            seq++;
+            if (guest.getValue() == host && !members.contains(guest.getKey())) {
+                held.add(new CompanionSlots.Reservation(host, keyOf(guest.getKey()), CompanionSlots.Kind.GUEST,
+                        Long.MAX_VALUE, seq));
+            }
+        }
+        return held;
     }
 
     @Override
@@ -491,7 +540,7 @@ final class FakeParties implements CompanionPartySync.Crew {
         int partyId = partyOf(ownerId);
         CompanionSlots.View view = partyId != 0 ? view(partyId) : new CompanionSlots.View(
                 List.of(new CompanionSlots.Member(CompanionSlots.characterKey(ownerId), ownerId, true, 0, false)),
-                List.of(), Map.of(), Map.of());
+                guestSeats(ownerId, List.of()), Map.of(), Map.of());
         return CompanionSlots.free(view, ownerId);
     }
 
@@ -542,8 +591,9 @@ final class FakeParties implements CompanionPartySync.Crew {
     }
 
     @Override
-    public void guestLeaves(int hostId, int guestId) {
+    public void guestLeaves(int hostId, int guestId, String line) {
         changes.add("guest " + guestId);
+        guestLines.add(line == null ? "-" : line);
         leaveParty(guestId);
         guests.remove(guestId);
     }

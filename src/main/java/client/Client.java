@@ -1619,6 +1619,25 @@ public class Client extends ChannelInboundHandlerAdapter {
         }
     }
 
+    /**
+     * Runs {@code task} on this client's own I/O thread, where its packets are handled, so it never interleaves with
+     * one of them (inline when already there, or for a client with no connection).
+     */
+    public void runOnIoThread(Runnable task) {
+        io.netty.channel.Channel channel = ioChannel;
+        if (channel == null || channel.eventLoop().inEventLoop()) {
+            task.run();
+        } else {
+            channel.eventLoop().execute(task);
+        }
+    }
+
+    /** True on this client's own I/O thread (or for a client with no connection). */
+    public boolean onIoThread() {
+        io.netty.channel.Channel channel = ioChannel;
+        return channel == null || channel.eventLoop().inEventLoop();
+    }
+
     public void sendPacket(Packet packet) {
         announcerLock.lock();
         try {

@@ -168,7 +168,7 @@ class CitizenGuestTest {
         when(roster.onlineCharacter(MIRA)).thenReturn(mira);
 
         try (MockedStatic<AgentPartyLifecycleService> lifecycle = mockStatic(AgentPartyLifecycleService.class)) {
-            new LiveCrew(living).guestLeaves(ANN, MIRA);
+            new LiveCrew(living).guestLeaves(ANN, MIRA, CompanionPartySync.GUEST_LINE);
 
             lifecycle.verify(() -> AgentPartyLifecycleService.leaveAgentParty(mira));
         }

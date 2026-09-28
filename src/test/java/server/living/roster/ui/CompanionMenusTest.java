@@ -22,6 +22,7 @@ import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionDirectory.Relation;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionPartySync;
+import server.living.roster.CompanionSlots;
 import server.living.roster.DirectExecutor;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
@@ -46,6 +47,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -57,8 +59,8 @@ import static org.mockito.Mockito.when;
  * swap pickers, and that bench, call and swap go to {@link RosterService} for the owner's own companions only. An
  * outcome is the player's notes, a full party asks whom to take over from, the last one out is never benched into a
  * spot only typing gets back from, and nothing is read while a window awaits its reply. P2a: the actions run on
- * companion-ops (a companion whispers the outcome when a window cannot open by then), and a full party offers
- * "Make room for a friend...".
+ * companion-ops and are answered on the owner's own packet thread (pink text when a window cannot open by then or
+ * the action took long), a full party offers "Make room for a friend...", and a friend's share is not called full.
  */
 class CompanionMenusTest {
     private static final int ANN = 10;
@@ -74,6 +76,7 @@ class CompanionMenusTest {
     private final ResidentRuntime residents = mock(ResidentRuntime.class);
     private final CompanionDirectory directory = mock(CompanionDirectory.class);
     private final CompanionPartySync sync = mock(CompanionPartySync.class);
+    private final CompanionSlots slots = mock(CompanionSlots.class);
     private final Character owner = mock(Character.class);
     private final Client client = mock(Client.class);
     private final Persona hadrik = persona("hadrik", "Hadrik");
@@ -95,6 +98,10 @@ class CompanionMenusTest {
         when(owner.getClient()).thenReturn(client);
         when(client.getPlayer()).thenReturn(owner);
         when(client.canClickNPC()).thenReturn(true);
+        doAnswer(inv -> {
+            ((Runnable) inv.getArgument(0)).run(); // the owner's packet thread, at once unless a test queues it
+            return null;
+        }).when(client).runOnIoThread(any());
         when(owner.haveItem(ROSTER_BOOK)).thenReturn(true);
         when(world.content()).thenReturn(content);
         when(world.roster()).thenReturn(roster);
@@ -105,6 +112,9 @@ class CompanionMenusTest {
         CompanionExecutor ops = DirectExecutor.inline();
         when(world.executor()).thenReturn(ops);
         when(world.partySync()).thenReturn(sync);
+        when(world.slots()).thenReturn(slots);
+        // Ann's own party unless a test says otherwise: the seats she cannot fill are taken
+        when(slots.occupied(owner)).thenAnswer(inv -> RosterService.PARTY_CAP - roster.freeSlots(owner));
         when(content.portraitNpcId("hadrik")).thenReturn(HADRIK_PORTRAIT);
         when(roster.roster(owner)).thenReturn(rows);
         when(roster.describeAssignment(any())).thenReturn("train");
@@ -293,6 +303,20 @@ class CompanionMenusTest {
     }
 
     @Test
+    void comeJoinMeInASharedPartyDoesNotCallAFriendsShareFull() {
+        rows.addAll(List.of(hadrikRow, tobiRow, miraRow));
+        when(roster.freeSlots(owner)).thenReturn(0);
+        when(slots.occupied(owner)).thenReturn(5); // Ben's share has a seat he is not using
+        menus.card(owner, miraRow);
+
+        pick("Come join me");
+
+        assertTrue(lastTalk().text().startsWith("the other seats are your friend's. who should i take over from?\r\n"),
+                lastTalk().text());
+        verify(roster, never()).call(any(), any());
+    }
+
+    @Test
     void anAwayCompanionKeptItsSeatSoItIsCalledEvenWithThePartyFull() {
         RosterEntry away = row("mira", RosterState.AWAY, 0L);
         rows.addAll(List.of(hadrikRow, away));
@@ -441,11 +465,22 @@ class CompanionMenusTest {
     @Test
     void thePartyCountIncludesTheSeatAnAwayCompanionKeeps() {
         rows.addAll(List.of(hadrikRow, row("mira", RosterState.AWAY, 0L)));
-        when(roster.freeSlots(owner)).thenReturn(3); // Ann, Hadrik and the seat Mira keeps
+        when(slots.occupied(owner)).thenReturn(3); // Ann, Hadrik and the seat Mira keeps
 
         menus.crew(owner);
 
         assertTrue(lastTalk().text().startsWith("#eParty 3/6#n"), lastTalk().text());
+    }
+
+    @Test
+    void thePartyCountIsTheSeatsTakenNotTheSeatsLeftToYou() {
+        rows.addAll(List.of(hadrikRow, tobiRow));
+        when(roster.freeSlots(owner)).thenReturn(0); // Ann's share is used
+        when(slots.occupied(owner)).thenReturn(5); // Ann, two of hers, Ben and one of his
+
+        menus.crew(owner);
+
+        assertTrue(lastTalk().text().startsWith("#eParty 5/6#n"), lastTalk().text());
     }
 
     // ---- no work while a window is up ------------------------------------------------------
@@ -502,7 +537,7 @@ class CompanionMenusTest {
     }
 
     @Test
-    void anOutcomeReadyWhileAnotherWindowWaitsIsWhisperedInstead() {
+    void anOutcomeReadyWhileAnotherWindowWaitsIsPinkTextInstead() {
         List<Runnable> queue = DirectExecutor.queue();
         CompanionExecutor queued = DirectExecutor.queued(queue);
         when(world.executor()).thenReturn(queued);
@@ -514,8 +549,50 @@ class CompanionMenusTest {
 
         queue.get(0).run();
 
-        verify(residents).whisper(hadrik, owner, "Hadrik heads back to camp to train.");
+        verify(owner).dropMessage(5, "Hadrik heads back to camp to train."); // a note, not the companion's voice
+        verify(residents, never()).whisper(any(), any(), anyString());
         verify(client, never()).sendPacket(any()); // nothing over the window awaiting its reply
+    }
+
+    @Test
+    void theOutcomeIsAnsweredOnTheOwnersPacketThreadNotOnCompanionOps() {
+        List<Runnable> queue = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(queue);
+        when(world.executor()).thenReturn(queued);
+        List<Runnable> io = new ArrayList<>();
+        doAnswer(inv -> io.add(inv.getArgument(0))).when(client).runOnIoThread(any());
+        rows.add(hadrikRow);
+        menus.card(owner, hadrikRow);
+        pick("Take a break at camp");
+        clearInvocations(client);
+
+        queue.get(0).run(); // companion-ops
+
+        verify(roster).bench(owner, hadrik);
+        verify(client, never()).sendPacket(any()); // no window from companion-ops
+        assertEquals(1, io.size());
+        io.get(0).run();
+        assertEquals("Hadrik heads back to camp to train.", lastTalk().text());
+    }
+
+    @Test
+    void anActionThatTookLongAnswersInPinkTextInsteadOfPoppingAWindowUp() {
+        List<Runnable> queue = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(queue);
+        when(world.executor()).thenReturn(queued);
+        when(roster.bench(any(), any())).thenAnswer(inv -> {
+            Thread.sleep(CompanionMenus.LATE_OUTCOME_MS + 50L); // a slow load or the audit ahead of it
+            return new RosterResult.Ok("Hadrik heads back to camp to train.");
+        });
+        rows.add(hadrikRow);
+        menus.card(owner, hadrikRow);
+        pick("Take a break at camp");
+        clearInvocations(client);
+
+        queue.get(0).run();
+
+        verify(owner).dropMessage(5, "Hadrik heads back to camp to train.");
+        verify(client, never()).sendPacket(any());
     }
 
     @Test

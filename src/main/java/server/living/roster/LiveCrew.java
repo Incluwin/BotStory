@@ -20,6 +20,7 @@ import tools.PacketCreator;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,8 +31,12 @@ import java.util.Map;
 final class LiveCrew implements CompanionPartySync.Crew {
     private static final Logger log = LoggerFactory.getLogger(LiveCrew.class);
     private static final CompanionSlots.View NO_PARTY = new CompanionSlots.View(List.of(), List.of(), Map.of(), Map.of());
+    /** Overflow stand-downs to one owner this close together are one burst: only the first whispers. */
+    static final long OVERFLOW_BURST_MS = 3_000L;
 
     private final LivingWorld world;
+    /** owner id -> when a companion last whispered that it had no seat (companion-ops only). */
+    private final Map<Integer, Long> overflowWhisperAtMs = new HashMap<>();
 
     LiveCrew(LivingWorld world) {
         this.world = world;
@@ -148,20 +153,36 @@ final class LiveCrew implements CompanionPartySync.Crew {
         if (owner == null || persona == null) {
             return;
         }
-        world.roster().standDown(owner, persona, reason.line(), reason.event());
+        RosterEntry row = world.roster().entry(ownerId, key);
+        boolean out = row != null && row.state() != RosterState.BENCHED;
+        String line = reason == Reason.OVERFLOW && out ? overflowLine(owner, persona) : reason.line();
+        RosterResult result = world.roster().standDown(owner, persona, line, reason.event());
+        if (line != null && line.isEmpty() && result.ok()) {
+            owner.dropMessage(5, RosterVoice.line(persona, result)); // the first one of the burst said it already
+        }
         if (reason.returnWhenRoom()) {
             world.slots().waitForRoom(key, reason == Reason.EXPELLED ? partyId : 0);
         }
     }
 
+    /**
+     * A companion with no seat left says where it goes, in its own words or its duty at camp; when several step out
+     * at once only the first whispers, and the rest are noted in pink ("" whispers nothing).
+     */
+    private String overflowLine(Character owner, Persona persona) {
+        long now = System.currentTimeMillis();
+        Long last = overflowWhisperAtMs.put(owner.getId(), now);
+        return last != null && now - last < OVERFLOW_BURST_MS ? "" : world.roster().overflowLine(persona, owner.getId());
+    }
+
     @Override
-    public void guestLeaves(int hostId, int guestId) {
+    public void guestLeaves(int hostId, int guestId, String line) {
         Character guest = online(guestId);
         Character host = online(hostId);
         if (guest != null) {
-            if (host != null && guest.getClient() != null) {
+            if (line != null && host != null && guest.getClient() != null) {
                 host.sendPacket(PacketCreator.getWhisperReceive(guest.getName(), guest.getClient().getChannel() - 1,
-                        false, CompanionPartySync.GUEST_LINE));
+                        false, line));
             }
             AgentPartyLifecycleService.leaveAgentParty(guest);
         }
