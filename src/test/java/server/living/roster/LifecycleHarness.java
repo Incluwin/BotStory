@@ -13,6 +13,8 @@ import server.TimerManager;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
+import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.PartyGateway;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService.AgentSpawnResult;
 import server.agents.runtime.AgentRuntimeCleanupService;
@@ -54,13 +56,14 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
- * A small living world for the P2b lifecycle tests (join-then-travel, the atomic swap, HOLD and its rejoin): the real
- * RosterService, CompanionSlots, CompanionLeases and Commitments over a {@link FakeLivingStore}, with the game faked
- * where RosterService touches it. Ann (a human) always leads a party of her own; companions join and leave it through
- * the Agent party calls, loads and unloads go through the Agent runtime calls, and every one of those, and every
- * walk and follow command, is written to {@link #calls}. Maps are mocks with one visible portal each; Ann and the
- * companions stand where the test puts them, and a companion's {@code changeMap} moves it. Timers are kept in
- * {@link #timers} until the test runs them; companion-ops runs commands at once.
+ * A small living world for the P2b lifecycle tests (join-then-travel, the atomic swap, HOLD and its rejoin, logout,
+ * login, channel follow): the real RosterService, CompanionSlots, CompanionLeases and Commitments over a
+ * {@link FakeLivingStore}, with the game faked where RosterService touches it. Ann (a human) always leads a party; it is
+ * her own unless a test adds another human to {@link #humans}. Companions join and leave it through the Agent party
+ * calls, loads and unloads go through the Agent runtime calls, and every one of those, and every walk and follow
+ * command, is written to {@link #calls}; party chat goes to {@link #partyChat}. Maps are mocks with one visible portal
+ * each; Ann and the companions stand where the test puts them, and a companion's {@code changeMap} moves it. Timers are
+ * kept in {@link #timers} until the test runs them; companion-ops runs commands at once.
  */
 final class LifecycleHarness implements AutoCloseable {
     static final int ANN = 10;
@@ -89,6 +92,12 @@ final class LifecycleHarness implements AutoCloseable {
     final List<Integer> partySizes = new ArrayList<>();
     /** The cause token in force at every join and leave, in order. */
     final List<String> causes = new ArrayList<>();
+    /** Every party-chat line, as "Name: line". */
+    final List<String> partyChat = new ArrayList<>();
+    /** Party members who are humans (Ann, and any friend a test adds); the rest are bots. */
+    final Set<Integer> humans = new HashSet<>(Set.of(ANN));
+    /** Party members listed offline (a companion logged off with its owner stays in the party so). */
+    final Set<Integer> offline = new HashSet<>();
     final Character ann = mock(Character.class);
     final Party party = mock(Party.class);
     final List<Integer> members = new ArrayList<>();
@@ -127,6 +136,8 @@ final class LifecycleHarness implements AutoCloseable {
         when(world.executor()).thenReturn(ops);
         CompanionDirectory directory = mock(CompanionDirectory.class);
         when(directory.isClaimed(anyInt())).thenReturn(true);
+        // an own party: Ann is its only human (CompanionDirectory.isCompanionParty)
+        when(directory.isCompanionParty(any())).thenAnswer(inv -> members.stream().filter(humans::contains).count() == 1);
         when(world.directory()).thenReturn(directory);
         when(budget.admit(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
         when(budget.admitReplacing(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
@@ -145,6 +156,8 @@ final class LifecycleHarness implements AutoCloseable {
         when(party.getId()).thenReturn(PARTY_ID);
         when(party.getLeaderId()).thenReturn(ANN);
         when(party.getMembers()).thenAnswer(inv -> partyMembers());
+        when(party.getMemberById(anyInt())).thenAnswer(inv -> partyMembers().stream()
+                .filter(member -> member.getId() == (int) inv.getArgument(0)).findFirst().orElse(null));
         members.add(ANN);
         moveAnn(HENESYS_FIELD, 1000, 200);
 
@@ -208,6 +221,11 @@ final class LifecycleHarness implements AutoCloseable {
             return calls.add("walk " + bot.getName() + " to " + to.x + "," + to.y);
         });
         open(Party.class);
+        MockedStatic<AgentPartyGatewayRuntime> gateway = open(AgentPartyGatewayRuntime.class);
+        PartyGateway partyGateway = mock(PartyGateway.class);
+        gateway.when(AgentPartyGatewayRuntime::party).thenReturn(partyGateway);
+        when(partyGateway.sendPartyChat(any(), anyString())).thenAnswer(inv ->
+                partyChat.add(((Character) inv.getArgument(0)).getName() + ": " + inv.getArgument(1)));
         MockedStatic<TimerManager> timer = open(TimerManager.class);
         TimerManager timerManager = mock(TimerManager.class);
         timer.when(TimerManager::getInstance).thenReturn(timerManager);
@@ -321,9 +339,14 @@ final class LifecycleHarness implements AutoCloseable {
     void companionOnChannel(Persona persona, int channel) {
         int id = residents.characterIdOf(persona.id());
         Client client = mock(Client.class);
-        when(client.getChannel()).thenReturn(channel);
+        when(client.getChannel()).thenAnswer(inv -> botChannels.get(id));
         when(bots.get(id).getClient()).thenReturn(client);
         botChannels.put(id, channel);
+    }
+
+    /** The channel the companion's client is on (a loaded companion with a client comes up on Ann's). */
+    int companionChannel(Persona persona) {
+        return botChannels.getOrDefault(residents.characterIdOf(persona.id()), 0);
     }
 
     Character bot(Persona persona) {
@@ -359,6 +382,7 @@ final class LifecycleHarness implements AutoCloseable {
         loaded.add(bot.getId());
         botMaps.put(bot.getId(), map);
         botPositions.put(bot.getId(), at);
+        botChannels.computeIfPresent(bot.getId(), (id, channel) -> annChannel); // loaded on Ann's channel
         calls.add("spawn " + name + " at " + map.getId() + " " + at.x + "," + at.y);
         return AgentSpawnResult.ok(bot, true);
     }
@@ -368,8 +392,8 @@ final class LifecycleHarness implements AutoCloseable {
         for (int id : members) {
             PartyCharacter member = mock(PartyCharacter.class);
             when(member.getId()).thenReturn(id);
-            when(member.isBot()).thenReturn(id != ANN);
-            when(member.isOnline()).thenReturn(true);
+            when(member.isBot()).thenReturn(!humans.contains(id));
+            when(member.isOnline()).thenReturn(!offline.contains(id));
             out.add(member);
         }
         return out;

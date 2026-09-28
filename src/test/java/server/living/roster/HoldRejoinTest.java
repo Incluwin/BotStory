@@ -159,19 +159,22 @@ class HoldRejoinTest {
     }
 
     @Test
-    void aHoldUnloadedByTheOwnersLogoutSetsOffFromWhereItWaitedAtTheLogin() {
+    void aHoldParksWithItsOwnerAndWalksBackInAtTheirLogin() {
         game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS);
         game.roster().onOwnerLogout(game.ann);
         assertTrue(game.calls.contains("remove Olwen"));
-        assertEquals(RosterState.HOLD, game.row(olwen).state(), "the row keeps where it waits");
+        RosterEntry parked = game.row(olwen);
+        assertEquals(RosterState.PARKED, parked.state(), "a hold parks with its owner (decision 8a)");
+        assertEquals(0, parked.holdMapId());
+        assertNull(game.slots.reservation("olwen"), "its HOLD seat went back");
         game.moveAnn(PERION, 900, 200);
         game.calls.clear();
 
         game.roster().onOwnerLogin(game.ann);
         game.runDueTimers();
 
-        assertEquals(List.of("spawn Olwen at " + KERNING + " " + portalX(KERNING) + ",200", "join Olwen"), game.calls);
-        assertEquals(RosterState.TRAVELLING, game.row(olwen).state());
-        assertNull(game.slots.reservation("olwen"), "its HOLD seat went with the join");
+        assertEquals(List.of("spawn Olwen at " + PERION + " " + portalX(PERION) + ",200", "join Olwen", "follow Olwen"),
+                game.calls, "within the grace it walks in from the portal nearest Ann");
+        assertEquals(RosterState.ACTIVE, game.row(olwen).state());
     }
 }

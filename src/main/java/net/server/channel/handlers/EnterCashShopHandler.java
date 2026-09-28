@@ -26,6 +26,7 @@ import client.Client;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import net.server.Server;
+import server.living.LivingWorldHooks;
 import server.maps.MiniDungeonInfo;
 import server.monitoring.CharacterSaveDiagnostics.SaveReason;
 import tools.PacketCreator;
@@ -89,6 +90,7 @@ public class EnterCashShopHandler extends AbstractPacketHandler {
             mc.getMap().removePlayer(mc);
             mc.getCashShop().open(true);
             mc.saveCharToDB(true, SaveReason.CASHSHOP);
+            LivingWorldHooks.playerEnteredCashShop(mc); // companions idle where they stand meanwhile
         } catch (Exception e) {
             monitoring.RuntimeFailureLogger.log(e);
         }
