@@ -66,14 +66,16 @@ class TravelArrivalTest {
         assertEquals(List.of(RosterService.CAUSE), game.causes, "its join is the roster's own echo");
         RosterEntry row = game.row(olwen);
         assertEquals(RosterState.TRAVELLING, row.state());
-        assertTrue(row.etaAtMs() >= before + 60_000L && row.etaAtMs() <= System.currentTimeMillis() + 60_000L, "eta_at");
+        assertTrue(row.etaAtMs() >= before + 59_000L && row.etaAtMs() <= System.currentTimeMillis() + 61_000L, "eta_at (a whole-second column)");
+        assertEquals(0L, row.etaAtMs() % 1_000L, "eta_at is a whole second, so arrive() finds the trip it scheduled");
         verify(game.residents).whisper(olwen, game.ann, "on my way. ~60 s.");
         assertNull(game.slots.reservation("olwen"), "a member now: the seat held for the load went with the join");
         assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.COMPANION, ANN), game.leases.holder(900));
         assertEquals(1, game.timers.size());
-        assertEquals(60_000L, game.timers.get(0).delayMs());
+        long delay = game.timers.get(0).delayMs(); // due on the whole second eta_at holds
+        assertTrue(Math.abs(delay - 60_000L) <= 500L, "delay " + delay);
         long left = game.roster().travelMsLeft(ANN, "olwen"); // the ETA the Crew window shows
-        assertTrue(left > 50_000L && left <= 60_000L, "left " + left);
+        assertTrue(left > 50_000L && left <= 60_500L, "left " + left);
     }
 
     @Test

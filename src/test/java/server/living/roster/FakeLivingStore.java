@@ -72,7 +72,7 @@ final class FakeLivingStore {
             return null;
         }).when(store).saveLineupSlot(anyInt(), anyString(), any());
         doAnswer(inv -> {
-            RosterEntry entry = inv.getArgument(0);
+            RosterEntry entry = asStored(inv.getArgument(0));
             rows.put(key(entry.characterId(), entry.personaId()), entry);
             saved.add(entry);
             return null;
@@ -138,5 +138,17 @@ final class FakeLivingStore {
 
     static String key(int ownerId, String personaId) {
         return ownerId + ":" + personaId;
+    }
+
+    /** The row as MySQL keeps it: eta_at and parked_at are whole-second TIMESTAMPs, so their milliseconds are rounded away. */
+    static RosterEntry asStored(RosterEntry e) {
+        return new RosterEntry(e.characterId(), e.personaId(), e.state(), e.assignment(), e.assignmentItem(),
+                e.assignmentCount(), e.campMapId(), e.accruedExp(), e.haulMeso(), e.wagesPaidUntilMs(), e.recruitedAtMs(),
+                e.benchedAtMs(), e.lastLedgerAtMs(), e.farmSecondsToday(), e.farmDay(), toSecond(e.etaAtMs()), e.holdMapId(),
+                toSecond(e.parkedAtMs()));
+    }
+
+    private static long toSecond(long ms) {
+        return ms <= 0L ? ms : Math.round(ms / 1000.0d) * 1000L;
     }
 }

@@ -61,7 +61,7 @@ class LogoutOwnPartyTest {
         for (Persona persona : List.of(hadrik, jinx)) {
             RosterEntry row = game.row(persona);
             assertEquals(RosterState.PARKED, row.state(), persona.name());
-            assertTrue(row.parkedAtMs() >= before && row.parkedAtMs() <= System.currentTimeMillis(), "parked_at");
+            assertTrue(row.parkedAtMs() >= before - 1_000L && row.parkedAtMs() <= System.currentTimeMillis() + 1_000L, "parked_at (a whole-second column)");
         }
         assertEquals(2, game.store.events("companion.parked").size());
         assertEquals(0, game.leases.count(CompanionLeases.Kind.COMPANION), "their leases go with them");

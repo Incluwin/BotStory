@@ -638,7 +638,8 @@ public final class RosterService {
      */
     private RosterResult onItsWay(Character owner, Persona persona, RosterEntry entry, int fromMapId, long etaMs, boolean quiet) {
         long now = System.currentTimeMillis();
-        long arrivesAt = now + etaMs;
+        // eta_at is a whole-second TIMESTAMP: arrive() matches the row by it, so the trip is due on a second the column holds
+        long arrivesAt = LivingStore.toWholeSecond(now + etaMs);
         write(current(entry).withTravel(arrivesAt, now));
         if (!quiet) {
             List<String> lines = world.arcs().lines(persona, "onMyWay");
@@ -647,7 +648,7 @@ public final class RosterService {
         }
         world.store().event(owner.getId(), persona.id(), "roster.travel", "eta " + etaMs + " ms from map " + fromMapId);
         int ownerId = owner.getId();
-        later("roster.arrive " + persona.id(), () -> arrive(ownerId, persona, arrivesAt), etaMs);
+        later("roster.arrive " + persona.id(), () -> arrive(ownerId, persona, arrivesAt), Math.max(0L, arrivesAt - now));
         return new RosterResult.Travelling(etaMs, fromMapId);
     }
 

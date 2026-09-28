@@ -84,7 +84,7 @@ class BootReconcileTest {
         for (Persona persona : List.of(hadrik, jinx, vexa)) {
             RosterEntry row = game.row(persona);
             assertEquals(RosterState.PARKED, row.state(), persona.name());
-            assertTrue(row.parkedAtMs() >= bootedAt, "parked_at is the boot");
+            assertTrue(row.parkedAtMs() >= bootedAt - 1_000L, "parked_at is the boot (a whole-second column)");
             assertEquals(0L, row.etaAtMs());
             assertEquals(0, row.holdMapId());
         }

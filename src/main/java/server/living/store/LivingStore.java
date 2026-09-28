@@ -856,4 +856,9 @@ public final class LivingStore {
     private static long time(Timestamp value) {
         return value == null ? 0L : value.getTime();
     }
+
+    /** {@code ms} rounded to the nearest whole second, as MySQL stores it: the TIMESTAMP columns read it back unchanged. */
+    public static long toWholeSecond(long ms) {
+        return Math.floorDiv(ms + 500L, 1000L) * 1000L;
+    }
 }
