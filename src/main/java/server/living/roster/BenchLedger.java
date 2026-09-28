@@ -57,6 +57,18 @@ public final class BenchLedger {
         }
     }
 
+    /**
+     * Credits one bench-governed row up to now, on companion-ops: a companion benched at its owner's login from the
+     * deadline its grace ran out at (decision 8a) is credited before the usual lineup calls it.
+     */
+    void accrueNow(RosterEntry entry) {
+        try {
+            accrue(entry, System.currentTimeMillis());
+        } catch (RuntimeException failure) {
+            log.warn("bench ledger failed for {}/{}", entry.characterId(), entry.personaId(), failure);
+        }
+    }
+
     private void accrue(RosterEntry entry, long now) {
         if (!BenchSessions.benchGoverned(entry)) {
             return;

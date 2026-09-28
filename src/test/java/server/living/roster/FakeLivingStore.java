@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 /**
  * An in-memory {@code living_roster}, haul, persona state and event log behind a mocked {@link LivingStore}, with the
  * same write semantics as the SQL: saveRoster is an upsert, saveRosterProgress an UPDATE that keeps the row's state,
- * recruited_at, lineup slot and eta/hold/park columns, and removeHaul never goes below zero. Everything else the store does answers the
+ * recruited_at, lineup slot and eta/hold/park columns, saveLineupSlot sets or clears the lineup slot, and removeHaul never goes below zero. Everything else the store does answers the
  * Mockito default.
  */
 final class FakeLivingStore {
@@ -37,6 +37,8 @@ final class FakeLivingStore {
     final List<String> events = new ArrayList<>();
     final Map<Integer, Integer> levels = new HashMap<>();
     final Map<String, PersonaState> personaStates = new HashMap<>();
+    /** owner:persona -> lineup_slot (the usual lineup), as saveLineupSlot keeps it. */
+    final Map<String, Integer> lineup = new HashMap<>();
     final LivingStore store = mock(LivingStore.class);
 
     FakeLivingStore() {
@@ -50,7 +52,25 @@ final class FakeLivingStore {
                 .filter(e -> e.state() == RosterState.BENCHED || e.state() == RosterState.AWAY).toList());
         when(store.allInTransit()).thenAnswer(inv -> rows.values().stream().filter(e -> e.state() == RosterState.TRAVELLING
                 || e.state() == RosterState.HOLD || e.state() == RosterState.PARKED).toList());
-        when(store.lineupSlots(anyInt())).thenReturn(Map.of());
+        when(store.lineupSlots(anyInt())).thenAnswer(inv -> {
+            Map<String, Integer> out = new HashMap<>();
+            lineup.forEach((key, slot) -> {
+                RosterEntry entry = rows.get(key);
+                if (entry != null && entry.characterId() == (int) inv.getArgument(0) && entry.state() != RosterState.RELEASED) {
+                    out.put(entry.personaId(), slot);
+                }
+            });
+            return out;
+        });
+        doAnswer(inv -> {
+            Integer slot = inv.getArgument(2);
+            if (slot == null) {
+                lineup.remove(key(inv.getArgument(0), inv.getArgument(1)));
+            } else {
+                lineup.put(key(inv.getArgument(0), inv.getArgument(1)), slot);
+            }
+            return null;
+        }).when(store).saveLineupSlot(anyInt(), anyString(), any());
         doAnswer(inv -> {
             RosterEntry entry = inv.getArgument(0);
             rows.put(key(entry.characterId(), entry.personaId()), entry);

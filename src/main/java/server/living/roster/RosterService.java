@@ -9,14 +9,18 @@ import constants.inventory.ItemConstants;
 import net.server.Server;
 import net.server.world.CauseScope;
 import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import net.server.world.PartyEvents;
+import net.server.world.PartyOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.ItemInformationProvider;
 import server.agents.capabilities.follow.AgentFollowGuard;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
+import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService;
@@ -39,9 +43,13 @@ import tools.PacketCreator;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -65,6 +73,8 @@ public final class RosterService {
     /** A bench, swap or errand refused while the companion is committed to a run (Commitments). */
     static final String AFTER_THE_RUN_LINE = "after the run.";
     private static final String CANT_GET_AWAY_LINE = "i can't get away right now. try again in a bit.";
+    /** The goodbye one companion says in party chat when its owner logs off (decision 8a), unless it has its own. */
+    static final String GOODBYE_LINE = "gn!";
 
     /** Where an owner last came into a map that is not an event instance's copy: the way into their next run. */
     private record Spot(int mapId, Point at) { }
@@ -91,9 +101,21 @@ public final class RosterService {
     private final java.util.Set<String> offFollow = ConcurrentHashMap.newKeySet();
     /** Where each owner came into the map they are on: their companions follow them in there. */
     private final PortalFollow portalFollow = new PortalFollow();
+    /** Owner id -> the own party their companions stayed in as offline members when they logged off (decision 8a). */
+    private final Map<Integer, Integer> parkedParty = new ConcurrentHashMap<>();
+    /** Owner id -> each row's banked EXP and haul meso when they logged off: the login whisper sums up the difference. */
+    private final Map<Integer, Map<String, long[]>> benchAtLogout = new ConcurrentHashMap<>();
+    private final CompanionChannelFollow channelFollow;
+    private final InstanceLogoutHandoff handoff;
 
     public RosterService(LivingWorld world) {
         this.world = world;
+        this.channelFollow = new CompanionChannelFollow(world, this);
+        this.handoff = new InstanceLogoutHandoff(world, this);
+        Commitments commitments = world.commitments();
+        if (commitments != null) {
+            commitments.addListener(handoff::commitmentEnded); // a companion that finished a run for a friend parks
+        }
         for (RosterEntry entry : world.store().allActive()) {
             ownerByPersona.put(entry.personaId(), entry.characterId());
             owners.add(entry.characterId());
@@ -218,9 +240,13 @@ public final class RosterService {
                 : Math.max(0L, entry.etaAtMs() - System.currentTimeMillis());
     }
 
-    /** True while a verb is under way for the companion: it is being seated, walking out, or on its way over. */
+    /**
+     * True while a verb is under way for the companion: it is being seated, walking out, on its way over, changing
+     * channel with its owner, or finishing a run for a friend of its owner's (decision 8b).
+     */
     public boolean inFlight(int ownerId, String personaId) {
-        return seating.contains(personaId) || leaving.containsKey(personaId) || travelMsLeft(ownerId, personaId) > 0L;
+        return seating.contains(personaId) || leaving.containsKey(personaId) || travelMsLeft(ownerId, personaId) > 0L
+                || channelFollow.pending(personaId) || handoff.finishing(world.residents().characterIdOf(personaId));
     }
 
     /** True when the persona is active in the owner's party and on the owner's map (plan 5.3). */
@@ -330,6 +356,7 @@ public final class RosterService {
             return persona.name() + " is not in your roster.";
         }
         world.benchSessions().endFor(persona.id(), "released");
+        leaveOfflineParty(entry); // parked with its offline owner: it leaves their party too
         despawn(entry, "released");
         world.slots().release(persona.id());
         world.slots().stopWaiting(persona.id());
@@ -540,14 +567,16 @@ public final class RosterService {
      * The trip due at {@code arrivesAt} ends. With its owner inside an event instance it waits outside instead, on the
      * map they went in from (HOLD). Else it comes into the owner's current map at the portal nearest them (from where
      * it stands, when it is on that map already), walks into formation, and only then follows; the row is ACTIVE. A
-     * trip turned back, re-timed or replaced does nothing; so does one whose owner logged off (the logout unloaded it
-     * and the row waits for their login). One its owner changed channel away from comes in on theirs, and one no longer
-     * in its owner's party (a merge or a disband on the way) takes a seat there or turns back with returnWhenRoom.
+     * trip turned back, re-timed or replaced does nothing; so does one whose owner logged off (it parked with them),
+     * and one changing channel with its owner waits for that move. One its owner changed channel away from comes in on
+     * theirs, and one no longer in its owner's party (a merge or a disband on the way) takes a seat there or turns back
+     * with returnWhenRoom.
      */
     private void arrive(int ownerId, Persona persona, long arrivesAt) {
         RosterEntry entry = world.store().rosterEntry(ownerId, persona.id());
-        if (entry == null || entry.state() != RosterState.TRAVELLING || entry.etaAtMs() != arrivesAt) {
-            return;
+        if (entry == null || entry.state() != RosterState.TRAVELLING || entry.etaAtMs() != arrivesAt
+                || channelFollow.pending(persona.id())) {
+            return; // changing channel with its owner: the move brings the arrival in (followChannel)
         }
         Character owner = onlineCharacter(ownerId);
         Character bot = companion(entry);
@@ -782,7 +811,7 @@ public final class RosterService {
     }
 
     /** Runs {@code task} on companion-ops after {@code delayMs}: the timer only hands it over. */
-    private void later(String name, Runnable task, long delayMs) {
+    void later(String name, Runnable task, long delayMs) {
         server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor().submit(name, task), delayMs);
     }
@@ -790,7 +819,8 @@ public final class RosterService {
     /**
      * Seats a queued or restored companion. While another load holds the owner's slot it waits for the next one
      * without a word; only a refusal is printed, since the stock "has joined the party" notice announces a seat. A
-     * TRAVELLING row restored at login sets off again and a HOLD one rejoins, through {@link #call}.
+     * TRAVELLING row restored at login sets off again and a HOLD one rejoins, through {@link #call}. A PARKED one logs
+     * back in: an offline member of its owner's party has its seat there already.
      */
     private void seatQuietly(int ownerId, Persona persona, RosterState state) {
         Character owner = onlineCharacter(ownerId);
@@ -804,11 +834,11 @@ public final class RosterService {
             return;
         }
         // the party may have filled while this one waited; an AWAY or travelling companion kept its seat, and a
-        // restored ACTIVE one with no seat left is benched with returnWhenRoom, so its row says where it is and it
-        // comes back by itself once there is room
-        boolean full = !canSeat(owner, entry);
+        // restored ACTIVE (or PARKED) one with no seat left is benched with returnWhenRoom, so its row says where it is
+        // and it comes back by itself once there is room
+        boolean full = !canSeat(owner, entry) && !(state == RosterState.PARKED && inOwnersParty(owner, entry));
         RosterResult outcome;
-        if (full && CompanionSeatState.partyMember(state)) {
+        if (full && (CompanionSeatState.partyMember(state) || state == RosterState.PARKED)) {
             outcome = standDown(owner, persona, overflowLine(persona, ownerId), "companion.overflow");
             world.slots().waitForRoom(persona.id(), 0);
         } else if (full) {
@@ -828,16 +858,24 @@ public final class RosterService {
         return bot != null && AgentRuntimeRegistry.leaderIdForAgentCharacter(bot.getId()) == owner.getId();
     }
 
+    /** True when the companion is listed in its owner's party, online or (parked with them) as an offline member. */
+    private boolean inOwnersParty(Character owner, RosterEntry entry) {
+        Party party = owner.getParty();
+        int characterId = world.residents().characterIdOf(entry.personaId());
+        return party != null && characterId != 0 && party.getMemberById(characterId) != null;
+    }
+
     /**
      * A call that could not seat the companion: nothing stays loaded for it, the row stays BENCHED (or AWAY, or HOLD)
      * so the ledger keeps crediting it, and the companion tells the owner why (the reason goes to the event log). An
-     * ACTIVE or TRAVELLING row nothing seated is benched; one that another call seated meanwhile stays as it is.
-     * {@code result} is what the caller is told.
+     * ACTIVE, TRAVELLING or PARKED row nothing seated is benched; one that another call seated meanwhile stays as it
+     * is. {@code result} is what the caller is told.
      */
     private RosterResult refuse(Character owner, Persona persona, RosterEntry entry, String line, String reason,
                                 RosterResult result) {
         RosterEntry current = current(entry);
-        if (CompanionSeatState.partyMember(current.state()) && !seatedWith(owner, current)) {
+        if ((CompanionSeatState.partyMember(current.state()) || current.state() == RosterState.PARKED)
+                && !seatedWith(owner, current)) {
             write(current.with(RosterState.BENCHED, System.currentTimeMillis()));
         }
         world.residents().whisper(persona, owner, line);
@@ -1358,49 +1396,492 @@ public final class RosterService {
         return result;
     }
 
-    // ---- login / logout ------------------------------------------------------------------
+    // ---- login / logout (decision 8a), the grace, boot and channel follow -------------------
 
     /**
-     * Restores the owner's companions (decision 8a): ACTIVE ones walk in from a portal once the field has loaded on
-     * the client, a few seconds apart; TRAVELLING ones their logout cut short set off again, and HOLD ones rejoin
-     * unless the run is still on. The load spacing still applies when each one fires. A roster owner without the
-     * Adventurer's Roster gets one.
+     * The owner logged in (decision 8a). Companions moving over from the owner's channel change or Cash Shop visit
+     * follow on their own ({@link CompanionChannelFollow}). PARKED ones within their grace ({@code
+     * LEADER_OFFLINE_BENCH_MS}) log back in, and ACTIVE, TRAVELLING and HOLD rows with nothing loaded are restored: 2-8 s
+     * apart, once the field has loaded, each walks in from the portal nearest the owner into the party it stayed in as
+     * an offline member, or the owner's party now; a trip sets off again and a hold rejoins unless the run is still on.
+     * PARKED ones past their grace go to their duty from the grace deadline (the ledger credits them up to now), and
+     * when nobody comes back otherwise the usual lineup is called with travel (join-then-travel). After a logout one
+     * whisper sums up what the bench earned meanwhile. A roster owner without the Adventurer's Roster gets one.
      */
     public void onOwnerLogin(Character owner) {
-        ownerLogoutAtMs.remove(String.valueOf(owner.getId()));
+        int ownerId = owner.getId();
+        ownerLogoutAtMs.remove(String.valueOf(ownerId));
         MapleMap here = owner.getMap();
         if (here != null && here.getEventInstance() == null) {
-            lastOpenMap.put(owner.getId(), new Spot(here.getId(), owner.getPosition() == null ? null : new Point(owner.getPosition())));
+            lastOpenMap.put(ownerId, new Spot(here.getId(), owner.getPosition() == null ? null : new Point(owner.getPosition())));
         }
         List<RosterEntry> entries = roster(owner);
         if (!entries.isEmpty()) {
             grantRosterBook(owner);
         }
+        Set<String> following = channelFollow.ownerArrived(owner);
+        boolean restoring = !following.isEmpty();
+        long now = System.currentTimeMillis();
+        long graceMs = world.config().LEADER_OFFLINE_BENCH_MS;
         long delayMs = ArrivalPlacement.LOGIN_ARRIVAL_MS;
-        for (RosterEntry entry : entries) {
+        for (RosterEntry entry : inLineupOrder(ownerId, entries)) {
             RosterState state = entry.state();
-            if (state == RosterState.ACTIVE || state == RosterState.TRAVELLING || state == RosterState.HOLD) {
+            if (following.contains(entry.personaId())) {
+                continue;
+            }
+            if (state == RosterState.PARKED && now - entry.parkedAtMs() >= graceMs) {
+                benchParked(entry, graceMs);
+                world.bench().accrueNow(current(entry)); // its duty since the deadline, before the lineup is called
+                continue;
+            }
+            if (state == RosterState.ACTIVE || state == RosterState.TRAVELLING || state == RosterState.HOLD
+                    || state == RosterState.PARKED) {
+                restoring = true;
                 Persona persona = world.content().persona(entry.personaId());
                 if (persona != null && companion(entry) == null) {
-                    spawnLater(owner.getId(), persona, state, delayMs);
+                    spawnLater(ownerId, persona, state, delayMs);
                     delayMs += ArrivalPlacement.staggerMs();
+                }
+            }
+        }
+        parkedParty.remove(ownerId);
+        Map<String, long[]> before = benchAtLogout.remove(ownerId);
+        if (before != null) {
+            summarizeBench(owner, before);
+        }
+        if (!restoring) {
+            callUsual(owner);
+        }
+    }
+
+    /** {@link #onOwnerLogout(Character, EventInstanceManager)} in the event instance the owner is in now. */
+    public void onOwnerLogout(Character owner) {
+        onOwnerLogout(owner, owner.getEventInstance());
+    }
+
+    /**
+     * The owner logged off (decision 8a), on companion-ops. The old session of a channel change (or of the Cash Shop's
+     * way out) is no logout: its companions follow ({@link CompanionChannelFollow}). Otherwise the usual lineup is
+     * saved from the party order and one companion says goodbye in party chat. In the owner's own party (its only
+     * human, CompanionDirectory.isCompanionParty) the companions out log off with them and stay in it as offline
+     * members; the owner keeps the lead, since Party.successor gives it to no bot while a human is a member. In a party
+     * with another human, even one the owner leads, they leave it at once, so the friend gets the seats back. Either way
+     * each one out (ACTIVE; TRAVELLING, whose trip ends; HOLD) is PARKED from now, and goes to its duty once {@code
+     * LEADER_OFFLINE_BENCH_MS} has passed ({@link #benchParkedPastGrace}). {@code instance}: the event instance the
+     * owner was in, read before the disconnect unregistered them. Its companions committed to the run finish it for a
+     * human of the party still in it (decision 8b, {@link InstanceLogoutHandoff}); the others leave with the owner under
+     * stock eim rules, and their commitments end.
+     */
+    public void onOwnerLogout(Character owner, EventInstanceManager instance) {
+        int ownerId = owner.getId();
+        if (channelFollow.logoutIsTransition(ownerId)) {
+            return;
+        }
+        channelFollow.forget(ownerId);
+        ownerLogoutAtMs.put(String.valueOf(ownerId), System.currentTimeMillis());
+        List<RosterEntry> rows = roster(owner);
+        if (rows.isEmpty()) {
+            return;
+        }
+        benchAtLogout.put(ownerId, progress(rows));
+        saveUsualLineup(owner);
+        List<RosterEntry> out = new ArrayList<>();
+        for (RosterEntry entry : inLineupOrder(ownerId, rows)) {
+            if (CompanionSeatState.partyMember(entry.state()) || entry.state() == RosterState.HOLD) {
+                out.add(entry);
+            }
+        }
+        Party party = owner.getParty();
+        boolean ownParty = party != null && world.directory().isCompanionParty(party);
+        Set<String> finishing = instance == null ? Set.of() : handoff.handOff(owner, instance, out);
+        long now = System.currentTimeMillis();
+        boolean saidGoodbye = false;
+        for (RosterEntry entry : out) {
+            if (finishing.contains(entry.personaId())) {
+                continue;
+            }
+            Persona persona = world.content().persona(entry.personaId());
+            Character bot = companion(entry);
+            if (!saidGoodbye && persona != null && bot != null && CompanionSeatState.partyMember(entry.state())) {
+                saidGoodbye = partyChat(bot, goodbye(persona, ownerId));
+            }
+            park(entry, ownParty && CompanionSeatState.partyMember(entry.state()), now, "owner offline");
+        }
+        if (ownParty) {
+            parkedParty.put(ownerId, party.getId());
+        }
+    }
+
+    /**
+     * One companion logs off with its owner and its row is PARKED from {@code nowMs}: it stays in its owner's party as
+     * an offline member ({@code keepParty}), else it leaves any party it is in first. A seat held for it goes back and
+     * a commitment it had ends.
+     */
+    private void park(RosterEntry entry, boolean keepParty, long nowMs, String reason) {
+        world.slots().release(entry.personaId());
+        releaseCommitment(entry.personaId());
+        try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) { // its leave or log-off is the sync's echo
+            unload(entry, reason, !keepParty);
+        }
+        if (write(current(entry).withPark(nowMs))) {
+            world.store().event(entry.characterId(), entry.personaId(), "companion.parked",
+                    reason + (keepParty ? ": an offline member of its owner's party" : ": out of the party"));
+        }
+    }
+
+    /** The companion's commitment to a run ends: it left the run. */
+    private void releaseCommitment(String personaId) {
+        Commitments commitments = world.commitments();
+        int characterId = world.residents().characterIdOf(personaId);
+        if (commitments != null && characterId != 0) {
+            commitments.releaseMember(characterId);
+        }
+    }
+
+    /** What a companion says in party chat as its owner logs off: its own "logout" line, else {@link #GOODBYE_LINE}. */
+    private String goodbye(Persona persona, int ownerId) {
+        List<String> lines = world.arcs().lines(persona, "logout");
+        return lines.isEmpty() ? GOODBYE_LINE : lines.get(Math.floorMod(ownerId, lines.size()));
+    }
+
+    /** The companion says {@code line} in its party's chat; false when it could not. */
+    private static boolean partyChat(Character bot, String line) {
+        try {
+            return AgentPartyGatewayRuntime.party().sendPartyChat(bot, line);
+        } catch (RuntimeException failure) {
+            log.debug("party chat failed for {}", bot.getName(), failure);
+            return false;
+        }
+    }
+
+    /** Each row's banked EXP and haul meso now, which the login whisper compares with. */
+    private static Map<String, long[]> progress(List<RosterEntry> rows) {
+        Map<String, long[]> out = new HashMap<>();
+        for (RosterEntry entry : rows) {
+            out.put(entry.personaId(), new long[] {entry.accruedExp(), entry.haulMeso()});
+        }
+        return out;
+    }
+
+    /**
+     * The whisper to an owner back from a logout: what each companion on the bench earned meanwhile, its banked EXP and
+     * haul meso gained since {@code before} (the rows at the logout; a row missing there counts from nothing). Nothing
+     * earned, no whisper.
+     */
+    private void summarizeBench(Character owner, Map<String, long[]> before) {
+        List<String> earned = new ArrayList<>();
+        Persona speaker = null;
+        for (RosterEntry entry : inLineupOrder(owner.getId(), roster(owner))) {
+            Persona persona = BenchSessions.benchGoverned(entry) ? world.content().persona(entry.personaId()) : null;
+            long[] was = before.getOrDefault(entry.personaId(), new long[2]);
+            long exp = entry.accruedExp() - was[0];
+            long meso = entry.haulMeso() - was[1];
+            if (persona == null || exp <= 0L && meso <= 0L) {
+                continue;
+            }
+            speaker = speaker == null ? persona : speaker;
+            earned.add(persona.name() + (exp > 0L ? String.format(Locale.ROOT, " +%,d exp", exp) : "")
+                    + (meso > 0L ? String.format(Locale.ROOT, " +%,d meso", meso) : ""));
+        }
+        if (speaker != null) {
+            world.residents().whisper(speaker, owner, "while you were away: " + String.join(", ", earned) + ".");
+        }
+    }
+
+    /**
+     * Remembers the usual lineup (plan "Usual lineup", lineup_slot): the owner's companions out, in their party window's
+     * order, then those out of it (waiting outside a run) in their old order, 5 at most; the owner's other rows lose
+     * their place. Saved at logout (decision 8a); P3's "Remember this lineup" calls it too.
+     */
+    public void saveUsualLineup(Character owner) {
+        List<RosterEntry> out = new ArrayList<>();
+        Map<Integer, String> byCharacter = new HashMap<>();
+        for (RosterEntry entry : inLineupOrder(owner.getId(), roster(owner))) {
+            if (CompanionSeatState.partyMember(entry.state()) || entry.state() == RosterState.HOLD) {
+                out.add(entry);
+                byCharacter.put(world.residents().characterIdOf(entry.personaId()), entry.personaId());
+            }
+        }
+        List<String> order = new ArrayList<>();
+        Party party = owner.getParty();
+        if (party != null) {
+            for (PartyCharacter member : party.getMembers()) {
+                String personaId = byCharacter.get(member.getId());
+                if (personaId != null && !order.contains(personaId)) {
+                    order.add(personaId);
+                }
+            }
+        }
+        for (RosterEntry entry : out) {
+            if (!order.contains(entry.personaId())) {
+                order.add(entry.personaId());
+            }
+        }
+        saveLineup(owner.getId(), order);
+    }
+
+    /** Writes the usual lineup: places 1.. in {@code order} (5 at most) and none for the owner's other rows. */
+    private void saveLineup(int ownerId, List<String> order) {
+        Map<String, Integer> was = world.store().lineupSlots(ownerId);
+        Set<String> placed = new HashSet<>();
+        for (String personaId : order) {
+            if (placed.size() >= PARTY_CAP - 1) {
+                break;
+            }
+            if (placed.add(personaId) && !Integer.valueOf(placed.size()).equals(was.get(personaId))) {
+                world.store().saveLineupSlot(ownerId, personaId, placed.size());
+            }
+        }
+        for (String personaId : was.keySet()) {
+            if (!placed.contains(personaId)) {
+                world.store().saveLineupSlot(ownerId, personaId, null);
+            }
+        }
+    }
+
+    /** The rows in usual-lineup order; those without a place come last, as they were. */
+    private List<RosterEntry> inLineupOrder(int ownerId, List<RosterEntry> rows) {
+        Map<String, Integer> lineup = world.store().lineupSlots(ownerId);
+        List<RosterEntry> sorted = new ArrayList<>(rows);
+        sorted.sort(Comparator.comparingInt(entry -> lineup.getOrDefault(entry.personaId(), Integer.MAX_VALUE)));
+        return sorted;
+    }
+
+    /**
+     * Calls the usual lineup (plan "Usual lineup"): each benched companion with a place in it, in lineup order, joins at
+     * once and travels over (join-then-travel) while the party has room. Decision 8a's login after the grace; P3's
+     * "call the usual" too. A refusal is printed.
+     */
+    public void callUsual(Character owner) {
+        Map<String, Integer> lineup = world.store().lineupSlots(owner.getId());
+        for (RosterEntry entry : inLineupOrder(owner.getId(), roster(owner))) {
+            Persona persona = entry.state() == RosterState.BENCHED && lineup.containsKey(entry.personaId())
+                    ? world.content().persona(entry.personaId()) : null;
+            if (persona != null) {
+                RosterResult result = call(owner, persona);
+                if (!result.ok()) {
+                    owner.dropMessage(5, RosterVoice.line(persona, result));
                 }
             }
         }
     }
 
     /**
-     * The owner's out companions log off with them: ACTIVE, TRAVELLING (its row keeps eta_at for the login) and HOLD
-     * (its row and seat keep the map it waits on). Their rows are left as they are.
+     * Bench duty for companions whose owner stays away (decision 8a; on companion-ops every minute): each PARKED row of
+     * an offline owner goes to its duty once {@code LEADER_OFFLINE_BENCH_MS} has passed since it parked. An owner who is
+     * online again (or in the Cash Shop) is left to the login path.
      */
-    public void onOwnerLogout(Character owner) {
-        for (RosterEntry entry : roster(owner)) {
-            RosterState state = entry.state();
-            if (state == RosterState.ACTIVE || state == RosterState.TRAVELLING || state == RosterState.HOLD) {
-                despawn(entry, "owner offline");
+    public void benchParkedPastGrace() {
+        long now = System.currentTimeMillis();
+        long graceMs = world.config().LEADER_OFFLINE_BENCH_MS;
+        Set<Integer> stillParked = new HashSet<>();
+        for (RosterEntry entry : world.store().allInTransit()) {
+            if (entry.state() != RosterState.PARKED) {
+                continue;
+            }
+            if (now - entry.parkedAtMs() >= graceMs && onlineCharacter(entry.characterId()) == null) {
+                benchParked(entry, graceMs);
+            } else {
+                stillParked.add(entry.characterId());
             }
         }
-        ownerLogoutAtMs.put(String.valueOf(owner.getId()), System.currentTimeMillis());
+        parkedParty.keySet().retainAll(stillParked);
+    }
+
+    /**
+     * A PARKED companion whose grace ran out goes to its duty (decision 8a): it leaves the owner's party it stayed in as
+     * an offline member (expelled under the roster's cause, which the sync takes as an echo), and its row is BENCHED
+     * from the grace deadline, so the ledger credits its duty from then on and never the time it spent parked.
+     */
+    private void benchParked(RosterEntry entry, long graceMs) {
+        leaveOfflineParty(entry);
+        world.slots().release(entry.personaId());
+        if (write(entry.with(RosterState.BENCHED, entry.parkedAtMs() + graceMs))) {
+            world.store().event(entry.characterId(), entry.personaId(), "companion.parked_bench", entry.assignment().name());
+        }
+    }
+
+    /** A companion still an offline member of the own party its owner logged off in leaves it. */
+    private void leaveOfflineParty(RosterEntry entry) {
+        Integer partyId = parkedParty.get(entry.characterId());
+        int characterId = world.residents().characterIdOf(entry.personaId());
+        if (partyId == null || characterId == 0) {
+            return;
+        }
+        try {
+            net.server.world.World game = Server.getInstance().getWorld(world.config().WORLD);
+            Party party = game == null ? null : game.getParty(partyId);
+            PartyCharacter member = party == null ? null : party.getMemberById(characterId);
+            if (member != null && !member.isOnline()) {
+                try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
+                    game.updateParty(partyId, PartyOperation.EXPEL, member);
+                }
+            }
+        } catch (RuntimeException failure) {
+            log.debug("{} could not leave party {}", entry.personaId(), partyId, failure);
+        }
+    }
+
+    /**
+     * Boot reconciliation (decision 8a), on companion-ops before any login: nobody is online and no party survived the
+     * restart, so every companion that was out (ACTIVE, TRAVELLING, HOLD) is PARKED from now, those become the usual
+     * lineup in their old order, and a PARKED one whose grace had run out goes to its duty from its deadline. The login
+     * path then applies, and its whisper sums up what the bench holds.
+     */
+    public void reconcileAtBoot() {
+        long now = System.currentTimeMillis();
+        long graceMs = world.config().LEADER_OFFLINE_BENCH_MS;
+        List<RosterEntry> rows = new ArrayList<>(world.store().allActive());
+        rows.addAll(world.store().allInTransit());
+        Map<Integer, List<String>> parked = new LinkedHashMap<>();
+        for (RosterEntry entry : rows) {
+            switch (entry.state()) {
+                case ACTIVE, TRAVELLING, HOLD -> {
+                    world.slots().release(entry.personaId()); // the HOLD seat rebuilt at construction
+                    if (write(entry.withPark(now))) {
+                        parked.computeIfAbsent(entry.characterId(), id -> new ArrayList<>()).add(entry.personaId());
+                        world.store().event(entry.characterId(), entry.personaId(), "companion.parked", "server restart");
+                    }
+                }
+                case PARKED -> {
+                    if (now - entry.parkedAtMs() >= graceMs) {
+                        benchParked(entry, graceMs);
+                    }
+                }
+                default -> { }
+            }
+            benchAtLogout.putIfAbsent(entry.characterId(), Map.of());
+        }
+        parked.forEach((ownerId, personaIds) -> {
+            Map<String, Integer> was = world.store().lineupSlots(ownerId);
+            List<String> order = new ArrayList<>(personaIds);
+            order.sort(Comparator.comparingInt(id -> was.getOrDefault(id, Integer.MAX_VALUE)));
+            saveLineup(ownerId, order);
+        });
+    }
+
+    /**
+     * A companion that finished a run for a friend of its offline owner (decision 8b; its commitment ended) leaves that
+     * party and parks from now. With its owner online again meanwhile it logs back in to them at once.
+     */
+    void parkAfterRun(int ownerId, int characterId) {
+        Persona persona = world.residents().personaOfCharacterId(characterId);
+        RosterEntry entry = persona == null ? null : world.store().rosterEntry(ownerId, persona.id());
+        if (entry == null || !CompanionSeatState.partyMember(entry.state())) {
+            return;
+        }
+        park(entry, false, System.currentTimeMillis(), "finished the run for its owner's party");
+        if (onlineCharacter(ownerId) != null) {
+            spawnLater(ownerId, persona, RosterState.PARKED, ArrivalPlacement.LOGIN_ARRIVAL_MS);
+        }
+    }
+
+    /** Installs the runtime-leader move of the PQ-scoped delegation (decision 8b); the PQ track does, from P6. */
+    public void installInstanceDelegation(InstanceLogoutHandoff.Delegation delegation) {
+        handoff.install(delegation);
+    }
+
+    /**
+     * LivingWorldHooks.playerChangingChannel: the owner is about to change channel, or to leave the Cash Shop (a change
+     * to the same channel). Memory only here ({@link CompanionChannelFollow}).
+     */
+    public void ownerChangingChannel(Character owner, int channel) {
+        if (owners.contains(owner.getId())) {
+            channelFollow.changing(owner, channel);
+        }
+    }
+
+    /** LivingWorldHooks.playerEnteredCashShop: companions idle where they are; a visit past the grace logs them off. */
+    public void ownerEnteredCashShop(Character owner) {
+        if (owners.contains(owner.getId())) {
+            channelFollow.enteredCashShop(owner);
+        }
+    }
+
+    /**
+     * Channel follow (plan flow 6), on companion-ops: the companion out with its owner (ACTIVE, or TRAVELLING toward
+     * them) moves to the channel they changed to, as a player changing channel does. It logs off on the old channel,
+     * staying in the party as an offline member meanwhile, then logs in on the owner's channel: an ACTIVE one at the
+     * portal nearest the owner, walking over and only then following; a TRAVELLING one where it stood, still on its way
+     * (an arrival already due comes in right after). It is a member already, so the party window shows its new channel.
+     * Its load is budgeted as one that replaces itself. True when it is on its owner's channel now or nothing is left to
+     * move (it was benched or parked meanwhile); false leaves it to {@link #followChannelFallback}.
+     */
+    boolean followChannel(Character owner, Persona persona) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null || !CompanionSeatState.partyMember(entry.state())) {
+            return true;
+        }
+        Character bot = companion(entry);
+        if (bot == null) {
+            return false;
+        }
+        if (sameChannel(owner, bot)) {
+            return true; // a Cash Shop visit, or it made it already
+        }
+        boolean travelling = entry.state() == RosterState.TRAVELLING;
+        MapleMap map = travelling ? channelMap(owner, bot.getMapId()) : owner.getMap();
+        Point stood = bot.getPosition() == null ? null : new Point(bot.getPosition());
+        Point at = !travelling ? ArrivalPlacement.nearestPortal(map, owner.getPosition())
+                : stood != null ? stood : ArrivalPlacement.portalNear(map, null);
+        if (at == null && !travelling) {
+            at = owner.getPosition(); // no usable portal on the owner's map: beside them, as P1.5
+        }
+        if (map == null || at == null || !world.budget().admitReplacing(CompanionBudget.Kind.COMPANION, owner).allowed()) {
+            return false;
+        }
+        int characterId = bot.getId();
+        Character moved;
+        try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
+            unload(entry, "follows its owner to another channel", false);
+            world.leases().tryAcquire(characterId, CompanionLeases.Kind.COMPANION, owner.getId());
+            AgentLifecycleService.AgentSpawnResult result = spawnAt(owner, persona, map, at);
+            if (result == null || !result.success() || result.agent() == null) {
+                world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
+                log.warn("channel follow {} for {} failed: {}", persona.id(), owner.getName(),
+                        result == null ? "no result" : result.errorMessage());
+                return false;
+            }
+            moved = result.agent();
+            JoinOutcome joined = joinOwner(owner, moved);
+            if (!joinedOk(joined)) {
+                despawn(entry, "channel follow join " + joined);
+                return false;
+            }
+        }
+        if (!travelling) {
+            walkToOwner(persona, moved);
+        } else if (entry.etaAtMs() <= System.currentTimeMillis()) {
+            int ownerId = owner.getId();
+            later("roster.arrive " + persona.id(), () -> arrive(ownerId, persona, entry.etaAtMs()), 0L);
+        }
+        Client client = owner.getClient();
+        world.store().event(owner.getId(), persona.id(), "companion.channel_follow",
+                "channel " + (client == null ? "?" : String.valueOf(client.getChannel())));
+        return true;
+    }
+
+    /**
+     * Channel follow's fallback, {@link CompanionChannelFollow#FALLBACK_MS} after its owner logged in on the new channel:
+     * a companion out with them and still not there is unloaded wherever it is and seated on their channel the way a
+     * call does it (an ACTIVE one walks in from the portal nearest the owner; a TRAVELLING one sets off again for the
+     * time it had left).
+     */
+    void followChannelFallback(Character owner, Persona persona) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null || !CompanionSeatState.partyMember(entry.state())) {
+            return;
+        }
+        Character bot = companion(entry);
+        if (bot != null && sameChannel(owner, bot)) {
+            return;
+        }
+        despawn(entry, "channel follow fallback");
+        RosterResult result = entry.state() == RosterState.TRAVELLING ? call(owner, persona)
+                : spawnCompanion(owner, persona, entry, null);
+        if (!result.ok()) {
+            owner.dropMessage(5, RosterVoice.line(persona, result));
+        }
     }
 
     // ---- hold and rejoin (plan "Seat states": HOLD) ----------------------------------------
@@ -1627,11 +2108,22 @@ public final class RosterService {
     }
 
     private void despawn(RosterEntry entry, String reason) {
+        unload(entry, reason, true);
+    }
+
+    /**
+     * Saves the companion and takes it off the server as a player logging off, with its COMPANION lease. {@code
+     * leaveParty}: it leaves its party first; else it stays in it as an offline member (the stock log-off, under the
+     * caller's cause token).
+     */
+    private void unload(RosterEntry entry, String reason, boolean leaveParty) {
         leaving.remove(entry.personaId()); // a walk-out in progress ends here
         Character bot = companion(entry);
         int characterId = world.residents().characterIdOf(entry.personaId());
         if (bot != null) {
-            leaveParty(bot, entry);
+            if (leaveParty) {
+                leaveParty(bot, entry);
+            }
             bot.saveCharToDB();
         }
         if (characterId != 0) {

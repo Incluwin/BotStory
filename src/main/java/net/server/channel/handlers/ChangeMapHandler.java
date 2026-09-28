@@ -33,6 +33,7 @@ import net.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.Trade;
+import server.living.LivingWorldHooks;
 import server.maps.MapleMap;
 import server.maps.Portal;
 import tools.PacketCreator;
@@ -187,6 +188,7 @@ public final class ChangeMapHandler extends AbstractPacketHandler {
             c.enableCSActions();
             return;
         }
+        LivingWorldHooks.playerChangingChannel(chr, c.getChannel()); // the way out is a channel change: companions stay
         chr.getCashShop().open(false);
 
         chr.setSessionTransitionState();

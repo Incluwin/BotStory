@@ -69,7 +69,7 @@ class LivingWorldHooksTest {
         queue.get(1).run();
 
         InOrder order = inOrder(roster);
-        order.verify(roster).onOwnerLogout(ann);
+        order.verify(roster).onOwnerLogout(ann, null);
         order.verify(roster).onOwnerLogin(back);
     }
 
@@ -82,7 +82,7 @@ class LivingWorldHooksTest {
         queue.get(0).run();
 
         InOrder order = inOrder(roster);
-        order.verify(roster).onOwnerLogout(ann);
+        order.verify(roster).onOwnerLogout(ann, null);
         order.verify(roster).onOwnerLogin(back);
     }
 
@@ -93,8 +93,30 @@ class LivingWorldHooksTest {
 
         queue.get(0).run();
 
-        verify(roster).onOwnerLogout(ann);
+        verify(roster).onOwnerLogout(ann, null);
         verify(roster, never()).onOwnerLogin(any());
+    }
+
+    @Test
+    void aLogoutInsideAnEventInstanceHandsTheInstanceReadBeforeTheDisconnectToTheRoster() {
+        scripting.event.EventInstanceManager instance = mock(scripting.event.EventInstanceManager.class);
+        when(ann.getEventInstance()).thenReturn(instance);
+        LivingWorldHooks.playerLoggedOut(ann);
+        when(ann.getEventInstance()).thenReturn(null); // the disconnect unregisters them before companion-ops runs
+
+        queue.get(0).run();
+
+        verify(roster).onOwnerLogout(ann, instance);
+    }
+
+    @Test
+    void aChannelChangeAndACashShopVisitReachTheRosterBeforeTheTransition() {
+        LivingWorldHooks.playerChangingChannel(ann, 2);
+        LivingWorldHooks.playerEnteredCashShop(ann);
+
+        verify(roster).ownerChangingChannel(ann, 2); // on the packet thread, ahead of the old session's logout
+        verify(roster).ownerEnteredCashShop(ann);
+        assertEquals(0, queue.size());
     }
 
     @Test

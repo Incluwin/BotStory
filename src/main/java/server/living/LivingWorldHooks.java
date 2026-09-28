@@ -137,10 +137,12 @@ public final class LivingWorldHooks {
         }
         try {
             server.living.resident.LivingTalk.forget(chr);
+            scripting.event.EventInstanceManager instance = chr.getEventInstance(); // before the disconnect unregisters them
             // on companion-ops ahead of the owner's LOG_ONOFF, which the logout publishes right after this hook
             world.executor().submit("roster.logout " + chr.getId(), () -> {
                 Character back = world.roster().onlineCharacter(chr.getId());
-                world.roster().onOwnerLogout(chr); // its companions follow this session: they go with it
+                // its companions log off with this session (a channel change's old session: they follow instead)
+                world.roster().onOwnerLogout(chr, instance);
                 if (back != null && back != chr) {
                     world.roster().onOwnerLogin(back); // logged in again meanwhile (a channel change): restored there
                 }
@@ -148,6 +150,39 @@ public final class LivingWorldHooks {
             world.markers().loggedOut(chr);
         } catch (RuntimeException failure) {
             log.warn("living world logout hook failed", failure);
+        }
+    }
+
+    /**
+     * The player is about to change channel (Client.changeChannel, before the transition) or to leave the Cash Shop,
+     * whose way out is a change to the same channel: their companions follow them there instead of logging off with the
+     * old session (plan flow 6). Memory only on this thread; the rest runs on companion-ops.
+     */
+    public static void playerChangingChannel(Character chr, int channel) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || chr == null) {
+            return;
+        }
+        try {
+            world.roster().ownerChangingChannel(chr, channel);
+        } catch (RuntimeException failure) {
+            log.warn("living world channel change hook failed", failure);
+        }
+    }
+
+    /**
+     * The player went into the Cash Shop: their companions idle where they stand, and log off as at a logout if the
+     * visit lasts longer than {@code LEADER_OFFLINE_BENCH_MS} (plan flow 6). Memory only on this thread.
+     */
+    public static void playerEnteredCashShop(Character chr) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || chr == null) {
+            return;
+        }
+        try {
+            world.roster().ownerEnteredCashShop(chr);
+        } catch (RuntimeException failure) {
+            log.warn("living world cash shop hook failed", failure);
         }
     }
 

@@ -69,6 +69,7 @@ import server.agents.diagnostics.MapTransitionPacketTraceRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.life.Monster;
 import server.life.autonomy.BossClientSimulationCapability;
+import server.living.LivingWorldHooks;
 import server.living.probe.CompanionProbeObserver;
 import server.living.probe.CompanionProbeService;
 import server.maps.FieldLimit;
@@ -1689,6 +1690,7 @@ public class Client extends ChannelInboundHandlerAdapter {
             return;
         }
 
+        LivingWorldHooks.playerChangingChannel(player, channel); // companions follow instead of logging off with this session
         player.closePlayerInteractions();
         player.closePartySearchInteractions();
 

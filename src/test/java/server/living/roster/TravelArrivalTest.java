@@ -41,7 +41,7 @@ import static server.living.roster.LifecycleHarness.portalX;
  * (the party window shows where it is), whispers its ETA and is TRAVELLING with eta_at persisted. When the ETA ends it
  * comes into the owner's current map at the portal nearest them, walks in and only then follows. Each way a trip can
  * go otherwise has its outcome: the owner in a run (it waits at the entrance), benched on the way (it turns back),
- * the owner offline (it logs off with them and sets off again at the login), the party full or the join failing
+ * the owner offline (it parks with them and walks in at the login), the party full or the join failing
  * (nothing stays loaded), the owner on another channel (it comes in on theirs); a whistle still seats it at once.
  */
 class TravelArrivalTest {
@@ -150,36 +150,30 @@ class TravelArrivalTest {
     }
 
     @Test
-    void anOwnerOfflineDuringTheTripTakesItOffAndItSetsOffAgainAtTheirLogin() {
+    void anOwnerOfflineDuringTheTripParksItAndItWalksInFromThePortalAtTheirLogin() {
         game.roster().call(game.ann, olwen);
-        long etaAt = game.row(olwen).etaAtMs();
         List<LifecycleHarness.Timer> trip = List.copyOf(game.timers);
         game.timers.clear();
 
         game.roster().onOwnerLogout(game.ann);
         game.annOnline = false;
-        trip.forEach(timer -> timer.task().run()); // the ETA ends while the owner is away
+        trip.forEach(timer -> timer.task().run()); // the ETA ends while the owner is away: nothing arrives
 
         assertTrue(game.calls.contains("remove Olwen"), "it logs off with its owner");
-        assertFalse(game.members.contains(900));
+        assertFalse(game.calls.contains("leave Olwen"), "in Ann's own party it stays, an offline member");
+        assertTrue(game.members.contains(900));
         RosterEntry parked = game.row(olwen);
-        assertEquals(RosterState.TRAVELLING, parked.state(), "the row keeps the trip for the login");
-        assertEquals(etaAt, parked.etaAtMs());
+        assertEquals(RosterState.PARKED, parked.state(), "its trip ends there: it parks (decision 8a)");
+        assertEquals(0L, parked.etaAtMs());
 
         game.annOnline = true;
+        game.calls.clear();
         game.roster().onOwnerLogin(game.ann);
         game.runDueTimers(); // the login restore, a moment after the field loads
 
-        assertEquals(RosterState.TRAVELLING, game.row(olwen).state());
-        assertTrue(game.members.contains(900), "it is in the party again, still on its way");
-        long left = game.row(olwen).etaAtMs() - System.currentTimeMillis();
-        assertTrue(left > 0L && left <= 60_000L, "only the time it had left: " + left);
-        assertEquals(2, game.calls.stream().filter(call -> call.startsWith("spawn Olwen at " + LITH)).count());
-
-        game.runTimers();
-
+        assertEquals(List.of("spawn Olwen at " + HENESYS_FIELD + " " + portalX(HENESYS_FIELD) + ",200", "follow Olwen"),
+                game.calls, "it walks in from the portal nearest Ann, back in the party it stayed in");
         assertEquals(RosterState.ACTIVE, game.row(olwen).state());
-        assertEquals("follow Olwen", game.calls.get(game.calls.size() - 1));
     }
 
     @Test

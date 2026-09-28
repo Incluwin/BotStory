@@ -140,6 +140,8 @@ public final class LivingWorld {
         server.agents.auth.AgentClaimGuard.installVerbs(world.chatVerbs); // chat dismiss/logout of a companion bench it
         // travelling, held and away companions never follow; the rest come into their owner's new map where they came in
         server.agents.capabilities.follow.AgentFollowGuard.install(new server.living.roster.CompanionFollowGuard(world));
+        // boot reconciliation (decision 8a) goes first on companion-ops, ahead of any login's restore
+        world.executor.submit("roster.boot", world.roster::reconcileAtBoot);
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.residents::tick,
                 config.RESIDENT_TICK_MS, config.RESIDENT_TICK_MS));
@@ -154,6 +156,9 @@ public final class LivingWorld {
                 () -> world.executor.submit("contracts.tick", world.contracts::tick), 60_000L, 60_000L));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("bench_sessions.tick", world.benchSessions::tick), 120_000L, 120_000L));
+        // companions parked with an owner who stays away go to their duty once LEADER_OFFLINE_BENCH_MS has passed
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("roster.park_sweep", world.roster::benchParkedPastGrace), 60_000L, 60_000L));
         // party events that waited for an event instance to end are reconciled on companion-ops
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("companion.resume", world.partySync::resumeDeferred), 30_000L, 30_000L));
