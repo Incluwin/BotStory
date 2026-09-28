@@ -11,6 +11,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -72,7 +73,11 @@ public final class LivingStore {
     public record QuestState(int characterId, String questId, int stepIndex, int progress, QuestStatus status,
                              long startedAtMs, long completedAtMs, int repeats) { }
 
-    public enum RosterState { ACTIVE, BENCHED, AWAY, RELEASED }
+    /**
+     * A companion's seat state (docs/BOT_MANAGEMENT_PLAN.md, "Seat states"). TRAVELLING, HOLD and PARKED come with
+     * changeset 40 and are not entered before P2b. Only RosterService writes it.
+     */
+    public enum RosterState { ACTIVE, BENCHED, AWAY, RELEASED, TRAVELLING, HOLD, PARKED }
 
     public enum Assignment { TRAIN, FARM_MESO, FARM_ITEM, GATHER, SELL, STALL, REST }
 
@@ -424,6 +429,10 @@ public final class LivingStore {
     private static final String ROSTER_COLUMNS = "character_id, persona_id, state, assignment, assignment_item,"
             + " assignment_count, camp_map_id, accrued_exp, haul_meso, wages_paid_until, recruited_at, benched_at,"
             + " last_ledger_at, farm_seconds_today, farm_day";
+    /** Every column saveRosterProgress writes: all but the keys, state, recruited_at and lineup_slot. */
+    private static final String ROSTER_PROGRESS_COLUMNS = "assignment = ?, assignment_item = ?, assignment_count = ?,"
+            + " camp_map_id = ?, accrued_exp = ?, haul_meso = ?, wages_paid_until = ?, benched_at = ?,"
+            + " last_ledger_at = ?, farm_seconds_today = ?, farm_day = ?";
 
     public RosterEntry rosterEntry(int characterId, String personaId) {
         String sql = "SELECT " + ROSTER_COLUMNS + " FROM living_roster WHERE character_id = ? AND persona_id = ?";
@@ -504,6 +513,68 @@ public final class LivingStore {
             ps.executeUpdate();
         } catch (SQLException failure) {
             log.warn("living_roster write failed for {}/{}", entry.characterId(), entry.personaId(), failure);
+        }
+    }
+
+    /**
+     * Saves a row's bench progress (assignment, camp, banked EXP, haul meso, wages, ledger clocks) but never its
+     * state: only RosterService moves a companion between states (plan P2a, "Data model"). A row that is gone
+     * stays gone.
+     */
+    public void saveRosterProgress(RosterEntry entry) {
+        String sql = "UPDATE living_roster SET " + ROSTER_PROGRESS_COLUMNS + " WHERE character_id = ? AND persona_id = ?";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, entry.assignment().name());
+            setNullableInt(ps, 2, entry.assignmentItem());
+            setNullableInt(ps, 3, entry.assignmentCount());
+            setNullableInt(ps, 4, entry.campMapId());
+            ps.setLong(5, entry.accruedExp());
+            ps.setLong(6, entry.haulMeso());
+            setNullableTime(ps, 7, entry.wagesPaidUntilMs());
+            setNullableTime(ps, 8, entry.benchedAtMs());
+            setNullableTime(ps, 9, entry.lastLedgerAtMs());
+            ps.setInt(10, entry.farmSecondsToday());
+            ps.setString(11, entry.farmDay());
+            ps.setInt(12, entry.characterId());
+            ps.setString(13, entry.personaId());
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_roster progress write failed for {}/{}", entry.characterId(), entry.personaId(), failure);
+        }
+    }
+
+    /** The owner's usual lineup: persona id -> lineup_slot (1 = first), for the rows that have one. */
+    public Map<String, Integer> lineupSlots(int characterId) {
+        Map<String, Integer> out = new HashMap<>();
+        String sql = "SELECT persona_id, lineup_slot FROM living_roster"
+                + " WHERE character_id = ? AND lineup_slot IS NOT NULL AND state <> 'RELEASED'";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.put(rs.getString("persona_id"), rs.getInt("lineup_slot"));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_roster lineup read failed for {}", characterId, failure);
+        }
+        return out;
+    }
+
+    /** Sets (or with null clears) one companion's place in its owner's usual lineup. */
+    public void saveLineupSlot(int characterId, String personaId, Integer lineupSlot) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE living_roster SET lineup_slot = ? WHERE character_id = ? AND persona_id = ?")) {
+            if (lineupSlot == null) {
+                ps.setNull(1, java.sql.Types.TINYINT);
+            } else {
+                ps.setInt(1, lineupSlot);
+            }
+            ps.setInt(2, characterId);
+            ps.setString(3, personaId);
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_roster lineup write failed for {}/{}", characterId, personaId, failure);
         }
     }
 

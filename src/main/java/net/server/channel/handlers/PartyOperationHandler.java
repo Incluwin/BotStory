@@ -32,6 +32,7 @@ import net.server.coordinator.world.InviteCoordinator.InviteResultType;
 import net.server.coordinator.world.InviteCoordinator.InviteType;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
+import net.server.world.PartyEvents;
 import net.server.world.PartyOperation;
 import net.server.world.World;
 import server.agents.runtime.AgentInteractionRuntime;
@@ -60,7 +61,9 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                 if (party != null) {
                     List<Character> partymembers = player.getPartyMembersOnline();
 
-                    Party.leaveParty(party, c);
+                    try (PartyEvents.Scope actor = PartyEvents.actor(player.getId())) {
+                        Party.leaveParty(party, c);
+                    }
                     player.updatePartySearchAvailability(true);
                     player.partyOperationUpdate(party, partymembers);
                 }
@@ -154,7 +157,9 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
             }
             case 5: { // expel
                 int cid = p.readInt();
-                Party.expelFromParty(party, c, cid);
+                try (PartyEvents.Scope actor = PartyEvents.actor(player.getId())) {
+                    Party.expelFromParty(party, c, cid);
+                }
                 break;
             }
             case 6: { // change leader
@@ -173,7 +178,9 @@ public final class PartyOperationHandler extends AbstractPacketHandler {
                             candidate.getClient().getChannel() - 1, false, "nah, you lead"));
                     break;
                 }
-                world.updateParty(party.getId(), PartyOperation.CHANGE_LEADER, newLeadr);
+                try (PartyEvents.Scope actor = PartyEvents.actor(player.getId())) {
+                    world.updateParty(party.getId(), PartyOperation.CHANGE_LEADER, newLeadr);
+                }
                 break;
             }
         }

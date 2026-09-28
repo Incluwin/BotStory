@@ -792,6 +792,9 @@ living_world:
     # A citizen answers a party invite after a random delay in this range, like a player would.
     CITIZEN_INVITE_REPLY_MIN_MS: 900
     CITIZEN_INVITE_REPLY_MAX_MS: 1800
+    # Decision 17: companions in your party earn their own kill EXP, but your share is computed as if they were
+    # absent, so a full crew never slows you down. false = the stock split shares every kill with them.
+    COMPANION_EXP_SHARE: true
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 

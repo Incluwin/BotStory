@@ -49,6 +49,7 @@ import net.server.guild.GuildPackets;
 import net.server.world.MessengerCharacter;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
+import net.server.world.PartyEvents;
 import net.server.world.PartyOperation;
 import net.server.world.World;
 import org.slf4j.Logger;
@@ -1050,13 +1051,15 @@ public class Client extends ChannelInboundHandlerAdapter {
         final int idz = player.getId();
 
         if (party != null) {
-            final PartyCharacter chrp = new PartyCharacter(player);
-            chrp.setOnline(false);
-            wserv.updateParty(party.getId(), PartyOperation.LOG_ONOFF, chrp);
-            if (party.getLeader().getId() == idz && map != null) {
-                PartyCharacter lchr = party.successor(idz, map, true);
-                if (lchr != null) {
-                    wserv.updateParty(party.getId(), PartyOperation.CHANGE_LEADER, lchr);
+            try (PartyEvents.Scope actor = PartyEvents.actor(idz)) {
+                final PartyCharacter chrp = new PartyCharacter(player);
+                chrp.setOnline(false);
+                wserv.updateParty(party.getId(), PartyOperation.LOG_ONOFF, chrp);
+                if (party.getLeader().getId() == idz && map != null) {
+                    PartyCharacter lchr = party.successor(idz, map, true);
+                    if (lchr != null) {
+                        wserv.updateParty(party.getId(), PartyOperation.CHANGE_LEADER, lchr);
+                    }
                 }
             }
         }

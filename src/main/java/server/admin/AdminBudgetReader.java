@@ -199,8 +199,10 @@ final class AdminBudgetReader {
         int benchLiveSessions = 0;
         int residentsMaterialized = 0;
         int citizensLoaded = 0;
+        int companionOpsQueue = 0;
         LivingWorld world = LivingWorld.get();
         if (world != null) {
+            companionOpsQueue = world.executor().queueDepth();
             benchLiveIds.addAll(world.benchSessions().liveCharacterIds());
             benchLiveSessions = world.benchSessions().liveCount();
             for (ResidentRuntime.Session session : world.residents().sessions()) {
@@ -244,6 +246,8 @@ final class AdminBudgetReader {
                 .num("benchLiveSessions", benchLiveSessions)
                 .num("residentsMaterialized", residentsMaterialized)
                 .num("citizensLoaded", citizensLoaded)
+                // commands queued on the companion-ops thread (plan "CompanionAuditor + ops endpoints")
+                .num("companionOpsQueue", companionOpsQueue)
                 .finished();
     }
 

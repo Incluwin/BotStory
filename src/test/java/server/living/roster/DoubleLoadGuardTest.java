@@ -101,6 +101,7 @@ class DoubleLoadGuardTest {
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(mock(BenchLedger.class));
         when(world.leases()).thenReturn(leases);
+        when(world.slots()).thenReturn(new CompanionSlots(world));
         when(world.budget()).thenReturn(budget);
 
         registry = mockStatic(AgentRuntimeRegistry.class);
@@ -138,7 +139,7 @@ class DoubleLoadGuardTest {
         seed(row(RosterState.BENCHED));
         leases.tryAcquire(OLWEN_CHARACTER, holder, 0);
 
-        String reply = new RosterService(world).call(alice, OLWEN);
+        String reply = RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN));
 
         assertEquals("Olwen could not join right now.", reply);
         verify(store).event(ALICE, "olwen", "roster.call_refused", "busy");
@@ -153,7 +154,7 @@ class DoubleLoadGuardTest {
         seed(row(RosterState.BENCHED));
         leases.tryAcquire(OLWEN_CHARACTER, CompanionLeases.Kind.COMPANION, BOB);
 
-        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen could not join right now.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
         verify(store).event(ALICE, "olwen", "roster.call_refused", "busy");
         assertEquals(List.of(), calls);
         assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.COMPANION, BOB), leases.holder(OLWEN_CHARACTER));
@@ -169,7 +170,7 @@ class DoubleLoadGuardTest {
             return null;
         }).when(benchSessions).endFor(eq("olwen"), anyString());
 
-        assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
         // BenchSessions.end saves, removes and releases; the roster never removes the runtime itself
         assertEquals(List.of("end slice", "spawn Olwen"), calls);
@@ -195,7 +196,7 @@ class DoubleLoadGuardTest {
         interaction.when(() -> AgentInteractionRuntime.spawnAgentForLeader(alice, "Olwen"))
                 .thenReturn(AgentSpawnResult.fail("No character named 'Olwen' exists."));
 
-        String reply = new RosterService(world).call(alice, OLWEN);
+        String reply = RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN));
 
         assertEquals("Olwen could not join right now.", reply);
         verify(store).event(ALICE, "olwen", "roster.call_refused", "No character named 'Olwen' exists.");
@@ -211,7 +212,7 @@ class DoubleLoadGuardTest {
         when(alice.getLevel()).thenReturn(8);
         parties.when(() -> Party.createParty(alice, true, true)).thenAnswer(inv -> calls.add("starter party"));
 
-        assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
         assertEquals(List.of("starter party", "spawn Olwen"), calls);
         assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
@@ -225,12 +226,12 @@ class DoubleLoadGuardTest {
         String[] second = new String[1];
         interaction.when(() -> AgentInteractionRuntime.spawnAgentForLeader(alice, "Olwen")).thenAnswer(inv -> {
             calls.add("spawn Olwen");
-            second[0] = roster.call(alice, OLWEN);
+            second[0] = RosterVoice.line(OLWEN, roster.call(alice, OLWEN));
             return AgentSpawnResult.ok(olwenBot, true);
         });
         calls.clear(); // re-stubbing ran the setup's spawn answer once
 
-        assertEquals("Olwen joins your party.", roster.call(alice, OLWEN));
+        assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, roster.call(alice, OLWEN)));
 
         assertEquals("Olwen is on the way.", second[0]);
         assertEquals(List.of("spawn Olwen"), calls);
@@ -253,7 +254,7 @@ class DoubleLoadGuardTest {
         });
         when(world.budget()).thenReturn(budget);
 
-        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen could not join right now.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
         assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
         assertEquals(List.of(), calls);
@@ -264,7 +265,7 @@ class DoubleLoadGuardTest {
         seed(row(RosterState.BENCHED));
         party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot)).thenReturn(JoinOutcome.NO_PARTY);
 
-        String reply = new RosterService(world).call(alice, OLWEN);
+        String reply = RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN));
 
         assertEquals("Olwen could not join right now.", reply);
         verify(store).event(ALICE, "olwen", "roster.call_refused", "no party");
@@ -280,7 +281,7 @@ class DoubleLoadGuardTest {
         seed(row(RosterState.ACTIVE));
         party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot)).thenReturn(JoinOutcome.FAILED);
 
-        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen could not join right now.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
         verify(store).event(ALICE, "olwen", "roster.call_refused", "failed");
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
         verify(residents).whisper(OLWEN, alice, "i couldn't join your party. try again in a bit.");

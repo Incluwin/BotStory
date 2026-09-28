@@ -8,7 +8,6 @@ import client.processor.npc.DueyProcessor;
 import constants.inventory.ItemConstants;
 import net.server.Server;
 import net.server.world.Party;
-import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
@@ -76,6 +75,9 @@ public final class RosterService {
         for (RosterEntry entry : world.store().allBenched()) {
             ownerByPersona.put(entry.personaId(), entry.characterId());
             owners.add(entry.characterId());
+            if (entry.state() == RosterState.AWAY) {
+                keepAwaySeat(entry.characterId(), entry.personaId()); // reservations live in memory: rebuilt at boot
+            }
         }
     }
 
@@ -129,36 +131,22 @@ public final class RosterService {
     }
 
     /**
-     * Free party slots for this owner: 6 minus everyone in the party minus companions any human
-     * in the party sent away on delegated work, whose slot stays reserved (plan 11.2).
+     * Free party seats for this owner's companions and guests, from the slot authority: members and the reserved
+     * seats (an errand's AWAY, a traveller's) under the fair share of the humans in the party (plan P2a).
      */
     public int freeSlots(Character owner) {
-        Party party = owner.getParty();
-        if (party == null) {
-            return PARTY_CAP - 1 - awayCount(owner.getId());
-        }
-        int used = 0;
-        for (PartyCharacter member : party.getMembers()) {
-            used++;
-            Character human = member.getPlayer();
-            if (human != null && !AgentPresence.isAgent(human)) {
-                used += awayCount(human.getId());
-            }
-        }
-        return Math.max(0, PARTY_CAP - used);
+        return world.slots().free(owner);
     }
 
-    private int awayCount(int characterId) {
-        if (!owners.contains(characterId)) {
-            return 0;
-        }
-        int away = 0;
-        for (RosterEntry entry : world.store().roster(characterId)) {
-            if (entry.state() == RosterState.AWAY) {
-                away++;
-            }
-        }
-        return away;
+    /** True when the companion already holds a seat (away, on its way) or the owner has one free for it. */
+    public boolean canSeat(Character owner, RosterEntry entry) {
+        CompanionSlots.Reservation held = world.slots().reservation(entry.personaId());
+        return held != null && held.ownerId() == owner.getId() || freeSlots(owner) > 0;
+    }
+
+    /** An AWAY row keeps its party seat until it is called back, benched or released (plan 11.2). */
+    private void keepAwaySeat(int ownerId, String personaId) {
+        world.slots().reserve(ownerId, personaId, CompanionSlots.Kind.AWAY, Long.MAX_VALUE);
     }
 
     /** The companion character of a roster entry when it is online, else null. */
@@ -213,18 +201,19 @@ public final class RosterService {
     // ---- recruit / release ---------------------------------------------------------------
 
     /** Adds the persona to the owner's roster and spawns it as an active companion. */
-    public String recruit(Character owner, Persona persona) {
+    public RosterResult recruit(Character owner, Persona persona) {
         if (isOwned(persona.id())) {
             int current = ownerOf(persona.id());
-            return current == owner.getId() ? persona.name() + " is already yours." : persona.name() + " already travels with someone else.";
+            return current == owner.getId() ? new RosterResult.Ok(persona.name() + " is already yours.")
+                    : new RosterResult.Failed(persona.name() + " already travels with someone else.");
         }
         if (roster(owner).size() >= world.config().ROSTER_MAX) {
-            return "Your roster is full (" + world.config().ROSTER_MAX + "). Release someone first.";
+            return new RosterResult.RosterFull(world.config().ROSTER_MAX);
         }
         Point standing = standingNear(owner, persona.id()); // before enroll hands the Resident's character over
         RosterEntry entry = enroll(owner, persona, "roster.recruit");
-        String result = freeSlots(owner) <= 0
-                ? persona.name() + " joins your roster but your party is full; call them when there is room."
+        RosterResult result = freeSlots(owner) <= 0
+                ? new RosterResult.Ok(persona.name() + " joins your roster but your party is full; call them when there is room.")
                 : spawnCompanion(owner, persona, entry, standing);
         if (grantRosterBook(owner)) {
             world.residents().whisper(persona, owner, ROSTER_BOOK_LINE);
@@ -299,6 +288,7 @@ public final class RosterService {
         }
         world.benchSessions().endFor(persona.id(), "released");
         despawn(entry, "released");
+        world.slots().release(persona.id());
         world.store().saveRoster(entry.with(RosterState.RELEASED, System.currentTimeMillis()));
         world.store().deleteRoster(owner.getId(), persona.id());
         ownerByPersona.remove(persona.id());
@@ -315,39 +305,45 @@ public final class RosterService {
     // ---- call / bench / swap -------------------------------------------------------------
 
     /** Calls a companion: benched ones travel from their camp first (plan 11.3) unless a whistle is used. */
-    public String call(Character owner, Persona persona) {
+    public RosterResult call(Character owner, Persona persona) {
         return call(owner, persona, null);
     }
 
     /** {@code standing}: where it stood on the owner's map before its Resident life let it go (an escort), else null. */
-    private String call(Character owner, Persona persona, Point standing) {
+    private RosterResult call(Character owner, Persona persona, Point standing) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
-            return persona.name() + " is not in your roster.";
+            return new RosterResult.NotOwned();
         }
         if (entry.state() == RosterState.ACTIVE && companion(entry) != null) {
-            return persona.name() + " is already with you.";
+            return new RosterResult.Ok(persona.name() + " is already with you.");
+        }
+        if (!canSeat(owner, entry)) {
+            return new RosterResult.PartyFull();
         }
         boolean away = entry.state() == RosterState.AWAY;
-        if (!away && freeSlots(owner) <= 0) {
-            return "Your party is full. Bench someone or name who to swap.";
-        }
         String key = owner.getId() + ":" + persona.id();
         Long arriving = travelling.get(key);
         if (arriving != null && arriving > System.currentTimeMillis()) {
-            return persona.name() + " is already on the way (" + RecallTravel.describe(arriving - System.currentTimeMillis()) + ").";
+            return new RosterResult.Ok(persona.name() + " is already on the way ("
+                    + RecallTravel.describe(arriving - System.currentTimeMillis()) + ").");
         }
         if ((entry.state() == RosterState.BENCHED || away) && owner.getMap() != null) {
             int campMap = entry.campMapId() == 0 ? server.living.resident.ResidentSpots.townMapId(persona.homeTown()) : entry.campMapId();
             long eta = RecallTravel.etaMs(campMap, owner.getMapId());
             if (eta > 0L && !consumeWhistle(owner)) {
-                travelling.put(key, System.currentTimeMillis() + eta);
+                long now = System.currentTimeMillis();
+                travelling.put(key, now + eta);
+                if (world.slots().reservation(persona.id()) == null) { // an AWAY companion keeps its own seat meanwhile
+                    world.slots().reserve(owner.getId(), persona.id(), CompanionSlots.Kind.TRAVEL,
+                            now + eta + CompanionSlots.TRAVEL_GRACE_MS);
+                }
                 List<String> lines = world.arcs().lines(persona, "onMyWay");
                 world.residents().whisper(persona, owner, (lines.isEmpty() ? "on my way." : lines.get(Math.floorMod(owner.getId(), lines.size())))
                         + " " + RecallTravel.describe(eta) + ".");
                 world.store().event(owner.getId(), persona.id(), "roster.travel", "eta " + eta + " ms from map " + campMap);
                 server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> arrive(owner.getId(), persona), eta);
-                return persona.name() + " is on the way (" + RecallTravel.describe(eta) + ").";
+                return new RosterResult.Travelling(eta, campMap);
             }
         }
         travelling.remove(key);
@@ -357,14 +353,12 @@ public final class RosterService {
     private void arrive(int ownerId, Persona persona) {
         travelling.remove(ownerId + ":" + persona.id());
         Character owner = onlineCharacter(ownerId);
-        if (owner == null) {
-            return;
-        }
-        RosterEntry entry = world.store().rosterEntry(ownerId, persona.id());
+        RosterEntry entry = owner == null ? null : world.store().rosterEntry(ownerId, persona.id());
         if (entry == null || !(entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY)) {
+            world.slots().release(persona.id(), CompanionSlots.Kind.TRAVEL); // the trip is over
             return;
         }
-        if (entry.state() == RosterState.BENCHED && freeSlots(owner) <= 0) {
+        if (entry.state() == RosterState.BENCHED && !canSeat(owner, entry)) {
             world.residents().whisper(persona, owner, "your party's full. i'll head back to camp.");
             return;
         }
@@ -391,14 +385,14 @@ public final class RosterService {
      * owner's map already ({@code standing}, captured by a caller that let it go first, or found in {@link #seat}),
      * else the portal nearest the owner; a map without a usable one keeps the beside-owner spawn.
      */
-    private String spawnCompanion(Character owner, Persona persona, RosterEntry entry, Point standing) {
+    private RosterResult spawnCompanion(Character owner, Persona persona, RosterEntry entry, Point standing) {
         long waitMs = world.budget().loadDelayMs(owner, System.currentTimeMillis());
         if (waitMs > 0L) {
             spawnLater(owner.getId(), persona, entry.state(), waitMs); // loads are spaced per owner: queue, not refuse
-            return persona.name() + " will be right there.";
+            return new RosterResult.Ok(persona.name() + " will be right there.");
         }
         if (!seating.add(persona.id())) {
-            return persona.name() + " is on the way."; // another call is loading this companion right now
+            return new RosterResult.Ok(persona.name() + " is on the way."); // another call is loading this companion right now
         }
         try {
             return seat(owner, persona, entry, standing);
@@ -407,14 +401,41 @@ public final class RosterService {
         }
     }
 
-    private String seat(Character owner, Persona persona, RosterEntry entry, Point standing) {
+    /**
+     * Reserve, load, then commit or roll back (plan "CompanionExecutor"): the seat is held before anything is loaded,
+     * so the party's seat gate admits the join. A seated companion is a member and needs no reservation; a failed load
+     * gives back only a travel seat, since an AWAY or HOLD one stays with its row.
+     */
+    private RosterResult seat(Character owner, Persona persona, RosterEntry entry, Point standing) {
         int characterId = world.residents().ensureCharacter(persona);
         if (characterId == 0) {
-            return persona.name() + " cannot be reached right now.";
+            return new RosterResult.Failed(persona.name() + " cannot be reached right now.");
         }
+        RosterResult result = CompanionExecutor.transact(
+                () -> holdSeat(owner, persona),
+                held -> load(owner, persona, entry, standing, characterId),
+                RosterResult::ok,
+                held -> world.slots().release(persona.id()),
+                held -> world.slots().release(persona.id(), CompanionSlots.Kind.TRAVEL));
+        return result != null ? result : refuse(owner, persona, entry, BUSY_LINE, "seat held by another owner", new RosterResult.Busy());
+    }
+
+    /** The seat this load uses: one it holds already (away, travelling), else a seat taken now for the load. */
+    private CompanionSlots.Reservation holdSeat(Character owner, Persona persona) {
+        CompanionSlots.Reservation held = world.slots().reservation(persona.id());
+        if (held == null || held.ownerId() != owner.getId()) {
+            world.slots().reserve(owner.getId(), persona.id(), CompanionSlots.Kind.TRAVEL,
+                    System.currentTimeMillis() + CompanionSlots.SEAT_HOLD_MS);
+            held = world.slots().reservation(persona.id());
+        }
+        return held != null && held.ownerId() == owner.getId() ? held : null;
+    }
+
+    private RosterResult load(Character owner, Persona persona, RosterEntry entry, Point standing, int characterId) {
         CompanionBudget.Admission admission = world.budget().admit(CompanionBudget.Kind.COMPANION, owner);
         if (!admission.allowed()) {
-            return refuse(owner, persona, entry, "give me a moment. too many of us are out right now.", admission.reason());
+            return refuse(owner, persona, entry, "give me a moment. too many of us are out right now.", admission.reason(),
+                    admission.atCeiling() ? new RosterResult.BudgetExhausted() : new RosterResult.QuotaFull());
         }
         Point from = standing != null ? standing : standingNear(owner, persona.id()); // before it is let go below
         if (leaving.containsKey(persona.id())) {
@@ -424,12 +445,12 @@ public final class RosterService {
         world.residents().releaseForRecruit(persona.id());
         // a character loaded for something else is refused, never pulled out from under it
         if (!world.leases().tryAcquire(characterId, CompanionLeases.Kind.COMPANION, owner.getId())) {
-            return refuse(owner, persona, entry, BUSY_LINE, "busy");
+            return refuse(owner, persona, entry, BUSY_LINE, "busy", new RosterResult.Busy());
         }
         if (AgentRuntimeRegistry.hasActiveAgentCharacterId(characterId)
                 && AgentRuntimeRegistry.leaderIdForAgentCharacter(characterId) != owner.getId()) {
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
-            return refuse(owner, persona, entry, BUSY_LINE, "busy");
+            return refuse(owner, persona, entry, BUSY_LINE, "busy", new RosterResult.Busy());
         }
         // before the spawn: its registration (or the join below) joins the owner's party, and would make one without the exemption
         if (owner.getParty() == null) {
@@ -444,12 +465,14 @@ public final class RosterService {
         if (!result.success() || result.agent() == null) {
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             log.warn("call {} for {} failed: {}", persona.id(), owner.getName(), result.errorMessage());
-            return refuse(owner, persona, entry, "i can't get away right now. try again in a bit.", result.errorMessage());
+            return refuse(owner, persona, entry, "i can't get away right now. try again in a bit.", result.errorMessage(),
+                    couldNotJoin(persona));
         }
         JoinOutcome joined = AgentPartyLifecycleService.joinAgentToLeaderParty(owner, result.agent());
         if (joined != JoinOutcome.JOINED && joined != JoinOutcome.ALREADY_MEMBER) {
             despawn(entry, "party join " + joined);
-            return refuse(owner, persona, entry, joinRefusal(joined), joined.name().toLowerCase(Locale.ROOT).replace('_', ' '));
+            return refuse(owner, persona, entry, joinRefusal(joined), joined.name().toLowerCase(Locale.ROOT).replace('_', ' '),
+                    couldNotJoin(persona));
         }
         if (arrival != null) {
             walkToOwner(result.agent()); // only once it is in the party
@@ -463,7 +486,7 @@ public final class RosterService {
         world.store().event(owner.getId(), persona.id(), "roster.call", null);
         List<String> lines = world.arcs().lines(persona, "join");
         world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(owner.getId(), lines.size())));
-        return persona.name() + " joins your party.";
+        return new RosterResult.Ok(persona.name() + " joins your party.");
     }
 
     /** A companion loaded at its arrival point stands still until it is seated; then it follows, so it walks to its owner. */
@@ -495,15 +518,16 @@ public final class RosterService {
             spawnLater(ownerId, persona, state, waitMs);
             return;
         }
-        // the party may have filled while this one waited; an AWAY companion kept its slot, and a restored ACTIVE
-        // one keeps its row and waits for room as call() leaves it, instead of being benched
-        boolean full = state != RosterState.AWAY && freeSlots(owner) <= 0;
+        // the party may have filled while this one waited; an AWAY or travelling companion kept its seat, and a
+        // restored ACTIVE one keeps its row and waits for room as call() leaves it, instead of being benched
+        boolean full = !canSeat(owner, entry);
         if (full && state == RosterState.ACTIVE) {
             return;
         }
-        String outcome = full ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full") : spawnCompanion(owner, persona, entry, null);
+        RosterResult outcome = full ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full", couldNotJoin(persona))
+                : spawnCompanion(owner, persona, entry, null);
         if (!seatedWith(owner, current(entry))) {
-            owner.dropMessage(5, outcome);
+            owner.dropMessage(5, RosterVoice.line(persona, outcome));
         }
     }
 
@@ -516,16 +540,22 @@ public final class RosterService {
     /**
      * A call that could not seat the companion: nothing stays loaded for it, the row stays BENCHED (or AWAY)
      * so the ledger keeps crediting it, and the companion tells the owner why (the reason goes to the event log).
-     * A row that another call seated meanwhile stays ACTIVE.
+     * A row that another call seated meanwhile stays ACTIVE. {@code result} is what the caller is told.
      */
-    private String refuse(Character owner, Persona persona, RosterEntry entry, String line, String reason) {
+    private RosterResult refuse(Character owner, Persona persona, RosterEntry entry, String line, String reason,
+                                RosterResult result) {
         RosterEntry current = current(entry);
         if (current.state() == RosterState.ACTIVE && !seatedWith(owner, current)) {
             world.store().saveRoster(current.with(RosterState.BENCHED, System.currentTimeMillis()));
         }
         world.residents().whisper(persona, owner, line);
         world.store().event(owner.getId(), persona.id(), "roster.call_refused", reason);
-        return persona.name() + " could not join right now.";
+        return result;
+    }
+
+    /** A load that failed past the seat check (the companion's whisper and the event log say why). */
+    private static RosterResult couldNotJoin(Persona persona) {
+        return new RosterResult.Failed(persona.name() + " could not join right now.");
     }
 
     private static String joinRefusal(JoinOutcome joined) {
@@ -538,21 +568,22 @@ public final class RosterService {
         return current == null ? entry : current;
     }
 
-    public String bench(Character owner, Persona persona) {
+    public RosterResult bench(Character owner, Persona persona) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
-            return persona.name() + " is not in your roster.";
+            return new RosterResult.NotOwned();
         }
         if (entry.state() == RosterState.BENCHED) {
-            return persona.name() + " is already benched.";
+            return new RosterResult.Ok(persona.name() + " is already benched.");
         }
         List<String> lines = world.arcs().lines(persona, "bench");
         world.residents().reply(persona, owner, lines.isEmpty() ? "alright. i'll keep busy." : lines.get(Math.floorMod(owner.getId(), lines.size())));
         walkOut(owner, entry);
+        world.slots().release(persona.id()); // an errand's seat goes back with it
         RosterEntry benched = entry.with(RosterState.BENCHED, System.currentTimeMillis());
         world.store().saveRoster(benched);
         world.store().event(owner.getId(), persona.id(), "roster.bench", benched.assignment().name());
-        return persona.name() + " heads back to camp to " + describeAssignment(benched) + ".";
+        return new RosterResult.Ok(persona.name() + " heads back to camp to " + describeAssignment(benched) + ".");
     }
 
     /**
@@ -594,40 +625,47 @@ public final class RosterService {
         }, ArrivalPlacement.WALK_OUT_CHECK_MS);
     }
 
-    public String swap(Character owner, Persona out, Persona in) {
-        String benched = bench(owner, out);
-        String called = call(owner, in);
-        return benched + " " + called;
+    /** Bench-then-call (the atomic swap is P2b); Ok when the incoming companion is seated or on its way. */
+    public RosterResult swap(Character owner, Persona out, Persona in) {
+        RosterResult benched = bench(owner, out);
+        RosterResult called = call(owner, in);
+        String line = RosterVoice.line(out, benched) + " " + RosterVoice.line(in, called);
+        return called.ok() ? new RosterResult.Ok(line) : new RosterResult.Failed(line);
     }
 
-    public String setCamp(Character owner, Persona persona, int mapId) {
+    public RosterResult setCamp(Character owner, Persona persona, int mapId) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null) {
-            return persona.name() + " is not in your roster.";
+            return new RosterResult.NotOwned();
         }
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
                 entry.assignmentItem(), entry.assignmentCount(), mapId, entry.accruedExp(), entry.haulMeso(),
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
                 entry.farmSecondsToday(), entry.farmDay());
         world.store().saveRoster(updated);
-        return persona.name() + " will camp at map " + mapId + ".";
+        return new RosterResult.Ok(persona.name() + " will camp at map " + mapId + ".");
     }
 
-    public String assign(Character owner, Persona persona, Assignment assignment, int itemId, int count) {
+    public RosterResult assign(Character owner, Persona persona, Assignment assignment, int itemId, int count) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null) {
-            return persona.name() + " is not in your roster.";
+            return new RosterResult.NotOwned();
         }
         if (assignment == Assignment.FARM_ITEM && world.quests().isOwnQuestTarget(owner, persona, itemId)) {
-            List<String> lines = world.arcs().lines(persona, "refuseOwnErrand");
-            return lines.isEmpty() ? persona.name() + ": that one's your errand, not mine." : persona.name() + ": " + lines.get(0);
+            return refuseOwnErrand(persona);
         }
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
                 itemId, count, entry.campMapId(), entry.accruedExp(), entry.haulMeso(), entry.wagesPaidUntilMs(),
                 entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay());
         world.store().saveRoster(updated);
         world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated));
-        return persona.name() + " will " + describeAssignment(updated) + (entry.state() == RosterState.ACTIVE ? " once benched." : ".");
+        return new RosterResult.Ok(persona.name() + " will " + describeAssignment(updated)
+                + (entry.state() == RosterState.ACTIVE ? " once benched." : "."));
+    }
+
+    private RosterResult refuseOwnErrand(Persona persona) {
+        List<String> lines = world.arcs().lines(persona, "refuseOwnErrand");
+        return new RosterResult.Failed(lines.isEmpty() ? persona.name() + ": that one's your errand, not mine." : persona.name() + ": " + lines.get(0));
     }
 
     /**
@@ -636,14 +674,13 @@ public final class RosterService {
      * credit) until {@code come back} calls it. A benched companion is simply reassigned, and
      * {@code mapId} 0 means "where it already camps".
      */
-    public String delegate(Character owner, Persona persona, Assignment assignment, int itemId, int count, int mapId) {
+    public RosterResult delegate(Character owner, Persona persona, Assignment assignment, int itemId, int count, int mapId) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
-            return persona.name() + " is not in your roster.";
+            return new RosterResult.NotOwned();
         }
         if (assignment == Assignment.FARM_ITEM && world.quests().isOwnQuestTarget(owner, persona, itemId)) {
-            List<String> lines = world.arcs().lines(persona, "refuseOwnErrand");
-            return lines.isEmpty() ? persona.name() + ": that one's your errand, not mine." : persona.name() + ": " + lines.get(0);
+            return refuseOwnErrand(persona);
         }
         int workMap = mapId != 0 ? mapId : entry.campMapId() != 0 ? entry.campMapId() : server.living.resident.ResidentSpots.townMapId(persona.homeTown());
         boolean fighting = assignment == Assignment.TRAIN || assignment == Assignment.FARM_MESO
@@ -653,22 +690,23 @@ public final class RosterService {
                 entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay());
         server.maps.MapleMap map = world.residents().map(workMap);
         if (fighting && (map == null || map.isTown())) {
-            return persona.name() + ": where? take me to a field and say 'camp here', or send me from one with 'go "
-                    + describeAssignment(updated) + " here'.";
+            return new RosterResult.Failed(persona.name() + ": where? take me to a field and say 'camp here', or send me from one with 'go "
+                    + describeAssignment(updated) + " here'.");
         }
         if (entry.state() != RosterState.ACTIVE) {
             world.store().saveRoster(updated);
             world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated) + " at map " + workMap);
-            return persona.name() + " will " + describeAssignment(updated) + " at map " + workMap + ".";
+            return new RosterResult.Ok(persona.name() + " will " + describeAssignment(updated) + " at map " + workMap + ".");
         }
         List<String> lines = world.arcs().lines(persona, "delegate");
         world.residents().reply(persona, owner, lines.isEmpty() ? "on it. call me when you want me back." : lines.get(Math.floorMod(owner.getId(), lines.size())));
+        keepAwaySeat(owner.getId(), persona.id()); // before it leaves the party, so its seat is never up for grabs
         despawn(entry, "delegated");
         RosterEntry away = updated.with(RosterState.AWAY, System.currentTimeMillis());
         world.store().saveRoster(away);
         world.store().event(owner.getId(), persona.id(), "roster.delegate", describeAssignment(away) + " at map " + workMap);
-        return persona.name() + " leaves to " + describeAssignment(away) + (mapId != 0 ? " here" : " at map " + workMap)
-                + ", keeping the party slot. Say '" + persona.name().toLowerCase(Locale.ROOT) + " come back' to recall.";
+        return new RosterResult.Ok(persona.name() + " leaves to " + describeAssignment(away) + (mapId != 0 ? " here" : " at map " + workMap)
+                + ", keeping the party slot. Say '" + persona.name().toLowerCase(Locale.ROOT) + " come back' to recall.");
     }
 
     public String describeAssignment(RosterEntry entry) {
@@ -828,11 +866,12 @@ public final class RosterService {
                 owner.getMapId(), 0L, 0L, 0L, now, 0L, now, 0, null); // camp = here, so the call below is instant
         Point standing = standingNear(owner, persona.id()); // the Resident the player talked to walks over from there
         world.store().saveRoster(entry);
+        keepAwaySeat(owner.getId(), persona.id()); // an AWAY row always holds its seat
         ownerByPersona.put(persona.id(), owner.getId());
         owners.add(owner.getId());
         world.residents().releaseForRecruit(persona.id());
-        String result = call(owner, persona, standing);
-        owner.dropMessage(5, result + " (escort for " + quest.title() + ")");
+        RosterResult result = call(owner, persona, standing);
+        owner.dropMessage(5, RosterVoice.line(persona, result) + " (escort for " + quest.title() + ")");
     }
 
     // ---- login / logout ------------------------------------------------------------------

@@ -47,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -86,6 +87,8 @@ class PartyInviteRoutingTest extends HandlerTest {
     @Mock
     private CompanionBudget budget;
     @Mock
+    private CompanionSlots slots;
+    @Mock
     private LivingContent content;
     @Mock
     private ResidentRuntime residents;
@@ -120,6 +123,12 @@ class PartyInviteRoutingTest extends HandlerTest {
         when(living.store()).thenReturn(store);
         when(budget.usage(ANN)).thenReturn(new CompanionBudget.Usage(10, 1, 0, 0, 0));
         when(roster.freeSlots(chr)).thenReturn(4);
+        // the stock seat rule under this mock: an AWAY companion kept its seat, anyone else needs a free one
+        when(roster.canSeat(any(), any())).thenAnswer(inv -> ((RosterEntry) inv.getArgument(1)).state() == RosterState.AWAY
+                || roster.freeSlots(inv.getArgument(0)) > 0);
+        when(living.slots()).thenReturn(slots);
+        when(slots.keyOf(anyInt())).thenAnswer(inv -> CompanionSlots.characterKey(inv.getArgument(0)));
+        when(slots.reserve(anyInt(), anyString(), any(), anyLong())).thenReturn(true);
         when(olwen.id()).thenReturn("olwen");
         when(olwen.name()).thenReturn("Olwen");
         when(content.persona("olwen")).thenReturn(olwen);
@@ -146,7 +155,7 @@ class PartyInviteRoutingTest extends HandlerTest {
     @Test
     void yourBenchedCompanionIsCalledThroughTheRoster() {
         offline("Olwen", new Relation.OwnCompanion(row(RosterState.BENCHED)));
-        when(roster.call(chr, olwen)).thenReturn("Olwen is on the way (1 min).");
+        when(roster.call(chr, olwen)).thenReturn(new RosterResult.Ok("Olwen is on the way (1 min)."));
 
         invite("Olwen");
 
@@ -172,7 +181,7 @@ class PartyInviteRoutingTest extends HandlerTest {
     void anAwayCompanionKeepsItsReservedSeat() {
         offline("Olwen", new Relation.OwnCompanion(row(RosterState.AWAY)));
         when(roster.freeSlots(chr)).thenReturn(0);
-        when(roster.call(chr, olwen)).thenReturn("Olwen joins your party.");
+        when(roster.call(chr, olwen)).thenReturn(new RosterResult.Ok("Olwen joins your party."));
 
         invite("Olwen");
 
@@ -197,7 +206,7 @@ class PartyInviteRoutingTest extends HandlerTest {
         when(chr.getParty()).thenReturn(null);
         offline("Olwen", new Relation.OwnCompanion(row(RosterState.BENCHED)));
         parties.when(() -> Party.createParty(chr, false, true)).thenReturn(true);
-        when(roster.call(chr, olwen)).thenReturn("Olwen joins your party.");
+        when(roster.call(chr, olwen)).thenReturn(new RosterResult.Ok("Olwen joins your party."));
 
         invite("Olwen");
 
@@ -218,6 +227,31 @@ class PartyInviteRoutingTest extends HandlerTest {
         }
         parties.verify(() -> Party.joinParty(loaded, PARTY_ID, false));
         verify(roster, never()).call(any(), any());
+    }
+
+    @Test
+    void yourCompanionOutWithYouButPartylessRejoinsOnASeatHeldForTheJoin() {
+        Character loaded = bot(900, "Olwen", 30);
+        online("Olwen", loaded, new Relation.OwnCompanion(row(RosterState.ACTIVE)));
+        invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, 900)).thenReturn(true);
+
+        invite("Olwen");
+
+        verify(slots).reserve(eq(ANN), eq("olwen"), eq(CompanionSlots.Kind.TRAVEL), anyLong());
+        parties.verify(() -> Party.joinParty(loaded, PARTY_ID, false));
+    }
+
+    @Test
+    void yourCompanionOutWithYouGets17WhenYourSeatsAreTaken() {
+        Character loaded = bot(900, "Olwen", 30);
+        online("Olwen", loaded, new Relation.OwnCompanion(row(RosterState.ACTIVE)));
+        when(roster.freeSlots(chr)).thenReturn(0);
+
+        invite("Olwen");
+
+        assertStatus(PacketCreator.partyStatusMessage(17));
+        verify(slots, never()).reserve(anyInt(), anyString(), any(), anyLong());
+        nothingSpawnedOrSeated();
     }
 
     // ---- everyone else's -----------------------------------------------------------------
@@ -345,6 +379,53 @@ class PartyInviteRoutingTest extends HandlerTest {
         invites.verify(() -> InviteCoordinator.answerInvite(InviteType.PARTY, MIRA, PARTY_ID, true));
         parties.verify(() -> Party.joinParty(mira, PARTY_ID, false));
         verify(chr, never()).sendPacket(any());
+    }
+
+    @Test
+    void aCitizensYesHoldsAGuestSeatChargedToTheInviterBeforeItJoins() {
+        Character mira = bot(MIRA, "Mira", 30);
+        online("Mira", mira, new Relation.Citizen(MIRA));
+        invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, MIRA)).thenReturn(true);
+        when(chr.isLoggedinWorld()).thenReturn(true);
+        when(mira.isLoggedinWorld()).thenReturn(true);
+        String guest = CompanionSlots.characterKey(MIRA);
+        parties.when(() -> Party.joinParty(mira, PARTY_ID, false)).thenAnswer(inv -> {
+            // the seat gate asks for the reservation inside the join, so it is taken first
+            verify(slots).reserve(ANN, guest, CompanionSlots.Kind.GUEST, Long.MAX_VALUE);
+            return true;
+        });
+
+        invite("Mira");
+        answerLater();
+
+        parties.verify(() -> Party.joinParty(mira, PARTY_ID, false));
+        verify(slots, never()).release(anyString(), any());
+    }
+
+    @Test
+    void aGuestSeatIsGivenBackWhenTheJoinFails() {
+        Character mira = bot(MIRA, "Mira", 30);
+        online("Mira", mira, new Relation.Citizen(MIRA));
+        invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, MIRA)).thenReturn(true);
+        when(chr.isLoggedinWorld()).thenReturn(true);
+        when(mira.isLoggedinWorld()).thenReturn(true);
+
+        invite("Mira");
+        answerLater();
+
+        verify(slots).release(CompanionSlots.characterKey(MIRA), CompanionSlots.Kind.GUEST);
+    }
+
+    @Test
+    void aCitizenIsNotInvitedWithoutASeatForItsHost() {
+        Character mira = bot(MIRA, "Mira", 30);
+        online("Mira", mira, new Relation.Citizen(MIRA));
+        when(roster.freeSlots(chr)).thenReturn(0);
+
+        invite("Mira");
+
+        assertStatus(PacketCreator.partyStatusMessage(17));
+        nothingSpawnedOrSeated();
     }
 
     @Test

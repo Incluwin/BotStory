@@ -442,6 +442,9 @@ public class Party {
                         player.sendPacket(PacketCreator.partyStatusMessage(10));
                     }
                 } else if (party.getMembers().size() < 6) {
+                    if (player.getClient() instanceof BotClient && !PartySeatGate.admitted(player, party)) {
+                        return false; // a companion or guest with no reserved seat; the gate logged it
+                    }
                     PartyCharacter partyplayer = new PartyCharacter(player);
                     player.getMap().addPartyMember(player, party.getId());
 

@@ -116,6 +116,7 @@ class RosterServiceGrantTest {
         when(world.config()).thenReturn(config);
         when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
         when(world.contracts()).thenReturn(mock(ContractService.class));
+        when(world.slots()).thenReturn(new CompanionSlots(world));
 
         spots = mockStatic(ResidentSpots.class);
         spots.when(() -> ResidentSpots.townMapId("lith-harbor")).thenReturn(LITH_HARBOR);
@@ -256,7 +257,7 @@ class RosterServiceGrantTest {
 
         try (MockedStatic<InventoryManipulator> inventory = roomFor(client)) {
             assertEquals("Olwen joins your roster but your party is full; call them when there is room.",
-                    new RosterService(world).recruit(alice, OLWEN));
+                    RosterVoice.line(OLWEN, new RosterService(world).recruit(alice, OLWEN)));
             inventory.verify(() -> InventoryManipulator.addById(client, ROSTER_BOOK, (short) 1));
         }
         verify(residents).whisper(OLWEN, alice, "double-click me or the book to manage the crew.");
@@ -270,7 +271,7 @@ class RosterServiceGrantTest {
 
         try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
             inventory.when(() -> InventoryManipulator.checkSpace(client, ROSTER_BOOK, 1, "")).thenReturn(false);
-            assertEquals("Olwen joins your roster but your party is full; call them when there is room.", roster.recruit(alice, OLWEN));
+            assertEquals("Olwen joins your roster but your party is full; call them when there is room.", RosterVoice.line(OLWEN, roster.recruit(alice, OLWEN)));
             inventory.verify(() -> InventoryManipulator.addById(any(), anyInt(), anyShort()), never());
         }
         verify(residents, never()).whisper(any(), any(), anyString());

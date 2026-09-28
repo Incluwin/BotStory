@@ -142,6 +142,7 @@ class ArrivalPlacementTest {
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(ledger);
         when(world.leases()).thenReturn(leases);
+        when(world.slots()).thenReturn(new CompanionSlots(world));
         when(world.budget()).thenReturn(budget);
 
         // Alice stands in a field next to the companions' camp map, so a call is instant unless a test moves her
@@ -260,7 +261,7 @@ class ArrivalPlacementTest {
     void aCalledCompanionIsPlacedAtTheNearestPortalAndFollowsOnlyOnceItJoined() {
         seed("olwen", RosterState.BENCHED);
 
-        assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
         assertEquals(List.of("spawn at 800,200", "join Olwen", "follow Olwen"), calls);
         interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(any(), anyString()), never());
@@ -279,7 +280,7 @@ class ArrivalPlacementTest {
         try (MockedStatic<TimerManager> timer = mockStatic(TimerManager.class);
              MockedStatic<Server> server = online(alice)) {
             timer.when(TimerManager::getInstance).thenReturn(timers);
-            assertTrue(roster.call(alice, OLWEN).startsWith("Olwen is on the way"));
+            assertTrue(RosterVoice.line(OLWEN, roster.call(alice, OLWEN)).startsWith("Olwen is on the way"));
             verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), arrival.capture(), anyLong());
             assertEquals(List.of(), calls);
             arrival.getValue().run();
@@ -294,7 +295,7 @@ class ArrivalPlacementTest {
         seed("olwen", RosterState.BENCHED);
         portals(portal(10, 900, 200, 100000000, null, true), portal(7, 1100, 200, MapId.NONE, "enterDollHouse", true));
 
-        assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
         // the beside-owner registration joins and follows by itself: no second follow command
         assertEquals(List.of("spawn beside owner", "join Olwen"), calls);
@@ -311,7 +312,7 @@ class ArrivalPlacementTest {
             return JoinOutcome.PARTY_FULL;
         });
 
-        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen could not join right now.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
         assertEquals(List.of("spawn at 800,200", "join refused", "remove Olwen"), calls);
         movement.verifyNoInteractions();
@@ -342,7 +343,7 @@ class ArrivalPlacementTest {
         parties.when(() -> Party.createParty(alice, true, true)).thenAnswer(inv -> calls.add("starter party"));
         doAnswer(inv -> calls.add("exp")).when(ledger).applyAccrued(any(), any());
 
-        assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
         List<String> expected = new ArrayList<>(List.of("budget", "end bench slice", "resident released", "lease",
                 "loaded check", "starter party"));
@@ -392,7 +393,7 @@ class ArrivalPlacementTest {
         standing("Olwen", map, 1500, 180);
         doAnswer(inv -> loaded.remove(900)).when(benchSessions).endFor(eq("olwen"), anyString());
 
-        assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
         assertEquals(List.of("spawn at 1500,180", "join Olwen", "follow Olwen"), calls);
     }
@@ -500,7 +501,7 @@ class ArrivalPlacementTest {
 
         try (MockedStatic<TimerManager> timer = mockStatic(TimerManager.class)) {
             timer.when(TimerManager::getInstance).thenReturn(timers);
-            assertEquals("Olwen heads back to camp to train.", roster.bench(alice, OLWEN));
+            assertEquals("Olwen heads back to camp to train.", RosterVoice.line(OLWEN, roster.bench(alice, OLWEN)));
 
             assertEquals(List.of("leave Olwen", "walk Olwen to 800,200"), calls); // gone from the party window at once
             assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
@@ -535,7 +536,7 @@ class ArrivalPlacementTest {
             verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), check.capture(), anyLong());
             calls.clear();
 
-            assertEquals("Olwen joins your party.", roster.call(alice, OLWEN));
+            assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, roster.call(alice, OLWEN)));
             check.getValue().run(); // the old walk-out's check: it was ended by the call
         }
 
@@ -614,7 +615,7 @@ class ArrivalPlacementTest {
         when(store.personaState(anyString())).thenReturn(new PersonaState(persona.id(), 900, null, 0, 0));
         try (MockedStatic<ResidentSpots> spots = mockStatic(ResidentSpots.class)) {
             spots.when(() -> ResidentSpots.townMapId("lith-harbor")).thenReturn(CAMP);
-            return new RosterService(world).recruit(alice, persona);
+            return RosterVoice.line(persona, new RosterService(world).recruit(alice, persona));
         }
     }
 

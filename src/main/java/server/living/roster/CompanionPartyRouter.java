@@ -65,13 +65,21 @@ public final class CompanionPartyRouter {
      */
     private Route ownCompanion(Character owner, Character loaded, RosterEntry entry) {
         if (loaded != null && entry.state() == RosterState.ACTIVE) {
-            return ownParty(owner) ? Route.ACCEPT : Route.ANSWERED;
+            if (!ownParty(owner)) {
+                return Route.ANSWERED;
+            }
+            // out with you but not in the party: the stock invite seats it on a seat held for the join
+            if (loaded.getParty() == null && !(world.roster().canSeat(owner, entry) && world.slots().reserve(owner.getId(),
+                    entry.personaId(), CompanionSlots.Kind.TRAVEL, System.currentTimeMillis() + CompanionSlots.SEAT_HOLD_MS))) {
+                return answer(owner, PacketCreator.partyStatusMessage(17));
+            }
+            return Route.ACCEPT;
         }
         Persona persona = world.content().persona(entry.personaId());
         if (persona == null) {
             return notFound(owner);
         }
-        if (entry.state() != RosterState.AWAY && world.roster().freeSlots(owner) <= 0) {
+        if (!world.roster().canSeat(owner, entry)) {
             return answer(owner, PacketCreator.partyStatusMessage(17));
         }
         // checked, not admitted: the roster load itself takes the owner's load slot
@@ -113,7 +121,7 @@ public final class CompanionPartyRouter {
             return Route.ANSWERED; // the stock refusal (a beginner, a coliseum) was sent
         }
         Party party = inviter.getParty();
-        if (party.getMembers().size() >= 6) {
+        if (world.roster().freeSlots(inviter) <= 0) { // a guest takes one of the inviter's own seats
             return answer(inviter, PacketCreator.partyStatusMessage(17));
         }
         if (!InviteCoordinator.createInvite(InviteType.PARTY, inviter, party.getId(), citizen.getId())) {
@@ -124,14 +132,20 @@ public final class CompanionPartyRouter {
         return Route.ANSWERED;
     }
 
-    /** The citizen's yes, if it still stands: both online, the citizen partyless, the inviter's party with room. */
-    private static void acceptInvite(Character inviter, Character citizen, int partyId) {
+    /**
+     * The citizen's yes, if it still stands: both online, the citizen partyless, the inviter's party with a seat for
+     * it. The seat is a GUEST reservation charged to the inviter, taken before the join (the party's seat gate asks
+     * for it) and given back when the guest leaves the party.
+     */
+    private void acceptInvite(Character inviter, Character citizen, int partyId) {
         Party party = inviter.getParty();
+        String guest = world.slots().keyOf(citizen.getId());
         boolean stands = inviter.isLoggedinWorld() && citizen.isLoggedinWorld() && citizen.getParty() == null
-                && party != null && party.getId() == partyId && party.getMembers().size() < 6;
+                && party != null && party.getId() == partyId && world.roster().freeSlots(inviter) > 0
+                && world.slots().reserve(inviter.getId(), guest, CompanionSlots.Kind.GUEST, Long.MAX_VALUE);
         InviteCoordinator.answerInvite(InviteType.PARTY, citizen.getId(), partyId, stands);
-        if (stands) {
-            Party.joinParty(citizen, partyId, false);
+        if (stands && !Party.joinParty(citizen, partyId, false)) {
+            world.slots().release(guest, CompanionSlots.Kind.GUEST);
         }
     }
 

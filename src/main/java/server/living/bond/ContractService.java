@@ -128,7 +128,7 @@ public final class ContractService {
                 kept.add(item);
             }
         }
-        String result = world.roster().recruit(chr, persona);
+        String result = server.living.roster.RosterVoice.line(persona, world.roster().recruit(chr, persona));
         long now = System.currentTimeMillis();
         Bond active = new Bond(bond.characterId(), bond.personaId(), bond.stage(), bond.points(), bond.flags(),
                 ContractState.ACTIVE, now, 0L, bond.proofProgress(), bond.paidMeso() + owed, bond.partySeconds(), 0L, now);

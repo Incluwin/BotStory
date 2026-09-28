@@ -10,6 +10,7 @@ import server.living.config.Content.Persona;
 import server.living.config.Content.StepType;
 import server.living.phrases.PhraseMatcher;
 import server.living.roster.CompanionDirectory;
+import server.living.roster.RosterVoice;
 import server.living.roster.ui.CompanionMenus;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
@@ -454,11 +455,11 @@ public final class ResidentDialogue {
         }
         Matcher m = CALL.matcher(normalized);
         if (m.matches()) {
-            return owned(owner, m.group(2), persona -> owner.dropMessage(5, world.roster().call(owner, persona)));
+            return owned(owner, m.group(2), persona -> owner.dropMessage(5, RosterVoice.line(persona, world.roster().call(owner, persona))));
         }
         m = BENCH.matcher(normalized);
         if (m.matches()) {
-            return owned(owner, m.group(2), persona -> owner.dropMessage(5, world.roster().bench(owner, persona)));
+            return owned(owner, m.group(2), persona -> owner.dropMessage(5, RosterVoice.line(persona, world.roster().bench(owner, persona))));
         }
         m = SWAP.matcher(normalized);
         if (m.matches()) {
@@ -467,7 +468,7 @@ public final class ResidentDialogue {
             if (out == null || in == null) {
                 return false;
             }
-            owner.dropMessage(5, world.roster().swap(owner, out, in));
+            owner.dropMessage(5, RosterVoice.line(in, world.roster().swap(owner, out, in)));
             return true;
         }
         m = RELEASE.matcher(normalized);
@@ -478,7 +479,7 @@ public final class ResidentDialogue {
             for (RosterEntry entry : world.roster().roster(owner)) {
                 Persona persona = world.content().persona(entry.personaId());
                 if (persona != null && entry.state() == RosterState.ACTIVE) {
-                    owner.dropMessage(5, world.roster().bench(owner, persona));
+                    owner.dropMessage(5, RosterVoice.line(persona, world.roster().bench(owner, persona)));
                 }
             }
             return true;
@@ -487,7 +488,7 @@ public final class ResidentDialogue {
             for (RosterEntry entry : world.roster().roster(owner)) {
                 Persona persona = world.content().persona(entry.personaId());
                 if (persona != null && entry.state() != RosterState.ACTIVE) {
-                    owner.dropMessage(5, world.roster().call(owner, persona));
+                    owner.dropMessage(5, RosterVoice.line(persona, world.roster().call(owner, persona)));
                 }
             }
             return true;
@@ -515,9 +516,9 @@ public final class ResidentDialogue {
         }
         switch (command) {
             case "come", "come here", "join me", "call", "come back", "get back here", "back to me", "return", "rejoin":
-                owner.dropMessage(5, world.roster().call(owner, persona)); return true;
-            case "bench", "take a break", "go rest", "go to camp", "rest up": owner.dropMessage(5, world.roster().bench(owner, persona)); return true;
-            case "camp here", "make camp here": owner.dropMessage(5, world.roster().setCamp(owner, persona, owner.getMapId())); return true;
+                owner.dropMessage(5, RosterVoice.line(persona, world.roster().call(owner, persona))); return true;
+            case "bench", "take a break", "go rest", "go to camp", "rest up": owner.dropMessage(5, RosterVoice.line(persona, world.roster().bench(owner, persona))); return true;
+            case "camp here", "make camp here": owner.dropMessage(5, RosterVoice.line(persona, world.roster().setCamp(owner, persona, owner.getMapId()))); return true;
             case "what did you get", "show me the haul", "haul", "what do you have", "whats in the bag":
                 for (String line : world.roster().haulSummary(owner, persona)) { owner.dropMessage(6, line); } return true;
             case "hand it over", "give me the haul", "give it here", "hand over the haul": owner.dropMessage(5, world.roster().handOver(owner, persona)); return true;
@@ -551,9 +552,9 @@ public final class ResidentDialogue {
             }
         }
         if (assignment != null) {
-            owner.dropMessage(5, go
+            owner.dropMessage(5, RosterVoice.line(persona, go
                     ? world.roster().delegate(owner, persona, assignment, itemId, count, mapId)
-                    : world.roster().assign(owner, persona, assignment, itemId, count));
+                    : world.roster().assign(owner, persona, assignment, itemId, count)));
             return true;
         }
         Matcher wages = WAGES.matcher(command);

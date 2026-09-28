@@ -274,7 +274,7 @@ public final class BenchSessions {
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), entry.accruedExp(), haulMeso,
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
                 entry.farmSecondsToday(), entry.farmDay());
-        world.store().saveRoster(updated);
+        world.store().saveRosterProgress(updated);
         world.store().event(entry.characterId(), entry.personaId(), "bench.harvest", "+" + Math.max(0, gainedMeso) + " meso, " + gainedStacks + " stacks");
         return updated;
     }

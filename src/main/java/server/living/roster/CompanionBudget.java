@@ -17,12 +17,19 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class CompanionBudget {
     public enum Kind { COMPANION, BENCH_LIVE, EXPEDITION }
 
+    private static final String CEILING = "Agent ceiling ";
+
     /** ALLOW, or DENY with a reason for the event log and the companion's line. */
     public record Admission(boolean allowed, String reason) {
         public static final Admission ALLOW = new Admission(true, "");
 
         public static Admission deny(String reason) {
             return new Admission(false, reason);
+        }
+
+        /** Denied because the server-wide Agent ceiling is reached, not an owner's own pool. */
+        public boolean atCeiling() {
+            return !allowed && reason.startsWith(CEILING);
         }
     }
 
@@ -75,7 +82,7 @@ public final class CompanionBudget {
 
     static Admission decide(Kind kind, Usage usage, LivingWorldConfig config) {
         if (usage.agents() >= config.COMPANION_BUDGET_CEILING) {
-            return Admission.deny("Agent ceiling " + config.COMPANION_BUDGET_CEILING + " reached");
+            return Admission.deny(CEILING + config.COMPANION_BUDGET_CEILING + " reached");
         }
         return switch (kind) {
             case COMPANION -> usage.ownerCompanions() >= config.COMPANION_PER_HUMAN

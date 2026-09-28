@@ -80,6 +80,7 @@ class CompanionDirectoryTest {
         when(world.benchSessions()).thenReturn(bench);
         when(world.content()).thenReturn(content);
         when(world.leases()).thenReturn(leases);
+        when(world.slots()).thenReturn(new CompanionSlots(world));
         RosterService roster = new RosterService(world);
         when(world.roster()).thenReturn(roster);
         Citizen mira = mock(Citizen.class);

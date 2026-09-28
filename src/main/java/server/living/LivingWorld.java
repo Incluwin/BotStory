@@ -21,7 +21,9 @@ import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchLedger;
 import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionDirectory;
+import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionLeases;
+import server.living.roster.CompanionSlots;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 
@@ -48,6 +50,8 @@ public final class LivingWorld {
     private final QuestLog questLog;
     private final QuestMarkers markers;
     private final ContractService contracts;
+    private final CompanionExecutor executor;
+    private final CompanionSlots slots;
     private final RosterService roster;
     private final CompanionLeases leases;
     private final CompanionDirectory directory;
@@ -69,6 +73,8 @@ public final class LivingWorld {
         this.quests = new QuestLedger(this);
         this.questLog = new QuestLog(this);
         this.markers = new QuestMarkers(this);
+        this.executor = new CompanionExecutor();
+        this.slots = new CompanionSlots(this); // before the roster, which rebuilds its reservations
         this.roster = new RosterService(this);
         this.leases = new CompanionLeases();
         this.directory = new CompanionDirectory(this);
@@ -139,6 +145,9 @@ public final class LivingWorld {
             }
         }
         instance = world;
+        // party changes reach the roster on companion-ops, never inline; a bot joins a human's party only on a seat
+        net.server.world.PartyEvents.install(LivingWorldHooks::partyChanged);
+        net.server.world.PartySeatGate.install(world.slots::admitsJoin);
         log.info("Living world started: {} (world {} channel {}, content {})", content.census(), config.WORLD,
                 config.CHANNEL, Path.of(config.CONTENT_DIR).toAbsolutePath());
         server.living.population.Population.start(world);
@@ -150,6 +159,8 @@ public final class LivingWorld {
             return;
         }
         instance = null;
+        net.server.world.PartyEvents.install(null);
+        net.server.world.PartySeatGate.install(null);
         server.living.population.Population.stop();
         for (ScheduledFuture<?> timer : world.timers) {
             timer.cancel(false);
@@ -157,6 +168,7 @@ public final class LivingWorld {
         world.timers.clear();
         world.benchSessions.endAll("server shutdown");
         world.residents.standbyAll("server shutdown");
+        world.executor.shutdown();
         log.info("Living world stopped.");
     }
 
@@ -229,6 +241,16 @@ public final class LivingWorld {
 
     public RosterService roster() {
         return roster;
+    }
+
+    /** The companion-ops thread every companion mutation runs on. */
+    public CompanionExecutor executor() {
+        return executor;
+    }
+
+    /** The only slot authority. */
+    public CompanionSlots slots() {
+        return slots;
     }
 
     public CompanionLeases leases() {

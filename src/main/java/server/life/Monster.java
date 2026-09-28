@@ -572,12 +572,8 @@ public class Monster extends AbstractLoadedLife {
     private void distributePlayerExperience(Character chr, float exp, float partyBonusMod, int totalPartyLevel,
                                             boolean highestPartyDamager, boolean whiteExpGain,
                                             boolean hasPartySharers, int questCreditAgentId) {
-        float playerExp = (YamlConfig.config.server.EXP_SPLIT_COMMON_MOD * chr.getLevel()) / totalPartyLevel;
-        if (highestPartyDamager) {
-            playerExp += YamlConfig.config.server.EXP_SPLIT_MVP_MOD;
-        }
-
-        playerExp *= exp;
+        float playerExp = PartyExpSplit.share(chr.getLevel(), totalPartyLevel, highestPartyDamager, exp,
+                YamlConfig.config.server.EXP_SPLIT_COMMON_MOD, YamlConfig.config.server.EXP_SPLIT_MVP_MOD);
         float bonusExp = partyBonusMod * playerExp;
 
         this.giveExpToCharacter(chr, playerExp, bonusExp, whiteExpGain, hasPartySharers,
@@ -591,16 +587,10 @@ public class Monster extends AbstractLoadedLife {
         IntervalBuilder leechInterval = new IntervalBuilder();
         leechInterval.addInterval(this.getLevel() - YamlConfig.config.server.EXP_SPLIT_LEVEL_INTERVAL, this.getLevel() + YamlConfig.config.server.EXP_SPLIT_LEVEL_INTERVAL);
 
-        long maxDamage = 0, partyDamage = 0;
-        Character participationMvp = null;
+        long partyDamage = 0;
         for (Entry<Character, Long> e : partyParticipation.entrySet()) {
             long entryDamage = e.getValue();
             partyDamage += entryDamage;
-
-            if (maxDamage < entryDamage) {
-                maxDamage = entryDamage;
-                participationMvp = e.getKey();
-            }
 
             // thanks Thora for pointing out leech level limitation
             int chrLevel = e.getKey().getLevel();
@@ -608,7 +598,6 @@ public class Monster extends AbstractLoadedLife {
         }
 
         List<Character> expMembers = new LinkedList<>();
-        int totalPartyLevel = 0;
 
         // thanks G h o s t, Alfred, Vcoc, BHB for poiting out a bug in detecting party members after membership transactions in a party took place
         if (YamlConfig.config.server.USE_ENFORCE_MOB_LEVEL_RANGE) {
@@ -618,26 +607,26 @@ public class Monster extends AbstractLoadedLife {
                     continue;
                 }
 
-                totalPartyLevel += member.getLevel();
                 expMembers.add(member);
             }
         } else {    // thanks Ari for noticing unused server flag after EXP system overhaul
             for (Character member : partyParticipation.keySet().iterator().next().getPartyMembersOnSameMap()) {
-                totalPartyLevel += member.getLevel();
                 expMembers.add(member);
             }
         }
 
-        int membersSize = expMembers.size();
         float participationExp = partyDamage * expPerDmg;
+        boolean hasPartySharers = expMembers.size() > 1; // Holy Symbol's party strength, as before
 
-        // thanks Crypter for reporting an insufficiency on party exp bonuses
-        boolean hasPartySharers = membersSize > 1;
-        float partyBonusMod = hasPartySharers ? 0.05f * membersSize : 0.0f;
+        // thanks Crypter for reporting an insufficiency on party exp bonuses (5% per sharer, PartyExpSplit.Basis);
+        // decision 17: roster companions take their own cut, and everyone else splits as if they were absent
+        Map<Character, PartyExpSplit.Basis<Character>> bases = PartyExpSplit.bases(expMembers, Character::getLevel,
+                server.living.LivingWorldHooks::expShareCompanion, partyParticipation);
 
         for (Character mc : expMembers) {
-            distributePlayerExperience(mc, participationExp, partyBonusMod, totalPartyLevel,
-                    mc == participationMvp, isWhiteExpGain(mc, personalRatio, sdevRatio),
+            PartyExpSplit.Basis<Character> basis = bases.get(mc);
+            distributePlayerExperience(mc, participationExp, basis.bonusMod(), basis.totalLevel(),
+                    mc == basis.mvp(), isWhiteExpGain(mc, personalRatio, sdevRatio),
                     hasPartySharers, questCreditAgentId);
             giveFamilyRep(mc.getFamilyEntry());
         }

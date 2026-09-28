@@ -20,6 +20,7 @@ import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionDirectory.Relation;
+import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
@@ -112,9 +113,12 @@ class CompanionMenusTest {
         when(residents.characterIdOf("tobi")).thenReturn(902);
         when(store.characterLevelAndJob(901)).thenReturn(new int[] {28, Job.HUNTER.getId()});
         when(store.characterLevelAndJob(902)).thenReturn(new int[] {30, Job.CLERIC.getId()});
-        when(roster.bench(any(), any())).thenReturn("Hadrik heads back to camp to train.");
-        when(roster.call(any(), any())).thenReturn("Mira is on the way (1m).");
-        when(roster.swap(any(), any(), any())).thenReturn("swapped.");
+        when(roster.bench(any(), any())).thenReturn(new RosterResult.Ok("Hadrik heads back to camp to train."));
+        when(roster.call(any(), any())).thenReturn(new RosterResult.Ok("Mira is on the way (1m)."));
+        when(roster.swap(any(), any(), any())).thenReturn(new RosterResult.Ok("swapped."));
+        // the stock seat rule under this mock: an AWAY companion kept its seat, anyone else needs a free one
+        when(roster.canSeat(any(), any())).thenAnswer(inv -> ((RosterEntry) inv.getArgument(1)).state() == RosterState.AWAY
+                || roster.freeSlots(inv.getArgument(0)) > 0);
         livingWorld = mockStatic(LivingWorld.class);
         livingWorld.when(LivingWorld::get).thenReturn(world);
         menus = new CompanionMenus(world, mapId -> "Ant Tunnel");

@@ -104,6 +104,7 @@ class BudgetWiringTest {
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(mock(BenchLedger.class));
         when(world.leases()).thenReturn(leases);
+        when(world.slots()).thenReturn(new CompanionSlots(world));
 
         registry = mockStatic(AgentRuntimeRegistry.class);
         cleanup = mockStatic(AgentRuntimeCleanupService.class);
@@ -132,7 +133,7 @@ class BudgetWiringTest {
         when(world.budget()).thenReturn(new CompanionBudget(world));
         registry.when(() -> AgentRuntimeRegistry.activeAgentCountForLeader(ALICE)).thenReturn(5);
 
-        String reply = new RosterService(world).call(alice, OLWEN);
+        String reply = RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN));
 
         assertEquals("Olwen could not join right now.", reply);
         verify(store).event(ALICE, "olwen", "roster.call_refused", "5 companions already out");
@@ -149,7 +150,7 @@ class BudgetWiringTest {
         when(world.budget()).thenReturn(new CompanionBudget(world));
         registry.when(AgentRuntimeRegistry::activeAgentCount).thenReturn(300);
 
-        assertEquals("Olwen could not join right now.", new RosterService(world).call(alice, OLWEN));
+        assertEquals("Olwen could not join right now.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
         verify(store).event(ALICE, "olwen", "roster.call_refused", "Agent ceiling 300 reached");
         interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(any(), anyString()), never());
     }
@@ -171,8 +172,8 @@ class BudgetWiringTest {
         try (MockedStatic<TimerManager> timer = mockStatic(TimerManager.class);
              MockedStatic<Server> server = online(alice)) {
             timer.when(TimerManager::getInstance).thenReturn(timers);
-            assertEquals("Olwen joins your party.", roster.call(alice, OLWEN));
-            brinReply = roster.call(alice, BRIN);
+            assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, roster.call(alice, OLWEN)));
+            brinReply = RosterVoice.line(BRIN, roster.call(alice, BRIN));
             interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(alice, "Brin"), never());
 
             verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), retry.capture(), eq(1_500L));
@@ -234,7 +235,7 @@ class BudgetWiringTest {
         try (MockedStatic<TimerManager> timer = mockStatic(TimerManager.class);
              MockedStatic<Server> server = online(alice)) {
             timer.when(TimerManager::getInstance).thenReturn(timers);
-            assertEquals("Brin will be right there.", roster.call(alice, BRIN));
+            assertEquals("Brin will be right there.", RosterVoice.line(BRIN, roster.call(alice, BRIN)));
             verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), retry.capture(), eq(1_500L));
             Party full = mock(Party.class);
             List<PartyCharacter> six = Collections.nCopies(6, mock(PartyCharacter.class));

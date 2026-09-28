@@ -78,7 +78,7 @@ public final class BenchLedger {
             if (entry.assignment() != Assignment.TRAIN) {
                 farmSecondsToday += (int) (hours * 3600);
             }
-            world.store().saveRoster(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
+            world.store().saveRosterProgress(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
                     entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), entry.accruedExp(), entry.haulMeso(),
                     entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, farmSecondsToday, today));
             return;
@@ -160,7 +160,7 @@ public final class BenchLedger {
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), accruedExp, haulMeso,
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, farmSecondsToday, today);
-        world.store().saveRoster(updated);
+        world.store().saveRosterProgress(updated);
         if (note != null) {
             world.store().event(entry.characterId(), entry.personaId(), "bench.ledger", note);
         }
@@ -280,7 +280,7 @@ public final class BenchLedger {
             agent.gainExp(chunk, false, false);
             remaining -= chunk;
         }
-        world.store().saveRoster(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
+        world.store().saveRosterProgress(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), 0L, entry.haulMeso(),
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
                 entry.farmSecondsToday(), entry.farmDay()));

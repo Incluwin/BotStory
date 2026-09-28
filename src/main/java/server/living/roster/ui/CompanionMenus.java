@@ -10,6 +10,7 @@ import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionView;
 import server.living.roster.RecallTravel;
 import server.living.roster.RosterService;
+import server.living.roster.RosterVoice;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import server.maps.MapFactory;
@@ -67,7 +68,7 @@ public final class CompanionMenus {
         List<Option> options = new ArrayList<>();
         // the last one out is benched only by someone holding the Roster, which calls anyone back; else it is rotated
         if (rows(owner, true).size() != 1 || holdsRosterBook(owner)) {
-            options.add(new Option("Take a break at camp", () -> outcome(owner, world.roster().bench(owner, persona))));
+            options.add(new Option("Take a break at camp", () -> outcome(owner, RosterVoice.line(persona, world.roster().bench(owner, persona)))));
         }
         if (!rows(owner, false).isEmpty()) {
             options.add(new Option("Let someone take your place...", () -> swapPicker(owner, persona, true, "who takes my place?")));
@@ -139,11 +140,11 @@ public final class CompanionMenus {
 
     /** With the party full the companion asks whom to take over from; it is never sent for a seat that is not there. */
     private void join(Character owner, Persona persona, RosterEntry entry) {
-        if (entry.state() != RosterState.AWAY && world.roster().freeSlots(owner) <= 0) {
+        if (!world.roster().canSeat(owner, entry)) {
             swapPicker(owner, persona, false, "your party's full. who should i take over from?");
             return;
         }
-        outcome(owner, world.roster().call(owner, persona));
+        outcome(owner, RosterVoice.line(persona, world.roster().call(owner, persona)));
     }
 
     /**
@@ -158,8 +159,8 @@ public final class CompanionMenus {
                 continue;
             }
             CompanionView view = view(entry);
-            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> outcome(owner, outgoing
-                    ? world.roster().swap(owner, fixed, other) : world.roster().swap(owner, other, fixed))));
+            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> outcome(owner, RosterVoice.line(fixed,
+                    outgoing ? world.roster().swap(owner, fixed, other) : world.roster().swap(owner, other, fixed)))));
         }
         if (options.isEmpty()) {
             outcome(owner, "Nobody to swap with right now.");

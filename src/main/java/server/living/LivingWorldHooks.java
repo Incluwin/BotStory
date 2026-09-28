@@ -203,6 +203,40 @@ public final class LivingWorldHooks {
         }
     }
 
+    /**
+     * A committed party change ({@code PartyEvents} listener, on the thread that made it). It is queued for the
+     * companion-ops thread and never handled here, so nothing re-enters {@code World.updateParty} or takes the roster's
+     * locks under the party's.
+     */
+    public static void partyChanged(net.server.world.PartyEvents.PartyChangeEvent event) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || event == null) {
+            return;
+        }
+        try {
+            world.executor().submit("party " + event.op() + " " + event.partyId(), () -> world.slots().onPartyChanged(event));
+        } catch (RuntimeException failure) {
+            log.warn("living world partyChanged hook failed", failure);
+        }
+    }
+
+    /**
+     * True for a roster companion whose kill EXP must not dilute the humans' share (decision 17,
+     * {@code COMPANION_EXP_SHARE}): it earns its own split, and the humans split as if it were absent.
+     */
+    public static boolean expShareCompanion(Character member) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || member == null || !world.config().COMPANION_EXP_SHARE
+                || !server.integration.AgentPresence.isAgent(member)) {
+            return false;
+        }
+        try {
+            return world.directory().ownerOfCharacter(member.getId()) != 0;
+        } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
     /** True when {@code target} is one of {@code owner}'s roster companions. */
     public static boolean ownsCompanion(Character owner, Character target) {
         LivingWorld world = LivingWorld.get();

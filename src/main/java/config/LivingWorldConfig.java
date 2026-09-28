@@ -114,6 +114,11 @@ public class LivingWorldConfig {
     /** A citizen answers a party invite after a random delay in MIN..MAX, like a player would. */
     public int CITIZEN_INVITE_REPLY_MIN_MS = 900;
     public int CITIZEN_INVITE_REPLY_MAX_MS = 1800;
+    /**
+     * Decision 17: roster companions in a party earn their own kill EXP, but the humans' split is computed as if they
+     * were absent, so a full crew never slows its owner down. false = the stock split shares every kill with them.
+     */
+    public boolean COMPANION_EXP_SHARE = true;
 
     // Rumors
     public int RUMOR_TICK_MS = 60000;

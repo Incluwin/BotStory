@@ -1063,6 +1063,8 @@ public class World {
         if (party == null) {
             throw new IllegalArgumentException("no party with the specified partyid exists");
         }
+        // before the switch: CHANGE_LEADER overwrites the previous leader, and each event stands on its own
+        PartyEvents.Snapshot before = PartyEvents.before(party, operation);
         switch (operation) {
             case JOIN:
                 party.addMember(target);
@@ -1105,6 +1107,7 @@ public class World {
                 log.warn("Unhandled updateParty operation: {}", operation.name());
         }
         updateParty(party, operation, target);
+        PartyEvents.publish(party, operation, target, before); // committed and broadcast
     }
 
     public void removeMapPartyMembers(int partyid) {

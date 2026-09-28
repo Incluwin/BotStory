@@ -90,6 +90,19 @@ class RosterServiceCharacterizationTest {
             saved.add(entry);
             return null;
         }).when(store).saveRoster(any());
+        doAnswer(inv -> { // the ledger writes progress only: the row keeps its state (LivingStore.saveRosterProgress)
+            RosterEntry progress = inv.getArgument(0);
+            RosterEntry stored = rows.get(key(progress.characterId(), progress.personaId()));
+            if (stored != null) {
+                RosterEntry merged = new RosterEntry(progress.characterId(), progress.personaId(), stored.state(),
+                        progress.assignment(), progress.assignmentItem(), progress.assignmentCount(), progress.campMapId(),
+                        progress.accruedExp(), progress.haulMeso(), progress.wagesPaidUntilMs(), stored.recruitedAtMs(),
+                        progress.benchedAtMs(), progress.lastLedgerAtMs(), progress.farmSecondsToday(), progress.farmDay());
+                rows.put(key(merged.characterId(), merged.personaId()), merged);
+                saved.add(merged);
+            }
+            return null;
+        }).when(store).saveRosterProgress(any());
 
         when(residents.ensureCharacter(OLWEN)).thenReturn(OLWEN_CHARACTER);
         when(residents.characterIdOf(OLWEN.id())).thenReturn(OLWEN_CHARACTER);
@@ -99,6 +112,7 @@ class RosterServiceCharacterizationTest {
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(new BenchLedger(world));
         when(world.leases()).thenReturn(leases);
+        when(world.slots()).thenReturn(new CompanionSlots(world));
         CompanionBudget budget = mock(CompanionBudget.class); // BudgetWiringTest covers the real pools
         when(budget.admit(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
         when(world.budget()).thenReturn(budget);
@@ -125,12 +139,12 @@ class RosterServiceCharacterizationTest {
         RosterService roster = new RosterService(world);
 
         try (MockedStatic<AgentPartyLifecycleService> party = joined(); MockedStatic<Party> parties = mockStatic(Party.class)) {
-            assertEquals("Olwen joins your party.", roster.call(alice, OLWEN));
+            assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, roster.call(alice, OLWEN)));
         }
 
         verify(olwenBot, times(1)).gainExp(5_000, false, false);
         assertEquals(2, saved.size());
-        // BenchLedger.applyAccrued writes the row with accruedExp 0 once the EXP is granted ...
+        // BenchLedger.applyAccrued writes the row's progress (never its state) with accruedExp 0 once the EXP is granted ...
         assertEquals(RosterState.BENCHED, saved.get(0).state());
         assertEquals(0L, saved.get(0).accruedExp());
         // ... and spawnCompanion re-reads that row before it saves ACTIVE, so the 5000 stays spent
@@ -178,7 +192,7 @@ class RosterServiceCharacterizationTest {
         String reply;
         try (MockedStatic<AgentPartyGatewayRuntime> gateways = mockStatic(AgentPartyGatewayRuntime.class)) {
             gateways.when(AgentPartyGatewayRuntime::party).thenReturn(gateway);
-            reply = roster.call(alice, OLWEN);
+            reply = RosterVoice.line(OLWEN, roster.call(alice, OLWEN));
         }
 
         verify(gateway).joinAgentParty(olwenBot, 77);
@@ -210,7 +224,7 @@ class RosterServiceCharacterizationTest {
 
         String reply;
         try (MockedStatic<AgentPartyLifecycleService> party = joined()) {
-            reply = roster.call(alice, OLWEN);
+            reply = RosterVoice.line(OLWEN, roster.call(alice, OLWEN));
         }
 
         // nothing is pulled out from under its holder and nothing is loaded; the companion asks for a moment
@@ -232,16 +246,16 @@ class RosterServiceCharacterizationTest {
         seed(row(ALICE, "dara", RosterState.ACTIVE, 0L));
         RosterService roster = new RosterService(world);
 
-        // freeSlots:116 is PARTY_CAP - 1 - own AWAY; dara is not counted
+        // alone: 5 seats less the 2 AWAY companions' reservations; dara is not counted
         assertEquals(3, roster.freeSlots(alice));
     }
 
     @Test
-    void humansInOnePartyShareOneFreeSlotNumber() {
+    void humansInOnePartyGetAFairShareOfTheFreeSeats() {
         Character bob = character(BOB, "Bob");
         Character botInParty = character(901, "Brin");
         Party party = mock(Party.class);
-        List<PartyCharacter> members = List.of(member(alice), member(bob), member(botInParty));
+        List<PartyCharacter> members = List.of(member(alice, false), member(bob, false), member(botInParty, true));
         when(party.getMembers()).thenReturn(members);
         when(alice.getParty()).thenReturn(party);
         when(bob.getParty()).thenReturn(party);
@@ -251,8 +265,9 @@ class RosterServiceCharacterizationTest {
 
         try (MockedStatic<AgentPresence> presence = mockStatic(AgentPresence.class)) {
             presence.when(() -> AgentPresence.isAgent(botInParty)).thenReturn(true);
-            // freeSlots:118-126: 6 - 3 members - Alice's 1 AWAY, for either human; dara is not counted
-            assertEquals(2, roster.freeSlots(alice));
+            // P2a fair share (CompanionSlots): with 2 humans each gets floor(4/2) = 2 seats. Alice's AWAY companion
+            // holds one of hers, Brin (nobody's companion) only occupies a seat, and dara, not a member, holds none
+            assertEquals(1, roster.freeSlots(alice));
             assertEquals(2, roster.freeSlots(bob));
         }
     }
@@ -287,9 +302,13 @@ class RosterServiceCharacterizationTest {
         return members;
     }
 
-    private static PartyCharacter member(Character player) {
+    private static PartyCharacter member(Character player, boolean bot) {
         PartyCharacter member = mock(PartyCharacter.class);
+        int id = player.getId();
+        when(member.getId()).thenReturn(id);
         when(member.getPlayer()).thenReturn(player);
+        when(member.isOnline()).thenReturn(true);
+        when(member.isBot()).thenReturn(bot);
         return member;
     }
 

@@ -7,6 +7,7 @@ import net.server.Server;
 import net.server.channel.handlers.PartyOperationHandler;
 import net.server.world.Party;
 import net.server.world.PartyCharacter;
+import net.server.world.PartyEvents;
 import net.server.world.PartyOperation;
 import net.server.world.World;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import server.maps.MapleMap;
 import testutil.Packets;
 import tools.PacketCreator;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -165,6 +167,41 @@ class LeaderSuccessionTest {
         } finally {
             YamlConfig.config.server.USE_FAMILY_SYSTEM = families;
         }
+    }
+
+    @Test
+    void theLogoutIsPublishedWithTheLeaverAsActorAndThePreviousLeader() {
+        boolean families = YamlConfig.config.server.USE_FAMILY_SYSTEM;
+        YamlConfig.config.server.USE_FAMILY_SYSTEM = false;
+        List<PartyEvents.PartyChangeEvent> events = new ArrayList<>();
+        try (MockedStatic<TimerManager> timers = mockStatic(TimerManager.class);
+             MockedStatic<Server> servers = mockStatic(Server.class)) {
+            timers.when(TimerManager::getInstance).thenReturn(mock(TimerManager.class));
+            servers.when(Server::getInstance).thenReturn(mock(Server.class));
+            World world = new World(0, 0, "", 1, 1, 1, 1, 1, 1, 1, 1f, 1);
+            Client annClient = new Client(Client.Type.CHANNEL, -1, "test", null, 0, 1);
+            Character ann = player(LEAVER, "Ann", 30, annClient);
+            Character ben = player(3, "Ben", 20, new Client(Client.Type.CHANNEL, -1, "test", null, 0, 1));
+            Party party = world.createParty(new PartyCharacter(ann));
+            party.addMember(new PartyCharacter(ben));
+            when(ann.getParty()).thenReturn(party);
+            when(map.getCharacterById(3)).thenReturn(ben);
+            annClient.setPlayer(ann);
+            PartyEvents.install(events::add);
+
+            annClient.removePartyPlayer(world);
+        } finally {
+            PartyEvents.install(null);
+            YamlConfig.config.server.USE_FAMILY_SYSTEM = families;
+        }
+
+        assertEquals(List.of(PartyOperation.LOG_ONOFF, PartyOperation.CHANGE_LEADER),
+                events.stream().map(PartyEvents.PartyChangeEvent::op).toList());
+        assertEquals(LEAVER, events.get(0).actorId());
+        assertEquals(LEAVER, events.get(1).actorId());
+        assertEquals(LEAVER, events.get(1).before().leaderId());
+        assertEquals(3, events.get(1).after().leaderId());
+        assertEquals(0, PartyEvents.currentActor());
     }
 
     // ---- op 6, change leader -------------------------------------------------------------
