@@ -149,6 +149,23 @@ public final class LivingWorldHooks {
         }
     }
 
+    /**
+     * A character was deleted (Character.deleteCharFromDB, after its rows are gone). Its roster is released on
+     * companion-ops (plan "Roster deletion cleanup"): its Residents go home, a loaded companion is unloaded, and its
+     * seats, leases and commitments go back.
+     */
+    public static void characterDeleted(int characterId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || characterId <= 0) {
+            return;
+        }
+        try {
+            world.executor().submit("roster.owner_deleted " + characterId, () -> world.roster().ownerDeleted(characterId));
+        } catch (RuntimeException failure) {
+            log.warn("living world characterDeleted hook failed", failure);
+        }
+    }
+
     /** A party quest instance was cleared by these players. */
     public static void partyQuestCleared(java.util.List<Character> players, String eventName) {
         LivingWorld world = LivingWorld.get();

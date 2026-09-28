@@ -24,6 +24,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
+import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
 import server.living.config.Content.Quest;
 import server.living.config.Content.Step;
@@ -64,6 +65,8 @@ public final class RosterService {
     /** A bench, swap or errand refused while the companion is committed to a run (Commitments). */
     static final String AFTER_THE_RUN_LINE = "after the run.";
     private static final String CANT_GET_AWAY_LINE = "i can't get away right now. try again in a bit.";
+    /** The persona id prefix of a hired citizen's roster row ({@code hire:<characterId>}, P4). */
+    public static final String HIRE_PREFIX = "hire:";
 
     /** Where an owner last came into a map that is not an event instance's copy: the way into their next run. */
     private record Spot(int mapId, Point at) { }
@@ -82,6 +85,8 @@ public final class RosterService {
     private final java.util.Set<String> seating = ConcurrentHashMap.newKeySet();
     /** Persona id -> the walk-out of a companion benched a moment ago; any despawn or a new seat ends it. */
     private final Map<String, Object> leaving = new ConcurrentHashMap<>();
+    /** What a released hire does besides leaving the roster; nothing until HiredHands installs it (P4). */
+    private volatile HiredHandRelease hiredHandRelease = (ownerId, personaId, reason) -> { };
 
     public RosterService(LivingWorld world) {
         this.world = world;
@@ -312,25 +317,87 @@ public final class RosterService {
 
     /** Drops the persona from the roster; it goes home as a Resident. */
     public String release(Character owner, Persona persona, String reason) {
-        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        return release(owner.getId(), persona, reason);
+    }
+
+    /** {@link #release(Character, Persona, String)} by owner id: the owner may be offline (a walk-out after a run) or gone. */
+    public String release(int ownerId, Persona persona, String reason) {
+        RosterEntry entry = world.store().rosterEntry(ownerId, persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return persona.name() + " is not in your roster.";
         }
-        world.benchSessions().endFor(persona.id(), "released");
-        despawn(entry, "released");
-        world.slots().release(persona.id());
-        world.slots().stopWaiting(persona.id());
-        write(entry.with(RosterState.RELEASED, System.currentTimeMillis()));
-        world.store().deleteRoster(owner.getId(), persona.id());
-        ownerByPersona.remove(persona.id());
-        if (roster(owner).isEmpty()) {
-            owners.remove(owner.getId());
-        }
-        world.store().savePersonaState(world.store().personaState(persona.id()).withEmployer(0));
-        world.store().clearWorldFlag("persona." + persona.id() + ".employed");
-        world.contracts().onReleased(owner, persona, reason);
-        world.store().event(owner.getId(), persona.id(), "roster.release", reason);
+        letGo(entry);
+        world.contracts().onReleased(ownerId, persona, reason);
+        world.store().event(ownerId, persona.id(), "roster.release", reason);
         return persona.name() + " heads home to " + persona.homeTown().replace('-', ' ') + ".";
+    }
+
+    /**
+     * The roster's part of a release: a live bench slice ends, a loaded companion is unloaded, its seat and any wait
+     * for room go back, and the row is written RELEASED and deleted; nobody employs the persona any more.
+     */
+    private void letGo(RosterEntry entry) {
+        int ownerId = entry.characterId();
+        String personaId = entry.personaId();
+        world.benchSessions().endFor(personaId, "released");
+        despawn(entry, "released");
+        world.slots().release(personaId);
+        world.slots().stopWaiting(personaId);
+        write(entry.with(RosterState.RELEASED, System.currentTimeMillis()));
+        world.store().deleteRoster(ownerId, personaId);
+        ownerByPersona.remove(personaId);
+        if (world.store().roster(ownerId).isEmpty()) {
+            owners.remove(ownerId);
+        }
+        world.store().savePersonaState(world.store().personaState(personaId).withEmployer(0));
+        world.store().clearWorldFlag("persona." + personaId + ".employed");
+    }
+
+    /**
+     * Roster deletion cleanup (plan "Roster deletion cleanup", decision 18): the owner's character was deleted, so
+     * every row of theirs is released through the release logic, on companion-ops. A companion's commitment to a run is
+     * let go first; a live bench slice ends and a loaded companion is unloaded; its seat, its lease and the seats of
+     * guests charged to the owner go back. A Resident goes home to its routine (resident.released), recruitable again
+     * once its contract's cooldown allows; a hired citizen ({@code hire:<characterId>}) goes back through
+     * {@link #installHiredHandRelease}, which HiredHands fills in P4.
+     */
+    public void ownerDeleted(int ownerId) {
+        Commitments commitments = world.commitments();
+        for (RosterEntry entry : world.store().roster(ownerId)) {
+            int characterId = world.residents().characterIdOf(entry.personaId());
+            if (commitments != null && characterId != 0) {
+                commitments.releaseMember(characterId);
+            }
+            Persona persona = world.content().persona(entry.personaId());
+            if (persona != null) {
+                release(ownerId, persona, "owner deleted");
+                world.store().event(ownerId, persona.id(), "resident.released", "owner deleted");
+                continue;
+            }
+            letGo(entry); // a hire, or a persona the content no longer has
+            world.store().event(ownerId, entry.personaId(), "roster.release", "owner deleted");
+            if (entry.personaId().startsWith(HIRE_PREFIX)) {
+                hiredHandRelease.released(ownerId, entry.personaId(), "owner deleted");
+            }
+        }
+        for (CompanionSlots.Reservation held : world.slots().reservations(ownerId)) {
+            world.slots().release(held.key()); // guests charged to them
+        }
+        owners.remove(ownerId);
+        lastOpenMap.remove(ownerId);
+        leaderCapSaidAtMs.remove(ownerId);
+        ownerLogoutAtMs.remove(String.valueOf(ownerId));
+    }
+
+    /** P4 seam: what a released hired citizen does besides leaving the roster (clear employed_by and its hired flag). */
+    @FunctionalInterface
+    public interface HiredHandRelease {
+        void released(int ownerId, String personaId, String reason);
+    }
+
+    /** HiredHands (P4) installs its release here; null restores the default, which leaves the citizen as it is. */
+    public void installHiredHandRelease(HiredHandRelease release) {
+        hiredHandRelease = release != null ? release : (ownerId, personaId, reason) -> { };
     }
 
     // ---- call / bench / swap -------------------------------------------------------------
@@ -856,9 +923,22 @@ public final class RosterService {
             world.slots().release(persona.id());
             write(entry.with(RosterState.BENCHED, System.currentTimeMillis()));
             world.store().event(owner.getId(), persona.id(), "roster.bench", "turned back on the way");
+            String warning = benchWarning(owner, persona);
+            if (warning != null) {
+                world.residents().whisper(persona, owner, warning);
+            }
             return new RosterResult.Ok(persona.name() + " turns back to camp.");
         }
         return standDown(owner, persona, null, "roster.bench");
+    }
+
+    /**
+     * What a low-tolerance companion says as it is benched while ROSTER_CONTRACT_MODE lets the bench end its contract
+     * (ContractService.benchWarning: chat and every other bench hear it in its words); null when there is nothing to warn of.
+     */
+    private String benchWarning(Character owner, Persona persona) {
+        ContractService contracts = world.contracts();
+        return contracts == null ? null : contracts.benchWarning(owner.getId(), persona);
     }
 
     /** True while the persona's companion is committed to an event instance or expedition (Commitments). */
@@ -898,8 +978,10 @@ public final class RosterService {
             return new RosterResult.Ok(persona.name() + " is already benched.");
         }
         if (line == null) {
+            String warning = benchWarning(owner, persona); // a bench that may end its contract: it says so as it goes
             List<String> lines = world.arcs().lines(persona, "bench");
-            world.residents().reply(persona, owner, lines.isEmpty() ? "alright. i'll keep busy." : lines.get(Math.floorMod(owner.getId(), lines.size())));
+            world.residents().reply(persona, owner, warning != null ? warning
+                    : lines.isEmpty() ? "alright. i'll keep busy." : lines.get(Math.floorMod(owner.getId(), lines.size())));
         } else {
             world.residents().whisper(persona, owner, line);
         }

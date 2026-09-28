@@ -2634,6 +2634,7 @@ public class Character extends AbstractCharacterObject {
                 log.error("Character rows were deleted but post-commit cleanup failed for chrId={} accountId={}",
                         cid, senderAccId, cleanupFailure);
             }
+            server.living.LivingWorldHooks.characterDeleted(cid); // its companions go home (roster deletion cleanup)
             return true;
         } catch (SQLException e) {
             log.error("Failed transactional deletion for chrId={} accountId={}", cid, senderAccId, e);

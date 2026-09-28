@@ -3,6 +3,7 @@ package server.living.roster.ui;
 import client.Character;
 import client.Client;
 import server.living.LivingWorld;
+import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
 import server.living.resident.LivingTalk;
 import server.living.resident.LivingTalk.Option;
@@ -73,8 +74,8 @@ public final class CompanionMenus {
         List<Option> options = new ArrayList<>();
         // the last one out is benched only by someone holding the Roster, which calls anyone back; else it is rotated
         if (rows(owner, true).size() != 1 || holdsRosterBook(owner)) {
-            options.add(new Option("Take a break at camp", () -> command(owner, "menu.bench",
-                    () -> RosterVoice.line(persona, world.roster().bench(owner, persona)))));
+            options.add(new Option("Take a break at camp", () -> confirmBench(owner, persona, () -> command(owner, "menu.bench",
+                    () -> RosterVoice.line(persona, world.roster().bench(owner, persona))))));
         }
         if (!rows(owner, false).isEmpty()) {
             options.add(new Option("Let someone take your place...", () -> swapPicker(owner, persona, true, "who takes my place?")));
@@ -175,10 +176,10 @@ public final class CompanionMenus {
         for (RosterEntry entry : rows(owner, true)) {
             Persona persona = world.content().persona(entry.personaId());
             if (persona != null) {
-                options.add(new Option(partyRow(view(entry)), () -> command(owner, "menu.make_room",
+                options.add(new Option(partyRow(view(entry)), () -> confirmBench(owner, persona, () -> command(owner, "menu.make_room",
                         () -> world.partySync().makeRoom(owner.getId(), persona.id())
                                 ? persona.name() + " steps out to make room for your friend."
-                                : persona.name() + " is not out with you right now.")));
+                                : persona.name() + " is not out with you right now."))));
             }
         }
         options.add(new Option("Never mind", null));
@@ -197,9 +198,9 @@ public final class CompanionMenus {
                 continue;
             }
             CompanionView view = view(entry);
-            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> command(owner, "menu.swap",
-                    () -> RosterVoice.line(fixed, outgoing ? world.roster().swap(owner, fixed, other)
-                            : world.roster().swap(owner, other, fixed)))));
+            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> confirmBench(owner, outgoing ? fixed : other,
+                    () -> command(owner, "menu.swap", () -> RosterVoice.line(fixed, outgoing ? world.roster().swap(owner, fixed, other)
+                            : world.roster().swap(owner, other, fixed))))));
         }
         if (options.isEmpty()) {
             outcome(owner, "Nobody to swap with right now.");
@@ -250,6 +251,24 @@ public final class CompanionMenus {
                 }
             });
         });
+    }
+
+    /**
+     * A menu pick that benches {@code persona} (a break, a swap, making room): where ROSTER_CONTRACT_MODE still lets a
+     * bench end its contract and it has little patience for camp (ContractService.benchWalkOutAfter), a Yes/No in the
+     * player's notes asks first, as the answer to the pick; Yes runs {@code bench}, No closes. Otherwise it runs at once.
+     */
+    private void confirmBench(Character owner, Persona persona, Runnable bench) {
+        ContractService contracts = world.contracts();
+        String after = contracts == null ? null : contracts.benchWalkOutAfter(owner.getId(), persona);
+        if (after == null) {
+            bench.run();
+            return;
+        }
+        LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER)
+                .yesNo(persona.name() + " won't sit at camp for long: after " + after + " on the bench, " + persona.name()
+                        + " walks out for good.\r\n\r\nSend " + persona.name() + " to camp anyway?", bench, null)
+                .show();
     }
 
     /** The stock character info, as double-clicking a stranger shows it, of the companion as it is out now. */

@@ -158,6 +158,9 @@ public final class LivingWorld {
         // and at once when a commitment ends (the member left the run, or the run ended)
         world.commitments.addListener(ended -> world.executor.submit("commitment.ended " + ended.key(),
                 world.partySync::resumeDeferred));
+        // and a contract walk-out that came due during the run goes now ("after this run, i'm heading home")
+        world.commitments.addListener(ended -> world.executor.submit("contracts.after_the_run " + ended.key(),
+                () -> world.contracts.commitmentEnded(ended)));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("companion.audit", world.auditor::run),
                 CompanionAuditor.INTERVAL_MS, CompanionAuditor.INTERVAL_MS));
@@ -192,7 +195,15 @@ public final class LivingWorld {
             timer.cancel(false);
         }
         world.timers.clear();
-        world.benchSessions.endAll("server shutdown");
+        // live bench slices unload on companion-ops like every companion unload; shutdown waits for their saves
+        try {
+            world.executor.submit("bench_sessions.end_all", () -> world.benchSessions.endAll("server shutdown"))
+                    .get(CompanionExecutor.DEFAULT_WATCHDOG_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException failure) {
+            log.warn("live bench slices did not all end before shutdown", failure);
+        }
         world.residents.standbyAll("server shutdown");
         world.executor.shutdown();
         log.info("Living world stopped.");

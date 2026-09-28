@@ -66,6 +66,13 @@ public class LivingWorldConfig {
     public int CONTRACT_OFFER_MINUTES = 10;
     /** Owner offline this long -> active companions are benched. */
     public int LEADER_OFFLINE_BENCH_MS = 1200000;
+    /**
+     * Decision 3, which authored end rules still end a rostered companion's contract on their own (ContractService.Mode):
+     * AUTHORED (all of them: the travel hours, outlevelled, three leader deaths, bench tolerance), PERMANENT_ON_ROSTER
+     * (none; arcs and a dismissal still end one, and wages keep working) or PERMANENT_AT_SWORN (authored terms until
+     * the bond reaches SWORN). In every mode a walk-out waits while the companion is committed to a run.
+     */
+    public String ROSTER_CONTRACT_MODE = "PERMANENT_ON_ROSTER";
 
     // Roster and bench
     public int ROSTER_MAX = 10;
@@ -144,6 +151,10 @@ public class LivingWorldConfig {
         }
         if (ROSTER_BOOK_ITEM_ID < 0) {
             throw new IllegalArgumentException("living_world.ROSTER_BOOK_ITEM_ID must be >= 0 (0 = off)");
+        }
+        if (!java.util.List.of("AUTHORED", "PERMANENT_ON_ROSTER", "PERMANENT_AT_SWORN").contains(ROSTER_CONTRACT_MODE)) {
+            throw new IllegalArgumentException(
+                    "living_world.ROSTER_CONTRACT_MODE must be AUTHORED, PERMANENT_ON_ROSTER or PERMANENT_AT_SWORN");
         }
         if (BOND_ACQUAINTED_POINTS >= BOND_TRUSTED_POINTS || BOND_TRUSTED_POINTS >= BOND_SWORN_POINTS) {
             throw new IllegalArgumentException("living_world bond thresholds must increase");
