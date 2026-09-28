@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import constants.id.MapId;
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.maps.MapleMap;
 import server.maps.Portal;
 
@@ -12,8 +13,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * Where a called companion comes into its owner's map (docs/BOT_MANAGEMENT_PLAN.md P1.5): at the portal
  * nearest the owner, as if it had walked over from the next map, never out of thin air beside them. A visible
  * portal that leads somewhere is preferred; a map without one uses its nearest start point. Hidden, scripted,
- * closed and Mystic Door portals are never used; a map with no usable portal returns null, and the caller keeps
- * the beside-owner spawn.
+ * closed and Mystic Door portals are never used, nor is a portal so far from the owner that follow recovery would
+ * teleport the companion beside them on its first ticks; a map with no usable portal returns null, and the caller
+ * keeps the beside-owner spawn. A benched companion leaves the same way, walking to the portal nearest it.
  */
 final class ArrivalPlacement {
     /** WZ portal type 0 ("sp"): where a character entering the map without a portal lands. */
@@ -21,13 +23,21 @@ final class ArrivalPlacement {
     private static final int VISIBLE = 0;
     private static final int FALLBACK = 1;
     private static final int UNUSABLE = -1;
-    static final long STAGGER_MIN_MS = 300L;
-    static final long STAGGER_MAX_MS = 900L;
+    /** A portal must be nearer than this share of the follow-recovery teleport distance (agent-engine.yaml TELEPORT_DIST). */
+    static final double REACH_SHARE = 0.8d;
+    /** Decision 8a: companions restored at login walk in once the client has loaded the field, 2-8 s apart. */
+    static final long LOGIN_ARRIVAL_MS = 2_000L;
+    static final long STAGGER_MIN_MS = 2_000L;
+    static final long STAGGER_MAX_MS = 8_000L;
+    /** A benched companion walking out goes once it is this close to its portal, or when the walk times out. */
+    static final int WALK_OUT_REACH_PX = 30;
+    static final long WALK_OUT_MAX_MS = 8_000L;
+    static final long WALK_OUT_CHECK_MS = 500L;
 
     private ArrivalPlacement() {
     }
 
-    /** The arrival point on the map nearest {@code owner}, or null when the map has no usable portal. */
+    /** The arrival point on the map nearest {@code owner}, or null when the map has no usable portal in reach. */
     static Point nearestPortal(MapleMap map, Point owner) {
         return map == null ? null : nearestPortal(map.getPortals(), owner);
     }
@@ -36,6 +46,7 @@ final class ArrivalPlacement {
         if (portals == null || owner == null) {
             return null;
         }
+        double reach = REACH_SHARE * AgentMovementPhysicsConfig.configuredTeleportDist();
         Portal best = null;
         int bestRank = UNUSABLE;
         double bestDistance = Double.POSITIVE_INFINITY;
@@ -45,6 +56,9 @@ final class ArrivalPlacement {
                 continue;
             }
             double distance = portal.getPosition().distanceSq(owner);
+            if (distance >= reach * reach) {
+                continue; // follow recovery would teleport it beside the owner: a pop-in after all
+            }
             if (best == null || rank < bestRank || rank == bestRank && distance < bestDistance) {
                 best = portal;
                 bestRank = rank;
@@ -68,7 +82,7 @@ final class ArrivalPlacement {
         return UNUSABLE;
     }
 
-    /** A random gap between two companions arriving together, so they come in one after another. */
+    /** A random gap between two companions arriving together, so each walk-in is seen on its own. */
     static long staggerMs() {
         return ThreadLocalRandom.current().nextLong(STAGGER_MIN_MS, STAGGER_MAX_MS + 1L);
     }

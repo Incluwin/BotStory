@@ -207,6 +207,8 @@ class BudgetWiringTest {
              MockedStatic<Server> server = online(alice)) {
             timer.when(TimerManager::getInstance).thenReturn(timers);
             roster.onOwnerLogin(alice);
+            verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), retry.capture(), eq(ArrivalPlacement.LOGIN_ARRIVAL_MS));
+            retry.getValue().run(); // the restore fires once the field has loaded: another load holds the slot
             verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), retry.capture(), eq(1_500L));
             retry.getValue().run(); // the slot is still taken: wait again, say nothing
             verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), retry.capture(), eq(1_200L));

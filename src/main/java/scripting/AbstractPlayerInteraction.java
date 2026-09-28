@@ -358,8 +358,8 @@ public class AbstractPlayerInteraction {
     }
 
     public void openNpc(int npcid, String script) {
-        if (c.getCM() != null) {
-            return;
+        if (c.getCM() != null || server.living.resident.LivingTalk.active(c)) {
+            return; // a window awaits its reply; the click throttle stays as it is
         }
 
         c.removeClickedNPC();

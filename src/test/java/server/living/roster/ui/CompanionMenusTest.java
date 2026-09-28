@@ -41,6 +41,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -49,11 +50,14 @@ import static org.mockito.Mockito.when;
 
 /**
  * Crew window v0 screens (docs/BOT_MANAGEMENT_PLAN.md P1.5): the options a card offers per state and roster, the
- * swap pickers, and that bench, call and swap go to {@link RosterService} for the owner's own companions only.
+ * swap pickers, and that bench, call and swap go to {@link RosterService} for the owner's own companions only. An
+ * outcome is the player's notes, a full party asks whom to take over from, the last one out is never benched into a
+ * spot only typing gets back from, and nothing is read while a window awaits its reply.
  */
 class CompanionMenusTest {
     private static final int ANN = 10;
     private static final int HADRIK_PORTRAIT = 9970001;
+    private static final int ROSTER_BOOK = 2430011;
     private static final byte MENU = 4;
     private static final byte SAY = 0;
 
@@ -84,6 +88,7 @@ class CompanionMenusTest {
         when(owner.getClient()).thenReturn(client);
         when(client.getPlayer()).thenReturn(owner);
         when(client.canClickNPC()).thenReturn(true);
+        when(owner.haveItem(ROSTER_BOOK)).thenReturn(true);
         when(world.content()).thenReturn(content);
         when(world.roster()).thenReturn(roster);
         when(world.store()).thenReturn(store);
@@ -94,6 +99,8 @@ class CompanionMenusTest {
         when(roster.roster(owner)).thenReturn(rows);
         when(roster.describeAssignment(any())).thenReturn("train");
         when(roster.companion(hadrikRow)).thenReturn(hadrikBot);
+        when(roster.entry(ANN, "hadrik")).thenReturn(hadrikRow);
+        when(roster.freeSlots(owner)).thenReturn(3);
         MapleMap perion = mock(MapleMap.class);
         when(perion.getMapName()).thenReturn("Perion");
         when(hadrikBot.getLevel()).thenReturn(31);
@@ -105,7 +112,7 @@ class CompanionMenusTest {
         when(residents.characterIdOf("tobi")).thenReturn(902);
         when(store.characterLevelAndJob(901)).thenReturn(new int[] {28, Job.HUNTER.getId()});
         when(store.characterLevelAndJob(902)).thenReturn(new int[] {30, Job.CLERIC.getId()});
-        when(roster.bench(any(), any())).thenReturn("Hadrik heads to camp (train).");
+        when(roster.bench(any(), any())).thenReturn("Hadrik heads back to camp to train.");
         when(roster.call(any(), any())).thenReturn("Mira is on the way (1m).");
         when(roster.swap(any(), any(), any())).thenReturn("swapped.");
         livingWorld = mockStatic(LivingWorld.class);
@@ -132,8 +139,29 @@ class CompanionMenusTest {
         assertEquals(0, card.speaker());
         assertEquals(MENU, card.msgType());
         assertTrue(card.text().startsWith("#eHadrik#n, Lv31 Fighter - HP 812/900"), card.text());
-        assertEquals(List.of("Take a break at camp", "Swap me out for...", "The whole crew...", "Let me see your gear",
-                "Never mind"), card.labels());
+        assertEquals(List.of("Take a break at camp", "Let someone take your place...", "The whole crew...",
+                "Let me see your gear", "Never mind"), card.labels());
+    }
+
+    @Test
+    void theLastOneOutIsNeverBenchedWithoutTheRosterToCallItBack() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        when(owner.haveItem(ROSTER_BOOK)).thenReturn(false);
+
+        menus.card(owner, hadrikRow);
+
+        assertEquals(List.of("Let someone take your place...", "The whole crew...", "Let me see your gear", "Never mind"),
+                lastTalk().labels());
+    }
+
+    @Test
+    void withTwoOutEitherMayTakeABreakEvenWithoutTheRoster() {
+        rows.addAll(List.of(hadrikRow, tobiRow));
+        when(owner.haveItem(ROSTER_BOOK)).thenReturn(false);
+
+        menus.card(owner, hadrikRow);
+
+        assertEquals("Take a break at camp", lastTalk().labels().get(0));
     }
 
     @Test
@@ -164,23 +192,29 @@ class CompanionMenusTest {
         verify(roster).bench(owner, hadrik);
         Talk outcome = lastTalk();
         assertEquals(SAY, outcome.msgType());
-        assertEquals("Hadrik heads to camp (train).", outcome.text());
+        // the result is the player's notes, not the companion talking about itself under its own portrait
+        assertEquals(CompanionMenus.BOARD_NPC, outcome.npcId());
+        assertEquals(CompanionMenus.NOTES_SPEAKER, outcome.speaker());
+        assertEquals("Hadrik heads back to camp to train.", outcome.text());
         answer(SAY, 1, null);
         assertFalse(LivingTalk.active(client));
     }
 
     @Test
-    void swapMeOutPicksFromTheBenchAndSwapsOutForIn() {
+    void letSomeoneTakeYourPlacePicksFromTheBenchAndSwapsOutForIn() {
         rows.addAll(List.of(hadrikRow, miraRow));
         menus.card(owner, hadrikRow);
 
-        pick("Swap me out for...");
+        pick("Let someone take your place...");
         Talk picker = lastTalk();
+        assertEquals(HADRIK_PORTRAIT, picker.npcId());
+        assertTrue(picker.text().startsWith("who takes my place?\r\n"), picker.text());
         assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked", "Never mind"), picker.labels());
         pick("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked");
 
         verify(roster).swap(owner, hadrik, mira);
         assertEquals("swapped.", lastTalk().text());
+        assertEquals(CompanionMenus.NOTES_SPEAKER, lastTalk().speaker());
     }
 
     @Test
@@ -199,6 +233,18 @@ class CompanionMenusTest {
         assertFalse(LivingTalk.active(client));
     }
 
+    @Test
+    void theGearOfACompanionBenchedWhileTheCardWasOpenIsNotShown() {
+        rows.add(hadrikRow);
+        menus.card(owner, hadrikRow);
+        when(roster.entry(ANN, "hadrik")).thenReturn(row("hadrik", RosterState.BENCHED, 0L)); // benched from chat meanwhile
+
+        pick("Let me see your gear");
+
+        verify(hadrikBot, never()).exportExcludedItems(any());
+        assertEquals("Hadrik is not out with you right now.", lastTalk().text());
+    }
+
     // ---- the bench card ------------------------------------------------------------------
 
     @Test
@@ -213,6 +259,51 @@ class CompanionMenusTest {
         pick("Come join me");
         verify(roster).call(owner, mira);
         assertEquals("Mira is on the way (1m).", lastTalk().text());
+        assertEquals(CompanionMenus.NOTES_SPEAKER, lastTalk().speaker());
+    }
+
+    @Test
+    void comeJoinMeWithThePartyFullAsksWhomToTakeOverFromInsteadOfCalling() {
+        rows.addAll(List.of(hadrikRow, tobiRow, miraRow));
+        when(roster.freeSlots(owner)).thenReturn(0);
+        menus.card(owner, miraRow);
+
+        pick("Come join me");
+
+        Talk picker = lastTalk();
+        assertTrue(picker.text().startsWith("your party's full. who should i take over from?\r\n"), picker.text());
+        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Tobi, Lv30 Cleric - on the way", "Never mind"),
+                picker.labels());
+        verify(roster, never()).call(any(), any());
+        pick("Hadrik, Lv31 Fighter - Perion - HP 90%");
+        verify(roster).swap(owner, hadrik, mira);
+    }
+
+    @Test
+    void anAwayCompanionKeptItsSeatSoItIsCalledEvenWithThePartyFull() {
+        RosterEntry away = row("mira", RosterState.AWAY, 0L);
+        rows.addAll(List.of(hadrikRow, away));
+        when(roster.freeSlots(owner)).thenReturn(0);
+        menus.card(owner, away);
+
+        pick("Come join me");
+
+        verify(roster).call(owner, mira);
+    }
+
+    @Test
+    void aCompanionAlreadyOnTheWayShowsItsEtaAndOffersNothingToRepeat() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        when(roster.travelMsLeft(ANN, "mira")).thenReturn(40_000L);
+
+        menus.crew(owner);
+        assertEquals("Mira, Lv28 Hunter - on the way (~40 s)", lastTalk().labels().get(1));
+
+        LivingTalk.forget(owner); // the Crew window closed
+        menus.card(owner, miraRow);
+        Talk card = lastTalk();
+        assertTrue(card.text().startsWith("#eMira#n, Lv28 Hunter\r\non the way (~40 s)"), card.text());
+        assertEquals(List.of("Never mind"), card.labels());
     }
 
     @Test
@@ -246,6 +337,7 @@ class CompanionMenusTest {
         Party party = mock(Party.class);
         when(party.getMembers()).thenReturn(List.of(mock(PartyCharacter.class), mock(PartyCharacter.class)));
         when(owner.getParty()).thenReturn(party);
+        when(roster.freeSlots(owner)).thenReturn(4);
 
         menus.crew(owner);
 
@@ -253,7 +345,7 @@ class CompanionMenusTest {
         assertEquals(CompanionMenus.NOTES_SPEAKER, crew.speaker());
         assertEquals(CompanionMenus.BOARD_NPC, crew.npcId());
         assertTrue(crew.text().startsWith("#eParty 2/6#n\r\n#L"), crew.text());
-        assertTrue(crew.text().contains("#eBench (1 of 10)#n"), crew.text());
+        assertTrue(crew.text().contains("#eBench (1 of 9)#n"), crew.text()); // one of the ten roster places is out
         assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%",
                 "Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked"), crew.labels());
     }
@@ -278,6 +370,7 @@ class CompanionMenusTest {
         pick("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked");
 
         assertEquals("Mira is not in your roster.", lastTalk().text());
+        assertEquals(CompanionMenus.NOTES_SPEAKER, lastTalk().speaker());
         verify(roster, never()).call(any(), any());
         verify(roster, never()).bench(any(), any());
         verify(roster, never()).swap(any(), any(), any());
@@ -318,7 +411,7 @@ class CompanionMenusTest {
 
         List<String> labels = lastTalk().labels();
         assertEquals(11, labels.size()); // ten rows, then "More..."
-        assertEquals("Bench0, Lv0 - train @ Ant Tunnel", labels.get(0));
+        assertEquals("Bench0 - train @ Ant Tunnel", labels.get(0)); // never loaded yet: no "Lv0"
         assertEquals("More...", labels.get(10));
     }
 
@@ -330,6 +423,49 @@ class CompanionMenusTest {
 
         assertEquals(List.of("Mira, Lv28 Hunter - away: train @ Ant Tunnel"), lastTalk().labels());
         verify(store, never()).characterLevel(anyInt());
+    }
+
+    @Test
+    void thePartyCountIncludesTheSeatAnAwayCompanionKeeps() {
+        rows.addAll(List.of(hadrikRow, row("mira", RosterState.AWAY, 0L)));
+        when(roster.freeSlots(owner)).thenReturn(3); // Ann, Hadrik and the seat Mira keeps
+
+        menus.crew(owner);
+
+        assertTrue(lastTalk().text().startsWith("#eParty 3/6#n"), lastTalk().text());
+    }
+
+    // ---- no work while a window is up ------------------------------------------------------
+
+    @Test
+    void whileAWindowAwaitsItsReplyNothingIsReadAndNoWindowIsSent() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        LivingTalk.open(owner, HADRIK_PORTRAIT).ok("still reading this").show();
+        clearInvocations(client, roster, store, residents);
+
+        menus.rosterBook(owner);
+        menus.card(owner, hadrikRow);
+        menus.card(owner, miraRow);
+
+        verify(roster, never()).roster(any());
+        verify(roster, never()).companion(any());
+        verify(store, never()).characterLevelAndJob(anyInt());
+        verify(client, never()).sendPacket(any());
+        ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
+        verify(owner, Mockito.times(3)).sendPacket(sent.capture());
+        assertTrue(sent.getAllValues().stream().allMatch(NpcTalks::isEnableActions));
+    }
+
+    @Test
+    void aHeldDoubleClickInside500MsIsRefusedBeforeAnyRowIsRead() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        when(client.canClickNPC()).thenReturn(false);
+
+        menus.rosterBook(owner);
+        menus.card(owner, hadrikRow);
+
+        verify(roster, never()).roster(any());
+        verify(client, never()).sendPacket(any());
     }
 
     // ---- helpers -------------------------------------------------------------------------

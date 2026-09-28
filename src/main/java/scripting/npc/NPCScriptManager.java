@@ -82,6 +82,10 @@ public class NPCScriptManager extends AbstractScriptManager {
     }
 
     public void start(String filename, Client c, int npc, List<PartyCharacter> chrs) {
+        if (server.living.resident.LivingTalk.active(c)) {
+            c.sendPacket(PacketCreator.enableActions()); // a living-world window awaits its reply: a second NPC_TALK drops the client
+            return;
+        }
         try {
             final NPCConversationManager cm = new NPCConversationManager(c, npc, chrs, true);
             cm.dispose();
@@ -114,6 +118,10 @@ public class NPCScriptManager extends AbstractScriptManager {
     }
 
     private boolean start(Client c, int npc, int oid, String fileName, Character chr, boolean itemScript, String engineName) {
+        if (server.living.resident.LivingTalk.active(c)) {
+            c.sendPacket(PacketCreator.enableActions()); // a living-world window awaits its reply: a second NPC_TALK drops the client
+            return true; // handled: an NPC click must not fall through to the shop
+        }
         try {
             final NPCConversationManager cm = new NPCConversationManager(c, npc, oid, fileName, itemScript);
             if (cms.containsKey(c)) {

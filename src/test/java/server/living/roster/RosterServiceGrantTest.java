@@ -1,10 +1,16 @@
 package server.living.roster;
 
 import client.Character;
+import client.Client;
+import client.inventory.manipulator.InventoryManipulator;
 import config.LivingWorldConfig;
+import net.packet.Packet;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
@@ -20,19 +26,23 @@ import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.PersonaState;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import tools.PacketCreator;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -44,13 +54,15 @@ import static org.mockito.Mockito.when;
 /**
  * {@link RosterService#grant}, the {@code !grantcompanion} write: a BENCHED row with no spawn and no
  * character change, the same ROSTER_MAX and one-owner-per-persona rules as a recruit, and every cache
- * (owner by persona, the owner set behind the operator grant) in step, both ways through release.
+ * (owner by persona, the owner set behind the operator grant) in step, both ways through release. A grant, a
+ * recruit and a login hand a roster owner without one the Adventurer's Roster (plan flow 9 step 3).
  */
 class RosterServiceGrantTest {
     private static final int ALICE = 10;
     private static final int BOB = 20;
     private static final int LITH_HARBOR = 104000000;
     private static final Persona OLWEN = persona("olwen", "Olwen");
+    private static final int ROSTER_BOOK = 2430011;
 
     /** living_roster keyed by owner:persona. */
     private final Map<String, RosterEntry> rows = new LinkedHashMap<>();
@@ -208,6 +220,99 @@ class RosterServiceGrantTest {
         assertEquals(ALICE + " olwen roster.release", events.get(events.size() - 1));
         // and the persona is free for someone else
         assertEquals("Olwen joins Bob's roster, benched at map " + LITH_HARBOR + ".", roster.grant(bob, OLWEN));
+    }
+
+    // ---- the Adventurer's Roster ---------------------------------------------------------------
+
+    @Test
+    void aGrantHandsTheOwnerTheAdventurersRosterWithTheStockItemGainLine() {
+        Client client = carrying(alice, false);
+
+        try (MockedStatic<InventoryManipulator> inventory = roomFor(client)) {
+            new RosterService(world).grant(alice, OLWEN);
+            inventory.verify(() -> InventoryManipulator.addById(client, ROSTER_BOOK, (short) 1));
+        }
+
+        ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
+        verify(alice).sendPacket(sent.capture());
+        assertArrayEquals(PacketCreator.getShowItemGain(ROSTER_BOOK, (short) 1, true).getBytes(), sent.getValue().getBytes());
+    }
+
+    @Test
+    void anOwnerWhoCarriesTheRosterGetsNoSecondOne() {
+        Client client = carrying(alice, true);
+
+        try (MockedStatic<InventoryManipulator> inventory = roomFor(client)) {
+            new RosterService(world).grant(alice, OLWEN);
+            inventory.verify(() -> InventoryManipulator.addById(any(), anyInt(), anyShort()), never());
+        }
+        verify(alice, never()).sendPacket(any());
+    }
+
+    @Test
+    void aRecruitHandsOverTheRosterAndTheCompanionSaysHowToUseIt() {
+        Client client = carrying(alice, false);
+        partyFull(alice);
+
+        try (MockedStatic<InventoryManipulator> inventory = roomFor(client)) {
+            assertEquals("Olwen joins your roster but your party is full; call them when there is room.",
+                    new RosterService(world).recruit(alice, OLWEN));
+            inventory.verify(() -> InventoryManipulator.addById(client, ROSTER_BOOK, (short) 1));
+        }
+        verify(residents).whisper(OLWEN, alice, "double-click me or the book to manage the crew.");
+    }
+
+    @Test
+    void aFullInventoryNeverStopsTheRecruitAndTheNextLoginTriesAgain() {
+        Client client = carrying(alice, false);
+        partyFull(alice);
+        RosterService roster = new RosterService(world);
+
+        try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
+            inventory.when(() -> InventoryManipulator.checkSpace(client, ROSTER_BOOK, 1, "")).thenReturn(false);
+            assertEquals("Olwen joins your roster but your party is full; call them when there is room.", roster.recruit(alice, OLWEN));
+            inventory.verify(() -> InventoryManipulator.addById(any(), anyInt(), anyShort()), never());
+        }
+        verify(residents, never()).whisper(any(), any(), anyString());
+
+        try (MockedStatic<InventoryManipulator> inventory = roomFor(client)) {
+            roster.onOwnerLogin(alice);
+            inventory.verify(() -> InventoryManipulator.addById(client, ROSTER_BOOK, (short) 1));
+        }
+    }
+
+    @Test
+    void aLoginWithoutARosterOrWithTheItemOffGrantsNothing() {
+        Client client = carrying(alice, false);
+        RosterService roster = new RosterService(world);
+
+        try (MockedStatic<InventoryManipulator> inventory = roomFor(client)) {
+            roster.onOwnerLogin(alice); // nobody on the roster
+            rows.put(key(ALICE, "olwen"), row(ALICE, "olwen"));
+            config.ROSTER_BOOK_ITEM_ID = 0;
+            roster.onOwnerLogin(alice);
+            inventory.verify(() -> InventoryManipulator.addById(any(), anyInt(), anyShort()), never());
+        }
+    }
+
+    private static Client carrying(Character owner, boolean book) {
+        Client client = mock(Client.class);
+        when(owner.getClient()).thenReturn(client);
+        when(owner.haveItem(ROSTER_BOOK)).thenReturn(book);
+        return client;
+    }
+
+    private static MockedStatic<InventoryManipulator> roomFor(Client client) {
+        MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class);
+        inventory.when(() -> InventoryManipulator.checkSpace(client, ROSTER_BOOK, 1, "")).thenReturn(true);
+        inventory.when(() -> InventoryManipulator.addById(client, ROSTER_BOOK, (short) 1)).thenReturn(true);
+        return inventory;
+    }
+
+    private static void partyFull(Character owner) {
+        Party party = mock(Party.class);
+        when(party.getMembers()).thenReturn(Collections.nCopies(6, mock(PartyCharacter.class)));
+        when(owner.getParty()).thenReturn(party);
     }
 
     private static String key(int ownerId, String personaId) {

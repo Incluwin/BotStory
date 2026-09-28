@@ -93,8 +93,8 @@ public class LivingWorldConfig {
     public int RECALL_WHISTLE_ITEM_ID = 0;
     /**
      * The Adventurer's Roster: double-clicking this USE item in the inventory opens the Crew window and does not use
-     * it up (a hotkey sends nothing, P0 probe 2). 0 = off. The client still names 2430011 "Agent Summon" until its
-     * String.wz / Custom.wz rename ships (P3).
+     * it up (a hotkey sends nothing, P0 probe 2). A recruit or grant, and a login, hand one to a roster owner without
+     * it. 0 = off. The client still names 2430011 "Agent Summon" until its String.wz / Custom.wz rename ships (P3).
      */
     public int ROSTER_BOOK_ITEM_ID = 2430011;
 

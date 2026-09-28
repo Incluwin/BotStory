@@ -6,6 +6,7 @@ import net.packet.InPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.npc.NPCConversationManager;
+import server.maps.MapleMap;
 import tools.PacketCreator;
 
 import java.util.ArrayList;
@@ -24,7 +25,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * player's answer (docs/BOT_MANAGEMENT_P0_RESULTS.md, probe 6). So a window is only ever sent as the answer
  * to the player's click, or when nothing is on screen: {@link #show} refuses (and re-enables the client's
  * actions) while a talk or an NPC script window awaits a reply, and a talk is never re-rendered in place.
- * Every path ends in a window or in enableActions.</p>
+ * The stock script starters ask {@link #active} the same way. Every path ends in a window or in enableActions.</p>
+ *
+ * <p>A talk whose window can no longer be on screen is dropped wherever it is looked up, so it never blocks
+ * the next window or eats a stock window's reply: one left from an earlier login, one shown on a map the player
+ * has since left (a window sent just before a warp), and one a stock script window has replaced.</p>
  */
 public final class LivingTalk {
     private static final Logger log = LoggerFactory.getLogger(LivingTalk.class);
@@ -77,6 +82,8 @@ public final class LivingTalk {
     private byte awaitingType;
     /** Stamps this window's menu selections, so a click on an older window can never pick one of its options. */
     private int stamp;
+    /** The map the player stood on when the talk was shown; a warp closes the client's window. */
+    private MapleMap shownOn;
 
     private LivingTalk(Character chr, int npcId) {
         this.chr = chr;
@@ -88,9 +95,42 @@ public final class LivingTalk {
         return new LivingTalk(chr, npcId);
     }
 
+    /** True while the player has a talk window on screen awaiting its reply; the stock script starters ask this first. */
     public static boolean active(Client client) {
         Character player = client == null ? null : client.getPlayer();
-        return player != null && OPEN.containsKey(player.getId());
+        return player != null && liveTalk(player) != null;
+    }
+
+    /**
+     * True when a window could open for the player now: no talk or NPC script window awaits a reply and, unless
+     * this answers the player's own click, the 500 ms NPC click throttle has passed. It sends and disposes
+     * nothing, so a screen checks it before it builds any rows.
+     */
+    public static boolean mayShow(Character chr) {
+        Client client = chr == null ? null : chr.getClient();
+        if (client == null || liveTalk(chr) != null || scriptAwaitsReply(client)) {
+            return false;
+        }
+        return Integer.valueOf(chr.getId()).equals(ANSWERING.get()) || client.canClickNPC();
+    }
+
+    /** The player's talk whose window is still on screen; a stale one (see the class notes) is dropped. */
+    private static LivingTalk liveTalk(Character player) {
+        LivingTalk talk = OPEN.get(player.getId());
+        if (talk == null || talk.chr == player && player.getMap() == talk.shownOn && !scriptAwaitsReply(player.getClient())) {
+            return talk;
+        }
+        OPEN.remove(player.getId(), talk); // an earlier login, a warp since, or a stock window replaced it
+        return null;
+    }
+
+    /** True while a stock NPC or quest script window is on screen awaiting the player's answer. */
+    private static boolean scriptAwaitsReply(Client client) {
+        return client != null && (awaiting(client.getQM()) || awaiting(client.getCM()));
+    }
+
+    private static boolean awaiting(NPCConversationManager script) {
+        return script != null && script.awaitingReply();
     }
 
     public static void closeFor(Character chr) {
@@ -173,30 +213,30 @@ public final class LivingTalk {
             return;
         }
         client.setClickedNPC();
+        shownOn = chr.getMap();
         OPEN.put(chr.getId(), this);
         page = 0;
         menuPage = 0;
-        render();
+        try {
+            render();
+        } catch (RuntimeException failure) {
+            log.warn("living talk for {} could not be shown", chr.getName(), failure);
+            if (OPEN.remove(chr.getId(), this)) {
+                client.sendPacket(PacketCreator.enableActions()); // no window went out: nothing may wait for its reply
+            }
+        }
     }
 
     private boolean mayOpen(Client client) {
-        LivingTalk open = OPEN.get(chr.getId());
-        if (open != null) {
-            if (open.chr == chr) {
-                return false; // its window is on screen: a second NPC_TALK disconnects the client
-            }
-            OPEN.remove(chr.getId(), open); // left over from an earlier login
+        if (!mayShow(chr)) {
+            return false; // a window on screen: a second NPC_TALK disconnects the client
         }
-        NPCConversationManager script = client.getQM() != null ? client.getQM() : client.getCM();
-        if (script != null && script.awaitingReply()) {
-            return false;
+        // script conversations with no window on screen
+        if (client.getQM() != null) {
+            client.getQM().dispose();
         }
-        boolean answer = Integer.valueOf(chr.getId()).equals(ANSWERING.get());
-        if (!answer && !client.canClickNPC()) {
-            return false;
-        }
-        if (script != null) {
-            script.dispose(); // a script conversation with no window on screen
+        if (client.getCM() != null) {
+            client.getCM().dispose();
         }
         return true;
     }
@@ -271,13 +311,9 @@ public final class LivingTalk {
      */
     public static boolean respond(Client client, byte lastMsg, byte action, InPacket packet) {
         Character player = client == null ? null : client.getPlayer();
-        LivingTalk talk = player == null ? null : OPEN.get(player.getId());
+        LivingTalk talk = player == null ? null : liveTalk(player);
         if (talk == null) {
-            return false;
-        }
-        if (talk.chr != player) {
-            OPEN.remove(player.getId(), talk); // left over from an earlier login
-            return false;
+            return false; // no talk, or a stale one: the answer belongs to a stock window
         }
         int selection = -1;
         if (lastMsg == 2) {

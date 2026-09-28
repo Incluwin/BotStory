@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.AbstractScriptManager;
 import server.quest.Quest;
+import tools.PacketCreator;
 
 import javax.script.Invocable;
 import javax.script.ScriptEngine;
@@ -57,7 +58,19 @@ public class QuestScriptManager extends AbstractScriptManager {
         return engine;
     }
 
+    /** A living-world window awaits its reply: a second NPC_TALK drops the client, so no quest window starts. */
+    private static boolean livingTalkOpen(Client c) {
+        if (!server.living.resident.LivingTalk.active(c)) {
+            return false;
+        }
+        c.sendPacket(PacketCreator.enableActions());
+        return true;
+    }
+
     public void start(Client c, short questid, int npc) {
+        if (livingTalkOpen(c)) {
+            return;
+        }
         Quest quest = Quest.getInstance(questid);
         try {
             QuestActionManager qm = new QuestActionManager(c, questid, npc, true);
@@ -106,6 +119,9 @@ public class QuestScriptManager extends AbstractScriptManager {
     }
 
     public void end(Client c, short questid, int npc) {
+        if (livingTalkOpen(c)) {
+            return;
+        }
         Quest quest = Quest.getInstance(questid);
         if (!c.getPlayer().getQuest(quest).getStatus().equals(QuestStatus.Status.STARTED) || (!c.getPlayer().getMap().containsNPC(npc) && !quest.isAutoComplete())) {
             dispose(c);
@@ -158,6 +174,9 @@ public class QuestScriptManager extends AbstractScriptManager {
     }
 
     public void raiseOpen(Client c, short questid, int npc) {
+        if (livingTalkOpen(c)) {
+            return;
+        }
         try {
             QuestActionManager qm = new QuestActionManager(c, questid, npc, true);
             if (qms.containsKey(c)) {

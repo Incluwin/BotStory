@@ -8,6 +8,7 @@ import server.living.resident.LivingTalk.Option;
 import server.living.resident.ResidentDialogue;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionView;
+import server.living.roster.RecallTravel;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -21,10 +22,11 @@ import java.util.function.IntFunction;
 /**
  * Crew window v0 (docs/BOT_MANAGEMENT_PLAN.md P1.5) in the stock NPC window: the companion card, the bench card,
  * the Crew window and the swap pickers. Each window is the answer to the player's own click (a double-click on
- * the companion, the Adventurer's Roster, a menu pick), so {@link LivingTalk} never pushes one over another.
- * Only the viewer's own companions are listed; every action goes through {@link RosterService} (bench, call,
- * swap) and so behind the P1 guards. The companion answers in its own voice, and the window's last page tells
- * the outcome; OK closes it.
+ * the companion, the Adventurer's Roster, a menu pick), so {@link LivingTalk} never pushes one over another, and an
+ * entry point asks {@link LivingTalk#mayShow} before it reads any rows. Only the viewer's own companions are listed;
+ * every action goes through {@link RosterService} (bench, call, swap) and so behind the P1 guards. The companion
+ * speaks on its card and its pickers; what an action did is the last window, written in the player's notes like the
+ * Crew window; OK closes it.
  */
 public final class CompanionMenus {
     /** The Crew window reads as the player's own notes: their avatar on the right (P0 probe 5b). */
@@ -51,7 +53,8 @@ public final class CompanionMenus {
 
     /** Double-clicking your own companion: the card of an ACTIVE one, the bench card of a benched or away one. */
     public void card(Character owner, RosterEntry entry) {
-        Persona persona = world.content().persona(entry.personaId());
+        // a window awaiting its reply, or a click inside 500 ms: refused before any row is read
+        Persona persona = LivingTalk.mayShow(owner) ? world.content().persona(entry.personaId()) : null;
         if (persona == null) {
             owner.sendPacket(PacketCreator.enableActions());
             return;
@@ -62,14 +65,16 @@ public final class CompanionMenus {
         }
         CompanionView view = view(entry);
         List<Option> options = new ArrayList<>();
-        options.add(new Option("Take a break at camp", () -> outcome(owner, persona, world.roster().bench(owner, persona))));
+        // the last one out is benched only by someone holding the Roster, which calls anyone back; else it is rotated
+        if (rows(owner, true).size() != 1 || holdsRosterBook(owner)) {
+            options.add(new Option("Take a break at camp", () -> outcome(owner, world.roster().bench(owner, persona))));
+        }
         if (!rows(owner, false).isEmpty()) {
-            options.add(new Option("Swap me out for...", () -> swapPicker(owner, persona, true)));
+            options.add(new Option("Let someone take your place...", () -> swapPicker(owner, persona, true, "who takes my place?")));
         }
         options.add(new Option("The whole crew...", () -> crew(owner)));
-        Character bot = world.roster().companion(entry);
-        if (bot != null) {
-            options.add(new Option("Let me see your gear", () -> showGear(owner, bot)));
+        if (world.roster().companion(entry) != null) {
+            options.add(new Option("Let me see your gear", () -> showGear(owner, persona)));
         }
         options.add(new Option("Never mind", null));
         LivingTalk.open(owner, portrait(persona)).menu(header(view), options).show();
@@ -77,6 +82,10 @@ public final class CompanionMenus {
 
     /** The Adventurer's Roster: the Crew window from anywhere, even with every companion benched. */
     public void rosterBook(Character owner) {
+        if (!LivingTalk.mayShow(owner)) {
+            owner.sendPacket(PacketCreator.enableActions());
+            return;
+        }
         if (world.roster().roster(owner).isEmpty()) {
             owner.dropMessage(5, "Nobody travels with you yet.");
             owner.sendPacket(PacketCreator.enableActions());
@@ -97,7 +106,8 @@ public final class CompanionMenus {
         if (party.isEmpty()) {
             options.add(Option.heading("(nobody out with me)"));
         }
-        options.add(Option.heading("\r\n#eBench (" + bench.size() + " of " + world.config().ROSTER_MAX + ")#n"));
+        // the bench seats are the roster places the party does not use
+        options.add(Option.heading("\r\n#eBench (" + bench.size() + " of " + (world.config().ROSTER_MAX - party.size()) + ")#n"));
         for (RosterEntry entry : bench) {
             CompanionView view = view(entry);
             options.add(new Option(benchRow(view), () -> reopen(owner, view)));
@@ -105,9 +115,9 @@ public final class CompanionMenus {
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
         }
-        int members = owner.getParty() == null ? 1 : owner.getParty().getMembers().size();
+        int seats = RosterService.PARTY_CAP - world.roster().freeSlots(owner); // a companion sent away keeps its seat
         LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER)
-                .menu("#eParty " + members + "/" + RosterService.PARTY_CAP + "#n", options)
+                .menu("#eParty " + seats + "/" + RosterService.PARTY_CAP + "#n", options)
                 .show();
     }
 
@@ -116,19 +126,31 @@ public final class CompanionMenus {
     private void benchCard(Character owner, Persona persona, RosterEntry entry) {
         CompanionView view = view(entry);
         List<Option> options = new ArrayList<>();
-        options.add(new Option("Come join me", () -> outcome(owner, persona, world.roster().call(owner, persona))));
-        if (!rows(owner, true).isEmpty()) {
-            options.add(new Option("Swap in for...", () -> swapPicker(owner, persona, false)));
+        if (view.travelMs() <= 0) {
+            options.add(new Option("Come join me", () -> join(owner, persona, entry)));
+            if (!rows(owner, true).isEmpty()) {
+                options.add(new Option("Swap in for...", () -> swapPicker(owner, persona, false, "who should i take over from?")));
+            }
         }
         options.add(new Option("Never mind", null));
-        LivingTalk.open(owner, portrait(persona)).menu(header(view) + duty(view) + "\r\n", options).show();
+        String status = view.travelMs() > 0 ? onTheWay(view) : duty(view);
+        LivingTalk.open(owner, portrait(persona)).menu(header(view) + status + "\r\n", options).show();
+    }
+
+    /** With the party full the companion asks whom to take over from; it is never sent for a seat that is not there. */
+    private void join(Character owner, Persona persona, RosterEntry entry) {
+        if (entry.state() != RosterState.AWAY && world.roster().freeSlots(owner) <= 0) {
+            swapPicker(owner, persona, false, "your party's full. who should i take over from?");
+            return;
+        }
+        outcome(owner, world.roster().call(owner, persona));
     }
 
     /**
      * {@code outgoing}: {@code fixed} is out with you and a bench companion takes its place; otherwise {@code fixed}
-     * comes in for one that is out. Both are {@link RosterService#swap}(out, in).
+     * comes in for one that is out. Both are {@link RosterService#swap}(out, in). {@code prompt} is {@code fixed}'s line.
      */
-    private void swapPicker(Character owner, Persona fixed, boolean outgoing) {
+    private void swapPicker(Character owner, Persona fixed, boolean outgoing, String prompt) {
         List<Option> options = new ArrayList<>();
         for (RosterEntry entry : rows(owner, !outgoing)) {
             Persona other = world.content().persona(entry.personaId());
@@ -136,17 +158,15 @@ public final class CompanionMenus {
                 continue;
             }
             CompanionView view = view(entry);
-            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> outcome(owner, fixed, outgoing
+            options.add(new Option(outgoing ? benchRow(view) : partyRow(view), () -> outcome(owner, outgoing
                     ? world.roster().swap(owner, fixed, other) : world.roster().swap(owner, other, fixed))));
         }
         if (options.isEmpty()) {
-            outcome(owner, fixed, "nobody to swap with right now.");
+            outcome(owner, "Nobody to swap with right now.");
             return;
         }
         options.add(new Option("Never mind", null));
-        LivingTalk.open(owner, portrait(fixed))
-                .menu(outgoing ? "who takes my place?\r\n" : "who should i take over from?\r\n", options)
-                .show();
+        LivingTalk.open(owner, portrait(fixed)).menu(prompt + "\r\n", options).show();
     }
 
     /** A row: ownership and state are read again, so a companion released or moved meanwhile is never acted on stale. */
@@ -158,17 +178,23 @@ public final class CompanionMenus {
         if (world.directory().resolveName(owner, persona.name()) instanceof CompanionDirectory.Relation.OwnCompanion own) {
             card(owner, own.entry());
         } else {
-            outcome(owner, persona, persona.name() + " is not in your roster.");
+            outcome(owner, persona.name() + " is not in your roster.");
         }
     }
 
-    /** The action's result as the window's last page, the answer to the click; OK closes it. */
-    private void outcome(Character owner, Persona persona, String line) {
-        LivingTalk.open(owner, portrait(persona)).ok(line).show();
+    /** What the action did, as the window's last page in the player's notes: the answer to the click; OK closes it. */
+    private void outcome(Character owner, String line) {
+        LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER).ok(line).show();
     }
 
-    /** The stock character info, as double-clicking a stranger shows it. */
-    private static void showGear(Character owner, Character bot) {
+    /** The stock character info, as double-clicking a stranger shows it, of the companion as it is out now. */
+    private void showGear(Character owner, Persona persona) {
+        RosterEntry now = world.roster().entry(owner.getId(), persona.id());
+        Character bot = now == null || now.state() != RosterState.ACTIVE ? null : world.roster().companion(now);
+        if (bot == null) {
+            outcome(owner, persona.name() + " is not out with you right now.");
+            return;
+        }
         bot.exportExcludedItems(owner.getClient());
         owner.sendPacket(PacketCreator.charInfo(bot));
     }
@@ -190,20 +216,25 @@ public final class CompanionMenus {
         return CompanionView.of(world, entry, placeNames);
     }
 
+    private boolean holdsRosterBook(Character owner) {
+        int book = world.config().ROSTER_BOOK_ITEM_ID;
+        return book > 0 && owner.haveItem(book);
+    }
+
     /** "Hadrik, Lv31 Fighter - Perion - HP 90%". */
     static String partyRow(CompanionView view) {
-        return view.name() + ", " + levelJob(view) + (view.loaded()
+        return view.name() + levelJob(view) + (view.loaded()
                 ? " - " + view.where() + " - HP " + view.hpPercent() + "%" : " - on the way");
     }
 
-    /** "Mira, Lv28 Hunter - train @ Ant Tunnel I - 12% EXP banked". */
+    /** "Mira, Lv28 Hunter - train @ Ant Tunnel I - 12% EXP banked", or "... - on the way (~40 s)" once called. */
     static String benchRow(CompanionView view) {
-        return view.name() + ", " + levelJob(view) + " - " + duty(view);
+        return view.name() + levelJob(view) + " - " + (view.travelMs() > 0 ? onTheWay(view) : duty(view));
     }
 
     /** "#eHadrik#n, Lv31 Fighter - HP 812/900", then a line break. */
     static String header(CompanionView view) {
-        return "#e" + view.name() + "#n, " + levelJob(view)
+        return "#e" + view.name() + "#n" + levelJob(view)
                 + (view.loaded() ? " - HP " + view.hp() + "/" + view.maxHp() : "") + "\r\n";
     }
 
@@ -213,8 +244,13 @@ public final class CompanionMenus {
                 + (view.bankedExpPercent() > 0 ? " - " + view.bankedExpPercent() + "% EXP banked" : "");
     }
 
+    private static String onTheWay(CompanionView view) {
+        return "on the way (" + RecallTravel.describe(view.travelMs()) + ")";
+    }
+
+    /** ", Lv31 Fighter"; nothing while the level is unknown (a companion that has never been loaded). */
     private static String levelJob(CompanionView view) {
-        return "Lv" + view.level() + (view.job().isEmpty() ? "" : " " + view.job());
+        return view.level() <= 0 ? "" : ", Lv" + view.level() + (view.job().isEmpty() ? "" : " " + view.job());
     }
 
     private static int portrait(Persona persona) {

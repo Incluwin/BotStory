@@ -14,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.TimerManager;
 import server.agents.auth.AgentAuthorizationResult;
+import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.auth.AgentControlAccess;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
@@ -30,6 +31,8 @@ import server.living.arc.ArcService;
 import server.living.config.Content;
 import server.living.config.Content.Look;
 import server.living.config.Content.Persona;
+import server.living.config.Content.Quest;
+import server.living.config.Content.Step;
 import server.living.config.LivingContent;
 import server.living.resident.ResidentRuntime;
 import server.living.resident.ResidentSpots;
@@ -55,6 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -72,9 +76,11 @@ import static org.mockito.Mockito.when;
 /**
  * P1.5 walk-in arrivals (docs/BOT_MANAGEMENT_PLAN.md, "P1.5: Crew window v0"): a called companion is loaded
  * standing at the usable portal nearest its owner, joins the party under the P1 JoinOutcome rules, and only then
- * follows, so it walks over instead of popping in beside the owner. A map with no usable portal keeps the
- * beside-owner spawn. The P1 guards (budget, bench slice, lease, loaded check) run in the same order either way,
- * and companions restored together at login come in a moment apart.
+ * follows, so it walks over instead of popping in beside the owner. One already standing on the owner's map (the
+ * Resident being recruited or escorted, a live bench slice) comes back in where it stood. A map with no usable
+ * portal in reach keeps the beside-owner spawn. The P1 guards (budget, bench slice, lease, loaded check) run in the
+ * same order either way, companions restored at login walk in a few seconds apart once the field has loaded, and
+ * a benched companion walks out to a portal instead of vanishing.
  */
 class ArrivalPlacementTest {
     private static final int ALICE = 10;
@@ -229,11 +235,23 @@ class ArrivalPlacementTest {
     }
 
     @Test
-    void theStaggerIsAShortRandomGap() {
+    void theStaggerIsTwoToEightSeconds() {
         for (int i = 0; i < 200; i++) {
             long gap = ArrivalPlacement.staggerMs();
-            assertTrue(gap >= 300L && gap <= 900L, "gap " + gap);
+            assertTrue(gap >= 2_000L && gap <= 8_000L, "gap " + gap);
         }
+    }
+
+    @Test
+    void aVisiblePortalBeyondFollowRecoveryIsSkippedForAStartPointInReach() {
+        int reach = (int) (ArrivalPlacement.REACH_SHARE * AgentMovementPhysicsConfig.configuredTeleportDist());
+        Portal far = portal(Portal.MAP_PORTAL, OWNER_AT.x + reach + 10, 200, FIELD, null, true);
+        Portal startPoint = portal(0, 1300, 200, MapId.NONE, null, true);
+
+        assertEquals(new Point(1300, 200), ArrivalPlacement.nearestPortal(List.of(far, startPoint), OWNER_AT));
+        assertNull(ArrivalPlacement.nearestPortal(List.of(far), OWNER_AT)); // the beside-owner spawn, not a teleport
+        assertEquals(new Point(OWNER_AT.x + reach - 10, 200), ArrivalPlacement.nearestPortal(
+                List.of(portal(Portal.MAP_PORTAL, OWNER_AT.x + reach - 10, 200, FIELD, null, true), startPoint), OWNER_AT));
     }
 
     // ---- RosterService: the walk-in ------------------------------------------------------------
@@ -333,23 +351,56 @@ class ArrivalPlacementTest {
         assertEquals(expected, calls);
     }
 
+    // ---- one already on the owner's map comes back from where it stood ----------------------------
+
     @Test
-    void aRecruitIsSeatedBesideTheOwnerItWasTalkingTo() {
-        when(store.personaState(anyString())).thenReturn(new PersonaState("olwen", 900, null, 0, 0));
-        try (MockedStatic<ResidentSpots> spots = mockStatic(ResidentSpots.class)) {
-            spots.when(() -> ResidentSpots.townMapId("lith-harbor")).thenReturn(CAMP);
+    void aRecruitWalksOverFromWhereTheResidentStoodTalkingToTheOwner() {
+        standing("Olwen", map, 1200, 210);
+        doAnswer(inv -> loaded.remove(900)).when(residents).releaseForRecruit("olwen"); // standby disconnects it
 
-            assertEquals("Olwen joins your party.", new RosterService(world).recruit(alice, OLWEN));
-        }
+        assertEquals("Olwen joins your party.", recruit(OLWEN));
 
-        assertEquals(List.of("spawn beside owner", "join Olwen"), calls);
-        movement.verifyNoInteractions();
+        assertEquals(List.of("spawn at 1200,210", "join Olwen", "follow Olwen"), calls);
+    }
+
+    @Test
+    void aRecruitOfAResidentOnAnotherMapWalksInFromThePortal() {
+        standing("Olwen", mock(MapleMap.class), 1200, 210);
+        doAnswer(inv -> loaded.remove(900)).when(residents).releaseForRecruit("olwen");
+
+        assertEquals("Olwen joins your party.", recruit(OLWEN));
+
+        assertEquals(List.of("spawn at 800,200", "join Olwen", "follow Olwen"), calls);
+    }
+
+    @Test
+    void anEscortedResidentWalksOverFromWhereItStood() {
+        standing("Olwen", map, 1400, 190);
+        doAnswer(inv -> loaded.remove(900)).when(residents).releaseForRecruit("olwen");
+        Quest quest = mock(Quest.class);
+        when(quest.title()).thenReturn("Lost Letter");
+
+        new RosterService(world).beginEscort(alice, OLWEN, quest, mock(Step.class));
+
+        assertEquals(List.of("spawn at 1400,190", "join Olwen", "follow Olwen"), calls);
+        verify(alice).dropMessage(5, "Olwen joins your party. (escort for Lost Letter)");
+    }
+
+    @Test
+    void aLiveBenchSliceOnTheOwnersMapWalksOverFromWhereItFights() {
+        seed("olwen", RosterState.BENCHED); // camps on the owner's map: no travel time
+        standing("Olwen", map, 1500, 180);
+        doAnswer(inv -> loaded.remove(900)).when(benchSessions).endFor(eq("olwen"), anyString());
+
+        assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
+
+        assertEquals(List.of("spawn at 1500,180", "join Olwen", "follow Olwen"), calls);
     }
 
     // ---- login restore: a moment apart -----------------------------------------------------------
 
     @Test
-    void aLoginRestoreBringsTheFirstAtOnceAndTheOthersAMomentApart() {
+    void aLoginRestoreWalksEachInAFewSecondsApartOnceTheFieldHasLoaded() {
         seed("olwen", RosterState.ACTIVE);
         seed("brin", RosterState.ACTIVE);
         seed("cora", RosterState.ACTIVE);
@@ -363,12 +414,14 @@ class ArrivalPlacementTest {
             timer.when(TimerManager::getInstance).thenReturn(timers);
             roster.onOwnerLogin(alice);
 
-            assertEquals(List.of("spawn at 800,200", "join Olwen", "follow Olwen"), calls);
-            verify(timers, times(2)).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), later.capture(), delays.capture());
-            long brinAt = delays.getAllValues().get(0);
-            long coraAt = delays.getAllValues().get(1);
-            assertTrue(brinAt >= 300L && brinAt <= 900L, "Brin " + brinAt + " ms after Olwen");
-            assertTrue(coraAt - brinAt >= 300L && coraAt - brinAt <= 900L, "Cora " + (coraAt - brinAt) + " ms after Brin");
+            assertEquals(List.of(), calls); // nobody loads behind the client's loading screen
+            verify(timers, times(3)).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), later.capture(), delays.capture());
+            long olwenAt = delays.getAllValues().get(0);
+            long brinAt = delays.getAllValues().get(1);
+            long coraAt = delays.getAllValues().get(2);
+            assertEquals(ArrivalPlacement.LOGIN_ARRIVAL_MS, olwenAt);
+            assertTrue(brinAt - olwenAt >= 2_000L && brinAt - olwenAt <= 8_000L, "Brin " + (brinAt - olwenAt) + " ms after Olwen");
+            assertTrue(coraAt - brinAt >= 2_000L && coraAt - brinAt <= 8_000L, "Cora " + (coraAt - brinAt) + " ms after Brin");
 
             later.getAllValues().forEach(Runnable::run);
         }
@@ -385,7 +438,35 @@ class ArrivalPlacementTest {
     void aStaggeredArrivalStillWaitsForTheOwnersLoadSpacing() {
         seed("olwen", RosterState.ACTIVE);
         seed("brin", RosterState.ACTIVE);
-        when(budget.loadDelayMs(eq(alice), anyLong())).thenReturn(0L, 1_500L, 0L);
+        // Olwen's timer and load, then Brin's timer finds the owner's load slot still taken
+        when(budget.loadDelayMs(eq(alice), anyLong())).thenReturn(0L, 0L, 1_500L, 0L);
+        RosterService roster = new RosterService(world);
+        TimerManager timers = mock(TimerManager.class);
+        ArgumentCaptor<Runnable> later = ArgumentCaptor.forClass(Runnable.class);
+
+        try (MockedStatic<TimerManager> timer = mockStatic(TimerManager.class);
+             MockedStatic<Server> server = online(alice)) {
+            timer.when(TimerManager::getInstance).thenReturn(timers);
+            roster.onOwnerLogin(alice);
+            verify(timers, times(2)).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), later.capture(), anyLong());
+            List<Runnable> restores = List.copyOf(later.getAllValues());
+            restores.get(0).run();
+            restores.get(1).run(); // Olwen's load still holds the slot: Brin waits the budget's gap, quietly
+            verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), later.capture(), eq(1_500L));
+            assertFalse(calls.contains("join Brin"));
+            later.getValue().run();
+        }
+
+        assertEquals(List.of("spawn at 800,200", "join Olwen", "follow Olwen", "spawn at 800,200", "join Brin", "follow Brin"), calls);
+        verify(alice, never()).dropMessage(anyInt(), anyString());
+    }
+
+    @Test
+    void aRestoredCompanionFindingThePartyFullKeepsItsRowAndSaysNothing() {
+        seed("olwen", RosterState.ACTIVE);
+        Party full = mock(Party.class);
+        when(full.getMembers()).thenReturn(java.util.Collections.nCopies(6, mock(net.server.world.PartyCharacter.class)));
+        when(alice.getParty()).thenReturn(full);
         RosterService roster = new RosterService(world);
         TimerManager timers = mock(TimerManager.class);
         ArgumentCaptor<Runnable> later = ArgumentCaptor.forClass(Runnable.class);
@@ -395,14 +476,84 @@ class ArrivalPlacementTest {
             timer.when(TimerManager::getInstance).thenReturn(timers);
             roster.onOwnerLogin(alice);
             verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), later.capture(), anyLong());
-            later.getValue().run(); // Olwen's load still holds the slot: Brin waits the budget's gap, quietly
-            verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), later.capture(), eq(1_500L));
-            assertFalse(calls.contains("join Brin"));
             later.getValue().run();
         }
 
-        assertEquals(List.of("spawn at 800,200", "join Olwen", "follow Olwen", "spawn at 800,200", "join Brin", "follow Brin"), calls);
+        // as a call leaves an ACTIVE row with no room: not benched, no whisper, no pink line
+        assertEquals(List.of(), calls);
+        assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
+        verify(residents, never()).whisper(any(), any(), anyString());
         verify(alice, never()).dropMessage(anyInt(), anyString());
+    }
+
+    // ---- a benched companion walks out ----------------------------------------------------------
+
+    @Test
+    void aBenchedCompanionLeavesThePartyAndWalksToTheNearestPortalBeforeItGoes() {
+        seed("olwen", RosterState.ACTIVE);
+        Character olwen = standing("Olwen", map, 1100, 200);
+        walkOutsRecorded();
+        leases.tryAcquire(900, CompanionLeases.Kind.COMPANION, ALICE);
+        RosterService roster = new RosterService(world);
+        TimerManager timers = mock(TimerManager.class);
+        ArgumentCaptor<Runnable> check = ArgumentCaptor.forClass(Runnable.class);
+
+        try (MockedStatic<TimerManager> timer = mockStatic(TimerManager.class)) {
+            timer.when(TimerManager::getInstance).thenReturn(timers);
+            assertEquals("Olwen heads back to camp to train.", roster.bench(alice, OLWEN));
+
+            assertEquals(List.of("leave Olwen", "walk Olwen to 800,200"), calls); // gone from the party window at once
+            assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
+            assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.COMPANION, ALICE), leases.holder(900));
+            verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), check.capture(), eq(ArrivalPlacement.WALK_OUT_CHECK_MS));
+
+            when(olwen.getPosition()).thenReturn(new Point(900, 200)); // still walking: look again
+            check.getValue().run();
+            verify(timers, times(2)).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), check.capture(), anyLong());
+            assertFalse(calls.contains("remove Olwen"));
+
+            when(olwen.getPosition()).thenReturn(new Point(815, 200)); // at the portal
+            check.getValue().run();
+        }
+
+        assertTrue(calls.contains("remove Olwen"));
+        assertNull(leases.holder(900));
+    }
+
+    @Test
+    void aCompanionCalledBackOnItsWayOutComesBackFromWhereItStands() {
+        seed("olwen", RosterState.ACTIVE);
+        standing("Olwen", map, 1000, 200);
+        walkOutsRecorded();
+        RosterService roster = new RosterService(world);
+        TimerManager timers = mock(TimerManager.class);
+        ArgumentCaptor<Runnable> check = ArgumentCaptor.forClass(Runnable.class);
+
+        try (MockedStatic<TimerManager> timer = mockStatic(TimerManager.class)) {
+            timer.when(TimerManager::getInstance).thenReturn(timers);
+            roster.bench(alice, OLWEN);
+            verify(timers).schedule(eq(TimerManager.SchedulerLane.LOW_PRIORITY), check.capture(), anyLong());
+            calls.clear();
+
+            assertEquals("Olwen joins your party.", roster.call(alice, OLWEN));
+            check.getValue().run(); // the old walk-out's check: it was ended by the call
+        }
+
+        assertEquals(List.of("leave Olwen", "remove Olwen", "spawn at 1000,200", "join Olwen", "follow Olwen"), calls);
+        assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
+        assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.COMPANION, ALICE), leases.holder(900));
+    }
+
+    @Test
+    void aCompanionBenchedOffItsOwnersMapGoesAtOnce() {
+        seed("olwen", RosterState.ACTIVE);
+        standing("Olwen", mock(MapleMap.class), 1000, 200);
+        walkOutsRecorded();
+
+        new RosterService(world).bench(alice, OLWEN);
+
+        assertEquals(List.of("leave Olwen", "remove Olwen"), calls);
+        movement.verify(() -> AgentMovementCommandRuntime.moveTo(any(), any(), anyBoolean()), never());
     }
 
     // ---- the portal spawn is guarded like any other ------------------------------------------------
@@ -438,6 +589,33 @@ class ArrivalPlacementTest {
 
     private Character bot(int characterId) {
         return bots.values().stream().filter(bot -> bot.getId() == characterId).findFirst().orElseThrow();
+    }
+
+    /** The persona's character loaded (a Resident, a bench slice or a companion) and standing on {@code on}. */
+    private Character standing(String name, MapleMap on, int x, int y) {
+        Character bot = bots.get(name);
+        loaded.add(bot.getId());
+        when(bot.getMap()).thenReturn(on);
+        when(bot.getPosition()).thenReturn(new Point(x, y));
+        return bot;
+    }
+
+    private void walkOutsRecorded() {
+        party.when(() -> AgentPartyLifecycleService.leaveAgentParty(any())).thenAnswer(inv ->
+                calls.add("leave " + ((Character) inv.getArgument(0)).getName()));
+        movement.when(() -> AgentMovementCommandRuntime.moveTo(any(), any(), anyBoolean())).thenAnswer(inv -> {
+            AgentRuntimeEntry runtime = inv.getArgument(0);
+            Point to = inv.getArgument(1);
+            return calls.add("walk " + runtime.bot().getName() + " to " + to.x + "," + to.y);
+        });
+    }
+
+    private String recruit(Persona persona) {
+        when(store.personaState(anyString())).thenReturn(new PersonaState(persona.id(), 900, null, 0, 0));
+        try (MockedStatic<ResidentSpots> spots = mockStatic(ResidentSpots.class)) {
+            spots.when(() -> ResidentSpots.townMapId("lith-harbor")).thenReturn(CAMP);
+            return new RosterService(world).recruit(alice, persona);
+        }
     }
 
     private void portals(Portal... portals) {

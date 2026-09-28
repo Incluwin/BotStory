@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import client.Client;
 import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import client.processor.npc.DueyProcessor;
@@ -31,6 +32,7 @@ import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import server.maps.MapleMap;
+import tools.PacketCreator;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -50,6 +52,7 @@ public final class RosterService {
     public static final int PARTY_CAP = 6;
     private static final String BUSY_LINE = "give me a moment. i'm in the middle of something.";
     private static final String PARTY_FULL_LINE = "your party's full. i'll wait at camp.";
+    private static final String ROSTER_BOOK_LINE = "double-click me or the book to manage the crew.";
 
     private final LivingWorld world;
     /** persona id -> owner character id, cached from the store. */
@@ -61,6 +64,8 @@ public final class RosterService {
     private final java.util.Set<Integer> owners = ConcurrentHashMap.newKeySet();
     /** Persona ids being seated right now: one load per companion, whichever thread calls it. */
     private final java.util.Set<String> seating = ConcurrentHashMap.newKeySet();
+    /** Persona id -> the walk-out of a companion benched a moment ago; any despawn or a new seat ends it. */
+    private final Map<String, Object> leaving = new ConcurrentHashMap<>();
 
     public RosterService(LivingWorld world) {
         this.world = world;
@@ -158,12 +163,33 @@ public final class RosterService {
 
     /** The companion character of a roster entry when it is online, else null. */
     public Character companion(RosterEntry entry) {
-        int characterId = world.residents().characterIdOf(entry.personaId());
+        return loaded(entry.personaId());
+    }
+
+    /** The persona's character when it is loaded for anything (a Resident, a live bench slice, a companion), else null. */
+    private Character loaded(String personaId) {
+        int characterId = world.residents().characterIdOf(personaId);
         if (characterId == 0) {
             return null;
         }
         AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
         return runtime == null ? null : AgentRuntimeIdentityRuntime.bot(runtime);
+    }
+
+    /**
+     * Where the persona's character stands when it is loaded on the owner's map right now (a Resident, a live bench
+     * slice, a companion still walking out), else null: a call brings it back in from there, not from a portal.
+     */
+    private Point standingNear(Character owner, String personaId) {
+        Character live = loaded(personaId);
+        MapleMap map = owner.getMap();
+        return live == null || map == null || live.getMap() != map || live.getPosition() == null ? null : new Point(live.getPosition());
+    }
+
+    /** Milliseconds until a companion called from its camp reaches the owner; 0 when it is not on the way. */
+    public long travelMsLeft(int ownerId, String personaId) {
+        Long arriving = travelling.get(ownerId + ":" + personaId);
+        return arriving == null ? 0L : Math.max(0L, arriving - System.currentTimeMillis());
     }
 
     /** True when the persona is active in the owner's party and on the owner's map (plan 5.3). */
@@ -195,11 +221,15 @@ public final class RosterService {
         if (roster(owner).size() >= world.config().ROSTER_MAX) {
             return "Your roster is full (" + world.config().ROSTER_MAX + "). Release someone first.";
         }
+        Point standing = standingNear(owner, persona.id()); // before enroll hands the Resident's character over
         RosterEntry entry = enroll(owner, persona, "roster.recruit");
-        if (freeSlots(owner) <= 0) {
-            return persona.name() + " joins your roster but your party is full; call them when there is room.";
+        String result = freeSlots(owner) <= 0
+                ? persona.name() + " joins your roster but your party is full; call them when there is room."
+                : spawnCompanion(owner, persona, entry, standing);
+        if (grantRosterBook(owner)) {
+            world.residents().whisper(persona, owner, ROSTER_BOOK_LINE);
         }
-        return spawnCompanion(owner, persona, entry, false); // already here talking to the owner: no walk-in
+        return result;
     }
 
     /**
@@ -217,7 +247,32 @@ public final class RosterService {
             return owner.getName() + "'s roster is full (" + world.config().ROSTER_MAX + ").";
         }
         RosterEntry entry = enroll(owner, persona, "roster.grant");
+        grantRosterBook(owner);
         return persona.name() + " joins " + owner.getName() + "'s roster, benched at map " + entry.campMapId() + ".";
+    }
+
+    /**
+     * The Adventurer's Roster (plan flow 9 step 3) with the stock item-gain line, for an owner who carries none:
+     * the Crew window from anywhere, even with every companion benched. It is a convenience, so a full inventory
+     * or a failure never stops a recruit or a login; the next login tries again.
+     */
+    private boolean grantRosterBook(Character owner) {
+        int book = world.config().ROSTER_BOOK_ITEM_ID;
+        Client client = owner.getClient();
+        if (book <= 0 || client == null) {
+            return false;
+        }
+        try {
+            if (owner.haveItem(book) || !InventoryManipulator.checkSpace(client, book, 1, "")
+                    || !InventoryManipulator.addById(client, book, (short) 1)) {
+                return false;
+            }
+            owner.sendPacket(PacketCreator.getShowItemGain(book, (short) 1, true));
+            return true;
+        } catch (RuntimeException failure) {
+            log.warn("roster book for {} failed", owner.getName(), failure);
+            return false;
+        }
     }
 
     /** Writes a BENCHED roster row and hands the persona over from its Resident life. */
@@ -261,6 +316,11 @@ public final class RosterService {
 
     /** Calls a companion: benched ones travel from their camp first (plan 11.3) unless a whistle is used. */
     public String call(Character owner, Persona persona) {
+        return call(owner, persona, null);
+    }
+
+    /** {@code standing}: where it stood on the owner's map before its Resident life let it go (an escort), else null. */
+    private String call(Character owner, Persona persona, Point standing) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return persona.name() + " is not in your roster.";
@@ -291,7 +351,7 @@ public final class RosterService {
             }
         }
         travelling.remove(key);
-        return spawnCompanion(owner, persona, entry, true);
+        return spawnCompanion(owner, persona, entry, standing);
     }
 
     private void arrive(int ownerId, Persona persona) {
@@ -326,8 +386,12 @@ public final class RosterService {
         return true;
     }
 
-    /** {@code walkIn}: it arrives through the portal nearest the owner and walks over (plan P1.5), else beside them. */
-    private String spawnCompanion(Character owner, Persona persona, RosterEntry entry, boolean walkIn) {
+    /**
+     * Loads the companion where it walks over from (plan P1.5, no pop-in): the spot it stood on when it is on the
+     * owner's map already ({@code standing}, captured by a caller that let it go first, or found in {@link #seat}),
+     * else the portal nearest the owner; a map without a usable one keeps the beside-owner spawn.
+     */
+    private String spawnCompanion(Character owner, Persona persona, RosterEntry entry, Point standing) {
         long waitMs = world.budget().loadDelayMs(owner, System.currentTimeMillis());
         if (waitMs > 0L) {
             spawnLater(owner.getId(), persona, entry.state(), waitMs); // loads are spaced per owner: queue, not refuse
@@ -337,13 +401,13 @@ public final class RosterService {
             return persona.name() + " is on the way."; // another call is loading this companion right now
         }
         try {
-            return seat(owner, persona, entry, walkIn);
+            return seat(owner, persona, entry, standing);
         } finally {
             seating.remove(persona.id());
         }
     }
 
-    private String seat(Character owner, Persona persona, RosterEntry entry, boolean walkIn) {
+    private String seat(Character owner, Persona persona, RosterEntry entry, Point standing) {
         int characterId = world.residents().ensureCharacter(persona);
         if (characterId == 0) {
             return persona.name() + " cannot be reached right now.";
@@ -351,6 +415,10 @@ public final class RosterService {
         CompanionBudget.Admission admission = world.budget().admit(CompanionBudget.Kind.COMPANION, owner);
         if (!admission.allowed()) {
             return refuse(owner, persona, entry, "give me a moment. too many of us are out right now.", admission.reason());
+        }
+        Point from = standing != null ? standing : standingNear(owner, persona.id()); // before it is let go below
+        if (leaving.containsKey(persona.id())) {
+            despawn(entry, "called back on its way out"); // it comes back from where it stood, so it frees its lease first
         }
         world.benchSessions().endFor(persona.id(), "called by owner"); // a live slice ends properly and frees its lease
         world.residents().releaseForRecruit(persona.id());
@@ -367,12 +435,12 @@ public final class RosterService {
         if (owner.getParty() == null) {
             Party.createParty(owner, true, true); // decision 9 (a): below level 10 a starter party of their own companions
         }
-        // a walk-in is loaded standing at the portal nearest the owner; a map without a usable one keeps the beside-owner spawn
+        // a walk-in is loaded standing still where it comes from; a map without a usable portal keeps the beside-owner spawn
         MapleMap map = owner.getMap();
-        Point portal = walkIn ? ArrivalPlacement.nearestPortal(map, owner.getPosition()) : null;
-        AgentLifecycleService.AgentSpawnResult result = portal == null
+        Point arrival = from != null ? from : ArrivalPlacement.nearestPortal(map, owner.getPosition());
+        AgentLifecycleService.AgentSpawnResult result = arrival == null
                 ? AgentInteractionRuntime.spawnAgentForLeader(owner, persona.name())
-                : AgentInteractionRuntime.spawnStationaryAgentForLeaderAt(owner, persona.name(), map, portal);
+                : AgentInteractionRuntime.spawnStationaryAgentForLeaderAt(owner, persona.name(), map, arrival);
         if (!result.success() || result.agent() == null) {
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             log.warn("call {} for {} failed: {}", persona.id(), owner.getName(), result.errorMessage());
@@ -383,7 +451,7 @@ public final class RosterService {
             despawn(entry, "party join " + joined);
             return refuse(owner, persona, entry, joinRefusal(joined), joined.name().toLowerCase(Locale.ROOT).replace('_', ' '));
         }
-        if (portal != null) {
+        if (arrival != null) {
             walkToOwner(result.agent()); // only once it is in the party
         }
         // bench slices and the ledger rewrite the row behind the caller's snapshot, and applyAccrued zeroes the
@@ -398,7 +466,7 @@ public final class RosterService {
         return persona.name() + " joins your party.";
     }
 
-    /** A companion loaded at a portal stands still until it is seated; then it follows, so it walks to its owner. */
+    /** A companion loaded at its arrival point stands still until it is seated; then it follows, so it walks to its owner. */
     private static void walkToOwner(Character bot) {
         AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
         if (runtime != null) {
@@ -427,10 +495,13 @@ public final class RosterService {
             spawnLater(ownerId, persona, state, waitMs);
             return;
         }
-        // the party may have filled while this one waited; an AWAY companion kept its slot
-        String outcome = state != RosterState.AWAY && freeSlots(owner) <= 0
-                ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full")
-                : spawnCompanion(owner, persona, entry, true);
+        // the party may have filled while this one waited; an AWAY companion kept its slot, and a restored ACTIVE
+        // one keeps its row and waits for room as call() leaves it, instead of being benched
+        boolean full = state != RosterState.AWAY && freeSlots(owner) <= 0;
+        if (full && state == RosterState.ACTIVE) {
+            return;
+        }
+        String outcome = full ? refuse(owner, persona, entry, PARTY_FULL_LINE, "party full") : spawnCompanion(owner, persona, entry, null);
         if (!seatedWith(owner, current(entry))) {
             owner.dropMessage(5, outcome);
         }
@@ -477,11 +548,50 @@ public final class RosterService {
         }
         List<String> lines = world.arcs().lines(persona, "bench");
         world.residents().reply(persona, owner, lines.isEmpty() ? "alright. i'll keep busy." : lines.get(Math.floorMod(owner.getId(), lines.size())));
-        despawn(entry, "benched");
+        walkOut(owner, entry);
         RosterEntry benched = entry.with(RosterState.BENCHED, System.currentTimeMillis());
         world.store().saveRoster(benched);
         world.store().event(owner.getId(), persona.id(), "roster.bench", benched.assignment().name());
-        return persona.name() + " heads to camp (" + describeAssignment(benched) + ").";
+        return persona.name() + " heads back to camp to " + describeAssignment(benched) + ".";
+    }
+
+    /**
+     * A benched companion on its owner's map leaves the party at once (the party window shows it), walks to the
+     * nearest portal and goes when it gets there or after a few seconds, so it never vanishes on the spot (plan
+     * "Rotate"). It keeps its COMPANION lease until then. Anywhere else, or with no usable portal, it goes at once.
+     */
+    private void walkOut(Character owner, RosterEntry entry) {
+        Character bot = companion(entry);
+        MapleMap map = bot == null ? null : bot.getMap();
+        Point portal = map == null || map != owner.getMap() ? null : ArrivalPlacement.nearestPortal(map, bot.getPosition());
+        AgentRuntimeEntry runtime = portal == null ? null : AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+        if (runtime == null) {
+            despawn(entry, "benched");
+            return;
+        }
+        try {
+            AgentPartyLifecycleService.leaveAgentParty(bot);
+        } catch (RuntimeException failure) {
+            log.debug("leave party failed for {}", entry.personaId(), failure);
+        }
+        AgentMovementCommandRuntime.moveTo(runtime, portal, false);
+        Object walk = new Object();
+        leaving.put(entry.personaId(), walk);
+        watchWalkOut(entry, bot, portal, walk, System.currentTimeMillis() + ArrivalPlacement.WALK_OUT_MAX_MS);
+    }
+
+    private void watchWalkOut(RosterEntry entry, Character bot, Point portal, Object walk, long deadlineMs) {
+        server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            if (leaving.get(entry.personaId()) != walk) {
+                return; // called back, released or despawned meanwhile
+            }
+            Point at = bot.getPosition();
+            if (at != null && at.distance(portal) > ArrivalPlacement.WALK_OUT_REACH_PX && System.currentTimeMillis() < deadlineMs) {
+                watchWalkOut(entry, bot, portal, walk, deadlineMs);
+            } else if (leaving.remove(entry.personaId(), walk)) {
+                despawn(entry, "benched, walked out");
+            }
+        }, ArrivalPlacement.WALK_OUT_CHECK_MS);
     }
 
     public String swap(Character owner, Persona out, Persona in) {
@@ -716,29 +826,35 @@ public final class RosterService {
         long now = System.currentTimeMillis();
         RosterEntry entry = new RosterEntry(owner.getId(), persona.id(), RosterState.AWAY, Assignment.REST, 0, 0,
                 owner.getMapId(), 0L, 0L, 0L, now, 0L, now, 0, null); // camp = here, so the call below is instant
+        Point standing = standingNear(owner, persona.id()); // the Resident the player talked to walks over from there
         world.store().saveRoster(entry);
         ownerByPersona.put(persona.id(), owner.getId());
         owners.add(owner.getId());
         world.residents().releaseForRecruit(persona.id());
-        String result = call(owner, persona);
+        String result = call(owner, persona, standing);
         owner.dropMessage(5, result + " (escort for " + quest.title() + ")");
     }
 
     // ---- login / logout ------------------------------------------------------------------
 
+    /**
+     * Restores the owner's ACTIVE companions (decision 8a): each walks in from a portal once the field has loaded
+     * on the client, a few seconds apart; the load spacing still applies when each one fires. A roster owner
+     * without the Adventurer's Roster gets one.
+     */
     public void onOwnerLogin(Character owner) {
         ownerLogoutAtMs.remove(String.valueOf(owner.getId()));
-        long staggerMs = 0L; // the first comes at once, the others a moment apart so they do not arrive stacked
-        for (RosterEntry entry : roster(owner)) {
+        List<RosterEntry> entries = roster(owner);
+        if (!entries.isEmpty()) {
+            grantRosterBook(owner);
+        }
+        long delayMs = ArrivalPlacement.LOGIN_ARRIVAL_MS;
+        for (RosterEntry entry : entries) {
             if (entry.state() == RosterState.ACTIVE) {
                 Persona persona = world.content().persona(entry.personaId());
                 if (persona != null && companion(entry) == null) {
-                    if (staggerMs == 0L) {
-                        call(owner, persona);
-                    } else {
-                        spawnLater(owner.getId(), persona, RosterState.ACTIVE, staggerMs); // the load spacing still applies when it fires
-                    }
-                    staggerMs += ArrivalPlacement.staggerMs();
+                    spawnLater(owner.getId(), persona, RosterState.ACTIVE, delayMs);
+                    delayMs += ArrivalPlacement.staggerMs();
                 }
             }
         }
@@ -754,6 +870,7 @@ public final class RosterService {
     }
 
     private void despawn(RosterEntry entry, String reason) {
+        leaving.remove(entry.personaId()); // a walk-out in progress ends here
         Character bot = companion(entry);
         int characterId = world.residents().characterIdOf(entry.personaId());
         if (bot != null) {

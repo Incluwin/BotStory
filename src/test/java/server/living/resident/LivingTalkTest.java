@@ -8,7 +8,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import scripting.npc.NPCConversationManager;
+import scripting.quest.QuestActionManager;
 import server.living.resident.LivingTalk.Option;
+import server.maps.MapleMap;
 import testutil.NpcTalks;
 import testutil.NpcTalks.Talk;
 import testutil.Packets;
@@ -23,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,7 +35,9 @@ import static org.mockito.Mockito.when;
 /**
  * LivingTalk's client-safety rules (docs/BOT_MANAGEMENT_PLAN.md P1.5, docs/BOT_MANAGEMENT_P0_RESULTS.md probes 5
  * and 6): no speaker bit 0x04, "More..." paging, stamped options a stale click cannot pick, no second window while
- * one awaits a reply, the 500 ms click throttle, and every path ends in a window or enableActions.
+ * one awaits a reply, the 500 ms click throttle, and every path ends in a window or enableActions. A talk whose
+ * window cannot be on screen any more (a warp since, a stock window over it, a failed send) never blocks the next
+ * window and never eats a stock window's reply.
  */
 class LivingTalkTest {
     private static final byte MENU = 4;
@@ -325,6 +331,82 @@ class LivingTalkTest {
         LivingTalk.forget(chr);
         LivingTalk.open(chr, NPC).ok("after the warp").show();
         assertEquals("after the warp", lastTalk().text());
+    }
+
+    // ---- stale talks ---------------------------------------------------------------------
+
+    @Test
+    void aTalkShownJustBeforeAWarpIsGoneOnTheNewMap() {
+        // a quest step finishing on map entry opens its window before SET_FIELD, which closes it on the client
+        MapleMap before = mock(MapleMap.class);
+        when(chr.getMap()).thenReturn(before);
+        LivingTalk.open(chr, NPC).ok("shown before the warp").show();
+        when(chr.getMap()).thenReturn(mock(MapleMap.class));
+
+        assertFalse(LivingTalk.respond(client, SAY, (byte) 1, Packets.buildInPacket(out -> { })));
+        assertFalse(LivingTalk.active(client));
+        LivingTalk.open(chr, NPC).ok("on the new map").show();
+        assertEquals("on the new map", lastTalk().text());
+    }
+
+    @Test
+    void aStockWindowOverALeftoverTalkGetsItsOwnReply() {
+        LivingTalk.open(chr, NPC).ok("left over").show();
+        NPCConversationManager script = mock(NPCConversationManager.class);
+        when(script.awaitingReply()).thenReturn(true);
+        when(client.getCM()).thenReturn(script);
+
+        // the stock handler answers it; the talk never closes the stock prompt's reply
+        assertFalse(LivingTalk.respond(client, SAY, (byte) 1, Packets.buildInPacket(out -> { })));
+        assertFalse(LivingTalk.active(client));
+    }
+
+    @Test
+    void theQuestAndTheNpcScriptAreBothChecked() {
+        QuestActionManager quest = mock(QuestActionManager.class);
+        NPCConversationManager npc = mock(NPCConversationManager.class);
+        when(client.getQM()).thenReturn(quest);
+        when(client.getCM()).thenReturn(npc);
+        when(npc.awaitingReply()).thenReturn(true);
+
+        LivingTalk.open(chr, NPC).ok("hi").show();
+        assertEquals(0, NpcTalks.talks(sent()).size());
+        verify(quest, never()).dispose();
+
+        when(npc.awaitingReply()).thenReturn(false);
+        LivingTalk.open(chr, NPC).ok("hi").show();
+        verify(quest).dispose(); // neither had a window on screen: both are left-overs
+        verify(npc).dispose();
+        assertEquals("hi", lastTalk().text());
+    }
+
+    @Test
+    void aWindowThatCouldNotBeSentLeavesNothingWaiting() {
+        doThrow(new IllegalStateException("send failed")).doNothing().when(client).sendPacket(org.mockito.ArgumentMatchers.any());
+
+        LivingTalk.open(chr, NPC).ok("hi").show();
+
+        assertFalse(LivingTalk.active(client));
+        assertTrue(NpcTalks.isEnableActions(lastPacket()));
+        doNothing().when(client).sendPacket(org.mockito.ArgumentMatchers.any());
+        LivingTalk.open(chr, NPC).ok("next one").show();
+        assertEquals("next one", lastTalk().text());
+    }
+
+    @Test
+    void mayShowAnswersWithoutSendingOrDisposingAnything() {
+        NPCConversationManager leftover = mock(NPCConversationManager.class);
+        when(client.getCM()).thenReturn(leftover);
+        assertTrue(LivingTalk.mayShow(chr));
+        verify(leftover, never()).dispose();
+
+        LivingTalk.open(chr, NPC).ok("up").show();
+        clearInvocations(client);
+        assertFalse(LivingTalk.mayShow(chr));
+        LivingTalk.forget(chr);
+        when(client.canClickNPC()).thenReturn(false);
+        assertFalse(LivingTalk.mayShow(chr));
+        verify(client, never()).sendPacket(org.mockito.ArgumentMatchers.any());
     }
 
     // ---- helpers -------------------------------------------------------------------------
