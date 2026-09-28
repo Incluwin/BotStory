@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
+import net.server.world.Party;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
@@ -73,6 +74,7 @@ class DoubleLoadGuardTest {
     private MockedStatic<AgentRuntimeCleanupService> cleanup;
     private MockedStatic<AgentInteractionRuntime> interaction;
     private MockedStatic<AgentPartyLifecycleService> party;
+    private MockedStatic<Party> parties;
     private MockedStatic<CosmicAgentOfflineLoader> loader;
     private MockedStatic<ResidentSpots> spots;
 
@@ -110,6 +112,7 @@ class DoubleLoadGuardTest {
         });
         party = mockStatic(AgentPartyLifecycleService.class);
         party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot)).thenReturn(JoinOutcome.JOINED);
+        parties = mockStatic(Party.class);
     }
 
     @AfterEach
@@ -118,6 +121,7 @@ class DoubleLoadGuardTest {
             loader.close();
             spots.close();
         }
+        parties.close();
         party.close();
         interaction.close();
         cleanup.close();
@@ -195,9 +199,20 @@ class DoubleLoadGuardTest {
     }
 
     @Test
-    void anOwnerBelowLevelTenWhoCannotFormAPartyHearsWhy() {
+    void anOwnerBelowLevelTenLeadsAStarterPartyOfTheirOwnCompanions() {
+        // decision 9 (a): every call path, not only the party window, forms the starter party before the join
         seed(row(RosterState.BENCHED));
         when(alice.getLevel()).thenReturn(8);
+
+        assertEquals("Olwen joins your party.", new RosterService(world).call(alice, OLWEN));
+
+        parties.verify(() -> Party.createParty(alice, true, true));
+        assertEquals(RosterState.ACTIVE, rows.get(ALICE + ":olwen").state());
+    }
+
+    @Test
+    void anOwnerWhoCannotFormAPartyHearsWhy() {
+        seed(row(RosterState.BENCHED));
         party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(alice, olwenBot)).thenReturn(JoinOutcome.NO_PARTY);
 
         String reply = new RosterService(world).call(alice, OLWEN);
@@ -206,7 +221,7 @@ class DoubleLoadGuardTest {
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
         assertEquals(List.of("spawn Olwen", "remove " + OLWEN_CHARACTER), calls);
         assertNull(leases.holder(OLWEN_CHARACTER));
-        verify(residents).whisper(OLWEN, alice, "you need to be level 10 to lead a party.");
+        verify(residents).whisper(OLWEN, alice, "i couldn't join your party. try again in a bit.");
     }
 
     @Test

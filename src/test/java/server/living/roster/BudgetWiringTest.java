@@ -80,6 +80,7 @@ class BudgetWiringTest {
     private MockedStatic<AgentRuntimeCleanupService> cleanup;
     private MockedStatic<AgentInteractionRuntime> interaction;
     private MockedStatic<AgentPartyLifecycleService> party;
+    private MockedStatic<Party> parties;
 
     @BeforeEach
     void wireWorld() {
@@ -109,10 +110,12 @@ class BudgetWiringTest {
         interaction.when(() -> AgentInteractionRuntime.spawnAgentForLeader(alice, "Brin")).thenReturn(AgentSpawnResult.ok(brinBot, true));
         party = mockStatic(AgentPartyLifecycleService.class);
         party.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(eq(alice), any())).thenReturn(JoinOutcome.JOINED);
+        parties = mockStatic(Party.class);
     }
 
     @AfterEach
     void closeStatics() {
+        parties.close();
         party.close();
         interaction.close();
         cleanup.close();

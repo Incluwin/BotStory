@@ -124,7 +124,7 @@ class RosterServiceCharacterizationTest {
         seed(row(ALICE, "olwen", RosterState.BENCHED, 5_000L));
         RosterService roster = new RosterService(world);
 
-        try (MockedStatic<AgentPartyLifecycleService> party = joined()) {
+        try (MockedStatic<AgentPartyLifecycleService> party = joined(); MockedStatic<Party> parties = mockStatic(Party.class)) {
             assertEquals("Olwen joins your party.", roster.call(alice, OLWEN));
         }
 
@@ -144,7 +144,7 @@ class RosterServiceCharacterizationTest {
         seed(row(ALICE, "olwen", RosterState.BENCHED, 5_000L));
         RosterService roster = new RosterService(world);
 
-        try (MockedStatic<AgentPartyLifecycleService> party = joined()) {
+        try (MockedStatic<AgentPartyLifecycleService> party = joined(); MockedStatic<Party> parties = mockStatic(Party.class)) {
             roster.call(alice, OLWEN);
             roster.bench(alice, OLWEN);
             roster.call(alice, OLWEN);
@@ -167,6 +167,7 @@ class RosterServiceCharacterizationTest {
         List<PartyCharacter> six = Collections.nCopies(6, mock(PartyCharacter.class));
         when(full.getMembers()).thenReturn(six);
         when(channelWorld.getParty(77)).thenReturn(full);
+        when(alice.getParty()).thenReturn(full);
         when(olwenBot.getWorldServer()).thenReturn(channelWorld);
         PartyGateway gateway = mock(PartyGateway.class);
         when(gateway.snapshot(alice)).thenReturn(new AgentPartySnapshot(77, sixMembers()));

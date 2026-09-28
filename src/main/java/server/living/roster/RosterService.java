@@ -352,10 +352,13 @@ public final class RosterService {
             log.warn("call {} for {} failed: {}", persona.id(), owner.getName(), result.errorMessage());
             return refuse(owner, persona, entry, "i can't get away right now. try again in a bit.", result.errorMessage());
         }
+        if (owner.getParty() == null) {
+            Party.createParty(owner, true, true); // decision 9 (a): below level 10 a starter party of their own companions
+        }
         JoinOutcome joined = AgentPartyLifecycleService.joinAgentToLeaderParty(owner, result.agent());
         if (joined != JoinOutcome.JOINED && joined != JoinOutcome.ALREADY_MEMBER) {
             despawn(entry, "party join " + joined);
-            return refuse(owner, persona, entry, joinRefusal(owner, joined), joined.name().toLowerCase(Locale.ROOT).replace('_', ' '));
+            return refuse(owner, persona, entry, joinRefusal(joined), joined.name().toLowerCase(Locale.ROOT).replace('_', ' '));
         }
         // bench slices and the ledger rewrite the row behind the caller's snapshot, and applyAccrued zeroes the
         // banked EXP: both saves start from the row as it is now, so the EXP can never be granted twice
@@ -398,14 +401,8 @@ public final class RosterService {
         return persona.name() + " could not join right now (" + reason + ").";
     }
 
-    private static String joinRefusal(Character owner, JoinOutcome joined) {
-        if (joined == JoinOutcome.PARTY_FULL) {
-            return PARTY_FULL_LINE;
-        }
-        if (joined == JoinOutcome.NO_PARTY && owner.getLevel() < 10) {
-            return "you need to be level 10 to lead a party.";
-        }
-        return "i couldn't join your party. try again in a bit.";
+    private static String joinRefusal(JoinOutcome joined) {
+        return joined == JoinOutcome.PARTY_FULL ? PARTY_FULL_LINE : "i couldn't join your party. try again in a bit.";
     }
 
     /** The row as stored now (the snapshot when it is gone). */
