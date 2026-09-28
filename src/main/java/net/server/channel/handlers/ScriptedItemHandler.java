@@ -39,6 +39,9 @@ public final class ScriptedItemHandler extends AbstractPacketHandler {
         p.readInt(); // trash stamp, thanks RMZero213
         short itemSlot = p.readShort(); // item slot, thanks RMZero213
         int itemId = p.readInt();
+        if (server.living.LivingWorldHooks.rosterBookUsed(c.getPlayer(), itemSlot, itemId)) {
+            return; // the Adventurer's Roster opens the Crew window instead of its item script, and is not used up
+        }
 
         ItemInformationProvider ii = ItemInformationProvider.getInstance();
         ScriptedItem info = ii.getScriptedItemInfo(itemId);

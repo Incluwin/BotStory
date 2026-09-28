@@ -72,6 +72,7 @@ public final class LivingWorldHooks {
             return;
         }
         try {
+            server.living.resident.LivingTalk.forget(chr); // the warp closes any NPC window, as stock scripts are disposed
             world.quests().onMapEntered(chr, map.getId());
             world.markers().forget(chr);
             world.markers().enteredMap(chr);
@@ -131,6 +132,7 @@ public final class LivingWorldHooks {
             return;
         }
         try {
+            server.living.resident.LivingTalk.forget(chr);
             world.roster().onOwnerLogout(chr);
             world.markers().loggedOut(chr);
         } catch (RuntimeException failure) {
@@ -213,6 +215,29 @@ public final class LivingWorldHooks {
             log.warn("living world ownsCompanion hook failed", failure);
             return false;
         }
+    }
+
+    /**
+     * A USE item double-clicked in the inventory (SCRIPTED_ITEM), before its item script runs. True when it is the
+     * Adventurer's Roster ({@code ROSTER_BOOK_ITEM_ID}): the Crew window opens and the item is not used up.
+     */
+    public static boolean rosterBookUsed(Character chr, short slot, int itemId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || chr == null || itemId <= 0 || itemId != world.config().ROSTER_BOOK_ITEM_ID) {
+            return false;
+        }
+        try {
+            client.inventory.Item item = chr.getInventory(constants.inventory.ItemConstants.getInventoryType(itemId)).getItem(slot);
+            if (item == null || item.getItemId() != itemId || item.getQuantity() < 1) {
+                chr.sendPacket(tools.PacketCreator.enableActions());
+            } else {
+                new server.living.roster.ui.CompanionMenus(world).rosterBook(chr);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("living world rosterBookUsed hook failed", failure);
+            chr.sendPacket(tools.PacketCreator.enableActions());
+        }
+        return true;
     }
 
     /** An NPC click on a quest marker's hitbox; true when it was one (the Resident's menu opens instead). */

@@ -9,6 +9,8 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.Content.StepType;
 import server.living.phrases.PhraseMatcher;
+import server.living.roster.CompanionDirectory;
+import server.living.roster.ui.CompanionMenus;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -57,16 +59,21 @@ public final class ResidentDialogue {
             "sleepywood", new int[] {1061000, 1061002, 1061003, 1061004});
 
     public static int portraitOf(Persona persona) {
-        if (persona.portraitNpcId() > 0) {
-            return persona.portraitNpcId();
-        }
-        LivingWorld world = LivingWorld.get();
-        int ownLook = world == null ? 0 : world.content().portraitNpcId(persona.id());
+        int ownLook = renderedPortraitOf(persona);
         if (ownLook > 0) {
             return ownLook;
         }
         int[] town = PORTRAITS.getOrDefault(persona.homeTown(), new int[] {9010000});
         return town[Math.floorMod(persona.id().hashCode(), town.length)];
+    }
+
+    /** The NPC id whose portrait is this persona's own face (the configured or the rendered 9970000+ one); 0 when none. */
+    public static int renderedPortraitOf(Persona persona) {
+        if (persona.portraitNpcId() > 0) {
+            return persona.portraitNpcId();
+        }
+        LivingWorld world = LivingWorld.get();
+        return world == null ? 0 : world.content().portraitNpcId(persona.id());
     }
 
     private static final Pattern ROSTER = Pattern.compile("^(roster|who do i have|my companions|my crew|who travels with me|list companions)$");
@@ -318,17 +325,31 @@ public final class ResidentDialogue {
         return true;
     }
 
-    /** Double-clicking a Resident opens its NPC window, as clicking an NPC does; companions keep the character info window. */
+    /**
+     * Double-clicking your own companion opens its card and a Resident opens its NPC window, as clicking an
+     * NPC does; another player's companion, a citizen, a plain Agent and yourself keep the character info window.
+     */
     public boolean onCharacterClicked(Character clicker, Character target) {
         if (AgentPresence.isAgent(clicker) || !AgentPresence.isAgent(target)) {
             return false;
         }
-        Persona persona = world.residents().personaOf(target);
-        if (persona == null || world.roster().isOwned(persona.id())) {
-            return false;
+        switch (world.directory().resolve(clicker, target)) {
+            case CompanionDirectory.Relation.OwnCompanion own -> {
+                new CompanionMenus(world).card(clicker, own.entry());
+                return true;
+            }
+            case CompanionDirectory.Relation.Resident resident -> {
+                Persona persona = world.content().persona(resident.personaId());
+                if (persona == null || world.roster().isOwned(persona.id())) {
+                    return false;
+                }
+                openMenu(clicker, persona);
+                return true;
+            }
+            default -> {
+                return false;
+            }
         }
-        openMenu(clicker, persona);
-        return true;
     }
 
     /** The structured conversation: what this persona can do for the player right now. */

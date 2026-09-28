@@ -38,6 +38,7 @@ public class DisposeCommand extends Command {
     public void execute(Client c, String[] params) {
         NPCScriptManager.getInstance().dispose(c);
         QuestScriptManager.getInstance().dispose(c);
+        server.living.resident.LivingTalk.forget(c.getPlayer());
         c.sendPacket(PacketCreator.enableActions());
         c.removeClickedNPC();
         if (params.length >= 1) {
