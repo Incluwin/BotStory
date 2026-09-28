@@ -25,13 +25,39 @@ public final class AgentClaimGuard {
         boolean isClaimed(int agentCharacterId);
     }
 
+    /** A leader-level chat verb whose Agent route would unload or unclaim the Agent it names. */
+    public enum Verb {
+        /** "dismiss", "disown" or "release" &lt;name&gt;: the route unregisters the Agent and leaves it online. */
+        DISMISS,
+        /** A confirmed "logout" (targeted or not): the route disconnects the Agent. */
+        LOGOUT
+    }
+
+    /** The host's own handling of a {@link Verb} for an Agent it claims. */
+    @FunctionalInterface
+    public interface VerbRoute {
+        /** True when the host carried the verb out itself, so the Agent route must do nothing. */
+        boolean take(Character actor, int agentCharacterId, Verb verb);
+    }
+
     private static volatile Rule rule;
+    private static volatile VerbRoute verbs;
 
     private AgentClaimGuard() {
     }
 
     public static void install(Rule installed) {
         rule = installed;
+    }
+
+    public static void installVerbs(VerbRoute installed) {
+        verbs = installed;
+    }
+
+    /** True when the installed host took {@code verb} for this Agent; with nothing installed the Agent route runs. */
+    public static boolean takeVerb(Character actor, int agentCharacterId, Verb verb) {
+        VerbRoute current = verbs;
+        return current != null && current.take(actor, agentCharacterId, verb);
     }
 
     public static boolean mayControl(Character actor, int agentCharacterId) {

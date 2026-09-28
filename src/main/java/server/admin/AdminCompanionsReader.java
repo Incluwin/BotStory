@@ -2,16 +2,12 @@ package server.admin;
 
 import client.BotClient;
 import client.Character;
-import client.Client;
 import net.server.Server;
-import net.server.world.Party;
-import net.server.world.PartyCharacter;
 import net.server.world.World;
-import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
-import server.living.config.Content.Persona;
+import server.living.roster.CompanionAuditor;
 import server.living.roster.CompanionDriftReport;
 import server.living.roster.CompanionDriftReport.AgentRef;
 import server.living.roster.CompanionDriftReport.Companion;
@@ -22,15 +18,14 @@ import server.living.roster.CompanionDriftReport.Owner;
 import server.living.roster.CompanionDriftReport.Row;
 import server.living.store.LivingStore.RosterEntry;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * GET /runtime/companions and /runtime/companions/{ownerCharacterId}: the read-only drift report
- * behind the bot manager's zero-drift gate (BOT_MANAGEMENT_PLAN.md P0). This class only snapshots
- * server state into {@link CompanionDriftReport} and renders it; it never mutates game state.
+ * behind the bot manager's zero-drift gate (BOT_MANAGEMENT_PLAN.md P0), with the auditor's status
+ * (P2a), which GET /runtime/companions/audit returns alone. This class only snapshots server state
+ * into {@link CompanionDriftReport} (through {@link CompanionAuditor#report}) and renders it; it
+ * never mutates game state.
  *
  * The snapshot is read from the port thread while game threads keep running, so a call, bench or
  * party change in flight can show up as drift for one read. A gate should require the same drift
@@ -56,8 +51,12 @@ final class AdminCompanionsReader {
                 owners.rawEl(json(report));
             }
         }
-        return new AdminJson.Obj().bool("ok", true).bool("livingWorld", living != null)
-                .num("driftCount", drift).raw("owners", owners.toString()).finished();
+        AdminJson.Obj out = new AdminJson.Obj().bool("ok", true).bool("livingWorld", living != null)
+                .num("driftCount", drift).raw("owners", owners.toString());
+        if (living != null) {
+            out.raw("audit", auditJson(living.auditor().status()));
+        }
+        return out.finished();
     }
 
     static String owner(String idStr) {
@@ -80,51 +79,38 @@ final class AdminCompanionsReader {
 
     private static CompanionDriftReport report(LivingWorld living, World w, Character chr,
                                                List<RosterEntry> entries, List<AgentRuntimeEntry> registered) {
-        List<Row> rows = new ArrayList<>();
-        Set<Integer> rosterIds = new HashSet<>();
-        for (RosterEntry entry : entries) {
-            Persona persona = living.content().persona(entry.personaId());
-            int characterId = living.residents().characterIdOf(entry.personaId());
-            rows.add(new Row(entry.personaId(), persona == null ? entry.personaId() : persona.name(), entry.state(),
-                    entry.assignment(), entry.campMapId(), characterId));
-            if (characterId > 0) rosterIds.add(characterId);
-        }
-        Party party = chr.getParty();
-        List<Member> members = new ArrayList<>();
-        if (party != null) {
-            for (PartyCharacter member : party.getMembers()) {
-                Character player = member.getPlayer();
-                // An offline member has no Character to ask; a rostered companion is a bot either way.
-                members.add(new Member(member.getId(), member.getName(), player != null ? isBot(player) : rosterIds.contains(member.getId())));
-            }
-        }
-        Owner owner = new Owner(chr.getId(), chr.getName(), channelOf(chr), chr.getMapId(), party == null ? 0 : party.getId(), members);
-        List<Companion> companions = new ArrayList<>();
-        for (Row row : rows) {
-            companions.add(new Companion(row, live(w, row.characterId())));
-        }
-        List<AgentRef> agents = new ArrayList<>();
-        for (AgentRuntimeEntry entry : registered) {
-            Character bot = AgentRuntimeIdentityRuntime.bot(entry);
-            if (bot != null) agents.add(new AgentRef(bot.getId(), bot.getName()));
-        }
-        int freeSlots = living == null ? -1 : living.roster().freeSlots(chr);
-        return CompanionDriftReport.of(owner, freeSlots, companions, agents);
+        return CompanionAuditor.report(living, w, chr, entries, registered);
     }
 
-    private static Live live(World w, int characterId) {
-        if (characterId <= 0) return Live.unloaded(-1);
-        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
-        // The cohort is the leader's id for leader-registered Agents; other cohorts may exceed int range.
-        long leaderId = entry == null ? -1L : AgentRuntimeRegistry.cohortIdForAgentCharacter(characterId);
-        Character bot = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
-        if (bot == null) {
-            bot = w.getPlayerStorage().getCharacterById(characterId); // loaded without an Agent runtime
+    /** GET /runtime/companions/audit: the auditor's last run, its totals and the drift episodes still open. */
+    static String audit() {
+        LivingWorld living = LivingWorld.get();
+        AdminJson.Obj out = new AdminJson.Obj().bool("ok", true).bool("livingWorld", living != null);
+        if (living != null) {
+            out.raw("audit", auditJson(living.auditor().status()));
         }
-        if (bot == null) return Live.unloaded(leaderId);
-        Party botParty = bot.getParty(); // read once: a game thread may clear it between two calls
-        return new Live(true, channelOf(bot), bot.getMapId(), bot.getHp(), bot.getMaxHp(),
-                botParty == null ? 0 : botParty.getId(), leaderId);
+        return out.finished();
+    }
+
+    static String auditJson(CompanionAuditor.Status status) {
+        AdminJson.Obj byCode = new AdminJson.Obj();
+        status.driftByCode().forEach((code, count) -> byCode.num(code.name(), count));
+        AdminJson.Arr open = new AdminJson.Arr();
+        for (CompanionAuditor.Open episode : status.open()) {
+            AdminJson.Arr codes = new AdminJson.Arr();
+            for (CompanionDriftReport.Code code : episode.codes()) {
+                codes.rawEl(AdminJson.str(code.name()));
+            }
+            open.obj().num("ownerId", episode.ownerId()).str("personaId", episode.personaId()).raw("codes", codes.toString())
+                    .num("sinceMs", episode.sinceMs()).num("sightings", episode.sightings())
+                    .bool("repaired", episode.repaired()).bool("stuck", episode.stuck());
+        }
+        return new AdminJson.Obj().num("intervalMs", status.intervalMs()).num("runs", status.runs())
+                .num("lastRunAtMs", status.lastRunAtMs()).num("lastRunMs", status.lastRunMs())
+                .num("ownersChecked", status.ownersChecked()).num("ownersDeferred", status.ownersDeferred())
+                .num("driftNow", status.driftNow()).raw("driftByCode", byCode.finished())
+                .num("confirmed", status.confirmed()).num("repairs", status.repairs()).num("stuck", status.stuck())
+                .raw("open", open.toString()).finished();
     }
 
     static String json(CompanionDriftReport report) {
@@ -168,10 +154,5 @@ final class AdminCompanionsReader {
 
     private static boolean isBot(Character chr) {
         return chr.getClient() instanceof BotClient;
-    }
-
-    private static int channelOf(Character chr) {
-        Client client = chr.getClient();
-        return client == null ? -1 : client.getChannel();
     }
 }

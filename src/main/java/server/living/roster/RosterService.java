@@ -184,6 +184,11 @@ public final class RosterService {
         return arriving == null ? 0L : Math.max(0L, arriving - System.currentTimeMillis());
     }
 
+    /** True while a verb is under way for the companion: it is being seated, walking out, or on its way over. */
+    public boolean inFlight(int ownerId, String personaId) {
+        return seating.contains(personaId) || leaving.containsKey(personaId) || travelMsLeft(ownerId, personaId) > 0L;
+    }
+
     /** True when the persona is active in the owner's party and on the owner's map (plan 5.3). */
     public boolean coPresent(Character owner, String personaId) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), personaId);
@@ -886,22 +891,41 @@ public final class RosterService {
 
     // ---- escort (quest step) -------------------------------------------------------------
 
-    /** A quest ESCORT step: the persona follows the player as a temporary companion until the step ends. */
-    public void beginEscort(Character owner, Persona persona, Quest quest, Step step) {
+    /**
+     * A quest ESCORT step: the persona follows the player as a temporary companion until the step ends. Its row counts
+     * toward {@code ROSTER_MAX} and it takes a seat before anything is written; with no room it says so in character
+     * and nothing changes (null when there is nobody to escort).
+     */
+    public RosterResult beginEscort(Character owner, Persona persona, Quest quest, Step step) {
         if (persona == null || isOwned(persona.id())) {
-            return;
+            return null;
+        }
+        if (roster(owner).size() >= world.config().ROSTER_MAX) {
+            return refuseEscort(owner, persona, quest, "you've got a full crew already. i'll find my own way.",
+                    new RosterResult.RosterFull(world.config().ROSTER_MAX));
+        }
+        // an AWAY row always holds its seat: taken first, so the escort never sits past the owner's share
+        if (freeSlots(owner) <= 0 || !world.slots().reserve(owner.getId(), persona.id(), CompanionSlots.Kind.AWAY, Long.MAX_VALUE)) {
+            return refuseEscort(owner, persona, quest, "your party's full. i'll find my own way.", new RosterResult.PartyFull());
         }
         long now = System.currentTimeMillis();
         RosterEntry entry = new RosterEntry(owner.getId(), persona.id(), RosterState.AWAY, Assignment.REST, 0, 0,
                 owner.getMapId(), 0L, 0L, 0L, now, 0L, now, 0, null); // camp = here, so the call below is instant
         Point standing = standingNear(owner, persona.id()); // the Resident the player talked to walks over from there
         world.store().saveRoster(entry);
-        keepAwaySeat(owner.getId(), persona.id()); // an AWAY row always holds its seat
         ownerByPersona.put(persona.id(), owner.getId());
         owners.add(owner.getId());
         world.residents().releaseForRecruit(persona.id());
         RosterResult result = call(owner, persona, standing);
         owner.dropMessage(5, RosterVoice.line(persona, result) + " (escort for " + quest.title() + ")");
+        return result;
+    }
+
+    private RosterResult refuseEscort(Character owner, Persona persona, Quest quest, String line, RosterResult result) {
+        world.residents().whisper(persona, owner, line);
+        world.store().event(owner.getId(), persona.id(), "roster.escort_refused", quest.id() + ": " + result);
+        owner.dropMessage(5, RosterVoice.line(persona, result) + " (escort for " + quest.title() + ")");
+        return result;
     }
 
     // ---- login / logout ------------------------------------------------------------------
@@ -936,6 +960,51 @@ public final class RosterService {
             }
         }
         ownerLogoutAtMs.put(String.valueOf(owner.getId()), System.currentTimeMillis());
+    }
+
+    // ---- auditor repairs (CompanionAuditor, on companion-ops; they never write the row) ---------
+
+    /**
+     * An ACTIVE row whose companion is not loaded, not in the owner's party, not led by the owner or on another
+     * channel: whatever holds it lets go, and it is seated again the way login restores it, in the owner's party now.
+     */
+    public void reseat(Character owner, Persona persona) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null || entry.state() != RosterState.ACTIVE || inFlight(owner.getId(), persona.id())) {
+            return;
+        }
+        despawn(entry, "audit: reseat");
+        if (canSeat(owner, entry)) { // with no room the row waits for it, as a login restore leaves it
+            spawnCompanion(owner, persona, entry, null);
+        }
+    }
+
+    /**
+     * A BENCHED or AWAY row whose companion is still in the owner's party or still led by the owner: it leaves the
+     * party, and is unloaded unless something else (a bench slice) leads it. An offline member is expelled.
+     */
+    public void unseat(Character owner, Persona persona) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null || !BenchSessions.benchGoverned(entry) || inFlight(owner.getId(), persona.id())) {
+            return;
+        }
+        Character bot = companion(entry);
+        if (bot != null && AgentRuntimeRegistry.leaderIdForAgentCharacter(bot.getId()) == owner.getId()) {
+            despawn(entry, "audit: unseat");
+            return;
+        }
+        Party party = owner.getParty();
+        if (bot != null) {
+            if (party != null && sameParty(owner, bot)) {
+                AgentPartyLifecycleService.leaveAgentParty(bot);
+            }
+            return;
+        }
+        net.server.world.PartyCharacter member = party == null ? null
+                : party.getMemberById(world.residents().characterIdOf(persona.id()));
+        if (member != null && !member.isOnline()) {
+            owner.getWorldServer().updateParty(party.getId(), net.server.world.PartyOperation.EXPEL, member);
+        }
     }
 
     private void despawn(RosterEntry entry, String reason) {

@@ -3,7 +3,9 @@ package server.agents.capabilities.dialogue;
 
 import server.agents.runtime.AgentSchedulerRuntime;
 import client.Character;
+import server.agents.auth.AgentClaimGuard;
 import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.commands.AgentSessionCommandCoordinator;
 import server.agents.capabilities.trade.AgentInventoryTransferService;
@@ -74,7 +76,12 @@ public final class AgentPendingActionRuntime {
 
             @Override
             public void confirmLogout() {
-                AgentSessionCommandCoordinator.scheduleLogoutConfirm(entry);
+                // every "logout" + "yes" ends here (targeted, untargeted, whispered or judged): a claimed Agent the
+                // host keeps a roster for leaves through that roster instead of disconnecting
+                if (!AgentClaimGuard.takeVerb(AgentRelationshipRuntime.interactionTarget(entry),
+                        AgentRuntimeIdentityRuntime.botId(entry), AgentClaimGuard.Verb.LOGOUT)) {
+                    AgentSessionCommandCoordinator.scheduleLogoutConfirm(entry);
+                }
             }
 
             @Override

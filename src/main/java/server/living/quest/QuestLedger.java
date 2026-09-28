@@ -533,7 +533,8 @@ public final class QuestLedger {
         } else if (step.type() == StepType.REACH_LEVEL && chr.getLevel() >= step.level()) {
             advance(chr, giver, quest, updated);
         } else if (step.type() == StepType.ESCORT && step.persona() != null) {
-            world.roster().beginEscort(chr, world.content().persona(step.persona()), quest, step);
+            Persona escort = world.content().persona(step.persona());
+            world.executor().submit("roster.escort", () -> world.roster().beginEscort(chr, escort, quest, step));
         }
     }
 
