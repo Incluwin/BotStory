@@ -114,6 +114,12 @@ public final class LivingWorld {
         // the one place a benched companion goes live (P5): the field form above, and the forms the other duties register
         this.benchDuty = new server.living.roster.BenchDutyDispatcher(this, benchSessions);
         this.benchYields = new server.living.roster.BenchYieldModel(this);
+        // the visible forms of the other duties (P5): GATHER at its camp, STALL and SELL in the Free Market, REST in town
+        server.living.roster.BenchStallForm stall = new server.living.roster.BenchStallForm(this);
+        this.benchDuty.register(LivingStore.Assignment.GATHER, new server.living.roster.BenchGatherForm(this));
+        this.benchDuty.register(LivingStore.Assignment.STALL, stall);
+        this.benchDuty.register(LivingStore.Assignment.SELL, stall);
+        this.benchDuty.register(LivingStore.Assignment.REST, new server.living.roster.BenchRestForm(this));
         this.residents = new ResidentRuntime(this);
         this.dialogue = new ResidentDialogue(this);
         this.rumors = new RumorScheduler(this);

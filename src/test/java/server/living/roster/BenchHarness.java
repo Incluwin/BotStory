@@ -91,6 +91,7 @@ final class BenchHarness implements AutoCloseable {
     private final Map<Integer, MapleMap> maps = new HashMap<>();
     private final Map<Integer, AgentRuntimeEntry> entries = new HashMap<>();
     private final List<MockedStatic<?>> statics = new ArrayList<>();
+    private final Map<Class<?>, MockedStatic<?>> staticsByType = new HashMap<>();
 
     BenchHarness() {
         config.COMPANION_SPAWN_INTERVAL_MS = 0; // several loads of one owner in one tick; spacing is BudgetTest's
@@ -304,9 +305,20 @@ final class BenchHarness implements AutoCloseable {
         return bot;
     }
 
+    /**
+     * The harness's static mock of {@code type}, for a test to stub further (the P5 duty forms); one the harness does
+     * not open is opened now and closed with the harness.
+     */
+    @SuppressWarnings("unchecked")
+    <T> MockedStatic<T> statics(Class<T> type) {
+        MockedStatic<?> opened = staticsByType.get(type);
+        return opened != null ? (MockedStatic<T>) opened : open(type);
+    }
+
     private <T> MockedStatic<T> open(Class<T> type) {
         MockedStatic<T> mocked = mockStatic(type);
         statics.add(mocked);
+        staticsByType.put(type, mocked);
         return mocked;
     }
 
