@@ -139,15 +139,16 @@ public final class CompanionMenus {
      * Its line is answered on the owner's own packet thread, so the check and the window are one step against their
      * NPC clicks: the notes' last page when a window may open and the action was quick, else pink text (the
      * companion's own words were said by the verb). Nothing is ever sent over a window awaiting its reply, and no
-     * window pops up long after the click.
+     * window pops up long after the click. An empty line says nothing: the action's own window (a trade) or the
+     * companion's reply in chat (an order) is the answer.
      */
     void command(Character owner, String name, Supplier<String> action) {
         long clickedAtMs = System.currentTimeMillis();
         world.executor().submit(name, () -> {
             String line = action.get();
             Client client = owner.getClient();
-            if (client == null) {
-                return; // logged off meanwhile
+            if (client == null || line == null || line.isEmpty()) {
+                return; // logged off meanwhile, or nothing to say
             }
             client.runOnIoThread(() -> {
                 if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS && LivingTalk.mayShow(owner)) {

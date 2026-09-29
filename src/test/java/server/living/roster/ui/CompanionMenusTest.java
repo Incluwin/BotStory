@@ -69,6 +69,9 @@ class CompanionMenusTest {
     private static final int ROSTER_BOOK = 2430011;
     private static final byte MENU = 4;
     private static final byte SAY = 0;
+    /** A benched companion's card with someone out to swap with (P3). */
+    private static final List<String> BENCH_CARD = List.of("Come join me", "Swap in for...", "What you do at camp...",
+            "Camp somewhere else...", "Your haul...", "Your wages...", "We should part ways", "Never mind");
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingContent content = mock(LivingContent.class);
@@ -163,8 +166,12 @@ class CompanionMenusTest {
         assertEquals(0, card.speaker());
         assertEquals(MENU, card.msgType());
         assertTrue(card.text().startsWith("#eHadrik#n, Lv31 Fighter - HP 812/900"), card.text());
-        assertEquals(List.of("Take a break at camp", "Let someone take your place...", "The whole crew...",
-                "Let me see your gear", "Never mind"), card.labels());
+        assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "Take a break at camp",
+                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "Your haul...",
+                "Your wages...", "Let me see your gear", "More..."), card.labels());
+        pick("More...");
+        assertEquals(List.of("Let's trade", "The whole crew...", "We should part ways", "Never mind", "More..."),
+                lastTalk().labels()); // "More..." wraps round to the first page
     }
 
     @Test
@@ -174,8 +181,9 @@ class CompanionMenusTest {
 
         menus.card(owner, hadrikRow);
 
-        assertEquals(List.of("Let someone take your place...", "The whole crew...", "Let me see your gear", "Never mind"),
-                lastTalk().labels());
+        assertFalse(lastTalk().labels().contains("Take a break at camp"), lastTalk().text());
+        assertFalse(lastTalk().labels().contains("What you do at camp..."), "nor sent off on an errand");
+        assertTrue(lastTalk().labels().contains("Let someone take your place..."), lastTalk().text());
     }
 
     @Test
@@ -185,7 +193,7 @@ class CompanionMenusTest {
 
         menus.card(owner, hadrikRow);
 
-        assertEquals("Take a break at camp", lastTalk().labels().get(0));
+        assertTrue(lastTalk().labels().contains("Take a break at camp"), lastTalk().text());
     }
 
     @Test
@@ -194,7 +202,8 @@ class CompanionMenusTest {
 
         menus.card(owner, tobiRow);
 
-        assertEquals(List.of("Take a break at camp", "The whole crew...", "Never mind"), lastTalk().labels());
+        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "Your haul...",
+                "Your wages...", "The whole crew...", "We should part ways", "Never mind"), lastTalk().labels());
     }
 
     @Test
@@ -233,7 +242,7 @@ class CompanionMenusTest {
         Talk picker = lastTalk();
         assertEquals(HADRIK_PORTRAIT, picker.npcId());
         assertTrue(picker.text().startsWith("who takes my place?\r\n"), picker.text());
-        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked", "Never mind"), picker.labels());
+        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked", "Back"), picker.labels());
         pick("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked");
 
         verify(roster).swap(owner, hadrik, mira);
@@ -279,7 +288,7 @@ class CompanionMenusTest {
 
         Talk card = lastTalk();
         assertTrue(card.text().startsWith("#eMira#n, Lv28 Hunter\r\ntrain @ Ant Tunnel - 10% EXP banked"), card.text());
-        assertEquals(List.of("Come join me", "Swap in for...", "Never mind"), card.labels());
+        assertEquals(BENCH_CARD, card.labels());
         pick("Come join me");
         verify(roster).call(owner, mira);
         assertEquals("Mira is on the way (1m).", lastTalk().text());
@@ -296,7 +305,7 @@ class CompanionMenusTest {
 
         Talk picker = lastTalk();
         assertTrue(picker.text().startsWith("your party's full. who should i take over from?\r\n"), picker.text());
-        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Tobi, Lv30 Cleric - on the way", "Never mind"),
+        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Tobi, Lv30 Cleric - on the way", "Back"),
                 picker.labels());
         verify(roster, never()).call(any(), any());
         pick("Hadrik, Lv31 Fighter - Perion - HP 90%");
@@ -330,7 +339,7 @@ class CompanionMenusTest {
         Talk picker = lastTalk();
         assertTrue(picker.text().startsWith("the leader sent one of us out. who should i take over from?\r\n"),
                 picker.text());
-        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Never mind"), picker.labels());
+        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Back"), picker.labels());
         verify(roster, never()).call(any(), any());
     }
 
@@ -373,7 +382,8 @@ class CompanionMenusTest {
         menus.card(owner, miraRow);
         Talk card = lastTalk();
         assertTrue(card.text().startsWith("#eMira#n, Lv28 Hunter\r\non the way (~40 s)"), card.text());
-        assertEquals(List.of("Never mind"), card.labels());
+        assertFalse(card.labels().contains("Come join me"), card.text());
+        assertFalse(card.labels().contains("Swap in for..."), card.text());
     }
 
     @Test
@@ -383,7 +393,7 @@ class CompanionMenusTest {
 
         pick("Swap in for...");
         Talk picker = lastTalk();
-        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Tobi, Lv30 Cleric - on the way", "Never mind"),
+        assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%", "Tobi, Lv30 Cleric - on the way", "Back"),
                 picker.labels());
         pick("Tobi, Lv30 Cleric - on the way");
 
@@ -396,7 +406,8 @@ class CompanionMenusTest {
 
         menus.card(owner, miraRow);
 
-        assertEquals(List.of("Come join me", "Never mind"), lastTalk().labels());
+        assertEquals(List.of("Come join me", "What you do at camp...", "Camp somewhere else...", "Your haul...",
+                "Your wages...", "We should part ways", "Never mind"), lastTalk().labels());
     }
 
     // ---- the Crew window -----------------------------------------------------------------
@@ -428,7 +439,7 @@ class CompanionMenusTest {
 
         pick("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked");
 
-        assertEquals(List.of("Come join me", "Swap in for...", "Never mind"), lastTalk().labels());
+        assertEquals(BENCH_CARD, lastTalk().labels());
     }
 
     @Test

@@ -128,6 +128,25 @@ public final class FieldCatalog {
         return candidates.get(random.nextInt(candidates.size()));
     }
 
+    /**
+     * Up to {@code limit} training fields whose mobs fit {@code level} (the band {@link #trainingField} uses), those in
+     * {@code nearMapId}'s region first, then the closest mob level: where a companion may camp (the camp picker).
+     */
+    public List<Field> fieldsFor(int level, int nearMapId, int limit) {
+        Field near = population.content().field(nearMapId);
+        String region = near == null ? null : near.region();
+        List<Field> fitting = new ArrayList<>();
+        for (Field field : population.content().fields().values()) {
+            if (!field.town() && field.capacity() > 0 && field.mobLevel() > 0 && field.mobLevel() >= level - LEVEL_BELOW
+                    && field.mobLevel() <= level + LEVEL_ABOVE) {
+                fitting.add(field);
+            }
+        }
+        fitting.sort(java.util.Comparator.comparing((Field field) -> region != null && !region.equals(field.region()))
+                .thenComparingInt(field -> Math.abs(field.mobLevel() - level)).thenComparingInt(Field::mapId));
+        return fitting.subList(0, Math.min(limit, fitting.size()));
+    }
+
     /** Loaded citizens on this map id, any channel. */
     public int occupancy(int mapId) {
         int count = 0;
