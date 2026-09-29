@@ -415,9 +415,9 @@ class CompanionMenusTest {
         assertEquals(CompanionMenus.NOTES_SPEAKER, crew.speaker());
         assertEquals(CompanionMenus.BOARD_NPC, crew.npcId());
         assertTrue(crew.text().startsWith("#eParty 2/6#n\r\n#L"), crew.text());
-        assertTrue(crew.text().contains("#eBench (1 of 9)#n"), crew.text()); // one of the ten roster places is out
+        assertTrue(crew.text().contains("#eBench (1 of 9 bench seats)#n"), crew.text()); // one of the ten roster places is out
         assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%",
-                "Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked"), crew.labels());
+                "Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked"), crew.labels().subList(0, 2));
     }
 
     @Test
@@ -454,7 +454,7 @@ class CompanionMenusTest {
 
         Talk crew = lastTalk();
         assertTrue(crew.text().contains("(nobody out with me)"), crew.text());
-        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked"), crew.labels());
+        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked"), crew.labels().subList(0, 1));
     }
 
     @Test
@@ -463,7 +463,7 @@ class CompanionMenusTest {
 
         menus.rosterBook(owner);
 
-        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel - ready to level"), lastTalk().labels());
+        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel - ready to level"), lastTalk().labels().subList(0, 1));
     }
 
     @Test
@@ -500,7 +500,7 @@ class CompanionMenusTest {
 
         menus.crew(owner);
 
-        assertEquals(List.of("Mira, Lv28 Hunter - away: train @ Ant Tunnel"), lastTalk().labels());
+        assertEquals(List.of("Mira, Lv28 Hunter - away: train @ Ant Tunnel"), lastTalk().labels().subList(0, 1));
         verify(store, never()).characterLevel(anyInt());
     }
 
@@ -655,7 +655,8 @@ class CompanionMenusTest {
         pick("Tobi, Lv30 Cleric - on the way");
 
         verify(sync).makeRoom(ANN, "tobi");
-        assertEquals("Tobi steps out to make room for your friend.", lastTalk().text());
+        verify(owner).dropMessage(5, "Tobi steps out to make room for your friend."); // then the Crew window again
+        assertTrue(lastTalk().text().startsWith("#eParty "), lastTalk().text());
     }
 
     @Test

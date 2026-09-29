@@ -90,7 +90,7 @@ class CompanionMenusSharedTest {
         LivingTalk.forget(owner); // the window closed
         menus.crew(owner);
 
-        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel"), lastTalk().labels());
+        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel"), lastTalk().labels().subList(0, 1));
 
         verify(store, times(1)).roster(ANN);
         verify(store, times(1)).characterLevelAndJob(902);

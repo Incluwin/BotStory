@@ -203,6 +203,24 @@ public final class BenchLedger {
         return UPKEEP_PER_LEVEL_PER_HOUR * Math.max(1, level);
     }
 
+    /**
+     * What these priors credit per hour of bench duty to a companion of {@code level} (the rates a duty picker shows
+     * until P5's measured yields): TRAIN, EXP as a percent of its level (the pace cap aside); FARM_MESO, meso after
+     * upkeep. 0 for any other duty, whose yield is a drop table's or the haul's.
+     */
+    public double projectedPerHour(Assignment duty, int level) {
+        int botLevel = Math.max(1, level);
+        double efficiency = world.config().BENCH_FARM_EFFICIENCY;
+        return switch (duty) {
+            case TRAIN -> {
+                int needed = ExpTable.getExpNeededForLevel(botLevel);
+                yield needed <= 0 ? 0.0d : 100.0d * expPerHour(botLevel) * efficiency / needed;
+            }
+            case FARM_MESO -> KILLS_PER_HOUR * MESO_PER_KILL_PER_LEVEL * botLevel * efficiency * mesoRate() - upkeepPerHour(botLevel);
+            default -> 0.0d;
+        };
+    }
+
     /** Rough EXP/hour a bot of this level earns at a fitting field: one level per (0.5 + level/20) hours. */
     static double expPerHour(int level) {
         double hoursPerLevel = 0.5d + level / 20.0d;

@@ -17,6 +17,7 @@ import tools.PacketCreator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -142,6 +143,15 @@ public final class CompanionMenus {
      * window pops up long after the click.
      */
     void command(Character owner, String name, Supplier<String> action) {
+        command(owner, name, action, line -> outcome(owner, line));
+    }
+
+    /**
+     * {@link #command(Character, String, Supplier)} whose line, when a window may open and the action was quick, is
+     * answered by {@code answer} on the owner's packet thread (a screen rendered again, say) instead of the notes' last
+     * page; otherwise it is pink text as there.
+     */
+    void command(Character owner, String name, Supplier<String> action, Consumer<String> answer) {
         long clickedAtMs = System.currentTimeMillis();
         world.executor().submit(name, () -> {
             String line = action.get();
@@ -151,7 +161,7 @@ public final class CompanionMenus {
             }
             client.runOnIoThread(() -> {
                 if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS && LivingTalk.mayShow(owner)) {
-                    outcome(owner, line);
+                    answer.accept(line);
                 } else {
                     owner.dropMessage(5, line);
                 }
