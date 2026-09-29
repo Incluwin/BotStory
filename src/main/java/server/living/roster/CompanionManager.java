@@ -392,7 +392,7 @@ public final class CompanionManager {
         for (Equip equip : worn) {
             world.store().removeHaul(owner.getId(), persona.id(), equip.getItemId(), 1);
         }
-        CompanionViews.invalidate(world, owner.getId());
+        CompanionViews.invalidate(world, owner.getId(), persona.id());
         int ownerId = owner.getId();
         List<Equip> added = new ArrayList<>(); // read once the mailbox action is done (or was never run)
         AgentMailboxRuntime.dispatch(out.runtime(), entry -> {
@@ -413,7 +413,7 @@ public final class CompanionManager {
             if (!back.isEmpty()) {
                 world.executor().submit("haul.return " + persona.id(), () -> {
                     back.forEach(equip -> world.store().addHaul(ownerId, persona.id(), equip.getItemId(), 1));
-                    CompanionViews.invalidate(world, ownerId);
+                    CompanionViews.invalidate(world, ownerId, persona.id());
                 });
             }
         });

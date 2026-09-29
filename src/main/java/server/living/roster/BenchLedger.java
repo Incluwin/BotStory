@@ -93,7 +93,7 @@ public final class BenchLedger {
             world.store().saveRosterProgress(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
                     entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), entry.accruedExp(), entry.haulMeso(),
                     entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, farmSecondsToday, today));
-            CompanionViews.invalidate(world, entry.characterId());
+            CompanionViews.invalidate(world, entry.characterId(), entry.personaId());
             return;
         }
         int botCharacterId = world.residents().characterIdOf(persona.id());
@@ -167,7 +167,7 @@ public final class BenchLedger {
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), accruedExp, haulMeso,
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, farmSecondsToday, today);
         world.store().saveRosterProgress(updated);
-        CompanionViews.invalidate(world, entry.characterId());
+        CompanionViews.invalidate(world, entry.characterId(), entry.personaId());
         if (note != null) {
             world.store().event(entry.characterId(), entry.personaId(), "bench.ledger", note);
         }
@@ -333,7 +333,7 @@ public final class BenchLedger {
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), 0L, entry.haulMeso(),
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
                 entry.farmSecondsToday(), entry.farmDay()));
-        CompanionViews.invalidate(world, entry.characterId());
+        CompanionViews.invalidate(world, entry.characterId(), entry.personaId());
         world.store().event(entry.characterId(), entry.personaId(), "bench.exp-applied", entry.accruedExp() + " exp -> level " + agent.getLevel());
     }
 

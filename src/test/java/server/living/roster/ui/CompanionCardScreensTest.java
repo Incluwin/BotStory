@@ -62,6 +62,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -414,6 +415,24 @@ class CompanionCardScreensTest {
         assertTrue(again.text().startsWith(CompanionMenus.THINGS_CHANGED + "\r\n#eHadrik#n"), again.text());
         pick("Take a break at camp"); // the re-rendered card acts
         verify(roster).bench(owner, hadrik);
+    }
+
+    @Test
+    void anotherCompanionsArrivalLeavesThisCardFreshButAChangeToThisOneMakesItStale() {
+        // seen live: Garrick arrived (a write to his row) while Ilse's duty picker was open, and "Train" was refused
+        CompanionViews views = cachedViews();
+        rows.addAll(List.of(hadrikRow, miraRow));
+        menus.card(owner, hadrikRow);
+
+        views.invalidate(ANN, "mira"); // Mira's row changed: Hadrik's card is still right
+        pick("Take a break at camp");
+        verify(roster).bench(owner, hadrik);
+
+        menus.card(owner, hadrikRow);
+        views.invalidate(ANN, "hadrik"); // his own row changed: the click re-renders instead of acting
+        pick("Take a break at camp");
+        verify(roster, times(1)).bench(any(), any());
+        assertTrue(lastTalk().text().startsWith(CompanionMenus.THINGS_CHANGED + "\r\n#eHadrik#n"), lastTalk().text());
     }
 
     @Test

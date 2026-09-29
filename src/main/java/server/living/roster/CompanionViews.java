@@ -35,6 +35,8 @@ public final class CompanionViews {
     private final IntFunction<String> itemNames;
     private final Map<Integer, Crew> crews = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicLong> versions = new ConcurrentHashMap<>();
+    /** Owner id -> persona id -> version, for the screens about one companion; made when such a screen is stamped. */
+    private final Map<Integer, Map<String, AtomicLong>> rowVersions = new ConcurrentHashMap<>();
 
     /** One owner's rows, in roster order, with what their views read from the database, and their usual lineup. */
     private record Crew(List<RosterEntry> rows, Map<String, CompanionView.Stored> stored, Set<String> lineup) { }
@@ -55,6 +57,14 @@ public final class CompanionViews {
         CompanionViews views = world == null ? null : world.views();
         if (views != null) {
             views.invalidate(ownerId);
+        }
+    }
+
+    /** As {@link #invalidate(LivingWorld, int)} for a change to one companion's row: only its own screens go stale. */
+    public static void invalidate(LivingWorld world, int ownerId, String personaId) {
+        CompanionViews views = world == null ? null : world.views();
+        if (views != null) {
+            views.invalidate(ownerId, personaId);
         }
     }
 
@@ -122,8 +132,36 @@ public final class CompanionViews {
         return versions.computeIfAbsent(ownerId, id -> new AtomicLong()).get();
     }
 
-    /** Drops the owner's rows: the next render reads them again. */
+    /**
+     * One companion's version, for a screen about that companion alone (its card and pages): bumped by a change to its
+     * row, or by a change to the owner's rows that names no row, but not by another companion's arrival or duty.
+     */
+    public long version(int ownerId, String personaId) {
+        return rowVersions.computeIfAbsent(ownerId, id -> new ConcurrentHashMap<>())
+                .computeIfAbsent(personaId, id -> new AtomicLong()).get();
+    }
+
+    /** Drops the owner's rows: the next render reads them again. Every screen of theirs is stale. */
     public void invalidate(int ownerId) {
+        dropCrew(ownerId);
+        Map<String, AtomicLong> rows = rowVersions.get(ownerId);
+        if (rows != null) {
+            rows.values().forEach(AtomicLong::incrementAndGet);
+        }
+    }
+
+    /** Drops the owner's rows after a change to {@code personaId}'s row: its screens and the crew-wide ones are stale. */
+    public void invalidate(int ownerId, String personaId) {
+        dropCrew(ownerId);
+        Map<String, AtomicLong> rows = rowVersions.get(ownerId);
+        AtomicLong row = rows == null || personaId == null ? null : rows.get(personaId);
+        if (row != null) {
+            row.incrementAndGet();
+        }
+    }
+
+    /** The owner-wide version and the cached rows only (the crew-wide screens). */
+    private void dropCrew(int ownerId) {
         AtomicLong version = versions.get(ownerId);
         if (version == null) {
             return; // nothing of theirs was ever read or stamped, so nothing can be stale (and no entry is made)
@@ -142,9 +180,16 @@ public final class CompanionViews {
         ids.add(event.targetId());
         CompanionDirectory directory = world.directory();
         for (int id : ids) {
-            invalidate(id);
-            if (directory != null) {
-                invalidate(directory.ownerOfCharacter(id));
+            dropCrew(id); // a human's party: their crew-wide screens; a companion's own screens only when it moved
+            int owner = directory == null ? 0 : directory.ownerOfCharacter(id);
+            if (owner != 0) {
+                server.living.config.Content.Persona persona = world.residents() == null ? null
+                        : world.residents().personaOfCharacterId(id);
+                if (persona != null) {
+                    invalidate(owner, persona.id());
+                } else {
+                    invalidate(owner);
+                }
             }
         }
     }

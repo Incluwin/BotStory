@@ -1519,7 +1519,7 @@ public final class RosterService {
             owner.gainMeso((int) Math.min(meso, Integer.MAX_VALUE), true);
             saveHaulMeso(entry, 0L);
         }
-        CompanionViews.invalidate(world, owner.getId()); // the bag emptied
+        CompanionViews.invalidate(world, owner.getId(), persona.id()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.handover", moved + " stacks, " + meso + " meso, skipped " + skipped);
         List<String> given = new ArrayList<>();
         if (meso > 0) {
@@ -1564,7 +1564,7 @@ public final class RosterService {
                     persona.name(), owner.getId());
         }
         saveHaulMeso(entry, 0L);
-        CompanionViews.invalidate(world, owner.getId()); // the bag emptied
+        CompanionViews.invalidate(world, owner.getId(), persona.id()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.duey", haul.size() + " packages, " + meso + " meso");
         int packages = Math.max(1, haul.size()); // the meso alone go in one
         return persona.name() + " sends you " + packages + (packages == 1 ? " package" : " packages")
@@ -2496,7 +2496,7 @@ public final class RosterService {
             return false;
         }
         world.store().saveRoster(next);
-        CompanionViews.invalidate(world, next.characterId());
+        CompanionViews.invalidate(world, next.characterId(), next.personaId());
         if (offFollowState(next.state())) {
             offFollow.add(next.personaId());
         } else {

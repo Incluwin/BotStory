@@ -285,7 +285,7 @@ final class CompanionCardScreens {
      * comes in for one that is out. Both are {@link RosterService#swap}(out, in). {@code prompt} is {@code fixed}'s line.
      */
     private void swapPicker(Character owner, Persona fixed, boolean outgoing, String prompt) {
-        Stamp stamp = stamp(owner, fixed);
+        Stamp stamp = crewStamp(owner, fixed);
         if (row(owner, fixed) == null) {
             notInRoster(owner, fixed);
             return;
@@ -655,26 +655,35 @@ final class CompanionCardScreens {
     // ---- helpers ------------------------------------------------------------------------------
 
     /**
-     * A screen's stamp: the owner's view version taken before the screen reads any row. An option it stamps, picked after
-     * their rows changed, opens the companion's card again with "things changed" instead of acting.
+     * A screen's stamp for a page about {@code persona} alone: its row's version taken before the screen reads it. An
+     * option it stamps, picked after that row changed, opens the card again with "things changed" instead of acting;
+     * another companion's arrival or duty meanwhile leaves it as it was.
      */
     private Stamp stamp(Character owner, Persona persona) {
-        return new Stamp(owner, menus.version(owner), () -> reopen(owner, persona, THINGS_CHANGED));
+        return new Stamp(owner, persona, menus.version(owner, persona), () -> reopen(owner, persona, THINGS_CHANGED));
+    }
+
+    /** A screen that lists other companions (the swap picker): the owner-wide version, as the Crew window uses. */
+    private Stamp crewStamp(Character owner, Persona persona) {
+        return new Stamp(owner, null, menus.version(owner), () -> reopen(owner, persona, THINGS_CHANGED));
     }
 
     private final class Stamp {
         private final Character owner;
+        private final Persona row;
         private final long rendered;
         private final Runnable stale;
 
-        Stamp(Character owner, long rendered, Runnable stale) {
+        Stamp(Character owner, Persona row, long rendered, Runnable stale) {
             this.owner = owner;
+            this.row = row;
             this.rendered = rendered;
             this.stale = stale;
         }
 
         Option option(String label, Runnable action) {
-            return new Option(label, menus.ifUnchanged(owner, rendered, action, stale));
+            return new Option(label, row == null ? menus.ifUnchanged(owner, rendered, action, stale)
+                    : menus.ifUnchanged(owner, row, rendered, action, stale));
         }
     }
 

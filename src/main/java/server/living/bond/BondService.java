@@ -72,7 +72,7 @@ public final class BondService {
                 bond.partySeconds(), bond.leftAtMs(), System.currentTimeMillis());
         world.store().saveBond(updated);
         if (stage != bond.stage()) {
-            server.living.roster.CompanionViews.invalidate(world, chr.getId()); // a card shows the bond
+            server.living.roster.CompanionViews.invalidate(world, chr.getId(), bond.personaId()); // a card shows the bond
         }
         if (delta != 0) {
             world.store().event(chr.getId(), persona.id(), "bond.points", delta + " (" + reason + ") -> " + points);

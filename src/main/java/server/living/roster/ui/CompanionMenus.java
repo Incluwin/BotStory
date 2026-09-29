@@ -150,6 +150,27 @@ public final class CompanionMenus {
         };
     }
 
+    /** One companion's version (its card and pages), taken before the screen reads its row; 0 without a cache. */
+    long version(Character owner, Persona persona) {
+        CompanionViews views = world.views();
+        return views == null ? 0L : views.version(owner.getId(), persona.id());
+    }
+
+    /**
+     * As {@link #ifUnchanged(Character, long, Runnable, Runnable)} for a screen about {@code persona} alone: only a change
+     * to its row (or to the owner's rows naming none) makes the click stale, not another companion's arrival or duty.
+     */
+    Runnable ifUnchanged(Character owner, Persona persona, long rendered, Runnable action, Runnable rerender) {
+        CompanionViews views = world.views();
+        return () -> {
+            if (views != null && views.version(owner.getId(), persona.id()) != rendered) {
+                rerender.run();
+            } else {
+                action.run();
+            }
+        };
+    }
+
     /** What the action did, as the window's last page in the player's notes: the answer to the click; OK closes it. */
     void outcome(Character owner, String line) {
         LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER).ok(line).show();
