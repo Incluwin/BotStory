@@ -316,7 +316,8 @@
   - Only RosterService, running on the executor, writes `state`. A boundary test enforces this. Every existing reader is audited: `BenchSessions.benchGoverned`, BenchLedger, ContractService clocks and ResidentRuntime.
   - NEW `companion_performance` (id BIGINT AI PK, owner_character_id, companion_character_id, persona_id VARCHAR(64), activity VARCHAR(16), outcome VARCHAR(12), duration_s INT, deaths SMALLINT, damage_share DECIMAL(5,4), party_size TINYINT, recorded_at; INDEX(companion_character_id, activity)).
   - No FK is added to `living_roster`. Deletion cleanup is a hook, so that release logic runs (Residents freed, citizens returned).
-- **Changeset `41-companion-bench-learning`** (file `032-...`, P5): NEW `companion_yield` (job_branch, level_band, camp_map_id PK; samples, exp_per_hour, meso_per_hour, items_per_hour, deaths_per_hour, updated_at). This table also holds the bandit's arm statistics.
+- **Changeset `41-companion-crew`** (file `db/tables/032-companion-crew.sql` + `032-companion-crew-down.sql`, P3b): NEW `living_crew` (character_id INT PK, formation VARCHAR(32) NULL, updated_at): the formation an owner set for their whole crew ("SPREAD 80 0"), from the Crew window or a formation order in chat, put back when a companion loads after a relog or a restart. A companion's own place stays in `settings_json`.
+- **Changeset `42-companion-bench-learning`** (file `033-...`, P5): NEW `companion_yield` (job_branch, level_band, camp_map_id PK; samples, exp_per_hour, meso_per_hour, items_per_hour, deaths_per_hour, updated_at). This table also holds the bandit's arm statistics.
 - **`living_persona_state`:** one row per hired hand, with `employed_by` cleared on release. No schema change.
 - **`living_citizen.flags`:** a `hired` token. No schema change.
 - **`living_event_log`** (existing, `LivingStore.event` :669) gets new kinds: `companion.call/bench/expel/hold/overflow/parked/drift/budget_denied/unseated_join/guest`, `hire.offer/hire.accept`, `resident.released`.
@@ -771,7 +772,7 @@ Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after
   - `BenchDutyDispatcher` on the activity runtimes, with every duty mapped to a visible form: field leases, GATHER pickup, STALL/SELL through `AgentFreeMarketStallCapability`/COMMERCE, REST through TownLife, and an optional QUEST duty.
   - Duty-aware end rules. Harvest limited to kill loot and meso. Clean hand-back. The bench-live death and resupply rule (flow 12).
   - The default FieldCatalog camp. The per-owner live quota, with owners online first. The COMMERCE pool. The population sweep exclusion.
-  - Changeset 41, `BenchYieldModel`, "Your call" (`BenchDutyChooser`), and rates shown in the pickers.
+  - Changeset 42, `BenchYieldModel`, "Your call" (`BenchDutyChooser`), and rates shown in the pickers.
   - Bench combat learning in LEARN mode for out-of-sight grinders, with arena-checked adoption (decision 13).
   - "Keep my crew fresh" per decision 15.
   - Wages and upkeep retuned against measured meso/h (decision 19).
@@ -843,6 +844,7 @@ Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after
   - The quota fix: recruit-map filter, plus logging on late in-progress entry. Hooks.
   - **Easy Balrog server authority with companions**, evaluated live. If the human's view is wrong, the fallback pulls the Balrog-only `BossAttackMirror` into P7.
   - Loot NO_BOSS and loot credit. Post-clear return. The EXPEDITION budget pool. The Adobis and Balrog NPC options.
+  - Open item from P3b: the "Leave boss drops to you" setting stands aside inside every event instance today (`AgentLootPolicy`), so a companion in a party boss run (Papulatus, King Pepe and the Yetis, Scarga, Pink Bean) still picks up the boss's drops; the card says "outside boss runs". Here NO_BOSS applies inside boss runs too, except where a PQ session or a reward claim (`AgentEasyBalrogRewardClaimRegistry`) assigns the drop, so bots still take the KPQ pass from King Slime.
 - **Size:** L. **Depends on:** P2b (commitments, travel), P4 (lv50+ supply; `!grantcompanion` for tests), and P6's instance death policy and run recorder.
 - **Verification:**
   - Unit:

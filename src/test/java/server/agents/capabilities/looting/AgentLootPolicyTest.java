@@ -12,15 +12,18 @@ import server.maps.MapItem;
 import server.maps.MapObject;
 import server.maps.MapleMap;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.function.IntPredicate;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -115,9 +118,25 @@ class AgentLootPolicyTest {
     }
 
     @Test
+    void ownKillsNeverReadsTheDamageRecordOfAMonsterStillAlive() {
+        installRule();
+        policies.put(BOT, policy(AgentLootPolicy.Mode.OWN_KILLS, false));
+        Monster alive = monster(false, true);
+        when(alive.isAlive()).thenReturn(true); // a pickpocket's meso: dropped by a monster still fighting
+        MapItem pickpocketed = drop(0, 40, alive, OWNER);
+
+        assertFalse(AgentLootPolicy.permits(bot, pickpocketed), "no kill yet");
+        verify(alive, never()).isAttackedBy(any()); // channel threads still write that record
+
+        MapItem credited = drop(0, 40, alive, BOT);
+        assertTrue(AgentLootPolicy.permits(bot, credited), "credited to it: its own");
+    }
+
+    @Test
     void questOnlyTakesWhatTheHostsQuestsNeedAndMeso() {
         installRule();
-        IntPredicate needs = itemId -> itemId == QUEST_ITEM;
+        List<Character> asked = new ArrayList<>();
+        AgentLootPolicy.QuestNeeds needs = (agent, itemId) -> asked.add(agent) && itemId == QUEST_ITEM;
         policies.put(BOT, new AgentLootPolicy.Policy(AgentLootPolicy.Mode.QUEST_ONLY, false, needs));
 
         MapItem needed = drop(QUEST_ITEM, 0, monster(false, false), OWNER);
@@ -129,6 +148,7 @@ class AgentLootPolicyTest {
         assertFalse(AgentLootPolicy.permits(bot, other));
         assertAllThreeEntryPoints(true, needed);
         assertAllThreeEntryPoints(false, other);
+        assertTrue(asked.stream().allMatch(agent -> agent == bot), "asked with the Agent, whose own bag counts too");
 
         policies.put(BOT, new AgentLootPolicy.Policy(AgentLootPolicy.Mode.QUEST_ONLY, false, null));
         assertFalse(AgentLootPolicy.permits(bot, needed), "no quest answer: no quest item");
@@ -143,7 +163,7 @@ class AgentLootPolicyTest {
         MapItem ordinary = drop(SNAIL_SHELL, 0, monster(false, true), BOT);
         for (AgentLootPolicy.Mode mode : new AgentLootPolicy.Mode[]{AgentLootPolicy.Mode.ALL,
                 AgentLootPolicy.Mode.OWN_KILLS, AgentLootPolicy.Mode.QUEST_ONLY}) {
-            policies.put(BOT, new AgentLootPolicy.Policy(mode, true, itemId -> true));
+            policies.put(BOT, new AgentLootPolicy.Policy(mode, true, (agent, itemId) -> true));
 
             assertFalse(AgentLootPolicy.permits(bot, bossItem), mode.name());
             assertFalse(AgentLootPolicy.permits(bot, bossMeso), mode.name());
@@ -188,7 +208,7 @@ class AgentLootPolicyTest {
     }
 
     private static AgentLootPolicy.Policy policy(AgentLootPolicy.Mode mode, boolean leaveBossDrops) {
-        return new AgentLootPolicy.Policy(mode, leaveBossDrops, itemId -> false);
+        return new AgentLootPolicy.Policy(mode, leaveBossDrops, (agent, itemId) -> false);
     }
 
     private void assertAllThreeEntryPoints(boolean expected, MapItem drop) {

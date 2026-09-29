@@ -33,7 +33,8 @@ import java.util.function.IntFunction;
  * {@code wages} ("paid up for ~2 h" or "working off the haul"), {@code bond} (null when none is kept), {@code guest}
  * (a citizen guest in the owner's party, not a roster row) and {@code committed} (tied to a run: bench, swap and errands
  * wait until it ends). {@link CompanionViews} keeps what comes from the database per owner, so a menu renders with no
- * database read; {@link #of} reads it all at once, for a caller without the cache.</p>
+ * database read; {@link #of} reads it all at once, for a caller without the cache. P3b: {@code jobId} (the Job id
+ * {@code job} names, -1 while unknown), by which the Fighting style page offers support.</p>
  */
 public record CompanionView(String personaId,
                             String name,
@@ -41,6 +42,7 @@ public record CompanionView(String personaId,
                             boolean loaded,
                             int level,
                             String job,
+                            int jobId,
                             String where,
                             int hp,
                             int maxHp,
@@ -89,14 +91,14 @@ public record CompanionView(String personaId,
         if (bot != null) {
             int level = bot.getLevel();
             return new CompanionView(entry.personaId(), stored.name, entry.state(), true, level, jobName(bot.getJob().getId()),
-                    mapName(bot), bot.getHp(), bot.getCurrentMaxHp(), stored.duty,
+                    bot.getJob().getId(), mapName(bot), bot.getHp(), bot.getCurrentMaxHp(), stored.duty,
                     bankedPercent(entry.accruedExp(), level), travelMs, bot.getMp(), bot.getCurrentMaxMp(),
                     expPercent(bot.getExp(), level), stored.camp, stored.farmed, stored.farmGoal, stored.farmItem,
                     entry.haulMeso(), stored.haulStacks, wages, stored.bond, false, committed);
         }
         int[] levelJob = stored.levelJob(world);
         return new CompanionView(entry.personaId(), stored.name, entry.state(), false, levelJob[0], jobName(levelJob[1]),
-                stored.camp, 0, 0, stored.duty, bankedPercent(entry.accruedExp(), levelJob[0]), travelMs, 0, 0, -1,
+                levelJob[1], stored.camp, 0, 0, stored.duty, bankedPercent(entry.accruedExp(), levelJob[0]), travelMs, 0, 0, -1,
                 stored.camp, stored.farmed, stored.farmGoal, stored.farmItem, entry.haulMeso(), stored.haulStacks, wages,
                 stored.bond, false, committed);
     }
@@ -105,7 +107,7 @@ public record CompanionView(String personaId,
     static CompanionView guest(Character citizen, String key) {
         int level = citizen.getLevel();
         return new CompanionView(key, citizen.getName(), RosterState.ACTIVE, true, level, jobName(citizen.getJob().getId()),
-                mapName(citizen), citizen.getHp(), citizen.getCurrentMaxHp(), "", 0, 0L, citizen.getMp(), citizen.getCurrentMaxMp(),
+                citizen.getJob().getId(), mapName(citizen), citizen.getHp(), citizen.getCurrentMaxHp(), "", 0, 0L, citizen.getMp(), citizen.getCurrentMaxMp(),
                 expPercent(citizen.getExp(), level), "", 0, 0, "", 0L, 0, "", null, true, false);
     }
 

@@ -89,8 +89,6 @@ final class CompanionCardScreens {
     /** The wages box, in hours: where it starts, and the most paid ahead at once (a week). */
     private static final int WAGE_HOURS_DEFAULT = 2;
     private static final int WAGE_HOURS_MAX = 168;
-    /** The coin box: where it starts (at most what the owner has). */
-    private static final int COIN_DEFAULT = 1_000;
     /** A setting's note on its pick while it is the companion's setting now. */
     private static final String NOW = " - now";
     /** A disabled option's note while the companion is tied to a run (bench, swap, errands and camp wait for it). */
@@ -568,16 +566,19 @@ final class CompanionCardScreens {
 
     /**
      * "Fighting style...": where it stands in its owner's formation (a formation of its own, or with the others) and the
-     * support it gives, each with its setting now. A pick is saved on companion-ops and answered in its own words on top
-     * of this page again, which has Back to the card. Nothing here changes a seat, so nothing waits for a run.
+     * support it can give (heals only a healer, party buffs a job that has one), each with its setting now. A pick is
+     * saved on companion-ops and answered in its own words on top of this page again, which has Back to the card.
+     * Nothing here changes a seat, so nothing waits for a run.
      */
     private void fightingStyle(Character owner, Persona persona, String note) {
         Stamp stamp = stamp(owner, persona);
-        CompanionSettings own = row(owner, persona) == null ? null : menus.manager().settings(owner, persona);
-        if (own == null) {
+        RosterEntry entry = row(owner, persona);
+        if (entry == null) {
             notInRoster(owner, persona);
             return;
         }
+        CompanionSettings own = own(owner, persona);
+        int jobId = menus.view(owner, entry).jobId();
         List<Option> options = new ArrayList<>();
         options.add(Option.heading("#eWhere I stand:#n"));
         options.add(stamp.option("With the others" + now(own.formation() == null),
@@ -588,6 +589,9 @@ final class CompanionCardScreens {
         }
         options.add(Option.heading("#eSupport:#n"));
         for (Support toggle : Support.values()) {
+            if (!toggle.offeredTo(jobId)) {
+                continue; // no heals in a fighter's book, no party buff in a hunter's: nothing to promise
+            }
             boolean on = own.support(toggle);
             options.add(stamp.option(supportLabel(toggle) + ": " + onOff(on), () -> setSupport(owner, persona, toggle, !on)));
         }
@@ -611,18 +615,19 @@ final class CompanionCardScreens {
 
     /**
      * "Supplies & loot...": what it carries, the HP and MP percentages it drinks a potion below (each in the stock
-     * number box, starting at its setting now), what it picks up, whether it leaves a boss's drops to people, and some
-     * coin for its supplies (a number box up to what the owner has). A change is saved on companion-ops and answered on
-     * top of this page again, which has Back to the card. Nothing here changes a seat, so nothing waits for a run.
+     * number box, starting at its setting now), what it picks up, whether it leaves a boss's drops to the owner outside
+     * boss runs (inside one the run's own loot rules decide), and some coin for its supplies (a number box up to what
+     * the owner has, 0 to change their mind). A change is saved on companion-ops and answered on top of this page
+     * again, which has Back to the card. Nothing here changes a seat, so nothing waits for a run.
      */
     private void supplies(Character owner, Persona persona, String note) {
         Stamp stamp = stamp(owner, persona);
         RosterEntry entry = row(owner, persona);
-        CompanionSettings own = entry == null ? null : menus.manager().settings(owner, persona);
-        if (own == null) {
+        if (entry == null) {
             notInRoster(owner, persona);
             return;
         }
+        CompanionSettings own = own(owner, persona);
         List<Option> options = new ArrayList<>();
         options.add(stamp.option("Drink an HP potion below " + own.hpPercent() + "%...",
                 () -> potionBox(owner, persona, true, own.hpPercent())));
@@ -633,7 +638,7 @@ final class CompanionCardScreens {
             options.add(stamp.option(lootLabel(mode) + now(mode == own.loot()), () -> setLoot(owner, persona, mode)));
         }
         boolean leave = own.leaveBossDrops();
-        options.add(stamp.option("Leave boss drops to people: " + onOff(leave),
+        options.add(stamp.option("Leave boss drops to you outside boss runs: " + onOff(leave),
                 () -> setLeaveBossDrops(owner, persona, !leave)));
         if (owner.getMeso() > 0) {
             options.add(stamp.option("Here's some coin for supplies...", () -> coinBox(owner, persona)));
@@ -682,7 +687,10 @@ final class CompanionCardScreens {
                 .show();
     }
 
-    /** How much meso to give, in the stock number box, up to what the owner has; it thanks them in its own words. */
+    /**
+     * How much meso to give, in the stock number box, up to what the owner has; it thanks them in its own words. The
+     * box starts at 0, which gives nothing and opens the page again: Enter on the default never empties a purse.
+     */
     private void coinBox(Character owner, Persona persona) {
         int purse = owner.getMeso();
         if (purse <= 0) {
@@ -690,10 +698,16 @@ final class CompanionCardScreens {
             return;
         }
         LivingTalk.open(owner, portrait(persona))
-                .number(String.format(Locale.ROOT, "how much? you have %,d meso.", purse), Math.min(COIN_DEFAULT, purse),
-                        1, purse, meso -> menus.command(owner, "menu.supplies.coin",
-                                () -> RosterVoice.line(persona, menus.manager().giveCoin(owner, persona, meso)),
-                                line -> supplies(owner, persona, line)))
+                .number(String.format(Locale.ROOT, "how much? you have %,d meso. (0: never mind)", purse), 0, 0, purse,
+                        meso -> {
+                            if (meso <= 0) {
+                                supplies(owner, persona, "");
+                                return;
+                            }
+                            menus.command(owner, "menu.supplies.coin",
+                                    () -> RosterVoice.line(persona, menus.manager().giveCoin(owner, persona, meso)),
+                                    line -> supplies(owner, persona, line));
+                        })
                 .show();
     }
 
@@ -706,8 +720,16 @@ final class CompanionCardScreens {
     private void setLeaveBossDrops(Character owner, Persona persona, boolean leave) {
         menus.command(owner, "menu.supplies.boss_drops", () -> said(persona,
                 menus.manager().setLeaveBossDrops(owner, persona, leave),
-                leave ? "ok, boss drops are for people." : "ok, i'll pick up boss drops too."),
+                leave ? "ok, boss drops are yours." : "ok, i'll pick up boss drops too."),
                 line -> supplies(owner, persona, line));
+    }
+
+    /**
+     * The companion's settings as the applier keeps them (its row was checked in the cache already): no roster row is
+     * read again for a render.
+     */
+    private CompanionSettings own(Character owner, Persona persona) {
+        return world.roster().settings().settings(owner.getId(), persona.id());
     }
 
     /** A settings change's line: the companion's own words when it went through, else why not. */
@@ -719,7 +741,7 @@ final class CompanionCardScreens {
         return switch (mode) {
             case ALL -> "Everything";
             case OWN_KILLS -> "Only what I hit";
-            case QUEST_ONLY -> "Only what your quests need";
+            case QUEST_ONLY -> "Meso and your quest items";
             case NONE -> "Nothing";
         };
     }
@@ -842,13 +864,28 @@ final class CompanionCardScreens {
         }
         CompanionView view = menus.view(owner, entry);
         String haul = view.haul().isEmpty() ? "nothing" : view.haul() + ", handed over first (Duey takes what doesn't fit)";
+        long purse = purse(persona, entry, view);
         String text = "Part ways with " + persona.name() + " for good?\r\n\r\nBond: " + bondName(view.bond()) + "\r\nHaul: "
-                + haul + (view.committed() ? "\r\n" + persona.name() + " finishes the run first." : "");
+                + haul + (purse > 0L ? String.format(Locale.ROOT, "\r\nPurse: %,d meso (stays with %s)", purse,
+                persona.name()) : "") + (view.committed() ? "\r\n" + persona.name() + " finishes the run first." : "");
         LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER)
                 .yesNo(text, menus.ifUnchanged(owner, rendered, () -> menus.command(owner, persona, "menu.release",
                         () -> RosterVoice.line(persona, menus.manager().release(owner, persona))),
                         () -> reopen(owner, persona, THINGS_CHANGED)), null)
                 .show();
+    }
+
+    /**
+     * The meso in the companion's own purse (what it was given for supplies, and its pocket money): its loaded
+     * character's, else its characters row's (one read, as the haul page reads the haul); -1 when unknown.
+     */
+    private long purse(Persona persona, RosterEntry entry, CompanionView view) {
+        Character bot = view.loaded() ? world.roster().companion(entry) : null;
+        if (bot != null) {
+            return bot.getMeso();
+        }
+        int characterId = world.residents().characterIdOf(persona.id());
+        return characterId == 0 ? -1L : world.store().characterMeso(characterId);
     }
 
     /** "Trusted"; "none yet" with no bond kept. */

@@ -223,6 +223,10 @@ public final class BenchSessions {
             }
             world.bench().applyAccrued(entry, agent);
             AgentInteractionRuntime.registerSelfDirectedAgent(agent);
+            CompanionSettingsApplier settings = world.roster().settings();
+            if (settings != null) { // a test's roster may have none
+                settings.bind(agent, entry.characterId(), persona.id()); // it drinks by its own potion % here too (P3b)
+            }
             Session session = new Session(persona.id(), entry.characterId(), characterId, entry.assignment(), now);
             snapshot(session, agent);
             live.put(persona.id(), session);
@@ -318,6 +322,20 @@ public final class BenchSessions {
         }
         world.leases().release(session.characterId, CompanionLeases.Kind.BENCH_LIVE); // saved first, so the next load sees it
         world.store().event(session.ownerId, session.personaId, "bench.live-end", reason);
+    }
+
+    /**
+     * Meso its owner just gave a companion on a live slice (CompanionManager.giveCoin, on companion-ops, as the harvest
+     * runs): the purse the harvest measures from rises with it, so the coin stays in the companion's own purse and is
+     * never taken for farmed meso. False when it has no live slice.
+     */
+    public boolean gift(String personaId, int meso) {
+        Session session = live.get(personaId);
+        if (session == null) {
+            return false;
+        }
+        session.meso += meso;
+        return true;
     }
 
     /** Ends a live session before the character is needed elsewhere (call, release, shutdown). */

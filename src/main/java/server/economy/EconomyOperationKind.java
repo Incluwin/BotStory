@@ -11,5 +11,7 @@ public enum EconomyOperationKind {
     SCROLL_APPLY,
     QUEST_START,
     QUEST_TURN_IN,
-    VENUE_SUBSIDY
+    VENUE_SUBSIDY,
+    /** A companion's owner gives it coin for its supplies (docs/BOT_MANAGEMENT_PLAN.md P3b). */
+    COMPANION_GIFT
 }

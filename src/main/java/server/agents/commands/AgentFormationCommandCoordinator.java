@@ -2,6 +2,7 @@ package server.agents.commands;
 
 import client.Character;
 import server.agents.capabilities.movement.AgentFormationCommandService;
+import server.agents.capabilities.movement.AgentFormationHook;
 import server.agents.capabilities.movement.AgentFormationService;
 import server.agents.integration.AgentDialogueTransportRuntime;
 
@@ -24,7 +25,10 @@ public final class AgentFormationCommandCoordinator {
                                 AgentFormationService.formationsByLeaderId(),
                                 leaderCharId,
                                 fallbackFormation),
-                        AgentFormationService.formationsByLeaderId()::put,
+                        (leaderCharId, formation) -> {
+                            AgentFormationService.formationsByLeaderId().put(leaderCharId, formation);
+                            AgentFormationHook.formationSet(leader, formation); // the host keeps it (owner-free seam)
+                        },
                         AgentFormationService::applyOffsets,
                         AgentDialogueTransportRuntime::queueReply,
                         Character::yellowMessage,

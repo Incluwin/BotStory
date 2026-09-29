@@ -23,6 +23,7 @@ import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionSettings;
 import server.living.roster.CompanionSettings.Support;
+import server.living.roster.CompanionSettingsApplier;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionViews;
 import server.living.roster.DirectExecutor;
@@ -50,6 +51,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -62,10 +65,12 @@ import static org.mockito.Mockito.when;
  * The P3b pages of the companion card (docs/BOT_MANAGEMENT_PLAN.md "P3b: Companion settings", "Player experience >
  * Companion card"): "Fighting style..." (its own place in the formation, or with the others, and its support toggles)
  * and "Supplies & loot..." (what it carries, the potion percentages in the number box, what it picks up, boss drops,
- * and coin for its supplies). Each shows the setting now, is on the card and the bench card, and has Back to the card;
- * a change goes to CompanionManager on companion-ops and is answered in the companion's words on top of the page again.
- * A click after its row changed opens the card with "things changed" instead; a number outside the box, End Chat and
- * a companion no longer in the roster change nothing; settings never wait for a run.
+ * and coin for its supplies). Each shows the setting now (as CompanionSettingsApplier keeps it: no roster row is read
+ * again to render), is on the card and the bench card, and has Back to the card; a change goes to CompanionManager on
+ * companion-ops and is answered in the companion's words on top of the page again. Support is offered only as the
+ * companion's job has it to give; the coin box starts at 0, which gives nothing. A click after its row changed opens
+ * the card with "things changed" instead; a number outside the box, End Chat and a companion no longer in the roster
+ * change nothing; settings never wait for a run. Parting ways shows the purse that stays with the companion.
  */
 class CompanionSettingsScreensTest {
     private static final int ANN = 10;
@@ -74,7 +79,7 @@ class CompanionSettingsScreensTest {
     private static final byte MENU = 4;
     private static final byte NUMBER = 3;
     private static final List<String> STYLE = List.of("With the others - now", "Stay close", "Give me room", "Spread out",
-            "Keep to my left", "Keep to my right", "Party buffs: on", "Party heals: on", "Buff potions: off", "Back");
+            "Keep to my left", "Keep to my right", "Party buffs: on", "Buff potions: off", "Back"); // a Fighter: no heals
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingContent content = mock(LivingContent.class);
@@ -83,6 +88,7 @@ class CompanionSettingsScreensTest {
     private final ResidentRuntime residents = mock(ResidentRuntime.class);
     private final CompanionSlots slots = mock(CompanionSlots.class);
     /** Every roster verb goes through ("Ok"); {@link #own} is what settings() answers. */
+    private final CompanionSettingsApplier applier = mock(CompanionSettingsApplier.class);
     private final CompanionManager manager = mock(CompanionManager.class,
             inv -> inv.getMethod().getReturnType() == RosterResult.class ? new RosterResult.Ok("")
                     : Mockito.RETURNS_DEFAULTS.answer(inv));
@@ -98,7 +104,7 @@ class CompanionSettingsScreensTest {
     private final Map<Integer, String> places = Map.of(105040300, "Ant Tunnel I");
     private List<String> potions = List.of("38 Red Potions", "20 Blue Potions");
     /** Hadrik's settings as the manager keeps them: the defaults (70% / 50%, everything, boss drops left). */
-    private CompanionSettings own = new CompanionSettings(70, 50, Mode.ALL, true, true, true, false, null);
+    private CompanionSettings own = new CompanionSettings(70, 50, Mode.ALL, true, true, true, false, null, false);
 
     private MockedStatic<LivingWorld> livingWorld;
     private CompanionMenus menus;
@@ -118,6 +124,8 @@ class CompanionSettingsScreensTest {
         }).when(client).runOnIoThread(any());
         when(world.content()).thenReturn(content);
         when(world.roster()).thenReturn(roster);
+        when(roster.settings()).thenReturn(applier);
+        when(applier.settings(eq(ANN), anyString())).thenAnswer(inv -> own); // what the pages render from
         when(world.store()).thenReturn(store);
         when(world.residents()).thenReturn(residents);
         when(world.config()).thenReturn(new LivingWorldConfig());
@@ -219,7 +227,26 @@ class CompanionSettingsScreensTest {
         pick("Fighting style...");
 
         assertEquals(List.of("With the others", "Stay close", "Give me room", "Spread out", "Keep to my left - now",
-                "Keep to my right", "Party buffs: off", "Party heals: on", "Buff potions: on", "Back"), lastTalk().labels());
+                "Keep to my right", "Party buffs: off", "Buff potions: on", "Back"), lastTalk().labels());
+    }
+
+    @Test
+    void theSupportOfferedIsWhatItsJobHasToGive() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        menus.card(owner, miraRow); // a Hunter: no party buff before Sharp Eyes, no heals
+
+        pick("Fighting style...");
+
+        assertEquals(List.of("With the others - now", "Stay close", "Give me room", "Spread out", "Keep to my left",
+                "Keep to my right", "Buff potions: off", "Back"), lastTalk().labels());
+
+        LivingTalk.forget(owner);
+        when(hadrikBot.getJob()).thenReturn(Job.CLERIC);
+        menus.card(owner, hadrikRow);
+        pick("Fighting style...");
+        assertTrue(lastTalk().labels().containsAll(List.of("Party buffs: on", "Party heals: on", "Buff potions: off")),
+                lastTalk().labels().toString());
+        verify(manager, never()).settings(any(), any()); // rendered from the applier's memory, no roster row read
     }
 
     @Test
@@ -277,7 +304,7 @@ class CompanionSettingsScreensTest {
         menus.card(owner, hadrikRow);
         pick("Fighting style...");
 
-        pick("Party heals: on");
+        pick("Party buffs: on");
 
         assertTrue(lastTalk().text().startsWith("Hadrik is not out with you right now.\r\nhow should i fight?"),
                 lastTalk().text());
@@ -298,7 +325,7 @@ class CompanionSettingsScreensTest {
                 page.text());
         assertTrue(page.text().contains("#l\r\n#eWhat I pick up:#n\r\n#L"), page.text());
         assertEquals(List.of("Drink an HP potion below 70%...", "Drink an MP potion below 50%...", "Everything - now",
-                "Only what I hit", "Only what your quests need", "Nothing", "Leave boss drops to people: on",
+                "Only what I hit", "Meso and your quest items", "Nothing", "Leave boss drops to you outside boss runs: on",
                 "Here's some coin for supplies...", "Back"), page.labels());
         pick("Back");
         assertTrue(lastTalk().text().startsWith("#eHadrik#n"), "Back is the card again");
@@ -403,7 +430,7 @@ class CompanionSettingsScreensTest {
         assertTrue(again.text().startsWith("Hadrik: ok, only what i hit.\r\ni carry"), again.text());
         assertTrue(again.labels().containsAll(List.of("Everything", "Only what I hit - now")), again.labels().toString());
 
-        pick("Only what your quests need");
+        pick("Meso and your quest items");
         verify(manager).setLootPolicy(owner, hadrik, Mode.QUEST_ONLY);
         assertTrue(lastTalk().text().startsWith("Hadrik: ok, only meso and what your quests need.\r\n"), lastTalk().text());
 
@@ -413,7 +440,7 @@ class CompanionSettingsScreensTest {
     }
 
     @Test
-    void leaveBossDropsToPeopleTurnsTheOtherWay() {
+    void leaveBossDropsToYouTurnsTheOtherWay() {
         rows.add(hadrikRow);
         when(manager.setLeaveBossDrops(any(), any(), anyBoolean())).thenAnswer(inv -> {
             own = own.withLeaveBossDrops(inv.getArgument(2));
@@ -422,13 +449,13 @@ class CompanionSettingsScreensTest {
         menus.card(owner, hadrikRow);
         pick("Supplies & loot...");
 
-        pick("Leave boss drops to people: on");
+        pick("Leave boss drops to you outside boss runs: on");
 
         verify(manager).setLeaveBossDrops(owner, hadrik, false);
         assertTrue(lastTalk().text().startsWith("Hadrik: ok, i'll pick up boss drops too.\r\n"), lastTalk().text());
-        pick("Leave boss drops to people: off");
+        pick("Leave boss drops to you outside boss runs: off");
         verify(manager).setLeaveBossDrops(owner, hadrik, true);
-        assertTrue(lastTalk().text().startsWith("Hadrik: ok, boss drops are for people.\r\n"), lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik: ok, boss drops are yours.\r\n"), lastTalk().text());
     }
 
     @Test
@@ -442,8 +469,8 @@ class CompanionSettingsScreensTest {
 
         Talk box = lastTalk();
         assertEquals(NUMBER, box.msgType());
-        assertEquals("how much? you have 12,000 meso.", box.text());
-        assertEquals(List.of(1_000, 1, 12_000), numberBounds(lastTalkPacket()), "never more than Ann has");
+        assertEquals("how much? you have 12,000 meso. (0: never mind)", box.text());
+        assertEquals(List.of(0, 0, 12_000), numberBounds(lastTalkPacket()), "from nothing, never more than Ann has");
         answer(NUMBER, 1, 2_500);
 
         verify(manager).giveCoin(owner, hadrik, 2_500L);
@@ -451,18 +478,47 @@ class CompanionSettingsScreensTest {
     }
 
     @Test
-    void aFewMesoStartTheBoxAtAllOfThemAndMoreThanTheBoxGivesNothing() {
+    void aFewMesoStillStartTheBoxAtNothingAndMoreThanTheBoxGivesNothing() {
         rows.add(hadrikRow);
         when(owner.getMeso()).thenReturn(300);
         menus.card(owner, hadrikRow);
         pick("Supplies & loot...");
         pick("Here's some coin for supplies...");
-        assertEquals(List.of(300, 1, 300), numberBounds(lastTalkPacket()));
+        assertEquals(List.of(0, 0, 300), numberBounds(lastTalkPacket()), "Enter on it never empties a small purse");
 
         answer(NUMBER, 1, 301);
 
         assertFalse(LivingTalk.active(client));
         verify(manager, never()).giveCoin(any(), any(), anyLong());
+    }
+
+    @Test
+    void enterOnTheBoxsNothingGivesNothingAndOpensThePageAgain() {
+        rows.add(hadrikRow);
+        menus.card(owner, hadrikRow);
+        pick("Supplies & loot...");
+        pick("Here's some coin for supplies...");
+
+        answer(NUMBER, 1, 0);
+
+        verify(manager, never()).giveCoin(any(), any(), anyLong());
+        assertEquals(MENU, lastTalk().msgType(), "back on the page, not out of the conversation");
+        assertTrue(lastTalk().text().startsWith("i carry 12,300 meso"), lastTalk().text());
+    }
+
+    @Test
+    void partingWaysShowsThePurseThatStaysWithIt() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        menus.card(owner, miraRow);
+
+        pick("We should part ways");
+
+        assertTrue(lastTalk().text().contains("\r\nPurse: 4,500 meso (stays with Mira)"), lastTalk().text());
+        LivingTalk.forget(owner);
+        when(store.characterMeso(901)).thenReturn(0L);
+        menus.card(owner, miraRow);
+        pick("We should part ways");
+        assertFalse(lastTalk().text().contains("Purse:"), "an empty purse says nothing");
     }
 
     @Test

@@ -466,6 +466,7 @@ public final class RosterService {
         world.slots().stopWaiting(personaId);
         write(entry.with(RosterState.RELEASED, System.currentTimeMillis()));
         world.store().deleteRoster(ownerId, personaId);
+        settings.forget(ownerId, personaId); // its settings went with the row: a later recruit starts from the defaults
         ownerByPersona.remove(personaId);
         if (world.store().roster(ownerId).isEmpty()) {
             owners.remove(ownerId);

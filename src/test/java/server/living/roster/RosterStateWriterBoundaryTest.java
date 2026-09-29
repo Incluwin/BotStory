@@ -68,7 +68,7 @@ class RosterStateWriterBoundaryTest {
     }
 
     @Test
-    void changeset40IsRegisteredLastWithItsRollback() throws IOException {
+    void changesets40And41AreRegisteredLastWithTheirRollbacks() throws IOException {
         String changelog = Files.readString(CHANGELOG);
         int start = changelog.indexOf("<changeSet id=\"40-companion-manager\"");
         assertTrue(start >= 0, "changeset 40 is registered");
@@ -76,17 +76,32 @@ class RosterStateWriterBoundaryTest {
         assertTrue(changeSet.contains("<sqlFile path=\"db/tables/031-companion-manager.sql\""));
         assertTrue(changeSet.contains("<sqlFile path=\"db/tables/031-companion-manager-down.sql\""));
         assertTrue(changeSet.indexOf("<rollback>") < changeSet.indexOf("031-companion-manager-down.sql"));
+        // P3b: the crews' formations (living_crew), right after it
+        int crew = changelog.indexOf("<changeSet id=\"41-companion-crew\"");
+        assertTrue(crew > start, "changeset 41 is registered after 40");
+        String crewSet = changelog.substring(crew, changelog.indexOf("</changeSet>", crew));
+        assertTrue(crewSet.contains("<sqlFile path=\"db/tables/032-companion-crew.sql\""));
+        assertTrue(crewSet.indexOf("<rollback>") < crewSet.indexOf("032-companion-crew-down.sql"));
         Matcher ids = Pattern.compile("<changeSet id=\"(\\d+)").matcher(changelog);
         int highest = 0;
         int forty = 0;
+        int fortyOne = 0;
         while (ids.find()) {
             int id = Integer.parseInt(ids.group(1));
             highest = Math.max(highest, id);
             forty += id == 40 ? 1 : 0;
+            fortyOne += id == 41 ? 1 : 0;
         }
-        assertEquals(40, highest);
+        assertEquals(41, highest);
         assertEquals(1, forty);
-        assertEquals(changelog.lastIndexOf("<changeSet "), start);
+        assertEquals(1, fortyOne);
+        assertEquals(changelog.lastIndexOf("<changeSet "), crew);
+        String up = Files.readString(Path.of("src/main/resources/db/tables/032-companion-crew.sql"));
+        assertTrue(up.contains("CREATE TABLE IF NOT EXISTS living_crew"));
+        assertTrue(up.contains("formation       VARCHAR(32)"));
+        assertFalse(up.toUpperCase().contains("REFERENCES"), "no foreign key, as living_roster");
+        assertTrue(Files.readString(Path.of("src/main/resources/db/tables/032-companion-crew-down.sql"))
+                .contains("DROP TABLE IF EXISTS living_crew"));
     }
 
     @Test

@@ -1,7 +1,8 @@
 package server.living.roster;
 
+import client.Job;
 import org.junit.jupiter.api.Test;
-import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
+import server.agents.capabilities.dialogue.AgentChatToggleHook;
 import server.agents.capabilities.looting.AgentLootPolicy;
 import server.agents.runtime.AgentRuntimeConfig;
 
@@ -11,8 +12,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * A companion's settings as settings_json (docs/BOT_MANAGEMENT_PLAN.md P3b): the defaults are today's behaviour and
- * write nothing, every setting survives the round trip, and parsing is defensive (unknown keys ignored, a bad value
- * takes its default, unreadable JSON is the defaults). The support phrases are the Agent toggles' own.
+ * write nothing, every setting survives the round trip, potion percentages the owner chose are kept whatever the
+ * configuration says later, and parsing is defensive (unknown keys ignored, a bad value takes its default, unreadable
+ * JSON is the defaults). The support toggles are the Agent chat toggles', offered only to a job that has them.
  */
 class CompanionSettingsTest {
     @Test
@@ -66,11 +68,59 @@ class CompanionSettingsTest {
     }
 
     @Test
-    void onlyWhatDiffersFromTheDefaultsIsWritten() {
-        assertEquals("{\"hp\":40}", CompanionSettings.defaults().withPotions(40, 50).toJson());
+    void onlyWhatDiffersFromTheDefaultsIsWrittenButChosenPotionsAlways() {
+        assertEquals("{\"hp\":40,\"mp\":50}", CompanionSettings.defaults().withPotions(40, 50).toJson());
         assertEquals("{\"loot\":\"NONE\"}", CompanionSettings.defaults().withLoot(AgentLootPolicy.Mode.NONE).toJson());
         assertEquals("{\"leaveBossDrops\":false}", CompanionSettings.defaults().withLeaveBossDrops(false).toJson());
-        assertEquals("{}", CompanionSettings.defaults().withPotions(70, 50).toJson(), "70/50 keeps following the config");
+        assertEquals("{\"hp\":70,\"mp\":50}", CompanionSettings.defaults().withPotions(70, 50).toJson(),
+                "chosen, even at the configured values");
+        assertFalse(CompanionSettings.defaults().withPotions(70, 50).potionsAsConfigured());
+        assertTrue(CompanionSettings.parse("{\"loot\":\"NONE\"}").potionsAsConfigured(), "never chosen");
+    }
+
+    @Test
+    void chosenPotionsStayWhenTheConfigurationChangesAndUntouchedOnesFollowIt() {
+        float hp = AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH;
+        float mp = AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH;
+        String chosen = CompanionSettings.defaults().withPotions(70, 50).toJson();
+        String other = CompanionSettings.defaults().withPotions(60, 40).withLoot(AgentLootPolicy.Mode.NONE).toJson();
+        try {
+            AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH = 0.6f; // the tuning moves the default onto one of them
+            AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH = 0.4f;
+
+            CompanionSettings kept = CompanionSettings.parse(chosen);
+            assertEquals(70, kept.hpPercent(), "the owner's 70% stays 70%");
+            assertEquals(50, kept.mpPercent());
+            assertFalse(kept.potionsAsConfigured());
+            CompanionSettings resaved = CompanionSettings.parse(CompanionSettings.parse(other)
+                    .withLoot(AgentLootPolicy.Mode.ALL).toJson());
+            assertEquals(60, resaved.hpPercent(), "another field's save keeps a choice the new default equals");
+            assertEquals(40, resaved.mpPercent());
+            assertFalse(resaved.potionsAsConfigured());
+            assertEquals(60, CompanionSettings.parse("{}").hpPercent(), "untouched: follows the configuration");
+        } finally {
+            AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH = hp;
+            AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH = mp;
+        }
+    }
+
+    @Test
+    void theDefaultsStayWithinWhatTheNumberBoxTakes() {
+        float hp = AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH;
+        float mp = AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH;
+        try {
+            AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH = 0.95f;
+            AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH = 0.05f;
+
+            CompanionSettings defaults = CompanionSettings.defaults();
+            assertEquals(CompanionSettings.MAX_POTION_PERCENT, defaults.hpPercent());
+            assertEquals(CompanionSettings.MIN_POTION_PERCENT, defaults.mpPercent());
+            assertTrue(CompanionSettings.potionPercent(defaults.hpPercent()), "changing only MP is never refused");
+            assertTrue(defaults.potionsAsConfigured(), "still drinks as configured until the owner chooses");
+        } finally {
+            AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH = hp;
+            AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH = mp;
+        }
     }
 
     @Test
@@ -97,22 +147,37 @@ class CompanionSettingsTest {
     }
 
     @Test
-    void theSupportPhrasesAreTheAgentTogglesOwn() {
-        assertTrue(AgentChatCommandClassifier.isSupportOnCommand(CompanionSettings.Support.BUFFS.phrase(true)));
-        assertTrue(AgentChatCommandClassifier.isSupportOffCommand(CompanionSettings.Support.BUFFS.phrase(false)));
-        assertTrue(AgentChatCommandClassifier.isHealsOnCommand(CompanionSettings.Support.HEALS.phrase(true)));
-        assertTrue(AgentChatCommandClassifier.isHealsOffCommand(CompanionSettings.Support.HEALS.phrase(false)));
-        assertTrue(AgentChatCommandClassifier.isBuffConsumablesOnCommand(CompanionSettings.Support.BUFF_POTIONS.phrase(true)));
-        assertTrue(AgentChatCommandClassifier.isBuffConsumablesOffCommand(CompanionSettings.Support.BUFF_POTIONS.phrase(false)));
+    void theSupportTogglesAreTheAgentChatTogglesOwn() {
+        assertEquals(CompanionSettings.Support.BUFFS, CompanionSettings.Support.of(AgentChatToggleHook.Toggle.SKILL_BUFFS));
+        assertEquals(CompanionSettings.Support.HEALS, CompanionSettings.Support.of(AgentChatToggleHook.Toggle.SUPPORT_HEALS));
+        assertEquals(CompanionSettings.Support.BUFF_POTIONS,
+                CompanionSettings.Support.of(AgentChatToggleHook.Toggle.BUFF_CONSUMABLES));
+    }
+
+    @Test
+    void healsAreOfferedToTheClericLineAndPartyBuffsToAJobThatHasOne() {
+        CompanionSettings.Support heals = CompanionSettings.Support.HEALS;
+        CompanionSettings.Support buffs = CompanionSettings.Support.BUFFS;
+        for (Job healer : new Job[]{Job.CLERIC, Job.PRIEST, Job.BISHOP}) {
+            assertTrue(heals.offeredTo(healer.getId()), healer.name());
+        }
+        for (Job other : new Job[]{Job.BEGINNER, Job.WARRIOR, Job.FIGHTER, Job.MAGICIAN, Job.FP_WIZARD, Job.HUNTER,
+                Job.ASSASSIN, Job.BRAWLER}) {
+            assertFalse(heals.offeredTo(other.getId()), other.name());
+        }
+        // Rage, Iron Will and Hyper Body, Meditation, Bless, Haste from the second job; Maple Warrior at the fourth
+        for (Job buffer : new Job[]{Job.FIGHTER, Job.CRUSADER, Job.HERO, Job.SPEARMAN, Job.FP_WIZARD, Job.IL_WIZARD,
+                Job.CLERIC, Job.ASSASSIN, Job.HERMIT, Job.BANDIT, Job.PALADIN, Job.BOWMASTER, Job.MARKSMAN, Job.BUCCANEER,
+                Job.CORSAIR}) {
+            assertTrue(buffs.offeredTo(buffer.getId()), buffer.name());
+        }
+        for (Job none : new Job[]{Job.BEGINNER, Job.WARRIOR, Job.PAGE, Job.WHITEKNIGHT, Job.MAGICIAN, Job.HUNTER,
+                Job.RANGER, Job.CROSSBOWMAN, Job.SNIPER, Job.THIEF, Job.PIRATE, Job.BRAWLER, Job.MARAUDER, Job.GUNSLINGER,
+                Job.OUTLAW}) {
+            assertFalse(buffs.offeredTo(none.getId()), none.name());
+        }
         for (CompanionSettings.Support toggle : CompanionSettings.Support.values()) {
-            for (boolean on : new boolean[]{true, false}) {
-                String phrase = toggle.phrase(on);
-                // the chat flows ahead of the toggles (supply requests) never take them
-                assertFalse(AgentChatCommandClassifier.isNeedHpPotCommand(phrase), phrase);
-                assertFalse(AgentChatCommandClassifier.isNeedMpPotCommand(phrase), phrase);
-                assertFalse(AgentChatCommandClassifier.isNeedPotCommand(phrase), phrase);
-                assertFalse(AgentChatCommandClassifier.isNeedAmmoCommand(phrase), phrase);
-            }
+            assertEquals(toggle == CompanionSettings.Support.BUFF_POTIONS, toggle.offeredTo(-1), "unknown job: " + toggle);
         }
     }
 }

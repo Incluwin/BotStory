@@ -29,6 +29,7 @@ public final class AgentControlRuntime {
             public void setSupport(boolean enabled) {
                 AgentSchedulerRuntime.afterRandomDelay(entry, 500, 700, () -> {
                     AgentCombatBuffStateRuntime.setSkillBuffsEnabled(entry, enabled);
+                    toggled(entry, AgentChatToggleHook.Toggle.SKILL_BUFFS, enabled);
                     boolean calledPartyOver = false;
                     if (enabled) {
                         // "buff me again" means now, not when the current buffs run out, and for the
@@ -46,6 +47,7 @@ public final class AgentControlRuntime {
             public void setHeals(boolean enabled) {
                 AgentSchedulerRuntime.afterRandomDelay(entry, 500, 700, () -> {
                     AgentCombatBuffStateRuntime.setSupportHealsEnabled(entry, enabled);
+                    toggled(entry, AgentChatToggleHook.Toggle.SUPPORT_HEALS, enabled);
                     AgentDialogueTransportRuntime.replyNow(entry, AgentChatToggleFlow.healsReply(enabled));
                 });
             }
@@ -54,6 +56,7 @@ public final class AgentControlRuntime {
             public void setBuffConsumables(boolean enabled) {
                 AgentSchedulerRuntime.afterRandomDelay(entry, 500, 700, () -> {
                     AgentBuffStateRuntime.setEnabled(entry, enabled);
+                    toggled(entry, AgentChatToggleHook.Toggle.BUFF_CONSUMABLES, enabled);
                     AgentBuffStateRuntime.resetScan(entry);
                     AgentDialogueTransportRuntime.replyNow(entry, AgentChatToggleFlow.buffConsumablesReply(
                             enabled, AgentBuffStateRuntime.cheapMode(entry)));
@@ -125,5 +128,13 @@ public final class AgentControlRuntime {
 
     private static Character bot(AgentRuntimeEntry entry) {
         return AgentRuntimeIdentityRuntime.bot(entry);
+    }
+
+    /** A support toggle chat just set, told to the host (AgentChatToggleHook) so it can keep it. */
+    private static void toggled(AgentRuntimeEntry entry, AgentChatToggleHook.Toggle toggle, boolean enabled) {
+        Character agent = bot(entry);
+        if (agent != null) {
+            AgentChatToggleHook.toggled(agent.getId(), toggle, enabled);
+        }
     }
 }
