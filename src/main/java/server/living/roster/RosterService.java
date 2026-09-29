@@ -19,6 +19,7 @@ import server.ItemInformationProvider;
 import server.agents.auth.AgentClaimGuard;
 import server.agents.capabilities.follow.AgentFollowGuard;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
+import server.agents.capabilities.navigation.AgentNavigationOnFootRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -406,10 +407,11 @@ public final class RosterService {
      * its population life ends without an unload ({@code handOver}), its runtime moves to the owner by the leader-transfer
      * path (AgentTransferService: stop it, register it under the new leader, which replaces the population's entry and
      * its tick), its GUEST seat becomes its companion seat without it leaving the party (no stock "left the party"), and
-     * it follows. Not {@code seated} (no seat for it on the owner's map), it walks out to the nearest portal instead and
-     * waits at camp. Refused by the guard, nothing has changed: its lease goes back and the row is dropped. Its session
-     * ended before the hand-over (logged off, or loaded afresh by anything else): the stale character is never
-     * registered; its lease and guest seat go back and it is called like any benched hire.
+     * it walks over to follow ({@link #walkToOwner}: no in-map portal shortcut on the way). Not {@code seated} (no seat
+     * for it on the owner's map), it walks out to the nearest portal instead and waits at camp. Refused by the guard,
+     * nothing has changed: its lease goes back and the row is dropped. Its session ended before the hand-over (logged
+     * off, or loaded afresh by anything else): the stale character is never registered; its lease and guest seat go
+     * back and it is called like any benched hire.
      */
     private RosterResult adopt(Character owner, Persona persona, RosterEntry entry, Character bot, boolean seated,
                                BooleanSupplier handOver) {
@@ -1149,12 +1151,16 @@ public final class RosterService {
 
     /**
      * A companion loaded at its arrival point stands still until it is seated; then it follows, so it walks to its owner.
-     * The one way the roster lets a TRAVELLING, HOLD or AWAY companion follow again (its arrival, a rejoin, a call).
+     * The one way the roster lets a TRAVELLING, HOLD or AWAY companion follow again (its arrival, a rejoin, a call, an
+     * adoption in place). It walks all the way: until it is near its owner it takes no in-map portal, since the route
+     * search counts one as free and from far off would blink it across the map to their side (a citizen hired on the
+     * far side of Henesys took hp00 and appeared beside its owner, 3,850 px on).
      */
     private void walkToOwner(Persona persona, Character bot) {
         offFollow.remove(persona.id());
         AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
         if (runtime != null) {
+            AgentNavigationOnFootRuntime.arriveOnFoot(runtime, bot.getMapId(), ArrivalPlacement.onFootReachPx());
             AgentMovementCommandRuntime.followConfiguredTarget(runtime);
         }
     }

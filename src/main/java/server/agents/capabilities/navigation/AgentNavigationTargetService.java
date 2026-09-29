@@ -76,6 +76,7 @@ public final class AgentNavigationTargetService {
             }
             AgentNavigationDebugStateRuntime.clearGraphWarmupFallback(entry);
             Point botPos = bot.getPosition();
+            AgentNavigationOnFootRuntime.observe(entry, bot.getMapId(), botPos, rawTargetPos);
             int startRegionId = AgentNavigationRegionService.resolveCurrentRegionId(graph, entry, bot.getMap(), botPos);
             int targetRegionId = AgentNavigationRegionService.resolveTargetRegionId(graph, entry, bot.getMap(), rawTargetPos);
             Point pathTargetPos = adjustPathTarget(entry, graph, targetRegionId, rawTargetPos);
@@ -152,6 +153,7 @@ public final class AgentNavigationTargetService {
                         || AgentNavigationEdgeReliabilityRuntime.suppressed(
                                 entry, bot.getMapId(), edge, nowMs)
                         || progressState.blocks(edge, nowMs)
+                        || (AgentNavigationOnFootRuntime.onFoot(entry) && !AgentNavigationOnFootRuntime.walks(edge))
                         || AgentVerticalTraversalService.blocksRecentInverseEntry(
                                 graph, entry, edge, nowMs))) {
                     AgentNavigationDebugStateRuntime.clearActiveNavigationEdge(entry);
@@ -402,8 +404,10 @@ public final class AgentNavigationTargetService {
         // portal and dropped on the far side: Kerning City agents walking west to west00 took the
         // main street's portal east, walked back west, and took it again, forever.
         boolean sameRegion = startRegionId == targetRegionId;
+        boolean onFoot = AgentNavigationOnFootRuntime.onFoot(entry);
         Predicate<AgentNavigationGraph.Edge> edgeFilter = edge ->
-                reliabilityFilter.test(edge)
+                (!onFoot || AgentNavigationOnFootRuntime.walks(edge))
+                        && reliabilityFilter.test(edge)
                         && !progressState.blocks(edge, nowMs)
                         && !AgentVerticalTraversalService.blocksRecentInverseEntry(
                                 graph, entry, edge, nowMs)
@@ -423,6 +427,11 @@ public final class AgentNavigationTargetService {
                 : AgentNavigationPathService.findNextEdgeSelectionVaried(
                         graph, bot, startPosition, startRegionId, targetRegionId, targetPos,
                         variation, edgeFilter, edgePenalty);
+        if (onFoot && !selection.outcome().reached()) {
+            // No route on foot reaches the target: the Agent routes as any other would, portals included.
+            AgentNavigationOnFootRuntime.end(entry);
+            return findNextEdge(graph, entry, bot, startPosition, startRegionId, targetRegionId, targetPos);
+        }
         AgentNavigationGraph.Edge selected = selection.activeEdge();
         String routeSource = selection.recoverySearch() ? "RECOVERY_SEARCH"
                 : authoredRouteOverlay

@@ -11,6 +11,7 @@ import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.TimerManager;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
+import server.agents.capabilities.navigation.AgentNavigationOnFootRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -87,6 +88,8 @@ final class LifecycleHarness implements AutoCloseable {
     final CompanionSlots slots = new CompanionSlots(world);
     final LivingContent content = mock(LivingContent.class);
     final List<String> calls = new ArrayList<>();
+    /** Every companion told to follow while asked to arrive on foot (no in-map portal shortcut), in order. */
+    final List<String> onFoot = new ArrayList<>();
     final List<Timer> timers = new ArrayList<>();
     /** Party sizes after every join or leave, in order. */
     final List<Integer> partySizes = new ArrayList<>();
@@ -246,8 +249,13 @@ final class LifecycleHarness implements AutoCloseable {
             return null;
         });
         MockedStatic<AgentMovementCommandRuntime> movement = open(AgentMovementCommandRuntime.class);
-        movement.when(() -> AgentMovementCommandRuntime.followConfiguredTarget(any())).thenAnswer(inv ->
-                calls.add("follow " + ((AgentRuntimeEntry) inv.getArgument(0)).bot().getName()));
+        movement.when(() -> AgentMovementCommandRuntime.followConfiguredTarget(any())).thenAnswer(inv -> {
+            AgentRuntimeEntry entry = inv.getArgument(0);
+            if (AgentNavigationOnFootRuntime.onFoot(entry)) {
+                onFoot.add(entry.bot().getName());
+            }
+            return calls.add("follow " + entry.bot().getName());
+        });
         movement.when(() -> AgentMovementCommandRuntime.stop(any())).thenAnswer(inv ->
                 calls.add("stop " + ((AgentRuntimeEntry) inv.getArgument(0)).bot().getName()));
         movement.when(() -> AgentMovementCommandRuntime.moveTo(any(), any(), anyBoolean())).thenAnswer(inv -> {

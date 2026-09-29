@@ -218,6 +218,8 @@ class HiredHandsTest {
         assertEquals(RosterState.ACTIVE, game.store.row(ANN, HIRE).state());
         assertEquals(List.of("stop Mira", "register Mira", "follow Mira"), game.calls,
                 "no despawn, no spawn, no leave or join: only the runtime moves to Ann");
+        assertEquals(List.of("Mira"), game.onFoot,
+                "she walks over: from across town an in-map portal would put her beside Ann in one step");
         assertTrue(game.members.contains(MIRA), "still in the party");
         assertEquals(List.of(), game.partySizes, "no party churn at all");
         assertNull(game.slots.reservation(CompanionSlots.characterKey(MIRA)), "her guest seat is her companion seat now");

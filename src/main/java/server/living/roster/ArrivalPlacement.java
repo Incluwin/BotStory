@@ -33,8 +33,18 @@ final class ArrivalPlacement {
     static final int WALK_OUT_REACH_PX = 30;
     static final long WALK_OUT_MAX_MS = 8_000L;
     static final long WALK_OUT_CHECK_MS = 500L;
+    /** A companion walking to its owner takes no in-map portal until this many follow distances from its place. */
+    static final int ON_FOOT_REACH_FOLLOW_DISTANCES = 2;
 
     private ArrivalPlacement() {
+    }
+
+    /**
+     * How near its place beside its owner a companion walks before it may take in-map portals again: past the follow
+     * distance, inside which a follower counts as arrived and stops moving, so a walk always gets there.
+     */
+    static int onFootReachPx() {
+        return ON_FOOT_REACH_FOLLOW_DISTANCES * AgentMovementPhysicsConfig.configuredFollowDist();
     }
 
     /** The arrival point on the map nearest {@code owner}, or null when the map has no usable portal in reach. */
