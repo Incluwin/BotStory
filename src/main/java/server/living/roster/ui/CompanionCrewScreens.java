@@ -1,16 +1,27 @@
 package server.living.roster.ui;
 
 import client.Character;
+import config.YamlConfig;
+import net.server.world.Party;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
+import server.living.population.Citizen;
+import server.living.population.CitizenInviteDecision;
+import server.living.population.CitizenStore;
+import server.living.population.Population;
 import server.living.resident.LivingTalk;
 import server.living.resident.LivingTalk.Option;
 import server.living.roster.BenchLedger;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionManager;
+import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionView;
 import server.living.roster.CompanionViews;
+import server.living.roster.HiredHands;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.roster.RosterVoice;
@@ -19,9 +30,12 @@ import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static server.living.roster.ui.CompanionMenus.BOARD_NPC;
 import static server.living.roster.ui.CompanionMenus.NOTES_SPEAKER;
@@ -35,8 +49,9 @@ import static server.living.roster.ui.CompanionMenus.portrait;
  * The Crew window and its crew-wide pages (docs/BOT_MANAGEMENT_PLAN.md P1.5, P3 "Crew window"): a bold "Party n/6" block
  * (who is out with you, on the way, waiting outside a run, logged off with you, and your guests), a "Bench (x of y bench
  * seats)" block (y is the roster cap less those in the party block, so the cap shows), then the crew-wide actions: the
- * usual lineup, the orders everyone out with you takes, the formation, a duty for the whole bench and "Make room for a
- * friend...". A row opens that companion's card through {@link CompanionMenus#card}. Long lists page with "More...".
+ * usual lineup, the orders everyone out with you takes, the formation, a duty for the whole bench, "Make room for a
+ * friend..." and the hire list, "Adventurers looking for a crew..." (P4). A row opens that companion's card through
+ * {@link CompanionMenus#card}. Long lists page with "More...".
  *
  * <p>Who speaks (the Crew window speaker rule): opened from a companion's card, that companion, under the portrait
  * policy, with "Back" to its card; opened from the Adventurer's Roster, the player's own notes (their avatar, P0 probe
@@ -50,12 +65,27 @@ final class CompanionCrewScreens {
     static final List<Assignment> BENCH_DUTIES = List.of(Assignment.TRAIN, Assignment.FARM_MESO, Assignment.GATHER,
             Assignment.SELL, Assignment.STALL, Assignment.REST);
 
+    /** The hire list with nobody on it (decision 4 b): this line, and Back. */
+    static final String NOBODY_LOOKING = "nobody you've met is looking for a crew right now. party up with folks around town.";
+
     private final CompanionMenus menus;
     private final LivingWorld world;
+    /** The pending hire offers hook: see {@link #CompanionCrewScreens(CompanionMenus, Function)}. */
+    private final Function<Character, List<Integer>> pendingHireOffers;
 
     CompanionCrewScreens(CompanionMenus menus) {
+        this(menus, owner -> List.of());
+    }
+
+    /**
+     * {@code pendingHireOffers} is the hook for the P4 offers track, wired by the integrator: the character ids of the
+     * citizens whose offer to stay on still awaits the owner's answer, in order. They top the hire list, and a click opens
+     * their terms as the offer ({@link HireScreens.Context#OFFER}).
+     */
+    CompanionCrewScreens(CompanionMenus menus, Function<Character, List<Integer>> pendingHireOffers) {
         this.menus = menus;
         this.world = menus.world;
+        this.pendingHireOffers = pendingHireOffers;
     }
 
     /** The Crew window in the player's own notes (the Adventurer's Roster). */
@@ -145,6 +175,14 @@ final class CompanionCrewScreens {
         if (out && owner.getParty() != null && owner.getParty().getMembers().size() >= RosterService.PARTY_CAP) {
             actions.add(new Option("Make room for a friend...", () -> makeRoomPicker(owner, from)));
         }
+        // decision 4 b: while the roster and the hire cap have room, the citizens you have met who look for a crew (a
+        // world without hired hands, a test's, offers none)
+        long hires = Stream.concat(party.stream(), bench.stream())
+                .filter(view -> LivingContent.isHire(view.personaId())).count();
+        if (world.hiredHands() != null && party.size() + bench.size() < world.config().ROSTER_MAX
+                && hires < world.config().HIRE_MAX_PER_OWNER) {
+            actions.add(new Option("Adventurers looking for a crew...", () -> hireList(owner, from)));
+        }
         return actions;
     }
 
@@ -221,6 +259,114 @@ final class CompanionCrewScreens {
         return world.partySync().makeRoom(owner.getId(), persona.id())
                 ? persona.name() + " steps out to make room for your friend."
                 : persona.name() + " is not out with you right now.";
+    }
+
+    // ---- the hire list ---------------------------------------------------------------------------
+
+    /** A citizen on the hire list, as it was listed ({@code where}: the map it stands on, null when it is not loaded). */
+    private record Candidate(int characterId, String name, int level, int job, String where, boolean buddy, int together) { }
+
+    /**
+     * "Adventurers looking for a crew" (decision 4 b, plan "Hire list"): the pending offers first ({@link
+     * #pendingHireOffers}), then the citizens the owner has met (living_acquaintance) who are looking for a crew for them
+     * ({@link #lookingFor}), buddies first, then those they spent the most time with. A row ("Mira, Lv31 Hunter - Kerning
+     * City", "... - around" when it is not loaded) opens its terms (HireScreens) as the answer to the click. Long lists
+     * page with "More..."; Back is the Crew window. Nobody on it: one line, and Back.
+     */
+    void hireList(Character owner, Persona from) {
+        hireList(owner, from, "");
+    }
+
+    /** {@code note}: a line above the list ("Things changed meanwhile."), or empty. */
+    private void hireList(Character owner, Persona from, String note) {
+        List<Option> options = new ArrayList<>();
+        Population population = Population.get();
+        if (population != null) {
+            Set<Integer> listed = new HashSet<>();
+            for (int characterId : pendingHireOffers.apply(owner)) {
+                Candidate offer = lookingFor(owner, population, characterId, 0, -1, 0);
+                if (offer != null && listed.add(characterId)) {
+                    options.add(hireRow(owner, from, offer, HireScreens.Context.OFFER));
+                }
+            }
+            List<Candidate> met = new ArrayList<>();
+            for (CitizenStore.Met acquaintance : population.store().metBy(owner.getId())) {
+                // time together weighs a partied minute twice, as SocialFabric's buddy and guild asks do
+                Candidate candidate = listed.contains(acquaintance.characterId()) ? null : lookingFor(owner, population,
+                        acquaintance.characterId(), acquaintance.level(), acquaintance.job(),
+                        acquaintance.mapMinutes() + acquaintance.partyMinutes() * 2);
+                if (candidate != null) {
+                    met.add(candidate);
+                }
+            }
+            met.sort(Comparator.comparing((Candidate candidate) -> !candidate.buddy())
+                    .thenComparing(Comparator.comparingInt(Candidate::together).reversed())
+                    .thenComparing(Candidate::name));
+            for (Candidate candidate : met) {
+                options.add(hireRow(owner, from, candidate, HireScreens.Context.HIRE_LIST));
+            }
+        }
+        String top = note.isEmpty() ? "" : note + "\r\n\r\n";
+        talk(owner, from).menu(top + (options.isEmpty() ? NOBODY_LOOKING : "#eAdventurers looking for a crew#n"), options)
+                .back(() -> render(owner, from, ""))
+                .show();
+    }
+
+    /**
+     * A hire list row: it opens the citizen's terms, unless it stopped looking since the page was drawn (hired, partied
+     * up, gone, out of level range): then the page renders again, read afresh, with "Things changed meanwhile." on top.
+     */
+    private Option hireRow(Character owner, Persona from, Candidate listed, HireScreens.Context context) {
+        String job = CompanionView.jobName(listed.job());
+        String label = listed.name() + ", Lv" + listed.level() + (job.isEmpty() ? "" : " " + job) + " - "
+                + (listed.where() == null ? "around" : listed.where())
+                + (context == HireScreens.Context.OFFER ? " (offered to stay)" : "");
+        return new Option(label, () -> {
+            Population population = Population.get();
+            if (population == null || lookingFor(owner, population, listed.characterId(), listed.level(), listed.job(), 0) == null) {
+                hireList(owner, from, THINGS_CHANGED);
+                return;
+            }
+            new HireScreens(world).terms(owner, listed.characterId(), context);
+        });
+    }
+
+    /**
+     * The citizen as a hire list row when it is looking for a crew for the owner, else null: still in the population, hired
+     * by nobody, partied up with nobody but the owner (nor another human's guest in the owner's party), and within the
+     * P2a invite level gap of the owner (CitizenInviteDecision). A loaded one is listed where it stands, at its live level
+     * and job; {@code level} and {@code job} are its characters row's otherwise (read here when unknown: a pending offer's).
+     */
+    private Candidate lookingFor(Character owner, Population population, int characterId, int level, int job, int together) {
+        Citizen citizen = population.citizen(characterId);
+        if (citizen == null || citizen.state() != Citizen.State.ACTIVE || citizen.hired()
+                || world.roster().cachedOwnerOf(HiredHands.hireId(characterId)) != 0) {
+            return null;
+        }
+        Character live = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(characterId));
+        String where = null;
+        if (live != null) {
+            Party party = live.getParty();
+            CompanionSlots.Reservation seat = world.slots().reservation(CompanionSlots.characterKey(characterId));
+            if (party != null && (owner.getParty() == null || party.getId() != owner.getParty().getId())
+                    || seat != null && seat.ownerId() != owner.getId()) {
+                return null;
+            }
+            level = live.getLevel();
+            job = live.getJob() == null ? job : live.getJob().getId();
+            String map = live.getMap() == null ? null : live.getMap().getMapName();
+            where = map == null || map.isEmpty() ? null : map;
+        } else if (level <= 0) {
+            int[] known = world.store().characterLevelAndJob(characterId);
+            level = known[0];
+            job = known[1];
+        }
+        if (level <= 0 || CitizenInviteDecision.decide(owner.getLevel(), level,
+                YamlConfig.config.server.EXP_SPLIT_LEECH_INTERVAL, false) != CitizenInviteDecision.Answer.ACCEPT) {
+            return null;
+        }
+        return new Candidate(characterId, citizen.name(), level, job, where,
+                owner.getBuddylist().containsVisible(characterId), together);
     }
 
     // ---- acting ----------------------------------------------------------------------------------

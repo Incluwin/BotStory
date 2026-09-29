@@ -161,7 +161,7 @@ public record CompanionView(String personaId,
     }
 
     /** "Fighter", "F/P Wizard", "Dawn Warrior", "Maple Leaf Brigadier"; empty when unknown. */
-    static String jobName(int jobId) {
+    public static String jobName(int jobId) {
         Job job = jobId < 0 ? null : Job.getById(jobId);
         if (job == null) {
             return "";

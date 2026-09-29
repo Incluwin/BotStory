@@ -332,6 +332,30 @@ public final class LivingStore {
         }
     }
 
+    /**
+     * When the character's player was last seen (decision 18): the later of the character's last logout and its
+     * account's last login, which any of the account's characters sets; 0 when neither is known or it has no row, and
+     * Long.MAX_VALUE when the read fails (so nobody is taken for away on a database hiccup).
+     */
+    public long lastSeenAtMs(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT c.lastLogoutTime, a.lastlogin FROM characters c"
+                     + " LEFT JOIN accounts a ON a.id = c.accountid WHERE c.id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return 0L;
+                }
+                Timestamp logout = rs.getTimestamp(1);
+                Timestamp login = rs.getTimestamp(2);
+                return Math.max(logout == null ? 0L : logout.getTime(), login == null ? 0L : login.getTime());
+            }
+        } catch (SQLException failure) {
+            log.warn("last seen lookup failed for {}", characterId, failure);
+            return Long.MAX_VALUE;
+        }
+    }
+
     /** A character's name, look, level, job and saved map, as its characters row holds them now. */
     public record CharacterRow(String name, int gender, int skin, int face, int hair, int level, int job, int mapId) { }
 

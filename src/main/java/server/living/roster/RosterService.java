@@ -307,6 +307,10 @@ public final class RosterService {
         if (rostered >= world.config().ROSTER_MAX) {
             return new RosterResult.RosterFull(world.config().ROSTER_MAX);
         }
+        ResidentAllocation allocation = world.residentAllocation();
+        if (allocation != null && !persona.id().startsWith(HIRE_PREFIX) && allocation.atCap(owner)) {
+            return new RosterResult.Failed(ResidentAllocation.CAP_LINE); // decision 18 b, in the Resident's words
+        }
         Point standing = standingNear(owner, persona.id()); // before enroll hands the Resident's character over
         RosterEntry entry = enroll(owner, persona, "roster.recruit");
         RosterResult result = freeSlots(owner) <= 0

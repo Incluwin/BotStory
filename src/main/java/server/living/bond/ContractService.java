@@ -14,7 +14,9 @@ import server.living.config.Content.Contract;
 import server.living.config.Content.ContractItem;
 import server.living.config.Content.LeaveRule;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 import server.living.roster.Commitments;
+import server.living.roster.ResidentAllocation;
 import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.ContractState;
 import server.living.store.LivingStore.RosterEntry;
@@ -124,6 +126,10 @@ public final class ContractService {
         }
         if (world.roster().roster(chr).size() >= world.config().ROSTER_MAX) {
             return "roster-full";
+        }
+        ResidentAllocation allocation = world.residentAllocation();
+        if (allocation != null && !LivingContent.isHire(persona.id()) && allocation.atCap(chr)) {
+            return "resident-cap"; // decision 18 b: hired hands do not count
         }
         return null;
     }
@@ -581,6 +587,7 @@ public final class ContractService {
             case "flags", "arc" -> "there's something you'd need to understand first.";
             case "cooldown" -> "not so soon after last time.";
             case "roster-full" -> "you've got enough people following you around.";
+            case "resident-cap" -> ResidentAllocation.CAP_LINE;
             default -> "no.";
         };
     }

@@ -31,6 +31,7 @@ import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionViews;
 import server.living.roster.Commitments;
 import server.living.roster.HiredHands;
+import server.living.roster.ResidentAllocation;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 
@@ -63,6 +64,7 @@ public final class LivingWorld {
     private final CompanionPartySync partySync;
     private final RosterService roster;
     private final HiredHands hiredHands;
+    private final ResidentAllocation residentAllocation;
     private final CompanionViews views;
     private final CompanionManager manager;
     private final CompanionLeases leases;
@@ -94,6 +96,7 @@ public final class LivingWorld {
         this.views = new CompanionViews(this); // before the roster, whose every write drops its owner's views
         this.roster = new RosterService(this);
         this.hiredHands = new HiredHands(this);
+        this.residentAllocation = new ResidentAllocation(this);
         this.manager = new CompanionManager(this);
         this.leases = new CompanionLeases();
         this.directory = new CompanionDirectory(this);
@@ -155,7 +158,12 @@ public final class LivingWorld {
         world.hiredHands.install();
         // boot reconciliation (decision 8a) goes first on companion-ops, ahead of any login's restore
         world.executor.submit("roster.boot", world.roster::reconcileAtBoot);
+        // decision 18: Residents of owners away too long go home, at boot (after the reconciliation) and daily
+        world.executor.submit("residents.allocation", world.residentAllocation::sweep);
         TimerManager timers = TimerManager.getInstance();
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("residents.allocation", world.residentAllocation::sweep),
+                ResidentAllocation.SWEEP_INTERVAL_MS, ResidentAllocation.SWEEP_INTERVAL_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.residents::tick,
                 config.RESIDENT_TICK_MS, config.RESIDENT_TICK_MS));
         // the ledger, the contract clocks and the bench slices write roster rows: they run on companion-ops, the
@@ -306,6 +314,11 @@ public final class LivingWorld {
     /** Hired citizens (P4): their synthetic personas, their terms and the hire itself. */
     public HiredHands hiredHands() {
         return hiredHands;
+    }
+
+    /** Decision 18 (P4): the per-owner Resident cap, and Residents of owners away too long going home. */
+    public ResidentAllocation residentAllocation() {
+        return residentAllocation;
     }
 
     /** The CompanionView cache the menus render from (no database read per render). */
