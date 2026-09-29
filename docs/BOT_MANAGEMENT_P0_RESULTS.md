@@ -302,7 +302,7 @@ Run 2026-09-28 with two clients: Jevelopers (Hadrik, Jinx, Sadie, Vex, Olwen) an
 4. **The Crew window can show "999% EXP banked"** (Olwen). Banked EXP should be capped, or shown as "ready to level".
 
 ## Found live, belongs to other sessions
-**Debug text in player chat.** A pink line, "Jinx is warming map navigation cache, using fallback movement.", reaches the player. It comes from the navigation work in this tree, and that session has been told.
+**Debug text in player chat.** A pink line, "Jinx is warming map navigation cache, using fallback movement.", reaches the player. It comes from the navigation work in this tree, and that session has been told. **Resolved 2026-09-28** by the "Route navigation warmup notice to server log" session: `AgentNavigationWarmupService.notifyWarmup` now writes an INFO server-log line instead of messaging the leader. It is in the working tree (not yet committed) and takes effect at the next restart.
 
 ## P2a follow-up: the four live bugs, fixed and re-verified (2026-09-28)
 The fix is `0711cfb58`, merged by fast-forward. Full suite: 7705 tests, still only the baseline's 29 failing tests. Each bug has a regression test that fails on the old code. Each fix was re-checked live with two clients (Jevelopers and ohboy):
@@ -317,3 +317,64 @@ The fix is `0711cfb58`, merged by fast-forward. Full suite: 7705 tests, still on
 **Remaining P2a items:**
 - **Sign-off.** The user's immersion sign-off on `p2a-two-friends.mp4`.
 - **Re-shoot.** A clean re-shoot of the "party window is your crew manager" clip.
+
+---
+
+# P2b results (2026-09-28)
+
+## Branch and suite
+P2b is merged into `feat/companion-manager` by fast-forward to `4b1394786`. The live run then found three bugs, fixed as `472efa66d`, `15d17a4bb` and `904fa8748`.
+- **Full suite:** 7920 tests at `904fa8748`: 25 failures and 4 errors, the identical 29 baseline tests (set-compared with the P0 list). There are 0 new failures.
+- **Living-world suites:** all green after each live fix.
+
+## What P2b adds
+- **Join-then-travel.** A called companion loads at its camp on the owner's channel without follow and joins the party at once. The party window lists it on its camp map. Its row is TRAVELLING with `eta_at` saved, and it whispers its ETA. At the ETA it comes into the owner's current map at the portal nearest them, walks over, and only then follows.
+  - If the owner is inside an event instance at that point, it waits outside instead (HOLD).
+  - The recall ETA is capped at 60 s on Victoria Island (`RECALL_MAX_ETA_MS`, decision 7).
+- **Atomic swap.** The incoming companion is loaded first. The outgoing one leaves and the incoming one joins under one cause, so the party never has a gap and never goes over 6.
+- **HOLD and rejoin**, plus in-memory **Commitments**. While committed, bench, swap and delegate are refused with "after the run."
+- **Follow guard** (`AgentFollowGuard`, an owner-free seam). No follow path may start or warp a TRAVELLING, HOLD or AWAY companion.
+- **Portal-true follow.** A companion enters a map at the point its owner came in, a few hundred ms apart, then walks over.
+- **Logout and login (decision 8a):**
+  - Logout saves the usual lineup.
+  - In the owner's own party, companions stay listed as offline members, PARKED. In a shared party they leave at once.
+  - After `LEADER_OFFLINE_BENCH_MS`, a sweep benches them. Their bench credit starts at the grace deadline.
+  - A login within the grace period brings them back 2-8 s apart, walking in. A later login calls the usual lineup with travel ETAs.
+- **CompanionChannelFollow.** Companions move to the owner's new channel 1-3 s apart. A fallback moves any stragglers after 30 s. Cash Shop visits are handled.
+- **Boot reconciliation.** ACTIVE, TRAVELLING and HOLD rows become PARKED.
+- **Instance-logout handoff seam (decision 8b)** and **CompanionSeatState** (the table of legal row changes).
+- **ROSTER_CONTRACT_MODE** defaults to PERMANENT_ON_ROSTER (decision 3). A walk-out that comes due during a run waits until the run ends.
+- **Roster deletion cleanup**, and bench loads moved onto the companion-ops thread.
+
+## Live checks
+Run 2026-09-28 19:30-20:45 on four restarts. The clients were ohboy (ohboyohboy) and Crewfriend (crewfriend24, a GM6 test account created for this run at the user's request). The first run also used Jevelopers.
+
+| Check | Result |
+|---|---|
+| Boot reconciliation (restart with companions out) | **Pass**, three times. ACTIVE, TRAVELLING and HOLD became PARKED with `parked_at` = boot time and the lineup order kept. A restart during a trip (Hadrik, TRAVELLING) became PARKED. |
+| Owner changes map twice during a trip | **Pass (guard).** Jevelopers warped to Henesys and then to Perion during Hadrik's trip. Hadrik stayed at his camp and was never warped. His arrival exposed bug 1 (below). |
+| Arrival at the ETA, walking in from the portal | **Pass** after fix 1. Brannock came in at 19:57:27 (ETA :27) and Garrick at 19:57:31 (ETA :31), each at the portal nearest ohboy, then walked over. Fenna and Ilse arrived on time after a channel change (20:41:29 and 20:41:35). |
+| Login after the grace period | **Pass.** ohboy's companions had been PARKED since 19:30 and the sweep benched them at 19:50. On ohboy's login at 19:56, the usual lineup (Brannock, Garrick) was called with join-then-travel ETAs, joined at once, and arrived on time. |
+| Logout and login within the grace period (own party) | **Pass** after fix 2. The logout at 20:09:24 made both PARKED with the lineup kept. On relogin they walked back in from the portal. The party was ohboy, Brannock, Garrick: no duplicates and 0 drift. |
+| Portal-true follow | **Pass.** ohboy went through Kerning's west portal into 103010000 at (1556, 307). Garrick appeared at that exact point about 2 s later and walked into formation. |
+| Channel change with 4 companions (2 ACTIVE, 2 TRAVELLING) | **Pass** after fix 3. At 20:40:58 ohboy changed CH 2 to CH 1, and all four were on CH 1 in the party by 20:41:07 (about 9 s; the target is 30 s). The travellers kept their trips and arrived on time. 0 drift. An earlier two-companion run, CH 1 to CH 2, took 3-5 s. |
+| Atomic swap ("swap garrick for ilse") | **Pass.** The party went from ohboy, Brannock, Fenna, Garrick to ohboy, Brannock, Fenna, Ilse with no gap and never above 6. Ilse joined at once as TRAVELLING and arrived at her ETA. |
+| Merge with two humans at full party | **Pass.** ohboy (4 out) accepted Crewfriend's invite (Crewfriend with 2 out). The party was Crewfriend, Halvard, Kettle, ohboy, Brannock, Fenna (6/6). Ilse stepped out with returnWhenRoom. 0 drift. |
+| Leader logs out with a friend in the party | **Pass.** Crewfriend (leader) logged out at 20:44:45. Halvard and Kettle left the party at once as PARKED roster-only rows. ohboy became leader (star in the party window). ohboy's Ilse was called straight back into the freed seat. 0 drift. |
+| Crew in the party window while travelling | **Pass.** Crewfriend's window listed Halvard and Kettle greyed out on their camp maps, and "Kettle is on the way (~60 s)." showed in pink. |
+| Video | `docs/agents/evidence/video/p2b-walk-in.mp4` (28 s): Brannock and then Garrick walk in from Kerning's west portal at their ETAs, then Garrick walks in after a login within the grace period. It awaits the user's sign-off. |
+
+## Bugs found live and fixed
+1. **Trips never arrived (`472efa66d`).** `arrive()` matches the TRAVELLING row by `eta_at`, but that column is a whole-second MySQL TIMESTAMP. The stored value never equalled the in-memory millisecond `arrivesAt`, so every trip stayed TRAVELLING (Hadrik was still at camp 22 s after his ETA). A new trip is now due on a whole second. The test store now rounds `eta_at` and `parked_at` the way MySQL does, and 11 travel tests fail without the fix.
+2. **A reloaded companion lost its party row (`15d17a4bb`).** An Agent load does not restore the party it is still listed in; a human login does, in `loadCharFromDB`. `joinOwner` now gives the companion that row back before joining, so the join is ALREADY_MEMBER and it isn't listed twice. The harness now models this, and 12 channel-follow and login-restore tests fail without the fix.
+3. **Channel follow's rejoin had no seat (`904fa8748`).** Live, logging off on the old channel took the companion off the party list, so its join on the new channel was refused by the seat gate (`companion.unseated_join`). Only the 30 s fallback moved it. The move now holds a TRAVEL seat. The harness's fake join now demands a seat like the real gate. Every existing test still passes, and the new test fails without the fix.
+
+## Not verified live
+- **HOLD and the instance-logout handoff (8b).** Companions cannot enter an instance until P6, so both are unit-tested only.
+- **Cash Shop visit, and a 30-minute scripted drift session.** Not run.
+- **"Every flow twice":** met for arrivals, restore, channel change and boot reconciliation, but not for the leader-logout and swap flows.
+- **Graceful shutdown skips the logout path.** The rows stayed ACTIVE/TRAVELLING until boot reconciliation parked them. That is the designed restart behaviour, but no goodbye line is said.
+
+## Found live, belongs elsewhere
+- **Companions run off to resupply as soon as they arrive,** and wander Kerning's maps for 10+ minutes (Sadie and Vex; later Brannock and Fenna). They go 103000002 → 103020200 → 104010000 → 103020100 without reaching the shop, and follow is off while they do. This is the agents' supply navigation, and it was reported to the Kerning-routes session. It is also an immersion problem: a crew that walks in and leaves at once.
+- **GM characters log in hidden, and the v83 client sends no NPC click while hidden.** It is client-side, like Dark Sight, and not a server bug. `!hide` fixes it. It explained the "NPC talk does nothing" report from another session.
