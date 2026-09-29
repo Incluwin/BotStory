@@ -290,7 +290,8 @@ public final class RosterService {
             return current == owner.getId() ? new RosterResult.Ok(persona.name() + " is already yours.")
                     : new RosterResult.Failed(persona.name() + " already travels with someone else.");
         }
-        if (roster(owner).size() >= world.config().ROSTER_MAX) {
+        int rostered = roster(owner).size();
+        if (rostered >= world.config().ROSTER_MAX) {
             return new RosterResult.RosterFull(world.config().ROSTER_MAX);
         }
         Point standing = standingNear(owner, persona.id()); // before enroll hands the Resident's character over
@@ -298,8 +299,8 @@ public final class RosterService {
         RosterResult result = freeSlots(owner) <= 0
                 ? new RosterResult.Ok(persona.name() + " joins your roster but your party is full; call them when there is room.")
                 : spawnCompanion(owner, persona, entry, standing);
-        if (grantRosterBook(owner)) {
-            world.residents().whisper(persona, owner, ROSTER_BOOK_LINE);
+        if (rostered == 0) {
+            handOverRosterBook(owner, persona);
         }
         return result;
     }
@@ -315,12 +316,25 @@ public final class RosterService {
             return persona.name() + (ownerOf(persona.id()) == owner.getId()
                     ? " is already on " + owner.getName() + "'s roster." : " already travels with someone else.");
         }
-        if (roster(owner).size() >= world.config().ROSTER_MAX) {
+        int rostered = roster(owner).size();
+        if (rostered >= world.config().ROSTER_MAX) {
             return owner.getName() + "'s roster is full (" + world.config().ROSTER_MAX + ").";
         }
         RosterEntry entry = enroll(owner, persona, "roster.grant");
-        grantRosterBook(owner);
+        if (rostered == 0) {
+            handOverRosterBook(owner, persona);
+        }
         return persona.name() + " joins " + owner.getName() + "'s roster, benched at map " + entry.campMapId() + ".";
+    }
+
+    /**
+     * The owner's first companion, recruited or granted, hands over the Adventurer's Roster and says once how to use
+     * it (plan flow 9 step 3). Later ones hand over nothing: a login gives a roster owner who has lost the book another.
+     */
+    private void handOverRosterBook(Character owner, Persona persona) {
+        if (grantRosterBook(owner)) {
+            world.residents().whisper(persona, owner, ROSTER_BOOK_LINE);
+        }
     }
 
     /**
