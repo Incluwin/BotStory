@@ -82,6 +82,8 @@ public final class LivingWorld {
     private final ResidentDialogue dialogue;
     private final RumorScheduler rumors;
     private final PhraseMatcher phrases;
+    private final server.living.roster.CrewRotation crewRotation;
+    private final server.living.roster.BenchCombatLearning benchCombatLearning;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -118,6 +120,8 @@ public final class LivingWorld {
         this.dialogue = new ResidentDialogue(this);
         this.rumors = new RumorScheduler(this);
         this.phrases = new PhraseMatcher(this);
+        this.crewRotation = new server.living.roster.CrewRotation(this); // "Keep my crew fresh" (P5, decision 15 b)
+        this.benchCombatLearning = new server.living.roster.BenchCombatLearning(this); // decision 13 a
     }
 
     public static LivingWorld get() {
@@ -214,6 +218,18 @@ public final class LivingWorld {
                         config.QUEST_MARKER_HITBOX_TRACK_MS, config.QUEST_MARKER_HITBOX_TRACK_MS));
             }
         }
+        // decision 13 a: bench grinders nobody can see learn how to fight into candidate tables, read at boot and
+        // written on companion-ops (the combat arena's policy=candidate check is what adopts them for live play)
+        world.benchCombatLearning.install();
+        world.executor.submit("combat_learning.load", world.benchCombatLearning::load);
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("combat_learning.save", world.benchCombatLearning::save),
+                config.BENCH_COMBAT_LEARN_SAVE_MS, config.BENCH_COMBAT_LEARN_SAVE_MS));
+        // decision 15 b: the crews of the owners who turned on "Keep my crew fresh" are looked at on companion-ops
+        world.executor.submit("crew.fresh.load", world.crewRotation::load);
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("crew.fresh", world.crewRotation::tick),
+                config.AUTO_ROTATE_TICK_MS, config.AUTO_ROTATE_TICK_MS));
         instance = world;
         // party changes reach the roster on companion-ops, never inline; a bot joins a human's party only on a seat
         net.server.world.PartyEvents.install(LivingWorldHooks::partyChanged);
@@ -235,6 +251,7 @@ public final class LivingWorld {
         net.server.world.PartySeatGate.install(null);
         server.agents.auth.AgentClaimGuard.installVerbs(null);
         server.agents.capabilities.follow.AgentFollowGuard.install(null);
+        server.living.roster.BenchCombatLearning.uninstall();
         server.living.roster.CompanionSettingsApplier.uninstall();
         HiredHands.uninstall();
         server.living.population.Population.stop();
@@ -251,6 +268,7 @@ public final class LivingWorld {
         } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException failure) {
             log.warn("live bench slices did not all end before shutdown", failure);
         }
+        world.executor.submit("combat_learning.save", world.benchCombatLearning::save); // what bench grinders learned
         world.residents.standbyAll("server shutdown");
         world.executor.shutdown();
         log.info("Living world stopped.");
@@ -410,6 +428,11 @@ public final class LivingWorld {
     /** The bench yields measured on live slices (companion_yield, P5). */
     public server.living.roster.BenchYieldModel benchYields() {
         return benchYields;
+    }
+
+    /** "Keep my crew fresh" (P5, decision 15 b): each owner's opt-in and the swaps it makes. */
+    public server.living.roster.CrewRotation crewRotation() {
+        return crewRotation;
     }
 
     public ResidentRuntime residents() {

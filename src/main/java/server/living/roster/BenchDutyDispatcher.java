@@ -328,6 +328,11 @@ public final class BenchDutyDispatcher {
         return personaId == null ? null : live.get(personaId);
     }
 
+    /** The live slice of this loaded character, or null (any thread: the combat learner asks, BenchCombatLearning). */
+    public Slice sliceOf(int characterId) {
+        return byCharacter.get(characterId);
+    }
+
     public int liveCount() {
         return live.size();
     }

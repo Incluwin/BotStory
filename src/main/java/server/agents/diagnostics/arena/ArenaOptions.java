@@ -16,7 +16,9 @@ import java.util.Locale;
  * pack), {@code bossmob} (mob id for the boss scenario), {@code hp} (HP override for arena mobs),
  * {@code pack} (mobs in the multi-target pack), {@code policy} ({@code tournament} = force each
  * skill in turn and keep the best, {@code learn} = let the Agent learn a situational policy from its
- * own casts and adopt it only if it beats the prior scorer), {@code learn} (seconds of learning per
+ * own casts and adopt it only if it beats the prior scorer, {@code candidate} = check what bench grinders
+ * nobody could see learned for the Agent's job (AgentCombatCandidates) against the current live policy and adopt it
+ * only if it is not worse), {@code learn} (seconds of learning per
  * scenario; implies {@code policy=learn}), {@code priors} ({@code on}, or {@code off} to make the
  * learner rediscover the hand-written rules). Flag {@code noshape} probes the Agent as-is.</p>
  */
@@ -36,14 +38,15 @@ public record ArenaOptions(String agentName,
                            boolean trace,
                            boolean learn,
                            int learnSeconds,
-                           boolean relaxPriors) {
+                           boolean relaxPriors,
+                           boolean candidate) {
     public static final List<String> ALL_SCENARIOS = List.of("single", "multi", "boss");
 
     public static ArenaOptions parse(String[] params) {
         if (params == null || params.length < 1 || params[0].isBlank()) {
             throw new IllegalArgumentException("Syntax: !combatarena <agent> [job=<id|name>] [level=<n>] "
                     + "[scenario=single|multi|boss|all] [build=profile|max] [seconds=<n>] [long=<n>] [map=<id>] "
-                    + "[dummy=<mobId>] [bossmob=<mobId>] [hp=<n>] [pack=<n>] [policy=tournament|learn] [learn=<seconds>] "
+                    + "[dummy=<mobId>] [bossmob=<mobId>] [hp=<n>] [pack=<n>] [policy=tournament|learn|candidate] [learn=<seconds>] "
                     + "[priors=on|off] [noshape]");
         }
         String agentName = params[0];
@@ -63,6 +66,7 @@ public record ArenaOptions(String agentName,
         boolean learn = false;
         int learnSeconds = config.AgentTuning.intValue("server.agents.diagnostics.arena.ArenaOptions.LEARN_SECONDS");
         boolean relaxPriors = false;
+        boolean candidate = false;
         List<String> unknown = new ArrayList<>();
         for (int i = 1; i < params.length; i++) {
             String token = params[i];
@@ -87,11 +91,14 @@ public record ArenaOptions(String agentName,
                 case "pack" -> packSize = parseInt(key, value);
                 case "noshape" -> shape = false;
                 case "trace" -> trace = true;
-                case "policy" -> learn = switch (value.toLowerCase(Locale.ROOT)) {
-                    case "learn" -> true;
-                    case "tournament" -> false;
-                    default -> throw new IllegalArgumentException("policy must be 'tournament' or 'learn'");
-                };
+                case "policy" -> {
+                    switch (value.toLowerCase(Locale.ROOT)) {
+                        case "learn" -> learn = true;
+                        case "tournament" -> learn = false;
+                        case "candidate" -> candidate = true;
+                        default -> throw new IllegalArgumentException("policy must be 'tournament', 'learn' or 'candidate'");
+                    }
+                }
                 case "learn" -> {
                     learn = true;
                     learnSeconds = parseInt(key, value);
@@ -113,6 +120,9 @@ public record ArenaOptions(String agentName,
         if (learn && learnSeconds < 60) {
             throw new IllegalArgumentException("learn needs at least 60 seconds per scenario");
         }
+        if (candidate && learn) {
+            throw new IllegalArgumentException("policy=candidate checks what bench grinders learned; it learns nothing itself");
+        }
         if (relaxPriors && !learn) {
             throw new IllegalArgumentException("priors=off only applies to policy=learn");
         }
@@ -123,7 +133,7 @@ public record ArenaOptions(String agentName,
             level = defaultLevelFor(job);
         }
         return new ArenaOptions(agentName, job, level, scenarios, profileBuild, roundOneSeconds, confirmSeconds,
-                mapId, dummyMobId, bossMobId, mobHp, packSize, shape, trace, learn, learnSeconds, relaxPriors);
+                mapId, dummyMobId, bossMobId, mobHp, packSize, shape, trace, learn, learnSeconds, relaxPriors, candidate);
     }
 
     public boolean wantsShaping() {

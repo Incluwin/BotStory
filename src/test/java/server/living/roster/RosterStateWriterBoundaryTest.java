@@ -68,7 +68,7 @@ class RosterStateWriterBoundaryTest {
     }
 
     @Test
-    void changesets40To42AreRegisteredLastWithTheirRollbacks() throws IOException {
+    void changesets40To43AreRegisteredLastWithTheirRollbacks() throws IOException {
         String changelog = Files.readString(CHANGELOG);
         int start = changelog.indexOf("<changeSet id=\"40-companion-manager\"");
         assertTrue(start >= 0, "changeset 40 is registered");
@@ -82,29 +82,37 @@ class RosterStateWriterBoundaryTest {
         String crewSet = changelog.substring(crew, changelog.indexOf("</changeSet>", crew));
         assertTrue(crewSet.contains("<sqlFile path=\"db/tables/032-companion-crew.sql\""));
         assertTrue(crewSet.indexOf("<rollback>") < crewSet.indexOf("032-companion-crew-down.sql"));
-        // P5: the measured bench yields (companion_yield), last
+        // P5: the measured bench yields (companion_yield), then the crews kept fresh (living_crew.keep_fresh), last
         int yields = changelog.indexOf("<changeSet id=\"42-companion-bench-learning\"");
         assertTrue(yields > crew, "changeset 42 is registered after 41");
         String yieldSet = changelog.substring(yields, changelog.indexOf("</changeSet>", yields));
         assertTrue(yieldSet.contains("<sqlFile path=\"db/tables/033-companion-bench-learning.sql\""));
         assertTrue(yieldSet.indexOf("<rollback>") < yieldSet.indexOf("033-companion-bench-learning-down.sql"));
+        int fresh = changelog.indexOf("<changeSet id=\"43-companion-crew-fresh\"");
+        assertTrue(fresh > yields, "changeset 43 is registered after 42");
+        String freshSet = changelog.substring(fresh, changelog.indexOf("</changeSet>", fresh));
+        assertTrue(freshSet.contains("<sqlFile path=\"db/tables/034-companion-crew-fresh.sql\""));
+        assertTrue(freshSet.indexOf("<rollback>") < freshSet.indexOf("034-companion-crew-fresh-down.sql"));
         Matcher ids = Pattern.compile("<changeSet id=\"(\\d+)").matcher(changelog);
         int highest = 0;
         int forty = 0;
         int fortyOne = 0;
         int fortyTwo = 0;
+        int fortyThree = 0;
         while (ids.find()) {
             int id = Integer.parseInt(ids.group(1));
             highest = Math.max(highest, id);
             forty += id == 40 ? 1 : 0;
             fortyOne += id == 41 ? 1 : 0;
             fortyTwo += id == 42 ? 1 : 0;
+            fortyThree += id == 43 ? 1 : 0;
         }
-        assertEquals(42, highest);
+        assertEquals(43, highest);
         assertEquals(1, forty);
         assertEquals(1, fortyOne);
         assertEquals(1, fortyTwo);
-        assertEquals(changelog.lastIndexOf("<changeSet "), yields);
+        assertEquals(1, fortyThree);
+        assertEquals(changelog.lastIndexOf("<changeSet "), fresh);
         String yieldUp = Files.readString(Path.of("src/main/resources/db/tables/033-companion-bench-learning.sql"));
         assertTrue(yieldUp.contains("CREATE TABLE IF NOT EXISTS companion_yield"));
         for (String column : List.of("job_branch      VARCHAR(16)", "level_band      TINYINT", "camp_map_id     INT",
@@ -115,6 +123,11 @@ class RosterStateWriterBoundaryTest {
         String yieldDown = Files.readString(Path.of("src/main/resources/db/tables/033-companion-bench-learning-down.sql"));
         assertTrue(yieldDown.contains("DROP TABLE IF EXISTS companion_yield"));
         assertTrue(yieldUp.chars().allMatch(c -> c < 128) && yieldDown.chars().allMatch(c -> c < 128), "ASCII only");
+        String freshUp = Files.readString(Path.of("src/main/resources/db/tables/034-companion-crew-fresh.sql"));
+        String freshDown = Files.readString(Path.of("src/main/resources/db/tables/034-companion-crew-fresh-down.sql"));
+        assertTrue(freshUp.contains("ADD COLUMN keep_fresh TINYINT(1) NOT NULL DEFAULT 0"), "off by default");
+        assertTrue(freshDown.contains("DROP COLUMN keep_fresh"));
+        assertTrue(freshUp.chars().allMatch(c -> c < 128) && freshDown.chars().allMatch(c -> c < 128), "ASCII only");
         String up = Files.readString(Path.of("src/main/resources/db/tables/032-companion-crew.sql"));
         assertTrue(up.contains("CREATE TABLE IF NOT EXISTS living_crew"));
         assertTrue(up.contains("formation       VARCHAR(32)"));

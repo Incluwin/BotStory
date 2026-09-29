@@ -24,6 +24,7 @@ import server.agents.capabilities.combat.AgentCombatSkillUsageStateRuntime;
 import server.agents.capabilities.combat.AgentCombatSpecialMoveState;
 import server.agents.capabilities.combat.AgentSkillBuffDebugStateRuntime;
 import server.agents.capabilities.combat.AgentCombatSpecialMoveTickRuntime;
+import server.agents.capabilities.combat.learning.AgentCombatCandidates;
 import server.agents.capabilities.combat.learning.AgentCombatLearner;
 import server.agents.capabilities.combat.learning.AgentCombatPolicy;
 import server.agents.capabilities.combat.learning.AgentCombatPolicyRepository;
@@ -164,12 +165,15 @@ public final class AgentCombatArenaService {
         boolean chargedEnergy;
         /** Trials whose reading hit the dummy's HP pool (identity: equal readings are still different runs). */
         final Set<Trial> cappedTrials = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        /** The learner's trials lift the hand-written priors: priors=off, or, for policy=candidate, as live play does. */
+        boolean relaxPriors;
 
         Session(AgentRuntimeEntry entry, Character bot, MapleMap map, ArenaOptions options) {
             this.entry = entry;
             this.bot = bot;
             this.map = map;
             this.options = options;
+            this.relaxPriors = options.relaxPriors();
             this.origin = map.getPortal(0) == null ? new Point(bot.getPosition()) : new Point(map.getPortal(0).getPosition());
         }
     }
@@ -255,14 +259,21 @@ public final class AgentCombatArenaService {
         }
         session.notes.add("Cadence: full rate forced (" + AgentRuntimeConfig.cfg.AI_TICK_MS
                 + "ms); unobserved maps otherwise run Agents at background cadence.");
+        if (options.candidate()) {
+            // a candidate is checked, and would be played, under the priors live play of this job uses
+            session.relaxPriors = AgentCombatLearner.priorsRelaxed(bot);
+        }
         // Forced trials and the prior baseline measure the loop as it was, not through an older learned policy.
         AgentCombatLearner.begin(entry, AgentCombatLearner.Mode.OFF, null, 0, false);
         try {
             warmUpBuffs(session);
             for (String scenario : options.scenarios()) {
-                choices.put(scenario, options.learn()
-                        ? learnScenario(session, scenario)
-                        : optimizeScenario(session, scenario, candidates));
+                Choice choice = options.candidate() ? checkCandidate(session, scenario)
+                        : options.learn() ? learnScenario(session, scenario)
+                        : optimizeScenario(session, scenario, candidates);
+                if (choice != null) {
+                    choices.put(scenario, choice);
+                }
             }
         } finally {
             AgentCombatLearner.end(entry);
@@ -330,8 +341,10 @@ public final class AgentCombatArenaService {
                 session.trials);
         String savedTo;
         try {
-            // A learning run leaves the tournament profile alone; its result is the policy file.
-            savedTo = options.learn() ? savePolicy(session).toString()
+            // A learning run leaves the tournament profile alone; its result is the policy file. A candidate check
+            // that adopted nothing leaves the policy file as it was.
+            savedTo = options.candidate() && session.learned.isEmpty() ? "nothing adopted; policy file unchanged"
+                    : options.learn() || options.candidate() ? savePolicy(session).toString()
                     : AgentCombatRotationProfileRepository.defaultRepository().save(profile).toString();
         } catch (Exception failure) {
             log.warn("Could not save combat rotation profile/policy", failure);
@@ -475,26 +488,12 @@ public final class AgentCombatArenaService {
                 + (charges ? ", episodes and pairs cycling between an empty and a full Energy Charge" : "")
                 + "; damage per second by episode (exploration included): " + curve + ".");
 
-        List<Trial> evaluation = new ArrayList<>();
-        for (int repeat = 0; repeat < LEARN_EVAL_REPEATS; repeat++) {
-            // Alternate, so a drift over the run (buff expiry, map state) hits both sides alike; both
-            // sides of a pair fight in the same form.
-            setCondition(session, repeat, transforms, charges);
-            evaluation.add(runTrial(session, scenario, LEARNED, targets, true, LEARN_EVAL_SECONDS,
-                    AgentCombatLearner.Mode.FROZEN, table));
-            evaluation.add(runTrial(session, scenario, 0, targets, true, LEARN_EVAL_SECONDS,
-                    AgentCombatLearner.Mode.OFF, null));
-        }
-        setCondition(session, 0, false, false);
-        // Runs come in pairs fought under the same conditions (form, buff timing), so compare pair by pair.
-        ArenaOptimizer.PairedComparison comparison = ArenaOptimizer.paired(
-                evaluation.stream().filter(t -> t.skillId() == LEARNED).map(ArenaOptimizer::dps).toList(),
-                evaluation.stream().filter(t -> t.skillId() == 0).map(ArenaOptimizer::dps).toList());
+        Evaluation evaluation = evaluate(session, scenario, targets, table, AgentCombatLearner.Mode.OFF, transforms, charges);
+        ArenaOptimizer.PairedComparison comparison = evaluation.comparison();
         double learnedDps = comparison.learnedMean();
         double priorDps = comparison.priorMean();
-        boolean capped = evaluation.stream().anyMatch(session.cappedTrials::contains);
-        // A reading bounded by the dummy compares nothing; never adopt on one.
-        boolean adopted = !capped && comparison.meanDifference() >= 0;
+        boolean capped = evaluation.capped();
+        boolean adopted = evaluation.adoptable();
         double change = priorDps <= 0 ? 0 : 100.0 * (learnedDps - priorDps) / priorDps;
         session.notes.add("LEARNED " + scenario + ": learned policy " + fmt(learnedDps) + " vs prior scorer "
                 + fmt(priorDps) + ", means of " + LEARN_EVAL_REPEATS + " pairs x " + LEARN_EVAL_SECONDS + "s: "
@@ -507,6 +506,91 @@ public final class AgentCombatArenaService {
         describePolicy(session, scenario, table);
         session.learned.put(scenario, new AgentCombatPolicy.Scenario(adopted, learnedDps, priorDps, decisions, table.snapshot()));
         return new Choice(LEARNED, skillLabel(LEARNED), learnedDps, true, 0);
+    }
+
+    /** The pairs a learned table was measured in against a baseline, and whether any reading hit the dummy's pool. */
+    record Evaluation(ArenaOptimizer.PairedComparison comparison, boolean capped) {
+        /** Adopted iff not worse than the baseline; a reading bounded by the dummy compares nothing, so never on one. */
+        boolean adoptable() {
+            return !capped && comparison.meanDifference() >= 0;
+        }
+    }
+
+    /**
+     * The table played greedily ({@code FROZEN}) against {@code baseline} ({@code OFF}: the prior scorer; {@code LIVE}:
+     * what live play has now, an adopted table where it has the evidence, else the prior scorer) in alternating runs of
+     * {@code LEARN_EVAL_SECONDS}, {@code LEARN_EVAL_REPEATS} pairs.
+     */
+    private static Evaluation evaluate(Session session, String scenario, int targets, AgentCombatPolicyTable table,
+                                       AgentCombatLearner.Mode baseline, boolean transforms, boolean charges)
+            throws InterruptedException {
+        List<Trial> evaluation = new ArrayList<>();
+        for (int repeat = 0; repeat < LEARN_EVAL_REPEATS; repeat++) {
+            // Alternate, so a drift over the run (buff expiry, map state) hits both sides alike; both
+            // sides of a pair fight in the same form.
+            setCondition(session, repeat, transforms, charges);
+            evaluation.add(runTrial(session, scenario, LEARNED, targets, true, LEARN_EVAL_SECONDS,
+                    AgentCombatLearner.Mode.FROZEN, table));
+            evaluation.add(runTrial(session, scenario, 0, targets, true, LEARN_EVAL_SECONDS, baseline, null));
+        }
+        setCondition(session, 0, false, false);
+        // Runs come in pairs fought under the same conditions (form, buff timing), so compare pair by pair.
+        ArenaOptimizer.PairedComparison comparison = ArenaOptimizer.paired(
+                evaluation.stream().filter(t -> t.skillId() == LEARNED).map(ArenaOptimizer::dps).toList(),
+                evaluation.stream().filter(t -> t.skillId() == 0).map(ArenaOptimizer::dps).toList());
+        return new Evaluation(comparison, evaluation.stream().anyMatch(session.cappedTrials::contains));
+    }
+
+    /**
+     * policy=candidate (decision 13 a): what bench grinders nobody could see learned for this job
+     * (AgentCombatCandidates, never read by live play) is measured against what live play has now in the same
+     * alternating pairs as policy=learn. The scenario's policy becomes the candidate only if it is not worse; otherwise
+     * live play keeps what it has. A scenario with nothing learned yet is left alone (null).
+     */
+    private static Choice checkCandidate(Session session, String scenario) throws InterruptedException {
+        int jobId = session.bot.getJob().getId();
+        AgentCombatPolicyTable candidate = AgentCombatCandidates.defaultCandidates().copy(jobId, scenario).orElse(null);
+        if (candidate == null) {
+            session.notes.add("CANDIDATE " + scenario + ": bench grinders of this job have learned nothing here yet;"
+                    + " live play keeps what it has.");
+            return null;
+        }
+        int targets = "multi".equals(scenario) ? session.options.packSize() : 1;
+        Evaluation evaluation = evaluate(session, scenario, targets, candidate, AgentCombatLearner.Mode.LIVE,
+                knowsTransformation(session.bot), knowsEnergyCharge(session.bot));
+        ArenaOptimizer.PairedComparison comparison = evaluation.comparison();
+        AgentCombatPolicy.Scenario current = AgentCombatPolicyRepository.defaultRepository().find(jobId)
+                .map(loaded -> loaded.policy().scenarios().get(scenario)).orElse(null);
+        long decisions = AgentCombatCandidates.visits(candidate.snapshot());
+        AgentCombatPolicy.Scenario kept = afterCandidateCheck(current, candidate, evaluation, decisions);
+        double change = comparison.priorMean() <= 0 ? 0
+                : 100.0 * (comparison.learnedMean() - comparison.priorMean()) / comparison.priorMean();
+        session.notes.add("CANDIDATE " + scenario + ": bench-learned policy (" + decisions + " decisions) "
+                + fmt(comparison.learnedMean()) + " vs live play " + fmt(comparison.priorMean()) + ", means of "
+                + LEARN_EVAL_REPEATS + " pairs x " + LEARN_EVAL_SECONDS + "s: "
+                + String.format(java.util.Locale.ROOT, "%+.1f%%", change) + " (paired difference "
+                + fmt(comparison.meanDifference()) + " +/- " + fmt(comparison.standardError()) + ") - "
+                + (evaluation.adoptable() ? "adopted for live play."
+                : evaluation.capped() ? "not adopted: the evaluation hit the dummy's HP pool, so it measured nothing."
+                : "not adopted; live play keeps what it has."));
+        if (kept != current) {
+            describePolicy(session, scenario, candidate);
+            session.learned.put(scenario, kept);
+        }
+        return new Choice(LEARNED, skillLabel(LEARNED), comparison.learnedMean(), true, 0);
+    }
+
+    /**
+     * What the job's policy file holds for a scenario after a candidate check: the candidate, adopted, when it was not
+     * worse than live play ({@link Evaluation#adoptable}); otherwise {@code current}, what it held before (null: nothing).
+     */
+    static AgentCombatPolicy.Scenario afterCandidateCheck(AgentCombatPolicy.Scenario current, AgentCombatPolicyTable candidate,
+                                                          Evaluation evaluation, long decisions) {
+        if (!evaluation.adoptable()) {
+            return current;
+        }
+        return new AgentCombatPolicy.Scenario(true, evaluation.comparison().learnedMean(),
+                evaluation.comparison().priorMean(), decisions, candidate.snapshot());
     }
 
     /**
@@ -574,7 +658,7 @@ public final class AgentCombatArenaService {
         names.putAll(session.actionNames);
         return repository.save(new AgentCombatPolicy(bot.getJob().getId(), bot.getJob().name(), bot.getLevel(),
                 session.options.profileBuild() ? "profile" : "max", Instant.now().toString(),
-                AgentCombatLearner.gammaPerSecond(), session.options.relaxPriors(), names, scenarios));
+                AgentCombatLearner.gammaPerSecond(), session.relaxPriors, names, scenarios));
     }
 
     private static List<Integer> specialMoveIds(AgentRuntimeEntry entry) {
@@ -693,7 +777,7 @@ public final class AgentCombatArenaService {
         Character bot = session.bot;
         AgentRuntimeEntry entry = session.entry;
         AgentCombatLearner.begin(entry, mode, table, LEARN_EPSILON,
-                mode != AgentCombatLearner.Mode.OFF && session.options.relaxPriors());
+                mode != AgentCombatLearner.Mode.OFF && session.relaxPriors);
         constrain(entry, skillId);
         AgentCombatSpecialMoveTickRuntime.setEnabled(specialMoves);
         resetAgent(session);
@@ -744,7 +828,7 @@ public final class AgentCombatArenaService {
             // Only the unconstrained trials describe a rotation; a forced trial is one skill by fiat,
             // and an exploring episode is the learner trying things on purpose.
             String key = scenario + (mode == AgentCombatLearner.Mode.FROZEN ? " (learned)"
-                    : session.options.learn() ? " (prior)" : "");
+                    : session.options.candidate() ? " (live)" : session.options.learn() ? " (prior)" : "");
             Map<Integer, long[]> mix = session.rotationMix.computeIfAbsent(key, ignored -> new LinkedHashMap<>());
             AgentCombatSkillUsageStateRuntime.snapshot(entry).forEach((usedSkillId, acc) -> {
                 long[] total = mix.computeIfAbsent(usedSkillId, ignored -> new long[2]);

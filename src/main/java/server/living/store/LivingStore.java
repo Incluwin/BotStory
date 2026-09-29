@@ -774,6 +774,41 @@ public final class LivingStore {
         }
     }
 
+    /**
+     * The owners who turned on "Keep my crew fresh" (living_crew.keep_fresh, changeset 43, P5).
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public Set<Integer> crewsKeptFresh() {
+        Set<Integer> out = new LinkedHashSet<>();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT character_id FROM living_crew WHERE keep_fresh = 1");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.add(rs.getInt(1));
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("living_crew keep_fresh scan failed", failure);
+            throw new ReadFailed("living_crew keep_fresh", failure);
+        }
+    }
+
+    /** Keeps whether an owner wants their crew kept fresh; false when the write failed. */
+    public boolean saveCrewKeepFresh(int characterId, boolean keepFresh) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO living_crew (character_id, keep_fresh) VALUES (?, ?)"
+                        + " ON DUPLICATE KEY UPDATE keep_fresh = VALUES(keep_fresh)")) {
+            ps.setInt(1, characterId);
+            ps.setBoolean(2, keepFresh);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("living_crew keep_fresh write failed for {}", characterId, failure);
+            return false;
+        }
+    }
+
     // ---- bench yields (P5) --------------------------------------------------------------------
 
     /**
