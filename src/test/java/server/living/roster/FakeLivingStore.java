@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
  * {@link #unreadable} or {@link #unwritable}, addCharacterMeso (on the economy transaction's connection) adds to
  * {@link #purses} only for a character it has a purse for, and never past the limit (else it throws, failing that
  * commit), characterMeso reads the purses (-1 for none), characterLevelAndJob reads {@link #levels} and {@link #jobs},
- * living_crew is {@link #crews} and companion_yield (an upsert by job branch, level band and camp) {@link #yields}.
+ * living_crew is {@link #crews} (its keep_fresh {@link #keptFresh}) and companion_yield (an upsert by job branch, level band and camp) {@link #yields}.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -56,6 +56,8 @@ final class FakeLivingStore {
     final Map<Integer, Integer> jobs = new HashMap<>();
     /** Owner id -> living_crew.formation. */
     final Map<Integer, String> crews = new HashMap<>();
+    /** Owners whose living_crew.keep_fresh is 1 ("Keep my crew fresh" on). */
+    final Set<Integer> keptFresh = new java.util.LinkedHashSet<>();
     /** "branch:band:camp" -> companion_yield row. */
     final Map<String, YieldRow> yields = new LinkedHashMap<>();
     /** owner:persona keys whose settings_json the database cannot read, or write, right now. */
@@ -130,6 +132,15 @@ final class FakeLivingStore {
         when(store.crewFormation(anyInt())).thenAnswer(inv -> crews.get((int) inv.getArgument(0)));
         when(store.saveCrewFormation(anyInt(), any())).thenAnswer(inv -> {
             crews.put(inv.getArgument(0), inv.getArgument(1));
+            return true;
+        });
+        when(store.crewsKeptFresh()).thenAnswer(inv -> new java.util.LinkedHashSet<>(keptFresh));
+        when(store.saveCrewKeepFresh(anyInt(), org.mockito.ArgumentMatchers.anyBoolean())).thenAnswer(inv -> {
+            if ((boolean) inv.getArgument(1)) {
+                keptFresh.add(inv.getArgument(0));
+            } else {
+                keptFresh.remove((Integer) inv.getArgument(0));
+            }
             return true;
         });
         when(store.companionYields()).thenAnswer(inv -> List.copyOf(yields.values()));

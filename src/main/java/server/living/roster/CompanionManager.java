@@ -366,6 +366,12 @@ public final class CompanionManager {
         return new RosterResult.Ok("You tell " + names(names) + ": " + phrase + ".");
     }
 
+    /** Turns "Keep my crew fresh" (decision 15 b, CrewRotation) on or off for the owner; kept past a relog and a restart. */
+    public RosterResult setKeepCrewFresh(Character owner, boolean on) {
+        CrewRotation rotation = world.crewRotation();
+        return rotation == null ? new RosterResult.Failed(TRY_AGAIN) : rotation.setKeepFresh(owner, on);
+    }
+
     // ---- one companion's settings (P3b: Fighting style..., Supplies & loot...) -----------------------
 
     /** The companion's own settings (the defaults until the owner changes one), or null when it is not the owner's. */

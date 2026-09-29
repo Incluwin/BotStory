@@ -31,6 +31,7 @@ import server.living.roster.CompanionManager;
 import server.living.roster.CompanionPartySync;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionViews;
+import server.living.roster.CrewRotation;
 import server.living.roster.DirectExecutor;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
@@ -54,6 +55,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -498,6 +500,47 @@ class CrewScreensTest {
         views.invalidate(ANN); // a lineup saved: the cache reads it again
         menus.crew(owner);
         assertTrue(lastTalk().labels().contains("Call my usual lineup"));
+    }
+
+    // ---- keep my crew fresh (P5, decision 15 b) ----------------------------------------------------
+
+    @Test
+    void keepMyCrewFreshIsOffUntilTurnedOnAndEachClickSetsWhatItsLabelOffers() {
+        hadrik();
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        boolean[] on = {false};
+        CrewRotation rotation = mock(CrewRotation.class);
+        when(world.crewRotation()).thenReturn(rotation);
+        when(rotation.offered()).thenReturn(true);
+        when(rotation.keepsFresh(ANN)).thenAnswer(inv -> on[0]);
+        when(manager.setKeepCrewFresh(eq(owner), anyBoolean()))
+                .thenAnswer(inv -> {
+                    on[0] = inv.getArgument(1);
+                    return new RosterResult.Ok("Keep my crew fresh is " + (on[0] ? "on." : "off."));
+                });
+        menus.crew(owner);
+
+        List<String> labels = lastTalk().labels();
+        assertEquals(labels.indexOf("Everyone on the bench...") + 1, labels.indexOf("Keep my crew fresh (off)"),
+                "right after the bench-wide duty, as the plan lists it");
+        pick("Keep my crew fresh (off)");
+        verify(manager).setKeepCrewFresh(owner, true);
+        verify(owner).dropMessage(5, "Keep my crew fresh is on.");
+        pick("Keep my crew fresh (on)"); // from the Crew window drawn again
+        verify(manager).setKeepCrewFresh(owner, false);
+        assertTrue(lastTalk().labels().contains("Keep my crew fresh (off)"), lastTalk().labels().toString());
+    }
+
+    @Test
+    void keepMyCrewFreshIsNotOfferedWhenAutoRotationIsOff() {
+        hadrik();
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        CrewRotation rotation = mock(CrewRotation.class); // AUTO_ROTATE_MODE: OFF
+        when(world.crewRotation()).thenReturn(rotation);
+
+        menus.crew(owner);
+
+        assertTrue(lastTalk().labels().stream().noneMatch(label -> label.startsWith("Keep my crew fresh")));
     }
 
     // ---- stale clicks ------------------------------------------------------------------------------

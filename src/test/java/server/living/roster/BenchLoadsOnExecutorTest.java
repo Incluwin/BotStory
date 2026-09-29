@@ -202,12 +202,12 @@ class BenchLoadsOnExecutorTest {
         int companionTimers = 0;
         while (timer.find()) {
             String task = timer.group(1);
-            if (task.matches("(?s).*\\b(bench|benchDuty|contracts|auditor|partySync|roster)\\b.*")) {
+            if (task.matches("(?s).*\\b(bench|benchDuty|contracts|auditor|partySync|roster|crewRotation)\\b.*")) {
                 companionTimers++;
                 assertTrue(task.startsWith("() -> world.executor.submit("), "a timer only hands companion work over: " + task);
             }
         }
-        assertEquals(6, companionTimers, "bench ledger, contracts, bench slices, park sweep, resume, audit");
+        assertEquals(7, companionTimers, "bench ledger, contracts, bench slices, park sweep, resume, audit, keep my crew fresh");
         // the shutdown's bench unloads go to companion-ops as well, and it waits for them
         assertTrue(source.contains("world.executor.submit(\"bench_duty.end_all\", () -> world.benchDuty.endAll("));
         assertEquals(1, source.split("benchDuty\\.endAll\\(", -1).length - 1);

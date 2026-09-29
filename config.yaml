@@ -839,6 +839,21 @@ living_world:
     # their Residents go home (0 = never).
     RESIDENT_CAP_PER_OWNER: 5
     RESIDENT_OWNER_INACTIVE_DAYS: 14
+    # Decision 13 a: a companion grinding on a live bench slice with no human on its map learns how to fight (the
+    # combat learner in LEARN mode, exploring EPSILON of the time once every choice was tried) into its job's
+    # candidate table under scripts/config/agents/combat-policy/candidates/, written every SAVE_MS. Live play uses it
+    # only after "!combatarena <agent> job=<job> policy=candidate" finds it not worse than live play. false = off.
+    BENCH_COMBAT_LEARN: true
+    BENCH_COMBAT_LEARN_EPSILON: 0.1
+    BENCH_COMBAT_LEARN_SAVE_MS: 300000
+    # Decision 15 b, "Keep my crew fresh": OPT_IN puts the toggle in each owner's Crew window (off until they turn it
+    # on); OFF hides it. Every TICK_MS, a rested bench companion swaps in for one out with its owner that is dead
+    # outside an instance, out of potions, or LEVEL_GAP or more levels off its owner; no companion swaps again within
+    # COOLDOWN_MS, and nobody swaps while the owner is in a run.
+    AUTO_ROTATE_MODE: OPT_IN
+    AUTO_ROTATE_TICK_MS: 30000
+    AUTO_ROTATE_COOLDOWN_MS: 600000
+    AUTO_ROTATE_LEVEL_GAP: 10
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 

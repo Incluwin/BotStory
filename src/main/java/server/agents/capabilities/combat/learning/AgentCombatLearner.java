@@ -35,7 +35,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * epsilon-greedy) and updates the table; {@code FROZEN} plays the table greedily without
  * updating (the arena's evaluation); {@code LIVE} exploits an arena-adopted policy file where it
  * has enough evidence and otherwise leaves the decision to the estimated-DPS scorer;
- * {@code OFF} stays out of the way entirely (the arena's prior baseline and forced trials).</p>
+ * {@code OFF} stays out of the way entirely (the arena's prior baseline and forced trials). An Agent nobody can see
+ * (AgentCombatLearnGuard: a bench grinder alone at its camp) runs {@code LEARN} on its job's candidate table, which live
+ * play never reads until the arena's {@code policy=candidate} check adopts it.</p>
  */
 public final class AgentCombatLearner {
     private static final double GAMMA_PER_SECOND = config.AgentTuning.doubleValue("server.agents.capabilities.combat.learning.AgentCombatLearner.GAMMA_PER_SECOND");
@@ -120,7 +122,7 @@ public final class AgentCombatLearner {
             return null;
         }
         AgentCombatLearningState state = state(entry);
-        Mode mode = state.mode();
+        Mode mode = resolve(state, bot);
         if (mode == Mode.OFF) {
             return null;
         }
@@ -159,7 +161,7 @@ public final class AgentCombatLearner {
             return SpecialVerdict.DEFER;
         }
         AgentCombatLearningState state = state(entry);
-        Mode mode = state.mode();
+        Mode mode = resolve(state, bot);
         if (mode == Mode.OFF) {
             return SpecialVerdict.DEFER;
         }
@@ -326,6 +328,25 @@ public final class AgentCombatLearner {
             return actions.get(random.nextInt(actions.size()));
         }
         return table.bestAction(context, actions, 0);
+    }
+
+    /**
+     * The mode this decision is taken in. A mode the arena set ({@link #begin}) stands until it {@link #end}s. Otherwise
+     * an Agent the installed {@link AgentCombatLearnGuard} rule says nobody can see learns ({@code LEARN}) into its job's
+     * candidate table ({@link AgentCombatCandidates}), and the moment the rule says otherwise it is back in the live
+     * mode, the decision it had open dropped.
+     */
+    static Mode resolve(AgentCombatLearningState state, Character bot) {
+        if (state.held()) {
+            return state.mode();
+        }
+        AgentCombatLearnGuard.Rule rule = AgentCombatLearnGuard.rule();
+        if (rule != null && bot.getJob() != null && rule.learnUnseen(bot)) {
+            state.learnUnseen(AgentCombatCandidates.defaultCandidates().table(bot.getJob().getId()), rule.epsilon());
+        } else {
+            state.seen();
+        }
+        return state.mode();
     }
 
     private static AgentCombatPolicyTable tableFor(AgentCombatLearningState state, Mode mode, Character bot,

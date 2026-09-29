@@ -173,6 +173,29 @@ public class LivingWorldConfig {
     /** Decision 18: a friend away this many days releases their Residents to go home (0 = never). */
     public int RESIDENT_OWNER_INACTIVE_DAYS = 14;
 
+    // Bench combat learning and "Keep my crew fresh" (P5, decisions 13 a and 15 b)
+    /**
+     * Decision 13 a: a companion grinding on a live bench slice with no human on its map runs the combat learner in
+     * LEARN mode into its job's candidate table, which live play uses only once the arena's policy=candidate check
+     * adopts it. false = bench grinders fight as everyone else does.
+     */
+    public boolean BENCH_COMBAT_LEARN = true;
+    /** How often such a grinder still explores once every choice has had its tries (the arena uses 0.1). */
+    public double BENCH_COMBAT_LEARN_EPSILON = 0.1;
+    /** How often what bench grinders learned is written to the candidate files (and at shutdown). */
+    public int BENCH_COMBAT_LEARN_SAVE_MS = 300000;
+    /**
+     * Decision 15 b, "Keep my crew fresh": OPT_IN offers each owner the toggle in the Crew window (off until they turn it
+     * on); OFF hides it and swaps nobody.
+     */
+    public String AUTO_ROTATE_MODE = "OPT_IN";
+    /** How often an owner's crew is looked at for a companion to swap out. */
+    public int AUTO_ROTATE_TICK_MS = 30000;
+    /** A companion swapped in or out is not swapped again for this long. */
+    public int AUTO_ROTATE_COOLDOWN_MS = 600000;
+    /** A companion this many levels or more off its owner (either way) is swapped for one closer. */
+    public int AUTO_ROTATE_LEVEL_GAP = 10;
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
@@ -244,6 +267,17 @@ public class LivingWorldConfig {
         }
         if (RESIDENT_OWNER_INACTIVE_DAYS < 0) {
             throw new IllegalArgumentException("living_world.RESIDENT_OWNER_INACTIVE_DAYS must be >= 0 (0 = never)");
+        }
+        if (BENCH_COMBAT_LEARN_EPSILON < 0 || BENCH_COMBAT_LEARN_EPSILON > 1 || BENCH_COMBAT_LEARN_SAVE_MS < 1000) {
+            throw new IllegalArgumentException(
+                    "living_world.BENCH_COMBAT_LEARN_EPSILON must be within 0..1 and BENCH_COMBAT_LEARN_SAVE_MS >= 1000");
+        }
+        if (!java.util.List.of("OPT_IN", "OFF").contains(AUTO_ROTATE_MODE)) {
+            throw new IllegalArgumentException("living_world.AUTO_ROTATE_MODE must be OPT_IN or OFF");
+        }
+        if (AUTO_ROTATE_TICK_MS < 1000 || AUTO_ROTATE_COOLDOWN_MS < 0 || AUTO_ROTATE_LEVEL_GAP < 1) {
+            throw new IllegalArgumentException("living_world.AUTO_ROTATE_TICK_MS must be >= 1000, AUTO_ROTATE_COOLDOWN_MS >= 0"
+                    + " and AUTO_ROTATE_LEVEL_GAP >= 1");
         }
     }
 }

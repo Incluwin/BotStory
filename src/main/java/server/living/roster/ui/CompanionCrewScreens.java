@@ -21,6 +21,7 @@ import server.living.roster.CompanionManager;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionView;
 import server.living.roster.CompanionViews;
+import server.living.roster.CrewRotation;
 import server.living.roster.HiredHands;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
@@ -50,9 +51,9 @@ import static server.living.roster.ui.CompanionMenus.portrait;
  * The Crew window and its crew-wide pages (docs/BOT_MANAGEMENT_PLAN.md P1.5, P3 "Crew window"): a bold "Party n/6" block
  * (who is out with you, on the way, waiting outside a run, logged off with you, and your guests), a "Bench (x of y bench
  * seats)" block (y is the roster cap less those in the party block, so the cap shows), then the crew-wide actions: the
- * usual lineup, the orders everyone out with you takes, the formation, a duty for the whole bench, "Make room for a
- * friend..." and the hire list, "Adventurers looking for a crew..." (P4). A row opens that companion's card through
- * {@link CompanionMenus#card}. Long lists page with "More...".
+ * usual lineup, the orders everyone out with you takes, the formation, a duty for the whole bench, "Keep my crew fresh"
+ * (on/off, P5 decision 15 b: CrewRotation), "Make room for a friend..." and the hire list, "Adventurers looking for a
+ * crew..." (P4). A row opens that companion's card through {@link CompanionMenus#card}. Long lists page with "More...".
  *
  * <p>Who speaks (the Crew window speaker rule): opened from a companion's card, that companion, under the portrait
  * policy, with "Back" to its card; opened from the Adventurer's Roster, the player's own notes (their avatar, P0 probe
@@ -173,6 +174,14 @@ final class CompanionCrewScreens {
         }
         if (!bench.isEmpty()) {
             actions.add(new Option("Everyone on the bench...", () -> benchDutyPicker(owner, from)));
+        }
+        // decision 15 b, off until the owner turns it on; the option sets what its label offers, so a click on a window
+        // drawn before a change elsewhere sets the same thing again and needs no stamp
+        CrewRotation rotation = world.crewRotation();
+        if (rotation != null && rotation.offered()) {
+            boolean on = rotation.keepsFresh(owner.getId());
+            actions.add(new Option("Keep my crew fresh (" + (on ? "on" : "off") + ")", () -> act(owner, from,
+                    "menu.crew.keep_fresh", manager -> manager.setKeepCrewFresh(owner, !on))));
         }
         // a full party cannot invite (P0 probe 12): one of yours steps out so a friend can be asked
         if (out && owner.getParty() != null && owner.getParty().getMembers().size() >= RosterService.PARTY_CAP) {

@@ -69,3 +69,6 @@ nul
 /tools/WzToNxBatch/obj/
 /tools/string-cleanup/ServerXmlToImg/bin/
 /tools/string-cleanup/ServerXmlToImg/obj/
+
+# What bench grinders nobody could see learned (AgentCombatCandidates): runtime data, adopted only via the arena.
+/scripts/config/agents/combat-policy/candidates/

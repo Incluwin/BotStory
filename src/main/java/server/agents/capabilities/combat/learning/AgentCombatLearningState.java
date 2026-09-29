@@ -30,6 +30,10 @@ public final class AgentCombatLearningState {
     private long specialAtMs;
     private Open open;
     private long decisions;
+    /** The arena put it in its mode ({@link #begin}): nothing else changes the mode until it ends. */
+    private boolean held;
+    /** It learns out of sight ({@link #learnUnseen}) until {@link #seen}. */
+    private boolean unseen;
 
     synchronized void begin(AgentCombatLearner.Mode mode, AgentCombatPolicyTable table, double epsilon) {
         this.mode = mode;
@@ -38,6 +42,8 @@ public final class AgentCombatLearningState {
         this.open = null;
         this.plan = null;
         this.decisions = 0;
+        this.held = true;
+        this.unseen = false;
     }
 
     synchronized void end() {
@@ -45,6 +51,30 @@ public final class AgentCombatLearningState {
         table = null;
         open = null;
         plan = null;
+        held = false;
+        unseen = false;
+    }
+
+    synchronized boolean held() {
+        return held;
+    }
+
+    /** Out of sight: LEARN into {@code candidate}; a decision still open for another table is dropped, not learned from. */
+    synchronized void learnUnseen(AgentCombatPolicyTable candidate, double epsilon) {
+        if (unseen && table == candidate) {
+            this.epsilon = epsilon;
+            return;
+        }
+        begin(AgentCombatLearner.Mode.LEARN, candidate, epsilon);
+        held = false;
+        unseen = true;
+    }
+
+    /** Seen again: back to the live mode at once, the open decision dropped. */
+    synchronized void seen() {
+        if (unseen) {
+            end();
+        }
     }
 
     synchronized AgentCombatLearner.Mode mode() {
