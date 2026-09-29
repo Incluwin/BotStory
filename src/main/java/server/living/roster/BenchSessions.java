@@ -120,6 +120,7 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
         if (gainedMeso > 0) {
             agent.gainMeso((int) -gainedMeso, false);
             haulMeso += gainedMeso;
+            world.bench().reportHaul(entry.characterId(), entry.personaId(), slice.mapId(), gainedMeso, 0, 0);
         }
         int gainedStacks = 0;
         for (Map.Entry<Integer, Integer> taken : slice.loot.takeItems(itemId -> held(agent, itemId)).entrySet()) {
@@ -130,6 +131,7 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
             InventoryManipulator.removeById(agent.getClient(), ItemConstants.getInventoryType(itemId), itemId, taken.getValue(),
                     false, false);
             world.store().addHaul(entry.characterId(), entry.personaId(), itemId, taken.getValue());
+            world.bench().reportHaul(entry.characterId(), entry.personaId(), slice.mapId(), 0L, itemId, taken.getValue());
             gainedStacks++;
         }
         if (gainedMeso <= 0 && gainedStacks == 0) {

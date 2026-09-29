@@ -18,8 +18,10 @@ import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
+import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
 import server.living.roster.Commitments;
+import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionManager;
@@ -42,7 +44,9 @@ import testutil.Packets;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -56,6 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
@@ -113,6 +118,8 @@ class CompanionCardScreensTest {
     private final Set<Integer> fieldMaps = new HashSet<>(Set.of(ANT_TUNNEL, ANT_TUNNEL_2, HILL));
     private final Map<Integer, Integer> drops = new LinkedHashMap<>();
     private final Map<Integer, Integer> needs = new LinkedHashMap<>();
+    /** The monsters' level of a field, as the population's catalog knows it (none: 0). */
+    private final Map<Integer, Integer> mobLevels = new HashMap<>();
 
     private MockedStatic<LivingWorld> livingWorld;
     private CompanionMenus menus;
@@ -174,6 +181,11 @@ class CompanionCardScreensTest {
             @Override
             public boolean isField(int mapId) {
                 return fieldMaps.contains(mapId);
+            }
+
+            @Override
+            public int mobLevel(int mapId) {
+                return mobLevels.getOrDefault(mapId, 0);
             }
 
             @Override
@@ -488,7 +500,8 @@ class CompanionCardScreensTest {
         assertTrue(picker.text().startsWith("what should i go do? i'll keep my seat.\r\nnow: train @ Ant Tunnel I\r\n"
                 + "upkeep: 930 meso an hour, none while i rest\r\n"), picker.text());
         assertEquals(List.of("Train (~1.2% EXP/h)", "Farm meso (~4.1k meso/h after upkeep)", "Farm an item...",
-                "Gather for your quests", "Sell the haul", "Run a stall", "Rest (no upkeep)", "Back"), picker.labels());
+                "Gather for your quests", "Sell the haul", "Run a stall", "Rest (no upkeep)", "Your call", "Back"),
+                picker.labels());
         pick("Back");
         assertTrue(lastTalk().text().startsWith("#eHadrik#n"), "Back is the card again");
     }
@@ -584,6 +597,174 @@ class CompanionCardScreensTest {
 
         assertFalse(LivingTalk.active(client));
         verify(manager, never()).assign(any(), any(), any(), anyInt(), anyInt());
+    }
+
+    // ---- P5: learned rates, "Your call" ----------------------------------------------------------
+
+    @Test
+    void thePickerReadsTheRatesLearnedAtItsCampAndSaysHowManyHuntsTaughtThem() {
+        rows.add(hadrikRow);
+        when(bench.rates(any(), any(), anyInt(), anyInt(), anyInt(), any(), anyInt())).thenAnswer(inv ->
+                switch ((Assignment) inv.getArgument(5)) {
+                    case TRAIN -> new BenchLedger.Rates(1.43d, 0L, 610L, 7.2d); // upkeep capped by what the camp pays
+                    case FARM_MESO -> new BenchLedger.Rates(0.0d, 4_070L, 610L, 7.2d);
+                    case REST -> new BenchLedger.Rates(0.0d, 0L, 0L, 7.2d);
+                    default -> new BenchLedger.Rates(0.0d, 0L, 610L, 7.2d);
+                });
+        menus.card(owner, hadrikRow);
+
+        pick("What you do at camp...");
+
+        Talk picker = lastTalk();
+        assertTrue(picker.text().startsWith("what should i go do? i'll keep my seat.\r\nnow: train @ Ant Tunnel I\r\n"
+                + "upkeep: 610 meso an hour, none while i rest\r\n(learned from 7 hunts at Ant Tunnel I)\r\n"), picker.text());
+        assertEquals(List.of("Train (~1.4% EXP/h)", "Farm meso (~3.5k meso/h after upkeep)", "Farm an item...",
+                "Gather for your quests", "Sell the haul", "Run a stall", "Rest (no upkeep)", "Your call", "Back"),
+                picker.labels());
+        verify(bench).rates(hadrik, null, 31, Job.FIGHTER.getId(), 0, Assignment.TRAIN, ANT_TUNNEL); // its class line, its camp
+    }
+
+    @Test
+    void theCampPickerShowsEachFieldsHourForItsDuty() {
+        rows.add(hadrikRow);
+        fields.put(ANT_TUNNEL, 27);
+        fields.put(ANT_TUNNEL_2, 30);
+        when(owner.getMapId()).thenReturn(HENESYS);
+        when(bench.rates(any(), any(), anyInt(), anyInt(), anyInt(), any(), anyInt())).thenAnswer(inv ->
+                new BenchLedger.Rates((int) inv.getArgument(6) == ANT_TUNNEL ? 1.23d : 2.61d, 0L, 930L));
+        menus.card(owner, hadrikRow);
+
+        pick("Camp somewhere else...");
+
+        assertEquals(List.of("Ant Tunnel I (Lv27 monsters, ~1.2% EXP/h) - my camp now", "Ant Tunnel II (Lv30 monsters, ~2.6% EXP/h)",
+                "Right here (Henesys)", "Back"), lastTalk().labels());
+        assertEquals(", ~4.1k meso/h", CompanionCardScreens.campRate(Assignment.FARM_MESO, new BenchLedger.Rates(0.0d, 4_100L, 900L)));
+        assertEquals("", CompanionCardScreens.campRate(Assignment.FARM_ITEM, new BenchLedger.Rates(0.0d, 4_100L, 900L)));
+        assertEquals("", CompanionCardScreens.campRate(Assignment.TRAIN, null));
+    }
+
+    @Test
+    void yourCallLetsTheCompanionPickItsCampAndDutyAndSayWhy() {
+        rows.add(hadrikRow);
+        BenchLedger ledger = new BenchLedger(world); // the ledger's priors: nothing was measured yet
+        when(world.bench()).thenReturn(ledger);
+        when(world.routineDate()).thenReturn(LocalDate.of(2026, 9, 29));
+        when(owner.getLevel()).thenReturn(40); // Hadrik (Lv31) is behind: he trains
+        mobLevels.put(ANT_TUNNEL, 20); // his camp's monsters are far below him
+        fields.put(ANT_TUNNEL_2, 30);
+        fields.put(HILL, 12);
+        RosterEntry away = new RosterEntry(ANN, "hadrik", RosterState.AWAY, Assignment.TRAIN, 0, 0, ANT_TUNNEL_2, 0L, 0L, 0L,
+                0L, 0L, 0L, 0, null);
+        when(roster.entry(ANN, "hadrik")).thenReturn(hadrikRow, away);
+        menus.card(owner, hadrikRow);
+        pick("What you do at camp...");
+
+        pick("Your call");
+
+        InOrder order = inOrder(manager);
+        order.verify(manager).setCamp(owner, hadrik, ANT_TUNNEL_2);
+        order.verify(manager).assign(owner, hadrik, Assignment.TRAIN, 0, 0);
+        assertTrue(lastTalk().text().startsWith("Hadrik: going to ant tunnel ii. good exp for me right now. i'll keep my seat."
+                + "\r\n#eHadrik#n"), lastTalk().text());
+        verify(store).event(eq(ANN), eq("hadrik"), eq("bench.your_call"), any());
+    }
+
+    @Test
+    void yourCallWithNoFieldForItsLevelAsksForACampAndChangesNothing() {
+        RosterEntry inTown = new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.REST, 0, 0, HENESYS, 0L, 0L,
+                0L, 0L, 0L, 0L, 0, null);
+        rows.add(inTown);
+        when(roster.entry(ANN, "mira")).thenReturn(inTown);
+        menus.card(owner, inTown);
+        pick("What you do at camp...");
+
+        pick("Your call");
+
+        verify(manager, never()).assign(any(), any(), any(), anyInt(), anyInt());
+        verify(manager, never()).setCamp(any(), any(), anyInt());
+        assertTrue(lastTalk().text().startsWith("Mira: i don't know a good spot for my level. pick a camp for me?\r\n"),
+                lastTalk().text());
+    }
+
+    // ---- P5: the bench card's live state -----------------------------------------------------------
+
+    @Test
+    void aFarmerOnALiveSliceReadsLiveAndOneTheLedgerKeepsReadsOutOfSight() {
+        BenchDutyDispatcher duty = dispatcher();
+        RosterEntry farming = farmingFences();
+        cachedViews();
+        BenchDutyDispatcher.Slice slice = slice(CompanionBudget.Kind.BENCH_LIVE, Assignment.FARM_ITEM, ANT_TUNNEL);
+        when(duty.slice("mira")).thenReturn(slice);
+
+        menus.card(owner, farming);
+        assertTrue(lastTalk().text().startsWith("#eMira#n, Lv28 Hunter\r\ntrain @ Ant Tunnel I\r\n143/200 item 4000021 (live)\r\n"),
+                lastTalk().text());
+        LivingTalk.forget(owner);
+
+        when(duty.slice("mira")).thenReturn(null);
+        menus.card(owner, farming);
+        assertTrue(lastTalk().text().contains("\r\n143/200 item 4000021 (out of sight)\r\n"), lastTalk().text());
+    }
+
+    @Test
+    void aTraineeWithNoCountShowsItOnItsDutyLine() {
+        dispatcher();
+        rows.add(miraRow);
+
+        menus.card(owner, miraRow);
+
+        assertTrue(lastTalk().text().startsWith("#eMira#n, Lv28 Hunter\r\ntrain @ Ant Tunnel I (out of sight)\r\n"),
+                lastTalk().text());
+    }
+
+    @Test
+    void aStallAndATownRestSayWhereTheyAre() {
+        BenchDutyDispatcher duty = dispatcher();
+        rows.add(miraRow);
+        BenchDutyDispatcher.Slice stall = slice(CompanionBudget.Kind.COMMERCE, Assignment.STALL, 910000003);
+        when(duty.slice("mira")).thenReturn(stall);
+
+        menus.card(owner, miraRow);
+        assertTrue(lastTalk().text().startsWith("#eMira#n, Lv28 Hunter\r\ntrain @ Ant Tunnel I\r\nstall open in FM room 3\r\n"),
+                lastTalk().text());
+        LivingTalk.forget(owner);
+
+        BenchDutyDispatcher.Slice rest = slice(CompanionBudget.Kind.BENCH_TOWN, Assignment.REST, HENESYS);
+        when(duty.slice("mira")).thenReturn(rest);
+        menus.card(owner, miraRow);
+        assertTrue(lastTalk().text().contains("\r\nresting in Henesys\r\n"), lastTalk().text());
+
+        assertEquals("selling the haul in FM room 12", CompanionCardScreens.liveLine(CompanionBudget.Kind.COMMERCE,
+                Assignment.SELL, 910000012, id -> "?"));
+        assertEquals("stall open in the Free Market", CompanionCardScreens.liveLine(CompanionBudget.Kind.COMMERCE,
+                Assignment.STALL, 910000000, id -> "?"));
+        assertEquals("(live)", CompanionCardScreens.liveLine(CompanionBudget.Kind.BENCH_LIVE, Assignment.GATHER, ANT_TUNNEL,
+                id -> "?"));
+    }
+
+    @Test
+    void afterARoughHuntItsDutyLineSaysSoAndNoMarkerIsAdded() {
+        BenchDutyDispatcher duty = dispatcher();
+        when(duty.note("mira")).thenReturn(BenchDutyDispatcher.ROUGH_HUNT);
+        rows.add(miraRow);
+
+        menus.card(owner, miraRow);
+
+        assertTrue(lastTalk().text().startsWith("#eMira#n, Lv28 Hunter\r\ntrain (resting after a rough hunt) @ Ant Tunnel I\r\n"),
+                lastTalk().text());
+        assertFalse(lastTalk().text().contains("(out of sight)"), lastTalk().text());
+    }
+
+    @Test
+    void anActiveOrParkedCompanionShowsNoBenchState() {
+        dispatcher();
+        rows.addAll(List.of(hadrikRow, row("tobi", RosterState.PARKED, 0L)));
+
+        menus.card(owner, hadrikRow);
+        assertFalse(lastTalk().text().contains("(out of sight)"), lastTalk().text());
+        LivingTalk.forget(owner);
+        menus.card(owner, rows.get(1));
+        assertFalse(lastTalk().text().contains("(out of sight)"), lastTalk().text());
     }
 
     // ---- where it camps ---------------------------------------------------------------------
@@ -712,6 +893,7 @@ class CompanionCardScreensTest {
     @Test
     void wagesShowTheStatusAndPayHoursAheadInTheNumberBox() {
         rows.add(hadrikRow);
+        when(bench.upkeepPerHour(anyInt(), anyInt(), anyInt())).thenReturn(930.0d); // Lv31, 30 a level: under the camp's cap
         when(owner.getMeso()).thenReturn(10_000);
         when(roster.payWages(owner, hadrik, 2_790L)).thenReturn("Hadrik is paid up for ~3 h.");
         menus.card(owner, hadrikRow);
@@ -734,6 +916,7 @@ class CompanionCardScreensTest {
     @Test
     void wagesSheCannotPayForOfferNoBox() {
         rows.add(hadrikRow);
+        when(bench.upkeepPerHour(anyInt(), anyInt(), anyInt())).thenReturn(930.0d);
         when(owner.getMeso()).thenReturn(100);
         menus.card(owner, hadrikRow);
         pick("More...");
@@ -792,14 +975,40 @@ class CompanionCardScreensTest {
 
     // ---- helpers -------------------------------------------------------------------------
 
-    /** Rates at the priors for Hadrik (Lv31): 1.23% EXP an hour training, 4,930 meso an hour farming, 930 upkeep. */
+    /** Rates at the priors for Hadrik (Lv31) at his camp: 1.23% EXP an hour training, 5,030 meso an hour farming, 930 upkeep. */
     private void rates() {
-        when(bench.rates(any(), any(), anyInt(), anyInt(), any())).thenAnswer(inv -> switch ((Assignment) inv.getArgument(4)) {
-            case TRAIN -> new BenchLedger.Rates(1.23d, 0L, 930L);
-            case FARM_MESO -> new BenchLedger.Rates(0.0d, 5_030L, 930L);
-            case REST -> new BenchLedger.Rates(0.0d, 0L, 0L);
-            default -> new BenchLedger.Rates(0.0d, 0L, 930L);
-        });
+        when(bench.rates(any(), any(), anyInt(), anyInt(), anyInt(), any(), anyInt())).thenAnswer(inv ->
+                switch ((Assignment) inv.getArgument(5)) {
+                    case TRAIN -> new BenchLedger.Rates(1.23d, 0L, 930L);
+                    case FARM_MESO -> new BenchLedger.Rates(0.0d, 5_030L, 930L);
+                    case REST -> new BenchLedger.Rates(0.0d, 0L, 0L);
+                    default -> new BenchLedger.Rates(0.0d, 0L, 930L);
+                });
+    }
+
+    /** The live bench, with no slice and no rest unless a test says so. */
+    private BenchDutyDispatcher dispatcher() {
+        BenchDutyDispatcher duty = mock(BenchDutyDispatcher.class);
+        when(duty.note(any())).thenReturn("");
+        when(world.benchDuty()).thenReturn(duty);
+        return duty;
+    }
+
+    private static BenchDutyDispatcher.Slice slice(CompanionBudget.Kind pool, Assignment duty, int mapId) {
+        BenchDutyDispatcher.Slice slice = mock(BenchDutyDispatcher.Slice.class);
+        when(slice.pool()).thenReturn(pool);
+        when(slice.duty()).thenReturn(duty);
+        when(slice.mapId()).thenReturn(mapId);
+        return slice;
+    }
+
+    /** Mira on the bench farming 200 Stolen Fences at Ant Tunnel I, 143 in her haul. */
+    private RosterEntry farmingFences() {
+        RosterEntry farming = new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.FARM_ITEM, STOLEN_FENCE, 200, ANT_TUNNEL,
+                0L, 0L, 0L, 0L, 0L, 0L, 0, null);
+        rows.add(farming);
+        when(store.haul(ANN, "mira")).thenReturn(List.of(new HaulItem(STOLEN_FENCE, 143)));
+        return farming;
     }
 
     /** Hadrik out with Ann carrying 3,120 meso, 12 Stolen Fences and a sword. */

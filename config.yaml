@@ -809,6 +809,18 @@ living_world:
     COMMERCE_SLICE_MS: 7200000
     BENCH_RESUPPLY_MAX_MS: 300000
     BENCH_YIELD_PRIOR_SLICES: 1.0
+    # Decision 19 (b): bench upkeep is 30 meso per level an hour (paid ahead as wages, else out of the haul; a hired
+    # hand's hourly wage is the same number), but never more than BENCH_UPKEEP_MAX_SHARE of the meso an hour the
+    # companion is predicted to pick up at its camp (what live slices measured there, shrunk toward the ledger's
+    # prior). At the prior that share is never reached (30 of ~594 meso per level, about 5%); a camp measured to pay
+    # less lowers the upkeep, e.g. a Lv20 whose camp measured 2,000 meso/h over 12 hunts pays 414 an hour, not 600
+    # (and 300 once its hunts far outweigh the prior).
+    BENCH_UPKEEP_MAX_SHARE: 0.15
+    # "Your call" (BenchDutyChooser): the companion picks its duty and camp by what each camp paid its class line and
+    # level band (companion_yield), trying a camp measured less often by BENCH_CHOOSER_EXPLORE (0 = never), and one
+    # death an hour costs BENCH_CHOOSER_DEATH_COST of a camp's hourly score.
+    BENCH_CHOOSER_EXPLORE: 0.3
+    BENCH_CHOOSER_DEATH_COST: 0.5
     # A citizen answers a party invite after a random delay in this range, like a player would.
     CITIZEN_INVITE_REPLY_MIN_MS: 900
     CITIZEN_INVITE_REPLY_MAX_MS: 1800

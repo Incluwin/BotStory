@@ -140,6 +140,15 @@ public class LivingWorldConfig {
      * measured at a camp: the offline credit is (slices x measured + this x prior) / (slices + this).
      */
     public double BENCH_YIELD_PRIOR_SLICES = 1.0;
+    /**
+     * Decision 19 (b): a companion's bench upkeep (30 meso per level an hour, which is also a hired hand's hourly wage)
+     * is never more than this share of the meso an hour it is predicted to pick up at its camp (BenchYieldModel).
+     */
+    public double BENCH_UPKEEP_MAX_SHARE = 0.15;
+    /** "Your call" (BenchDutyChooser): how much a camp measured less often is tried anyway (the UCB weight; 0 = never). */
+    public double BENCH_CHOOSER_EXPLORE = 0.3;
+    /** "Your call": the share of an hour's work one death an hour costs a camp's score (1 death/h at 0.5 halves it). */
+    public double BENCH_CHOOSER_DEATH_COST = 0.5;
     /** A citizen answers a party invite after a random delay in MIN..MAX, like a player would. */
     public int CITIZEN_INVITE_REPLY_MIN_MS = 900;
     public int CITIZEN_INVITE_REPLY_MAX_MS = 1800;
@@ -210,6 +219,12 @@ public class LivingWorldConfig {
         }
         if (BENCH_YIELD_PRIOR_SLICES < 0) {
             throw new IllegalArgumentException("living_world.BENCH_YIELD_PRIOR_SLICES must be >= 0");
+        }
+        if (BENCH_UPKEEP_MAX_SHARE < 0 || BENCH_UPKEEP_MAX_SHARE > 1) {
+            throw new IllegalArgumentException("living_world.BENCH_UPKEEP_MAX_SHARE must be within 0..1");
+        }
+        if (BENCH_CHOOSER_EXPLORE < 0 || BENCH_CHOOSER_DEATH_COST < 0) {
+            throw new IllegalArgumentException("living_world.BENCH_CHOOSER_EXPLORE and BENCH_CHOOSER_DEATH_COST must be >= 0");
         }
         if (CITIZEN_INVITE_REPLY_MIN_MS < 0 || CITIZEN_INVITE_REPLY_MAX_MS < CITIZEN_INVITE_REPLY_MIN_MS) {
             throw new IllegalArgumentException(

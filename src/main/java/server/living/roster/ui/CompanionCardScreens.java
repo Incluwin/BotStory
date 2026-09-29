@@ -18,14 +18,18 @@ import server.living.config.Content;
 import server.living.config.Content.BondStage;
 import server.living.config.Content.Persona;
 import server.living.config.Content.StepType;
+import server.living.population.FieldCatalog;
 import server.living.population.Population;
 import server.living.population.PopulationContent.Field;
 import server.living.quest.QuestLedger;
 import server.living.resident.LivingTalk;
 import server.living.resident.LivingTalk.Option;
 import server.living.resident.ResidentSpots;
+import server.living.roster.BenchDutyChooser;
+import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
 import server.living.roster.Commitments;
+import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionSettings;
 import server.living.roster.CompanionSettings.Support;
@@ -51,6 +55,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.IntFunction;
 
 import static server.living.roster.ui.CompanionMenus.BOARD_NPC;
 import static server.living.roster.ui.CompanionMenus.NOTES_SPEAKER;
@@ -66,8 +71,9 @@ import static server.living.roster.ui.CompanionMenus.portrait;
 /**
  * A companion's own screens (docs/BOT_MANAGEMENT_PLAN.md P1.5, P3 "Companion card", flows 1, 2 and 10): the card of one
  * in the owner's party (out with them, on its way, or waiting at a run's entrance), the bench card of one that is not
- * (benched, away on an errand, or parked), and the pages they open: the swap pickers, what it does at camp (with the
- * bench priors' projected rates; FARM_ITEM picks an item and a count), where it camps, its fighting style and its
+ * (benched, away on an errand, or parked; P5: whether its bench is live where the owner can watch it), and the pages
+ * they open: the swap pickers, what it does at camp (with the rates BenchYieldModel learned at its camp, the bench
+ * priors until then, and "Your call"; FARM_ITEM picks an item and a count), where it camps, its fighting style and its
  * supplies and loot (P3b), its haul, its wages, the gear, the trade and parting ways. The companion speaks on them
  * under the portrait policy; the release confirm is the player's notes. Each page is the answer to a click on the one
  * before it, and a page opened from the card has Back;
@@ -93,6 +99,11 @@ final class CompanionCardScreens {
     private static final String NOW = " - now";
     /** A disabled option's note while the companion is tied to a run (bench, swap, errands and camp wait for it). */
     private static final String AFTER_THE_RUN = " (after the run)";
+    /** The duty picker's last pick: the companion chooses its duty and camp (BenchDutyChooser). */
+    private static final String YOUR_CALL = "Your call";
+    /** The bench card's word for a field slice the owner can walk to and watch, and for one the ledger keeps. */
+    static final String LIVE = "(live)";
+    static final String OUT_OF_SIGHT = "(out of sight)";
     /** The duties done in a field: never set up in a town (RosterService.delegate refuses them there). */
     private static final Set<Assignment> FIELD_DUTIES = EnumSet.of(Assignment.TRAIN, Assignment.FARM_MESO,
             Assignment.FARM_ITEM, Assignment.GATHER);
@@ -123,6 +134,11 @@ final class CompanionCardScreens {
 
         /** True when the map is a field to hunt in, not a town. */
         boolean isField(int mapId);
+
+        /** The level of the field's monsters, 0 when the game's data does not say. */
+        default int mobLevel(int mapId) {
+            return 0;
+        }
 
         /** The ETC items the map's monsters drop, the likeliest first: item id to its best chance per million. */
         Map<Integer, Integer> drops(int mapId);
@@ -246,10 +262,46 @@ final class CompanionCardScreens {
         options.add(new Option("Your wages...", () -> wages(owner, persona)));
         options.add(new Option("We should part ways", () -> partWays(owner, persona)));
         String status = view.travelMs() > 0 ? onTheWay(view) : duty(view);
-        String more = (view.progress().isEmpty() ? "" : view.progress() + "\r\n")
+        String live = view.travelMs() > 0 ? "" : liveState(entry, menus.placeNames);
+        boolean marker = live.startsWith("(");
+        String progress = view.progress().isEmpty() ? "" : view.progress() + (marker ? " " + live : "") + "\r\n";
+        String more = (marker || live.isEmpty() ? "" : live + "\r\n") + progress
                 + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n");
-        LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + status + "\r\n" + more, options)
+        String statusLine = status + (marker && view.progress().isEmpty() ? " " + live : "");
+        LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + statusLine + "\r\n" + more, options)
                 .back(crewBack(owner)).show();
+    }
+
+    /**
+     * What the bench card says of the companion's bench now (plan flow 2, P5 "Living bench"): {@link #LIVE} while a field
+     * slice runs at its camp (the owner can walk there and watch), "stall open in FM room 3" or "resting in Henesys" while
+     * it is out in the Free Market or in town, {@link #OUT_OF_SIGHT} while only the ledger keeps its duty, and nothing for
+     * a parked one or one resting after a rough hunt (its duty line says so).
+     */
+    private String liveState(RosterEntry entry, IntFunction<String> placeNames) {
+        if (entry.state() != RosterState.BENCHED && entry.state() != RosterState.AWAY) {
+            return "";
+        }
+        BenchDutyDispatcher bench = world.benchDuty();
+        BenchDutyDispatcher.Slice slice = bench == null ? null : bench.slice(entry.personaId());
+        String resting = bench == null ? null : bench.note(entry.personaId());
+        if (slice == null && resting != null && !resting.isEmpty()) {
+            return "";
+        }
+        return slice == null ? OUT_OF_SIGHT : liveLine(slice.pool(), slice.duty(), slice.mapId(), placeNames);
+    }
+
+    /** {@link #LIVE} for a field slice, "resting in Henesys" for a town one, "stall open in FM room 3" for a stall. */
+    static String liveLine(CompanionBudget.Kind pool, Assignment duty, int mapId, IntFunction<String> placeNames) {
+        if (pool == CompanionBudget.Kind.COMMERCE) {
+            String where = mapId == FieldCatalog.FM_ENTRANCE ? "the Free Market"
+                    : FieldCatalog.isFreeMarket(mapId) ? "FM room " + (mapId - FieldCatalog.FM_ENTRANCE) : placeNames.apply(mapId);
+            return (duty == Assignment.SELL ? "selling the haul in " : "stall open in ") + where;
+        }
+        if (pool == CompanionBudget.Kind.BENCH_TOWN) {
+            return "resting in " + placeNames.apply(mapId);
+        }
+        return LIVE;
     }
 
     /** The Crew window the card on screen was opened from, as its Back; null for a card opened by a double-click. */
@@ -349,8 +401,10 @@ final class CompanionCardScreens {
     // ---- what it does at camp (plan flow 2) -------------------------------------------------
 
     /**
-     * Each duty with its projected hour at the bench priors. One out with the owner leaves to do it now and keeps its
-     * seat (AWAY); any other has it set. A field duty with a town for a camp asks where first.
+     * Each duty with its projected hour at the camp its field duties run at, as BenchYieldModel learned it there (the
+     * bench priors until a hunt is measured; the prompt says how many were), then "Your call". One out with the owner
+     * leaves to do it now and keeps its seat (AWAY); any other has it set. A field duty with a town for a camp asks where
+     * first.
      */
     private void dutyPicker(Character owner, Persona persona) {
         Stamp stamp = stamp(owner, persona);
@@ -361,18 +415,99 @@ final class CompanionCardScreens {
         }
         CompanionView view = menus.view(owner, entry);
         int level = view.level() > 0 ? view.level() : owner.getLevel();
+        int field = fieldCampOf(entry, persona, level);
         BenchLedger bench = world.bench();
         List<Option> options = new ArrayList<>();
+        long upkeep = Math.round(BenchLedger.upkeepPerHour(level));
+        double hunts = 0.0d;
         for (Assignment duty : Assignment.values()) {
-            BenchLedger.Rates rates = bench == null ? null : bench.rates(persona, view.bond(), level, owner.getLevel(), duty);
+            BenchLedger.Rates rates = bench == null ? null
+                    : bench.rates(persona, view.bond(), level, view.jobId(), owner.getLevel(), duty, field);
+            if (rates != null && duty == Assignment.TRAIN) {
+                upkeep = rates.upkeep();
+                hunts = rates.hunts();
+            }
             options.add(stamp.option(dutyLabel(duty, rates), () -> chooseDuty(owner, persona, duty)));
         }
+        options.add(stamp.option(YOUR_CALL, () -> yourCall(owner, persona)));
         String prompt = (entry.state() == RosterState.ACTIVE ? "what should i go do? i'll keep my seat.\r\n"
                 : "what should i do at camp?\r\n")
                 + "now: " + view.duty() + (view.camp().isEmpty() ? "" : " @ " + view.camp())
-                + String.format(Locale.ROOT, "\r\nupkeep: %,d meso an hour, none while i rest\r\n",
-                        Math.round(BenchLedger.upkeepPerHour(level)));
+                + String.format(Locale.ROOT, "\r\nupkeep: %,d meso an hour, none while i rest\r\n", upkeep)
+                + learned(hunts, field);
         LivingTalk.open(owner, portrait(persona)).menu(prompt, options).back(() -> reopen(owner, persona, "")).show();
+    }
+
+    /** "(learned from 7 hunts at Ant Tunnel I)" once live slices were measured at the camp, then a line break; else empty. */
+    private String learned(double hunts, int field) {
+        if (hunts <= 0.0d || field <= 0) {
+            return "";
+        }
+        long count = Math.max(1L, Math.round(hunts));
+        return "(learned from " + count + (count == 1 ? " hunt" : " hunts") + " at " + menus.placeNames.apply(field) + ")\r\n";
+    }
+
+    /**
+     * "Your call" (plan flow 2, BenchDutyChooser): the companion picks its duty and camp among the fields for its level
+     * near its camp and its camp now, by what each paid its class line, sets both on companion-ops as the owner's own
+     * picks would be set, and says what it picked and why on top of the card. Mid-run it waits: "after the run".
+     */
+    private void yourCall(Character owner, Persona persona) {
+        menus.command(owner, persona, "menu.duty.your_call", () -> {
+            if (committedNow(persona)) {
+                return RosterVoice.line(persona, new RosterResult.InEventInstance());
+            }
+            RosterEntry before = world.roster().entry(owner.getId(), persona.id());
+            if (before == null) {
+                return persona.name() + " is not in your roster.";
+            }
+            CompanionView view = menus.view(owner, before);
+            int level = view.level() > 0 ? view.level() : owner.getLevel();
+            int current = campOf(before, persona);
+            List<BenchDutyChooser.Camp> camps = new ArrayList<>();
+            if (catalog.isField(current)) {
+                camps.add(new BenchDutyChooser.Camp(current, catalog.mobLevel(current)));
+            }
+            for (Map.Entry<Integer, Integer> field : catalog.fields(level, current).entrySet()) {
+                camps.add(new BenchDutyChooser.Camp(field.getKey(), field.getValue()));
+            }
+            BenchDutyChooser.Pick pick = new BenchDutyChooser(world).choose(before, persona, view.bond(), level, view.jobId(),
+                    owner.getLevel(), camps);
+            if (pick == null) {
+                return persona.name() + ": i don't know a good spot for my level. pick a camp for me?";
+            }
+            CompanionManager manager = menus.manager();
+            if (pick.campMapId() != 0 && pick.campMapId() != current) {
+                RosterResult moved = manager.setCamp(owner, persona, pick.campMapId());
+                if (!moved.ok()) {
+                    return RosterVoice.line(persona, moved);
+                }
+            }
+            RosterResult done = manager.assign(owner, persona, pick.duty(), 0, 0);
+            RosterEntry now = world.roster().entry(owner.getId(), persona.id());
+            if (!(done instanceof RosterResult.Ok) || now == null) {
+                return RosterVoice.line(persona, done);
+            }
+            world.store().event(owner.getId(), persona.id(), "bench.your_call", pick.duty() + " at " + pick.campMapId() + " ("
+                    + pick.why() + String.format(Locale.ROOT, ", score %.2f + %.2f)", pick.score(), pick.bonus()));
+            boolean leaves = before.state() == RosterState.ACTIVE && now.state() == RosterState.AWAY;
+            return persona.name() + ": " + BenchDutyChooser.line(pick, menus.placeNames) + (leaves ? " i'll keep my seat." : "");
+        });
+    }
+
+    /**
+     * Where its field duties run, from the game's data the pickers read: its camp when that is a field, else the top
+     * field for its level near it (as the bench's default camp is chosen); 0 when none fits.
+     */
+    private int fieldCampOf(RosterEntry entry, Persona persona, int level) {
+        int camp = campOf(entry, persona);
+        if (catalog.isField(camp)) {
+            return camp;
+        }
+        for (int field : catalog.fields(level, camp).keySet()) {
+            return field;
+        }
+        return 0;
     }
 
     /** "Train (~32% EXP/h)", "Train (~1.2% EXP/h)", "Farm meso (~4.1k meso/h after upkeep)", "Rest (no upkeep)". */
@@ -523,11 +658,16 @@ final class CompanionCardScreens {
         int level = view.level() > 0 ? view.level() : owner.getLevel();
         int current = campOf(entry, persona);
         int here = owner.getMapId();
+        BenchLedger bench = world.bench();
+        Assignment duty = then != null ? then : entry.assignment(); // the hour each camp gives the duty it would do there
         List<Option> options = new ArrayList<>();
         for (Map.Entry<Integer, Integer> field : catalog.fields(level, here).entrySet()) {
             int mapId = field.getKey();
-            options.add(stamp.option(menus.placeNames.apply(mapId) + " (Lv" + field.getValue() + " monsters)"
-                    + (mapId == current ? " - my camp now" : ""), () -> pickCamp(owner, persona, then, mapId)));
+            BenchLedger.Rates rates = bench == null ? null
+                    : bench.rates(persona, view.bond(), level, view.jobId(), owner.getLevel(), duty, mapId);
+            options.add(stamp.option(menus.placeNames.apply(mapId) + " (Lv" + field.getValue() + " monsters"
+                    + campRate(duty, rates) + ")" + (mapId == current ? " - my camp now" : ""),
+                    () -> pickCamp(owner, persona, then, mapId)));
         }
         if (here > 0 && (then == null || catalog.isField(here))) {
             options.add(stamp.option("Right here (" + menus.placeNames.apply(here) + ")",
@@ -545,6 +685,17 @@ final class CompanionCardScreens {
                     }
                 })
                 .show();
+    }
+
+    /** ", ~1.2% EXP/h" for TRAIN, ", ~4.1k meso/h" for FARM_MESO at a camp; nothing for the other duties or no rates. */
+    static String campRate(Assignment duty, BenchLedger.Rates rates) {
+        if (rates == null) {
+            return "";
+        }
+        if (duty == Assignment.TRAIN && rates.expPercent() > 0.0d) {
+            return ", ~" + CompanionMenus.percent(rates.expPercent()) + "% EXP/h";
+        }
+        return duty == Assignment.FARM_MESO && rates.meso() > 0L ? ", ~" + CompanionMenus.meso(rates.meso()) + " meso/h" : "";
     }
 
     private void pickCamp(Character owner, Persona persona, Assignment then, int mapId) {
@@ -833,7 +984,11 @@ final class CompanionCardScreens {
             return;
         }
         CompanionView view = menus.view(owner, entry);
-        long upkeep = Math.max(1L, Math.round(BenchLedger.upkeepPerHour(view.level() > 0 ? view.level() : 1)));
+        int level = view.level() > 0 ? view.level() : 1;
+        BenchLedger bench = world.bench();
+        // its upkeep at its camp (decision 19 b): what an hour of wages costs
+        long upkeep = Math.max(1L, Math.round(bench == null ? BenchLedger.upkeepPerHour(level)
+                : bench.upkeepPerHour(level, view.jobId(), fieldCampOf(entry, persona, level))));
         long affordable = Math.min(WAGE_HOURS_MAX, owner.getMeso() / upkeep);
         List<Option> options = new ArrayList<>();
         if (affordable >= 1) {
@@ -1028,6 +1183,13 @@ final class CompanionCardScreens {
         public boolean isField(int mapId) {
             Population population = Population.get();
             return mapId > 0 && (population == null || !population.fields().isTown(mapId));
+        }
+
+        @Override
+        public int mobLevel(int mapId) {
+            Population population = Population.get();
+            Field field = population == null ? null : population.content().field(mapId);
+            return field == null ? 0 : field.mobLevel();
         }
 
         @Override

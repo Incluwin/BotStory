@@ -603,6 +603,11 @@ public final class BenchDutyDispatcher {
             }
         }
         record(slice, agent, now);
+        BenchLedger ledger = world.bench();
+        if (ledger != null) { // the call-back report: the EXP it gained here and the deaths it took
+            ledger.reportSlice(slice.ownerId, slice.personaId, slice.mapId, agent == null ? 0L
+                    : expGained(slice.startLevel, slice.startExp, agent.getLevel(), agent.getExp()), slice.startLevel, slice.deaths.get());
+        }
         if (ROUGH_HUNT.equals(reason)) {
             restingUntilMs.put(slice.personaId, now + world.config().BENCH_LIVE_SLICE_MS);
             CompanionViews.invalidate(world, slice.ownerId, slice.personaId);
