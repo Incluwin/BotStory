@@ -28,6 +28,7 @@ public final class AgentSupplyRecoveryPolicy {
     private static final int SHOP_RETRY_LIMIT = tuningInt("SHOP_RETRY_LIMIT");
     private static final long SHOP_RETRY_DELAY_MS = tuningLong("SHOP_RETRY_DELAY_MS");
     private static final long FAILED_PROCUREMENT_COOLDOWN_MS = tuningLong("FAILED_PROCUREMENT_COOLDOWN_MS");
+    private static final long PARTY_SUPPLY_WAIT_MS = tuningLong("PARTY_SUPPLY_WAIT_MS");
 
     private AgentSupplyRecoveryPolicy() {
     }
@@ -95,6 +96,11 @@ public final class AgentSupplyRecoveryPolicy {
     /** Quiet period for a category after an Agent gave up restocking it and rejoined its party. */
     public static long failedProcurementCooldownMs() {
         return FAILED_PROCUREMENT_COOLDOWN_MS;
+    }
+
+    /** How long a following Agent waits for its party to share a supply before it leaves to shop. */
+    public static long partySupplyWaitMs() {
+        return PARTY_SUPPLY_WAIT_MS;
     }
 
     public static Optional<RecoveryMap> selectRecoveryMap(Character agent) {

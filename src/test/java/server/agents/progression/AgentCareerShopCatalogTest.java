@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class AgentCareerShopCatalogTest {
     @Test
@@ -28,5 +29,23 @@ class AgentCareerShopCatalogTest {
 
         assertEquals(120000200, stop.mapId());
         assertEquals(1091002, stop.npcId());
+    }
+
+    @Test
+    void noPotionSupplierWhenThePortalRouterReachesNoShop() {
+        AgentCareerBuildBundle warrior = AgentCareerBuildBundleRepository.defaultRepository()
+                .find("warrior-standard-v1").orElseThrow();
+
+        // El Nath and Ludibrium are off the Victoria portal graph.
+        assertNull(AgentCareerShopCatalog.forSupply(warrior, AgentResourceCategory.HP_POTION, 211000000));
+        assertNull(AgentCareerShopCatalog.forSupply(warrior, AgentResourceCategory.MP_POTION, 220000000));
+    }
+
+    @Test
+    void careerSpecificSuppliesNeedARouteToTheCareerShop() {
+        AgentCareerBuildBundle pirate = AgentCareerBuildBundleRepository.defaultRepository()
+                .find("pirate-gun-standard-v1").orElseThrow();
+
+        assertNull(AgentCareerShopCatalog.forSupply(pirate, AgentResourceCategory.BULLET, 211000000));
     }
 }

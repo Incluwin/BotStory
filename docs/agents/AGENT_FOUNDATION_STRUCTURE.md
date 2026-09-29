@@ -189,7 +189,8 @@ Capability bins:
   private bot path helper ownership live in `AgentNavigationPathService`; bot
   path/search compatibility wrappers have been removed.
   Navigation graph warmup notification throttling lives in
-  `AgentNavigationWarmupService`.
+  `AgentNavigationWarmupService`; the notice is a server-log line only and is
+  never sent to the leader's chat.
   Portal edge execution lives in `AgentNavigationPortalService`.
   Climb-start side effects live in `AgentNavigationClimbExecutionService`.
   Explicit drop edge execution lives in `AgentNavigationDropExecutionService`.

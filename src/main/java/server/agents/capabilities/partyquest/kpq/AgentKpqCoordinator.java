@@ -224,6 +224,8 @@ final class AgentKpqCoordinator {
         session.clearBlocker();
         if (session.readyAtMs() == 0L) {
             session.setReadyAtMs(nowMs + PREPARATION_DELAY_MS);
+            KPQ.prepareNpcScripts(AgentKpqDefinition.ENTRY_NPC, AgentKpqDefinition.CLOTO_NPC,
+                    AgentKpqDefinition.EXIT_NPC);
             AgentKpqDialogue.sayMapNow(
                     narrator, "Party ready. Everyone is here. Starting KPQ in 5 seconds.");
         }

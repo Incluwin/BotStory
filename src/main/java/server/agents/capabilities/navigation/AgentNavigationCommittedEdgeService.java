@@ -55,6 +55,14 @@ public final class AgentNavigationCommittedEdgeService {
                 || startRegionId == targetRegionId) {
             return edge;
         }
+        // A refresh replaces a committed transition only with a WALK edge (any other pair is
+        // retained below), and every route from this region starts with one of its outgoing
+        // edges. Without a WALK exit the search result is always discarded. Town graphs have no
+        // WALK edges at all, and this search ran on every AI tick of the walk to the edge.
+        if (edge.type != AgentNavigationGraph.EdgeType.WALK
+                && graph != null && !hasWalkExit(graph, startRegionId)) {
+            return edge;
+        }
 
         AgentNavigationGraph.Edge bestEdge = nextEdgeFinder.findNextEdge(graph, bot, startRegionId, targetRegionId, targetPos);
         if (bestEdge == null || sameEdge(edge, bestEdge)) {
@@ -69,6 +77,15 @@ public final class AgentNavigationCommittedEdgeService {
         AgentNavigationDebugStateRuntime.clearNavTargetPosition(entry);
         AgentNavigationDebugStateRuntime.setNavPreciseTarget(entry, false);
         return bestEdge;
+    }
+
+    private static boolean hasWalkExit(AgentNavigationGraph graph, int regionId) {
+        for (AgentNavigationGraph.Edge edge : graph.getOutgoing(regionId)) {
+            if (edge.type == AgentNavigationGraph.EdgeType.WALK) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static AgentNavigationGraph.Edge reuseCommittedEdge(AgentNavigationGraph graph,

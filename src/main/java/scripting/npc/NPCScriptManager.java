@@ -65,6 +65,27 @@ public class NPCScriptManager extends AbstractScriptManager {
         return start(c, npc, -1, chr);
     }
 
+    /**
+     * Same as {@link #start(Client, int, Character)}, but runs the conversation on {@code prepared}, an engine
+     * already evaluated from {@link #npcScriptPath(int)} by {@link #prepareScriptEngine(String)} and never
+     * invoked, instead of evaluating one on the calling thread. A null {@code prepared} evaluates as usual.
+     */
+    public boolean start(Client c, int npc, Character chr, ScriptEngine prepared) {
+        return start(c, npc, -1, null, chr, false, "cm", prepared);
+    }
+
+    public static String npcScriptPath(int npc) {
+        return "npc/" + npc + ".js";
+    }
+
+    /**
+     * Evaluates a fresh engine for {@code path} without touching any client or conversation, so it may run on
+     * any thread: evaluation only runs the script's top level, before {@code cm} is bound.
+     */
+    public ScriptEngine prepareScriptEngine(String path) {
+        return getInvocableScriptEngine(path);
+    }
+
     public boolean start(Client c, int npc, int oid, Character chr) {
         return start(c, npc, oid, null, chr);
     }
@@ -74,11 +95,11 @@ public class NPCScriptManager extends AbstractScriptManager {
     }
 
     public boolean start(Client c, int npc, int oid, String fileName, Character chr) {
-        return start(c, npc, oid, fileName, chr, false, "cm");
+        return start(c, npc, oid, fileName, chr, false, "cm", null);
     }
 
     public boolean start(Client c, ScriptedItem scriptItem, Character chr) {
-        return start(c, scriptItem.getNpc(), -1, scriptItem.getScript(), chr, true, "im");
+        return start(c, scriptItem.getNpc(), -1, scriptItem.getScript(), chr, true, "im", null);
     }
 
     public void start(String filename, Client c, int npc, List<PartyCharacter> chrs) {
@@ -117,7 +138,8 @@ public class NPCScriptManager extends AbstractScriptManager {
         }
     }
 
-    private boolean start(Client c, int npc, int oid, String fileName, Character chr, boolean itemScript, String engineName) {
+    private boolean start(Client c, int npc, int oid, String fileName, Character chr, boolean itemScript, String engineName,
+                          ScriptEngine prepared) {
         if (server.living.resident.LivingTalk.active(c)) {
             c.sendPacket(PacketCreator.enableActions()); // a living-world window awaits its reply: a second NPC_TALK drops the client
             return true; // handled: an NPC click must not fall through to the shop
@@ -140,7 +162,7 @@ public class NPCScriptManager extends AbstractScriptManager {
                     }
                 }
                 if (engine == null) {
-                    engine = getInvocableScriptEngine("npc/" + npc + ".js", c);
+                    engine = prepared != null ? prepared : getInvocableScriptEngine(npcScriptPath(npc), c);
                     cm.resetItemScript();
                 }
                 if (engine == null) {

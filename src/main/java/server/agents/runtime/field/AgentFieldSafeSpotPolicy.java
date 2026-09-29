@@ -57,19 +57,23 @@ public final class AgentFieldSafeSpotPolicy {
         return authored != null ? authored : generated(map, graph, ordinal);
     }
 
-    /** Chooses the closest legitimate player-spawn portal that can reach the staging point. */
+    /**
+     * Chooses the closest legitimate player-spawn portal that can reach the staging point. The
+     * Agent walks from the portal, so a portal on a drop-only roof may serve staging below it but
+     * a street portal may not serve staging on that roof.
+     */
     public static Point nearestEntry(
             MapleMap map, AgentNavigationGraph graph, Point staging) {
         if (map == null || graph == null || staging == null) {
             return null;
         }
         int stagingRegion = AgentNavigationRegionService.resolvePointTargetRegionId(graph, map, staging);
-        int stagingComponent = graph.connectedComponentId(stagingRegion);
+        boolean stagingResolved = graph.getRegion(stagingRegion) != null;
         return map.getPortals().stream()
                 .filter(AgentFieldSafeSpotPolicy::isPlayerSpawn)
                 .map(portal -> portalCandidate(graph, map, portal))
                 .filter(java.util.Objects::nonNull)
-                .filter(portal -> stagingComponent < 0 || portal.componentId() == stagingComponent)
+                .filter(portal -> !stagingResolved || graph.canReach(portal.regionId(), stagingRegion))
                 .min(Comparator.comparingLong(portal -> squaredDistance(portal.position(), staging)))
                 .map(portal -> new Point(portal.position()))
                 .orElse(null);
@@ -85,10 +89,11 @@ public final class AgentFieldSafeSpotPolicy {
     }
 
     /**
-     * Generates a deterministic mob-spawn-free point for any field map. Candidates share a
-     * connected component with a portal, remain at least 180 px from every authored monster spawn,
-     * and are ordered by distance to the closest portal. This keeps the policy applicable to the
-     * whole observation catalog without maintaining 93 copies of navigation geometry.
+     * Generates a deterministic mob-spawn-free point for any field map. Candidates are walkable
+     * from a player-spawn portal (where the Agent enters), remain at least 180 px from every
+     * authored monster spawn, and are ordered by distance to the closest portal. This keeps the
+     * policy applicable to the whole observation catalog without maintaining 93 copies of
+     * navigation geometry.
      */
     private static Point generated(AgentRuntimeEntry entry, Character agent, int ordinal) {
         if (entry == null || agent == null || agent.getMap() == null) {
@@ -125,9 +130,8 @@ public final class AgentFieldSafeSpotPolicy {
         if (portals.isEmpty()) {
             return null;
         }
-        Set<Integer> portalComponents = portals.stream()
-                .map(PortalCandidate::componentId)
-                .filter(component -> component >= 0)
+        Set<Integer> portalRegions = portals.stream()
+                .map(PortalCandidate::regionId)
                 .collect(java.util.stream.Collectors.toCollection(HashSet::new));
         int sampleStepPx = AgentFieldPolicyConfig.safeSpotSampleStepPx();
         int spawnClearancePx = AgentFieldPolicyConfig.safeSpotSpawnClearancePx();
@@ -135,7 +139,7 @@ public final class AgentFieldSafeSpotPolicy {
         ArrayList<PointScore> candidates = new ArrayList<>();
         for (AgentNavigationGraph.Region region : graph.regions) {
             if (region == null || region.isRopeRegion || region.width() < sampleStepPx
-                    || !portalComponents.contains(graph.connectedComponentId(region.id))) {
+                    || portalRegions.stream().noneMatch(portal -> graph.canReach(portal, region.id))) {
                 continue;
             }
             for (int x = region.minX; x <= region.maxX; x += sampleStepPx) {
@@ -178,8 +182,7 @@ public final class AgentFieldSafeSpotPolicy {
         if (region == null || region.isRopeRegion) {
             return null;
         }
-        int componentId = graph.connectedComponentId(regionId);
-        return componentId < 0 ? null : new PortalCandidate(region.pointAt(raw.x), componentId);
+        return new PortalCandidate(region.pointAt(raw.x), regionId);
     }
 
     private static boolean isPlayerSpawn(Portal portal) {
@@ -194,7 +197,7 @@ public final class AgentFieldSafeSpotPolicy {
         return dx * dx + dy * dy;
     }
 
-    private record PortalCandidate(Point position, int componentId) {
+    private record PortalCandidate(Point position, int regionId) {
     }
 
     private record PointScore(

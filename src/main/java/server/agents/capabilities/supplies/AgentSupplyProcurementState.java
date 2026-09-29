@@ -5,6 +5,7 @@ import server.agents.capabilities.contracts.AgentResourceCategory;
 
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public final class AgentSupplyProcurementState {
     public static final AgentCapabilityStateKey<AgentSupplyProcurementState> STATE_KEY =
@@ -34,9 +35,14 @@ public final class AgentSupplyProcurementState {
     private String abandonedReason = "";
     private boolean resumeFollow;
     private boolean resumeGrind;
+    private int supplierHopBudget = -1;
     // Survives clear(): a category the Agent just failed to restock stays quiet for a while so
     // the next low-supply observation does not immediately pull it away from its party again.
     private final Map<AgentResourceCategory, Long> suppressedUntilMs =
+            new EnumMap<>(AgentResourceCategory.class);
+    // Survives clear() too: when a following Agent asked its party for a category it is still
+    // short of, so it waits for a share once instead of leaving for the shop straight away.
+    private final Map<AgentResourceCategory, Long> partyAskedAtMs =
             new EnumMap<>(AgentResourceCategory.class);
 
     public enum Phase {
@@ -157,6 +163,49 @@ public final class AgentSupplyProcurementState {
         return resumeGrind;
     }
 
+    /**
+     * Longest route, in portal hops, this trip still accepts: its length when it started,
+     * or -1 before the trip measured it.
+     */
+    public synchronized int supplierHopBudget() {
+        return supplierHopBudget;
+    }
+
+    public synchronized void setSupplierHopBudget(int hops) {
+        supplierHopBudget = hops;
+    }
+
+    /** Sends the trip to another supplier the router can still reach. */
+    public synchronized void redirectSupplier(int supplierMapId, int supplierNpcId, int hopBudget) {
+        this.supplierMapId = supplierMapId;
+        this.supplierNpcId = supplierNpcId;
+        supplierHopBudget = hopBudget;
+        shopRequested = false;
+    }
+
+    /** When the Agent asked its party for this category, or -1 when it has not asked. */
+    public synchronized long partyAskedAtMs(AgentResourceCategory category) {
+        Long askedAt = category == null ? null : partyAskedAtMs.get(category);
+        return askedAt == null ? -1L : askedAt;
+    }
+
+    public synchronized void markPartyAsked(AgentResourceCategory category, long nowMs) {
+        if (category != null) {
+            partyAskedAtMs.put(category, nowMs);
+        }
+    }
+
+    public synchronized void forgetPartyAsk(AgentResourceCategory category) {
+        if (category != null) {
+            partyAskedAtMs.remove(category);
+        }
+    }
+
+    /** Forgets the asks for categories the Agent is no longer short of. */
+    public synchronized void retainPartyAsks(Predicate<AgentResourceCategory> stillShort) {
+        partyAskedAtMs.keySet().removeIf(category -> !stillShort.test(category));
+    }
+
     public synchronized void suppress(AgentResourceCategory category, long untilMs) {
         if (category != null) {
             suppressedUntilMs.merge(category, untilMs, Math::max);
@@ -214,6 +263,7 @@ public final class AgentSupplyProcurementState {
         abandonedReason = "";
         resumeFollow = false;
         resumeGrind = false;
+        supplierHopBudget = -1;
     }
 
     public synchronized void complete(AgentSupplyProcurementOutcome outcome) {
@@ -256,6 +306,8 @@ public final class AgentSupplyProcurementState {
     public synchronized void retrySupplier(boolean supplierIsCurrentMap) {
         shopRequested = false;
         phase = supplierIsCurrentMap ? Phase.SHOPPING : Phase.TRAVEL_TO_SUPPLIER;
+        // The trip restarts from wherever recovery left the Agent.
+        supplierHopBudget = -1;
     }
 
     public synchronized void markStalled(String reason) {
@@ -269,6 +321,7 @@ public final class AgentSupplyProcurementState {
         shopRequested = false;
         shopRetryAtMs = retryAtMs;
         phase = supplierIsCurrentMap ? Phase.SHOPPING : Phase.TRAVEL_TO_SUPPLIER;
+        supplierHopBudget = -1;
     }
 
     /** Gives up on this procurement: travel back to the plan, then finish it as failed. */
@@ -301,5 +354,6 @@ public final class AgentSupplyProcurementState {
         abandonedReason = "";
         resumeFollow = false;
         resumeGrind = false;
+        supplierHopBudget = -1;
     }
 }

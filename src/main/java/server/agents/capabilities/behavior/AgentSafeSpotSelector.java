@@ -27,7 +27,6 @@ public final class AgentSafeSpotSelector {
         if (graph == null) return new Point(agent.getPosition());
         int currentRegionId = AgentNavigationRegionService.resolveCurrentRegionId(
                 graph, entry, agent.getMap(), agent.getPosition());
-        int connectedComponent = graph.connectedComponentId(currentRegionId);
         List<Point> threats = AgentMapPerception.monsters(agent.getMap()).stream().filter(Monster::isAlive)
                 .map(Monster::getPosition).toList();
         List<Point> reservations = AgentRuntimeRegistry.activeEntriesSnapshot().stream()
@@ -35,11 +34,22 @@ public final class AgentSafeSpotSelector {
                 .map(peer -> peer.capabilityStates().find(AgentCrowdRespiteState.STATE_KEY)
                         .map(AgentCrowdRespiteState::safeSpot).orElse(null))
                 .filter(java.util.Objects::nonNull).toList();
+        return select(graph, currentRegionId, threats, reservations, agent.getPosition());
+    }
+
+    /**
+     * The Agent walks from its current region to the spot, so a candidate must be reachable in
+     * that direction: a drop-only roof shares the ground's connected component but cannot be
+     * climbed from below. An unresolved current region leaves every region eligible.
+     */
+    static Point select(AgentNavigationGraph graph, int currentRegionId, List<Point> threats,
+                        List<Point> reservations, Point fallback) {
+        boolean resolved = graph.getRegion(currentRegionId) != null;
         return graph.regions.stream().filter(region -> !region.isRopeRegion && region.width() >= 24
-                        && (connectedComponent < 0 || graph.connectedComponentId(region.id) == connectedComponent))
+                        && (!resolved || graph.canReach(currentRegionId, region.id)))
                 .map(AgentNavigationGraph.Region::centerPoint)
                 .max(Comparator.comparingLong(point -> score(point, threats, reservations)))
-                .map(Point::new).orElseGet(() -> new Point(agent.getPosition()));
+                .map(Point::new).orElseGet(() -> new Point(fallback));
     }
 
     private static long score(Point point, List<Point> threats, List<Point> reservations) {

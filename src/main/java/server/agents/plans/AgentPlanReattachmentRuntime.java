@@ -15,6 +15,7 @@ import server.agents.plans.mapleisland.AgentMapleIslandPlanRuntime;
 import server.agents.progression.AgentFirstJobJourneyRuntime;
 import server.agents.progression.AgentVictoriaTrainingObjectiveRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.maintenance.AgentRemediationCoordinator;
 
 import java.io.IOException;
 import java.util.Map;
@@ -124,6 +125,10 @@ public final class AgentPlanReattachmentRuntime {
             Character agent,
             AgentObjectiveDefinition objective,
             long nowMs) {
+        if (AgentRemediationCoordinator.owns(entry, objective.objectiveId())) {
+            // A resupply started this session: only a checkpoint restored after relog is orphaned.
+            return AgentObjectiveAttachment.ALREADY_ATTACHED;
+        }
         AgentObjectiveKernel.finishAndResume(entry, objective.objectiveId(), AgentObjectiveStatus.FAILED,
                 "relog discarded the transient shop transaction; supply planning will reassess", nowMs);
         return AgentObjectiveAttachment.TERMINAL;

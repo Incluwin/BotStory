@@ -47,12 +47,11 @@ final class AgentTownLifeSpotSampler {
             return List.of();
         }
         int originRegionId = graph.findRegionId(map, agent.getPosition());
-        int originComponent = originRegionId < 0 ? -1 : graph.connectedComponentId(originRegionId);
         AgentTownLifeProfile townProfile = AgentTownLifeProfileRepository.defaultRepository()
                 .require(map.getId());
         List<WeightedSpace> weighted = new ArrayList<>();
         for (AgentTownLifePlatformCatalog.PlatformSpot spot :
-                AgentTownLifePlatformCatalog.reachable(graph, townProfile, originComponent)) {
+                AgentTownLifePlatformCatalog.reachable(graph, townProfile, originRegionId)) {
             CharacterSpace space = spot.space();
             if (!townProfile.allowsOccupancy(space.position())) {
                 continue;

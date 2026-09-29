@@ -1330,16 +1330,15 @@ public class ItemInformationProvider {
 
     public StatEffect getItemEffect(int itemId) {
         StatEffect ret = itemEffects.get(Integer.valueOf(itemId));
-        if (ret == null) {
+        if (ret == null && !itemEffects.containsKey(Integer.valueOf(itemId))) {
             Data item = getItemData(itemId);
-            if (item == null) {
-                return null;
-            }
-            Data spec = item.getChildByPath("specEx");
-            if (spec == null) {
+            Data spec = item == null ? null : item.getChildByPath("specEx");
+            if (spec == null && item != null) {
                 spec = item.getChildByPath("spec");
             }
-            ret = StatEffect.loadItemEffectFromData(spec, itemId);
+            // Equips, ammo and other items without a spec have no effect. Remember that too:
+            // getItemData re-parses the whole .img on every call.
+            ret = spec == null ? null : StatEffect.loadItemEffectFromData(spec, itemId);
             itemEffects.put(Integer.valueOf(itemId), ret);
         }
         return ret;

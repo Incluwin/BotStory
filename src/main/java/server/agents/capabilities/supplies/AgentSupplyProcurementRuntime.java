@@ -27,6 +27,7 @@ import server.agents.objectives.AgentObjectiveStatus;
 import server.agents.progression.AgentCareerBuildBundle;
 import server.agents.progression.AgentCareerProgressionState;
 import server.agents.progression.AgentCareerShopCatalog;
+import server.agents.progression.AgentVictoriaRouteRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentSessionEventRuntime;
 import server.agents.events.AgentDomainEvent;
@@ -38,6 +39,7 @@ import server.agents.runtime.maintenance.AgentRemediationState;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.IntBinaryOperator;
 
 /** Executes urgent supply requests as route-aware maintenance without destroying foreground intent. */
 public final class AgentSupplyProcurementRuntime {
@@ -67,6 +69,7 @@ public final class AgentSupplyProcurementRuntime {
                 AgentSupplyProcurementState.STATE_KEY);
         AgentSupplyMaintenanceEvaluationState evaluations = entry.capabilityStates().require(
                 AgentSupplyMaintenanceEvaluationState.STATE_KEY);
+        execution.retainPartyAsks(category -> planning.procurement(category) != null);
         if (!execution.isActive()
                 && releaseInapplicableRestoredMaintenance(
                 entry, agent, planning, evaluations, nowMs)) {
@@ -110,7 +113,17 @@ public final class AgentSupplyProcurementRuntime {
         }
 
         if (!execution.isActive()) {
+            if (awaitingPartySupply(entry, agent, request, execution, nowMs)) {
+                return false;
+            }
             if (!begin(entry, agent, request, execution, nowMs)) {
+                // begin() scans the local shops first; retrying a refused start every tick
+                // repeats that scan for as long as the shortage lasts.
+                execution.suppress(request.category(),
+                        nowMs + AgentSupplyRecoveryPolicy.failedProcurementCooldownMs());
+                log.warn("Agent '{}' could not start {} resupply; suppressing the category for {} ms",
+                        agent.getName(), request.category(),
+                        AgentSupplyRecoveryPolicy.failedProcurementCooldownMs());
                 return false;
             }
             evaluations.resolve(request.category());
@@ -181,6 +194,31 @@ public final class AgentSupplyProcurementRuntime {
                 .orElse(null);
     }
 
+    /**
+     * A companion following its owner asks the owner and party for the supply first and stays
+     * with them; it leaves for a shop only when nobody shared within the wait.
+     */
+    private static boolean awaitingPartySupply(AgentRuntimeEntry entry,
+                                               Character agent,
+                                               AgentProcurementRequest request,
+                                               AgentSupplyProcurementState execution,
+                                               long nowMs) {
+        if (selfSustaining(entry)
+                || !AgentModeStateRuntime.following(entry)
+                || AgentRelationshipRuntime.followTarget(entry) == null) {
+            return false;
+        }
+        long askedAtMs = execution.partyAskedAtMs(request.category());
+        if (askedAtMs < 0L) {
+            execution.markPartyAsked(request.category(), nowMs);
+            askPartyForSupply(entry, agent, request.category());
+            log.info("Agent '{}' is low on {} and asked its party before leaving to shop",
+                    agent.getName(), request.category());
+            return true;
+        }
+        return nowMs < askedAtMs + AgentSupplyRecoveryPolicy.partySupplyWaitMs();
+    }
+
     static boolean begin(AgentRuntimeEntry entry,
                          Character agent,
                          AgentProcurementRequest request,
@@ -197,7 +235,17 @@ public final class AgentSupplyProcurementRuntime {
                 return false;
             }
             AgentCareerShopCatalog.ShopStop stop = AgentCareerShopCatalog.forSupply(
-                    bundle, request.category(), agent.getMapId());
+                    bundle, request.category(), agent.getMapId(), routeHops(entry, nowMs));
+            if (stop == null) {
+                // Off the Victoria portal graph (Ossyria, Ludus Lake, Mu Lung...) or cut off by
+                // blocked portals: a trip toward a shop the router cannot reach only strands it.
+                log.info("Agent '{}' has no {} supplier the portal router can reach from map {}; asking the party instead",
+                        agent.getName(), request.category(), agent.getMapId());
+                if (execution.partyAskedAtMs(request.category()) < 0L) {
+                    askPartyForSupply(entry, agent, request.category());
+                }
+                return false;
+            }
             supplierMapId = stop.mapId();
             supplierNpcId = stop.npcId();
             phase = supplierMapId == agent.getMapId()
@@ -253,6 +301,9 @@ public final class AgentSupplyProcurementRuntime {
                                             AgentResourcePlanningState planning,
                                             AgentSupplyProcurementState execution,
                                             long nowMs) {
+        if (!keepSupplierWithinReach(entry, agent, planning, execution, nowMs)) {
+            return true;
+        }
         AgentRouteOutcome outcome = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
                 entry, agent, execution.supplierMapId(), nowMs);
         if (outcome.status() == AgentRouteStatus.NO_ROUTE) {
@@ -276,6 +327,65 @@ public final class AgentSupplyProcurementRuntime {
         }
         execution.markShopRequested();
         return true;
+    }
+
+    /**
+     * Keeps the trip on a supplier the router reaches without a detour. A portal that keeps
+     * refusing entry is blocked for a while and the router walks around it, which from
+     * Kerning's outskirts means twenty maps through Lith Harbor and Henesys. The trip may
+     * never become longer than it was when it started (a stray step through a portal on the
+     * way stays inside that); otherwise switch to a supplier within that length or give the
+     * trip up. Only a self-sustaining session accepts the detour. Returns false when the trip
+     * was given up.
+     */
+    private static boolean keepSupplierWithinReach(AgentRuntimeEntry entry,
+                                                   Character agent,
+                                                   AgentResourcePlanningState planning,
+                                                   AgentSupplyProcurementState execution,
+                                                   long nowMs) {
+        int budget = execution.supplierHopBudget();
+        int hops = AgentVictoriaRouteRuntime.routeHops(
+                entry, agent.getMapId(), execution.supplierMapId(), nowMs);
+        if (hops >= 0 && (budget < 0 || hops <= budget)) {
+            if (budget < 0) {
+                execution.setSupplierHopBudget(hops);
+            }
+            return true;
+        }
+        boolean selfSustaining = selfSustaining(entry);
+        AgentCareerBuildBundle bundle = entry.capabilityStates().require(
+                AgentCareerProgressionState.STATE_KEY).bundle();
+        AgentCareerShopCatalog.ShopStop nearer = bundle == null ? null
+                : AgentCareerShopCatalog.forSupply(
+                bundle, execution.category(), agent.getMapId(), routeHops(entry, nowMs));
+        int nearerHops = nearer == null ? -1
+                : AgentVictoriaRouteRuntime.routeHops(entry, agent.getMapId(), nearer.mapId(), nowMs);
+        String change = hops < 0 ? "no longer has a route"
+                : "needs " + hops + " portal hops, more than the " + budget + " the trip started with";
+        if (nearer != null && nearer.mapId() != execution.supplierMapId()
+                && (selfSustaining || budget < 0 || nearerHops <= budget)) {
+            log.info("Agent '{}' switched {} resupply from supplier map {} to map {} ({} portal hops): the first supplier {}",
+                    agent.getName(), execution.category(), execution.supplierMapId(),
+                    nearer.mapId(), nearerHops, change);
+            execution.redirectSupplier(nearer.mapId(), nearer.npcId(),
+                    selfSustaining || budget < 0 ? nearerHops : budget);
+            return true;
+        }
+        if (hops >= 0 && selfSustaining) {
+            execution.setSupplierHopBudget(hops);
+            return true;
+        }
+        String reason = hops < 0 ? "no portal route reaches the selected supplier"
+                : "the route to the selected supplier " + change;
+        recordFailure(entry, agent, execution, AgentSupplyProcurementOutcome.Status.ROUTE_FAILED,
+                reason, nowMs);
+        stall(entry, agent, planning, execution, reason, nowMs);
+        return false;
+    }
+
+    private static IntBinaryOperator routeHops(AgentRuntimeEntry entry, long nowMs) {
+        return (sourceMapId, destinationMapId) -> AgentVictoriaRouteRuntime.routeHops(
+                entry, sourceMapId, destinationMapId, nowMs);
     }
 
     private static boolean shop(AgentRuntimeEntry entry,
@@ -312,7 +422,10 @@ public final class AgentSupplyProcurementRuntime {
             execution.complete(outcome);
             journalOutcome(entry, agent, execution.requestId(), outcome);
             if (!outcome.restored()) {
-                if (outcome.requiresRecoveryIncome()) {
+                // Resting and grinding for mesos keeps a companion away from its owner for many
+                // minutes; only a self-sustaining session earns its own supplies that way.
+                // Everyone else gives the trip up below, rejoins and asks the party.
+                if (outcome.requiresRecoveryIncome() && selfSustaining(entry)) {
                     return beginRecovery(entry, agent, planning, execution, request, outcome, nowMs);
                 }
                 stall(entry, agent, planning, execution, outcome.reason(), nowMs);
@@ -353,6 +466,16 @@ public final class AgentSupplyProcurementRuntime {
                                         AgentResourcePlanningState planning,
                                         AgentSupplyProcurementState execution,
                                         long nowMs) {
+        if (execution.resumeFollow() && followAnchor(entry) != null) {
+            // A companion's plan location is its owner, and follow warps it back beside the
+            // owner; walking to the map it left can detour for minutes away from the party.
+            if (execution.abandoned()) {
+                return finishAbandoned(entry, agent, planning, execution, nowMs);
+            }
+            finish(entry, planning, execution, AgentObjectiveStatus.SUCCEEDED,
+                    "shop transaction completed; rejoining the owner", nowMs);
+            return false;
+        }
         AgentRouteOutcome outcome = AgentPrimitiveCapabilityGatewayRuntime.gateway().travelTo(
                 entry, agent, execution.returnMapId(), nowMs);
         if (outcome.status() == AgentRouteStatus.NO_ROUTE) {
@@ -624,6 +747,7 @@ public final class AgentSupplyProcurementRuntime {
         boolean resumeFollow = execution.resumeFollow();
         boolean resumeGrind = execution.resumeGrind();
         execution.clear();
+        execution.forgetPartyAsk(category);
         if (category != null) {
             planning.resolve(category);
             entry.capabilityStates().require(AgentSupplyMaintenanceEvaluationState.STATE_KEY)
@@ -653,11 +777,20 @@ public final class AgentSupplyProcurementRuntime {
         if (AgentObjectiveKernel.active(entry) != null) {
             return;
         }
-        if (resumeFollow && AgentRelationshipRuntime.followTarget(entry) != null) {
+        if (resumeFollow && followAnchor(entry) != null) {
             AgentMovementCommandRuntime.followConfiguredTarget(entry);
         } else if (resumeGrind) {
             AgentMovementCommandRuntime.grind(entry);
         }
+    }
+
+    /**
+     * Who a companion follows again: its follow target, or its owner once travel stopped and
+     * cleared the target (portal settling stops the Agent), as followConfiguredTarget does.
+     */
+    private static Character followAnchor(AgentRuntimeEntry entry) {
+        Character target = AgentRelationshipRuntime.followTarget(entry);
+        return target != null ? target : AgentRelationshipRuntime.interactionTarget(entry);
     }
 
     private static AgentSupplyProcurementOutcome reconcile(

@@ -12,6 +12,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -301,6 +302,8 @@ public final class AgentNavigationGraph implements Serializable {
     final Map<Integer, List<Edge>> outgoingByRegionId;
     private transient volatile Map<Integer, Integer> connectedComponentByRegionId;
     private transient volatile Map<Integer, Map<Integer, Integer>> costToGoalByTargetRegion;
+    private transient volatile Map<Integer, Set<Integer>> reachableRegionsByOrigin;
+    private transient volatile Map<Integer, OutgoingAxisOrder> outgoingAxisOrderByRegionId;
     final java.util.Set<Integer> collidableWallIds;
     public final java.util.Set<Integer> collidableFromBelowIds;
 
@@ -368,6 +371,87 @@ public final class AgentNavigationGraph implements Serializable {
         return outgoingByRegionId.getOrDefault(regionId, List.of());
     }
 
+    /**
+     * A region's outgoing edges ordered by where they start along the region's travel axis
+     * (y on a rope, x on the ground), so a search can scan only the edges in an axis interval.
+     */
+    static final class OutgoingAxisOrder {
+        private final int[] axis;
+        private final int[] index;
+
+        private OutgoingAxisOrder(int[] axis, int[] index) {
+            this.axis = axis;
+            this.index = index;
+        }
+
+        int size() {
+            return axis.length;
+        }
+
+        /** The position in {@link #getOutgoing} of the edge at this rank. */
+        int index(int rank) {
+            return index[rank];
+        }
+
+        /** The rank of the first edge that starts beyond {@code value}. */
+        int firstAfter(int value) {
+            return firstRank(value, true);
+        }
+
+        /** The rank of the first edge that starts at or beyond {@code value}. */
+        int firstAtOrAfter(int value) {
+            return firstRank(value, false);
+        }
+
+        private int firstRank(int value, boolean strictlyAfter) {
+            int low = 0;
+            int high = axis.length;
+            while (low < high) {
+                int middle = (low + high) >>> 1;
+                if (axis[middle] < value || (strictlyAfter && axis[middle] == value)) {
+                    low = middle + 1;
+                } else {
+                    high = middle;
+                }
+            }
+            return low;
+        }
+    }
+
+    OutgoingAxisOrder outgoingAxisOrder(int regionId) {
+        Map<Integer, OutgoingAxisOrder> cache = outgoingAxisOrderByRegionId;
+        if (cache == null) {
+            synchronized (this) {
+                cache = outgoingAxisOrderByRegionId;
+                if (cache == null) {
+                    cache = new ConcurrentHashMap<>();
+                    outgoingAxisOrderByRegionId = cache;
+                }
+            }
+        }
+        return cache.computeIfAbsent(regionId, this::computeOutgoingAxisOrder);
+    }
+
+    private OutgoingAxisOrder computeOutgoingAxisOrder(int regionId) {
+        List<Edge> edges = getOutgoing(regionId);
+        Region region = getRegion(regionId);
+        boolean rope = region != null && region.isRopeRegion;
+        Integer[] order = new Integer[edges.size()];
+        for (int i = 0; i < order.length; i++) {
+            order[i] = i;
+        }
+        Arrays.sort(order, Comparator.comparingInt(
+                i -> rope ? edges.get(i).startPoint.y : edges.get(i).startPoint.x));
+        int[] axis = new int[order.length];
+        int[] index = new int[order.length];
+        for (int rank = 0; rank < order.length; rank++) {
+            Point start = edges.get(order[rank]).startPoint;
+            axis[rank] = rope ? start.y : start.x;
+            index[rank] = order[rank];
+        }
+        return new OutgoingAxisOrder(axis, index);
+    }
+
     int discardImpossibleDropEdges() {
         int removed = 0;
         for (List<Edge> edges : outgoingByRegionId.values()) {
@@ -378,6 +462,8 @@ public final class AgentNavigationGraph implements Serializable {
         if (removed > 0) {
             connectedComponentByRegionId = null;
             costToGoalByTargetRegion = null;
+            reachableRegionsByOrigin = null;
+            outgoingAxisOrderByRegionId = null;
         }
         return removed;
     }
@@ -437,6 +523,48 @@ public final class AgentNavigationGraph implements Serializable {
             componentId++;
         }
         return components;
+    }
+
+    /**
+     * Directed reachability over the non-skill edges, with every portal treated as open.
+     *
+     * <p>{@link #connectedComponentId} ignores edge direction, so a drop-only platform (a roof
+     * whose only ways out are drops and whose only way in is from another roof) shares a
+     * component with the ground below it. This is a superset of any live search without movement
+     * skills: a live search only removes edges (closed portals, per-Agent filters), so a
+     * {@code false} here proves that search cannot reach the target region.
+     */
+    public boolean canReach(int fromRegionId, int toRegionId) {
+        if (fromRegionId == toRegionId) {
+            return true;
+        }
+        Map<Integer, Set<Integer>> cache = reachableRegionsByOrigin;
+        if (cache == null) {
+            synchronized (this) {
+                cache = reachableRegionsByOrigin;
+                if (cache == null) {
+                    cache = new ConcurrentHashMap<>();
+                    reachableRegionsByOrigin = cache;
+                }
+            }
+        }
+        return cache.computeIfAbsent(fromRegionId, this::computeReachableRegions)
+                .contains(toRegionId);
+    }
+
+    private Set<Integer> computeReachableRegions(int fromRegionId) {
+        Set<Integer> reached = new HashSet<>();
+        reached.add(fromRegionId);
+        ArrayDeque<Integer> pending = new ArrayDeque<>();
+        pending.add(fromRegionId);
+        while (!pending.isEmpty()) {
+            for (Edge edge : getOutgoing(pending.removeFirst())) {
+                if (!isMovementSkillEdge(edge) && reached.add(edge.toRegionId)) {
+                    pending.addLast(edge.toRegionId);
+                }
+            }
+        }
+        return Set.copyOf(reached);
     }
 
     Map<Integer, Integer> costToGoal(int targetRegionId) {

@@ -2,6 +2,8 @@ package server.agents.capabilities.combat;
 
 import client.Character;
 import client.SkillFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 
@@ -14,6 +16,8 @@ import java.util.List;
  * covers the class instead of the single best skill for the map.
  */
 public final class AgentSkillShowcase {
+    private static final Logger log = LoggerFactory.getLogger(AgentSkillShowcase.class);
+
     private AgentSkillShowcase() {
     }
 
@@ -40,7 +44,10 @@ public final class AgentSkillShowcase {
             return;
         }
         if (state.recordUse(skillId, System.currentTimeMillis())) {
-            AgentPacketGatewayRuntime.packets().broadcastChatText(bot, SkillFactory.getSkillName(skillId), false, 0);
+            String name = SkillFactory.getSkillName(skillId);
+            AgentPacketGatewayRuntime.packets().broadcastChatText(bot, name, false, 0);
+            // tools/cua/video_audit.py compares these lines with the callouts visible in the filmed clip.
+            log.info("[showcase] {} said {} ({})", bot.getName(), name, skillId);
         }
     }
 

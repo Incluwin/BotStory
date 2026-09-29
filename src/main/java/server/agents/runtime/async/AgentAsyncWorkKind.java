@@ -24,7 +24,11 @@ public enum AgentAsyncWorkKind {
     // TypeSafe System One judgments: ~100 ms HTTP round trips kept off the LLM lane so a
     // slow local model never delays a typed decision, and vice versa.
     SYSTEM_ONE_NETWORK("systemone", "bot-systemone", 2, 128, Thread.NORM_PRIORITY,
-            "agents.async.systemone.threads", "agents.async.systemone.queueCapacity");
+            "agents.async.systemone.threads", "agents.async.systemone.queueCapacity"),
+    // Evaluates headless NPC conversation scripts ahead of use so the central tick thread never
+    // builds a GraalJS context (10-20 ms each, up to ~1 s on a script's first parse).
+    NPC_SCRIPT_PREPARATION("npc-script", "agent-npc-script-prep", 1, 64, Thread.NORM_PRIORITY,
+            "agents.async.npcScript.threads", "agents.async.npcScript.queueCapacity");
 
     private final String metricName;
     private final String threadName;

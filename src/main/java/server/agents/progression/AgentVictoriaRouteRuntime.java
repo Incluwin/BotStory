@@ -5,6 +5,7 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 
 import java.awt.Point;
+import java.util.Set;
 
 public final class AgentVictoriaRouteRuntime {
     private static final int PORTAL_DISTANCE_PX = config.AgentTuning.intValue("server.agents.progression.AgentVictoriaRouteRuntime.PORTAL_DISTANCE_PX");
@@ -90,6 +91,20 @@ public final class AgentVictoriaRouteRuntime {
             gateway.navigate(entry, portal, true);
         }
         return new TravelOutcome(Status.MOVING, sourceMapId, nextMap, destinationMapId, false);
+    }
+
+    /**
+     * Portal hops travelStatus would currently take from sourceMapId to destinationMapId,
+     * honouring the edges this Agent has blocked after failed portal entries; -1 when it
+     * cannot get there at all.
+     */
+    public static int routeHops(AgentRuntimeEntry entry,
+                                int sourceMapId,
+                                int destinationMapId,
+                                long nowMs) {
+        Set<Long> blockedEdges = entry == null ? Set.of()
+                : entry.capabilityStates().require(AgentVictoriaRouteState.STATE_KEY).blockedEdges(nowMs);
+        return AgentVictoriaTrainingRouteCatalog.distance(sourceMapId, destinationMapId, blockedEdges);
     }
 
     /** True only while a Victoria plan is physically crossing this map toward another map. */

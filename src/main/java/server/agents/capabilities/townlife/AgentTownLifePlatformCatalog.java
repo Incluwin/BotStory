@@ -20,12 +20,17 @@ public final class AgentTownLifePlatformCatalog {
     private AgentTownLifePlatformCatalog() {
     }
 
+    /**
+     * Returns the platform slots an Agent standing on {@code originRegionId} can walk to, or
+     * every slot when the origin is unknown ({@code originRegionId < 0}).
+     */
     public static List<PlatformSpot> reachable(AgentNavigationGraph graph,
                                                AgentTownLifeProfile profile,
-                                               int originComponent) {
+                                               int originRegionId) {
         if (graph == null || profile == null) {
             return List.of();
         }
+        int originComponent = originRegionId < 0 ? -1 : graph.connectedComponentId(originRegionId);
         AgentTownLifeProfile.Geometry geometry = profile.geometry();
         List<PlatformSpot> result = new ArrayList<>();
         Map<String, Integer> nextSpotNumber = new HashMap<>();
@@ -36,6 +41,12 @@ public final class AgentTownLifePlatformCatalog {
                     && graph.connectedComponentId(region.id) != originComponent)) {
                 continue;
             }
+            // The component ignores edge direction, so drop-only roofs (Kerning City's region 80)
+            // pass it although nothing below can climb back up. Choosing one made the
+            // mover re-run an exhaustive unreachable search every tick until the stall watchdog
+            // gave up. Skipped slots still take their number, so an Agent on the roof and one on
+            // the ground agree on the reservation identity of every shared slot.
+            boolean walkable = originRegionId < 0 || graph.canReach(originRegionId, region.id);
             Point midpoint = region.pointAt(region.minX + region.width() / 2);
             AgentTownLifeProfile.PlatformPolicy policy =
                     profile.platformPolicy(midpoint).orElse(null);
@@ -57,6 +68,9 @@ public final class AgentTownLifePlatformCatalog {
                         + platformKind.name().toLowerCase()
                         : "town-policy-" + profile.mapId() + '-' + policy.id();
                 int spotNumber = nextSpotNumber.merge(catalogId, 1, Integer::sum);
+                if (!walkable) {
+                    continue;
+                }
                 CharacterSpace space = new CharacterSpace(
                         catalogId, spotNumber, profile.mapId(),
                         Math.max(0, region.id), slot, point.x, point.y);

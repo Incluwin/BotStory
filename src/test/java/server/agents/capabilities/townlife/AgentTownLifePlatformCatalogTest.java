@@ -2,7 +2,10 @@ package server.agents.capabilities.townlife;
 
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
+import server.agents.capabilities.navigation.AgentNavigationGraphService;
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
 import server.maps.Foothold;
+import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.util.List;
@@ -13,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AgentTownLifePlatformCatalogTest {
+    private static final int KERNING_CITY = 103000000;
+
     @Test
     void catalogsUpperLowerAndMiniPlatformsAsIndependentReservationSlots() {
         AgentNavigationGraph.Region upper = region(1, 1, 0, 100, 640, 100);
@@ -52,6 +57,33 @@ class AgentTownLifePlatformCatalogTest {
         assertEquals(6, spots.size());
         assertTrue(spots.stream().allMatch(spot ->
                 spot.space().catalogId().contains("duey-truck-roof")));
+    }
+
+    @Test
+    void kerningDropOnlyRoofIsOfferedOnlyToAgentsWhoCanWalkThere() {
+        MapleMap map = AgentNavigationMapLoader.loadMapGeometry(KERNING_CITY);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map);
+        AgentTownLifeProfile profile = AgentTownLifeProfileRepository.defaultRepository()
+                .require(KERNING_CITY);
+        int street = graph.findRegionId(map, new Point(-1826, -233));
+        int roof = graph.findRegionId(map, new Point(-2127, -338));
+        assertEquals(graph.connectedComponentId(street), graph.connectedComponentId(roof));
+
+        List<AgentTownLifePlatformCatalog.PlatformSpot> fromStreet =
+                AgentTownLifePlatformCatalog.reachable(graph, profile, street);
+        List<AgentTownLifePlatformCatalog.PlatformSpot> fromRoof =
+                AgentTownLifePlatformCatalog.reachable(graph, profile, roof);
+
+        assertTrue(fromRoof.stream().anyMatch(spot -> spot.space().rowId() == roof),
+                "the roof is a catalogued platform");
+        assertTrue(fromStreet.stream().noneMatch(spot -> spot.space().rowId() == roof),
+                "nothing on the street can climb onto the roof");
+        assertTrue(fromStreet.stream().allMatch(
+                        spot -> graph.canReach(street, spot.space().rowId())),
+                "every offered slot is walkable from the street");
+        assertTrue(fromRoof.containsAll(fromStreet),
+                "skipping the roof does not renumber the slots both Agents can reserve");
+        assertTrue(fromStreet.size() > fromRoof.size() / 2);
     }
 
     private static AgentNavigationGraph.Region region(int regionId,

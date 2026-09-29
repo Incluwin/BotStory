@@ -13,6 +13,10 @@ import java.util.List;
 public interface PartyQuestGateway {
     boolean runNpc(Character agent, int npcId, int... selections);
 
+    /** Hints that these NPCs' scripts run soon, so they can be evaluated away from the Agent tick thread. */
+    default void prepareNpcScripts(int... npcIds) {
+    }
+
     boolean enterPortal(Character agent, int portalId);
 
     boolean lootNearby(Character agent, Set<Integer> itemIds);

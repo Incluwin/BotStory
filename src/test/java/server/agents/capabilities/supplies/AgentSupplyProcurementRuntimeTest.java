@@ -329,6 +329,73 @@ class AgentSupplyProcurementRuntimeTest {
     }
 
     @Test
+    void resupplyWhoseObjectiveWasEndedElsewhereStillFreesTheNextResupply() {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(97);
+        when(agent.getName()).thenReturn("Wanderer");
+        when(agent.getMapId()).thenReturn(102000000);
+        when(agent.getChair()).thenReturn(-1);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        entry.capabilityStates().require(AgentCareerProgressionState.STATE_KEY).assign(
+                AgentCareerBuildBundleRepository.defaultRepository()
+                        .find("warrior-standard-v1").orElseThrow());
+        AgentResourcePlanningState planning = entry.capabilityStates().require(
+                AgentResourcePlanningState.STATE_KEY);
+        AgentSupplyNeed need = new AgentSupplyNeed(AgentResourceCategory.HP_POTION,
+                0, 200, AgentSupplyUrgency.EMPTY, "", 10L);
+        AgentProcurementRequest first = new AgentProcurementRequest(
+                "supply:HP_POTION:10", AgentResourceCategory.HP_POTION, 200, Long.MAX_VALUE,
+                List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.EMPTY, "", Long.MAX_VALUE);
+        planning.update(need, first);
+        AgentSupplyProcurementState execution = entry.capabilityStates().require(
+                AgentSupplyProcurementState.STATE_KEY);
+
+        // The trip starts and is then abandoned.
+        assertTrue(AgentSupplyProcurementRuntime.begin(entry, agent, first, execution, 20L));
+        // Something else ends the maintenance objective first (the relog reconciler used to).
+        AgentObjectiveKernel.finishAndResume(entry, "maintenance:resupply:" + first.requestId(),
+                server.agents.objectives.AgentObjectiveStatus.FAILED, "ended elsewhere", 25L);
+        execution.markAbandoned("no portal route reaches the selected supplier");
+        execution.markReturning();
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, 30L));
+        assertFalse(execution.isActive());
+
+        // The next shortage starts a fresh resupply instead of being refused on every tick.
+        AgentProcurementRequest second = new AgentProcurementRequest(
+                "supply:HP_POTION:40", AgentResourceCategory.HP_POTION, 200, Long.MAX_VALUE,
+                List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.EMPTY, "", Long.MAX_VALUE);
+        planning.update(need, second);
+        assertTrue(AgentSupplyProcurementRuntime.begin(entry, agent, second, execution, 40L));
+        assertEquals("maintenance:resupply:" + second.requestId(),
+                AgentObjectiveKernel.active(entry).objectiveId());
+    }
+
+    @Test
+    void refusedStartIsSuppressedInsteadOfRetriedEveryTick() {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(98);
+        when(agent.getName()).thenReturn("Unplanned");
+        when(agent.getMapId()).thenReturn(250000000);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentResourcePlanningState planning = entry.capabilityStates().require(
+                AgentResourcePlanningState.STATE_KEY);
+        planning.update(new AgentSupplyNeed(AgentResourceCategory.HP_POTION,
+                        0, 200, AgentSupplyUrgency.EMPTY, "", 10L),
+                new AgentProcurementRequest("supply:HP_POTION:98", AgentResourceCategory.HP_POTION,
+                        200, Long.MAX_VALUE, List.of(AgentProcurementMethod.NPC_SHOP),
+                        AgentSupplyUrgency.EMPTY, "", Long.MAX_VALUE));
+        AgentSupplyProcurementState execution = entry.capabilityStates().require(
+                AgentSupplyProcurementState.STATE_KEY);
+
+        // No career bundle and no shop here: begin() is refused.
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, 20L));
+        assertFalse(execution.isActive());
+        assertTrue(execution.suppressed(AgentResourceCategory.HP_POTION, 21L));
+        assertFalse(execution.suppressed(AgentResourceCategory.HP_POTION,
+                20L + AgentSupplyRecoveryPolicy.failedProcurementCooldownMs()));
+    }
+
+    @Test
     void companionWithoutAPlanObjectiveResumesFollowingAfterTheReturnTrip() {
         Character agent = mock(Character.class);
         when(agent.getId()).thenReturn(95);

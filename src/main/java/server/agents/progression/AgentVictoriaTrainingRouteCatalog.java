@@ -53,6 +53,11 @@ final class AgentVictoriaTrainingRouteCatalog {
     }
 
     static int distance(int source, int destination) {
+        return distance(source, destination, Set.of());
+    }
+
+    /** Portal hops nextHop would take with these edges excluded, or -1 when it cannot get there. */
+    static int distance(int source, int destination, Set<Long> excludedEdges) {
         if (source == destination) {
             return 0;
         }
@@ -64,6 +69,9 @@ final class AgentVictoriaTrainingRouteCatalog {
             int current = queue.removeFirst();
             int nextDistance = distances.get(current) + 1;
             for (int next : EDGES.getOrDefault(current, Set.of())) {
+                if (excludedEdges != null && excludedEdges.contains(edgeKey(current, next))) {
+                    continue;
+                }
                 if (distances.putIfAbsent(next, nextDistance) != null) {
                     continue;
                 }

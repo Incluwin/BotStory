@@ -2,6 +2,7 @@ package server.agents.integration.cosmic;
 
 import client.Character;
 import scripting.event.EventInstanceManager;
+import scripting.npc.NPCScriptManager;
 import server.agents.integration.PartyQuestGateway;
 
 import java.util.Set;
@@ -13,6 +14,13 @@ public enum CosmicPartyQuestGateway implements PartyQuestGateway {
     @Override
     public boolean runNpc(Character agent, int npcId, int... selections) {
         return CosmicPrimitiveCapabilityGateway.INSTANCE.runNpcScript(agent, npcId, selections);
+    }
+
+    @Override
+    public void prepareNpcScripts(int... npcIds) {
+        for (int npcId : npcIds) {
+            CosmicPreparedNpcScriptEngines.INSTANCE.prepare(NPCScriptManager.npcScriptPath(npcId));
+        }
     }
 
     @Override

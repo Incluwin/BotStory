@@ -140,6 +140,53 @@ class AgentNavigationCommittedEdgeServiceTest {
     }
 
     @Test
+    void refreshSkipsTheSearchWhenNoWalkExitCouldReplaceTheCommittedEdge() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentNavigationGraph.Edge current = edge(1, 2, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(0, 0), new Point(20, 0), 0, 20, 1, 0, 0, 0, 0);
+        AgentNavigationGraph.Edge drop = edge(1, 3, AgentNavigationGraph.EdgeType.DROP,
+                new Point(50, 0), new Point(50, 40), 0, 0, 0, 0, 0, 0, 0);
+        AgentNavigationGraph graph = graphWithOutgoing(Map.of(1, List.of(current, drop)));
+        AtomicBoolean finderCalled = new AtomicBoolean(false);
+
+        AgentNavigationGraph.Edge result = AgentNavigationCommittedEdgeService.refreshCommittedGroundEdge(
+                graph, entry, null, 1, 3, new Point(50, 40), current, true,
+                (activeGraph, bot, startRegionId, targetRegionId, targetPos) -> {
+                    finderCalled.set(true);
+                    return drop;
+                });
+
+        assertSame(current, result, "a non-WALK replacement would have been retained anyway");
+        assertFalse(finderCalled.get());
+    }
+
+    @Test
+    void refreshStillSearchesWhenAWalkExitOrAWalkEdgeIsCommitted() {
+        AgentNavigationGraph.Edge committedJump = edge(1, 2, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(0, 0), new Point(20, 0), 0, 20, 1, 0, 0, 0, 0);
+        AgentNavigationGraph.Edge walkExit = edge(1, 3, AgentNavigationGraph.EdgeType.WALK,
+                new Point(100, 0), new Point(100, 0), 0, 0, 0, 0, 0, 0, 0);
+        AgentNavigationGraph withWalkExit = graphWithOutgoing(
+                Map.of(1, List.of(committedJump, walkExit)));
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+
+        assertSame(walkExit, AgentNavigationCommittedEdgeService.refreshCommittedGroundEdge(
+                withWalkExit, entry, null, 1, 3, new Point(120, 0), committedJump, true,
+                (graph, bot, startRegionId, targetRegionId, targetPos) -> walkExit));
+
+        AgentNavigationGraph.Edge committedWalk = edge(1, 2, AgentNavigationGraph.EdgeType.WALK,
+                new Point(0, 0), new Point(20, 0), 0, 0, 0, 0, 0, 0, 0);
+        AgentNavigationGraph.Edge jump = edge(1, 3, AgentNavigationGraph.EdgeType.JUMP,
+                new Point(0, 0), new Point(50, 0), 0, 20, 1, 0, 0, 0, 0);
+        AgentNavigationGraph withoutWalkExit = graphWithOutgoing(Map.of(1, List.of(jump)));
+        AgentRuntimeEntry walking = new AgentRuntimeEntry(null, null, null);
+
+        assertSame(jump, AgentNavigationCommittedEdgeService.refreshCommittedGroundEdge(
+                withoutWalkExit, walking, null, 1, 3, new Point(50, 0), committedWalk, true,
+                (graph, bot, startRegionId, targetRegionId, targetPos) -> jump));
+    }
+
+    @Test
     void reuseCommittedEdgeUpdatesStoredTargetAndKeepsUsableEdgeFromCurrentRegion() {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
         AgentNavigationGraph.Edge edge = edge(1, 2, AgentNavigationGraph.EdgeType.JUMP,
@@ -323,6 +370,12 @@ class AgentNavigationCommittedEdgeServiceTest {
         AgentMovementStateRuntime.setInAir(ropeExit, true);
         assertSame(climbExit, AgentNavigationCommittedEdgeService.reuseCommittedEdge(
                 null, ropeExit, 2, 2, (graph, bot, candidate) -> true, (graph, candidate) -> false));
+    }
+
+    private static AgentNavigationGraph graphWithOutgoing(
+            Map<Integer, List<AgentNavigationGraph.Edge>> outgoing) {
+        return new AgentNavigationGraph(1, 1, AgentMovementProfile.base(),
+                List.of(), Map.of(), Map.of(), outgoing, Set.of());
     }
 
     private static AgentNavigationGraph.Edge edge(int fromRegionId,

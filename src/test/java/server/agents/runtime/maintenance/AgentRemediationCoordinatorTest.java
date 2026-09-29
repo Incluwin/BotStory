@@ -46,6 +46,31 @@ class AgentRemediationCoordinatorTest {
                 "expired", 151L));
     }
 
+    @Test
+    void finishReleasesTheFrameWhenTheObjectiveWasAlreadyEndedElsewhere() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentObjectiveDefinition maintenance = objective("maintenance:supply:1", "chain-1", 5_000L);
+        AgentRemediationFrame frame = new AgentRemediationFrame(
+                "supply:1", AgentRemediationKind.LOW_SUPPLIES, maintenance.objectiveId(),
+                "chain-1", 1, 100L, 5_000L, Map.of());
+        assertTrue(AgentRemediationCoordinator.begin(entry, frame, maintenance, "HP empty", 100L));
+        assertTrue(AgentRemediationCoordinator.owns(entry, maintenance.objectiveId()));
+        AgentObjectiveKernel.finishAndResume(entry, maintenance.objectiveId(),
+                AgentObjectiveStatus.FAILED, "ended by another owner", 150L);
+
+        assertFalse(AgentRemediationCoordinator.finish(entry, frame.frameId(),
+                AgentObjectiveStatus.FAILED, "route failed", 200L));
+        assertFalse(AgentRemediationCoordinator.owns(entry, maintenance.objectiveId()));
+
+        // The next shortage can start its own remediation instead of being refused forever.
+        AgentObjectiveDefinition next = objective("maintenance:supply:2", "chain-2", 9_000L);
+        AgentRemediationFrame nextFrame = new AgentRemediationFrame(
+                "supply:2", AgentRemediationKind.LOW_SUPPLIES, next.objectiveId(),
+                "chain-2", 1, 300L, 9_000L, Map.of());
+        assertTrue(AgentRemediationCoordinator.begin(entry, nextFrame, next, "HP empty", 300L));
+        assertEquals(next, AgentObjectiveKernel.active(entry));
+    }
+
     private static AgentObjectiveDefinition objective(String id, String correlation, long deadline) {
         return new AgentObjectiveDefinition(id, "test", 100, deadline, 1,
                 AgentObjectiveSource.RECOVERY_POLICY, "test-v1", correlation);

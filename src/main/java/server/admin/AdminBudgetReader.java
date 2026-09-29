@@ -6,6 +6,7 @@ import net.server.Server;
 import net.server.world.World;
 import server.TimerManager;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.integration.cosmic.CosmicPreparedNpcScriptEngines;
 import server.agents.monitoring.AgentSchedulerMetrics;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -72,6 +73,7 @@ final class AdminBudgetReader {
                 .raw("threads", threads(ManagementFactory.getThreadMXBean()).finished())
                 .raw("agents", section(AdminBudgetReader::agents))
                 .raw("scheduler", section(AdminBudgetReader::scheduler))
+                .raw("headlessNpcScripts", section(AdminBudgetReader::headlessNpcScripts))
                 .raw("timers", timers(AdminTimerLagProbe.LOW_PRIORITY, System.nanoTime()).finished())
                 .finished();
     }
@@ -307,6 +309,27 @@ final class AdminBudgetReader {
                 .num("readyDepth", m.readyDepth())
                 .str("loadShedding", level.name())
                 .num("rejectedAdmissions", shedding.rejectedAdmissions())
+                .finished();
+    }
+
+    /**
+     * Headless Agent NPC conversations, split by whether a pre-evaluated engine was ready (hit) or the
+     * conversation had to evaluate its script on the calling Agent tick thread (miss). Run times include
+     * the whole conversation; evaluations happen on the background prep thread.
+     */
+    private static String headlessNpcScripts() {
+        CosmicPreparedNpcScriptEngines.Stats s = CosmicPreparedNpcScriptEngines.stats();
+        return new AdminJson.Obj()
+                .num("hits", s.hits())
+                .num("misses", s.misses())
+                .num("hitRunAvgUs", s.hits() == 0 ? 0 : s.hitRunTotalUs() / s.hits())
+                .num("hitRunMaxUs", s.hitRunMaxUs())
+                .num("missRunAvgUs", s.misses() == 0 ? 0 : s.missRunTotalUs() / s.misses())
+                .num("missRunMaxUs", s.missRunMaxUs())
+                .num("backgroundEvaluations", s.evaluations())
+                .num("backgroundEvaluationMaxUs", s.evaluationMaxUs())
+                .num("scripts", s.scripts())
+                .num("readyEngines", s.ready())
                 .finished();
     }
 }

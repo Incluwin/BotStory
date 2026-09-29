@@ -6,6 +6,7 @@ import org.mockito.MockedStatic;
 import server.agents.objectives.AgentObjectiveDefinition;
 import server.agents.objectives.AgentObjectiveKernel;
 import server.agents.objectives.AgentObjectiveSource;
+import server.agents.objectives.AgentObjectiveStatus;
 import server.agents.progression.AgentCareerBuildBundle;
 import server.agents.progression.AgentCareerBuildBundleRepository;
 import server.agents.progression.AgentCareerProgressionState;
@@ -13,6 +14,11 @@ import server.agents.progression.AgentFirstJobJourneyRuntime;
 import server.agents.progression.AgentVictoriaTrainingObjectiveRuntime;
 import server.agents.progression.AgentVictoriaTrainingState;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.maintenance.AgentRemediationCoordinator;
+import server.agents.runtime.maintenance.AgentRemediationFrame;
+import server.agents.runtime.maintenance.AgentRemediationKind;
+
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -155,5 +161,27 @@ class AgentPlanReattachmentRuntimeTest {
         assertTrue(entry.capabilityStates()
                 .require(server.agents.objectives.AgentObjectiveState.STATE_KEY)
                 .suspendedSnapshot().isEmpty());
+    }
+
+    @Test
+    void resupplyStartedThisSessionIsNotDiscardedAsARelogLeftover() {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(74);
+        when(agent.getName()).thenReturn("LiveShopper");
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentObjectiveDefinition maintenance = new AgentObjectiveDefinition(
+                "maintenance:resupply:74", "maintenance.resupply", 1_000,
+                10_000L, 2, AgentObjectiveSource.RECOVERY_POLICY,
+                "supply-procurement-v2", "maintenance:resupply:74");
+        AgentRemediationFrame frame = new AgentRemediationFrame(
+                "resupply:74", AgentRemediationKind.LOW_SUPPLIES, maintenance.objectiveId(),
+                "", 1, 20L, 10_000L, Map.of());
+        assertTrue(AgentRemediationCoordinator.begin(entry, frame, maintenance, "HP potions empty", 20L));
+
+        assertFalse(AgentPlanReattachmentRuntime.reattachIfNeeded(entry, agent, 30L));
+        assertEquals(maintenance, AgentObjectiveKernel.active(entry));
+        assertTrue(AgentRemediationCoordinator.finish(entry, frame.frameId(),
+                AgentObjectiveStatus.FAILED, "no portal route reaches the selected supplier", 40L));
+        assertNull(AgentObjectiveKernel.active(entry));
     }
 }

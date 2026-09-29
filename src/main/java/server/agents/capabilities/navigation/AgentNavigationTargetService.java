@@ -91,6 +91,7 @@ public final class AgentNavigationTargetService {
                 // Invalidate only the live step. The local pathTarget is replanned below while
                 // combat target, objective and unrelated capability state stay intact.
                 AgentMovementStateResetService.clearNavigationStep(entry);
+                AgentNavigationPathService.forgetRecoveredRoute(bot);
                 AgentNavigationDebugStateRuntime.setLastDecision(entry, "edge-timeout-replan");
             }
             if (runAiTick && rawTargetPos != null) {
@@ -237,6 +238,7 @@ public final class AgentNavigationTargetService {
                     graph, entry, bot, botPos, rawTargetPos, startRegionId, edge, runAiTick);
             if (execution.rejected()) {
                 AgentMovementStateResetService.clearNavigationStep(entry);
+                AgentNavigationPathService.forgetRecoveredRoute(bot);
                 AgentNavigationDebugStateRuntime.setLastDecision(entry, "edge-rejected-replan");
                 if (startRegionId >= 0 && targetRegionId >= 0
                         && AgentNavigationEdgeReliabilityRuntime.suppressed(
@@ -333,6 +335,7 @@ public final class AgentNavigationTargetService {
                 rawTargetPos, startRegionId, edge, true);
         if (execution.rejected()) {
             AgentMovementStateResetService.clearNavigationStep(entry);
+            AgentNavigationPathService.forgetRecoveredRoute(AgentRuntimeIdentityRuntime.bot(entry));
             return false;
         }
         if (!execution.executed() || !execution.consumedTick()) {
@@ -393,17 +396,33 @@ public final class AgentNavigationTargetService {
                 AgentNavigationEdgeReliabilityRuntime.edgeFilter(entry, graph.mapId, nowMs);
         AgentNavigationProgressState progressState =
                 entry.capabilityStates().require(AgentNavigationProgressState.STATE_KEY);
+        // With the target on the Agent's own region the mover keeps only a route that stays on it
+        // (a first edge that leaves is discarded below), so the search may use only such edges.
+        // Otherwise a route through an in-region portal that then leaves is followed to the
+        // portal and dropped on the far side: Kerning City agents walking west to west00 took the
+        // main street's portal east, walked back west, and took it again, forever.
+        boolean sameRegion = startRegionId == targetRegionId;
         Predicate<AgentNavigationGraph.Edge> edgeFilter = edge ->
                 reliabilityFilter.test(edge)
                         && !progressState.blocks(edge, nowMs)
                         && !AgentVerticalTraversalService.blocksRecentInverseEntry(
-                                graph, entry, edge, nowMs);
+                                graph, entry, edge, nowMs)
+                        && (!sameRegion
+                        || AgentNavigationPathService.staysWithinRegion(edge, targetRegionId));
         ToIntFunction<AgentNavigationGraph.Edge> edgePenalty =
                 AgentNavigationEdgeReliabilityRuntime.edgePenalty(entry, graph.mapId, nowMs);
+        // With the target on the Agent's own region, a first edge that leaves it is discarded
+        // below, and only a self-loop or a walk seam can start a route that stays. On a region
+        // with neither (Kerning City: all but the main street) the search can only answer "walk
+        // directly", and it ran on every AI tick of that walk.
         AgentNavigationPathService.MovementPathSelection selection =
-                AgentNavigationPathService.findNextEdgeSelectionVaried(
-                graph, bot, startPosition, startRegionId, targetRegionId, targetPos, variation,
-                edgeFilter, edgePenalty);
+                startRegionId == targetRegionId
+                        && !AgentNavigationPathService.canRouteWithinRegion(graph, startRegionId)
+                ? AgentNavigationPathService.directWalkSelection(
+                        graph, startRegionId, startPosition, targetPos)
+                : AgentNavigationPathService.findNextEdgeSelectionVaried(
+                        graph, bot, startPosition, startRegionId, targetRegionId, targetPos,
+                        variation, edgeFilter, edgePenalty);
         AgentNavigationGraph.Edge selected = selection.activeEdge();
         String routeSource = selection.recoverySearch() ? "RECOVERY_SEARCH"
                 : authoredRouteOverlay

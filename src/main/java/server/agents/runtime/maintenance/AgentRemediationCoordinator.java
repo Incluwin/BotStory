@@ -52,11 +52,25 @@ public final class AgentRemediationCoordinator {
         if (frame == null || !frame.frameId().equals(frameId)) {
             return false;
         }
-        if (!AgentObjectiveKernel.finishAndResume(entry, frame.maintenanceObjectiveId(),
-                terminalStatus, reason, nowMs)) {
+        boolean finished = AgentObjectiveKernel.finishAndResume(entry, frame.maintenanceObjectiveId(),
+                terminalStatus, reason, nowMs);
+        // Release the frame even when something else already ended the objective: a stranded
+        // frame refuses every later remediation, so the Agent could never resupply again.
+        state.clear(frameId);
+        return finished;
+    }
+
+    /**
+     * True while a live remediation frame drives this maintenance objective. Frames are never
+     * checkpointed, so a maintenance objective restored after a relog has none.
+     */
+    public static boolean owns(AgentRuntimeEntry entry, String maintenanceObjectiveId) {
+        if (entry == null || maintenanceObjectiveId == null) {
             return false;
         }
-        return state.clear(frameId);
+        AgentRemediationFrame frame = entry.capabilityStates()
+                .require(AgentRemediationState.STATE_KEY).active();
+        return frame != null && frame.maintenanceObjectiveId().equals(maintenanceObjectiveId);
     }
 
     /**
