@@ -17,6 +17,7 @@ import server.living.roster.CompanionDirectory;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterVoice;
 import server.living.roster.ui.CompanionMenus;
+import server.living.roster.ui.HireScreens;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -346,7 +347,8 @@ public final class ResidentDialogue {
 
     /**
      * Double-clicking your own companion opens its card and a Resident opens its NPC window, as clicking an
-     * NPC does; another player's companion, a citizen, a plain Agent and yourself keep the character info window.
+     * NPC does; a citizen whose offer to stay on with you is open shows its terms (P4); another player's companion,
+     * any other citizen, a plain Agent and yourself keep the character info window.
      */
     public boolean onCharacterClicked(Character clicker, Character target) {
         if (AgentPresence.isAgent(clicker) || !AgentPresence.isAgent(target)) {
@@ -355,6 +357,11 @@ public final class ResidentDialogue {
         switch (world.directory().resolve(clicker, target)) {
             case CompanionDirectory.Relation.OwnCompanion own -> {
                 new CompanionMenus(world).card(clicker, own.entry());
+                return true;
+            }
+            case CompanionDirectory.Relation.HireOfferPending offer -> {
+                // its terms, or enableActions when no window may open now; char info's Party button is unaffected
+                new HireScreens(world).terms(clicker, offer.characterId(), HireScreens.Context.OFFER);
                 return true;
             }
             case CompanionDirectory.Relation.Resident resident -> {

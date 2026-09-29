@@ -808,6 +808,9 @@ living_world:
     # minutes a citizen guest spends in your party before it offers to stay on.
     HIRE_MAX_PER_OWNER: 5
     HIRE_OFFER_PARTY_MINUTES: 10
+    # Minutes a citizen whose offer to stay on was declined, or went unanswered for 10 minutes, waits before it asks
+    # that friend again (kept in memory; a restart forgets it).
+    HIRE_OFFER_COOLDOWN_MINUTES: 720
     # Decision 18: Residents one friend may keep at once (0 = none), and the days a friend may stay away before
     # their Residents go home (0 = never).
     RESIDENT_CAP_PER_OWNER: 5

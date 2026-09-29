@@ -33,6 +33,9 @@ import server.agents.runtime.AgentLifecycleService.AgentSpawnResult;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
+import server.living.population.CitizenSession;
+import server.living.population.Population;
+import server.living.population.PresenceScheduler;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.CompanionDirectory.Relation;
 import server.living.store.LivingStore;
@@ -535,6 +538,45 @@ class PartyInviteRoutingTest extends HandlerTest {
 
         assertStatus(PacketCreator.partyStatusMessage(23, "Mira"));
         nothingSpawnedOrSeated();
+    }
+
+    @Test
+    void aCitizenOutWithItsOwnCircleIsBusyAMomentLater() {
+        Character mira = bot(MIRA, "Mira", 30);
+        Party circle = mock(Party.class);
+        when(circle.getId()).thenReturn(44);
+        when(mira.getParty()).thenReturn(circle);
+        online("Mira", mira, new Relation.Citizen(MIRA));
+        when(chr.isLoggedinWorld()).thenReturn(true);
+        Population population = mock(Population.class);
+        PresenceScheduler presence = mock(PresenceScheduler.class);
+        CitizenSession session = mock(CitizenSession.class);
+        session.partyId = 44; // the party its circle formed
+        when(population.presence()).thenReturn(presence);
+        when(presence.session(MIRA)).thenReturn(session);
+
+        try (MockedStatic<Population> populations = mockStatic(Population.class)) {
+            populations.when(Population::get).thenReturn(population);
+            invite("Mira");
+            answerLater();
+        }
+
+        assertStatus(PacketCreator.partyStatusMessage(22, "Mira"));
+        nothingSpawnedOrSeated();
+    }
+
+    @Test
+    void aCitizenWhoseOfferIsOpenIsInvitedLikeAnyCitizen() {
+        Character mira = bot(MIRA, "Mira", 30);
+        online("Mira", mira, new Relation.HireOfferPending(MIRA));
+        invites.when(() -> InviteCoordinator.createInvite(InviteType.PARTY, chr, PARTY_ID, MIRA)).thenReturn(true);
+        when(chr.isLoggedinWorld()).thenReturn(true);
+        when(mira.isLoggedinWorld()).thenReturn(true);
+
+        invite("Mira");
+        answerLater();
+
+        parties.verify(() -> Party.joinParty(mira, PARTY_ID, false));
     }
 
     @Test

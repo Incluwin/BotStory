@@ -146,6 +146,18 @@ public final class CompanionSlots {
         return CHARACTER_KEY + characterId;
     }
 
+    /** The character id of a {@link #characterKey}; 0 for a persona id or anything else. */
+    public static int characterIdOf(String key) {
+        if (key == null || !key.startsWith(CHARACTER_KEY)) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(key.substring(CHARACTER_KEY.length()));
+        } catch (NumberFormatException notACharacter) {
+            return 0;
+        }
+    }
+
     // ---- live seats -----------------------------------------------------------------------
 
     /** Seats this owner may still fill with companions or guests: in their party, or in one they would make. */
@@ -226,6 +238,19 @@ public final class CompanionSlots {
     public boolean release(String key, Kind kind) {
         Reservation held = key == null ? null : reservations.get(key);
         return held != null && held.kind() == kind && reservations.remove(key, held);
+    }
+
+    /** Every live GUEST seat, oldest first: each citizen guest ({@link #characterKey}) and the host it is charged to. */
+    public List<Reservation> guests() {
+        long now = clock.getAsLong();
+        List<Reservation> out = new ArrayList<>();
+        for (Reservation held : reservations.values()) {
+            if (held.kind() == Kind.GUEST && held.live(now)) {
+                out.add(held);
+            }
+        }
+        out.sort(Comparator.comparingLong(Reservation::seq));
+        return out;
     }
 
     /** The owner's live reservations, oldest first. */

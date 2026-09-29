@@ -45,6 +45,9 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         /** A population citizen. */
         record Citizen(int characterId) implements Relation { }
 
+        /** A citizen that offered to stay on with the viewer and awaits their answer (P4, HireOffers). */
+        record HireOfferPending(int characterId) implements Relation { }
+
         /** Any other Agent character (GM spawns, fixtures, pools). */
         record PlainAgent(int characterId) implements Relation { }
 
@@ -84,7 +87,7 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         server.living.population.Citizen citizen = population == null ? null : population.citizenByName(name);
         if (citizen != null) {
             String hire = hireIdOf(citizen.characterId());
-            return hire != null ? personaRelation(viewerId(viewer), hire) : new Relation.Citizen(citizen.characterId());
+            return hire != null ? personaRelation(viewerId(viewer), hire) : citizenRelation(viewerId(viewer), citizen.characterId());
         }
         AgentResolvedCharacter resolved = AgentControlService.getInstance().resolveCharacterByName(name);
         if (resolved == null) {
@@ -196,10 +199,17 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
 
     private Relation agentRelation(int viewerId, int characterId) {
         if (unhiredCitizen(characterId)) {
-            return new Relation.Citizen(characterId);
+            return citizenRelation(viewerId, characterId);
         }
         String personaId = personaIdOf(characterId);
         return personaId == null ? new Relation.PlainAgent(characterId) : personaRelation(viewerId, personaId);
+    }
+
+    /** A citizen, or one whose offer to stay on with the viewer is still open. */
+    private Relation citizenRelation(int viewerId, int characterId) {
+        HireOffers offers = world.hireOffers();
+        return offers != null && viewerId != 0 && offers.pending(viewerId, characterId) != null
+                ? new Relation.HireOfferPending(characterId) : new Relation.Citizen(characterId);
     }
 
     private Relation personaRelation(int viewerId, String personaId) {
