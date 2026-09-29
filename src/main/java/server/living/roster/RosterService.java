@@ -879,8 +879,16 @@ public final class RosterService {
         return AgentInteractionRuntime.spawnStationaryAgentForLeaderAt(owner, persona.name(), map, point);
     }
 
-    /** Every roster join: the companion joins its owner's party (made when they have none) on the seat held for it. */
+    /**
+     * Every roster join: the companion joins its owner's party (made when they have none) on the seat held for it. One
+     * the party still lists as an offline member (it logged off with its owner, or to change channel) takes that row
+     * back, as a player logging in does: an Agent load does not restore its party, and a fresh join would list it twice.
+     */
     private static JoinOutcome joinOwner(Character owner, Character bot) {
+        Party party = owner.getParty();
+        if (bot.getParty() == null && party != null && party.getMemberById(bot.getId()) != null) {
+            bot.setParty(party);
+        }
         return AgentPartyLifecycleService.joinAgentToLeaderParty(owner, bot);
     }
 

@@ -100,6 +100,8 @@ final class LifecycleHarness implements AutoCloseable {
     final Set<Integer> offline = new HashSet<>();
     final Character ann = mock(Character.class);
     final Party party = mock(Party.class);
+    /** Loaded characters the party still lists whose own Character has no party yet (an Agent load restores none). */
+    final Set<Integer> partyless = new HashSet<>();
     final List<Integer> members = new ArrayList<>();
     final Map<String, Persona> personas = new LinkedHashMap<>();
     final Map<Integer, Character> bots = new LinkedHashMap<>();
@@ -192,6 +194,10 @@ final class LifecycleHarness implements AutoCloseable {
             Character bot = inv.getArgument(1);
             causes.add(CauseScope.current());
             if (members.contains(bot.getId())) {
+                if (partyless.contains(bot.getId())) {
+                    calls.add("join " + bot.getName() + " FAILED"); // live: the seat gate refuses it, or it is listed twice
+                    return JoinOutcome.FAILED;
+                }
                 return JoinOutcome.ALREADY_MEMBER;
             }
             JoinOutcome outcome = nextJoin != null ? nextJoin : members.size() >= CompanionSlots.PARTY_CAP
@@ -262,7 +268,13 @@ final class LifecycleHarness implements AutoCloseable {
         when(bot.getMap()).thenAnswer(inv -> botMaps.get(characterId));
         when(bot.getMapId()).thenAnswer(inv -> botMaps.containsKey(characterId) ? botMaps.get(characterId).getId() : 0);
         when(bot.getPosition()).thenAnswer(inv -> botPositions.get(characterId));
-        when(bot.getParty()).thenAnswer(inv -> members.contains(characterId) ? party : null);
+        when(bot.getParty()).thenAnswer(inv -> members.contains(characterId) && !partyless.contains(characterId) ? party : null);
+        doAnswer(inv -> {
+            if (inv.getArgument(0) != null) {
+                partyless.remove(characterId); // it took its row in the party back
+            }
+            return null;
+        }).when(bot).setParty(any());
         doAnswer(inv -> {
             MapleMap to = inv.getArgument(0);
             Point at = inv.getArgument(1);
@@ -391,6 +403,9 @@ final class LifecycleHarness implements AutoCloseable {
     private AgentSpawnResult spawn(String name, MapleMap map, Point at) {
         Character bot = bots.values().stream().filter(b -> b.getName().equals(name)).findFirst().orElseThrow();
         loaded.add(bot.getId());
+        if (members.contains(bot.getId())) {
+            partyless.add(bot.getId()); // live: an Agent load does not restore the party row it still has
+        }
         botMaps.put(bot.getId(), map);
         botPositions.put(bot.getId(), at);
         botChannels.computeIfPresent(bot.getId(), (id, channel) -> annChannel); // loaded on Ann's channel
