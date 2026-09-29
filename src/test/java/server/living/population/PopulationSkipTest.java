@@ -193,6 +193,41 @@ class PopulationSkipTest {
     }
 
     @Test
+    void everyHireIsReplacedAtTheNextSweepNotAtTheBirthsPerDayPace() {
+        when(population.activeCount()).thenCallRealMethod();
+        for (int id = 1; id <= 28; id++) {
+            put(citizen(id, "c" + id, Set.of()));
+        }
+        CitizenGenerator generator = mock(CitizenGenerator.class);
+        when(population.generator()).thenReturn(generator);
+        when(generator.birth(isNull(), anyInt())).thenReturn(citizen(999, "Newborn", Set.of()));
+        config.TARGET_CITIZENS = registry.size() + 1; // 30 rows, one hired: two short, inside the trickle's tenth
+        Churn churn = new Churn(population);
+        long now = System.currentTimeMillis();
+        churn.step(now); // the trickle's one birth
+
+        churn.hired();
+        churn.hired();
+        churn.step(now + 1_000L); // well inside the BIRTHS_PER_DAY spacing
+
+        verify(generator, times(3)).birth(isNull(), anyInt());
+    }
+
+    @Test
+    void aHireInATownAlreadyAtTargetIsNotReplaced() {
+        when(population.activeCount()).thenCallRealMethod();
+        CitizenGenerator generator = mock(CitizenGenerator.class);
+        when(population.generator()).thenReturn(generator);
+        config.TARGET_CITIZENS = population.activeCount();
+        Churn churn = new Churn(population);
+
+        churn.hired();
+        churn.step(System.currentTimeMillis());
+
+        verify(generator, never()).birth(any(), anyInt());
+    }
+
+    @Test
     void churnNeverRetiresAHiredHandMidJob() {
         long past = System.currentTimeMillis() - 1_000L;
         put(retiring(registry.get(HIRED), past));

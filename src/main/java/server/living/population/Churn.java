@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Births and retirements (plan 3.5). An empty registry is seeded toward the target in batches,
@@ -20,6 +21,8 @@ public final class Churn {
 
     private final Population population;
     private final Random random;
+    /** Citizens hired since the last sweep: their towns get a newcomer at once, not at BIRTHS_PER_DAY (P4). */
+    private final AtomicInteger hiresToReplace = new AtomicInteger();
     private long lastBirthMs;
     private long lastRetirementCheckMs;
     private volatile boolean seeding;
@@ -42,6 +45,7 @@ public final class Churn {
         int target = population.config().TARGET_CITIZENS;
         if (active >= target) {
             seeding = false;
+            hiresToReplace.set(0);
             return;
         }
         if (active < target - target / FAST_SEED_SHORTFALL_DIVISOR || seeding) {
@@ -58,11 +62,26 @@ public final class Churn {
             lastBirthMs = now;
             return;
         }
+        int owed = Math.min(hiresToReplace.getAndSet(0), target - active);
+        if (owed > 0) {
+            for (int i = 0; i < owed; i++) {
+                if (population.generator().birth(null, 0) == null) {
+                    break;
+                }
+            }
+            lastBirthMs = now;
+            return;
+        }
         long spacing = 86_400_000L / Math.max(1, population.config().BIRTHS_PER_DAY);
         if (now - lastBirthMs >= spacing) {
             population.generator().birth(null, 0);
             lastBirthMs = now;
         }
+    }
+
+    /** A citizen went to work for a player: the next sweep replaces it in the population at once. */
+    void hired() {
+        hiresToReplace.incrementAndGet();
     }
 
     /** Hourly: retirements and weekly life summaries. */

@@ -112,7 +112,11 @@ final class CompanionCrewScreens {
             options.add(row(owner, from, view, partyLine(view)));
         }
         for (CompanionView guest : guests(owner)) {
-            options.add(Option.heading(partyLine(guest))); // a citizen's, not yours to manage
+            // a row like the others (the v83 client draws a plain line after a #L row half a line up, over it); a
+            // citizen's, not yours to manage: it opens its hire terms, as double-clicking your own guest does
+            int citizenId = CompanionSlots.characterIdOf(guest.personaId());
+            options.add(new Option(partyLine(guest), () -> new HireScreens(world).terms(owner, citizenId,
+                    HireScreens.Context.HIRE_LIST, () -> render(owner, from, ""))));
         }
         if (options.isEmpty()) {
             options.add(Option.heading("(nobody out with me)"));

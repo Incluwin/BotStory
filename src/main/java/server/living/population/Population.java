@@ -276,8 +276,18 @@ public final class Population {
      * record. The current record, or null when the citizen is not in the registry.
      */
     public Citizen setHired(int characterId, boolean hired) {
-        return registry.computeIfPresent(characterId, (id, current) -> current.hired() == hired ? current
-                : persist(hired ? current.withFlag(Citizen.FLAG_HIRED) : current.withoutFlag(Citizen.FLAG_HIRED)));
+        boolean[] newlyHired = {false};
+        Citizen result = registry.computeIfPresent(characterId, (id, current) -> {
+            if (current.hired() == hired) {
+                return current;
+            }
+            newlyHired[0] = hired;
+            return persist(hired ? current.withFlag(Citizen.FLAG_HIRED) : current.withoutFlag(Citizen.FLAG_HIRED));
+        });
+        if (newlyHired[0]) {
+            churn.hired(); // its town gets a newcomer on the next sweep, not at BIRTHS_PER_DAY
+        }
+        return result;
     }
 
     private static Citizen keepHired(Citizen current, Citizen next) {

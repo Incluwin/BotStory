@@ -177,15 +177,16 @@ class CrewScreensTest {
         assertEquals(CompanionMenus.BOARD_NPC, crew.npcId());
         assertEquals(CompanionMenus.NOTES_SPEAKER, crew.speaker());
         assertTrue(crew.text().startsWith("#eParty 3/6#n (1 seat kept)\r\n#L"), crew.text()); // Olwen, away, keeps hers
+        // a guest is a row like the others (it opens its hire terms): the v83 client draws a plain line after a #L
+        // row half a line up, over that row
         assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%",
                 "Tobi, Lv30 Cleric - on the way (0:40)",
                 "Vex, Lv22 Magician - waiting outside",
                 "Dorran, Lv35 Spearman - offline",
+                "Kira, Lv25 Assassin - Henesys - HP 100% (guest)",
                 "Mira, Lv28 Hunter - farm @ Ant Tunnel - 143/200 Stolen Fence - 10% EXP banked - 3,120 meso, 2 stacks",
-                "Olwen, Lv26 Bandit - away: train @ Ant Tunnel"), crew.labels().subList(0, 6));
-        // a guest is listed, as plain text: not yours to manage
-        assertTrue(crew.text().contains("\r\nKira, Lv25 Assassin - Henesys - HP 100% (guest)\r\n"), crew.text());
-        assertFalse(crew.labels().stream().anyMatch(label -> label.startsWith("Kira")));
+                "Olwen, Lv26 Bandit - away: train @ Ant Tunnel"), crew.labels().subList(0, 7));
+        assertFalse(crew.text().contains("\r\nKira"), crew.text());
         // four of the ten roster places are in the party block
         assertTrue(crew.text().contains("\r\n#eBench (2 of 6 bench seats)#n\r\n#L"), crew.text());
     }
