@@ -64,6 +64,19 @@ class BudgetTest {
     }
 
     @Test
+    void townAndStallSlicesStopAtTheirOwnServerPools() {
+        // P5: a town slice (REST) and a stall (STALL, SELL) each have their own pool; the field pool being full is no matter
+        assertTrue(CompanionBudget.decide(Kind.BENCH_TOWN, new Usage(100, 0, 8, 2, 0, 9, 4), config).allowed());
+        Admission town = CompanionBudget.decide(Kind.BENCH_TOWN, new Usage(100, 0, 0, 0, 0, 10, 0), config);
+        assertFalse(town.allowed());
+        assertEquals("server town pool 10 full", town.reason());
+        assertTrue(CompanionBudget.decide(Kind.COMMERCE, new Usage(100, 0, 8, 2, 0, 10, 3), config).allowed());
+        Admission stall = CompanionBudget.decide(Kind.COMMERCE, new Usage(100, 0, 0, 0, 0, 0, 4), config);
+        assertFalse(stall.allowed());
+        assertEquals("server stall pool 4 full", stall.reason());
+    }
+
+    @Test
     void theAgentCeilingStopsEveryKind() {
         for (Kind kind : Kind.values()) {
             assertTrue(CompanionBudget.decide(kind, usage(299, 0, 0, 0, 0), config).allowed(), kind.name());
@@ -84,7 +97,7 @@ class BudgetTest {
 
     private LivingWorld world;
     private LivingStore store;
-    private BenchSessions bench;
+    private BenchDutyDispatcher bench;
     private CompanionLeases leases;
     private MockedStatic<AgentRuntimeRegistry> registry;
     private final Character alice = mock(Character.class);
@@ -93,11 +106,11 @@ class BudgetTest {
     void wireWorld() {
         world = mock(LivingWorld.class);
         store = mock(LivingStore.class);
-        bench = mock(BenchSessions.class);
+        bench = mock(BenchDutyDispatcher.class);
         leases = new CompanionLeases();
         when(world.config()).thenReturn(config);
         when(world.store()).thenReturn(store);
-        when(world.benchSessions()).thenReturn(bench);
+        when(world.benchDuty()).thenReturn(bench);
         when(world.leases()).thenReturn(leases);
         when(alice.getId()).thenReturn(ALICE);
         registry = mockStatic(AgentRuntimeRegistry.class);
@@ -139,8 +152,8 @@ class BudgetTest {
     @Test
     void benchAndExpeditionCountsComeFromTheBenchSessionsAndTheLeases() {
         CompanionBudget budget = new CompanionBudget(world);
-        when(bench.liveCount()).thenReturn(3);
-        when(bench.liveCountFor(ALICE)).thenReturn(2);
+        when(bench.liveCount(Kind.BENCH_LIVE)).thenReturn(3);
+        when(bench.liveCountFor(ALICE, Kind.BENCH_LIVE)).thenReturn(2);
         for (int id = 1; id <= 12; id++) {
             leases.tryAcquire(id, CompanionLeases.Kind.EXPEDITION, ALICE);
         }

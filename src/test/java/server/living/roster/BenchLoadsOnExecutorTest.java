@@ -50,7 +50,7 @@ import static org.mockito.Mockito.when;
 /**
  * Bench loads on companion-ops (docs/BOT_MANAGEMENT_PLAN.md P2b, "Threading and party-event model"): every live bench
  * slice load and unload, and every roster load, runs on the companion-ops thread; a timer (or a shutdown) only hands
- * the work over. Called from any other thread, BenchSessions queues the work instead of doing it; the roster's timers
+ * the work over. Called from any other thread, the BenchDutyDispatcher queues the work instead of doing it; the roster's timers
  * submit their task; LivingWorld's timers that touch companions only submit.
  */
 class BenchLoadsOnExecutorTest {
@@ -108,8 +108,8 @@ class BenchLoadsOnExecutorTest {
         when(olwenBot.getInventory(any())).thenReturn(empty);
     }
 
-    /** BenchSessions over this world, with the Agent runtime's statics faked (loads and unloads are recorded). */
-    private BenchSessions bench() {
+    /** The dispatcher and its field form over this world, with the Agent runtime's statics faked (loads and unloads are recorded). */
+    private BenchDutyDispatcher bench() {
         MapleMap camp = residents.map(104010001);
         statics.add(mockStatic(ResidentSpots.class));
         statics.add(mockStatic(AgentInteractionRuntime.class));
@@ -129,7 +129,7 @@ class BenchLoadsOnExecutorTest {
         cleanup.when(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(OLWEN_CHARACTER)).thenAnswer(inv ->
                 calls.add("unload Olwen " + (onOps.get() ? "on companion-ops" : "elsewhere")));
         statics.add(cleanup);
-        return new BenchSessions(world);
+        return new BenchDutyDispatcher(world, new BenchSessions(world));
     }
 
     @AfterEach
@@ -141,7 +141,7 @@ class BenchLoadsOnExecutorTest {
 
     @Test
     void aTickFromTheTimerOnlyHandsTheSliceLoadOver() {
-        BenchSessions bench = bench();
+        BenchDutyDispatcher bench = bench();
 
         bench.tick(); // the LOW_PRIORITY timer's thread
 
@@ -156,7 +156,7 @@ class BenchLoadsOnExecutorTest {
 
     @Test
     void anUnloadAskedForFromAnotherThreadRunsOnCompanionOps() {
-        BenchSessions bench = bench();
+        BenchDutyDispatcher bench = bench();
         bench.tick();
         runOps();
 
@@ -171,7 +171,7 @@ class BenchLoadsOnExecutorTest {
 
     @Test
     void theShutdownsEndAllRunsOnCompanionOpsToo() {
-        BenchSessions bench = bench();
+        BenchDutyDispatcher bench = bench();
         bench.tick();
         runOps();
 
@@ -184,7 +184,7 @@ class BenchLoadsOnExecutorTest {
 
     @Test
     void onCompanionOpsItRunsAtOnce() {
-        BenchSessions bench = bench();
+        BenchDutyDispatcher bench = bench();
         onOps.set(true);
 
         bench.tick();
@@ -202,15 +202,15 @@ class BenchLoadsOnExecutorTest {
         int companionTimers = 0;
         while (timer.find()) {
             String task = timer.group(1);
-            if (task.matches("(?s).*\\b(bench|benchSessions|contracts|auditor|partySync|roster)\\b.*")) {
+            if (task.matches("(?s).*\\b(bench|benchDuty|contracts|auditor|partySync|roster)\\b.*")) {
                 companionTimers++;
                 assertTrue(task.startsWith("() -> world.executor.submit("), "a timer only hands companion work over: " + task);
             }
         }
         assertEquals(6, companionTimers, "bench ledger, contracts, bench slices, park sweep, resume, audit");
         // the shutdown's bench unloads go to companion-ops as well, and it waits for them
-        assertTrue(source.contains("world.executor.submit(\"bench_sessions.end_all\", () -> world.benchSessions.endAll("));
-        assertEquals(1, source.split("benchSessions\\.endAll\\(", -1).length - 1);
+        assertTrue(source.contains("world.executor.submit(\"bench_duty.end_all\", () -> world.benchDuty.endAll("));
+        assertEquals(1, source.split("benchDuty\\.endAll\\(", -1).length - 1);
     }
 
     @Test
@@ -220,6 +220,8 @@ class BenchLoadsOnExecutorTest {
         assertTrue(roster.contains("() -> world.executor().submit(name, task), delayMs);"));
         String bench = Files.readString(MAIN.resolve("server/living/roster/BenchSessions.java"));
         assertTrue(!bench.contains("TimerManager"), "BenchSessions schedules nothing of its own");
+        String duty = Files.readString(MAIN.resolve("server/living/roster/BenchDutyDispatcher.java"));
+        assertTrue(!duty.contains("TimerManager"), "BenchDutyDispatcher schedules nothing of its own");
     }
 
     @Test

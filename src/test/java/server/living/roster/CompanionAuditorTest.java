@@ -242,6 +242,7 @@ class CompanionAuditorTest {
             when(world.slots()).thenReturn(new CompanionSlots(world));
             when(world.leases()).thenReturn(new CompanionLeases());
             when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+            when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
             when(world.bench()).thenReturn(mock(BenchLedger.class));
             when(world.arcs()).thenReturn(mock(ArcService.class));
             CompanionBudget budget = mock(CompanionBudget.class);

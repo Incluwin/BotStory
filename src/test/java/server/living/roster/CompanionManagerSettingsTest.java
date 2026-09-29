@@ -378,14 +378,13 @@ class CompanionManagerSettingsTest {
     void aCoinForALiveBenchSliceStaysInItsOwnPurse() {
         h.loaded.add(903); // Mira farms meso on a live bench slice at her camp, leading herself
         h.selfLed.add(903);
-        when(h.world.benchSessions().live("mira")).thenReturn(true);
+        when(h.world.benchDuty().live("mira")).thenReturn(true);
         when(h.ann.getMeso()).thenReturn(10_000);
         when(h.bot(mira).canHoldMeso(500)).thenReturn(true);
 
         assertTrue(manager.giveCoin(h.ann, mira, 500).ok());
 
-        verify(h.bot(mira)).gainMeso(500, false);
-        verify(h.world.benchSessions()).gift("mira", 500); // the harvest's purse rises with it: never taken as farmed
+        verify(h.bot(mira)).gainMeso(500, false); // the slice's harvest takes only what it picks up (HarvestDiffTest)
         assertEquals(List.of(ANN + " mira roster.coin 500 meso, carried"), h.store.events("roster.coin"));
     }
 

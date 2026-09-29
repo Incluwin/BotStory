@@ -76,6 +76,8 @@ public final class LivingWorld {
     private final CompanionAuditor auditor;
     private final BenchLedger bench;
     private final server.living.roster.BenchSessions benchSessions;
+    private final server.living.roster.BenchDutyDispatcher benchDuty;
+    private final server.living.roster.BenchYieldModel benchYields;
     private final ResidentRuntime residents;
     private final ResidentDialogue dialogue;
     private final RumorScheduler rumors;
@@ -109,6 +111,9 @@ public final class LivingWorld {
         this.contracts = new ContractService(this);
         this.bench = new BenchLedger(this);
         this.benchSessions = new server.living.roster.BenchSessions(this);
+        // the one place a benched companion goes live (P5): the field form above, and the forms the other duties register
+        this.benchDuty = new server.living.roster.BenchDutyDispatcher(this, benchSessions);
+        this.benchYields = new server.living.roster.BenchYieldModel(this);
         this.residents = new ResidentRuntime(this);
         this.dialogue = new ResidentDialogue(this);
         this.rumors = new RumorScheduler(this);
@@ -163,6 +168,8 @@ public final class LivingWorld {
         world.executor.submit("roster.boot", world.roster::reconcileAtBoot);
         // decision 18: Residents of owners away too long go home, at boot (after the reconciliation) and daily
         world.executor.submit("residents.allocation", world.residentAllocation::sweep);
+        // the yields live bench slices measured (companion_yield), before the first ledger tick credits them
+        world.executor.submit("bench.yields", world.benchYields::load);
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             world.executor.submit("residents.allocation", world.residentAllocation::sweep);
@@ -183,7 +190,7 @@ public final class LivingWorld {
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("hire.offers", world.hireOffers::tick), HireOffers.TICK_MS, HireOffers.TICK_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
-                () -> world.executor.submit("bench_sessions.tick", world.benchSessions::tick), 120_000L, 120_000L));
+                () -> world.executor.submit("bench_duty.tick", world.benchDuty::tick), 120_000L, 120_000L));
         // companions parked with an owner who stays away go to their duty once LEADER_OFFLINE_BENCH_MS has passed
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("roster.park_sweep", world.roster::benchParkedPastGrace), 60_000L, 60_000L));
@@ -237,7 +244,7 @@ public final class LivingWorld {
         world.timers.clear();
         // live bench slices unload on companion-ops like every companion unload; shutdown waits for their saves
         try {
-            world.executor.submit("bench_sessions.end_all", () -> world.benchSessions.endAll("server shutdown"))
+            world.executor.submit("bench_duty.end_all", () -> world.benchDuty.endAll("server shutdown"))
                     .get(CompanionExecutor.DEFAULT_WATCHDOG_MS, java.util.concurrent.TimeUnit.MILLISECONDS);
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
@@ -393,6 +400,16 @@ public final class LivingWorld {
 
     public server.living.roster.BenchSessions benchSessions() {
         return benchSessions;
+    }
+
+    /** Every live bench slice, whatever its duty's form (P5). */
+    public server.living.roster.BenchDutyDispatcher benchDuty() {
+        return benchDuty;
+    }
+
+    /** The bench yields measured on live slices (companion_yield, P5). */
+    public server.living.roster.BenchYieldModel benchYields() {
+        return benchYields;
     }
 
     public ResidentRuntime residents() {

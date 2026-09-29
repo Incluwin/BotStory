@@ -109,6 +109,7 @@ class RosterServiceCharacterizationTest {
         when(world.store()).thenReturn(store);
         when(world.residents()).thenReturn(residents);
         when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+        when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(new BenchLedger(world));
         when(world.leases()).thenReturn(leases);

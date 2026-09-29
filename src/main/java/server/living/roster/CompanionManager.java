@@ -258,7 +258,7 @@ public final class CompanionManager {
         if (row(owner, persona) == null) {
             return new RosterResult.NotOwned();
         }
-        world.benchSessions().endFor(persona.id(), "released"); // inline: this runs on companion-ops
+        world.benchDuty().endFor(persona.id(), "released"); // inline: this runs on companion-ops
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             return new RosterResult.NotOwned();
@@ -524,9 +524,6 @@ public final class CompanionManager {
         }
         if (refusedMeanwhile[0] != null) {
             return new RosterResult.Failed(refusedMeanwhile[0]);
-        }
-        if (bot != null && world.benchSessions().live(persona.id())) {
-            world.benchSessions().gift(persona.id(), amount); // its own purse, not farmed meso for the haul
         }
         String where = bot != null ? "carried" : "stored";
         world.store().event(owner.getId(), persona.id(), "roster.coin", amount + " meso, " + where);

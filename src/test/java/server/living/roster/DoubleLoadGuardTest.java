@@ -54,7 +54,8 @@ import static org.mockito.Mockito.when;
 /**
  * One materialization lease per character (docs/BOT_MANAGEMENT_PLAN.md P1, "JoinOutcome and spawn fixes"): a
  * call for a character that is leased or loaded for something else is refused, never removed and respawned
- * beside the owner (a blink); a bench slice loads only a free character and holds its lease while live.
+ * beside the owner (a blink); a bench slice (BenchDutyDispatcher) loads only a free character and holds its lease while
+ * live.
  */
 class DoubleLoadGuardTest {
     private static final int ALICE = 10;
@@ -66,7 +67,7 @@ class DoubleLoadGuardTest {
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingStore store = mock(LivingStore.class);
     private final ResidentRuntime residents = mock(ResidentRuntime.class);
-    private final BenchSessions benchSessions = mock(BenchSessions.class);
+    private final BenchDutyDispatcher benchDuty = mock(BenchDutyDispatcher.class);
     private final CompanionLeases leases = new CompanionLeases();
     private final Character alice = character(ALICE);
     private final Character olwenBot = character(OLWEN_CHARACTER);
@@ -97,7 +98,7 @@ class DoubleLoadGuardTest {
         when(world.config()).thenReturn(new LivingWorldConfig());
         when(world.store()).thenReturn(store);
         when(world.residents()).thenReturn(residents);
-        when(world.benchSessions()).thenReturn(benchSessions);
+        when(world.benchDuty()).thenReturn(benchDuty);
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(mock(BenchLedger.class));
         when(world.leases()).thenReturn(leases);
@@ -168,11 +169,11 @@ class DoubleLoadGuardTest {
             calls.add("end slice");
             leases.release(OLWEN_CHARACTER, CompanionLeases.Kind.BENCH_LIVE);
             return null;
-        }).when(benchSessions).endFor(eq("olwen"), anyString());
+        }).when(benchDuty).endFor(eq("olwen"), anyString());
 
         assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 
-        // BenchSessions.end saves, removes and releases; the roster never removes the runtime itself
+        // BenchDutyDispatcher.end saves, removes and releases; the roster never removes the runtime itself
         assertEquals(List.of("end slice", "spawn Olwen"), calls);
         assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.COMPANION, ALICE), leases.holder(OLWEN_CHARACTER));
     }
@@ -287,14 +288,14 @@ class DoubleLoadGuardTest {
         verify(residents).whisper(OLWEN, alice, "i couldn't join your party. try again in a bit.");
     }
 
-    // ---- BenchSessions load site ---------------------------------------------------------
+    // ---- the bench slice load site (BenchDutyDispatcher) -----------------------------------
 
     @Test
     void aBenchSliceSkipsACharacterThatIsAlreadyLoaded() throws Exception {
         registry.when(() -> AgentRuntimeRegistry.hasActiveAgentCharacterId(OLWEN_CHARACTER)).thenReturn(true);
 
         benchFixture(olwenBot);
-        new BenchSessions(world).tick();
+        benchDuty().tick();
 
         loader.verifyNoInteractions();
         assertNull(leases.holder(OLWEN_CHARACTER));
@@ -305,7 +306,7 @@ class DoubleLoadGuardTest {
         leases.tryAcquire(OLWEN_CHARACTER, CompanionLeases.Kind.COMPANION, ALICE);
 
         benchFixture(olwenBot);
-        new BenchSessions(world).tick();
+        benchDuty().tick();
 
         loader.verifyNoInteractions();
         assertEquals(CompanionLeases.Kind.COMPANION, leases.holder(OLWEN_CHARACTER).kind());
@@ -314,7 +315,7 @@ class DoubleLoadGuardTest {
     @Test
     void aBenchSliceHoldsTheBenchLeaseUntilItEnds() throws Exception {
         benchFixture(olwenBot);
-        BenchSessions bench = new BenchSessions(world);
+        BenchDutyDispatcher bench = benchDuty();
 
         bench.tick();
         assertEquals(new CompanionLeases.Lease(CompanionLeases.Kind.BENCH_LIVE, ALICE), leases.holder(OLWEN_CHARACTER));
@@ -327,10 +328,15 @@ class DoubleLoadGuardTest {
     @Test
     void aFailedBenchLoadFreesTheLease() throws Exception {
         benchFixture(null);
-        new BenchSessions(world).tick();
+        benchDuty().tick();
 
         loader.verify(() -> CosmicAgentOfflineLoader.loadOfflineAgent(eq(OLWEN_CHARACTER), anyInt(), anyInt(), any(), any()));
         assertNull(leases.holder(OLWEN_CHARACTER));
+    }
+
+    /** The dispatcher over this world, with the field form. */
+    private BenchDutyDispatcher benchDuty() {
+        return new BenchDutyDispatcher(world, new BenchSessions(world));
     }
 
     /** A benched TRAIN companion at a field camp, far enough below its owner to go live; the loader returns {@code loaded}. */

@@ -89,8 +89,8 @@ class DeletionCleanupTest {
 
         assertEquals(List.of(), game.store.rows.values().stream().toList(), "no row of theirs is left");
         assertTrue(game.calls.contains("remove Hadrik") && game.calls.contains("remove Jinx"), game.calls.toString());
-        verify(game.world.benchSessions()).endFor("olwen", "released");
-        verify(game.world.benchSessions()).endFor("hire:777", "released");
+        verify(game.world.benchDuty()).endFor("olwen", "released");
+        verify(game.world.benchDuty()).endFor("hire:777", "released");
         assertNull(game.leases.holder(501));
         assertNull(game.leases.holder(903));
         assertNull(game.slots.reservation("vex"));

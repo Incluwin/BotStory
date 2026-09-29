@@ -12,10 +12,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * Admission for every companion load (docs/BOT_MANAGEMENT_PLAN.md, "CompanionBudget"). Always on and
  * independent of the Agent load shedding. Budget v1 comes from the P0 measurement: companions per
  * online human, live bench bots per owner and server-wide, one expedition burst, a registered-Agent
- * ceiling, and a per-owner gap between two loads. {@link #decide} is the pure rule.
+ * ceiling, and a per-owner gap between two loads. {@link #decide} is the pure rule. P5: a benched companion's live
+ * slice is charged to one of three pools (BenchDutyDispatcher): BENCH_LIVE at its field camp (per owner and
+ * server-wide), BENCH_TOWN resting in town and COMMERCE at a Free Market stall (each server-wide).
  */
 public final class CompanionBudget {
-    public enum Kind { COMPANION, BENCH_LIVE, EXPEDITION }
+    public enum Kind { COMPANION, BENCH_LIVE, EXPEDITION, BENCH_TOWN, COMMERCE }
 
     private static final String CEILING = "Agent ceiling ";
 
@@ -34,7 +36,12 @@ public final class CompanionBudget {
     }
 
     /** What is loaded right now, as one admission sees it. */
-    record Usage(int agents, int ownerCompanions, int benchLive, int ownerBenchLive, int expedition) { }
+    record Usage(int agents, int ownerCompanions, int benchLive, int ownerBenchLive, int expedition, int benchTown,
+                 int commerce) {
+        Usage(int agents, int ownerCompanions, int benchLive, int ownerBenchLive, int expedition) {
+            this(agents, ownerCompanions, benchLive, ownerBenchLive, expedition, 0, 0);
+        }
+    }
 
     private final LivingWorld world;
     /** owner character id -> time of its last admitted companion or bench load. */
@@ -86,7 +93,8 @@ public final class CompanionBudget {
         }
         Usage now = usage(owner.getId());
         return admit(kind, owner.getId(), System.currentTimeMillis(), new Usage(Math.max(0, now.agents() - 1),
-                Math.max(0, now.ownerCompanions() - 1), now.benchLive(), now.ownerBenchLive(), now.expedition()));
+                Math.max(0, now.ownerCompanions() - 1), now.benchLive(), now.ownerBenchLive(), now.expedition(),
+                now.benchTown(), now.commerce()));
     }
 
     private Admission admit(Kind kind, int ownerId, long nowMs, Usage usage) {
@@ -107,9 +115,11 @@ public final class CompanionBudget {
     }
 
     Usage usage(int ownerId) {
-        BenchSessions bench = world.benchSessions();
+        BenchDutyDispatcher bench = world.benchDuty();
         return new Usage(AgentRuntimeRegistry.activeAgentCount(), AgentRuntimeRegistry.activeAgentCountForLeader(ownerId),
-                bench.liveCount(), bench.liveCountFor(ownerId), world.leases().count(CompanionLeases.Kind.EXPEDITION));
+                bench.liveCount(Kind.BENCH_LIVE), bench.liveCountFor(ownerId, Kind.BENCH_LIVE),
+                world.leases().count(CompanionLeases.Kind.EXPEDITION), bench.liveCount(Kind.BENCH_TOWN),
+                bench.liveCount(Kind.COMMERCE));
     }
 
     static Admission decide(Kind kind, Usage usage, LivingWorldConfig config) {
@@ -125,6 +135,10 @@ public final class CompanionBudget {
                     ? Admission.deny(config.BENCH_LIVE_PER_OWNER + " live bench slots already used") : Admission.ALLOW;
             case EXPEDITION -> usage.expedition() >= config.EXPEDITION_BURST_MAX
                     ? Admission.deny("expedition burst " + config.EXPEDITION_BURST_MAX + " reached") : Admission.ALLOW;
+            case BENCH_TOWN -> usage.benchTown() >= config.BENCH_TOWN_MAX
+                    ? Admission.deny("server town pool " + config.BENCH_TOWN_MAX + " full") : Admission.ALLOW;
+            case COMMERCE -> usage.commerce() >= config.COMMERCE_LIVE_MAX
+                    ? Admission.deny("server stall pool " + config.COMMERCE_LIVE_MAX + " full") : Admission.ALLOW;
         };
     }
 

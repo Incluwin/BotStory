@@ -67,6 +67,18 @@ public final class LivingWorldHooks {
         }
     }
 
+    /**
+     * {@code chr} picked a drop up off the map: {@code quantity} of {@code itemId}, or {@code meso} (its own share of a
+     * party's). A companion on a live bench slice counts it as kill loot for its harvest (P5, HarvestDiff).
+     */
+    public static void looted(Character chr, int itemId, int quantity, int meso) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || chr == null) {
+            return;
+        }
+        world.benchDuty().looted(chr.getId(), itemId, quantity, meso);
+    }
+
     /** {@code chr} is moving into {@code map}, to stand at {@code at} (it is not there yet). */
     public static void mapEntered(Character chr, MapleMap map, Point at) {
         LivingWorld world = LivingWorld.get();
@@ -228,6 +240,7 @@ public final class LivingWorldHooks {
         try {
             // a third death releases a companion: the roster is written on companion-ops
             world.executor().submit("contract.owner_died " + chr.getId(), () -> world.contracts().onOwnerDied(chr));
+            world.benchDuty().died(chr.getId()); // a companion on a live bench slice ends it once revived (flow 12)
             server.living.population.PopulationHooks.died(chr);
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);

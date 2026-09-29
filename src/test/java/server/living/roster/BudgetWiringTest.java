@@ -48,9 +48,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -71,7 +73,7 @@ class BudgetWiringTest {
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingStore store = mock(LivingStore.class);
     private final ResidentRuntime residents = mock(ResidentRuntime.class);
-    private final BenchSessions benchSessions = mock(BenchSessions.class);
+    private final BenchDutyDispatcher benchDuty = mock(BenchDutyDispatcher.class);
     private final CompanionLeases leases = new CompanionLeases();
     private final Character alice = character(ALICE);
     private final Character olwenBot = character(OLWEN_CHARACTER);
@@ -100,7 +102,7 @@ class BudgetWiringTest {
         when(world.config()).thenReturn(config);
         when(world.store()).thenReturn(store);
         when(world.residents()).thenReturn(residents);
-        when(world.benchSessions()).thenReturn(benchSessions);
+        when(world.benchDuty()).thenReturn(benchDuty);
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(mock(BenchLedger.class));
         when(world.leases()).thenReturn(leases);
@@ -140,7 +142,7 @@ class BudgetWiringTest {
         assertEquals("Olwen could not join right now.", reply);
         verify(store).event(ALICE, "olwen", "roster.call_refused", "5 companions already out");
         interaction.verify(() -> AgentInteractionRuntime.spawnAgentForLeader(any(), anyString()), never());
-        verify(benchSessions, never()).endFor(anyString(), anyString());
+        verify(benchDuty, never()).endFor(anyString(), anyString());
         assertNull(leases.holder(OLWEN_CHARACTER));
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":olwen").state());
         verify(residents).whisper(OLWEN, alice, "give me a moment. too many of us are out right now.");
@@ -251,24 +253,33 @@ class BudgetWiringTest {
         assertEquals(RosterState.BENCHED, rows.get(ALICE + ":brin").state());
     }
 
-    // ---- BENCH_LIVE: BenchSessions.start ---------------------------------------------------
+    // ---- BENCH_LIVE: BenchDutyDispatcher's field slices ------------------------------------
 
     @Test
     void aBenchSliceIsNotLoadedOnceTheOwnersLiveShareIsUsed() throws Exception {
-        when(benchSessions.liveCountFor(ALICE)).thenReturn(2);
+        BenchDutyDispatcher bench = realBench();
+        doReturn(2).when(bench).liveCountFor(ALICE, CompanionBudget.Kind.BENCH_LIVE);
 
-        assertBenchLoadDenied("BENCH_LIVE: 2 live bench slots already used");
+        assertBenchLoadDenied(bench, "BENCH_LIVE: 2 live bench slots already used");
     }
 
     @Test
     void aBenchSliceIsNotLoadedOnceTheServerPoolIsFull() throws Exception {
-        when(benchSessions.liveCount()).thenReturn(8);
+        BenchDutyDispatcher bench = realBench();
+        doReturn(8).when(bench).liveCount(CompanionBudget.Kind.BENCH_LIVE);
 
-        assertBenchLoadDenied("BENCH_LIVE: server bench pool 8 full");
+        assertBenchLoadDenied(bench, "BENCH_LIVE: server bench pool 8 full");
     }
 
-    /** A real BenchSessions asks the real budget, which counts the live slices through world.benchSessions(). */
-    private void assertBenchLoadDenied(String logged) throws Exception {
+    /** A real dispatcher (its counts as the budget reads them stubbed), with the field form. */
+    private BenchDutyDispatcher realBench() {
+        BenchDutyDispatcher bench = spy(new BenchDutyDispatcher(world, new BenchSessions(world)));
+        when(world.benchDuty()).thenReturn(bench);
+        return bench;
+    }
+
+    /** A real dispatcher asks the real budget, which counts the live slices through world.benchDuty(). */
+    private void assertBenchLoadDenied(BenchDutyDispatcher bench, String logged) throws Exception {
         seed(row("olwen", RosterState.BENCHED));
         when(world.budget()).thenReturn(new CompanionBudget(world));
         LivingContent content = mock(LivingContent.class);
@@ -281,7 +292,7 @@ class BudgetWiringTest {
 
         try (MockedStatic<CosmicAgentOfflineLoader> loader = mockStatic(CosmicAgentOfflineLoader.class);
              MockedStatic<ResidentSpots> spots = mockStatic(ResidentSpots.class)) {
-            new BenchSessions(world).tick();
+            bench.tick();
             loader.verifyNoInteractions();
         }
         assertNull(leases.holder(OLWEN_CHARACTER));

@@ -161,7 +161,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
     }
 
     /**
-     * A companion's character loaded for its owner without a seat (a live bench slice, BenchSessions.start): it drinks
+     * A companion's character loaded for its owner without a seat (a live bench slice, BenchDutyDispatcher): it drinks
      * by its own potion percentages there too. Nothing else: a slice leads itself and farms for the haul, so its loot
      * policy and support stay the Agent's. On companion-ops.
      */

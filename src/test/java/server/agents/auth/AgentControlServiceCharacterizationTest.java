@@ -12,6 +12,7 @@ import server.agents.registry.AgentResolvedCharacter;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.resident.ResidentRuntime;
+import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchSessions;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionLeases;
@@ -119,6 +120,7 @@ class AgentControlServiceCharacterizationTest {
         when(world.roster()).thenReturn(roster);
         when(world.residents()).thenReturn(residents);
         when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+        when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
         CompanionLeases leases = new CompanionLeases();
         when(world.leases()).thenReturn(leases);
         AgentClaimGuard.install(new CompanionDirectory(world));

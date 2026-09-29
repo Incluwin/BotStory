@@ -100,7 +100,8 @@ class ClaimGuardBoundaryTest {
             // P3: a crew-wide order is the owner's chat line over exactly their own companions out with them, each one
             // past CompanionDirectory.mayControl first (the generic overload, which skips mayOperate: the owner's own)
             "server/living/roster/CompanionManager.java chat 1",
-            "server/living/roster/BenchSessions.java load 1",
+            // P5: every live bench slice (a field, town or stall form) loads here, behind its lease and the loaded check
+            "server/living/roster/BenchDutyDispatcher.java load 1",
             "server/living/resident/ResidentRuntime.java load 1",
             "server/living/population/SocialFabric.java join 1",
             "server/living/population/PresenceScheduler.java load 1",
@@ -203,7 +204,7 @@ class ClaimGuardBoundaryTest {
         assertContains("server/agents/capabilities/partyquest/lobby/AgentPartyQuestLobbyRuntime.java",
                 "AgentClaimGuard.isClaimed(agent.getId()) && !AgentClaimGuard.mayLoad(inviter, agent.getId())");
         assertContains("net/server/channel/handlers/MessengerHandler.java", "LivingWorldHooks.ownsCompanion(player, target)");
-        assertContains("server/living/roster/BenchSessions.java", "CompanionLeases.Kind.BENCH_LIVE");
+        assertContains("server/living/roster/BenchDutyDispatcher.java", "world.leases().tryAcquire(characterId, lease, entry.characterId())");
         assertContains("server/living/resident/ResidentRuntime.java", "CompanionLeases.Kind.RESIDENT");
         assertContains("server/living/population/PresenceScheduler.java", "AgentRuntimeRegistry.hasActiveAgentCharacterId(existing)");
         assertContains("server/living/roster/RosterService.java", "AgentClaimGuard.mayLoad(owner, characterId)");

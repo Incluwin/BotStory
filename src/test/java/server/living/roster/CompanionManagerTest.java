@@ -367,7 +367,7 @@ class CompanionManagerTest {
         RosterEntry row = h.row(mira);
         h.store.seed(new RosterEntry(ANN, "mira", RosterState.AWAY, Assignment.FARM_ITEM, 4000021, 200, HENESYS, 0L, 500L,
                 0L, row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(), 0, null));
-        BenchSessions sessions = h.world.benchSessions();
+        BenchDutyDispatcher sessions = h.world.benchDuty();
         doAnswer(inv -> { // the final harvest: the agent's gains go into the haul
             RosterEntry now = h.row(mira);
             h.store.seed(new RosterEntry(ANN, "mira", now.state(), now.assignment(), now.assignmentItem(),

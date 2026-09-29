@@ -205,8 +205,8 @@ final class AdminBudgetReader {
         LivingWorld world = LivingWorld.get();
         if (world != null) {
             companionOpsQueue = world.executor().queueDepth();
-            benchLiveIds.addAll(world.benchSessions().liveCharacterIds());
-            benchLiveSessions = world.benchSessions().liveCount();
+            benchLiveIds.addAll(world.benchDuty().liveCharacterIds());
+            benchLiveSessions = world.benchDuty().liveCount();
             for (ResidentRuntime.Session session : world.residents().sessions()) {
                 if (session.materialized()) residentIds.add(session.characterId);
             }

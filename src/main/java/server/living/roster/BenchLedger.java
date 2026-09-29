@@ -28,7 +28,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * Offline model for benched companions (plan 11.4/11.5): every interval it credits EXP toward the
  * pace target, or meso/items from real drop tables under the bench efficiency factor, charges
  * upkeep, and respects the per-account daily farming cap. Everything lands in the roster row and
- * the haul; EXP is applied to the character when it is next called.
+ * the haul; EXP is applied to the character when it is next called. P5: TRAIN's EXP and FARM_MESO's
+ * meso are the rates live slices measured at the companion's camp (BenchYieldModel), shrunk toward
+ * these priors.
  */
 public final class BenchLedger {
     private static final Logger log = LoggerFactory.getLogger(BenchLedger.class);
@@ -84,10 +86,11 @@ public final class BenchLedger {
         }
         String today = world.routineDate().toString();
         int farmSecondsToday = today.equals(entry.farmDay()) ? entry.farmSecondsToday() : 0;
-        if (world.benchSessions().live(persona.id())) {
-            // fighting for real at its camp: the fight credits EXP and the harvest takes the loot;
-            // here only the clock moves, and farming time still counts toward the daily cap
-            if (entry.assignment() != Assignment.TRAIN) {
+        if (world.benchDuty().live(persona.id())) {
+            // live at its camp, its stall or in town (P5): the fight credits EXP and the harvest takes the loot (a
+            // stall its sales); here only the clock moves, and farming time still counts toward the daily cap
+            if (entry.assignment() == Assignment.FARM_MESO || entry.assignment() == Assignment.FARM_ITEM
+                    || entry.assignment() == Assignment.GATHER) {
                 farmSecondsToday += (int) (hours * 3600);
             }
             world.store().saveRosterProgress(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
@@ -116,7 +119,9 @@ public final class BenchLedger {
                 int effectiveLevel = botLevel + (int) (accruedExp / Math.max(1L, ExpTable.getExpNeededForLevel(botLevel)));
                 if (effectiveLevel < target) {
                     double multiplier = catchUp(persona, effectiveLevel, ownerLevel);
-                    long gained = Math.round(expPerHour(effectiveLevel) * hours * efficiency * multiplier);
+                    long gained = Math.round(calibrated(entry, persona, botCharacterId, botLevel,
+                            expPerHour(effectiveLevel) * world.config().BENCH_FARM_EFFICIENCY, true)
+                            * slowdown(haulMeso) * hours * multiplier);
                     long cap = Math.max(0L, (long) ExpTable.getExpNeededForLevel(effectiveLevel) * (target - effectiveLevel));
                     accruedExp += Math.min(gained, cap);
                     note = "train +" + Math.min(gained, cap) + " exp";
@@ -124,7 +129,9 @@ public final class BenchLedger {
             }
             case FARM_MESO -> {
                 if (withinDailyCap(entry, farmSecondsToday, hours)) {
-                    long gained = Math.round(KILLS_PER_HOUR * hours * MESO_PER_KILL_PER_LEVEL * botLevel * efficiency * mesoRate());
+                    long gained = Math.round(calibrated(entry, persona, botCharacterId, botLevel, KILLS_PER_HOUR
+                            * MESO_PER_KILL_PER_LEVEL * botLevel * world.config().BENCH_FARM_EFFICIENCY * mesoRate(), false)
+                            * slowdown(haulMeso) * hours);
                     haulMeso += gained;
                     farmSecondsToday += (int) (hours * 3600);
                     note = "farm +" + gained + " meso";
@@ -171,6 +178,27 @@ public final class BenchLedger {
         if (note != null) {
             world.store().event(entry.characterId(), entry.personaId(), "bench.ledger", note);
         }
+    }
+
+    /** Unpaid upkeep (a haul below zero): half speed until the haul recovers. */
+    private static double slowdown(long haulMeso) {
+        return haulMeso < 0 ? 0.5d : 1.0d;
+    }
+
+    /**
+     * An hour of {@code prior} (a rate at BENCH_FARM_EFFICIENCY), calibrated by what live slices of the companion's job
+     * branch and level band measured at the camp its field duty runs at: TRAIN's EXP ({@code exp}) or FARM_MESO's meso,
+     * shrunk toward the prior (BenchYieldModel); the prior alone where no slice ran yet.
+     */
+    private double calibrated(RosterEntry entry, Persona persona, int botCharacterId, int botLevel, double prior, boolean exp) {
+        BenchYieldModel yields = world.benchYields();
+        if (yields == null) {
+            return prior; // a test's world may have none
+        }
+        int[] levelJob = world.store().characterLevelAndJob(botCharacterId);
+        int jobId = levelJob == null || levelJob.length < 2 ? -1 : levelJob[1];
+        BenchYieldModel.Key key = BenchYieldModel.Key.of(jobId, botLevel, BenchDutyDispatcher.fieldCamp(world, entry, persona));
+        return exp ? yields.expPerHour(key, prior) : yields.mesoPerHour(key, prior);
     }
 
     /** True when this companion may farm another {@code hours} today under the per-owner cap. */

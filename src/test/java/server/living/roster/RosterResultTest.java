@@ -135,6 +135,7 @@ class RosterResultTest {
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.quests()).thenReturn(mock(QuestLedger.class));
         when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+        when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
         when(world.leases()).thenReturn(new CompanionLeases());
         slots = new CompanionSlots(world);
         when(world.slots()).thenReturn(slots);

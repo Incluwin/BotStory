@@ -261,8 +261,11 @@ public record CompanionView(String personaId,
             }
             BondService bonds = world.bonds();
             Bond bond = bonds == null ? null : bonds.peek(entry.characterId(), entry.personaId());
+            BenchDutyDispatcher bench = world.benchDuty();
+            String note = bench == null ? null : bench.note(entry.personaId()); // flow 12: "resting after a rough hunt"
+            String duty = world.roster().describeAssignment(entry) + (note == null || note.isEmpty() ? "" : " (" + note + ")");
             return new Stored(entry, name, world.residents().characterIdOf(entry.personaId()),
-                    world.roster().describeAssignment(entry), camp == 0 ? "" : placeNames.apply(camp), farmed,
+                    duty, camp == 0 ? "" : placeNames.apply(camp), farmed,
                     farming ? Math.max(0, entry.assignmentCount()) : 0, farming ? itemNames.apply(entry.assignmentItem()) : "",
                     haul == null ? 0 : haul.size(), bond == null ? null : bond.stage());
         }

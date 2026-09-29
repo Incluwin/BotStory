@@ -9,6 +9,7 @@ import org.mockito.MockedStatic;
 import server.living.bond.ContractService;
 import server.living.quest.QuestLog;
 import server.living.quest.QuestMarkers;
+import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.DirectExecutor;
 import server.living.roster.RosterService;
@@ -47,6 +48,7 @@ class LivingWorldHooksTest {
         when(world.executor()).thenReturn(ops);
         when(world.questLog()).thenReturn(mock(QuestLog.class));
         when(world.markers()).thenReturn(mock(QuestMarkers.class));
+        when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
         living = mockStatic(LivingWorld.class);
         living.when(LivingWorld::get).thenReturn(world);
     }

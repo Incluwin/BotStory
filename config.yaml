@@ -798,6 +798,17 @@ living_world:
     EXPEDITION_BURST_MAX: 12
     COMPANION_BUDGET_CEILING: 300
     COMPANION_SPAWN_INTERVAL_MS: 2000
+    # Living bench (P5, decision 12 a): besides the field grinders above, benched companions resting live in town
+    # (REST) and running real Free Market stalls (STALL, SELL), each pool server-wide (0 = none), and how long one of
+    # their slices lasts unless a player is watching. A live field companion out of supplies ends its hunt and
+    # restocks at a shop, unloading after BENCH_RESUPPLY_MAX_MS at the latest. The ledger credits the rates measured
+    # at a camp, shrunk toward its priors, which count for BENCH_YIELD_PRIOR_SLICES full slices.
+    BENCH_TOWN_MAX: 10
+    BENCH_TOWN_SLICE_MS: 3600000
+    COMMERCE_LIVE_MAX: 4
+    COMMERCE_SLICE_MS: 7200000
+    BENCH_RESUPPLY_MAX_MS: 300000
+    BENCH_YIELD_PRIOR_SLICES: 1.0
     # A citizen answers a party invite after a random delay in this range, like a player would.
     CITIZEN_INVITE_REPLY_MIN_MS: 900
     CITIZEN_INVITE_REPLY_MAX_MS: 1800

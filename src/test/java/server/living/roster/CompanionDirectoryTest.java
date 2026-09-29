@@ -54,7 +54,7 @@ class CompanionDirectoryTest {
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingStore store = mock(LivingStore.class);
     private final ResidentRuntime residents = mock(ResidentRuntime.class);
-    private final BenchSessions bench = mock(BenchSessions.class);
+    private final BenchDutyDispatcher bench = mock(BenchDutyDispatcher.class);
     private final LivingContent content = mock(LivingContent.class);
     private final Population population = mock(Population.class);
     private final CompanionLeases leases = new CompanionLeases();
@@ -77,7 +77,7 @@ class CompanionDirectoryTest {
         persona(CATO, "cato", "Cato");
         when(world.store()).thenReturn(store);
         when(world.residents()).thenReturn(residents);
-        when(world.benchSessions()).thenReturn(bench);
+        when(world.benchDuty()).thenReturn(bench);
         when(world.content()).thenReturn(content);
         when(world.leases()).thenReturn(leases);
         when(world.slots()).thenReturn(new CompanionSlots(world));

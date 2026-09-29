@@ -166,7 +166,7 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         if (personaId == null) {
             return AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) == actor.getId();
         }
-        return world.roster().cachedOwnerOf(personaId) == actor.getId() && !world.benchSessions().live(personaId);
+        return world.roster().cachedOwnerOf(personaId) == actor.getId() && !world.benchDuty().live(personaId);
     }
 
     /**
@@ -184,7 +184,7 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         if (personaId == null) {
             return mayControl(actor, agentCharacterId);
         }
-        return world.roster().cachedOwnerOf(personaId) == actor.getId() && !world.benchSessions().live(personaId)
+        return world.roster().cachedOwnerOf(personaId) == actor.getId() && !world.benchDuty().live(personaId)
                 && new CompanionLeases.Lease(CompanionLeases.Kind.COMPANION, actor.getId())
                 .equals(world.leases().holder(agentCharacterId));
     }

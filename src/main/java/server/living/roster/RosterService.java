@@ -580,7 +580,7 @@ public final class RosterService {
     private void letGo(RosterEntry entry, String reason) {
         int ownerId = entry.characterId();
         String personaId = entry.personaId();
-        world.benchSessions().endFor(personaId, "released");
+        world.benchDuty().endFor(personaId, "released");
         leaveOfflineParty(entry); // parked with its owner: it leaves their party too
         Character owner = onlineCharacter(ownerId);
         Character bot = companion(entry);
@@ -1089,7 +1089,7 @@ public final class RosterService {
         if (leaving.containsKey(persona.id())) {
             despawn(entry, "called back on its way out"); // it comes back from where it stood, so it frees its lease first
         }
-        world.benchSessions().endFor(persona.id(), "called by owner"); // a live slice ends properly and frees its lease
+        world.benchDuty().endFor(persona.id(), "called by owner"); // a live slice ends properly and frees its lease
         world.residents().releaseForRecruit(persona.id());
         if (!world.leases().tryAcquire(characterId, CompanionLeases.Kind.COMPANION, owner.getId())) {
             return refuse(owner, persona, entry, BUSY_LINE, "busy", new RosterResult.Busy());

@@ -326,6 +326,7 @@ class SeatGateTest {
         when(living.slots()).thenReturn(slots);
         when(living.config()).thenReturn(new LivingWorldConfig());
         when(living.benchSessions()).thenReturn(mock(BenchSessions.class));
+        when(living.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
         when(living.arcs()).thenReturn(mock(ArcService.class));
         when(living.bench()).thenReturn(mock(BenchLedger.class));
         when(living.leases()).thenReturn(new CompanionLeases());

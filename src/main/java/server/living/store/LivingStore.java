@@ -774,6 +774,55 @@ public final class LivingStore {
         }
     }
 
+    // ---- bench yields (P5) --------------------------------------------------------------------
+
+    /**
+     * One companion_yield row (changeset 42): what live bench slices of one job branch and level band measured at one
+     * camp, per hour. {@code samples} counts full live slices (one cut short counts for the share it ran).
+     */
+    public record YieldRow(String jobBranch, int levelBand, int campMapId, double samples, double expPerHour,
+                           double mesoPerHour, double itemsPerHour, double deathsPerHour) { }
+
+    /** Every companion_yield row (one per job branch, level band and camp: a small table). */
+    public List<YieldRow> companionYields() {
+        List<YieldRow> out = new ArrayList<>();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT job_branch, level_band, camp_map_id, samples, exp_per_hour,"
+                     + " meso_per_hour, items_per_hour, deaths_per_hour FROM companion_yield");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.add(new YieldRow(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getDouble(4), rs.getDouble(5),
+                        rs.getDouble(6), rs.getDouble(7), rs.getDouble(8)));
+            }
+        } catch (SQLException failure) {
+            log.warn("companion_yield read failed", failure);
+        }
+        return out;
+    }
+
+    /** Keeps one companion_yield row (an upsert); false when the write failed. */
+    public boolean saveCompanionYield(YieldRow row) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO companion_yield (job_branch, level_band, camp_map_id, samples, exp_per_hour, meso_per_hour,"
+                        + " items_per_hour, deaths_per_hour) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE"
+                        + " samples = VALUES(samples), exp_per_hour = VALUES(exp_per_hour), meso_per_hour = VALUES(meso_per_hour),"
+                        + " items_per_hour = VALUES(items_per_hour), deaths_per_hour = VALUES(deaths_per_hour)")) {
+            ps.setString(1, row.jobBranch());
+            ps.setInt(2, row.levelBand());
+            ps.setInt(3, row.campMapId());
+            ps.setDouble(4, row.samples());
+            ps.setDouble(5, row.expPerHour());
+            ps.setDouble(6, row.mesoPerHour());
+            ps.setDouble(7, row.itemsPerHour());
+            ps.setDouble(8, row.deathsPerHour());
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("companion_yield write failed for {}/{}/{}", row.jobBranch(), row.levelBand(), row.campMapId(), failure);
+            return false;
+        }
+    }
+
     /** The meso in the purse of a character nothing has loaded (a benched companion's); -1 when unknown. */
     public long characterMeso(int characterId) {
         try (Connection con = DatabaseConnection.getConnection();

@@ -68,7 +68,7 @@ class RosterStateWriterBoundaryTest {
     }
 
     @Test
-    void changesets40And41AreRegisteredLastWithTheirRollbacks() throws IOException {
+    void changesets40To42AreRegisteredLastWithTheirRollbacks() throws IOException {
         String changelog = Files.readString(CHANGELOG);
         int start = changelog.indexOf("<changeSet id=\"40-companion-manager\"");
         assertTrue(start >= 0, "changeset 40 is registered");
@@ -82,20 +82,39 @@ class RosterStateWriterBoundaryTest {
         String crewSet = changelog.substring(crew, changelog.indexOf("</changeSet>", crew));
         assertTrue(crewSet.contains("<sqlFile path=\"db/tables/032-companion-crew.sql\""));
         assertTrue(crewSet.indexOf("<rollback>") < crewSet.indexOf("032-companion-crew-down.sql"));
+        // P5: the measured bench yields (companion_yield), last
+        int yields = changelog.indexOf("<changeSet id=\"42-companion-bench-learning\"");
+        assertTrue(yields > crew, "changeset 42 is registered after 41");
+        String yieldSet = changelog.substring(yields, changelog.indexOf("</changeSet>", yields));
+        assertTrue(yieldSet.contains("<sqlFile path=\"db/tables/033-companion-bench-learning.sql\""));
+        assertTrue(yieldSet.indexOf("<rollback>") < yieldSet.indexOf("033-companion-bench-learning-down.sql"));
         Matcher ids = Pattern.compile("<changeSet id=\"(\\d+)").matcher(changelog);
         int highest = 0;
         int forty = 0;
         int fortyOne = 0;
+        int fortyTwo = 0;
         while (ids.find()) {
             int id = Integer.parseInt(ids.group(1));
             highest = Math.max(highest, id);
             forty += id == 40 ? 1 : 0;
             fortyOne += id == 41 ? 1 : 0;
+            fortyTwo += id == 42 ? 1 : 0;
         }
-        assertEquals(41, highest);
+        assertEquals(42, highest);
         assertEquals(1, forty);
         assertEquals(1, fortyOne);
-        assertEquals(changelog.lastIndexOf("<changeSet "), crew);
+        assertEquals(1, fortyTwo);
+        assertEquals(changelog.lastIndexOf("<changeSet "), yields);
+        String yieldUp = Files.readString(Path.of("src/main/resources/db/tables/033-companion-bench-learning.sql"));
+        assertTrue(yieldUp.contains("CREATE TABLE IF NOT EXISTS companion_yield"));
+        for (String column : List.of("job_branch      VARCHAR(16)", "level_band      TINYINT", "camp_map_id     INT",
+                "samples         DOUBLE", "exp_per_hour    DOUBLE", "meso_per_hour   DOUBLE", "items_per_hour  DOUBLE",
+                "deaths_per_hour DOUBLE", "updated_at      TIMESTAMP", "PRIMARY KEY (job_branch, level_band, camp_map_id)")) {
+            assertTrue(yieldUp.contains(column), column);
+        }
+        String yieldDown = Files.readString(Path.of("src/main/resources/db/tables/033-companion-bench-learning-down.sql"));
+        assertTrue(yieldDown.contains("DROP TABLE IF EXISTS companion_yield"));
+        assertTrue(yieldUp.chars().allMatch(c -> c < 128) && yieldDown.chars().allMatch(c -> c < 128), "ASCII only");
         String up = Files.readString(Path.of("src/main/resources/db/tables/032-companion-crew.sql"));
         assertTrue(up.contains("CREATE TABLE IF NOT EXISTS living_crew"));
         assertTrue(up.contains("formation       VARCHAR(32)"));

@@ -120,6 +120,7 @@ class RosterServiceGrantTest {
         when(world.residents()).thenReturn(residents);
         when(world.config()).thenReturn(config);
         when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+        when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
         when(world.contracts()).thenReturn(mock(ContractService.class));
         when(world.slots()).thenReturn(new CompanionSlots(world));
 

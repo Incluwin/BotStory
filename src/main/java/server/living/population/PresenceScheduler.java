@@ -27,6 +27,7 @@ import server.living.population.PopulationContent.Cohort;
 import server.living.population.PopulationContent.Field;
 import server.living.population.PopulationContent.Lobby;
 import server.living.resident.ResidentSpots;
+import server.living.roster.CompanionLeases;
 import server.living.roster.RosterService;
 import server.maps.MapleMap;
 
@@ -229,7 +230,7 @@ public final class PresenceScheduler {
             return false;
         }
         int existing = citizen.characterId();
-        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(existing) || rostered(existing)) {
+        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(existing) || rostered(existing) || leased(existing)) {
             return false; // a Resident, companion or bench session already owns this character, or a roster employs it
         }
         try {
@@ -355,6 +356,13 @@ public final class PresenceScheduler {
         LivingWorld world = population.world();
         RosterService roster = world == null ? null : world.roster();
         return roster != null && roster.cachedOwnerOf(LivingContent.HIRE_PREFIX + characterId) != 0;
+    }
+
+    /** True while the living world holds the character's materialization lease (a companion, a live bench slice...). */
+    private boolean leased(int characterId) {
+        LivingWorld world = population.world();
+        CompanionLeases leases = world == null ? null : world.leases();
+        return leases != null && leases.holder(characterId) != null;
     }
 
     public void logoutAll(String reason) {

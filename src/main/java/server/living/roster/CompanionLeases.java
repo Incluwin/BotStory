@@ -9,7 +9,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * else is refused, never silently removed. In memory only; nothing survives a restart.
  */
 public final class CompanionLeases {
-    public enum Kind { COMPANION, BENCH_LIVE, RESIDENT, POPULATION, PQ_BACKGROUND, EXPEDITION }
+    /**
+     * BENCH_LIVE, BENCH_TOWN and COMMERCE are a benched companion's live slice (P5, BenchDutyDispatcher): at its field
+     * camp, resting in town, or at a Free Market stall.
+     */
+    public enum Kind { COMPANION, BENCH_LIVE, RESIDENT, POPULATION, PQ_BACKGROUND, EXPEDITION, BENCH_TOWN, COMMERCE }
 
     /** What a character is loaded for, and the owner it is charged to (0 = nobody). */
     public record Lease(Kind kind, int ownerId) { }

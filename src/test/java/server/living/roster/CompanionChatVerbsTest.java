@@ -361,6 +361,7 @@ class CompanionChatVerbsTest {
             when(world.config()).thenReturn(config);
             when(world.slots()).thenReturn(new CompanionSlots(world));
             when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+            when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
             when(world.arcs()).thenReturn(mock(server.living.arc.ArcService.class));
             CompanionBudget budget = mock(CompanionBudget.class);
             when(budget.admit(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);

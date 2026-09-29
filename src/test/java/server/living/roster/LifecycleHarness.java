@@ -140,6 +140,7 @@ final class LifecycleHarness implements AutoCloseable {
         when(world.content()).thenReturn(content);
         when(world.residents()).thenReturn(residents);
         when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+        when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
         when(world.bench()).thenReturn(mock(BenchLedger.class));
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.leases()).thenReturn(leases);

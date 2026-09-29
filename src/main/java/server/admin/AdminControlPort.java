@@ -546,7 +546,7 @@ public final class AdminControlPort {
                 .num("arcs", world.content().arcs().size())
                 .num("rumors", world.content().rumors().size())
                 .num("materialized", world.residents().sessions().stream().filter(session -> session.agent() != null).count())
-                .num("benchLive", world.benchSessions().liveCount())
+                .num("benchLive", world.benchDuty().liveCount())
                 .num("routineHour", world.routineHour())
                 .raw("residents", residents.toString())
                 .raw("warnings", warnings.toString())

@@ -96,6 +96,7 @@ class CompanionTestGuideTest {
         when(world.slots()).thenReturn(new CompanionSlots(world));
         when(world.leases()).thenReturn(new CompanionLeases());
         when(world.benchSessions()).thenReturn(mock(BenchSessions.class));
+        when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
         when(world.bench()).thenReturn(new BenchLedger(world));
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bonds()).thenReturn(mock(BondService.class));

@@ -99,7 +99,7 @@ class ArrivalPlacementTest {
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingStore store = mock(LivingStore.class);
     private final ResidentRuntime residents = mock(ResidentRuntime.class);
-    private final BenchSessions benchSessions = mock(BenchSessions.class);
+    private final BenchDutyDispatcher benchDuty = mock(BenchDutyDispatcher.class);
     private final BenchLedger ledger = mock(BenchLedger.class);
     private final CompanionBudget budget = mock(CompanionBudget.class);
     private final CompanionLeases leases = spy(new CompanionLeases());
@@ -138,7 +138,7 @@ class ArrivalPlacementTest {
         when(world.store()).thenReturn(store);
         when(world.content()).thenReturn(content);
         when(world.residents()).thenReturn(residents);
-        when(world.benchSessions()).thenReturn(benchSessions);
+        when(world.benchDuty()).thenReturn(benchDuty);
         when(world.arcs()).thenReturn(mock(ArcService.class));
         when(world.bench()).thenReturn(ledger);
         when(world.leases()).thenReturn(leases);
@@ -358,7 +358,7 @@ class ArrivalPlacementTest {
             calls.add("budget");
             return CompanionBudget.Admission.ALLOW;
         });
-        doAnswer(inv -> calls.add("end bench slice")).when(benchSessions).endFor(eq("olwen"), anyString());
+        doAnswer(inv -> calls.add("end bench slice")).when(benchDuty).endFor(eq("olwen"), anyString());
         doAnswer(inv -> calls.add("resident released")).when(residents).releaseForRecruit("olwen");
         doAnswer(inv -> {
             calls.add("lease");
@@ -416,7 +416,7 @@ class ArrivalPlacementTest {
     void aLiveBenchSliceOnTheOwnersMapWalksOverFromWhereItFights() {
         seed("olwen", RosterState.BENCHED); // camps on the owner's map: no travel time
         standing("Olwen", map, 1500, 180);
-        doAnswer(inv -> loaded.remove(900)).when(benchSessions).endFor(eq("olwen"), anyString());
+        doAnswer(inv -> loaded.remove(900)).when(benchDuty).endFor(eq("olwen"), anyString());
 
         assertEquals("Olwen joins your party.", RosterVoice.line(OLWEN, new RosterService(world).call(alice, OLWEN)));
 

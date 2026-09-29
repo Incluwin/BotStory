@@ -123,6 +123,23 @@ public class LivingWorldConfig {
     public int COMPANION_BUDGET_CEILING = 300;
     /** Minimum gap between two companion or bench loads for the same owner. */
     public int COMPANION_SPAWN_INTERVAL_MS = 2000;
+
+    // Living bench (P5, decisions 12 a and 13 a): BenchDutyDispatcher and BenchYieldModel read these
+    /** Benched companions resting live in town (REST: cheap town presence) server-wide at once; 0 = none. */
+    public int BENCH_TOWN_MAX = 10;
+    /** Length of one town slice (REST) before another benched companion gets a turn, unless a player is watching. */
+    public int BENCH_TOWN_SLICE_MS = 3600000;
+    /** Benched companions running a real Free Market stall (STALL, SELL: the COMMERCE pool) server-wide; 0 = none. */
+    public int COMMERCE_LIVE_MAX = 4;
+    /** Length of one stall slice before another benched companion gets a turn, unless a player is watching. */
+    public int COMMERCE_SLICE_MS = 7200000;
+    /** A live field companion out of supplies ends its hunt and restocks at a shop; after this long it unloads anyway. */
+    public int BENCH_RESUPPLY_MAX_MS = 300000;
+    /**
+     * How many full live slices the ledger's prior (the BENCH_FARM_EFFICIENCY rates) counts for against the rates
+     * measured at a camp: the offline credit is (slices x measured + this x prior) / (slices + this).
+     */
+    public double BENCH_YIELD_PRIOR_SLICES = 1.0;
     /** A citizen answers a party invite after a random delay in MIN..MAX, like a player would. */
     public int CITIZEN_INVITE_REPLY_MIN_MS = 900;
     public int CITIZEN_INVITE_REPLY_MAX_MS = 1800;
@@ -183,6 +200,16 @@ public class LivingWorldConfig {
         if (EXPEDITION_BURST_MAX < 0 || COMPANION_BUDGET_CEILING < 1 || COMPANION_SPAWN_INTERVAL_MS < 0) {
             throw new IllegalArgumentException(
                     "living_world.EXPEDITION_BURST_MAX and COMPANION_SPAWN_INTERVAL_MS must be >= 0, COMPANION_BUDGET_CEILING >= 1");
+        }
+        if (BENCH_TOWN_MAX < 0 || COMMERCE_LIVE_MAX < 0) {
+            throw new IllegalArgumentException("living_world.BENCH_TOWN_MAX and COMMERCE_LIVE_MAX must be >= 0 (0 = none)");
+        }
+        if (BENCH_TOWN_SLICE_MS < 0 || COMMERCE_SLICE_MS < 0 || BENCH_RESUPPLY_MAX_MS < 0) {
+            throw new IllegalArgumentException(
+                    "living_world.BENCH_TOWN_SLICE_MS, COMMERCE_SLICE_MS and BENCH_RESUPPLY_MAX_MS must be >= 0");
+        }
+        if (BENCH_YIELD_PRIOR_SLICES < 0) {
+            throw new IllegalArgumentException("living_world.BENCH_YIELD_PRIOR_SLICES must be >= 0");
         }
         if (CITIZEN_INVITE_REPLY_MIN_MS < 0 || CITIZEN_INVITE_REPLY_MAX_MS < CITIZEN_INVITE_REPLY_MIN_MS) {
             throw new IllegalArgumentException(

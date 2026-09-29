@@ -568,4 +568,13 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="42-companion-bench-learning" author="ganre">
+        <!-- Living bench learning (P5): companion_yield, the rates live bench slices measured per job branch, level band
+             and camp. Ships behind living_world.ENABLED. See docs/BOT_MANAGEMENT_PLAN.md, "Data model". -->
+        <sqlFile path="db/tables/033-companion-bench-learning.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/033-companion-bench-learning-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
