@@ -21,9 +21,11 @@ public final class RecallTravel {
             104, List.of(100, 120),          // Lith Harbor - Henesys, Nautilus
             100, List.of(104, 101, 102, 103, 105, 120), // Henesys hub (six path crossway)
             101, List.of(100, 102),          // Ellinia - Henesys, Perion
-            102, List.of(100, 101, 103),     // Perion - Henesys, Ellinia, Kerning
-            103, List.of(100, 102),          // Kerning City - Henesys, Perion
-            105, List.of(100),               // Sleepywood - Henesys
+            102, List.of(100, 101, 103, 106), // Perion - Henesys, Ellinia, Kerning, the valleys
+            103, List.of(100, 102, 107),     // Kerning City - Henesys, Perion, the swamp
+            105, List.of(100, 106),          // Sleepywood - Henesys, the valleys
+            106, List.of(102, 105),          // Deep / Dangerous Valley, Burnt Land - Perion, Sleepywood
+            107, List.of(103),               // Swamp of Despair - Kerning City
             120, List.of(100, 104),          // Nautilus - Henesys, Lith
             110, List.of(104));              // Florina beach - Lith
 

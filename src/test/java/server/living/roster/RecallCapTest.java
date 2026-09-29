@@ -37,6 +37,14 @@ class RecallCapTest {
     }
 
     @Test
+    void theValleysAndTheSwampAreOnTheIslandSoTheCapApplies() {
+        // seen live: Ilse camped at Dangerous Valley II (106000002, offered by the camp picker) took the 180 s off-island time
+        assertEquals(60_000L, RecallTravel.etaMs(106000002, 103010000, 60_000L), "Dangerous Valley II to a Kerning field");
+        assertEquals(60_000L, RecallTravel.etaMs(107000000, 104000000, 60_000L), "the Swamp of Despair to Lith Harbor");
+        assertEquals(60_000L, RecallTravel.etaMs(106000000, 102000000), "one road from Deep Valley to Perion");
+    }
+
+    @Test
     void theDefaultsAreDecision7() throws IOException {
         LivingWorldConfig config = new LivingWorldConfig();
         assertEquals(60_000, config.RECALL_MAX_ETA_MS);
