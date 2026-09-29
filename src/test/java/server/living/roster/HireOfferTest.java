@@ -93,6 +93,8 @@ class HireOfferTest {
     private final Map<Integer, Citizen> citizens = new HashMap<>();
     private final long[] now = {1_000_000L};
     private final int[] purse = {100_000};
+    /** living_acquaintance.party_minutes of Mira and Ann (the population's own count, on a shared map). */
+    private final int[] partyMinutesTogether = {0};
     private final HiredHands hands = new HiredHands(game.world);
     private final HireOffers offers = new HireOffers(game.world, () -> now[0]);
     private final Character mira = game.bot(MIRA, "Mira");
@@ -110,6 +112,9 @@ class HireOfferTest {
                 .filter(citizen -> citizen.name().equalsIgnoreCase(inv.getArgument(0))).findFirst().orElse(null));
         doAnswer(inv -> citizens.put(((Citizen) inv.getArgument(0)).characterId(), inv.getArgument(0)))
                 .when(population).save(any());
+        when(population.setHired(anyInt(), anyBoolean())).thenAnswer(inv -> citizens.computeIfPresent(inv.getArgument(0),
+                (id, citizen) -> inv.<Boolean>getArgument(1) ? citizen.withFlag(Citizen.FLAG_HIRED)
+                        : citizen.withoutFlag(Citizen.FLAG_HIRED)));
         when(population.presence()).thenReturn(presence);
         when(presence.handOver(anyInt(), anyBoolean(), anyString())).thenAnswer(inv -> {
             citizens.computeIfPresent(inv.getArgument(0), (key, citizen) -> citizen.withFlag(Citizen.FLAG_HIRED));
@@ -128,7 +133,7 @@ class HireOfferTest {
         when(population.social()).thenReturn(social);
         CitizenStore acquaintances = mock(CitizenStore.class);
         when(acquaintances.acquaintance(anyInt(), anyInt())).thenAnswer(inv -> new Acquaintance(inv.getArgument(0),
-                inv.getArgument(1), 0, 0, false, false));
+                inv.getArgument(1), partyMinutesTogether[0], 0, false, false));
         when(population.store()).thenReturn(acquaintances);
 
         citizen(mira, "Mira");
@@ -149,6 +154,14 @@ class HireOfferTest {
             purse[0] += (int) inv.getArgument(0);
             return null;
         }).when(game.ann).gainMeso(anyInt(), anyBoolean());
+        when(game.ann.tryPayMeso(anyInt(), anyBoolean())).thenAnswer(inv -> {
+            int fee = inv.getArgument(0);
+            if (purse[0] < fee) {
+                return false;
+            }
+            purse[0] -= fee;
+            return true;
+        });
         game.roster().installHiredHandRelease(hands::onReleased);
 
         // the owner's client: a window may open for their own click, and an answer runs at once on their thread
@@ -211,6 +224,17 @@ class HireOfferTest {
     }
 
     @Test
+    void partyTimeCountsOnlySideBySide() {
+        guestOfAnn(mira);
+        minutes(5);
+        game.moveAnn(KERNING, 1000, 200); // Ann went to town; Mira still hunts where she was
+        minutes(20);
+
+        assertTrue(offers.pendingOffers(game.ann).isEmpty(), "5 minutes side by side, not 25");
+        verify(game.residents, never()).whisper(any(), any(), anyString());
+    }
+
+    @Test
     void aGuestThatLeftThePartyStartsOverAsANewGuest() {
         guestOfAnn(mira);
         minutes(9);
@@ -242,10 +266,15 @@ class HireOfferTest {
     }
 
     @Test
-    void doubleClickingTheCitizenOpensItsTermsOnlyWhileItsOfferIsOpen() {
-        guestOfAnn(mira);
+    void doubleClickingTheCitizenOpensItsTermsAsTheOfferWhileItsOfferIsOpen() {
+        game.standsBesideAnn(mira);
         ResidentDialogue dialogue = new ResidentDialogue(game.world);
-        assertFalse(dialogue.onCharacterClicked(game.ann, mira), "a citizen: the stock char info");
+        assertFalse(dialogue.onCharacterClicked(game.ann, mira), "not her guest: the stock char info");
+
+        guestOfAnn(mira);
+        assertTrue(dialogue.onCharacterClicked(game.ann, mira), "her own guest: its terms, the way to hire without a book");
+        assertTrue(lastTalk().text().startsWith("looking for work, actually. want a hand?"), lastTalk().text());
+        LivingTalk.forget(game.ann);
 
         offerMade();
         assertTrue(dialogue.onCharacterClicked(game.ann, mira));
@@ -352,6 +381,7 @@ class HireOfferTest {
 
     @Test
     void noOfferWhileTheHireCapIsFull() {
+        game.config.HIRE_MAX_PER_OWNER = 5; // below ROSTER_MAX, which it defaults to
         for (int i = 0; i < game.config.HIRE_MAX_PER_OWNER; i++) {
             game.store.seed(row("hire:" + (800 + i)));
         }
@@ -394,7 +424,44 @@ class HireOfferTest {
         minutes(60);
 
         assertTrue(offers.pendingOffers(game.ann).isEmpty(), "Mira's own roll for Ann (27) is over a reserved 10");
-        verify(game.residents, never()).whisper(any(), any(), anyString());
+        verify(game.residents, times(1)).whisper(any(), eq(game.ann), eq(HireOffers.NOT_YET_LINE)); // once a stint
+        verify(game.residents, times(1)).whisper(any(), any(), anyString());
+    }
+
+    @Test
+    void aGuestThatSaysNoNowMaySayYesAfterMoreTimeTogether() {
+        when(voices.voiceOf(any())).thenReturn(voice(0.4d)); // reserved: a chance of 10 against her roll for Ann of 27
+        when(social.sociability(any())).thenReturn(10);
+        guestOfAnn(mira);
+        minutes(game.config.HIRE_OFFER_PARTY_MINUTES);
+        assertTrue(offers.pendingOffers(game.ann).isEmpty());
+
+        partyMinutesTogether[0] = 20; // the population's count of their time on one map: +20
+        minutes(game.config.HIRE_OFFER_PARTY_MINUTES);
+
+        assertEquals(1, offers.pendingOffers(game.ann).size(), "another stint's minutes, a little warmer for them");
+        verify(game.residents).whisper(any(), eq(game.ann), eq(OFFER));
+    }
+
+    // ---- answering by whisper ---------------------------------------------------------------------
+
+    @Test
+    void aWhisperedYesOpensTheOfferAndANoClosesIt() {
+        guestOfAnn(mira);
+        offerMade();
+        ResidentDialogue dialogue = new ResidentDialogue(game.world);
+
+        assertTrue(dialogue.onWhisper(game.ann, "Mira", "sure!"));
+        Talk terms = lastTalk();
+        assertEquals(ACCEPT_DECLINE, terms.msgType());
+        assertTrue(terms.text().startsWith("this was fun. want me to stick around?"), terms.text());
+        LivingTalk.forget(game.ann);
+
+        assertTrue(dialogue.onWhisper(game.ann, "Mira", "no thanks"));
+        verify(game.residents).whisper(any(), eq(game.ann), eq("no worries. i'll be around."));
+        assertNull(offers.pending(ANN, MIRA));
+        assertTrue(game.store.events(HiredHands.EVENT_OFFER).contains(ANN + " " + HIRE + " hire.offer declined"));
+        assertFalse(dialogue.onWhisper(game.ann, "Mira", "sure"), "no open offer: an ordinary whisper");
     }
 
     // ---- the hire list (plan "Citizen guest": an open offer stays reachable from the hire list) ----

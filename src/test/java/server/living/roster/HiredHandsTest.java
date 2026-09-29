@@ -4,6 +4,7 @@ import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import server.agents.auth.AgentClaimGuard;
@@ -42,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -52,6 +54,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -97,6 +100,10 @@ class HiredHandsTest {
         when(population.citizen(anyInt())).thenAnswer(inv -> citizens.get((int) inv.getArgument(0)));
         doAnswer(inv -> citizens.put(((Citizen) inv.getArgument(0)).characterId(), inv.getArgument(0)))
                 .when(population).save(any());
+        when(population.setHired(anyInt(), anyBoolean())).thenAnswer(inv -> citizens.computeIfPresent(inv.getArgument(0),
+                (id, citizen) -> inv.<Boolean>getArgument(1) ? citizen.withFlag(Citizen.FLAG_HIRED)
+                        : citizen.withoutFlag(Citizen.FLAG_HIRED)));
+        when(population.citizens()).thenAnswer(inv -> List.copyOf(citizens.values()));
         when(population.presence()).thenReturn(presence);
         when(presence.handOver(anyInt(), anyBoolean(), anyString())).thenAnswer(inv -> {
             int id = inv.getArgument(0);
@@ -135,6 +142,14 @@ class HiredHandsTest {
             purse[0] += (int) inv.getArgument(0);
             return null;
         }).when(game.ann).gainMeso(anyInt(), anyBoolean());
+        when(game.ann.tryPayMeso(anyInt(), anyBoolean())).thenAnswer(inv -> {
+            int fee = inv.getArgument(0);
+            if (purse[0] < fee) {
+                return false;
+            }
+            purse[0] -= fee;
+            return true;
+        });
         game.roster().installHiredHandRelease(hands::onReleased);
     }
 
@@ -198,7 +213,8 @@ class HiredHandsTest {
         HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
 
         assertTrue(outcome.hired(), outcome.toString());
-        assertEquals("deal. let's go.", outcome.line());
+        assertEquals("", outcome.line(), "its deal was said as the fee was paid");
+        verify(game.residents).whisper(argThat(persona -> HIRE.equals(persona.id())), eq(game.ann), eq("deal. let's go."));
         assertEquals(RosterState.ACTIVE, game.store.row(ANN, HIRE).state());
         assertEquals(List.of("stop Mira", "register Mira", "follow Mira"), game.calls,
                 "no despawn, no spawn, no leave or join: only the runtime moves to Ann");
@@ -327,7 +343,9 @@ class HiredHandsTest {
 
             inventory.verify(() -> client.inventory.manipulator.InventoryManipulator.addById(any(), eq(2430011), eq((short) 1)));
         }
-        verify(game.residents).whisper(argThat(persona -> HIRE.equals(persona.id())), eq(game.ann),
+        InOrder said = inOrder(game.residents);
+        said.verify(game.residents).whisper(argThat(persona -> HIRE.equals(persona.id())), eq(game.ann), eq("deal. let's go."));
+        said.verify(game.residents).whisper(argThat(persona -> HIRE.equals(persona.id())), eq(game.ann),
                 eq("double-click me or the book to manage the crew."));
     }
 
@@ -444,6 +462,110 @@ class HiredHandsTest {
         assertEquals(List.of(ANN + " " + HIRE + " roster.release owner deleted"), game.store.events("roster.release"));
         assertEquals(List.of(), game.store.events("resident.released"));
     }
+
+    // ---- review regressions ------------------------------------------------------------------------
+
+    @Test
+    void aGuestWhoseSessionEndsBeforeTheHandOverIsCalledAfreshNotRegisteredStale() {
+        miraIsAnnsGuest();
+        when(presence.handOver(anyInt(), anyBoolean(), anyString())).thenAnswer(inv -> {
+            game.loaded.remove(MIRA); // the sweep logged her off between the claim and the hand-over
+            game.members.remove((Integer) MIRA);
+            citizens.computeIfPresent(MIRA, (id, citizen) -> citizen.withFlag(Citizen.FLAG_HIRED));
+            handOvers.add(MIRA + " " + inv.getArgument(1));
+            return false;
+        });
+
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+
+        assertTrue(outcome.hired(), outcome.toString());
+        assertFalse(game.calls.contains("register Mira"), "her logged-off character is never registered under Ann: " + game.calls);
+        assertTrue(game.calls.stream().anyMatch(call -> call.startsWith("spawn Mira at ")), "loaded afresh: " + game.calls);
+        assertNull(game.slots.reservation(CompanionSlots.characterKey(MIRA)), "her guest seat went back");
+        assertNotNull(game.store.row(ANN, HIRE), "hired all the same");
+        assertEquals(70_000, purse[0]);
+    }
+
+    @Test
+    void aPartylessCitizenBesideItsNewOwnerJoinsAsAGuestAndIsAdoptedWithoutABlink() {
+        game.standsBesideAnn(mira); // hired from the list: beside Ann, in no party
+        game.parties.when(() -> net.server.world.Party.joinParty(eq(mira), eq(LifecycleHarness.PARTY_ID), eq(false)))
+                .thenAnswer(inv -> game.members.add(MIRA));
+
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+
+        assertTrue(outcome.hired(), outcome.toString());
+        assertEquals(List.of(MIRA + " true"), handOvers, "her population life ends without a logout");
+        assertEquals(List.of("stop Mira", "register Mira", "follow Mira"), game.calls, "no pop-out, no walk-in from a portal");
+        assertEquals(RosterState.ACTIVE, game.store.row(ANN, HIRE).state());
+        assertTrue(game.members.contains(MIRA));
+        assertNull(game.slots.reservation(CompanionSlots.characterKey(MIRA)), "the guest seat became her companion seat");
+        verify(presence, never()).logout(any(), anyString());
+    }
+
+    @Test
+    void aCitizenBesideItsNewOwnerWithNoSeatForItWalksOutToCampInsteadOfVanishing() {
+        game.standsBesideAnn(mira);
+        for (int member = 1; member < CompanionSlots.PARTY_CAP; member++) {
+            game.members.add(9000 + member); // Ann's party is full
+        }
+        assertEquals(0, game.slots.free(game.ann));
+
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+
+        assertTrue(outcome.hired(), outcome.toString());
+        assertEquals(List.of(MIRA + " true"), handOvers, "not logged off where she stands");
+        assertEquals(RosterState.BENCHED, game.store.row(ANN, HIRE).state());
+        assertTrue(game.calls.stream().anyMatch(call -> call.startsWith("walk Mira to ")), game.calls.toString());
+        assertFalse(game.calls.contains("remove Mira"), "still walking to the portal");
+        game.runTimers();
+        assertTrue(game.calls.contains("remove Mira"), "gone at the portal: " + game.calls);
+        assertTrue(game.calls.stream().noneMatch(call -> call.startsWith("spawn")), game.calls.toString());
+    }
+
+    @Test
+    void theRosterRowsAreTheTruthForTheHiredFlag() {
+        citizens.put(951, citizen(951, "Tobi").withFlag(Citizen.FLAG_HIRED)); // flagged, but no row employs him
+        game.store.seed(new RosterEntry(ANN, HIRE, RosterState.BENCHED, server.living.store.LivingStore.Assignment.TRAIN, 0, 0,
+                KERNING, 0L, 0L, 0L, 1_000L, 1_000L, 1_000L, 0, null)); // Mira's row, whose flag never reached the table
+        game.roster();
+
+        assertEquals(2, hands.reconcileFlags());
+
+        assertFalse(citizens.get(951).hired(), "Tobi is the population's again");
+        assertEquals(List.of(MIRA + " false"), handOvers, "Mira is flagged and any population session of hers ends");
+        assertTrue(citizens.get(MIRA).hired());
+        assertEquals(2, game.store.events("companion.drift").size());
+        assertEquals(0, hands.reconcileFlags(), "nothing left to repair");
+    }
+
+    @Test
+    void noHireIsMadeMidRun() {
+        miraIsAnnsGuest();
+        game.annEntersInstance(KERNING);
+
+        HiredHands.Outcome outcome = hands.hire(game.ann, MIRA, hands.terms(MIRA));
+
+        assertEquals(HiredHands.Result.BUSY, outcome.result());
+        assertEquals("after the run.", outcome.line());
+        assertEquals(100_000, purse[0]);
+        assertNull(game.store.row(ANN, HIRE));
+        assertEquals(List.of(), handOvers);
+    }
+
+    @Test
+    void aFailureAfterTheFeeGivesExactlyTheFeeBack() {
+        miraIsAnnsGuest();
+        when(game.residents.ensureCharacter(argThat(persona -> persona != null && HIRE.equals(persona.id()))))
+                .thenThrow(new IllegalStateException("a database hiccup"));
+
+        assertThrows(IllegalStateException.class, () -> hands.hire(game.ann, MIRA, hands.terms(MIRA)));
+
+        assertEquals(100_000, purse[0]);
+        assertNull(game.store.row(ANN, HIRE));
+        assertFalse(citizens.get(MIRA).hired());
+    }
+
 
     // ---- helpers ----------------------------------------------------------------------------------
 

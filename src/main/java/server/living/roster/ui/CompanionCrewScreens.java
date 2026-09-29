@@ -28,6 +28,7 @@ import server.living.roster.RosterVoice;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapFactory;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -65,8 +66,10 @@ final class CompanionCrewScreens {
     static final List<Assignment> BENCH_DUTIES = List.of(Assignment.TRAIN, Assignment.FARM_MESO, Assignment.GATHER,
             Assignment.SELL, Assignment.STALL, Assignment.REST);
 
-    /** The hire list with nobody on it (decision 4 b): this line, and Back. */
+    /** The hire list with nobody on it (decision 4 b): this line, and Back; in a companion's voice, and in the notes. */
     static final String NOBODY_LOOKING = "nobody you've met is looking for a crew right now. party up with folks around town.";
+    static final String NOBODY_LOOKING_NOTES =
+            "Nobody I've met is looking for a crew right now. I could party up with folks around town.";
 
     private final CompanionMenus menus;
     private final LivingWorld world;
@@ -280,7 +283,7 @@ final class CompanionCrewScreens {
         if (population != null) {
             Set<Integer> listed = new HashSet<>();
             for (int characterId : pendingHireOffers.apply(owner)) {
-                Candidate offer = lookingFor(owner, population, characterId, 0, -1, 0);
+                Candidate offer = lookingFor(owner, population, characterId, 0, -1, 0, null);
                 if (offer != null && listed.add(characterId)) {
                     options.add(hireRow(owner, from, offer, HireScreens.Context.OFFER));
                 }
@@ -290,7 +293,7 @@ final class CompanionCrewScreens {
                 // time together weighs a partied minute twice, as SocialFabric's buddy and guild asks do
                 Candidate candidate = listed.contains(acquaintance.characterId()) ? null : lookingFor(owner, population,
                         acquaintance.characterId(), acquaintance.level(), acquaintance.job(),
-                        acquaintance.mapMinutes() + acquaintance.partyMinutes() * 2);
+                        acquaintance.mapMinutes() + acquaintance.partyMinutes() * 2, acquaintance);
                 if (candidate != null) {
                     met.add(candidate);
                 }
@@ -303,14 +306,16 @@ final class CompanionCrewScreens {
             }
         }
         String top = note.isEmpty() ? "" : note + "\r\n\r\n";
-        talk(owner, from).menu(top + (options.isEmpty() ? NOBODY_LOOKING : "#eAdventurers looking for a crew#n"), options)
+        talk(owner, from).menu(top + (options.isEmpty() ? voice(from, NOBODY_LOOKING_NOTES, NOBODY_LOOKING)
+                        : "#eAdventurers looking for a crew#n"), options)
                 .back(() -> render(owner, from, ""))
                 .show();
     }
 
     /**
-     * A hire list row: it opens the citizen's terms, unless it stopped looking since the page was drawn (hired, partied
-     * up, gone, out of level range): then the page renders again, read afresh, with "Things changed meanwhile." on top.
+     * A hire list row: it opens the citizen's terms (Decline brings the list back), unless it stopped looking since the
+     * page was drawn (hired, partied up, gone, out of level range): then the page renders again, read afresh, with
+     * "Things changed meanwhile." on top.
      */
     private Option hireRow(Character owner, Persona from, Candidate listed, HireScreens.Context context) {
         String job = CompanionView.jobName(listed.job());
@@ -319,21 +324,25 @@ final class CompanionCrewScreens {
                 + (context == HireScreens.Context.OFFER ? " (offered to stay)" : "");
         return new Option(label, () -> {
             Population population = Population.get();
-            if (population == null || lookingFor(owner, population, listed.characterId(), listed.level(), listed.job(), 0) == null) {
+            if (population == null || lookingFor(owner, population, listed.characterId(), listed.level(), listed.job(), 0,
+                    null) == null) {
                 hireList(owner, from, THINGS_CHANGED);
                 return;
             }
-            new HireScreens(world).terms(owner, listed.characterId(), context);
+            new HireScreens(world).terms(owner, listed.characterId(), context, () -> hireList(owner, from));
         });
     }
 
     /**
      * The citizen as a hire list row when it is looking for a crew for the owner, else null: still in the population, hired
-     * by nobody, partied up with nobody but the owner (nor another human's guest in the owner's party), and within the
-     * P2a invite level gap of the owner (CitizenInviteDecision). A loaded one is listed where it stands, at its live level
-     * and job; {@code level} and {@code job} are its characters row's otherwise (read here when unknown: a pending offer's).
+     * by nobody, partied up with nobody but the owner (nor another human's guest in the owner's party), within the P2a
+     * invite level gap of the owner, and willing by its temperament (CitizenInviteDecision.welcomes, from {@code met}: a
+     * reserved citizen takes no stranger's job, as it takes no stranger's invite; a pending offer, {@code met} null, is
+     * its own yes). A loaded one is listed where it stands, at its live level and job, an offline one by its home town;
+     * {@code level} and {@code job} are its characters row's otherwise (read here when unknown: a pending offer's).
      */
-    private Candidate lookingFor(Character owner, Population population, int characterId, int level, int job, int together) {
+    private Candidate lookingFor(Character owner, Population population, int characterId, int level, int job, int together,
+                                 CitizenStore.Met met) {
         Citizen citizen = population.citizen(characterId);
         if (citizen == null || citizen.state() != Citizen.State.ACTIVE || citizen.hired()
                 || world.roster().cachedOwnerOf(HiredHands.hireId(characterId)) != 0) {
@@ -352,17 +361,30 @@ final class CompanionCrewScreens {
             job = live.getJob() == null ? job : live.getJob().getId();
             String map = live.getMap() == null ? null : live.getMap().getMapName();
             where = map == null || map.isEmpty() ? null : map;
-        } else if (level <= 0) {
-            int[] known = world.store().characterLevelAndJob(characterId);
-            level = known[0];
-            job = known[1];
+        } else {
+            where = usuallyAround(population, citizen);
+            if (level <= 0) {
+                int[] known = world.store().characterLevelAndJob(characterId);
+                level = known[0];
+                job = known[1];
+            }
         }
         if (level <= 0 || CitizenInviteDecision.decide(owner.getLevel(), level,
                 YamlConfig.config.server.EXP_SPLIT_LEECH_INTERVAL, false) != CitizenInviteDecision.Answer.ACCEPT) {
             return null;
         }
-        return new Candidate(characterId, citizen.name(), level, job, where,
-                owner.getBuddylist().containsVisible(characterId), together);
+        boolean buddy = owner.getBuddylist().containsVisible(characterId);
+        if (met != null && !CitizenInviteDecision.welcomes(citizen, owner, met.partyMinutes(), met.mapMinutes(), buddy)) {
+            return null;
+        }
+        return new Candidate(characterId, citizen.name(), level, job, where, buddy, together);
+    }
+
+    /** "usually around Kerning City": an offline citizen's home town by the game's name for it; null when unknown. */
+    private static String usuallyAround(Population population, Citizen citizen) {
+        int town = population.fields().homeTown(citizen, null);
+        String name = town <= 0 ? "" : MapFactory.loadPlaceName(town);
+        return name == null || name.isEmpty() ? null : "usually around " + name;
     }
 
     // ---- acting ----------------------------------------------------------------------------------

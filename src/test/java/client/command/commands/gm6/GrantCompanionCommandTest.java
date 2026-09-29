@@ -150,23 +150,36 @@ class GrantCompanionCommandTest {
     }
 
     @Test
-    void refusesHiredCitizenIdsUntilP4() {
-        when(content.persona("hire:123")).thenReturn(OLWEN); // even once HiredHands resolves them
+    void neverGrantsAHiredCitizenId() {
+        when(content.persona("hire:123")).thenReturn(OLWEN); // HiredHands resolves them: a grant would skip the hand-over
 
         run("hire:123");
 
         verify(roster, never()).grant(any(), any());
-        verify(gm).yellowMessage("Hired citizens cannot be granted yet (P4).");
+        verify(gm).yellowMessage("Hire citizens through the Crew window.");
     }
 
     @Test
-    void refusesCitizensUntilP4() {
+    void neverGrantsACitizen() {
         when(population.citizenByName("Mirabel")).thenReturn(mock(Citizen.class));
 
         run("Mirabel");
 
         verify(roster, never()).grant(any(), any());
-        verify(gm).yellowMessage("'Mirabel' is a citizen; citizens cannot be granted yet (P4).");
+        verify(gm).yellowMessage("'Mirabel' is a citizen; hire citizens through the Crew window.");
+    }
+
+    @Test
+    void releasesAHiredCitizenThroughTheRosterRelease() {
+        Persona mira = persona("hire:123", "Mira");
+        when(content.persona("hire:123")).thenReturn(mira); // the installed hire resolver's answer
+        when(roster.ownerOf("hire:123")).thenReturn(2);
+        when(roster.onlineCharacter(2)).thenReturn(friend);
+
+        run("release", "hire:123");
+
+        verify(roster).release(friend, mira, "gm release");
+        verify(gm).yellowMessage("Reluctant: released");
     }
 
     @Test

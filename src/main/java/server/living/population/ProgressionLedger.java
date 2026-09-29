@@ -81,12 +81,17 @@ public final class ProgressionLedger {
             }
             int target = levelTarget(citizen, now);
             int[] progress = population.store().characterProgress(citizen.characterId());
+            Citizen current = population.citizen(citizen.characterId()); // hired since the list was made: hands off
+            if (current == null || current.hired()) {
+                continue;
+            }
             if (progress[0] > 0 && progress[0] < target) {
                 bumpLevel(citizen.characterId(), target);
                 touched++;
             }
-            if (citizen.lastLedgerAtMs() < now - 6 * 3_600_000L) {
-                population.save(citizen.withLedger(now, citizen.accruedExp(), citizen.scheduledMinutes()));
+            if (current.lastLedgerAtMs() < now - 6 * 3_600_000L) {
+                population.update(citizen.characterId(), latest -> latest.hired() ? latest
+                        : latest.withLedger(now, latest.accruedExp(), latest.scheduledMinutes()));
             }
         }
         if (touched > 0) {

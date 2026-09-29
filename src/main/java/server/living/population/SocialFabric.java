@@ -160,8 +160,9 @@ public final class SocialFabric {
                     name = candidate;
                 }
             }
-            if (name == null) {
-                return;
+            Citizen founder = population.citizen(leader.characterId());
+            if (name == null || founder == null || founder.hired()) {
+                return; // hired since it was picked: a companion founds no guild
             }
             int guildId = Guild.createGuild(leader.characterId(), name);
             if (guildId <= 0) {
@@ -181,7 +182,7 @@ public final class SocialFabric {
                     leaderLevel + GUILD_LEVEL_SPREAD, motto, leader.cohort());
             population.store().saveGuild(meta);
             guilds.put(guildId, meta);
-            population.save(leader.withGuild(guildId).withFlag(Citizen.FLAG_RECRUITER));
+            population.update(leader.characterId(), current -> current.withGuild(guildId).withFlag(Citizen.FLAG_RECRUITER));
             log.info("bot guild '{}' ({}) founded by {} lv{}", name, guildId, leader.name(), leaderLevel);
         }
     }
@@ -231,8 +232,12 @@ public final class SocialFabric {
     }
 
     private void join(Citizen citizen, int guildId) {
+        Citizen current = population.citizen(citizen.characterId());
+        if (current == null || current.hired()) {
+            return; // hired since the list was made: its guild is its own business now
+        }
         population.store().setGuild(citizen.characterId(), guildId, 5);
-        population.save(citizen.withGuild(guildId));
+        population.update(citizen.characterId(), latest -> latest.withGuild(guildId));
         Guild guild = Server.getInstance().getGuild(guildId);
         if (guild != null && guild.getMGC(citizen.characterId()) == null) {
             int[] progress = population.store().characterProgress(citizen.characterId());
@@ -361,15 +366,22 @@ public final class SocialFabric {
                 if (circleId <= 0) {
                     return;
                 }
+                List<Citizen> joined = new ArrayList<>();
                 for (Citizen member : members) {
-                    population.save(member.withCircle(circleId));
-                    for (Citizen other : members) {
+                    Citizen now = population.update(member.characterId(), current -> current.hired() ? current
+                            : current.withCircle(circleId));
+                    if (now != null && now.circleId() == circleId) {
+                        joined.add(now); // one hired since the pool was made keeps out of circles
+                    }
+                }
+                for (Citizen member : joined) {
+                    for (Citizen other : joined) {
                         if (other.characterId() < member.characterId()) {
                             population.store().addBuddyPair(member.characterId(), other.characterId());
                         }
                     }
                 }
-                log.info("circle {} formed: {}", circleId, members.stream().map(Citizen::name).toList());
+                log.info("circle {} formed: {}", circleId, joined.stream().map(Citizen::name).toList());
             }
         }
     }

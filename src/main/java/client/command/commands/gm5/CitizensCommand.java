@@ -113,8 +113,8 @@ public class CitizensCommand extends Command {
                         gm.yellowMessage("No citizen named " + params[1]);
                         return;
                     }
-                    population.churn().retire(citizen, "retired by " + gm.getName());
-                    gm.yellowMessage(citizen.name() + " retired.");
+                    gm.yellowMessage(population.churn().retire(citizen, "retired by " + gm.getName())
+                            ? citizen.name() + " retired." : citizen.name() + " works for someone; release them first.");
                 }
                 case "force" -> {
                     int count = params.length > 1 ? Integer.parseInt(params[1]) : 0;
@@ -150,9 +150,9 @@ public class CitizensCommand extends Command {
                     }
                     int retired = 0;
                     for (Citizen citizen : List.copyOf(population.citizens())) {
-                        if (citizen.state() == Citizen.State.ACTIVE) {
-                            population.churn().retire(citizen, "purged by " + gm.getName());
-                            retired++;
+                        if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired()
+                                && population.churn().retire(citizen, "purged by " + gm.getName())) {
+                            retired++; // a hired hand works for a friend: it stays
                         }
                     }
                     gm.yellowMessage("Retired " + retired + " citizens; seeding resumes on the next sweep.");

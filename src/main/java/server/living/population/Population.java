@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
+import java.util.function.UnaryOperator;
 
 /**
  * Composition root of the populated server (docs/POPULATED_SERVER_PLAN.md): citizens with lives.
@@ -250,10 +251,46 @@ public final class Population {
         return registry.containsKey(characterId);
     }
 
-    /** Writes through to the store and the in-memory registry. */
+    /**
+     * Writes through to the store and the in-memory registry. The hired bit is {@link #setHired}'s alone: a copy taken
+     * before a hire (or a release) keeps the registry's current bit, so no ordinary save flips it.
+     */
     public void save(Citizen citizen) {
-        registry.put(citizen.characterId(), citizen);
+        registry.compute(citizen.characterId(), (id, current) -> persist(keepHired(current, citizen)));
+    }
+
+    /**
+     * Applies {@code change} to the citizen's current record (never to a copy taken earlier) and writes the result
+     * through; returning the record unchanged writes nothing. The hired bit stays as it is. The current record after
+     * the change, or null when the citizen is not in the registry.
+     */
+    public Citizen update(int characterId, UnaryOperator<Citizen> change) {
+        return registry.computeIfPresent(characterId, (id, current) -> {
+            Citizen next = change.apply(current);
+            return next == null || next == current ? current : persist(keepHired(current, next));
+        });
+    }
+
+    /**
+     * The one writer of {@link Citizen#FLAG_HIRED} (P4): a hand-over sets it, a release clears it, on the current
+     * record. The current record, or null when the citizen is not in the registry.
+     */
+    public Citizen setHired(int characterId, boolean hired) {
+        return registry.computeIfPresent(characterId, (id, current) -> current.hired() == hired ? current
+                : persist(hired ? current.withFlag(Citizen.FLAG_HIRED) : current.withoutFlag(Citizen.FLAG_HIRED)));
+    }
+
+    private static Citizen keepHired(Citizen current, Citizen next) {
+        if (current == null || current.hired() == next.hired()) {
+            return next;
+        }
+        return current.hired() ? next.withFlag(Citizen.FLAG_HIRED) : next.withoutFlag(Citizen.FLAG_HIRED);
+    }
+
+    /** The store write, inside the registry's compute so memory and the table get one citizen's writes in one order. */
+    private Citizen persist(Citizen citizen) {
         store.save(citizen);
+        return citizen;
     }
 
     public void forget(int characterId) {

@@ -22,7 +22,7 @@ import java.util.function.LongSupplier;
 
 /**
  * Party-time hire offers (docs/BOT_MANAGEMENT_PLAN.md P4, flow 9 step 4, "Citizen guest"): a citizen guest that has
- * spent {@code HIRE_OFFER_PARTY_MINUTES} in its host's party, counted while both are online and in that party, offers
+ * spent {@code HIRE_OFFER_PARTY_MINUTES} in its host's party, counted while both are online side by side in it, offers
  * to stay on when the host has room on their roster and under their hire cap, is not committed to a run, and the
  * citizen's temperament agrees ({@link CitizenInviteDecision#staysOn}). It whispers once in its own voice and the offer
  * stays open for 10 minutes: double-clicking the citizen (CompanionDirectory's HireOfferPending relation) or the hire
@@ -44,6 +44,8 @@ public final class HireOffers {
     /** The offer, in the citizen's voice; the hint after it stays as written. */
     static final String OFFER_LINE = "i like running with you. want me to stick around?";
     static final String OFFER_HINT = " double-click me";
+    /** A guest's no, said once a stint in its own voice, so its host is not left waiting for an offer. */
+    static final String NOT_YET_LINE = "this is fun. not looking for steady work yet though.";
 
     /** An open offer: the citizen's character and name, and when it was made and closes. */
     public record Offer(int ownerId, int citizenCharacterId, String name, long offeredAtMs, long expiresAtMs) { }
@@ -56,6 +58,8 @@ public final class HireOffers {
     private final Map<Long, Integer> minutes = new ConcurrentHashMap<>();
     /** (owner, citizen) -> until when the citizen does not ask that owner again. */
     private final Map<Long, Long> quietUntil = new ConcurrentHashMap<>();
+    /** (owner, citizen) pairs whose guest said no this stint already. */
+    private final Set<Long> saidNotYet = ConcurrentHashMap.newKeySet();
 
     public HireOffers(LivingWorld world) {
         this(world, System::currentTimeMillis);
@@ -141,7 +145,7 @@ public final class HireOffers {
             Character owner = world.roster().onlineCharacter(held.ownerId());
             Character guest = loaded(citizenId);
             if (!together(owner, guest)) {
-                continue; // counted only while both are online in one party
+                continue; // counted only while both are online in one party, side by side
             }
             int together = minutes.merge(pair, 1, Integer::sum);
             if (together >= world.config().HIRE_OFFER_PARTY_MINUTES) {
@@ -149,12 +153,14 @@ public final class HireOffers {
             }
         }
         minutes.keySet().retainAll(guests); // a guest that left the party starts over the next time
+        saidNotYet.retainAll(guests);
     }
 
     /**
      * The guest's time is up: it asks unless the owner has an offer open, it is keeping quiet with them, the owner is
      * committed to a run, or their roster or hire cap is full (then it asks once that changes); its temperament may say
-     * no, and it thinks about it again after another stint.
+     * no (once a stint, in its own words), and it thinks about it again after another stint's minutes, a little warmer
+     * for the time together.
      */
     private void maybeOffer(Population population, Character owner, Character guest, long pair, int together, long now) {
         int ownerId = owner.getId();
@@ -165,13 +171,16 @@ public final class HireOffers {
             return;
         }
         minutes.remove(pair);
-        if (!CitizenInviteDecision.staysOn(owner, guest, citizen)) {
-            return;
-        }
         HiredHands hands = world.hiredHands();
         String hireId = HiredHands.hireId(citizenId);
         Persona persona = hands == null ? null : hands.persona(hireId);
         if (persona == null) {
+            return;
+        }
+        if (!CitizenInviteDecision.staysOn(owner, guest, citizen)) {
+            if (saidNotYet.add(pair)) {
+                world.residents().whisper(persona, owner, hands.voice(citizenId, NOT_YET_LINE));
+            }
             return;
         }
         Offer offer = new Offer(ownerId, citizenId, citizen.name(), now, now + OPEN_MS);
@@ -207,9 +216,11 @@ public final class HireOffers {
         return rows.size() < world.config().ROSTER_MAX && hires < world.config().HIRE_MAX_PER_OWNER;
     }
 
+    /** One party, one channel and one map (as living_acquaintance's map minutes count): the time spent side by side. */
     private static boolean together(Character owner, Character guest) {
         return owner != null && guest != null && owner.getParty() != null && guest.getParty() != null
-                && owner.getParty().getId() == guest.getParty().getId();
+                && owner.getParty().getId() == guest.getParty().getId() && RosterService.sameChannel(owner, guest)
+                && owner.getMapId() == guest.getMapId();
     }
 
     private static Character loaded(int characterId) {

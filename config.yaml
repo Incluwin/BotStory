@@ -804,9 +804,10 @@ living_world:
     # Decision 17: companions in your party earn their own kill EXP, but your share is computed as if they were
     # absent, so a full crew never slows you down. false = the stock split shares every kill with them.
     COMPANION_EXP_SHARE: true
-    # Hired hands (P4): citizens one friend may hire (they count toward ROSTER_MAX, so at most that), and the
+    # Hired hands (P4): citizens one friend may hire. They count toward ROSTER_MAX, so at most that; the default is
+    # ROSTER_MAX, so a friend without Residents can still fill a party and a bench from the hire list. Then the
     # minutes a citizen guest spends in your party before it offers to stay on.
-    HIRE_MAX_PER_OWNER: 5
+    HIRE_MAX_PER_OWNER: 10
     HIRE_OFFER_PARTY_MINUTES: 10
     # Minutes a citizen whose offer to stay on was declined, or went unanswered for 10 minutes, waits before it asks
     # that friend again (kept in memory; a restart forgets it).

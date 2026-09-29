@@ -57,6 +57,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BooleanSupplier;
 
 /**
  * A player's recruited companions: who is active in the party, who is benched at a camp, slot
@@ -83,6 +84,8 @@ public final class RosterService {
     static final String GOODBYE_LINE = "gn!";
     /** The login whisper names this many companions and counts the rest. */
     static final int SUMMARY_NAMES = 3;
+    /** Event log kind: the owner was told who went home while they were away (the rows before it are told). */
+    static final String AWAY_TOLD_EVENT = "roster.away_told";
     /** The persona id prefix of a hired citizen's roster row ({@code hire:<characterId>}, P4). */
     public static final String HIRE_PREFIX = LivingContent.HIRE_PREFIX;
 
@@ -347,12 +350,15 @@ public final class RosterService {
     /**
      * A hired citizen joins the owner's roster (P4, HiredHands.hire), on companion-ops. Like {@link #recruit} it counts
      * toward ROSTER_MAX and hands over the Adventurer's Roster with the owner's first companion; its persona state names
-     * its own character, and it camps at {@code campMapId}, where it is. {@code handOver} ends its population life.
-     * {@code guest}: its character when it is loaded and in the owner's party (their guest), adopted where it stands
-     * ({@link #adopt}); else it is called like a benched companion (join-then-travel from its camp), or waits there
-     * while the party is full. A guest leased or led by anyone else is refused before anything changes (Busy).
+     * its own character, and it camps at {@code campMapId}, where it is. {@code handOver} ends its population life and
+     * says whether it had a loaded session to end. {@code inPlace}: its loaded character, taken where it stands
+     * ({@link #adopt}): {@code seated}, it is in the owner's party (their guest) and becomes their companion there; else
+     * it walks out to the nearest portal to wait at camp (no seat for it). With no {@code inPlace} it is called like a
+     * benched companion (join-then-travel from its camp), or waits there while the party is full or it cannot come yet.
+     * One leased or led by anyone else is refused before anything changes (Busy).
      */
-    public RosterResult recruitHire(Character owner, Persona persona, int campMapId, Character guest, Runnable handOver) {
+    public RosterResult recruitHire(Character owner, Persona persona, int campMapId, Character inPlace, boolean seated,
+                                    BooleanSupplier handOver) {
         if (isOwned(persona.id())) {
             int current = ownerOf(persona.id());
             return current == owner.getId() ? new RosterResult.Ok(persona.name() + " is already yours.")
@@ -366,19 +372,17 @@ public final class RosterService {
         if (characterId == 0) {
             return new RosterResult.Failed(persona.name() + " cannot be reached right now.");
         }
-        if (guest != null && !claimInPlace(owner, characterId)) {
+        if (inPlace != null && !claimInPlace(owner, characterId)) {
             return new RosterResult.Busy();
         }
         world.store().savePersonaState(world.store().personaState(persona.id()).withCharacter(characterId));
         RosterEntry entry = enroll(owner, persona, "roster.recruit", campMapId);
         RosterResult result;
-        if (guest != null) {
-            result = adopt(owner, persona, entry, guest, handOver);
+        if (inPlace != null) {
+            result = adopt(owner, persona, entry, inPlace, seated, handOver);
         } else {
-            handOver.run();
-            result = freeSlots(owner) <= 0
-                    ? new RosterResult.Ok(persona.name() + " joins your roster but your party is full; call them when there is room.")
-                    : call(owner, persona);
+            handOver.getAsBoolean();
+            result = callHire(owner, persona);
         }
         if (rostered == 0 && world.store().rosterEntry(owner.getId(), persona.id()) != null) {
             handOverRosterBook(owner, persona);
@@ -402,21 +406,34 @@ public final class RosterService {
      * its population life ends without an unload ({@code handOver}), its runtime moves to the owner by the leader-transfer
      * path (AgentTransferService: stop it, register it under the new leader, which replaces the population's entry and
      * its tick), its GUEST seat becomes its companion seat without it leaving the party (no stock "left the party"), and
-     * it follows. Refused by the guard, nothing has changed: its lease goes back and the row is dropped.
+     * it follows. Not {@code seated} (no seat for it on the owner's map), it walks out to the nearest portal instead and
+     * waits at camp. Refused by the guard, nothing has changed: its lease goes back and the row is dropped. Its session
+     * ended before the hand-over (logged off, or loaded afresh by anything else): the stale character is never
+     * registered; its lease and guest seat go back and it is called like any benched hire.
      */
-    private RosterResult adopt(Character owner, Persona persona, RosterEntry entry, Character bot, Runnable handOver) {
+    private RosterResult adopt(Character owner, Persona persona, RosterEntry entry, Character bot, boolean seated,
+                               BooleanSupplier handOver) {
         int characterId = bot.getId();
         if (!AgentClaimGuard.mayLoad(owner, characterId)) {
             world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
             dropRow(entry);
             return new RosterResult.Busy();
         }
-        handOver.run();
+        boolean handedOver = handOver.getAsBoolean();
         AgentRuntimeEntry before = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
-        if (before != null) {
-            AgentMovementCommandRuntime.stop(before);
+        if (!handedOver || before == null || AgentRuntimeIdentityRuntime.bot(before) != bot) {
+            world.leases().release(characterId, CompanionLeases.Kind.COMPANION);
+            world.slots().release(CompanionSlots.characterKey(characterId), CompanionSlots.Kind.GUEST);
+            log.info("hire {} of {}: its session ended before the hand-over; called instead", persona.id(), owner.getName());
+            return callHire(owner, persona);
         }
+        AgentMovementCommandRuntime.stop(before);
         AgentInteractionRuntime.registerAgent(owner.getId(), owner, bot);
+        if (!seated) {
+            walkOut(owner, current(entry)); // benched where it stood: no pop-out, it leaves by the nearest portal
+            world.store().event(owner.getId(), persona.id(), "roster.bench", "walked out to camp where it stood");
+            return new RosterResult.Ok(persona.name() + " joins your roster but your party is full; call them when there is room.");
+        }
         world.slots().release(CompanionSlots.characterKey(characterId), CompanionSlots.Kind.GUEST);
         write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()));
         walkToOwner(persona, bot);
@@ -424,6 +441,19 @@ public final class RosterService {
         world.store().event(owner.getId(), persona.id(), "roster.call", "adopted where it stands");
         rememberFirstLineup(owner);
         return new RosterResult.Ok(persona.name() + " joins your crew.");
+    }
+
+    /**
+     * A hire not taken where it stands: it waits at camp while the party is full, else it is called. A call that cannot
+     * come now (busy, the budget) still leaves it hired, waiting at camp.
+     */
+    private RosterResult callHire(Character owner, Persona persona) {
+        if (freeSlots(owner) <= 0) {
+            return new RosterResult.Ok(persona.name() + " joins your roster but your party is full; call them when there is room.");
+        }
+        RosterResult called = call(owner, persona);
+        return called.ok() ? called
+                : new RosterResult.Ok(persona.name() + " joins your crew and waits at camp; call them when there's room.");
     }
 
     /**
@@ -610,8 +640,7 @@ public final class RosterService {
                 }
                 continue;
             }
-            letGo(entry, "owner deleted"); // a hire whose character is gone, or a persona the content no longer has
-            world.store().event(ownerId, entry.personaId(), "roster.release", "owner deleted");
+            releaseRow(entry, "owner deleted"); // a hire whose character is gone, or a persona the content no longer has
         }
         for (CompanionSlots.Reservation held : world.slots().reservations(ownerId)) {
             world.slots().release(held.key()); // guests charged to them
@@ -625,6 +654,15 @@ public final class RosterService {
         goodbyeSaid.remove(ownerId);
         channelFollow.forget(ownerId);
         portalFollow.forget(ownerId);
+    }
+
+    /**
+     * The release of a row whose persona resolves to nothing (a hire whose character is gone, or a persona the content no
+     * longer has): the roster's part of it, and roster.release. Owner deletion and the inactivity sweep use it.
+     */
+    void releaseRow(RosterEntry entry, String reason) {
+        letGo(entry, reason);
+        world.store().event(entry.characterId(), entry.personaId(), "roster.release", reason);
     }
 
     /** P4 seam: what a released hired citizen does besides leaving the roster (clear employed_by and its hired flag). */
@@ -1821,6 +1859,38 @@ public final class RosterService {
             }
         }
         parkedParty.remove(ownerId);
+        tellAwayReleases(owner);
+    }
+
+    /**
+     * A friend back from RESIDENT_OWNER_INACTIVE_DAYS away hears once, in pink, who went home meanwhile (the allocation
+     * sweep's roster.release "owner inactive"): "While you were away, Hadrik went home to Lith Harbor."
+     */
+    private void tellAwayReleases(Character owner) {
+        if (AgentPresence.isAgent(owner)) {
+            return;
+        }
+        List<String> gone = world.store().untoldEvents(owner.getId(), "roster.release", ResidentAllocation.AWAY_REASON,
+                AWAY_TOLD_EVENT);
+        if (gone.isEmpty()) {
+            return;
+        }
+        world.store().event(owner.getId(), null, AWAY_TOLD_EVENT, gone.size() + " let go while away");
+        List<Persona> went = new ArrayList<>();
+        for (String personaId : gone) {
+            Persona persona = personaId == null ? null : world.content().persona(personaId);
+            if (persona != null && went.stream().noneMatch(known -> known.id().equals(persona.id()))) {
+                went.add(persona);
+            }
+        }
+        if (went.size() == 1) {
+            owner.dropMessage(5, "While you were away, " + went.get(0).name() + " went home to "
+                    + townName(went.get(0).homeTown()) + ".");
+        } else if (!went.isEmpty()) {
+            List<String> names = went.stream().map(Persona::name).toList();
+            owner.dropMessage(5, "While you were away, " + String.join(", ", names.subList(0, names.size() - 1)) + " and "
+                    + names.get(names.size() - 1) + " went home.");
+        }
     }
 
     /**

@@ -20,11 +20,14 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRequest;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
+import server.living.LivingWorld;
+import server.living.config.LivingContent;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Cohort;
 import server.living.population.PopulationContent.Field;
 import server.living.population.PopulationContent.Lobby;
 import server.living.resident.ResidentSpots;
+import server.living.roster.RosterService;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -140,7 +143,8 @@ public final class PresenceScheduler {
             int loaded = loadedCount();
             List<Citizen> offline = new ArrayList<>();
             for (Citizen citizen : population.citizens()) {
-                if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired() && !sessions.containsKey(citizen.characterId())) {
+                if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired() && !sessions.containsKey(citizen.characterId())
+                        && !rostered(citizen.characterId())) {
                     offline.add(citizen); // a hired hand is the roster's: never logged in here, at boot or after
                 }
             }
@@ -225,8 +229,8 @@ public final class PresenceScheduler {
             return false;
         }
         int existing = citizen.characterId();
-        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(existing)) {
-            return false; // a Resident, companion or bench session already owns this character
+        if (AgentRuntimeRegistry.hasActiveAgentCharacterId(existing) || rostered(existing)) {
+            return false; // a Resident, companion or bench session already owns this character, or a roster employs it
         }
         try {
             Point arrival = ResidentSpots.fallback(map, citizen.characterId());
@@ -314,10 +318,7 @@ public final class PresenceScheduler {
      * so a sweep never sees it half handed over. True when it had a loaded session.
      */
     public synchronized boolean handOver(int characterId, boolean keepLoaded, String reason) {
-        Citizen citizen = population.citizen(characterId);
-        if (citizen != null && !citizen.hired()) {
-            population.save(citizen.withFlag(Citizen.FLAG_HIRED));
-        }
+        population.setHired(characterId, true);
         CitizenSession session = sessions.get(characterId);
         if (session == null) {
             return false;
@@ -344,6 +345,16 @@ public final class PresenceScheduler {
         book(session);
         log.info("citizen {} handed over, still online: {}", session.name(), reason);
         return loaded;
+    }
+
+    /**
+     * True while some owner's roster has a {@code hire:<characterId>} row (P4): the roster is the truth, so even a
+     * citizen whose hired flag was lost is never logged in or loaded here.
+     */
+    private boolean rostered(int characterId) {
+        LivingWorld world = population.world();
+        RosterService roster = world == null ? null : world.roster();
+        return roster != null && roster.cachedOwnerOf(LivingContent.HIRE_PREFIX + characterId) != 0;
     }
 
     public void logoutAll(String reason) {

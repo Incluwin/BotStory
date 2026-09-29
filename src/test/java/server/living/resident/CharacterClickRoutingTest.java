@@ -17,6 +17,7 @@ import server.living.config.LivingContent;
 import server.living.quest.QuestLedger;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionDirectory.Relation;
+import server.living.roster.CompanionSlots;
 import server.living.roster.RosterService;
 import server.living.roster.ui.CompanionMenus;
 import server.living.store.LivingStore.Assignment;
@@ -38,8 +39,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * Double-clicking a character (docs/BOT_MANAGEMENT_PLAN.md, "ResidentDialogue.onCharacterClicked"): your own
- * companion opens its card; another player's companion, a citizen, a plain Agent, a human and yourself keep the
- * stock character info; a Resident nobody owns opens its menu.
+ * companion opens its card; another player's companion, a citizen who is not your guest, a plain Agent, a human and
+ * yourself keep the stock character info; a Resident nobody owns opens its menu.
  */
 class CharacterClickRoutingTest {
     private static final int ANN = 10;
@@ -71,6 +72,7 @@ class CharacterClickRoutingTest {
         when(world.bonds()).thenReturn(mock(BondService.class));
         when(world.quests()).thenReturn(mock(QuestLedger.class));
         when(world.arcs()).thenReturn(mock(ArcService.class));
+        when(world.slots()).thenReturn(mock(CompanionSlots.class)); // no citizen here is Ann's guest (HireOfferTest has one)
         Set<Integer> agents = Set.of(OLWEN, BRIN, CATO, MIRA, PROBE);
         AgentPresence.install(chr -> agents.contains(chr.getId()));
         menus = mockConstruction(CompanionMenus.class);

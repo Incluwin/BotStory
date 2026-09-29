@@ -121,6 +121,8 @@ final class LifecycleHarness implements AutoCloseable {
     RosterService roster;
     /** The mocked Agent registry, for a test that stubs more of it (the entries a leader has, say). */
     MockedStatic<AgentRuntimeRegistry> registry;
+    /** The mocked stock party calls (Party.createParty, Party.joinParty), for a test that stubs a citizen's guest join. */
+    MockedStatic<Party> parties;
 
     private final Map<Integer, MapleMap> botMaps = new HashMap<>();
     private final Map<Integer, Point> botPositions = new HashMap<>();
@@ -254,7 +256,7 @@ final class LifecycleHarness implements AutoCloseable {
             botPositions.put(bot.getId(), to); // walks are instant here
             return calls.add("walk " + bot.getName() + " to " + to.x + "," + to.y);
         });
-        open(Party.class);
+        parties = open(Party.class);
         MockedStatic<AgentPartyGatewayRuntime> gateway = open(AgentPartyGatewayRuntime.class);
         PartyGateway partyGateway = mock(PartyGateway.class);
         gateway.when(AgentPartyGatewayRuntime::party).thenReturn(partyGateway);

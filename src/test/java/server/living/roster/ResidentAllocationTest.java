@@ -32,6 +32,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
@@ -41,9 +42,10 @@ import static server.living.roster.LifecycleHarness.LITH;
 /**
  * Resident allocation (docs/BOT_MANAGEMENT_PLAN.md "Resident allocation", decision 18 b, flows 9 and 10): a friend keeps
  * at most RESIDENT_CAP_PER_OWNER Residents (hired hands do not count), refused in the Resident's words by both
- * ContractService.askToJoin and RosterService.recruit; and the daily sweep sends home the Residents of an owner away
- * RESIDENT_OWNER_INACTIVE_DAYS or more, with their bonds remembered (resident.released), leaves hires, owners seen lately
- * or online and one still in a run alone, and is idempotent.
+ * ContractService.askToJoin and RosterService.recruit; and the daily sweep releases every row of an owner away
+ * RESIDENT_OWNER_INACTIVE_DAYS or more (flow 10 step 6): Residents go home with their bonds remembered
+ * (resident.released), hired hands go back to the population; it leaves owners seen lately or online and one still in a
+ * run alone, and is idempotent; the friend hears once, when back, who went home.
  */
 class ResidentAllocationTest {
     private static final int BOB = 20;
@@ -138,7 +140,7 @@ class ResidentAllocationTest {
         when(game.store.store.lastSeenAtMs(ANN)).thenReturn(daysAgo(15));
         when(game.store.store.lastSeenAtMs(BOB)).thenReturn(daysAgo(1));
 
-        assertEquals(3, allocation.sweep());
+        assertEquals(4, allocation.sweep());
 
         assertEquals(List.of(ANN + " hadrik resident.released owner inactive", ANN + " olwen resident.released owner inactive",
                 ANN + " vex resident.released owner inactive"), game.store.events("resident.released"));
@@ -146,7 +148,7 @@ class ResidentAllocationTest {
             assertNull(game.row(resident), resident.id());
             assertFalse(roster.isOwned(resident.id()), resident.id() + " is recruitable by any friend again");
         }
-        assertNotNull(game.store.row(ANN, "hire:777"), "a hired hand is not a Resident");
+        assertNull(game.store.row(ANN, "hire:777"), "her hired hand (its character gone) is let go too, as no Resident");
         assertNotNull(game.store.row(BOB, brannock.id()), "Bob was here yesterday");
         assertEquals(3, savedBonds.size());
         for (Bond bond : savedBonds) {
@@ -177,11 +179,11 @@ class ResidentAllocationTest {
         game.annOnline = false;
         when(game.store.store.lastSeenAtMs(ANN)).thenReturn(daysAgo(20));
 
-        assertEquals(3, allocation.sweep());
+        assertEquals(4, allocation.sweep());
         assertEquals(0, allocation.sweep());
 
         assertEquals(3, game.store.events("resident.released").size());
-        assertEquals(3, game.store.events("roster.release").size());
+        assertEquals(4, game.store.events("roster.release").size());
     }
 
     @Test
@@ -191,12 +193,58 @@ class ResidentAllocationTest {
         when(game.store.store.lastSeenAtMs(ANN)).thenReturn(daysAgo(20));
         game.commitments.commit("kpq-1", BOB, 900); // Olwen finishes a run for a friend of Ann's
 
-        assertEquals(2, allocation.sweep());
+        assertEquals(3, allocation.sweep()); // Hadrik, Vex and the hire
         assertNotNull(game.row(olwen));
 
         game.commitments.releaseMember(900);
         assertEquals(1, allocation.sweep());
         assertNull(game.row(olwen));
+    }
+
+    @Test
+    void anOwnerAwayPastTheLimitGivesTheirHiredHandsBackToThePopulation() {
+        Persona mira = hirePersona("hire:777", "Mira");
+        List<String> givenBack = new ArrayList<>();
+        RosterService roster = game.roster();
+        roster.installHiredHandRelease((ownerId, personaId, reason) -> givenBack.add(ownerId + " " + personaId + " " + reason));
+        game.annOnline = false;
+        when(game.store.store.lastSeenAtMs(ANN)).thenReturn(daysAgo(15));
+
+        assertEquals(4, allocation.sweep());
+
+        assertEquals(List.of(ANN + " hire:777 owner inactive"), givenBack, "HiredHands.onReleased clears its hired flag");
+        assertNull(game.store.row(ANN, mira.id()));
+        assertFalse(roster.isOwned(mira.id()), "hireable by anyone again");
+        assertTrue(game.store.events("roster.release").contains(ANN + " hire:777 roster.release owner inactive"));
+        assertTrue(game.store.events("resident.released").stream().noneMatch(line -> line.contains("hire:")),
+                "a hired hand is no Resident");
+    }
+
+    @Test
+    void aHiredHandStillInARunWaitsForTheNextSweep() {
+        hirePersona("hire:777", "Mira");
+        game.roster();
+        game.annOnline = false;
+        when(game.store.store.lastSeenAtMs(ANN)).thenReturn(daysAgo(20));
+        game.commitments.commit("kpq-1", BOB, 777);
+
+        assertEquals(3, allocation.sweep());
+
+        assertNotNull(game.store.row(ANN, "hire:777"));
+    }
+
+    @Test
+    void aFriendBackFromAwayHearsOnceWhoWentHome() {
+        RosterService roster = game.roster();
+        game.store.rows.clear(); // the sweep let them go while she was away
+        when(game.store.store.untoldEvents(ANN, "roster.release", ResidentAllocation.AWAY_REASON,
+                RosterService.AWAY_TOLD_EVENT)).thenReturn(List.of("hadrik"), List.of());
+
+        roster.onOwnerLogin(game.ann);
+        roster.onOwnerLogin(game.ann); // a channel change: told already
+
+        verify(game.ann, times(1)).dropMessage(5, "While you were away, Hadrik went home to Lith Harbor.");
+        assertEquals(1, game.store.events(RosterService.AWAY_TOLD_EVENT).size());
     }
 
     @Test
@@ -224,6 +272,15 @@ class ResidentAllocationTest {
         when(game.residents.ensureCharacter(persona)).thenReturn(characterId);
         when(game.residents.personaOfCharacterId(characterId)).thenReturn(persona);
         game.personas.put(id, persona);
+        return persona;
+    }
+
+    /** The hire's synthetic persona, as HiredHands resolves it from its characters row. */
+    private Persona hirePersona(String hireId, String name) {
+        Persona persona = new Persona(hireId, name, "", "HUNTER", new Content.LevelBand(30, 30), Content.Strength.SEASONED,
+                null, "relaxed-v1", null, "henesys", List.of(), false, null, List.of(), null, List.of(), List.of(), Map.of(),
+                -1, -1, -1, List.of(), 0, Look.NONE, "living_citizen");
+        when(game.content.persona(hireId)).thenReturn(persona);
         return persona;
     }
 

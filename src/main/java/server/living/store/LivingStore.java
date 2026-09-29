@@ -975,6 +975,31 @@ public final class LivingStore {
         }
     }
 
+    /**
+     * The persona ids of the character's {@code kind} events with this {@code detail} since their last {@code toldKind}
+     * event, oldest first: what they have not been told yet (the Residents and hires let go while they were away).
+     */
+    public List<String> untoldEvents(int characterId, String kind, String detail, String toldKind) {
+        List<String> out = new ArrayList<>();
+        String sql = "SELECT persona_id FROM living_event_log WHERE character_id = ? AND kind = ? AND detail = ?"
+                + " AND id > COALESCE((SELECT MAX(id) FROM living_event_log WHERE character_id = ? AND kind = ?), 0) ORDER BY id";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, characterId);
+            ps.setString(2, kind);
+            ps.setString(3, detail);
+            ps.setInt(4, characterId);
+            ps.setString(5, toldKind);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(rs.getString(1));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log scan failed for {}", characterId, failure);
+        }
+        return out;
+    }
+
     public List<String> recentEvents(int characterId, int limit) {
         List<String> out = new ArrayList<>();
         String sql = "SELECT at, persona_id, kind, detail FROM living_event_log WHERE character_id = ? ORDER BY id DESC LIMIT ?";

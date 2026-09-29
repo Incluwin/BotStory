@@ -164,9 +164,10 @@ public final class LivingWorld {
         // decision 18: Residents of owners away too long go home, at boot (after the reconciliation) and daily
         world.executor.submit("residents.allocation", world.residentAllocation::sweep);
         TimerManager timers = TimerManager.getInstance();
-        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
-                () -> world.executor.submit("residents.allocation", world.residentAllocation::sweep),
-                ResidentAllocation.SWEEP_INTERVAL_MS, ResidentAllocation.SWEEP_INTERVAL_MS));
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            world.executor.submit("residents.allocation", world.residentAllocation::sweep);
+            world.executor.submit("hire.reconcile", world.hiredHands::reconcileFlags); // and the hired flags, daily
+        }, ResidentAllocation.SWEEP_INTERVAL_MS, ResidentAllocation.SWEEP_INTERVAL_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, world.residents::tick,
                 config.RESIDENT_TICK_MS, config.RESIDENT_TICK_MS));
         // the ledger, the contract clocks and the bench slices write roster rows: they run on companion-ops, the
@@ -213,6 +214,8 @@ public final class LivingWorld {
         log.info("Living world started: {} (world {} channel {}, content {})", content.census(), config.WORLD,
                 config.CHANNEL, Path.of(config.CONTENT_DIR).toAbsolutePath());
         server.living.population.Population.start(world);
+        // the roster's hire rows are the truth for the citizens' hired flags: checked once the population is up (P4)
+        world.executor.submit("hire.reconcile", world.hiredHands::reconcileFlags);
     }
 
     public static synchronized void stop() {

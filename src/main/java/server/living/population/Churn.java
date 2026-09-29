@@ -89,7 +89,15 @@ public final class Churn {
         }
     }
 
-    public void retire(Citizen citizen, String reason) {
+    /**
+     * The citizen stops logging in for good. Never a hired hand (P4): it works for a friend, and it retires once it is
+     * back in the population. False when it was not retired (hired, or not a citizen).
+     */
+    public boolean retire(Citizen citizen, String reason) {
+        Citizen current = population.citizen(citizen.characterId());
+        if (current == null || current.hired()) {
+            return false;
+        }
         CitizenSession session = population.presence().session(citizen.characterId());
         if (session != null && !session.virtual) {
             population.chatter().event(ChatterEngine.Event.of("logout", session.mapId, session.channel).self(session)
@@ -98,8 +106,9 @@ public final class Churn {
         } else if (session != null) {
             population.presence().logout(session, reason);
         }
-        population.social().onRetire(citizen);
-        population.save(citizen.withState(Citizen.State.RETIRED));
+        population.social().onRetire(current);
+        population.update(citizen.characterId(), latest -> latest.withState(Citizen.State.RETIRED));
         log.info("citizen {} retired: {}", citizen.name(), reason);
+        return true;
     }
 }

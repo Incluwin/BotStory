@@ -4077,6 +4077,31 @@ public class Character extends AbstractCharacterObject {
         }
     }
 
+    /**
+     * Takes {@code amount} meso in one step with the check that the character has it (a fee): false, and nothing taken,
+     * when it has less. {@code show}: the meso-loss notice, as {@link #gainMeso(int, boolean)} shows it.
+     */
+    public boolean tryPayMeso(int amount, boolean show) {
+        if (amount <= 0) {
+            return true;
+        }
+        int nextMeso;
+        petLock.lock();
+        try {
+            if (meso.get() < amount) {
+                return false;
+            }
+            nextMeso = meso.addAndGet(-amount);
+        } finally {
+            petLock.unlock();
+        }
+        updateSingleStat(Stat.MESO, nextMeso, false);
+        if (show) {
+            sendPacket(PacketCreator.getShowMesoGain(-amount, false));
+        }
+        return true;
+    }
+
     public void genericGuildMessage(int code) {
         this.sendPacket(GuildPackets.genericGuildMessage((byte) code));
     }

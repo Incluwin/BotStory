@@ -20,6 +20,8 @@ import server.living.population.Citizen;
 import server.living.population.CitizenStore;
 import server.living.population.FieldCatalog;
 import server.living.population.Population;
+import server.living.population.PopulationContent;
+import server.living.population.SocialFabric;
 import server.living.population.VoicePacks;
 import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
@@ -34,6 +36,7 @@ import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapFactory;
 import server.maps.MapleMap;
 import testutil.NpcTalks;
 import testutil.NpcTalks.Talk;
@@ -52,6 +55,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -87,6 +91,9 @@ class HireListTest {
     private final LivingWorldConfig config = new LivingWorldConfig();
     private final Population population = mock(Population.class);
     private final CitizenStore citizenStore = mock(CitizenStore.class);
+    private final FieldCatalog fields = mock(FieldCatalog.class);
+    private final VoicePacks voices = mock(VoicePacks.class);
+    private final SocialFabric social = mock(SocialFabric.class);
     private final Character owner = mock(Character.class);
     private final Client client = mock(Client.class);
     private final BuddyList buddies = mock(BuddyList.class);
@@ -136,10 +143,12 @@ class HireListTest {
         when(population.citizen(anyInt())).thenAnswer(inv -> citizens.get((int) inv.getArgument(0)));
         when(population.store()).thenReturn(citizenStore);
         when(citizenStore.metBy(ANN)).thenAnswer(inv -> List.copyOf(met));
-        when(population.fields()).thenReturn(mock(FieldCatalog.class));
-        VoicePacks voices = mock(VoicePacks.class);
+        when(population.fields()).thenReturn(fields);
         when(voices.render(any(), anyString(), anyLong())).thenAnswer(inv -> inv.getArgument(1));
+        when(voices.voiceOf(any())).thenReturn(voice(0.05d)); // chatty: outgoing, it takes anyone's job
         when(population.voices()).thenReturn(voices);
+        when(social.sociability(any())).thenReturn(60);
+        when(population.social()).thenReturn(social);
         registry = mockStatic(AgentRuntimeRegistry.class);
         registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(anyInt())).thenAnswer(inv -> {
             Character bot = loaded.get((int) inv.getArgument(0));
@@ -214,6 +223,30 @@ class HireListTest {
         assertFalse(lastTalk().labels().contains("Adventurers looking for a crew..."), lastTalk().labels().toString());
     }
 
+    @Test
+    void aReservedCitizenTakesNoStrangersJobAsItTakesNoStrangersInvite() {
+        when(voices.voiceOf(any())).thenReturn(voice(0.4d)); // terse: reserved
+        citizen(TOBI, "Tobi", 31, Job.CLERIC.getId(), 0, 30); // seen around town, never partied with Ann
+        citizen(KIRA, "Kira", 28, Job.ASSASSIN.getId(), 12, 3); // partied with her
+
+        menus.hireList(owner);
+
+        assertEquals(List.of("Kira, Lv28 Assassin - around", "Back"), lastTalk().labels());
+    }
+
+    @Test
+    void anOfflineCitizenIsListedByItsHomeTown() {
+        citizen(TOBI, "Tobi", 31, Job.CLERIC.getId(), 20, 30);
+        when(fields.homeTown(any(), isNull())).thenReturn(KERNING);
+        try (MockedStatic<MapFactory> names = mockStatic(MapFactory.class)) {
+            names.when(() -> MapFactory.loadPlaceName(KERNING)).thenReturn("Kerning City");
+
+            menus.hireList(owner);
+        }
+
+        assertEquals(List.of("Tobi, Lv31 Cleric - usually around Kerning City", "Back"), lastTalk().labels());
+    }
+
     // ---- paging and rows -------------------------------------------------------------------------
 
     @Test
@@ -257,7 +290,7 @@ class HireListTest {
 
         menus.hireList(owner);
 
-        assertTrue(lastTalk().text().startsWith(CompanionCrewScreens.NOBODY_LOOKING + "\r\n#L"), lastTalk().text());
+        assertTrue(lastTalk().text().startsWith(CompanionCrewScreens.NOBODY_LOOKING_NOTES + "\r\n#L"), lastTalk().text());
         assertEquals(List.of("Back"), lastTalk().labels());
         pick("Back");
         assertTrue(lastTalk().text().startsWith("#eParty "), lastTalk().text());
@@ -334,6 +367,11 @@ class HireListTest {
         return new Citizen(citizen.characterId(), citizen.name(), citizen.cohort(), 0, 0, citizen.homeRegion(),
                 citizen.career(), citizen.personality(), citizen.voice(), citizen.pace(), 0, 1, new LinkedHashSet<>(),
                 Citizen.State.RETIRED, 0L, 0L, 0L, 0L, 0L, 0, "");
+    }
+
+    private static PopulationContent.Voice voice(double ignoreRate) {
+        return new PopulationContent.Voice("test", "friendly-casual-v1", 100, 0.8d, 0.0d, 0.0d, Map.of(), List.of(), 0.0d,
+                List.of(), 0.0d, 50, ignoreRate);
     }
 
     private void pick(String label) {

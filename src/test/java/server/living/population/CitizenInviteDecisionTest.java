@@ -234,6 +234,27 @@ class CitizenInviteDecisionTest {
     }
 
     @Test
+    void timeTogetherWarmsAGuestUpToStayingOn() {
+        Profile reserved = new Profile(MIRA, Temperament.RESERVED, 10); // 950 with Ann: roll 27
+
+        assertFalse(CitizenInviteDecision.staysOn(reserved, ANN, Familiarity.NONE), "10 is under 27: no, this stint");
+        assertFalse(CitizenInviteDecision.staysOn(reserved, ANN, new Familiarity(9, 0, false, false)), "whole tens only");
+        assertTrue(CitizenInviteDecision.staysOn(reserved, ANN, new Familiarity(20, 0, false, false)),
+                "20 party minutes on: 10 + 20 is over 27, so a no can become a yes");
+    }
+
+    @Test
+    void theHireListAsksTheSameTemperamentAsTheInvite() {
+        reserved();
+
+        assertFalse(CitizenInviteDecision.welcomes(population.citizen(MIRA), ann, 0, 30, false),
+                "seen around, never partied with: a reserved citizen takes no stranger's job");
+        assertTrue(CitizenInviteDecision.welcomes(population.citizen(MIRA), ann, 5, 0, false), "partied with");
+        assertTrue(CitizenInviteDecision.welcomes(population.citizen(MIRA), ann, 0, 0, true), "a buddy");
+        assertFalse(CitizenInviteDecision.welcomes(null, ann, 5, 5, true));
+    }
+
+    @Test
     void staysOnReadsTheLiveCitizen() {
         outgoing();
         // 950 with Ann: roll 27, under an outgoing 55 + 35

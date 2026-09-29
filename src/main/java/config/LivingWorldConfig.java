@@ -133,8 +133,11 @@ public class LivingWorldConfig {
     public boolean COMPANION_EXP_SHARE = true;
 
     // Hired hands and Resident allocation (P4, decisions 2 b, 4 b, 18 b, 19 b)
-    /** Hired citizens ({@code hire:<characterId>}) one owner may keep; they count toward ROSTER_MAX, so at most that. */
-    public int HIRE_MAX_PER_OWNER = 5;
+    /**
+     * Hired citizens ({@code hire:<characterId>}) one owner may keep; they count toward ROSTER_MAX, so at most that. The
+     * default is ROSTER_MAX: a friend without Residents fills a party and a bench from the hire list (flow 4).
+     */
+    public int HIRE_MAX_PER_OWNER = 10;
     /** Minutes a citizen guest spends in a player's party before it offers to stay on as a hired hand. */
     public int HIRE_OFFER_PARTY_MINUTES = 10;
     /** Minutes a citizen whose offer was declined or went unanswered waits before it asks that player again. */

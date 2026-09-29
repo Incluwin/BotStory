@@ -21,6 +21,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -76,6 +77,25 @@ class PopulationSkipTest {
             saved.add(citizen);
             return null;
         }).when(population).save(any());
+        // Population.update and setHired on the current record, as the real registry's compute does
+        when(population.update(anyInt(), any())).thenAnswer(inv -> {
+            Citizen current = registry.get((int) inv.getArgument(0));
+            Citizen next = current == null ? null : inv.<UnaryOperator<Citizen>>getArgument(1).apply(current);
+            if (next != null && next != current) {
+                registry.put(next.characterId(), next);
+                saved.add(next);
+            }
+            return next == null ? current : next;
+        });
+        when(population.setHired(anyInt(), anyBoolean())).thenAnswer(inv -> {
+            Citizen current = registry.get((int) inv.getArgument(0));
+            if (current != null && current.hired() != (boolean) inv.getArgument(1)) {
+                current = inv.<Boolean>getArgument(1) ? current.withFlag(Citizen.FLAG_HIRED) : current.withoutFlag(Citizen.FLAG_HIRED);
+                registry.put(current.characterId(), current);
+                saved.add(current);
+            }
+            return current;
+        });
         when(store.characterProgress(anyInt())).thenReturn(new int[] {5, 0, 0, 0, 0});
         db = mockStatic(DatabaseConnection.class); // the ledger's level bump
         db.when(DatabaseConnection::getConnection).thenAnswer(inv -> {
@@ -109,6 +129,53 @@ class PopulationSkipTest {
     }
 
     @Test
+    void aCitizenHiredWhileTheLedgerRunsIsNeitherRaisedNorSaved() {
+        put(citizen(FREE, "Tobi", Set.of()));
+        List<String> sql = new ArrayList<>();
+        db.when(DatabaseConnection::getConnection).thenAnswer(inv -> {
+            Connection connection = mock(Connection.class);
+            when(connection.prepareStatement(anyString())).thenAnswer(prepare -> {
+                sql.add(prepare.getArgument(0));
+                return mock(PreparedStatement.class);
+            });
+            return connection;
+        });
+        when(store.characterProgress(FREE)).thenAnswer(inv -> {
+            put(registry.get(FREE).withFlag(Citizen.FLAG_HIRED)); // hired on companion-ops right after the ledger's list
+            return new int[] {5, 0, 0, 0, 0};
+        });
+
+        new ProgressionLedger(population).tick();
+
+        assertTrue(sql.stream().noneMatch(statement -> statement.startsWith("UPDATE characters")), sql.toString());
+        assertTrue(saved.isEmpty(), "no stale copy saved over the hire: " + saved);
+        assertTrue(registry.get(FREE).hired());
+    }
+
+    @Test
+    void theCircleWriterNeverTakesACitizenHiredMeanwhile() {
+        put(registry.get(FREE).withGuild(5)); // all in a guild already: only the circle is under test
+        put(citizen(FREE + 1, "Ilse", Set.of()).withGuild(5));
+        put(citizen(FREE + 2, "Kettle", Set.of()).withGuild(5));
+        when(store.guilds()).thenReturn(List.of(new GuildMeta(7, "open", 1, 200, "", "evening")));
+        config.GUILD_TARGET = 1;
+        when(store.createCircle(anyString(), anyString())).thenAnswer(inv -> {
+            put(registry.get(FREE).withFlag(Citizen.FLAG_HIRED)); // hired right after the pool was made
+            return 3;
+        });
+        when(presence.sessions()).thenReturn(List.of());
+
+        new SocialFabric(population).tick();
+
+        assertEquals(0, registry.get(FREE).circleId(), "kept out of the circle");
+        assertTrue(registry.get(FREE).hired(), "and still hired");
+        assertEquals(3, registry.get(FREE + 1).circleId());
+        verify(store).addBuddyPair(FREE + 2, FREE + 1);
+        verify(store, never()).addBuddyPair(eq(FREE), anyInt());
+        verify(store, never()).addBuddyPair(anyInt(), eq(FREE));
+    }
+
+    @Test
     void churnDoesNotCountAHiredCitizenSoItBackfillsTheTown() {
         when(population.activeCount()).thenCallRealMethod();
         for (int id = 1; id <= 8; id++) {
@@ -136,6 +203,19 @@ class PopulationSkipTest {
 
         assertEquals(Citizen.State.ACTIVE, registry.get(HIRED).state());
         assertEquals(Citizen.State.RETIRED, registry.get(FREE).state());
+    }
+
+    @Test
+    void aGmRetireOrPurgeNeverTakesAHiredHandFromItsOwner() {
+        SocialFabric social = mock(SocialFabric.class);
+        when(population.social()).thenReturn(social);
+        Churn churn = new Churn(population);
+
+        assertFalse(churn.retire(registry.get(HIRED), "retired by Gm"));
+
+        assertEquals(Citizen.State.ACTIVE, registry.get(HIRED).state());
+        verify(social, never()).onRetire(any());
+        assertTrue(churn.retire(registry.get(FREE), "retired by Gm"));
     }
 
     @Test

@@ -74,6 +74,8 @@ public final class CitizenInviteDecision {
     /** A voice that ignores this share of lines or fewer, with sociability {@link #OUTGOING_SOCIABILITY}, is outgoing. */
     static final double OUTGOING_IGNORE_RATE = 0.1d;
     static final int OUTGOING_SOCIABILITY = 55;
+    /** Every this many party minutes together (living_acquaintance) add as many points to a guest's chance to stay on. */
+    static final int PARTY_MINUTES_BONUS = 10;
     /** Salts of the fixed rolls, so the invite and the offer are two different coins. */
     private static final long INVITE_SALT = 0x1a71eL;
     private static final long OFFER_SALT = 0x57a1L;
@@ -121,8 +123,25 @@ public final class CitizenInviteDecision {
     }
 
     /**
+     * The hire list agrees with the invite (P4, "Hire list"): true when this citizen, within the owner's level range,
+     * would take their invite by its temperament, from what it knows of them ({@code partyMinutes} and {@code
+     * mapMinutes} together, a buddy; a guildmate is read here). A reserved citizen is no stranger's hired hand.
+     */
+    public static boolean welcomes(Citizen citizen, Character owner, int partyMinutes, int mapMinutes, boolean buddy) {
+        Population population = Population.get();
+        if (population == null || citizen == null) {
+            return false;
+        }
+        boolean guildmate = citizen.guildId() > 0 && citizen.guildId() == owner.getGuildId();
+        Familiarity known = new Familiarity(partyMinutes, mapMinutes, buddy, guildmate);
+        return welcome(profile(population, citizen), owner.getId(), () -> known) == Answer.ACCEPT;
+    }
+
+    /**
      * True when this guest, after its party time with the owner, would offer to stay on: its fixed roll for the owner
-     * under its sociability, higher when easygoing or outgoing and when the owner is a buddy or a guildmate.
+     * under its sociability, higher when easygoing or outgoing, when the owner is a buddy or a guildmate, and the more
+     * they have partied together ({@link #PARTY_MINUTES_BONUS}), so a guest that says no now may say yes after
+     * another stint or two.
      */
     public static boolean staysOn(Character owner, Character guest, Citizen citizen) {
         Population population = Population.get();
@@ -137,7 +156,8 @@ public final class CitizenInviteDecision {
             case RESERVED -> 0;
             case EASYGOING -> 25;
             case OUTGOING -> 35;
-        } + (familiarity.buddy() || familiarity.guildmate() ? 20 : 0);
+        } + (familiarity.buddy() || familiarity.guildmate() ? 20 : 0)
+                + familiarity.partyMinutes() / PARTY_MINUTES_BONUS * PARTY_MINUTES_BONUS;
         return roll(profile.characterId(), ownerId, OFFER_SALT) < Math.min(95, chance);
     }
 

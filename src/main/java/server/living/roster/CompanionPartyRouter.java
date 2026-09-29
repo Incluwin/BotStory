@@ -214,9 +214,34 @@ public final class CompanionPartyRouter {
                 && party != null && party.getId() == partyId && world.roster().freeSlots(inviter) > 0
                 && world.slots().reserve(inviter.getId(), guest, CompanionSlots.Kind.GUEST, Long.MAX_VALUE);
         InviteCoordinator.answerInvite(InviteType.PARTY, citizen.getId(), partyId, stands);
-        if (stands && !Party.joinParty(citizen, partyId, false)) {
-            world.slots().release(guest, CompanionSlots.Kind.GUEST);
+        if (stands) {
+            joinAsGuest(citizen, partyId, guest);
         }
+    }
+
+    /**
+     * P4: a citizen hired while it stands partyless on its new owner's channel takes a GUEST seat in their party first,
+     * as an accepted invite does (their party is made first, as for any call), so the roster adopts it where it stands
+     * instead of logging it off. On companion-ops. False, with nothing held, when there is no seat or the join fails.
+     */
+    public boolean seatGuest(Character host, Character citizen) {
+        if (citizen.getParty() != null || world.roster().freeSlots(host) <= 0
+                || host.getParty() == null && !Party.createParty(host, true, true)) {
+            return false;
+        }
+        Party party = host.getParty();
+        String guest = world.slots().keyOf(citizen.getId());
+        return party != null && world.slots().reserve(host.getId(), guest, CompanionSlots.Kind.GUEST, Long.MAX_VALUE)
+                && joinAsGuest(citizen, party.getId(), guest);
+    }
+
+    /** The guest's join on the GUEST seat held for it (the party's seat gate asks for it); a failed join gives it back. */
+    private boolean joinAsGuest(Character citizen, int partyId, String guest) {
+        if (Party.joinParty(citizen, partyId, false)) {
+            return true;
+        }
+        world.slots().release(guest, CompanionSlots.Kind.GUEST);
+        return false;
     }
 
     /** A citizen's answer comes after a short random delay, like a player's. */

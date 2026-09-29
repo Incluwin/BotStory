@@ -36,9 +36,13 @@ import testutil.NpcTalks;
 import testutil.NpcTalks.Talk;
 import testutil.Packets;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -103,6 +107,14 @@ class HireScreensTest {
             purse[0] += (int) inv.getArgument(0);
             return null;
         }).when(owner).gainMeso(anyInt(), anyBoolean());
+        when(owner.tryPayMeso(anyInt(), anyBoolean())).thenAnswer(inv -> {
+            int fee = inv.getArgument(0);
+            if (purse[0] < fee) {
+                return false;
+            }
+            purse[0] -= fee;
+            return true;
+        });
         when(client.getPlayer()).thenReturn(owner);
         when(client.canClickNPC()).thenReturn(true);
         doAnswer(inv -> {
@@ -127,9 +139,10 @@ class HireScreensTest {
         when(store.characterLevelAndJob(MIRA)).thenReturn(new int[] {30, HUNTER});
         when(roster.roster(owner)).thenReturn(rows);
         when(roster.entry(ANN, HIRE)).thenAnswer(inv -> hired[0]);
-        when(roster.recruitHire(eq(owner), argThat(persona -> HIRE.equals(persona.id())), anyInt(), any(), any()))
+        when(roster.onlineCharacter(ANN)).thenReturn(owner);
+        when(roster.recruitHire(eq(owner), argThat(persona -> HIRE.equals(persona.id())), anyInt(), any(), anyBoolean(), any()))
                 .thenAnswer(inv -> {
-                    ((Runnable) inv.getArgument(4)).run();
+                    ((BooleanSupplier) inv.getArgument(5)).getAsBoolean();
                     hired[0] = row(HIRE);
                     return new RosterResult.Travelling(40_000L, KERNING);
                 });
@@ -173,7 +186,7 @@ class HireScreensTest {
         assertTrue(terms.text().startsWith("this was fun. want me to stick around?"), terms.text());
         assertTrue(terms.text().contains("#eMira#n, Lv30 Hunter"), terms.text());
         assertTrue(terms.text().contains("30,000 meso#k up front"), terms.text());
-        assertTrue(terms.text().contains("21,600 meso#k a day on the bench"), terms.text());
+        assertTrue(terms.text().contains("900 meso#k an hour while I work at camp"), terms.text()); // the Wages page's unit
 
         LivingTalk.forget(owner);
         screens.terms(owner, MIRA, HireScreens.Context.HIRE_LIST);
@@ -186,7 +199,8 @@ class HireScreensTest {
 
         answer(1);
 
-        verify(roster).recruitHire(eq(owner), argThat(persona -> HIRE.equals(persona.id())), eq(KERNING), isNull(), any());
+        verify(roster).recruitHire(eq(owner), argThat(persona -> HIRE.equals(persona.id())), eq(KERNING), isNull(), eq(false),
+                any());
         assertEquals(70_000, purse[0], "Lv30 x 1,000 meso");
         verify(residents).whisper(argThat(persona -> HIRE.equals(persona.id())), eq(owner), eq("deal. let's go."));
         verify(owner).dropMessage(eq(5), argThat(line -> line.startsWith("Mira is on the way")));
@@ -217,6 +231,7 @@ class HireScreensTest {
 
     @Test
     void theHireCapIsRefusedInCharacter() {
+        config.HIRE_MAX_PER_OWNER = 5; // below ROSTER_MAX, which it defaults to
         for (int i = 0; i < config.HIRE_MAX_PER_OWNER; i++) {
             rows.add(row("hire:" + (800 + i)));
         }
@@ -234,9 +249,64 @@ class HireScreensTest {
         answer(0);
 
         verify(residents).whisper(argThat(persona -> HIRE.equals(persona.id())), eq(owner), eq("no worries. i'll be around."));
-        verify(roster, never()).recruitHire(any(), any(), anyInt(), any(), any());
+        verify(roster, never()).recruitHire(any(), any(), anyInt(), any(), anyBoolean(), any());
         assertTrue(NpcTalks.isEnableActions(sent().get(sent().size() - 1)), "the client's actions come back");
         assertEquals(100_000, purse[0]);
+    }
+
+    @Test
+    void aFriendWithoutResidentsMayFillTheWholeRosterWithHires() throws Exception {
+        LivingWorldConfig defaults = new LivingWorldConfig();
+        assertEquals(defaults.ROSTER_MAX, defaults.HIRE_MAX_PER_OWNER, "5 out and a bench of 5 from the hire list alone");
+        String yaml = Files.readString(Path.of("config.yaml"), StandardCharsets.US_ASCII);
+        assertTrue(yaml.contains("\n    HIRE_MAX_PER_OWNER: 10\n"), "config.yaml living_world carries it");
+        for (int i = 0; i < 8; i++) {
+            rows.add(row("hire:" + (800 + i)));
+        }
+        screens.terms(owner, MIRA, HireScreens.Context.HIRE_LIST);
+
+        answer(1);
+
+        verify(roster).recruitHire(eq(owner), argThat(persona -> HIRE.equals(persona.id())), anyInt(), any(), anyBoolean(),
+                any());
+    }
+
+    @Test
+    void declineFromTheHireListGoesBackToTheListWithoutAWhisper() {
+        List<String> backs = new ArrayList<>();
+        screens.terms(owner, MIRA, HireScreens.Context.HIRE_LIST, () -> backs.add("list"));
+
+        answer(0);
+
+        assertEquals(List.of("list"), backs, "the list again, as the answer to the click");
+        verify(residents, never()).whisper(any(), any(), anyString());
+        verify(roster, never()).recruitHire(any(), any(), anyInt(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    void aSessionThatIsNotTheOwnersAnyMoreIsNeverCharged() {
+        screens.terms(owner, MIRA, HireScreens.Context.OFFER);
+        when(roster.onlineCharacter(ANN)).thenReturn(mock(Character.class)); // a channel change reloaded her meanwhile
+
+        answer(1);
+
+        assertEquals(100_000, purse[0]);
+        verify(roster, never()).recruitHire(any(), any(), anyInt(), any(), anyBoolean(), any());
+        verify(residents, never()).whisper(any(), any(), anyString());
+    }
+
+    @Test
+    void mesoSpentBetweenTheCheckAndTheFeeIsRefusedNotTakenPartly() {
+        screens.terms(owner, MIRA, HireScreens.Context.OFFER);
+        when(owner.tryPayMeso(anyInt(), anyBoolean())).thenAnswer(inv -> {
+            purse[0] = 10_000; // a shop buy on her packet thread, right then
+            return false;
+        });
+
+        answer(1);
+
+        assertRefused("you're a bit short. it's 30,000 meso up front.");
+        assertEquals(10_000, purse[0], "no meso made, none taken");
     }
 
     @Test
@@ -250,7 +320,7 @@ class HireScreensTest {
         assertEquals(2, NpcTalks.talks(sent()).size());
         assertTrue(again.text().startsWith(CompanionMenus.THINGS_CHANGED), again.text());
         assertTrue(again.text().contains("31,000 meso#k up front"), again.text());
-        verify(roster, never()).recruitHire(any(), any(), anyInt(), any(), any());
+        verify(roster, never()).recruitHire(any(), any(), anyInt(), any(), anyBoolean(), any());
         assertEquals(100_000, purse[0]);
     }
 
@@ -268,7 +338,7 @@ class HireScreensTest {
 
     private void assertRefused(String words) {
         verify(residents).whisper(argThat(persona -> HIRE.equals(persona.id())), eq(owner), eq(words));
-        verify(roster, never()).recruitHire(any(), any(), anyInt(), any(), any());
+        verify(roster, never()).recruitHire(any(), any(), anyInt(), any(), anyBoolean(), any());
         verify(owner, never()).gainMeso(anyInt(), anyBoolean());
     }
 

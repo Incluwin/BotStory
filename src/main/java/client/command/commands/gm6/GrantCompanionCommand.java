@@ -6,6 +6,7 @@ import client.command.Command;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.population.Citizen;
 import server.living.population.Population;
 
 import java.util.Locale;
@@ -13,8 +14,9 @@ import java.util.Locale;
 /**
  * {@code !grantcompanion <personaId> [characterName]} puts a Resident persona on an online player's
  * roster (default: yourself) as a benched companion, with no contract and no change to its character.
- * {@code !grantcompanion release <personaId>} takes it back through the normal release path. For tests
- * and demos (docs/BOT_MANAGEMENT_PLAN.md, "GrantCompanionCommand"); hired citizens wait for P4.
+ * {@code !grantcompanion release <personaId>} takes it back through the normal release path, a hired citizen's
+ * ({@code hire:<characterId>}) too, which goes back to the population. For tests and demos
+ * (docs/BOT_MANAGEMENT_PLAN.md, "GrantCompanionCommand"); citizens are hired through the Crew window, never granted.
  */
 public final class GrantCompanionCommand extends Command {
     static final String USAGE = "Syntax: !grantcompanion <personaId> [characterName] | !grantcompanion release <personaId>";
@@ -51,7 +53,7 @@ public final class GrantCompanionCommand extends Command {
             gm.yellowMessage("Living world is disabled (living_world.ENABLED in config.yaml).");
             return;
         }
-        Persona persona = persona(gm, world, request.personaId());
+        Persona persona = persona(gm, world, request.personaId(), request.release());
         if (persona == null) {
             return;
         }
@@ -74,10 +76,14 @@ public final class GrantCompanionCommand extends Command {
                 () -> gm.yellowMessage(world.roster().grant(owner, persona)));
     }
 
-    /** A content persona by id. Hired citizens ({@code hire:<cid>}) and citizens are refused until P4. */
-    private static Persona persona(Character gm, LivingWorld world, String personaId) {
-        if (personaId.toLowerCase(Locale.ROOT).startsWith("hire:")) {
-            gm.yellowMessage("Hired citizens cannot be granted yet (P4).");
+    /**
+     * A content persona by id, or for a release a hired citizen's ({@code hire:<cid>}, which the installed resolver
+     * answers). A grant never takes a citizen: it would enroll one without its hand-over, so the population and the
+     * roster would both run it.
+     */
+    private static Persona persona(Character gm, LivingWorld world, String personaId, boolean release) {
+        if (!release && personaId.toLowerCase(Locale.ROOT).startsWith("hire:")) {
+            gm.yellowMessage("Hire citizens through the Crew window.");
             return null;
         }
         Persona persona = world.content().persona(personaId);
@@ -85,9 +91,10 @@ public final class GrantCompanionCommand extends Command {
             return persona;
         }
         Population population = Population.get();
-        gm.yellowMessage(population != null && population.citizenByName(personaId) != null
-                ? "'" + personaId + "' is a citizen; citizens cannot be granted yet (P4)."
-                : "No persona with id '" + personaId + "'.");
+        Citizen citizen = population == null ? null : population.citizenByName(personaId);
+        gm.yellowMessage(citizen == null ? "No persona with id '" + personaId + "'."
+                : release ? "'" + personaId + "' is a citizen; release a hired one as hire:" + citizen.characterId() + "."
+                : "'" + personaId + "' is a citizen; hire citizens through the Crew window.");
         return null;
     }
 

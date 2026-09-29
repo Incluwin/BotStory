@@ -14,6 +14,9 @@ import server.living.config.LivingContent;
 import server.living.phrases.PhraseMatcher;
 import server.living.roster.CompanionChatVerbs;
 import server.living.roster.CompanionDirectory;
+import server.living.roster.CompanionSlots;
+import server.living.roster.HireOffers;
+import server.living.roster.HiredHands;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterVoice;
 import server.living.roster.ui.CompanionMenus;
@@ -136,8 +139,11 @@ public final class ResidentDialogue {
         return converse(speaker, target.persona, target.remainder, text);
     }
 
-    /** Whisper to a persona by name; true when the target is a persona. */
+    /** Whisper to a persona by name, or an answer to a citizen's open offer to stay on; true when either took it. */
     public boolean onWhisper(Character speaker, String targetName, String text) {
+        if (!AgentPresence.isAgent(speaker) && answeredOffer(speaker, targetName, text)) {
+            return true;
+        }
         Persona persona = world.content().personaByName(targetName);
         if (persona == null || AgentPresence.isAgent(speaker)) {
             return false;
@@ -150,6 +156,42 @@ public final class ResidentDialogue {
             return false; // companion commands travel the agent whisper bridge
         }
         return converse(speaker, persona, normalized, text) || true;
+    }
+
+    /**
+     * A whispered answer to the citizen's open offer to stay on (P4, "want me to stick around?"): a no closes the offer
+     * in its own words, as Decline does; a yes opens its terms when a window may open, else it says how to get them.
+     * False when the speaker has no open offer from {@code targetName}, or the line is neither.
+     */
+    private boolean answeredOffer(Character speaker, String targetName, String text) {
+        HireOffers offers = world.hireOffers();
+        HiredHands hands = world.hiredHands();
+        List<HireOffers.Offer> open = offers == null || hands == null ? List.of() : offers.pendingOffers(speaker);
+        HireOffers.Offer offer = open.isEmpty() ? null : open.get(0);
+        if (offer == null || !offer.name().equalsIgnoreCase(targetName)) {
+            return false;
+        }
+        int citizenId = offer.citizenCharacterId();
+        Persona persona = hands.persona(HiredHands.hireId(citizenId));
+        if (persona == null) {
+            return false;
+        }
+        String normalized = PhraseMatcher.normalize(text);
+        if (DECLINE.matcher(normalized).matches()) {
+            world.residents().whisper(persona, speaker, hands.voice(citizenId, "no worries. i'll be around."));
+            int speakerId = speaker.getId();
+            world.executor().submit("hire.decline " + citizenId, () -> offers.declined(speakerId, citizenId));
+            return true;
+        }
+        if (!ACCEPT.matcher(normalized).matches()) {
+            return false;
+        }
+        if (LivingTalk.mayShow(speaker)) {
+            new HireScreens(world).terms(speaker, citizenId, HireScreens.Context.OFFER);
+        } else {
+            world.residents().whisper(persona, speaker, hands.voice(citizenId, "cool. double-click me and we'll shake on it."));
+        }
+        return true;
     }
 
     // ---- targeting -----------------------------------------------------------------------
@@ -347,8 +389,9 @@ public final class ResidentDialogue {
 
     /**
      * Double-clicking your own companion opens its card and a Resident opens its NPC window, as clicking an
-     * NPC does; a citizen whose offer to stay on with you is open shows its terms (P4); another player's companion,
-     * any other citizen, a plain Agent and yourself keep the character info window.
+     * NPC does; a citizen whose offer to stay on with you is open shows its terms (P4), and so does a citizen who is your
+     * guest in your party (its seat is yours: the way to hire without a Roster book); another player's companion, any
+     * other citizen, a plain Agent and yourself keep the character info window.
      */
     public boolean onCharacterClicked(Character clicker, Character target) {
         if (AgentPresence.isAgent(clicker) || !AgentPresence.isAgent(target)) {
@@ -362,6 +405,14 @@ public final class ResidentDialogue {
             case CompanionDirectory.Relation.HireOfferPending offer -> {
                 // its terms, or enableActions when no window may open now; char info's Party button is unaffected
                 new HireScreens(world).terms(clicker, offer.characterId(), HireScreens.Context.OFFER);
+                return true;
+            }
+            case CompanionDirectory.Relation.Citizen citizen -> {
+                CompanionSlots.Reservation seat = world.slots().reservation(CompanionSlots.characterKey(citizen.characterId()));
+                if (seat == null || seat.kind() != CompanionSlots.Kind.GUEST || seat.ownerId() != clicker.getId()) {
+                    return false; // not your guest: the stock char info
+                }
+                new HireScreens(world).terms(clicker, citizen.characterId(), HireScreens.Context.HIRE_LIST);
                 return true;
             }
             case CompanionDirectory.Relation.Resident resident -> {
