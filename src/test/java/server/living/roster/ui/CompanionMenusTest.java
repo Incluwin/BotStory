@@ -68,10 +68,9 @@ class CompanionMenusTest {
     private static final int HADRIK_PORTRAIT = 9970001;
     private static final int ROSTER_BOOK = 2430011;
     private static final byte MENU = 4;
-    private static final byte SAY = 0;
     /** A benched companion's card with someone out to swap with (P3). */
     private static final List<String> BENCH_CARD = List.of("Come join me", "Swap in for...", "What you do at camp...",
-            "Camp somewhere else...", "Your haul...", "Your wages...", "We should part ways", "Never mind");
+            "Camp somewhere else...", "Your haul...", "Your wages...", "We should part ways");
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingContent content = mock(LivingContent.class);
@@ -130,6 +129,7 @@ class CompanionMenusTest {
         when(hadrikBot.getLevel()).thenReturn(31);
         when(hadrikBot.getJob()).thenReturn(Job.FIGHTER);
         when(hadrikBot.getMap()).thenReturn(perion);
+        when(owner.getMap()).thenReturn(perion); // Ann beside Hadrik: the gear and the trade need him in view
         when(hadrikBot.getHp()).thenReturn(812);
         when(hadrikBot.getCurrentMaxHp()).thenReturn(900);
         when(residents.characterIdOf("mira")).thenReturn(901);
@@ -167,11 +167,11 @@ class CompanionMenusTest {
         assertEquals(MENU, card.msgType());
         assertTrue(card.text().startsWith("#eHadrik#n, Lv31 Fighter - HP 812/900"), card.text());
         assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "Take a break at camp",
-                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "Your haul...",
-                "Your wages...", "Let me see your gear", "More..."), card.labels());
+                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "The whole crew...",
+                "Your haul...", "Your wages...", "More..."), card.labels());
         pick("More...");
-        assertEquals(List.of("Let's trade", "The whole crew...", "We should part ways", "Never mind", "More..."),
-                lastTalk().labels()); // "More..." wraps round to the first page
+        assertEquals(List.of("Let me see your gear", "Let's trade", "We should part ways", "Back to the top..."),
+                lastTalk().labels()); // the last page wraps round to the first
     }
 
     @Test
@@ -202,8 +202,8 @@ class CompanionMenusTest {
 
         menus.card(owner, tobiRow);
 
-        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "Your haul...",
-                "Your wages...", "The whole crew...", "We should part ways", "Never mind"), lastTalk().labels());
+        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "The whole crew...",
+                "Your haul...", "Your wages...", "We should part ways"), lastTalk().labels());
     }
 
     @Test
@@ -224,13 +224,10 @@ class CompanionMenusTest {
 
         verify(roster).bench(owner, hadrik);
         Talk outcome = lastTalk();
-        assertEquals(SAY, outcome.msgType());
-        // the result is the player's notes, not the companion talking about itself under its own portrait
-        assertEquals(CompanionMenus.BOARD_NPC, outcome.npcId());
-        assertEquals(CompanionMenus.NOTES_SPEAKER, outcome.speaker());
-        assertEquals("Hadrik heads back to camp to train.", outcome.text());
-        answer(SAY, 1, null);
-        assertFalse(LivingTalk.active(client));
+        // the result tops the card again: no extra OK window to click through
+        assertEquals(MENU, outcome.msgType());
+        assertEquals(HADRIK_PORTRAIT, outcome.npcId());
+        assertTrue(outcome.text().startsWith("Hadrik heads back to camp to train.\r\n#eHadrik#n"), outcome.text());
     }
 
     @Test
@@ -246,8 +243,8 @@ class CompanionMenusTest {
         pick("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked");
 
         verify(roster).swap(owner, hadrik, mira);
-        assertEquals("swapped.", lastTalk().text());
-        assertEquals(CompanionMenus.NOTES_SPEAKER, lastTalk().speaker());
+        assertTrue(lastTalk().text().startsWith("swapped.\r\n#eHadrik#n"), lastTalk().text());
+        assertEquals(HADRIK_PORTRAIT, lastTalk().npcId());
     }
 
     @Test
@@ -275,7 +272,7 @@ class CompanionMenusTest {
         pick("Let me see your gear");
 
         verify(hadrikBot, never()).exportExcludedItems(any());
-        assertEquals("Hadrik is not out with you right now.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik is not out with you right now.\r\n"), lastTalk().text());
     }
 
     // ---- the bench card ------------------------------------------------------------------
@@ -291,8 +288,8 @@ class CompanionMenusTest {
         assertEquals(BENCH_CARD, card.labels());
         pick("Come join me");
         verify(roster).call(owner, mira);
-        assertEquals("Mira is on the way (1m).", lastTalk().text());
-        assertEquals(CompanionMenus.NOTES_SPEAKER, lastTalk().speaker());
+        assertTrue(lastTalk().text().startsWith("Mira is on the way (1m).\r\n#eMira#n"), lastTalk().text());
+        assertEquals(0, lastTalk().speaker());
     }
 
     @Test
@@ -407,7 +404,7 @@ class CompanionMenusTest {
         menus.card(owner, miraRow);
 
         assertEquals(List.of("Come join me", "What you do at camp...", "Camp somewhere else...", "Your haul...",
-                "Your wages...", "We should part ways", "Never mind"), lastTalk().labels());
+                "Your wages...", "We should part ways"), lastTalk().labels());
     }
 
     // ---- the Crew window -----------------------------------------------------------------
@@ -439,7 +436,9 @@ class CompanionMenusTest {
 
         pick("Mira, Lv28 Hunter - train @ Ant Tunnel - 10% EXP banked");
 
-        assertEquals(BENCH_CARD, lastTalk().labels());
+        List<String> withBack = new ArrayList<>(BENCH_CARD);
+        withBack.add("Back"); // to the Crew window it was opened from
+        assertEquals(withBack, lastTalk().labels());
     }
 
     @Test
@@ -586,7 +585,7 @@ class CompanionMenusTest {
         assertEquals(1, queue.size());
         queue.get(0).run();
         verify(roster).bench(owner, hadrik);
-        assertEquals("Hadrik heads back to camp to train.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik heads back to camp to train.\r\n"), lastTalk().text());
     }
 
     @Test
@@ -625,7 +624,7 @@ class CompanionMenusTest {
         verify(client, never()).sendPacket(any()); // no window from companion-ops
         assertEquals(1, io.size());
         io.get(0).run();
-        assertEquals("Hadrik heads back to camp to train.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik heads back to camp to train.\r\n"), lastTalk().text());
     }
 
     @Test

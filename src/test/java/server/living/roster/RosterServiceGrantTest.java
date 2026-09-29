@@ -19,6 +19,9 @@ import server.living.bond.ContractService;
 import server.living.config.Content;
 import server.living.config.Content.Look;
 import server.living.config.Content.Persona;
+import server.living.population.FieldCatalog;
+import server.living.population.Population;
+import server.living.population.PopulationContent;
 import server.living.resident.ResidentRuntime;
 import server.living.resident.ResidentSpots;
 import server.living.store.LivingStore;
@@ -154,6 +157,26 @@ class RosterServiceGrantTest {
     }
 
     @Test
+    void aNewCompanionCampsAtTheTopFieldForItsLevelNearItsHomeTown() {
+        Population population = mock(Population.class);
+        FieldCatalog fields = mock(FieldCatalog.class);
+        when(population.fields()).thenReturn(fields);
+        int portRoad = 104010000;
+        when(fields.fieldsFor(1, LITH_HARBOR, 1)).thenReturn(List.of(new PopulationContent.Field(portRoad, "Port Road", "",
+                "victoria", false, 10, 3, 6)));
+        RosterService roster = new RosterService(world);
+
+        try (MockedStatic<Population> populations = mockStatic(Population.class)) {
+            populations.when(Population::get).thenReturn(population);
+            assertEquals("Olwen joins Alice's roster, benched at map " + portRoad + ".", roster.grant(alice, OLWEN));
+        }
+
+        // it trains in a field from the start: the card never shows "train @" a town it cannot train in
+        assertEquals(portRoad, rows.get(key(ALICE, "olwen")).campMapId());
+        assertEquals(Assignment.TRAIN, rows.get(key(ALICE, "olwen")).assignment());
+    }
+
+    @Test
     void grantKeepsEveryOwnershipCacheInStep() {
         RosterService roster = new RosterService(world);
 
@@ -213,7 +236,7 @@ class RosterServiceGrantTest {
         RosterService roster = new RosterService(world);
         roster.grant(alice, OLWEN);
 
-        assertEquals("Olwen heads home to lith harbor.", roster.release(alice, OLWEN, "gm release"));
+        assertEquals("Olwen heads home to Lith Harbor.", roster.release(alice, OLWEN, "gm release"));
 
         assertNull(rows.get(key(ALICE, "olwen")));
         assertEquals(0, roster.cachedOwnerOf("olwen"));

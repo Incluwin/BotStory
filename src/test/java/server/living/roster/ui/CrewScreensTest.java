@@ -23,6 +23,7 @@ import server.living.config.LivingContent;
 import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchLedger;
+import server.living.roster.Commitments;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionDirectory.Relation;
 import server.living.roster.CompanionExecutor;
@@ -175,7 +176,7 @@ class CrewScreensTest {
         Talk crew = lastTalk();
         assertEquals(CompanionMenus.BOARD_NPC, crew.npcId());
         assertEquals(CompanionMenus.NOTES_SPEAKER, crew.speaker());
-        assertTrue(crew.text().startsWith("#eParty 3/6#n\r\n#L"), crew.text());
+        assertTrue(crew.text().startsWith("#eParty 3/6#n (1 seat kept)\r\n#L"), crew.text()); // Olwen, away, keeps hers
         assertEquals(List.of("Hadrik, Lv31 Fighter - Perion - HP 90%",
                 "Tobi, Lv30 Cleric - on the way (0:40)",
                 "Vex, Lv22 Magician - waiting outside",
@@ -206,6 +207,7 @@ class CrewScreensTest {
     @Test
     void anEmptyPartyAndAnEmptyBenchSaySo() {
         add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        when(store.lineupSlots(ANN)).thenReturn(Map.of("mira", 1));
 
         menus.rosterBook(owner);
         assertTrue(lastTalk().text().contains("(nobody out with me)\r\n\r\n#eBench (1 of 10 bench seats)#n"), lastTalk().text());
@@ -228,6 +230,7 @@ class CrewScreensTest {
             add(row("out" + index, RosterState.ACTIVE), "Out" + index, 910 + index, 20, Job.FIGHTER);
             add(row("camp" + index, RosterState.BENCHED), "Camp" + index, 920 + index, 20, Job.HUNTER);
         }
+        when(store.lineupSlots(ANN)).thenReturn(Map.of("camp0", 1));
 
         menus.crew(owner);
         List<String> first = lastTalk().labels();
@@ -239,7 +242,7 @@ class CrewScreensTest {
         pick("More...");
 
         assertEquals(List.of("Call my usual lineup", "Remember this lineup", "Everyone: follow me", "Everyone: wait here",
-                "Everyone: gather up", "Everyone: rebuff", "Formation...", "Everyone on the bench...", "More..."),
+                "Everyone: gather up", "Everyone: rebuff", "Formation...", "Everyone on the bench...", "Back to the top..."),
                 lastTalk().labels());
     }
 
@@ -266,6 +269,33 @@ class CrewScreensTest {
 
         assertTrue(lastTalk().text().startsWith("#eMira#n"), lastTalk().text());
         verify(directory).resolveName(owner, "Mira"); // ownership read again at the click
+    }
+
+    @Test
+    void aCardOpenedFromACrewRowHasBackToTheCrewWindowEvenAfterItsPages() {
+        RosterEntry hadrikRow = hadrik();
+        RosterEntry miraRow = add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        add(row("olwen", RosterState.BENCHED), "Olwen", 905, 26, Job.BANDIT);
+        when(directory.resolveName(owner, "Mira")).thenReturn(new Relation.OwnCompanion(miraRow));
+        when(directory.resolveName(owner, "Hadrik")).thenReturn(new Relation.OwnCompanion(hadrikRow));
+        menus.rosterBook(owner);
+
+        pick("Mira, Lv28 Hunter - train @ Ant Tunnel");
+        assertTrue(lastTalk().text().startsWith("#eMira#n"), lastTalk().text());
+        assertEquals("Back", lastTalk().labels().get(lastTalk().labels().size() - 1), "the bench card is no dead end");
+        pick("What you do at camp...");
+        pick("Back"); // the card again, still with its way back to the Crew window
+        pick("Back");
+
+        Talk crew = lastTalk();
+        assertTrue(crew.text().startsWith("#eParty 3/6#n"), crew.text());
+        assertEquals(CompanionMenus.NOTES_SPEAKER, crew.speaker(), "the Crew window it came from: the player's notes");
+        pick("Olwen, Lv26 Bandit - train @ Ant Tunnel"); // a second bench companion, all by mouse
+        verify(directory).resolveName(owner, "Olwen");
+
+        LivingTalk.forget(owner);
+        menus.card(owner, hadrikRow); // a double-click: no Crew window behind it
+        assertFalse(lastTalk().labels().contains("Back"), lastTalk().labels().toString());
     }
 
     @Test
@@ -310,7 +340,7 @@ class CrewScreensTest {
     }
 
     @Test
-    void formationOffersTheChatCommandsFormationsForEveryoneOut() {
+    void formationOffersDistinctFormationsInPlainWordsForEveryoneOut() {
         hadrik();
         when(manager.setFormation(owner, "tight")).thenReturn(new RosterResult.Ok("You tell Hadrik: formation tight."));
         menus.crew(owner);
@@ -318,12 +348,12 @@ class CrewScreensTest {
         pick("Formation...");
         Talk picker = lastTalk();
         assertEquals(CompanionMenus.NOTES_SPEAKER, picker.speaker());
-        assertEquals(List.of("Stagger", "Split", "Random", "Spread", "Left", "Right", "Stack", "Tight", "Loose", "Back"),
+        assertEquals(List.of("Stay close", "Give me room", "Spread out", "Keep to my left", "Keep to my right", "Back"),
                 picker.labels());
-        pick("Tight");
+        pick("Stay close");
 
         verify(manager).setFormation(owner, "tight");
-        verify(owner).dropMessage(5, "You tell Hadrik: formation tight.");
+        verify(owner, never()).dropMessage(anyInt(), anyString()); // Hadrik answers in his own words
         assertTrue(lastTalk().text().startsWith("#eParty "), lastTalk().text());
     }
 
@@ -332,13 +362,16 @@ class CrewScreensTest {
         hadrik();
         add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
         add(row("olwen", RosterState.AWAY), "Olwen", 905, 26, Job.BANDIT);
-        when(ledger.projectedPerHour(Assignment.TRAIN, 28)).thenReturn(12.4d);
-        when(ledger.projectedPerHour(Assignment.TRAIN, 26)).thenReturn(31.6d);
-        when(ledger.projectedPerHour(Assignment.FARM_MESO, 28)).thenReturn(4_100.0d);
-        when(ledger.projectedPerHour(Assignment.FARM_MESO, 26)).thenReturn(3_900.0d);
-        when(manager.assignAll(owner, Assignment.REST, 0, 0)).thenReturn(new RosterResult.Ok("Mira will rest. Olwen will rest."));
+        when(ledger.rates(eq(personas.get("mira")), any(), eq(28), anyInt(), eq(Assignment.TRAIN)))
+                .thenReturn(new BenchLedger.Rates(12.4d, 0L, 840L));
+        when(ledger.rates(eq(personas.get("olwen")), any(), eq(26), anyInt(), eq(Assignment.TRAIN)))
+                .thenReturn(new BenchLedger.Rates(31.6d, 0L, 780L));
+        when(ledger.rates(eq(personas.get("mira")), any(), eq(28), anyInt(), eq(Assignment.FARM_MESO)))
+                .thenReturn(new BenchLedger.Rates(0.0d, 4_940L, 840L));
+        when(ledger.rates(eq(personas.get("olwen")), any(), eq(26), anyInt(), eq(Assignment.FARM_MESO)))
+                .thenReturn(new BenchLedger.Rates(0.0d, 4_680L, 780L));
+        when(manager.assignAll(owner, Assignment.REST, 0, 0)).thenReturn(new RosterResult.Ok("Mira and Olwen will rest."));
         menus.crew(owner);
-        pick("More..."); // three rows and eight actions: the last one is on the second page
 
         pick("Everyone on the bench...");
         assertEquals(List.of("Train (~12-32% EXP/h each)", "Farm meso (~8.0k meso/h together after upkeep)",
@@ -346,8 +379,47 @@ class CrewScreensTest {
         pick("Rest (no upkeep)");
 
         verify(manager).assignAll(owner, Assignment.REST, 0, 0);
-        verify(owner).dropMessage(5, "Mira will rest. Olwen will rest.");
+        verify(owner).dropMessage(5, "Mira and Olwen will rest.");
         assertTrue(lastTalk().text().startsWith("#eParty "), lastTalk().text());
+    }
+
+    @Test
+    void theBenchWideTrainRateLeavesOutOneKeepingPaceAsItsCardSays() {
+        hadrik();
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        add(row("olwen", RosterState.BENCHED), "Olwen", 905, 26, Job.BANDIT);
+        when(ledger.rates(eq(personas.get("mira")), any(), eq(28), anyInt(), eq(Assignment.TRAIN)))
+                .thenReturn(new BenchLedger.Rates(0.0d, 0L, 840L)); // at pace with Ann: it earns nothing
+        when(ledger.rates(eq(personas.get("olwen")), any(), eq(26), anyInt(), eq(Assignment.TRAIN)))
+                .thenReturn(new BenchLedger.Rates(31.6d, 0L, 780L));
+        menus.crew(owner);
+
+        pick("Everyone on the bench...");
+
+        assertEquals("Train (~32% EXP/h)", lastTalk().labels().get(0));
+    }
+
+    @Test
+    void makeRoomWaitsForTheRunForOneTiedToIt() {
+        hadrik();
+        Commitments commitments = mock(Commitments.class);
+        when(world.commitments()).thenReturn(commitments);
+        when(commitments.isCommitted(900)).thenReturn(true); // Hadrik is in the run
+        Party full = mock(Party.class);
+        List<PartyCharacter> six = new ArrayList<>();
+        for (int index = 0; index < RosterService.PARTY_CAP; index++) {
+            six.add(mock(PartyCharacter.class));
+        }
+        when(full.getMembers()).thenReturn(six);
+        when(owner.getParty()).thenReturn(full);
+        menus.crew(owner);
+
+        pick("Make room for a friend...");
+
+        assertTrue(lastTalk().text().contains("\r\nHadrik, Lv31 Fighter - Perion - HP 90% (after the run)\r\n"),
+                lastTalk().text());
+        assertEquals(List.of("Never mind"), lastTalk().labels());
+        verifyNoInteractions(sync);
     }
 
     @Test
@@ -385,7 +457,7 @@ class CrewScreensTest {
                     crew.capture(), any(), any(), any(), any(), anyInt(), anyInt()));
             assertEquals(Map.of(ANN, List.of(hadrikRuntime)), crew.getValue());
         }
-        verify(owner).dropMessage(5, "You tell Hadrik: follow me.");
+        verify(owner, never()).dropMessage(anyInt(), anyString()); // an order that went out: the companions answer
     }
 
     // ---- the usual lineup --------------------------------------------------------------------------
@@ -394,6 +466,7 @@ class CrewScreensTest {
     void rememberThisLineupSavesItAndCallMyUsualLineupCallsIt() {
         hadrik();
         add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        when(store.lineupSlots(ANN)).thenReturn(Map.of("hadrik", 1, "mira", 2));
         menus.crew(owner);
 
         pick("Remember this lineup");
@@ -411,11 +484,19 @@ class CrewScreensTest {
     void callMyUsualLineupIsOfferedOnlyWithSomeoneBenchedAndRememberOnlyWithSomeoneOut() {
         hadrik();
         add(row("olwen", RosterState.AWAY), "Olwen", 905, 26, Job.BANDIT); // away keeps its seat: the usual call skips it
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        when(store.lineupSlots(ANN)).thenReturn(Map.of("hadrik", 1, "olwen", 2)); // Mira has no place in it
 
         menus.crew(owner);
 
-        assertFalse(lastTalk().labels().contains("Call my usual lineup"));
+        assertFalse(lastTalk().labels().contains("Call my usual lineup"), "nobody of the lineup is benched");
         assertTrue(lastTalk().labels().contains("Remember this lineup"));
+
+        LivingTalk.forget(owner);
+        when(store.lineupSlots(ANN)).thenReturn(Map.of("hadrik", 1, "mira", 2));
+        views.invalidate(ANN); // a lineup saved: the cache reads it again
+        menus.crew(owner);
+        assertTrue(lastTalk().labels().contains("Call my usual lineup"));
     }
 
     // ---- stale clicks ------------------------------------------------------------------------------
@@ -427,17 +508,27 @@ class CrewScreensTest {
         menus.crew(owner);
 
         views.invalidate(ANN); // a roster write or a party change touched Ann's rows meanwhile
-        pick("Hadrik, Lv31 Fighter - Perion - HP 90%");
+        pick("Remember this lineup");
 
         assertTrue(lastTalk().text().startsWith(CompanionMenus.THINGS_CHANGED + "\r\n\r\n#eParty 3/6#n"), lastTalk().text());
-        verify(directory, never()).resolveName(any(), anyString());
-
-        views.invalidate(ANN);
-        pick("Remember this lineup");
         verify(manager, never()).saveLineup(any());
 
         pick("Remember this lineup"); // the window drawn afresh acts
         verify(manager).saveLineup(owner);
+    }
+
+    @Test
+    void aRowOnlyOpensACardReadAfreshSoAChangeElsewhereNeverGetsInTheWay() {
+        RosterEntry hadrikRow = hadrik();
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        when(directory.resolveName(owner, "Hadrik")).thenReturn(new Relation.OwnCompanion(hadrikRow));
+        menus.crew(owner);
+
+        views.invalidate(ANN); // say, Mira's bench slice wrote her haul
+        pick("Hadrik, Lv31 Fighter - Perion - HP 90%");
+
+        assertTrue(lastTalk().text().startsWith("#eHadrik#n"), lastTalk().text()); // no "Things changed meanwhile."
+        verify(directory).resolveName(owner, "Hadrik"); // ownership read again at the click
     }
 
     @Test
@@ -496,6 +587,7 @@ class CrewScreensTest {
         CompanionExecutor queued = DirectExecutor.queued(queue);
         when(world.executor()).thenReturn(queued);
         hadrik();
+        when(manager.followAll(owner)).thenReturn(new RosterResult.Failed("Nobody of yours is out with you."));
         menus.crew(owner);
         pick("Everyone: follow me");
         LivingTalk.open(owner, 9000000).ok("a stock window the player opened meanwhile").show();
@@ -504,17 +596,20 @@ class CrewScreensTest {
         queue.get(0).run();
 
         verify(manager).followAll(owner);
-        verify(owner).dropMessage(5, "followAll done.");
+        verify(owner).dropMessage(5, "Nobody of yours is out with you.");
         verify(client, never()).sendPacket(any()); // a second NPC_TALK over a waiting window disconnects the client
     }
 
     // ---- helpers -----------------------------------------------------------------------------------
 
-    /** Picks {@code label} on the Crew window on screen, and checks the manager, the pink line and the window drawn again. */
+    /**
+     * Picks {@code label} on the Crew window on screen, and checks the manager, no pink echo of an order that went out
+     * (each companion answers for itself) and the window drawn again.
+     */
     private void order(String label, String method, Consumer<CompanionManager> call) {
         pick(label);
         call.accept(verify(manager));
-        verify(owner).dropMessage(5, method + " done.");
+        verify(owner, never()).dropMessage(5, method + " done.");
         Talk again = lastTalk();
         assertEquals(CompanionMenus.NOTES_SPEAKER, again.speaker());
         assertTrue(again.text().startsWith("#eParty 3/6#n"), again.text());

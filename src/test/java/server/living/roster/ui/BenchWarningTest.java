@@ -67,7 +67,6 @@ class BenchWarningTest {
     private static final int ANN = 10;
     private static final byte MENU = 4;
     private static final byte YES_NO = 1;
-    private static final byte SAY = 0;
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingWorldConfig config = new LivingWorldConfig();
@@ -158,8 +157,8 @@ class BenchWarningTest {
         answer(YES_NO, 1, null);
 
         verify(roster).bench(owner, dorran);
-        assertEquals(SAY, lastTalk().msgType());
-        assertEquals("Dorran heads back to camp to train.", lastTalk().text());
+        assertEquals(MENU, lastTalk().msgType()); // the card again, the outcome on top
+        assertTrue(lastTalk().text().startsWith("Dorran heads back to camp to train.\r\n"), lastTalk().text());
     }
 
     @Test
@@ -187,7 +186,7 @@ class BenchWarningTest {
         pick("Take a break at camp");
 
         verify(roster).bench(owner, dorran);
-        assertEquals(SAY, lastTalk().msgType()); // straight to the outcome
+        assertEquals(MENU, lastTalk().msgType()); // straight to the outcome, on the card
         assertFalse(talks().stream().anyMatch(talk -> talk.msgType() == YES_NO));
     }
 
@@ -205,7 +204,7 @@ class BenchWarningTest {
         pick("Take a break at camp");
 
         verify(roster).bench(owner, dorran);
-        assertEquals(SAY, lastTalk().msgType());
+        assertEquals(MENU, lastTalk().msgType());
     }
 
     @Test
@@ -216,7 +215,7 @@ class BenchWarningTest {
         pick("Take a break at camp");
 
         verify(roster).bench(owner, tobi);
-        assertEquals(SAY, lastTalk().msgType());
+        assertEquals(MENU, lastTalk().msgType());
     }
 
     @Test

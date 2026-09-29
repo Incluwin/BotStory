@@ -6,6 +6,7 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import constants.inventory.ItemConstants;
+import server.ItemInformationProvider;
 import server.StatEffect;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.life.MonsterDropEntry;
@@ -45,6 +46,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import static server.living.roster.ui.CompanionMenus.BOARD_NPC;
@@ -64,11 +66,13 @@ import static server.living.roster.ui.CompanionMenus.portrait;
  * (benched, away on an errand, or parked), and the pages they open: the swap pickers, what it does at camp (with the
  * bench priors' projected rates; FARM_ITEM picks an item and a count), where it camps, its haul, its wages, the gear,
  * the trade and parting ways. The companion speaks on them under the portrait policy; the release confirm is the
- * player's notes. Each page is the answer to a click on the one before it, and a page opened from the card has Back.
- * Every option is stamped with the owner's view version: a click after their rows changed opens the card again with
- * "things changed" instead of acting. While the companion is tied to a run, bench, swap, errands and its camp read
- * "(after the run)" and cannot be picked. Reached only through {@link CompanionMenus#card}, which has checked that a
- * window may open; every action runs on companion-ops through {@link CompanionMenus#command}.
+ * player's notes. Each page is the answer to a click on the one before it, and a page opened from the card has Back;
+ * a card opened from a Crew window row has Back to that window. Every option that acts is stamped with the owner's
+ * view version, taken before the screen read its rows: a click after their rows changed opens the card again with
+ * "things changed" instead of acting (an option that only opens a page reads it afresh). While the companion is tied
+ * to a run, bench, swap, errands and its camp read "(after the run)" and cannot be picked. Reached only through
+ * {@link CompanionMenus#card}, which has checked that a window may open; every action runs on companion-ops through
+ * {@link CompanionMenus#command}, and its line comes back on top of the card.
  */
 final class CompanionCardScreens {
     /** How many fields the camp picker offers besides "Right here" (plan flow 2, "the FieldCatalog top 5"). */
@@ -89,6 +93,11 @@ final class CompanionCardScreens {
 
     private final CompanionMenus menus;
     private final LivingWorld world;
+    /**
+     * Per owner, the Crew window the card on screen was opened from, for its Back: the persona id whose voice the window
+     * had, or "" for the player's notes. None for a card opened by a double-click.
+     */
+    private final Map<Integer, String> crewParents = new ConcurrentHashMap<>();
     /** The game data the pickers read; a test swaps in its own. */
     Catalog catalog;
 
@@ -121,100 +130,123 @@ final class CompanionCardScreens {
 
     // ---- the cards -------------------------------------------------------------------------
 
-    /** The card of a companion in the owner's party, the bench card of a benched, away or parked one. */
-    void show(Character owner, Persona persona, RosterEntry entry) {
-        show(owner, persona, entry, "");
-    }
-
-    private void show(Character owner, Persona persona, RosterEntry entry, String note) {
-        switch (entry.state()) {
-            case BENCHED, AWAY, PARKED -> benchCard(owner, persona, entry, note);
-            case RELEASED -> notInRoster(owner, persona);
-            default -> card(owner, persona, entry, note);
+    /**
+     * The card of a companion in the owner's party, the bench card of a benched, away or parked one, read afresh.
+     * {@code fromCrew}: opened from a row of the Crew window {@code crewVoice} spoke (null: the player's notes), which
+     * its Back re-opens; otherwise (a double-click) it has none.
+     */
+    void show(Character owner, Persona persona, boolean fromCrew, Persona crewVoice) {
+        if (fromCrew) {
+            crewParents.put(owner.getId(), crewVoice == null ? "" : crewVoice.id());
+        } else {
+            crewParents.remove(owner.getId());
         }
+        reopen(owner, persona, "");
     }
 
     /**
-     * ACTIVE, TRAVELLING or HOLD. Orders, the gear and the trade need it loaded and out with the owner; on its way it
-     * shows the time left, and waiting at a run's entrance it can be asked to come.
+     * A card action's line, as the answer to the click: the card again, read afresh, with the line on top; the notes'
+     * last page once the companion is no longer in the roster (parted ways).
      */
-    private void card(Character owner, Persona persona, RosterEntry entry, String note) {
+    void answer(Character owner, Persona persona, String line) {
+        if (row(owner, persona) == null) {
+            menus.outcome(owner, line);
+            return;
+        }
+        reopen(owner, persona, line);
+    }
+
+    /**
+     * ACTIVE, TRAVELLING or HOLD. Orders need it loaded and out with the owner, the gear and the trade on the owner's
+     * map too; on its way it shows the time left, and waiting at a run's entrance it can be asked to come.
+     */
+    private void card(Character owner, Persona persona, RosterEntry entry, String note, Stamp stamp) {
         CompanionView view = menus.view(owner, entry);
         Character bot = view.loaded() ? world.roster().companion(entry) : null;
         boolean active = entry.state() == RosterState.ACTIVE;
         boolean out = active && bot != null;
+        boolean here = out && bot.getMap() != null && bot.getMap() == owner.getMap(); // the stock windows need it in view
         boolean committed = view.committed();
-        Runnable stale = () -> reopen(owner, persona, THINGS_CHANGED);
         List<Option> options = new ArrayList<>();
-        if (out) {
-            options.add(option(owner, stale, "Stick with me", () -> order(owner, persona, "menu.follow",
+        if (out) { // an order reaches it as it is when given (the manager checks), so it needs no stamp
+            options.add(new Option("Stick with me", () -> order(owner, persona, "menu.follow",
                     manager -> manager.followMe(owner, persona))));
-            options.add(option(owner, stale, "Wait here", () -> order(owner, persona, "menu.wait",
+            options.add(new Option("Wait here", () -> order(owner, persona, "menu.wait",
                     manager -> manager.waitHere(owner, persona))));
-            options.add(option(owner, stale, "Hunt here while I'm busy", () -> order(owner, persona, "menu.hunt",
+            options.add(new Option("Hunt here while I'm busy", () -> order(owner, persona, "menu.hunt",
                     manager -> manager.huntHere(owner, persona))));
         }
         if (entry.state() == RosterState.HOLD) {
-            options.add(option(owner, stale, "Come join me", () -> join(owner, persona, entry)));
+            options.add(stamp.option("Come join me", () -> join(owner, persona, entry)));
         }
         // the last one out is benched or sent off only by someone holding the Roster, which calls anyone back; else it
         // is rotated
         boolean mayLeave = othersOut(owner, persona) || menus.holdsRosterBook(owner);
         if (mayLeave) {
-            options.add(unlessCommitted(committed, owner, stale, "Take a break at camp", () -> menus.confirmBench(owner,
-                    persona, () -> menus.command(owner, "menu.bench",
-                            () -> RosterVoice.line(persona, world.roster().bench(owner, persona))))));
+            options.add(unlessCommitted(committed, stamp.option("Take a break at camp", () -> menus.confirmBench(owner,
+                    persona, () -> menus.command(owner, persona, "menu.bench",
+                            () -> RosterVoice.line(persona, world.roster().bench(owner, persona)))))));
         }
-        if (active && !menus.rows(owner, false).isEmpty()) {
-            options.add(unlessCommitted(committed, owner, stale, "Let someone take your place...",
-                    () -> swapPicker(owner, persona, true, "who takes my place?")));
+        if (active && !swapIns(owner).isEmpty()) {
+            options.add(unlessCommitted(committed, new Option("Let someone take your place...",
+                    () -> swapPicker(owner, persona, true, "who takes my place?"))));
         }
         if (mayLeave || !active) { // one out with you leaves to do it now
-            options.add(unlessCommitted(committed, owner, stale, "What you do at camp...", () -> dutyPicker(owner, persona)));
+            options.add(unlessCommitted(committed, new Option("What you do at camp...", () -> dutyPicker(owner, persona))));
         }
-        options.add(unlessCommitted(committed, owner, stale, "Camp somewhere else...", () -> campPicker(owner, persona, null)));
-        options.add(option(owner, stale, "Your haul...", () -> haul(owner, persona)));
-        options.add(option(owner, stale, "Your wages...", () -> wages(owner, persona)));
-        if (out) {
-            options.add(option(owner, stale, "Let me see your gear", () -> showGear(owner, persona)));
-            options.add(option(owner, stale, "Let's trade", () -> order(owner, persona, "menu.trade",
-                    manager -> manager.openTrade(owner, persona))));
+        options.add(unlessCommitted(committed, new Option("Camp somewhere else...", () -> campPicker(owner, persona, null))));
+        options.add(new Option("The whole crew...", () -> menus.crews().show(owner, persona)));
+        options.add(new Option("Your haul...", () -> haul(owner, persona)));
+        options.add(new Option("Your wages...", () -> wages(owner, persona)));
+        if (here) {
+            options.add(new Option("Let me see your gear", () -> showGear(owner, persona)));
+            options.add(new Option("Let's trade", () -> {
+                long openBy = System.currentTimeMillis() + CompanionMenus.LATE_OUTCOME_MS; // never long after the click
+                order(owner, persona, "menu.trade", manager -> manager.openTrade(owner, persona, openBy));
+            }));
         }
-        options.add(option(owner, stale, "The whole crew...", () -> menus.crews().show(owner, persona)));
-        options.add(option(owner, stale, "We should part ways", () -> partWays(owner, persona)));
-        options.add(new Option("Never mind", null));
+        options.add(new Option("We should part ways", () -> partWays(owner, persona)));
         String status = switch (entry.state()) {
             case TRAVELLING -> view.eta().isEmpty() ? "on the way\r\n" : "on the way (" + view.eta() + ")\r\n";
             case HOLD -> "waiting at the entrance\r\n";
             default -> "";
         };
         String text = note(note) + cardHeader(view, bot) + status + (committed ? "in a run with you\r\n" : "");
-        LivingTalk.open(owner, portrait(persona)).menu(text, options).show();
+        LivingTalk.open(owner, portrait(persona)).menu(text, options).back(crewBack(owner)).show();
     }
 
     /** BENCHED, AWAY (on an errand, its seat kept) or PARKED; one already called shows its way and is not called twice. */
-    private void benchCard(Character owner, Persona persona, RosterEntry entry, String note) {
+    private void benchCard(Character owner, Persona persona, RosterEntry entry, String note, Stamp stamp) {
         CompanionView view = menus.view(owner, entry);
         boolean committed = view.committed();
-        Runnable stale = () -> reopen(owner, persona, THINGS_CHANGED);
         List<Option> options = new ArrayList<>();
         if (view.travelMs() <= 0) {
-            options.add(option(owner, stale, "Come join me", () -> join(owner, persona, entry)));
+            options.add(stamp.option("Come join me", () -> join(owner, persona, entry)));
             if (!menus.rows(owner, true).isEmpty()) {
-                options.add(unlessCommitted(committed, owner, stale, "Swap in for...",
-                        () -> swapPicker(owner, persona, false, "who should i take over from?")));
+                options.add(unlessCommitted(committed, new Option("Swap in for...",
+                        () -> swapPicker(owner, persona, false, "who should i take over from?"))));
             }
         }
-        options.add(unlessCommitted(committed, owner, stale, "What you do at camp...", () -> dutyPicker(owner, persona)));
-        options.add(unlessCommitted(committed, owner, stale, "Camp somewhere else...", () -> campPicker(owner, persona, null)));
-        options.add(option(owner, stale, "Your haul...", () -> haul(owner, persona)));
-        options.add(option(owner, stale, "Your wages...", () -> wages(owner, persona)));
-        options.add(option(owner, stale, "We should part ways", () -> partWays(owner, persona)));
-        options.add(new Option("Never mind", null));
+        options.add(unlessCommitted(committed, new Option("What you do at camp...", () -> dutyPicker(owner, persona))));
+        options.add(unlessCommitted(committed, new Option("Camp somewhere else...", () -> campPicker(owner, persona, null))));
+        options.add(new Option("Your haul...", () -> haul(owner, persona)));
+        options.add(new Option("Your wages...", () -> wages(owner, persona)));
+        options.add(new Option("We should part ways", () -> partWays(owner, persona)));
         String status = view.travelMs() > 0 ? onTheWay(view) : duty(view);
         String more = (view.progress().isEmpty() ? "" : view.progress() + "\r\n")
                 + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n");
-        LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + status + "\r\n" + more, options).show();
+        LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + status + "\r\n" + more, options)
+                .back(crewBack(owner)).show();
+    }
+
+    /** The Crew window the card on screen was opened from, as its Back; null for a card opened by a double-click. */
+    private Runnable crewBack(Character owner) {
+        String voice = crewParents.get(owner.getId());
+        if (voice == null) {
+            return null;
+        }
+        Persona from = voice.isEmpty() ? null : world.content().persona(voice);
+        return () -> menus.crews().show(owner, from);
     }
 
     /** "#eHadrik#n, Lv27 Hunter - HP 812/900 - 38 Red Potions", then a line break; the plain header while it is not loaded. */
@@ -245,7 +277,7 @@ final class CompanionCardScreens {
                     : "the other seats are your friend's. who should i take over from?");
             return;
         }
-        menus.command(owner, "menu.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
+        menus.command(owner, persona, "menu.call", () -> RosterVoice.line(persona, world.roster().call(owner, persona)));
     }
 
     /**
@@ -253,9 +285,13 @@ final class CompanionCardScreens {
      * comes in for one that is out. Both are {@link RosterService#swap}(out, in). {@code prompt} is {@code fixed}'s line.
      */
     private void swapPicker(Character owner, Persona fixed, boolean outgoing, String prompt) {
-        Runnable stale = () -> reopen(owner, fixed, THINGS_CHANGED);
+        Stamp stamp = stamp(owner, fixed);
+        if (row(owner, fixed) == null) {
+            notInRoster(owner, fixed);
+            return;
+        }
         List<Option> options = new ArrayList<>();
-        for (RosterEntry entry : menus.rows(owner, !outgoing)) {
+        for (RosterEntry entry : outgoing ? swapIns(owner) : menus.rows(owner, true)) {
             Persona other = world.content().persona(entry.personaId());
             if (other == null) {
                 continue;
@@ -263,8 +299,9 @@ final class CompanionCardScreens {
             CompanionView view = menus.view(owner, entry);
             Persona out = outgoing ? fixed : other;
             Persona in = outgoing ? other : fixed;
-            options.add(option(owner, stale, outgoing ? benchRow(view) : partyRow(view), () -> menus.confirmBench(owner, out,
-                    () -> menus.command(owner, "menu.swap", () -> RosterVoice.line(fixed, world.roster().swap(owner, out, in))))));
+            options.add(stamp.option(outgoing ? benchRow(view) : partyRow(view), () -> menus.confirmBench(owner, out,
+                    () -> menus.command(owner, fixed, "menu.swap",
+                            () -> RosterVoice.line(fixed, world.roster().swap(owner, out, in))))));
         }
         if (options.isEmpty()) {
             menus.outcome(owner, "Nobody to swap with right now.");
@@ -273,12 +310,27 @@ final class CompanionCardScreens {
         LivingTalk.open(owner, portrait(fixed)).menu(prompt + "\r\n", options).back(() -> reopen(owner, fixed, "")).show();
     }
 
-    /** The stock character info, as double-clicking a stranger shows it, of the companion as it is out now. */
+    /**
+     * The stock character info, as double-clicking a stranger shows it, of the companion as it is out now; only while it
+     * stands on the owner's map (the client draws it from the character it sees), else the card says why.
+     */
     private void showGear(Character owner, Persona persona) {
         RosterResult shown = menus.manager().showGear(owner, persona);
         if (!shown.ok()) {
-            menus.outcome(owner, persona.name() + " is not out with you right now.");
+            answer(owner, persona, RosterVoice.line(persona, shown));
         }
+    }
+
+    /** The owner's companions that can take a seat at once: benched or away, and not already on their way. */
+    private List<RosterEntry> swapIns(Character owner) {
+        List<RosterEntry> out = new ArrayList<>();
+        for (RosterEntry entry : menus.rows(owner)) {
+            if ((entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY)
+                    && menus.view(owner, entry).travelMs() <= 0) {
+                out.add(entry);
+            }
+        }
+        return out;
     }
 
     // ---- what it does at camp (plan flow 2) -------------------------------------------------
@@ -288,44 +340,41 @@ final class CompanionCardScreens {
      * seat (AWAY); any other has it set. A field duty with a town for a camp asks where first.
      */
     private void dutyPicker(Character owner, Persona persona) {
+        Stamp stamp = stamp(owner, persona);
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             notInRoster(owner, persona);
             return;
         }
         CompanionView view = menus.view(owner, entry);
-        Runnable stale = () -> reopen(owner, persona, THINGS_CHANGED);
         int level = view.level() > 0 ? view.level() : owner.getLevel();
         BenchLedger bench = world.bench();
         List<Option> options = new ArrayList<>();
         for (Assignment duty : Assignment.values()) {
             BenchLedger.Rates rates = bench == null ? null : bench.rates(persona, view.bond(), level, owner.getLevel(), duty);
-            options.add(option(owner, stale, dutyLabel(duty, rates), () -> chooseDuty(owner, persona, duty)));
+            options.add(stamp.option(dutyLabel(duty, rates), () -> chooseDuty(owner, persona, duty)));
         }
         String prompt = (entry.state() == RosterState.ACTIVE ? "what should i go do? i'll keep my seat.\r\n"
                 : "what should i do at camp?\r\n")
-                + "now: " + view.duty() + (view.camp().isEmpty() ? "" : " @ " + view.camp()) + "\r\nupkeep: " + (int) Math.round(BenchLedger.upkeepPerHour(level))
-                + " meso an hour, none while i rest\r\n";
+                + "now: " + view.duty() + (view.camp().isEmpty() ? "" : " @ " + view.camp())
+                + String.format(Locale.ROOT, "\r\nupkeep: %,d meso an hour, none while i rest\r\n",
+                        Math.round(BenchLedger.upkeepPerHour(level)));
         LivingTalk.open(owner, portrait(persona)).menu(prompt, options).back(() -> reopen(owner, persona, "")).show();
     }
 
-    /** "Train (~32.4% EXP/h)", "Farm meso (~4.1k meso/h after upkeep)", "Rest (no upkeep)". */
+    /** "Train (~32% EXP/h)", "Train (~1.2% EXP/h)", "Farm meso (~4.1k meso/h after upkeep)", "Rest (no upkeep)". */
     static String dutyLabel(Assignment duty, BenchLedger.Rates rates) {
         return switch (duty) {
             case TRAIN -> "Train" + (rates == null ? "" : rates.expPercent() > 0.0d
-                    ? String.format(Locale.ROOT, " (~%.1f%% EXP/h)", rates.expPercent()) : " (keeping pace with you)");
-            case FARM_MESO -> "Farm meso" + (rates == null ? "" : " (~" + kilo(rates.meso() - rates.upkeep()) + " meso/h after upkeep)");
+                    ? " (~" + CompanionMenus.percent(rates.expPercent()) + "% EXP/h)" : " (keeping pace with you)");
+            case FARM_MESO -> "Farm meso" + (rates == null ? ""
+                    : " (~" + CompanionMenus.meso(rates.meso() - rates.upkeep()) + " meso/h after upkeep)");
             case FARM_ITEM -> "Farm an item...";
             case GATHER -> "Gather for your quests";
             case SELL -> "Sell the haul";
             case STALL -> "Run a stall";
             case REST -> "Rest (no upkeep)";
         };
-    }
-
-    /** "4.1k", "850". */
-    static String kilo(long meso) {
-        return Math.abs(meso) >= 1_000L ? String.format(Locale.ROOT, "%.1fk", meso / 1_000.0d) : Long.toString(meso);
     }
 
     private void chooseDuty(Character owner, Persona persona, Assignment duty) {
@@ -355,6 +404,7 @@ final class CompanionCardScreens {
      * brings), then what the owner's quests still need. A pick asks how many in the stock number box.
      */
     private void itemPicker(Character owner, Persona persona, int camp) {
+        Stamp stamp = stamp(owner, persona);
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             notInRoster(owner, persona);
@@ -364,13 +414,12 @@ final class CompanionCardScreens {
         Map<Integer, Integer> drops = catalog.drops(at);
         Map<Integer, Integer> needs = catalog.questNeeds(owner);
         BenchLedger bench = world.bench();
-        Runnable stale = () -> reopen(owner, persona, THINGS_CHANGED);
         List<Option> options = new ArrayList<>();
         for (Map.Entry<Integer, Integer> drop : drops.entrySet()) {
             int itemId = drop.getKey();
             Integer need = needs.get(itemId);
-            String rate = bench == null ? "" : String.format(Locale.ROOT, " (~%.1f/h)", bench.itemsPerHour(drop.getValue()));
-            options.add(option(owner, stale, itemLabel(itemId) + rate + (need == null ? "" : " - you need " + need),
+            String rate = bench == null ? "" : " (" + itemRate(bench.itemsPerHour(drop.getValue())) + ")";
+            options.add(stamp.option(itemLabel(itemId) + rate + (need == null ? "" : " - you need " + need),
                     () -> farmCount(owner, persona, itemId, need != null ? need : entry.assignmentItem() == itemId
                             && entry.assignmentCount() > 0 ? entry.assignmentCount() : FARM_COUNT_DEFAULT, camp)));
         }
@@ -385,7 +434,7 @@ final class CompanionCardScreens {
             }
             int itemId = need.getKey();
             int count = need.getValue();
-            options.add(option(owner, stale, itemLabel(itemId) + " - you need " + count,
+            options.add(stamp.option(itemLabel(itemId) + " - you need " + count,
                     () -> farmCount(owner, persona, itemId, count, camp)));
         }
         String where = menus.placeNames.apply(at);
@@ -399,12 +448,19 @@ final class CompanionCardScreens {
         return "#i" + itemId + "# #t" + itemId + "#";
     }
 
-    /** How many of the item, in the stock number box (0: as many as it can); its cancel path goes back to the items. */
+    /** What an hour of farming brings: "rare" below 0.1, "~2.6 an hour" below 10, "~40 an hour". */
+    static String itemRate(double perHour) {
+        if (perHour < 0.1d) {
+            return "rare";
+        }
+        return perHour < 10.0d ? String.format(Locale.ROOT, "~%.1f an hour", perHour) : "~" + Math.round(perHour) + " an hour";
+    }
+
+    /** How many of the item, in the stock number box (0: as many as it can); End Chat ends it, the items page has Back. */
     private void farmCount(Character owner, Persona persona, int itemId, int def, int camp) {
         LivingTalk.open(owner, portrait(persona))
                 .number("how many #t" + itemId + "#? (0: as many as i can)", def, 0, FARM_COUNT_MAX,
                         count -> assign(owner, persona, Assignment.FARM_ITEM, itemId, count, camp))
-                .back(() -> itemPicker(owner, persona, camp))
                 .show();
     }
 
@@ -413,7 +469,7 @@ final class CompanionCardScreens {
      * and keeps its seat (CompanionManager.assign delegates), any other has it set. Mid-run it waits: "after the run".
      */
     private void assign(Character owner, Persona persona, Assignment duty, int itemId, int count, int camp) {
-        menus.command(owner, "menu.duty", () -> {
+        menus.command(owner, persona, "menu.duty", () -> {
             if (committedNow(persona)) {
                 return RosterVoice.line(persona, new RosterResult.InEventInstance());
             }
@@ -430,10 +486,9 @@ final class CompanionCardScreens {
             if (!(done instanceof RosterResult.Ok) || now == null) {
                 return RosterVoice.line(persona, done);
             }
-            String what = world.roster().describeAssignment(now) + " @ " + menus.placeNames.apply(campOf(now, persona));
+            String what = world.roster().describeAssignment(now) + " at " + menus.placeNames.apply(campOf(now, persona));
             boolean leaves = before != null && before.state() == RosterState.ACTIVE && now.state() == RosterState.AWAY;
-            return leaves ? persona.name() + " leaves to " + what + " and keeps the seat."
-                    : persona.name() + " will " + what + ".";
+            return persona.name() + (leaves ? ": ok, off to " + what + ". i'll keep my seat." : ": ok, i'll " + what + ".");
         });
     }
 
@@ -445,6 +500,7 @@ final class CompanionCardScreens {
      * only fields are offered.
      */
     private void campPicker(Character owner, Persona persona, Assignment then) {
+        Stamp stamp = stamp(owner, persona);
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             notInRoster(owner, persona);
@@ -454,15 +510,14 @@ final class CompanionCardScreens {
         int level = view.level() > 0 ? view.level() : owner.getLevel();
         int current = campOf(entry, persona);
         int here = owner.getMapId();
-        Runnable stale = () -> reopen(owner, persona, THINGS_CHANGED);
         List<Option> options = new ArrayList<>();
         for (Map.Entry<Integer, Integer> field : catalog.fields(level, here).entrySet()) {
             int mapId = field.getKey();
-            options.add(option(owner, stale, menus.placeNames.apply(mapId) + " (Lv" + field.getValue() + " monsters)"
+            options.add(stamp.option(menus.placeNames.apply(mapId) + " (Lv" + field.getValue() + " monsters)"
                     + (mapId == current ? " - my camp now" : ""), () -> pickCamp(owner, persona, then, mapId)));
         }
         if (here > 0 && (then == null || catalog.isField(here))) {
-            options.add(option(owner, stale, "Right here (" + menus.placeNames.apply(here) + ")",
+            options.add(stamp.option("Right here (" + menus.placeNames.apply(here) + ")",
                     () -> pickCamp(owner, persona, then, here)));
         }
         String prompt = then == null ? "where should i camp? now: " + menus.placeNames.apply(current) + "\r\n"
@@ -484,12 +539,12 @@ final class CompanionCardScreens {
             dutyAt(owner, persona, then, mapId);
             return;
         }
-        menus.command(owner, "menu.camp", () -> {
+        menus.command(owner, persona, "menu.camp", () -> {
             if (committedNow(persona)) {
                 return RosterVoice.line(persona, new RosterResult.InEventInstance());
             }
             RosterResult moved = menus.manager().setCamp(owner, persona, mapId);
-            return moved.ok() ? persona.name() + " will camp at " + menus.placeNames.apply(mapId) + "."
+            return moved.ok() ? persona.name() + ": ok, i'll camp at " + menus.placeNames.apply(mapId) + "."
                     : RosterVoice.line(persona, moved);
         });
     }
@@ -498,6 +553,7 @@ final class CompanionCardScreens {
 
     /** What it carries, and what to do with it: hand it over, send it by Duey, bank the meso, or wear the best of it. */
     private void haul(Character owner, Persona persona) {
+        Stamp stamp = stamp(owner, persona);
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             notInRoster(owner, persona);
@@ -520,27 +576,27 @@ final class CompanionCardScreens {
             text.append(" nothing yet.");
         }
         text.append("\r\n");
-        Runnable stale = () -> reopen(owner, persona, THINGS_CHANGED);
         List<Option> options = new ArrayList<>();
         if (!items.isEmpty() || view.haulMeso() > 0) {
-            options.add(option(owner, stale, "Hand it over", () -> menus.command(owner, "menu.haul.hand_over",
+            options.add(stamp.option("Hand it over", () -> menus.command(owner, persona, "menu.haul.hand_over",
                     () -> world.roster().handOver(owner, persona))));
-            options.add(option(owner, stale, "Send it by Duey", () -> menus.command(owner, "menu.haul.duey",
+            options.add(stamp.option("Send it by Duey", () -> menus.command(owner, persona, "menu.haul.duey",
                     () -> world.roster().sendIt(owner, persona))));
         }
         if (view.haulMeso() > 0) {
-            options.add(option(owner, stale, "Bank the meso", () -> menus.command(owner, "menu.haul.bank",
+            options.add(stamp.option("Bank the meso", () -> menus.command(owner, persona, "menu.haul.bank",
                     () -> world.roster().bankIt(owner, persona))));
         }
         if (gear && entry.state() == RosterState.ACTIVE && view.loaded()) {
-            options.add(option(owner, stale, "Wear your best from the haul", () -> menus.command(owner, "menu.haul.wear_best",
-                    () -> RosterVoice.line(persona, menus.manager().wearBestFromHaul(owner, persona)))));
+            options.add(stamp.option("Wear your best from the haul", () -> menus.command(owner, persona,
+                    "menu.haul.wear_best", () -> RosterVoice.line(persona, menus.manager().wearBestFromHaul(owner, persona)))));
         }
         LivingTalk.open(owner, portrait(persona)).menu(text.toString(), options).back(() -> reopen(owner, persona, "")).show();
     }
 
     /** Whether it is paid up, its upkeep, and paying hours ahead in the stock number box (decision 19 (b)). */
     private void wages(Character owner, Persona persona) {
+        Stamp stamp = stamp(owner, persona);
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             notInRoster(owner, persona);
@@ -549,18 +605,16 @@ final class CompanionCardScreens {
         CompanionView view = menus.view(owner, entry);
         long upkeep = Math.max(1L, Math.round(BenchLedger.upkeepPerHour(view.level() > 0 ? view.level() : 1)));
         long affordable = Math.min(WAGE_HOURS_MAX, owner.getMeso() / upkeep);
-        Runnable stale = () -> reopen(owner, persona, THINGS_CHANGED);
         List<Option> options = new ArrayList<>();
         if (affordable >= 1) {
-            options.add(option(owner, stale, "Pay your wages...", () -> LivingTalk.open(owner, portrait(persona))
+            options.add(stamp.option("Pay your wages...", () -> LivingTalk.open(owner, portrait(persona))
                     .number(String.format(Locale.ROOT, "how many hours? %,d meso an hour; you have %,d.", upkeep, owner.getMeso()),
                             (int) Math.min(WAGE_HOURS_DEFAULT, affordable), 1, (int) affordable,
-                            hours -> menus.command(owner, "menu.wages",
+                            hours -> menus.command(owner, persona, "menu.wages",
                                     () -> world.roster().payWages(owner, persona, hours * upkeep)))
-                    .back(() -> wages(owner, persona))
                     .show()));
         } else {
-            options.add(Option.heading(String.format(Locale.ROOT, "(an hour is %,d meso)", upkeep)));
+            options.add(Option.heading(String.format(Locale.ROOT, "(you need %,d meso to pay an hour)", upkeep)));
         }
         String text = "i'm " + view.wages() + String.format(Locale.ROOT, ".\r\nmy upkeep is %,d meso an hour; paid ahead,"
                 + " it doesn't come out of the haul.\r\n", upkeep);
@@ -572,6 +626,7 @@ final class CompanionCardScreens {
      * haul over (Duey takes what does not fit), then the companion says goodbye and walks out, or goes home after the run.
      */
     private void partWays(Character owner, Persona persona) {
+        long rendered = menus.version(owner);
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             notInRoster(owner, persona);
@@ -582,7 +637,7 @@ final class CompanionCardScreens {
         String text = "Part ways with " + persona.name() + " for good?\r\n\r\nBond: " + bondName(view.bond()) + "\r\nHaul: "
                 + haul + (view.committed() ? "\r\n" + persona.name() + " finishes the run first." : "");
         LivingTalk.open(owner, BOARD_NPC).speaker(NOTES_SPEAKER)
-                .yesNo(text, menus.ifUnchanged(owner, () -> menus.command(owner, "menu.release",
+                .yesNo(text, menus.ifUnchanged(owner, rendered, () -> menus.command(owner, persona, "menu.release",
                         () -> RosterVoice.line(persona, menus.manager().release(owner, persona))),
                         () -> reopen(owner, persona, THINGS_CHANGED)), null)
                 .show();
@@ -599,14 +654,33 @@ final class CompanionCardScreens {
 
     // ---- helpers ------------------------------------------------------------------------------
 
-    /** An option stamped with the owner's view version: picked after their rows changed, {@code stale} runs instead. */
-    private Option option(Character owner, Runnable stale, String label, Runnable action) {
-        return new Option(label, menus.ifUnchanged(owner, action, stale));
+    /**
+     * A screen's stamp: the owner's view version taken before the screen reads any row. An option it stamps, picked after
+     * their rows changed, opens the companion's card again with "things changed" instead of acting.
+     */
+    private Stamp stamp(Character owner, Persona persona) {
+        return new Stamp(owner, menus.version(owner), () -> reopen(owner, persona, THINGS_CHANGED));
+    }
+
+    private final class Stamp {
+        private final Character owner;
+        private final long rendered;
+        private final Runnable stale;
+
+        Stamp(Character owner, long rendered, Runnable stale) {
+            this.owner = owner;
+            this.rendered = rendered;
+            this.stale = stale;
+        }
+
+        Option option(String label, Runnable action) {
+            return new Option(label, menus.ifUnchanged(owner, rendered, action, stale));
+        }
     }
 
     /** The option, or while the companion is tied to a run its label with "(after the run)" as a line that cannot be picked. */
-    private Option unlessCommitted(boolean committed, Character owner, Runnable stale, String label, Runnable action) {
-        return committed ? Option.heading(label.replace("...", "") + AFTER_THE_RUN) : option(owner, stale, label, action);
+    private static Option unlessCommitted(boolean committed, Option option) {
+        return committed ? Option.heading(option.label().replace("...", "") + AFTER_THE_RUN) : option;
     }
 
     /**
@@ -614,7 +688,7 @@ final class CompanionCardScreens {
      * the notes open only when it could not be done.
      */
     private void order(Character owner, Persona persona, String name, Function<CompanionManager, RosterResult> verb) {
-        menus.command(owner, name, () -> {
+        menus.command(owner, persona, name, () -> {
             RosterResult result = verb.apply(menus.manager());
             return result.ok() ? "" : RosterVoice.line(persona, result);
         });
@@ -622,12 +696,16 @@ final class CompanionCardScreens {
 
     /** The card again, read afresh (a line such as "things changed" on top), as the answer to the click. */
     private void reopen(Character owner, Persona persona, String note) {
+        Stamp stamp = stamp(owner, persona);
         RosterEntry entry = row(owner, persona);
         if (entry == null) {
             notInRoster(owner, persona);
             return;
         }
-        show(owner, persona, entry, note);
+        switch (entry.state()) {
+            case BENCHED, AWAY, PARKED -> benchCard(owner, persona, entry, note, stamp);
+            default -> card(owner, persona, entry, note, stamp);
+        }
     }
 
     private void notInRoster(Character owner, Persona persona) {
@@ -712,8 +790,7 @@ final class CompanionCardScreens {
             MonsterInformationProvider drops = MonsterInformationProvider.getInstance();
             for (int mob : mobs) {
                 for (MonsterDropEntry drop : drops.retrieveDrop(mob)) {
-                    if (drop.itemId > 0 && drop.chance > 0 && drop.questid <= 0
-                            && ItemConstants.getInventoryType(drop.itemId) == InventoryType.ETC) {
+                    if (drop.itemId > 0 && drop.chance > 0 && drop.questid <= 0 && farmable(drop.itemId)) {
                         best.merge(drop.itemId, drop.chance, Math::max);
                     }
                 }
@@ -734,7 +811,7 @@ final class CompanionCardScreens {
                 }
                 for (Map.Entry<Integer, Integer> need : quest.getCompleteItemRequirements().entrySet()) {
                     int left = need.getValue() - owner.getItemQuantity(need.getKey(), false);
-                    if (left > 0 && ItemConstants.getInventoryType(need.getKey()) == InventoryType.ETC) {
+                    if (left > 0 && farmable(need.getKey())) {
                         needs.merge(need.getKey(), left, Math::max);
                     }
                 }
@@ -744,11 +821,20 @@ final class CompanionCardScreens {
                 Content.Quest quest = world.content().quest(state.questId());
                 Content.Step step = quest == null ? null : quest.step(state.stepIndex());
                 int left = step == null ? 0 : step.count() - state.progress();
-                if (step != null && step.type() == StepType.COLLECT_ITEM && step.itemId() > 0 && left > 0) {
+                if (step != null && step.type() == StepType.COLLECT_ITEM && left > 0 && farmable(step.itemId())) {
                     needs.merge(step.itemId(), left, Math::max);
                 }
             }
             return needs;
+        }
+
+        /**
+         * An ETC item the game's item data names: only such an id goes into a window's #i/#t tags (an authored id the
+         * client does not have would show nothing, or worse).
+         */
+        private static boolean farmable(int itemId) {
+            return itemId > 0 && ItemConstants.getInventoryType(itemId) == InventoryType.ETC
+                    && ItemInformationProvider.getInstance().getName(itemId) != null;
         }
 
         @Override

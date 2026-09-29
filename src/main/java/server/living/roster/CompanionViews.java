@@ -20,10 +20,10 @@ import java.util.function.IntFunction;
 
 /**
  * The {@link CompanionView} cache (docs/BOT_MANAGEMENT_PLAN.md, "Menus ... render from the CompanionView cache, with no
- * DB read per render"). Per owner it keeps their roster rows and what each view needs from the database; a render adds
- * only what lives in memory (the loaded character's HP, MP, EXP and map, the time left on the way, a commitment). Every
- * roster write (RosterService.write, the bench's progress and haul writes, a bond stage change) and every party change
- * drops the owner's entry, and the next render reads it again. Guests are never cached: they are read from the seats
+ * DB read per render"). Per owner it keeps their roster rows, what each view needs from the database and their usual
+ * lineup; a render adds only what lives in memory (the loaded character's HP, MP, EXP and map, the time left on the way,
+ * a commitment). Every roster write (RosterService.write, the bench's progress and haul writes, a bond stage change, a
+ * usual lineup saved) and every party change drops the owner's entry, and the next render reads it again. Guests are never cached: they are read from the seats
  * charged to the owner and their live characters.
  *
  * <p>Renders run on the owner's packet thread and invalidations on companion-ops (or a party thread): an entry read
@@ -36,8 +36,8 @@ public final class CompanionViews {
     private final Map<Integer, Crew> crews = new ConcurrentHashMap<>();
     private final Map<Integer, AtomicLong> versions = new ConcurrentHashMap<>();
 
-    /** One owner's rows, in roster order, with what their views read from the database. */
-    private record Crew(List<RosterEntry> rows, Map<String, CompanionView.Stored> stored) { }
+    /** One owner's rows, in roster order, with what their views read from the database, and their usual lineup. */
+    private record Crew(List<RosterEntry> rows, Map<String, CompanionView.Stored> stored, Set<String> lineup) { }
 
     public CompanionViews(LivingWorld world) {
         this(world, CompanionView::placeName, CompanionView::itemName);
@@ -61,6 +61,11 @@ public final class CompanionViews {
     /** The owner's roster rows (never RELEASED), in roster order. */
     public List<RosterEntry> rows(int ownerId) {
         return crew(ownerId).rows();
+    }
+
+    /** The persona ids with a place in the owner's usual lineup (lineup_slot). */
+    public Set<String> lineup(int ownerId) {
+        return crew(ownerId).lineup();
     }
 
     /** Every row of the owner's as a view, in roster order. */
@@ -162,7 +167,7 @@ public final class CompanionViews {
         for (RosterEntry entry : rows) {
             stored.put(entry.personaId(), CompanionView.Stored.read(world, entry, placeNames, itemNames));
         }
-        Crew read = new Crew(rows, Map.copyOf(stored));
+        Crew read = new Crew(rows, Map.copyOf(stored), Set.copyOf(world.store().lineupSlots(ownerId).keySet()));
         // kept only when nothing was invalidated while it was read; the check and the store are one step
         crews.compute(ownerId, (id, current) -> version.get() == readAt ? read : current);
         return read;

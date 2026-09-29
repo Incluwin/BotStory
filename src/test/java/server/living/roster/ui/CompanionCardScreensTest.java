@@ -153,6 +153,7 @@ class CompanionCardScreensTest {
         when(hadrikBot.getLevel()).thenReturn(31);
         when(hadrikBot.getJob()).thenReturn(Job.FIGHTER);
         when(hadrikBot.getMap()).thenReturn(perion);
+        when(owner.getMap()).thenReturn(perion); // Ann stands beside Hadrik unless a test moves her
         when(hadrikBot.getHp()).thenReturn(812);
         when(hadrikBot.getCurrentMaxHp()).thenReturn(900);
         when(residents.characterIdOf("hadrik")).thenReturn(900);
@@ -210,8 +211,40 @@ class CompanionCardScreensTest {
         assertEquals(MENU, card.msgType());
         assertTrue(card.text().startsWith("#eHadrik#n, Lv31 Fighter - HP 812/900 - 38 Red Potions\r\n\r\n#L"), card.text());
         assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "Take a break at camp",
-                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "Your haul...",
-                "Your wages...", "Let me see your gear", "More..."), card.labels());
+                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "The whole crew...",
+                "Your haul...", "Your wages...", "More..."), card.labels(), "The whole crew is on the first page");
+        pick("More...");
+        assertEquals(List.of("Let me see your gear", "Let's trade", "We should part ways", "Back to the top..."),
+                lastTalk().labels());
+    }
+
+    @Test
+    void theGearAndTheTradeAreOfferedOnlyWithTheCompanionOnYourMap() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        when(owner.getMap()).thenReturn(mock(MapleMap.class)); // "Wait here", then Ann walked on
+
+        menus.card(owner, hadrikRow);
+
+        assertFalse(lastTalk().labels().contains("Let me see your gear"), lastTalk().labels().toString());
+        pick("More...");
+        assertEquals(List.of("We should part ways", "Back to the top..."), lastTalk().labels());
+    }
+
+    @Test
+    void onlyOneBenchedOrAwayAndNotOnItsWayIsOfferedToTakeYourPlace() {
+        RosterEntry travelling = row("tobi", RosterState.TRAVELLING, 0L);
+        RosterEntry held = row("mira", RosterState.HOLD, 0L);
+        rows.addAll(List.of(hadrikRow, travelling, held));
+
+        menus.card(owner, hadrikRow);
+        assertFalse(lastTalk().labels().contains("Let someone take your place..."), "nobody can take the seat at once");
+
+        LivingTalk.forget(owner);
+        RosterEntry away = row("mira", RosterState.AWAY, 0L);
+        rows.set(2, away);
+        menus.card(owner, hadrikRow);
+        pick("Let someone take your place...");
+        assertEquals(List.of("Mira, Lv28 Hunter - away: train @ Ant Tunnel I", "Back"), lastTalk().labels());
     }
 
     @Test
@@ -250,15 +283,34 @@ class CompanionCardScreensTest {
     }
 
     @Test
-    void anOrderItCannotTakeSaysWhyInTheNotes() {
+    void anOrderItCannotTakeSaysWhyOnTopOfItsCard() {
         rows.add(hadrikRow);
         when(manager.followMe(owner, hadrik)).thenReturn(new RosterResult.Failed("Hadrik is not out with you right now."));
         menus.card(owner, hadrikRow);
 
         pick("Stick with me");
 
-        assertEquals("Hadrik is not out with you right now.", lastTalk().text());
-        assertEquals(CompanionMenus.NOTES_SPEAKER, lastTalk().speaker());
+        assertTrue(lastTalk().text().startsWith("Hadrik is not out with you right now.\r\n#eHadrik#n"), lastTalk().text());
+        assertEquals(HADRIK_PORTRAIT, lastTalk().npcId());
+    }
+
+    @Test
+    void anActionAnswersOnTheCardReadAfreshNotInAnExtraNotesWindow() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        when(roster.bench(owner, hadrik)).thenAnswer(inv -> {
+            rows.set(0, row("hadrik", RosterState.BENCHED, 0L));
+            return new RosterResult.Ok("Hadrik heads back to camp to train.");
+        });
+        menus.card(owner, hadrikRow);
+
+        pick("Take a break at camp");
+
+        Talk answer = lastTalk();
+        assertEquals(HADRIK_PORTRAIT, answer.npcId(), "the companion's own card, not the player's notes");
+        assertTrue(answer.text().startsWith("Hadrik heads back to camp to train.\r\n#eHadrik#n"), answer.text());
+        assertEquals("Come join me", answer.labels().get(0), "the bench card: it is at camp now");
+        assertTrue(talks().stream().noneMatch(talk -> talk.speaker() == CompanionMenus.NOTES_SPEAKER),
+                "no extra OK window in the player's notes");
     }
 
     @Test
@@ -271,8 +323,8 @@ class CompanionCardScreensTest {
 
         Talk card = lastTalk();
         assertTrue(card.text().startsWith("#eTobi#n, Lv30 Cleric\r\non the way (0:40)\r\n"), card.text());
-        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "Your haul...",
-                "Your wages...", "The whole crew...", "We should part ways", "Never mind"), card.labels());
+        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "The whole crew...",
+                "Your haul...", "Your wages...", "We should part ways"), card.labels());
     }
 
     @Test
@@ -297,7 +349,7 @@ class CompanionCardScreensTest {
             menus.card(owner, entry);
 
             assertEquals(List.of("Come join me", "What you do at camp...", "Camp somewhere else...", "Your haul...",
-                    "Your wages...", "We should part ways", "Never mind"), lastTalk().labels(), state.name());
+                    "Your wages...", "We should part ways"), lastTalk().labels(), state.name());
             LivingTalk.forget(owner);
         }
     }
@@ -312,9 +364,8 @@ class CompanionCardScreensTest {
         menus.card(owner, hadrikRow);
 
         Talk card = lastTalk();
-        assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "Your haul...", "Your wages...",
-                "Let me see your gear", "Let's trade", "The whole crew...", "We should part ways", "Never mind"),
-                card.labels());
+        assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "The whole crew...", "Your haul...",
+                "Your wages...", "Let me see your gear", "Let's trade", "We should part ways"), card.labels());
         for (String waits : List.of("Take a break at camp", "Let someone take your place", "What you do at camp",
                 "Camp somewhere else")) {
             assertTrue(card.text().contains("\r\n" + waits + " (after the run)\r\n"), card.text());
@@ -329,8 +380,7 @@ class CompanionCardScreensTest {
 
         menus.card(owner, miraRow);
 
-        assertEquals(List.of("Come join me", "Your haul...", "Your wages...", "We should part ways", "Never mind"),
-                lastTalk().labels());
+        assertEquals(List.of("Come join me", "Your haul...", "Your wages...", "We should part ways"), lastTalk().labels());
         assertTrue(lastTalk().text().contains("Swap in for (after the run)"), lastTalk().text());
     }
 
@@ -345,7 +395,7 @@ class CompanionCardScreensTest {
         pick("Ant Tunnel II (Lv30 monsters)");
 
         verify(manager, never()).setCamp(any(), any(), anyInt());
-        assertEquals("Hadrik: after the run.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik: after the run.\r\n#eHadrik#n"), lastTalk().text());
     }
 
     // ---- a stale click ---------------------------------------------------------------------
@@ -425,7 +475,8 @@ class CompanionCardScreensTest {
 
         verify(manager).assign(owner, hadrik, Assignment.TRAIN, 0, 0);
         verify(manager, never()).setCamp(any(), any(), anyInt());
-        assertEquals("Hadrik leaves to train @ Ant Tunnel I and keeps the seat.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik: ok, off to train at Ant Tunnel I. i'll keep my seat.\r\n#eHadrik#n"),
+                lastTalk().text());
     }
 
     @Test
@@ -468,8 +519,8 @@ class CompanionCardScreensTest {
         Talk items = lastTalk();
         assertTrue(items.text().startsWith("what should i farm at Ant Tunnel I?"), items.text());
         assertTrue(items.text().contains("#eFor your quests:#n"), items.text());
-        assertEquals(List.of("#i4000021# #t4000021# (~26.4/h) - you need 30", "#i4000022# #t4000022# - you need 12", "Back"),
-                items.labels());
+        assertEquals(List.of("#i4000021# #t4000021# (~26 an hour) - you need 30", "#i4000022# #t4000022# - you need 12",
+                "Back"), items.labels());
         pick("#i4000022# #t4000022# - you need 12");
 
         Talk box = lastTalk();
@@ -479,11 +530,18 @@ class CompanionCardScreensTest {
         answer(NUMBER, 1, 200);
 
         verify(manager).assign(owner, mira, Assignment.FARM_ITEM, SNAIL_SHELL, 200);
-        assertEquals("Mira will train @ Ant Tunnel I.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Mira: ok, i'll train at Ant Tunnel I.\r\n#eMira#n"), lastTalk().text());
     }
 
     @Test
-    void cancellingTheCountGoesBackToTheItems() {
+    void itemRatesReadAsAPlayerWouldSayThem() {
+        assertEquals("rare", CompanionCardScreens.itemRate(0.04d));
+        assertEquals("~2.6 an hour", CompanionCardScreens.itemRate(2.6d));
+        assertEquals("~40 an hour", CompanionCardScreens.itemRate(39.6d));
+    }
+
+    @Test
+    void endChatOnTheCountBoxEndsTheChat() {
         rows.add(miraRow);
         drops.put(STOLEN_FENCE, 400_000);
         menus.card(owner, miraRow);
@@ -493,8 +551,7 @@ class CompanionCardScreensTest {
 
         answer(NUMBER, 0, null);
 
-        assertEquals(MENU, lastTalk().msgType());
-        assertTrue(lastTalk().text().startsWith("what should i farm at Ant Tunnel I?"), lastTalk().text());
+        assertFalse(LivingTalk.active(client));
         verify(manager, never()).assign(any(), any(), any(), anyInt(), anyInt());
     }
 
@@ -518,7 +575,8 @@ class CompanionCardScreensTest {
 
         verify(manager).setCamp(owner, hadrik, HILL);
         verify(manager, never()).assign(any(), any(), any(), anyInt(), anyInt());
-        assertEquals("Hadrik will camp at The Hill East of Henesys.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik: ok, i'll camp at The Hill East of Henesys.\r\n#eHadrik#n"),
+                lastTalk().text());
     }
 
     // ---- haul, gear, trade ------------------------------------------------------------------
@@ -527,7 +585,7 @@ class CompanionCardScreensTest {
     void theHaulListsWhatItCarriesAndHandsItOver() {
         RosterEntry carrying = haulRow();
         rows.add(carrying);
-        when(roster.handOver(owner, hadrik)).thenReturn("Hadrik hands over 2 item stack(s) and 3120 meso.");
+        when(roster.handOver(owner, hadrik)).thenReturn("Hadrik hands you 3,120 meso and 2 stacks.");
         menus.card(owner, carrying);
 
         pick("Your haul...");
@@ -540,7 +598,7 @@ class CompanionCardScreensTest {
         pick("Hand it over");
 
         verify(roster).handOver(owner, hadrik);
-        assertEquals("Hadrik hands over 2 item stack(s) and 3120 meso.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik hands you 3,120 meso and 2 stacks.\r\n#eHadrik#n"), lastTalk().text());
     }
 
     @Test
@@ -554,7 +612,7 @@ class CompanionCardScreensTest {
         pick("Wear your best from the haul");
 
         verify(manager).wearBestFromHaul(owner, hadrik);
-        assertEquals("Hadrik puts on Sword from the haul.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik puts on Sword from the haul.\r\n#eHadrik#n"), lastTalk().text());
     }
 
     @Test
@@ -574,23 +632,29 @@ class CompanionCardScreensTest {
     void letsTradeOpensTheStockTradeWindowWithNoNotesOverIt() {
         rows.add(hadrikRow);
         menus.card(owner, hadrikRow);
+        pick("More...");
         int talks = talks().size();
+        long clicked = System.currentTimeMillis();
 
         pick("Let's trade");
 
-        verify(manager).openTrade(owner, hadrik);
+        ArgumentCaptor<Long> openBy = ArgumentCaptor.forClass(Long.class);
+        verify(manager).openTrade(any(), any(), openBy.capture());
+        assertTrue(openBy.getValue() >= clicked + CompanionMenus.LATE_OUTCOME_MS, "never later than the click allows");
+        assertTrue(openBy.getValue() <= System.currentTimeMillis() + CompanionMenus.LATE_OUTCOME_MS);
         assertEquals(talks, talks().size(), "the trade window is the answer");
     }
 
     @Test
     void aTradeThatCannotOpenSaysWhy() {
         rows.add(hadrikRow);
-        when(manager.openTrade(owner, hadrik)).thenReturn(new RosterResult.Failed("Hadrik is too far away to trade."));
+        when(manager.openTrade(any(), any(), anyLong())).thenReturn(new RosterResult.Failed("Hadrik is too far away to trade."));
         menus.card(owner, hadrikRow);
+        pick("More...");
 
         pick("Let's trade");
 
-        assertEquals("Hadrik is too far away to trade.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik is too far away to trade.\r\n#eHadrik#n"), lastTalk().text());
     }
 
     // ---- the whole crew -----------------------------------------------------------------------
@@ -602,7 +666,6 @@ class CompanionCardScreensTest {
         when(world.directory()).thenReturn(directory);
         when(directory.resolveName(owner, "Hadrik")).thenReturn(new CompanionDirectory.Relation.OwnCompanion(hadrikRow));
         menus.card(owner, hadrikRow);
-        pick("More...");
 
         pick("The whole crew...");
 
@@ -633,7 +696,7 @@ class CompanionCardScreensTest {
         answer(NUMBER, 1, 3);
 
         verify(roster).payWages(owner, hadrik, 2_790L);
-        assertEquals("Hadrik is paid up for ~3 h.", lastTalk().text());
+        assertTrue(lastTalk().text().startsWith("Hadrik is paid up for ~3 h.\r\n#eHadrik#n"), lastTalk().text());
     }
 
     @Test
@@ -645,7 +708,7 @@ class CompanionCardScreensTest {
         pick("Your wages...");
 
         assertEquals(List.of("Back"), lastTalk().labels());
-        assertTrue(lastTalk().text().contains("(an hour is 930 meso)"), lastTalk().text());
+        assertTrue(lastTalk().text().contains("(you need 930 meso to pay an hour)"), lastTalk().text());
     }
 
     // ---- parting ways (flow 10) -------------------------------------------------------------
@@ -658,7 +721,10 @@ class CompanionCardScreensTest {
         when(world.bonds()).thenReturn(bonds);
         when(bonds.peek(ANN, "hadrik")).thenReturn(new Bond(ANN, "hadrik", BondStage.TRUSTED, 100, new LinkedHashSet<>(),
                 ContractState.ACTIVE, 1_000L, 0L, 0, 0L, 60, 0L, 1_000L));
-        when(manager.release(owner, hadrik)).thenReturn(new RosterResult.Ok("Hadrik hands over 2 item stack(s). Hadrik leaves."));
+        when(manager.release(owner, hadrik)).thenAnswer(inv -> {
+            rows.remove(carrying); // parted ways: no card to return to
+            return new RosterResult.Ok("Hadrik hands you 3,120 meso and 2 stacks. Hadrik heads home to Lith Harbor.");
+        });
         menus.card(owner, carrying);
         pick("More...");
 
@@ -674,7 +740,8 @@ class CompanionCardScreensTest {
         answer(YES_NO, 1, null);
 
         verify(manager).release(owner, hadrik);
-        assertEquals("Hadrik hands over 2 item stack(s). Hadrik leaves.", lastTalk().text());
+        assertEquals("Hadrik hands you 3,120 meso and 2 stacks. Hadrik heads home to Lith Harbor.", lastTalk().text());
+        assertEquals(CompanionMenus.NOTES_SPEAKER, lastTalk().speaker(), "the notes: there is no card to return to");
     }
 
     @Test

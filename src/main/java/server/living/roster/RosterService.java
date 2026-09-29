@@ -33,11 +33,14 @@ import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
 import server.living.config.Content.Quest;
 import server.living.config.Content.Step;
+import server.living.population.Population;
+import server.living.population.PopulationContent.Field;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapFactory;
 import server.maps.MapleMap;
 import tools.PacketCreator;
 
@@ -361,10 +364,15 @@ public final class RosterService {
         }
     }
 
-    /** Writes a BENCHED roster row and hands the persona over from its Resident life. */
+    /**
+     * Writes a BENCHED roster row and hands the persona over from its Resident life. It trains at a field fitting its
+     * level near its home town (the FieldCatalog's top pick), or camps in the town when none fits.
+     */
     private RosterEntry enroll(Character owner, Persona persona, String eventType) {
         long now = System.currentTimeMillis();
-        int campMap = server.living.resident.ResidentSpots.townMapId(persona.homeTown());
+        int town = server.living.resident.ResidentSpots.townMapId(persona.homeTown());
+        int field = fieldCampFor(persona, town);
+        int campMap = field != 0 ? field : town;
         RosterEntry entry = new RosterEntry(owner.getId(), persona.id(), RosterState.BENCHED, Assignment.TRAIN, 0, 0,
                 campMap, 0L, 0L, 0L, now, now, now, 0, null);
         write(entry);
@@ -391,7 +399,41 @@ public final class RosterService {
         letGo(entry);
         world.contracts().onReleased(ownerId, persona, reason);
         world.store().event(ownerId, persona.id(), "roster.release", reason);
-        return persona.name() + " heads home to " + persona.homeTown().replace('-', ' ') + ".";
+        return persona.name() + " heads home to " + townName(persona.homeTown()) + ".";
+    }
+
+    /**
+     * The FieldCatalog's top training field for the persona's level (its character's, else its authored band's
+     * lowest), those in {@code nearMapId}'s region first: the camp picker's first choice. 0 when there is none.
+     */
+    public int fieldCampFor(Persona persona, int nearMapId) {
+        Population population = Population.get();
+        int level = world.store().characterLevel(world.residents().characterIdOf(persona.id()));
+        if (level <= 0 && persona.level() != null) {
+            level = persona.level().min();
+        }
+        if (population == null || level <= 0) {
+            return 0;
+        }
+        List<Field> fields = population.fields().fieldsFor(level, nearMapId, 1);
+        return fields.isEmpty() ? 0 : fields.get(0).mapId();
+    }
+
+    /** "Lith Harbor": the town's name as the game shows it, else its id in words. */
+    private static String townName(String town) {
+        int mapId = server.living.resident.ResidentSpots.townMapId(town);
+        String name = mapId <= 0 ? null : MapFactory.loadPlaceName(mapId);
+        if (name != null && !name.isEmpty()) {
+            return name;
+        }
+        StringBuilder words = new StringBuilder();
+        for (String word : town.split("-")) {
+            if (!word.isEmpty()) {
+                words.append(words.isEmpty() ? "" : " ").append(word.substring(0, 1).toUpperCase(Locale.ROOT))
+                        .append(word.substring(1));
+            }
+        }
+        return words.toString();
     }
 
     /**
@@ -1424,7 +1466,7 @@ public final class RosterService {
                 entry.etaAtMs(), entry.holdMapId(), entry.parkedAtMs());
         write(paid);
         world.store().event(owner.getId(), persona.id(), "roster.wages", meso + " meso -> " + (hoursMs / 3_600_000L) + " h");
-        return persona.name() + " is paid up for " + RecallTravel.describe(paid.wagesPaidUntilMs() - System.currentTimeMillis()) + ".";
+        return persona.name() + " is paid up for " + CompanionView.paidFor(paid.wagesPaidUntilMs() - System.currentTimeMillis()) + ".";
     }
 
     public String wagesStatus(Character owner, Persona persona) {
@@ -1434,7 +1476,7 @@ public final class RosterService {
         }
         long left = entry.wagesPaidUntilMs() - System.currentTimeMillis();
         int level = Math.max(1, world.store().characterLevel(world.residents().characterIdOf(persona.id())));
-        return persona.name() + (left > 0 ? " is paid up for " + RecallTravel.describe(left) : " is working off the haul")
+        return persona.name() + (left > 0 ? " is paid up for " + CompanionView.paidFor(left) : " is working off the haul")
                 + " (upkeep " + Math.round(BenchLedger.upkeepPerHour(level)) + " meso/hour).";
     }
 
@@ -1479,8 +1521,21 @@ public final class RosterService {
         }
         CompanionViews.invalidate(world, owner.getId()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.handover", moved + " stacks, " + meso + " meso, skipped " + skipped);
-        return persona.name() + " hands over " + moved + " item stack(s) and " + meso + " meso"
-                + (skipped > 0 ? " (" + skipped + " stack(s) did not fit)" : "") + ".";
+        List<String> given = new ArrayList<>();
+        if (meso > 0) {
+            given.add(String.format(Locale.ROOT, "%,d meso", meso));
+        }
+        if (moved > 0) {
+            given.add(stacks(moved));
+        }
+        String line = !given.isEmpty() ? persona.name() + " hands you " + String.join(" and ", given)
+                : skipped > 0 ? persona.name() + " has nothing that fits in your bag" : persona.name() + " has nothing to hand over";
+        return line + (skipped > 0 ? "; " + stacks(skipped) + (skipped == 1 ? " does" : " do") + " not fit in your bag." : ".");
+    }
+
+    /** "1 stack", "4 stacks". */
+    private static String stacks(int count) {
+        return count + (count == 1 ? " stack" : " stacks");
     }
 
     /** Mails the haul through Duey, one package per stack, the meso in the first. */
@@ -1511,7 +1566,9 @@ public final class RosterService {
         saveHaulMeso(entry, 0L);
         CompanionViews.invalidate(world, owner.getId()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.duey", haul.size() + " packages, " + meso + " meso");
-        return persona.name() + " sends " + haul.size() + " package(s) through Duey.";
+        int packages = Math.max(1, haul.size()); // the meso alone go in one
+        return persona.name() + " sends you " + packages + (packages == 1 ? " package" : " packages")
+                + (meso > 0 ? String.format(Locale.ROOT, " with %,d meso", meso) : "") + " by Duey.";
     }
 
     public String bankIt(Character owner, Persona persona) {
@@ -1528,7 +1585,7 @@ public final class RosterService {
         owner.saveCharToDB();
         saveHaulMeso(entry, 0L);
         world.store().event(owner.getId(), persona.id(), "haul.bank", meso + " meso");
-        return persona.name() + " banks " + meso + " meso into your storage.";
+        return persona.name() + String.format(Locale.ROOT, " banks %,d meso into your storage.", meso);
     }
 
     void saveHaulMeso(RosterEntry entry, long meso) {
@@ -1854,6 +1911,7 @@ public final class RosterService {
                 world.store().saveLineupSlot(ownerId, personaId, null);
             }
         }
+        CompanionViews.invalidate(world, ownerId); // the Crew window reads the lineup from the view cache
     }
 
     /** The rows in usual-lineup order; those without a place come last, as they were. */
@@ -1864,18 +1922,16 @@ public final class RosterService {
         return sorted;
     }
 
+    /** Who of the usual lineup came ({@code called}: seated or on its way) and who did not, with why, in lineup order. */
+    public record UsualCall(List<Persona> called, Map<Persona, RosterResult> refused) { }
+
     /**
      * Calls the usual lineup (plan "Usual lineup"): each benched companion with a place in it, in lineup order, joins at
-     * once and travels over (join-then-travel) while the party has room. Decision 8a's login after the grace; P3's
-     * "call the usual" too. A refusal is printed; one refused for want of a seat comes back by itself once there is
-     * room (returnWhenRoom).
+     * once and travels over (join-then-travel) while the party has room. P3's "call the usual", which says what came of
+     * it in one line; one refused for want of a seat comes back by itself once there is room (returnWhenRoom).
      */
-    public void callUsual(Character owner) {
-        callUsual(owner, new HashSet<>());
-    }
-
-    /** {@link #callUsual(Character)}; {@code called} gets each one seated or on its way. */
-    private void callUsual(Character owner, Set<String> called) {
+    public UsualCall callUsual(Character owner) {
+        UsualCall call = new UsualCall(new ArrayList<>(), new LinkedHashMap<>());
         Map<String, Integer> lineup = world.store().lineupSlots(owner.getId());
         for (RosterEntry entry : inLineupOrder(owner.getId(), roster(owner))) {
             Persona persona = entry.state() == RosterState.BENCHED && lineup.containsKey(entry.personaId())
@@ -1885,14 +1941,25 @@ public final class RosterService {
             }
             RosterResult result = call(owner, persona);
             if (result.ok()) {
-                called.add(persona.id());
+                call.called().add(persona);
                 continue;
             }
-            owner.dropMessage(5, RosterVoice.line(persona, result));
+            call.refused().put(persona, result);
             if (result instanceof RosterResult.PartyFull || result instanceof RosterResult.LeaderCapped) {
                 world.slots().waitForRoom(persona.id(), 0);
             }
         }
+        return call;
+    }
+
+    /**
+     * {@link #callUsual(Character)} at login (decision 8a, after the grace): each refusal is printed; {@code called} gets
+     * each one seated or on its way.
+     */
+    private void callUsual(Character owner, Set<String> called) {
+        UsualCall call = callUsual(owner);
+        call.called().forEach(persona -> called.add(persona.id()));
+        call.refused().forEach((persona, result) -> owner.dropMessage(5, RosterVoice.line(persona, result)));
     }
 
     /**

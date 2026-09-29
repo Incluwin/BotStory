@@ -17,6 +17,8 @@ import tools.PacketCreator;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
@@ -30,8 +32,9 @@ import java.util.function.Supplier;
  * {@link LivingTalk#mayShow} before it reads any rows. Only the viewer's own companions are listed; every action goes
  * through {@link server.living.roster.RosterService} or {@link CompanionManager} as a command on companion-ops (plan
  * P2a). Rows and views come from the {@link CompanionViews} cache, so a render reads no database. The companion speaks
- * on its card and its pickers; what an action did is the last window, written in the player's notes like the Crew
- * window (OK closes it), or pink text when a window cannot open by the time the command is done or the command took long.
+ * on its card and its pickers; what a card action did is the top line of that card, read afresh (the notes' last page
+ * only when there is no card to return to), or pink text when a window cannot open by the time the command is done or
+ * the command took long.
  */
 public final class CompanionMenus {
     /** The Crew window reads as the player's own notes: their avatar on the right (P0 probe 5b). */
@@ -66,13 +69,22 @@ public final class CompanionMenus {
 
     /** Double-clicking your own companion: the card of an ACTIVE one, the bench card of a benched or away one. */
     public void card(Character owner, RosterEntry entry) {
+        card(owner, entry, false, null);
+    }
+
+    /** A Crew window row: the companion's card, with Back to that Crew window ({@code crewVoice} speaks it, or the notes). */
+    void cardFromCrew(Character owner, RosterEntry entry, Persona crewVoice) {
+        card(owner, entry, true, crewVoice);
+    }
+
+    private void card(Character owner, RosterEntry entry, boolean fromCrew, Persona crewVoice) {
         // a window awaiting its reply, or a click inside 500 ms: refused before any row is read
         Persona persona = LivingTalk.mayShow(owner) ? world.content().persona(entry.personaId()) : null;
         if (persona == null) {
             owner.sendPacket(PacketCreator.enableActions());
             return;
         }
-        cards.show(owner, persona, entry);
+        cards.show(owner, persona, fromCrew, crewVoice);
     }
 
     /** The Adventurer's Roster: the Crew window from anywhere, even with every companion benched. */
@@ -113,14 +125,22 @@ public final class CompanionMenus {
     }
 
     /**
-     * An option's action stamped with the owner's CompanionViews version as the screen renders it (plan flow 1: "if
-     * Tobi's state changed meanwhile, the window re-renders"): clicked after a roster write or a party change touched
-     * the owner's rows, it runs {@code rerender} (the screen again, read afresh, as the answer to the click) instead of
-     * {@code action}. Without a cache (a test's world) it always acts.
+     * The owner's CompanionViews version, taken by a screen before it reads any row, so its options are stamped with the
+     * version of the rows they show; 0 without a cache (a test's world).
      */
-    Runnable ifUnchanged(Character owner, Runnable action, Runnable rerender) {
+    long version(Character owner) {
         CompanionViews views = world.views();
-        long rendered = views == null ? 0L : views.version(owner.getId());
+        return views == null ? 0L : views.version(owner.getId());
+    }
+
+    /**
+     * An option's action stamped with {@code rendered}, the owner's {@link #version} taken before the screen read its
+     * rows (plan flow 1: "if Tobi's state changed meanwhile, the window re-renders"): clicked after a roster write or a
+     * party change touched the owner's rows, it runs {@code rerender} (the screen again, read afresh, as the answer to
+     * the click) instead of {@code action}. Without a cache (a test's world) it always acts.
+     */
+    Runnable ifUnchanged(Character owner, long rendered, Runnable action, Runnable rerender) {
+        CompanionViews views = world.views();
         return () -> {
             if (views != null && views.version(owner.getId()) != rendered) {
                 rerender.run();
@@ -136,25 +156,26 @@ public final class CompanionMenus {
     }
 
     /**
-     * Runs a roster action on companion-ops; the click's window has closed by then (the client's actions came back).
-     * Its line is answered on the owner's own packet thread, so the check and the window are one step against their
-     * NPC clicks: the notes' last page when a window may open and the action was quick, else pink text (the
+     * Runs a roster action for {@code persona} on companion-ops; the click's window has closed by then (the client's
+     * actions came back). Its line is answered on the owner's own packet thread, so the check and the window are one
+     * step against their NPC clicks: {@code persona}'s card again, read afresh with the line on top (the notes' last
+     * page once it is no longer in the roster), when a window may open and the action was quick, else pink text (the
      * companion's own words were said by the verb). Nothing is ever sent over a window awaiting its reply, and no
      * window pops up long after the click. An empty line says nothing: the action's own window (a trade) or the
      * companion's reply in chat (an order) is the answer.
      */
-    void command(Character owner, String name, Supplier<String> action) {
+    void command(Character owner, Persona persona, String name, Supplier<String> action) {
         command(owner, name, action, line -> {
             if (!line.isEmpty()) {
-                outcome(owner, line);
+                cards.answer(owner, persona, line);
             }
         });
     }
 
     /**
-     * {@link #command(Character, String, Supplier)} whose line, when a window may open and the action was quick, is
-     * answered by {@code answer} on the owner's packet thread (a screen rendered again, say; an empty line too) instead
-     * of the notes' last page; otherwise it is pink text as there, and an empty line says nothing.
+     * {@link #command(Character, Persona, String, Supplier)} whose line, when a window may open and the action was quick,
+     * is answered by {@code answer} on the owner's packet thread (a screen rendered again, say; an empty line too)
+     * instead of the card; otherwise it is pink text as there, and an empty line says nothing.
      */
     void command(Character owner, String name, Supplier<String> action, Consumer<String> answer) {
         long clickedAtMs = System.currentTimeMillis();
@@ -217,6 +238,12 @@ public final class CompanionMenus {
         return cached != null ? cached : CompanionView.of(world, entry, placeNames);
     }
 
+    /** The persona ids in the owner's usual lineup, from the view cache. */
+    Set<String> lineup(Character owner) {
+        CompanionViews views = world.views();
+        return views == null ? world.store().lineupSlots(owner.getId()).keySet() : views.lineup(owner.getId());
+    }
+
     boolean holdsRosterBook(Character owner) {
         int book = world.config().ROSTER_BOOK_ITEM_ID;
         return book > 0 && owner.haveItem(book);
@@ -253,6 +280,20 @@ public final class CompanionMenus {
 
     static String onTheWay(CompanionView view) {
         return "on the way (" + RecallTravel.describe(view.travelMs()) + ")";
+    }
+
+    /** A rate in percent: "1.2", "31" (one decimal below 10). */
+    static String percent(double value) {
+        return value < 10.0d ? String.format(Locale.ROOT, "%.1f", value) : String.valueOf(Math.round(value));
+    }
+
+    /** Meso: "850", "4.1k", "12k" (one decimal below 10k); a negative amount keeps its sign. */
+    static String meso(double value) {
+        double size = Math.abs(value);
+        if (size < 1_000.0d) {
+            return String.valueOf(Math.round(value));
+        }
+        return size < 10_000.0d ? String.format(Locale.ROOT, "%.1fk", value / 1_000.0d) : Math.round(value / 1_000.0d) + "k";
     }
 
     /** ", Lv31 Fighter"; nothing while the level is unknown (a companion that has never been loaded). */

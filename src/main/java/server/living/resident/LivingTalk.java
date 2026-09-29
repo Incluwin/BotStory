@@ -90,7 +90,7 @@ public final class LivingTalk {
     private int numberMin;
     private int numberMax;
     private IntConsumer onNumber;
-    /** The parent screen: re-opened by "Back" (a menu), Prev (an OK window) or the cancel path (a number box). */
+    /** The parent screen: re-opened by "Back" (a menu) or Prev (an OK window). */
     private Runnable back;
     /** The message type of the window on screen; an answer of any other type belongs to an older window. */
     private byte awaitingType;
@@ -126,6 +126,15 @@ public final class LivingTalk {
             return false;
         }
         return Integer.valueOf(chr.getId()).equals(ANSWERING.get()) || client.canClickNPC();
+    }
+
+    /**
+     * True while a talk or a stock NPC or quest script window awaits the player's reply: {@link #mayShow} without the
+     * click throttle, for a window of another kind (the trade window) that must never open over a dialog.
+     */
+    public static boolean awaitsReply(Character chr) {
+        Client client = chr == null ? null : chr.getClient();
+        return client != null && (liveTalk(chr) != null || scriptAwaitsReply(client));
     }
 
     /** The player's talk whose window is still on screen; a stale one (see the class notes) is dropped. */
@@ -213,9 +222,8 @@ public final class LivingTalk {
 
     /**
      * The stock number box (getNPCTalkNum): {@code text} over a box that starts at {@code def} and takes {@code min} to
-     * {@code max}. OK runs {@code onNumber} with the value, as the answer to the click. A value outside the range (the
-     * client never sends one) closes the window, as the stock handler disposes a script over it; the cancel path runs
-     * {@link #back} when there is one, else it closes.
+     * {@code max}. OK runs {@code onNumber} with the value, as the answer to the click. End Chat closes, and so does a
+     * value outside the range (the client never sends one), as the stock handler disposes a script over it.
      */
     public LivingTalk number(String text, int def, int min, int max, IntConsumer onNumber) {
         if (min > max) {
@@ -231,9 +239,9 @@ public final class LivingTalk {
     }
 
     /**
-     * The screen this one was opened from: a menu gets "Back" as its last option (on every page, after "More..."), an
-     * OK window a Prev button and a number box its cancel path, and each runs {@code parent}, which re-opens the parent
-     * as the answer to the click. Null (the default) leaves the window without one.
+     * The screen this one was opened from: a menu gets "Back" as its last option (on every page, after "More...") and
+     * an OK window a Prev button, and each runs {@code parent}, which re-opens the parent as the answer to the click (a
+     * number box has no button for it). Null (the default) leaves the window without one.
      */
     public LivingTalk back(Runnable parent) {
         back = parent;
@@ -340,8 +348,9 @@ public final class LivingTalk {
             }
             next++;
         }
-        if (pageCount > 1) {
-            text.append("\r\n#L").append(selectionOf(MORE_ID)).append("#More...#l");
+        if (pageCount > 1) { // on the last page it wraps to the first
+            text.append("\r\n#L").append(selectionOf(MORE_ID)).append("#")
+                    .append(menuPage + 1 < pageCount ? "More..." : "Back to the top...").append("#l");
         }
         if (back != null) {
             text.append("\r\n#L").append(selectionOf(BACK_ID)).append("#Back#l");
@@ -433,21 +442,14 @@ public final class LivingTalk {
 
     /**
      * A number box's reply, checked as the stock handler checks a script's (NpcPromptState.number): OK with a value in
-     * range runs the callback, the cancel path goes back (or closes), anything else closes. A reply inside the 500 ms
-     * click throttle after this box was sent is a double click on the box before it (the player cannot have read this
-     * one yet): it is ignored and this box stays.
+     * range runs the callback, anything else closes. The box has only OK and End Chat, so a reply that is not OK is End
+     * Chat (or ESC) and ends the chat; the screen before it offers Back. A reply is taken however soon it comes (Enter on
+     * the default at once): the client has closed its box by then, and a reply meant for an older window is another
+     * type or stamp, already ignored in {@link #handle}.
      */
     private void answerNumber(byte action, int selection) {
-        Client client = chr.getClient();
-        if (client != null && !client.canClickNPC()) {
-            return;
-        }
-        if (!NpcPromptState.number(numberMin, numberMax).accepts(NUMBER_TYPE, action, selection)) {
+        if (action != 1 || !NpcPromptState.number(numberMin, numberMax).accepts(NUMBER_TYPE, action, selection)) {
             close(); // End Chat, or a value the box never offered
-            return;
-        }
-        if (action == 0) {
-            finish(back);
             return;
         }
         IntConsumer callback = onNumber;

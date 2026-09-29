@@ -193,7 +193,21 @@ public record CompanionView(String personaId,
 
     private static String wages(long paidUntilMs) {
         long left = paidUntilMs - System.currentTimeMillis();
-        return left > 0L ? "paid up for " + RecallTravel.describe(left) : "working off the haul";
+        return left > 0L ? "paid up for " + paidFor(left) : "working off the haul";
+    }
+
+    /** How long wages paid ahead last: "~40 min", "~2 h", "~1 day 4 h", "~7 days" (to the nearest hour past one). */
+    static String paidFor(long ms) {
+        if (ms < 3_600_000L) {
+            return "~" + Math.max(1L, Math.round(ms / 60_000.0d)) + " min";
+        }
+        long hours = Math.round(ms / 3_600_000.0d);
+        if (hours < 24) {
+            return "~" + hours + " h";
+        }
+        long days = hours / 24;
+        long rest = hours % 24;
+        return "~" + days + (days == 1 ? " day" : " days") + (rest == 0 ? "" : " " + rest + " h");
     }
 
     private static boolean committed(LivingWorld world, int characterId) {

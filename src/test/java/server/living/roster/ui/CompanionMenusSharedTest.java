@@ -110,7 +110,7 @@ class CompanionMenusSharedTest {
         CompanionMenus menus = new CompanionMenus(world);
         AtomicInteger acted = new AtomicInteger();
         AtomicInteger rerendered = new AtomicInteger();
-        Runnable pick = menus.ifUnchanged(owner, acted::incrementAndGet, rerendered::incrementAndGet);
+        Runnable pick = menus.ifUnchanged(owner, menus.version(owner), acted::incrementAndGet, rerendered::incrementAndGet);
 
         pick.run();
         assertEquals(1, acted.get());
@@ -120,8 +120,23 @@ class CompanionMenusSharedTest {
         assertEquals(1, acted.get());
         assertEquals(1, rerendered.get());
 
-        menus.ifUnchanged(owner, acted::incrementAndGet, rerendered::incrementAndGet).run(); // the re-rendered screen's option
+        menus.ifUnchanged(owner, menus.version(owner), acted::incrementAndGet, rerendered::incrementAndGet).run(); // re-rendered
         assertEquals(2, acted.get());
+    }
+
+    @Test
+    void aChangeBetweenReadingTheRowsAndBuildingTheOptionsStillReRenders() {
+        CompanionMenus menus = new CompanionMenus(world);
+        AtomicInteger acted = new AtomicInteger();
+        AtomicInteger rerendered = new AtomicInteger();
+        long rendered = menus.version(owner); // taken before the screen reads its rows
+        views.rows(ANN);
+        views.invalidate(ANN); // companion-ops wrote a row while the screen was being built
+
+        menus.ifUnchanged(owner, rendered, acted::incrementAndGet, rerendered::incrementAndGet).run();
+
+        assertEquals(0, acted.get(), "the option was built after the change but shows the rows read before it");
+        assertEquals(1, rerendered.get());
     }
 
     @Test
@@ -130,7 +145,7 @@ class CompanionMenusSharedTest {
         CompanionMenus menus = new CompanionMenus(world);
         AtomicInteger acted = new AtomicInteger();
 
-        menus.ifUnchanged(owner, acted::incrementAndGet, () -> { }).run();
+        menus.ifUnchanged(owner, menus.version(owner), acted::incrementAndGet, () -> { }).run();
 
         assertEquals(1, acted.get());
     }

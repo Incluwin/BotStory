@@ -117,8 +117,12 @@ class LivingTalkTest {
 
         answer(MENU, 1, first.selection("More..."));
         Talk second = lastTalk();
-        assertEquals(List.of("row 10", "row 11", "row 12", "More..."), second.labels());
+        assertEquals(List.of("row 10", "row 11", "row 12", "Back to the top..."), second.labels(), "the last page wraps");
         assertEquals(-1, picked.get());
+        answer(MENU, 1, second.selection("Back to the top..."));
+        assertEquals("row 0", lastTalk().labels().get(0));
+        answer(MENU, 1, lastTalk().selection("More..."));
+        second = lastTalk();
 
         answer(MENU, 1, second.selection("row 11"));
         assertEquals(11, picked.get());
@@ -474,20 +478,22 @@ class LivingTalkTest {
     }
 
     @Test
-    void theNumberBoxsCancelGoesBackOrCloses() {
+    void endChatOnTheNumberBoxEndsTheChatEvenWithAParent() {
         AtomicInteger runs = new AtomicInteger();
+        AtomicInteger parents = new AtomicInteger();
         LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> runs.incrementAndGet()).show();
         answer(NUMBER, 0, null);
         assertClosed();
 
-        LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> runs.incrementAndGet())
-                .back(() -> LivingTalk.open(chr, NPC).menu("the duty picker", List.of(new Option("farm", null))).show())
-                .show();
-        answer(NUMBER, 0, null);
-
-        assertEquals(MENU, lastTalk().msgType());
-        assertTrue(lastTalk().text().startsWith("the duty picker"));
+        // the box has only OK and End Chat: whatever the client sends for End Chat (0 or -1), the chat ends
+        for (int endChat : new int[] {0, -1}) {
+            LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> runs.incrementAndGet())
+                    .back(parents::incrementAndGet).show();
+            answer(NUMBER, endChat, null);
+            assertClosed();
+        }
         assertEquals(0, runs.get());
+        assertEquals(0, parents.get(), "End Chat is not Back");
     }
 
     @Test
@@ -508,23 +514,18 @@ class LivingTalkTest {
     }
 
     @Test
-    void aDoubleClickOnANumberBoxNeverAnswersTheBoxThatReplacedIt() {
+    void okOnTheNumberBoxAtOnceIsTakenAndLeavesNoWindowStuck() {
         List<Integer> got = new ArrayList<>();
-        LivingTalk.open(chr, NPC).number("first?", 5, 1, 9, first -> {
-            got.add(first);
-            LivingTalk.open(chr, NPC).number("second?", 5, 1, 9, got::add).show();
-        }).show();
-        answer(NUMBER, 1, 7);
-        when(client.canClickNPC()).thenReturn(false); // the duplicate lands inside the click throttle of the new box
+        LivingTalk.open(chr, NPC).number("how many?", 100, 0, 9_999, got::add).show();
+        when(client.canClickNPC()).thenReturn(false); // Enter on the default within the 500 ms after the box appeared
 
-        answer(NUMBER, 1, 7);
+        answer(NUMBER, 1, 100);
 
-        assertEquals(List.of(7), got);
-        assertTrue(LivingTalk.active(client));
-        assertEquals("second?", lastTalk().text());
+        assertEquals(List.of(100), got, "the client closed its box when it sent this: it is the answer");
+        assertFalse(LivingTalk.active(client), "no talk left waiting for a reply the client will never send");
+        assertTrue(NpcTalks.isEnableActions(lastPacket()));
         when(client.canClickNPC()).thenReturn(true);
-        answer(NUMBER, 1, 3); // the player's own answer to the second box
-        assertEquals(List.of(7, 3), got);
+        assertTrue(LivingTalk.mayShow(chr), "the next double-click on a companion or an NPC opens its window");
     }
 
     // ---- back (P3) ---------------------------------------------------------------------------
@@ -565,7 +566,7 @@ class LivingTalkTest {
         assertEquals("Back", first.get(LivingTalk.MENU_PAGE_SIZE + 1));
 
         answer(MENU, 1, lastTalk().selection("More..."));
-        assertEquals(List.of("row 10", "row 11", "More...", "Back"), lastTalk().labels());
+        assertEquals(List.of("row 10", "row 11", "Back to the top...", "Back"), lastTalk().labels());
         answer(MENU, 1, lastTalk().selection("Back"));
 
         assertEquals(1, parents.get());

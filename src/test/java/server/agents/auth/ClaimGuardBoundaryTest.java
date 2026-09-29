@@ -40,6 +40,7 @@ class ClaimGuardBoundaryTest {
         ROUTES.put("load", Pattern.compile("\\bloadOfflineAgent\\("));
         ROUTES.put("mailbox", Pattern.compile("\\bAgentChatMailboxDispatcher\\.handleChat\\b"));
         ROUTES.put("messenger", Pattern.compile("\\bjoinMessenger\\("));
+        ROUTES.put("chat", Pattern.compile("\\bAgentChatRouteCoordinator\\.handleChat\\b"));
     }
 
     private static final Set<String> REVIEWED = Set.of(
@@ -74,6 +75,9 @@ class ClaimGuardBoundaryTest {
             // the per-agent chat sink: reached from the leader's own entries, and from the whisper bridge after mayControl
             "server/agents/capabilities/dialogue/AgentChatRouteCoordinator.java mailbox 1",
             "server/agents/integration/cosmic/CosmicAgentWhisperCommandBridge.java mailbox 1",
+            // the leader's chat line from the stock chat handlers (the public overload asks mayOperate; the
+            // coordinator's own delegation to its generic overload is unqualified, so it is not counted)
+            "server/agents/runtime/AgentInteractionRuntime.java chat 1",
             // the living world: roster calls, citizens forming their own parties, a willing citizen's delayed
             // accept, and the loads that materialize its own characters, each behind the lease and loaded checks
             "server/living/roster/RosterService.java spawn 1",
@@ -90,6 +94,9 @@ class ClaimGuardBoundaryTest {
             // P3: a menu order is the owner's whisper to their own companion out with them, after mayControl; the bridge
             // asks the claim guard again
             "server/living/roster/CompanionManager.java whisper 1",
+            // P3: a crew-wide order is the owner's chat line over exactly their own companions out with them, each one
+            // past CompanionDirectory.mayControl first (the generic overload, which skips mayOperate: the owner's own)
+            "server/living/roster/CompanionManager.java chat 1",
             "server/living/roster/BenchSessions.java load 1",
             "server/living/resident/ResidentRuntime.java load 1",
             "server/living/population/SocialFabric.java join 1",

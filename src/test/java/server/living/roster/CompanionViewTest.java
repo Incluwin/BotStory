@@ -414,4 +414,12 @@ class CompanionViewTest {
             expected.put(job, name);
         }
     }
+
+    @Test
+    void wagesPaidAheadReadInHoursAndDaysNotMinutes() {
+        assertEquals("~40 min", CompanionView.paidFor(40 * 60_000L));
+        assertEquals("~2 h", CompanionView.paidFor(2 * 3_600_000L - 5L)); // just paid: a hair under two hours
+        assertEquals("~1 day 4 h", CompanionView.paidFor(28 * 3_600_000L));
+        assertEquals("~7 days", CompanionView.paidFor(168 * 3_600_000L));
+    }
 }

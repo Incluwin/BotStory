@@ -6,6 +6,7 @@ import server.living.config.Content.Persona;
 import server.living.resident.LivingTalk;
 import server.living.resident.LivingTalk.Option;
 import server.living.roster.BenchLedger;
+import server.living.roster.Commitments;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionView;
@@ -19,7 +20,7 @@ import server.living.store.LivingStore.RosterState;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
+import java.util.Set;
 import java.util.function.Function;
 
 import static server.living.roster.ui.CompanionMenus.BOARD_NPC;
@@ -40,9 +41,9 @@ import static server.living.roster.ui.CompanionMenus.portrait;
  * <p>Who speaks (the Crew window speaker rule): opened from a companion's card, that companion, under the portrait
  * policy, with "Back" to its card; opened from the Adventurer's Roster, the player's own notes (their avatar, P0 probe
  * 5b, the first rung of the ladder). Every page is the answer to a click. An action runs on companion-ops through
- * {@link CompanionManager} (the companions answer for themselves); its line is pink text, and the Crew window renders
- * again as the answer to the click when a window may open. A pick on rows that changed since the window was drawn
- * renders it again instead ("Things changed meanwhile.").</p>
+ * {@link CompanionManager} (the companions answer for themselves; an order that went out adds no line of its own); its
+ * line is pink text, and the Crew window renders again as the answer to the click when a window may open. A pick on
+ * rows that changed since the window was drawn renders it again instead ("Things changed meanwhile.").</p>
  */
 final class CompanionCrewScreens {
     /** "Everyone on the bench...": a FARM_ITEM goal is each companion's own (its camp's drops, on its card). */
@@ -69,6 +70,7 @@ final class CompanionCrewScreens {
 
     /** {@code note}: a line above the blocks ("Things changed meanwhile."), or empty. */
     private void render(Character owner, Persona from, String note) {
+        long at = menus.version(owner); // before any row is read: the options are stamped with the rows they show
         List<CompanionView> party = new ArrayList<>();
         List<CompanionView> bench = new ArrayList<>();
         for (RosterEntry entry : menus.rows(owner)) {
@@ -95,39 +97,44 @@ final class CompanionCrewScreens {
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
         }
-        List<Option> actions = actions(owner, from, party, bench);
+        List<Option> actions = actions(owner, from, at, party, bench);
         if (!actions.isEmpty()) {
             options.add(Option.heading("")); // a blank line under the blocks
             options.addAll(actions);
         }
         int seats = world.slots().occupied(owner); // the members, and the seats kept for those away or on their way
+        long away = bench.stream().filter(view -> view.state() == RosterState.AWAY).count(); // away keeps its seat
+        String kept = away == 0 ? "" : " (" + away + (away == 1 ? " seat" : " seats") + " kept)";
         talk(owner, from)
-                .menu((note.isEmpty() ? "" : note + "\r\n\r\n") + "#eParty " + seats + "/" + RosterService.PARTY_CAP + "#n", options)
+                .menu((note.isEmpty() ? "" : note + "\r\n\r\n") + "#eParty " + seats + "/" + RosterService.PARTY_CAP + "#n"
+                        + kept, options)
                 .back(from == null ? null : () -> card(owner, from.id()))
                 .show();
     }
 
     /** The actions under the blocks, each offered only when it has someone to act on. */
-    private List<Option> actions(Character owner, Persona from, List<CompanionView> party, List<CompanionView> bench) {
+    private List<Option> actions(Character owner, Persona from, long at, List<CompanionView> party,
+                                 List<CompanionView> bench) {
         boolean out = party.stream().anyMatch(view -> view.state() == RosterState.ACTIVE);
         List<Option> actions = new ArrayList<>();
-        if (bench.stream().anyMatch(view -> view.state() == RosterState.BENCHED)) {
-            actions.add(stamped(owner, from, "Call my usual lineup", () -> act(owner, from, "menu.crew.call_usual",
+        Set<String> lineup = menus.lineup(owner);
+        if (bench.stream().anyMatch(view -> view.state() == RosterState.BENCHED && lineup.contains(view.personaId()))) {
+            actions.add(stamped(owner, from, at, "Call my usual lineup", () -> act(owner, from, "menu.crew.call_usual",
                     manager -> manager.callUsual(owner))));
         }
         if (!party.isEmpty()) {
-            actions.add(stamped(owner, from, "Remember this lineup", () -> act(owner, from, "menu.crew.save_lineup",
+            actions.add(stamped(owner, from, at, "Remember this lineup", () -> act(owner, from, "menu.crew.save_lineup",
                     manager -> manager.saveLineup(owner))));
         }
         if (out) {
             // orders reach whoever is out with you when they are given, so they need no stamp
-            actions.add(new Option("Everyone: follow me", () -> act(owner, from, "menu.crew.follow",
+            actions.add(new Option("Everyone: follow me", () -> order(owner, from, "menu.crew.follow",
                     manager -> manager.followAll(owner))));
-            actions.add(new Option("Everyone: wait here", () -> act(owner, from, "menu.crew.wait",
+            actions.add(new Option("Everyone: wait here", () -> order(owner, from, "menu.crew.wait",
                     manager -> manager.waitAll(owner))));
-            actions.add(new Option("Everyone: gather up", () -> act(owner, from, "menu.crew.gather",
+            actions.add(new Option("Everyone: gather up", () -> order(owner, from, "menu.crew.gather",
                     manager -> manager.gatherAll(owner))));
-            actions.add(new Option("Everyone: rebuff", () -> act(owner, from, "menu.crew.rebuff",
+            actions.add(new Option("Everyone: rebuff", () -> order(owner, from, "menu.crew.rebuff",
                     manager -> manager.rebuffAll(owner))));
             actions.add(new Option("Formation...", () -> formationPicker(owner, from)));
         }
@@ -143,12 +150,12 @@ final class CompanionCrewScreens {
 
     // ---- the crew-wide pages -----------------------------------------------------------------
 
-    /** The formations the chat command knows, for everyone out with you. */
+    /** The formations the menu offers (CompanionManager.FORMATIONS), for everyone out with you. */
     private void formationPicker(Character owner, Persona from) {
         List<Option> options = new ArrayList<>();
-        for (String formation : CompanionManager.FORMATIONS) {
-            options.add(new Option(capitalized(formation), () -> act(owner, from, "menu.crew.formation",
-                    manager -> manager.setFormation(owner, formation))));
+        for (CompanionManager.Formation formation : CompanionManager.FORMATIONS) {
+            options.add(new Option(formation.label(), () -> order(owner, from, "menu.crew.formation",
+                    manager -> manager.setFormation(owner, formation.token()))));
         }
         talk(owner, from).menu(voice(from, "How should everyone stand?", "how should we stand?") + "\r\n", options)
                 .back(() -> render(owner, from, ""))
@@ -157,6 +164,7 @@ final class CompanionCrewScreens {
 
     /** One duty for everyone on the bench (benched or away), with what the priors say each brings in. */
     private void benchDutyPicker(Character owner, Persona from) {
+        long at = menus.version(owner);
         List<CompanionView> bench = new ArrayList<>();
         for (RosterEntry entry : menus.rows(owner)) {
             if (entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY) {
@@ -169,29 +177,50 @@ final class CompanionCrewScreens {
         }
         List<Option> options = new ArrayList<>();
         for (Assignment duty : BENCH_DUTIES) {
-            options.add(stamped(owner, from, dutyLabel(duty, bench), () -> act(owner, from, "menu.crew.assign_all",
-                    manager -> manager.assignAll(owner, duty, 0, 0))));
+            options.add(stamped(owner, from, at, dutyLabel(owner, duty, bench), () -> act(owner, from,
+                    "menu.crew.assign_all", manager -> manager.assignAll(owner, duty, 0, 0))));
         }
         talk(owner, from).menu(voice(from, "What should everyone on the bench do?", "what should the bench do?") + "\r\n", options)
                 .back(() -> render(owner, from, ""))
                 .show();
     }
 
-    /** Whom of yours to step out for a friend: they bench and come back once there is room again. */
+    /**
+     * Whom of yours to step out for a friend: they bench and come back once there is room again. One tied to a run (or
+     * with its owner in one) waits for it: "(after the run)", as bench and swap do.
+     */
     private void makeRoomPicker(Character owner, Persona from) {
+        long at = menus.version(owner);
         List<Option> options = new ArrayList<>();
         for (RosterEntry entry : menus.rows(owner, true)) {
             Persona persona = world.content().persona(entry.personaId());
-            if (persona != null) {
-                options.add(stamped(owner, from, partyRow(menus.view(owner, entry)), () -> menus.confirmBench(owner, persona,
-                        () -> menus.command(owner, "menu.make_room", () -> world.partySync().makeRoom(owner.getId(), persona.id())
-                                        ? persona.name() + " steps out to make room for your friend."
-                                        : persona.name() + " is not out with you right now.",
-                                line -> answer(owner, from, line)))));
+            if (persona == null) {
+                continue;
             }
+            CompanionView view = menus.view(owner, entry);
+            if (view.committed()) {
+                options.add(Option.heading(partyRow(view) + " (after the run)"));
+                continue;
+            }
+            options.add(stamped(owner, from, at, partyRow(view), () -> menus.confirmBench(owner, persona,
+                    () -> menus.command(owner, "menu.make_room", () -> makeRoom(owner, persona),
+                            line -> answer(owner, from, line)))));
         }
         options.add(new Option("Never mind", null));
         talk(owner, from).menu("Who steps out for your friend?\r\n", options).show();
+    }
+
+    /** "Make room for a friend..." on companion-ops: refused while the companion or its owner is tied to a run. */
+    private String makeRoom(Character owner, Persona persona) {
+        Commitments commitments = world.commitments();
+        int characterId = world.residents().characterIdOf(persona.id());
+        if (owner.getEventInstance() != null || commitments != null
+                && (commitments.isCommitted(owner.getId()) || commitments.isCommitted(characterId))) {
+            return RosterVoice.line(persona, new RosterResult.InEventInstance());
+        }
+        return world.partySync().makeRoom(owner.getId(), persona.id())
+                ? persona.name() + " steps out to make room for your friend."
+                : persona.name() + " is not out with you right now.";
     }
 
     // ---- acting ----------------------------------------------------------------------------------
@@ -205,6 +234,18 @@ final class CompanionCrewScreens {
         menus.command(owner, name, () -> RosterVoice.line("Everyone", action.apply(manager)), line -> answer(owner, from, line));
     }
 
+    /**
+     * A crew-wide order: {@link #act}, but an order that went out says nothing of its own (each companion answers in
+     * party chat, as a single companion's order does); only a refusal is pink text.
+     */
+    private void order(Character owner, Persona from, String name, Function<CompanionManager, RosterResult> action) {
+        CompanionManager manager = menus.manager();
+        menus.command(owner, name, () -> {
+            RosterResult result = action.apply(manager);
+            return result instanceof RosterResult.Ok ? "" : RosterVoice.line("Everyone", result);
+        }, line -> answer(owner, from, line));
+    }
+
     private void answer(Character owner, Persona from, String line) {
         if (!line.isEmpty()) {
             owner.dropMessage(5, line);
@@ -212,23 +253,42 @@ final class CompanionCrewScreens {
         render(owner, from, "");
     }
 
-    /** An option on the rows as drawn: clicked after the owner's rows changed, the Crew window renders again instead. */
-    private Option stamped(Character owner, Persona from, String label, Runnable action) {
-        return new Option(label, menus.ifUnchanged(owner, action, () -> render(owner, from, THINGS_CHANGED)));
+    /**
+     * An option on the rows as drawn ({@code at}: the owner's view version taken before they were read): clicked after
+     * the owner's rows changed, the Crew window renders again instead.
+     */
+    private Option stamped(Character owner, Persona from, long at, String label, Runnable action) {
+        return new Option(label, menus.ifUnchanged(owner, at, action, () -> render(owner, from, THINGS_CHANGED)));
     }
 
+    /**
+     * A row opens the companion's card, with Back to this Crew window. It only opens a page, which reads ownership and
+     * the row afresh, so it needs no stamp.
+     */
     private Option row(Character owner, Persona from, CompanionView view, String label) {
-        return stamped(owner, from, label, () -> card(owner, view.personaId()));
+        return new Option(label, () -> card(owner, view.personaId(), true, from));
     }
 
-    /** A companion's card: ownership and state are read again, so one released or moved meanwhile is never acted on. */
+    /** The card of {@code from}, this window's voice: its own Back (none, or the Crew window it came from) stays. */
     private void card(Character owner, String personaId) {
+        card(owner, personaId, false, null);
+    }
+
+    /**
+     * A companion's card: ownership and state are read again, so one released or moved meanwhile is never acted on.
+     * {@code fromCrew}: opened from a row here, so its Back re-opens this Crew window ({@code from} speaking it).
+     */
+    private void card(Character owner, String personaId, boolean fromCrew, Persona from) {
         Persona persona = world.content().persona(personaId);
         if (persona == null) {
             return; // the window closes and the client's actions come back
         }
         if (world.directory().resolveName(owner, persona.name()) instanceof CompanionDirectory.Relation.OwnCompanion own) {
-            menus.card(owner, own.entry());
+            if (fromCrew) {
+                menus.cardFromCrew(owner, own.entry(), from);
+            } else {
+                menus.card(owner, own.entry());
+            }
         } else {
             menus.outcome(owner, persona.name() + " is not in your roster.");
         }
@@ -289,10 +349,10 @@ final class CompanionCrewScreens {
     }
 
     /** A bulk duty: its name and, where the priors know it, what it brings in ("~1.2% EXP/h", "~4.1k meso/h after upkeep"). */
-    private String dutyLabel(Assignment duty, List<CompanionView> bench) {
+    private String dutyLabel(Character owner, Assignment duty, List<CompanionView> bench) {
         return switch (duty) {
-            case TRAIN -> "Train" + trainRate(bench);
-            case FARM_MESO -> "Farm meso" + mesoRate(bench);
+            case TRAIN -> "Train" + trainRate(owner, bench);
+            case FARM_MESO -> "Farm meso" + mesoRate(owner, bench);
             case FARM_ITEM -> "Farm an item";
             case GATHER -> "Gather for my quests";
             case SELL -> "Sell the haul";
@@ -301,53 +361,50 @@ final class CompanionCrewScreens {
         };
     }
 
-    /** " (~12-31% EXP/h each)" over the bench's known levels; empty when none is known. */
-    private String trainRate(List<CompanionView> bench) {
-        BenchLedger ledger = world.bench();
+    /**
+     * " (~12-31% EXP/h each)" over the bench's known levels, at the rates each card shows (BenchLedger.rates: the pace
+     * cap and the catch-up); one keeping pace with you earns none and is left out. Empty when none is known.
+     */
+    private String trainRate(Character owner, List<CompanionView> bench) {
         double low = Double.MAX_VALUE;
         double high = 0.0d;
         int known = 0;
         for (CompanionView view : bench) {
-            if (ledger != null && view.level() > 0) {
-                double rate = ledger.projectedPerHour(Assignment.TRAIN, view.level());
-                low = Math.min(low, rate);
-                high = Math.max(high, rate);
+            BenchLedger.Rates rates = rates(owner, view, Assignment.TRAIN);
+            if (rates != null && rates.expPercent() > 0.0d) {
+                low = Math.min(low, rates.expPercent());
+                high = Math.max(high, rates.expPercent());
                 known++;
             }
         }
-        if (known == 0 || high <= 0.0d) {
+        if (known == 0) {
             return "";
         }
-        String from = percent(low);
-        String to = percent(high);
+        String from = CompanionMenus.percent(low);
+        String to = CompanionMenus.percent(high);
         return " (~" + (from.equals(to) ? to : from + "-" + to) + "% EXP/h" + (known > 1 ? " each" : "") + ")";
     }
 
-    /** " (~12k meso/h together after upkeep)" over the bench's known levels; empty when none is known. */
-    private String mesoRate(List<CompanionView> bench) {
-        BenchLedger ledger = world.bench();
+    /** " (~12k meso/h together after upkeep)" at the rates each card shows; empty when none is known. */
+    private String mesoRate(Character owner, List<CompanionView> bench) {
         double total = 0.0d;
         int known = 0;
         for (CompanionView view : bench) {
-            if (ledger != null && view.level() > 0) {
-                total += ledger.projectedPerHour(Assignment.FARM_MESO, view.level());
+            BenchLedger.Rates rates = rates(owner, view, Assignment.FARM_MESO);
+            if (rates != null) {
+                total += rates.meso() - rates.upkeep();
                 known++;
             }
         }
-        return known == 0 || total <= 0.0d ? "" : " (~" + meso(total) + " meso/h" + (known > 1 ? " together" : "") + " after upkeep)";
+        return known == 0 || total <= 0.0d ? ""
+                : " (~" + CompanionMenus.meso(total) + " meso/h" + (known > 1 ? " together" : "") + " after upkeep)";
     }
 
-    /** "1.2", "31". */
-    static String percent(double value) {
-        return value < 10.0d ? String.format(Locale.ROOT, "%.1f", value) : String.valueOf(Math.round(value));
-    }
-
-    /** "850", "4.1k", "12k". */
-    static String meso(double value) {
-        if (value < 1_000.0d) {
-            return String.valueOf(Math.round(value));
-        }
-        return value < 10_000.0d ? String.format(Locale.ROOT, "%.1fk", value / 1_000.0d) : Math.round(value / 1_000.0d) + "k";
+    /** The bench priors' rates for one bench companion of a known level, as its card's duty picker reads them. */
+    private BenchLedger.Rates rates(Character owner, CompanionView view, Assignment duty) {
+        BenchLedger ledger = world.bench();
+        Persona persona = ledger == null || view.level() <= 0 ? null : world.content().persona(view.personaId());
+        return persona == null ? null : ledger.rates(persona, view.bond(), view.level(), owner.getLevel(), duty);
     }
 
     // ---- who speaks ------------------------------------------------------------------------------
@@ -365,8 +422,5 @@ final class CompanionCrewScreens {
         CompanionViews views = world.views();
         return views == null ? List.of() : views.guests(owner);
     }
-
-    private static String capitalized(String word) {
-        return word.isEmpty() ? word : word.substring(0, 1).toUpperCase(Locale.ROOT) + word.substring(1);
-    }
 }
+

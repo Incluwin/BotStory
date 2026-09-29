@@ -6,6 +6,7 @@ import client.inventory.Equip;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.manipulator.InventoryManipulator;
+import client.processor.npc.DueyProcessor;
 import net.packet.Packet;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import scripting.npc.NPCConversationManager;
+import server.Storage;
 import server.Trade;
 import server.agents.capabilities.dialogue.AgentChatCommandClassifier;
 import server.agents.capabilities.dialogue.AgentChatRouteCoordinator;
@@ -23,6 +26,7 @@ import server.agents.capabilities.equipment.AgentEquipmentOptimizerResult;
 import server.agents.capabilities.movement.AgentFormationCommandService;
 import server.agents.capabilities.movement.AgentPartyGatherService;
 import server.agents.commands.AgentReplyChannel;
+import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.integration.cosmic.CosmicAgentWhisperCommandBridge;
 import server.agents.runtime.AgentMailboxAction;
@@ -30,6 +34,9 @@ import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
+import server.living.population.FieldCatalog;
+import server.living.population.Population;
+import server.living.population.PopulationContent;
 import server.living.quest.QuestLedger;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
@@ -40,6 +47,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -114,7 +122,7 @@ class CompanionManagerTest {
                 manager.swap(h.ann, hadrik, brannock), manager.swap(h.ann, brannock, mira),
                 manager.assign(h.ann, brannock, Assignment.REST, 0, 0), manager.setCamp(h.ann, brannock, HENESYS),
                 manager.followMe(h.ann, brannock), manager.waitHere(h.ann, brannock), manager.huntHere(h.ann, brannock),
-                manager.showGear(h.ann, brannock), manager.openTrade(h.ann, brannock),
+                manager.showGear(h.ann, brannock), manager.openTrade(h.ann, brannock, Long.MAX_VALUE),
                 manager.wearBestFromHaul(h.ann, brannock), manager.release(h.ann, brannock))) {
             assertInstanceOf(RosterResult.NotOwned.class, result);
         }
@@ -177,21 +185,63 @@ class CompanionManagerTest {
 
         manager.followAll(h.ann);
         manager.waitAll(h.ann);
-        assertEquals("You tell Hadrik and Tobi: formation spread.", ((RosterResult.Ok) manager.setFormation(h.ann, "spread")).line());
 
         assertEquals(List.of(901, 902), crewOf(sentChat("follow me")));
         assertEquals(List.of(901, 902), crewOf(sentChat("wait here")));
-        assertEquals(List.of(901, 902), crewOf(sentChat("formation spread")));
         assertTrue(AgentChatCommandClassifier.isStopCommand(CompanionManager.WAIT_HERE));
+    }
+
+    @Test
+    void aFormationIsTheFormationCommandOverTheOwnersCrewAnsweredInTheCompanionsOwnWords() {
+        h.outWithAnn(hadrik);
+        h.outWithAnn(tobi);
+        List<AgentMailboxAction<?>> mailbox = new ArrayList<>();
+        List<AgentRuntimeEntry> first = new ArrayList<>();
+
+        try (MockedStatic<AgentMailboxRuntime> mailboxes = mockStatic(AgentMailboxRuntime.class);
+             MockedStatic<AgentFormationCommandService> formations = mockStatic(AgentFormationCommandService.class);
+             MockedStatic<AgentDialogueTransportRuntime> replies = mockStatic(AgentDialogueTransportRuntime.class)) {
+            mailboxes.when(() -> AgentMailboxRuntime.dispatch(any(AgentRuntimeEntry.class), any(AgentMailboxAction.class)))
+                    .thenAnswer(inv -> {
+                        first.add(inv.getArgument(0));
+                        mailbox.add(inv.getArgument(1));
+                        return new CompletableFuture<>();
+                    });
+
+            RosterResult result = manager.setFormation(h.ann, "spread");
+
+            assertEquals("You tell Hadrik and Tobi: formation spread.", ((RosterResult.Ok) result).line());
+            assertEquals(901, first.get(0).bot().getId(), "on the first companion's mailbox, as the chat route runs it");
+            formations.verifyNoInteractions();
+            mailbox.get(0).execute(first.get(0));
+            ArgumentCaptor<AgentFormationCommandService.Hooks> hooks =
+                    ArgumentCaptor.forClass(AgentFormationCommandService.Hooks.class);
+            formations.verify(() -> AgentFormationCommandService.handleFormationCommand(eq(h.ann), eq("formation spread"),
+                    hooks.capture()));
+            assertEquals(List.of(901, 902), hooks.getValue().entriesByLeader().entries(ANN).stream()
+                    .map(entry -> entry.bot().getId()).toList());
+            hooks.getValue().entryReply().reply(first.get(0), "formation: spread 60px");
+            replies.verify(() -> AgentDialogueTransportRuntime.queueReply(first.get(0), "ok, spreading out."));
+            replies.verify(() -> AgentDialogueTransportRuntime.queueReply(any(), eq("formation: spread 60px")), never());
+        }
+        chat.verifyNoInteractions();
         assertTrue(AgentFormationCommandService.matchesCommand("formation spread"));
+        for (CompanionManager.Formation formation : CompanionManager.FORMATIONS) {
+            assertTrue(AgentFormationCommandService.matchesCommand(CompanionManager.FORMATION + formation.token()),
+                    formation.label());
+        }
     }
 
     @Test
     void anUnknownFormationIsRefusedAndNothingIsSaid() {
         h.outWithAnn(hadrik);
 
-        assertInstanceOf(RosterResult.Failed.class, manager.setFormation(h.ann, "zigzag"));
-
+        try (MockedStatic<AgentMailboxRuntime> mailboxes = mockStatic(AgentMailboxRuntime.class)) {
+            for (String token : List.of("zigzag", "stack", "split")) { // split is stagger; stack is not for a crew
+                assertInstanceOf(RosterResult.Failed.class, manager.setFormation(h.ann, token));
+            }
+            mailboxes.verifyNoInteractions();
+        }
         chat.verifyNoInteractions();
     }
 
@@ -262,7 +312,7 @@ class CompanionManagerTest {
 
         RosterResult result = manager.assignAll(h.ann, Assignment.REST, 0, 0);
 
-        assertTrue(result.ok());
+        assertEquals("Mira and Olwen will rest.", ((RosterResult.Ok) result).line(), "one line, not a sentence each");
         assertEquals(Assignment.REST, h.row(mira).assignment());
         assertEquals(Assignment.REST, h.row(olwen).assignment());
         assertEquals(Assignment.TRAIN, h.row(hadrik).assignment());
@@ -271,22 +321,95 @@ class CompanionManagerTest {
     }
 
     @Test
+    void aFieldDutyForTheBenchMovesATownCampToTheTopFieldOrSaysWhoNeedsOne() {
+        Persona olwen = h.companion("olwen", "Olwen", 905, RosterState.BENCHED, LITH); // Mira camps in Henesys too
+        Population population = mock(Population.class);
+        FieldCatalog fields = mock(FieldCatalog.class);
+        when(population.fields()).thenReturn(fields);
+        when(fields.isTown(anyInt())).thenAnswer(inv -> (int) inv.getArgument(0) == HENESYS || (int) inv.getArgument(0) == LITH);
+        PopulationContent.Field hill = new PopulationContent.Field(LifecycleHarness.HENESYS_FIELD, "The Hill", "", "victoria",
+                false, 10, 5, 8);
+        when(fields.fieldsFor(anyInt(), eq(HENESYS), eq(1))).thenReturn(List.of(hill));
+        when(fields.fieldsFor(anyInt(), eq(LITH), eq(1))).thenReturn(List.of()); // nothing fits near Lith Harbor
+
+        RosterResult result;
+        try (MockedStatic<Population> populations = mockStatic(Population.class)) {
+            populations.when(Population::get).thenReturn(population);
+            result = manager.assignAll(h.ann, Assignment.TRAIN, 0, 0);
+        }
+
+        assertEquals(LifecycleHarness.HENESYS_FIELD, h.row(mira).campMapId(), "moved to the field before training");
+        assertEquals(Assignment.TRAIN, h.row(mira).assignment());
+        assertEquals(LITH, h.row(olwen).campMapId());
+        assertEquals("Mira will train. Olwen needs a field first: pick Olwen's camp on the card.",
+                ((RosterResult.Ok) result).line());
+    }
+
+    @Test
     void partingWaysHandsTheHaulOverFirst() {
         RosterEntry row = h.row(mira);
-        h.store.seed(new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, HENESYS, 0L, 500L, 0L,
+        h.store.seed(new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, HENESYS, 0L, 3_120L, 0L,
                 row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(), 0, null));
         ContractService contracts = mock(ContractService.class);
         when(h.world.contracts()).thenReturn(contracts);
-        when(contracts.dismiss(h.ann, mira)).thenReturn("Mira heads home to lith harbor.");
+        when(contracts.dismiss(h.ann, mira)).thenReturn("Mira heads home to Lith Harbor.");
 
         RosterResult result = manager.release(h.ann, mira);
 
         InOrder order = inOrder(h.ann, contracts);
-        order.verify(h.ann).gainMeso(500, true);
+        order.verify(h.ann).gainMeso(3_120, true);
         order.verify(contracts).dismiss(h.ann, mira);
-        String line = ((RosterResult.Ok) result).line();
-        assertTrue(line.startsWith("Mira hands over 0 item stack(s) and 500 meso."), line);
-        assertTrue(line.endsWith("Mira heads home to lith harbor."), line);
+        assertEquals("Mira hands you 3,120 meso. Mira heads home to Lith Harbor.", ((RosterResult.Ok) result).line());
+    }
+
+    @Test
+    void partingWithOneOnALiveBenchSliceEndsItFirstSoItsLastLootIsHandedOver() {
+        RosterEntry row = h.row(mira);
+        h.store.seed(new RosterEntry(ANN, "mira", RosterState.AWAY, Assignment.FARM_ITEM, 4000021, 200, HENESYS, 0L, 500L,
+                0L, row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(), 0, null));
+        BenchSessions sessions = h.world.benchSessions();
+        doAnswer(inv -> { // the final harvest: the agent's gains go into the haul
+            RosterEntry now = h.row(mira);
+            h.store.seed(new RosterEntry(ANN, "mira", now.state(), now.assignment(), now.assignmentItem(),
+                    now.assignmentCount(), now.campMapId(), 0L, 800L, 0L, now.recruitedAtMs(), now.benchedAtMs(),
+                    now.lastLedgerAtMs(), 0, null));
+            h.store.store.addHaul(ANN, "mira", 4000021, 143);
+            return null;
+        }).when(sessions).endFor("mira", "released");
+        ContractService contracts = mock(ContractService.class);
+        when(h.world.contracts()).thenReturn(contracts);
+        when(contracts.dismiss(h.ann, mira)).thenReturn("Mira heads home to Lith Harbor.");
+
+        RosterResult result;
+        try (MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
+            inventory.when(() -> InventoryManipulator.checkSpace(any(), anyInt(), anyInt(), any())).thenReturn(true);
+            result = manager.release(h.ann, mira);
+            inventory.verify(() -> InventoryManipulator.addById(any(), eq(4000021), eq((short) 143)));
+        }
+
+        InOrder order = inOrder(sessions, h.ann, contracts);
+        order.verify(sessions).endFor("mira", "released");
+        order.verify(h.ann).gainMeso(800, true); // the harvested meso too, not the 500 read before the slice ended
+        order.verify(contracts).dismiss(h.ann, mira);
+        assertTrue(h.store.store.haul(ANN, "mira").isEmpty(), "nothing left orphaned in the haul");
+        assertEquals("Mira hands you 800 meso and 1 stack. Mira heads home to Lith Harbor.", ((RosterResult.Ok) result).line());
+    }
+
+    @Test
+    void theHaulLinesReadAsSentencesWithFormattedMesoAndRealPlurals() {
+        RosterEntry row = h.row(mira);
+        h.store.seed(new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, HENESYS, 0L, 3_120L, 0L,
+                row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(), 0, null));
+        when(h.ann.getStorage()).thenReturn(mock(Storage.class));
+
+        assertEquals("Mira banks 3,120 meso into your storage.", h.roster().bankIt(h.ann, mira));
+
+        h.store.seed(new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, HENESYS, 0L, 500L, 0L,
+                row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(), 0, null));
+        try (MockedStatic<DueyProcessor> duey = mockStatic(DueyProcessor.class)) {
+            assertEquals("Mira sends you 1 package with 500 meso by Duey.", h.roster().sendIt(h.ann, mira)); // not "0 package(s)"
+        }
+        assertEquals("Mira has nothing to hand over.", h.roster().handOver(h.ann, mira)); // not "0 item stack(s) and 0 meso"
     }
 
     @Test
@@ -297,7 +420,24 @@ class CompanionManagerTest {
 
         assertEquals("Your usual lineup: Hadrik, Tobi.", ((RosterResult.Ok) manager.saveLineup(h.ann)).line());
         assertEquals(Map.of("hadrik", 1, "tobi", 2), h.store.store.lineupSlots(ANN));
-        assertTrue(manager.callUsual(h.ann).ok());
+        assertEquals("Everyone in your usual lineup is out already.", ((RosterResult.Failed) manager.callUsual(h.ann)).reason());
+
+        h.store.lineup.put(FakeLivingStore.key(ANN, "mira"), 3);
+        RosterResult called = manager.callUsual(h.ann);
+        assertEquals("Mira is on the way.", ((RosterResult.Ok) called).line(), "one line of who comes, not each name typed");
+    }
+
+    @Test
+    void rememberingWithNobodyOutKeepsTheLineupSavedBefore() {
+        h.store.lineup.put(FakeLivingStore.key(ANN, "hadrik"), 1);
+        h.store.lineup.put(FakeLivingStore.key(ANN, "tobi"), 2);
+        h.store.seed(h.row(hadrik).with(RosterState.BENCHED, 2_000L)); // a party change benched them before it ran
+        h.store.seed(h.row(tobi).with(RosterState.BENCHED, 2_000L));
+
+        RosterResult result = manager.saveLineup(h.ann);
+
+        assertEquals("Nobody is out with you to remember.", ((RosterResult.Failed) result).reason());
+        assertEquals(Map.of("hadrik", 1, "tobi", 2), h.store.store.lineupSlots(ANN), "nothing written");
     }
 
     // ---- trade, gear and the haul -----------------------------------------------------------------
@@ -308,11 +448,12 @@ class CompanionManagerTest {
         Client client = h.ann.getClient();
         List<Runnable> io = new ArrayList<>();
         doAnswer(inv -> io.add(inv.getArgument(0))).when(client).runOnIoThread(any());
+        when(client.tryacquireClient()).thenReturn(true);
         when(h.ann.isAlive()).thenReturn(true);
 
         try (MockedStatic<Trade> trade = mockStatic(Trade.class);
              MockedStatic<AgentRelationshipRuntime> relationship = mockStatic(AgentRelationshipRuntime.class)) {
-            assertTrue(manager.openTrade(h.ann, hadrik).ok());
+            assertTrue(manager.openTrade(h.ann, hadrik, Long.MAX_VALUE).ok());
             trade.verifyNoInteractions(); // not on companion-ops
             assertEquals(1, io.size());
             io.get(0).run();
@@ -321,6 +462,48 @@ class CompanionManagerTest {
             trade.verify(() -> Trade.inviteTrade(h.ann, h.bot(hadrik)));
             relationship.verify(() -> AgentRelationshipRuntime.setInteractionTarget(any(), eq(h.ann)));
         }
+        InOrder lock = inOrder(client);
+        lock.verify(client).tryacquireClient(); // the stock PLAYER_INTERACTION handler's dupe guard
+        lock.verify(client).releaseClient();
+    }
+
+    @Test
+    void aTradeWindowNeverOpensLateOverAnotherWindowOrWithoutTheClientLock() {
+        h.outWithAnn(hadrik);
+        Client client = h.ann.getClient();
+        List<Runnable> io = new ArrayList<>();
+        doAnswer(inv -> io.add(inv.getArgument(0))).when(client).runOnIoThread(any());
+        when(client.tryacquireClient()).thenReturn(true);
+        when(h.ann.isAlive()).thenReturn(true);
+        Storage storage = mock(Storage.class);
+        String askAgain = "Hadrik: ask me again when you're free.";
+
+        try (MockedStatic<Trade> trade = mockStatic(Trade.class)) {
+            // companion-ops was behind: the click's deadline passed before the owner's thread got to it
+            assertTrue(manager.openTrade(h.ann, hadrik, System.currentTimeMillis() - 1L).ok());
+            io.remove(0).run();
+            // a stock NPC dialog opened meanwhile and awaits its reply
+            NPCConversationManager script = mock(NPCConversationManager.class);
+            when(script.awaitingReply()).thenReturn(true);
+            when(client.getCM()).thenReturn(script);
+            manager.openTrade(h.ann, hadrik, Long.MAX_VALUE);
+            io.remove(0).run();
+            when(script.awaitingReply()).thenReturn(false);
+            // storage opened meanwhile
+            when(h.ann.getStorage()).thenReturn(storage);
+            when(storage.isOpen()).thenReturn(true);
+            manager.openTrade(h.ann, hadrik, Long.MAX_VALUE);
+            io.remove(0).run();
+            when(storage.isOpen()).thenReturn(false);
+            // the client lock is held (another interaction is being handled)
+            when(client.tryacquireClient()).thenReturn(false);
+            manager.openTrade(h.ann, hadrik, Long.MAX_VALUE);
+            io.remove(0).run();
+
+            trade.verifyNoInteractions();
+        }
+        verify(h.ann, Mockito.times(4)).dropMessage(5, askAgain);
+        verify(client, never()).releaseClient();
     }
 
     @Test
@@ -329,7 +512,8 @@ class CompanionManagerTest {
         h.moveAnn(HENESYS, 500, 200);
 
         try (MockedStatic<Trade> trade = mockStatic(Trade.class)) {
-            assertEquals("Hadrik is too far away to trade.", ((RosterResult.Failed) manager.openTrade(h.ann, hadrik)).reason());
+            assertEquals("Hadrik is too far away to trade.",
+                    ((RosterResult.Failed) manager.openTrade(h.ann, hadrik, Long.MAX_VALUE)).reason());
             trade.verifyNoInteractions();
         }
     }
@@ -350,6 +534,21 @@ class CompanionManagerTest {
     }
 
     @Test
+    void theGearOfACompanionOnAnotherMapIsNeverSent() {
+        h.outWithAnn(hadrik);
+        h.moveAnn(HENESYS, 500, 200); // "Wait here", then Ann walked on
+
+        try (MockedStatic<PacketCreator> packets = mockStatic(PacketCreator.class, Mockito.CALLS_REAL_METHODS)) {
+            RosterResult shown = manager.showGear(h.ann, hadrik);
+
+            assertEquals("Hadrik is too far away to show you.", ((RosterResult.Failed) shown).reason());
+            packets.verify(() -> PacketCreator.charInfo(any()), never());
+        }
+        verify(h.ann, never()).sendPacket(any());
+        verify(h.bot(hadrik), never()).exportExcludedItems(any());
+    }
+
+    @Test
     void wearYourBestPutsOnWhatTheEquipRuleWouldAndLeavesTheRestInTheHaul() {
         h.outWithAnn(hadrik);
         Character bot = h.bot(hadrik);
@@ -367,10 +566,11 @@ class CompanionManagerTest {
              MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
             optimizer.when(() -> AgentEquipmentAutoEquipService.runOptimizerWithExtras(eq(bot), any()))
                     .thenReturn(new AgentEquipmentOptimizerResult(sword, Map.of())); // the rule picks the sword only
+            CompletableFuture<Object> done = new CompletableFuture<>();
             mailboxes.when(() -> AgentMailboxRuntime.dispatch(any(AgentRuntimeEntry.class), any(AgentMailboxAction.class)))
                     .thenAnswer(inv -> {
                         mailbox.add(inv.getArgument(1));
-                        return null;
+                        return done;
                     });
             inventory.when(() -> InventoryManipulator.addFromDrop(any(), any(), anyBoolean())).thenReturn(true);
 
@@ -380,9 +580,11 @@ class CompanionManagerTest {
             assertEquals(Map.of(1302000, 0, 1402000, 1, 4000000, 7), h.store.haul.get(FakeLivingStore.key(ANN, "hadrik")));
             inventory.verifyNoInteractions(); // the bag changes on the Agent's own mailbox, not here
             assertEquals(1, mailbox.size());
-            mailbox.get(0).execute(null);
+            done.complete(mailbox.get(0).execute(null));
             inventory.verify(() -> InventoryManipulator.addFromDrop(bot.getClient(), sword, false));
             inventory.verify(() -> InventoryManipulator.addFromDrop(any(), eq(claymore), anyBoolean()), never());
+            assertEquals(Map.of(1302000, 0, 1402000, 1, 4000000, 7), h.store.haul.get(FakeLivingStore.key(ANN, "hadrik")),
+                    "worn: nothing goes back");
         }
         whispers.verify(() -> CosmicAgentWhisperCommandBridge.handleWhisperToAgent(h.ann, bot, "auto equip"));
         assertTrue(AgentEquipmentDialogueClassifier.isAutoEquipCommand(CompanionManager.AUTO_EQUIP));
@@ -403,18 +605,69 @@ class CompanionManagerTest {
              MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
             optimizer.when(() -> AgentEquipmentAutoEquipService.runOptimizerWithExtras(eq(bot), any()))
                     .thenReturn(new AgentEquipmentOptimizerResult(sword, Map.of()));
+            CompletableFuture<Object> done = new CompletableFuture<>();
             mailboxes.when(() -> AgentMailboxRuntime.dispatch(any(AgentRuntimeEntry.class), any(AgentMailboxAction.class)))
                     .thenAnswer(inv -> {
                         mailbox.add(inv.getArgument(1));
-                        return null;
+                        return done;
                     });
             inventory.when(() -> InventoryManipulator.addFromDrop(any(), any(), anyBoolean())).thenReturn(false); // looted full
 
             manager.wearBestFromHaul(h.ann, hadrik);
-            mailbox.get(0).execute(null);
+            done.complete(mailbox.get(0).execute(null));
         }
 
         assertEquals(Map.of(1302000, 1), h.store.haul.get(FakeLivingStore.key(ANN, "hadrik")));
+    }
+
+    @Test
+    void gearTheMailboxNeverPutOnGoesBackToTheHaul() {
+        h.outWithAnn(hadrik);
+        Character bot = h.bot(hadrik);
+        when(bot.getInventory(InventoryType.EQUIP)).thenReturn(mock(Inventory.class));
+        h.store.haul.put(FakeLivingStore.key(ANN, "hadrik"), new TreeMap<>(Map.of(1302000, 1, 1402000, 1)));
+        Equip sword = equip(1302000);
+        Equip claymore = equip(1402000);
+        CompanionManager manager = new CompanionManager(h.world, id -> id == 1302000 ? sword : claymore,
+                id -> id == 1302000 ? "Sword" : "Claymore");
+
+        try (MockedStatic<AgentEquipmentAutoEquipService> optimizer = mockStatic(AgentEquipmentAutoEquipService.class);
+             MockedStatic<AgentMailboxRuntime> mailboxes = mockStatic(AgentMailboxRuntime.class);
+             MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
+            optimizer.when(() -> AgentEquipmentAutoEquipService.runOptimizerWithExtras(eq(bot), any()))
+                    .thenReturn(new AgentEquipmentOptimizerResult(sword, Map.of((short) 1, claymore)));
+            // the bench unloaded it before its mailbox ran the action: the mailbox rejects it unrun
+            mailboxes.when(() -> AgentMailboxRuntime.dispatch(any(AgentRuntimeEntry.class), any(AgentMailboxAction.class)))
+                    .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("Agent session was removed")));
+
+            manager.wearBestFromHaul(h.ann, hadrik);
+            inventory.verifyNoInteractions();
+        }
+        assertEquals(Map.of(1302000, 1, 1402000, 1), h.store.haul.get(FakeLivingStore.key(ANN, "hadrik")),
+                "both pieces are back in the haul");
+
+        // the action runs but a piece throws (no client): that piece goes back, the other is worn
+        h.store.haul.put(FakeLivingStore.key(ANN, "hadrik"), new TreeMap<>(Map.of(1302000, 1, 1402000, 1)));
+        List<AgentMailboxAction<?>> mailbox = new ArrayList<>();
+        try (MockedStatic<AgentEquipmentAutoEquipService> optimizer = mockStatic(AgentEquipmentAutoEquipService.class);
+             MockedStatic<AgentMailboxRuntime> mailboxes = mockStatic(AgentMailboxRuntime.class);
+             MockedStatic<InventoryManipulator> inventory = mockStatic(InventoryManipulator.class)) {
+            optimizer.when(() -> AgentEquipmentAutoEquipService.runOptimizerWithExtras(eq(bot), any()))
+                    .thenReturn(new AgentEquipmentOptimizerResult(sword, Map.of((short) 1, claymore)));
+            CompletableFuture<Object> done = new CompletableFuture<>();
+            mailboxes.when(() -> AgentMailboxRuntime.dispatch(any(AgentRuntimeEntry.class), any(AgentMailboxAction.class)))
+                    .thenAnswer(inv -> {
+                        mailbox.add(inv.getArgument(1));
+                        return done;
+                    });
+            inventory.when(() -> InventoryManipulator.addFromDrop(any(), eq(sword), anyBoolean())).thenReturn(true);
+            inventory.when(() -> InventoryManipulator.addFromDrop(any(), eq(claymore), anyBoolean()))
+                    .thenThrow(new NullPointerException("no client"));
+
+            manager.wearBestFromHaul(h.ann, hadrik);
+            done.complete(mailbox.get(0).execute(null));
+        }
+        assertEquals(Map.of(1302000, 0, 1402000, 1), h.store.haul.get(FakeLivingStore.key(ANN, "hadrik")));
     }
 
     // ---- helpers ---------------------------------------------------------------------------------

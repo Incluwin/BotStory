@@ -431,8 +431,15 @@ public final class ContractService {
         if (afterTheRun(owner.getId(), owner, persona, "dismissed")) {
             return persona.name() + " heads home once this run is over.";
         }
-        world.residents().reply(persona, owner, leaveLine(persona, owner, "fine."));
+        world.residents().reply(persona, owner, leaveLine(persona, owner, partingLine(owner, persona)));
         return world.roster().release(owner, persona, "dismissed");
+    }
+
+    /** The farewell when the persona has no authored leave lines: warm once there is a bond, curt without one. */
+    private String partingLine(Character owner, Persona persona) {
+        Bond bond = world.bonds() == null ? null : world.bonds().peek(owner.getId(), persona.id());
+        boolean known = bond != null && bond.stage() != null && bond.stage().atLeast(BondStage.MET);
+        return known ? "take care. you know where to find me." : "fine.";
     }
 
     private void leave(Character owner, Persona persona, String reason, String farewell) {

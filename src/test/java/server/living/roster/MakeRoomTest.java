@@ -114,6 +114,22 @@ class MakeRoomTest {
     }
 
     @Test
+    void theCrewWindowsMakeRoomNeverStandsDownOneTiedToARun() {
+        int anns = out("vex", "olwen", "brin", "hadrik", "tobi");
+        world.committed.add(104); // Hadrik is in the instance
+
+        assertFalse(world.sync.makeRoom(ANN, "hadrik"), "it waits for the run, as bench and swap do");
+        world.committed.clear();
+        world.committed.add(ANN); // Ann is in the run herself
+        assertFalse(world.sync.makeRoom(ANN, "hadrik"));
+        world.settle();
+
+        assertEquals(List.of(), world.changes);
+        assertEquals(RosterState.ACTIVE, world.companion("hadrik").state);
+        assertEquals(6, world.members(anns).size());
+    }
+
+    @Test
     void theFriendLeavingBringsTheCrewBack() {
         int anns = out("vex", "olwen", "brin", "hadrik", "tobi");
         world.accept(BEN, anns);
