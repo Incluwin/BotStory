@@ -363,6 +363,32 @@ public final class LivingWorldHooks {
         return true;
     }
 
+    /**
+     * An inventory item dropped on the ground (ITEM_MOVE to slot 0). True when it is the Adventurer's Roster: the drop
+     * is refused with a pink line, since its tradeBlock would erase it on the ground, and the caller re-enables the client.
+     */
+    public static boolean rosterBookDropped(Character chr, client.inventory.InventoryType type, short slot) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || chr == null || type == null) {
+            return false;
+        }
+        int book = world.config().ROSTER_BOOK_ITEM_ID;
+        if (book <= 0 || type != constants.inventory.ItemConstants.getInventoryType(book)) {
+            return false;
+        }
+        try {
+            client.inventory.Item item = chr.getInventory(type).getItem(slot);
+            if (item == null || item.getItemId() != book) {
+                return false;
+            }
+            chr.dropMessage(5, "The Adventurer's Roster stays with you.");
+            return true;
+        } catch (RuntimeException failure) {
+            log.warn("living world rosterBookDropped hook failed", failure);
+            return false;
+        }
+    }
+
     /** An NPC click on a quest marker's hitbox; true when it was one (the Resident's menu opens instead). */
     public static boolean markerClicked(Character clicker, int objectId) {
         LivingWorld world = LivingWorld.get();

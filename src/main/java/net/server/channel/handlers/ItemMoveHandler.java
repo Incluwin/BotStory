@@ -58,6 +58,10 @@ public final class ItemMoveHandler extends AbstractPacketHandler {
             c.sendPacket(PacketCreator.enableActions());
             return;
         }
+        if (action == 0 && server.living.LivingWorldHooks.rosterBookDropped(c.getPlayer(), type, src)) {
+            c.sendPacket(PacketCreator.enableActions());
+            return; // the Adventurer's Roster stays with its owner
+        }
 
         InventoryManipulator.handleItemMove(c, type, src, action, quantity);
 

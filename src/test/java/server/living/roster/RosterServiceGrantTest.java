@@ -54,14 +54,16 @@ import static org.mockito.Mockito.when;
 /**
  * {@link RosterService#grant}, the {@code !grantcompanion} write: a BENCHED row with no spawn and no
  * character change, the same ROSTER_MAX and one-owner-per-persona rules as a recruit, and every cache
- * (owner by persona, the owner set behind the operator grant) in step, both ways through release. A grant, a
- * recruit and a login hand a roster owner without one the Adventurer's Roster (plan flow 9 step 3).
+ * (owner by persona, the owner set behind the operator grant) in step, both ways through release. The first grant or
+ * recruit hands the owner the Adventurer's Roster with one whisper (plan flow 9 step 3); later ones hand over nothing,
+ * and a login hands a roster owner without one another.
  */
 class RosterServiceGrantTest {
     private static final int ALICE = 10;
     private static final int BOB = 20;
     private static final int LITH_HARBOR = 104000000;
     private static final Persona OLWEN = persona("olwen", "Olwen");
+    private static final Persona CATO = persona("cato", "Cato");
     private static final int ROSTER_BOOK = 2430011;
 
     /** living_roster keyed by owner:persona. */
@@ -237,6 +239,25 @@ class RosterServiceGrantTest {
         ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
         verify(alice).sendPacket(sent.capture());
         assertArrayEquals(PacketCreator.getShowItemGain(ROSTER_BOOK, (short) 1, true).getBytes(), sent.getValue().getBytes());
+        verify(residents).whisper(OLWEN, alice, "double-click me or the book to manage the crew.");
+    }
+
+    @Test
+    void laterGrantsAndRecruitsHandOverNoRosterAndSayNothingAboutIt() {
+        rows.put(key(ALICE, "brin"), row(ALICE, "brin"));
+        Client client = carrying(alice, false); // lost it: the next login hands over another
+        partyFull(alice);
+        RosterService roster = new RosterService(world);
+
+        try (MockedStatic<InventoryManipulator> inventory = roomFor(client)) {
+            roster.grant(alice, OLWEN);
+            roster.recruit(alice, CATO);
+            inventory.verify(() -> InventoryManipulator.addById(any(), anyInt(), anyShort()), never());
+        }
+        assertEquals(ALICE, roster.cachedOwnerOf("olwen"));
+        assertEquals(ALICE, roster.cachedOwnerOf("cato"));
+        verify(alice, never()).sendPacket(any());
+        verify(residents, never()).whisper(any(), any(), anyString());
     }
 
     @Test
