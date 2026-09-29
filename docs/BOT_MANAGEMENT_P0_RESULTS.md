@@ -477,3 +477,54 @@ P3 is merged into `feat/companion-manager` as `888b21cfc`. The live run then fou
 - **Loot policy only works outside instances.** Leaving boss drops inside boss runs is deferred to P7 (the lint forbids the imports this would need). The toggle reads "outside boss runs".
 - **Stale-owner check not ported:** `RosterService.payWages` (from before P3b) has the same stale-owner pattern that coin now guards against.
 
+
+---
+
+# P4 results (2026-09-29)
+
+## Branch and suite
+- **Merge:** P4 is fast-forwarded into `feat/companion-manager` as `8c335de00`: core `68d2e978e`, offers `38b9971f0`, hire list + allocation `4e6ed6a13`, integration `5aaf7abf2`, review fixes `8c335de00`.
+- **Full suite (fix stage):** 8306 tests, the same 29 baseline failures, 0 new. Lint suites: the same failing tests and messages (HashSet ordering aside). No file under `server/agents` changed.
+
+## What P4 adds
+- **HiredHands:** a citizen hired into the roster as a synthetic persona `hire:<cid>`. Name and look come from its own `characters` row; `ResidentLooks`, `ResidentWardrobe` and `ResidentShaper` skip hires, so its face and gear never change. Hires count toward `ROSTER_MAX`; `HIRE_MAX_PER_OWNER` defaults to 10 (raised from 5 by the review: without Residents a friend could otherwise not fill 5 active plus a bench).
+- **In-place adoption:** a loaded citizen is taken over where it stands (population session handed over without a despawn, runtime re-registered under the owner, a GUEST seat becomes its companion seat with no leave or join).
+- **Population skips:** the `hired` flag (one writer, `Population.setHired`; reconciled against the roster at boot and daily) keeps presence, the progression ledger, Churn, the social fabric, market and chatter away from a hire. Churn backfills the town. Release clears the flag and `employed_by` and returns the citizen.
+- **Terms window** (Accept/Decline under the Bulletin Board): name, level, job, fee (1,000 meso per citizen level) and wage (the bench upkeep, 30 meso per level per hour). The fee is paid atomically and refunded if no row is written.
+- **Invite personality:** recruiters and famers accept anyone; reserved citizens decline strangers; easygoing ones decide on a fixed roll per inviter (familiar faces are welcome).
+- **Party-time offers:** after `HIRE_OFFER_PARTY_MINUTES` (10) partied on one map, a guest may offer to stay (one whisper, a 10-minute pending offer at the top of the hire list; double-click or whisper yes/no answers it).
+- **Hire list:** "Adventurers looking for a crew..." in the Crew window: citizens you have met, level-matched and welcoming you, pending offers first, then online ones, then "usually around <town>".
+- **ResidentAllocation:** at most `RESIDENT_CAP_PER_OWNER` (5) Residents per friend; a daily sweep releases an owner's Residents and hires after `RESIDENT_OWNER_INACTIVE_DAYS` (14), with one pink line on their next login.
+- **GM:** `!grantcompanion release hire:<cid>`; `!citizens retire` refuses a hired citizen.
+
+## Live checks (ohboy + Crewfriend, two clients, all by mouse; 2026-09-29 13:33-15:19)
+| Check | Result |
+|---|---|
+| Can't pay | **Pass.** ohboy with 6,092 meso accepts SilentCat's terms (18,000): refused in character, no charge. Test characters then topped up to 300,000 by SQL while offline. |
+| Hire from the list | **Pass.** "Adventurers looking for a crew..." lists 13 met, level-matched citizens (online ones by town, others "usually around <town>"). Faro723 hired for 18,000 meso: roster row `hire:744` ACTIVE, `employed_by` 2, `hired` flag set, party 5/5. |
+| Look unchanged | **Pass.** Faro723's `characters` look (gender, skin, hair, face) and its five worn items are identical before the hire, after it, and after bench -> call. |
+| Bench and call a hire | **Pass.** Card works like any companion's ("Lv18 Thief - 44 Red Potions", Bulletin Board portrait); bench walks out by portal; "Come join me" brings it back with the same face. |
+| Hire survives relog and restart | **Pass.** PARKED at logout, restored ACTIVE after login (Faro723 ~25 s into the staggered restore); all hires restored after a server restart. |
+| Second account hires at the same time | **Pass.** Crewfriend (party with its own Halvard and Kettle) invites Anvith as a guest, hires it from its own list for 26,000 (300,000 -> 274,000), no leave or rejoin. Both owners' flags match their roster rows exactly. |
+| Invite personality | **Pass.** Outgoing citizens (recruiter/famer) accept strangers; LilLuis (reserved) and QuietPig decline ("... have denied request to the party."); a citizen in its own party answers "Already have joined a party." |
+| Party-time offer | **Pass.** Liriki (guest since 13:45) offered at 13:54:49 after 10 party minutes ("this was fun. want me to stick around?"), shown on top of the hire list as "(offered to stay)"; accepted for 15,000. |
+| Guest row -> hire (clip) | **Pass** after fix 2. SilentSin invited, joins as guest, its Crew-window row opens its terms (14,000 fee, 420 meso/h), accepted: stays in the party and is crew. |
+| Release | **Pass.** Crewfriend parts ways with Anvith: confirm shows "Bond: none yet / Haul: nothing / Purse: 214,812 meso (stays with Anvith)"; "Anvith heads home to Henesys.", stock "left the party", row gone, `employed_by` cleared, `hired` flag cleared. |
+| Town population at target | **Pass** after fix 1. The hire at 15:17:49.9 was replaced by a newborn citizen (SkyMage) at 15:18:04.8, the next presence sweep; 600 of 600. |
+| Drift auditor | **Pass.** 30+ runs, 0 drift, 0 repairs. |
+| No exceptions from `hire:` ids | **Pass** for the session (~2 h). The only exceptions were client connection resets and 4 background-KPQ admission rollbacks of unhired citizens (agent layer, older than P4). |
+
+Clip: `docs/agents/evidence/video/p4-stranger-to-crew.mp4` (83 s, captioned): invite from the party window -> guest -> Crew-window row -> terms -> accept -> walks over.
+
+## Bugs found live and fixed (`c273ddfe4`)
+1. **Town not backfilled at once.** Churn replaced a hired citizen only at BIRTHS_PER_DAY (about one per 72 min). `Population.setHired` now tells Churn, and the next sweep births one newcomer per hire, never past the target. Tests: `PopulationSkipTest.everyHireIsReplacedAtTheNextSweepNotAtTheBirthsPerDayPace` (fails with the notice removed) and `aHireInATownAlreadyAtTargetIsNotReplaced`.
+2. **Guest row drawn over the row above.** The v83 client places a plain line after a `#L` row only about half a line lower, so "Name ... (guest)" overlapped the last party row. A guest is now a row like the others and opens its hire terms (as double-clicking your own guest does). `CrewScreensTest` updated.
+
+## Looked like a bug, is not
+- **"Teleport" of a far-away hire.** Two hires far across the map reappeared ~2,000-3,800 px away beside their owner. Cause: the route planner uses the stock hidden in-town portals (Kerning `ph03_1` -> `ph03`, Henesys `hp00_1` -> `hp00`) as cost-0 shortcuts, deliberately (existing navigation tests pin it). Players use the same portals, and the hire comes out of a portal and walks over, as P1.5 arrivals do. A fix forcing on-foot routes (34 s instead of 3.5 s in Henesys) was built on branch `p4-teleport` (`6e2f1e1d3`) and **not merged**.
+
+## Not done / notes
+- **Exit criterion "5 active + 2 bench for two accounts" not run to the full count.** ohboy reached 5 out (3 hires) + 2 bench; Crewfriend reached 3 out. Supply is not the limit: each list showed 10+ candidates.
+- **Offer cooldowns and pending offers are in memory** (a restart forgets them).
+- **Registrar clerk NPC** (decision 4 c) not built, as planned.
+- `living_citizen.joined_at` for trickle births (e.g. Givina 18:50:50 while local time was 15:18) looks written in GMT; older population behaviour, not P4.
