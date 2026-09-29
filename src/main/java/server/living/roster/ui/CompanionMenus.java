@@ -272,8 +272,10 @@ public final class CompanionMenus {
     }
 
     static String duty(CompanionView view) {
+        // its camp, never the map it stands on: one benched and still walking out is loaded where its owner is
+        String camp = view.camp().isEmpty() ? view.where() : view.camp();
         return (view.state() == RosterState.AWAY ? "away: " : "") + view.duty()
-                + (view.where().isEmpty() ? "" : " @ " + view.where())
+                + (camp.isEmpty() ? "" : " @ " + camp)
                 + (view.bankedExpPercent() >= 100 ? " - ready to level"
                 : view.bankedExpPercent() > 0 ? " - " + view.bankedExpPercent() + "% EXP banked" : "");
     }
