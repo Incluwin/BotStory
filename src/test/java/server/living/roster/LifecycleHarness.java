@@ -119,6 +119,8 @@ final class LifecycleHarness implements AutoCloseable {
     JoinOutcome nextJoin = null;
     boolean annOnline = true;
     RosterService roster;
+    /** The mocked Agent registry, for a test that stubs more of it (the entries a leader has, say). */
+    MockedStatic<AgentRuntimeRegistry> registry;
 
     private final Map<Integer, MapleMap> botMaps = new HashMap<>();
     private final Map<Integer, Point> botPositions = new HashMap<>();
@@ -171,7 +173,7 @@ final class LifecycleHarness implements AutoCloseable {
         members.add(ANN);
         moveAnn(HENESYS_FIELD, 1000, 200);
 
-        MockedStatic<AgentRuntimeRegistry> registry = open(AgentRuntimeRegistry.class);
+        registry = open(AgentRuntimeRegistry.class);
         registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(anyInt())).thenAnswer(inv -> {
             int id = inv.getArgument(0);
             return loaded.contains(id) ? new AgentRuntimeEntry(bots.get(id), ann, null) : null;

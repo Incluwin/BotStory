@@ -96,6 +96,19 @@ public final class AgentPotionService {
         return counts;
     }
 
+    /**
+     * The HP fraction this Agent drinks below, before any Berserk adjustment: its host's own value
+     * (AgentPotionThresholds), else the configured AUTOPOT_HP_THRESH.
+     */
+    public static float hpThreshold(Character bot) {
+        return AgentPotionThresholds.hp(bot.getId(), AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);
+    }
+
+    /** The MP fraction this Agent drinks below: its host's own value, else the configured AUTOPOT_MP_THRESH. */
+    public static float mpThreshold(Character bot) {
+        return AgentPotionThresholds.mp(bot.getId(), AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH);
+    }
+
     /** Shared deficit-aware selection used by keybind setup and the debug report. */
     public static AutopotChoice computeAutopotChoice(Character bot) {
         long startedAt = AgentPerformanceMonitor.start();
@@ -103,15 +116,13 @@ public final class AgentPotionService {
         int maxMp = bot.getCurrentMaxMp();
         // A Dark Knight that tops up at the ordinary threshold never enters Berserk's window and
         // fights at half damage; with Berserk learned the trigger sits just under the threshold.
-        float hpThreshold = server.agents.capabilities.combat.AgentBerserkWindowPolicy
-                .autopotHpThreshold(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH);
         int hpDeficit = Math.max(
                 1,
                 Math.round(maxHp * server.agents.capabilities.combat.AgentBerserkWindowPolicy
-                        .autopotHpDeficitFraction(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH)));
+                        .autopotHpDeficitFraction(bot, hpThreshold(bot))));
         int mpDeficit = Math.max(
                 1,
-                Math.round(maxMp * (1.0f - AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH)));
+                Math.round(maxMp * (1.0f - mpThreshold(bot))));
         AutopotChoice choice = AgentAutopotPolicy.computeChoice(
                 bot.getInventory(InventoryType.USE).list(),
                 AgentUseItemClassificationPolicy::itemEffect,
@@ -146,7 +157,7 @@ public final class AgentPotionService {
         if (choice.hpItemId() > 0) {
             bot.changeKeybinding(91, new KeyBinding(7, choice.hpItemId()));
             bot.setAutopotHpAlert(server.agents.capabilities.combat.AgentBerserkWindowPolicy
-                    .autopotHpThreshold(bot, AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH));
+                    .autopotHpThreshold(bot, hpThreshold(bot)));
         } else {
             bot.getKeymap().remove(91);
             bot.setAutopotHpAlert(0f);
@@ -154,7 +165,7 @@ public final class AgentPotionService {
 
         if (choice.mpItemId() > 0) {
             bot.changeKeybinding(92, new KeyBinding(7, choice.mpItemId()));
-            bot.setAutopotMpAlert(AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH);
+            bot.setAutopotMpAlert(mpThreshold(bot));
         } else {
             bot.getKeymap().remove(92);
             bot.setAutopotMpAlert(0f);

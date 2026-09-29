@@ -631,6 +631,120 @@ public final class LivingStore {
         }
     }
 
+    /** A read the database could not answer: a failure, never to be taken for "there is none". */
+    public static final class ReadFailed extends RuntimeException {
+        public ReadFailed(String what, Throwable cause) {
+            super(what, cause);
+        }
+    }
+
+    /**
+     * One companion's settings_json (P3b), or null when it has none or there is no such row. Never reads its state.
+     *
+     * @throws ReadFailed when the read failed (not the same as no settings: the caller must not keep the defaults)
+     */
+    public String settings(int characterId, String personaId) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT settings_json FROM living_roster WHERE character_id = ? AND persona_id = ?")) {
+            ps.setInt(1, characterId);
+            ps.setString(2, personaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        } catch (SQLException failure) {
+            log.warn("living_roster settings read failed for {}/{}", characterId, personaId, failure);
+            throw new ReadFailed("living_roster settings of " + characterId + "/" + personaId, failure);
+        }
+    }
+
+    /**
+     * Saves one companion's settings_json: an UPDATE that never touches its state (a row that is gone stays gone).
+     * True when its row took it; false when there is no such row or the write failed.
+     */
+    public boolean saveSettings(int characterId, String personaId, String json) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE living_roster SET settings_json = ? WHERE character_id = ? AND persona_id = ?")) {
+            ps.setString(1, json);
+            ps.setInt(2, characterId);
+            ps.setString(3, personaId);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException failure) {
+            log.warn("living_roster settings write failed for {}/{}", characterId, personaId, failure);
+            return false;
+        }
+    }
+
+    /**
+     * Adds {@code meso} to the purse of a character nothing has loaded (a benched companion's), as its next load reads
+     * it, on {@code con}: the economy transaction that takes the meso from its giver
+     * (EconomyTransactionContext.enlist), so both purses commit together or not at all. A loaded character saves its
+     * own purse over this, so it is only for one that is not loaded.
+     *
+     * @throws SQLException when there is no such character or the purse would go past its limit
+     */
+    public void addCharacterMeso(Connection con, int characterId, int meso) throws SQLException {
+        try (PreparedStatement ps = con.prepareStatement(
+                "UPDATE characters SET meso = meso + ? WHERE id = ? AND meso + ? <= ?")) {
+            ps.setInt(1, meso);
+            ps.setInt(2, characterId);
+            ps.setLong(3, meso);
+            ps.setLong(4, Integer.MAX_VALUE);
+            if (ps.executeUpdate() != 1) {
+                throw new SQLException("character " + characterId + " cannot take " + meso + " meso");
+            }
+        }
+    }
+
+    // ---- crews (P3b) -------------------------------------------------------------------------
+
+    /**
+     * The formation an owner set for their whole crew ("SPREAD 80 0": type, px, snap range), or null when they never
+     * set one.
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public String crewFormation(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT formation FROM living_crew WHERE character_id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        } catch (SQLException failure) {
+            log.warn("living_crew read failed for {}", characterId, failure);
+            throw new ReadFailed("living_crew of " + characterId, failure);
+        }
+    }
+
+    /** Keeps the formation an owner set for their whole crew; false when the write failed. */
+    public boolean saveCrewFormation(int characterId, String formation) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "INSERT INTO living_crew (character_id, formation) VALUES (?, ?)"
+                        + " ON DUPLICATE KEY UPDATE formation = VALUES(formation)")) {
+            ps.setInt(1, characterId);
+            ps.setString(2, formation);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("living_crew write failed for {}", characterId, failure);
+            return false;
+        }
+    }
+
+    /** The meso in the purse of a character nothing has loaded (a benched companion's); -1 when unknown. */
+    public long characterMeso(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT meso FROM characters WHERE id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : -1L;
+            }
+        } catch (SQLException failure) {
+            log.warn("meso lookup failed for character {}", characterId, failure);
+            return -1L;
+        }
+    }
+
     public void deleteRoster(int characterId, String personaId) {
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("DELETE FROM living_roster WHERE character_id = ? AND persona_id = ?")) {

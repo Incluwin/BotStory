@@ -6,11 +6,14 @@ import server.living.store.LivingStore.PersonaState;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -24,7 +27,12 @@ import static org.mockito.Mockito.when;
  * An in-memory {@code living_roster}, haul, persona state and event log behind a mocked {@link LivingStore}, with the
  * same write semantics as the SQL: saveRoster is an upsert, saveRosterProgress an UPDATE that keeps the row's state,
  * recruited_at, lineup slot and eta/hold/park columns, saveLineupSlot sets or clears the lineup slot, and removeHaul never goes below zero. Everything else the store does answers the
- * Mockito default.
+ * Mockito default. saveSettings keeps a row's settings_json only while the row exists (an UPDATE, true when it took
+ * it), deleteRoster takes its settings_json with it, settings and saveSettings fail as the database would for a key in
+ * {@link #unreadable} or {@link #unwritable}, addCharacterMeso (on the economy transaction's connection) adds to
+ * {@link #purses} only for a character it has a purse for, and never past the limit (else it throws, failing that
+ * commit), characterMeso reads the purses (-1 for none), characterLevelAndJob reads {@link #levels} and {@link #jobs},
+ * and living_crew is {@link #crews}.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -39,6 +47,17 @@ final class FakeLivingStore {
     final Map<String, PersonaState> personaStates = new HashMap<>();
     /** owner:persona -> lineup_slot (the usual lineup), as saveLineupSlot keeps it. */
     final Map<String, Integer> lineup = new HashMap<>();
+    /** owner:persona -> settings_json, as saveSettings keeps it. */
+    final Map<String, String> settings = new HashMap<>();
+    /** Character id -> meso in its characters row (a test seeds the purses it wants). */
+    final Map<Integer, Integer> purses = new HashMap<>();
+    /** Character id -> job id in its characters row (-1 when a test gives none). */
+    final Map<Integer, Integer> jobs = new HashMap<>();
+    /** Owner id -> living_crew.formation. */
+    final Map<Integer, String> crews = new HashMap<>();
+    /** owner:persona keys whose settings_json the database cannot read, or write, right now. */
+    final Set<String> unreadable = new java.util.HashSet<>();
+    final Set<String> unwritable = new java.util.HashSet<>();
     final LivingStore store = mock(LivingStore.class);
 
     FakeLivingStore() {
@@ -71,6 +90,45 @@ final class FakeLivingStore {
             }
             return null;
         }).when(store).saveLineupSlot(anyInt(), anyString(), any());
+        when(store.settings(anyInt(), anyString())).thenAnswer(inv -> {
+            String key = key(inv.getArgument(0), inv.getArgument(1));
+            if (unreadable.contains(key)) {
+                throw new LivingStore.ReadFailed(key, new SQLException("unreadable"));
+            }
+            return rows.containsKey(key) ? settings.get(key) : null;
+        });
+        when(store.saveSettings(anyInt(), anyString(), any())).thenAnswer(inv -> {
+            String key = key(inv.getArgument(0), inv.getArgument(1));
+            if (unwritable.contains(key) || !rows.containsKey(key)) {
+                return false;
+            }
+            settings.put(key, inv.getArgument(2));
+            return true;
+        });
+        try {
+            doAnswer(inv -> {
+                Integer purse = purses.get((int) inv.getArgument(1));
+                int meso = inv.getArgument(2);
+                if (purse == null || (long) purse + meso > Integer.MAX_VALUE) {
+                    throw new SQLException("no room in the purse");
+                }
+                purses.put(inv.getArgument(1), purse + meso);
+                return null;
+            }).when(store).addCharacterMeso(any(Connection.class), anyInt(), anyInt());
+        } catch (SQLException impossible) {
+            throw new IllegalStateException(impossible);
+        }
+        when(store.characterMeso(anyInt())).thenAnswer(inv -> {
+            Integer purse = purses.get((int) inv.getArgument(0));
+            return purse == null ? -1L : (long) purse;
+        });
+        when(store.characterLevelAndJob(anyInt())).thenAnswer(inv -> new int[] {
+                levels.getOrDefault((int) inv.getArgument(0), 0), jobs.getOrDefault((int) inv.getArgument(0), -1)});
+        when(store.crewFormation(anyInt())).thenAnswer(inv -> crews.get((int) inv.getArgument(0)));
+        when(store.saveCrewFormation(anyInt(), any())).thenAnswer(inv -> {
+            crews.put(inv.getArgument(0), inv.getArgument(1));
+            return true;
+        });
         doAnswer(inv -> {
             RosterEntry entry = asStored(inv.getArgument(0));
             rows.put(key(entry.characterId(), entry.personaId()), entry);
@@ -89,7 +147,10 @@ final class FakeLivingStore {
             }
             return null;
         }).when(store).saveRosterProgress(any());
-        doAnswer(inv -> rows.remove(key(inv.getArgument(0), inv.getArgument(1)))).when(store).deleteRoster(anyInt(), anyString());
+        doAnswer(inv -> {
+            settings.remove(key(inv.getArgument(0), inv.getArgument(1))); // the row's settings_json goes with it
+            return rows.remove(key(inv.getArgument(0), inv.getArgument(1)));
+        }).when(store).deleteRoster(anyInt(), anyString());
         when(store.haul(anyInt(), anyString())).thenAnswer(inv -> {
             List<HaulItem> out = new ArrayList<>();
             haul.getOrDefault(key(inv.getArgument(0), inv.getArgument(1)), Map.of()).forEach((item, quantity) -> {

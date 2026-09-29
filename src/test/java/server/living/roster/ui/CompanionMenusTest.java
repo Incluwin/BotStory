@@ -70,7 +70,8 @@ class CompanionMenusTest {
     private static final byte MENU = 4;
     /** A benched companion's card with someone out to swap with (P3). */
     private static final List<String> BENCH_CARD = List.of("Come join me", "Swap in for...", "What you do at camp...",
-            "Camp somewhere else...", "Your haul...", "Your wages...", "We should part ways");
+            "Camp somewhere else...", "Fighting style...", "Supplies & loot...", "Your haul...", "Your wages...",
+            "We should part ways");
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingContent content = mock(LivingContent.class);
@@ -167,11 +168,11 @@ class CompanionMenusTest {
         assertEquals(MENU, card.msgType());
         assertTrue(card.text().startsWith("#eHadrik#n, Lv31 Fighter - HP 812/900"), card.text());
         assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "Take a break at camp",
-                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "The whole crew...",
-                "Your haul...", "Your wages...", "More..."), card.labels());
+                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "Fighting style...",
+                "Supplies & loot...", "The whole crew...", "More..."), card.labels());
         pick("More...");
-        assertEquals(List.of("Let me see your gear", "Let's trade", "We should part ways", "Back to the top..."),
-                lastTalk().labels()); // the last page wraps round to the first
+        assertEquals(List.of("Your haul...", "Your wages...", "Let me see your gear", "Let's trade", "We should part ways",
+                "Back to the top..."), lastTalk().labels()); // the last page wraps round to the first
     }
 
     @Test
@@ -202,8 +203,9 @@ class CompanionMenusTest {
 
         menus.card(owner, tobiRow);
 
-        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "The whole crew...",
-                "Your haul...", "Your wages...", "We should part ways"), lastTalk().labels());
+        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "Fighting style...",
+                "Supplies & loot...", "The whole crew...", "Your haul...", "Your wages...", "We should part ways"),
+                lastTalk().labels());
     }
 
     @Test
@@ -251,6 +253,7 @@ class CompanionMenusTest {
     void letMeSeeYourGearResendsTheStockCharacterInfo() {
         rows.add(hadrikRow);
         menus.card(owner, hadrikRow);
+        pick("More...");
         Packet charInfo = mock(Packet.class);
 
         try (MockedStatic<PacketCreator> packets = mockStatic(PacketCreator.class, Mockito.CALLS_REAL_METHODS)) {
@@ -267,6 +270,7 @@ class CompanionMenusTest {
     void theGearOfACompanionBenchedWhileTheCardWasOpenIsNotShown() {
         rows.add(hadrikRow);
         menus.card(owner, hadrikRow);
+        pick("More...");
         when(roster.entry(ANN, "hadrik")).thenReturn(row("hadrik", RosterState.BENCHED, 0L)); // benched from chat meanwhile
 
         pick("Let me see your gear");
@@ -403,8 +407,8 @@ class CompanionMenusTest {
 
         menus.card(owner, miraRow);
 
-        assertEquals(List.of("Come join me", "What you do at camp...", "Camp somewhere else...", "Your haul...",
-                "Your wages...", "We should part ways"), lastTalk().labels());
+        assertEquals(List.of("Come join me", "What you do at camp...", "Camp somewhere else...", "Fighting style...",
+                "Supplies & loot...", "Your haul...", "Your wages...", "We should part ways"), lastTalk().labels());
     }
 
     // ---- the Crew window -----------------------------------------------------------------

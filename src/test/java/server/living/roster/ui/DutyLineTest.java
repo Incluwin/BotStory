@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class DutyLineTest {
 
     private static CompanionView view(RosterState state, boolean loaded, String where, String camp) {
-        return new CompanionView("brannock", "Brannock", state, loaded, 15, "Warrior", where, 951, 951, "train", 0, 0L,
+        return new CompanionView("brannock", "Brannock", state, loaded, 15, "Warrior", 100, where, 951, 951, "train", 0, 0L,
                 100, 100, 10, camp, 0, 0, "", 0L, 0, "", null, false, false);
     }
 

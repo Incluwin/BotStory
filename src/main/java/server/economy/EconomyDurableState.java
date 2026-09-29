@@ -59,6 +59,9 @@ public final class EconomyDurableState {
 
     String evidenceJson() { return evidence.json(); }
 
+    /** What the operation enlisted besides its participants (EconomyTransactionContext.enlist), for tests. */
+    List<EconomyAtomicPersistence> additionalPersistence() { return additionalPersistence; }
+
     private record ParticipantState(EconomyParticipantSnapshot before,
                                     EconomyParticipantSnapshot after) { }
 }

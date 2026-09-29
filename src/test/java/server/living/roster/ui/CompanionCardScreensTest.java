@@ -190,6 +190,11 @@ class CompanionCardScreensTest {
             public String potions(Character bot) {
                 return bot == hadrikBot ? "38 Red Potions" : "";
             }
+
+            @Override
+            public List<String> allPotions(Character bot) {
+                return List.of();
+            }
         };
     }
 
@@ -212,11 +217,11 @@ class CompanionCardScreensTest {
         assertEquals(MENU, card.msgType());
         assertTrue(card.text().startsWith("#eHadrik#n, Lv31 Fighter - HP 812/900 - 38 Red Potions\r\n\r\n#L"), card.text());
         assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "Take a break at camp",
-                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "The whole crew...",
-                "Your haul...", "Your wages...", "More..."), card.labels(), "The whole crew is on the first page");
+                "Let someone take your place...", "What you do at camp...", "Camp somewhere else...", "Fighting style...",
+                "Supplies & loot...", "The whole crew...", "More..."), card.labels(), "The whole crew is on the first page");
         pick("More...");
-        assertEquals(List.of("Let me see your gear", "Let's trade", "We should part ways", "Back to the top..."),
-                lastTalk().labels());
+        assertEquals(List.of("Your haul...", "Your wages...", "Let me see your gear", "Let's trade", "We should part ways",
+                "Back to the top..."), lastTalk().labels());
     }
 
     @Test
@@ -228,7 +233,8 @@ class CompanionCardScreensTest {
 
         assertFalse(lastTalk().labels().contains("Let me see your gear"), lastTalk().labels().toString());
         pick("More...");
-        assertEquals(List.of("We should part ways", "Back to the top..."), lastTalk().labels());
+        assertEquals(List.of("Your haul...", "Your wages...", "We should part ways", "Back to the top..."),
+                lastTalk().labels());
     }
 
     @Test
@@ -324,8 +330,9 @@ class CompanionCardScreensTest {
 
         Talk card = lastTalk();
         assertTrue(card.text().startsWith("#eTobi#n, Lv30 Cleric\r\non the way (0:40)\r\n"), card.text());
-        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "The whole crew...",
-                "Your haul...", "Your wages...", "We should part ways"), card.labels());
+        assertEquals(List.of("Take a break at camp", "What you do at camp...", "Camp somewhere else...", "Fighting style...",
+                "Supplies & loot...", "The whole crew...", "Your haul...", "Your wages...", "We should part ways"),
+                card.labels());
     }
 
     @Test
@@ -349,8 +356,9 @@ class CompanionCardScreensTest {
 
             menus.card(owner, entry);
 
-            assertEquals(List.of("Come join me", "What you do at camp...", "Camp somewhere else...", "Your haul...",
-                    "Your wages...", "We should part ways"), lastTalk().labels(), state.name());
+            assertEquals(List.of("Come join me", "What you do at camp...", "Camp somewhere else...", "Fighting style...",
+                    "Supplies & loot...", "Your haul...", "Your wages...", "We should part ways"), lastTalk().labels(),
+                    state.name());
             LivingTalk.forget(owner);
         }
     }
@@ -365,8 +373,9 @@ class CompanionCardScreensTest {
         menus.card(owner, hadrikRow);
 
         Talk card = lastTalk();
-        assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "The whole crew...", "Your haul...",
-                "Your wages...", "Let me see your gear", "Let's trade", "We should part ways"), card.labels());
+        assertEquals(List.of("Stick with me", "Wait here", "Hunt here while I'm busy", "Fighting style...",
+                "Supplies & loot...", "The whole crew...", "Your haul...", "Your wages...", "Let me see your gear",
+                "Let's trade", "More..."), card.labels(), "settings change no seat: they never wait for the run");
         for (String waits : List.of("Take a break at camp", "Let someone take your place", "What you do at camp",
                 "Camp somewhere else")) {
             assertTrue(card.text().contains("\r\n" + waits + " (after the run)\r\n"), card.text());
@@ -381,7 +390,8 @@ class CompanionCardScreensTest {
 
         menus.card(owner, miraRow);
 
-        assertEquals(List.of("Come join me", "Your haul...", "Your wages...", "We should part ways"), lastTalk().labels());
+        assertEquals(List.of("Come join me", "Fighting style...", "Supplies & loot...", "Your haul...", "Your wages...",
+                "We should part ways"), lastTalk().labels());
         assertTrue(lastTalk().text().contains("Swap in for (after the run)"), lastTalk().text());
     }
 
@@ -440,6 +450,7 @@ class CompanionCardScreensTest {
         CompanionViews views = cachedViews();
         rows.addAll(List.of(hadrikRow, miraRow));
         menus.card(owner, hadrikRow);
+        pick("More...");
 
         rows.remove(hadrikRow);
         views.invalidate(ANN);
@@ -453,6 +464,7 @@ class CompanionCardScreensTest {
     void aPageOfOneNoLongerInYourRosterIsNeverOpened() {
         rows.add(hadrikRow);
         menus.card(owner, hadrikRow);
+        pick("More...");
 
         rows.clear(); // released from chat while the card was open (no cache to stamp against)
         pick("Your wages...");
@@ -703,6 +715,7 @@ class CompanionCardScreensTest {
         when(owner.getMeso()).thenReturn(10_000);
         when(roster.payWages(owner, hadrik, 2_790L)).thenReturn("Hadrik is paid up for ~3 h.");
         menus.card(owner, hadrikRow);
+        pick("More...");
 
         pick("Your wages...");
 
@@ -723,6 +736,7 @@ class CompanionCardScreensTest {
         rows.add(hadrikRow);
         when(owner.getMeso()).thenReturn(100);
         menus.card(owner, hadrikRow);
+        pick("More...");
 
         pick("Your wages...");
 

@@ -1020,8 +1020,8 @@ public final class AgentShopService {
         int maxHp = bot.getCurrentMaxHp();
         int maxMp = bot.getCurrentMaxMp();
         float threshold = forHp
-                ? AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH
-                : AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH;
+                ? AgentPotionService.hpThreshold(bot)
+                : AgentPotionService.mpThreshold(bot);
         int targetDeficit = Math.max(
                 1,
                 Math.round((forHp ? maxHp : maxMp) * (1.0f - threshold)));

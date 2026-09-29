@@ -146,6 +146,8 @@ public final class LivingWorld {
         server.agents.auth.AgentClaimGuard.installVerbs(world.chatVerbs); // chat dismiss/logout of a companion bench it
         // travelling, held and away companions never follow; the rest come into their owner's new map where they came in
         server.agents.capabilities.follow.AgentFollowGuard.install(new server.living.roster.CompanionFollowGuard(world));
+        // a companion out with its owner drinks and loots by its own settings (P3b)
+        world.roster.settings().install();
         // boot reconciliation (decision 8a) goes first on companion-ops, ahead of any login's restore
         world.executor.submit("roster.boot", world.roster::reconcileAtBoot);
         TimerManager timers = TimerManager.getInstance();
@@ -204,6 +206,7 @@ public final class LivingWorld {
         net.server.world.PartySeatGate.install(null);
         server.agents.auth.AgentClaimGuard.installVerbs(null);
         server.agents.capabilities.follow.AgentFollowGuard.install(null);
+        server.living.roster.CompanionSettingsApplier.uninstall();
         server.living.population.Population.stop();
         for (ScheduledFuture<?> timer : world.timers) {
             timer.cancel(false);
