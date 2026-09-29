@@ -30,6 +30,7 @@ import server.living.roster.CompanionPartySync;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionViews;
 import server.living.roster.Commitments;
+import server.living.roster.HireOffers;
 import server.living.roster.HiredHands;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
@@ -63,6 +64,7 @@ public final class LivingWorld {
     private final CompanionPartySync partySync;
     private final RosterService roster;
     private final HiredHands hiredHands;
+    private final HireOffers hireOffers;
     private final CompanionViews views;
     private final CompanionManager manager;
     private final CompanionLeases leases;
@@ -94,6 +96,7 @@ public final class LivingWorld {
         this.views = new CompanionViews(this); // before the roster, whose every write drops its owner's views
         this.roster = new RosterService(this);
         this.hiredHands = new HiredHands(this);
+        this.hireOffers = new HireOffers(this);
         this.manager = new CompanionManager(this);
         this.leases = new CompanionLeases();
         this.directory = new CompanionDirectory(this);
@@ -167,6 +170,9 @@ public final class LivingWorld {
                 config.RUMOR_TICK_MS, config.RUMOR_TICK_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("contracts.tick", world.contracts::tick), 60_000L, 60_000L));
+        // a citizen guest's party minutes, its offer to stay on and the offer's expiry (P4)
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("hire.offers", world.hireOffers::tick), HireOffers.TICK_MS, HireOffers.TICK_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("bench_sessions.tick", world.benchSessions::tick), 120_000L, 120_000L));
         // companions parked with an owner who stays away go to their duty once LEADER_OFFLINE_BENCH_MS has passed
@@ -306,6 +312,11 @@ public final class LivingWorld {
     /** Hired citizens (P4): their synthetic personas, their terms and the hire itself. */
     public HiredHands hiredHands() {
         return hiredHands;
+    }
+
+    /** Party-time hire offers (P4): a citizen guest's offer to stay on, open for 10 minutes. */
+    public HireOffers hireOffers() {
+        return hireOffers;
     }
 
     /** The CompanionView cache the menus render from (no database read per render). */

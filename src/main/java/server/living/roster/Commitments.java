@@ -47,6 +47,16 @@ public final class Commitments {
         return byCharacter.containsKey(characterId);
     }
 
+    /** True while any of the owner's companions is tied to a run. */
+    public boolean ownerCommitted(int ownerId) {
+        for (Member member : byCharacter.values()) {
+            if (member.ownerId() == ownerId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** The key the character is committed to, or null. */
     public String keyOf(int characterId) {
         Member held = byCharacter.get(characterId);

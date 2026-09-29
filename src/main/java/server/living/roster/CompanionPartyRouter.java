@@ -59,6 +59,7 @@ public final class CompanionPartyRouter {
             case Relation.OthersCompanion others -> answer(inviter, PacketCreator.partyStatusMessage(23, shown));
             case Relation.Resident resident -> answer(inviter, PacketCreator.partyStatusMessage(23, shown));
             case Relation.Citizen citizen -> citizen(inviter, invited);
+            case Relation.HireOfferPending offer -> citizen(inviter, invited);
             case Relation.PlainAgent agent -> plainAgent(inviter, invited, agent.characterId());
             case Relation.Human human -> invited == null ? notFound(inviter)
                     : inStarterParty(inviter) ? beginner(inviter) : mergeInvite(inviter, invited) ? Route.ANSWERED : Route.STOCK;
@@ -157,14 +158,15 @@ public final class CompanionPartyRouter {
     }
 
     /**
-     * A willing citizen gets the stock invite and accepts a moment later; one too far from your level denies (23)
-     * and a busy one is taking care of something else (22), as late.
+     * A willing citizen gets the stock invite and accepts a moment later; one too far from your level or not taken
+     * with you denies (23) and a busy one is taking care of something else (22), as late. One out with its own circle
+     * is busy; one in any other party gets the stock "already in a party".
      */
     private Route citizen(Character inviter, Character citizen) {
         if (citizen == null) {
             return notFound(inviter);
         }
-        if (citizen.getParty() != null || lobbyDecides(citizen, inviter)) {
+        if (citizen.getParty() != null && !CitizenInviteDecision.withItsCircle(citizen) || lobbyDecides(citizen, inviter)) {
             return Route.STOCK;
         }
         if (inStarterParty(inviter)) {

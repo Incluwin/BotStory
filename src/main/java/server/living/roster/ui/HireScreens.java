@@ -5,6 +5,7 @@ import client.Client;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.resident.LivingTalk;
+import server.living.roster.HireOffers;
 import server.living.roster.HiredHands;
 import tools.PacketCreator;
 
@@ -54,9 +55,19 @@ public final class HireScreens {
                 + "Wages: #b" + meso(terms.dailyWage()) + " meso#k a day on the bench, out of my haul unless you pay ahead";
         LivingTalk.open(owner, CompanionMenus.BOARD_NPC)
                 .acceptDecline(text, () -> accept(owner, citizenCharacterId, terms, context),
-                        () -> world.residents().whisper(persona, owner, hands.voice(citizenCharacterId,
-                                context == Context.OFFER ? "no worries. i'll be around." : "sure. you know where to find me.")))
+                        () -> decline(owner, citizenCharacterId, persona, context))
                 .show();
+    }
+
+    /** In character; an open offer from the citizen closes, and it will not ask again for a while (HireOffers). */
+    private void decline(Character owner, int citizenCharacterId, Persona persona, Context context) {
+        world.residents().whisper(persona, owner, world.hiredHands().voice(citizenCharacterId,
+                context == Context.OFFER ? "no worries. i'll be around." : "sure. you know where to find me."));
+        HireOffers offers = world.hireOffers();
+        if (offers != null) {
+            int ownerId = owner.getId();
+            world.executor().submit("hire.decline " + citizenCharacterId, () -> offers.declined(ownerId, citizenCharacterId));
+        }
     }
 
     /** The hire on companion-ops; its answer on the owner's packet thread, as a click's answer is (CompanionMenus.command). */
