@@ -71,6 +71,9 @@ public final class BondService {
                 bond.contractStartedAtMs(), bond.offerExpiresAtMs(), bond.proofProgress(), bond.paidMeso(),
                 bond.partySeconds(), bond.leftAtMs(), System.currentTimeMillis());
         world.store().saveBond(updated);
+        if (stage != bond.stage()) {
+            server.living.roster.CompanionViews.invalidate(world, chr.getId()); // a card shows the bond
+        }
         if (delta != 0) {
             world.store().event(chr.getId(), persona.id(), "bond.points", delta + " (" + reason + ") -> " + points);
         }

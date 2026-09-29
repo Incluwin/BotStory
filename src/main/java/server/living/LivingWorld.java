@@ -25,8 +25,10 @@ import server.living.roster.CompanionChatVerbs;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionLeases;
+import server.living.roster.CompanionManager;
 import server.living.roster.CompanionPartySync;
 import server.living.roster.CompanionSlots;
+import server.living.roster.CompanionViews;
 import server.living.roster.Commitments;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
@@ -59,6 +61,8 @@ public final class LivingWorld {
     private final CompanionSlots slots;
     private final CompanionPartySync partySync;
     private final RosterService roster;
+    private final CompanionViews views;
+    private final CompanionManager manager;
     private final CompanionLeases leases;
     private final CompanionDirectory directory;
     private final CompanionBudget budget;
@@ -85,7 +89,9 @@ public final class LivingWorld {
         this.commitments = new Commitments();
         this.slots = new CompanionSlots(this); // before the roster, which rebuilds its reservations
         this.partySync = CompanionPartySync.live(this);
+        this.views = new CompanionViews(this); // before the roster, whose every write drops its owner's views
         this.roster = new RosterService(this);
+        this.manager = new CompanionManager(this);
         this.leases = new CompanionLeases();
         this.directory = new CompanionDirectory(this);
         this.budget = new CompanionBudget(this);
@@ -286,6 +292,16 @@ public final class LivingWorld {
 
     public RosterService roster() {
         return roster;
+    }
+
+    /** The CompanionView cache the menus render from (no database read per render). */
+    public CompanionViews views() {
+        return views;
+    }
+
+    /** The typed facade the menus call on companion-ops (roster verbs, orders, trade, gear, release). */
+    public CompanionManager manager() {
+        return manager;
     }
 
     /** The companion-ops thread every companion mutation runs on. */

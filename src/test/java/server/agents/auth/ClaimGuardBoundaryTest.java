@@ -87,6 +87,9 @@ class ClaimGuardBoundaryTest {
             // and a human's routed accept (a merge or make-room) joins the party that invited them
             "server/living/roster/LiveCrew.java join 1",
             "server/living/roster/LiveCrew.java partyjoin 1",
+            // P3: a menu order is the owner's whisper to their own companion out with them, after mayControl; the bridge
+            // asks the claim guard again
+            "server/living/roster/CompanionManager.java whisper 1",
             "server/living/roster/BenchSessions.java load 1",
             "server/living/resident/ResidentRuntime.java load 1",
             "server/living/population/SocialFabric.java join 1",

@@ -288,7 +288,7 @@ public final class LivingWorldHooks {
     /**
      * A committed party change ({@code PartyEvents} listener, on the thread that made it). It is queued for the
      * companion-ops thread and never handled here, so nothing re-enters {@code World.updateParty} or takes the roster's
-     * locks under the party's. The seat caches take it first, then the roster is reconciled.
+     * locks under the party's. The seat and view caches take it first, then the roster is reconciled.
      */
     public static void partyChanged(net.server.world.PartyEvents.PartyChangeEvent event) {
         LivingWorld world = LivingWorld.get();
@@ -297,6 +297,10 @@ public final class LivingWorldHooks {
         }
         try {
             world.executor().submit("party " + event.op() + " " + event.partyId(), () -> {
+                server.living.roster.CompanionViews views = world.views();
+                if (views != null) {
+                    views.partyChanged(event); // the Crew windows of everyone in it render afresh
+                }
                 world.slots().onPartyChanged(event);
                 world.partySync().onPartyChanged(event);
             });

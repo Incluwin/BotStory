@@ -1447,6 +1447,7 @@ public final class RosterService {
             owner.gainMeso((int) Math.min(meso, Integer.MAX_VALUE), true);
             saveHaulMeso(entry, 0L);
         }
+        CompanionViews.invalidate(world, owner.getId()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.handover", moved + " stacks, " + meso + " meso, skipped " + skipped);
         return persona.name() + " hands over " + moved + " item stack(s) and " + meso + " meso"
                 + (skipped > 0 ? " (" + skipped + " stack(s) did not fit)" : "") + ".";
@@ -1478,6 +1479,7 @@ public final class RosterService {
                     persona.name(), owner.getId());
         }
         saveHaulMeso(entry, 0L);
+        CompanionViews.invalidate(world, owner.getId()); // the bag emptied
         world.store().event(owner.getId(), persona.id(), "haul.duey", haul.size() + " packages, " + meso + " meso");
         return persona.name() + " sends " + haul.size() + " package(s) through Duey.";
     }
@@ -2386,7 +2388,7 @@ public final class RosterService {
 
     /**
      * Every roster row write goes through the one transition table (CompanionSeatState): a move it does not list is
-     * logged and refused, never written. False when refused.
+     * logged and refused, never written. False when refused. A write drops the owner's CompanionViews.
      */
     boolean write(RosterEntry next) {
         RosterEntry stored = world.store().rosterEntry(next.characterId(), next.personaId());
@@ -2397,6 +2399,7 @@ public final class RosterService {
             return false;
         }
         world.store().saveRoster(next);
+        CompanionViews.invalidate(world, next.characterId());
         if (offFollowState(next.state())) {
             offFollow.add(next.personaId());
         } else {

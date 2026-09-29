@@ -3473,11 +3473,15 @@ public class PacketCreator {
     }
 
     public static Packet getNPCTalkNum(int npc, String talk, int def, int min, int max) {
+        return getNPCTalkNum(npc, talk, def, min, max, (byte) 0);
+    }
+
+    public static Packet getNPCTalkNum(int npc, String talk, int def, int min, int max, byte speaker) {
         final OutPacket p = OutPacket.create(SendOpcode.NPC_TALK);
         p.writeByte(4); // ?
         p.writeInt(npc);
         p.writeByte(3);
-        p.writeByte(0); //speaker
+        p.writeByte(speaker);
         p.writeString(talk);
         p.writeInt(def);
         p.writeInt(min);
