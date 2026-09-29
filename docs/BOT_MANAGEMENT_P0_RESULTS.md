@@ -378,3 +378,62 @@ Run 2026-09-28 19:30-20:45 on four restarts. The clients were ohboy (ohboyohboy)
 ## Found live, belongs elsewhere
 - **Companions run off to resupply as soon as they arrive,** and wander Kerning's maps for 10+ minutes (Sadie and Vex; later Brannock and Fenna). They go 103000002 → 103020200 → 104010000 → 103020100 without reaching the shop, and follow is off while they do. This is the agents' supply navigation, and it was reported to the Kerning-routes session. It is also an immersion problem: a crew that walks in and leaves at once.
 - **GM characters log in hidden, and the v83 client sends no NPC click while hidden.** It is client-side, like Dark Sight, and not a server bug. `!hide` fixes it. It explained the "NPC talk does nothing" report from another session.
+
+---
+
+# P3 results (2026-09-29)
+
+## Branch and suite
+P3 is merged into `feat/companion-manager` as `888b21cfc`. The live run then found three bugs, fixed as `f297730c5`, `41af7f5da` and `17f5ee125`, and deployed 04:28.
+- **Full suite (P3 fix stage):** 8043 tests: 25 failures and 4 errors, the same 29 baseline tests. There are 0 new failures.
+- **Living-world suites:** all green after each live fix.
+
+## What P3 adds
+- **LivingTalk:**
+  - A number box, the stock `getNPCTalkNum` window, checked with the same rule as `NpcPromptState`.
+  - Back: the last option on menus, Prev on OK pages, and the cancel path on number boxes.
+- **CompanionViews:** a per-owner view cache, so a render reads no database. Its versions drive the stale-click guard.
+- **CompanionManager:** one facade for every menu action. Crew-wide orders reuse the existing agent chat paths (gather, rebuff, formation, follow, wait), and single-companion orders use the stock whisper path.
+- **Companion card**, state-aware:
+  - Stick with me / Wait here / Hunt here while I'm busy / Take a break at camp / Let someone take your place... / What you do at camp... / Camp somewhere else... / The whole crew... / Your haul... / Your wages...
+  - Let me see your gear and Let's trade, offered only while the companion is on your map.
+  - We should part ways.
+- **Bench card:**
+  - Duty picker with projected rates.
+  - FARM_ITEM picker with a count box.
+  - Camp picker (level-appropriate fields).
+  - Haul: hand over / Duey / bank / wear your best.
+  - Wages status and pay by number box.
+  - Release confirm showing bond and haul.
+- **Crew window:**
+  - Party n/6: travelling, waiting-outside and offline rows, and guests.
+  - Bench (x of y bench seats).
+  - Actions: usual lineup call and save, "Everyone: follow me / wait here / gather up / rebuff", Formation..., "Everyone on the bench...", "Make room for...".
+  - Speaks in your own avatar from the book, or in the companion's voice (with Back) when opened from a card.
+- **Adventurer's Roster:** granted on the first companion, and it cannot be dropped.
+  - The Custom.wz leaf rename to "Adventurer's Roster" is **staged, not shipped** (`scratchpad/p3-roster-item/`, RUNBOOK). Probe 3 (kaentake's Serialize hook overrides string leaves) is settled from the source and the live client log, but not yet in a client.
+
+## Live checks (ohboy, all by mouse; 2026-09-29 03:43-04:25)
+| Check | Result |
+|---|---|
+| Roster book opens the Crew window | **Pass.** With 3 out: party and bench blocks, own avatar. With everyone benched: "Party 1/6 (nobody out with me)", "Bench (4 of 10 bench seats)", "Call my usual lineup". |
+| Call my usual lineup | **Pass.** From all-benched, Brannock, Fenna and Ilse joined at once as TRAVELLING and arrived at their ETAs. |
+| Bench card and swap ("Swap in for...") | **Pass.** Garrick asked "who should i take over from?", then "Ilse heads back to camp to farm meso. Garrick is on the way (~60 s)." Garrick walked in at his ETA. |
+| Crew window from a card | **Pass.** It speaks in Garrick's voice and shows "Garrick - on the way (0:45)". Clicking a row opens that companion's card, with Back to the Crew window. |
+| Duty picker and camp picker | **Pass.** Rates show: "Farm meso (~56k meso/h after upkeep)", "Rest (no upkeep)". Farm meso from town asks in character "i can't do that in town. where should i go?" and lists level-32 fields. The row became FARM_MESO @ 106000002, then TRAIN. |
+| Crew-wide orders | **Pass.** "Everyone: wait here": all 3 stopped following (live probe). "Everyone: follow me": all 3 following again. |
+| Card orders and pages | **Pass.** Haul and wages pages. The wages number box ("how many hours? 450 meso an hour; you have 5,325.") paid 6 h. Gear opened the stock Character Info. Trade opened the stock trade window ("what's up"). |
+| Release (flow 10) | **Pass.** "Part ways with Ilse for good? Bond: none yet / Haul: nothing" in your notes. No kept her; Yes gave "Ilse heads home to Henesys.", the row was removed and `roster.release` logged. She was then granted back for testing. |
+| 55 consecutive menu actions | **Pass.** 11 rounds of book -> row -> More... -> Back -> End Chat. The client stayed online, the log had no errors, and the book opened normally afterwards. |
+| Hotkey | Not applicable. Probe 2: a 243 item on a hotkey sends nothing, so the book is opened by double-click. |
+| Video | `docs/agents/evidence/video/p3-rotate-and-duty.mp4` (78 s, captioned, zero typing). It awaits the user's sign-off. |
+
+## Bugs found live and fixed
+1. **Bench rows named the wrong place (`f297730c5`).** A companion benched while still walking out read "train @ Kerning City Construction Site". The row now names its camp.
+2. **Valley recalls took 180 s (`41af7f5da`).** Maps in areas 106 (Deep and Dangerous Valley, Burnt Land) and 107 (Swamp of Despair) were missing from RecallTravel's island graph, so a camp the picker itself offers counted as off-island.
+3. **"Things changed" refused a valid click (`17f5ee125`).** The stale-click stamp was owner-wide, so another companion's arrival, or a bench-ledger write, made every open card stale. Cards and their pages now use a per-companion version. The Crew window and swap picker keep the owner-wide one.
+
+## Not done in P3
+- **Roster item name ship.** It needs the user's go-ahead, because it changes every friend's client. Order: the RUNBOOK side-folder test, then ship, then a clean second client, then a rollback rehearsal. Until then the book reads "Agent Summon".
+- **Open policy for P3b:** companion wallet reserve. Companions carry too few mesos for the journey reserve, so their shop trips buy nothing.
+
