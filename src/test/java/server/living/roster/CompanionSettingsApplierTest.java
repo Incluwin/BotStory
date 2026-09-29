@@ -144,6 +144,21 @@ class CompanionSettingsApplierTest {
     }
 
     @Test
+    void aCompanionOutWithItsOwnerKeepsNoJourneyReserveAndOneOnTheBenchDoes() {
+        // seen live: companions carrying 1-2k meso sat below the 500 + 50/level reserve, so every shop visit bought nothing
+        hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, HENESYS_FIELD, null);
+        assertFalse(applier().exempt(HADRIK), "not loaded: nothing to answer for");
+
+        assertTrue(game.roster().call(game.ann, hadrik).ok());
+        applier().install();
+
+        assertTrue(applier().exempt(HADRIK), "out with its owner: its recall and follow cost it nothing");
+        assertTrue(server.agents.capabilities.supplies.AgentWalletReserve.exempt(HADRIK), "installed as the seam's rule");
+        game.selfLed.add(HADRIK); // a live bench slice leads itself
+        assertFalse(applier().exempt(HADRIK), "self-led on the bench: the reserve applies like any Agent");
+    }
+
+    @Test
     void aTravellerRunsOnItsSettingsFromItsLoadAndTheyAreReappliedWhenItArrives() {
         hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, LITH, CUSTOM);
 

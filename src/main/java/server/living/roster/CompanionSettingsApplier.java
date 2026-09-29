@@ -13,6 +13,7 @@ import server.agents.capabilities.movement.AgentFormationService;
 import server.agents.capabilities.movement.AgentMovementPhysicsConfig;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentPotionThresholds;
+import server.agents.capabilities.supplies.AgentWalletReserve;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeConfig;
@@ -53,7 +54,7 @@ import java.util.function.UnaryOperator;
  * is kept the same way: a support toggle said to a companion out with them, and a formation order to their crew (kept
  * per owner in living_crew; everyone it placed keeps to the crew's formation from then on).</p>
  */
-public final class CompanionSettingsApplier implements AgentPotionThresholds.Rule, AgentLootPolicy.Rule,
+public final class CompanionSettingsApplier implements AgentPotionThresholds.Rule, AgentLootPolicy.Rule, AgentWalletReserve.Rule,
         AgentChatToggleHook.Rule, AgentFormationHook.Rule {
     /** How long what an owner's quests need is kept before their started quests are read again (QUEST_ONLY). */
     private static final long QUEST_NEEDS_TTL_MS = 1_000L;
@@ -84,6 +85,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
     public void install() {
         AgentPotionThresholds.install(this);
         AgentLootPolicy.install(this);
+        AgentWalletReserve.install(this);
         AgentChatToggleHook.install(this);
         AgentFormationHook.install(this);
     }
@@ -92,6 +94,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
     public static void uninstall() {
         AgentPotionThresholds.install(null);
         AgentLootPolicy.install(null);
+        AgentWalletReserve.install(null);
         AgentChatToggleHook.install(null);
         AgentFormationHook.install(null);
     }
@@ -375,6 +378,17 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
         CompanionSettings own = at == null ? null : boundSettings(at, at.ownerId());
         return own == null || own.potionsAsConfigured() ? null
                 : new AgentPotionThresholds.Thresholds(own.hpPercent() / 100f, own.mpPercent() / 100f);
+    }
+
+    /**
+     * A companion out with its owner keeps no journey reserve: its recall and its follow cost it nothing, so it may
+     * spend its whole purse on supplies (the reserve left a purse of 1-2k buying nothing on every shop visit). A
+     * companion on a live bench slice leads itself and keeps the reserve like any Agent.
+     */
+    @Override
+    public boolean exempt(int agentCharacterId) {
+        Bound at = bound.get(agentCharacterId);
+        return at != null && AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) == at.ownerId();
     }
 
     @Override
