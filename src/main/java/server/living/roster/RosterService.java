@@ -479,8 +479,24 @@ public final class RosterService {
         RosterResult result = call(owner, persona, null);
         if (result.ok()) {
             world.slots().stopWaiting(persona.id());
+            rememberFirstLineup(owner);
         }
         return result;
+    }
+
+    /**
+     * The usual lineup saves itself the first time 2 or more companions are out (plan "Usual lineup"): with none
+     * remembered yet, those out now, as {@link #saveUsualLineup} orders them. Later ones are the logout's and
+     * "Remember this lineup"'s.
+     */
+    private void rememberFirstLineup(Character owner) {
+        int out = 0;
+        for (RosterEntry entry : roster(owner)) {
+            out += CompanionSeatState.partyMember(entry.state()) ? 1 : 0;
+        }
+        if (out >= 2 && world.store().lineupSlots(owner.getId()).isEmpty()) {
+            saveUsualLineup(owner);
+        }
     }
 
     /** {@code standing}: where it stood on the owner's map before its Resident life let it go (an escort), else null. */
