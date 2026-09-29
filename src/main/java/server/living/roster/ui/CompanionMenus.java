@@ -10,6 +10,7 @@ import server.living.resident.ResidentDialogue;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionView;
 import server.living.roster.CompanionViews;
+import server.living.roster.HireOffers;
 import server.living.roster.RecallTravel;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -62,7 +63,7 @@ public final class CompanionMenus {
         this.world = world;
         this.placeNames = placeNames;
         this.cards = new CompanionCardScreens(this);
-        this.crews = new CompanionCrewScreens(this);
+        this.crews = new CompanionCrewScreens(this, this::pendingHireOffers);
     }
 
     // ---- entry points --------------------------------------------------------------------
@@ -116,6 +117,17 @@ public final class CompanionMenus {
             return;
         }
         crews.hireList(owner, null);
+    }
+
+    /**
+     * The hire list's pending offers (P4, "Citizen guest"): the citizen whose offer to stay on still awaits the owner
+     * ({@link HireOffers#pendingOffers}), on top of the list and opening the same terms window as a double-click on it. A
+     * world without offers (a test's) has none.
+     */
+    private List<Integer> pendingHireOffers(Character owner) {
+        HireOffers offers = world.hireOffers();
+        return offers == null ? List.of()
+                : offers.pendingOffers(owner).stream().map(HireOffers.Offer::citizenCharacterId).toList();
     }
 
     /** A companion's screens, for a crew page that opens one of them (a card is opened through {@link #card}). */

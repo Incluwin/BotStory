@@ -73,14 +73,10 @@ final class CompanionCrewScreens {
     /** The pending hire offers hook: see {@link #CompanionCrewScreens(CompanionMenus, Function)}. */
     private final Function<Character, List<Integer>> pendingHireOffers;
 
-    CompanionCrewScreens(CompanionMenus menus) {
-        this(menus, owner -> List.of());
-    }
-
     /**
-     * {@code pendingHireOffers} is the hook for the P4 offers track, wired by the integrator: the character ids of the
-     * citizens whose offer to stay on still awaits the owner's answer, in order. They top the hire list, and a click opens
-     * their terms as the offer ({@link HireScreens.Context#OFFER}).
+     * {@code pendingHireOffers}: the character ids of the citizens whose offer to stay on still awaits the owner's answer,
+     * in order (CompanionMenus reads them from HireOffers). They top the hire list, and a click opens their terms as the
+     * offer ({@link HireScreens.Context#OFFER}).
      */
     CompanionCrewScreens(CompanionMenus menus, Function<Character, List<Integer>> pendingHireOffers) {
         this.menus = menus;

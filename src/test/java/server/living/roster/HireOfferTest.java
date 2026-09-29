@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import client.BuddyList;
 import client.Character;
 import client.Client;
 import client.Job;
@@ -79,7 +80,10 @@ class HireOfferTest {
     private static final String HIRE = "hire:950";
     private static final int HUNTER = 310;
     private static final byte ACCEPT_DECLINE = 0x0C;
+    private static final byte MENU = 4;
     private static final String OFFER = "i like running with you. want me to stick around? double-click me";
+    /** Mira's open offer on the hire list (loaded on a map with no name: "around"). */
+    private static final String OFFER_ROW = "Mira, Lv30 Hunter - around (offered to stay)";
 
     private final LifecycleHarness game = new LifecycleHarness();
     private final Population population = mock(Population.class);
@@ -393,7 +397,67 @@ class HireOfferTest {
         verify(game.residents, never()).whisper(any(), any(), anyString());
     }
 
+    // ---- the hire list (plan "Citizen guest": an open offer stays reachable from the hire list) ----
+
+    @Test
+    void anOpenOfferTopsTheHireListAndOpensTheSameTermsWindowAsTheDoubleClick() {
+        onTheHireList();
+        guestOfAnn(mira);
+        CompanionMenus menus = new CompanionMenus(game.world);
+        menus.hireList(game.ann);
+        assertEquals(List.of("Back"), lastTalk().labels(), "no offer yet, and nobody else she has met");
+        LivingTalk.forget(game.ann);
+
+        offerMade();
+        new ResidentDialogue(game.world).onCharacterClicked(game.ann, mira);
+        String doubleClicked = lastTalk().text();
+        LivingTalk.forget(game.ann); // she walked away from that window
+
+        menus.hireList(game.ann);
+        assertEquals(List.of(OFFER_ROW, "Back"), lastTalk().labels());
+        pick(OFFER_ROW);
+
+        Talk terms = lastTalk();
+        assertEquals(ACCEPT_DECLINE, terms.msgType());
+        assertEquals(CompanionMenus.BOARD_NPC, terms.npcId(), "a hire has no rendered face");
+        assertEquals(doubleClicked, terms.text(), "one terms window for the offer, whichever way it was opened");
+
+        answer(1);
+
+        assertEquals(RosterState.ACTIVE, game.store.row(ANN, HIRE).state());
+        assertEquals(List.of("stop Mira", "register Mira", "follow Mira"), game.calls, "adopted where she stands");
+        assertEquals(1, game.store.events(HiredHands.EVENT_ACCEPT).size());
+        assertNull(offers.pending(ANN, MIRA), "the offer is over");
+        LivingTalk.forget(game.ann);
+        menus.hireList(game.ann);
+        assertEquals(List.of("Back"), lastTalk().labels(), "hired: off the list");
+    }
+
+    @Test
+    void decliningTheOfferFromTheHireListClosesItAsTheDoubleClickDoes() {
+        onTheHireList();
+        guestOfAnn(mira);
+        offerMade();
+        new CompanionMenus(game.world).hireList(game.ann);
+        pick(OFFER_ROW);
+
+        answer(0);
+
+        verify(game.residents).whisper(any(), eq(game.ann), eq("no worries. i'll be around."));
+        assertNull(offers.pending(ANN, MIRA));
+        assertTrue(game.store.events(HiredHands.EVENT_OFFER).contains(ANN + " " + HIRE + " hire.offer declined"));
+        assertNull(game.store.row(ANN, HIRE));
+        minutes(60);
+        verify(game.residents, times(1)).whisper(any(), any(), eq(OFFER));
+    }
+
     // ---- helpers --------------------------------------------------------------------------------
+
+    /** Ann can read the hire list: her level (Mira is in range) and her buddy list. */
+    private void onTheHireList() {
+        when(game.ann.getLevel()).thenReturn(30);
+        when(game.ann.getBuddylist()).thenReturn(mock(BuddyList.class));
+    }
 
     private void guestOfAnn(Character guest) {
         game.standsBesideAnn(guest);
@@ -423,6 +487,11 @@ class HireOfferTest {
         when(character.getJob()).thenReturn(Job.HUNTER);
         game.store.levels.put(character.getId(), 30);
         game.store.jobs.put(character.getId(), HUNTER);
+    }
+
+    private void pick(String label) {
+        int selection = lastTalk().selection(label);
+        assertTrue(LivingTalk.respond(client, MENU, (byte) 1, Packets.buildInPacket(out -> out.writeInt(selection))));
     }
 
     private void answer(int action) {
