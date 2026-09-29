@@ -437,3 +437,43 @@ P3 is merged into `feat/companion-manager` as `888b21cfc`. The live run then fou
 - **Roster item name ship.** It needs the user's go-ahead, because it changes every friend's client. Order: the RUNBOOK side-folder test, then ship, then a clean second client, then a rollback rehearsal. Until then the book reads "Agent Summon".
 - **Open policy for P3b:** companion wallet reserve. Companions carry too few mesos for the journey reserve, so their shop trips buy nothing.
 
+---
+
+# P3b results (2026-09-29)
+
+## Branch and suite
+- **Merge:** P3b is merged into `feat/companion-manager` as `6fee7bfdf`, from branch p3b: core `cc5396cd1`, screens `96f991303`, review fixes `2596d0a2a`.
+- **Follow-up:** `407512dd1` exempts companions from the journey meso reserve.
+- **Migration:** changeset `41-companion-crew`, table `living_crew` (the crew formation per owner), applied on boot.
+- **Full suite (fix stage):** 8134 tests, the same 29 baseline failures, 0 new. After the merge the living-world, loot, potion, economy and claim-guard suites pass. The lint suites fail with exactly their baseline tests and do not mention the new classes.
+- **Pending work committed:** `be09e3e9b` holds the other sessions' pending work, committed at the user's request before the merge.
+
+## What P3b adds
+- **CompanionSettings** in `living_roster.settings_json`. It stores only the values that differ from the defaults (HP 70 / MP 50, loot everything, boss drops left to people, buffs and heals on, buff potions off, crew formation). The parse is defensive.
+- **Owner-free agent seams** (null rule = today's behaviour):
+  - `AgentPotionThresholds`: every read of the autopot threshold goes through it; Berserk still applies on top.
+  - `AgentLootPolicy`: ALL / OWN_KILLS / QUEST_ONLY / NONE plus leaveBossDrops. It only refuses drops, and does nothing inside event instances.
+  - `AgentWalletReserve`: companions out with their owner keep no journey reserve.
+  - `AgentChatToggleHook` and `AgentFormationHook`: chat toggles and chat formations write through to the settings.
+- **CompanionSettingsApplier**: applied on every load and seat path (call and arrive, swap, login restore, channel follow and its fallback, hold and auditor rejoins, boot restore). It answers only while the owner leads the companion.
+- **Screens** on the card and the bench card:
+  - **Fighting style...**: where I stand (with the others, or five own formations) and support toggles that depend on the job.
+  - **Supplies & loot...**: what it carries, HP and MP potion % by number box (10-90), what it picks up, the boss-drop toggle, and "Here's some coin for supplies" by number box. Coin is one economy transaction, and a stale session is refused.
+
+## Live checks (ohboy, all by mouse; 2026-09-29 08:58-09:20)
+| Check | Result |
+|---|---|
+| Pages render | **Pass.** Bench card and card both list "Fighting style..." and "Supplies & loot...". Supplies: "i have 5,727 meso. i'll count my potions when i'm out with you." on the bench; "i carry 1,597 meso, 9 Blue Potions, ..." when out. Fighting style: "how should i fight?"; a Fighter gets no "Party heals". |
+| Different potion % per companion | **Pass.** Brannock at 40 ("ok, i'll drink one below 40% HP.") and Fenna at 85 through the number box. Live probe: autopot HP alert Brannock 0.4, Fenna 0.85, Garrick 0.7 (default). |
+| Loot policy | **Pass.** Fenna "Nothing": live policy mode=NONE. Her meso rose only by the stock party meso split (+45, the same as the others). |
+| Formation | **Pass.** Garrick "Keep to my left": "ok, keeping to your left.", stored `{"formation":"left"}`. |
+| Coin for supplies | **Pass.** 500 meso: "You give Fenna 500 meso.", owner -500, Fenna +500, and she whispered "thanks. that'll keep me in potions." |
+| Settings survive bench then call | **Pass.** Fenna 0.85 / NONE after the bench and re-call. |
+| Settings survive relog | **Pass.** 0.4 / 0.85 / 0.7 and NONE after logout and login within the grace period. |
+| Settings survive restart | **Pass.** Same values after a server restart (boot reconcile, then login restore), with 0 drift. |
+| Wallet reserve | **Pass.** After deploy, the live reserve for Brannock, Fenna and Garrick is 0; control citizen Mirel is 1300. |
+
+## Not done / notes
+- **Loot policy only works outside instances.** Leaving boss drops inside boss runs is deferred to P7 (the lint forbids the imports this would need). The toggle reads "outside boss runs".
+- **Stale-owner check not ported:** `RosterService.payWages` (from before P3b) has the same stale-owner pattern that coin now guards against.
+
