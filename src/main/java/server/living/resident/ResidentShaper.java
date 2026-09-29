@@ -15,6 +15,7 @@ import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.living.config.Content.ItemStack;
 import server.living.config.Content.Loadout;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +36,11 @@ public final class ResidentShaper {
     private ResidentShaper() {
     }
 
+    /** A hired citizen is never reshaped: its level, job and gear are its own. */
     public static void shape(Character agent, Persona persona, Loadout loadout, int levelSeed) {
+        if (LivingContent.isHire(persona.id())) {
+            return;
+        }
         shapeTo(agent, job(persona.job()), persona.level().pick(levelSeed), loadout);
     }
 

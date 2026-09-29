@@ -9,6 +9,7 @@ import provider.wz.WZFiles;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.config.Content.Look;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -103,9 +104,12 @@ public final class ResidentLooks {
         return variants.get(Math.floorMod(colorDraw, variants.size()));
     }
 
-    /** Writes the look to the character row when it differs; false when unchanged or the character is loaded. */
+    /**
+     * Writes the look to the character row when it differs; false when unchanged, the character is loaded, or it is a
+     * hired citizen's (its face is its own).
+     */
     boolean apply(Persona persona, int characterId) {
-        if (characterId <= 0 || AgentRuntimeRegistry.findByAgentCharacterId(characterId) != null) {
+        if (characterId <= 0 || LivingContent.isHire(persona.id()) || AgentRuntimeRegistry.findByAgentCharacterId(characterId) != null) {
             return false;
         }
         Resolved look = resolve(persona);

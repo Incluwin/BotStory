@@ -139,7 +139,7 @@ public final class SocialFabric {
             Citizen leader = null;
             int leaderLevel = 0;
             for (Citizen citizen : population.citizens()) {
-                if (citizen.state() != Citizen.State.ACTIVE || citizen.guildId() > 0) {
+                if (citizen.state() != Citizen.State.ACTIVE || citizen.hired() || citizen.guildId() > 0) {
                     continue;
                 }
                 int level = population.store().characterProgress(citizen.characterId())[0];
@@ -203,7 +203,8 @@ public final class SocialFabric {
         }
         int joined = 0;
         for (Citizen citizen : population.citizens()) {
-            if (joined >= 3 || citizen.state() != Citizen.State.ACTIVE || citizen.guildId() > 0 || random.nextInt(100) >= 20) {
+            if (joined >= 3 || citizen.state() != Citizen.State.ACTIVE || citizen.hired() || citizen.guildId() > 0
+                    || random.nextInt(100) >= 20) {
                 continue;
             }
             int level = population.store().characterProgress(citizen.characterId())[0];
@@ -346,7 +347,7 @@ public final class SocialFabric {
     private void formCircles() {
         Map<String, List<Citizen>> loose = new HashMap<>();
         for (Citizen citizen : population.citizens()) {
-            if (citizen.state() == Citizen.State.ACTIVE && citizen.circleId() == 0) {
+            if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired() && citizen.circleId() == 0) {
                 loose.computeIfAbsent(citizen.cohort(), k -> new ArrayList<>()).add(citizen);
             }
         }

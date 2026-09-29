@@ -4,6 +4,7 @@ import client.Character;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 import server.living.resident.ResidentRuntime;
 import server.maps.MapleMap;
 import tools.PacketCreator;
@@ -200,6 +201,9 @@ public final class QuestMarkers {
     }
 
     private Marker compute(Character viewer, Persona persona) {
+        if (LivingContent.isHire(persona.id())) {
+            return Marker.NONE; // a hired citizen gives no quests
+        }
         if (world.quests().readyToHandIn(viewer, persona)) {
             return Marker.READY;
         }

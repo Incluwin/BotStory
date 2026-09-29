@@ -17,6 +17,7 @@ import server.living.config.Content.Requirements;
 import server.living.config.Content.Reward;
 import server.living.config.Content.Step;
 import server.living.config.Content.StepType;
+import server.living.config.LivingContent;
 import server.living.resident.LivingTalk;
 import server.living.resident.ResidentDialogue;
 import server.living.store.LivingStore;
@@ -54,8 +55,12 @@ public final class QuestLedger {
 
     // ---- availability --------------------------------------------------------------------
 
+    /** Quests the persona offers the player now; a hired citizen ({@code hire:} id) offers none. */
     public List<Quest> available(Character chr, Persona persona) {
         List<Quest> out = new ArrayList<>();
+        if (LivingContent.isHire(persona.id())) {
+            return out;
+        }
         Set<String> worldFlags = world.store().worldFlags();
         for (String questId : persona.questLines()) {
             Quest quest = world.content().quest(questId);

@@ -12,6 +12,7 @@ import server.ItemInformationProvider;
 import server.agents.capabilities.equipment.AgentEquipmentService;
 import server.living.config.Content.Loadout;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,9 +48,9 @@ final class ResidentWardrobe {
     private ResidentWardrobe() {
     }
 
-    /** Returns true when anything was changed (the character is then saved). */
+    /** Returns true when anything was changed (the character is then saved); a hired citizen keeps its own gear. */
     static boolean dress(Character agent, Persona persona, Loadout loadout) {
-        if (agent == null || loadout == null || loadout.outfit().isEmpty()) {
+        if (agent == null || loadout == null || loadout.outfit().isEmpty() || LivingContent.isHire(persona.id())) {
             return false;
         }
         boolean changed = false;

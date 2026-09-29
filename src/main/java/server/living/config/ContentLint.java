@@ -39,6 +39,9 @@ public final class ContentLint {
 
         for (Persona persona : content.personas().values()) {
             String where = persona.file() + " persona " + persona.id();
+            if (LivingContent.isHire(persona.id())) {
+                out.add("ERROR " + where + ": '" + LivingContent.HIRE_PREFIX + "' ids are hired citizens, never content");
+            }
             if (!KNOWN_TOWNS.contains(persona.homeTown())) {
                 out.add("ERROR " + where + ": unknown home town '" + persona.homeTown() + "'");
             }
@@ -89,7 +92,7 @@ public final class ContentLint {
                 }
             }
             for (Content.Relationship relationship : persona.relationships()) {
-                if (content.persona(relationship.persona()) == null) {
+                if (authored(content, relationship.persona()) == null) {
                     out.add("WARN " + where + ": relationship to unknown persona '" + relationship.persona() + "'");
                 }
             }
@@ -100,7 +103,7 @@ public final class ContentLint {
 
         for (Quest quest : content.quests().values()) {
             String where = quest.file() + " quest " + quest.id();
-            Persona giver = content.persona(quest.persona());
+            Persona giver = authored(content, quest.persona());
             if (giver == null) {
                 out.add("ERROR " + where + ": persona '" + quest.persona() + "' not found");
             } else if (!giver.questLines().contains(quest.id())) {
@@ -117,14 +120,14 @@ public final class ContentLint {
             flagsSet.addAll(quest.rewards().worldFlags());
             for (Step step : quest.steps()) {
                 String stepWhere = where + " step " + step.id();
-                if (step.persona() != null && content.persona(step.persona()) == null) {
+                if (step.persona() != null && authored(content, step.persona()) == null) {
                     out.add("ERROR " + stepWhere + ": persona '" + step.persona() + "' not found");
                 }
-                if (step.with() != null && content.persona(step.with()) == null) {
+                if (step.with() != null && authored(content, step.with()) == null) {
                     out.add("ERROR " + stepWhere + ": with persona '" + step.with() + "' not found");
                 }
                 if (step.type() == StepType.DELIVER && !step.to().startsWith("npc:")
-                        && content.persona(step.to()) == null) {
+                        && authored(content, step.to()) == null) {
                     out.add("ERROR " + stepWhere + ": deliver target '" + step.to() + "' is neither a persona nor npc:<id>");
                 }
                 if (step.type() == StepType.HEAR_RUMOR && content.rumor(step.rumorId()) == null) {
@@ -163,7 +166,8 @@ public final class ContentLint {
             if (!priced) {
                 out.add("WARN " + where + ": contract has no price; the persona joins for free");
             }
-            boolean used = content.personas().values().stream().anyMatch(p -> contract.id().equals(p.contract()))
+            boolean used = LivingContent.HIRED_HAND_CONTRACT.equals(contract.id()) // every hired citizen's
+                    || content.personas().values().stream().anyMatch(p -> contract.id().equals(p.contract()))
                     || content.arcs().values().stream().flatMap(a -> a.chapters().stream())
                     .anyMatch(c -> contract.id().equals(c.unlockContract()));
             if (!used) {
@@ -173,7 +177,7 @@ public final class ContentLint {
 
         for (Arc arc : content.arcs().values()) {
             String where = arc.file() + " arc " + arc.id();
-            Persona owner = content.persona(arc.persona());
+            Persona owner = authored(content, arc.persona());
             if (owner == null) {
                 out.add("ERROR " + where + ": persona '" + arc.persona() + "' not found");
             } else if (!arc.id().equals(owner.arc())) {
@@ -220,7 +224,7 @@ public final class ContentLint {
                 out.add("ERROR " + where + ": a rumor needs two participants");
             }
             for (String participant : rumor.participants()) {
-                Persona persona = content.persona(participant);
+                Persona persona = authored(content, participant);
                 if (persona == null) {
                     out.add("ERROR " + where + ": participant '" + participant + "' not found");
                 } else if (!persona.homeTown().equals(rumor.town())) {
@@ -303,6 +307,14 @@ public final class ContentLint {
             }
         }
         return out;
+    }
+
+    /**
+     * An authored persona by id, never a hired citizen's: content may not name a {@code hire:} id, so a reference to one
+     * is not found, and the lint never reaches the installed hire resolver.
+     */
+    private static Persona authored(LivingContent content, String id) {
+        return id == null || LivingContent.isHire(id) ? null : content.personas().get(id);
     }
 
     /** Outfit slot -> item id prefixes (id / 10000) that belong in it; 0 in a pool means nothing. */

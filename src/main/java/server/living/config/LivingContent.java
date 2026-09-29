@@ -14,9 +14,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
 
-/** Everything loaded from the content directory, indexed by id. Immutable once built. */
+/**
+ * Everything loaded from the content directory, indexed by id. Immutable once built. A hired citizen's id
+ * ({@code hire:<characterId>}, P4) is never content: {@link #persona} resolves it through the resolver HiredHands
+ * installs, and {@link #personas} never lists it.
+ */
 public final class LivingContent {
+    /** The persona id prefix of a hired citizen ({@code hire:<characterId>}); no authored persona may use it. */
+    public static final String HIRE_PREFIX = "hire:";
+    /** The contract every hired citizen works under (contracts/hired-hand.yaml); no persona lists it. */
+    public static final String HIRED_HAND_CONTRACT = "hired-hand";
+    /** How {@code hire:} ids resolve (HiredHands installs it; this package knows nothing of the roster); null: they don't. */
+    private static volatile Function<String, Persona> hireResolver;
+
     private final Map<String, Persona> personas;
     private final Map<String, Persona> personasByName;
     private final Map<String, Quest> quests;
@@ -86,8 +98,35 @@ public final class LivingContent {
         return personas;
     }
 
+    /** An authored persona by id, or a hired citizen's synthetic one through the installed resolver (null without one). */
     public Persona persona(String id) {
+        if (isHire(id)) {
+            Function<String, Persona> resolver = hireResolver;
+            return resolver == null ? null : resolver.apply(id);
+        }
         return id == null ? null : personas.get(id);
+    }
+
+    /** True for a hired citizen's persona id ({@code hire:<characterId>}). */
+    public static boolean isHire(String personaId) {
+        return personaId != null && personaId.startsWith(HIRE_PREFIX);
+    }
+
+    /** The character id in a {@code hire:<characterId>} id; 0 for any other id. */
+    public static int hireCharacterId(String personaId) {
+        if (!isHire(personaId)) {
+            return 0;
+        }
+        try {
+            return Math.max(0, Integer.parseInt(personaId.substring(HIRE_PREFIX.length())));
+        } catch (NumberFormatException malformed) {
+            return 0;
+        }
+    }
+
+    /** Installs how {@code hire:} ids resolve for every content snapshot (HiredHands, at start); null uninstalls. */
+    public static void installHireResolver(Function<String, Persona> resolver) {
+        hireResolver = resolver;
     }
 
     public Persona personaByName(String name) {

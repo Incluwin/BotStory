@@ -10,6 +10,7 @@ import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.Content.StepType;
+import server.living.config.LivingContent;
 import server.living.phrases.PhraseMatcher;
 import server.living.roster.CompanionChatVerbs;
 import server.living.roster.CompanionDirectory;
@@ -69,6 +70,9 @@ public final class ResidentDialogue {
         int ownLook = renderedPortraitOf(persona);
         if (ownLook > 0) {
             return ownLook;
+        }
+        if (LivingContent.isHire(persona.id())) {
+            return CompanionMenus.BOARD_NPC; // a hired citizen has no rendered portrait: never a borrowed townsperson
         }
         int[] town = PORTRAITS.getOrDefault(persona.homeTown(), new int[] {9010000});
         return town[Math.floorMod(persona.id().hashCode(), town.length)];
@@ -354,7 +358,8 @@ public final class ResidentDialogue {
                 return true;
             }
             case CompanionDirectory.Relation.Resident resident -> {
-                Persona persona = world.content().persona(resident.personaId());
+                // a hired citizen let go is a citizen again: it offers no quests (stock char info)
+                Persona persona = LivingContent.isHire(resident.personaId()) ? null : world.content().persona(resident.personaId());
                 if (persona == null || world.roster().isOwned(persona.id())) {
                     return false;
                 }
@@ -669,10 +674,27 @@ public final class ResidentDialogue {
 
     private Persona ownedPersona(Character owner, String name) {
         Persona persona = world.content().personaByName(name);
+        if (persona == null) {
+            persona = hiredHandNamed(owner, name); // hires are no content: a hired citizen goes by its own name
+        }
         if (persona == null || world.roster().ownerOf(persona.id()) != owner.getId()) {
             return null;
         }
         return persona;
+    }
+
+    /** The owner's hired hand of that name, or null (no roster read for a player without companions). */
+    private Persona hiredHandNamed(Character owner, String name) {
+        if (!world.roster().hasCompanions(owner)) {
+            return null;
+        }
+        for (RosterEntry entry : world.roster().roster(owner)) {
+            Persona hire = LivingContent.isHire(entry.personaId()) ? world.content().persona(entry.personaId()) : null;
+            if (hire != null && hire.name().equalsIgnoreCase(name)) {
+                return hire;
+            }
+        }
+        return null;
     }
 
     private static int itemIdFor(String text) {

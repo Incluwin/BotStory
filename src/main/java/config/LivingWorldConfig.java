@@ -132,6 +132,16 @@ public class LivingWorldConfig {
      */
     public boolean COMPANION_EXP_SHARE = true;
 
+    // Hired hands and Resident allocation (P4, decisions 2 b, 4 b, 18 b, 19 b)
+    /** Hired citizens ({@code hire:<characterId>}) one owner may keep; they count toward ROSTER_MAX, so at most that. */
+    public int HIRE_MAX_PER_OWNER = 5;
+    /** Minutes a citizen guest spends in a player's party before it offers to stay on as a hired hand. */
+    public int HIRE_OFFER_PARTY_MINUTES = 10;
+    /** Decision 18: Residents one friend may keep on their roster at once (0 = none). */
+    public int RESIDENT_CAP_PER_OWNER = 5;
+    /** Decision 18: a friend away this many days releases their Residents to go home (0 = never). */
+    public int RESIDENT_OWNER_INACTIVE_DAYS = 14;
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
@@ -172,6 +182,18 @@ public class LivingWorldConfig {
         if (CITIZEN_INVITE_REPLY_MIN_MS < 0 || CITIZEN_INVITE_REPLY_MAX_MS < CITIZEN_INVITE_REPLY_MIN_MS) {
             throw new IllegalArgumentException(
                     "living_world.CITIZEN_INVITE_REPLY_MIN_MS must be >= 0 and <= CITIZEN_INVITE_REPLY_MAX_MS");
+        }
+        if (HIRE_MAX_PER_OWNER < 0 || HIRE_MAX_PER_OWNER > ROSTER_MAX) {
+            throw new IllegalArgumentException("living_world.HIRE_MAX_PER_OWNER must be within 0..ROSTER_MAX");
+        }
+        if (HIRE_OFFER_PARTY_MINUTES < 1) {
+            throw new IllegalArgumentException("living_world.HIRE_OFFER_PARTY_MINUTES must be >= 1");
+        }
+        if (RESIDENT_CAP_PER_OWNER < 0 || RESIDENT_CAP_PER_OWNER > ROSTER_MAX) {
+            throw new IllegalArgumentException("living_world.RESIDENT_CAP_PER_OWNER must be within 0..ROSTER_MAX");
+        }
+        if (RESIDENT_OWNER_INACTIVE_DAYS < 0) {
+            throw new IllegalArgumentException("living_world.RESIDENT_OWNER_INACTIVE_DAYS must be >= 0 (0 = never)");
         }
     }
 }

@@ -33,9 +33,19 @@ public record Citizen(int characterId,
     public static final String FLAG_PQ_REGULAR = "pq-regular";
     public static final String FLAG_AFK_TOWNIE = "afk-townie";
     public static final String FLAG_RECRUITER = "recruiter";
+    /**
+     * A player hired it (P4, HiredHands): the roster owns its character, so the population leaves it alone (no
+     * sessions, ledger, churn count, circles or guild moves) until it is let go.
+     */
+    public static final String FLAG_HIRED = "hired";
 
     public boolean has(String flag) {
         return flags.contains(flag);
+    }
+
+    /** True while a player employs it as a hired hand. */
+    public boolean hired() {
+        return has(FLAG_HIRED);
     }
 
     /** Age in whole days since it joined the server. */
@@ -93,6 +103,14 @@ public record Citizen(int characterId,
     public Citizen withFlag(String flag) {
         Set<String> next = new LinkedHashSet<>(flags);
         next.add(flag);
+        return new Citizen(characterId, name, cohort, circleId, guildId, homeRegion, career, personality, voice, pace,
+                offsetMinutes, channel, next, state, joinedAtMs, retiresAtMs, lastOnlineAtMs, lastLedgerAtMs, accruedExp,
+                scheduledMinutes, lifeSummary);
+    }
+
+    public Citizen withoutFlag(String flag) {
+        Set<String> next = new LinkedHashSet<>(flags);
+        next.remove(flag);
         return new Citizen(characterId, name, cohort, circleId, guildId, homeRegion, career, personality, voice, pace,
                 offsetMinutes, channel, next, state, joinedAtMs, retiresAtMs, lastOnlineAtMs, lastLedgerAtMs, accruedExp,
                 scheduledMinutes, lifeSummary);

@@ -153,6 +153,7 @@ final class LifecycleHarness implements AutoCloseable {
         when(world.directory()).thenReturn(directory);
         when(budget.admit(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
         when(budget.admitReplacing(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
+        when(budget.admitInPlace(any(), any(Character.class))).thenReturn(CompanionBudget.Admission.ALLOW);
 
         when(ann.getId()).thenReturn(ANN);
         when(ann.getName()).thenReturn("Ann");
@@ -198,6 +199,13 @@ final class LifecycleHarness implements AutoCloseable {
                 .thenAnswer(inv -> spawn(inv.getArgument(1), inv.getArgument(2), inv.getArgument(3)));
         interaction.when(() -> AgentInteractionRuntime.spawnAgentForLeader(eq(ann), anyString()))
                 .thenAnswer(inv -> spawn(inv.getArgument(1), annMap, annAt));
+        // the leader-transfer path (a hired citizen adopted where it stands): the loaded character is Ann's from now on
+        interaction.when(() -> AgentInteractionRuntime.registerAgent(eq(ANN), eq(ann), any())).thenAnswer(inv -> {
+            Character bot = inv.getArgument(2);
+            selfLed.remove(bot.getId());
+            calls.add("register " + bot.getName());
+            return null;
+        });
         MockedStatic<AgentPartyLifecycleService> lifecycle = open(AgentPartyLifecycleService.class);
         lifecycle.when(() -> AgentPartyLifecycleService.joinAgentToLeaderParty(eq(ann), any())).thenAnswer(inv -> {
             Character bot = inv.getArgument(1);
@@ -277,6 +285,20 @@ final class LifecycleHarness implements AutoCloseable {
                 -1, -1, -1, List.of(), 0, Look.NONE, "test");
         personas.put(id, persona);
         personaOfBot.put(characterId, id);
+        bot(characterId, name);
+        when(residents.ensureCharacter(persona)).thenReturn(characterId);
+        when(residents.characterIdOf(id)).thenReturn(characterId);
+        when(residents.personaOfCharacterId(characterId)).thenReturn(persona);
+        when(content.persona(id)).thenReturn(persona);
+        store.seed(new RosterEntry(ownerId, id, state, Assignment.TRAIN, 0, 0, campMapId, 0L, 0L, 0L, 1_000L, 1_000L, 1_000L, 0, null));
+        return persona;
+    }
+
+    /**
+     * A character the harness moves like a companion (its map, position, party row, map changes), with no persona or
+     * roster row of its own: a citizen, say.
+     */
+    Character bot(int characterId, String name) {
         Character bot = mock(Character.class);
         when(bot.getId()).thenReturn(characterId);
         when(bot.getName()).thenReturn(name);
@@ -299,12 +321,15 @@ final class LifecycleHarness implements AutoCloseable {
             return null;
         }).when(bot).changeMap(any(MapleMap.class), any(Point.class));
         bots.put(characterId, bot);
-        when(residents.ensureCharacter(persona)).thenReturn(characterId);
-        when(residents.characterIdOf(id)).thenReturn(characterId);
-        when(residents.personaOfCharacterId(characterId)).thenReturn(persona);
-        when(content.persona(id)).thenReturn(persona);
-        store.seed(new RosterEntry(ownerId, id, state, Assignment.TRAIN, 0, 0, campMapId, 0L, 0L, 0L, 1_000L, 1_000L, 1_000L, 0, null));
-        return persona;
+        return bot;
+    }
+
+    /** A loaded character standing beside Ann on her map, led by itself (a citizen the population runs). */
+    void standsBesideAnn(Character bot) {
+        loaded.add(bot.getId());
+        selfLed.add(bot.getId());
+        botMaps.put(bot.getId(), annMap);
+        botPositions.put(bot.getId(), new Point(annAt.x + 60, annAt.y));
     }
 
     /** The roster over this world (built once the rows are seeded, as at boot). */

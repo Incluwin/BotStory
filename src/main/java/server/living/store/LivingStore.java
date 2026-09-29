@@ -332,6 +332,25 @@ public final class LivingStore {
         }
     }
 
+    /** A character's name, look, level, job and saved map, as its characters row holds them now. */
+    public record CharacterRow(String name, int gender, int skin, int face, int hair, int level, int job, int mapId) { }
+
+    /** The characters row of any character (online or not; a loaded one's is as of its last save); null if unknown. */
+    public CharacterRow characterRow(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(
+                     "SELECT name, gender, skincolor, face, hair, level, job, map FROM characters WHERE id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? new CharacterRow(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getInt(5),
+                        rs.getInt(6), rs.getInt(7), rs.getInt(8)) : null;
+            }
+        } catch (SQLException failure) {
+            log.warn("character row lookup failed for {}", characterId, failure);
+            return null;
+        }
+    }
+
     /** Mobs dropping an item with their per-million chance, from Cosmic's drop_data table. */
     public List<int[]> mobsDropping(int itemId) {
         List<int[]> out = new ArrayList<>();

@@ -29,7 +29,9 @@ import server.living.config.Content.Chapter;
 import server.living.config.Content.Loadout;
 import server.living.config.Content.Persona;
 import server.living.config.Content.RoutineSlot;
+import server.living.config.LivingContent;
 import server.living.roster.CompanionLeases;
+import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 import server.maps.MapleMap;
 
@@ -117,13 +119,13 @@ public final class ResidentRuntime {
     public Persona personaOfCharacterId(int characterId) {
         String personaId = personaByCharacter.get(characterId);
         if (personaId != null) {
-            return world.content().persona(personaId);
+            return hireLapsed(personaId) ? null : world.content().persona(personaId);
         }
         if (notPersona.contains(characterId)) {
             return null;
         }
         for (Map.Entry<String, LivingStore.PersonaState> entry : world.store().allPersonaStates().entrySet()) {
-            if (entry.getValue().characterId() == characterId) {
+            if (entry.getValue().characterId() == characterId && !hireLapsed(entry.getKey())) {
                 personaByCharacter.put(characterId, entry.getKey());
                 return world.content().persona(entry.getKey());
             }
@@ -149,6 +151,9 @@ public final class ResidentRuntime {
     }
 
     public int characterIdOf(String personaId) {
+        if (LivingContent.isHire(personaId)) {
+            return LivingContent.hireCharacterId(personaId); // a hired citizen is its own character
+        }
         Session session = sessions.get(personaId);
         if (session != null) {
             return session.characterId;
@@ -156,22 +161,39 @@ public final class ResidentRuntime {
         return world.store().personaState(personaId).characterId();
     }
 
-    /** Provisions the backing character if needed and returns its id (0 on failure). */
+    /**
+     * Provisions the backing character if needed and returns its id (0 on failure). A hired citizen's id names its
+     * character: it is never provisioned, and its look stays its own.
+     */
     public int ensureCharacter(Persona persona) {
-        int id = provisioner.ensureCharacter(persona);
+        boolean hire = LivingContent.isHire(persona.id());
+        int id = hire ? LivingContent.hireCharacterId(persona.id()) : provisioner.ensureCharacter(persona);
         if (id > 0) {
             personaByCharacter.put(id, persona.id());
             notPersona.remove(id);
-            looks.apply(persona, id);
+            if (!hire) {
+                looks.apply(persona, id);
+            }
         }
         return id;
     }
 
-    /** Writes every provisioned persona's look to its character (those not loaded right now). */
+    /** Writes every provisioned persona's look to its character (those not loaded right now); never a hire's. */
     public void syncLooks() {
         for (Persona persona : world.content().personas().values()) {
-            looks.apply(persona, world.store().personaState(persona.id()).characterId());
+            if (!LivingContent.isHire(persona.id())) {
+                looks.apply(persona, world.store().personaState(persona.id()).characterId());
+            }
         }
+    }
+
+    /** A hired citizen's id nobody employs any more: its character is a citizen again, no persona. */
+    private boolean hireLapsed(String personaId) {
+        if (!LivingContent.isHire(personaId)) {
+            return false;
+        }
+        RosterService roster = world.roster();
+        return roster == null || roster.cachedOwnerOf(personaId) == 0;
     }
 
     // ---- speech --------------------------------------------------------------------------

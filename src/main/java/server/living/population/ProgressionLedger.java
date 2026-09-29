@@ -41,8 +41,8 @@ public final class ProgressionLedger {
 
     /** On load: shape up to the life-curve target (job chain, growth repair, AP, loadout for the level). */
     public void catchUp(Character agent, Citizen citizen) {
-        Career career = population.content().career(citizen.career());
-        if (career == null) {
+        Career career = citizen.hired() ? null : population.content().career(citizen.career());
+        if (career == null) { // a hired hand's level, job and gear are its own doing now
             return;
         }
         int target = Math.max(agent.getLevel(), levelTarget(citizen, System.currentTimeMillis()));
@@ -65,7 +65,7 @@ public final class ProgressionLedger {
     public void tick() {
         List<Citizen> active = new ArrayList<>();
         for (Citizen citizen : population.citizens()) {
-            if (citizen.state() == Citizen.State.ACTIVE) {
+            if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired()) { // a hired hand levels for real
                 active.add(citizen);
             }
         }

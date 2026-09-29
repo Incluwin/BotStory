@@ -119,6 +119,11 @@ public final class PresenceScheduler {
             ZonedDateTime moment = ZonedDateTime.now();
             population.churn().step(now);
             for (CitizenSession session : new ArrayList<>(sessions.values())) {
+                Citizen current = population.citizen(session.characterId);
+                if (current != null && current.hired()) {
+                    sessions.remove(session.characterId); // the roster owns it now: never logged out, moved or reclaimed
+                    continue;
+                }
                 if (session.citizen.state() != Citizen.State.ACTIVE || now >= session.endsAtMs) {
                     logout(session, "session over");
                     continue;
@@ -135,8 +140,8 @@ public final class PresenceScheduler {
             int loaded = loadedCount();
             List<Citizen> offline = new ArrayList<>();
             for (Citizen citizen : population.citizens()) {
-                if (citizen.state() == Citizen.State.ACTIVE && !sessions.containsKey(citizen.characterId())) {
-                    offline.add(citizen);
+                if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired() && !sessions.containsKey(citizen.characterId())) {
+                    offline.add(citizen); // a hired hand is the roster's: never logged in here, at boot or after
                 }
             }
             Collections.shuffle(offline, random);
@@ -285,6 +290,12 @@ public final class PresenceScheduler {
                 agent.getClient().forceDisconnect();
             }
         }
+        book(session);
+        log.info("citizen {} offline: {}", session.name(), reason);
+    }
+
+    /** Books a session's minutes online and folds its journal into the life summary. */
+    private void book(CitizenSession session) {
         Citizen citizen = population.citizen(session.characterId);
         if (citizen != null) {
             int minutes = (int) Math.max(0L, (Math.min(System.currentTimeMillis(), session.endsAtMs) - session.startedAtMs) / 60_000L);
@@ -293,7 +304,46 @@ public final class PresenceScheduler {
                 population.ledger().refreshSummary(population.citizen(session.characterId), session.journal);
             }
         }
-        log.info("citizen {} offline: {}", session.name(), reason);
+    }
+
+    /**
+     * A player hired the citizen (P4, HiredHands): it is flagged {@link Citizen#FLAG_HIRED}, so no sweep logs it in, out
+     * or anywhere else again, and its session ends. {@code keepLoaded}: a loaded one stays loaded where it stands, in
+     * whatever party it is in, for the roster to adopt it in place (its town-life lease and any stall close, and its
+     * time online is booked, but it never logs off); else a loaded one logs off as citizens do. One lock with the sweep,
+     * so a sweep never sees it half handed over. True when it had a loaded session.
+     */
+    public synchronized boolean handOver(int characterId, boolean keepLoaded, String reason) {
+        Citizen citizen = population.citizen(characterId);
+        if (citizen != null && !citizen.hired()) {
+            population.save(citizen.withFlag(Citizen.FLAG_HIRED));
+        }
+        CitizenSession session = sessions.get(characterId);
+        if (session == null) {
+            return false;
+        }
+        Character agent = session.agent();
+        boolean loaded = !session.virtual && agent != null;
+        if (!keepLoaded) {
+            logout(session, reason);
+            return loaded;
+        }
+        sessions.remove(characterId);
+        if (loaded) {
+            try {
+                population.market().onLeave(session);
+                AgentRuntimeEntry entry = session.entry;
+                if (entry != null && AgentTownLifeRuntime.active(entry)) {
+                    AgentTownLifeRuntime.stop(entry, agent);
+                    AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
+                }
+            } catch (RuntimeException failure) {
+                log.debug("citizen {} hand-over hooks failed", session.name(), failure);
+            }
+        }
+        book(session);
+        log.info("citizen {} handed over, still online: {}", session.name(), reason);
+        return loaded;
     }
 
     public void logoutAll(String reason) {

@@ -260,10 +260,11 @@ public final class Population {
         registry.remove(characterId);
     }
 
+    /** Citizens the population lives with: ACTIVE and not hired (a hired one is a companion; Churn backfills its town). */
     public int activeCount() {
         int count = 0;
-        for (Citizen citizen : registry.values()) {
-            if (citizen.state() == Citizen.State.ACTIVE) {
+        for (Citizen citizen : citizens()) {
+            if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired()) {
                 count++;
             }
         }

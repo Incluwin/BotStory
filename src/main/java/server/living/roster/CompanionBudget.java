@@ -62,6 +62,21 @@ public final class CompanionBudget {
     }
 
     /**
+     * An adoption in place (P4: a hired citizen already loaded beside its owner becomes their companion): nothing is
+     * loaded, so the owner's load slot is not taken, but its pools and the Agent ceiling are checked as for a load.
+     */
+    public Admission admitInPlace(Kind kind, Character owner) {
+        if (owner == null) {
+            return Admission.deny("no owner");
+        }
+        Admission admission = decide(kind, usage(owner.getId()), world.config());
+        if (!admission.allowed()) {
+            world.store().event(owner.getId(), null, "companion.budget_denied", kind + ": " + admission.reason());
+        }
+        return admission;
+    }
+
+    /**
      * A swap's load (plan flow 1): the companion it replaces goes in the same command, so it is not counted against the
      * owner's companions or the Agent ceiling.
      */

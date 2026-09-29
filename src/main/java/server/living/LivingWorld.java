@@ -30,6 +30,7 @@ import server.living.roster.CompanionPartySync;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionViews;
 import server.living.roster.Commitments;
+import server.living.roster.HiredHands;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 
@@ -61,6 +62,7 @@ public final class LivingWorld {
     private final CompanionSlots slots;
     private final CompanionPartySync partySync;
     private final RosterService roster;
+    private final HiredHands hiredHands;
     private final CompanionViews views;
     private final CompanionManager manager;
     private final CompanionLeases leases;
@@ -91,6 +93,7 @@ public final class LivingWorld {
         this.partySync = CompanionPartySync.live(this);
         this.views = new CompanionViews(this); // before the roster, whose every write drops its owner's views
         this.roster = new RosterService(this);
+        this.hiredHands = new HiredHands(this);
         this.manager = new CompanionManager(this);
         this.leases = new CompanionLeases();
         this.directory = new CompanionDirectory(this);
@@ -148,6 +151,8 @@ public final class LivingWorld {
         server.agents.capabilities.follow.AgentFollowGuard.install(new server.living.roster.CompanionFollowGuard(world));
         // a companion out with its owner drinks and loots by its own settings (P3b)
         world.roster.settings().install();
+        // hire:<characterId> ids resolve to hired citizens, and a released hire goes back to the population (P4)
+        world.hiredHands.install();
         // boot reconciliation (decision 8a) goes first on companion-ops, ahead of any login's restore
         world.executor.submit("roster.boot", world.roster::reconcileAtBoot);
         TimerManager timers = TimerManager.getInstance();
@@ -207,6 +212,7 @@ public final class LivingWorld {
         server.agents.auth.AgentClaimGuard.installVerbs(null);
         server.agents.capabilities.follow.AgentFollowGuard.install(null);
         server.living.roster.CompanionSettingsApplier.uninstall();
+        HiredHands.uninstall();
         server.living.population.Population.stop();
         for (ScheduledFuture<?> timer : world.timers) {
             timer.cancel(false);
@@ -295,6 +301,11 @@ public final class LivingWorld {
 
     public RosterService roster() {
         return roster;
+    }
+
+    /** Hired citizens (P4): their synthetic personas, their terms and the hire itself. */
+    public HiredHands hiredHands() {
+        return hiredHands;
     }
 
     /** The CompanionView cache the menus render from (no database read per render). */

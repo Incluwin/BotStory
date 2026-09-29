@@ -12,6 +12,7 @@ import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 import server.living.population.Population;
 import server.living.store.LivingStore.RosterEntry;
 
@@ -82,7 +83,8 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         Population population = Population.get();
         server.living.population.Citizen citizen = population == null ? null : population.citizenByName(name);
         if (citizen != null) {
-            return new Relation.Citizen(citizen.characterId());
+            String hire = hireIdOf(citizen.characterId());
+            return hire != null ? personaRelation(viewerId(viewer), hire) : new Relation.Citizen(citizen.characterId());
         }
         AgentResolvedCharacter resolved = AgentControlService.getInstance().resolveCharacterByName(name);
         if (resolved == null) {
@@ -154,7 +156,7 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         if (AgentAuthorityService.mayAdminister(actor)) {
             return true;
         }
-        if (isCitizen(agentCharacterId)) {
+        if (unhiredCitizen(agentCharacterId)) {
             return false;
         }
         String personaId = personaIdOf(agentCharacterId);
@@ -172,7 +174,7 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
      */
     @Override
     public boolean mayLoad(Character actor, int agentCharacterId) {
-        if (actor == null || isCitizen(agentCharacterId)) {
+        if (actor == null || unhiredCitizen(agentCharacterId)) {
             return false;
         }
         String personaId = personaIdOf(agentCharacterId);
@@ -193,7 +195,7 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
     // ---- lookups -------------------------------------------------------------------------
 
     private Relation agentRelation(int viewerId, int characterId) {
-        if (isCitizen(characterId)) {
+        if (unhiredCitizen(characterId)) {
             return new Relation.Citizen(characterId);
         }
         String personaId = personaIdOf(characterId);
@@ -212,10 +214,28 @@ public final class CompanionDirectory implements AgentClaimGuard.Rule {
         return entry == null ? new Relation.Resident(personaId) : new Relation.OwnCompanion(entry);
     }
 
-    /** Cached by ResidentRuntime (one persona-state scan per unknown character id, then memory). */
+    /**
+     * A hired citizen's persona id while a roster row employs it (from memory), else cached by ResidentRuntime (one
+     * persona-state scan per unknown character id, then memory).
+     */
     private String personaIdOf(int characterId) {
+        String hire = hireIdOf(characterId);
+        if (hire != null) {
+            return hire;
+        }
         Persona persona = world.residents().personaOfCharacterId(characterId);
         return persona == null ? null : persona.id();
+    }
+
+    /** {@code hire:<characterId>} while some owner's roster employs the character (P4 hired hands), else null. */
+    private String hireIdOf(int characterId) {
+        String hire = LivingContent.HIRE_PREFIX + characterId;
+        return world.roster().cachedOwnerOf(hire) != 0 ? hire : null;
+    }
+
+    /** A citizen the population lives with; a hired one is its owner's companion. */
+    private boolean unhiredCitizen(int characterId) {
+        return isCitizen(characterId) && hireIdOf(characterId) == null;
     }
 
     private static boolean isCitizen(int characterId) {

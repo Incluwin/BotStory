@@ -86,6 +86,9 @@ class ClaimGuardBoundaryTest {
             // a swap and its rollback, a HOLD rejoin, the auditor's in-place rejoin) through joinOwner, on a seat held
             "server/living/roster/RosterService.java stationary 1",
             "server/living/roster/RosterService.java join 1",
+            // P4: a hired citizen adopted where it stands (RosterService.adopt) moves its runtime to its owner by the
+            // leader-transfer path, once AgentClaimGuard.mayLoad allows the owner it (their roster row and lease)
+            "server/living/roster/RosterService.java register 1",
             "server/living/roster/CompanionPartyRouter.java partyjoin 1",
             // the party sync on companion-ops: an owner's own loaded companion rejoins them on a seat held for it,
             // and a human's routed accept (a merge or make-room) joins the party that invited them
@@ -203,6 +206,7 @@ class ClaimGuardBoundaryTest {
         assertContains("server/living/roster/BenchSessions.java", "CompanionLeases.Kind.BENCH_LIVE");
         assertContains("server/living/resident/ResidentRuntime.java", "CompanionLeases.Kind.RESIDENT");
         assertContains("server/living/population/PresenceScheduler.java", "AgentRuntimeRegistry.hasActiveAgentCharacterId(existing)");
+        assertContains("server/living/roster/RosterService.java", "AgentClaimGuard.mayLoad(owner, characterId)");
     }
 
     private static int count(Pattern pattern, String source) {

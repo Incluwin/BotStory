@@ -7,6 +7,7 @@ import server.living.config.Content.Arc;
 import server.living.config.Content.Chapter;
 import server.living.config.Content.ChapterGate;
 import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 import server.living.store.LivingStore;
 
 import java.util.List;
@@ -37,8 +38,9 @@ public final class ArcService {
         }
     }
 
+    /** The persona's arc; a hired citizen ({@code hire:} id) has none. */
     public Arc arcOf(Persona persona) {
-        return persona == null ? null : world.content().arc(persona.arc());
+        return persona == null || LivingContent.isHire(persona.id()) ? null : world.content().arc(persona.arc());
     }
 
     /** The chapter the Persona is in; the first chapter when nothing is stored; null without an arc. */

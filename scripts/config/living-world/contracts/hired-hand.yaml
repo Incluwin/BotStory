@@ -1,0 +1,24 @@
+# Hired hands (docs/BOT_MANAGEMENT_PLAN.md P4, decisions 3 b and 19 b): the terms every hired citizen
+# (hire:<characterId>) works under. No persona lists this contract; HiredHands gives it to each hire.
+#   Fee: price.meso is per level of the citizen, paid once when you accept its terms:
+#        Lv10 10,000 / Lv30 30,000 / Lv50 50,000 meso (Residents ask 10,000-45,000 once).
+#   Wages: the bench upkeep every companion has (BenchLedger, 30 meso per level per hour while it works on the
+#        bench, nothing while it is out with you or resting): 720 x level a day, Lv10 7,200 / Lv30 21,600 /
+#        Lv50 36,000. Pay ahead on its Wages page, or its haul pays and the bench work goes at half speed while
+#        the haul is short. Decision 19 b retunes this in P5 (upkeep under about 15% of a friend's meso/h).
+#   Terms: no hours (durationHours 0, no CONTRACT_END), no outlevel walk-out (maxLevelGap 0), no walk-out after
+#        your deaths, and a hire never walks out of the bench: it stays while its wages are paid (decision 3 b)
+#        until you part ways.
+- id: hired-hand
+  offerWhen:
+    bondStage: NONE
+  price:
+    meso: 1000
+  terms:
+    durationHours: 0
+    maxLevelGap: 0
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS]
+    cooldownHoursAfterLeave: 0
+    rejoinPrice: { meso: 0 }

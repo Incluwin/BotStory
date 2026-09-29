@@ -43,7 +43,7 @@ public final class CompanionMenus {
      * The stock object NPC "Bulletin Board" (P0 probe 5c): the notes' NPC id, and the face of a companion with no
      * rendered portrait of its own. Never a borrowed townsperson, never 9010000 (the portrait policy).
      */
-    static final int BOARD_NPC = 9040011;
+    public static final int BOARD_NPC = 9040011;
     /** An action done later than this after its click answers in pink text: no window pops up mid-fight. */
     static final long LATE_OUTCOME_MS = 1_000L;
     /** The line a screen re-opened by {@link #ifUnchanged} may show on top. */

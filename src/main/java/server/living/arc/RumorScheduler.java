@@ -10,6 +10,7 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.config.Content.Rumor;
 import server.living.config.Content.RumorLine;
+import server.living.config.LivingContent;
 import server.living.resident.ResidentRuntime;
 import server.living.resident.ResidentSpots;
 import server.maps.MapleMap;
@@ -138,7 +139,7 @@ public final class RumorScheduler {
             return false;
         }
         for (String participant : rumor.participants()) {
-            Persona persona = world.content().persona(participant);
+            Persona persona = LivingContent.isHire(participant) ? null : world.content().persona(participant); // Residents only
             if (persona == null || !world.arcs().rumorUnlocked(persona, rumor.id())) {
                 return false;
             }
@@ -151,7 +152,8 @@ public final class RumorScheduler {
 
     /** Runs the rumor now (GM {@code !world rumor play} passes force=true to skip schedule and audience checks). */
     public String perform(Rumor rumor, boolean force) {
-        List<Persona> cast = rumor.participants().stream().map(world.content()::persona).toList();
+        List<Persona> cast = rumor.participants().stream()
+                .map(id -> LivingContent.isHire(id) ? null : world.content().persona(id)).toList(); // Residents only
         if (cast.stream().anyMatch(persona -> persona == null || world.residents().agentOf(persona.id()) == null)) {
             return "not everyone is in town";
         }

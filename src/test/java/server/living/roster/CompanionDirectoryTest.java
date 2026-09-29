@@ -206,6 +206,28 @@ class CompanionDirectoryTest {
     }
 
     @Test
+    void aHiredCitizenIsItsOwnersCompanionAndNobodyElses() {
+        RosterEntry hire = row(ALICE, "hire:950");
+        when(store.allActive()).thenReturn(List.of(olwenRow, row(BOB, "brin"), hire));
+        when(store.rosterEntry(ALICE, "hire:950")).thenReturn(hire);
+        RosterService roster = new RosterService(world); // as at boot, with Alice's hire:950 row
+        when(world.roster()).thenReturn(roster);
+        Character mira = character(MIRA, "Mira");
+
+        assertEquals(new Relation.OwnCompanion(hire), directory.resolve(alice, mira));
+        assertEquals(new Relation.OthersCompanion(ALICE, "hire:950"), directory.resolve(bob, mira));
+        assertEquals(new Relation.OwnCompanion(hire), directory.resolveName(alice, "Mira"));
+        assertEquals(ALICE, directory.ownerOfCharacter(MIRA));
+        assertTrue(directory.mayControl(alice, MIRA));
+        assertFalse(directory.mayControl(bob, MIRA));
+        assertTrue(directory.isClaimed(MIRA));
+        assertFalse(directory.mayLoad(alice, MIRA), "only through the roster, which holds its lease");
+        leases.tryAcquire(MIRA, CompanionLeases.Kind.COMPANION, ALICE);
+        assertTrue(directory.mayLoad(alice, MIRA));
+        assertFalse(directory.mayLoad(bob, MIRA));
+    }
+
+    @Test
     void resolvesOfflineNamesThroughTheCharacterTable() throws Exception {
         CharacterGateway characters = mock(CharacterGateway.class);
         AgentPersistenceGateway persistence = mock(AgentPersistenceGateway.class);

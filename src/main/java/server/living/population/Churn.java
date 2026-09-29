@@ -75,7 +75,9 @@ public final class Churn {
             lastRetirementCheckMs = now;
             List<Citizen> retiring = new ArrayList<>();
             for (Citizen citizen : population.citizens()) {
-                if (citizen.state() == Citizen.State.ACTIVE && citizen.retiresAtMs() > 0 && citizen.retiresAtMs() < now) {
+                // a hired hand keeps its job past its date: it retires once it is back in the population
+                if (citizen.state() == Citizen.State.ACTIVE && !citizen.hired() && citizen.retiresAtMs() > 0
+                        && citizen.retiresAtMs() < now) {
                     retiring.add(citizen);
                 }
             }

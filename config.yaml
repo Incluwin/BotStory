@@ -804,6 +804,14 @@ living_world:
     # Decision 17: companions in your party earn their own kill EXP, but your share is computed as if they were
     # absent, so a full crew never slows you down. false = the stock split shares every kill with them.
     COMPANION_EXP_SHARE: true
+    # Hired hands (P4): citizens one friend may hire (they count toward ROSTER_MAX, so at most that), and the
+    # minutes a citizen guest spends in your party before it offers to stay on.
+    HIRE_MAX_PER_OWNER: 5
+    HIRE_OFFER_PARTY_MINUTES: 10
+    # Decision 18: Residents one friend may keep at once (0 = none), and the days a friend may stay away before
+    # their Residents go home (0 = never).
+    RESIDENT_CAP_PER_OWNER: 5
+    RESIDENT_OWNER_INACTIVE_DAYS: 14
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 
