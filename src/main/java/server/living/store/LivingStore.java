@@ -678,6 +678,20 @@ public final class LivingStore {
         return false;
     }
 
+    /** The meso in the purse of a character nothing has loaded (a benched companion's); -1 when unknown. */
+    public long characterMeso(int characterId) {
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT meso FROM characters WHERE id = ?")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : -1L;
+            }
+        } catch (SQLException failure) {
+            log.warn("meso lookup failed for character {}", characterId, failure);
+            return -1L;
+        }
+    }
+
     public void deleteRoster(int characterId, String personaId) {
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("DELETE FROM living_roster WHERE character_id = ? AND persona_id = ?")) {
