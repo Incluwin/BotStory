@@ -288,7 +288,7 @@ public final class LivingWorldHooks {
     /**
      * A committed party change ({@code PartyEvents} listener, on the thread that made it). It is queued for the
      * companion-ops thread and never handled here, so nothing re-enters {@code World.updateParty} or takes the roster's
-     * locks under the party's. The seat caches take it first, then the roster is reconciled.
+     * locks under the party's. The seat and view caches take it first, then the roster is reconciled.
      */
     public static void partyChanged(net.server.world.PartyEvents.PartyChangeEvent event) {
         LivingWorld world = LivingWorld.get();
@@ -297,6 +297,10 @@ public final class LivingWorldHooks {
         }
         try {
             world.executor().submit("party " + event.op() + " " + event.partyId(), () -> {
+                server.living.roster.CompanionViews views = world.views();
+                if (views != null) {
+                    views.partyChanged(event); // the Crew windows of everyone in it render afresh
+                }
                 world.slots().onPartyChanged(event);
                 world.partySync().onPartyChanged(event);
             });
@@ -357,6 +361,32 @@ public final class LivingWorldHooks {
             chr.sendPacket(tools.PacketCreator.enableActions());
         }
         return true;
+    }
+
+    /**
+     * An inventory item dropped on the ground (ITEM_MOVE to slot 0). True when it is the Adventurer's Roster: the drop
+     * is refused with a pink line, since its tradeBlock would erase it on the ground, and the caller re-enables the client.
+     */
+    public static boolean rosterBookDropped(Character chr, client.inventory.InventoryType type, short slot) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || chr == null || type == null) {
+            return false;
+        }
+        int book = world.config().ROSTER_BOOK_ITEM_ID;
+        if (book <= 0 || type != constants.inventory.ItemConstants.getInventoryType(book)) {
+            return false;
+        }
+        try {
+            client.inventory.Item item = chr.getInventory(type).getItem(slot);
+            if (item == null || item.getItemId() != book) {
+                return false;
+            }
+            chr.dropMessage(5, "The Adventurer's Roster stays with you.");
+            return true;
+        } catch (RuntimeException failure) {
+            log.warn("living world rosterBookDropped hook failed", failure);
+            return false;
+        }
     }
 
     /** An NPC click on a quest marker's hitbox; true when it was one (the Resident's menu opens instead). */

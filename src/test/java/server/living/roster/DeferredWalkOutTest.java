@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.HENESYS_FIELD;
 import static server.living.roster.LifecycleHarness.portalX;
@@ -139,6 +140,25 @@ class DeferredWalkOutTest {
             assertNull(game.h.row(hadrik));
             assertEquals(List.of(GOODBYE), game.said);
             assertEquals(List.of(), game.h.store.events("contract.after_the_run"));
+        }
+    }
+
+    @Test
+    void partingWaysWithoutAuthoredLinesSaysAWarmGoodbyeOnceThereIsABondAndACurtOneWithout() {
+        try (Game game = new Game(Setting.AUTHORED, -1)) {
+            Persona hadrik = game.hadrik(RosterState.BENCHED); // Trusted
+
+            game.contracts.dismiss(game.h.ann, hadrik);
+
+            assertEquals(List.of("take care. you know where to find me."), game.said);
+        }
+        try (Game game = new Game(Setting.AUTHORED, -1)) {
+            Persona hadrik = game.hadrik(RosterState.BENCHED);
+            when(game.bonds.peek(ANN, "hadrik")).thenReturn(null); // no bond kept
+
+            game.contracts.dismiss(game.h.ann, hadrik);
+
+            assertEquals(List.of("fine."), game.said);
         }
     }
 

@@ -254,7 +254,7 @@ class CompanionTestGuideTest {
 
             inventory.verify(() -> InventoryManipulator.addById(any(), eq(SNAIL_SHELL), eq((short) 7)));
         }
-        verify(alice).dropMessage(5, "Brannock hands over 1 item stack(s) and 1234 meso.");
+        verify(alice).dropMessage(5, "Brannock hands you 1,234 meso and 1 stack.");
         verify(alice).gainMeso(1_234, true);
         assertEquals(0L, rows.row(ALICE, "brannock").haulMeso());
         assertEquals(List.of(), rows.store.haul(ALICE, "brannock"));

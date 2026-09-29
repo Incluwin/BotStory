@@ -711,8 +711,11 @@ Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after
     - the Roster item works with everything benched;
     - the hotkey works if probe 2 passed;
     - flow 10 release;
-    - 50 consecutive menu actions with no stuck window.
-  - Patcher check: the item name shows on a **second, clean client updated only through the patcher manifest** (not the dev client), and the rollback through the manifest is rehearsed and recorded.
+    - 50 consecutive menu actions with no stuck window;
+    - Enter on a number box's default at once (the FARM_ITEM count, the wages hours) acts and leaves no window stuck; End Chat on a number box ends the chat (confirm its reply's action with `!companionprobe log on`);
+    - gear view with the companion on another map ("Wait here", then walk off): the card offers no gear or trade, and nothing reaches the client;
+    - new probe: "Let's trade" from the card opens the stock trade window (a server-started trade, not REQ TRADE), and a click while a shop, storage or another dialog opens meanwhile gets the companion's "ask me again" line instead.
+  - Patcher check: the item name shows on a **second, clean client updated only through the patcher manifest** (not the dev client), and the rollback through the manifest is rehearsed and recorded. This is a release gate: it ships with the P3 server deploy, or P3 deploys with `ROSTER_BOOK_ITEM_ID: 0` until it does.
   - Video: "rotate a bench bot and assign a duty, zero typing" (90 s).
 - **Exit:** The rotate, duty, lineup, crew-order and release flows complete click-only. The patched name reaches a clean client. **The user signs off on immersion from the video.**
 

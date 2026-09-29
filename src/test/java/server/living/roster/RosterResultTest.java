@@ -73,7 +73,7 @@ class RosterResultTest {
     void everyKindHasItsLine() {
         assertEquals("Olwen joins your party.", RosterVoice.line("Olwen", new RosterResult.Ok("Olwen joins your party.")));
         assertEquals("Olwen is on the way (~2 min).", RosterVoice.line("Olwen", new RosterResult.Travelling(120_000L, LITH_HARBOR)));
-        assertEquals("Your party is full. Bench someone or name who to swap.", RosterVoice.line("Olwen", new RosterResult.PartyFull()));
+        assertEquals("Your party is full. Send someone to camp first.", RosterVoice.line("Olwen", new RosterResult.PartyFull()));
         assertEquals("The party leader sent one of yours out: that seat stays empty here.",
                 RosterVoice.line("Olwen", new RosterResult.LeaderCapped()));
         assertEquals("Olwen could not join right now.", RosterVoice.line("Olwen", new RosterResult.QuotaFull()));

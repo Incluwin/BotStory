@@ -785,7 +785,9 @@ living_world:
     RECALL_MAX_ETA_MS: 60000
     # Adventurer's Roster: double-clicking this USE item in the inventory opens the Crew window; it is not used up.
     # A recruit or grant, and a login, hand one to a roster owner without it. 0 = off. The client still shows
-    # 2430011 as "Agent Summon" until its name/description rename ships (P3).
+    # 2430011 as "Agent Summon" until its name/description rename ships (P3). Release gate: the renamed Custom.wz
+    # (p3-roster-item RUNBOOK sections 1-3) ships with the P3 deploy; if it cannot, deploy P3 with 0 here and set
+    # 2430011 again once the rename is in the patcher manifest.
     ROSTER_BOOK_ITEM_ID: 2430011
     # Companion budget v1 (docs/BOT_MANAGEMENT_P0_RESULTS.md): companions per online human, live bench bots
     # per owner and server-wide (BENCH_LIVE_MAX above stays the bench rotation size), one expedition burst,

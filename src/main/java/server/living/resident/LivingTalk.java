@@ -6,6 +6,7 @@ import net.packet.InPacket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.npc.NPCConversationManager;
+import scripting.npc.NpcPromptState;
 import server.maps.MapleMap;
 import tools.PacketCreator;
 
@@ -14,12 +15,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntConsumer;
 
 /**
  * A tiny NPC-window conversation for Residents: the client renders any NPC id we send, so a
  * Persona borrows a townsperson's portrait (plan 5.2) and quest text gets the familiar dialog
  * instead of chat bubbles. Pages first (Next / Prev), then one final prompt: OK, Yes/No,
- * Accept/Decline (the quest-start window) or a menu. Responses arrive through {@code NPCMoreTalkHandler} -> {@link #respond}.
+ * Accept/Decline (the quest-start window), a menu or a number box. A screen with a parent declares {@link #back}, so
+ * every sub-page returns to it as the answer to a click. Responses arrive through {@code NPCMoreTalkHandler} ->
+ * {@link #respond}.
  *
  * <p>The v83 client drops the connection when a second NPC_TALK arrives while a window waits for the
  * player's answer (docs/BOT_MANAGEMENT_P0_RESULTS.md, probe 6). So a window is only ever sent as the answer
@@ -42,6 +46,10 @@ public final class LivingTalk {
      */
     private static final int OPTION_SLOTS = 1000;
     private static final int MORE_ID = OPTION_SLOTS - 1;
+    /** The "Back" option of a screen with a parent ({@link #back}). */
+    private static final int BACK_ID = OPTION_SLOTS - 2;
+    /** The message type of the stock number box (getNPCTalkNum) and of its reply. */
+    private static final byte NUMBER_TYPE = 3;
     private static final int MAX_STAMP = 200_000;
     private static final AtomicInteger STAMPS = new AtomicInteger();
     /**
@@ -65,7 +73,7 @@ public final class LivingTalk {
         }
     }
 
-    private enum Kind { OK, YES_NO, ACCEPT_DECLINE, MENU }
+    private enum Kind { OK, YES_NO, ACCEPT_DECLINE, MENU, NUMBER }
 
     private final Character chr;
     private final int npcId;
@@ -78,6 +86,12 @@ public final class LivingTalk {
     private Runnable onNo;
     private final List<Option> options = new ArrayList<>();
     private int menuPage;
+    private int numberDefault;
+    private int numberMin;
+    private int numberMax;
+    private IntConsumer onNumber;
+    /** The parent screen: re-opened by "Back" (a menu) or Prev (an OK window). */
+    private Runnable back;
     /** The message type of the window on screen; an answer of any other type belongs to an older window. */
     private byte awaitingType;
     /** Stamps this window's menu selections, so a click on an older window can never pick one of its options. */
@@ -112,6 +126,15 @@ public final class LivingTalk {
             return false;
         }
         return Integer.valueOf(chr.getId()).equals(ANSWERING.get()) || client.canClickNPC();
+    }
+
+    /**
+     * True while a talk or a stock NPC or quest script window awaits the player's reply: {@link #mayShow} without the
+     * click throttle, for a window of another kind (the trade window) that must never open over a dialog.
+     */
+    public static boolean awaitsReply(Character chr) {
+        Client client = chr == null ? null : chr.getClient();
+        return client != null && (liveTalk(chr) != null || scriptAwaitsReply(client));
     }
 
     /** The player's talk whose window is still on screen; a stale one (see the class notes) is dropped. */
@@ -198,6 +221,34 @@ public final class LivingTalk {
     }
 
     /**
+     * The stock number box (getNPCTalkNum): {@code text} over a box that starts at {@code def} and takes {@code min} to
+     * {@code max}. OK runs {@code onNumber} with the value, as the answer to the click. End Chat closes, and so does a
+     * value outside the range (the client never sends one), as the stock handler disposes a script over it.
+     */
+    public LivingTalk number(String text, int def, int min, int max, IntConsumer onNumber) {
+        if (min > max) {
+            throw new IllegalArgumentException("number box " + min + ".." + max + " is empty");
+        }
+        kind = Kind.NUMBER;
+        promptText = text;
+        numberMin = min;
+        numberMax = max;
+        numberDefault = Math.max(min, Math.min(max, def));
+        this.onNumber = onNumber;
+        return this;
+    }
+
+    /**
+     * The screen this one was opened from: a menu gets "Back" as its last option (on every page, after "More...") and
+     * an OK window a Prev button, and each runs {@code parent}, which re-opens the parent as the answer to the click (a
+     * number box has no button for it). Null (the default) leaves the window without one.
+     */
+    public LivingTalk back(Runnable parent) {
+        back = parent;
+        return this;
+    }
+
+    /**
      * Sends the first page or the prompt when there are no pages. Refused with enableActions while the
      * player has another window awaiting a reply, and (unless this answers the player's click) within
      * 500 ms of the last NPC click, like stock NPC clicks. A leftover script conversation that sent no
@@ -259,10 +310,16 @@ public final class LivingTalk {
             return;
         }
         switch (kind) {
-            case OK -> send(client, (byte) 0, promptText == null ? "" : promptText, pages.isEmpty() ? "00 00" : "01 00");
+            case OK -> send(client, (byte) 0, promptText == null ? "" : promptText,
+                    pages.isEmpty() && back == null ? "00 00" : "01 00");
             case YES_NO -> send(client, (byte) 1, promptText, "");
             case ACCEPT_DECLINE -> send(client, (byte) 0x0C, promptText, "");
             case MENU -> send(client, (byte) 4, menuText(), "");
+            case NUMBER -> {
+                awaitingType = NUMBER_TYPE;
+                client.sendPacket(PacketCreator.getNPCTalkNum(npcId, promptText == null ? "" : promptText, numberDefault,
+                        numberMin, numberMax, speaker));
+            }
         }
     }
 
@@ -291,8 +348,12 @@ public final class LivingTalk {
             }
             next++;
         }
-        if (pageCount > 1) {
-            text.append("\r\n#L").append(selectionOf(MORE_ID)).append("#More...#l");
+        if (pageCount > 1) { // on the last page it wraps to the first
+            text.append("\r\n#L").append(selectionOf(MORE_ID)).append("#")
+                    .append(menuPage + 1 < pageCount ? "More..." : "Back to the top...").append("#l");
+        }
+        if (back != null) {
+            text.append("\r\n#L").append(selectionOf(BACK_ID)).append("#Back#l");
         }
         return text.toString();
     }
@@ -366,10 +427,33 @@ public final class LivingTalk {
             return;
         }
         switch (kind) {
-            case OK -> close();
+            case OK -> {
+                if (action == 0 && back != null) {
+                    finish(back); // Prev: the parent screen, as the answer to the click
+                } else {
+                    close();
+                }
+            }
             case YES_NO, ACCEPT_DECLINE -> finish(action == 1 ? onYes : onNo);
             case MENU -> choose(action, selection);
+            case NUMBER -> answerNumber(action, selection);
         }
+    }
+
+    /**
+     * A number box's reply, checked as the stock handler checks a script's (NpcPromptState.number): OK with a value in
+     * range runs the callback, anything else closes. The box has only OK and End Chat, so a reply that is not OK is End
+     * Chat (or ESC) and ends the chat; the screen before it offers Back. A reply is taken however soon it comes (Enter on
+     * the default at once): the client has closed its box by then, and a reply meant for an older window is another
+     * type or stamp, already ignored in {@link #handle}.
+     */
+    private void answerNumber(byte action, int selection) {
+        if (action != 1 || !NpcPromptState.number(numberMin, numberMax).accepts(NUMBER_TYPE, action, selection)) {
+            close(); // End Chat, or a value the box never offered
+            return;
+        }
+        IntConsumer callback = onNumber;
+        finish(callback == null ? null : () -> callback.accept(selection));
     }
 
     private void choose(byte action, int selection) {
@@ -389,6 +473,10 @@ public final class LivingTalk {
         if (id == MORE_ID) {
             menuPage = (menuPage + 1) % menuPageCount();
             render(); // the answer to the click: the next page of the same menu
+            return;
+        }
+        if (id == BACK_ID && back != null) {
+            finish(back); // the answer to the click: the parent screen
             return;
         }
         Option chosen = id < options.size() && options.get(id).selectable() ? options.get(id) : null;

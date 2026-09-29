@@ -19,6 +19,9 @@ import server.living.bond.ContractService;
 import server.living.config.Content;
 import server.living.config.Content.Look;
 import server.living.config.Content.Persona;
+import server.living.population.FieldCatalog;
+import server.living.population.Population;
+import server.living.population.PopulationContent;
 import server.living.resident.ResidentRuntime;
 import server.living.resident.ResidentSpots;
 import server.living.store.LivingStore;
@@ -54,14 +57,16 @@ import static org.mockito.Mockito.when;
 /**
  * {@link RosterService#grant}, the {@code !grantcompanion} write: a BENCHED row with no spawn and no
  * character change, the same ROSTER_MAX and one-owner-per-persona rules as a recruit, and every cache
- * (owner by persona, the owner set behind the operator grant) in step, both ways through release. A grant, a
- * recruit and a login hand a roster owner without one the Adventurer's Roster (plan flow 9 step 3).
+ * (owner by persona, the owner set behind the operator grant) in step, both ways through release. The first grant or
+ * recruit hands the owner the Adventurer's Roster with one whisper (plan flow 9 step 3); later ones hand over nothing,
+ * and a login hands a roster owner without one another.
  */
 class RosterServiceGrantTest {
     private static final int ALICE = 10;
     private static final int BOB = 20;
     private static final int LITH_HARBOR = 104000000;
     private static final Persona OLWEN = persona("olwen", "Olwen");
+    private static final Persona CATO = persona("cato", "Cato");
     private static final int ROSTER_BOOK = 2430011;
 
     /** living_roster keyed by owner:persona. */
@@ -152,6 +157,26 @@ class RosterServiceGrantTest {
     }
 
     @Test
+    void aNewCompanionCampsAtTheTopFieldForItsLevelNearItsHomeTown() {
+        Population population = mock(Population.class);
+        FieldCatalog fields = mock(FieldCatalog.class);
+        when(population.fields()).thenReturn(fields);
+        int portRoad = 104010000;
+        when(fields.fieldsFor(1, LITH_HARBOR, 1)).thenReturn(List.of(new PopulationContent.Field(portRoad, "Port Road", "",
+                "victoria", false, 10, 3, 6)));
+        RosterService roster = new RosterService(world);
+
+        try (MockedStatic<Population> populations = mockStatic(Population.class)) {
+            populations.when(Population::get).thenReturn(population);
+            assertEquals("Olwen joins Alice's roster, benched at map " + portRoad + ".", roster.grant(alice, OLWEN));
+        }
+
+        // it trains in a field from the start: the card never shows "train @" a town it cannot train in
+        assertEquals(portRoad, rows.get(key(ALICE, "olwen")).campMapId());
+        assertEquals(Assignment.TRAIN, rows.get(key(ALICE, "olwen")).assignment());
+    }
+
+    @Test
     void grantKeepsEveryOwnershipCacheInStep() {
         RosterService roster = new RosterService(world);
 
@@ -211,7 +236,7 @@ class RosterServiceGrantTest {
         RosterService roster = new RosterService(world);
         roster.grant(alice, OLWEN);
 
-        assertEquals("Olwen heads home to lith harbor.", roster.release(alice, OLWEN, "gm release"));
+        assertEquals("Olwen heads home to Lith Harbor.", roster.release(alice, OLWEN, "gm release"));
 
         assertNull(rows.get(key(ALICE, "olwen")));
         assertEquals(0, roster.cachedOwnerOf("olwen"));
@@ -237,6 +262,25 @@ class RosterServiceGrantTest {
         ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
         verify(alice).sendPacket(sent.capture());
         assertArrayEquals(PacketCreator.getShowItemGain(ROSTER_BOOK, (short) 1, true).getBytes(), sent.getValue().getBytes());
+        verify(residents).whisper(OLWEN, alice, "double-click me or the book to manage the crew.");
+    }
+
+    @Test
+    void laterGrantsAndRecruitsHandOverNoRosterAndSayNothingAboutIt() {
+        rows.put(key(ALICE, "brin"), row(ALICE, "brin"));
+        Client client = carrying(alice, false); // lost it: the next login hands over another
+        partyFull(alice);
+        RosterService roster = new RosterService(world);
+
+        try (MockedStatic<InventoryManipulator> inventory = roomFor(client)) {
+            roster.grant(alice, OLWEN);
+            roster.recruit(alice, CATO);
+            inventory.verify(() -> InventoryManipulator.addById(any(), anyInt(), anyShort()), never());
+        }
+        assertEquals(ALICE, roster.cachedOwnerOf("olwen"));
+        assertEquals(ALICE, roster.cachedOwnerOf("cato"));
+        verify(alice, never()).sendPacket(any());
+        verify(residents, never()).whisper(any(), any(), anyString());
     }
 
     @Test

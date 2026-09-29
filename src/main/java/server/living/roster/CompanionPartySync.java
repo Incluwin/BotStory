@@ -507,10 +507,12 @@ public final class CompanionPartySync {
 
     /**
      * The Crew window's "Make room for a friend..." (P0 probe 12: a full party cannot invite): the companion steps out
-     * with returnWhenRoom. False when it is not out with its owner. It counts as a correction in the owner's party.
+     * with returnWhenRoom. False when it is not out with its owner, or it or its owner is committed to a run (it waits
+     * for the run, as bench and swap do). It counts as a correction in the owner's party.
      */
     public boolean makeRoom(int ownerId, String key) {
-        if (!crew.active(ownerId).contains(key) || crew.loaded(key) == 0) {
+        int companion = crew.active(ownerId).contains(key) ? crew.loaded(key) : 0;
+        if (companion == 0 || crew.committed(ownerId) || crew.committed(companion)) {
             return false;
         }
         int partyId = crew.partyOf(ownerId);

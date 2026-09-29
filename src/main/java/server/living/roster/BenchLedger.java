@@ -93,6 +93,7 @@ public final class BenchLedger {
             world.store().saveRosterProgress(new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
                     entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), entry.accruedExp(), entry.haulMeso(),
                     entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, farmSecondsToday, today));
+            CompanionViews.invalidate(world, entry.characterId());
             return;
         }
         int botCharacterId = world.residents().characterIdOf(persona.id());
@@ -111,17 +112,10 @@ public final class BenchLedger {
 
         switch (assignment) {
             case TRAIN -> {
-                int paceGap = persona.paceGap() >= 0 ? persona.paceGap() : world.config().PACE_GAP;
-                paceGap = Math.max(0, paceGap - stage.ordinal() + 1);
-                int maxLag = persona.maxLag() >= 0 ? persona.maxLag() : world.config().MAX_LAG;
-                int target = Math.max(1, ownerLevel - paceGap);
+                int target = paceTarget(persona, stage, ownerLevel);
                 int effectiveLevel = botLevel + (int) (accruedExp / Math.max(1L, ExpTable.getExpNeededForLevel(botLevel)));
                 if (effectiveLevel < target) {
-                    double multiplier = 1.0d;
-                    int lag = ownerLevel - effectiveLevel;
-                    if (lag > maxLag) {
-                        multiplier = Math.min(world.config().CATCH_UP_MAX_MULTIPLIER, 1.0d + (lag - maxLag) * 0.5d);
-                    }
+                    double multiplier = catchUp(persona, effectiveLevel, ownerLevel);
                     long gained = Math.round(expPerHour(effectiveLevel) * hours * efficiency * multiplier);
                     long cap = Math.max(0L, (long) ExpTable.getExpNeededForLevel(effectiveLevel) * (target - effectiveLevel));
                     accruedExp += Math.min(gained, cap);
@@ -173,6 +167,7 @@ public final class BenchLedger {
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), accruedExp, haulMeso,
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), now, farmSecondsToday, today);
         world.store().saveRosterProgress(updated);
+        CompanionViews.invalidate(world, entry.characterId());
         if (note != null) {
             world.store().event(entry.characterId(), entry.personaId(), "bench.ledger", note);
         }
@@ -205,6 +200,48 @@ public final class BenchLedger {
     static double expPerHour(int level) {
         double hoursPerLevel = 0.5d + level / 20.0d;
         return ExpTable.getExpNeededForLevel(level) / hoursPerLevel;
+    }
+
+    /** The level TRAIN stops at: {@code ownerLevel} less the persona's pace gap, which each bond stage shrinks by one. */
+    private int paceTarget(Persona persona, BondStage stage, int ownerLevel) {
+        int paceGap = persona.paceGap() >= 0 ? persona.paceGap() : world.config().PACE_GAP;
+        paceGap = Math.max(0, paceGap - stage.ordinal() + 1);
+        return Math.max(1, ownerLevel - paceGap);
+    }
+
+    /** TRAIN's catch-up: past the persona's max lag behind its owner it trains faster, up to CATCH_UP_MAX_MULTIPLIER. */
+    private double catchUp(Persona persona, int level, int ownerLevel) {
+        int maxLag = persona.maxLag() >= 0 ? persona.maxLag() : world.config().MAX_LAG;
+        int lag = ownerLevel - level;
+        return lag > maxLag ? Math.min(world.config().CATCH_UP_MAX_MULTIPLIER, 1.0d + (lag - maxLag) * 0.5d) : 1.0d;
+    }
+
+    /**
+     * An hour of a bench duty at the priors above (docs/BOT_MANAGEMENT_PLAN.md flow 2, the duty picker's "~1.2% EXP/h"
+     * and "~4.1k meso/h after upkeep"; P5's BenchYieldModel learns them): {@code expPercent} is TRAIN's EXP as a share
+     * of the level (0 once the companion keeps pace with its owner), {@code meso} FARM_MESO's take before upkeep, and
+     * {@code upkeep} what an hour costs (nothing while it rests). The daily farming cap is not in it.
+     */
+    public record Rates(double expPercent, long meso, long upkeep) { }
+
+    /** {@link Rates} of {@code duty} for {@code persona} at {@code level}, {@code ownerLevel} and {@code stage} (null: MET). */
+    public Rates rates(Persona persona, BondStage stage, int level, int ownerLevel, Assignment duty) {
+        int botLevel = Math.max(1, level);
+        double efficiency = world.config().BENCH_FARM_EFFICIENCY;
+        double expPercent = 0.0d;
+        long meso = 0L;
+        if (duty == Assignment.TRAIN && botLevel < paceTarget(persona, stage == null ? BondStage.MET : stage, ownerLevel)) {
+            expPercent = 100.0d * expPerHour(botLevel) * efficiency * catchUp(persona, botLevel, ownerLevel)
+                    / Math.max(1, ExpTable.getExpNeededForLevel(botLevel));
+        } else if (duty == Assignment.FARM_MESO) {
+            meso = Math.round(KILLS_PER_HOUR * MESO_PER_KILL_PER_LEVEL * botLevel * efficiency * mesoRate());
+        }
+        return new Rates(expPercent, meso, duty == Assignment.REST ? 0L : Math.round(upkeepPerHour(botLevel)));
+    }
+
+    /** FARM_ITEM's items per hour from a monster that drops the item at {@code chancePerMillion}, at the priors above. */
+    public double itemsPerHour(int chancePerMillion) {
+        return KILLS_PER_HOUR * chancePerMillion / 1_000_000.0d * dropRate() * world.config().BENCH_FARM_EFFICIENCY;
     }
 
     private int farmItem(RosterEntry entry, int itemId, double hours, double efficiency, int limit) {
@@ -296,6 +333,7 @@ public final class BenchLedger {
                 entry.assignmentItem(), entry.assignmentCount(), entry.campMapId(), 0L, entry.haulMeso(),
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
                 entry.farmSecondsToday(), entry.farmDay()));
+        CompanionViews.invalidate(world, entry.characterId());
         world.store().event(entry.characterId(), entry.personaId(), "bench.exp-applied", entry.accruedExp() + " exp -> level " + agent.getLevel());
     }
 

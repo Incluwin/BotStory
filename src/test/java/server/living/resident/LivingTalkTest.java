@@ -14,7 +14,10 @@ import server.maps.MapleMap;
 import testutil.NpcTalks;
 import testutil.NpcTalks.Talk;
 import testutil.Packets;
+import tools.PacketCreator;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,10 +28,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,12 +42,14 @@ import static org.mockito.Mockito.when;
  * and 6): no speaker bit 0x04, "More..." paging, stamped options a stale click cannot pick, no second window while
  * one awaits a reply, the 500 ms click throttle, and every path ends in a window or enableActions. A talk whose
  * window cannot be on screen any more (a warp since, a stock window over it, a failed send) never blocks the next
- * window and never eats a stock window's reply.
+ * window and never eats a stock window's reply. P3: the stock number box (its reply read and range-checked as the stock
+ * handler does) and Back, which re-opens the parent screen as the answer to a click.
  */
 class LivingTalkTest {
     private static final byte MENU = 4;
     private static final byte SAY = 0;
     private static final byte YES_NO = 1;
+    private static final byte NUMBER = 3;
     private static final int NPC = 9970001;
 
     private final Character chr = mock(Character.class);
@@ -110,8 +117,12 @@ class LivingTalkTest {
 
         answer(MENU, 1, first.selection("More..."));
         Talk second = lastTalk();
-        assertEquals(List.of("row 10", "row 11", "row 12", "More..."), second.labels());
+        assertEquals(List.of("row 10", "row 11", "row 12", "Back to the top..."), second.labels(), "the last page wraps");
         assertEquals(-1, picked.get());
+        answer(MENU, 1, second.selection("Back to the top..."));
+        assertEquals("row 0", lastTalk().labels().get(0));
+        answer(MENU, 1, lastTalk().selection("More..."));
+        second = lastTalk();
 
         answer(MENU, 1, second.selection("row 11"));
         assertEquals(11, picked.get());
@@ -424,6 +435,201 @@ class LivingTalkTest {
         verify(client, never()).sendPacket(org.mockito.ArgumentMatchers.any());
     }
 
+    // ---- number box (P3) ------------------------------------------------------------------
+
+    @Test
+    void theNumberBoxIsTheStockWindowWithItsBoundsAndSpeaker() {
+        LivingTalk.open(chr, 9040011).speaker(2).number("how many?", 500, 1, 200, value -> { }).show();
+
+        Talk box = lastTalk();
+        assertEquals(NUMBER, box.msgType());
+        assertEquals(2, box.speaker());
+        assertEquals("how many?", box.text());
+        assertEquals(List.of(200, 1, 200), numberBounds(lastPacket()), "the default is kept inside the range");
+        assertTrue(LivingTalk.active(client));
+    }
+
+    @Test
+    void aNumberInRangeRunsTheCallbackAsTheAnswerToTheClick() {
+        AtomicInteger got = new AtomicInteger(-1);
+        LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> {
+            got.set(value);
+            LivingTalk.open(chr, NPC).ok("farming " + value).show(); // the next window is the answer
+        }).show();
+        answer(NUMBER, 1, 143);
+
+        assertEquals(143, got.get());
+        assertEquals("farming 143", lastTalk().text());
+        assertTrue(LivingTalk.active(client));
+    }
+
+    @Test
+    void aNumberOutOfRangeIsRejectedAndTheWindowCloses() {
+        AtomicInteger runs = new AtomicInteger();
+        for (int wrong : new int[] {0, 201, -5}) {
+            LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> runs.incrementAndGet()).show();
+            answer(NUMBER, 1, wrong);
+            assertClosed();
+        }
+        LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> runs.incrementAndGet()).show();
+        assertTrue(LivingTalk.respond(client, NUMBER, (byte) 1, Packets.buildInPacket(out -> { }))); // no value at all
+        assertClosed();
+        assertEquals(0, runs.get());
+    }
+
+    @Test
+    void endChatOnTheNumberBoxEndsTheChatEvenWithAParent() {
+        AtomicInteger runs = new AtomicInteger();
+        AtomicInteger parents = new AtomicInteger();
+        LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> runs.incrementAndGet()).show();
+        answer(NUMBER, 0, null);
+        assertClosed();
+
+        // the box has only OK and End Chat: whatever the client sends for End Chat (0 or -1), the chat ends
+        for (int endChat : new int[] {0, -1}) {
+            LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> runs.incrementAndGet())
+                    .back(parents::incrementAndGet).show();
+            answer(NUMBER, endChat, null);
+            assertClosed();
+        }
+        assertEquals(0, runs.get());
+        assertEquals(0, parents.get(), "End Chat is not Back");
+    }
+
+    @Test
+    void aStaleNumberAnswerAfterANewerWindowIsIgnored() {
+        AtomicInteger runs = new AtomicInteger();
+        LivingTalk.open(chr, NPC).number("how many?", 50, 1, 200, value -> {
+            runs.incrementAndGet();
+            LivingTalk.open(chr, NPC).menu("next", List.of(new Option("a", null))).show();
+        }).show();
+        answer(NUMBER, 1, 10);
+        clearInvocations(client);
+
+        answer(NUMBER, 1, 10); // the same click again: the menu that answered it is on screen
+
+        assertEquals(1, runs.get());
+        assertTrue(LivingTalk.active(client));
+        verify(client, never()).sendPacket(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void okOnTheNumberBoxAtOnceIsTakenAndLeavesNoWindowStuck() {
+        List<Integer> got = new ArrayList<>();
+        LivingTalk.open(chr, NPC).number("how many?", 100, 0, 9_999, got::add).show();
+        when(client.canClickNPC()).thenReturn(false); // Enter on the default within the 500 ms after the box appeared
+
+        answer(NUMBER, 1, 100);
+
+        assertEquals(List.of(100), got, "the client closed its box when it sent this: it is the answer");
+        assertFalse(LivingTalk.active(client), "no talk left waiting for a reply the client will never send");
+        assertTrue(NpcTalks.isEnableActions(lastPacket()));
+        when(client.canClickNPC()).thenReturn(true);
+        assertTrue(LivingTalk.mayShow(chr), "the next double-click on a companion or an NPC opens its window");
+    }
+
+    // ---- back (P3) ---------------------------------------------------------------------------
+
+    @Test
+    void backIsTheLastOptionAndReRendersTheParentAsTheAnswerToTheClick() {
+        AtomicInteger parents = new AtomicInteger();
+        Runnable parent = () -> {
+            parents.incrementAndGet();
+            LivingTalk.open(chr, NPC).menu("the card", List.of(new Option("What you do at camp...", null))).show();
+        };
+        LivingTalk.open(chr, NPC).menu("pick a duty", List.of(new Option("train", null), new Option("rest", null)))
+                .back(parent).show();
+        assertEquals(List.of("train", "rest", "Back"), lastTalk().labels());
+        int back = lastTalk().selection("Back");
+        when(client.canClickNPC()).thenReturn(false); // clicked within 500 ms: still the answer to the click
+        clearInvocations(client);
+
+        answer(MENU, 1, back);
+
+        assertEquals(1, parents.get());
+        List<Packet> sent = sent();
+        assertEquals(1, sent.size(), "the parent, and no enableActions before it");
+        assertTrue(NpcTalks.read(sent.get(0)).text().startsWith("the card"));
+        assertTrue(LivingTalk.active(client));
+    }
+
+    @Test
+    void aLongMenuWithAParentOffersBackOnEveryPageAfterMore() {
+        AtomicInteger parents = new AtomicInteger();
+        List<Option> options = new ArrayList<>();
+        for (int index = 0; index < 12; index++) {
+            options.add(new Option("row " + index, null));
+        }
+        LivingTalk.open(chr, NPC).menu("pick", options).back(parents::incrementAndGet).show();
+        List<String> first = lastTalk().labels();
+        assertEquals("More...", first.get(LivingTalk.MENU_PAGE_SIZE));
+        assertEquals("Back", first.get(LivingTalk.MENU_PAGE_SIZE + 1));
+
+        answer(MENU, 1, lastTalk().selection("More..."));
+        assertEquals(List.of("row 10", "row 11", "Back to the top...", "Back"), lastTalk().labels());
+        answer(MENU, 1, lastTalk().selection("Back"));
+
+        assertEquals(1, parents.get());
+        assertClosed(); // a parent that opened nothing: the client's actions come back
+    }
+
+    @Test
+    void aMenuWithoutAParentHasNoBackAndAStaleBackClickPicksNothing() {
+        AtomicInteger parents = new AtomicInteger();
+        LivingTalk.open(chr, NPC).menu("with", List.of(new Option("a", null))).back(parents::incrementAndGet).show();
+        int back = lastTalk().selection("Back");
+        answer(MENU, 1, lastTalk().selection("a"));
+        LivingTalk.open(chr, NPC).menu("without", List.of(new Option("b", null))).show();
+        assertEquals(List.of("b"), lastTalk().labels());
+        clearInvocations(client);
+
+        answer(MENU, 1, back); // the older window's Back
+
+        assertEquals(0, parents.get());
+        assertTrue(LivingTalk.active(client));
+        verify(client, never()).sendPacket(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void anOkWindowWithAParentGoesBackOnPrevAndClosesOnOk() {
+        AtomicInteger parents = new AtomicInteger();
+        LivingTalk.open(chr, NPC).ok("Mira will farm 200 Stolen Fence.").back(parents::incrementAndGet).show();
+        assertEquals("01 00", endBytes(lastPacket()), "a Prev button");
+        answer(SAY, 0, null);
+        assertEquals(1, parents.get());
+
+        LivingTalk.open(chr, NPC).ok("done").back(parents::incrementAndGet).show();
+        answer(SAY, 1, null);
+        assertClosed();
+        assertEquals(1, parents.get());
+
+        LivingTalk.open(chr, NPC).ok("no parent").show();
+        assertEquals("00 00", endBytes(lastPacket()));
+    }
+
+    // ---- over an NPC script (P3) ---------------------------------------------------------------
+
+    @Test
+    void openingOverAnNpcScriptDisposesItAndSendsExactlyOneEnableActions() {
+        NPCConversationManager script = mock(NPCConversationManager.class);
+        when(client.getCM()).thenReturn(script);
+        doAnswer(inv -> {
+            client.sendPacket(PacketCreator.enableActions()); // what the real dispose sends
+            when(client.getCM()).thenReturn(null);
+            return null;
+        }).when(script).dispose();
+
+        LivingTalk.open(chr, NPC).menu("the card", List.of(new Option("go", null))).show();
+
+        verify(script, times(1)).dispose();
+        List<Packet> sent = sent();
+        assertEquals(2, sent.size());
+        assertTrue(NpcTalks.isEnableActions(sent.get(0)), "the script's own enableActions, once");
+        assertEquals("the card", NpcTalks.read(sent.get(1)).text().substring(0, 8));
+        assertEquals(1, sent.stream().filter(NpcTalks::isEnableActions).count());
+        assertTrue(LivingTalk.active(client));
+    }
+
     // ---- helpers -------------------------------------------------------------------------
 
     private void answer(byte lastMsg, int action, Integer selection) {
@@ -453,5 +659,23 @@ class LivingTalkTest {
     private Talk lastTalk() {
         List<Talk> talks = NpcTalks.talks(sent());
         return talks.get(talks.size() - 1);
+    }
+
+    /** A number box's {default, min, max}, after its text. */
+    private static List<Integer> numberBounds(Packet packet) {
+        ByteBuffer tail = afterText(packet);
+        return List.of(tail.getInt(), tail.getInt(), tail.getInt());
+    }
+
+    /** A say window's end bytes ("01 00": Prev, no Next). */
+    private static String endBytes(Packet packet) {
+        ByteBuffer tail = afterText(packet);
+        return String.format("%02X %02X", tail.get(), tail.get());
+    }
+
+    private static ByteBuffer afterText(Packet packet) {
+        byte[] bytes = packet.getBytes();
+        int length = (bytes[9] & 0xFF) | (bytes[10] & 0xFF) << 8;
+        return ByteBuffer.wrap(bytes, 11 + length, bytes.length - 11 - length).order(ByteOrder.LITTLE_ENDIAN);
     }
 }
