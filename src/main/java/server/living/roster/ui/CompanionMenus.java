@@ -106,6 +106,18 @@ public final class CompanionMenus {
         crews.show(owner);
     }
 
+    /**
+     * "Adventurers looking for a crew" (P4, decision 4 b) in the player's notes, with Back to the Crew window: the
+     * citizens they have met who would join them, each opening its hire terms.
+     */
+    public void hireList(Character owner) {
+        if (!LivingTalk.mayShow(owner)) {
+            owner.sendPacket(PacketCreator.enableActions());
+            return;
+        }
+        crews.hireList(owner, null);
+    }
+
     /** A companion's screens, for a crew page that opens one of them (a card is opened through {@link #card}). */
     CompanionCardScreens cards() {
         return cards;

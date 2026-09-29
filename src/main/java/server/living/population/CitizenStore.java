@@ -29,6 +29,9 @@ public final class CitizenStore {
 
     public record Acquaintance(int characterId, int playerId, int partyMinutes, int mapMinutes, boolean buddyAsked, boolean guildAsked) { }
 
+    /** A character a player has met (shared party or map minutes), with its level and job as its characters row holds them. */
+    public record Met(int characterId, int level, int job, int partyMinutes, int mapMinutes) { }
+
     // ---- citizens ------------------------------------------------------------------------
 
     public List<Citizen> all(State state) {
@@ -286,6 +289,24 @@ public final class CitizenStore {
             log.warn("living_acquaintance read failed", failure);
         }
         return new Acquaintance(characterId, playerId, 0, 0, false, false);
+    }
+
+    /** Everyone the player has spent party or map minutes with (the hire list, P4), in one read. */
+    public List<Met> metBy(int playerId) {
+        List<Met> out = new ArrayList<>();
+        String sql = "SELECT a.character_id, c.level, c.job, a.party_minutes, a.map_minutes FROM living_acquaintance a"
+                + " JOIN characters c ON c.id = a.character_id WHERE a.player_id = ? AND (a.party_minutes > 0 OR a.map_minutes > 0)";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, playerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new Met(rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getInt(5)));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_acquaintance scan failed for {}", playerId, failure);
+        }
+        return out;
     }
 
     public void saveAcquaintance(Acquaintance a) {
