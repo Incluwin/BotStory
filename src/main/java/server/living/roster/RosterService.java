@@ -945,6 +945,11 @@ public final class RosterService {
         world.store().event(ownerId, persona.id(), "roster.arrive", "map " + owner.getMapId());
         List<String> lines = world.arcs().lines(persona, "join");
         world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(ownerId, lines.size())));
+        BenchLedger ledger = world.bench();
+        String report = ledger == null ? null : ledger.takeReport(ownerId, persona.id(), bot.getLevel());
+        if (report != null) {
+            world.residents().whisper(persona, owner, report); // what it did on the bench, once (P5, flow 1 step 5)
+        }
     }
 
     /** True when the owner carried a recall whistle and one was consumed. */
@@ -1073,9 +1078,13 @@ public final class RosterService {
         ownerByPersona.put(persona.id(), owner.getId());
         settings.apply(owner, persona, result.agent());
         world.store().event(owner.getId(), persona.id(), "roster.call", null);
+        String report = world.bench().takeReport(owner.getId(), persona.id(), result.agent().getLevel()); // spent either way
         if (!quiet) {
             List<String> lines = world.arcs().lines(persona, "join");
             world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(owner.getId(), lines.size())));
+            if (report != null) {
+                world.residents().whisper(persona, owner, report); // what it did on the bench, once (P5)
+            }
         }
         return new RosterResult.Ok(persona.name() + " joins your party.");
     }
@@ -1613,8 +1622,8 @@ public final class RosterService {
         if (meso <= 0 || owner.getMeso() < meso) {
             return "you don't have " + meso + " meso.";
         }
-        int level = Math.max(1, world.store().characterLevel(world.residents().characterIdOf(persona.id())));
-        long hoursMs = Math.round(meso / BenchLedger.upkeepPerHour(level) * 3_600_000.0d);
+        // an hour of wages is an hour of its upkeep at its camp (decision 19 b), never less than a meso
+        long hoursMs = Math.round(meso / Math.max(1.0d, world.bench().upkeepPerHour(entry)) * 3_600_000.0d);
         long from = Math.max(System.currentTimeMillis(), entry.wagesPaidUntilMs());
         owner.gainMeso((int) -meso, true);
         RosterEntry paid = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
@@ -1632,9 +1641,8 @@ public final class RosterService {
             return persona.name() + " is not in your roster.";
         }
         long left = entry.wagesPaidUntilMs() - System.currentTimeMillis();
-        int level = Math.max(1, world.store().characterLevel(world.residents().characterIdOf(persona.id())));
         return persona.name() + (left > 0 ? " is paid up for " + CompanionView.paidFor(left) : " is working off the haul")
-                + " (upkeep " + Math.round(BenchLedger.upkeepPerHour(level)) + " meso/hour).";
+                + " (upkeep " + Math.max(1L, Math.round(world.bench().upkeepPerHour(entry))) + " meso/hour).";
     }
 
     // ---- haul ----------------------------------------------------------------------------

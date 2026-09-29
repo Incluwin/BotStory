@@ -163,7 +163,8 @@ public final class HiredHands {
 
     /**
      * The citizen's terms now: the hired-hand contract's price.meso per level as the fee, and the bench upkeep of its
-     * level for an hour (BenchLedger: 30 meso per level per hour) as its wages. Null when its level is unknown.
+     * level for an hour as its wages: 30 meso per level, capped by what the camp it would keep pays (decision 19 b,
+     * BenchLedger), the same number its Wages page shows once hired. Null when its level is unknown.
      */
     public Terms terms(int citizenCharacterId) {
         Character live = loaded(citizenCharacterId);
@@ -182,7 +183,10 @@ public final class HiredHands {
         }
         Contract contract = world.content().contract(LivingContent.HIRED_HAND_CONTRACT);
         long perLevel = contract == null ? DEFAULT_FEE_PER_LEVEL : contract.price().meso();
-        return new Terms(level, CompanionView.jobName(jobId), perLevel * level, Math.round(BenchLedger.upkeepPerHour(level)));
+        BenchLedger ledger = world.bench();
+        int camp = live != null ? live.getMapId() : 0; // it keeps the camp it stands on (unloaded: the prior's cap)
+        double wage = ledger == null ? BenchLedger.upkeepPerHour(level) : ledger.upkeepPerHour(level, jobId, camp);
+        return new Terms(level, CompanionView.jobName(jobId), perLevel * level, Math.round(wage));
     }
 
     /** Hired hands on the owner's roster. */

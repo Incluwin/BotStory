@@ -349,6 +349,30 @@ class HiredHandsTest {
                 eq("double-click me or the book to manage the crew."));
     }
 
+    // ---- wages (decision 19 b, retuned in P5) ------------------------------------------------------
+
+    @Test
+    void theWageOfferedIsTheUpkeepItIsChargedAtTheCampItKeeps() {
+        miraIsAnnsGuest(); // on Ann's field, which she keeps as her camp once hired
+        BenchYieldModel yields = new BenchYieldModel(game.world);
+        BenchLedger ledger = new BenchLedger(game.world);
+        when(game.world.benchYields()).thenReturn(yields);
+        when(game.world.bench()).thenReturn(ledger);
+        BenchYieldModel.Key key = BenchYieldModel.Key.of(HUNTER, 30, HENESYS_FIELD);
+        for (int hunt = 0; hunt < 20; hunt++) {
+            yields.record(key, new BenchYieldModel.Sample(0.25d, 0L, 750L, 0L, 0)); // Hunters in their 30s: 3,000 meso/h here
+        }
+        double predicted = yields.mesoPerHour(key, ledger.mesoPrior(30));
+
+        HiredHands.Terms terms = hands.terms(MIRA);
+
+        assertEquals(Math.round(0.15d * predicted), terms.hourlyWage(), "15% of what the camp pays, not 30 a level (900)");
+        assertTrue(hands.hire(game.ann, MIRA, terms).hired());
+        RosterEntry hired = game.store.row(ANN, HIRE);
+        assertEquals(HENESYS_FIELD, hired.campMapId());
+        assertEquals(terms.hourlyWage(), Math.round(ledger.upkeepPerHour(hired)), "her Wages page and the ledger charge the same");
+    }
+
     // ---- one citizen, one employer --------------------------------------------------------------
 
     @Test
