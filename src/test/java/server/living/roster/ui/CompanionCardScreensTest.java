@@ -20,6 +20,7 @@ import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchLedger;
 import server.living.roster.Commitments;
+import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionManager;
 import server.living.roster.CompanionSlots;
@@ -228,6 +229,24 @@ class CompanionCardScreensTest {
         verify(manager).followMe(owner, hadrik);
         verify(manager).waitHere(owner, hadrik);
         verify(manager).huntHere(owner, hadrik);
+    }
+
+    @Test
+    void anOrderDoneWhileAnotherWindowWaitsSaysNothingWhenTheCompanionAnswered() {
+        List<Runnable> queue = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(queue);
+        when(world.executor()).thenReturn(queued);
+        rows.add(hadrikRow);
+        menus.card(owner, hadrikRow);
+        pick("Stick with me");
+        LivingTalk.open(owner, 9000000).ok("a stock window the player opened meanwhile").show();
+        int talks = talks().size();
+
+        queue.get(0).run();
+
+        verify(manager).followMe(owner, hadrik);
+        verify(owner, never()).dropMessage(anyInt(), any());
+        assertEquals(talks, talks().size(), "nothing over the window awaiting its reply");
     }
 
     @Test
@@ -572,6 +591,26 @@ class CompanionCardScreensTest {
         pick("Let's trade");
 
         assertEquals("Hadrik is too far away to trade.", lastTalk().text());
+    }
+
+    // ---- the whole crew -----------------------------------------------------------------------
+
+    @Test
+    void theWholeCrewIsTheCrewWindowInTheCompanionsVoiceWithBackToItsCard() {
+        rows.add(hadrikRow);
+        CompanionDirectory directory = mock(CompanionDirectory.class);
+        when(world.directory()).thenReturn(directory);
+        when(directory.resolveName(owner, "Hadrik")).thenReturn(new CompanionDirectory.Relation.OwnCompanion(hadrikRow));
+        menus.card(owner, hadrikRow);
+        pick("More...");
+
+        pick("The whole crew...");
+
+        Talk crew = lastTalk();
+        assertEquals(HADRIK_PORTRAIT, crew.npcId());
+        assertTrue(crew.text().startsWith("#eParty 3/6#n"), crew.text());
+        pick("Back");
+        assertTrue(lastTalk().text().startsWith("#eHadrik#n"), lastTalk().text());
     }
 
     // ---- wages ------------------------------------------------------------------------------

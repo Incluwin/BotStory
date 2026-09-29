@@ -180,7 +180,7 @@ final class CompanionCardScreens {
             options.add(option(owner, stale, "Let's trade", () -> order(owner, persona, "menu.trade",
                     manager -> manager.openTrade(owner, persona))));
         }
-        options.add(option(owner, stale, "The whole crew...", () -> menus.crew(owner)));
+        options.add(option(owner, stale, "The whole crew...", () -> menus.crews().show(owner, persona)));
         options.add(option(owner, stale, "We should part ways", () -> partWays(owner, persona)));
         options.add(new Option("Never mind", null));
         String status = switch (entry.state()) {

@@ -295,6 +295,21 @@ class CrewScreensTest {
     }
 
     @Test
+    void anOrderWithNothingToSayStillDrawsTheCrewWindowAgainWithNoPinkText() {
+        hadrik();
+        when(manager.followAll(owner)).thenReturn(new RosterResult.Ok(""));
+        menus.crew(owner);
+        int selection = lastTalk().selection("Everyone: follow me");
+        clearInvocations(client);
+
+        assertTrue(LivingTalk.respond(client, MENU, (byte) 1, Packets.buildInPacket(out -> out.writeInt(selection))));
+
+        verify(manager).followAll(owner);
+        verify(owner, never()).dropMessage(anyInt(), anyString());
+        assertTrue(lastTalk().text().startsWith("#eParty 3/6#n"), lastTalk().text()); // only packets since the click
+    }
+
+    @Test
     void formationOffersTheChatCommandsFormationsForEveryoneOut() {
         hadrik();
         when(manager.setFormation(owner, "tight")).thenReturn(new RosterResult.Ok("You tell Hadrik: formation tight."));

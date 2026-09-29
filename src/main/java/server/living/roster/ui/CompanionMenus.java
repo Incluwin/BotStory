@@ -144,26 +144,31 @@ public final class CompanionMenus {
      * companion's reply in chat (an order) is the answer.
      */
     void command(Character owner, String name, Supplier<String> action) {
-        command(owner, name, action, line -> outcome(owner, line));
+        command(owner, name, action, line -> {
+            if (!line.isEmpty()) {
+                outcome(owner, line);
+            }
+        });
     }
 
     /**
      * {@link #command(Character, String, Supplier)} whose line, when a window may open and the action was quick, is
-     * answered by {@code answer} on the owner's packet thread (a screen rendered again, say) instead of the notes' last
-     * page; otherwise it is pink text as there.
+     * answered by {@code answer} on the owner's packet thread (a screen rendered again, say; an empty line too) instead
+     * of the notes' last page; otherwise it is pink text as there, and an empty line says nothing.
      */
     void command(Character owner, String name, Supplier<String> action, Consumer<String> answer) {
         long clickedAtMs = System.currentTimeMillis();
         world.executor().submit(name, () -> {
-            String line = action.get();
+            String said = action.get();
+            String line = said == null ? "" : said;
             Client client = owner.getClient();
-            if (client == null || line == null || line.isEmpty()) {
-                return; // logged off meanwhile, or nothing to say
+            if (client == null) {
+                return; // logged off meanwhile
             }
             client.runOnIoThread(() -> {
                 if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS && LivingTalk.mayShow(owner)) {
                     answer.accept(line);
-                } else {
+                } else if (!line.isEmpty()) {
                     owner.dropMessage(5, line);
                 }
             });
