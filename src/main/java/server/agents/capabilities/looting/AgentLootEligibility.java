@@ -114,6 +114,9 @@ public final class AgentLootEligibility {
         if (itemId > 0 && !bot.needQuestItem(drop.getQuest(), itemId)) {
             return false;
         }
+        if (!AgentLootPolicy.permits(bot, drop)) { // the host's per-Agent policy, after every rule above
+            return false;
+        }
         if (drop.getMeso() <= 0 && itemId > 0) {
             InventoryType type = ItemConstants.getInventoryType(itemId);
             Inventory inv = bot.getInventory(type);

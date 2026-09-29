@@ -14,6 +14,7 @@ import server.Trade;
 import server.agents.capabilities.dialogue.AgentChatRouteCoordinator;
 import server.agents.capabilities.equipment.AgentEquipmentAutoEquipService;
 import server.agents.capabilities.equipment.AgentEquipmentOptimizerResult;
+import server.agents.capabilities.looting.AgentLootPolicy;
 import server.agents.capabilities.movement.AgentFormationCommandService;
 import server.agents.capabilities.movement.AgentFormationRuntime;
 import server.agents.capabilities.movement.AgentFormationService;
@@ -45,6 +46,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.IntFunction;
+import java.util.function.UnaryOperator;
 
 /**
  * The typed facade the companion menus call (docs/BOT_MANAGEMENT_PLAN.md, "CompanionManager"). Its methods are called on
@@ -70,6 +72,8 @@ public final class CompanionManager {
     static final String GATHER_FOR_BUFFS = "gather up for buffs";
     static final String FORMATION = "formation ";
     static final String AUTO_EQUIP = "auto equip";
+    /** What a companion says for a little coin, unless it has its own "coin" lines. */
+    static final String COIN_THANKS = "thanks. that'll keep me in potions.";
 
     /**
      * A formation the Formation... page offers: its label, the formation command's token (AgentFormationCommandService),
@@ -326,18 +330,21 @@ public final class CompanionManager {
     /**
      * "Formation": one of {@link #FORMATIONS} (by its token) for the owner's companions out with them. The formation
      * command itself sets it, on the first companion's mailbox as the chat route runs it, and that companion answers in
-     * its own words.
+     * its own words. Each one told keeps it as its own formation (P3b), so a load, relog or restart puts it back there.
      */
     public RosterResult setFormation(Character owner, String token) {
-        Formation formation = FORMATIONS.stream().filter(known -> known.token().equals(token)).findFirst().orElse(null);
+        Formation formation = formation(token);
         if (formation == null) {
             return new RosterResult.Failed("There is no formation called " + token + ".");
         }
         List<String> names = new ArrayList<>();
-        List<AgentRuntimeEntry> crew = crew(owner, false, names);
+        List<Persona> told = new ArrayList<>();
+        List<AgentRuntimeEntry> crew = crew(owner, false, names, told);
         if (crew.isEmpty()) {
             return new RosterResult.Failed("Nobody of yours is out with you.");
         }
+        // each one keeps it as its own formation (P3b), so a later load, relog or restart puts it back in its place
+        told.forEach(persona -> update(owner, persona, own -> own.withFormation(formation.token())));
         String phrase = FORMATION + formation.token();
         AgentFormationCommandService.Hooks hooks = new AgentFormationCommandService.Hooks(
                 leaderId -> crew,
@@ -352,6 +359,144 @@ public final class CompanionManager {
         AgentMailboxRuntime.dispatch(crew.get(0),
                 ignored -> AgentFormationCommandService.handleFormationCommand(owner, phrase, hooks));
         return new RosterResult.Ok("You tell " + names(names) + ": " + phrase + ".");
+    }
+
+    // ---- one companion's settings (P3b: Fighting style..., Supplies & loot...) -----------------------
+
+    /** The companion's own settings (the defaults until the owner changes one), or null when it is not the owner's. */
+    public CompanionSettings settings(Character owner, Persona persona) {
+        return row(owner, persona) == null ? null : world.roster().settings().settings(owner.getId(), persona.id());
+    }
+
+    /**
+     * "Drink a potion below...": the HP and MP percentages it drinks below
+     * ({@link CompanionSettings#MIN_POTION_PERCENT} to {@link CompanionSettings#MAX_POTION_PERCENT}). A Dark Knight's
+     * Berserk window still lowers the HP one. Out with the owner it drinks by them from its next potion check.
+     */
+    public RosterResult setPotionThresholds(Character owner, Persona persona, int hpPercent, int mpPercent) {
+        if (row(owner, persona) == null) {
+            return new RosterResult.NotOwned();
+        }
+        if (!CompanionSettings.potionPercent(hpPercent) || !CompanionSettings.potionPercent(mpPercent)) {
+            return new RosterResult.Failed("Potions go from " + CompanionSettings.MIN_POTION_PERCENT + "% to "
+                    + CompanionSettings.MAX_POTION_PERCENT + "%.");
+        }
+        update(owner, persona, own -> own.withPotions(hpPercent, mpPercent));
+        return new RosterResult.Ok(persona.name() + " drinks a potion below " + hpPercent + "% HP and " + mpPercent
+                + "% MP.");
+    }
+
+    /** "Pick up...": what it loots while out with the owner (AgentLootPolicy.Mode). */
+    public RosterResult setLootPolicy(Character owner, Persona persona, AgentLootPolicy.Mode mode) {
+        if (row(owner, persona) == null) {
+            return new RosterResult.NotOwned();
+        }
+        update(owner, persona, own -> own.withLoot(mode));
+        return new RosterResult.Ok(persona.name() + switch (mode) {
+            case ALL -> " picks up whatever drops.";
+            case OWN_KILLS -> " leaves the loot of your kills to you.";
+            case QUEST_ONLY -> " picks up only meso and what your quests need.";
+            case NONE -> " leaves all the loot to you.";
+        });
+    }
+
+    /** "Boss drops": left to the humans (the default), or picked up as its loot policy says. */
+    public RosterResult setLeaveBossDrops(Character owner, Persona persona, boolean leave) {
+        if (row(owner, persona) == null) {
+            return new RosterResult.NotOwned();
+        }
+        update(owner, persona, own -> own.withLeaveBossDrops(leave));
+        return new RosterResult.Ok(persona.name() + (leave ? " leaves a boss's drops to you." : " picks up a boss's drops too."));
+    }
+
+    /**
+     * A support toggle (buffs, heals, buff potions). Out with the owner it is told, through the stock whisper's path,
+     * the Agent phrase for it and answers for itself; loaded for its owner but on its way or waiting outside a run it
+     * is set quietly; otherwise it takes effect at its next load.
+     */
+    public RosterResult setSupport(Character owner, Persona persona, CompanionSettings.Support toggle, boolean enabled) {
+        if (row(owner, persona) == null) {
+            return new RosterResult.NotOwned();
+        }
+        update(owner, persona, own -> own.withSupport(toggle, enabled));
+        Out out = out(owner, persona, true);
+        if (out.refusal() == null) {
+            tell(owner, out.bot(), toggle.phrase(enabled));
+        } else {
+            world.roster().settings().applySupport(owner, persona);
+        }
+        return new RosterResult.Ok(persona.name() + switch (toggle) {
+            case BUFFS -> enabled ? " buffs the party." : " stops buffing the party.";
+            case HEALS -> enabled ? " heals the party." : " stops healing the party.";
+            case BUFF_POTIONS -> enabled ? " drinks buff potions." : " saves the buff potions.";
+        });
+    }
+
+    /**
+     * "Where I keep": the companion's own formation, one of {@link #FORMATIONS} by its token, or null for the crew's.
+     * The owner's crew out with them is spread again and it takes its place; out with them it answers in its own words.
+     */
+    public RosterResult setFormation(Character owner, Persona persona, String token) {
+        Formation formation = token == null ? null : formation(token);
+        if (row(owner, persona) == null) {
+            return new RosterResult.NotOwned();
+        }
+        if (token != null && formation == null) {
+            return new RosterResult.Failed("There is no formation called " + token + ".");
+        }
+        update(owner, persona, own -> own.withFormation(token));
+        world.roster().settings().applyFormation(owner);
+        Out out = out(owner, persona, true);
+        if (out.refusal() == null) {
+            AgentDialogueTransportRuntime.queueReply(out.runtime(), formation == null ? "ok, back with the others."
+                    : formation.reply());
+        }
+        return new RosterResult.Ok("You tell " + persona.name() + ": "
+                + (formation == null ? "keep with the others" : formation.label().toLowerCase(Locale.ROOT)) + ".");
+    }
+
+    /**
+     * "A little coin for the road": {@code meso} from the owner's purse into the companion's own (it buys its potions
+     * and supplies with it): into its character's purse when it is loaded, else into its characters row, which its
+     * next load reads (loads run on companion-ops, as this does). Refused for more than the owner has, or than its
+     * purse holds; logged; it thanks the owner in its own words.
+     */
+    public RosterResult giveCoin(Character owner, Persona persona, long meso) {
+        if (row(owner, persona) == null) {
+            return new RosterResult.NotOwned();
+        }
+        if (meso <= 0 || meso > Integer.MAX_VALUE) {
+            return new RosterResult.Failed("Give " + persona.name() + " how much?");
+        }
+        if (owner.getMeso() < meso) {
+            return new RosterResult.Failed(String.format(Locale.ROOT, "You don't have %,d meso.", meso));
+        }
+        int amount = (int) meso;
+        Character bot = world.roster().loaded(persona.id());
+        if (bot != null) {
+            if (!bot.canHoldMeso(amount)) {
+                return new RosterResult.Failed(persona.name() + " can't carry that much.");
+            }
+            owner.gainMeso(-amount, true);
+            bot.gainMeso(amount, false);
+        } else {
+            int characterId = world.residents().characterIdOf(persona.id());
+            if (characterId == 0) {
+                return new RosterResult.Failed(persona.name() + " cannot be reached right now.");
+            }
+            owner.gainMeso(-amount, true);
+            if (!world.store().addCharacterMeso(characterId, amount)) {
+                owner.gainMeso(amount, true); // it never reached the purse: back to the owner
+                return new RosterResult.Failed(persona.name() + " can't carry that much.");
+            }
+        }
+        String where = bot != null ? "carried" : "stored";
+        world.store().event(owner.getId(), persona.id(), "roster.coin", amount + " meso, " + where);
+        log.info("{} gives companion {} {} meso ({})", owner.getName(), persona.id(), amount, where);
+        List<String> lines = world.arcs().lines(persona, "coin");
+        world.residents().reply(persona, owner, lines.isEmpty() ? COIN_THANKS
+                : lines.get(Math.floorMod(owner.getId(), lines.size())));
+        return new RosterResult.Ok(String.format(Locale.ROOT, "You give %s %,d meso.", persona.name(), amount));
     }
 
     // ---- gear and trade -----------------------------------------------------------------------
@@ -550,6 +695,11 @@ public final class CompanionManager {
      * names added to {@code names}.
      */
     private List<AgentRuntimeEntry> crew(Character owner, boolean sameMap, List<String> names) {
+        return crew(owner, sameMap, names, new ArrayList<>());
+    }
+
+    /** {@link #crew(Character, boolean, List)}, their personas added to {@code personas}. */
+    private List<AgentRuntimeEntry> crew(Character owner, boolean sameMap, List<String> names, List<Persona> personas) {
         List<AgentRuntimeEntry> crew = new ArrayList<>();
         for (RosterEntry entry : world.roster().roster(owner)) {
             Persona persona = world.content().persona(entry.personaId());
@@ -557,9 +707,26 @@ public final class CompanionManager {
             if (out != null && out.refusal() == null && (!sameMap || out.bot().getMap() == owner.getMap())) {
                 crew.add(out.runtime());
                 names.add(persona.name());
+                personas.add(persona);
             }
         }
         return crew;
+    }
+
+    /** The formation {@link #FORMATIONS} offers by this token, or null. */
+    static Formation formation(String token) {
+        return FORMATIONS.stream().filter(known -> known.token().equals(token)).findFirst().orElse(null);
+    }
+
+    /**
+     * Changes one companion's settings: in memory (the Agent seams answer from them at once) and in settings_json,
+     * logged as companion.settings.
+     */
+    private void update(Character owner, Persona persona, UnaryOperator<CompanionSettings> change) {
+        CompanionSettingsApplier applier = world.roster().settings();
+        CompanionSettings next = change.apply(applier.settings(owner.getId(), persona.id()));
+        applier.save(owner.getId(), persona.id(), next);
+        world.store().event(owner.getId(), persona.id(), "companion.settings", next.toJson());
     }
 
     private static List<String> personaNames(List<Persona> personas) {

@@ -24,7 +24,8 @@ import static org.mockito.Mockito.when;
  * An in-memory {@code living_roster}, haul, persona state and event log behind a mocked {@link LivingStore}, with the
  * same write semantics as the SQL: saveRoster is an upsert, saveRosterProgress an UPDATE that keeps the row's state,
  * recruited_at, lineup slot and eta/hold/park columns, saveLineupSlot sets or clears the lineup slot, and removeHaul never goes below zero. Everything else the store does answers the
- * Mockito default.
+ * Mockito default. saveSettings keeps a row's settings_json only while the row exists (an UPDATE), and
+ * addCharacterMeso adds to {@link #purses} only for a character it has a purse for, and never past the limit.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -39,6 +40,10 @@ final class FakeLivingStore {
     final Map<String, PersonaState> personaStates = new HashMap<>();
     /** owner:persona -> lineup_slot (the usual lineup), as saveLineupSlot keeps it. */
     final Map<String, Integer> lineup = new HashMap<>();
+    /** owner:persona -> settings_json, as saveSettings keeps it. */
+    final Map<String, String> settings = new HashMap<>();
+    /** Character id -> meso in its characters row (a test seeds the purses it wants). */
+    final Map<Integer, Integer> purses = new HashMap<>();
     final LivingStore store = mock(LivingStore.class);
 
     FakeLivingStore() {
@@ -71,6 +76,23 @@ final class FakeLivingStore {
             }
             return null;
         }).when(store).saveLineupSlot(anyInt(), anyString(), any());
+        when(store.settings(anyInt(), anyString())).thenAnswer(inv -> rows.containsKey(key(inv.getArgument(0), inv.getArgument(1)))
+                ? settings.get(key(inv.getArgument(0), inv.getArgument(1))) : null);
+        doAnswer(inv -> {
+            if (rows.containsKey(key(inv.getArgument(0), inv.getArgument(1)))) {
+                settings.put(key(inv.getArgument(0), inv.getArgument(1)), inv.getArgument(2));
+            }
+            return null;
+        }).when(store).saveSettings(anyInt(), anyString(), any());
+        when(store.addCharacterMeso(anyInt(), anyInt())).thenAnswer(inv -> {
+            Integer purse = purses.get((int) inv.getArgument(0));
+            int meso = inv.getArgument(1);
+            if (purse == null || (long) purse + meso > Integer.MAX_VALUE) {
+                return false;
+            }
+            purses.put(inv.getArgument(0), purse + meso);
+            return true;
+        });
         doAnswer(inv -> {
             RosterEntry entry = asStored(inv.getArgument(0));
             rows.put(key(entry.characterId(), entry.personaId()), entry);

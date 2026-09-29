@@ -119,6 +119,8 @@ public final class RosterService {
     private final Set<Integer> releasedAfterRun = ConcurrentHashMap.newKeySet();
     private final CompanionChannelFollow channelFollow;
     private final InstanceLogoutHandoff handoff;
+    /** Each companion's own settings (P3b), applied on every path below that loads or seats it. */
+    private final CompanionSettingsApplier settings;
     /** What a released hire does besides leaving the roster; nothing until HiredHands installs it (P4). */
     private volatile HiredHandRelease hiredHandRelease = (ownerId, personaId, reason) -> { };
 
@@ -126,6 +128,7 @@ public final class RosterService {
         this.world = world;
         this.channelFollow = new CompanionChannelFollow(world, this);
         this.handoff = new InstanceLogoutHandoff(world, this);
+        this.settings = new CompanionSettingsApplier(world, this);
         Commitments commitments = world.commitments();
         if (commitments != null) {
             commitments.addListener(handoff::commitmentEnded); // a companion that finished a run for a friend parks
@@ -152,6 +155,11 @@ public final class RosterService {
                 world.slots().reserve(entry.characterId(), entry.personaId(), CompanionSlots.Kind.HOLD, Long.MAX_VALUE);
             }
         }
+    }
+
+    /** The companions' own settings (P3b): the Agent seams' answers, and the Fighting style and Supplies screens'. */
+    public CompanionSettingsApplier settings() {
+        return settings;
     }
 
     /** True when the player has recruited anyone (grants companion-command authority). */
@@ -697,6 +705,7 @@ public final class RosterService {
         }
         world.bench().applyAccrued(current(entry), result.agent()); // as a call that seats it at once
         ownerByPersona.put(persona.id(), owner.getId());
+        settings.apply(owner, persona, result.agent());
         return onItsWay(owner, persona, entry, fromMapId, etaMs, quiet);
     }
 
@@ -787,6 +796,7 @@ public final class RosterService {
         }
         walkToOwner(persona, bot);
         write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()));
+        settings.apply(owner, persona, bot); // her settings are re-applied (plan flow 1, step 5)
         world.store().event(ownerId, persona.id(), "roster.arrive", "map " + owner.getMapId());
         List<String> lines = world.arcs().lines(persona, "join");
         world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(ownerId, lines.size())));
@@ -916,6 +926,7 @@ public final class RosterService {
         RosterEntry active = current(entry).with(RosterState.ACTIVE, System.currentTimeMillis());
         write(active);
         ownerByPersona.put(persona.id(), owner.getId());
+        settings.apply(owner, persona, result.agent());
         world.store().event(owner.getId(), persona.id(), "roster.call", null);
         if (!quiet) {
             List<String> lines = world.arcs().lines(persona, "join");
@@ -1337,6 +1348,7 @@ public final class RosterService {
         RosterResult benchedOut = standDown(owner, out, null, "roster.bench"); // it says so and walks out to its duty
         world.bench().applyAccrued(current(coming), inBot);
         ownerByPersona.put(in.id(), owner.getId());
+        settings.apply(owner, in, inBot);
         RosterResult called;
         if (eta > 0L) {
             called = onItsWay(owner, in, coming, campMap, eta);
@@ -2181,6 +2193,7 @@ public final class RosterService {
                 world.slots().release(persona.id(), CompanionSlots.Kind.TRAVEL); // a member again, or the fallback's to seat
             }
         }
+        settings.apply(owner, persona, moved);
         if (!travelling) {
             walkToOwner(persona, moved);
         } else if (entry.etaAtMs() <= System.currentTimeMillis()) {
@@ -2327,6 +2340,7 @@ public final class RosterService {
             return benched;
         }
         world.slots().release(persona.id()); // a member now
+        settings.apply(owner, persona, bot);
         world.store().event(owner.getId(), persona.id(), "companion.rejoin", "from map " + bot.getMapId());
         if (bot.getMap() != owner.getMap()) {
             return onItsWay(owner, persona, entry, bot.getMapId(), recallEtaMs(bot.getMapId(), owner.getMapId()));
@@ -2394,7 +2408,9 @@ public final class RosterService {
                 && owner.getClient() != null && bot.getClient().getChannel() == owner.getClient().getChannel()
                 && AgentRuntimeRegistry.leaderIdForAgentCharacter(bot.getId()) == owner.getId()
                 && !sameParty(owner, bot) && canSeat(owner, entry)) {
-            rejoin(owner, entry, bot);
+            if (rejoin(owner, entry, bot)) {
+                settings.apply(owner, persona, bot);
+            }
             return;
         }
         despawn(entry, "audit: reseat");

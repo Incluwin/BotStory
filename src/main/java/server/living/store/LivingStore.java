@@ -631,6 +631,53 @@ public final class LivingStore {
         }
     }
 
+    /** One companion's settings_json (P3b), or null when it has none or there is no such row. Never reads its state. */
+    public String settings(int characterId, String personaId) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT settings_json FROM living_roster WHERE character_id = ? AND persona_id = ?")) {
+            ps.setInt(1, characterId);
+            ps.setString(2, personaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        } catch (SQLException failure) {
+            log.warn("living_roster settings read failed for {}/{}", characterId, personaId, failure);
+        }
+        return null;
+    }
+
+    /** Saves one companion's settings_json: an UPDATE that never touches its state (a row that is gone stays gone). */
+    public void saveSettings(int characterId, String personaId, String json) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE living_roster SET settings_json = ? WHERE character_id = ? AND persona_id = ?")) {
+            ps.setString(1, json);
+            ps.setInt(2, characterId);
+            ps.setString(3, personaId);
+            ps.executeUpdate();
+        } catch (SQLException failure) {
+            log.warn("living_roster settings write failed for {}/{}", characterId, personaId, failure);
+        }
+    }
+
+    /**
+     * Adds {@code meso} to the purse of a character nothing has loaded (a benched companion's), as its next load reads
+     * it. False when there is no such character or the purse would go past its limit. A loaded character saves its own
+     * purse over this, so it is only for one that is not loaded.
+     */
+    public boolean addCharacterMeso(int characterId, int meso) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE characters SET meso = meso + ? WHERE id = ? AND meso + ? <= ?")) {
+            ps.setInt(1, meso);
+            ps.setInt(2, characterId);
+            ps.setLong(3, meso);
+            ps.setLong(4, Integer.MAX_VALUE);
+            return ps.executeUpdate() == 1;
+        } catch (SQLException failure) {
+            log.warn("meso write failed for character {}", characterId, failure);
+        }
+        return false;
+    }
+
     public void deleteRoster(int characterId, String personaId) {
         try (Connection con = DatabaseConnection.getConnection();
              PreparedStatement ps = con.prepareStatement("DELETE FROM living_roster WHERE character_id = ? AND persona_id = ?")) {
