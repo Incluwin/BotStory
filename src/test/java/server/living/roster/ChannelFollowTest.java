@@ -11,6 +11,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -124,6 +125,24 @@ class ChannelFollowTest {
         assertEquals(RosterState.ACTIVE, game.row(hadrik).state());
         assertEquals(2, game.store.events("companion.channel_follow").size());
         assertFalse(game.roster().inFlight(ANN, "hadrik"));
+    }
+
+    @Test
+    void oneWhoseUnloadTookItOffThePartyListStillRejoinsOnItsSeatInTheFirstMove() {
+        game.unloadDropsRow = true; // seen live: the log-off on the old channel took it off the list, not offline
+        changeChannel(2);
+
+        moves().forEach(timer -> timer.task().run());
+
+        String portal = HENESYS_FIELD + " " + portalX(HENESYS_FIELD) + ",200";
+        assertEquals(List.of("remove Hadrik", "spawn Hadrik at " + portal, "join Hadrik", "follow Hadrik",
+                "remove Jinx", "spawn Jinx at " + portal, "join Jinx", "follow Jinx"), game.calls,
+                "each joins again on a seat held for the move, not left to the 30 s fallback");
+        assertEquals(List.of(ANN, 901, 902), game.members);
+        assertEquals(2, game.companionChannel(hadrik));
+        assertEquals(2, game.companionChannel(jinx));
+        assertNull(game.slots.reservation("hadrik"), "a member again: the seat held for the move went with the join");
+        assertEquals(2, game.store.events("companion.channel_follow").size());
     }
 
     @Test

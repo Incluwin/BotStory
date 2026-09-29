@@ -102,6 +102,10 @@ final class LifecycleHarness implements AutoCloseable {
     final Party party = mock(Party.class);
     /** Loaded characters the party still lists whose own Character has no party yet (an Agent load restores none). */
     final Set<Integer> partyless = new HashSet<>();
+    /** Character id -> persona id of each companion, for the seat gate below. */
+    final Map<Integer, String> personaOfBot = new HashMap<>();
+    /** Live: unloading a companion can take it off the party list (seen on a channel change), not leave it offline. */
+    boolean unloadDropsRow;
     final List<Integer> members = new ArrayList<>();
     final Map<String, Persona> personas = new LinkedHashMap<>();
     final Map<Integer, Character> bots = new LinkedHashMap<>();
@@ -181,6 +185,9 @@ final class LifecycleHarness implements AutoCloseable {
             int id = inv.getArgument(0);
             if (loaded.remove(id)) {
                 calls.add("remove " + bots.get(id).getName());
+                if (unloadDropsRow) {
+                    members.remove((Integer) id);
+                }
             }
             return null;
         });
@@ -199,6 +206,11 @@ final class LifecycleHarness implements AutoCloseable {
                     return JoinOutcome.FAILED;
                 }
                 return JoinOutcome.ALREADY_MEMBER;
+            }
+            String seatKey = personaOfBot.get(bot.getId());
+            if (nextJoin == null && seatKey != null && slots.reservation(seatKey) == null) {
+                calls.add("join " + bot.getName() + " unseated"); // the Party.joinParty seat gate refuses it
+                return JoinOutcome.FAILED;
             }
             JoinOutcome outcome = nextJoin != null ? nextJoin : members.size() >= CompanionSlots.PARTY_CAP
                     ? JoinOutcome.PARTY_FULL : JoinOutcome.JOINED;
@@ -262,6 +274,7 @@ final class LifecycleHarness implements AutoCloseable {
                 "relaxed-v1", null, "lith-harbor", List.of(), false, null, List.of(), null, List.of(), List.of(), Map.of(),
                 -1, -1, -1, List.of(), 0, Look.NONE, "test");
         personas.put(id, persona);
+        personaOfBot.put(characterId, id);
         Character bot = mock(Character.class);
         when(bot.getId()).thenReturn(characterId);
         when(bot.getName()).thenReturn(name);

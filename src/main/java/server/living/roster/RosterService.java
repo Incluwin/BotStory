@@ -2058,6 +2058,9 @@ public final class RosterService {
         }
         int characterId = bot.getId();
         Character moved;
+        // its log-off can take its row off the party list (seen live), so a seat is held for the join; none is free
+        // at 6/6, where its row, still listed, is its seat
+        boolean seatHeld = holdSeat(owner, persona) != null;
         try (PartyEvents.Scope cause = CauseScope.open(CAUSE)) {
             unload(entry, "follows its owner to another channel", false);
             world.leases().tryAcquire(characterId, CompanionLeases.Kind.COMPANION, owner.getId());
@@ -2073,6 +2076,10 @@ public final class RosterService {
             if (!joinedOk(joined)) {
                 despawn(entry, "channel follow join " + joined);
                 return false;
+            }
+        } finally {
+            if (seatHeld) {
+                world.slots().release(persona.id(), CompanionSlots.Kind.TRAVEL); // a member again, or the fallback's to seat
             }
         }
         if (!travelling) {
