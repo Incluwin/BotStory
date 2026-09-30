@@ -237,6 +237,31 @@ class StageOnePaceTest {
     }
 
     @Test
+    void aSecondHumanKeepingItsPassDoesNotHoldBackTheLeadersCue() {
+        Character ben = at(run.human(1, "Ben"), 0, 0);
+        Character ann = at(run.human(2, "Ann"), 400, 0);
+        Character mira = at(run.companion(3, "Mira"), 10, 0);
+        Character pip = at(run.companion(4, "Pip"), 20, 0);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, ann, mira, pip);
+        session.setMemberCoordinationChatEnabled(false);
+        holdingPass(session, mira);
+        holdingPass(session, pip);
+        // Ann traded her coupons, which releases the companions' passes, but she keeps her own pass in her bag.
+        when(run.event.gridCheck(ann)).thenReturn(0);
+        when(ann.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false)).thenReturn(1);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        List<MapItem> passes = List.of(pass(21), pass(22));
+        when(run.map.getDroppedItems()).thenReturn(passes);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+        // Their passes expire where they lie while Ben waits on Ann: he hears about them now.
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASSES_AT_FEET)), times(1));
+    }
+
+    @Test
     void anAgentRunForAHumanWithChatOffStillHearsEachPassDrop() {
         Character ben = at(run.human(1, "Ben"), 0, 0);
         Character mira = at(run.companion(2, "Mira"), 10, 0);

@@ -528,7 +528,8 @@ final class AgentKpqCoordinator {
         int leaderPasses = leader.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
         reportLeaderPassProgress(session, narrator, leaderState, leaderPasses, needed);
         int floorPassQuantity = passQuantityOnGround(floorPasses);
-        if (passesAtFeetLine && allDelivered && floorPassQuantity > 0) {
+        // Only the companions' drops: a second human may keep its pass for minutes while theirs lie there expiring.
+        if (passesAtFeetLine && companionPassesDelivered(session) && floorPassQuantity > 0) {
             narrate(session, narrator != null ? narrator : firstStandingAgent(session), "stage1-passes-at-feet",
                     leader.getName() + ", the passes are at your feet. pick them up and talk to Cloto.");
         }
@@ -2628,6 +2629,15 @@ final class AgentKpqCoordinator {
         if (!couponSweepCollectorEligible(session, eventAnchor, characterId)) return null;
         Character collector = memberCharacter(characterId, eventAnchor);
         return collector == null || collector.getPosition() == null ? null : collector;
+    }
+
+    /** Every Agent but the leader has dropped its pass; a human's own pass is its own to hand over. */
+    private static boolean companionPassesDelivered(AgentKpqSession session) {
+        List<AgentKpqMemberState> companions = session.members().stream()
+                .filter(member -> member.memberType() == AgentKpqMemberState.MemberType.AGENT)
+                .filter(member -> member.characterId() != session.eventLeaderId())
+                .toList();
+        return !companions.isEmpty() && companions.stream().allMatch(AgentKpqMemberState::passDelivered);
     }
 
     private static boolean everyNonLeaderPassCreated(AgentKpqSession session) {
