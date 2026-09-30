@@ -1782,10 +1782,15 @@ final class AgentKpqCoordinator {
     static MemberVerdict memberVerdict(MemberFacts facts) {
         boolean human = facts.type() == AgentKpqMemberState.MemberType.HUMAN;
         if (!facts.present()) {
-            // Only an uncleared stage needs the three: after the clear the rewards and exit already let a missing
-            // member go, and before entry a changed party fails preparation anyway.
-            return facts.adopted() && human && !facts.eventLeader() && insideEventPhase(facts.phase())
-                    && !facts.cleared() ? MemberVerdict.DROP_HUMAN : MemberVerdict.MISSING;
+            if (!facts.adopted() || !human || facts.eventLeader()) return MemberVerdict.MISSING;
+            // Only an uncleared stage needs the three. After the clear the rewards forfeit an absent member's share
+            // and the exit counts it as outside, so its 45 s clock only failed the run under a leader on the bonus
+            // map, which has no timer. Before entry a changed party fails preparation anyway.
+            if (facts.cleared() || facts.phase() == AgentKpqSession.Phase.CLAIMING_REWARDS
+                    || facts.phase() == AgentKpqSession.Phase.EXITING) {
+                return MemberVerdict.IGNORE;
+            }
+            return insideEventPhase(facts.phase()) ? MemberVerdict.DROP_HUMAN : MemberVerdict.MISSING;
         }
         if (!facts.adopted() || facts.eventLeader()) {
             return facts.hp() <= 0 ? MemberVerdict.DEFEATED : MemberVerdict.OK;

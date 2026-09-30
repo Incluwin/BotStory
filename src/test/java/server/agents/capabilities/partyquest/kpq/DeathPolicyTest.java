@@ -93,13 +93,23 @@ class DeathPolicyTest {
     @Test
     void anOfflineHumanIsDroppedOnlyFromAnUnclearedStage() {
         assertEquals(DROP_HUMAN, human().absent().verdict());
-        // After the clear, and before entry, the stock clock applies: a drop there would fail a cleared
-        // three-member run whose second human logged out on the bonus map.
-        assertEquals(MISSING, human().phase(AgentKpqSession.Phase.STAGE_5).cleared().absent().verdict());
+        // After the clear a drop would fail a cleared three-member run whose second human logged out on the bonus
+        // map, and the stock 45 s clock failed it too, under a leader still hunting there: the run lets it go.
+        assertEquals(IGNORE, human().phase(AgentKpqSession.Phase.STAGE_5).cleared().absent().verdict());
+        assertEquals(IGNORE, human().phase(AgentKpqSession.Phase.CLAIMING_REWARDS).absent().verdict());
+        assertEquals(IGNORE, human().phase(AgentKpqSession.Phase.EXITING).absent().verdict());
+        // Before entry a changed party fails preparation, as stock.
+        assertEquals(MISSING, human().phase(AgentKpqSession.Phase.PREPARING).absent().verdict());
+        assertEquals(MISSING, human().phase(AgentKpqSession.Phase.ENTERING).absent().verdict());
+    }
+
+    @Test
+    void anAbsentMemberAfterTheClearStillCountsOutsideACompanionRunOrForTheLeader() {
         for (AgentKpqSession.Phase phase : new AgentKpqSession.Phase[]{
-                AgentKpqSession.Phase.CLAIMING_REWARDS, AgentKpqSession.Phase.EXITING,
-                AgentKpqSession.Phase.PREPARING, AgentKpqSession.Phase.ENTERING}) {
-            assertEquals(MISSING, human().phase(phase).absent().verdict());
+                AgentKpqSession.Phase.CLAIMING_REWARDS, AgentKpqSession.Phase.EXITING}) {
+            assertEquals(MISSING, human().notAdopted().phase(phase).absent().verdict());
+            assertEquals(MISSING, human().eventLeader().phase(phase).absent().verdict());
+            assertEquals(MISSING, companion().phase(phase).absent().verdict());
         }
     }
 

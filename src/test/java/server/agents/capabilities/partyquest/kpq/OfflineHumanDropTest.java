@@ -8,10 +8,13 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -106,6 +109,26 @@ class OfflineHumanDropTest {
         assertEquals(AgentKpqSession.Phase.EXITING, session.phase());
         assertEquals(3, session.memberCount());
         assertEquals(AgentKpqMemberState.RewardState.FORFEITED, session.member(2).rewardState());
+    }
+
+    @Test
+    void aHumanOfflineAfterTheClearNeverFailsTheRunWhileTheLeaderHuntsTheBonusMap() {
+        // The bonus map has no timer: Ben can hunt long past Ann's 45 s, and the exit waits for him.
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.CLAIMING_REWARDS, ben, ann, mira);
+        when(ben.getMapId()).thenReturn(AgentKpqDefinition.BONUS_MAP);
+        when(mira.getMapId()).thenReturn(AgentKpqDefinition.BONUS_MAP);
+        run.offline(ann);
+        AgentKpqCoordinator.tick(session, 2_000L);
+        assertEquals(AgentKpqSession.Phase.EXITING, session.phase());
+        run.outside(mira, AgentKpqDefinition.EXIT_MAP);
+
+        for (long now = 3_000L; now <= 3_000L + 3 * TIMEOUT_MS; now += 5_000L) {
+            AgentKpqCoordinator.tick(session, now);
+        }
+
+        assertEquals(AgentKpqSession.Phase.EXITING, session.phase());
+        verify(run.event, never()).dispose();
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), contains("disconnected")), never());
     }
 
     @Test
