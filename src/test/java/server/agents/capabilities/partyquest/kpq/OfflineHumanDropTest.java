@@ -94,6 +94,21 @@ class OfflineHumanDropTest {
     }
 
     @Test
+    void aHumanLoggingOutAfterTheClearLeavesTheRewardsToTheOthers() {
+        // Dropping Ann here would leave two and fail a cleared run under the leader claiming his reward.
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.CLAIMING_REWARDS, ben, ann, mira);
+        when(ben.getMapId()).thenReturn(AgentKpqDefinition.BONUS_MAP);
+        when(mira.getMapId()).thenReturn(AgentKpqDefinition.BONUS_MAP);
+        run.offline(ann);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(AgentKpqSession.Phase.EXITING, session.phase());
+        assertEquals(3, session.memberCount());
+        assertEquals(AgentKpqMemberState.RewardState.FORFEITED, session.member(2).rewardState());
+    }
+
+    @Test
     void whenTheWholeEventEndedNobodyIsDroppedAndTheRealReasonFails() {
         // end(eim) sent everyone out: the leader too, so it is the event that ended, not Ann who left.
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_2, ben, ann, mira, pip);

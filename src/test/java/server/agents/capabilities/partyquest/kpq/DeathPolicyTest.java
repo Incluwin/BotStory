@@ -91,6 +91,19 @@ class DeathPolicyTest {
     }
 
     @Test
+    void anOfflineHumanIsDroppedOnlyFromAnUnclearedStage() {
+        assertEquals(DROP_HUMAN, human().absent().verdict());
+        // After the clear, and before entry, the stock clock applies: a drop there would fail a cleared
+        // three-member run whose second human logged out on the bonus map.
+        assertEquals(MISSING, human().phase(AgentKpqSession.Phase.STAGE_5).cleared().absent().verdict());
+        for (AgentKpqSession.Phase phase : new AgentKpqSession.Phase[]{
+                AgentKpqSession.Phase.CLAIMING_REWARDS, AgentKpqSession.Phase.EXITING,
+                AgentKpqSession.Phase.PREPARING, AgentKpqSession.Phase.ENTERING}) {
+            assertEquals(MISSING, human().phase(phase).absent().verdict());
+        }
+    }
+
+    @Test
     void outsideACompanionRunAnyDeathStillFailsIt() {
         assertEquals(DEFEATED, companion().notAdopted().hp(0).verdict());
         assertEquals(DEFEATED, human().notAdopted().hp(0).verdict());

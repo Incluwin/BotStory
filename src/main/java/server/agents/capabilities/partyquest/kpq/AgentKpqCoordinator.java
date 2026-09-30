@@ -1766,8 +1766,10 @@ final class AgentKpqCoordinator {
     static MemberVerdict memberVerdict(MemberFacts facts) {
         boolean human = facts.type() == AgentKpqMemberState.MemberType.HUMAN;
         if (!facts.present()) {
-            return facts.adopted() && human && !facts.eventLeader()
-                    ? MemberVerdict.DROP_HUMAN : MemberVerdict.MISSING;
+            // Only an uncleared stage needs the three: after the clear the rewards and exit already let a missing
+            // member go, and before entry a changed party fails preparation anyway.
+            return facts.adopted() && human && !facts.eventLeader() && insideEventPhase(facts.phase())
+                    && !facts.cleared() ? MemberVerdict.DROP_HUMAN : MemberVerdict.MISSING;
         }
         if (!facts.adopted() || facts.eventLeader()) {
             return facts.hp() <= 0 ? MemberVerdict.DEFEATED : MemberVerdict.OK;
@@ -1797,7 +1799,7 @@ final class AgentKpqCoordinator {
         return MemberVerdict.DOWN_WAIT;
     }
 
-    /** A companion run carries on without a non-leader human who went offline or left the instance. */
+    /** Mid-stage, a companion run carries on without a non-leader human who went offline or left the instance. */
     private static void dropHuman(AgentKpqSession session,
                                   AgentKpqMemberState member,
                                   Character character,
