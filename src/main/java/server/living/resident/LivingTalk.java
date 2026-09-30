@@ -137,6 +137,47 @@ public final class LivingTalk {
         return client != null && (liveTalk(chr) != null || scriptAwaitsReply(client));
     }
 
+    /**
+     * A stock NPC script hands the player's click to a living-world screen (the Lakelis hook in 9020000.js): on the
+     * player's own I/O thread, with no window awaiting a reply, {@code screen} runs as the answer to that click, so the
+     * 500 ms throttle the click itself just stamped does not refuse its window. Afterwards exactly one window is on
+     * screen, or none and the client's actions are back (the script's conversation disposed); never a second
+     * NPC_TALK. False, with nothing sent, when the click cannot be answered here: the script goes on as stock.
+     */
+    public static boolean answerScriptClick(Character chr, Runnable screen) {
+        Client client = chr == null ? null : chr.getClient();
+        if (client == null || !client.onIoThread()) {
+            return false;
+        }
+        Integer outer = ANSWERING.get();
+        ANSWERING.set(chr.getId());
+        try {
+            if (!mayShow(chr)) {
+                return false; // a window awaits its reply
+            }
+            try {
+                screen.run();
+            } catch (RuntimeException failure) {
+                log.warn("living talk for {} could not answer a script click", chr.getName(), failure);
+            }
+            if (liveTalk(chr) == null) {
+                NPCConversationManager script = client.getCM();
+                if (script == null) {
+                    client.sendPacket(PacketCreator.enableActions());
+                } else if (!script.awaitingReply()) {
+                    script.dispose(); // which re-enables the client's actions
+                }
+            }
+            return true;
+        } finally {
+            if (outer == null) {
+                ANSWERING.remove();
+            } else {
+                ANSWERING.set(outer);
+            }
+        }
+    }
+
     /** The player's talk whose window is still on screen; a stale one (see the class notes) is dropped. */
     private static LivingTalk liveTalk(Character player) {
         LivingTalk talk = OPEN.get(player.getId());

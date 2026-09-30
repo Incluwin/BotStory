@@ -84,6 +84,7 @@ public final class LivingWorld {
     private final PhraseMatcher phrases;
     private final server.living.roster.CrewRotation crewRotation;
     private final server.living.roster.BenchCombatLearning benchCombatLearning;
+    private final server.living.roster.CompanionPartyQuestService partyQuests;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -128,6 +129,7 @@ public final class LivingWorld {
         this.phrases = new PhraseMatcher(this);
         this.crewRotation = new server.living.roster.CrewRotation(this); // "Keep my crew fresh" (P5, decision 15 b)
         this.benchCombatLearning = new server.living.roster.BenchCombatLearning(this); // decision 13 a
+        this.partyQuests = new server.living.roster.CompanionPartyQuestService(this); // P6: party quests with companions
     }
 
     public static LivingWorld get() {
@@ -441,6 +443,11 @@ public final class LivingWorld {
     /** "Keep my crew fresh" (P5, decision 15 b): each owner's opt-in and the swaps it makes. */
     public server.living.roster.CrewRotation crewRotation() {
         return crewRotation;
+    }
+
+    /** P6: party quests with companions, which start at the quest's entry NPC (Lakelis). */
+    public server.living.roster.CompanionPartyQuestService partyQuests() {
+        return partyQuests;
     }
 
     public ResidentRuntime residents() {

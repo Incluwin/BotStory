@@ -858,6 +858,11 @@ living_world:
     AUTO_ROTATE_TICK_MS: 30000
     AUTO_ROTATE_COOLDOWN_MS: 600000
     AUTO_ROTATE_LEVEL_GAP: 10
+    # Party quests with companions (P6): the entry NPC of each listed party quest (a comma list; only "kpq", Lakelis,
+    # so far) offers a party leader with companions in their party a lineup to take in; empty = off, the NPC is stock.
+    # GUIDANCE: such a run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does.
+    COMPANION_PQ_ENABLED_KEYS: ""
+    COMPANION_PQ_GUIDANCE: true
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 
