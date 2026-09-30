@@ -75,6 +75,8 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
      * Its commitment stays (an unload of a session member fails the run). Refused only for a session or character no
      * companion run holds: never for the stage-5 clear, which the coordinator reads on its own tick while a human's
      * Cloto click can set it meanwhile, and a refusal there fails the cleared run (it asks nobody once it sees it).
+     * One whose hold runs after the clear was still in the party for it, as it would have stayed had the coordinator
+     * seen the clear first: its record counts the clear, not a tap-out.
      */
     @Override
     public boolean tapOut(AgentPartyQuestHandback.TapOut request) {
@@ -88,7 +90,9 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
         run.tappingOut.add(id);
         world.executor().submit("pq.tap_out " + id, () -> {
             world.roster().waitOutside(ownerId, persona, request.mapId(), HoldNote.party(tapOutLine(persona, ownerId)));
-            run.tappedOut.add(id);
+            if (!run.cleared) {
+                run.tappedOut.add(id);
+            }
         });
         return true;
     }

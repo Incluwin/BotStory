@@ -33,7 +33,7 @@ final class CompanionRun {
     volatile boolean cleared;
     /** Companions asked to tap out, marked before their hold runs: recovery asks the handback meanwhile. */
     final Set<Integer> tappingOut = ConcurrentHashMap.newKeySet();
-    /** Companions whose tap-out hold ran. */
+    /** Companions whose tap-out hold ran before the stage-5 clear: their records count it tapped out. */
     final Set<Integer> tappedOut = ConcurrentHashMap.newKeySet();
     /** Deaths inside the run, per member. */
     final Map<Integer, Integer> deaths = new ConcurrentHashMap<>();

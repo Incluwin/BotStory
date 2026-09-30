@@ -29,7 +29,8 @@ import static server.living.roster.LifecycleHarness.ANN;
 /**
  * The companions' KPQ records (P6, companion_performance): as a run that got in ends, each lineup companion gets a
  * row (tapped out, else cleared or failed with the run; its deaths in the run, the party's size, how long it took),
- * and its record grows by it once the row is written. A run that never got in writes nothing. The records are read
+ * and its record grows by it once the row is written. A tap-out whose hold runs after the clear, the coordinator
+ * having asked before it saw it, counts the clear. A run that never got in writes nothing. The records are read
  * once, on companion-ops at boot; a failed read leaves them empty, and a failed write leaves a record as it was.
  */
 class CompanionRunRecorderTest {
@@ -73,6 +74,39 @@ class CompanionRunRecorderTest {
         assertTrue(rows.stream().allMatch(row -> row.ownerCharacterId() == ANN));
         assertEquals(new CompanionRunStats(1, 1), records.stats(900));
         assertEquals(new CompanionRunStats(1, 0), records.stats(901));
+    }
+
+    @Test
+    void aTapOutThatRacesTheClearCountsTheClear() {
+        CompanionRun run = fx.yes();
+        game.annEntersInstance(103000802);
+        game.bot(tobi).changeMap(game.map(CompanionPqFixture.EXIT), new Point(100, 200));
+        // Ann's Cloto click clears stage 5 after the coordinator read the clear for this tick
+        fx.service.cleared(List.of(game.ann));
+        fx.lifecycle.tapOut(new TapOut("kpq", run.sessionId, 901, CompanionPqFixture.EXIT, 3_000L));
+
+        fx.sessionEnds(true);
+
+        assertEquals(List.of("901 tobi kpq cleared, deaths 0, party 4"), game.store.performance.stream()
+                .filter(row -> row.companionCharacterId() == 901).map(CompanionRunRecorderTest::line).toList());
+        assertEquals(new CompanionRunStats(1, 1), records.stats(901));
+    }
+
+    @Test
+    void aTapOutWhoseHoldRunsAfterTheClearCountsTheClear() {
+        CompanionRun run = fx.yes();
+        game.annEntersInstance(103000802);
+        game.bot(tobi).changeMap(game.map(CompanionPqFixture.EXIT), new Point(100, 200));
+        List<Runnable> ops = fx.holdCompanionOps();
+        fx.lifecycle.tapOut(new TapOut("kpq", run.sessionId, 901, CompanionPqFixture.EXIT, 3_000L));
+        fx.service.cleared(List.of(game.ann)); // while its hold waits on companion-ops, still in the party
+        CompanionPqFixture.drain(ops);
+
+        fx.sessionEnds(true);
+        CompanionPqFixture.drain(ops);
+
+        assertEquals(List.of("901 tobi kpq cleared, deaths 0, party 4"), game.store.performance.stream()
+                .filter(row -> row.companionCharacterId() == 901).map(CompanionRunRecorderTest::line).toList());
     }
 
     @Test
