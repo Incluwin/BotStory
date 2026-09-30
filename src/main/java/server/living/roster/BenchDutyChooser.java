@@ -20,7 +20,8 @@ import java.util.function.IntFunction;
  * far from its level, with a death risk for monsters above it): TRAIN on its EXP times its catch-up, FARM_MESO on its
  * meso after upkeep, both against the ledger's rate at its level, and cut by BENCH_CHOOSER_DEATH_COST per death an
  * hour. It picks by UCB: the score plus BENCH_CHOOSER_EXPLORE x sqrt(ln(1 + N) / (1 + n)), n the full slices measured at
- * the camp and N at all the candidates, so a camp nobody hunted yet gets its try and the best one is kept. The arm
+ * the camp and N at all the candidates, so a camp nobody hunted yet gets its try and the best one is kept; the bonus
+ * is only for an arm its duty's form would take live (the dispatcher's handler), the one way a camp is measured. The arm
  * statistics are companion_yield's rows (BenchYieldModel); nothing is kept here. With nothing worth doing it rests. The
  * companion says in one line what it picked and why ({@link #line}).
  */
@@ -83,6 +84,8 @@ public final class BenchDutyChooser {
         double baseMeso = Math.max(1e-9d, ledger.mesoPrior(botLevel));
         double explore = world.config().BENCH_CHOOSER_EXPLORE;
         double deathCost = world.config().BENCH_CHOOSER_DEATH_COST;
+        BenchDutyDispatcher bench = world.benchDuty();
+        int characterId = bench == null || entry == null ? 0 : world.residents().characterIdOf(persona.id());
 
         double total = 0.0d;
         for (Camp camp : candidates) {
@@ -100,12 +103,14 @@ public final class BenchDutyChooser {
             if (train) {
                 double exp = yields == null ? baseExp * fit : yields.expPerHour(key, baseExp * fit);
                 double value = catchUp * exp / baseExp;
-                arms.add(new Arm(Assignment.TRAIN, camp, value, value * survive, bonus, samples));
+                arms.add(new Arm(Assignment.TRAIN, camp, value, value * survive,
+                        goesLive(bench, entry, persona, characterId, Assignment.TRAIN, camp.mapId()) ? bonus : 0.0d, samples));
             }
             if (farm) {
                 double meso = yields == null ? baseMeso * fit : yields.mesoPerHour(key, baseMeso * fit);
                 double value = (meso - ledger.upkeepPerHour(botLevel, jobId, camp.mapId())) / baseMeso;
-                arms.add(new Arm(Assignment.FARM_MESO, camp, value, value * survive, bonus, samples));
+                arms.add(new Arm(Assignment.FARM_MESO, camp, value, value * survive,
+                        goesLive(bench, entry, persona, characterId, Assignment.FARM_MESO, camp.mapId()) ? bonus : 0.0d, samples));
             }
         }
         Arm picked = best(arms, true);
@@ -145,6 +150,24 @@ public final class BenchDutyChooser {
             }
         }
         return best;
+    }
+
+    /**
+     * True when the duty's form (the dispatcher's handler of it) would take the companion live at the camp now: only a
+     * live slice measures a camp, so an arm the ledger alone would keep (a close bond training nearer its owner than the
+     * field form's pace gap, a farmer at its owner's level) is picked on its score, never tried for its own sake. No
+     * dispatcher or no row (a test's world): as if live.
+     */
+    private static boolean goesLive(BenchDutyDispatcher bench, RosterEntry entry, Persona persona, int characterId,
+                                    Assignment duty, int campMapId) {
+        if (bench == null || entry == null) {
+            return true;
+        }
+        BenchDutyDispatcher.Form form = bench.form(duty);
+        return form != null && characterId != 0 && form.mapFor(new RosterEntry(entry.characterId(), entry.personaId(),
+                entry.state(), duty, 0, 0, campMapId, entry.accruedExp(), entry.haulMeso(), entry.wagesPaidUntilMs(),
+                entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay(),
+                entry.etaAtMs(), entry.holdMapId(), entry.parkedAtMs()), persona, characterId) != 0;
     }
 
     private static double samples(BenchYieldModel yields, BenchYieldModel.Key key) {

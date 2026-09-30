@@ -20,6 +20,7 @@ import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
+import server.living.roster.BenchStallForm;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionDirectory;
@@ -735,11 +736,31 @@ class CompanionCardScreensTest {
         assertTrue(lastTalk().text().contains("\r\nresting in Henesys\r\n"), lastTalk().text());
 
         assertEquals("selling the haul in FM room 12", CompanionCardScreens.liveLine(CompanionBudget.Kind.COMMERCE,
-                Assignment.SELL, 910000012, id -> "?"));
+                Assignment.SELL, 910000012, true, id -> "?"));
         assertEquals("stall open in the Free Market", CompanionCardScreens.liveLine(CompanionBudget.Kind.COMMERCE,
-                Assignment.STALL, 910000000, id -> "?"));
+                Assignment.STALL, 910000000, true, id -> "?"));
         assertEquals("(live)", CompanionCardScreens.liveLine(CompanionBudget.Kind.BENCH_LIVE, Assignment.GATHER, ANT_TUNNEL,
-                id -> "?"));
+                true, id -> "?"));
+    }
+
+    @Test
+    void aStallReadsOpenOnlyOnceItsFormHasTheShopOpen() {
+        BenchDutyDispatcher duty = dispatcher();
+        rows.add(miraRow);
+        BenchStallForm stalls = mock(BenchStallForm.class); // the STALL and SELL form LivingWorld registers (P5 duties)
+        when(duty.form(Assignment.STALL)).thenReturn(stalls);
+        BenchDutyDispatcher.Slice stall = slice(CompanionBudget.Kind.COMMERCE, Assignment.STALL, 910000003);
+        when(duty.slice("mira")).thenReturn(stall);
+
+        menus.card(owner, miraRow); // still walking to its spot in the room
+        assertTrue(lastTalk().text().contains("\r\nsetting up a stall in FM room 3\r\n"), lastTalk().text());
+        LivingTalk.forget(owner);
+
+        when(stalls.open("mira")).thenReturn(true);
+        menus.card(owner, miraRow);
+        assertTrue(lastTalk().text().contains("\r\nstall open in FM room 3\r\n"), lastTalk().text());
+        assertEquals("setting up a stall in FM room 12", CompanionCardScreens.liveLine(CompanionBudget.Kind.COMMERCE,
+                Assignment.SELL, 910000012, false, id -> "?"));
     }
 
     @Test

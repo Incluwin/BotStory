@@ -28,6 +28,7 @@ import server.living.resident.ResidentSpots;
 import server.living.roster.BenchDutyChooser;
 import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
+import server.living.roster.BenchStallForm;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionManager;
@@ -288,14 +289,25 @@ final class CompanionCardScreens {
         if (slice == null && resting != null && !resting.isEmpty()) {
             return "";
         }
-        return slice == null ? OUT_OF_SIGHT : liveLine(slice.pool(), slice.duty(), slice.mapId(), placeNames);
+        if (slice == null) {
+            return OUT_OF_SIGHT;
+        }
+        // a stall reads open only once its shop is (BenchStallForm): until then it walks to its spot and sets up
+        boolean open = !(bench.form(slice.duty()) instanceof BenchStallForm stall) || stall.open(entry.personaId());
+        return liveLine(slice.pool(), slice.duty(), slice.mapId(), open, placeNames);
     }
 
-    /** {@link #LIVE} for a field slice, "resting in Henesys" for a town one, "stall open in FM room 3" for a stall. */
-    static String liveLine(CompanionBudget.Kind pool, Assignment duty, int mapId, IntFunction<String> placeNames) {
+    /**
+     * {@link #LIVE} for a field slice, "resting in Henesys" for a town one, "stall open in FM room 3" for a stall whose
+     * shop is {@code open} ("setting up a stall in FM room 3" before that).
+     */
+    static String liveLine(CompanionBudget.Kind pool, Assignment duty, int mapId, boolean open, IntFunction<String> placeNames) {
         if (pool == CompanionBudget.Kind.COMMERCE) {
             String where = mapId == FieldCatalog.FM_ENTRANCE ? "the Free Market"
                     : FieldCatalog.isFreeMarket(mapId) ? "FM room " + (mapId - FieldCatalog.FM_ENTRANCE) : placeNames.apply(mapId);
+            if (!open) {
+                return "setting up a stall in " + where;
+            }
             return (duty == Assignment.SELL ? "selling the haul in " : "stall open in ") + where;
         }
         if (pool == CompanionBudget.Kind.BENCH_TOWN) {

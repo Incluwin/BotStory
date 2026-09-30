@@ -6,6 +6,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
 import server.living.config.Content.Persona;
+import server.living.store.LivingStore.Assignment;
+import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
 import java.util.ArrayList;
@@ -254,7 +256,35 @@ class CrewRotationTest {
         assertEquals(RosterState.TRAVELLING, game.row(mira).state());
     }
 
+    @Test
+    void theDutyFormsLivingWorldRegistersDecideWhoIsRested() {
+        // P5 duties: STALL and SELL are BenchStallForm's (COMMERCE, a real shop with the haul's stock in it: it closes
+        // only on its own), REST is BenchRestForm's (town presence, which ends cleanly when it is called)
+        rotation.setKeepFresh(game.ann, true);
+        noPotions.add(901);
+        BenchStallForm stall = new BenchStallForm(game.world);
+        for (Assignment duty : List.of(Assignment.STALL, Assignment.SELL)) {
+            when(bench.slice("mira")).thenReturn(new BenchDutyDispatcher.Slice(onDuty(game.row(mira), duty), 950, stall,
+                    910000001, now));
+            assertNull(rotation.check(game.ann, now), duty + ": never swapped in off its stall");
+        }
+        verify(bench, never()).endFor(anyString(), anyString());
+
+        when(bench.slice("mira")).thenReturn(new BenchDutyDispatcher.Slice(onDuty(game.row(mira), Assignment.REST), 950,
+                new BenchRestForm(game.world), LifecycleHarness.HENESYS, now));
+
+        assertTrue(rotation.check(game.ann, now).ok());
+        verify(bench).endFor("mira", "called by owner");
+        assertEquals(RosterState.TRAVELLING, game.row(mira).state());
+    }
+
     // ---- helpers -------------------------------------------------------------------------------
+
+    private static RosterEntry onDuty(RosterEntry row, Assignment duty) {
+        return new RosterEntry(row.characterId(), row.personaId(), row.state(), duty, 0, 0, row.campMapId(), row.accruedExp(),
+                row.haulMeso(), row.wagesPaidUntilMs(), row.recruitedAtMs(), row.benchedAtMs(), row.lastLedgerAtMs(),
+                row.farmSecondsToday(), row.farmDay());
+    }
 
     /** The companion is alive at {@code level}. */
     private void fit(Persona persona, int level) {

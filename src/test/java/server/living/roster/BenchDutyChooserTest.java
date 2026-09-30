@@ -5,9 +5,11 @@ import org.junit.jupiter.api.Test;
 import server.living.LivingWorld;
 import server.living.config.Content.BondStage;
 import server.living.config.Content.Persona;
+import server.living.resident.ResidentRuntime;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapleMap;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -21,6 +23,7 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -116,6 +119,38 @@ class BenchDutyChooserTest {
         hunt(105, 0.4d, 0.02d, 0, noise);
         assertEquals(102, chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 25, withNew).campMapId(),
                 "measured poor, it goes back to the best");
+    }
+
+    @Test
+    void aCampItsDutysFormWouldNotTakeItLiveAtIsNeverTriedForItsOwnSake() {
+        // Mira trusts Ann: the ledger trains her to one level under her owner, but the field form (BenchSessions, what
+        // LivingWorld's dispatcher runs TRAIN with) takes a trainee live only 3+ levels behind; only a live hunt measures
+        RosterEntry capped = new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, 101, 0L, 0L, 0L,
+                1_000L, 1_000L, 1_000L, config.BENCH_FARM_HOURS_PER_DAY * 3600 + 60, "2026-09-29"); // no farming today
+        for (int slice = 0; slice < 20; slice++) {
+            yields.record(key(101), sample(1.3d, 0.02d, 0));
+        }
+        List<BenchDutyChooser.Camp> camps = camps(List.of(101, 105));
+        assertEquals(BenchDutyChooser.Why.NEW_CAMP, chooser.choose(capped, mira, BondStage.TRUSTED, LEVEL, BOWMAN, 22, camps).why(),
+                "with no dispatcher (a test's world) every arm is tried as if live");
+        ResidentRuntime residents = mock(ResidentRuntime.class);
+        MapleMap field = mock(MapleMap.class); // every camp here is a field
+        when(world.residents()).thenReturn(residents);
+        when(residents.characterIdOf("mira")).thenReturn(950);
+        when(residents.map(anyInt())).thenReturn(field);
+        when(world.benchDuty()).thenReturn(new BenchDutyDispatcher(world, new BenchSessions(world)));
+        store.levels.put(ANN, 22);
+        store.levels.put(950, LEVEL);
+
+        BenchDutyChooser.Pick kept = chooser.choose(capped, mira, BondStage.TRUSTED, LEVEL, BOWMAN, 22, camps);
+
+        assertEquals(101, kept.campMapId(), "two behind, the field form keeps it in the ledger: no try at a camp for its sake");
+        assertEquals(BenchDutyChooser.Why.GOOD_EXP, kept.why());
+        assertEquals(0.0d, kept.bonus(), 1e-9);
+        store.levels.put(ANN, 25); // five behind: the field form takes it live, so the camp nobody hunted gets its try
+        BenchDutyChooser.Pick tried = chooser.choose(capped, mira, BondStage.TRUSTED, LEVEL, BOWMAN, 25, camps);
+        assertEquals(105, tried.campMapId(), tried.toString());
+        assertEquals(BenchDutyChooser.Why.NEW_CAMP, tried.why());
     }
 
     // ---- priors, duties and reasons ---------------------------------------------------------------

@@ -74,7 +74,8 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         final Map<Integer, Integer> perBundle = new HashMap<>();
         /** item id -> units sold. */
         final Map<Integer, Integer> sold = new HashMap<>();
-        PlayerShop shop;
+        /** Its shop once opened (companion-ops writes it; the card may read it from elsewhere). */
+        volatile PlayerShop shop;
         int salesSeen;
     }
 
@@ -127,6 +128,15 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
     @Override
     public CompanionBudget.Kind pool() {
         return CompanionBudget.Kind.COMMERCE;
+    }
+
+    /**
+     * True once the persona's live stall has opened its shop (the card's "stall open in FM room 3"); false while it still
+     * walks to its spot and sets up, and when it has no live stall.
+     */
+    public boolean open(String personaId) {
+        Stall stall = personaId == null ? null : stalls.get(personaId);
+        return stall != null && stall.shop != null;
     }
 
     /**
@@ -348,6 +358,7 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
                 roster.assignment(), roster.assignmentItem(), roster.assignmentCount(), roster.campMapId(), roster.accruedExp(),
                 roster.haulMeso() + taken, roster.wagesPaidUntilMs(), roster.recruitedAtMs(), roster.benchedAtMs(),
                 roster.lastLedgerAtMs(), roster.farmSecondsToday(), roster.farmDay()));
+        world.bench().reportSold(slice.ownerId(), slice.personaId(), taken); // the call-back report's sales (BenchReport)
         CompanionViews.invalidate(world, slice.ownerId(), slice.personaId());
         world.store().event(slice.ownerId(), slice.personaId(), "bench.stall-sale", "+" + taken + " meso, " + count + " sales");
     }

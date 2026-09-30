@@ -82,6 +82,16 @@ class BenchCombatLearningTest {
     }
 
     @Test
+    void theDutyFormsLivingWorldRegistersDecideWhoFightsOutOfSight() {
+        onSlice(new BenchGatherForm(world)); // GATHER's drop-pickup lease fights at its camp (BENCH_LIVE): it learns
+        assertTrue(learning.learnUnseen(mira));
+        onSlice(new BenchRestForm(world)); // REST idles in town, STALL and SELL keep a shop: nothing to learn from
+        assertFalse(learning.learnUnseen(mira));
+        onSlice(new BenchStallForm(world));
+        assertFalse(learning.learnUnseen(mira));
+    }
+
+    @Test
     void benchCombatLearnOffLearnsNothing() {
         onSlice(CompanionBudget.Kind.BENCH_LIVE);
         config.BENCH_COMBAT_LEARN = false;
@@ -92,6 +102,10 @@ class BenchCombatLearningTest {
     private void onSlice(CompanionBudget.Kind pool) {
         BenchDutyDispatcher.Form form = mock(BenchDutyDispatcher.Form.class);
         when(form.pool()).thenReturn(pool);
+        onSlice(form);
+    }
+
+    private void onSlice(BenchDutyDispatcher.Form form) {
         RosterEntry row = new RosterEntry(10, "mira", RosterState.BENCHED, Assignment.TRAIN, 0, 0, ANT_TUNNEL, 0L, 0L, 0L,
                 0L, 0L, 0L, 0, null);
         BenchDutyDispatcher.Slice slice = new BenchDutyDispatcher.Slice(row, 950, form, ANT_TUNNEL, 0L);

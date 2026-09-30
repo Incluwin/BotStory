@@ -45,8 +45,11 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.BenchHarness.ANN;
 
@@ -99,10 +102,11 @@ class BenchStallFormTest {
     private boolean shopOpen;
     private PlayerShop playerShop;
     private Character gwen;
+    private BenchStallForm stall;
 
     @BeforeEach
     void setUp() {
-        BenchStallForm stall = new BenchStallForm(game.world, goods);
+        stall = new BenchStallForm(game.world, goods);
         game.duty.register(Assignment.STALL, stall);
         game.duty.register(Assignment.SELL, stall);
         game.statics(AgentInteractionRuntime.class).when(() -> AgentInteractionRuntime.registerDirectorIdleAgent(any()))
@@ -279,6 +283,25 @@ class BenchStallFormTest {
         }
         assertEquals(2_430L, game.row(ANN, "gwen").haulMeso());
         assertEquals(List.of(ANN + " gwen bench.live-end called by owner"), game.store.events("bench.live-end"));
+    }
+
+    @Test
+    void itsSalesReachTheCallBackReportAndTheCardSeesItsShopOpen() {
+        gwen(Assignment.STALL, Map.of(POTION, 25));
+        game.duty.tick();
+        assertFalse(stall.open("gwen"), "walking to its spot: not open yet");
+
+        opens();
+        game.duty.tick();
+        assertTrue(stall.open("gwen"));
+        buys(POTION, 1, 10, 480);
+        game.duty.tick();
+        game.duty.endFor("gwen", "called by owner");
+
+        // the learning track's report (BenchReport) hears of the live stall's sales once, as the haul is paid
+        verify(game.ledger, times(1)).reportSold(eq(ANN), eq("gwen"), anyLong());
+        verify(game.ledger).reportSold(ANN, "gwen", 480L);
+        assertFalse(stall.open("gwen"), "closed with its slice");
     }
 
     @Test
