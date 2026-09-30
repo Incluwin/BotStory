@@ -26,9 +26,14 @@ public final class AgentKpqAdmissionService {
     private AgentKpqAdmissionService() {
     }
 
+    /**
+     * A host's entry of its own party (a player-led companion lineup). With a human leader the start can still fail
+     * after admission, so its companions do not say "Joining KPQ." here: the host speaks for them.
+     */
     public static AdmissionResult admit(
             Character operator, Character eventLeader, List<Character> partyMembers, long seed, long nowMs) {
-        return admit(operator, eventLeader, partyMembers, seed, nowMs, AgentKpqSession.Mode.PRODUCTION);
+        return admit(operator, eventLeader, partyMembers, seed, nowMs, AgentKpqSession.Mode.PRODUCTION,
+                AgentKpqSession.PartyOwnership.EXTERNAL, isAgent(eventLeader));
     }
 
     static AdmissionResult admit(
@@ -53,6 +58,18 @@ public final class AgentKpqAdmissionService {
             long nowMs,
             AgentKpqSession.Mode mode,
             AgentKpqSession.PartyOwnership ownership) {
+        return admit(operator, eventLeader, partyMembers, seed, nowMs, mode, ownership, true);
+    }
+
+    private static AdmissionResult admit(
+            Character operator,
+            Character eventLeader,
+            List<Character> partyMembers,
+            long seed,
+            long nowMs,
+            AgentKpqSession.Mode mode,
+            AgentKpqSession.PartyOwnership ownership,
+            boolean joinLines) {
         Validation validation = validate(operator, eventLeader, partyMembers);
         if (!validation.success()) return AdmissionResult.failure(validation.message());
         AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
@@ -104,7 +121,7 @@ public final class AgentKpqAdmissionService {
             AgentPartyQuestLobbyRuntime.register(lobby, nowMs);
             AdmissionResult result = admitFromLobby(
                     engagement, lobby, operator, eventLeader, validation.members(),
-                    seed, nowMs, mode, ownership);
+                    seed, nowMs, mode, ownership, joinLines);
             if (!result.success()) {
                 AgentPartyQuestLobbyRuntime.unregister(lobby.lobbyId(), nowMs);
                 engagement.beginRecovery(result.message(), nowMs);
@@ -129,6 +146,21 @@ public final class AgentKpqAdmissionService {
             long nowMs,
             AgentKpqSession.Mode mode,
             AgentKpqSession.PartyOwnership ownership) {
+        return admitFromLobby(engagement, lobby, operator, eventLeader, partyMembers, seed, nowMs, mode, ownership,
+                true);
+    }
+
+    private static AdmissionResult admitFromLobby(
+            AgentPartyQuestEngagement engagement,
+            AgentPartyQuestLobbySession lobby,
+            Character operator,
+            Character eventLeader,
+            List<Character> partyMembers,
+            long seed,
+            long nowMs,
+            AgentKpqSession.Mode mode,
+            AgentKpqSession.PartyOwnership ownership,
+            boolean joinLines) {
         AgentKpqWatchdogRuntime.ensureStarted();
         Validation validation = validate(operator, eventLeader, partyMembers);
         if (!validation.success()) return restoreFailure(engagement, lobby, validation.message(), nowMs);
@@ -187,7 +219,7 @@ public final class AgentKpqAdmissionService {
         }
 
         for (Character member : validation.members()) {
-            if (isAgent(member) && member.getId() != eventLeader.getId()) {
+            if (joinLines && isAgent(member) && member.getId() != eventLeader.getId()) {
                 AgentKpqDialogue.sayMapNow(member, "Joining KPQ.");
             }
         }
