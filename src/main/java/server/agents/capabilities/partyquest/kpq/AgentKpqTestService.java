@@ -285,9 +285,11 @@ public final class AgentKpqTestService {
             return List.of("Lead the party yourself for a PRODUCTION run: the public admit keys the run by its leader.");
         }
 
-        // PRODUCTION goes through the public admit a player-facing caller uses (the leader operates its own run).
+        // PRODUCTION admits as the public admit does (the leader operates its own run), but keeps each Agent's
+        // "Joining KPQ.": the public admit leaves that line to a companion host, and a GM run has none.
         AgentKpqAdmissionService.AdmissionResult result = options.production()
-                ? AgentKpqAdmissionService.admit(leader, leader, online, seed, nowMs)
+                ? AgentKpqAdmissionService.admit(leader, leader, online, seed, nowMs,
+                        AgentKpqSession.Mode.PRODUCTION, AgentKpqSession.PartyOwnership.EXTERNAL)
                 : AgentKpqAdmissionService.admit(operator, leader, online, seed, nowMs,
                         AgentKpqSession.Mode.TEST_OBSERVATION);
         if (!result.success()) {

@@ -114,7 +114,8 @@ class AgentKpqTestServiceTest {
             parties.when(AgentPartyGatewayRuntime::party).thenReturn(party);
             characters.when(AgentCharacterGatewayRuntime::characters).thenReturn(mock(CharacterGateway.class));
             admission.when(() -> AgentKpqAdmissionService.admit(
-                            eq(leader), eq(leader), anyList(), anyLong(), anyLong()))
+                            eq(leader), eq(leader), anyList(), anyLong(), anyLong(),
+                            eq(AgentKpqSession.Mode.PRODUCTION), eq(AgentKpqSession.PartyOwnership.EXTERNAL)))
                     .thenReturn(new AgentKpqAdmissionService.AdmissionResult(true, "KPQ party admitted", null, failed),
                             new AgentKpqAdmissionService.AdmissionResult(true, "KPQ party admitted", null, next));
             try {
@@ -129,7 +130,9 @@ class AgentKpqTestServiceTest {
                 assertTrue(AgentKpqTestService.execute(leader, adopt, 4_000L).getFirst()
                         .startsWith("Adopted current party for PRODUCTION KPQ"));
                 admission.verify(() -> AgentKpqAdmissionService.admit(
-                        eq(leader), eq(leader), anyList(), anyLong(), anyLong()), times(2));
+                        eq(leader), eq(leader), anyList(), anyLong(), anyLong(),
+                        eq(AgentKpqSession.Mode.PRODUCTION), eq(AgentKpqSession.PartyOwnership.EXTERNAL)),
+                        times(2));
             } finally {
                 AgentKpqTestService.execute(leader, new String[]{"stop"}, 5_000L);
             }
@@ -166,7 +169,8 @@ class AgentKpqTestServiceTest {
             parties.when(AgentPartyGatewayRuntime::party).thenReturn(party);
             characters.when(AgentCharacterGatewayRuntime::characters).thenReturn(mock(CharacterGateway.class));
             admission.when(() -> AgentKpqAdmissionService.admit(
-                            eq(leader), eq(leader), anyList(), anyLong(), anyLong()))
+                            eq(leader), eq(leader), anyList(), anyLong(), anyLong(),
+                            eq(AgentKpqSession.Mode.PRODUCTION), eq(AgentKpqSession.PartyOwnership.EXTERNAL)))
                     .thenReturn(new AgentKpqAdmissionService.AdmissionResult(true, "KPQ party admitted", null, next));
             putSpawnedRun(leader, spawned);
             try {

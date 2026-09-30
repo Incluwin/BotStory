@@ -7,6 +7,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.auth.AgentAuthorityService;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentClientGateway;
@@ -25,8 +26,10 @@ import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.runtime.activity.AgentActivityAdmissionCoordinator;
 import server.agents.runtime.activity.AgentActivityBootstrap;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,7 +46,8 @@ import static org.mockito.Mockito.when;
 /**
  * A host admitting a human leader's own lineup (Lakelis for a companion party) can still fail the start after
  * admission, when the channel has no free lobby; its companions had already said "Joining KPQ." to everyone at the
- * entrance. Admission leaves that line to the host there, and only there.
+ * entrance. Admission leaves that line to the host there, and only there: a GM's {@code !kpqtest party prod} of the
+ * same party has no host to speak for its Agents.
  */
 class HostAdmissionJoinLineTest {
     private static final int BEN = 741_200;
@@ -54,6 +58,7 @@ class HostAdmissionJoinLineTest {
     private final Character mira = member(MIRA, "Mira");
     private final Character tobi = member(TOBI, "Tobi");
     private final List<MockedStatic<?>> statics = new ArrayList<>();
+    private final PartyGateway party = mock(PartyGateway.class);
     private MockedStatic<AgentKpqDialogue> dialogue;
     private AgentKpqAdmissionService.AdmissionResult admitted;
 
@@ -66,7 +71,6 @@ class HostAdmissionJoinLineTest {
             registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(agent.getId())).thenReturn(entry);
             identity.when(() -> AgentRuntimeIdentityRuntime.bot(entry)).thenReturn(agent);
         }
-        PartyGateway party = mock(PartyGateway.class);
         when(party.snapshot(any())).thenReturn(new AgentPartySnapshot(9, List.of(
                 new AgentPartyMemberSnapshot(BEN, "Ben", true, AgentKpqDefinition.RECRUIT_MAP),
                 new AgentPartyMemberSnapshot(MIRA, "Mira", false, AgentKpqDefinition.RECRUIT_MAP),
@@ -88,7 +92,8 @@ class HostAdmissionJoinLineTest {
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
+        forgetHarnessRun(BEN);
         if (admitted != null) {
             AgentKpqSessionRegistry.remove(admitted.session());
             AgentPartyQuestEngagementRegistry.remove(admitted.engagement());
@@ -114,6 +119,29 @@ class HostAdmissionJoinLineTest {
         assertTrue(admitted.success(), admitted.message());
         dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, "Joining KPQ."), times(1));
         dialogue.verify(() -> AgentKpqDialogue.sayMapNow(tobi, "Joining KPQ."), times(1));
+    }
+
+    @Test
+    void aGmProductionAdoptionOfTheSamePartyStillHearsEachAgentJoin() {
+        when(party.onlineMembers(ben)).thenReturn(List.of(ben, mira, tobi));
+        open(AgentAuthorityService.class).when(() -> AgentAuthorityService.mayOperate(ben)).thenReturn(true);
+
+        List<String> lines = AgentKpqTestService.execute(ben, new String[]{"party", "prod", "7"}, 1_000L);
+        admitted = new AgentKpqAdmissionService.AdmissionResult(true, "adopted",
+                AgentKpqSessionRegistry.forOperator(BEN), AgentPartyQuestEngagementRegistry.forOperator(BEN));
+
+        assertTrue(lines.getFirst().startsWith("Adopted current party for PRODUCTION KPQ"), lines::toString);
+        assertTrue(admitted.session() != null && !admitted.session().companionAdopted());
+        dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, "Joining KPQ."), times(1));
+        dialogue.verify(() -> AgentKpqDialogue.sayMapNow(tobi, "Joining KPQ."), times(1));
+    }
+
+    /** Drops the harness's record of an adopted run; its session and engagement go with {@link #admitted}. */
+    @SuppressWarnings("unchecked")
+    private static void forgetHarnessRun(int operatorId) throws Exception {
+        Field runs = AgentKpqTestService.class.getDeclaredField("RUNS");
+        runs.setAccessible(true);
+        ((Map<Integer, ?>) runs.get(null)).remove(operatorId);
     }
 
     private <T> MockedStatic<T> open(Class<T> type) {
