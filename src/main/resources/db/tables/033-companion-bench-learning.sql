@@ -18,3 +18,19 @@ CREATE TABLE IF NOT EXISTS companion_yield (
     updated_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (job_branch, level_band, camp_map_id)
 );
+
+-- "Your call" as a standing intent: while it is on (1) the companion picks its own duty and camp again before each
+-- bench slice (BenchDutyDispatcher), and any duty or camp its owner gives it turns it off. Off (0) by default.
+ALTER TABLE living_roster
+    ADD COLUMN your_call TINYINT(1) NOT NULL DEFAULT 0;
+
+-- What a live bench stall holds of its haul: the units moved from living_haul_item into its companion's bag or shop
+-- and not yet sold or handed back (BenchStallForm). A crash mid-stall leaves them here, and the companion's next
+-- load moves them back to the haul, so no unit is lost. No foreign key, as living_roster.
+CREATE TABLE IF NOT EXISTS living_stall_stock (
+    character_id    INT          NOT NULL,
+    persona_id      VARCHAR(64)  NOT NULL,
+    item_id         INT          NOT NULL,
+    quantity        INT          NOT NULL DEFAULT 0,
+    PRIMARY KEY (character_id, persona_id, item_id)
+);

@@ -8,7 +8,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.StatEffect;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
+import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
@@ -21,23 +24,27 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntPredicate;
 import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 
 /**
  * "Keep my crew fresh" (docs/BOT_MANAGEMENT_PLAN.md decision 15 b, "Keep my crew fresh"): an opt-in per owner, off until
  * they turn it on in the Crew window, kept in living_crew.keep_fresh. Every AUTO_ROTATE_TICK_MS, on companion-ops, the
- * crew of each owner online who turned it on is looked at. A companion out with them that is dead outside an instance,
- * carries no HP potion, or is AUTO_ROTATE_LEVEL_GAP or more levels off them (the most urgent first) trades places with a
- * rested bench companion within that gap, the closest to the owner's level: the atomic swap with join-then-travel
- * ({@link RosterService#swap}). The one coming in says so once in party chat, in its own voice.
+ * crew of each owner online who turned it on is looked at. A companion out with them that died outside an instance
+ * since the last look (dead now, or revived in town already: LivingWorldHooks.playerDied, {@link #died}), carries no HP
+ * potion (not while its own shop resupply runs), or is AUTO_ROTATE_LEVEL_GAP or more levels off them (the most urgent
+ * first) trades places with a rested bench companion within that gap, the closest to the owner's level: the atomic swap
+ * with join-then-travel ({@link RosterService#swap}). One that went down says so and leaves at once. The one coming in
+ * says so once in party chat, in its own voice.
  *
  * <p>Never while the owner is in a run or committed to one; never for a companion committed to a run, one whose bench
  * could end its contract, or one swapped in or out here in the last AUTO_ROTATE_COOLDOWN_MS (a refused swap counts, so a
  * refusal is not repeated every look). A bench companion is rested when it is not resting after a rough hunt, not on
  * its way anywhere, and, when it is live on a bench slice, not running a stall or a sale (those end only on their own),
- * not restocking at a shop, alive and carrying potions; a field or town slice ends cleanly when it is called. At most
- * one swap per owner per look, and none while their last companion load still holds their load slot.</p>
+ * not restocking at a shop, alive and carrying potions (its saved USE tab when it is not loaded); a field or town slice
+ * ends cleanly when it is called. At most one swap per owner per look, and none while their last companion load still
+ * holds their load slot.</p>
  */
 public final class CrewRotation {
     private static final Logger log = LoggerFactory.getLogger(CrewRotation.class);
@@ -48,23 +55,44 @@ public final class CrewRotation {
     /** One swap: {@code in} takes {@code out}'s seat, for {@code trigger}. */
     record Swap(Persona out, Persona in, Trigger trigger) { }
 
+    /** What a companion that went down whispers to its owner as it leaves for camp. */
+    static final String DOWN_LINE = "i'm down. heading back to camp.";
+
     private final LivingWorld world;
     private final LongSupplier clock;
     /** True when the loaded companion carries no HP potion (production: its USE inventory). */
     private final Predicate<Character> outOfPotions;
+    /** True when a companion nothing has loaded carries no HP potion (production: its saved USE tab), by character id. */
+    private final IntPredicate storedOutOfPotions;
     /** The owners who turned it on. */
     private final Set<Integer> keepFresh = ConcurrentHashMap.newKeySet();
     /** persona id -> when it last swapped in or out here (or a swap of it was refused). */
     private final Map<String, Long> lastSwapAtMs = new ConcurrentHashMap<>();
+    /** character id -> when it last died outside an instance, until the looks after it have seen it. */
+    private final Map<Integer, Long> downAtMs = new ConcurrentHashMap<>();
+    /** owner id -> when their crew was last looked at. */
+    private final Map<Integer, Long> lookedAtMs = new ConcurrentHashMap<>();
 
     public CrewRotation(LivingWorld world) {
-        this(world, System::currentTimeMillis, CrewRotation::carriesNoHpPotion);
+        this(world, System::currentTimeMillis, CrewRotation::carriesNoHpPotion, null);
     }
 
-    CrewRotation(LivingWorld world, LongSupplier clock, Predicate<Character> outOfPotions) {
+    /** {@code storedOutOfPotions} null: the saved USE tab, read from the store. */
+    CrewRotation(LivingWorld world, LongSupplier clock, Predicate<Character> outOfPotions, IntPredicate storedOutOfPotions) {
         this.world = world;
         this.clock = clock;
         this.outOfPotions = outOfPotions;
+        this.storedOutOfPotions = storedOutOfPotions != null ? storedOutOfPotions : this::savedTabHasNoHpPotion;
+    }
+
+    /**
+     * A character died (LivingWorldHooks.playerDied, any thread): a death outside an instance is kept until the look
+     * after it, which swaps a companion that went down even once it has revived in town.
+     */
+    public void died(Character chr) {
+        if (chr != null && chr.getEventInstance() == null && !keepFresh.isEmpty()) {
+            downAtMs.put(chr.getId(), clock.getAsLong());
+        }
     }
 
     /** AUTO_ROTATE_MODE: OPT_IN offers the toggle, OFF hides it and swaps nobody. */
@@ -109,6 +137,8 @@ public final class CrewRotation {
             return;
         }
         long now = clock.getAsLong();
+        long seen = now - 2L * world.config().AUTO_ROTATE_TICK_MS;
+        downAtMs.values().removeIf(at -> at < seen); // every look since has seen it
         for (int ownerId : List.copyOf(keepFresh)) {
             Character owner = world.roster().onlineCharacter(ownerId);
             if (owner == null) {
@@ -128,14 +158,17 @@ public final class CrewRotation {
                 || world.budget().loadDelayMs(owner, now) > 0L) {
             return null;
         }
+        Long lookedAt = lookedAtMs.put(owner.getId(), now);
+        long since = lookedAt == null ? Long.MIN_VALUE : lookedAt; // deaths since the last look count
         CompanionViews views = world.views();
-        Swap swap = pick(owner, views == null ? world.store().roster(owner.getId()) : views.rows(owner.getId()), now);
+        Swap swap = pick(owner, views == null ? world.store().roster(owner.getId()) : views.rows(owner.getId()), since, now);
         if (swap == null) {
             return null;
         }
         lastSwapAtMs.put(swap.out().id(), now);
         lastSwapAtMs.put(swap.in().id(), now);
-        RosterResult result = world.roster().swap(owner, swap.out(), swap.in());
+        RosterResult result = world.roster().swap(owner, swap.out(), swap.in(),
+                swap.trigger() == Trigger.DEAD ? DOWN_LINE : null);
         if (result.ok()) {
             announce(owner, swap);
         }
@@ -146,17 +179,30 @@ public final class CrewRotation {
 
     /** Why this companion out with its owner should be swapped out, or null (a dead one in an instance stays). */
     static Trigger trigger(Character owner, Character companion, int levelGap, Predicate<Character> outOfPotions) {
+        return trigger(owner, companion, levelGap, outOfPotions, false, false);
+    }
+
+    /**
+     * {@link #trigger(Character, Character, int, Predicate)} for a companion that died outside an instance since the
+     * last look ({@code wentDown}: DEAD, though it has revived) and one whose own shop resupply runs ({@code restocking}:
+     * never NO_POTIONS, it is buying them).
+     */
+    static Trigger trigger(Character owner, Character companion, int levelGap, Predicate<Character> outOfPotions,
+                           boolean wentDown, boolean restocking) {
         if (companion.getHp() <= 0) {
             return companion.getEventInstance() == null ? Trigger.DEAD : null;
         }
-        if (outOfPotions.test(companion)) {
+        if (wentDown) {
+            return Trigger.DEAD;
+        }
+        if (!restocking && outOfPotions.test(companion)) {
             return Trigger.NO_POTIONS;
         }
         return Math.abs(companion.getLevel() - owner.getLevel()) >= levelGap ? Trigger.LEVEL_GAP : null;
     }
 
     /** The companion to swap out (the most urgent trigger first) and the rested one to take its seat, or null. */
-    private Swap pick(Character owner, List<RosterEntry> rows, long now) {
+    private Swap pick(Character owner, List<RosterEntry> rows, long since, long now) {
         int gap = world.config().AUTO_ROTATE_LEVEL_GAP;
         Persona out = null;
         Trigger why = null;
@@ -168,7 +214,8 @@ public final class CrewRotation {
                     || benchMayEndContract(owner, persona)) {
                 continue;
             }
-            Trigger trigger = trigger(owner, bot, gap, outOfPotions);
+            Long down = downAtMs.get(bot.getId());
+            Trigger trigger = trigger(owner, bot, gap, outOfPotions, down != null && down > since, restocking(bot));
             if (trigger != null && (why == null || trigger.ordinal() < why.ordinal())) {
                 out = persona;
                 why = trigger;
@@ -208,7 +255,30 @@ public final class CrewRotation {
         if (live != null) {
             return live.getHp() <= 0 || outOfPotions.test(live) ? 0 : live.getLevel();
         }
-        return Math.max(0, world.store().characterLevelAndJob(characterId)[0]);
+        // not loaded: its saved USE tab (one coming in with no potion would be swapped out again at once)
+        return storedOutOfPotions.test(characterId) ? 0 : Math.max(0, world.store().characterLevelAndJob(characterId)[0]);
+    }
+
+    /** True while the companion's own shop resupply (AgentSupplyProcurementState) runs. */
+    private static boolean restocking(Character bot) {
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+        return entry != null && entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .map(AgentSupplyProcurementState::isActive).orElse(false);
+    }
+
+    /** True when the saved USE tab of a companion nothing has loaded holds no HP potion (unreadable: none, this look). */
+    private boolean savedTabHasNoHpPotion(int characterId) {
+        try {
+            for (int itemId : world.store().usableItems(characterId)) {
+                StatEffect effect = AgentUseItemClassificationPolicy.itemEffect(itemId);
+                if (AgentUseItemClassificationPolicy.isRecoveryPotion(effect) && (effect.getHp() > 0 || effect.getHpRate() > 0)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (LivingStore.ReadFailed failure) {
+            return true;
+        }
     }
 
     /** The one coming in says so once, in party chat. */
@@ -218,7 +288,7 @@ public final class CrewRotation {
         if (bot == null) {
             return;
         }
-        String name = swap.out().name().toLowerCase(Locale.ROOT);
+        String name = swap.out().name(); // a name keeps its capital
         String line = switch (swap.trigger()) {
             case DEAD -> name + " went down. i'll take it from here.";
             case NO_POTIONS -> name + "'s out of potions. i'll take over.";

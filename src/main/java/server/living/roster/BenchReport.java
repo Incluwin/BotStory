@@ -5,19 +5,27 @@ import constants.game.ExpTable;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 
 /**
  * The call-back report (docs/BOT_MANAGEMENT_PLAN.md flow 1 step 5, P5 "call one back and read its report"): what a
  * benched or away companion did for its owner, tallied as the ledger credits it and its live slices harvest and end,
- * and said once, in one short whisper, when its owner calls it back ("farmed 143 stolen fences and 12k meso at ant
- * tunnel i. died once."). Taking the report forgets the tally, so a second call tells nothing new twice; a seat taken
+ * and said once, in one short whisper, when its owner calls it back ("farmed 143 stolen fences and 12k meso at Ant
+ * Tunnel I. died once."), lowercase like its voice but for the place's own name. Taking the report forgets the tally, so a second call tells nothing new twice; a seat taken
  * without a word (a login's restore) takes it too. Only what reached the haul counts as farmed (never a trainee's own
  * pickups), and nothing here moves an item or a meso. Kept in memory: a restart starts every tally afresh.
  * Thread-safe: the ledger, the harvest and the call run on companion-ops, a stall's sales may come from elsewhere.
  */
 final class BenchReport {
+    /** Plurals of the kill loot's words that do not take an s. */
+    private static final Map<String, String> IRREGULAR = Map.of("tooth", "teeth", "foot", "feet", "leaf", "leaves",
+            "knife", "knives", "wolf", "wolves", "mouse", "mice", "goose", "geese");
+    /** Words counted without a plural. */
+    private static final Set<String> MASS = Set.of("wood", "firewood", "liquid", "ore", "sap", "silk",
+            "fur", "meat", "water", "hair", "dust", "sand", "cotton", "wool");
+
     /** One companion's time away so far. */
     private static final class Tally {
         long exp;
@@ -126,7 +134,7 @@ final class BenchReport {
         if (tally == null || !tally.worthTelling(levelNow)) {
             return null;
         }
-        String at = tally.campMapId > 0 ? " at " + lower(placeNames.apply(tally.campMapId)) : "";
+        String at = tally.campMapId > 0 ? " at " + name(placeNames.apply(tally.campMapId)) : "";
         StringBuilder line = new StringBuilder();
         String farmed = farmed(tally, itemNames);
         String exp = tally.expPhrase(levelNow);
@@ -174,16 +182,33 @@ final class BenchReport {
         return items.isEmpty() ? meso : meso.isEmpty() ? items : items + " and " + meso;
     }
 
-    /** "stolen fences", "snail shells", "leathers"; one stays as it is. */
+    /**
+     * "stolen fences", "snail shells", "tree branches", "wild boar teeth", "leaves"; one stays as it is, and so does
+     * what is counted without a plural ("firewood", "ore"), the last word deciding.
+     */
     static String plural(String name, int count) {
         if (count == 1 || name.isEmpty() || name.endsWith("s")) {
             return name;
         }
-        if (name.endsWith("y") && name.length() > 1 && "aeiou".indexOf(name.charAt(name.length() - 2)) < 0) {
+        int space = name.lastIndexOf(' ');
+        String head = name.substring(0, space + 1);
+        String word = name.substring(space + 1);
+        String irregular = IRREGULAR.get(word);
+        if (irregular != null) {
+            return head + irregular;
+        }
+        if (MASS.contains(word)) {
+            return name;
+        }
+        if (word.endsWith("ch") || word.endsWith("sh") || word.endsWith("x") || word.endsWith("z")) {
+            return name + "es";
+        }
+        if (word.endsWith("y") && word.length() > 1 && "aeiou".indexOf(word.charAt(word.length() - 2)) < 0) {
             return name.substring(0, name.length() - 1) + "ies";
         }
         return name + "s";
     }
+
 
     /** "850", "3.1k", "12k". */
     static String meso(long value) {
@@ -195,5 +220,9 @@ final class BenchReport {
 
     private static String lower(String text) {
         return text == null ? "" : text.toLowerCase(Locale.ROOT);
+    }
+
+    private static String name(String text) {
+        return text == null ? "" : text;
     }
 }

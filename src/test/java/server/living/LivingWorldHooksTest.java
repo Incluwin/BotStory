@@ -49,6 +49,7 @@ class LivingWorldHooksTest {
         when(world.questLog()).thenReturn(mock(QuestLog.class));
         when(world.markers()).thenReturn(mock(QuestMarkers.class));
         when(world.benchDuty()).thenReturn(mock(BenchDutyDispatcher.class));
+        when(world.crewRotation()).thenReturn(mock(server.living.roster.CrewRotation.class));
         living = mockStatic(LivingWorld.class);
         living.when(LivingWorld::get).thenReturn(world);
     }

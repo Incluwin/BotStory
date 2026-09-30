@@ -25,7 +25,9 @@ import server.living.quest.QuestLedger;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+import server.maps.MapleMap;
 import server.maps.PlayerShop;
+import server.maps.PlayerShopEscrowSnapshot;
 import server.maps.PlayerShopEscrowStore;
 import server.maps.reservation.FreeMarketCharacterSpaceCatalog;
 import server.maps.reservation.FreeMarketStorePlacementService;
@@ -35,6 +37,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -47,7 +51,9 @@ import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -89,6 +95,11 @@ class BenchStallFormTest {
         public String name(int itemId) {
             return itemId == POTION ? "Orange Potion" : itemId == SWORD ? "Sword" : null;
         }
+
+        @Override
+        public boolean hasFreeSpot(MapleMap room) {
+            return !fullRooms.contains(room.getId());
+        }
     };
     private final QuestLedger quests = mock(QuestLedger.class);
     private final PlayerShop shop = mock(PlayerShop.class);
@@ -99,6 +110,8 @@ class BenchStallFormTest {
     private final Map<Integer, Integer> escrow = new HashMap<>();
     private final List<PlayerShop.SoldItem> sales = new ArrayList<>();
     private boolean populationUp = true;
+    /** The Free Market rooms with no free stall spot (the rest have one). */
+    private final Set<Integer> fullRooms = new java.util.HashSet<>();
     private boolean shopOpen;
     private PlayerShop playerShop;
     private Character gwen;
@@ -400,6 +413,147 @@ class BenchStallFormTest {
         assertFalse(game.duty.live("gwen"));
         assertEquals(List.of(), game.calls);
         assertEquals(Map.of(QUEST_GOOD, 5, CASH_ONLY, 3), game.haul(ANN, "gwen"));
+    }
+
+    @Test
+    void aCrashMidStallLosesNothingItsNextLoadTakesTheEscrowAndTheUnlistedStockBackWhateverItsDuty() {
+        gwen(Assignment.STALL, Map.of(POTION, 25));
+        game.duty.tick();
+        opens(); // 20 listed in the shop's escrow, 5 left unlisted in its bag
+        assertEquals(Map.of(POTION, 25), game.store.stallStock.get(FakeLivingStore.key(ANN, "gwen")), "kept past a crash");
+        // the server goes down with the shop open; after the restart nothing of the stall is in memory
+        BenchDutyDispatcher rebooted = restart();
+        escrowOnDisk(listing(POTION, 10), listing(POTION, 10)); // one listing per bag slot
+        game.store.seed(new RosterEntry(ANN, "gwen", RosterState.BENCHED, Assignment.TRAIN, 0, 0, BenchHarness.FIELD, 0L,
+                game.row(ANN, "gwen").haulMeso(), 0L, 1_000L, 1_000L, 1_000L, 0, null)); // its owner put it to training
+
+        try (var recovery = mockConstruction(AgentFreeMarketStallService.class, (service, context) ->
+                when(service.recoverInterruptedEscrow(any())).thenAnswer(inv -> recoverEscrow()))) {
+            rebooted.tick(); // a TRAIN slice loads it: what the stall held goes back to the haul first
+        }
+
+        assertTrue(rebooted.live("gwen"));
+        assertEquals(25, game.haul(ANN, "gwen").get(POTION), "all 25: the 20 escrowed and the 5 never listed");
+        assertEquals(0, game.bags.get(GWEN).get(POTION));
+        assertEquals(25, total(POTION), "no potion duplicated or lost");
+        assertFalse(game.store.stallStock.containsKey(FakeLivingStore.key(ANN, "gwen")));
+    }
+
+    @Test
+    void anEscrowOfSeveralListingsOfOneItemComesBackWhole() {
+        gwen(Assignment.STALL, Map.of());
+        BenchDutyDispatcher rebooted = restart();
+        game.loaded.remove(GWEN);
+        escrowOnDisk(listing(SHELL, 50), listing(SHELL, 30)); // an escrow from before living_stall_stock kept anything
+
+        try (var recovery = mockConstruction(AgentFreeMarketStallService.class, (service, context) ->
+                when(service.recoverInterruptedEscrow(any())).thenAnswer(inv -> recoverEscrow()))) {
+            rebooted.tick(); // an empty haul, but an escrow to take back: it goes to the market
+        }
+
+        assertTrue(rebooted.live("gwen"), "its escrow alone takes it live");
+        assertEquals(80, total(SHELL), "50 and 30, not the larger of the two");
+    }
+
+    @Test
+    void anEscrowThatCannotComeBackIsNeverWrittenOverByANewShop() {
+        gwen(Assignment.STALL, Map.of(POTION, 25));
+        escrowOnDisk(listing(POTION, 10));
+
+        try (var recovery = mockConstruction(AgentFreeMarketStallService.class, (service, context) ->
+                when(service.recoverInterruptedEscrow(any())).thenThrow(new IllegalStateException("inventory has no room")))) {
+            game.duty.tick();
+        }
+
+        assertFalse(game.duty.live("gwen"), "no new shop over an escrow still on disk");
+        assertTrue(assigned.isEmpty());
+        assertEquals(Map.of(POTION, 25), game.haul(ANN, "gwen"), "its haul untouched");
+    }
+
+    @Test
+    void eachMoveSavesTheCompanionBeforeTheHaulIsPaidSoACrashNeverMakesOneTwice() {
+        gwen(Assignment.STALL, Map.of(POTION, 25));
+        game.duty.tick();
+        org.mockito.InOrder stocked = inOrder(game.store.store, gwen);
+        stocked.verify(game.store.store).removeHaul(ANN, "gwen", POTION, 25);
+        stocked.verify(gwen).saveCharToDB(true); // the bag as the haul gave it up
+
+        opens();
+        game.duty.tick();
+        buys(POTION, 1, 10, 480);
+        game.duty.tick();
+        org.mockito.InOrder paid = inOrder(gwen, game.store.store);
+        paid.verify(gwen).gainMeso(-480, false);
+        paid.verify(gwen).saveCharToDB(true); // its purse without the proceeds first
+        paid.verify(game.store.store).saveRosterProgress(any());
+
+        game.duty.endFor("gwen", "called by owner");
+        org.mockito.InOrder back = inOrder(gwen, game.store.store);
+        back.verify(gwen).saveCharToDB(true); // the bag without the unsold stock first
+        back.verify(game.store.store).addHaul(ANN, "gwen", POTION, 15);
+        assertEquals(25, total(POTION) + 10, "10 sold, the rest back");
+    }
+
+    @Test
+    void itOpensInARoomWithAFreeSpotAndStaysInTheLedgerWhenTheMarketIsFull() {
+        gwen(Assignment.STALL, Map.of(POTION, 25));
+        int own = FreeMarketCharacterSpaceCatalog.FIRST_ROOM_MAP_ID + Math.floorMod("gwen".hashCode(), 6);
+        fullRooms.add(own);
+
+        game.duty.tick();
+
+        int room = game.botMaps.get(GWEN).getId();
+        assertTrue(room != own && FreeMarketCharacterSpaceCatalog.isRoom(room), "another room with a free spot: " + room);
+        game.duty.endFor("gwen", "called by owner");
+        for (int i = 0; i < 6; i++) {
+            fullRooms.add(FreeMarketCharacterSpaceCatalog.FIRST_ROOM_MAP_ID + i);
+        }
+        game.calls.clear();
+        game.now += game.config.COMMERCE_SLICE_MS;
+
+        game.duty.tick();
+
+        assertFalse(game.duty.live("gwen"), "every room full of stalls: it never walks in to walk out again");
+        assertFalse(game.calls.stream().anyMatch(call -> call.startsWith("load")), game.calls.toString());
+    }
+
+    /** A server restart: a new dispatcher and stall form, nothing of the last stall in memory, the companion unloaded. */
+    private BenchDutyDispatcher restart() {
+        BenchDutyDispatcher rebooted = new BenchDutyDispatcher(game.world, game.field, () -> game.now);
+        BenchStallForm restarted = new BenchStallForm(game.world, goods);
+        rebooted.register(Assignment.STALL, restarted);
+        rebooted.register(Assignment.SELL, restarted);
+        when(game.world.benchDuty()).thenReturn(rebooted);
+        game.loaded.remove(GWEN);
+        game.leases.release(GWEN, CompanionLeases.Kind.COMMERCE); // leases are kept in memory: gone with the old server
+        shopOpen = false;
+        playerShop = null;
+        return rebooted;
+    }
+
+    /** The shop escrow the database holds for Gwen, until it is recovered. */
+    private void escrowOnDisk(PlayerShopEscrowSnapshot.Listing... listings) {
+        game.statics(PlayerShopEscrowStore.class).when(() -> PlayerShopEscrowStore.load(GWEN)).thenAnswer(inv -> escrow.isEmpty()
+                ? Optional.empty() : Optional.of(new PlayerShopEscrowSnapshot("escrow-1", GWEN, 910000001, 0, PERMIT, "gwen's",
+                List.of(listings))));
+        escrow.clear(); // what the shop held is what the database holds
+        for (PlayerShopEscrowSnapshot.Listing listing : listings) {
+            escrow.merge(listing.item().itemId(), listing.item().quantity() * listing.bundles(), Integer::sum);
+        }
+    }
+
+    /** AgentFreeMarketStallService.recoverInterruptedEscrow: the escrow's units come back to its bag. */
+    private boolean recoverEscrow() {
+        escrow.forEach((itemId, units) -> game.bags.get(GWEN).merge(itemId, units, Integer::sum));
+        escrow.clear();
+        return true;
+    }
+
+    private static PlayerShopEscrowSnapshot.Listing listing(int itemId, int units) {
+        return new PlayerShopEscrowSnapshot.Listing((short) 1, 10, new PlayerShopEscrowSnapshot.ItemState(itemId,
+                (byte) ItemConstants.getInventoryType(itemId).getType(), (short) 1, (short) units, "", -1, (short) 0, -1L, "", 0,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null));
     }
 
     @Test

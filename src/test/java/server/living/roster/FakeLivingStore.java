@@ -60,6 +60,12 @@ final class FakeLivingStore {
     final Set<Integer> keptFresh = new java.util.LinkedHashSet<>();
     /** "branch:band:camp" -> companion_yield row. */
     final Map<String, YieldRow> yields = new LinkedHashMap<>();
+    /** owner:persona -> item id -> units a live bench stall holds (living_stall_stock). */
+    final Map<String, Map<Integer, Integer>> stallStock = new HashMap<>();
+    /** owner:persona keys on "Your call" (living_roster.your_call). */
+    final Set<String> yourCall = new java.util.LinkedHashSet<>();
+    /** Character id -> the item ids in its saved USE tab (a test seeds the ones it wants). */
+    final Map<Integer, Set<Integer>> usable = new HashMap<>();
     /** owner:persona keys whose settings_json the database cannot read, or write, right now. */
     final Set<String> unreadable = new java.util.HashSet<>();
     final Set<String> unwritable = new java.util.HashSet<>();
@@ -144,6 +150,40 @@ final class FakeLivingStore {
             return true;
         });
         when(store.companionYields()).thenAnswer(inv -> List.copyOf(yields.values()));
+        when(store.stallStock(anyInt(), anyString())).thenAnswer(inv ->
+                new LinkedHashMap<>(stallStock.getOrDefault(key(inv.getArgument(0), inv.getArgument(1)), Map.of())));
+        when(store.saveStallStock(anyInt(), anyString(), any())).thenAnswer(inv -> {
+            Map<Integer, Integer> units = new LinkedHashMap<>();
+            inv.<Map<Integer, Integer>>getArgument(2).forEach((itemId, quantity) -> {
+                if (quantity > 0) {
+                    units.put(itemId, quantity);
+                }
+            });
+            if (units.isEmpty()) {
+                stallStock.remove(key(inv.getArgument(0), inv.getArgument(1)));
+            } else {
+                stallStock.put(key(inv.getArgument(0), inv.getArgument(1)), units);
+            }
+            return true;
+        });
+        when(store.yourCalls()).thenAnswer(inv -> {
+            Map<Integer, Set<String>> out = new HashMap<>();
+            for (String row : yourCall) {
+                String[] parts = row.split(":", 2);
+                out.computeIfAbsent(Integer.parseInt(parts[0]), owner -> new java.util.LinkedHashSet<>()).add(parts[1]);
+            }
+            return out;
+        });
+        when(store.saveYourCall(anyInt(), anyString(), org.mockito.ArgumentMatchers.anyBoolean())).thenAnswer(inv -> {
+            String row = key(inv.getArgument(0), inv.getArgument(1));
+            if ((boolean) inv.getArgument(2)) {
+                yourCall.add(row);
+            } else {
+                yourCall.remove(row);
+            }
+            return true;
+        });
+        when(store.usableItems(anyInt())).thenAnswer(inv -> new java.util.LinkedHashSet<>(usable.getOrDefault((int) inv.getArgument(0), Set.of())));
         when(store.saveCompanionYield(any())).thenAnswer(inv -> {
             YieldRow row = inv.getArgument(0);
             yields.put(row.jobBranch() + ":" + row.levelBand() + ":" + row.campMapId(), row);

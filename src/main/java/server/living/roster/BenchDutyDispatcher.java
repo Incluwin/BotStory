@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
+import server.agents.runtime.AgentMailboxAction;
+import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -16,14 +18,18 @@ import server.agents.runtime.activity.session.AgentActivityKind;
 import server.agents.runtime.field.AgentFieldVisitLeaseRuntime;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.living.LivingWorld;
+import server.living.bond.BondService;
 import server.living.config.Content.Persona;
 import server.living.population.Population;
 import server.living.resident.ResidentRuntime;
 import server.living.resident.ResidentSpots;
+import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
+import server.living.store.LivingStore.Bond;
 import server.living.store.LivingStore.RosterEntry;
 import server.maps.MapleMap;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -31,8 +37,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
 import java.util.function.LongSupplier;
 import java.util.function.ToLongFunction;
@@ -42,29 +54,40 @@ import java.util.function.ToLongFunction;
  * duty has a {@link Form} that shows it in the world: TRAIN, FARM_MESO and FARM_ITEM grind at a field camp
  * ({@link BenchSessions}); GATHER, STALL, SELL and REST get theirs through {@link #register}; a duty with no form stays
  * in the ledger alone (BenchLedger). Each slice is charged to a CompanionBudget pool and held by the CompanionLeases
- * lease of the same name: BENCH_LIVE (per owner and server-wide) for the field forms, BENCH_TOWN (cheap town presence)
- * and COMMERCE (Free Market stalls), each with its own server-wide cap. When a pool is contended, owners online go
- * first, and each owner's bench takes turns (the longest since its last slice first), one of each owner's per round.
- * Every slice loads on the living channel.
+ * lease of the same name: BENCH_LIVE for the field forms, BENCH_TOWN (cheap town presence) and COMMERCE (Free Market
+ * stalls), each with its own cap per owner and server-wide. When a pool is contended, owners online go first, and each
+ * owner's bench takes turns (the longest since its last slice first), one of each owner's per round. Every slice loads
+ * on the living channel, at a portal when it is a town slice or a player is on the map (it walks in, never pops in),
+ * else at one of the map's own spots, never two on the same one. A row on "Your call" picks its duty and camp again
+ * (BenchDutyChooser) each time its turn comes, so the bandit learns from each slice it measured.
  *
  * <p>End rules. Every slice ends when its row stops being bench-governed or changes duty or camp, when its owner calls
  * it or it is released ({@link #endFor}), when its character is gone or off the living channel, after its pool's slice
- * length unless a player is watching it (town and stall slices run longer, and are never ended by being in a town), and
- * by its form's own rules (a field slice back in town, at its pace target, at the daily farming cap or with what it was
- * asked for). Flow 12: a death ends it once the companion has revived by stock rules in its camp's return town, and it
- * rests one field slice ("resting after a rough hunt") while the ledger resumes; out of supplies, its hunt ends, the
- * Agent's own shop resupply runs, and only then does the slice unload and free its seat for the next one. A slice
- * ends clean: its form's last harvest, each primary activity asked to stop (AgentActivityBootstrap.requestPrimaryStop),
- * the visit-lease checkpoints cleared, the field yield recorded (BenchYieldModel), then the unload, the save and the
- * lease.</p>
+ * length unless a player is watching it (a watched field slice runs on; a watched town or stall slice twice its length
+ * at most, so the small pools still rotate; neither is ended by being in a town), and by its form's own rules (a field
+ * slice back in town, at its pace target, at the daily farming cap or with what it was asked for). Flow 12: a death
+ * ends it once the companion has revived by stock rules in its camp's return town, and it rests one field slice
+ * ("resting after a rough hunt") while the ledger resumes; out of supplies, its hunt ends, the Agent's own shop
+ * resupply runs, and only then does the slice unload and free its seat for the next one. A slice ends clean, each step
+ * on its own so one failing never skips the rest: its form's last harvest, the hand-back on the Agent's own mailbox
+ * (each primary activity asked to stop, the visit-lease checkpoints cleared), the field yield recorded
+ * (BenchYieldModel) and the call-back report, then the unload, the save and the lease. A companion still online after
+ * a failed unload keeps its lease and its pool slot (nothing can load a second copy of it) and is unloaded again on
+ * the next tick.</p>
  *
- * <p>Every load, tick and unload runs on companion-ops; asked from another thread, the work is handed over there. The
- * pickup and death hooks ({@link #looted}, {@link #died}) come from the Agent's own tick and only count.</p>
+ * <p>Every load, tick and unload runs on companion-ops; asked from another thread, the work is handed over there. What
+ * changes a running Agent's activity (a visit lease, the hand-back) goes through its mailbox and is waited for at most
+ * {@link #ON_AGENT_WAIT_MS}. The pickup and death hooks ({@link #looted}, {@link #died}) come from the Agent's own tick
+ * and only count.</p>
  */
 public final class BenchDutyDispatcher {
     private static final Logger log = LoggerFactory.getLogger(BenchDutyDispatcher.class);
     /** The card's line for a companion resting after a death on a live slice (flow 12). */
     public static final String ROUGH_HUNT = "resting after a rough hunt";
+    /** The dispatcher's look at every live slice (LivingWorld's timer), and so the most a form's own rule waits. */
+    public static final long TICK_MS = 120_000L;
+    /** The most companion-ops waits for an action on a running Agent's own mailbox (it runs on its next tick). */
+    static final long ON_AGENT_WAIT_MS = 2_000L;
     /** The primary activities a form may start, stopped at their boundary when a slice ends. */
     private static final AgentActivityKind[] HAND_BACK = {AgentActivityKind.HUNTING, AgentActivityKind.TOWN_LIFE,
             AgentActivityKind.COMMERCE};
@@ -114,6 +137,11 @@ public final class BenchDutyDispatcher {
         private int startLevel;
         private long startExp;
         private int jobId = -1;
+        /** Set once its end ran its tidy-up (companion-ops): only the unload is left, retried each tick until it is done. */
+        private boolean closing;
+        private boolean handedBack;
+        private Character leaving;
+        private String endReason;
 
         Slice(RosterEntry entry, int characterId, Form form, int mapId, long startedAtMs) {
             this.personaId = entry.personaId();
@@ -186,6 +214,10 @@ public final class BenchDutyDispatcher {
     private final Map<String, Long> lastLiveAtMs = new ConcurrentHashMap<>();
     /** persona id -> until when it rests after a death on a live slice. */
     private final Map<String, Long> restingUntilMs = new ConcurrentHashMap<>();
+    /** "owner:persona" of the rows on "Your call" (living_roster.your_call), read at boot. */
+    private final Set<String> yourCall = ConcurrentHashMap.newKeySet();
+    /** The camps Your call chooses among for a level near a camp (BenchDutyChooser.camps; a test gives its own). */
+    BiFunction<Integer, Integer, List<BenchDutyChooser.Camp>> yourCallCamps = BenchDutyChooser::camps;
 
     /** The dispatcher with {@code field} as the form of TRAIN, FARM_MESO and FARM_ITEM. */
     public BenchDutyDispatcher(LivingWorld world, BenchSessions field) {
@@ -229,10 +261,21 @@ public final class BenchDutyDispatcher {
         };
     }
 
+    /** Slices of {@code pool} one owner may have live at once. */
+    static int perOwner(CompanionBudget.Kind pool, LivingWorldConfig config) {
+        return switch (pool) {
+            case BENCH_LIVE -> config.BENCH_LIVE_PER_OWNER;
+            case BENCH_TOWN -> config.BENCH_TOWN_PER_OWNER;
+            case COMMERCE -> config.COMMERCE_PER_OWNER;
+            default -> 0;
+        };
+    }
+
     /**
      * The end rule on time (EndRulesTest): a slice of {@code pool} that ran {@code ranMs} ends after its pool's slice
-     * length, a field slice after BENCH_LIVE_SLICE_MS and town and stall slices after their own longer ones, unless a
-     * player is watching it. Null while it runs on.
+     * length, a field slice after BENCH_LIVE_SLICE_MS and town and stall slices after their own longer ones. A player
+     * watching keeps a field slice on; a town or stall slice (towns and the Free Market nearly always have a player)
+     * runs on to twice its length at most, so the small pools still rotate. Null while it runs on.
      */
     static String timeUp(CompanionBudget.Kind pool, long ranMs, boolean watched, LivingWorldConfig config) {
         long limit = switch (pool) {
@@ -240,7 +283,10 @@ public final class BenchDutyDispatcher {
             case COMMERCE -> config.COMMERCE_SLICE_MS;
             default -> config.BENCH_LIVE_SLICE_MS;
         };
-        return !watched && ranMs > limit ? "slice elapsed" : null;
+        if (watched && pool != CompanionBudget.Kind.BENCH_TOWN && pool != CompanionBudget.Kind.COMMERCE) {
+            return null;
+        }
+        return ranMs > (watched ? 2L * limit : limit) ? "slice elapsed" : null;
     }
 
     /**
@@ -362,10 +408,83 @@ public final class BenchDutyDispatcher {
         return new HashSet<>(byCharacter.keySet());
     }
 
-    /** What the card adds to the companion's duty: {@link #ROUGH_HUNT} while it rests after a death, else "". */
+    /** What the card says of the companion's bench: {@link #ROUGH_HUNT} while it rests after a death, else "". */
     public String note(String personaId) {
         Long until = personaId == null ? null : restingUntilMs.get(personaId);
         return until != null && until > clock.getAsLong() ? ROUGH_HUNT : "";
+    }
+
+    // ---- Your call (a standing intent) -------------------------------------------------------
+
+    private static String key(int ownerId, String personaId) {
+        return ownerId + ":" + personaId;
+    }
+
+    /** Reads which rows are on "Your call" (LivingWorld.start, on companion-ops); a failed read leaves them off. */
+    public void loadYourCalls() {
+        try {
+            world.store().yourCalls().forEach((ownerId, personas) -> personas.forEach(persona -> yourCall.add(key(ownerId, persona))));
+        } catch (LivingStore.ReadFailed failure) {
+            log.warn("your call: the rows on it could not be read", failure);
+        }
+    }
+
+    /** True while the companion picks its own duty and camp before each slice. */
+    public boolean yourCall(int ownerId, String personaId) {
+        return personaId != null && yourCall.contains(key(ownerId, personaId));
+    }
+
+    /**
+     * Turns "Your call" on (the duty picker's pick) or off (any duty or camp its owner gives it, RosterService) for the
+     * row; written only when it changes. False when the write failed (it stays as it was).
+     */
+    public boolean setYourCall(int ownerId, String personaId, boolean on) {
+        if (personaId == null || yourCall(ownerId, personaId) == on) {
+            return true;
+        }
+        if (!world.store().saveYourCall(ownerId, personaId, on)) {
+            return false;
+        }
+        if (on) {
+            yourCall.add(key(ownerId, personaId));
+        } else {
+            yourCall.remove(key(ownerId, personaId));
+        }
+        return true;
+    }
+
+    /**
+     * Before a slice of a row on Your call: the companion picks again (BenchDutyChooser, on what the last slices
+     * measured) and its new duty or camp is set as its own pick. The row as it stands now.
+     */
+    private RosterEntry pickAgain(RosterEntry entry) {
+        if (!yourCall(entry.characterId(), entry.personaId())) {
+            return entry;
+        }
+        Persona persona = world.content().persona(entry.personaId());
+        int characterId = persona == null ? 0 : world.residents().characterIdOf(persona.id());
+        int[] levelJob = characterId == 0 ? null : world.store().characterLevelAndJob(characterId);
+        if (levelJob == null || levelJob.length < 2 || levelJob[0] <= 0) {
+            return entry;
+        }
+        int camp = entry.campMapId() != 0 ? entry.campMapId() : ResidentSpots.townMapId(persona.homeTown());
+        BondService bonds = world.bonds();
+        Bond bond = bonds == null ? null : bonds.peek(entry.characterId(), persona.id());
+        BenchDutyChooser.Pick pick = new BenchDutyChooser(world).choose(entry, persona, bond == null ? null : bond.stage(),
+                levelJob[0], levelJob[1], world.store().characterLevel(entry.characterId()),
+                yourCallCamps.apply(levelJob[0], camp));
+        int pickedCamp = pick == null || pick.campMapId() == 0 ? entry.campMapId() : pick.campMapId();
+        if (pick == null || pick.duty() == entry.assignment() && pickedCamp == entry.campMapId()) {
+            return entry;
+        }
+        RosterEntry now = world.roster().applyYourCall(entry.characterId(), persona.id(), pick.duty(), pickedCamp);
+        if (now == null) {
+            return entry;
+        }
+        world.store().event(entry.characterId(), persona.id(), "bench.your_call", pick.duty() + " at " + pickedCamp + " ("
+                + pick.why() + String.format(java.util.Locale.ROOT, ", score %.2f + %.2f)", pick.score(), pick.bonus()));
+        CompanionViews.invalidate(world, entry.characterId(), persona.id());
+        return now;
     }
 
     // ---- hooks (any thread) ------------------------------------------------------------------
@@ -403,6 +522,26 @@ public final class BenchDutyDispatcher {
         return true;
     }
 
+    /**
+     * Runs {@code action} on the Agent's own mailbox (its next tick; at once where the Agent has no mailbox) and waits
+     * for it at most {@link #ON_AGENT_WAIT_MS}: its result, or null when it failed, was refused or did not run in time.
+     */
+    static <R> R onAgent(AgentRuntimeEntry entry, AgentMailboxAction<R> action) {
+        if (entry == null) {
+            return null;
+        }
+        CompletableFuture<R> result = AgentMailboxRuntime.dispatch(entry, action);
+        try {
+            return result == null ? null : result.get(ON_AGENT_WAIT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return null;
+        } catch (ExecutionException | TimeoutException | CancellationException failure) {
+            log.debug("an action on an Agent's mailbox did not complete", failure);
+            return null;
+        }
+    }
+
     /** Keeps or ends every live slice by the end rules, then starts the slices that are due and fit their pools. */
     public void tick() {
         if (handedOver("bench_duty.tick", this::tick)) {
@@ -410,15 +549,23 @@ public final class BenchDutyDispatcher {
         }
         long now = clock.getAsLong();
         for (Slice slice : new ArrayList<>(live.values())) {
-            String reason;
             try {
-                reason = check(slice, now);
+                String reason;
+                if (slice.closing) {
+                    reason = slice.endReason; // an unload that failed: once more
+                } else {
+                    try {
+                        reason = check(slice, now);
+                    } catch (RuntimeException failure) {
+                        log.warn("bench slice of {} failed its check", slice.personaId, failure);
+                        reason = "check failed";
+                    }
+                }
+                if (reason != null) {
+                    end(slice, reason, now);
+                }
             } catch (RuntimeException failure) {
-                log.warn("bench slice of {} failed its check", slice.personaId, failure);
-                reason = "check failed";
-            }
-            if (reason != null) {
-                end(slice, reason, now);
+                log.warn("bench slice of {} failed to end", slice.personaId, failure);
             }
         }
         startDue(now);
@@ -441,7 +588,11 @@ public final class BenchDutyDispatcher {
         }
         long now = clock.getAsLong();
         for (Slice slice : new ArrayList<>(live.values())) {
-            end(slice, reason, now);
+            try {
+                end(slice, reason, now);
+            } catch (RuntimeException failure) {
+                log.warn("bench slice of {} failed to end", slice.personaId, failure);
+            }
         }
     }
 
@@ -516,15 +667,39 @@ public final class BenchDutyDispatcher {
                 online.add(owner);
             }
         }
-        for (RosterEntry entry : order(due, online::contains, persona -> lastLiveAtMs.getOrDefault(persona, 0L))) {
+        for (RosterEntry turn : order(due, online::contains, persona -> lastLiveAtMs.getOrDefault(persona, 0L))) {
+            RosterEntry entry;
+            try {
+                entry = pickAgain(turn); // Your call: it picks its duty and camp again first
+            } catch (RuntimeException failure) {
+                log.warn("your call for {} failed; it keeps its duty", turn.personaId(), failure);
+                entry = turn;
+            }
             Form form = form(entry.assignment());
+            if (form == null) {
+                continue;
+            }
             CompanionBudget.Kind pool = form.pool();
-            if (count(pool, 0) >= cap(pool, config)
-                    || pool == CompanionBudget.Kind.BENCH_LIVE && count(pool, entry.characterId()) >= config.BENCH_LIVE_PER_OWNER) {
+            if (count(pool, 0) >= cap(pool, config) || count(pool, entry.characterId()) >= perOwner(pool, config)) {
                 continue;
             }
             begin(entry, form, now);
         }
+    }
+
+    /**
+     * Where a slice of {@code pool} loads on {@code map}: at a portal for a town slice, or on a map a player is on, so it
+     * walks in (TownLife or its hunt takes it from there); else at one of the map's own spots, by persona, so two
+     * companions never stand on the same one.
+     */
+    static Point arrival(MapleMap map, CompanionBudget.Kind pool, String personaId) {
+        if (pool == CompanionBudget.Kind.BENCH_TOWN || ResidentRuntime.humansIn(map) > 0) {
+            Point portal = ArrivalPlacement.portalNear(map, null);
+            if (portal != null) {
+                return portal;
+            }
+        }
+        return ResidentSpots.fallback(map, personaId.hashCode());
     }
 
     private void begin(RosterEntry entry, Form form, long now) {
@@ -550,23 +725,27 @@ public final class BenchDutyDispatcher {
             return;
         }
         Character agent = null;
+        boolean begun = false;
         Slice slice = new Slice(entry, characterId, form, mapId, now);
         try {
             agent = CosmicAgentOfflineLoader.loadOfflineAgent(characterId, world.config().WORLD, world.config().CHANNEL,
-                    map, ResidentSpots.fallback(map, 0));
+                    map, arrival(map, form.pool(), persona.id()));
             if (agent == null) {
                 world.leases().release(characterId, lease);
                 return;
             }
-            world.bench().applyAccrued(entry, agent);
-            slice.snapshot(agent);
             live.put(persona.id(), slice);
             byCharacter.put(characterId, slice);
+            world.bench().applyAccrued(entry, agent);
+            slice.snapshot(agent);
+            if (!(form instanceof BenchStallForm)) {
+                reclaimStall(entry.characterId(), persona.id(), agent); // a stall's own begin takes its stock back itself
+            }
             if (!form.begin(slice, agent, now)) {
-                forget(slice);
-                unload(characterId, agent, lease);
+                close(slice, agent, "not begun", false, now); // its form left nothing running
                 return;
             }
+            begun = true;
             CompanionSettingsApplier settings = world.roster().settings();
             if (settings != null) { // a test's roster may have none
                 settings.bind(agent, entry.characterId(), persona.id()); // it drinks by its own potion % here too (P3b)
@@ -580,45 +759,72 @@ public final class BenchDutyDispatcher {
             log.info("bench slice: {} {} live at {} for {}", persona.name(), world.roster().describeAssignment(entry), mapId,
                     entry.characterId());
         } catch (Exception failure) {
-            forget(slice);
-            if (agent != null) {
-                unload(characterId, agent, lease);
-            } else {
-                world.leases().release(characterId, lease);
-            }
             log.warn("bench slice for {} failed", persona.id(), failure);
+            if (agent == null) {
+                forget(slice);
+                world.leases().release(characterId, lease);
+            } else if (begun) {
+                end(slice, "begin failed", now); // its form began: its tidy-up and the hand-back run as for any end
+            } else {
+                close(slice, agent, "begin failed", true, now); // its form may have started something first
+            }
         }
     }
 
-    private void end(Slice slice, String reason, long now) {
-        forget(slice);
-        lastLiveAtMs.put(slice.personaId, now);
-        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(slice.characterId);
-        Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
-        try {
-            slice.form.finish(slice, agent, reason); // its last harvest
-        } catch (RuntimeException failure) {
-            log.warn("bench slice of {} failed to finish", slice.personaId, failure);
+    /** A slice whose form never began: the hand-back when {@code handBack}, then the unload; nothing to record. */
+    private void close(Slice slice, Character agent, String reason, boolean handBack, long now) {
+        slice.closing = true;
+        slice.endReason = reason;
+        slice.leaving = agent;
+        slice.handedBack = !handBack || handBack(slice, agent, reason, now);
+        if (unload(slice)) {
+            forget(slice);
         }
-        if (entry != null && agent != null) {
+    }
+
+    /**
+     * Ends a slice. Each step of its tidy-up runs on its own, so one failing never skips the others; the unload comes
+     * last, and a companion still online after it keeps its lease and its slot and is unloaded again next tick.
+     */
+    private void end(Slice slice, String reason, long now) {
+        if (!slice.closing) {
+            slice.closing = true;
+            slice.endReason = reason;
+            lastLiveAtMs.put(slice.personaId, now);
+            AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(slice.characterId);
+            Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
+            slice.leaving = agent;
             try {
-                handBack(entry, agent, reason, now);
+                slice.form.finish(slice, agent, reason); // its last harvest
             } catch (RuntimeException failure) {
-                log.warn("bench slice of {} failed its hand-back", slice.personaId, failure);
+                log.warn("bench slice of {} failed to finish", slice.personaId, failure);
+            }
+            slice.handedBack = handBack(slice, agent, reason, now);
+            try {
+                record(slice, agent, now);
+            } catch (RuntimeException failure) {
+                log.warn("bench yield of {} was not recorded", slice.personaId, failure);
+            }
+            try {
+                BenchLedger ledger = world.bench();
+                if (ledger != null) { // the call-back report: the EXP it gained here and the deaths it took
+                    ledger.reportSlice(slice.ownerId, slice.personaId, slice.mapId, agent == null ? 0L
+                            : expGained(slice.startLevel, slice.startExp, agent.getLevel(), agent.getExp()), slice.startLevel,
+                            slice.deaths.get());
+                }
+            } catch (RuntimeException failure) {
+                log.warn("bench report of {} was not kept", slice.personaId, failure);
+            }
+            if (ROUGH_HUNT.equals(reason)) {
+                restingUntilMs.put(slice.personaId, now + world.config().BENCH_LIVE_SLICE_MS);
+                CompanionViews.invalidate(world, slice.ownerId, slice.personaId);
             }
         }
-        record(slice, agent, now);
-        BenchLedger ledger = world.bench();
-        if (ledger != null) { // the call-back report: the EXP it gained here and the deaths it took
-            ledger.reportSlice(slice.ownerId, slice.personaId, slice.mapId, agent == null ? 0L
-                    : expGained(slice.startLevel, slice.startExp, agent.getLevel(), agent.getExp()), slice.startLevel, slice.deaths.get());
+        if (!unload(slice)) {
+            return; // still online: it keeps its lease and its slot, and the next tick unloads it again
         }
-        if (ROUGH_HUNT.equals(reason)) {
-            restingUntilMs.put(slice.personaId, now + world.config().BENCH_LIVE_SLICE_MS);
-            CompanionViews.invalidate(world, slice.ownerId, slice.personaId);
-        }
-        unload(slice.characterId, agent, slice.lease());
-        world.store().event(slice.ownerId, slice.personaId, "bench.live-end", reason);
+        forget(slice);
+        world.store().event(slice.ownerId, slice.personaId, "bench.live-end", slice.endReason);
     }
 
     private void forget(Slice slice) {
@@ -626,45 +832,93 @@ public final class BenchDutyDispatcher {
         byCharacter.remove(slice.characterId, slice);
     }
 
-    private void unload(int characterId, Character agent, CompanionLeases.Kind lease) {
-        AgentRuntimeCleanupService.removeAgentByCharacterId(characterId);
-        if (agent != null && agent.getClient() != null) {
-            agent.saveCharToDB();
-            agent.getClient().forceDisconnect();
+    /**
+     * Unloads the slice's companion: out of the registry, then saved and disconnected. Its lease is released once it is
+     * offline (the save first, so the next load sees it); true then. While it is still online its lease stays, so
+     * nothing can load a second copy of it. A hand-back that never ran on its own tick is finished here: once it is
+     * out of the registry nothing ticks it any more.
+     */
+    private boolean unload(Slice slice) {
+        Character agent = slice.leaving;
+        try {
+            AgentRuntimeCleanupService.removeAgentByCharacterId(slice.characterId);
+        } catch (RuntimeException failure) {
+            log.warn("bench slice of {} failed to leave the registry", slice.personaId, failure);
         }
-        world.leases().release(characterId, lease); // saved first, so the next load sees it
+        if (!slice.handedBack && agent != null) {
+            try {
+                AgentFieldVisitLeaseRuntime.clear(null, agent);
+                AgentTownLifeVisitLeaseRuntime.clear(null, agent);
+                slice.handedBack = true;
+            } catch (RuntimeException failure) {
+                log.warn("bench slice of {} failed to clear its visit checkpoints", slice.personaId, failure);
+            }
+        }
+        boolean offline = agent == null || agent.getClient() == null;
+        if (!offline) {
+            try {
+                agent.saveCharToDB();
+                agent.getClient().forceDisconnect();
+                offline = true;
+            } catch (RuntimeException failure) {
+                log.warn("bench slice of {} failed to unload; it keeps its lease and is unloaded again next tick",
+                        slice.personaId, failure);
+            }
+        }
+        if (offline) {
+            world.leases().release(slice.characterId, slice.lease());
+        }
+        return offline;
     }
 
     /** A field slice's yield, for the model: how long it hunted, and the EXP, meso, items and deaths it took there. */
     private void record(Slice slice, Character agent, long now) {
         BenchYieldModel yields = world.benchYields();
-        if (yields == null || agent == null || slice.pool != CompanionBudget.Kind.BENCH_LIVE) { // a test's world may have none
+        // only the grinders' slices (TRAIN, FARM_MESO, FARM_ITEM): a GATHER visit fights only what drops its items
+        if (yields == null || agent == null || !(slice.form instanceof BenchSessions)) { // a test's world may have none
             return;
         }
         long huntedMs = (slice.resupplying() ? slice.huntEndedAtMs : now) - slice.startedAtMs;
-        try {
-            yields.record(BenchYieldModel.Key.of(slice.jobId, slice.startLevel, slice.mapId), new BenchYieldModel.Sample(
-                    huntedMs / 3_600_000.0d, expGained(slice.startLevel, slice.startExp, agent.getLevel(), agent.getExp()),
-                    slice.loot.mesoTotal(), slice.loot.itemsTotal(), slice.deaths.get()));
-        } catch (RuntimeException failure) {
-            log.warn("bench yield of {} was not recorded", slice.personaId, failure);
+        yields.record(BenchYieldModel.Key.of(slice.jobId, slice.startLevel, slice.mapId), new BenchYieldModel.Sample(
+                huntedMs / 3_600_000.0d, expGained(slice.startLevel, slice.startExp, agent.getLevel(), agent.getExp()),
+                slice.loot.mesoTotal(), slice.loot.itemsTotal(), slice.deaths.get()));
+    }
+
+    /**
+     * A companion just loaded (a slice of any duty, or a call): what an interrupted stall of its left in its bag or in a
+     * shop escrow goes back to the haul first (BenchStallForm), whatever its duty is now.
+     */
+    public void reclaimStall(int ownerId, String personaId, Character agent) {
+        for (Form form : forms.values()) {
+            if (form instanceof BenchStallForm stall) {
+                stall.reclaim(ownerId, personaId, agent);
+                return;
+            }
         }
     }
 
     /**
-     * Hands a slice's Agent back clean before it unloads: each primary activity a form may have started (a hunt, a town
-     * visit, a stall's commerce) is asked to stop at its boundary, a hunt or town visit still running is stopped (it
-     * unloads now), and the field and town visit-lease checkpoints are cleared, so its next load (a call from its owner)
-     * restores no bench activity. A stall's commerce is closed by its form first and is never abandoned here.
+     * Hands a slice's Agent back clean before it unloads, on its own mailbox (its tick may be running): each primary
+     * activity a form may have started (a hunt, a town visit, a stall's commerce) is asked to stop at its boundary, a
+     * hunt or town visit still running is stopped (it unloads now), and the field and town visit-lease checkpoints are
+     * cleared, so its next load (a call from its owner) restores no bench activity. A stall's commerce is closed by its
+     * form first and is never abandoned here. False when it did not run in time (the unload clears the checkpoints).
      */
-    public static void handBack(AgentRuntimeEntry entry, Character agent, String reason, long nowMs) {
-        String why = "bench slice ended: " + reason;
-        for (AgentActivityKind kind : HAND_BACK) {
-            if (!AgentActivityBootstrap.requestPrimaryStop(entry, agent, kind, why, nowMs) && kind != AgentActivityKind.COMMERCE) {
-                AgentActivityBootstrap.forcePrimaryStop(entry, agent, kind, why, nowMs);
-            }
+    private boolean handBack(Slice slice, Character agent, String reason, long nowMs) {
+        AgentRuntimeEntry entry = agent == null ? null : AgentRuntimeRegistry.findByAgentCharacterId(slice.characterId);
+        if (entry == null) {
+            return agent == null;
         }
-        AgentFieldVisitLeaseRuntime.clear(entry, agent);
-        AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
+        String why = "bench slice ended: " + reason;
+        return Boolean.TRUE.equals(onAgent(entry, runtime -> {
+            for (AgentActivityKind kind : HAND_BACK) {
+                if (!AgentActivityBootstrap.requestPrimaryStop(runtime, agent, kind, why, nowMs) && kind != AgentActivityKind.COMMERCE) {
+                    AgentActivityBootstrap.forcePrimaryStop(runtime, agent, kind, why, nowMs);
+                }
+            }
+            AgentFieldVisitLeaseRuntime.clear(runtime, agent);
+            AgentTownLifeVisitLeaseRuntime.clear(runtime, agent);
+            return Boolean.TRUE;
+        }));
     }
 }

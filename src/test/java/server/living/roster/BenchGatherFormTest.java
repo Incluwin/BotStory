@@ -121,6 +121,39 @@ class BenchGatherFormTest {
     }
 
     @Test
+    void itsLeaseStartsOnItsMailboxAndAGatherSliceMeasuresNoGrinderYield() {
+        annNeedsShells(10, "wren");
+        game.companion(ANN, "dara", "Dara", 904, Assignment.GATHER);
+        game.duty.tick();
+        game.statics(server.agents.runtime.AgentMailboxRuntime.class)
+                .verify(() -> server.agents.runtime.AgentMailboxRuntime.dispatch(org.mockito.ArgumentMatchers.eq(game.entry(904)), any()));
+        game.picksUpMeso(904, 300);
+
+        game.now += game.config.BENCH_LIVE_SLICE_MS + 1L;
+        game.duty.tick(); // its slice ends (and, still needed, the next one starts)
+
+        assertEquals(List.of(ANN + " dara bench.live-end slice elapsed"), game.store.events("bench.live-end"));
+        // it fought only what drops its items: a TRAIN or farming slice's rates at this camp are not its to set
+        assertTrue(game.store.yields.isEmpty(), game.store.yields.toString());
+    }
+
+    @Test
+    void whileWatchedItsVisitIsRenewedBeforeItRunsOut() {
+        annNeedsShells(10, "wren");
+        game.companion(ANN, "dara", "Dara", 904, Assignment.GATHER);
+        game.duty.tick();
+        when(game.map(FIELD).getAllPlayers()).thenReturn(List.of(mock(Character.class)));
+
+        game.now += game.config.BENCH_LIVE_SLICE_MS - BenchDutyDispatcher.TICK_MS / 2; // it would end before the next look
+        game.duty.tick();
+
+        assertEquals(2, visits.size(), "renewed while it still runs");
+        assertEquals(visits.get(0).entryRequest(), visits.get(1).entryRequest(), "the same field request: no break");
+        assertEquals(game.now + game.config.BENCH_LIVE_SLICE_MS, visits.get(1).exitAtMs());
+        assertTrue(game.duty.live("dara"));
+    }
+
+    @Test
     void whatItPicksUpGoesToTheHaulUntilTheQuestsHaveWhatTheyNeed() {
         annNeedsShells(10, "wren");
         game.companion(ANN, "dara", "Dara", 904, Assignment.GATHER);

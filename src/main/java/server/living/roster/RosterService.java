@@ -735,7 +735,7 @@ public final class RosterService {
                     : spawnCompanion(owner, persona, entry, null);
         }
         if ((entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY) && owner.getMap() != null) {
-            int campMap = campOf(entry, persona);
+            int campMap = departure(entry, persona); // a live bench slice sets off from where it stands
             long eta = recallEtaMs(campMap, owner.getMapId());
             if (eta > 0L && !consumeWhistle(owner)) {
                 return travel(owner, persona, entry, campMap, eta);
@@ -747,6 +747,16 @@ public final class RosterService {
     /** Where a benched companion camps: its row's camp, else its home town. */
     private static int campOf(RosterEntry entry, Persona persona) {
         return entry.campMapId() == 0 ? server.living.resident.ResidentSpots.townMapId(persona.homeTown()) : entry.campMapId();
+    }
+
+    /**
+     * Where a benched companion called now sets off from: the map its live bench slice stands on (a field camp, a town
+     * it rests in, a Free Market room; read before the call ends the slice), else its camp.
+     */
+    private int departure(RosterEntry entry, Persona persona) {
+        BenchDutyDispatcher bench = world.benchDuty();
+        BenchDutyDispatcher.Slice slice = bench == null ? null : bench.slice(persona.id());
+        return slice != null && slice.mapId() > 0 ? slice.mapId() : campOf(entry, persona);
     }
 
     /** Decision 7: the road estimate, capped at RECALL_MAX_ETA_MS on the same continent. */
@@ -849,6 +859,7 @@ public final class RosterService {
             return new RosterResult.NotOwned();
         }
         world.bench().applyAccrued(current(entry), result.agent()); // as a call that seats it at once
+        reclaimStall(owner, persona, result.agent());
         ownerByPersona.put(persona.id(), owner.getId());
         settings.apply(owner, persona, result.agent());
         return onItsWay(owner, persona, entry, fromMapId, etaMs, quiet);
@@ -1073,6 +1084,7 @@ public final class RosterService {
         // bench slices and the ledger rewrite the row behind the caller's snapshot, and applyAccrued zeroes the
         // banked EXP: both saves start from the row as it is now, so the EXP can never be granted twice
         world.bench().applyAccrued(current(entry), result.agent());
+        reclaimStall(owner, persona, result.agent());
         RosterEntry active = current(entry).with(RosterState.ACTIVE, System.currentTimeMillis());
         write(active);
         ownerByPersona.put(persona.id(), owner.getId());
@@ -1109,6 +1121,14 @@ public final class RosterService {
             return refuse(owner, persona, entry, BUSY_LINE, "busy", new RosterResult.Busy());
         }
         return null;
+    }
+
+    /** A companion just loaded: what an interrupted bench stall of its left behind goes back to the haul first. */
+    private void reclaimStall(Character owner, Persona persona, Character bot) {
+        BenchDutyDispatcher bench = world.benchDuty();
+        if (bench != null) {
+            bench.reclaimStall(owner.getId(), persona.id(), bot);
+        }
     }
 
     /** Loads (or places) the companion under its owner standing still at {@code point} on {@code map}: no follow yet. */
@@ -1329,6 +1349,11 @@ public final class RosterService {
      * instead of its usual words (null keeps them); {@code eventKind} is logged.
      */
     public RosterResult standDown(Character owner, Persona persona, String line, String eventKind) {
+        return standDown(owner, persona, line, eventKind, false);
+    }
+
+    /** {@link #standDown(Character, Persona, String, String)}; {@code down}: it went down and leaves at once, no walk. */
+    private RosterResult standDown(Character owner, Persona persona, String line, String eventKind, boolean down) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return new RosterResult.NotOwned();
@@ -1347,7 +1372,7 @@ public final class RosterService {
         if (entry.state() == RosterState.PARKED) {
             leaveOfflineParty(entry); // not loaded yet: it leaves the party it is listed in as an offline member
         }
-        walkOut(owner, entry);
+        walkOut(owner, entry, down);
         world.slots().release(persona.id()); // an errand's seat goes back with it
         RosterEntry benched = entry.with(RosterState.BENCHED, System.currentTimeMillis());
         write(benched);
@@ -1358,12 +1383,19 @@ public final class RosterService {
     /**
      * A benched companion on its owner's map leaves the party at once (the party window shows it), walks to the
      * nearest portal and goes when it gets there or after a few seconds, so it never vanishes on the spot (plan
-     * "Rotate"). It keeps its COMPANION lease until then. Anywhere else, or with no usable portal, it goes at once.
+     * "Rotate"). It keeps its COMPANION lease until then. Anywhere else, with no usable portal, or when it went down
+     * ({@code down}, or no HP left of its pool), it goes at once.
      */
     private void walkOut(Character owner, RosterEntry entry) {
+        walkOut(owner, entry, false);
+    }
+
+    private void walkOut(Character owner, RosterEntry entry, boolean down) {
         Character bot = companion(entry);
         MapleMap map = bot == null ? null : bot.getMap();
-        Point portal = map == null || map != owner.getMap() ? null : ArrivalPlacement.nearestPortal(map, bot.getPosition());
+        boolean dead = down || bot != null && bot.getHp() <= 0 && bot.getCurrentMaxHp() > 0; // a corpse walks nowhere
+        Point portal = map == null || map != owner.getMap() || dead ? null
+                : ArrivalPlacement.nearestPortal(map, bot.getPosition());
         AgentRuntimeEntry runtime = portal == null ? null : AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
         if (runtime == null) {
             despawn(entry, "benched");
@@ -1400,6 +1432,15 @@ public final class RosterService {
      * an incoming one that is not on the bench, it is a bench and a call. Ok when the incoming one is seated or on its way.
      */
     public RosterResult swap(Character owner, Persona out, Persona in) {
+        return swap(owner, out, in, null);
+    }
+
+    /**
+     * {@link #swap(Character, Persona, Persona)} for an outgoing one that went down (CrewRotation): it whispers
+     * {@code outLine} to its owner instead of its bench words, and leaves at once while it is dead, since it cannot walk
+     * to a portal (null: the usual swap).
+     */
+    public RosterResult swap(Character owner, Persona out, Persona in, String outLine) {
         if (committed(out.id()) || committed(in.id())) {
             return afterTheRun(owner, committed(out.id()) ? out : in);
         }
@@ -1419,7 +1460,7 @@ public final class RosterService {
             int ownerId = owner.getId();
             later("roster.swap " + in.id(), () -> {
                 Character now = onlineCharacter(ownerId);
-                RosterResult result = now == null ? null : swap(now, out, in);
+                RosterResult result = now == null ? null : swap(now, out, in, outLine);
                 if (result != null && !result.ok()) {
                     now.dropMessage(5, RosterVoice.line(in, result));
                 }
@@ -1430,14 +1471,14 @@ public final class RosterService {
             return new RosterResult.Ok(in.name() + " is on the way.");
         }
         try {
-            return tradePlaces(owner, out, leaving, outBot, in, coming);
+            return tradePlaces(owner, out, leaving, outBot, in, coming, outLine);
         } finally {
             seating.remove(in.id());
         }
     }
 
     private RosterResult tradePlaces(Character owner, Persona out, RosterEntry leaving, Character outBot, Persona in,
-                                     RosterEntry coming) {
+                                     RosterEntry coming, String outLine) {
         int characterId = world.residents().ensureCharacter(in);
         if (characterId == 0) {
             return new RosterResult.Failed(in.name() + " cannot be reached right now.");
@@ -1447,7 +1488,7 @@ public final class RosterService {
             return refuse(owner, in, coming, "give me a moment. too many of us are out right now.", admission.reason(),
                     admission.atCeiling() ? new RosterResult.BudgetExhausted() : new RosterResult.QuotaFull());
         }
-        int campMap = campOf(coming, in);
+        int campMap = departure(coming, in); // a live bench slice sets off from where it stands
         long eta = recallEtaMs(campMap, owner.getMapId());
         if (eta > 0L && consumeWhistle(owner)) {
             eta = 0L;
@@ -1499,8 +1540,10 @@ public final class RosterService {
         }
         world.slots().stopWaiting(out.id());
         world.slots().stopWaiting(in.id());
-        RosterResult benchedOut = standDown(owner, out, null, "roster.bench"); // it says so and walks out to its duty
+        // it says so and walks out to its duty; one that went down whispers why, and goes at once while it is dead
+        RosterResult benchedOut = standDown(owner, out, outLine, "roster.bench", outLine != null && outBot.getHp() <= 0);
         world.bench().applyAccrued(current(coming), inBot);
+        reclaimStall(owner, in, inBot);
         ownerByPersona.put(in.id(), owner.getId());
         settings.apply(owner, in, inBot);
         RosterResult called;
@@ -1511,6 +1554,10 @@ public final class RosterService {
             write(current(coming).with(RosterState.ACTIVE, System.currentTimeMillis()));
             List<String> lines = world.arcs().lines(in, "join");
             world.residents().reply(in, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(owner.getId(), lines.size())));
+            String report = world.bench().takeReport(owner.getId(), in.id(), inBot.getLevel()); // flow 1 step 5, once
+            if (report != null) {
+                world.residents().whisper(in, owner, report);
+            }
             called = new RosterResult.Ok(in.name() + " joins your party.");
         }
         world.store().event(owner.getId(), in.id(), "roster.swap", out.id() + " -> " + in.id());
@@ -1527,7 +1574,35 @@ public final class RosterService {
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
                 entry.farmSecondsToday(), entry.farmDay(), entry.etaAtMs(), entry.holdMapId(), entry.parkedAtMs());
         write(updated);
+        endYourCall(owner.getId(), persona.id()); // its owner picked: no longer its own call
         return new RosterResult.Ok(persona.name() + " will camp at map " + mapId + ".");
+    }
+
+    /**
+     * Your call's own pick (BenchDutyDispatcher, before a slice of a row on Your call): the duty (no item, no count) and
+     * the camp, in one write, Your call staying on. The row now, or null when it is gone or not on the bench.
+     */
+    public RosterEntry applyYourCall(int ownerId, String personaId, Assignment duty, int campMapId) {
+        RosterEntry entry = world.store().rosterEntry(ownerId, personaId);
+        if (!BenchSessions.benchGoverned(entry) || duty == null) {
+            return null;
+        }
+        RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), duty, 0, 0, campMapId,
+                entry.accruedExp(), entry.haulMeso(), entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(),
+                entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay(), entry.etaAtMs(), entry.holdMapId(),
+                entry.parkedAtMs());
+        write(updated);
+        world.store().event(ownerId, personaId, "roster.assign", describeAssignment(updated) + " at map " + campMapId
+                + " (your call)");
+        return updated;
+    }
+
+    /** A duty or camp its owner gave it: "Your call" is off for the row. */
+    private void endYourCall(int ownerId, String personaId) {
+        BenchDutyDispatcher bench = world.benchDuty();
+        if (bench != null) {
+            bench.setYourCall(ownerId, personaId, false);
+        }
     }
 
     public RosterResult assign(Character owner, Persona persona, Assignment assignment, int itemId, int count) {
@@ -1543,6 +1618,7 @@ public final class RosterService {
                 entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay(),
                 entry.etaAtMs(), entry.holdMapId(), entry.parkedAtMs());
         write(updated);
+        endYourCall(owner.getId(), persona.id());
         world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated));
         return new RosterResult.Ok(persona.name() + " will " + describeAssignment(updated)
                 + (entry.state() == RosterState.ACTIVE ? " once benched." : "."));
@@ -1582,6 +1658,7 @@ public final class RosterService {
             return new RosterResult.Failed(persona.name() + ": where? take me to a field and say 'camp here', or send me from one with 'go "
                     + describeAssignment(updated) + " here'.");
         }
+        endYourCall(owner.getId(), persona.id());
         if (entry.state() != RosterState.ACTIVE) {
             write(updated);
             world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated) + " at map " + workMap);
@@ -1855,7 +1932,13 @@ public final class RosterService {
         }
         Map<String, long[]> before = benchAtLogout.remove(ownerId);
         if (before != null) {
-            summarizeBench(owner, before);
+            // one whisper sums it up (flow 7 step 6): the call-back reports of those it named are spent, not told again
+            BenchLedger ledger = world.bench();
+            for (String personaId : summarizeBench(owner, before)) {
+                if (ledger != null) {
+                    ledger.takeReport(ownerId, personaId, 0);
+                }
+            }
         }
         Set<String> called = new HashSet<>();
         if (!restoring && (afterLogout || before != null)) {
@@ -2025,9 +2108,11 @@ public final class RosterService {
      * The whisper to an owner back from a logout: what each companion on the bench earned meanwhile, its banked EXP (as
      * a share of its level, as the Crew window shows it) and haul meso gained since {@code before} (the rows at the
      * logout, or at the boot; a row missing there counts from nothing). The first one says it, of itself as "me"; the
-     * first {@link #SUMMARY_NAMES} are named and the rest counted. Nothing earned, no whisper.
+     * first {@link #SUMMARY_NAMES} are named and the rest counted. Nothing earned, no whisper. The persona ids it told
+     * of (named or counted).
      */
-    private void summarizeBench(Character owner, Map<String, long[]> before) {
+    private Set<String> summarizeBench(Character owner, Map<String, long[]> before) {
+        Set<String> told = new HashSet<>();
         List<String> earned = new ArrayList<>();
         Persona speaker = null;
         int others = 0;
@@ -2040,6 +2125,7 @@ public final class RosterService {
                 continue;
             }
             speaker = speaker == null ? persona : speaker;
+            told.add(persona.id());
             if (earned.size() >= SUMMARY_NAMES) {
                 others++;
                 continue;
@@ -2055,6 +2141,7 @@ public final class RosterService {
         if (speaker != null) {
             world.residents().whisper(speaker, owner, "while you were away: " + String.join(", ", earned) + ".");
         }
+        return told;
     }
 
     /**

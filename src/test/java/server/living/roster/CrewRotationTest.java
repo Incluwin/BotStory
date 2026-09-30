@@ -65,7 +65,7 @@ class CrewRotationTest {
         game.roster();
         bench = game.world.benchDuty();
         when(bench.note(anyString())).thenReturn("");
-        rotation = new CrewRotation(game.world, () -> now, bot -> noPotions.contains(bot.getId()));
+        rotation = new CrewRotation(game.world, () -> now, bot -> noPotions.contains(bot.getId()), noPotions::contains);
     }
 
     @AfterEach
@@ -146,7 +146,7 @@ class CrewRotationTest {
         assertEquals(RosterState.TRAVELLING, game.row(mira).state());
         assertTrue(game.members.contains(950));
         assertFalse(game.members.contains(901));
-        assertEquals(List.of("Mira: tobi's out of potions. i'll take over."), game.partyChat);
+        assertEquals(List.of("Mira: Tobi's out of potions. i'll take over."), game.partyChat, "a name keeps its capital");
         assertTrue(game.store.events.stream().anyMatch(event -> event.contains("crew.fresh")), game.store.events.toString());
 
         now += MINUTE;
@@ -155,14 +155,48 @@ class CrewRotationTest {
     }
 
     @Test
-    void deadOutsideAnInstanceSwaps() {
+    void deadOutsideAnInstanceSwapsAndLeavesAtOnceSayingWhy() {
         rotation.setKeepFresh(game.ann, true);
+        game.placeWithAnn(tobi); // down right beside her
         when(game.bot(tobi).getHp()).thenReturn(0);
+        game.calls.clear();
 
         assertTrue(rotation.check(game.ann, now).ok());
 
         assertEquals(RosterState.BENCHED, game.row(tobi).state());
-        assertEquals(List.of("Mira: tobi went down. i'll take it from here."), game.partyChat);
+        assertEquals(List.of("Mira: Tobi went down. i'll take it from here."), game.partyChat);
+        verify(game.residents).whisper(tobi, game.ann, CrewRotation.DOWN_LINE); // never its cheerful bench line
+        assertTrue(game.calls.contains("remove Tobi"), game.calls.toString());
+        assertFalse(game.calls.stream().anyMatch(call -> call.startsWith("walk Tobi")), "a corpse walks nowhere: " + game.calls);
+    }
+
+    @Test
+    void oneThatWentDownAndRevivedBeforeTheNextLookIsStillSwapped() {
+        rotation.setKeepFresh(game.ann, true);
+        assertNull(rotation.check(game.ann, now), "all fine at this look");
+
+        now += 10_000L;
+        rotation.died(game.bot(tobi)); // LivingWorldHooks.playerDied; it revives in town 5 s later, long before the next look
+        now += game.config.AUTO_ROTATE_TICK_MS;
+
+        assertTrue(rotation.check(game.ann, now).ok());
+        assertEquals(RosterState.BENCHED, game.row(tobi).state());
+        assertEquals(List.of("Mira: Tobi went down. i'll take it from here."), game.partyChat);
+        verify(game.residents).whisper(tobi, game.ann, CrewRotation.DOWN_LINE);
+
+        now += game.config.AUTO_ROTATE_COOLDOWN_MS;
+        assertNull(rotation.check(game.ann, now), "that death was seen: it swaps nobody again");
+    }
+
+    @Test
+    void aBenchCompanionWithNoPotionInItsSavedBagIsNeverSwappedInForOneOutOfThem() {
+        rotation.setKeepFresh(game.ann, true);
+        noPotions.add(901); // Tobi is out of potions
+        noPotions.add(950); // and so is Mira's saved USE tab: she would be swapped out again at once
+
+        assertNull(rotation.check(game.ann, now));
+        assertEquals(RosterState.ACTIVE, game.row(tobi).state());
+        assertTrue(game.partyChat.isEmpty(), game.partyChat.toString());
     }
 
     @Test
@@ -176,7 +210,7 @@ class CrewRotationTest {
 
         game.store.levels.put(950, 29);
         assertTrue(rotation.check(game.ann, now).ok());
-        assertEquals(List.of("Mira: i'm closer to your level. i'll take tobi's spot."), game.partyChat);
+        assertEquals(List.of("Mira: i'm closer to your level. i'll take Tobi's spot."), game.partyChat);
     }
 
     // ---- when it never swaps ---------------------------------------------------------------------

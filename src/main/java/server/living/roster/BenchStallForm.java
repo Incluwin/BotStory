@@ -20,13 +20,16 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.population.Population;
 import server.living.quest.QuestLedger;
+import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.RosterEntry;
+import server.maps.MapObjectType;
 import server.maps.MapleMap;
 import server.maps.PlayerShop;
 import server.maps.PlayerShopEscrowSnapshot;
 import server.maps.PlayerShopEscrowStore;
+import server.maps.reservation.CharacterSpace;
 import server.maps.reservation.FreeMarketCharacterSpaceCatalog;
 import server.maps.reservation.FreeMarketStorePlacementService;
 
@@ -44,13 +47,17 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * The STALL and SELL form of the bench (docs/BOT_MANAGEMENT_PLAN.md P5 "Living bench", decision 12 a): a real Free
  * Market shop under the COMMERCE pool. While its haul holds goods it may sell (tradeable kill loot and FARM_ITEM goods
- * its owner's quests do not need; never anything of its owner's), the companion loads in a Free Market room, registered
- * director-idle; the goods move from its haul into its bag, and AgentFreeMarketStallCapability walks it to a free stall
- * spot and opens the shop (AgentFreeMarketStallService), titled in its voice and priced from the population market's
- * price index like the stalls around it (SELL a little under the index, where browsing citizens buy). Each tick the
- * meso of its sales goes into the haul. When the slice ends (its time, a call, a new duty, sold out) the shop closes,
- * the last sales go into the haul and the unsold stock goes back to it. Nothing is duplicated or lost: the haul gives
- * up what reached the bag, gets back what was not sold (never more than the bag holds) and the meso the sales paid.
+ * its owner's quests do not need; never anything of its owner's), the companion loads in a Free Market room with a
+ * free stall spot, registered director-idle; the goods move from its haul into its bag, and
+ * AgentFreeMarketStallCapability walks it to a free stall spot and opens the shop (AgentFreeMarketStallService), titled
+ * in its voice and priced from the population market's price index like the stalls around it (SELL a little under the
+ * index, where browsing citizens buy; the market keeps bench stalls' sales out of its index). Each tick the meso of its
+ * sales goes into the haul. When the slice ends (its time, a call, a new duty, sold out) the shop closes, the last
+ * sales go into the haul and the unsold stock goes back to it. Nothing is duplicated or lost: the haul gives up what
+ * reached the bag, gets back what was not sold (never more than the bag holds) and the meso the sales paid. What a stall
+ * holds of the haul is kept in living_stall_stock, and each move saves the companion before the haul is paid, so a
+ * crash may lose a move in flight but never makes one twice; the companion's next load, whatever its duty, takes an
+ * interrupted stall's escrow and stock back to the haul first ({@link #reclaim}).
  */
 public final class BenchStallForm implements BenchDutyDispatcher.Form {
     private static final Logger log = LoggerFactory.getLogger(BenchStallForm.class);
@@ -65,6 +72,8 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
     private static final long OPEN_TIMEOUT_MS = 90_000L;
     private static final int OPEN_RETRIES = 2;
     private static final String CLOSE_REASON = "BENCH_SLICE_ENDED";
+    /** A stall spot with a shop this close to it is taken (FreeMarketStorePlacementService's own clearance). */
+    private static final int STALL_CLEARANCE_PX = 80;
 
     /** One live stall: what reached its bag from the haul, how it is bundled, and what has sold. */
     private static final class Stall {
@@ -77,9 +86,21 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         /** Its shop once opened (companion-ops writes it; the card may read it from elsewhere). */
         volatile PlayerShop shop;
         int salesSeen;
+
+        /** What it holds of the haul now: stocked less sold. */
+        Map<Integer, Integer> held() {
+            Map<Integer, Integer> out = new LinkedHashMap<>();
+            stocked.forEach((itemId, units) -> {
+                int left = units - sold.getOrDefault(itemId, 0);
+                if (left > 0) {
+                    out.put(itemId, left);
+                }
+            });
+            return out;
+        }
     }
 
-    /** The item facts a stall needs: the game's (ItemInformationProvider, from WZ), or a unit test's own. */
+    /** The game facts a stall needs: the game's (ItemInformationProvider, from WZ; the Free Market's stall spots), or a unit test's own. */
     interface Goods {
         /** True for what no player could put in a shop: unmerchable, quest-only (drop-restricted) or untradeable. */
         boolean restricted(int itemId);
@@ -89,6 +110,11 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
 
         /** The item's name as the game shows it, or null. */
         String name(int itemId);
+
+        /** True while the Free Market room has a stall spot no shop stands on. */
+        default boolean hasFreeSpot(MapleMap room) {
+            return true;
+        }
     }
 
     private static final Goods WZ = new Goods() {
@@ -107,14 +133,24 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         public String name(int itemId) {
             return ItemInformationProvider.getInstance().getName(itemId);
         }
+
+        @Override
+        public boolean hasFreeSpot(MapleMap room) {
+            long clearance = (long) STALL_CLEARANCE_PX * STALL_CLEARANCE_PX;
+            for (CharacterSpace space : FreeMarketCharacterSpaceCatalog.spaces(room.getId())) {
+                if (room.getMapObjectsInRange(space.position(), clearance,
+                        List.of(MapObjectType.SHOP, MapObjectType.HIRED_MERCHANT)).isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
+        }
     };
 
     private final LivingWorld world;
     private final Goods goods;
     /** persona id -> its live stall. */
     private final Map<String, Stall> stalls = new ConcurrentHashMap<>();
-    /** persona id -> unsold stock its last stall could not hand back (it was gone): taken back at its next stall. */
-    private final Map<String, Map<Integer, Integer>> owed = new ConcurrentHashMap<>();
 
     public BenchStallForm(LivingWorld world) {
         this(world, WZ);
@@ -140,15 +176,35 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
     }
 
     /**
-     * Its Free Market room while its haul has something to sell (or its last stall owes the haul stock) and there is a
-     * price index; 0 otherwise, and the ledger keeps it.
+     * Its Free Market room while its haul has something to sell (or an interrupted stall of its left stock or a shop
+     * escrow to take back) and there is a price index: its own room, else the next of the first rooms with a free stall
+     * spot; 0 otherwise (every room full, say), and the ledger keeps it.
      */
     @Override
     public int mapFor(RosterEntry entry, Persona persona, int characterId) {
-        if (Population.get() == null || stock(entry).isEmpty() && !owed.containsKey(persona.id())) {
+        if (Population.get() == null || stock(entry).isEmpty() && !interrupted(entry.characterId(), persona.id(), characterId)) {
             return 0;
         }
-        return FreeMarketCharacterSpaceCatalog.FIRST_ROOM_MAP_ID + Math.floorMod(persona.id().hashCode(), ROOMS);
+        int own = Math.floorMod(persona.id().hashCode(), ROOMS);
+        for (int i = 0; i < ROOMS; i++) {
+            int roomId = FreeMarketCharacterSpaceCatalog.FIRST_ROOM_MAP_ID + (own + i) % ROOMS;
+            MapleMap room = world.residents().map(roomId);
+            if (room != null && goods.hasFreeSpot(room)) {
+                return roomId;
+            }
+        }
+        return 0;
+    }
+
+    /** True when an interrupted stall of the companion's left stock of the haul or a shop escrow behind. */
+    private boolean interrupted(int ownerId, String personaId, int characterId) {
+        try {
+            return !world.store().stallStock(ownerId, personaId).isEmpty()
+                    || PlayerShopEscrowStore.load(characterId).isPresent();
+        } catch (RuntimeException failure) {
+            log.warn("bench stall of {}: its last stall could not be read", personaId, failure);
+            return false;
+        }
     }
 
     @Override
@@ -159,7 +215,9 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         if (entry == null || population == null || roster == null || agent.getClient() == null) {
             return false;
         }
-        reclaim(slice, agent);
+        if (!reclaimFor(slice.ownerId(), slice.personaId(), agent)) {
+            return false; // an escrow still waits to come back: a new shop would write over it
+        }
         Stall stall = new Stall();
         int listed = 0;
         for (HaulItem item : stock(roster)) {
@@ -169,11 +227,15 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
             int moved = units <= 0 ? 0 : toBag(slice, agent, item.itemId(), units, equip);
             if (moved > 0) {
                 stall.stocked.put(item.itemId(), moved);
+                world.store().saveStallStock(slice.ownerId(), slice.personaId(), stall.held());
                 listed += equip ? moved : 1;
             }
             if (listed >= MAX_LISTINGS) {
                 break;
             }
+        }
+        if (!stall.stocked.isEmpty()) {
+            agent.saveCharToDB(true); // the bag as the haul gave it up, before anything else can happen to it
         }
         List<AgentFreeMarketStallService.Listing> listings = listings(stall, agent, population, slice.duty());
         int permit = population.content().permitItemId();
@@ -220,7 +282,9 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
             return;
         }
         if (agent == null) {
-            owe(slice, stall); // gone with its stock: its next stall takes it back first
+            // gone with its stock: living_stall_stock keeps what it holds, and its next load takes it back first
+            log.warn("bench stall of {} ended without its companion; {} is taken back at its next load", slice.personaId(),
+                    stall.held());
             return;
         }
         AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(slice.characterId());
@@ -246,6 +310,60 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         world.store().event(slice.ownerId(), slice.personaId(), "bench.stall-close", reason + "; sold " + stall.sold);
     }
 
+    /**
+     * The companion just loaded (BenchDutyDispatcher, a slice of any duty or a call): what an interrupted stall of its
+     * left behind (a shop escrow, and the stock living_stall_stock says it held) goes back to the haul, as far as its bag
+     * holds it. A live stall's own stock is left alone.
+     */
+    public void reclaim(int ownerId, String personaId, Character agent) {
+        if (personaId != null && agent != null && !stalls.containsKey(personaId)) {
+            reclaimFor(ownerId, personaId, agent);
+        }
+    }
+
+    /**
+     * Before a new stall, or at any load: an interrupted stall's escrow (one per character, which a new shop would
+     * overwrite) returns to its bag, and what that stall held of the haul (living_stall_stock, the larger count per
+     * item where the escrow says more, since both describe the same goods) moves from its bag into the haul. False
+     * while an escrow is still waiting (its recovery failed: a full bag, say); what the stall held is kept for the next
+     * try then. Anything the bag no longer holds was sold (its meso is the companion's own) or never reached it.
+     */
+    private boolean reclaimFor(int ownerId, String personaId, Character agent) {
+        Map<Integer, Integer> due;
+        try {
+            due = new LinkedHashMap<>(world.store().stallStock(ownerId, personaId));
+        } catch (LivingStore.ReadFailed failure) {
+            log.warn("bench stall of {} could not read what its last stall held", personaId, failure);
+            return false;
+        }
+        boolean escrowLeft = false;
+        try {
+            Optional<PlayerShopEscrowSnapshot> escrow = PlayerShopEscrowStore.load(agent.getId());
+            if (escrow.isPresent()) {
+                Map<Integer, Integer> listed = new HashMap<>(); // one listing per bag slot: the units add up per item
+                for (PlayerShopEscrowSnapshot.Listing listing : escrow.get().listings()) {
+                    listed.merge(listing.item().itemId(), listing.item().quantity() * listing.bundles(), Integer::sum);
+                }
+                if (new AgentFreeMarketStallService().recoverInterruptedEscrow(agent)) {
+                    listed.forEach((itemId, units) -> due.merge(itemId, units, Math::max));
+                } else {
+                    escrowLeft = true;
+                }
+            }
+        } catch (RuntimeException failure) {
+            log.warn("bench stall of {} could not recover its last escrow", personaId, failure);
+            escrowLeft = true; // not known to be back: never open a shop over it, and keep what the stall held
+        }
+        if (escrowLeft) {
+            return false;
+        }
+        if (!due.isEmpty()) {
+            toHaul(ownerId, personaId, agent, due);
+            world.store().saveStallStock(ownerId, personaId, Map.of());
+        }
+        return true;
+    }
+
     /** What it may sell from its haul (in haul order, a stall's worth): tradeable goods its owner's quests do not need. */
     private List<HaulItem> stock(RosterEntry entry) {
         QuestLedger quests = world.quests();
@@ -268,7 +386,10 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
                 && !goods.restricted(itemId);
     }
 
-    /** Moves {@code units} of the item from the haul into its bag: the haul gives up exactly what reached the bag. */
+    /**
+     * Moves {@code units} of the item from the haul into its bag: the haul gives up exactly what reached the bag, at once
+     * (the caller saves the bag right after, so a crash in between loses the move rather than making it twice).
+     */
     private int toBag(BenchDutyDispatcher.Slice slice, Character agent, int itemId, int units, boolean equip) {
         int before = held(agent, itemId);
         if (equip) {
@@ -335,7 +456,10 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         return sell ? "clearing my bag: " + wares : wares + ", fresh from camp";
     }
 
-    /** The sales since the last look: their units are counted, and the meso they paid moves from its purse to the haul. */
+    /**
+     * The sales since the last look: their units are counted (living_stall_stock holds the rest), and the meso they paid
+     * moves from its purse to the haul, the purse saved first (a crash in between loses that meso, never doubles it).
+     */
     private void sales(BenchDutyDispatcher.Slice slice, Character agent, Stall stall) {
         List<PlayerShop.SoldItem> sold = stall.shop.getSold();
         long meso = 0L;
@@ -350,9 +474,11 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         if (roster == null) {
             return;
         }
+        world.store().saveStallStock(slice.ownerId(), slice.personaId(), stall.held());
         long taken = Math.max(0L, Math.min(meso, agent.getMeso()));
         if (taken > 0) {
             agent.gainMeso((int) -taken, false);
+            agent.saveCharToDB(true);
         }
         world.store().saveRosterProgress(new RosterEntry(roster.characterId(), roster.personaId(), roster.state(),
                 roster.assignment(), roster.assignmentItem(), roster.assignmentCount(), roster.campMapId(), roster.accruedExp(),
@@ -363,68 +489,45 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         world.store().event(slice.ownerId(), slice.personaId(), "bench.stall-sale", "+" + taken + " meso, " + count + " sales");
     }
 
-    /** The unsold stock back into the haul: what was stocked less what sold, never more than its bag holds. */
+    /**
+     * The unsold stock back into the haul: what was stocked less what sold, never more than its bag holds. What its bag
+     * does not hold (still in escrow after a failed close) stays in living_stall_stock for its next load.
+     */
     private void unstock(BenchDutyDispatcher.Slice slice, Character agent, Stall stall) {
-        Map<Integer, Integer> missing = new HashMap<>();
-        for (Map.Entry<Integer, Integer> stocked : stall.stocked.entrySet()) {
-            int back = stocked.getValue() - stall.sold.getOrDefault(stocked.getKey(), 0);
-            int taken = back <= 0 ? 0 : toHaul(slice, agent, stocked.getKey(), back);
-            if (taken < back) {
-                missing.put(stocked.getKey(), back - taken); // still in escrow (a failed close): its next stall takes it back
+        Map<Integer, Integer> back = stall.held();
+        Map<Integer, Integer> taken = back.isEmpty() ? Map.of() : toHaul(slice.ownerId(), slice.personaId(), agent, back);
+        Map<Integer, Integer> missing = new LinkedHashMap<>();
+        back.forEach((itemId, units) -> {
+            int left = units - taken.getOrDefault(itemId, 0);
+            if (left > 0) {
+                missing.put(itemId, left);
             }
-        }
+        });
+        world.store().saveStallStock(slice.ownerId(), slice.personaId(), missing);
         if (!missing.isEmpty()) {
-            owed.merge(slice.personaId(), missing, (was, now) -> {
-                now.forEach((itemId, units) -> was.merge(itemId, units, Integer::sum));
-                return was;
-            });
             log.warn("bench stall of {} could not hand back {}", slice.personaId(), missing);
         }
     }
 
-    private void owe(BenchDutyDispatcher.Slice slice, Stall stall) {
-        Map<Integer, Integer> unsold = new HashMap<>();
-        stall.stocked.forEach((itemId, units) -> {
-            int back = units - stall.sold.getOrDefault(itemId, 0);
-            if (back > 0) {
-                unsold.put(itemId, back);
+    /**
+     * Moves up to {@code units} of each item from its bag into the haul: out of the bag and the bag saved, then into the
+     * haul (a crash in between loses them, never doubles them). What moved, per item.
+     */
+    private Map<Integer, Integer> toHaul(int ownerId, String personaId, Character agent, Map<Integer, Integer> units) {
+        Map<Integer, Integer> taken = new LinkedHashMap<>();
+        units.forEach((itemId, want) -> {
+            int take = Math.min(want, held(agent, itemId));
+            if (take > 0) {
+                InventoryManipulator.removeById(agent.getClient(), ItemConstants.getInventoryType(itemId), itemId, take, false, false);
+                taken.put(itemId, take);
             }
         });
-        if (!unsold.isEmpty()) {
-            owed.put(slice.personaId(), unsold);
-            log.warn("bench stall of {} ended without its companion; {} is taken back at its next stall", slice.personaId(), unsold);
+        if (taken.isEmpty()) {
+            return taken;
         }
-    }
-
-    /**
-     * Before a new stall: an interrupted stall's escrow (one per character, which a new shop would overwrite) returns
-     * to its bag, and what its last stall owes the haul (the larger of the two counts, since both describe the same
-     * goods) moves from its bag into the haul.
-     */
-    private void reclaim(BenchDutyDispatcher.Slice slice, Character agent) {
-        Map<Integer, Integer> due = owed.remove(slice.personaId());
-        due = due == null ? new HashMap<>() : due;
-        try {
-            Optional<PlayerShopEscrowSnapshot> escrow = PlayerShopEscrowStore.load(agent.getId());
-            if (escrow.isPresent() && new AgentFreeMarketStallService().recoverInterruptedEscrow(agent)) {
-                for (PlayerShopEscrowSnapshot.Listing listing : escrow.get().listings()) {
-                    due.merge(listing.item().itemId(), listing.item().quantity() * listing.bundles(), Math::max);
-                }
-            }
-        } catch (RuntimeException failure) {
-            log.warn("bench stall of {} could not recover its last escrow", slice.personaId(), failure);
-        }
-        due.forEach((itemId, units) -> toHaul(slice, agent, itemId, units));
-    }
-
-    /** Moves up to {@code units} of the item from its bag into the haul; how many moved. */
-    private int toHaul(BenchDutyDispatcher.Slice slice, Character agent, int itemId, int units) {
-        int taken = Math.min(units, held(agent, itemId));
-        if (taken > 0) {
-            InventoryManipulator.removeById(agent.getClient(), ItemConstants.getInventoryType(itemId), itemId, taken, false, false);
-            world.store().addHaul(slice.ownerId(), slice.personaId(), itemId, taken);
-        }
-        return Math.max(0, taken);
+        agent.saveCharToDB(true);
+        taken.forEach((itemId, take) -> world.store().addHaul(ownerId, personaId, itemId, take));
+        return taken;
     }
 
     private static int held(Character agent, int itemId) {

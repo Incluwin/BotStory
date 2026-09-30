@@ -16,7 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Decision 13 a: what bench grinders learned out of sight reaches live play only through the arena. {@code
  * !combatarena <agent> policy=candidate} measures the candidate against live play in the policy=learn pairs and adopts
- * it only when it is not worse; otherwise the policy file keeps what it had.
+ * it only when it is ahead by a standard error of the paired difference at least (never on noise alone); otherwise the
+ * policy file keeps what it had.
  */
 class CandidateAdoptionTest {
     private final AgentCombatPolicyTable candidate = candidate();
@@ -24,8 +25,8 @@ class CandidateAdoptionTest {
             Map.of("1 target", Map.of(0, new AgentCombatPolicyTable.Cell(40, 700, true, 700, 1))));
 
     @Test
-    void aCandidateNotWorseThanLivePlayIsAdopted() {
-        for (double difference : new double[] {25, 0}) { // better, and a tie: "not worse"
+    void aCandidateAheadByItsStandardErrorIsAdopted() {
+        for (double difference : new double[] {25, 5}) { // well ahead, and ahead by exactly its standard error
             AgentCombatArenaService.Evaluation evaluation = new AgentCombatArenaService.Evaluation(
                     new ArenaOptimizer.PairedComparison(1000 + difference, 1000, difference, 5), false);
 
@@ -37,6 +38,19 @@ class CandidateAdoptionTest {
             assertEquals(1000, kept.priorDps(), 1e-9, "measured against live play");
             assertEquals(120, kept.decisions());
         }
+    }
+
+    @Test
+    void aCandidateWithinTheNoiseOfLivePlayIsNotAdopted() {
+        for (double difference : new double[] {0, 3, 4.99}) { // a tie, or ahead by less than the noise of the pairs
+            AgentCombatArenaService.Evaluation noise = new AgentCombatArenaService.Evaluation(
+                    new ArenaOptimizer.PairedComparison(1000 + difference, 1000, difference, 5), false);
+
+            assertFalse(noise.candidateAdoptable(), "ahead by " + difference + " +/- 5");
+            assertSame(current, AgentCombatArenaService.afterCandidateCheck(current, candidate, noise, 120));
+        }
+        assertTrue(new AgentCombatArenaService.Evaluation(new ArenaOptimizer.PairedComparison(1000, 1000, 0, 5), false)
+                .adoptable(), "policy=learn still adopts what is not worse than the prior scorer");
     }
 
     @Test

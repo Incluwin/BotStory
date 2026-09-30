@@ -45,6 +45,14 @@ class EndRulesTest {
         assertEquals("slice elapsed", BenchDutyDispatcher.timeUp(CompanionBudget.Kind.COMMERCE,
                 config.COMMERCE_SLICE_MS + 1L, false, config));
         assertTrue(config.BENCH_TOWN_SLICE_MS > config.BENCH_LIVE_SLICE_MS && config.COMMERCE_SLICE_MS > config.BENCH_TOWN_SLICE_MS);
+        // towns and the Free Market nearly always have a player: watched, a town or stall slice runs twice its length
+        // at most, so their small pools still rotate
+        assertNull(BenchDutyDispatcher.timeUp(CompanionBudget.Kind.BENCH_TOWN, 2L * config.BENCH_TOWN_SLICE_MS, true, config));
+        assertEquals("slice elapsed", BenchDutyDispatcher.timeUp(CompanionBudget.Kind.BENCH_TOWN,
+                2L * config.BENCH_TOWN_SLICE_MS + 1L, true, config));
+        assertNull(BenchDutyDispatcher.timeUp(CompanionBudget.Kind.COMMERCE, 2L * config.COMMERCE_SLICE_MS, true, config));
+        assertEquals("slice elapsed", BenchDutyDispatcher.timeUp(CompanionBudget.Kind.COMMERCE,
+                2L * config.COMMERCE_SLICE_MS + 1L, true, config));
     }
 
     @Test
@@ -103,6 +111,7 @@ class EndRulesTest {
 
     @Test
     void theRulesEverySliceKeepsEndATownSliceToo() {
+        game.config.BENCH_TOWN_PER_OWNER = 3; // all three of Ann's rest in town at once here
         game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
         game.companion(ANN, "hale", "Hale", 908, Assignment.REST);
         game.companion(ANN, "ivo", "Ivo", 909, Assignment.REST);

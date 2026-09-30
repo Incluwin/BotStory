@@ -66,14 +66,27 @@ class BudgetTest {
     @Test
     void townAndStallSlicesStopAtTheirOwnServerPools() {
         // P5: a town slice (REST) and a stall (STALL, SELL) each have their own pool; the field pool being full is no matter
-        assertTrue(CompanionBudget.decide(Kind.BENCH_TOWN, new Usage(100, 0, 8, 2, 0, 9, 4), config).allowed());
-        Admission town = CompanionBudget.decide(Kind.BENCH_TOWN, new Usage(100, 0, 0, 0, 0, 10, 0), config);
+        assertTrue(CompanionBudget.decide(Kind.BENCH_TOWN, new Usage(100, 0, 8, 2, 0, 3, 2), config).allowed());
+        Admission town = CompanionBudget.decide(Kind.BENCH_TOWN, new Usage(100, 0, 0, 0, 0, 4, 0), config);
         assertFalse(town.allowed());
-        assertEquals("server town pool 10 full", town.reason());
-        assertTrue(CompanionBudget.decide(Kind.COMMERCE, new Usage(100, 0, 8, 2, 0, 10, 3), config).allowed());
-        Admission stall = CompanionBudget.decide(Kind.COMMERCE, new Usage(100, 0, 0, 0, 0, 0, 4), config);
+        assertEquals("server town pool 4 full", town.reason());
+        assertTrue(CompanionBudget.decide(Kind.COMMERCE, new Usage(100, 0, 8, 2, 0, 4, 1), config).allowed());
+        Admission stall = CompanionBudget.decide(Kind.COMMERCE, new Usage(100, 0, 0, 0, 0, 0, 2), config);
         assertFalse(stall.allowed());
-        assertEquals("server stall pool 4 full", stall.reason());
+        assertEquals("server stall pool 2 full", stall.reason());
+    }
+
+    @Test
+    void eachOwnerHasOneTownSlotAndOneStall() {
+        // with room server-wide, one owner's resting companion or stall keeps the next of theirs out, not another owner's
+        Admission town = CompanionBudget.decide(Kind.BENCH_TOWN, new Usage(100, 0, 0, 0, 0, 1, 0, 1, 0), config);
+        assertFalse(town.allowed());
+        assertEquals("1 town slots already used", town.reason());
+        assertTrue(CompanionBudget.decide(Kind.BENCH_TOWN, new Usage(100, 0, 0, 0, 0, 1, 1, 0, 1), config).allowed());
+        Admission stall = CompanionBudget.decide(Kind.COMMERCE, new Usage(100, 0, 0, 0, 0, 0, 1, 0, 1), config);
+        assertFalse(stall.allowed());
+        assertEquals("1 stalls already used", stall.reason());
+        assertTrue(CompanionBudget.decide(Kind.COMMERCE, new Usage(100, 0, 0, 0, 0, 1, 1, 1, 0), config).allowed());
     }
 
     @Test

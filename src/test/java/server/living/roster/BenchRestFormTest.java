@@ -16,6 +16,10 @@ import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.living.config.Content.Persona;
 import server.living.resident.ResidentSpots;
 import server.living.store.LivingStore.Assignment;
+import server.maps.MapleMap;
+import server.maps.Portal;
+
+import java.awt.Point;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +56,8 @@ class BenchRestFormTest {
     private final List<AgentTownLifeVisitLeaseRequest> visits = new ArrayList<>();
     private final Set<Integer> townLifeTowns = new java.util.HashSet<>(Set.of(TOWN, HENESYS));
     private boolean inTownLife;
+    /** The status TownLife answers a visit lease with. */
+    private AgentTownLifeSessionResult.Status answer = AgentTownLifeSessionResult.Status.STARTED;
 
     @BeforeEach
     void setUp() {
@@ -65,6 +71,9 @@ class BenchRestFormTest {
         game.statics(AgentTownLifeVisitLeaseRuntime.class)
                 .when(() -> AgentTownLifeVisitLeaseRuntime.start(any(), any(), any(), anyLong(), anyInt())).thenAnswer(inv -> {
                     AgentTownLifeVisitLeaseRequest lease = inv.getArgument(2);
+                    if (answer != AgentTownLifeSessionResult.Status.STARTED) {
+                        return new AgentTownLifeSessionResult(answer, lease.entryRequest().visit().townMapId(), "refused");
+                    }
                     visits.add(lease);
                     inTownLife = true;
                     return new AgentTownLifeSessionResult(AgentTownLifeSessionResult.Status.STARTED,
@@ -118,6 +127,7 @@ class BenchRestFormTest {
 
     @Test
     void itRestsInItsCampsTownElseItsHomeTown() {
+        game.config.BENCH_TOWN_PER_OWNER = 3; // all three of Ann's rest at once here
         when(game.map(FIELD).getReturnMapId()).thenReturn(HENESYS);
         when(game.map(OTHER_FIELD).getReturnMapId()).thenReturn(NO_TOWN_LIFE);
         game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST); // camps at a field that returns to Henesys
@@ -156,14 +166,9 @@ class BenchRestFormTest {
     }
 
     @Test
-    void itsVisitIsRenewedAndItChatsOnlyWithSomeoneToHear() {
-        Persona base = game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
-        when(game.content.persona("fenn")).thenReturn(new Persona(base.id(), base.name(), base.title(), base.job(), base.level(),
-                base.strength(), base.loadout(), base.personality(), base.dialogueStyle(), base.homeTown(), base.routine(),
-                base.recruitable(), base.contract(), base.questLines(), base.arc(), base.relationships(), base.rumors(),
-                Map.of("smallTalk", List.of("the harbor's calm today."), "idle", List.of("(watches the gulls)")),
-                base.benchToleranceDays(), base.paceGap(), base.maxLag(), base.giftItemIds(), base.portraitNpcId(), base.look(),
-                base.file()));
+    void itsVisitIsRenewedAndItChatsOnlyWithSomeoneToHearTwiceASliceAtMost() {
+        voiced(Map.of("rest", List.of("the harbor's calm today."), "idle", List.of("(watches the gulls)"),
+                "smallTalk", List.of("i don't do small talk. i do tallies.")));
         game.duty.tick();
 
         inTownLife = false; // its visit ended
@@ -175,10 +180,94 @@ class BenchRestFormTest {
         when(game.map(TOWN).getAllPlayers()).thenReturn(List.of(mock(Character.class)));
         game.duty.tick();
         game.duty.tick(); // quiet again for a while
-        game.now += BenchRestForm.CHAT_EVERY_MS;
+        for (int look = 0; look < 4; look++) {
+            game.now += BenchRestForm.CHAT_EVERY_MS;
+            game.duty.tick();
+        }
+
+        // its own rest lines, never a reply to small talk nobody made; and two a slice, not one every few minutes
+        assertEquals(List.of("say Fenn: the harbor's calm today.", "say Fenn: the harbor's calm today."),
+                game.calls.stream().filter(call -> call.startsWith("say")).toList());
+    }
+
+    @Test
+    void itsHomeTownIdleLinesAreSaidOnlyInItsHomeTown() {
+        when(game.map(FIELD).getReturnMapId()).thenReturn(HENESYS); // it rests in Henesys; its home is Lith Harbor
+        when(game.map(HENESYS).getAllPlayers()).thenReturn(List.of(mock(Character.class)));
+        voiced(Map.of("idle", List.of("(hauls a crate that doesn't need hauling)")));
         game.duty.tick();
 
-        assertEquals(List.of("say Fenn: the harbor's calm today.", "say Fenn: (watches the gulls)"),
-                game.calls.stream().filter(call -> call.startsWith("say")).toList());
+        for (int look = 0; look < 3; look++) {
+            game.now += BenchRestForm.CHAT_EVERY_MS;
+            game.duty.tick();
+        }
+
+        assertTrue(game.duty.live("fenn"));
+        assertFalse(game.calls.stream().anyMatch(call -> call.startsWith("say")), game.calls.toString());
+    }
+
+    @Test
+    void aVisitTownLifeRefusesKeepsItInTheLedgerAndOneItCannotRestartEndsTheSlice() {
+        game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
+        answer = AgentTownLifeSessionResult.Status.REJECTED_CAPACITY;
+
+        game.duty.tick();
+
+        assertFalse(game.duty.live("fenn"), "it would stand frozen in town: the ledger keeps its rest");
+        assertNull(game.leases.holder(906));
+        assertTrue(game.calls.contains("unload Fenn"), game.calls.toString());
+
+        answer = AgentTownLifeSessionResult.Status.STARTED;
+        game.now += BenchDutyDispatcher.TICK_MS;
+        game.duty.tick();
+        assertTrue(game.duty.live("fenn"));
+
+        inTownLife = false; // its visit ended
+        answer = AgentTownLifeSessionResult.Status.REJECTED_CAPACITY;
+        game.now += BenchDutyDispatcher.TICK_MS;
+        game.duty.tick();
+
+        assertEquals(List.of(ANN + " fenn bench.live-end no town visit"), game.store.events("bench.live-end"));
+    }
+
+    @Test
+    void whileWatchedItsVisitIsRenewedBeforeItRunsOut() {
+        game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
+        game.duty.tick();
+        when(game.map(TOWN).getAllPlayers()).thenReturn(List.of(mock(Character.class)));
+
+        game.now += game.config.BENCH_TOWN_SLICE_MS - BenchDutyDispatcher.TICK_MS / 2; // it would end before the next look
+        game.duty.tick();
+
+        assertEquals(2, visits.size(), "renewed while still on");
+        assertEquals(visits.get(0).entryRequest(), visits.get(1).entryRequest(), "the same TownLife request: no break");
+        assertEquals(game.now + game.config.BENCH_TOWN_SLICE_MS, visits.get(1).exitAtMs());
+        game.statics(AgentTownLifeVisitLeaseRuntime.class).verify(() -> AgentTownLifeVisitLeaseRuntime.clear(any(), any()));
+    }
+
+    @Test
+    void itWalksInFromAPortalNeverPopsInWhereTheOthersStand() {
+        Portal portal = mock(Portal.class);
+        when(portal.getPosition()).thenReturn(new Point(-400, 150));
+        when(portal.getPortalStatus()).thenReturn(true);
+        when(portal.getType()).thenReturn(Portal.MAP_PORTAL);
+        when(portal.getTargetMapId()).thenReturn(TOWN + 1);
+        MapleMap town = game.map(TOWN);
+        when(town.getPortals()).thenReturn(List.of(portal));
+        game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
+
+        game.duty.tick();
+
+        assertEquals(new Point(-400, 150), game.loadedAt.get(906), "at the portal: TownLife walks it in");
+    }
+
+    /** Fenn, resting, with these lines of its own. */
+    private void voiced(Map<String, List<String>> lines) {
+        Persona base = game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
+        when(game.content.persona("fenn")).thenReturn(new Persona(base.id(), base.name(), base.title(), base.job(), base.level(),
+                base.strength(), base.loadout(), base.personality(), base.dialogueStyle(), base.homeTown(), base.routine(),
+                base.recruitable(), base.contract(), base.questLines(), base.arc(), base.relationships(), base.rumors(),
+                lines, base.benchToleranceDays(), base.paceGap(), base.maxLag(), base.giftItemIds(), base.portraitNpcId(),
+                base.look(), base.file()));
     }
 }

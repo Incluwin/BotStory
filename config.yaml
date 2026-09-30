@@ -799,13 +799,17 @@ living_world:
     COMPANION_BUDGET_CEILING: 300
     COMPANION_SPAWN_INTERVAL_MS: 2000
     # Living bench (P5, decision 12 a): besides the field grinders above, benched companions resting live in town
-    # (REST) and running real Free Market stalls (STALL, SELL), each pool server-wide (0 = none), and how long one of
-    # their slices lasts unless a player is watching. A live field companion out of supplies ends its hunt and
-    # restocks at a shop, unloading after BENCH_RESUPPLY_MAX_MS at the latest. The ledger credits the rates measured
-    # at a camp, shrunk toward its priors, which count for BENCH_YIELD_PRIOR_SLICES full slices.
-    BENCH_TOWN_MAX: 10
+    # (REST) and running real Free Market stalls (STALL, SELL), each pool server-wide (0 = none) and per owner, and how
+    # long one of their slices lasts (a player watching stretches a town or stall slice to twice that at most). The town
+    # and stall pools stay at 4 and 2 until the P5 soak (-Xmx2048m, 2 humans x 5 active, the pools full, /runtime/budget)
+    # measures scheduler queue-lag p95 under 100 ms; raise them only from that measurement. A live field companion out
+    # of supplies ends its hunt and restocks at a shop, unloading after BENCH_RESUPPLY_MAX_MS at the latest. The ledger
+    # credits the rates measured at a camp, shrunk toward its priors, which count for BENCH_YIELD_PRIOR_SLICES full slices.
+    BENCH_TOWN_MAX: 4
+    BENCH_TOWN_PER_OWNER: 1
     BENCH_TOWN_SLICE_MS: 3600000
-    COMMERCE_LIVE_MAX: 4
+    COMMERCE_LIVE_MAX: 2
+    COMMERCE_PER_OWNER: 1
     COMMERCE_SLICE_MS: 7200000
     BENCH_RESUPPLY_MAX_MS: 300000
     BENCH_YIELD_PRIOR_SLICES: 1.0

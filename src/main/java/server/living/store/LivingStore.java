@@ -818,7 +818,11 @@ public final class LivingStore {
     public record YieldRow(String jobBranch, int levelBand, int campMapId, double samples, double expPerHour,
                            double mesoPerHour, double itemsPerHour, double deathsPerHour) { }
 
-    /** Every companion_yield row (one per job branch, level band and camp: a small table). */
+    /**
+     * Every companion_yield row (one per job branch, level band and camp: a small table).
+     *
+     * @throws ReadFailed when the read failed (not the same as nothing measured: the model must not start over)
+     */
     public List<YieldRow> companionYields() {
         List<YieldRow> out = new ArrayList<>();
         try (Connection con = DatabaseConnection.getConnection();
@@ -829,10 +833,133 @@ public final class LivingStore {
                 out.add(new YieldRow(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getDouble(4), rs.getDouble(5),
                         rs.getDouble(6), rs.getDouble(7), rs.getDouble(8)));
             }
+            return out;
         } catch (SQLException failure) {
             log.warn("companion_yield read failed", failure);
+            throw new ReadFailed("companion_yield", failure);
         }
-        return out;
+    }
+
+    /**
+     * The rows on "Your call" (living_roster.your_call, changeset 42, P5): owner character id to the persona ids whose
+     * companion picks its own duty and camp before each bench slice.
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public Map<Integer, Set<String>> yourCalls() {
+        Map<Integer, Set<String>> out = new HashMap<>();
+        try (Connection con = DatabaseConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement("SELECT character_id, persona_id FROM living_roster WHERE your_call = 1");
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.computeIfAbsent(rs.getInt(1), owner -> new LinkedHashSet<>()).add(rs.getString(2));
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("living_roster your_call scan failed", failure);
+            throw new ReadFailed("living_roster your_call", failure);
+        }
+    }
+
+    /** Turns "Your call" on or off for one row (it never touches the row's state); false when the write failed. */
+    public boolean saveYourCall(int characterId, String personaId, boolean on) {
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "UPDATE living_roster SET your_call = ? WHERE character_id = ? AND persona_id = ?")) {
+            ps.setBoolean(1, on);
+            ps.setInt(2, characterId);
+            ps.setString(3, personaId);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("living_roster your_call write failed for {}/{}", characterId, personaId, failure);
+            return false;
+        }
+    }
+
+    /**
+     * What a live bench stall holds of its haul (living_stall_stock, changeset 42, P5): item id to the units moved from
+     * the haul into its companion's bag or shop and not yet sold or handed back. Kept so a crash mid-stall never loses
+     * them: the companion's next load moves them back to the haul (BenchStallForm).
+     *
+     * @throws ReadFailed when the read failed (not the same as nothing held)
+     */
+    public Map<Integer, Integer> stallStock(int characterId, String personaId) {
+        Map<Integer, Integer> out = new LinkedHashMap<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT item_id, quantity FROM living_stall_stock WHERE character_id = ? AND persona_id = ? AND quantity > 0"
+                        + " ORDER BY item_id")) {
+            ps.setInt(1, characterId);
+            ps.setString(2, personaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.put(rs.getInt(1), rs.getInt(2));
+                }
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("living_stall_stock read failed for {}/{}", characterId, personaId, failure);
+            throw new ReadFailed("living_stall_stock", failure);
+        }
+    }
+
+    /** Keeps what a live stall holds of the haul now (replacing what was kept; empty clears it); false when it failed. */
+    public boolean saveStallStock(int characterId, String personaId, Map<Integer, Integer> units) {
+        try (Connection con = DatabaseConnection.getConnection()) {
+            boolean autoCommit = con.getAutoCommit();
+            con.setAutoCommit(false);
+            try (PreparedStatement clear = con.prepareStatement(
+                    "DELETE FROM living_stall_stock WHERE character_id = ? AND persona_id = ?");
+                 PreparedStatement insert = con.prepareStatement(
+                         "INSERT INTO living_stall_stock (character_id, persona_id, item_id, quantity) VALUES (?, ?, ?, ?)")) {
+                clear.setInt(1, characterId);
+                clear.setString(2, personaId);
+                clear.executeUpdate();
+                for (Map.Entry<Integer, Integer> unit : units.entrySet()) {
+                    if (unit.getValue() > 0) {
+                        insert.setInt(1, characterId);
+                        insert.setString(2, personaId);
+                        insert.setInt(3, unit.getKey());
+                        insert.setInt(4, unit.getValue());
+                        insert.addBatch();
+                    }
+                }
+                insert.executeBatch();
+                con.commit();
+                return true;
+            } catch (SQLException failure) {
+                con.rollback();
+                throw failure;
+            } finally {
+                con.setAutoCommit(autoCommit);
+            }
+        } catch (SQLException failure) {
+            log.warn("living_stall_stock write failed for {}/{}", characterId, personaId, failure);
+            return false;
+        }
+    }
+
+    /**
+     * The item ids in the USE tab a character nothing has loaded carries (its saved inventory, quantity above 0), for a
+     * bench companion's potions (CrewRotation).
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public Set<Integer> usableItems(int characterId) {
+        Set<Integer> out = new LinkedHashSet<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT DISTINCT itemid FROM inventoryitems WHERE characterid = ? AND type = 1 AND inventorytype = 2"
+                        + " AND quantity > 0")) {
+            ps.setInt(1, characterId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(rs.getInt(1));
+                }
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("inventory read failed for character {}", characterId, failure);
+            throw new ReadFailed("inventoryitems", failure);
+        }
     }
 
     /** Keeps one companion_yield row (an upsert); false when the write failed. */

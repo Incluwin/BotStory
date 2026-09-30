@@ -1,8 +1,12 @@
 package server.living.roster;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.living.LivingWorld;
+import server.living.store.LivingStore;
 import server.living.store.LivingStore.YieldRow;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,9 +17,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * (slices + k), k = BENCH_YIELD_PRIOR_SLICES, so the more a camp has been measured the closer the prediction is to
  * it. A slice counts for the share of BENCH_LIVE_SLICE_MS it ran, so each stored rate is the measured total over the
  * measured hours. The duty and camp bandit reads its arm statistics ({@link #measured}) from the same rows.
- * Recorded on companion-ops; read from any thread.
+ * Recorded on companion-ops; read from any thread. Until companion_yield has been read, a slice is not recorded (its
+ * row would be written over by that one slice), and a failed read is tried again on the next ask.
  */
 public final class BenchYieldModel {
+    private static final Logger log = LoggerFactory.getLogger(BenchYieldModel.class);
     /** One arm: a job branch (BEGINNER, WARRIOR, MAGICIAN, BOWMAN, THIEF, PIRATE or OTHER), a level band (level / 10), a camp. */
     public record Key(String jobBranch, int levelBand, int campMapId) {
         public static Key of(int jobId, int level, int campMapId) {
@@ -56,9 +62,19 @@ public final class BenchYieldModel {
         return weight + priorWeight <= 0.0d ? prior : (weight * measured + priorWeight * prior) / (weight + priorWeight);
     }
 
-    /** Reads companion_yield (LivingWorld.start, on companion-ops); a model asked before that reads it itself once. */
+    /**
+     * Reads companion_yield (LivingWorld.start, on companion-ops); a model asked before that reads it itself. A failed
+     * read leaves it unread, so the next ask reads again (never taken for "nothing measured").
+     */
     public void load() {
-        for (YieldRow row : world.store().companionYields()) {
+        List<YieldRow> read;
+        try {
+            read = world.store().companionYields();
+        } catch (LivingStore.ReadFailed failure) {
+            log.warn("bench yields could not be read; asked again later", failure);
+            return;
+        }
+        for (YieldRow row : read) {
             rows.put(new Key(row.jobBranch(), row.levelBand(), row.campMapId()), new Rates(row.samples(), row.expPerHour(),
                     row.mesoPerHour(), row.itemsPerHour(), row.deathsPerHour()));
         }
@@ -85,6 +101,10 @@ public final class BenchYieldModel {
         double sliceHours = Math.max(1.0d / 60.0d, world.config().BENCH_LIVE_SLICE_MS / 3_600_000.0d);
         double weight = sample.hours() / sliceHours;
         Rates known = measured(key);
+        if (!loaded) {
+            log.warn("a bench slice at {} was not recorded: companion_yield could not be read", key);
+            return; // never write a row over from this one slice
+        }
         Rates now = known == null
                 ? new Rates(weight, sample.exp() / sample.hours(), sample.meso() / sample.hours(),
                 sample.items() / sample.hours(), sample.deaths() / sample.hours())

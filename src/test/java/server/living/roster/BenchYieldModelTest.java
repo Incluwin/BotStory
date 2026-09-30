@@ -3,6 +3,7 @@ package server.living.roster;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import server.living.bond.BondService;
+import server.living.store.LivingStore;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -30,6 +31,23 @@ class BenchYieldModelTest {
     @AfterEach
     void close() {
         game.close();
+    }
+
+    @Test
+    void aFailedReadNeverLetsOneSliceWriteOverWhatWasMeasured() {
+        game.store.yields.put("WARRIOR:2:" + FIELD, new YieldRow("WARRIOR", 2, FIELD, 12.0d, 4_000.0d, 900.0d, 30.0d, 0.1d));
+        LivingStore.ReadFailed down = new LivingStore.ReadFailed("companion_yield", null);
+        when(game.store.store.companionYields()).thenThrow(down, down)
+                .thenAnswer(inv -> java.util.List.copyOf(game.store.yields.values()));
+
+        game.yields.load(); // the database hiccups at boot
+        game.yields.record(CAMP, new BenchYieldModel.Sample(0.25d, 100L, 0L, 0L, 0)); // a slice ends while it is still down
+
+        assertEquals(12.0d, game.store.yields.get("WARRIOR:2:" + FIELD).samples(), 1e-9,
+                "twelve slices kept: never written over by that one slice");
+        assertEquals(12.0d, game.yields.measured(CAMP).samples(), 1e-9, "read again on the next ask");
+        game.yields.record(CAMP, new BenchYieldModel.Sample(0.25d, 100L, 0L, 0L, 0));
+        assertEquals(13.0d, game.store.yields.get("WARRIOR:2:" + FIELD).samples(), 1e-3, "and the next slice adds to them");
     }
 
     @Test

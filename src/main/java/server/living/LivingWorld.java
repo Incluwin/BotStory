@@ -200,7 +200,9 @@ public final class LivingWorld {
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("hire.offers", world.hireOffers::tick), HireOffers.TICK_MS, HireOffers.TICK_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
-                () -> world.executor.submit("bench_duty.tick", world.benchDuty::tick), 120_000L, 120_000L));
+                () -> world.executor.submit("bench_duty.tick", world.benchDuty::tick),
+                server.living.roster.BenchDutyDispatcher.TICK_MS, server.living.roster.BenchDutyDispatcher.TICK_MS));
+        world.executor.submit("bench_duty.your_call", world.benchDuty::loadYourCalls); // the rows on Your call (P5)
         // companions parked with an owner who stays away go to their duty once LEADER_OFFLINE_BENCH_MS has passed
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("roster.park_sweep", world.roster::benchParkedPastGrace), 60_000L, 60_000L));

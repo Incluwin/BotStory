@@ -3,12 +3,13 @@ package server.living.roster;
 import server.living.LivingWorld;
 import server.living.config.Content.BondStage;
 import server.living.config.Content.Persona;
+import server.living.population.Population;
+import server.living.population.PopulationContent.Field;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.function.IntFunction;
 
 /**
@@ -18,12 +19,14 @@ import java.util.function.IntFunction;
  * camp now. Each arm is scored on the hour BenchYieldModel predicts for the companion's job branch and level band at
  * that camp, the measured rates shrunk toward a FieldCatalog prior (the ledger's rate at its level, less for monsters
  * far from its level, with a death risk for monsters above it): TRAIN on its EXP times its catch-up, FARM_MESO on its
- * meso after upkeep, both against the ledger's rate at its level, and cut by BENCH_CHOOSER_DEATH_COST per death an
- * hour. It picks by UCB: the score plus BENCH_CHOOSER_EXPLORE x sqrt(ln(1 + N) / (1 + n)), n the full slices measured at
- * the camp and N at all the candidates, so a camp nobody hunted yet gets its try and the best one is kept; the bonus
- * is only for an arm its duty's form would take live (the dispatcher's handler), the one way a camp is measured. The arm
- * statistics are companion_yield's rows (BenchYieldModel); nothing is kept here. With nothing worth doing it rests. The
- * companion says in one line what it picked and why ({@link #line}).
+ * meso after upkeep, both against the ledger's rate at its level, less BENCH_CHOOSER_DEATH_COST of that rate per death
+ * an hour (a camp that keeps killing it scores below nothing). It picks by UCB: the score plus BENCH_CHOOSER_EXPLORE x
+ * sqrt(ln(1 + N) / (1 + n)), n the full slices measured at the camp and N at all the candidates, so a camp nobody hunted
+ * yet gets its try and the best one is kept; the bonus is only for an arm its duty's form would take live (the
+ * dispatcher's handler), the one way a camp is measured, and never for a camp measured to kill it once an hour or more
+ * than a death is worth. The arm statistics are companion_yield's rows (BenchYieldModel); nothing is kept here. With
+ * nothing worth doing it rests. The companion says in one line what it picked and why ({@link #line}). A row on Your
+ * call is chosen for again before each of its slices (BenchDutyDispatcher).
  */
 public final class BenchDutyChooser {
     /** EXP and meso fall this much per level the camp's monsters are below the companion, and faster above it. */
@@ -33,6 +36,8 @@ public final class BenchDutyChooser {
     /** Deaths an hour where the monsters are no stronger than the companion, and more per level they are above it. */
     private static final double DEATHS_BASE = 0.05d;
     private static final double DEATHS_PER_LEVEL_ABOVE = 0.25d;
+    /** Your call's candidates besides its camp now: the FieldCatalog's top fields for its level, as the card lists them. */
+    private static final int CAMP_CHOICES = 5;
 
     /** A candidate camp: a field and its monsters' level (0: unknown, read as a fit). */
     public record Camp(int mapId, int mobLevel) { }
@@ -42,9 +47,11 @@ public final class BenchDutyChooser {
 
     /**
      * What it picked: the duty and the camp (0 for REST: it stays where it camps), why, the camp it passed over as too
-     * rough (SAFER; else 0), and the arm's score and UCB bonus.
+     * rough (SAFER; else 0), the arm's score and UCB bonus, and the full slices measured at the rough camp (0: only the
+     * prior says it is rough).
      */
-    public record Pick(Assignment duty, int campMapId, Why why, int roughCampMapId, double score, double bonus) { }
+    public record Pick(Assignment duty, int campMapId, Why why, int roughCampMapId, double score, double bonus,
+                       double roughSamples) { }
 
     /** One arm as scored. */
     private record Arm(Assignment duty, Camp camp, double value, double score, double bonus, double samples) {
@@ -57,6 +64,27 @@ public final class BenchDutyChooser {
 
     public BenchDutyChooser(LivingWorld world) {
         this.world = world;
+    }
+
+    /**
+     * Your call's candidate camps for a companion of {@code level} camping at {@code campMapId}: that camp when it is a
+     * field, then the FieldCatalog's top fields for the level near it (the camp and duty pickers' own list). None while
+     * the population is not up.
+     */
+    public static List<Camp> camps(int level, int campMapId) {
+        Population population = Population.get();
+        List<Camp> out = new ArrayList<>();
+        if (population == null) {
+            return out;
+        }
+        if (campMapId > 0 && !population.fields().isTown(campMapId)) {
+            Field own = population.content().field(campMapId);
+            out.add(new Camp(campMapId, own == null ? 0 : own.mobLevel()));
+        }
+        for (Field field : population.fields().fieldsFor(Math.max(1, level), campMapId, CAMP_CHOICES)) {
+            out.add(new Camp(field.mapId(), field.mobLevel()));
+        }
+        return out;
     }
 
     /**
@@ -97,29 +125,32 @@ public final class BenchDutyChooser {
             double fit = fit(camp.mobLevel(), botLevel);
             double deaths = yields == null ? deathPrior(camp.mobLevel(), botLevel)
                     : yields.deathsPerHour(key, deathPrior(camp.mobLevel(), botLevel));
-            double survive = Math.max(0.0d, 1.0d - deathCost * deaths);
+            double deathLoss = deathCost * deaths; // of the ledger's hourly rate: past a whole one, below nothing
             double samples = samples(yields, key);
-            double bonus = explore * Math.sqrt(Math.log(1.0d + total) / (1.0d + samples));
+            // a camp measured to kill it more than a death is worth gets no try for its own sake
+            boolean deadly = samples >= 1.0d && deathCost > 0.0d && deaths >= 1.0d / deathCost;
+            double bonus = deadly ? 0.0d : explore * Math.sqrt(Math.log(1.0d + total) / (1.0d + samples));
             if (train) {
                 double exp = yields == null ? baseExp * fit : yields.expPerHour(key, baseExp * fit);
                 double value = catchUp * exp / baseExp;
-                arms.add(new Arm(Assignment.TRAIN, camp, value, value * survive,
+                arms.add(new Arm(Assignment.TRAIN, camp, value, value - deathLoss,
                         goesLive(bench, entry, persona, characterId, Assignment.TRAIN, camp.mapId()) ? bonus : 0.0d, samples));
             }
             if (farm) {
                 double meso = yields == null ? baseMeso * fit : yields.mesoPerHour(key, baseMeso * fit);
                 double value = (meso - ledger.upkeepPerHour(botLevel, jobId, camp.mapId())) / baseMeso;
-                arms.add(new Arm(Assignment.FARM_MESO, camp, value, value * survive,
+                arms.add(new Arm(Assignment.FARM_MESO, camp, value, value - deathLoss,
                         goesLive(bench, entry, persona, characterId, Assignment.FARM_MESO, camp.mapId()) ? bonus : 0.0d, samples));
             }
         }
         Arm picked = best(arms, true);
         if (picked == null || picked.ucb() <= 0.0d) {
-            return new Pick(Assignment.REST, 0, Why.NOTHING_TO_DO, 0, 0.0d, 0.0d);
+            return new Pick(Assignment.REST, 0, Why.NOTHING_TO_DO, 0, 0.0d, 0.0d, 0.0d);
         }
         Arm exploit = best(arms, false);
         Why why;
         int rough = 0;
+        double roughSamples = 0.0d;
         if (exploit != picked) {
             why = picked.samples() <= 0.0d ? Why.NEW_CAMP : Why.STILL_LEARNING;
         } else {
@@ -132,13 +163,14 @@ public final class BenchDutyChooser {
             if (richest != null && richest != picked && richest.value() > picked.value()) {
                 why = Why.SAFER;
                 rough = richest.camp().mapId();
+                roughSamples = richest.samples();
             } else if (picked.duty() == Assignment.TRAIN) {
                 why = Why.GOOD_EXP;
             } else {
                 why = train ? Why.GOOD_MESO : Why.KEEPING_PACE;
             }
         }
-        return new Pick(picked.duty(), picked.camp().mapId(), why, rough, picked.score(), picked.bonus());
+        return new Pick(picked.duty(), picked.camp().mapId(), why, rough, picked.score(), picked.bonus(), roughSamples);
     }
 
     /** The arm with the highest UCB ({@code ucb}) or score; the first on a tie (TRAIN before FARM_MESO, camps in order). */
@@ -195,12 +227,13 @@ public final class BenchDutyChooser {
     }
 
     /**
-     * What the companion says of its pick, lowercase like the rest of its voice: "going to ant tunnel i. good exp for
-     * me right now.", "farming meso at pig beach. i'm keeping up with you, so coin it is.", "going to the hill east of
-     * henesys. never hunted there, worth a look." {@code placeNames} names a map.
+     * What the companion says of its pick, lowercase like the rest of its voice but for the places' own names: "going to
+     * Ant Tunnel I. good exp for me right now.", "farming meso at Pig Beach. i'm keeping up with you, so coin it is.",
+     * "going to The Hill East of Henesys. never hunted there, worth a look." A camp passed over as rough "was too rough
+     * on me" once it hunted there, and only "looks too rough for me" on the prior's word. {@code placeNames} names a map.
      */
     public static String line(Pick pick, IntFunction<String> placeNames) {
-        String camp = pick.campMapId() > 0 ? lower(placeNames.apply(pick.campMapId())) : "";
+        String camp = pick.campMapId() > 0 ? name(placeNames.apply(pick.campMapId())) : "";
         String doing = switch (pick.duty()) {
             case TRAIN -> "going to " + camp;
             case FARM_MESO -> "farming meso at " + camp;
@@ -212,14 +245,14 @@ public final class BenchDutyChooser {
             case KEEPING_PACE -> "i'm keeping up with you, so coin it is.";
             case NEW_CAMP -> "never hunted there, worth a look.";
             case STILL_LEARNING -> "still getting a feel for it.";
-            case SAFER -> (pick.roughCampMapId() > 0 ? lower(placeNames.apply(pick.roughCampMapId())) : "the other spot")
-                    + " was too rough on me.";
+            case SAFER -> (pick.roughCampMapId() > 0 ? name(placeNames.apply(pick.roughCampMapId())) : "the other spot")
+                    + (pick.roughSamples() > 0.0d ? " was too rough on me." : " looks too rough for me.");
             case NOTHING_TO_DO -> "nothing out there's worth it today.";
         };
         return doing + ". " + why;
     }
 
-    private static String lower(String text) {
-        return text == null ? "" : text.toLowerCase(Locale.ROOT);
+    private static String name(String text) {
+        return text == null ? "" : text;
     }
 }

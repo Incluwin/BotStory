@@ -184,7 +184,11 @@ public final class HiredHands {
         Contract contract = world.content().contract(LivingContent.HIRED_HAND_CONTRACT);
         long perLevel = contract == null ? DEFAULT_FEE_PER_LEVEL : contract.price().meso();
         BenchLedger ledger = world.bench();
-        int camp = live != null ? live.getMapId() : 0; // it keeps the camp it stands on (unloaded: the prior's cap)
+        // the camp it would keep once hired, as the hire saves it: the Wages page charges the same hour
+        Population population = Population.get();
+        Citizen citizen = population == null ? null : population.citizen(citizenCharacterId);
+        int stood = live != null ? live.getMapId() : rowMap(citizenCharacterId);
+        int camp = citizen == null ? stood : camp(population, citizen, stood);
         double wage = ledger == null ? BenchLedger.upkeepPerHour(level) : ledger.upkeepPerHour(level, jobId, camp);
         return new Terms(level, CompanionView.jobName(jobId), perLevel * level, Math.round(wage));
     }

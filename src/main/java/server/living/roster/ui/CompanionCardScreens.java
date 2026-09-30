@@ -10,6 +10,8 @@ import server.ItemInformationProvider;
 import server.StatEffect;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.looting.AgentLootPolicy;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.MonsterDropEntry;
 import server.life.MonsterInformationProvider;
 import server.life.SpawnPoint;
@@ -262,7 +264,7 @@ final class CompanionCardScreens {
         options.add(new Option("Your haul...", () -> haul(owner, persona)));
         options.add(new Option("Your wages...", () -> wages(owner, persona)));
         options.add(new Option("We should part ways", () -> partWays(owner, persona)));
-        String status = view.travelMs() > 0 ? onTheWay(view) : duty(view);
+        String status = view.travelMs() > 0 ? onTheWay(view) : duty(view, entry.assignment());
         String live = view.travelMs() > 0 ? "" : liveState(entry, menus.placeNames);
         boolean marker = live.startsWith("(");
         String progress = view.progress().isEmpty() ? "" : view.progress() + (marker ? " " + live : "") + "\r\n";
@@ -276,8 +278,9 @@ final class CompanionCardScreens {
     /**
      * What the bench card says of the companion's bench now (plan flow 2, P5 "Living bench"): {@link #LIVE} while a field
      * slice runs at its camp (the owner can walk there and watch), "stall open in FM room 3" or "resting in Henesys" while
-     * it is out in the Free Market or in town, {@link #OUT_OF_SIGHT} while only the ledger keeps its duty, and nothing for
-     * a parked one or one resting after a rough hunt (its duty line says so).
+     * it is out in the Free Market or in town, "restocking in Perion" while a field slice's own shop resupply runs,
+     * {@link BenchDutyDispatcher#ROUGH_HUNT} (its own line) while it rests after a death, {@link #OUT_OF_SIGHT} while only
+     * the ledger keeps its duty or its slice is not where it works (revived in town, say), and nothing for a parked one.
      */
     private String liveState(RosterEntry entry, IntFunction<String> placeNames) {
         if (entry.state() != RosterState.BENCHED && entry.state() != RosterState.AWAY) {
@@ -287,10 +290,18 @@ final class CompanionCardScreens {
         BenchDutyDispatcher.Slice slice = bench == null ? null : bench.slice(entry.personaId());
         String resting = bench == null ? null : bench.note(entry.personaId());
         if (slice == null && resting != null && !resting.isEmpty()) {
-            return "";
+            return resting;
         }
         if (slice == null) {
             return OUT_OF_SIGHT;
+        }
+        Character agent = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(slice.characterId()));
+        MapleMap at = agent == null ? null : agent.getMap();
+        if (slice.resupplying()) {
+            return at == null ? OUT_OF_SIGHT : "restocking in " + placeNames.apply(at.getId());
+        }
+        if (at == null || at.getId() != slice.mapId()) {
+            return OUT_OF_SIGHT; // not where it works: nobody walking there would find it
         }
         // a stall reads open only once its shop is (BenchStallForm): until then it walks to its spot and sets up
         boolean open = !(bench.form(slice.duty()) instanceof BenchStallForm stall) || stall.open(entry.personaId());
@@ -445,24 +456,30 @@ final class CompanionCardScreens {
         String prompt = (entry.state() == RosterState.ACTIVE ? "what should i go do? i'll keep my seat.\r\n"
                 : "what should i do at camp?\r\n")
                 + "now: " + view.duty() + (view.camp().isEmpty() ? "" : " @ " + view.camp())
+                + (world.benchDuty() != null && world.benchDuty().yourCall(owner.getId(), persona.id()) ? " (my call)" : "")
                 + String.format(Locale.ROOT, "\r\nupkeep: %,d meso an hour, none while i rest\r\n", upkeep)
                 + learned(hunts, field);
         LivingTalk.open(owner, portrait(persona)).menu(prompt, options).back(() -> reopen(owner, persona, "")).show();
     }
 
-    /** "(learned from 7 hunts at Ant Tunnel I)" once live slices were measured at the camp, then a line break; else empty. */
+    /**
+     * "(7 hunts measured at Ant Tunnel I)" once live slices of its class line and level band were measured at the camp,
+     * then a line break; else empty. Not its own hunts alone, so it never says it hunted them.
+     */
     private String learned(double hunts, int field) {
         if (hunts <= 0.0d || field <= 0) {
             return "";
         }
         long count = Math.max(1L, Math.round(hunts));
-        return "(learned from " + count + (count == 1 ? " hunt" : " hunts") + " at " + menus.placeNames.apply(field) + ")\r\n";
+        return "(" + count + (count == 1 ? " hunt" : " hunts") + " measured at " + menus.placeNames.apply(field) + ")\r\n";
     }
 
     /**
      * "Your call" (plan flow 2, BenchDutyChooser): the companion picks its duty and camp among the fields for its level
      * near its camp and its camp now, by what each paid its class line, sets both on companion-ops as the owner's own
-     * picks would be set, and says what it picked and why on top of the card. Mid-run it waits: "after the run".
+     * picks would be set, and says what it picked and why on top of the card. It stays its call: it picks again before
+     * each of its bench slices (BenchDutyDispatcher) until its owner gives it a duty or a camp. Mid-run it waits: "after
+     * the run".
      */
     private void yourCall(Character owner, Persona persona) {
         menus.command(owner, persona, "menu.duty.your_call", () -> {
@@ -499,6 +516,10 @@ final class CompanionCardScreens {
             RosterEntry now = world.roster().entry(owner.getId(), persona.id());
             if (!(done instanceof RosterResult.Ok) || now == null) {
                 return RosterVoice.line(persona, done);
+            }
+            BenchDutyDispatcher bench = world.benchDuty();
+            if (bench != null) {
+                bench.setYourCall(owner.getId(), persona.id(), true); // after the picks set above, which turn it off
             }
             world.store().event(owner.getId(), persona.id(), "bench.your_call", pick.duty() + " at " + pick.campMapId() + " ("
                     + pick.why() + String.format(Locale.ROOT, ", score %.2f + %.2f)", pick.score(), pick.bonus()));
@@ -699,7 +720,10 @@ final class CompanionCardScreens {
                 .show();
     }
 
-    /** ", ~1.2% EXP/h" for TRAIN, ", ~4.1k meso/h" for FARM_MESO at a camp; nothing for the other duties or no rates. */
+    /**
+     * ", ~1.2% EXP/h" for TRAIN, ", ~3.5k meso/h after upkeep" for FARM_MESO at a camp (the duty picker's own number);
+     * nothing for the other duties or no rates.
+     */
     static String campRate(Assignment duty, BenchLedger.Rates rates) {
         if (rates == null) {
             return "";
@@ -707,7 +731,8 @@ final class CompanionCardScreens {
         if (duty == Assignment.TRAIN && rates.expPercent() > 0.0d) {
             return ", ~" + CompanionMenus.percent(rates.expPercent()) + "% EXP/h";
         }
-        return duty == Assignment.FARM_MESO && rates.meso() > 0L ? ", ~" + CompanionMenus.meso(rates.meso()) + " meso/h" : "";
+        return duty == Assignment.FARM_MESO && rates.meso() > 0L
+                ? ", ~" + CompanionMenus.meso(rates.meso() - rates.upkeep()) + " meso/h after upkeep" : "";
     }
 
     private void pickCamp(Character owner, Persona persona, Assignment then, int mapId) {

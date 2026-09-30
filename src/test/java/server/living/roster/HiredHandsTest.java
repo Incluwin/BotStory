@@ -373,6 +373,26 @@ class HiredHandsTest {
         assertEquals(terms.hourlyWage(), Math.round(ledger.upkeepPerHour(hired)), "her Wages page and the ledger charge the same");
     }
 
+    @Test
+    void theWageOfferedForACitizenNobodyHasLoadedIsChargedAtTheCampItsHireKeeps() {
+        // Mira is not loaded: once hired she keeps the camp her characters row is on, and the terms say that camp's wage
+        BenchYieldModel yields = new BenchYieldModel(game.world);
+        BenchLedger ledger = new BenchLedger(game.world);
+        when(game.world.benchYields()).thenReturn(yields);
+        when(game.world.bench()).thenReturn(ledger);
+        BenchYieldModel.Key key = BenchYieldModel.Key.of(HUNTER, 30, ROW.mapId());
+        for (int hunt = 0; hunt < 20; hunt++) {
+            yields.record(key, new BenchYieldModel.Sample(0.25d, 0L, 750L, 0L, 0)); // 3,000 meso/h at her row's field
+        }
+        double predicted = yields.mesoPerHour(key, ledger.mesoPrior(30));
+
+        HiredHands.Terms terms = hands.terms(MIRA);
+
+        assertEquals(Math.round(Math.min(BenchLedger.upkeepPerHour(30), 0.15d * predicted)), terms.hourlyWage(),
+                "the wage of the camp she keeps, not the prior's");
+        assertEquals(Math.round(ledger.upkeepPerHour(30, HUNTER, ROW.mapId())), terms.hourlyWage());
+    }
+
     // ---- one citizen, one employer --------------------------------------------------------------
 
     @Test

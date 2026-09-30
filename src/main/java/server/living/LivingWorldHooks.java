@@ -241,6 +241,7 @@ public final class LivingWorldHooks {
             // a third death releases a companion: the roster is written on companion-ops
             world.executor().submit("contract.owner_died " + chr.getId(), () -> world.contracts().onOwnerDied(chr));
             world.benchDuty().died(chr.getId()); // a companion on a live bench slice ends it once revived (flow 12)
+            world.crewRotation().died(chr); // Keep my crew fresh swaps one that went down, even once revived
             server.living.population.PopulationHooks.died(chr);
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);
@@ -334,6 +335,22 @@ public final class LivingWorldHooks {
         }
         try {
             return world.directory().ownerOfCharacter(member.getId()) != 0;
+        } catch (RuntimeException failure) {
+            return false;
+        }
+    }
+
+    /**
+     * True for the character of a companion on a live bench slice (P5: its stall's prices come from the market's price
+     * index, so its sales never move the index; Market).
+     */
+    public static boolean benchCompanion(int characterId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || world.benchDuty() == null) {
+            return false;
+        }
+        try {
+            return world.benchDuty().sliceOf(characterId) != null;
         } catch (RuntimeException failure) {
             return false;
         }

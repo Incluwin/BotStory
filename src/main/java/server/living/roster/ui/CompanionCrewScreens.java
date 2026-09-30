@@ -14,6 +14,7 @@ import server.living.population.CitizenStore;
 import server.living.population.Population;
 import server.living.resident.LivingTalk;
 import server.living.resident.LivingTalk.Option;
+import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionDirectory;
@@ -126,7 +127,7 @@ final class CompanionCrewScreens {
         options.add(Option.heading("\r\n#eBench (" + bench.size() + " of " + (world.config().ROSTER_MAX - party.size())
                 + " bench seats)#n"));
         for (CompanionView view : bench) {
-            options.add(row(owner, from, view, benchLine(view)));
+            options.add(row(owner, from, view, benchLine(view, resting(view))));
         }
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
@@ -500,6 +501,11 @@ final class CompanionCrewScreens {
      * reads "away: ...".
      */
     static String benchLine(CompanionView view) {
+        return benchLine(view, false);
+    }
+
+    /** {@link #benchLine(CompanionView)}, ending " - resting" while it rests after a rough hunt (flow 12). */
+    static String benchLine(CompanionView view, boolean resting) {
         if (view.travelMs() > 0) {
             return benchRow(view); // "on the way (~40 s)"
         }
@@ -522,7 +528,17 @@ final class CompanionCrewScreens {
         if (!view.haul().isEmpty()) {
             line.append(" - ").append(view.haul());
         }
+        if (resting) {
+            line.append(" - resting");
+        }
         return line.toString();
+    }
+
+    /** True while the companion rests after a death on a live bench slice (BenchDutyDispatcher.note). */
+    private boolean resting(CompanionView view) {
+        BenchDutyDispatcher bench = world.benchDuty();
+        String note = bench == null ? null : bench.note(view.personaId());
+        return note != null && !note.isEmpty();
     }
 
     /** A bulk duty: its name and, where the priors know it, what it brings in ("~1.2% EXP/h", "~4.1k meso/h after upkeep"). */

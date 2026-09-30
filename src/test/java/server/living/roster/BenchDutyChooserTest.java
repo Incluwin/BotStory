@@ -114,7 +114,7 @@ class BenchDutyChooserTest {
 
         assertEquals(105, explore.campMapId(), explore.toString());
         assertEquals(BenchDutyChooser.Why.NEW_CAMP, explore.why());
-        assertEquals("going to another place. never hunted there, worth a look.", BenchDutyChooser.line(explore, PLACES::get));
+        assertEquals("going to Another Place. never hunted there, worth a look.", BenchDutyChooser.line(explore, PLACES::get));
         hunt(105, 0.4d, 0.02d, 0, noise); // a poor camp
         hunt(105, 0.4d, 0.02d, 0, noise);
         assertEquals(102, chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 25, withNew).campMapId(),
@@ -162,9 +162,10 @@ class BenchDutyChooserTest {
 
         BenchDutyChooser.Pick pick = chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 25, camps);
 
-        assertEquals(new BenchDutyChooser.Pick(Assignment.TRAIN, 102, BenchDutyChooser.Why.GOOD_EXP, 0, 1.0d - 0.05d * 0.5d, 0.0d),
+        assertEquals(new BenchDutyChooser.Pick(Assignment.TRAIN, 102, BenchDutyChooser.Why.GOOD_EXP, 0, 1.0d - 0.05d * 0.5d, 0.0d, 0.0d),
                 pick, "Lv20 monsters for a Lv20: no fit lost, only the prior's rare death");
-        assertEquals("going to pig beach. good exp for me right now.", BenchDutyChooser.line(pick, PLACES::get));
+        assertEquals("going to Pig Beach. good exp for me right now.", BenchDutyChooser.line(pick, PLACES::get),
+                "a place keeps its own name");
     }
 
     @Test
@@ -173,7 +174,7 @@ class BenchDutyChooserTest {
 
         assertEquals(Assignment.FARM_MESO, pick.duty());
         assertEquals(BenchDutyChooser.Why.KEEPING_PACE, pick.why());
-        assertEquals("farming meso at ant tunnel i. i'm keeping up with you, so coin it is.",
+        assertEquals("farming meso at Ant Tunnel I. i'm keeping up with you, so coin it is.",
                 BenchDutyChooser.line(pick, PLACES::get));
     }
 
@@ -188,7 +189,40 @@ class BenchDutyChooserTest {
 
         assertEquals(102, pick.campMapId());
         assertEquals(BenchDutyChooser.Why.SAFER, pick.why());
-        assertEquals("going to pig beach. ant tunnel i was too rough on me.", BenchDutyChooser.line(pick, PLACES::get));
+        assertEquals("going to Pig Beach. Ant Tunnel I was too rough on me.", BenchDutyChooser.line(pick, PLACES::get),
+                "it hunted there: it was rough on it");
+    }
+
+    @Test
+    void aCampOnlyThePriorCallsRoughLooksRoughItWasNeverThere() {
+        // nothing measured: Ant Tunnel I's monsters are a level above Mira (more EXP, more deaths by the prior), Pig
+        // Beach's three below
+        List<BenchDutyChooser.Camp> camps = List.of(new BenchDutyChooser.Camp(101, LEVEL + 1), new BenchDutyChooser.Camp(102, LEVEL - 3));
+
+        BenchDutyChooser.Pick pick = chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 25, camps);
+
+        assertEquals(102, pick.campMapId(), pick.toString());
+        assertEquals(BenchDutyChooser.Why.SAFER, pick.why());
+        assertEquals(0.0d, pick.roughSamples(), 1e-9);
+        assertEquals("going to Pig Beach. Ant Tunnel I looks too rough for me.", BenchDutyChooser.line(pick, PLACES::get),
+                "never hunted there: it never says the camp was rough on it");
+    }
+
+    @Test
+    void aCampThatKeepsKillingItIsWorseThanRestingAndGetsNoTryForItsOwnSake() {
+        for (int slice = 0; slice < 3; slice++) {
+            yields.record(key(101), sample(1.0d, 0.02d, 2)); // an hour's EXP, but eight deaths an hour
+        }
+
+        BenchDutyChooser.Pick pick = chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 25, camps(List.of(101)));
+
+        // before, a score clamped to 0 plus its exploration bonus sent it back to die: resting is better than that
+        assertEquals(Assignment.REST, pick.duty(), pick.toString());
+        assertEquals(BenchDutyChooser.Why.NOTHING_TO_DO, pick.why());
+
+        List<BenchDutyChooser.Camp> withNew = camps(List.of(101, 105));
+        BenchDutyChooser.Pick explore = chooser.choose(row, mira, BondStage.MET, LEVEL, BOWMAN, 25, withNew);
+        assertEquals(105, explore.campMapId(), "a camp nobody hunted yet still gets its try: " + explore);
     }
 
     @Test

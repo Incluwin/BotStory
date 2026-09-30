@@ -10,6 +10,8 @@ import constants.inventory.ItemConstants;
 import org.mockito.MockedStatic;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.runtime.AgentInteractionRuntime;
+import server.agents.runtime.AgentMailboxAction;
+import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -36,6 +38,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -81,9 +84,13 @@ final class BenchHarness implements AutoCloseable {
     final Map<Integer, Integer> hp = new HashMap<>();
     final Map<Integer, Integer> botLevels = new HashMap<>();
     final Map<Integer, MapleMap> botMaps = new HashMap<>();
+    /** Character id -> the point its last load put it at. */
+    final Map<Integer, Point> loadedAt = new HashMap<>();
     /** The channel a loaded companion's client reports (none: it has no client). */
     final Map<Integer, Integer> channels = new HashMap<>();
     long now = 10_000_000L;
+    /** False: an Agent's mailbox refuses every action (closed), as it would for one being torn down. */
+    boolean mailboxRuns = true;
     final BenchSessions field;
     final BenchDutyDispatcher duty;
     final BenchYieldModel yields;
@@ -137,6 +144,7 @@ final class BenchHarness implements AutoCloseable {
             Character bot = bots.get(id);
             loaded.add(id);
             botMaps.put(id, at);
+            loadedAt.put(id, inv.getArgument(4));
             calls.add("load " + bot.getName() + " at " + at.getId() + " ch" + (int) inv.getArgument(2));
             return bot;
         });
@@ -170,6 +178,15 @@ final class BenchHarness implements AutoCloseable {
         fieldLease.when(() -> AgentFieldVisitLeaseRuntime.clear(any(), any())).thenAnswer(inv ->
                 calls.add("hand back " + ((Character) inv.getArgument(1)).getName()));
         open(AgentTownLifeVisitLeaseRuntime.class);
+        // an Agent's own mailbox runs at once here, as its next tick would (mailboxRuns false: it never runs)
+        open(AgentMailboxRuntime.class).when(() -> AgentMailboxRuntime.dispatch(any(AgentRuntimeEntry.class), any(AgentMailboxAction.class)))
+                .thenAnswer(inv -> {
+                    if (!mailboxRuns) {
+                        return CompletableFuture.failedFuture(new IllegalStateException("mailbox closed"));
+                    }
+                    AgentMailboxAction<?> action = inv.getArgument(1);
+                    return CompletableFuture.completedFuture(action.execute(inv.getArgument(0)));
+                });
         MockedStatic<InventoryManipulator> inventory = open(InventoryManipulator.class);
         inventory.when(() -> InventoryManipulator.removeById(any(), any(), anyInt(), anyInt(), anyBoolean(), anyBoolean()))
                 .thenAnswer(inv -> {

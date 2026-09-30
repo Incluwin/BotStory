@@ -12,6 +12,7 @@ import server.ItemInformationProvider;
 import server.agents.capabilities.shop.AgentFreeMarketStallService;
 import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService;
 import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService.ObservedStall;
+import server.living.LivingWorldHooks;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Good;
 import server.maps.PlayerShop;
@@ -276,10 +277,34 @@ public final class Market {
         }
     }
 
+    /**
+     * Whether browsing citizens buy at this character's stall: a human's, or a hired hand's (a player's companion now,
+     * though still in the citizen registry); never another citizen's.
+     */
+    boolean buysFrom(int ownerCharacterId) {
+        if (!population.isCitizen(ownerCharacterId)) {
+            return true;
+        }
+        Citizen owner = population.citizen(ownerCharacterId);
+        return owner != null && owner.hired();
+    }
+
+    /**
+     * A citizen bought {@code itemId} at {@code unit} a unit at this character's stall: the index moves toward the price,
+     * unless it was a companion's bench stall (BenchStallForm), which prices from the index itself, so its sales would
+     * only pull the index after its own price, lower each time.
+     */
+    void bought(int ownerCharacterId, int itemId, long unit) {
+        purchasesFromHumans++;
+        if (!LivingWorldHooks.benchCompanion(ownerCharacterId)) {
+            observe(itemId, unit);
+        }
+    }
+
     private void shop(CitizenSession session, Character agent, long now) {
         for (ObservedStall stall : buyers.observeNearby(agent)) {
-            if (population.isCitizen(stall.ownerCharacterId())) {
-                continue; // humans' shops only
+            if (!buysFrom(stall.ownerCharacterId())) {
+                continue; // humans' shops only (and a hired hand's)
             }
             for (PlayerShop.ListingView view : stall.listings()) {
                 if (view.bundles() <= 0 || view.perBundle() <= 0) {
@@ -295,8 +320,7 @@ public final class Market {
                 }
                 AgentFreeMarketBuyerService.PurchaseResult result = buyers.buy(agent, stall.objectId(), view.slot(), (short) 1);
                 if (result.success()) {
-                    purchasesFromHumans++;
-                    observe(view.itemId(), unit);
+                    bought(stall.ownerCharacterId(), view.itemId(), unit);
                     session.journal.add("market", "bought " + itemName(view.itemId()) + " from " + stall.ownerName() + " for " + formatPrice(view.bundlePrice()));
                     log.info("citizen {} bought {} x{} from {} for {}", session.name(), itemName(view.itemId()), view.perBundle(), stall.ownerName(), view.bundlePrice());
                     return; // one purchase per tick per citizen

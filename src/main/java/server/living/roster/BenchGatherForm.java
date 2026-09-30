@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * The GATHER form of the bench (docs/BOT_MANAGEMENT_PLAN.md P5 "Living bench", decision 12 a): a visible drop-pickup
@@ -36,8 +37,9 @@ import java.util.Set;
  * rule: active COLLECT_ITEM steps of other personas' quests, less what the haul already holds), it loads at its camp
  * field under a BENCH_LIVE seat, registered director-idle, with a field visit lease whose targets are the mobs there
  * that drop those items (it fights only them, or whatever the camp has when none of them lives there). What it picks
- * up is harvested into the haul by the field form's rules (kill loot and meso only, BenchSessions.harvest). It ends
- * with what its owner's quests need, back in town, off its camp, at its owner's level or the daily farming cap.
+ * up is harvested into the haul by the field form's rules (kill loot and meso only, BenchSessions.harvest). Its lease
+ * is started on its own mailbox, and renewed there before it runs out while a player watches. It ends with what its
+ * owner's quests need, back in town, off its camp, at its owner's level or the daily farming cap.
  */
 public final class BenchGatherForm implements BenchDutyDispatcher.Form {
     private static final Logger log = LoggerFactory.getLogger(BenchGatherForm.class);
@@ -46,6 +48,8 @@ public final class BenchGatherForm implements BenchDutyDispatcher.Form {
     private static final long GRACEFUL_EXIT_MS = 30_000L;
 
     private final LivingWorld world;
+    /** persona id -> the field visit lease its slice runs on now (renewed as the same request). */
+    private final Map<String, AgentFieldVisitLeaseRequest> visits = new ConcurrentHashMap<>();
 
     public BenchGatherForm(LivingWorld world) {
         this.world = world;
@@ -95,23 +99,31 @@ public final class BenchGatherForm implements BenchDutyDispatcher.Form {
             return "gathered what your quests need";
         }
         AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(slice.characterId());
+        boolean watched = ResidentRuntime.humansIn(map) > 0;
         if (!AgentFieldVisitLeaseRuntime.active(entry)
-                && (ResidentRuntime.humansIn(map) > 0 || nowMs - slice.startedAtMs() < world.config().BENCH_LIVE_SLICE_MS)) {
+                && (watched || nowMs - slice.startedAtMs() < world.config().BENCH_LIVE_SLICE_MS)) {
             // its visit ended while the slice runs on (a player is watching): another visit at the same camp
             return visit(slice, entry, agent, nowMs) ? null : "field visit ended";
+        }
+        if (watched) {
+            renew(slice, entry, agent, nowMs); // its visit goes on past the next look
         }
         return null;
     }
 
     @Override
     public void finish(BenchDutyDispatcher.Slice slice, Character agent, String reason) {
+        visits.remove(slice.personaId());
         RosterEntry roster = agent == null ? null : world.store().rosterEntry(slice.ownerId(), slice.personaId());
         if (roster != null) {
             world.benchSessions().harvest(slice, agent, roster); // its last pickups; the hand-back ends the visit
         }
     }
 
-    /** Starts a field visit lease at the slice's camp for one field slice, aimed at the mobs dropping what it gathers. */
+    /**
+     * Starts a field visit lease at the slice's camp for one field slice, aimed at the mobs dropping what it gathers, on
+     * its own mailbox; true when it started.
+     */
     private boolean visit(BenchDutyDispatcher.Slice slice, AgentRuntimeEntry entry, Character agent, long nowMs) {
         RosterEntry roster = world.store().rosterEntry(slice.ownerId(), slice.personaId());
         Persona persona = world.content().persona(slice.personaId());
@@ -126,13 +138,38 @@ public final class BenchGatherForm implements BenchDutyDispatcher.Form {
                         true, FIELD_PARTICIPANTS, true, null)),
                 AgentFieldAdmissionMode.CREATE_OR_JOIN, nowMs + world.config().BENCH_LIVE_SLICE_MS, GRACEFUL_EXIT_MS,
                 "bench gather slice elapsed");
-        AgentFieldSessionResult result = AgentFieldVisitLeaseRuntime.start(entry, agent, lease, nowMs);
-        if (result == null || !result.started() && result.status() != AgentFieldSessionResult.Status.ALREADY_ACTIVE_SAME_REQUEST) {
+        AgentFieldSessionResult result = BenchDutyDispatcher.onAgent(entry,
+                runtime -> AgentFieldVisitLeaseRuntime.start(runtime, agent, lease, nowMs));
+        if (!started(result)) {
             log.debug("bench gather for {} not started at {}: {}", slice.personaId(), slice.mapId(),
                     result == null ? "no result" : result.status() + " " + result.reason());
             return false;
         }
+        visits.put(slice.personaId(), lease);
         return true;
+    }
+
+    /**
+     * Its visit lease, renewed as the same field request when it would run out before the next look: the lease's watcher
+     * is cleared and started again with a later exit, so the visit itself goes on without a break.
+     */
+    private void renew(BenchDutyDispatcher.Slice slice, AgentRuntimeEntry entry, Character agent, long nowMs) {
+        AgentFieldVisitLeaseRequest lease = visits.get(slice.personaId());
+        if (entry == null || lease == null || lease.exitAtMs() > nowMs + BenchDutyDispatcher.TICK_MS) {
+            return;
+        }
+        AgentFieldVisitLeaseRequest later = new AgentFieldVisitLeaseRequest(lease.entryRequest(), lease.admissionMode(),
+                nowMs + world.config().BENCH_LIVE_SLICE_MS, lease.gracefulTimeoutMs(), lease.exitReason());
+        if (started(BenchDutyDispatcher.onAgent(entry, runtime -> {
+            AgentFieldVisitLeaseRuntime.clear(runtime, agent);
+            return AgentFieldVisitLeaseRuntime.start(runtime, agent, later, nowMs);
+        }))) {
+            visits.put(slice.personaId(), later);
+        }
+    }
+
+    private static boolean started(AgentFieldSessionResult result) {
+        return result != null && (result.started() || result.status() == AgentFieldSessionResult.Status.ALREADY_ACTIVE_SAME_REQUEST);
     }
 
     /** The mobs spawning on {@code map} that drop one of {@code items}; none when no dropper lives there. */

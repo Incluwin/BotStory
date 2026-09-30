@@ -125,12 +125,19 @@ public class LivingWorldConfig {
     public int COMPANION_SPAWN_INTERVAL_MS = 2000;
 
     // Living bench (P5, decisions 12 a and 13 a): BenchDutyDispatcher and BenchYieldModel read these
-    /** Benched companions resting live in town (REST: cheap town presence) server-wide at once; 0 = none. */
-    public int BENCH_TOWN_MAX = 10;
+    /**
+     * Benched companions resting live in town (REST: cheap town presence) server-wide at once; 0 = none. Held at 4 (and
+     * COMMERCE_LIVE_MAX at 2) until the P5 soak (2 humans x 5 active, the pools full) measures queue-lag p95 under 100 ms.
+     */
+    public int BENCH_TOWN_MAX = 4;
+    /** Of those, resting in town charged to one owner at once. */
+    public int BENCH_TOWN_PER_OWNER = 1;
     /** Length of one town slice (REST) before another benched companion gets a turn, unless a player is watching. */
     public int BENCH_TOWN_SLICE_MS = 3600000;
     /** Benched companions running a real Free Market stall (STALL, SELL: the COMMERCE pool) server-wide; 0 = none. */
-    public int COMMERCE_LIVE_MAX = 4;
+    public int COMMERCE_LIVE_MAX = 2;
+    /** Of those, stalls charged to one owner at once. */
+    public int COMMERCE_PER_OWNER = 1;
     /** Length of one stall slice before another benched companion gets a turn, unless a player is watching. */
     public int COMMERCE_SLICE_MS = 7200000;
     /** A live field companion out of supplies ends its hunt and restocks at a shop; after this long it unloads anyway. */
@@ -235,6 +242,11 @@ public class LivingWorldConfig {
         }
         if (BENCH_TOWN_MAX < 0 || COMMERCE_LIVE_MAX < 0) {
             throw new IllegalArgumentException("living_world.BENCH_TOWN_MAX and COMMERCE_LIVE_MAX must be >= 0 (0 = none)");
+        }
+        if (BENCH_TOWN_PER_OWNER < 0 || BENCH_TOWN_PER_OWNER > BENCH_TOWN_MAX
+                || COMMERCE_PER_OWNER < 0 || COMMERCE_PER_OWNER > COMMERCE_LIVE_MAX) {
+            throw new IllegalArgumentException("living_world.BENCH_TOWN_PER_OWNER must be within 0..BENCH_TOWN_MAX and"
+                    + " COMMERCE_PER_OWNER within 0..COMMERCE_LIVE_MAX");
         }
         if (BENCH_TOWN_SLICE_MS < 0 || COMMERCE_SLICE_MS < 0 || BENCH_RESUPPLY_MAX_MS < 0) {
             throw new IllegalArgumentException(

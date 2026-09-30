@@ -12,6 +12,7 @@ import server.living.roster.CompanionView;
 import server.living.roster.CompanionViews;
 import server.living.roster.HireOffers;
 import server.living.roster.RecallTravel;
+import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import tools.PacketCreator;
@@ -314,6 +315,16 @@ public final class CompanionMenus {
     static String header(CompanionView view) {
         return "#e" + view.name() + "#n" + levelJob(view)
                 + (view.loaded() ? " - HP " + view.hp() + "/" + view.maxHp() : "") + "\r\n";
+    }
+
+    /** {@link #duty(CompanionView)}, with no camp for a duty done away from it (a stall, a sale, a rest in town). */
+    static String duty(CompanionView view, Assignment assignment) {
+        if (assignment != Assignment.STALL && assignment != Assignment.SELL && assignment != Assignment.REST) {
+            return duty(view);
+        }
+        return (view.state() == RosterState.AWAY ? "away: " : "") + view.duty()
+                + (view.bankedExpPercent() >= 100 ? " - ready to level"
+                : view.bankedExpPercent() > 0 ? " - " + view.bankedExpPercent() + "% EXP banked" : "");
     }
 
     static String duty(CompanionView view) {

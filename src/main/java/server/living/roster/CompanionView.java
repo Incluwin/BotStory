@@ -261,9 +261,7 @@ public record CompanionView(String personaId,
             }
             BondService bonds = world.bonds();
             Bond bond = bonds == null ? null : bonds.peek(entry.characterId(), entry.personaId());
-            BenchDutyDispatcher bench = world.benchDuty();
-            String note = bench == null ? null : bench.note(entry.personaId()); // flow 12: "resting after a rough hunt"
-            String duty = world.roster().describeAssignment(entry) + (note == null || note.isEmpty() ? "" : " (" + note + ")");
+            String duty = world.roster().describeAssignment(entry); // flow 12's rest is the card's own line
             return new Stored(entry, name, world.residents().characterIdOf(entry.personaId()),
                     duty, camp == 0 ? "" : placeNames.apply(camp), farmed,
                     farming ? Math.max(0, entry.assignmentCount()) : 0, farming ? itemNames.apply(entry.assignmentItem()) : "",

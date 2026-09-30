@@ -7,6 +7,7 @@ import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
+import java.awt.Point;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -14,7 +15,10 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static server.living.roster.BenchHarness.ANN;
 import static server.living.roster.BenchHarness.BEN;
 import static server.living.roster.BenchHarness.FIELD;
@@ -124,6 +128,52 @@ class BenchDutyDispatcherTest {
         assertEquals(0, game.duty.liveCount(CompanionBudget.Kind.COMMERCE));
         // Ann's town presence and her stall do not use her two field seats
         assertEquals(2, game.duty.liveCountFor(ANN, CompanionBudget.Kind.BENCH_LIVE));
+    }
+
+    @Test
+    void eachOwnerHasOneTownSlotAndOneStallSoNoOwnerHoldsThemAll() {
+        game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
+        game.companion(ANN, "hale", "Hale", 908, Assignment.REST);
+        game.companion(BEN, "ivo", "Ivo", 909, Assignment.REST);
+        game.companion(ANN, "gwen", "Gwen", 907, Assignment.STALL);
+        game.companion(ANN, "jory", "Jory", 910, Assignment.STALL);
+        game.companion(BEN, "kell", "Kell", 911, Assignment.STALL);
+        game.duty.register(Assignment.REST, game.new FakeForm(CompanionBudget.Kind.BENCH_TOWN, TOWN));
+        game.duty.register(Assignment.STALL, game.new FakeForm(CompanionBudget.Kind.COMMERCE, 910000001));
+
+        game.duty.tick();
+
+        assertEquals(1, game.duty.liveCountFor(ANN, CompanionBudget.Kind.BENCH_TOWN));
+        assertEquals(1, game.duty.liveCountFor(BEN, CompanionBudget.Kind.BENCH_TOWN), "Ben's rests beside Ann's");
+        assertEquals(1, game.duty.liveCountFor(ANN, CompanionBudget.Kind.COMMERCE));
+        assertEquals(1, game.duty.liveCountFor(BEN, CompanionBudget.Kind.COMMERCE), "Ben's stall opens though Ann has two");
+        assertTrue(game.duty.live("ivo") && game.duty.live("kell"));
+    }
+
+    @Test
+    void slicesNeverStackOnOneSpotAndWalkInFromAPortalWhereAPlayerIs() {
+        game.statics(server.living.resident.ResidentSpots.class)
+                .when(() -> server.living.resident.ResidentSpots.fallback(any(), anyInt()))
+                .thenAnswer(inv -> new Point((int) inv.getArgument(1) % 1000, 0)); // one of the map's spots, by ordinal
+        game.companion(ANN, "olwen", "Olwen", 901, Assignment.TRAIN);
+        game.companion(ANN, "brin", "Brin", 902, Assignment.TRAIN);
+
+        game.duty.tick();
+
+        assertNotEquals(game.loadedAt.get(901), game.loadedAt.get(902), "two companions never on one pixel");
+        game.duty.endAll("test");
+        server.maps.Portal portal = org.mockito.Mockito.mock(server.maps.Portal.class);
+        org.mockito.Mockito.when(portal.getPosition()).thenReturn(new Point(700, 90));
+        org.mockito.Mockito.when(portal.getPortalStatus()).thenReturn(true);
+        org.mockito.Mockito.when(portal.getType()).thenReturn(server.maps.Portal.MAP_PORTAL);
+        org.mockito.Mockito.when(portal.getTargetMapId()).thenReturn(TOWN);
+        org.mockito.Mockito.when(game.map(FIELD).getPortals()).thenReturn(List.of(portal));
+        org.mockito.Mockito.when(game.map(FIELD).getAllPlayers()).thenReturn(List.of(org.mockito.Mockito.mock(client.Character.class)));
+        game.now += game.config.BENCH_LIVE_SLICE_MS;
+
+        game.duty.tick();
+
+        assertEquals(new Point(700, 90), game.loadedAt.get(901), "a player is there: it walks in, never pops in");
     }
 
     @Test

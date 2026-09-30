@@ -51,8 +51,8 @@ class BenchDeathResupplyTest {
         assertEquals(100L, game.row(ANN, "brin").haulMeso(), "what it picked up before it died is in the haul");
         assertNull(game.leases.holder(BRIN));
         assertEquals("resting after a rough hunt", game.duty.note("brin"));
-        assertEquals("farm_meso (resting after a rough hunt)", CompanionView.of(game.world, game.row(ANN, "brin"), id -> "").duty(),
-                "the card shows it");
+        assertEquals("farm_meso", CompanionView.of(game.world, game.row(ANN, "brin"), id -> "").duty(),
+                "its duty stays its duty: the card says it rests on a line of its own (CompanionCardScreens)");
 
         game.now += game.config.BENCH_LIVE_SLICE_MS - 1;
         game.duty.tick();

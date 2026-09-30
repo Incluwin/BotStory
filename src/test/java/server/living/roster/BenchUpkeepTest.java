@@ -88,7 +88,7 @@ class BenchUpkeepTest {
 
         long net = game.row(ANN, "brin").haulMeso(); // the hour's meso less its upkeep
         assertEquals(0.85d * predicted, net, 3.0d, "farmed " + predicted + ", 15% of it went to upkeep (not 300)");
-        assertEquals("farmed " + BenchReport.meso(Math.round(predicted)) + " meso at ant tunnel i.",
+        assertEquals("farmed " + BenchReport.meso(Math.round(predicted)) + " meso at Ant Tunnel I.",
                 ledger.takeReport(ANN, "brin", 10));
     }
 

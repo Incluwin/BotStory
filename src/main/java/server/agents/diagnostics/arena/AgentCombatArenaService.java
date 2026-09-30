@@ -514,6 +514,14 @@ public final class AgentCombatArenaService {
         boolean adoptable() {
             return !capped && comparison.meanDifference() >= 0;
         }
+
+        /**
+         * A candidate replacing what live play has is adopted only when it is ahead by a standard error of the paired
+         * difference at least, so noise alone never swaps live play for something no better (decision 13 a).
+         */
+        boolean candidateAdoptable() {
+            return !capped && comparison.meanDifference() - comparison.standardError() >= 0;
+        }
     }
 
     /**
@@ -570,9 +578,9 @@ public final class AgentCombatArenaService {
                 + LEARN_EVAL_REPEATS + " pairs x " + LEARN_EVAL_SECONDS + "s: "
                 + String.format(java.util.Locale.ROOT, "%+.1f%%", change) + " (paired difference "
                 + fmt(comparison.meanDifference()) + " +/- " + fmt(comparison.standardError()) + ") - "
-                + (evaluation.adoptable() ? "adopted for live play."
+                + (evaluation.candidateAdoptable() ? "adopted for live play."
                 : evaluation.capped() ? "not adopted: the evaluation hit the dummy's HP pool, so it measured nothing."
-                : "not adopted; live play keeps what it has."));
+                : "not adopted (not ahead by its standard error); live play keeps what it has."));
         if (kept != current) {
             describePolicy(session, scenario, candidate);
             session.learned.put(scenario, kept);
@@ -581,12 +589,13 @@ public final class AgentCombatArenaService {
     }
 
     /**
-     * What the job's policy file holds for a scenario after a candidate check: the candidate, adopted, when it was not
-     * worse than live play ({@link Evaluation#adoptable}); otherwise {@code current}, what it held before (null: nothing).
+     * What the job's policy file holds for a scenario after a candidate check: the candidate, adopted, when it was ahead
+     * of live play by a standard error at least ({@link Evaluation#candidateAdoptable}); otherwise {@code current}, what it
+     * held before (null: nothing).
      */
     static AgentCombatPolicy.Scenario afterCandidateCheck(AgentCombatPolicy.Scenario current, AgentCombatPolicyTable candidate,
                                                           Evaluation evaluation, long decisions) {
-        if (!evaluation.adoptable()) {
+        if (!evaluation.candidateAdoptable()) {
             return current;
         }
         return new AgentCombatPolicy.Scenario(true, evaluation.comparison().learnedMean(),
