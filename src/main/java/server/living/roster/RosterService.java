@@ -2493,7 +2493,7 @@ public final class RosterService {
         }
     }
 
-    /** Installs the runtime-leader move of the PQ-scoped delegation (decision 8b); the PQ track does, from P6. */
+    /** Installs who agrees to a companion finishing a run for a friend (decision 8b): P6's companion runs. */
     public void installInstanceDelegation(InstanceLogoutHandoff.Delegation delegation) {
         handoff.install(delegation);
     }

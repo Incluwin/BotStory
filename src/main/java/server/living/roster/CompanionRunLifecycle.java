@@ -1,7 +1,9 @@
 package server.living.roster;
 
+import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
@@ -16,9 +18,10 @@ import java.util.List;
  * (live: companions recovered into Kerning TownLife after a run, saying their Lith Harbor lines there); one that waits
  * outside, taps out or finishes a run for a friend is only stopped, since the roster moves it. A companion downed in a
  * run steps out of it as a HOLD on the exit map. Citizens and plain Agents recover as before. Work goes to
- * companion-ops.
+ * companion-ops. It is also who agrees to a companion seeing a run through for a friend once its owner logs off in
+ * it (decision 8b, InstanceLogoutHandoff).
  */
-public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule {
+public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule, InstanceLogoutHandoff.Delegation {
     private static final Logger log = LoggerFactory.getLogger(CompanionRunLifecycle.class);
     /** What a companion says in party chat as it taps out of a run, unless its arc has its own "tapout" line. */
     static final String TAP_OUT_LINE = "sorry, i'll wait outside.";
@@ -98,5 +101,32 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
         if (run != null) {
             service.endRun(run);
         }
+    }
+
+    /**
+     * Decision 8b, on companion-ops (RosterService.onOwnerLogout): a lineup companion of a run that got in sees it
+     * through for {@code heir}, the human of the party still in it, when the run goes on without its owner. Not the
+     * event leader's: the run ends with its leader, whose lead never moves in the instance. Not when fewer than three
+     * of the run would stay in the instance, since KerningPQ ends it then (isEventTeamLackingNow). Consent only: the
+     * companion stays its owner's Agent, the run's PQ controller drives it, and its tick leads itself once its owner
+     * is offline. The first of the owner's to stay says so in party chat.
+     */
+    @Override
+    public boolean delegate(Character companion, Character heir, String key) {
+        CompanionRun run = service.runByKey(key);
+        Integer owner = run == null || !run.started ? null : run.ownerByCompanion.get(companion.getId());
+        EventInstanceManager instance = heir.getEventInstance();
+        if (owner == null || owner == run.leaderId || instance == null) {
+            return false;
+        }
+        long staying = run.memberIds.stream()
+                .filter(id -> !id.equals(owner) && instance.getPlayerById(id) != null).count();
+        if (staying < LineupPlan.MIN_SIZE) {
+            return false;
+        }
+        if (run.handoffLineSaid.add(owner)) {
+            world.roster().sayInParty(companion, "i'll see this through with you, " + heir.getName() + ".");
+        }
+        return true;
     }
 }

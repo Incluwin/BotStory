@@ -15,17 +15,17 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Decision 8b, the instance logout handoff: an owner who logs off inside an event instance that a human of their party
- * is still in leaves their companions committed to that run to finish it under PQ-scoped delegation to that human. It
- * is a runtime-leader move only: the roster owner, the row (ACTIVE) and the commitment stay. When the commitment ends
- * (the run ended, or the companion left it) the companion leaves that party and parks (RosterService.parkAfterRun).
- * With no human left to hand them to, or no delegation installed, they leave with their owner under stock eim rules
- * and their commitments end (RosterService.onOwnerLogout). Companions cannot enter instances before P6, whose PQ
- * service installs the {@link Delegation}; until then nobody is handed over.
+ * is still in leaves their companions committed to that run to finish it for that human, as far as the run's
+ * {@link Delegation} agrees (P6: CompanionRunLifecycle, for a companion KPQ run that goes on without the owner). The
+ * roster owner, the row (ACTIVE), the commitment and the runtime leader all stay; the run's PQ controller drives the
+ * companion meanwhile. When the commitment ends (the run ended, or the companion left it) the companion leaves that
+ * party and parks (RosterService.parkAfterRun). With no human left to hand them to, or no delegation that agrees, they
+ * leave with their owner under stock eim rules and their commitments end (RosterService.onOwnerLogout).
  */
 public final class InstanceLogoutHandoff {
     /**
-     * The runtime-leader move of a PQ-scoped delegation (plan "Owner-scoped authority"): {@code companion} answers to
-     * {@code human} for the rest of the run it is committed to ({@code key}). True when it does now.
+     * PQ-scoped consent (plan "Owner-scoped authority"): true when {@code companion} finishes the run it is committed to
+     * ({@code key}) for {@code human}, still its owner's.
      */
     @FunctionalInterface
     public interface Delegation {

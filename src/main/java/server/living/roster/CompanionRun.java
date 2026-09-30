@@ -19,6 +19,8 @@ final class CompanionRun {
     final Set<Integer> memberIds;
     /** Lineup companion id -> its owner. */
     final Map<Integer, Integer> ownerByCompanion = new HashMap<>();
+    /** Lineup companion id -> its persona id, for its record (CompanionRunRecorder). */
+    final Map<Integer, String> personaByCompanion = new HashMap<>();
     /** Extra id -> its owner: the companions that wait outside the run. */
     final Map<Integer, Integer> ownerByExtra = new HashMap<>();
     /** The owners of both: their holds rejoin once the run is over. */
@@ -48,6 +50,7 @@ final class CompanionRun {
         for (LineupPlan.Seat seat : plan.lineup()) {
             if (!seat.human()) {
                 ownerByCompanion.put(seat.characterId(), seat.ownerId());
+                personaByCompanion.put(seat.characterId(), seat.personaId());
             }
         }
         for (LineupPlan.Seat seat : plan.extras()) {

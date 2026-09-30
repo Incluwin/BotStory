@@ -177,6 +177,8 @@ public final class LivingWorld {
         // a companion a party quest lets go goes back to its owner, not to Kerning TownLife (P6); before any admission,
         // whose own rollback recovers its Agents
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(world.partyQuestRuns);
+        // and a companion whose owner logs off inside its run sees it through for the friend still in it (decision 8b)
+        world.roster.installInstanceDelegation(world.partyQuestRuns);
         // a companion out with its owner drinks and loots by its own settings (P3b)
         world.roster.settings().install();
         // hire:<characterId> ids resolve to hired citizens, and a released hire goes back to the population (P4)
@@ -187,6 +189,8 @@ public final class LivingWorld {
         world.executor.submit("residents.allocation", world.residentAllocation::sweep);
         // the yields live bench slices measured (companion_yield), before the first ledger tick credits them
         world.executor.submit("bench.yields", world.benchYields::load);
+        // the companions' KPQ records (companion_performance), which the lineups at Lakelis rank by
+        world.executor.submit("pq.records.load", world.partyQuests.records()::load);
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             world.executor.submit("residents.allocation", world.residentAllocation::sweep);
@@ -267,6 +271,7 @@ public final class LivingWorld {
         server.agents.auth.AgentClaimGuard.installVerbs(null);
         server.agents.capabilities.follow.AgentFollowGuard.install(null);
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(null);
+        world.roster.installInstanceDelegation(null);
         server.living.roster.BenchCombatLearning.uninstall();
         server.living.roster.CompanionSettingsApplier.uninstall();
         HiredHands.uninstall();

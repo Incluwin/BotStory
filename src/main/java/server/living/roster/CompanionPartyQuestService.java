@@ -23,6 +23,7 @@ import server.integration.AgentPresence;
 import server.life.NPC;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.store.LivingStore.CompanionRunStats;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
@@ -87,6 +88,7 @@ public final class CompanionPartyQuestService {
     private final LivingWorld world;
     private final PqEntryPort port;
     private final ToIntFunction<Character> hpPotions;
+    private final CompanionRunRecorder records;
     private volatile Desk desk = PINK_TEXT;
     /** Leaders whose Yes is being carried out: a second Yes meanwhile only hears "hold on". */
     private final Set<Integer> entering = ConcurrentHashMap.newKeySet();
@@ -104,6 +106,12 @@ public final class CompanionPartyQuestService {
         this.world = world;
         this.port = port;
         this.hpPotions = hpPotions;
+        this.records = new CompanionRunRecorder(world);
+    }
+
+    /** The companions' KPQ records, which the lineup ranks by. */
+    public CompanionRunRecorder records() {
+        return records;
     }
 
     /** The desk's windows (roster.ui); null: none, and outcomes are pink text. */
@@ -168,7 +176,8 @@ public final class CompanionPartyQuestService {
 
     /**
      * The lineup the leader's party would go in with, {@code picked} (companion ids, null: the best) chosen. On the
-     * leader's I/O thread, from memory: the party, the loaded characters, the Crew menus' row cache and the commitments.
+     * leader's I/O thread, from memory: the party, the loaded characters, the Crew menus' row cache, the commitments
+     * and the companions' records.
      */
     public LineupPlan plan(Character leader, String pqKey, Set<Integer> picked) {
         Party party = leader.getParty();
@@ -241,16 +250,18 @@ public final class CompanionPartyQuestService {
         return hpPotions.applyAsInt(bot) < KPQ_MIN_HP_POTIONS ? LakelisLines.LOW_ON_POTIONS : null;
     }
 
-    private static LineupPlan.Candidate blocks(int id, String name, String line) {
+    private LineupPlan.Candidate blocks(int id, String name, String line) {
         return new LineupPlan.Candidate(seat(id, name, null, false, 0, null, 0L), LineupPlan.Fit.BLOCKS,
                 LakelisLines.named(line, name), false);
     }
 
-    private static LineupPlan.Seat seat(int id, String name, Character chr, boolean human, int ownerId, String personaId,
-                                        long etaMs) {
+    /** The member's seat; a companion's carries its KPQ record. */
+    private LineupPlan.Seat seat(int id, String name, Character chr, boolean human, int ownerId, String personaId,
+                                 long etaMs) {
         int jobId = chr == null ? -1 : chr.getJob().getId();
+        CompanionRunStats record = human ? CompanionRunRecorder.NONE : records.stats(id);
         return new LineupPlan.Seat(id, name, chr == null ? 0 : chr.getLevel(), jobId, CompanionView.jobName(jobId), human,
-                ownerId, personaId, chr == null ? 0 : chr.getMapId(), etaMs, 0, 0);
+                ownerId, personaId, chr == null ? 0 : chr.getMapId(), etaMs, record.runs(), record.clears());
     }
 
     /** True while an engagement holds the character (a run's post-run recovery, say), or the leader operates one. */
@@ -547,12 +558,13 @@ public final class CompanionPartyQuestService {
     /**
      * On companion-ops, once a run is over: its commitments end (a companion finishing it for a friend parks, the
      * party changes that waited go through), and the owners already out of the event get their held companions back.
-     * An owner still inside gets them as they come out (RosterService.ownerEnteredMap).
+     * An owner still inside gets them as they come out (RosterService.ownerEnteredMap). A run that got in goes on its
+     * companions' records.
      */
     void finish(CompanionRun run) {
         world.commitments().releaseKey(run.key);
         rejoin(run.owners); // an owner still in the event instance: none yet
-        // a started run's companion_performance rows are written here (WP10)
+        records.record(run, System.currentTimeMillis());
     }
 
     /**

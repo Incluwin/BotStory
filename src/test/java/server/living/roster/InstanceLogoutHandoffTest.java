@@ -20,8 +20,8 @@ import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.LITH;
 
 /**
- * Decision 8b, the instance logout handoff (docs/BOT_MANAGEMENT_PLAN.md flow 3 step 11, flow 7 step 4), as a seam:
- * companions cannot enter instances before P6, whose PQ service installs the runtime-leader move. Ann logs off inside
+ * Decision 8b, the instance logout handoff (docs/BOT_MANAGEMENT_PLAN.md flow 3 step 11, flow 7 step 4), as a seam
+ * with a delegation that always agrees (CompanionRunDelegationTest has the companion runs' own). Ann logs off inside
  * a run her friend Ben is still in: her companions committed to it finish it for Ben (their rows, their owner and their
  * commitments stay), and once the run ends for one (its commitment ends) it leaves Ben's party and parks (the first says
  * the goodbye nobody said at the logout), or walks back in to Ann when she is online again. With no human of her party

@@ -985,6 +985,62 @@ public final class LivingStore {
         }
     }
 
+    // ---- companion runs (P6) ------------------------------------------------------------------
+
+    /**
+     * One companion_performance row (changeset 40): how one companion's party-quest run went. {@code outcome} is
+     * cleared, failed or tapped_out; its damage share is not measured (NULL).
+     */
+    public record CompanionRunRow(int ownerCharacterId, int companionCharacterId, String personaId, String activity,
+                                  String outcome, int durationS, int deaths, int partySize) { }
+
+    /** A companion's record in one activity: its runs, and how many of them cleared. */
+    public record CompanionRunStats(int runs, int clears) { }
+
+    /** Adds one companion_performance row (recorded_at is the database's now); false when the write failed. */
+    public boolean saveCompanionRun(CompanionRunRow row) {
+        String sql = SqlTime.utc("INSERT INTO companion_performance (owner_character_id, companion_character_id, persona_id,"
+                + " activity, outcome, duration_s, deaths, damage_share, party_size) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?)");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, row.ownerCharacterId());
+            ps.setInt(2, row.companionCharacterId());
+            ps.setString(3, row.personaId());
+            ps.setString(4, row.activity());
+            ps.setString(5, row.outcome());
+            ps.setInt(6, row.durationS());
+            ps.setInt(7, row.deaths());
+            ps.setInt(8, row.partySize());
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("companion_performance write failed for {}", row.companionCharacterId(), failure);
+            return false;
+        }
+    }
+
+    /**
+     * Every companion's record in {@code activity} ("kpq"), by companion character id.
+     *
+     * @throws ReadFailed when the read failed (not the same as no runs yet)
+     */
+    public Map<Integer, CompanionRunStats> companionRunStats(String activity) {
+        Map<Integer, CompanionRunStats> out = new HashMap<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT companion_character_id, COUNT(*), SUM(outcome = 'cleared') FROM companion_performance"
+                        + " WHERE activity = ? GROUP BY companion_character_id")) {
+            ps.setString(1, activity);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.put(rs.getInt(1), new CompanionRunStats(rs.getInt(2), rs.getInt(3)));
+                }
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("companion_performance read failed for {}", activity, failure);
+            throw new ReadFailed("companion_performance " + activity, failure);
+        }
+    }
+
     /** The meso in the purse of a character nothing has loaded (a benched companion's); -1 when unknown. */
     public long characterMeso(int characterId) {
         try (Connection con = DatabaseConnection.getConnection();

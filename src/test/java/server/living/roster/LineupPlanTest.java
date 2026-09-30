@@ -12,6 +12,7 @@ import org.mockito.MockedStatic;
 import server.StatEffect;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.living.config.Content.Persona;
+import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.RosterState;
 import tools.Pair;
 
@@ -35,8 +36,9 @@ import static server.living.roster.LifecycleHarness.LITH;
  * The lineup Lakelis proposes (P6, flow 3): the humans always, then the companions that fit, one seat per owner in
  * turn, the closest in level first and a new job branch before a second of one; four when four can go, else three.
  * The rest wait outside with their reason. A companion low on potions waits and is never sent in, a guest Agent or a
- * companion that is not up blocks the start, and one on its way keeps the lineup from starting until it is here. All
- * of it from memory: the plan reads no store.
+ * companion that is not up blocks the start, and one on its way keeps the lineup from starting until it is here. A
+ * companion's clear rate counts, and its record shows, once it has three KPQ runs on record. All of it from memory:
+ * the plan reads no store.
  */
 class LineupPlanTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -218,6 +220,45 @@ class LineupPlanTest {
     }
 
     @Test
+    void clearRateCountsOnlyFromThreeRecords() {
+        fx.companion("ash", "Ash", 901, 25, Job.HUNTER);
+        fx.companion("bel", "Bel", 902, 25, Job.HUNTER);
+        fx.companion("cid", "Cid", 903, 25, Job.HUNTER);
+        fx.companion("dov", "Dov", 904, 25, Job.HUNTER);
+        CompanionPartyQuestService service = fx.ready();
+        record(903, "cid", 3, 3);
+        record(904, "dov", 2, 2);
+        service.records().load();
+
+        LineupPlan plan = service.plan(game.ann, "kpq");
+
+        assertEquals(List.of("Ann", "Cid", "Ash", "Bel"), names(plan.lineup()),
+                "two runs, both cleared, are no record yet");
+        assertEquals("cleared 3 of 3", plan.lineup().get(1).clearRecord());
+        LineupPlan.Seat dov = plan.extras().getFirst();
+        assertEquals(List.of(2, 2), List.of(dov.runs(), dov.clears()));
+        assertNull(dov.clearRecord());
+        assertNull(plan.lineup().getFirst().clearRecord(), "a human has none");
+    }
+
+    @Test
+    void betterClearRateWinsALevelTie() {
+        fx.companion("rook", "Rook", 901, 25, Job.FIGHTER);
+        fx.companion("tobi", "Tobi", 902, 25, Job.BANDIT);
+        fx.companion("ash", "Ash", 903, 24, Job.HUNTER);
+        fx.companion("bel", "Bel", 904, 24, Job.HUNTER);
+        CompanionPartyQuestService service = fx.ready();
+        record(903, "ash", 3, 1);
+        record(904, "bel", 3, 3);
+        service.records().load();
+
+        LineupPlan plan = service.plan(game.ann, "kpq");
+
+        assertEquals(List.of("Ann", "Bel", "Rook", "Tobi"), names(plan.lineup()));
+        assertEquals(List.of("Ash"), names(plan.extras()), "the same level and job as Bel, and one clear in three");
+    }
+
+    @Test
     void planReadsNoStore() {
         fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
         fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);
@@ -250,6 +291,14 @@ class LineupPlanTest {
             items.when(() -> AgentUseItemClassificationPolicy.itemEffect(2002000)).thenReturn(buff);
 
             assertEquals(19, CompanionPartyQuestService.hpPotions(bot), "Red and Orange; no Blue, no buff");
+        }
+    }
+
+    /** {@code runs} KPQ runs on the companion's record, the first {@code clears} of them cleared. */
+    private void record(int companionId, String personaId, int runs, int clears) {
+        for (int i = 0; i < runs; i++) {
+            game.store.performance.add(new CompanionRunRow(ANN, companionId, personaId, "kpq",
+                    i < clears ? "cleared" : "failed", 600, 0, 4));
         }
     }
 

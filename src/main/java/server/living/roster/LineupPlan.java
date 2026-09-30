@@ -19,10 +19,20 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
                          List<Waiting> waiting, String blocker, boolean benchUseful) {
     static final int MIN_SIZE = 3;
     static final int MAX_SIZE = 4;
+    /** A companion's clear record is shown, and ranks it, from this many runs on. */
+    static final int RECORD_RUNS = 3;
 
-    /** One party member as the lineup shows it; a human has no owner (0) and no persona. */
+    /**
+     * One party member as the lineup shows it; a human has no owner (0), no persona and no record. {@code runs} and
+     * {@code clears}: a companion's KPQ record (CompanionRunRecorder).
+     */
     public record Seat(int characterId, String name, int level, int jobId, String jobName, boolean human, int ownerId,
-                       String personaId, int mapId, long etaMs, int runs, int clears) { }
+                       String personaId, int mapId, long etaMs, int runs, int clears) {
+        /** "cleared 2 of 3" once the companion has three runs on record (RECORD_RUNS); null before. */
+        public String clearRecord() {
+            return runs >= RECORD_RUNS ? "cleared " + clears + " of " + runs : null;
+        }
+    }
 
     /** A companion that waits outside, and why ("bags full", "Lv32, too seasoned for this"). */
     public record Waiting(int characterId, String name, String reason) { }
@@ -140,7 +150,7 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
 
     static double score(Seat seat, int leaderLevel, Set<Integer> branches) {
         return -Math.abs(seat.level() - leaderLevel) + (branches.contains(seat.jobId() / 100) ? 0 : 2)
-                + (seat.runs() >= 3 ? 3.0d * seat.clears() / seat.runs() : 0.0d);
+                + (seat.runs() >= RECORD_RUNS ? 3.0d * seat.clears() / seat.runs() : 0.0d);
     }
 
     /** Too few can go in: a companion that waits for potions says so (it is never sent in without), else the rule. */

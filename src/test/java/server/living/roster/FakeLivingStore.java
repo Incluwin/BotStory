@@ -1,6 +1,8 @@
 package server.living.roster;
 
 import server.living.store.LivingStore;
+import server.living.store.LivingStore.CompanionRunRow;
+import server.living.store.LivingStore.CompanionRunStats;
 import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.PersonaState;
 import server.living.store.LivingStore.RosterEntry;
@@ -34,6 +36,9 @@ import static org.mockito.Mockito.when;
  * {@link #purses} only for a character it has a purse for, and never past the limit (else it throws, failing that
  * commit), characterMeso reads the purses (-1 for none), characterLevelAndJob reads {@link #levels} and {@link #jobs},
  * living_crew is {@link #crews} (its keep_fresh {@link #keptFresh}) and companion_yield (an upsert by job branch, level band and camp) {@link #yields}.
+ * companion_performance is {@link #performance} (saveCompanionRun appends; companionRunStats counts each companion's
+ * runs and clears in an activity), and fails as the database would while {@link #performanceUnreadable} or
+ * {@link #performanceUnwritable}.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -60,6 +65,10 @@ final class FakeLivingStore {
     final Set<Integer> keptFresh = new java.util.LinkedHashSet<>();
     /** "branch:band:camp" -> companion_yield row. */
     final Map<String, YieldRow> yields = new LinkedHashMap<>();
+    /** companion_performance, in the order the rows were added. */
+    final List<CompanionRunRow> performance = new ArrayList<>();
+    boolean performanceUnreadable;
+    boolean performanceUnwritable;
     /** owner:persona -> item id -> units a live bench stall holds (living_stall_stock). */
     final Map<String, Map<Integer, Integer>> stallStock = new HashMap<>();
     /** owner:persona keys on "Your call" (living_roster.your_call). */
@@ -184,6 +193,21 @@ final class FakeLivingStore {
             return true;
         });
         when(store.usableItems(anyInt())).thenAnswer(inv -> new java.util.LinkedHashSet<>(usable.getOrDefault((int) inv.getArgument(0), Set.of())));
+        when(store.saveCompanionRun(any())).thenAnswer(inv -> !performanceUnwritable && performance.add(inv.getArgument(0)));
+        when(store.companionRunStats(anyString())).thenAnswer(inv -> {
+            if (performanceUnreadable) {
+                throw new LivingStore.ReadFailed("companion_performance", new SQLException("unreadable"));
+            }
+            Map<Integer, CompanionRunStats> out = new HashMap<>();
+            for (CompanionRunRow row : performance) {
+                if (row.activity().equals(inv.getArgument(0))) {
+                    CompanionRunStats known = out.getOrDefault(row.companionCharacterId(), new CompanionRunStats(0, 0));
+                    out.put(row.companionCharacterId(), new CompanionRunStats(known.runs() + 1,
+                            known.clears() + (row.outcome().equals("cleared") ? 1 : 0)));
+                }
+            }
+            return out;
+        });
         when(store.saveCompanionYield(any())).thenAnswer(inv -> {
             YieldRow row = inv.getArgument(0);
             yields.put(row.jobBranch() + ":" + row.levelBand() + ":" + row.campMapId(), row);
