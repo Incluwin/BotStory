@@ -4,12 +4,14 @@ import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.movement.AgentMovementBroadcastService;
+import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestTestDeploymentRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeAdmissionMode;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeVisitRequest;
+import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
@@ -18,6 +20,10 @@ import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapleMap;
 
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Keeps party-quest Agents owned until an active event, test hold, or ordinary system receives them. */
 public final class AgentPartyQuestLifecycleRuntime {
@@ -58,9 +64,30 @@ public final class AgentPartyQuestLifecycleRuntime {
         AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.engagements().stream()
                 .filter(candidate -> sessionId.equals(candidate.activeSessionId()))
                 .findFirst().orElse(null);
-        if (engagement == null) return;
+        if (engagement == null) {
+            AgentPartyQuestHandback.runEnded(
+                    new AgentPartyQuestHandback.RunEnded("", sessionId, 0, success, reason, nowMs));
+            return;
+        }
         engagement.finishRun(success, reason, nowMs);
+        // A cleared PRODUCTION run stood its companions idle through the hold and kept the operator's engagement,
+        // so the leader's next run was refused ("operator already owns a party-quest engagement"). With every
+        // Agent handed back there is nothing to hold.
+        if (skipsPostRunHold(engagement.mode(), engagement.state(),
+                AgentPartyQuestHandback.anyTownLife(engagement.agentIds(), engagement.questKey()))) {
+            engagement.beginRecovery("post-run hold skipped: every Agent is handed back", nowMs);
+        }
         if (engagement.state() == AgentPartyQuestEngagement.State.RECOVERING) recover(engagement, nowMs);
+        AgentPartyQuestHandback.runEnded(new AgentPartyQuestHandback.RunEnded(
+                engagement.questKey(), sessionId, engagement.operatorId(), success, reason, nowMs));
+    }
+
+    /** Only a test run (its next run starts from the hold) or an Agent bound for TownLife still needs the hold. */
+    static boolean skipsPostRunHold(AgentPartyQuestEngagement.Mode mode,
+                                    AgentPartyQuestEngagement.State state,
+                                    boolean anyTownLife) {
+        return mode != AgentPartyQuestEngagement.Mode.TEST_OBSERVATION
+                && state == AgentPartyQuestEngagement.State.POST_RUN_HOLD && !anyTownLife;
     }
 
     public static boolean requestStop(int characterId, String reason, long nowMs) {
@@ -101,11 +128,30 @@ public final class AgentPartyQuestLifecycleRuntime {
     public static boolean recover(AgentPartyQuestEngagement engagement, long nowMs) {
         if (engagement == null || engagement.state() != AgentPartyQuestEngagement.State.RECOVERING) return false;
         boolean allRecovered = true;
+        List<AgentRuntimeEntry> released = new ArrayList<>();
+        Map<AgentRuntimeEntry, Character> followers = new LinkedHashMap<>();
         for (int agentId : engagement.agentIds()) {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(agentId);
             Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
             if (entry == null || agent == null) continue;
             if (AgentTownLifeRuntime.active(entry)) continue;
+            AgentPartyQuestHandback.Handback handback =
+                    AgentPartyQuestHandback.handback(agentId, engagement.questKey());
+            if (handback == AgentPartyQuestHandback.Handback.RELEASE) {
+                released.add(entry);
+                continue;
+            }
+            if (handback == AgentPartyQuestHandback.Handback.FOLLOW_LEADER) {
+                // Never warped: a follower leaves the event by the event's own exit or its respawn, then follows.
+                if (agent.getHp() <= 0 || agent.getEventInstance() != null) {
+                    allRecovered = false;
+                    engagement.addDiagnostic("Handback deferred for " + agent.getName()
+                            + ": still in the event or down", nowMs);
+                } else {
+                    followers.put(entry, agent);
+                }
+                continue;
+            }
             AgentPartyQuestDefinition definition = AgentPartyQuestCatalog.find(engagement.questKey());
             if (definition == null) {
                 allRecovered = false;
@@ -127,6 +173,9 @@ public final class AgentPartyQuestLifecycleRuntime {
         if (allRecovered) {
             engagement.close(nowMs);
             AgentPartyQuestEngagementRegistry.remove(engagement);
+            // Handed-back Agents move only once the engagement is gone, so the party-quest tick no longer owns them.
+            released.forEach(AgentMovementCommandRuntime::stop);
+            followers.forEach(AgentPartyQuestLifecycleRuntime::followLeader);
             return true;
         }
         long warningIntervalMs = Math.max(5_000L, RECOVERY_WARN_MS);
@@ -145,6 +194,20 @@ public final class AgentPartyQuestLifecycleRuntime {
         Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
         if (entry == null || agent == null) return;
         AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forMember(characterId);
+        AgentPartyQuestHandback.Handback handback = AgentPartyQuestHandback.handback(
+                characterId, engagement == null ? "kpq" : engagement.questKey());
+        if (handback == AgentPartyQuestHandback.Handback.RELEASE) {
+            AgentMovementCommandRuntime.stop(entry);
+            return;
+        }
+        if (handback == AgentPartyQuestHandback.Handback.FOLLOW_LEADER) {
+            if (agent.getHp() > 0 && agent.getEventInstance() == null) {
+                followLeader(entry, agent);
+            } else {
+                AgentMovementCommandRuntime.stop(entry);
+            }
+            return;
+        }
         AgentPartyQuestDefinition definition = engagement == null
                 ? null : AgentPartyQuestCatalog.find(engagement.questKey());
         // A detached member may already have been removed from the engagement index.
@@ -158,6 +221,21 @@ public final class AgentPartyQuestLifecycleRuntime {
             AgentTownLifeRuntime.requestLocal(
                     entry, agent, AgentTownLifeVisitRequest.leisure(agent.getMapId()),
                     AgentTownLifeAdmissionMode.MANUAL_ONLY, nowMs, agent.getId());
+        }
+    }
+
+    /**
+     * Follows the Agent's runtime leader, resolved here because termination's stop cleared the follow target
+     * (chat routing may have re-pointed the interaction target); with the leader offline it only stops.
+     */
+    private static void followLeader(AgentRuntimeEntry entry, Character agent) {
+        int leaderId = AgentRuntimeRegistry.leaderIdForAgentCharacter(agent.getId());
+        Character leader = leaderId <= 0 || leaderId == agent.getId()
+                ? null : AgentCharacterGatewayRuntime.characters().findOnlineCharacterById(leaderId);
+        if (leader == null) {
+            AgentMovementCommandRuntime.stop(entry);
+        } else {
+            AgentMovementCommandRuntime.follow(entry, leader);
         }
     }
 
