@@ -4,8 +4,13 @@ import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.capabilities.combat.AgentCombatObjectiveTargetStateRuntime;
+import server.agents.capabilities.combat.AgentCombatVariationRuntime;
+import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.runtime.AgentModeService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +26,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -192,6 +198,43 @@ class CompanionTapOutCoordinatorTest {
         verify(run.event).dispose();
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
                 mira, "Tobi went down, so we can't finish this one. let's head out."), times(1));
+    }
+
+    @Test
+    void aStageFiveClearLandingWhileTheHostIsAskedNeverFailsTheClearedRun() {
+        hostTakesItOut = false;
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip, tobi);
+        when(tobi.getHp()).thenReturn(0);
+        AgentKpqCoordinator.tick(session, 3_000L);
+        respawnOutside(tobi);
+        // Ben hands Cloto the passes on his own thread after this tick read the clear, so the host, which refuses
+        // a cleared run, is asked with the run already cleared.
+        AgentPartyQuestHandback.install(new AgentPartyQuestHandback.Rule() {
+            @Override
+            public AgentPartyQuestHandback.Handback handback(int agentCharacterId, String questKey) {
+                return AgentPartyQuestHandback.Handback.RELEASE;
+            }
+
+            @Override
+            public boolean tapOut(AgentPartyQuestHandback.TapOut request) {
+                tapOuts.add(request);
+                when(run.event.getProperty("5stageclear")).thenReturn("true");
+                return false;
+            }
+        });
+
+        try (MockedStatic<AgentCombatVariationRuntime> variation = mockStatic(AgentCombatVariationRuntime.class);
+             MockedStatic<AgentCombatObjectiveTargetStateRuntime> objective =
+                     mockStatic(AgentCombatObjectiveTargetStateRuntime.class);
+             MockedStatic<AgentModeService> modes = mockStatic(AgentModeService.class);
+             MockedStatic<AgentGrindLootStateRuntime> loot = mockStatic(AgentGrindLootStateRuntime.class)) {
+            AgentKpqCoordinator.tick(session, 8_000L);
+            AgentKpqCoordinator.tick(session, 9_000L);
+        }
+
+        assertEquals(1, tapOuts.size());
+        assertEquals(AgentKpqSession.Phase.CLAIMING_REWARDS, session.phase());
+        verify(run.event, never()).dispose();
     }
 
     @Test

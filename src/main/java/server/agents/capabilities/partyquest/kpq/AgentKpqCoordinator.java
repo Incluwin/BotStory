@@ -1811,14 +1811,17 @@ final class AgentKpqCoordinator {
                 case REQUEST_TAP_OUT -> {
                     // The stock respawn carried it out of the event; the host takes it out of the party, and the
                     // departed-member path drops it on a later tick.
-                    if (!AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
+                    if (AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
                             "kpq", session.sessionId(), member.characterId(), character.getMapId(), nowMs))) {
+                        member.markTapOutRequested();
+                        waiting = true;
+                    } else if (!"true".equals(KPQ.property(eventAnchor, "5stageclear"))) {
                         fail(session, character.getName() + " was defeated during KPQ",
                                 Parting.of(Parting.Kind.DEFEATED, character), nowMs);
                         return false;
                     }
-                    member.markTapOutRequested();
-                    waiting = true;
+                    // Else the leader cleared stage 5 on its own thread since this tick read the clear, and the host
+                    // refuses a cleared run: after the clear nothing is asked of a downed member.
                 }
                 case REVIVED -> {
                     if (member.confirmRevived(nowMs)) {
