@@ -5,6 +5,7 @@ import client.Client;
 import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import client.processor.npc.DueyProcessor;
+import config.AgentYamlConfig;
 import constants.inventory.ItemConstants;
 import net.server.Server;
 import net.server.world.CauseScope;
@@ -2627,7 +2628,8 @@ public final class RosterService {
     /**
      * {@link #hold(Character, Persona, int, Point)} saying {@code note} (null: the usual whisper to its owner). A party
      * line is said before it leaves the party, which it cannot party-chat outside of; a map line once it stands where
-     * it waits. One it cannot say so (the companion left behind on another channel) is whispered to the owner instead.
+     * it waits. One it cannot say so (the companion left behind on another channel, or bots' chat turned off) is
+     * whispered to the owner instead.
      */
     public RosterResult hold(Character owner, Persona persona, int mapId, Point point, HoldNote note) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
@@ -2672,7 +2674,8 @@ public final class RosterService {
             AgentMovementCommandRuntime.moveTo(runtime, point, false);
         }
         write(current(entry).withHold(mapId, System.currentTimeMillis()));
-        if (!elsewhere && note != null && note.voice() == HoldNote.Voice.MAP) {
+        if (!elsewhere && note != null && note.voice() == HoldNote.Voice.MAP
+                && AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED) { // off, sayMapNow says nothing
             AgentDialogueTransportRuntime.sayMapNow(bot, line); // a recruited companion has no Resident session to say it
             said = true;
         }

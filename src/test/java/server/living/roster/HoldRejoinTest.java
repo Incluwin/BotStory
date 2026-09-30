@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import config.AgentYamlConfig;
 import net.server.world.CauseScope;
 import net.server.world.PartyEvents;
 import org.junit.jupiter.api.AfterEach;
@@ -96,6 +97,20 @@ class HoldRejoinTest {
             game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS, HoldNote.map("we'll wait here."));
 
             dialogue.verifyNoInteractions();
+        }
+        verify(game.residents).whisper(olwen, game.ann, "we'll wait here.");
+    }
+
+    @Test
+    void aMapNoteWithBotChatOffIsWhisperedInstead() {
+        boolean transport = AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
+        AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = false; // sayMapNow would say nothing
+        try (MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class)) {
+            game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS, HoldNote.map("we'll wait here."));
+
+            dialogue.verifyNoInteractions();
+        } finally {
+            AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = transport;
         }
         verify(game.residents).whisper(olwen, game.ann, "we'll wait here.");
     }
