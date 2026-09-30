@@ -1380,7 +1380,6 @@ public final class RosterService {
         return contracts == null ? null : contracts.benchWarning(owner.getId(), persona);
     }
 
-    /** True while the persona's companion is committed to an event instance or expedition (Commitments). */
     /**
      * True while the owner is in a companion party-quest run: one of theirs is committed to it, or they went in with
      * its lineup. Any other event instance (a ride, a wedding, a job test) takes calls as it always did.
@@ -1392,6 +1391,7 @@ public final class RosterService {
                 || partyQuests != null && partyQuests.runForCharacter(ownerId) != null;
     }
 
+    /** True while the persona's companion is committed to an event instance or expedition (Commitments). */
     private boolean committed(String personaId) {
         Commitments commitments = world.commitments();
         int characterId = world.residents().characterIdOf(personaId);
