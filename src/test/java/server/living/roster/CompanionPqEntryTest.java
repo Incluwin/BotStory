@@ -13,6 +13,7 @@ import server.agents.integration.AgentDialogueTransportRuntime;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.RosterState;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 import static server.living.roster.LifecycleHarness.KERNING;
@@ -75,6 +78,22 @@ class CompanionPqEntryTest {
         assertEquals(List.of("walk Casse to 1440,120", "walk Hadrik to 1470,120", "admit [Ann, Mira, Tobi, Pip]", "start"),
                 steps, "beside Lakelis, then admitted, then started");
         fx.dialogue.verify(() -> AgentDialogueTransportRuntime.sayMapNow(game.bot(casse),
+                "i'll wait out here till you're done."));
+    }
+
+    @Test
+    void anOwnExtraAwayFromTheEntranceWaitsWhereItIsAndTellsItsOwner() {
+        game.bot(casse).changeMap(game.map(LifecycleHarness.HENESYS), new Point(300, 200)); // told to grind there
+        fx.ready();
+
+        fx.yes();
+
+        assertEquals(RosterState.HOLD, game.row(casse).state());
+        assertEquals(LifecycleHarness.HENESYS, game.row(casse).holdMapId(), "where it is, not beside Lakelis");
+        assertTrue(game.calls.stream().noneMatch(call -> call.startsWith("walk Casse")), game.calls.toString());
+        fx.dialogue.verify(() -> AgentDialogueTransportRuntime.sayMapNow(eq(game.bot(casse)), anyString()), never());
+        verify(game.residents).whisper(casse, game.ann, "i'll wait out here till you're done.");
+        fx.dialogue.verify(() -> AgentDialogueTransportRuntime.sayMapNow(game.bot(hadrik),
                 "i'll wait out here till you're done."));
     }
 

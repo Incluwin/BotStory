@@ -336,22 +336,23 @@ class LineupPlanTest {
     }
 
     private static LineupPlan.Candidate human(int jobId) {
-        return new LineupPlan.Candidate(new LineupPlan.Seat(ANN, "Ann", 25, jobId, "", true, 0, null, 103000000, 0L, 0,
-                0), LineupPlan.Fit.READY, null, false);
+        return new LineupPlan.Candidate(new LineupPlan.Seat(ANN, "Ann", 25, jobId, "", true, 0, null, 103000000, true,
+                0L, 0, 0), LineupPlan.Fit.READY, null, false);
     }
 
     private static LineupPlan.Candidate humanSeat(int id, String name, int jobId) {
-        return new LineupPlan.Candidate(new LineupPlan.Seat(id, name, 25, jobId, "", true, 0, null, 103000000, 0L, 0, 0),
-                LineupPlan.Fit.READY, null, false);
+        return new LineupPlan.Candidate(new LineupPlan.Seat(id, name, 25, jobId, "", true, 0, null, 103000000, true,
+                0L, 0, 0), LineupPlan.Fit.READY, null, false);
     }
 
     private static LineupPlan.Seat seat(int id, String name, int level, int jobId) {
-        return new LineupPlan.Seat(id, name, level, jobId, "", false, ANN, name.toLowerCase(), 103000000, 0L, 0, 0);
+        return new LineupPlan.Seat(id, name, level, jobId, "", false, ANN, name.toLowerCase(), 103000000, true, 0L, 0,
+                0);
     }
 
     private static LineupPlan.Seat ownedBy(int ownerId, LineupPlan.Seat seat) {
         return new LineupPlan.Seat(seat.characterId(), seat.name(), seat.level(), seat.jobId(), "", false, ownerId,
-                seat.personaId(), seat.mapId(), 0L, 0, 0);
+                seat.personaId(), seat.mapId(), seat.here(), 0L, 0, 0);
     }
 
     private static LineupPlan.Candidate ready(LineupPlan.Seat seat) {

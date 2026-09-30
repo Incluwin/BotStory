@@ -161,6 +161,21 @@ class LakelisDeskTest {
     }
 
     @Test
+    void extrasAwayFromTheEntranceStayBehindAndDoNotWaitHere() {
+        Seat casseAway = new Seat(CASSE, "Casse", 25, 0, "Bandit", false, BEN, "casse", 100_000_000, false, 0L, 0, 0);
+        LineupPlan four = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, ANN_SEAT, MIRA_SEAT, TOBI_SEAT),
+                List.of(PIP_SEAT, casseAway), List.of(), List.of(new Waiting(CASSE, "Casse", "not in Kerning")), null,
+                false, null);
+
+        desk.proposal(ben, four, null);
+
+        String text = lastTalk().text();
+        assertTrue(text.contains("#bTobi#k, Lv27 Page (Ann's)\r\nWaiting here with me: Pip\r\n"
+                + "Staying behind: Casse (not in Kerning)\r\n"), text);
+        assertFalse(text.contains("with me: Pip, Casse"), text);
+    }
+
+    @Test
     void travellerShowsAreTheyHereYetInsteadOfYes() {
         desk.proposal(ben, onTheWay(null), null);
 
@@ -410,17 +425,17 @@ class LakelisDeskTest {
 
     /** Ben and Mira here, Rin called over and 40 s away; {@code picked} as the lineup was drawn. */
     private static LineupPlan onTheWay(Set<Integer> picked) {
-        Seat rin = new Seat(RIN, "Rin", 25, 420, "Bandit", false, BEN, "rin", 104_000_000, 40_000L, 0, 0);
+        Seat rin = new Seat(RIN, "Rin", 25, 420, "Bandit", false, BEN, "rin", 104_000_000, false, 40_000L, 0, 0);
         return new LineupPlan("kpq", BEN, List.of(BEN_SEAT, MIRA_SEAT, rin), List.of(), List.of(rin), List.of(), null,
                 true, picked);
     }
 
     private static Seat human(int id, String name, int level, String job) {
-        return new Seat(id, name, level, 230, job, true, 0, null, KERNING, 0L, 0, 0);
+        return new Seat(id, name, level, 230, job, true, 0, null, KERNING, true, 0L, 0, 0);
     }
 
     private static Seat companion(int id, String name, int level, String job, int owner, int runs, int clears) {
-        return new Seat(id, name, level, 0, job, false, owner, name.toLowerCase(), KERNING, 0L, runs, clears);
+        return new Seat(id, name, level, 0, job, false, owner, name.toLowerCase(), KERNING, true, 0L, runs, clears);
     }
 
     /** One of Ben's companions resting on the bench, Lv25 Bandit training at Ant Tunnel. */

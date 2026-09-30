@@ -59,9 +59,9 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
     // ---- the lineup ----------------------------------------------------------------------------
 
     /**
-     * Who she would send in and who waits with her; Yes only when they can go in now, "Are they here yet?" while a
-     * companion called over is still on its way. Asked again, the lineup is planned the way it was drawn: the leader's
-     * pick stays theirs.
+     * Who she would send in, who waits with her and who stays behind where they are; Yes only when they can go in
+     * now, "Are they here yet?" while a companion called over is still on its way. Asked again, the lineup is planned
+     * the way it was drawn: the leader's pick stays theirs.
      */
     @Override
     public void proposal(Character leader, LineupPlan plan, String topLine) {
@@ -105,12 +105,18 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
             for (Waiting member : plan.waiting()) {
                 reasons.put(member.characterId(), member.reason());
             }
-            List<String> waiting = new ArrayList<>();
+            List<String> here = new ArrayList<>();
+            List<String> away = new ArrayList<>(); // another map, another channel, or on the road
             for (Seat extra : plan.extras()) {
                 String reason = reasons.get(extra.characterId());
-                waiting.add(extra.name() + (reason == null ? "" : " (" + reason + ")"));
+                (extra.here() ? here : away).add(extra.name() + (reason == null ? "" : " (" + reason + ")"));
             }
-            lines.add("Waiting here with me: " + String.join(", ", waiting));
+            if (!here.isEmpty()) {
+                lines.add("Waiting here with me: " + String.join(", ", here));
+            }
+            if (!away.isEmpty()) {
+                lines.add("Staying behind: " + String.join(", ", away));
+            }
         }
         if (!plan.onTheWay().isEmpty()) {
             List<String> coming = new ArrayList<>();
