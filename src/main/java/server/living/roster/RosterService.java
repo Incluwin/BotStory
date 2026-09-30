@@ -568,6 +568,28 @@ public final class RosterService {
     static final int CAMP_CANDIDATES = 5;
     /** A camp measured at this many deaths an hour or more (shrunk toward none) is passed over for a default camp. */
     static final double DEADLY_CAMP_DEATHS_PER_HOUR = 2.0d;
+    /** A companion's camp was set (by its owner, or by itself leaving one too rough): its record there starts again. */
+    public static final String CAMP_EVENT = "roster.camp";
+    static final String CAMP_TOO_ROUGH = "too rough";
+    static final String CAMP_MOVES_TOLD_EVENT = "bench.camp-moved.told";
+
+    /**
+     * Deaths an hour its kind (job branch, level band) was measured at {@code campMapId}, shrunk toward none (the
+     * pickers' "rough for me"); 0 when nothing ran there or the yields are unknown.
+     */
+    public double campDeathsPerHour(int characterId, int campMapId) {
+        BenchYieldModel yields = world.benchYields();
+        int[] read = characterId == 0 ? null : world.store().characterLevelAndJob(characterId);
+        if (yields == null || read == null || read.length < 2 || read[0] <= 0) {
+            return 0.0d;
+        }
+        return yields.deathsPerHour(BenchYieldModel.Key.of(read[1], read[0], campMapId), 0.0d);
+    }
+
+    /** True when its kind was measured dying at the camp at DEADLY_CAMP_DEATHS_PER_HOUR or more. */
+    public boolean roughCampFor(int characterId, int campMapId) {
+        return campDeathsPerHour(characterId, campMapId) >= DEADLY_CAMP_DEATHS_PER_HOUR;
+    }
 
     /** "Lith Harbor": the town's name as the game shows it, else its id in words. */
     private static String townName(String town) {
@@ -1590,8 +1612,27 @@ public final class RosterService {
                 entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
                 entry.farmSecondsToday(), entry.farmDay(), entry.etaAtMs(), entry.holdMapId(), entry.parkedAtMs());
         write(updated);
+        world.store().event(owner.getId(), persona.id(), CAMP_EVENT, "camp " + mapId); // its record there starts again
         endYourCall(owner.getId(), persona.id()); // its owner picked: no longer its own call
         return new RosterResult.Ok(persona.name() + " will camp at map " + mapId + ".");
+    }
+
+    /**
+     * The companion leaves a camp too rough for it for {@code mapId} (BenchDutyDispatcher, before a slice; its owner may
+     * be offline): the row's camp, its duty kept. The row now, or null when it is gone or not on the bench.
+     */
+    public RosterEntry moveCamp(int ownerId, String personaId, int mapId, String why) {
+        RosterEntry entry = world.store().rosterEntry(ownerId, personaId);
+        if (!BenchSessions.benchGoverned(entry)) {
+            return null;
+        }
+        RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), entry.assignment(),
+                entry.assignmentItem(), entry.assignmentCount(), mapId, entry.accruedExp(), entry.haulMeso(),
+                entry.wagesPaidUntilMs(), entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(),
+                entry.farmSecondsToday(), entry.farmDay(), entry.etaAtMs(), entry.holdMapId(), entry.parkedAtMs());
+        write(updated);
+        world.store().event(ownerId, personaId, CAMP_EVENT, "camp " + mapId + " (" + why + ")");
+        return updated;
     }
 
     /**
@@ -1967,12 +2008,38 @@ public final class RosterService {
         }
         parkedParty.remove(ownerId);
         tellAwayReleases(owner);
+        tellCampMoves(owner);
     }
 
     /**
      * A friend back from RESIDENT_OWNER_INACTIVE_DAYS away hears once, in pink, who went home meanwhile (the allocation
      * sweep's roster.release "owner inactive"): "While you were away, Hadrik went home to Lith Harbor."
      */
+    /**
+     * Companions that left a camp too rough for them while their owner was offline (BenchDutyDispatcher) say so once,
+     * in pink, at the login: "While you were away, Casse moved camp to Line 1 <Area 2>: the old one was too rough."
+     */
+    private void tellCampMoves(Character owner) {
+        if (AgentPresence.isAgent(owner)) {
+            return;
+        }
+        List<String> moved = world.store().untoldEvents(owner.getId(), BenchDutyDispatcher.CAMP_MOVED_EVENT, CAMP_TOO_ROUGH,
+                CAMP_MOVES_TOLD_EVENT);
+        if (moved.isEmpty()) {
+            return;
+        }
+        world.store().event(owner.getId(), null, CAMP_MOVES_TOLD_EVENT, moved.size() + " moved while away");
+        Set<String> said = new HashSet<>();
+        for (String personaId : moved) {
+            Persona persona = personaId == null ? null : world.content().persona(personaId);
+            RosterEntry entry = persona == null ? null : world.store().rosterEntry(owner.getId(), persona.id());
+            if (entry != null && said.add(persona.id())) {
+                owner.dropMessage(5, "While you were away, " + persona.name() + " moved camp to "
+                        + CompanionView.placeName(entry.campMapId()) + ": the old one was too rough.");
+            }
+        }
+    }
+
     private void tellAwayReleases(Character owner) {
         if (AgentPresence.isAgent(owner)) {
             return;

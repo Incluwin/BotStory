@@ -415,6 +415,28 @@ class CompanionCardScreensTest {
     }
 
     @Test
+    void aRoughCampIsMarkedInThePickerAndPickedAnywayTheCompanionSaysSo() {
+        // found live 2026-09-30: a camp that killed its kind looked like any other in the picker
+        rows.add(hadrikRow);
+        fields.put(ANT_TUNNEL, 27);
+        fields.put(ANT_TUNNEL_2, 30);
+        when(roster.roughCampFor(900, ANT_TUNNEL_2)).thenReturn(true);
+        when(roster.campDeathsPerHour(900, ANT_TUNNEL_2)).thenReturn(19.6d);
+        menus.card(owner, hadrikRow);
+        pick("Camp somewhere else...");
+
+        assertTrue(lastTalk().labels().contains("Ant Tunnel II (Lv30 monsters) - rough for me (~20 deaths/h)"),
+                lastTalk().labels().toString());
+        assertTrue(lastTalk().labels().stream().anyMatch(label -> label.startsWith("Ant Tunnel I (Lv27 monsters)")
+                && !label.contains("rough")), lastTalk().labels().toString());
+        pick("Ant Tunnel II (Lv30 monsters) - rough for me (~20 deaths/h)");
+
+        verify(manager).setCamp(owner, hadrik, ANT_TUNNEL_2);
+        assertTrue(lastTalk().text().startsWith("Hadrik: ok, i'll camp at Ant Tunnel II, but it's rough for me.\r\n"),
+                lastTalk().text());
+    }
+
+    @Test
     void aCampChangeClickedAfterTheRunBeganAnswersAfterTheRun() {
         rows.add(hadrikRow);
         fields.put(ANT_TUNNEL_2, 30);

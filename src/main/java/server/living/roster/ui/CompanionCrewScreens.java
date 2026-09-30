@@ -535,6 +535,8 @@ final class CompanionCrewScreens {
             line.append(" - resting");
         } else if (BenchDutyDispatcher.NO_SUPPLIES.equals(note)) {
             line.append(" - out of supplies");
+        } else if (BenchDutyDispatcher.NO_SAFE_CAMP.equals(note)) {
+            line.append(" - no safe camp");
         }
         return line.toString();
     }

@@ -668,6 +668,9 @@ final class CompanionCardScreens {
                 return RosterVoice.line(persona, done);
             }
             String what = world.roster().describeAssignment(now) + " at " + menus.placeNames.apply(placeOf(now, persona));
+            if (FIELD_DUTIES.contains(now.assignment()) && rough(persona, campOf(now, persona))) {
+                what += ", but it's rough for me";
+            }
             boolean leaves = before != null && before.state() == RosterState.ACTIVE && now.state() == RosterState.AWAY;
             return persona.name() + (leaves ? ": ok, off to " + what + ". i'll keep my seat." : ": ok, i'll " + what + ".");
         });
@@ -699,7 +702,7 @@ final class CompanionCardScreens {
             BenchLedger.Rates rates = bench == null ? null
                     : bench.rates(persona, view.bond(), level, view.jobId(), owner.getLevel(), duty, mapId);
             options.add(stamp.option(menus.placeNames.apply(mapId) + " (Lv" + field.getValue() + " monsters"
-                    + campRate(duty, rates) + ")" + (mapId == current ? " - my camp now" : ""),
+                    + campRate(duty, rates) + ")" + roughLabel(persona, mapId) + (mapId == current ? " - my camp now" : ""),
                     () -> pickCamp(owner, persona, then, mapId)));
         }
         if (here > 0 && (then == null || catalog.isField(here))) {
@@ -745,9 +748,25 @@ final class CompanionCardScreens {
                 return RosterVoice.line(persona, new RosterResult.InEventInstance());
             }
             RosterResult moved = menus.manager().setCamp(owner, persona, mapId);
-            return moved.ok() ? persona.name() + ": ok, i'll camp at " + menus.placeNames.apply(mapId) + "."
-                    : RosterVoice.line(persona, moved);
+            return moved.ok() ? persona.name() + ": ok, i'll camp at " + menus.placeNames.apply(mapId)
+                    + (rough(persona, mapId) ? ", but it's rough for me." : ".") : RosterVoice.line(persona, moved);
         });
+    }
+
+    /** True when its kind was measured dying at the camp (RosterService.roughCampFor); false when that is unknown. */
+    private boolean rough(Persona persona, int mapId) {
+        RosterService roster = world.roster();
+        int characterId = world.residents() == null ? 0 : world.residents().characterIdOf(persona.id());
+        return roster != null && characterId != 0 && mapId != 0 && roster.roughCampFor(characterId, mapId);
+    }
+
+    /** " - rough for me (~20 deaths/h)" for a camp its kind was measured dying at, else "". */
+    private String roughLabel(Persona persona, int mapId) {
+        if (!rough(persona, mapId)) {
+            return "";
+        }
+        double deaths = world.roster().campDeathsPerHour(world.residents().characterIdOf(persona.id()), mapId);
+        return " - rough for me (~" + Math.round(deaths) + " deaths/h)";
     }
 
     // ---- fighting style, supplies & loot (plan P3b) ---------------------------------------------

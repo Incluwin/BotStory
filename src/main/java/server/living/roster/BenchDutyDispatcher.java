@@ -229,6 +229,22 @@ public final class BenchDutyDispatcher {
     IntPredicate cannotSupplyItself = this::savedStateCannotSupply;
     /** persona ids held in the ledger because they could not supply a field slice (the card says so). */
     private final Set<String> unsupplied = ConcurrentHashMap.newKeySet();
+    /**
+     * A companion leaves a camp that keeps killing it (found live 2026-09-30: Casse died 3 slices in 4 at a camp set when
+     * she was granted): its kind measured deadly there (RosterService.DEADLY_CAMP_DEATHS_PER_HOUR) and it died in this
+     * many of its own last {@link #ROUGH_CAMP_WINDOW} slices there since the camp was last set.
+     */
+    static final int ROUGH_CAMP_DEATHS = 2;
+    static final int ROUGH_CAMP_WINDOW = 3;
+    /** The events a companion's own record at a camp is read from, and how many of them. */
+    static final List<String> CAMP_HISTORY_KINDS = List.of("bench.live", "bench.live-end", RosterService.CAMP_EVENT);
+    static final int CAMP_HISTORY_EVENTS = 60;
+    public static final String NO_SAFE_CAMP = "every camp for my level is too rough for me";
+    static final String CAMP_MOVED_EVENT = "bench.camp-moved";
+    /** Owner id and persona id -> its bench events, oldest first, as {kind, detail} (a test gives its own). */
+    BiFunction<Integer, String, List<String[]>> campHistory = this::storedCampHistory;
+    /** persona ids held in the ledger because no camp for their level is safe for them (the card says so). */
+    private final Set<String> noSafeCamp = ConcurrentHashMap.newKeySet();
 
     /** The dispatcher with {@code field} as the form of TRAIN, FARM_MESO and FARM_ITEM. */
     public BenchDutyDispatcher(LivingWorld world, BenchSessions field) {
@@ -428,7 +444,103 @@ public final class BenchDutyDispatcher {
         if (until != null && until > clock.getAsLong()) {
             return ROUGH_HUNT;
         }
-        return personaId != null && unsupplied.contains(personaId) ? NO_SUPPLIES : "";
+        if (personaId != null && unsupplied.contains(personaId)) {
+            return NO_SUPPLIES;
+        }
+        return personaId != null && noSafeCamp.contains(personaId) ? NO_SAFE_CAMP : "";
+    }
+
+    /**
+     * Its own record at {@code campMapId} from its bench events (oldest first, {kind, detail}): {slices, deaths} of its
+     * last {@code window} finished slices there since the camp was last set (a {@link RosterService#CAMP_EVENT} starts
+     * the count again, so a camp its owner picks anew is judged on what happens after). A slice is a "bench.live" ("...
+     * live at map N") and the "bench.live-end" after it; it died when the end reads {@link #ROUGH_HUNT}.
+     */
+    static int[] campRecord(List<String[]> events, int campMapId, int window) {
+        List<Boolean> deaths = new ArrayList<>(); // one per finished slice at the camp, oldest first
+        int liveAt = 0;
+        for (String[] event : events == null ? List.<String[]>of() : events) {
+            String kind = event.length > 0 ? event[0] : null;
+            String detail = event.length > 1 && event[1] != null ? event[1] : "";
+            if (RosterService.CAMP_EVENT.equals(kind)) {
+                deaths.clear();
+                liveAt = 0;
+            } else if ("bench.live".equals(kind)) {
+                int at = detail.lastIndexOf("live at map ");
+                liveAt = at < 0 ? 0 : parseMap(detail.substring(at + "live at map ".length()));
+            } else if ("bench.live-end".equals(kind) && liveAt != 0) {
+                if (liveAt == campMapId) {
+                    deaths.add(ROUGH_HUNT.equals(detail));
+                }
+                liveAt = 0;
+            }
+        }
+        List<Boolean> last = deaths.subList(Math.max(0, deaths.size() - window), deaths.size());
+        return new int[] {last.size(), (int) last.stream().filter(Boolean::booleanValue).count()};
+    }
+
+    private List<String[]> storedCampHistory(int ownerId, String personaId) {
+        return world.store().personaEvents(ownerId, personaId, CAMP_HISTORY_KINDS, CAMP_HISTORY_EVENTS);
+    }
+
+    private static int parseMap(String text) {
+        int end = 0;
+        while (end < text.length() && java.lang.Character.isDigit(text.charAt(end))) {
+            end++;
+        }
+        return end == 0 ? 0 : Integer.parseInt(text.substring(0, end));
+    }
+
+    /**
+     * A field slice's camp that keeps killing it: it moves itself to the best safe field for its level near there and
+     * tells its owner once (a whisper if online, the login line if not), and the slice starts there. Null when no field
+     * for its level is safe: it stays in the ledger and its card says so. The row as it is when the camp is fine.
+     */
+    private RosterEntry leaveRoughCamp(RosterEntry entry, long now) {
+        Persona persona = world.content().persona(entry.personaId());
+        int camp = entry.campMapId();
+        RosterService roster = world.roster();
+        if (persona == null || roster == null || camp == 0 || town(world, camp)) {
+            return entry; // no camp yet, or a town: the default camp is chosen at load and already skips deadly fields
+        }
+        int characterId = world.residents().characterIdOf(persona.id());
+        if (characterId == 0 || !roster.roughCampFor(characterId, camp)) {
+            noSafeCamp.remove(persona.id());
+            return entry;
+        }
+        int[] record = campRecord(campHistory.apply(entry.characterId(), persona.id()), camp, ROUGH_CAMP_WINDOW);
+        if (record[1] < ROUGH_CAMP_DEATHS) {
+            return entry; // its kind dies there, but it has not (yet): it tries
+        }
+        int safe = roster.fieldCampFor(persona, camp);
+        Character owner = roster.onlineCharacter(entry.characterId());
+        String from = CompanionView.placeName(camp);
+        if (safe == 0 || safe == camp) {
+            if (noSafeCamp.add(persona.id())) {
+                CompanionViews.invalidate(world, entry.characterId(), persona.id());
+                world.store().event(entry.characterId(), persona.id(), "bench.no-safe-camp", "left " + camp);
+                if (owner != null) {
+                    world.residents().whisper(persona, owner, from + " is too rough for me, and so is every camp for my"
+                            + " level. i'll wait at camp till you find me one.");
+                }
+            }
+            lastLiveAtMs.put(persona.id(), now); // its turn passes
+            return null;
+        }
+        RosterEntry moved = roster.moveCamp(entry.characterId(), persona.id(), safe, "too rough at " + camp);
+        if (moved == null) {
+            return null;
+        }
+        noSafeCamp.remove(persona.id());
+        CompanionViews.invalidate(world, entry.characterId(), persona.id());
+        world.store().event(entry.characterId(), persona.id(), CAMP_MOVED_EVENT, RosterService.CAMP_TOO_ROUGH);
+        if (owner != null) {
+            world.residents().whisper(persona, owner, from + " is too rough for me. i'll hunt at "
+                    + CompanionView.placeName(safe) + " till you say otherwise.");
+            world.store().event(entry.characterId(), null, RosterService.CAMP_MOVES_TOLD_EVENT, "told online");
+        }
+        log.info("bench: {} left {} (too rough) for {}", persona.name(), camp, safe);
+        return moved;
     }
 
     /** Its saved USE tab holds no HP potion and its saved purse cannot buy a stack (a failed read: it may try). */
@@ -705,6 +817,16 @@ public final class BenchDutyDispatcher {
             CompanionBudget.Kind pool = form.pool();
             if (count(pool, 0) >= cap(pool, config) || count(pool, entry.characterId()) >= perOwner(pool, config)) {
                 continue;
+            }
+            if (pool == CompanionBudget.Kind.BENCH_LIVE && !yourCall.contains(key(entry.characterId(), entry.personaId()))) {
+                try {
+                    entry = leaveRoughCamp(entry, now); // Your call picks among safe camps itself
+                } catch (RuntimeException failure) {
+                    log.warn("rough-camp check for {} failed; it keeps its camp", entry.personaId(), failure);
+                }
+                if (entry == null) {
+                    continue; // no safe camp: the ledger keeps it
+                }
             }
             begin(entry, form, now);
         }

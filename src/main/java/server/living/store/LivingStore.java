@@ -1211,6 +1211,37 @@ public final class LivingStore {
         return out;
     }
 
+    /**
+     * The last {@code limit} events of one companion of the character's of these {@code kinds}, oldest first, each as
+     * {kind, detail} (its own record at its camps, BenchDutyDispatcher.campRecord). Empty when the read fails.
+     */
+    public List<String[]> personaEvents(int characterId, String personaId, List<String> kinds, int limit) {
+        List<String[]> out = new ArrayList<>();
+        if (kinds == null || kinds.isEmpty()) {
+            return out;
+        }
+        String sql = "SELECT kind, detail FROM living_event_log WHERE character_id = ? AND persona_id = ? AND kind IN ("
+                + String.join(",", java.util.Collections.nCopies(kinds.size(), "?")) + ") ORDER BY id DESC LIMIT ?";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            int at = 1;
+            ps.setInt(at++, characterId);
+            ps.setString(at++, personaId);
+            for (String kind : kinds) {
+                ps.setString(at++, kind);
+            }
+            ps.setInt(at, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new String[] {rs.getString(1), rs.getString(2)});
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log scan failed for {}/{}", characterId, personaId, failure);
+        }
+        java.util.Collections.reverse(out);
+        return out;
+    }
+
     public List<String> recentEvents(int characterId, int limit) {
         List<String> out = new ArrayList<>();
         String sql = "SELECT at, persona_id, kind, detail FROM living_event_log WHERE character_id = ? ORDER BY id DESC LIMIT ?";
