@@ -170,10 +170,10 @@ function Get-PreferredMaps {
 
 $MaximumPreferredMaps = [Math]::Max(1, $MaximumPreferredMaps)
 $questObjectives = Read-Json $QuestObjectiveCatalogPath
-$itemSources = @(Read-Json $ItemSourceIndexPath)
+$itemSources = @(Read-Json $ItemSourceIndexPath | ForEach-Object { $_ })
 $mobSpawns = Read-Json $MobSpawnCatalogPath
 $maps = Read-Json $MapCatalogPath
-$items = @(Read-Json $ItemCatalogPath)
+$items = @(Read-Json $ItemCatalogPath | ForEach-Object { $_ })
 $statusCatalog = Read-Json $QuestStatusCatalogPath
 $trainingCatalog = Read-Json $TrainingCatalogPath
 $policy = Read-Json $PolicyPath
