@@ -5,8 +5,8 @@ import java.util.List;
 /**
  * What Lakelis says at the KPQ entrance about a companion lineup (P6, flow 3), in her own plain words. Admission's
  * refusals (AgentKpqAdmissionService, the engagement and session registries) are written for logs ("KPQ admission is
- * already reserved: member-901"); {@link #forAdmit} turns each into her line, keeping the member's name. The stock
- * start's own refusals are 9020000.js's texts, word for word.
+ * already reserved: member-901"); {@link #forAdmit} turns each into her line, keeping the member's name, or saying it
+ * to the leader she talks to when it is theirs. The stock start's own refusals are 9020000.js's texts, word for word.
  */
 public final class LakelisLines {
     static final String HOLD_ON = "Hold on, they're lining up.";
@@ -38,15 +38,25 @@ public final class LakelisLines {
     static final String OTHER_CHANNEL = "on another channel";
     static final String KNOCKED_OUT = "knocked out";
 
-    /** A part of an admission refusal, and her line for it; a named one keeps the name the refusal starts with. */
-    private record Rule(String text, boolean named, String line) { }
+    /**
+     * A part of an admission refusal, and her line for it; a named one keeps the name the refusal starts with, and
+     * {@code you} (null: none) is that line said to the leader, when the name is theirs.
+     */
+    private record Rule(String text, boolean named, String line, String you) {
+        Rule(String text, boolean named, String line) {
+            this(text, named, line, null);
+        }
+    }
 
     /** In order: the first rule whose text the refusal holds answers it. */
     private static final List<Rule> ADMIT_RULES = List.of(
-            new Rule(" is not at the Kerning KPQ entrance", true, NOT_HERE),
-            new Rule(" must be level 21-30 for KPQ", true, "<name> needs to be between level 21 and 30 for this."),
-            new Rule(" needs free Use and ETC capacity", true, "<name>'s bags are full. Free a Use and an Etc slot first."),
-            new Rule(" could not leave its current activity", true, BUSY),
+            new Rule(" is not at the Kerning KPQ entrance", true, NOT_HERE, "You need to be here at the entrance."),
+            new Rule(" must be level 21-30 for KPQ", true, "<name> needs to be between level 21 and 30 for this.",
+                    "You need to be between level 21 and 30 for this."),
+            new Rule(" needs free Use and ETC capacity", true,
+                    "<name>'s bags are full. Free a Use and an Etc slot first.",
+                    "Your bags are full. Free a Use and an Etc slot first."),
+            new Rule(" could not leave its current activity", true, BUSY), // a companion's, never the leader's
             new Rule(" is not owned by this KPQ lobby", true, BUSY),
             new Rule("already owns", false, CATCHING_BREATH),
             new Rule("already belongs to another", false, CATCHING_BREATH),
@@ -65,13 +75,18 @@ public final class LakelisLines {
     private LakelisLines() {
     }
 
-    /** Her line for an admission refusal; one she has no line for is the generic one. */
-    static String forAdmit(String message) {
+    /**
+     * Her line for an admission refusal, to the leader named {@code leaderName}: one about the leader is said to them
+     * ("You need to be..."), never about them in the third person; one she has no line for is the generic one.
+     */
+    static String forAdmit(String message, String leaderName) {
         if (message != null) {
             for (Rule rule : ADMIT_RULES) {
                 int at = message.indexOf(rule.text());
                 if (at >= 0) {
-                    return rule.named() ? named(rule.line(), message.substring(0, at)) : rule.line();
+                    String name = message.substring(0, at);
+                    return !rule.named() ? rule.line()
+                            : rule.you() != null && name.equals(leaderName) ? rule.you() : named(rule.line(), name);
                 }
             }
         }

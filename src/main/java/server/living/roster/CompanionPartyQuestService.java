@@ -205,7 +205,7 @@ public final class CompanionPartyQuestService {
         String refusal = AgentKpqAdmissionService.memberProblem(chr, id == leader.getId());
         String line = !RosterService.sameChannel(leader, chr) ? LakelisLines.THIS_CHANNEL
                 : engaged(leader, id) ? LakelisLines.CATCHING_BREATH
-                : refusal.isEmpty() ? null : LakelisLines.forAdmit(refusal);
+                : refusal.isEmpty() ? null : LakelisLines.forAdmit(refusal, leader.getName());
         return new LineupPlan.Candidate(seat(leader, id, chr.getName(), chr, true, 0, null, 0L),
                 line == null ? LineupPlan.Fit.READY : LineupPlan.Fit.BLOCKS, line, false);
     }
@@ -422,7 +422,7 @@ public final class CompanionPartyQuestService {
             if (!admitted.success()) {
                 log.info("companion KPQ admission refused for {}: {}", leader.getName(), admitted.message());
                 rejoinLater(leader, owners); // its own rollback handed the companions back already
-                desk.outcome(leader, LakelisLines.forAdmit(admitted.message()), clickedAt);
+                desk.outcome(leader, LakelisLines.forAdmit(admitted.message(), leader.getName()), clickedAt);
                 return;
             }
             AgentKpqSession session = admitted.session();

@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import client.Job;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -7,14 +8,17 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.when;
 
 /**
  * Lakelis answers a refused admission in her own words (P6, flow 3): every refusal admission, the engagement registry
  * and the session registry can give (AgentKpqAdmissionService.validate, prepare and admitFromLobby) becomes one of her
- * lines, with the member's name kept, never the log text ("KPQ admission is already reserved: member-901"). One she has
- * no line for is the generic one.
+ * lines, with the member's name kept, never the log text ("KPQ admission is already reserved: member-901"). One about
+ * the leader she talks to is said to them, not about them. One she has no line for is the generic one.
  */
 class AdmitBeforeStartTest {
+    private static final String LEADER = "Ben";
+
     private static final Map<String, String> REFUSALS = new LinkedHashMap<>();
 
     static {
@@ -49,7 +53,7 @@ class AdmitBeforeStartTest {
     @Test
     void everyRefusalGetsHerOwnLineWithTheNameKept() {
         for (Map.Entry<String, String> refusal : REFUSALS.entrySet()) {
-            String line = LakelisLines.forAdmit(refusal.getKey());
+            String line = LakelisLines.forAdmit(refusal.getKey(), LEADER);
 
             assertEquals(refusal.getValue(), line, refusal.getKey());
             assertFalse(line.equals(LakelisLines.GENERIC), refusal.getKey());
@@ -58,10 +62,35 @@ class AdmitBeforeStartTest {
     }
 
     @Test
+    void aRefusalAboutTheLeaderIsSaidToThem() {
+        assertEquals("You need to be between level 21 and 30 for this.",
+                LakelisLines.forAdmit("Ben must be level 21-30 for KPQ", LEADER));
+        assertEquals("Your bags are full. Free a Use and an Etc slot first.",
+                LakelisLines.forAdmit("Ben needs free Use and ETC capacity for KPQ items and rewards", LEADER));
+        assertEquals("You need to be here at the entrance.",
+                LakelisLines.forAdmit("Ben is not at the Kerning KPQ entrance", LEADER));
+        assertEquals("Bentley needs to be between level 21 and 30 for this.",
+                LakelisLines.forAdmit("Bentley must be level 21-30 for KPQ", LEADER), "only the leader's own name");
+    }
+
+    @Test
+    void aLeaderOutsideTheLevelsIsToldSoToTheirFace() {
+        try (CompanionPqFixture fx = new CompanionPqFixture()) {
+            fx.companion("mira", "Mira", 900, 24, Job.HUNTER);
+            fx.companion("tobi", "Tobi", 901, 27, Job.PAGE);
+            when(fx.game.ann.getLevel()).thenReturn(31); // the owner EXP share took Ann past 30
+
+            LineupPlan plan = fx.ready().plan(fx.game.ann, "kpq");
+
+            assertEquals("You need to be between level 21 and 30 for this.", plan.blocker());
+        }
+    }
+
+    @Test
     void anUnknownRefusalGetsTheGenericLine() {
-        assertEquals(LakelisLines.GENERIC, LakelisLines.forAdmit("unknown admission failure"));
-        assertEquals(LakelisLines.GENERIC, LakelisLines.forAdmit("Cannot invoke \"client.Character.getId()\""));
-        assertEquals(LakelisLines.GENERIC, LakelisLines.forAdmit(null));
+        assertEquals(LakelisLines.GENERIC, LakelisLines.forAdmit("unknown admission failure", LEADER));
+        assertEquals(LakelisLines.GENERIC, LakelisLines.forAdmit("Cannot invoke \"client.Character.getId()\"", LEADER));
+        assertEquals(LakelisLines.GENERIC, LakelisLines.forAdmit(null, LEADER));
     }
 
     @Test
