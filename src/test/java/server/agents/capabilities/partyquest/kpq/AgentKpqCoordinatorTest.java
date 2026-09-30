@@ -369,6 +369,39 @@ class AgentKpqCoordinatorTest {
                 assertSame(engagement, AgentPartyQuestEngagementRegistry.forMember(2));
                 run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.recoverDetachedMember(4, 2_000L));
                 assertEquals(AgentKpqSession.Phase.STAGE_2, session.phase());
+                assertEquals(List.of(2, 3, 4), engagement.agentIds());
+            } finally {
+                AgentPartyQuestEngagementRegistry.remove(engagement);
+            }
+        }
+    }
+
+    @Test
+    void aCompanionThatTappedOutIsNoLongerOneOfTheRunsAgents() {
+        // Left listed, it answered TownLife once its owner's logout unloaded it, and that kept a cleared run's
+        // companions idle through the 90 s post-run hold, refusing their leader's next run.
+        try (KpqRunFixture run = new KpqRunFixture()) {
+            Character ben = run.human(1, "Ben");
+            Character tobi = run.companion(4, "Tobi");
+            AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_2,
+                    ben, run.companion(2, "Mira"), run.companion(3, "Pip"), tobi);
+            AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
+                    "kpq", AgentPartyQuestEngagement.Mode.PRODUCTION, 7L, 1, 4, 1_000L);
+            engagement.addMember(1, AgentPartyQuestEngagement.MemberType.HUMAN, 1_000L);
+            for (int agentId = 2; agentId <= 4; agentId++) {
+                engagement.addMember(agentId, AgentPartyQuestEngagement.MemberType.AGENT, 1_000L);
+            }
+            AgentPartyQuestEngagementRegistry.register(engagement);
+            try {
+                run.outside(tobi, AgentKpqDefinition.EXIT_MAP);
+                run.leaveParty(tobi);
+
+                AgentKpqCoordinator.tick(session, 2_000L);
+
+                assertNull(session.member(4));
+                assertNull(AgentPartyQuestEngagementRegistry.forMember(4));
+                assertEquals(List.of(2, 3), engagement.agentIds());
+                run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.recoverDetachedMember(4, 2_000L));
             } finally {
                 AgentPartyQuestEngagementRegistry.remove(engagement);
             }

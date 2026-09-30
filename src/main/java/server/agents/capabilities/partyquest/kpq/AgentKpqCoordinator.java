@@ -1749,7 +1749,11 @@ final class AgentKpqCoordinator {
         if (character != null && KPQ.event(character) == event) event.exitPlayer(character);
         session.removeMember(member.characterId());
         AgentKpqSessionRegistry.unindexMember(session, member.characterId());
-        if (engagement != null) {
+        if (engagement != null && session.companionAdopted()) {
+            // Still listed, a tapped-out companion unloaded later (its owner logged out) answered TownLife at the
+            // run's end, and that alone kept a cleared run's companions idle in the 90 s post-run hold.
+            AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, member.characterId(), nowMs);
+        } else if (engagement != null) {
             AgentPartyQuestEngagementRegistry.unindexMember(engagement, member.characterId());
         }
         if (member.memberType() == AgentKpqMemberState.MemberType.AGENT) {
