@@ -40,8 +40,9 @@ public final class CompanionRunRecorder {
     }
 
     /**
-     * On companion-ops, as the run ends: a row for each lineup companion of a run that got in, tapped out, else cleared
-     * or failed with the run, added to its record once it is written. A run that never got in has nothing to record.
+     * On companion-ops, as the run ends: a row for each lineup companion of a run that got in, tapped out (before the
+     * clear), else cleared or failed with the run, added to its record once it is written. A run that never got in has
+     * nothing to record.
      */
     void record(CompanionRun run, long nowMs) {
         if (!run.started) {

@@ -59,9 +59,9 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
     // ---- the lineup ----------------------------------------------------------------------------
 
     /**
-     * Who she would send in and who waits with her; Yes only when they can go in now, "Are they here yet?" while a
-     * companion called over is still on its way. Asked again, the lineup is planned the way it was drawn: the leader's
-     * pick stays theirs.
+     * Who she would send in, who waits with her and who stays behind where they are; Yes only when they can go in
+     * now, "Are they here yet?" while a companion called over is still on its way. Asked again, the lineup is planned
+     * the way it was drawn: the leader's pick stays theirs.
      */
     @Override
     public void proposal(Character leader, LineupPlan plan, String topLine) {
@@ -75,7 +75,7 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
                     () -> proposal(leader, service.plan(leader, pqKey, plan.picked()), null)));
         }
         options.add(new Option("Let me choose...", () -> choose(leader, pqKey, companions(plan), null)));
-        if (plan.benchUseful()) {
+        if (plan.benchUseful() && benched(leader).stream().anyMatch(Benched::callable)) {
             options.add(new Option("Call someone from my bench...", () -> bench(leader, plan)));
         }
         options.add(new Option("Never mind.", null));
@@ -105,12 +105,18 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
             for (Waiting member : plan.waiting()) {
                 reasons.put(member.characterId(), member.reason());
             }
-            List<String> waiting = new ArrayList<>();
+            List<String> here = new ArrayList<>();
+            List<String> away = new ArrayList<>(); // another map, another channel, or on the road
             for (Seat extra : plan.extras()) {
                 String reason = reasons.get(extra.characterId());
-                waiting.add(extra.name() + (reason == null ? "" : " (" + reason + ")"));
+                (extra.here() ? here : away).add(extra.name() + (reason == null ? "" : " (" + reason + ")"));
             }
-            lines.add("Waiting here with me: " + String.join(", ", waiting));
+            if (!here.isEmpty()) {
+                lines.add("Waiting here with me: " + String.join(", ", here));
+            }
+            if (!away.isEmpty()) {
+                lines.add("Staying behind: " + String.join(", ", away));
+            }
         }
         if (!plan.onTheWay().isEmpty()) {
             List<String> coming = new ArrayList<>();
@@ -220,26 +226,41 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
 
     // ---- sent for from the bench ---------------------------------------------------------------
 
+    /** One of the leader's benched or away companions; callable when it is in KPQ's levels. */
+    private record Benched(Persona persona, CompanionView view) {
+        boolean callable() {
+            return view.level() >= KPQ_LEVEL_FROM && view.level() <= KPQ_LEVEL_TO;
+        }
+    }
+
+    /** The leader's benched and away companions, from the Crew menus' row cache. */
+    private List<Benched> benched(Character leader) {
+        List<Benched> benched = new ArrayList<>();
+        for (RosterEntry entry : menus.rows(leader)) {
+            Persona persona = entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY
+                    ? world.content().persona(entry.personaId()) : null;
+            if (persona != null) {
+                benched.add(new Benched(persona, menus.view(leader, entry)));
+            }
+        }
+        return benched;
+    }
+
     /**
-     * The leader's benched and away companions in KPQ's levels, to send for; the rest are named under them. A pick
-     * calls the companion (join-then-travel) on companion-ops; Back is the lineup {@code shown} again, planned the way
-     * it was drawn.
+     * The leader's benched and away companions in KPQ's levels, to send for; the rest are named under them. It is
+     * offered only with one to send for. A pick calls the companion (join-then-travel) on companion-ops; Back is the
+     * lineup {@code shown} again, planned the way it was drawn.
      */
     private void bench(Character leader, LineupPlan shown) {
         String pqKey = shown.pqKey();
         List<Option> options = new ArrayList<>();
         List<String> notReady = new ArrayList<>();
-        for (RosterEntry entry : menus.rows(leader)) {
-            Persona persona = entry.state() == RosterState.BENCHED || entry.state() == RosterState.AWAY
-                    ? world.content().persona(entry.personaId()) : null;
-            if (persona == null) {
-                continue;
-            }
-            CompanionView view = menus.view(leader, entry);
-            if (view.level() < KPQ_LEVEL_FROM || view.level() > KPQ_LEVEL_TO) {
+        for (Benched companion : benched(leader)) {
+            CompanionView view = companion.view();
+            if (!companion.callable()) {
                 notReady.add(view.name() + " (Lv" + view.level() + ")");
             } else {
-                options.add(new Option(CompanionMenus.benchRow(view), () -> call(leader, pqKey, persona)));
+                options.add(new Option(CompanionMenus.benchRow(view), () -> call(leader, pqKey, companion.persona())));
             }
         }
         if (!notReady.isEmpty()) {

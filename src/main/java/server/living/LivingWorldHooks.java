@@ -222,8 +222,9 @@ public final class LivingWorldHooks {
             return;
         }
         try {
-            // first, and memory only: a companion run's stage-5 clear (nobody taps out after it, and it is on the
-            // companions' records as cleared) must not wait on a quest that fails to count it
+            // first, and memory only: a companion run's stage-5 clear is on its companions' records as cleared, and a
+            // quest that fails to count it must not keep it off them. Tap-outs stop because the coordinator ignores
+            // downed members once it reads the clear itself, not because of this mark
             world.partyQuests().cleared(players);
             for (Character chr : players) {
                 if (chr != null) {

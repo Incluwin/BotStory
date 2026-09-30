@@ -32,8 +32,9 @@ import static server.living.roster.LifecycleHarness.KERNING;
 /**
  * Where a run lets each Agent go (P6, the handback rule): an owner's companion its owner leads follows them again;
  * one waiting outside (HOLD), tapping out, or finishing the run for a friend is only stopped, since the roster moves
- * it; citizens and plain Agents recover into TownLife as before, and an Agent no roster owner leads is never looked up
- * (no persona scan for a citizen's id). A failing lookup never sends an owned companion to TownLife. From memory only.
+ * it, and so is a run's companion that is no longer loaded; citizens and plain Agents recover into TownLife as before,
+ * and an Agent no roster owner leads is never looked up (no persona scan for a citizen's id). A failing lookup never
+ * sends an owned companion to TownLife. From memory only.
  */
 class CompanionRunHandbackTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -82,6 +83,19 @@ class CompanionRunHandbackTest {
         game.roster().installInstanceDelegation((companion, human, key) -> true);
         game.roster().onOwnerLogout(game.ann, instance); // Mira finishes the run for Ben
         assertEquals(Handback.RELEASE, fx.lifecycle.handback(900, "kpq"), "finishing for a friend");
+    }
+
+    @Test
+    void aRunCompanionThatTappedOutAndWasUnloadedIsStillReleased() {
+        CompanionRun run = fx.yes();
+        game.annEntersInstance(103000802);
+        fx.lifecycle.tapOut(new TapOut("kpq", run.sessionId, 901, CompanionPqFixture.EXIT, 2_000L));
+        game.loaded.remove(901); // its owner logged off after the clear: its HOLD row parked, its runtime gone
+        clearInvocations(game.residents);
+
+        assertEquals(Handback.RELEASE, fx.lifecycle.handback(901, "kpq"), "TownLife would keep the post-run hold");
+        verify(game.residents, never()).personaOfCharacterId(anyInt()); // known from the run, from memory
+        assertNull(fx.lifecycle.handback(902, "kpq"), "an unloaded Agent no run holds keeps TownLife");
     }
 
     @Test

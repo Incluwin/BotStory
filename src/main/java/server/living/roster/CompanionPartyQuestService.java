@@ -199,14 +199,14 @@ public final class CompanionPartyQuestService {
         int id = member.getId();
         Character chr = id == leader.getId() ? leader : world.roster().onlineCharacter(id);
         if (chr == null) {
-            return new LineupPlan.Candidate(seat(id, member.getName(), null, true, 0, null, 0L), LineupPlan.Fit.BLOCKS,
-                    LakelisLines.named(LakelisLines.NOT_HERE, member.getName()), false);
+            return new LineupPlan.Candidate(seat(leader, id, member.getName(), null, true, 0, null, 0L),
+                    LineupPlan.Fit.BLOCKS, LakelisLines.named(LakelisLines.NOT_HERE, member.getName()), false);
         }
         String refusal = AgentKpqAdmissionService.memberProblem(chr, id == leader.getId());
         String line = !RosterService.sameChannel(leader, chr) ? LakelisLines.THIS_CHANNEL
                 : engaged(leader, id) ? LakelisLines.CATCHING_BREATH
-                : refusal.isEmpty() ? null : LakelisLines.forAdmit(refusal);
-        return new LineupPlan.Candidate(seat(id, chr.getName(), chr, true, 0, null, 0L),
+                : refusal.isEmpty() ? null : LakelisLines.forAdmit(refusal, leader.getName());
+        return new LineupPlan.Candidate(seat(leader, id, chr.getName(), chr, true, 0, null, 0L),
                 line == null ? LineupPlan.Fit.READY : LineupPlan.Fit.BLOCKS, line, false);
     }
 
@@ -230,8 +230,8 @@ public final class CompanionPartyQuestService {
             return blocks(id, name, LakelisLines.NOT_UP);
         }
         if (world.commitments().isCommitted(id) || AgentPartyQuestEngagementRegistry.forMember(id) != null) {
-            return new LineupPlan.Candidate(seat(id, name, bot, false, owner, persona.id(), 0L), LineupPlan.Fit.BLOCKS,
-                    LakelisLines.CATCHING_BREATH, false);
+            return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), 0L),
+                    LineupPlan.Fit.BLOCKS, LakelisLines.CATCHING_BREATH, false);
         }
         RosterEntry row = world.views().row(owner, persona.id());
         if (row == null || !CompanionSeatState.partyMember(row.state())) {
@@ -240,13 +240,13 @@ public final class CompanionPartyQuestService {
         boolean usual = world.views().lineup(owner).contains(persona.id());
         if (row.state() == RosterState.TRAVELLING) {
             long etaMs = Math.max(0L, row.etaAtMs() - System.currentTimeMillis());
-            return new LineupPlan.Candidate(seat(id, name, bot, false, owner, persona.id(), etaMs),
+            return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), etaMs),
                     LineupPlan.Fit.ON_THE_WAY, null, usual);
         }
         String reason = !RosterService.sameChannel(leader, bot) ? LakelisLines.OTHER_CHANNEL
                 : bot.getHp() <= 0 ? LakelisLines.KNOCKED_OUT
                 : waitingReason(bot);
-        return new LineupPlan.Candidate(seat(id, name, bot, false, owner, persona.id(), 0L),
+        return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), 0L),
                 reason == null ? LineupPlan.Fit.READY : LineupPlan.Fit.WAITS, reason, usual);
     }
 
@@ -260,17 +260,19 @@ public final class CompanionPartyQuestService {
     }
 
     private LineupPlan.Candidate blocks(int id, String name, String line) {
-        return new LineupPlan.Candidate(seat(id, name, null, false, 0, null, 0L), LineupPlan.Fit.BLOCKS,
+        return new LineupPlan.Candidate(seat(null, id, name, null, false, 0, null, 0L), LineupPlan.Fit.BLOCKS,
                 LakelisLines.named(line, name), false);
     }
 
-    /** The member's seat; a companion's carries its KPQ record. */
-    private LineupPlan.Seat seat(int id, String name, Character chr, boolean human, int ownerId, String personaId,
-                                 long etaMs) {
+    /** The member's seat; a companion's carries its KPQ record. Here: at the entrance, on the leader's channel. */
+    private LineupPlan.Seat seat(Character leader, int id, String name, Character chr, boolean human, int ownerId,
+                                 String personaId, long etaMs) {
         int jobId = chr == null ? -1 : chr.getJob().getId();
         CompanionRunStats record = human ? CompanionRunRecorder.NONE : records.stats(id);
+        boolean here = chr != null && chr.getMapId() == AgentKpqDefinition.RECRUIT_MAP
+                && RosterService.sameChannel(leader, chr);
         return new LineupPlan.Seat(id, name, chr == null ? 0 : chr.getLevel(), jobId, CompanionView.jobName(jobId), human,
-                ownerId, personaId, chr == null ? 0 : chr.getMapId(), etaMs, record.runs(), record.clears());
+                ownerId, personaId, chr == null ? 0 : chr.getMapId(), here, etaMs, record.runs(), record.clears());
     }
 
     /** True while an engagement holds the character (a run's post-run recovery, say), or the leader operates one. */
@@ -340,9 +342,10 @@ public final class CompanionPartyQuestService {
 
     /**
      * On companion-ops: every extra steps out of the party to wait outside the run (a HOLD), beside Lakelis when it is
-     * at the entrance and where it stands when it is on its way. The leader's own say so aloud; another owner's tell
-     * their owner. Then the run starts on the leader's I/O thread; one that cannot step out calls the others back, and
-     * so does a hold that throws (the leader hears the generic line; companion-ops logs the failure).
+     * at the entrance and where it stands otherwise (another map, another channel, on its way). The leader's own
+     * beside her say so aloud; the rest tell their owner, never the strangers of some far map. Then the run starts on
+     * the leader's I/O thread; one that cannot step out calls the others back, and so does a hold that throws (the
+     * leader hears the generic line; companion-ops logs the failure).
      */
     void prepareEntry(Character leader, LineupPlan fresh, long clickedAt) {
         Set<Integer> touched = new LinkedHashSet<>();
@@ -352,10 +355,11 @@ public final class CompanionPartyQuestService {
             for (LineupPlan.Seat extra : fresh.extras()) {
                 Character owner = world.roster().onlineCharacter(extra.ownerId());
                 Persona persona = world.content().persona(extra.personaId());
-                Point point = lakelis != null && extra.mapId() == AgentKpqDefinition.RECRUIT_MAP
-                        ? new Point(lakelis.x + 40 + 30 * beside++, lakelis.y) : null;
-                HoldNote note = extra.ownerId() == leader.getId() ? HoldNote.map(null)
-                        : HoldNote.whisper(leader.getName() + " asked me to wait outside.");
+                Point point = lakelis != null && extra.here() ? new Point(lakelis.x + 40 + 30 * beside++, lakelis.y)
+                        : null;
+                HoldNote note = extra.ownerId() != leader.getId()
+                        ? HoldNote.whisper(leader.getName() + " asked me to wait outside.")
+                        : extra.here() ? HoldNote.map(null) : HoldNote.whisper(null);
                 RosterResult held = owner == null || persona == null ? new RosterResult.NotOwned()
                         : world.roster().hold(owner, persona, extra.mapId(), point, note);
                 if (!held.ok()) {
@@ -418,7 +422,7 @@ public final class CompanionPartyQuestService {
             if (!admitted.success()) {
                 log.info("companion KPQ admission refused for {}: {}", leader.getName(), admitted.message());
                 rejoinLater(leader, owners); // its own rollback handed the companions back already
-                desk.outcome(leader, LakelisLines.forAdmit(admitted.message()), clickedAt);
+                desk.outcome(leader, LakelisLines.forAdmit(admitted.message(), leader.getName()), clickedAt);
                 return;
             }
             AgentKpqSession session = admitted.session();
@@ -574,6 +578,12 @@ public final class CompanionPartyQuestService {
         return List.copyOf(runsBySession.values());
     }
 
+    /** True while the character is a run's lineup companion, tapped out or not, loaded or not. */
+    boolean runCompanion(int characterId) {
+        CompanionRun run = runByCharacter.get(characterId);
+        return run != null && run.ownerByCompanion.containsKey(characterId);
+    }
+
     /** True while the character is a run's companion asked to tap out: its recovery only stops it. */
     boolean tappingOut(int characterId) {
         CompanionRun run = runByCharacter.get(characterId);
@@ -612,14 +622,24 @@ public final class CompanionPartyQuestService {
     }
 
     /**
-     * On companion-ops, from the audit: a run whose KPQ session is gone without ending it (no runEnded came; its
-     * leader is in no session of that id any more) is let go once it has been gone {@link #LOST_RUN_AFTER_MS}. Only
-     * the session counts: a companion that tapped out has left the session while the run goes on without it.
+     * The run's KPQ session while it is registered, else null. Admission makes the lineup's leader its operator, and
+     * the operator stays its index for as long as the session lives: a member (the leader too, once the lead passed
+     * and they left) is unindexed as it is ejected while the session goes on without it.
+     */
+    static AgentKpqSession session(CompanionRun run) {
+        AgentKpqSession session = AgentKpqSessionRegistry.forOperator(run.leaderId);
+        return session != null && session.sessionId().equals(run.sessionId) ? session : null;
+    }
+
+    /**
+     * On companion-ops, from the audit: a run whose KPQ session is gone without ending it (no runEnded came; no
+     * session of that id is registered any more) is let go once it has been gone {@link #LOST_RUN_AFTER_MS}. Only the
+     * session counts: a companion that tapped out, or a leader who passed the lead and left, has left the session
+     * while the run goes on without them.
      */
     void sweepLostRuns(long nowMs) {
         for (CompanionRun run : runs()) {
-            AgentKpqSession session = AgentKpqSessionRegistry.forMember(run.leaderId);
-            if (session != null && session.sessionId().equals(run.sessionId)) {
+            if (session(run) != null) {
                 run.goneSinceMs = 0L;
             } else if (run.goneSinceMs == 0L) {
                 run.goneSinceMs = Math.max(1L, nowMs);

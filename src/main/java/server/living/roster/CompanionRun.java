@@ -29,11 +29,11 @@ final class CompanionRun {
     final long startedAtMs;
     /** The event instance started; a run that never got in has nothing to record. */
     volatile boolean started;
-    /** The party cleared stage 5 (EventInstanceManager.clearPQ): nobody taps out after it. */
+    /** The party cleared stage 5 (EventInstanceManager.clearPQ): its companions' records count it cleared. */
     volatile boolean cleared;
     /** Companions asked to tap out, marked before their hold runs: recovery asks the handback meanwhile. */
     final Set<Integer> tappingOut = ConcurrentHashMap.newKeySet();
-    /** Companions whose tap-out hold ran. */
+    /** Companions whose tap-out hold ran before the stage-5 clear: their records count it tapped out. */
     final Set<Integer> tappedOut = ConcurrentHashMap.newKeySet();
     /** Deaths inside the run, per member. */
     final Map<Integer, Integer> deaths = new ConcurrentHashMap<>();

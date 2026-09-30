@@ -25,11 +25,12 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
     static final int RECORD_RUNS = 3;
 
     /**
-     * One party member as the lineup shows it; a human has no owner (0), no persona and no record. {@code runs} and
-     * {@code clears}: a companion's KPQ record (CompanionRunRecorder).
+     * One party member as the lineup shows it; a human has no owner (0), no persona and no record. {@code here}: it
+     * stands at the entrance on the leader's channel (an extra waits beside the NPC then, else where it is).
+     * {@code runs} and {@code clears}: a companion's KPQ record (CompanionRunRecorder).
      */
     public record Seat(int characterId, String name, int level, int jobId, String jobName, boolean human, int ownerId,
-                       String personaId, int mapId, long etaMs, int runs, int clears) {
+                       String personaId, int mapId, boolean here, long etaMs, int runs, int clears) {
         /** "cleared 2 of 3" once the companion has three runs on record (RECORD_RUNS); null before. */
         public String clearRecord() {
             return runs >= RECORD_RUNS ? "cleared " + clears + " of " + runs : null;
