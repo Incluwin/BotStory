@@ -234,6 +234,11 @@ final class AgentKpqCoordinator {
         }
         session.clearBlocker();
         if (session.readyAtMs() == 0L) {
+            // Before it says it is starting: with the lobby gone that would be a start it cannot make.
+            if (backgroundLobbyTaken(session, leader)) {
+                giveUpTakenLobby(session, nowMs);
+                return;
+            }
             session.setReadyAtMs(nowMs + PREPARATION_DELAY_MS);
             KPQ.prepareNpcScripts(AgentKpqDefinition.ENTRY_NPC, AgentKpqDefinition.CLOTO_NPC,
                     AgentKpqDefinition.EXIT_NPC);
@@ -241,6 +246,26 @@ final class AgentKpqCoordinator {
                     narrator, "Party ready. Everyone is here. Starting KPQ in 5 seconds.");
         }
         if (nowMs >= session.readyAtMs()) transition(session, AgentKpqSession.Phase.ENTERING, nowMs);
+    }
+
+    /**
+     * A background party formed while a lobby was free may no longer take the last one a human could enter. An
+     * Agent-led !kpqtest run is KPQ_OWNED too, but it is not background and keeps the stock entry.
+     */
+    private static boolean backgroundLobbyTaken(AgentKpqSession session, Character leader) {
+        return session.partyOwnership() == AgentKpqSession.PartyOwnership.KPQ_OWNED
+                && session.mode() != AgentKpqSession.Mode.TEST_OBSERVATION
+                && !AgentKpqLobbyPolicy.backgroundEntryAllowed(KPQ.openInstances(leader, "KerningPQ"),
+                        AgentKpqLobbyPolicy.maxLobbies(), AgentKpqLobbyPolicy.humanReservedLobbies());
+    }
+
+    /**
+     * Another party took the lobby, and it keeps it for its whole run, so waiting cannot help: the party stood at
+     * Lakelis for the 45 s deadline and then told the whole entrance the engine's reason. It goes at once, casually.
+     */
+    private static void giveUpTakenLobby(AgentKpqSession session, long nowMs) {
+        fail(session, "The last free KPQ lobby is kept for human parties",
+                Parting.of(Parting.Kind.LOBBY_TAKEN), nowMs);
     }
 
     static boolean shouldAcceptEnteredStageOneDuringPreparation(
@@ -278,16 +303,8 @@ final class AgentKpqCoordinator {
             AgentKpqMemberState leaderState = session.member(leader.getId());
             if (nowMs < leaderState.nextRetryAtMs()) return;
             leaderState.setNextRetryAtMs(nowMs + INTERACTION_RETRY_MS);
-            // A background party formed while a lobby was free may no longer take the last one a human could enter.
-            // An Agent-led !kpqtest run is KPQ_OWNED too, but it is not background and keeps the stock entry.
-            if (session.partyOwnership() == AgentKpqSession.PartyOwnership.KPQ_OWNED
-                    && session.mode() != AgentKpqSession.Mode.TEST_OBSERVATION
-                    && !AgentKpqLobbyPolicy.backgroundEntryAllowed(
-                            KPQ.openInstances(leader, "KerningPQ"),
-                            AgentKpqLobbyPolicy.maxLobbies(), AgentKpqLobbyPolicy.humanReservedLobbies())) {
-                if (blockedTooLong(session, "enter-lobby-reserved", nowMs)) {
-                    fail(session, "No KPQ lobby became available before the admission deadline", nowMs);
-                }
+            if (backgroundLobbyTaken(session, leader)) {
+                giveUpTakenLobby(session, nowMs);
                 return;
             }
             boolean invoked = KPQ.runNpc(leader, AgentKpqDefinition.ENTRY_NPC, 0);
@@ -1347,14 +1364,19 @@ final class AgentKpqCoordinator {
         AgentKpqTerminationService.fail(session, reason, nowMs);
     }
 
-    /** A stock run says the engine's reason; a companion run hears its players' own words, and the log the reason. */
+    /**
+     * A stock run says the engine's reason; a companion run hears its players' own words, and the log the reason. A
+     * lost lobby is said casually by every run: that end is new with the background entry gate, and nothing stock
+     * ever said it.
+     */
     static String failureLine(boolean companionRun, String reason, Parting parting, int speakerId) {
-        return companionRun ? parting.line(speakerId) : "KPQ stopped: " + reason + '.';
+        return companionRun || parting.kind() == Parting.Kind.LOBBY_TAKEN
+                ? parting.line(speakerId) : "KPQ stopped: " + reason + '.';
     }
 
-    /** How a companion puts a run's early end to the players it plays with: casual, and never an id or a reason. */
+    /** How an Agent puts a run's early end to the players around it: casual, and never an id or a reason. */
     record Parting(Kind kind, int subjectId, String subject) {
-        enum Kind { GENERIC, WENT_DOWN, LEFT, DEFEATED, GONE, OVER, TOO_LONG }
+        enum Kind { GENERIC, WENT_DOWN, LEFT, DEFEATED, GONE, OVER, TOO_LONG, LOBBY_TAKEN }
 
         static final Parting GENERIC = new Parting(Kind.GENERIC, 0, null);
 
@@ -1383,6 +1405,7 @@ final class AgentKpqCoordinator {
                 case GONE -> named ? subject + " dropped out, so we can't finish this one. let's head out." : generic;
                 case OVER -> "looks like this run's over. let's head back.";
                 case TOO_LONG -> "we've been stuck too long. let's call it and head out.";
+                case LOBBY_TAKEN -> "someone beat us to it. let's try again later.";
             };
         }
     }

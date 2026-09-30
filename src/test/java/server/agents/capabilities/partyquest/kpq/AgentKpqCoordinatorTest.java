@@ -8,6 +8,7 @@ import scripting.event.EventManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.life.NPC;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -18,14 +19,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AgentKpqCoordinatorTest {
-    private static final long LOCAL_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
-            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.LOCAL_RECOVERY_TIMEOUT_MS");
-
     @Test
     void stageOnePassDropLineBelongsToTheDeliveringAgent() {
         assertEquals("AgentForSure, I dropped my pass beside you.",
@@ -392,12 +394,49 @@ class AgentKpqCoordinatorTest {
             // One of the two lobbies is open, and the other is the one kept for human parties.
             when(kerning.getInstances()).thenReturn(List.of(mock(EventInstanceManager.class)));
 
+            // The other party keeps its lobby for its whole run: waiting 45 s at Lakelis could not help.
             AgentKpqCoordinator.tick(session, 2_000L);
-            assertEquals("enter-lobby-reserved", session.blockerKey());
 
-            AgentKpqCoordinator.tick(session, 2_000L + LOCAL_RECOVERY_TIMEOUT_MS);
             assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
-            assertEquals("No KPQ lobby became available before the admission deadline", session.failure());
+            assertEquals("The last free KPQ lobby is kept for human parties", session.failure());
+            run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
+                    kai, "someone beat us to it. let's try again later."), times(1));
+            run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), startsWith("KPQ stopped")), never());
+        }
+    }
+
+    @Test
+    void aBackgroundPartyWhoseLobbyWasTakenNeverAnnouncesItsStart() {
+        try (KpqRunFixture run = new KpqRunFixture()) {
+            Character kai = run.companion(1, "Kai");
+            Character mira = run.companion(2, "Mira");
+            Character pip = run.companion(3, "Pip");
+            AgentKpqSession session = run.session(false, AgentKpqSession.Phase.PREPARING, kai, mira, pip);
+            session.setPartyOwnership(AgentKpqSession.PartyOwnership.KPQ_OWNED);
+            session.clearEventInstance();
+            // Everyone already stands at their spot beside Lakelis.
+            Point lakelisAt = new Point(300, 150);
+            NPC lakelis = mock(NPC.class);
+            when(lakelis.getPosition()).thenReturn(lakelisAt);
+            when(run.map.getNPCById(AgentKpqDefinition.ENTRY_NPC)).thenReturn(lakelis);
+            for (Character member : new Character[]{kai, mira, pip}) {
+                run.outside(member, AgentKpqDefinition.RECRUIT_MAP);
+                Point spot = AgentKpqCoordinator.npcApproachPoint(
+                        session, session.member(member.getId()), member, lakelisAt, 11);
+                when(member.getPosition()).thenReturn(spot);
+            }
+            Client client = mock(Client.class);
+            EventManager kerning = mock(EventManager.class);
+            when(kai.getClient()).thenReturn(client);
+            when(client.getEventManager("KerningPQ")).thenReturn(kerning);
+            when(kerning.getInstances()).thenReturn(List.of(mock(EventInstanceManager.class)));
+
+            AgentKpqCoordinator.tick(session, 2_000L);
+
+            assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
+            run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), startsWith("Party ready")), never());
+            run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
+                    kai, "someone beat us to it. let's try again later."), times(1));
         }
     }
 
