@@ -419,6 +419,24 @@ public final class LivingWorldHooks {
         }
     }
 
+    /**
+     * A party leader asked a party quest's entry NPC to start it ({@code pqKey}; Lakelis's "kpq" branch in
+     * 9020000.js, on their I/O thread). True when the living world answered the click with its own window, and the
+     * script must return; false leaves the stock start to the script, with nothing sent or changed.
+     */
+    public static boolean partyQuestEntry(scripting.npc.NPCConversationManager cm, String pqKey) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || cm == null || cm.getPlayer() == null) {
+            return false;
+        }
+        try {
+            return world.partyQuests().offerAtDesk(cm.getPlayer(), pqKey);
+        } catch (RuntimeException failure) {
+            log.warn("living world partyQuestEntry hook failed", failure);
+            return false;
+        }
+    }
+
     /** An NPC click on a quest marker's hitbox; true when it was one (the Resident's menu opens instead). */
     public static boolean markerClicked(Character clicker, int objectId) {
         LivingWorld world = LivingWorld.get();

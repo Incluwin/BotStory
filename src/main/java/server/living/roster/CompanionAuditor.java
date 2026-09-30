@@ -48,7 +48,8 @@ import java.util.function.LongSupplier;
  * never "repaired". Each drift episode gets one repair and one {@code companion.drift} event; if the drift is still
  * there on the next run the episode is marked stuck and logged once more, and nothing else is tried until the
  * companion is seen clean. That is what keeps the auditor out of a repair loop. Owners inside an event instance are
- * deferred, since their companions may be committed to the run.</p>
+ * deferred, since their companions may be committed to the run, and so are owners with a companion committed to one
+ * (an owner who walked out of a party quest their companions finish).</p>
  */
 public final class CompanionAuditor {
     public static final long INTERVAL_MS = 60_000L;
@@ -119,13 +120,15 @@ public final class CompanionAuditor {
         long started = clock.getAsLong();
         List<CompanionDriftReport> reports = new ArrayList<>();
         Set<Integer> deferred = new HashSet<>();
+        Commitments commitments = world.commitments();
         for (World w : Server.getInstance().getWorlds()) {
             for (Character chr : w.getPlayerStorage().getAllCharacters()) {
                 if (isBot(chr) || !world.roster().hasCompanions(chr)) {
                     continue;
                 }
-                if (chr.getEventInstance() != null) {
-                    deferred.add(chr.getId()); // its companions may be committed to the run
+                // its companions may be committed to the run, also once it walked out of it and they carry on without it
+                if (chr.getEventInstance() != null || commitments != null && commitments.ownerCommitted(chr.getId())) {
+                    deferred.add(chr.getId());
                     continue;
                 }
                 reports.add(report(world, w, chr, world.store().roster(chr.getId()),

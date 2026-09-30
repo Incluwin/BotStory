@@ -78,11 +78,18 @@ final class CompanionChannelFollow {
             return;
         }
         for (RosterEntry entry : roster.store().roster(ownerId)) {
-            if (CompanionSeatState.partyMember(entry.state()) && roster.companion(entry) != null) {
+            Character bot = CompanionSeatState.partyMember(entry.state()) ? roster.companion(entry) : null;
+            if (bot != null && !committed(bot)) {
                 transfer.marked.add(entry.personaId());
                 transfer.pending.add(entry.personaId());
             }
         }
+    }
+
+    /** A companion committed to a run is the run's: it stays where it is, on its channel, until the run ends. */
+    private boolean committed(Character bot) {
+        Commitments commitments = world.commitments();
+        return commitments != null && commitments.isCommitted(bot.getId());
     }
 
     /**
@@ -130,7 +137,7 @@ final class CompanionChannelFollow {
             transfer.arrived = true;
             for (RosterEntry entry : roster.store().roster(ownerId)) {
                 Character bot = CompanionSeatState.partyMember(entry.state()) ? roster.companion(entry) : null;
-                if (bot != null && !RosterService.sameChannel(owner, bot)) {
+                if (bot != null && !RosterService.sameChannel(owner, bot) && !committed(bot)) {
                     transfer.marked.add(entry.personaId());
                     transfer.pending.add(entry.personaId());
                 }

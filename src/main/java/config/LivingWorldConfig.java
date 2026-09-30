@@ -203,9 +203,31 @@ public class LivingWorldConfig {
     /** A companion this many levels or more off its owner (either way) is swapped for one closer. */
     public int AUTO_ROTATE_LEVEL_GAP = 10;
 
+    // Party quests with companions (P6, docs/BOT_MANAGEMENT_PLAN.md flow 3)
+    /**
+     * Party quests whose entry NPC offers its party leader a lineup of the party and their companions, a comma list;
+     * only "kpq" (Lakelis) so far. Empty = off: the NPC is stock.
+     */
+    public String COMPANION_PQ_ENABLED_KEYS = "";
+    /** A companion KPQ run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does. */
+    public boolean COMPANION_PQ_GUIDANCE = true;
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
+
+    /** True when COMPANION_PQ_ENABLED_KEYS lists {@code pqKey} (any case, spaces around it ignored). */
+    public boolean companionPqEnabled(String pqKey) {
+        if (pqKey == null || COMPANION_PQ_ENABLED_KEYS == null) {
+            return false;
+        }
+        for (String entry : COMPANION_PQ_ENABLED_KEYS.split(",")) {
+            if (!entry.isBlank() && entry.trim().equalsIgnoreCase(pqKey.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public void validate() {
         if (WORLD < 0 || CHANNEL < 1) {
@@ -290,6 +312,11 @@ public class LivingWorldConfig {
         if (AUTO_ROTATE_TICK_MS < 1000 || AUTO_ROTATE_COOLDOWN_MS < 0 || AUTO_ROTATE_LEVEL_GAP < 1) {
             throw new IllegalArgumentException("living_world.AUTO_ROTATE_TICK_MS must be >= 1000, AUTO_ROTATE_COOLDOWN_MS >= 0"
                     + " and AUTO_ROTATE_LEVEL_GAP >= 1");
+        }
+        for (String key : COMPANION_PQ_ENABLED_KEYS == null ? new String[0] : COMPANION_PQ_ENABLED_KEYS.split(",")) {
+            if (!key.isBlank() && !key.trim().equalsIgnoreCase("kpq")) {
+                throw new IllegalArgumentException("living_world.COMPANION_PQ_ENABLED_KEYS must list only kpq");
+            }
         }
     }
 }
