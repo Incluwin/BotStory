@@ -1045,6 +1045,11 @@ final class AgentKpqCoordinator {
                     || agent.getMapId() == AgentKpqDefinition.EXIT_MAP) {
                 allOutside = false;
                 if (member.memberType() == AgentKpqMemberState.MemberType.AGENT) {
+                    if (session.companionAdopted() && agent.getHp() <= 0) {
+                        // Its respawn carries it outside, and then it is done.
+                        allGathered = false;
+                        continue;
+                    }
                     if (agent.getMapId() == AgentKpqDefinition.BONUS_MAP
                             && bonusMapDwellActive(session.phaseEnteredAtMs(), nowMs,
                                     BONUS_MAP_DWELL_MS)) {
