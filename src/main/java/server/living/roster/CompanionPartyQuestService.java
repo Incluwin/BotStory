@@ -23,6 +23,7 @@ import server.integration.AgentPresence;
 import server.life.NPC;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.living.resident.LivingTalk;
 import server.living.store.LivingStore.CompanionRunStats;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -46,7 +47,7 @@ import java.util.function.ToIntFunction;
  * lineup is admitted and started in one step on the leader's I/O thread, so the run begins with the party already
  * inside: the 45 s gather at Lakelis that 93 of 119 background runs failed never runs. The run is kept here, in memory,
  * until its session ends (CompanionRunLifecycle); its companions and extras are committed to it meanwhile. The lineup
- * window is the desk's (roster.ui), which is not built yet: until it is, every click still takes the stock path.
+ * windows are the desk's (roster.ui LakelisDesk, which LivingWorld installs).
  */
 public final class CompanionPartyQuestService {
     private static final Logger log = LoggerFactory.getLogger(CompanionPartyQuestService.class);
@@ -56,6 +57,8 @@ public final class CompanionPartyQuestService {
     static final int KPQ_MIN_HP_POTIONS = 20;
     /** A run whose session went away without ending it is let go once it has been gone this long (the audit's pace). */
     static final long LOST_RUN_AFTER_MS = 60_000L;
+    /** A companion Lakelis sent for from the bench says it is ready for her when it arrives within this long. */
+    static final long ARRIVAL_NOTE_MS = 600_000L;
 
     /**
      * Lakelis's windows about a lineup, each the answer to the leader's own click: the lineup itself, the lineup again
@@ -96,6 +99,8 @@ public final class CompanionPartyQuestService {
     private final Map<String, CompanionRun> runsByKey = new ConcurrentHashMap<>();
     /** Every lineup member and extra of a run -> the run. */
     private final Map<Integer, CompanionRun> runByCharacter = new ConcurrentHashMap<>();
+    /** "ownerId personaId" -> when Lakelis sent for that companion from its owner's bench. */
+    private final Map<String, Long> calledForLakelis = new ConcurrentHashMap<>();
 
     public CompanionPartyQuestService(LivingWorld world) {
         this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions);
@@ -121,13 +126,14 @@ public final class CompanionPartyQuestService {
 
     /**
      * The party leader asked {@code pqKey}'s entry NPC to start it (on their I/O thread, inside the stock script).
-     * True when this answered the click; false leaves the stock start to the script, with nothing sent or changed.
+     * True when this answered the click (with the lineup, planned as the answer); false leaves the stock start to the
+     * script, with nothing sent or changed.
      */
     public boolean offerAtDesk(Character leader, String pqKey) {
         if (!world.config().companionPqEnabled(pqKey) || standsAside(leader, pqKey)) {
             return false; // the stock start, untouched
         }
-        return false; // a party with companions: its lineup window is not built yet, so it starts as stock meanwhile
+        return LivingTalk.answerScriptClick(leader, () -> desk.proposal(leader, plan(leader, pqKey), null));
     }
 
     /**
@@ -281,6 +287,23 @@ public final class CompanionPartyQuestService {
             }
         }
         return count;
+    }
+
+    // ---- sent for from the bench ----------------------------------------------------------------
+
+    /**
+     * Lakelis sent for the owner's companion from their bench and it set off (the desk, on companion-ops): as it
+     * arrives it tells the party it is ready for her instead of its usual word. There is no timer: the note is looked
+     * at only when the companion arrives, and one older than {@link #ARRIVAL_NOTE_MS} is forgotten then.
+     */
+    public void noteCalledForLakelis(int ownerId, String personaId) {
+        calledForLakelis.put(ownerId + " " + personaId, System.currentTimeMillis());
+    }
+
+    /** RosterService.arrive: true, once, when the companion arriving now was sent for from Lakelis's bench. */
+    boolean takeArrivalNote(int ownerId, String personaId, long nowMs) {
+        Long notedAt = calledForLakelis.remove(ownerId + " " + personaId);
+        return notedAt != null && nowMs - notedAt <= ARRIVAL_NOTE_MS;
     }
 
     // ---- Yes: the extras step out, then admission and the start in one I/O step -----------------

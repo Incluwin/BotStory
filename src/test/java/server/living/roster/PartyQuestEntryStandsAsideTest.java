@@ -1,6 +1,8 @@
 package server.living.roster;
 
+import client.Character;
 import client.Client;
+import client.Job;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,10 @@ import server.living.config.Content.Persona;
 import server.living.resident.LivingTalk;
 import server.living.store.LivingStore.RosterState;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -39,7 +45,7 @@ import static server.living.roster.LifecycleHarness.LITH;
  * sent, opened or written, when the living world is off, the kill switch does not list kpq, an Agent clicked (a
  * background party's headless entry), the clicker leads no party, a KPQ session already holds the party (a !kpqtest
  * adopt), a !kpqtest run's engagement owns a member, or nobody in the party is a companion. Owners are looked up for
- * the party's bots only (no persona lookup for a human).
+ * the party's bots only (no persona lookup for a human). A party with a companion is answered with its lineup instead.
  */
 class PartyQuestEntryStandsAsideTest {
     private final LifecycleHarness game = new LifecycleHarness();
@@ -73,6 +79,37 @@ class PartyQuestEntryStandsAsideTest {
     @Test
     void aPartyWithACompanionIsNotLeftToTheStockPathByTheGate() {
         assertFalse(service.standsAside(game.ann, "kpq"));
+    }
+
+    @Test
+    void aPartyWithACompanionIsAnsweredWithItsLineup() {
+        List<LineupPlan> shown = new ArrayList<>();
+        service.installDesk(new CompanionPartyQuestService.Desk() {
+            @Override
+            public void proposal(Character leader, LineupPlan plan, String topLine) {
+                shown.add(plan);
+            }
+
+            @Override
+            public void thingsChanged(Character leader, LineupPlan plan) {
+            }
+
+            @Override
+            public void outcome(Character leader, String line, long clickedAtMs) {
+            }
+        });
+        CompanionPqFixture.stand(game.ann, 25, Job.CLERIC);
+        CompanionPqFixture.stand(game.bot(game.personas.get("hadrik")), 24, Job.FIGHTER);
+        when(game.world.views()).thenReturn(new CompanionViews(game.world, id -> "camp", id -> "item"));
+        Client client = game.ann.getClient();
+        when(client.onIoThread()).thenReturn(true); // the click's own thread
+        when(client.getCM()).thenReturn(cm); // the script's conversation, no window of its own sent
+
+        assertTrue(LivingWorldHooks.partyQuestEntry(cm, "kpq"));
+
+        assertEquals(1, shown.size(), "the lineup is the answer to the click");
+        assertEquals(ANN, shown.getFirst().leaderId());
+        verify(cm).dispose(); // this desk drew nothing: the script's conversation ends and the client's actions are back
     }
 
     @Test

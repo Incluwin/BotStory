@@ -179,6 +179,9 @@ public final class LivingWorld {
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(world.partyQuestRuns);
         // and a companion whose owner logs off inside its run sees it through for the friend still in it (decision 8b)
         world.roster.installInstanceDelegation(world.partyQuestRuns);
+        // Lakelis offers a party with companions its lineup (living_world.COMPANION_PQ_ENABLED_KEYS)
+        world.partyQuests.installDesk(new server.living.roster.ui.LakelisDesk(world, world.partyQuests,
+                new server.living.roster.ui.CompanionMenus(world)));
         // a companion out with its owner drinks and loots by its own settings (P3b)
         world.roster.settings().install();
         // hire:<characterId> ids resolve to hired citizens, and a released hire goes back to the population (P4)

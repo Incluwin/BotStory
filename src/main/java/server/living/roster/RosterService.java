@@ -1009,8 +1009,13 @@ public final class RosterService {
         write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()));
         settings.apply(owner, persona, bot); // her settings are re-applied (plan flow 1, step 5)
         world.store().event(ownerId, persona.id(), "roster.arrive", "map " + owner.getMapId());
-        List<String> lines = world.arcs().lines(persona, "join");
-        world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(ownerId, lines.size())));
+        CompanionPartyQuestService partyQuests = world.partyQuests();
+        // sent for from Lakelis's bench (P6): it tells the party waiting there, instead of its usual word to the owner
+        if (partyQuests == null || !partyQuests.takeArrivalNote(ownerId, persona.id(), System.currentTimeMillis())
+                || !partyChat(bot, "here! ready for Lakelis when you are.")) {
+            List<String> lines = world.arcs().lines(persona, "join");
+            world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(ownerId, lines.size())));
+        }
         BenchLedger ledger = world.bench();
         String report = ledger == null ? null : ledger.takeReport(ownerId, persona.id(), bot.getLevel());
         if (report != null) {

@@ -1,0 +1,439 @@
+package server.living.roster.ui;
+
+import client.Character;
+import client.Client;
+import client.Job;
+import net.packet.Packet;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import server.living.LivingWorld;
+import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
+import server.living.resident.LivingTalk;
+import server.living.resident.ResidentRuntime;
+import server.living.roster.CompanionExecutor;
+import server.living.roster.CompanionPartyQuestService;
+import server.living.roster.DirectExecutor;
+import server.living.roster.LineupPlan;
+import server.living.roster.LineupPlan.Seat;
+import server.living.roster.LineupPlan.Waiting;
+import server.living.roster.RosterResult;
+import server.living.roster.RosterService;
+import server.living.store.LivingStore;
+import server.living.store.LivingStore.Assignment;
+import server.living.store.LivingStore.RosterEntry;
+import server.living.store.LivingStore.RosterState;
+import server.maps.MapleMap;
+import testutil.NpcTalks;
+import testutil.NpcTalks.Talk;
+import testutil.Packets;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+/**
+ * Lakelis's windows (P6, flow 3; p6's "Lakelis window script"): the lineup offers Yes only when it can go in now and
+ * "Are they here yet?" while a companion is on its way, the leader's pick keeps the humans and takes three or four,
+ * "Never mind." does nothing, a stale Yes shows the lineup again with "Things changed meanwhile.", a companion sent for
+ * from the bench is on its way (noted only when it set off), and an outcome is her OK window within ten seconds of the
+ * click, else pink text. Every window is hers (9020000) with speaker 0. The lineups are the service's (mocked here).
+ */
+class LakelisDeskTest {
+    private static final int BEN = 10;
+    private static final int ANN = 11;
+    private static final int MIRA = 901;
+    private static final int PIP = 902;
+    private static final int TOBI = 903;
+    private static final int CASSE = 904;
+    private static final int HADRIK = 905;
+    private static final int RIN = 906;
+    private static final int KERNING = 103_000_000;
+    private static final byte OK = 0;
+    private static final byte MENU = 4;
+    private static final String TITLE = "#e#b<Party Quest: 1st Accompaniment>#k#n";
+    private static final String TOO_FEW = "I need at least three of you, all between level 21 and 30.";
+
+    private static final Seat BEN_SEAT = human(BEN, "Ben", 25, "Cleric");
+    private static final Seat ANN_SEAT = human(ANN, "Ann", 24, "Cleric");
+    private static final Seat MIRA_SEAT = companion(MIRA, "Mira", 24, "Hunter", BEN, 3, 2);
+    private static final Seat PIP_SEAT = companion(PIP, "Pip", 26, "Magician", BEN, 0, 0);
+    private static final Seat TOBI_SEAT = companion(TOBI, "Tobi", 27, "Page", ANN, 0, 0);
+    private static final Seat CASSE_SEAT = companion(CASSE, "Casse", 25, "Bandit", BEN, 0, 0);
+    private static final Seat HADRIK_SEAT = companion(HADRIK, "Hadrik", 32, "Fighter", BEN, 0, 0);
+    private static final Waiting CASSE_WAITS = new Waiting(CASSE, "Casse", "bags full");
+
+    private final LivingWorld world = mock(LivingWorld.class);
+    private final CompanionPartyQuestService service = mock(CompanionPartyQuestService.class);
+    private final LivingContent content = mock(LivingContent.class);
+    private final RosterService roster = mock(RosterService.class);
+    private final LivingStore store = mock(LivingStore.class);
+    private final ResidentRuntime residents = mock(ResidentRuntime.class);
+    private final Character ben = mock(Character.class);
+    private final Client client = mock(Client.class);
+    private final List<RosterEntry> rows = new ArrayList<>();
+    private LakelisDesk desk;
+
+    @BeforeEach
+    void benLeadsAtLakelis() {
+        when(ben.getId()).thenReturn(BEN);
+        when(ben.getName()).thenReturn("Ben");
+        when(ben.getClient()).thenReturn(client);
+        when(ben.getMapId()).thenReturn(KERNING);
+        when(ben.getMap()).thenReturn(mock(MapleMap.class));
+        when(client.getPlayer()).thenReturn(ben);
+        when(client.canClickNPC()).thenReturn(true);
+        doAnswer(inv -> {
+            ((Runnable) inv.getArgument(0)).run(); // Ben's packet thread, at once
+            return null;
+        }).when(client).runOnIoThread(any());
+        when(world.content()).thenReturn(content);
+        when(world.roster()).thenReturn(roster);
+        when(world.store()).thenReturn(store);
+        when(world.residents()).thenReturn(residents);
+        CompanionExecutor ops = DirectExecutor.inline();
+        when(world.executor()).thenReturn(ops);
+        when(roster.roster(ben)).thenReturn(rows);
+        when(roster.describeAssignment(any())).thenReturn("train");
+        when(service.plan(ben, "kpq")).thenAnswer(inv -> choice(null));
+        when(service.plan(eq(ben), eq("kpq"), any())).thenAnswer(inv -> choice(inv.getArgument(2)));
+        desk = new LakelisDesk(world, service, new CompanionMenus(world, mapId -> "Ant Tunnel"));
+    }
+
+    @AfterEach
+    void close() {
+        LivingTalk.forget(ben);
+    }
+
+    // ---- the lineup ------------------------------------------------------------------------
+
+    @Test
+    void proposalOffersYesOnlyWhenStartable() {
+        LineupPlan four = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, ANN_SEAT, MIRA_SEAT, TOBI_SEAT),
+                List.of(PIP_SEAT, CASSE_SEAT, HADRIK_SEAT), List.of(),
+                List.of(CASSE_WAITS, new Waiting(HADRIK, "Hadrik", "Lv32, too seasoned for this")), null, false);
+
+        desk.proposal(ben, four, null);
+
+        Talk lineup = lastTalk();
+        assertEquals(MENU, lineup.msgType());
+        assertTrue(lineup.text().startsWith(TITLE + "\r\n"
+                + "Four of you, then? Here's who I'd send in:\r\n"
+                + "#bBen#k (leader)\r\n"
+                + "#bAnn#k, Lv24 Cleric\r\n"
+                + "#bMira#k, Lv24 Hunter - cleared 2 of 3\r\n"
+                + "#bTobi#k, Lv27 Page (Ann's)\r\n"
+                + "Waiting here with me: Pip, Casse (bags full), Hadrik (Lv32, too seasoned for this)\r\n"
+                + "\r\n#L"), lineup.text());
+        assertEquals(List.of("Yes, send us in.", "Let me choose...", "Never mind."), lineup.labels());
+        pick("Yes, send us in.");
+        verify(service).start(ben, four);
+
+        LineupPlan tooFew = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, MIRA_SEAT), List.of(), List.of(), List.of(),
+                TOO_FEW, true);
+        desk.proposal(ben, tooFew, null);
+
+        Talk blocked = lastTalk();
+        assertTrue(blocked.text().startsWith(TITLE + "\r\nHere's who is with you:\r\n#bBen#k (leader)\r\n"
+                + "#bMira#k, Lv24 Hunter - cleared 2 of 3\r\n#rBefore I can let you in:#k " + TOO_FEW + "\r\n"),
+                blocked.text());
+        assertEquals(List.of("Let me choose...", "Call someone from my bench...", "Never mind."), blocked.labels());
+    }
+
+    @Test
+    void travellerShowsAreTheyHereYetInsteadOfYes() {
+        desk.proposal(ben, onTheWay(), null);
+
+        Talk lineup = lastTalk();
+        assertTrue(lineup.text().startsWith(TITLE + "\r\nThree of you, then? Here's who I'd send in:\r\n"
+                + "#bBen#k (leader)\r\n#bMira#k, Lv24 Hunter - cleared 2 of 3\r\n#bRin#k, Lv25 Bandit\r\n"
+                + "On the way: Rin (~40 s)\r\n"), lineup.text());
+        assertEquals(List.of("Are they here yet?", "Let me choose...", "Call someone from my bench...", "Never mind."),
+                lineup.labels());
+    }
+
+    @Test
+    void areTheyHereYetReplansAndShowsYesOnceArrived() {
+        desk.proposal(ben, onTheWay(), null);
+        Seat arrived = companion(RIN, "Rin", 25, "Bandit", BEN, 0, 0);
+        LineupPlan here = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, MIRA_SEAT, arrived), List.of(), List.of(),
+                List.of(), null, true);
+        when(service.plan(ben, "kpq", null)).thenReturn(here);
+
+        pick("Are they here yet?");
+
+        Talk lineup = lastTalk();
+        assertFalse(lineup.text().contains("On the way"), lineup.text());
+        assertEquals("Yes, send us in.", lineup.labels().get(0));
+        pick("Yes, send us in.");
+        verify(service).start(ben, here);
+    }
+
+    @Test
+    void neverMindHasNoSideEffects() {
+        desk.proposal(ben, choice(null), null);
+        int windows = talks().size();
+
+        pick("Never mind.");
+
+        assertEquals(windows, talks().size(), "no window after it");
+        assertTrue(NpcTalks.isEnableActions(sent().get(sent().size() - 1)), "the client's actions are back");
+        verify(service, never()).start(any(), any());
+        verify(world, never()).executor();
+        verify(roster, never()).call(any(), any());
+    }
+
+    @Test
+    void staleYesRerendersWithThingsChanged() {
+        LineupPlan shown = choice(null);
+        LineupPlan now = choice(Set.of(MIRA));
+        doAnswer(inv -> {
+            desk.thingsChanged(ben, now); // the service's answer when the party changed since the lineup was drawn
+            return null;
+        }).when(service).start(ben, shown);
+        desk.proposal(ben, shown, null);
+
+        pick("Yes, send us in.");
+
+        Talk again = lastTalk();
+        assertTrue(again.text().startsWith(TITLE + "\r\nThings changed meanwhile.\r\n"
+                + "Three of you, then? Here's who I'd send in:\r\n"), again.text());
+        assertFalse(again.text().contains("#bTobi#k"), "the lineup as it is now");
+    }
+
+    // ---- the leader's pick -----------------------------------------------------------------
+
+    @Test
+    void chooseTogglesCompanionsKeepsHumansAndCapsAtFour() {
+        desk.proposal(ben, choice(null), null);
+
+        pick("Let me choose...");
+
+        Talk choose = lastTalk();
+        assertTrue(choose.text().startsWith("Who goes in? You and two or three more.\r\n"
+                + "\r\nGoing in for sure: Ben, Ann"), choose.text());
+        assertTrue(choose.text().contains("Can't come: Casse (bags full)"), choose.text());
+        assertEquals(List.of("(in) Mira, Lv24 Hunter - cleared 2 of 3", "(out) Pip, Lv26 Magician",
+                "(in) Tobi, Lv27 Page (Ann's)", "Send these in.", "Back"), choose.labels());
+
+        pick("(out) Pip, Lv26 Magician"); // a fifth
+
+        assertTrue(lastTalk().text().startsWith("Four is the most I can take. Take someone out first.\r\n"),
+                lastTalk().text());
+        assertEquals("(out) Pip, Lv26 Magician", lastTalk().labels().get(1), "not picked");
+
+        pick("(in) Tobi, Lv27 Page (Ann's)");
+        pick("(out) Pip, Lv26 Magician");
+
+        assertEquals(List.of("(in) Mira, Lv24 Hunter - cleared 2 of 3", "(in) Pip, Lv26 Magician",
+                "(out) Tobi, Lv27 Page (Ann's)", "Send these in.", "Back"), lastTalk().labels());
+        pick("Back");
+        assertTrue(lastTalk().text().contains("#bPip#k"), "the lineup as picked");
+        assertTrue(lastTalk().text().contains("Waiting here with me: Tobi"), lastTalk().text());
+    }
+
+    @Test
+    void sendTheseInNeedsThreeOrFour() {
+        desk.proposal(ben, choice(null), null);
+        pick("Let me choose...");
+
+        pick("(in) Mira, Lv24 Hunter - cleared 2 of 3");
+        assertTrue(lastTalk().labels().contains("Send these in."), "three: Ben, Ann and Tobi");
+        pick("(in) Tobi, Lv27 Page (Ann's)");
+        assertFalse(lastTalk().labels().contains("Send these in."), "two");
+
+        pick("(out) Pip, Lv26 Magician");
+        pick("Send these in.");
+
+        verify(service).start(ben, choice(Set.of(PIP)));
+    }
+
+    // ---- sent for from the bench -----------------------------------------------------------
+
+    @Test
+    void aCompanionThatSetsOffIsOnTheWayAndNoted() {
+        Persona rin = benched("rin", "Rin", RIN);
+        when(roster.call(ben, rin)).thenReturn(new RosterResult.Travelling(40_000L, 104_000_000));
+        desk.proposal(ben, choice(Set.of(MIRA)), null);
+        pick("Call someone from my bench...");
+        assertTrue(lastTalk().text().startsWith("Who should I send for? They'll meet you here in Kerning City.\r\n"),
+                lastTalk().text());
+
+        pick("Rin, Lv25 Bandit - train @ Ant Tunnel");
+
+        verify(service).noteCalledForLakelis(BEN, "rin");
+        Talk coming = lastTalk();
+        assertTrue(coming.text().startsWith("Rin is on the way (~40 s). Talk to me again once they're here.\r\n"),
+                coming.text());
+        assertEquals(List.of("Are they here yet?", "Never mind."), coming.labels());
+        pick("Are they here yet?");
+        assertTrue(lastTalk().text().startsWith(TITLE), "the lineup again");
+    }
+
+    @Test
+    void aCallThatDoesNotSetOffTopsTheLineupAndIsNotNoted() {
+        Persona rin = benched("rin", "Rin", RIN);
+        when(roster.call(ben, rin)).thenReturn(new RosterResult.PartyFull());
+        desk.proposal(ben, choice(Set.of(MIRA)), null);
+        pick("Call someone from my bench...");
+
+        pick("Rin, Lv25 Bandit - train @ Ant Tunnel");
+
+        verify(service, never()).noteCalledForLakelis(anyInt(), anyString());
+        assertTrue(lastTalk().text().startsWith(TITLE + "\r\nYour party is full. Send someone to camp first.\r\n"),
+                lastTalk().text());
+    }
+
+    // ---- how a start ended -----------------------------------------------------------------
+
+    @Test
+    void outcomeAfterTenSecondsIsPinkText() {
+        String noLobby = "Another party has already entered the #rParty Quest#k in this channel. Please try another "
+                + "channel, or wait for the current party to finish.";
+
+        desk.outcome(ben, noLobby, System.currentTimeMillis() - 10_001L);
+
+        verify(ben).dropMessage(5, "Lakelis: Another party has already entered the Party Quest in this channel. Please "
+                + "try another channel, or wait for the current party to finish.");
+        verify(client, never()).sendPacket(any());
+
+        desk.outcome(ben, noLobby, System.currentTimeMillis() - 7_800L); // the stock wait for a lobby
+
+        assertEquals(OK, lastTalk().msgType());
+        assertEquals(noLobby, lastTalk().text());
+    }
+
+    @Test
+    void anOutcomeNeverOpensOverAWindowOrAwayFromTheEntrance() {
+        desk.proposal(ben, choice(null), null);
+        int windows = talks().size();
+
+        desk.outcome(ben, "Hold on, they're lining up.", System.currentTimeMillis());
+
+        assertEquals(windows, talks().size());
+        verify(ben).dropMessage(5, "Lakelis: Hold on, they're lining up.");
+
+        pick("Never mind.");
+        when(ben.getMapId()).thenReturn(103_000_800); // gone in meanwhile
+        desk.outcome(ben, "The Kerning PQ has encountered an error.", System.currentTimeMillis());
+
+        assertEquals(windows, talks().size());
+        verify(ben).dropMessage(5, "Lakelis: The Kerning PQ has encountered an error.");
+    }
+
+    @Test
+    void npcIsLakelisAndSpeakerIsZero() {
+        Persona rin = benched("rin", "Rin", RIN);
+        when(roster.call(ben, rin)).thenReturn(new RosterResult.Travelling(40_000L, 104_000_000));
+        desk.proposal(ben, choice(Set.of(MIRA)), null);
+        pick("Let me choose...");
+        pick("Back");
+        pick("Call someone from my bench...");
+        pick("Rin, Lv25 Bandit - train @ Ant Tunnel");
+        pick("Never mind.");
+        desk.outcome(ben, "Hold on, they're lining up.", System.currentTimeMillis());
+
+        List<Talk> talks = talks();
+        assertEquals(6, talks.size(), "lineup, pick, lineup, bench, on the way, outcome");
+        for (Talk talk : talks) {
+            assertEquals(9_020_000, talk.npcId(), talk.text());
+            assertEquals(0, talk.speaker(), talk.text());
+        }
+    }
+
+    @Test
+    void theDeskIsInstalledBeforeTheWorldGoesLive() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"));
+        String start = source.substring(source.indexOf("public static synchronized void start()"),
+                source.indexOf("public static synchronized void stop()"));
+
+        int installed = start.indexOf("world.partyQuests.installDesk(new server.living.roster.ui.LakelisDesk(world, "
+                + "world.partyQuests,");
+        assertTrue(installed >= 0 && installed < start.indexOf("instance = world;"), "before the hook can reach it");
+    }
+
+    // ---- helpers ---------------------------------------------------------------------------
+
+    /**
+     * Ben's party as the service would line it up: Ben and Ann always, Mira, Pip and Tobi as {@code picked} (null: Mira
+     * and Tobi), Casse waiting with full bags.
+     */
+    private static LineupPlan choice(Set<Integer> picked) {
+        Set<Integer> in = picked == null ? Set.of(MIRA, TOBI) : picked;
+        List<Seat> lineup = new ArrayList<>(List.of(BEN_SEAT, ANN_SEAT));
+        List<Seat> extras = new ArrayList<>();
+        for (Seat seat : List.of(MIRA_SEAT, PIP_SEAT, TOBI_SEAT)) {
+            (in.contains(seat.characterId()) ? lineup : extras).add(seat);
+        }
+        extras.add(CASSE_SEAT);
+        return new LineupPlan("kpq", BEN, List.copyOf(lineup), List.copyOf(extras), List.of(), List.of(CASSE_WAITS),
+                lineup.size() < LineupPlan.MIN_SIZE ? TOO_FEW : null, lineup.size() < LineupPlan.MAX_SIZE);
+    }
+
+    /** Ben and Mira here, Rin called over and 40 s away. */
+    private static LineupPlan onTheWay() {
+        Seat rin = new Seat(RIN, "Rin", 25, 420, "Bandit", false, BEN, "rin", 104_000_000, 40_000L, 0, 0);
+        return new LineupPlan("kpq", BEN, List.of(BEN_SEAT, MIRA_SEAT, rin), List.of(), List.of(rin), List.of(), null,
+                true);
+    }
+
+    private static Seat human(int id, String name, int level, String job) {
+        return new Seat(id, name, level, 230, job, true, 0, null, KERNING, 0L, 0, 0);
+    }
+
+    private static Seat companion(int id, String name, int level, String job, int owner, int runs, int clears) {
+        return new Seat(id, name, level, 0, job, false, owner, name.toLowerCase(), KERNING, 0L, runs, clears);
+    }
+
+    /** One of Ben's companions resting on the bench, Lv25 Bandit training at Ant Tunnel. */
+    private Persona benched(String id, String name, int characterId) {
+        Persona persona = mock(Persona.class);
+        when(persona.id()).thenReturn(id);
+        when(persona.name()).thenReturn(name);
+        when(content.persona(id)).thenReturn(persona);
+        when(residents.characterIdOf(id)).thenReturn(characterId);
+        when(store.characterLevelAndJob(characterId)).thenReturn(new int[] {25, Job.BANDIT.getId()});
+        rows.add(new RosterEntry(BEN, id, RosterState.BENCHED, Assignment.TRAIN, 0, 0, 105_040_300, 0L, 0L, 0L, 0L, 0L,
+                0L, 0, null));
+        return persona;
+    }
+
+    private void pick(String label) {
+        assertTrue(LivingTalk.respond(client, MENU, (byte) 1, Packets.buildInPacket(out ->
+                out.writeInt(lastTalk().selection(label)))));
+    }
+
+    private List<Packet> sent() {
+        ArgumentCaptor<Packet> captor = ArgumentCaptor.forClass(Packet.class);
+        verify(client, atLeastOnce()).sendPacket(captor.capture());
+        return captor.getAllValues();
+    }
+
+    private List<Talk> talks() {
+        return NpcTalks.talks(sent());
+    }
+
+    private Talk lastTalk() {
+        List<Talk> talks = talks();
+        return talks.get(talks.size() - 1);
+    }
+}

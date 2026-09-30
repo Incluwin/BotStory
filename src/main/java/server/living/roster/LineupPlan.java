@@ -17,8 +17,8 @@ import java.util.Set;
  */
 public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Seat> extras, List<Seat> onTheWay,
                          List<Waiting> waiting, String blocker, boolean benchUseful) {
-    static final int MIN_SIZE = 3;
-    static final int MAX_SIZE = 4;
+    public static final int MIN_SIZE = 3;
+    public static final int MAX_SIZE = 4;
     /** A companion's clear record is shown, and ranks it, from this many runs on. */
     static final int RECORD_RUNS = 3;
 
