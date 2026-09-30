@@ -32,8 +32,9 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * Decision 8b in a companion KPQ run (P6): Ann logs off inside a four-member run her friend Ben leads, and her
  * companions see it through for him, the first saying so once in party chat. They stay hers (rows ACTIVE, still
  * committed, led by nobody new), their recovery at the end only stops them, and they park once the run is over. The
- * event leader's companions are never handed over, since the run ends with its leader, and nobody's when fewer than
- * three of the run would stay in it, since KerningPQ ends it then.
+ * event leader's companions are never handed over, since the run ends with its leader (whoever leads it now: the lead
+ * can pass inside the run), and nobody's when fewer than three of the run would stay in it, since KerningPQ ends it
+ * then.
  */
 class CompanionRunDelegationTest {
     private static final int BEN = 20;
@@ -90,6 +91,14 @@ class CompanionRunDelegationTest {
         for (int id : run.memberIds) {
             when(instance.getPlayerById(id)).thenReturn(id == ANN ? game.ann : id == BEN ? ben : game.bots.get(id));
         }
+        when(instance.getLeaderId()).thenReturn(leaderId);
+    }
+
+    /** Inside the run the party lead passes to {@code leaderId}: the instance and, a tick later, the session follow. */
+    private void passTheLeadTo(int leaderId) {
+        when(game.party.getLeaderId()).thenReturn(leaderId);
+        when(instance.getLeaderId()).thenReturn(leaderId);
+        fx.doors.session.setLeadership(leaderId, 900);
     }
 
     @Test
@@ -121,6 +130,34 @@ class CompanionRunDelegationTest {
         assertFalse(game.roster().finishingForFriend(900));
         assertEquals(RosterState.PARKED, game.row(mira).state(), "the run ends with its leader: they leave with her");
         assertFalse(game.commitments.isCommitted(900));
+        assertTrue(game.partyChat.stream().noneMatch(line -> line.contains("see this through")),
+                game.partyChat.toString());
+    }
+
+    @Test
+    void aLeaderWhoPassedTheLeadHandsTheirCompanionsToTheNewLeader() {
+        withTobi();
+        inTheRun(game.ann); // Ann leads Ben and her two
+        passTheLeadTo(BEN);
+
+        game.roster().onOwnerLogout(game.ann, instance);
+
+        assertEquals(List.of("Mira: i'll see this through with you, Ben."), game.partyChat);
+        assertEquals(2, game.store.events("companion.handoff").size());
+        assertTrue(game.roster().finishingForFriend(900) && game.roster().finishingForFriend(901));
+        assertTrue(game.commitments.isCommitted(900), "the run goes on with Ben, Mira and Tobi");
+    }
+
+    @Test
+    void theNewLeaderLoggingOutHandsNobody() {
+        withTobi();
+        inTheRun(ben);
+        passTheLeadTo(ANN); // Ann leads now: the run ends with her
+
+        game.roster().onOwnerLogout(game.ann, instance);
+
+        assertEquals(List.of(), game.store.events("companion.handoff"));
+        assertEquals(RosterState.PARKED, game.row(mira).state());
         assertTrue(game.partyChat.stream().noneMatch(line -> line.contains("see this through")),
                 game.partyChat.toString());
     }

@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
+import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
@@ -106,17 +107,17 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
     /**
      * Decision 8b, on companion-ops (RosterService.onOwnerLogout): a lineup companion of a run that got in sees it
      * through for {@code heir}, the human of the party still in it, when the run goes on without its owner. Not the
-     * event leader's: the run ends with its leader, whose lead never moves in the instance. Not when fewer than three
-     * of the run would stay in the instance, since KerningPQ ends it then (isEventTeamLackingNow). Consent only: the
-     * companion stays its owner's Agent, the run's PQ controller drives it, and its tick leads itself once its owner
-     * is offline. The first of the owner's to stay says so in party chat.
+     * event leader's ({@link #leads}): the run ends with its leader. Not when fewer than three of the run would stay
+     * in the instance, since KerningPQ ends it then (isEventTeamLackingNow). Consent only: the companion stays its
+     * owner's Agent, the run's PQ controller drives it, and its tick leads itself once its owner is offline. The first
+     * of the owner's to stay says so in party chat.
      */
     @Override
     public boolean delegate(Character companion, Character heir, String key) {
         CompanionRun run = service.runByKey(key);
         Integer owner = run == null || !run.started ? null : run.ownerByCompanion.get(companion.getId());
         EventInstanceManager instance = heir.getEventInstance();
-        if (owner == null || owner == run.leaderId || instance == null) {
+        if (owner == null || instance == null || leads(run, owner, instance)) {
             return false;
         }
         long staying = run.memberIds.stream()
@@ -128,5 +129,15 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
             world.roster().sayInParty(companion, "i'll see this through with you, " + heir.getName() + ".");
         }
         return true;
+    }
+
+    /**
+     * True when {@code owner} leads the run now. The party lead can pass inside the instance (the coordinator moves
+     * the session's event leader after it), so the lineup's leader counts only while no session is registered; the
+     * instance's own leader counts too, for a pass the coordinator has not caught up with yet.
+     */
+    private static boolean leads(CompanionRun run, int owner, EventInstanceManager instance) {
+        AgentKpqSession session = CompanionPartyQuestService.session(run);
+        return owner == (session == null ? run.leaderId : session.eventLeaderId()) || owner == instance.getLeaderId();
     }
 }
