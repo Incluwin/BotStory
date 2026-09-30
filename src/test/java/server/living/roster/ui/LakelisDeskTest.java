@@ -151,6 +151,7 @@ class LakelisDeskTest {
 
         LineupPlan tooFew = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, MIRA_SEAT), List.of(), List.of(), List.of(),
                 TOO_FEW, true, null);
+        benched("rin", "Rin", RIN);
         desk.proposal(ben, tooFew, null);
 
         Talk blocked = lastTalk();
@@ -176,7 +177,27 @@ class LakelisDeskTest {
     }
 
     @Test
+    void theBenchIsOfferedOnlyWithSomeoneOnItToSendFor() {
+        LineupPlan three = choice(Set.of(MIRA)); // room for one more, and room in the party
+
+        desk.proposal(ben, three, null);
+        assertFalse(lastTalk().labels().contains("Call someone from my bench..."), "nobody on the bench");
+        pick("Never mind.");
+
+        benched("dorran", "Dorran", 907, 34);
+        desk.proposal(ben, three, null);
+        assertFalse(lastTalk().labels().contains("Call someone from my bench..."), "only Lv34 Dorran on it");
+        pick("Never mind.");
+
+        benched("rin", "Rin", RIN);
+        desk.proposal(ben, three, null);
+        assertTrue(lastTalk().labels().contains("Call someone from my bench..."), lastTalk().labels().toString());
+        assertEquals(3, talks().size(), "each one a window of its own");
+    }
+
+    @Test
     void travellerShowsAreTheyHereYetInsteadOfYes() {
+        benched("dorran", "Dorran", 907);
         desk.proposal(ben, onTheWay(null), null);
 
         Talk lineup = lastTalk();
@@ -440,12 +461,17 @@ class LakelisDeskTest {
 
     /** One of Ben's companions resting on the bench, Lv25 Bandit training at Ant Tunnel. */
     private Persona benched(String id, String name, int characterId) {
+        return benched(id, name, characterId, 25);
+    }
+
+    /** {@link #benched(String, String, int)} at {@code level}. */
+    private Persona benched(String id, String name, int characterId, int level) {
         Persona persona = mock(Persona.class);
         when(persona.id()).thenReturn(id);
         when(persona.name()).thenReturn(name);
         when(content.persona(id)).thenReturn(persona);
         when(residents.characterIdOf(id)).thenReturn(characterId);
-        when(store.characterLevelAndJob(characterId)).thenReturn(new int[] {25, Job.BANDIT.getId()});
+        when(store.characterLevelAndJob(characterId)).thenReturn(new int[] {level, Job.BANDIT.getId()});
         rows.add(new RosterEntry(BEN, id, RosterState.BENCHED, Assignment.TRAIN, 0, 0, 105_040_300, 0L, 0L, 0L, 0L, 0L,
                 0L, 0, null));
         return persona;
