@@ -152,6 +152,17 @@ class BenchDeathResupplyTest {
     }
 
     @Test
+    void aSliceLoadsItsCompanionWholeNotAtTheHpItWasSavedWithAfterARevive() {
+        // found live 2026-09-30: saved at its stock-revive HP it loaded onto its field that low and died in seconds
+        game.companion(ANN, "brin", "Brin", BRIN, Assignment.FARM_MESO);
+
+        game.duty.tick();
+
+        assertTrue(game.duty.live("brin"));
+        org.mockito.Mockito.verify(game.bots.get(BRIN)).healHpMp();
+    }
+
+    @Test
     void aShopVisitThatTakesTooLongUnloadsAnyway() {
         game.companion(ANN, "brin", "Brin", BRIN, Assignment.FARM_MESO);
         game.duty.tick();

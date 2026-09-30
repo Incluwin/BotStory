@@ -334,17 +334,25 @@ public final class LivingTalk {
         int from = menuPage * MENU_PAGE_SIZE;
         int to = pageCount > 1 ? from + MENU_PAGE_SIZE : Integer.MAX_VALUE;
         int next = 0; // position of the next selectable option; a heading shows on the page of the option after it
+        boolean afterOption = false; // the last line written is a #L option
         for (int id = 0; id < options.size(); id++) {
             Option option = options.get(id);
             boolean onPage = next >= from && next < to;
             if (!option.selectable()) {
                 if (onPage) {
+                    // the v83 client draws a plain line right after a #L option half a line up, over that option
+                    // (found live 2026-09-29/30): a blank line first keeps it on a line of its own
+                    if (afterOption && !option.label().startsWith("\r\n")) {
+                        text.append("\r\n");
+                    }
                     text.append("\r\n").append(option.label());
+                    afterOption = false;
                 }
                 continue;
             }
             if (onPage) {
                 text.append("\r\n#L").append(selectionOf(id)).append("#").append(option.label()).append("#l");
+                afterOption = true;
             }
             next++;
         }

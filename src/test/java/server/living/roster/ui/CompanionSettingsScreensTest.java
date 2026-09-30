@@ -212,7 +212,8 @@ class CompanionSettingsScreensTest {
         assertEquals(HADRIK_PORTRAIT, page.npcId(), "the companion speaks on it");
         assertEquals(MENU, page.msgType());
         assertTrue(page.text().startsWith("how should i fight?\r\n\r\n#eWhere I stand:#n\r\n#L"), page.text());
-        assertTrue(page.text().contains("#l\r\n#eSupport:#n\r\n#L"), page.text());
+        // a blank line first: the v83 client draws a plain line right after an option over that option
+        assertTrue(page.text().contains("#l\r\n\r\n#eSupport:#n\r\n#L"), page.text());
         assertEquals(STYLE, page.labels());
         pick("Back");
         assertTrue(lastTalk().text().startsWith("#eHadrik#n"), "Back is the card again");
@@ -323,7 +324,8 @@ class CompanionSettingsScreensTest {
         assertEquals(HADRIK_PORTRAIT, page.npcId());
         assertTrue(page.text().startsWith("i carry 12,300 meso, 38 Red Potions and 20 Blue Potions.\r\n\r\n#L"),
                 page.text());
-        assertTrue(page.text().contains("#l\r\n#eWhat I pick up:#n\r\n#L"), page.text());
+        // a blank line first: the v83 client draws a plain line right after an option over that option
+        assertTrue(page.text().contains("#l\r\n\r\n#eWhat I pick up:#n\r\n#L"), page.text());
         assertEquals(List.of("Drink an HP potion below 70%...", "Drink an MP potion below 50%...", "Everything - now",
                 "Only what I hit", "Meso and your quest items", "Nothing", "Leave boss drops to you outside boss runs: on",
                 "Here's some coin for supplies...", "Back"), page.labels());

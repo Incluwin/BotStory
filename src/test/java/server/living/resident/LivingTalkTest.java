@@ -144,6 +144,25 @@ class LivingTalkTest {
         assertTrue(talk.text().startsWith("crew\r\n#eParty#n\r\n#L"));
     }
 
+    @Test
+    void aHeadingRightAfterAnOptionGetsABlankLineSoTheClientDoesNotDrawItOverThatOption() {
+        // found live: the v83 client draws a plain line right after a #L option half a line up, over the option
+        List<Option> options = new ArrayList<>();
+        options.add(Option.heading("#eFirst#n")); // at the top: no blank line needed
+        options.add(new Option("a", null));
+        options.add(Option.heading("#eAfter a#n")); // right after an option: a blank line first
+        options.add(new Option("b", null));
+        options.add(Option.heading("\r\n#eAlready spaced#n")); // brings its own blank line: not doubled
+        options.add(new Option("c", null));
+        LivingTalk.open(chr, NPC).menu("page", options).show();
+
+        String text = lastTalk().text();
+        assertTrue(text.startsWith("page\r\n#eFirst#n\r\n#L"), text);
+        assertTrue(text.contains("#l\r\n\r\n#eAfter a#n\r\n#L"), text);
+        assertTrue(text.contains("#l\r\n\r\n#eAlready spaced#n\r\n#L"), text);
+        assertFalse(text.contains("\r\n\r\n\r\n"), text);
+    }
+
     // ---- stamps --------------------------------------------------------------------------
 
     @Test

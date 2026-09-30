@@ -770,6 +770,10 @@ public final class BenchDutyDispatcher {
             }
             live.put(persona.id(), slice);
             byCharacter.put(characterId, slice);
+            // it has rested off-screen since its last slice (a player idling in town regenerates): it comes back whole.
+            // Found live 2026-09-30: a companion saved at its stock-revive HP (50-70) loaded onto its field that low and
+            // died within seconds, slice after slice (Jinx 15 deaths in 16 slices).
+            agent.healHpMp();
             world.bench().applyAccrued(entry, agent);
             slice.snapshot(agent);
             if (!(form instanceof BenchStallForm)) {
