@@ -2694,17 +2694,19 @@ public final class RosterService {
 
     /**
      * The companion steps out of the run it is in to wait outside it on {@code mapId} (a tap-out, on companion-ops).
-     * With its owner online that is a {@link #hold}. With its owner gone (it finishes the run for a friend, decision 8b)
-     * it only stops, says the note in party chat and leaves the party: its row is not written, and it parks when its
-     * commitment ends (InstanceLogoutHandoff).
+     * With its owner online on its channel that is a {@link #hold}. Otherwise it only stops, says the note in party
+     * chat and leaves the party, and its row is not written. With its owner gone (it finishes the run for a friend,
+     * decision 8b) it parks when its commitment ends (InstanceLogoutHandoff). With its owner on another channel (they
+     * walked out of the run and changed channel; a committed companion stays on the run's) a hold would despawn it,
+     * and removing its runtime fails the run it is still a member of: the auditor seats it again once the run lets go.
      */
     public RosterResult waitOutside(int ownerId, Persona persona, int mapId, HoldNote note) {
         Character owner = onlineCharacter(ownerId);
-        if (owner != null) {
-            return hold(owner, persona, mapId, null, note);
-        }
         RosterEntry entry = world.store().rosterEntry(ownerId, persona.id());
         Character bot = entry == null ? null : companion(entry);
+        if (owner != null && (bot == null || sameChannel(owner, bot))) {
+            return hold(owner, persona, mapId, null, note);
+        }
         if (bot == null) {
             return new RosterResult.Failed(persona.name() + " is not out right now.");
         }

@@ -27,7 +27,8 @@ import static server.living.roster.LifecycleHarness.ANN;
  * A companion that taps out of a run it went down in (P6, the tap-out): it stands on the exit map after its respawn and
  * waits there outside the run. With its owner online that is a HOLD on that map: "sorry, i'll wait outside." in party
  * chat, then out of the party, its seat kept, back after the run. With its owner gone (it finishes the run for a
- * friend, decision 8b) it only says so and leaves the party: no row is written, and it parks when the run ends.
+ * friend, decision 8b) it only says so and leaves the party: no row is written, and it parks when the run ends. So
+ * too with its owner on another channel: a hold from there despawns it, and that fails the run it is still in.
  */
 class WaitOutsideTest {
     private static final int EXIT = 103000890;
@@ -76,6 +77,23 @@ class WaitOutsideTest {
         assertEquals(List.of("stop Olwen", "party " + LINE, "leave Olwen"), game.calls);
         assertFalse(game.members.contains(900));
         assertEquals(List.of(), game.store.saved, "it parks at the end of the run, through the handoff");
+        assertEquals(RosterState.ACTIVE, game.row(olwen).state());
+        assertNull(game.slots.reservation("olwen"));
+    }
+
+    @Test
+    void withItsOwnerOnAnotherChannelItStaysLoadedAndOnlyLeavesTheParty() {
+        game.moveAnn(104000000, 0, 0); // Ann walked out of the run and changed channel; Olwen stays on the run's
+        game.annOnChannel(2);
+        game.companionOnChannel(olwen, 1);
+
+        RosterResult result = game.roster().waitOutside(ANN, olwen, EXIT, HoldNote.party(LINE));
+
+        assertTrue(result.ok());
+        assertEquals(List.of("stop Olwen", "party " + LINE, "leave Olwen"), game.calls,
+                "no despawn: removing its runtime fails the run it is still a member of");
+        assertFalse(game.members.contains(900));
+        assertEquals(List.of(), game.store.saved, "the auditor seats it again once the run lets it go");
         assertEquals(RosterState.ACTIVE, game.row(olwen).state());
         assertNull(game.slots.reservation("olwen"));
     }
