@@ -174,6 +174,11 @@ public final class RosterService {
         return chr != null && owners.contains(chr.getId());
     }
 
+    /** {@link #hasCompanions} by character id, online or not, from memory. */
+    public boolean isOwner(int characterId) {
+        return owners.contains(characterId);
+    }
+
     // ---- queries -------------------------------------------------------------------------
 
     public boolean isOwned(String personaId) {

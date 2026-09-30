@@ -49,7 +49,8 @@ import java.util.function.LongSupplier;
  * there on the next run the episode is marked stuck and logged once more, and nothing else is tried until the
  * companion is seen clean. That is what keeps the auditor out of a repair loop. Owners inside an event instance are
  * deferred, since their companions may be committed to the run, and so are owners with a companion committed to one
- * (an owner who walked out of a party quest their companions finish).</p>
+ * (an owner who walked out of a party quest their companions finish). Each run also lets go of a companion run whose
+ * KPQ session went away without ending it, once it has been gone a minute (P6).</p>
  */
 public final class CompanionAuditor {
     public static final long INTERVAL_MS = 60_000L;
@@ -137,6 +138,10 @@ public final class CompanionAuditor {
         }
         for (Finding finding : review(reports, deferred, started)) {
             apply(finding);
+        }
+        CompanionPartyQuestService partyQuests = world.partyQuests();
+        if (partyQuests != null) {
+            partyQuests.sweepLostRuns(started); // a companion run whose KPQ session went away without ending it (P6)
         }
         LastRun previous = last;
         last = new LastRun(started, Math.max(0L, clock.getAsLong() - started), reports.size(), deferred.size(),

@@ -227,6 +227,7 @@ public final class LivingWorldHooks {
                     world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName);
                 }
             }
+            world.partyQuests().cleared(players); // a companion run's stage-5 clear: nobody taps out after it
         } catch (RuntimeException failure) {
             log.warn("living world partyQuestCleared hook failed", failure);
         }
@@ -243,6 +244,7 @@ public final class LivingWorldHooks {
             world.benchDuty().died(chr.getId()); // a companion on a live bench slice ends it once revived (flow 12)
             world.crewRotation().died(chr); // Keep my crew fresh swaps one that went down, even once revived
             server.living.population.PopulationHooks.died(chr);
+            world.partyQuests().died(chr); // a death inside a companion run counts for its record
         } catch (RuntimeException failure) {
             log.warn("living world playerDied hook failed", failure);
         }

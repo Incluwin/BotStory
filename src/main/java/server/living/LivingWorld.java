@@ -85,6 +85,7 @@ public final class LivingWorld {
     private final server.living.roster.CrewRotation crewRotation;
     private final server.living.roster.BenchCombatLearning benchCombatLearning;
     private final server.living.roster.CompanionPartyQuestService partyQuests;
+    private final server.living.roster.CompanionRunLifecycle partyQuestRuns;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -130,6 +131,7 @@ public final class LivingWorld {
         this.crewRotation = new server.living.roster.CrewRotation(this); // "Keep my crew fresh" (P5, decision 15 b)
         this.benchCombatLearning = new server.living.roster.BenchCombatLearning(this); // decision 13 a
         this.partyQuests = new server.living.roster.CompanionPartyQuestService(this); // P6: party quests with companions
+        this.partyQuestRuns = new server.living.roster.CompanionRunLifecycle(this, partyQuests);
     }
 
     public static LivingWorld get() {
@@ -172,6 +174,9 @@ public final class LivingWorld {
         server.agents.auth.AgentClaimGuard.installVerbs(world.chatVerbs); // chat dismiss/logout of a companion bench it
         // travelling, held and away companions never follow; the rest come into their owner's new map where they came in
         server.agents.capabilities.follow.AgentFollowGuard.install(new server.living.roster.CompanionFollowGuard(world));
+        // a companion a party quest lets go goes back to its owner, not to Kerning TownLife (P6); before any admission,
+        // whose own rollback recovers its Agents
+        server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(world.partyQuestRuns);
         // a companion out with its owner drinks and loots by its own settings (P3b)
         world.roster.settings().install();
         // hire:<characterId> ids resolve to hired citizens, and a released hire goes back to the population (P4)
@@ -261,6 +266,7 @@ public final class LivingWorld {
         net.server.world.PartySeatGate.install(null);
         server.agents.auth.AgentClaimGuard.installVerbs(null);
         server.agents.capabilities.follow.AgentFollowGuard.install(null);
+        server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(null);
         server.living.roster.BenchCombatLearning.uninstall();
         server.living.roster.CompanionSettingsApplier.uninstall();
         HiredHands.uninstall();
