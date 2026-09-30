@@ -574,6 +574,12 @@ public final class CompanionPartyQuestService {
         return List.copyOf(runsBySession.values());
     }
 
+    /** True while the character is a run's lineup companion, tapped out or not, loaded or not. */
+    boolean runCompanion(int characterId) {
+        CompanionRun run = runByCharacter.get(characterId);
+        return run != null && run.ownerByCompanion.containsKey(characterId);
+    }
+
     /** True while the character is a run's companion asked to tap out: its recovery only stops it. */
     boolean tappingOut(int characterId) {
         CompanionRun run = runByCharacter.get(characterId);

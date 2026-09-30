@@ -38,7 +38,9 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
     /**
      * FOLLOW_LEADER for an owner's companion its owner leads, RELEASE for one the roster moves itself, null (TownLife)
      * for anyone else. Only an Agent led by a roster owner is looked up at all, so a citizen's id never costs a persona
-     * scan here. A failure never sends an owned companion to TownLife.
+     * scan here; a run's own lineup companion is known from memory without that, and is RELEASE even when it is not
+     * loaded (one that tapped out and was parked since: TownLife for it would keep the post-run hold on the rest). A
+     * failure never sends an owned companion to TownLife.
      */
     @Override
     public AgentPartyQuestHandback.Handback handback(int agentCharacterId, String questKey) {
@@ -46,7 +48,7 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
             RosterService roster = world.roster();
             int leaderId = AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId);
             if (!roster.isOwner(leaderId)) {
-                return null;
+                return service.runCompanion(agentCharacterId) ? AgentPartyQuestHandback.Handback.RELEASE : null;
             }
             Persona persona = world.residents().personaOfCharacterId(agentCharacterId);
             int ownerId = persona == null ? 0 : roster.cachedOwnerOf(persona.id());
