@@ -6,6 +6,7 @@ import constants.game.ExpTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
+import server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
 import server.agents.runtime.AgentMailboxAction;
@@ -219,9 +220,11 @@ public final class BenchDutyDispatcher {
     /** The camps Your call chooses among for a level near a camp (BenchDutyChooser.camps; a test gives its own). */
     BiFunction<Integer, Integer, List<BenchDutyChooser.Camp>> yourCallCamps = BenchDutyChooser::camps;
     /**
-     * The purse a companion with no HP potion needs to go and fight: enough for a stack of the cheapest potions. Below
-     * it, and with no HP potion in its saved USE tab, a field slice cannot resupply and ends in a death every time (found
-     * live 2026-09-30: a companion with 0 meso loaded, failed to buy, died and rested every 20 minutes for hours).
+     * The meso a companion with no HP potion needs to spend to go and fight: enough for a stack of the cheapest potions,
+     * over the journey reserve its shop visit keeps on a self-led slice (AgentSupplyRecoveryPolicy.minimumWalletReserve).
+     * Below it, and with no HP potion in its saved USE tab, a field slice cannot resupply and ends in a death every time
+     * (found live 2026-09-30: a companion with 0 meso loaded, failed to buy, died and rested every 20 minutes for hours;
+     * then Casse, Lv24 with 1,706 meso over a 1,700 reserve, walked to the shop and back every slice buying nothing).
      */
     static final long FIELD_SUPPLY_MIN_MESO = 1_000L;
     public static final String NO_SUPPLIES = "out of potions and meso";
@@ -546,7 +549,11 @@ public final class BenchDutyDispatcher {
     /** Its saved USE tab holds no HP potion and its saved purse cannot buy a stack (a failed read: it may try). */
     private boolean savedStateCannotSupply(int characterId) {
         long meso = world.store().characterMeso(characterId);
-        return meso >= 0 && meso < FIELD_SUPPLY_MIN_MESO && CrewRotation.savedTabHasNoHpPotion(world.store(), characterId);
+        if (meso < 0) {
+            return false;
+        }
+        long spendable = meso - AgentSupplyRecoveryPolicy.minimumWalletReserve(world.store().characterLevel(characterId));
+        return spendable < FIELD_SUPPLY_MIN_MESO && CrewRotation.savedTabHasNoHpPotion(world.store(), characterId);
     }
 
     // ---- Your call (a standing intent) -------------------------------------------------------

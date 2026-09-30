@@ -37,8 +37,12 @@ public final class AgentSupplyRecoveryPolicy {
         if (agent != null && AgentWalletReserve.exempt(agent.getId())) {
             return 0;
         }
-        int level = agent == null ? 1 : Math.max(1, agent.getLevel());
-        return Math.max(0, WALLET_RESERVE_BASE + level * WALLET_RESERVE_PER_LEVEL);
+        return minimumWalletReserve(agent == null ? 1 : agent.getLevel());
+    }
+
+    /** The journey reserve at this level with no exemption, for a host reading a saved character it has not loaded. */
+    public static int minimumWalletReserve(int level) {
+        return Math.max(0, WALLET_RESERVE_BASE + Math.max(1, level) * WALLET_RESERVE_PER_LEVEL);
     }
 
     /**

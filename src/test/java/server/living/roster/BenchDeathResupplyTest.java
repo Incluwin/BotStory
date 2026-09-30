@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
+import server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy;
 import server.living.store.LivingStore.Assignment;
 
 import java.util.HashSet;
@@ -145,10 +146,24 @@ class BenchDeathResupplyTest {
         game.duty.tick();
         assertFalse(game.duty.live("brin"), "0 meso and no HP potion: it stays in the ledger");
 
-        game.store.purses.put(BRIN, (int) BenchDutyDispatcher.FIELD_SUPPLY_MIN_MESO);
+        game.store.purses.put(BRIN, AgentSupplyRecoveryPolicy.minimumWalletReserve(10) + (int) BenchDutyDispatcher.FIELD_SUPPLY_MIN_MESO);
         game.now += 120_000L;
         game.duty.tick();
-        assertTrue(game.duty.live("brin"), "a purse that buys a stack of potions goes");
+        assertTrue(game.duty.live("brin"), "a purse that buys a stack of potions over its shop's reserve goes");
+    }
+
+    @Test
+    void aPurseTheShopKeepsAsItsReserveIsNotEnough() {
+        // found live 2026-09-30: Casse, Lv24 with 1,706 meso and no HP potion, went out every slice, but her shop visit
+        // keeps a 1,700 journey reserve on a self-led slice: she walked to the shop and back buying nothing, and died on the way
+        game.companion(ANN, "brin", "Brin", BRIN, Assignment.FARM_MESO);
+        game.store.levels.put(BRIN, 24);
+        game.store.purses.put(BRIN, AgentSupplyRecoveryPolicy.minimumWalletReserve(24) + 6);
+
+        game.duty.tick();
+
+        assertFalse(game.duty.live("brin"), "no shop walk that buys nothing");
+        assertEquals(BenchDutyDispatcher.NO_SUPPLIES, game.duty.note("brin"), "its card asks for coin");
     }
 
     @Test
