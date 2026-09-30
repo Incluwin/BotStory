@@ -245,7 +245,7 @@ public final class LivingStore {
             + " contract_started_at, offer_expires_at, proof_progress, paid_meso, party_seconds, left_at, last_interaction_at";
 
     public Bond bond(int characterId, String personaId) {
-        String sql = "SELECT " + BOND_COLUMNS + " FROM living_bond WHERE character_id = ? AND persona_id = ?";
+        String sql = SqlTime.utc("SELECT " + BOND_COLUMNS + " FROM living_bond WHERE character_id = ? AND persona_id = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             ps.setString(2, personaId);
@@ -262,7 +262,7 @@ public final class LivingStore {
 
     public List<Bond> bondsOf(int characterId) {
         List<Bond> out = new ArrayList<>();
-        String sql = "SELECT " + BOND_COLUMNS + " FROM living_bond WHERE character_id = ?";
+        String sql = SqlTime.utc("SELECT " + BOND_COLUMNS + " FROM living_bond WHERE character_id = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -393,12 +393,12 @@ public final class LivingStore {
     }
 
     public void saveBond(Bond bond) {
-        String sql = "INSERT INTO living_bond (" + BOND_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        String sql = SqlTime.utc("INSERT INTO living_bond (" + BOND_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 + " ON DUPLICATE KEY UPDATE stage = VALUES(stage), points = VALUES(points), flags = VALUES(flags),"
                 + " contract_state = VALUES(contract_state), contract_started_at = VALUES(contract_started_at),"
                 + " offer_expires_at = VALUES(offer_expires_at), proof_progress = VALUES(proof_progress),"
                 + " paid_meso = VALUES(paid_meso), party_seconds = VALUES(party_seconds), left_at = VALUES(left_at),"
-                + " last_interaction_at = VALUES(last_interaction_at)";
+                + " last_interaction_at = VALUES(last_interaction_at)");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, bond.characterId());
             ps.setString(2, bond.personaId());
@@ -406,13 +406,13 @@ public final class LivingStore {
             ps.setInt(4, bond.points());
             ps.setString(5, String.join(",", bond.flags()));
             ps.setString(6, bond.contractState().name());
-            setNullableTime(ps, 7, bond.contractStartedAtMs());
-            setNullableTime(ps, 8, bond.offerExpiresAtMs());
+            SqlTime.setNullable(ps, 7, bond.contractStartedAtMs());
+            SqlTime.setNullable(ps, 8, bond.offerExpiresAtMs());
             ps.setInt(9, bond.proofProgress());
             ps.setLong(10, bond.paidMeso());
             ps.setInt(11, bond.partySeconds());
-            setNullableTime(ps, 12, bond.leftAtMs());
-            setNullableTime(ps, 13, bond.lastInteractionAtMs());
+            SqlTime.setNullable(ps, 12, bond.leftAtMs());
+            SqlTime.setNullable(ps, 13, bond.lastInteractionAtMs());
             ps.executeUpdate();
         } catch (SQLException failure) {
             log.warn("living_bond write failed for {}/{}", bond.characterId(), bond.personaId(), failure);
@@ -432,23 +432,23 @@ public final class LivingStore {
         return new Bond(rs.getInt("character_id"), rs.getString("persona_id"),
                 BondStage.valueOf(rs.getString("stage")), rs.getInt("points"), flags,
                 ContractState.valueOf(rs.getString("contract_state")),
-                time(rs.getTimestamp("contract_started_at")), time(rs.getTimestamp("offer_expires_at")),
+                SqlTime.get(rs, "contract_started_at"), SqlTime.get(rs, "offer_expires_at"),
                 rs.getInt("proof_progress"), rs.getLong("paid_meso"), rs.getInt("party_seconds"),
-                time(rs.getTimestamp("left_at")), time(rs.getTimestamp("last_interaction_at")));
+                SqlTime.get(rs, "left_at"), SqlTime.get(rs, "last_interaction_at"));
     }
 
     // ---- quests --------------------------------------------------------------------------
 
     public QuestState questState(int characterId, String questId) {
-        String sql = "SELECT step_index, progress, status, started_at, completed_at, repeats FROM living_quest_state"
-                + " WHERE character_id = ? AND quest_id = ?";
+        String sql = SqlTime.utc("SELECT step_index, progress, status, started_at, completed_at, repeats FROM living_quest_state"
+                + " WHERE character_id = ? AND quest_id = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             ps.setString(2, questId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     return new QuestState(characterId, questId, rs.getInt(1), rs.getInt(2),
-                            QuestStatus.valueOf(rs.getString(3)), time(rs.getTimestamp(4)), time(rs.getTimestamp(5)),
+                            QuestStatus.valueOf(rs.getString(3)), SqlTime.get(rs, 4), SqlTime.get(rs, 5),
                             rs.getInt(6));
                 }
             }
@@ -460,8 +460,8 @@ public final class LivingStore {
 
     public List<QuestState> questStates(int characterId, QuestStatus status) {
         List<QuestState> out = new ArrayList<>();
-        String sql = "SELECT quest_id, step_index, progress, status, started_at, completed_at, repeats FROM living_quest_state"
-                + " WHERE character_id = ?" + (status == null ? "" : " AND status = ?");
+        String sql = SqlTime.utc("SELECT quest_id, step_index, progress, status, started_at, completed_at, repeats FROM living_quest_state"
+                + " WHERE character_id = ?" + (status == null ? "" : " AND status = ?"));
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             if (status != null) {
@@ -470,7 +470,7 @@ public final class LivingStore {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     out.add(new QuestState(characterId, rs.getString(1), rs.getInt(2), rs.getInt(3),
-                            QuestStatus.valueOf(rs.getString(4)), time(rs.getTimestamp(5)), time(rs.getTimestamp(6)),
+                            QuestStatus.valueOf(rs.getString(4)), SqlTime.get(rs, 5), SqlTime.get(rs, 6),
                             rs.getInt(7)));
                 }
             }
@@ -481,18 +481,18 @@ public final class LivingStore {
     }
 
     public void saveQuestState(QuestState state) {
-        String sql = "INSERT INTO living_quest_state (character_id, quest_id, step_index, progress, status, started_at,"
+        String sql = SqlTime.utc("INSERT INTO living_quest_state (character_id, quest_id, step_index, progress, status, started_at,"
                 + " completed_at, repeats) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE step_index = VALUES(step_index),"
                 + " progress = VALUES(progress), status = VALUES(status), started_at = VALUES(started_at),"
-                + " completed_at = VALUES(completed_at), repeats = VALUES(repeats)";
+                + " completed_at = VALUES(completed_at), repeats = VALUES(repeats)");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, state.characterId());
             ps.setString(2, state.questId());
             ps.setInt(3, state.stepIndex());
             ps.setInt(4, state.progress());
             ps.setString(5, state.status().name());
-            setNullableTime(ps, 6, state.startedAtMs());
-            setNullableTime(ps, 7, state.completedAtMs());
+            SqlTime.setNullable(ps, 6, state.startedAtMs());
+            SqlTime.setNullable(ps, 7, state.completedAtMs());
             ps.setInt(8, state.repeats());
             ps.executeUpdate();
         } catch (SQLException failure) {
@@ -522,7 +522,7 @@ public final class LivingStore {
             + " last_ledger_at = ?, farm_seconds_today = ?, farm_day = ?";
 
     public RosterEntry rosterEntry(int characterId, String personaId) {
-        String sql = "SELECT " + ROSTER_COLUMNS + " FROM living_roster WHERE character_id = ? AND persona_id = ?";
+        String sql = SqlTime.utc("SELECT " + ROSTER_COLUMNS + " FROM living_roster WHERE character_id = ? AND persona_id = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             ps.setString(2, personaId);
@@ -565,7 +565,7 @@ public final class LivingStore {
 
     private List<RosterEntry> rosterWhere(String where, Binder binder) {
         List<RosterEntry> out = new ArrayList<>();
-        String sql = "SELECT " + ROSTER_COLUMNS + " FROM living_roster WHERE " + where;
+        String sql = SqlTime.utc("SELECT " + ROSTER_COLUMNS + " FROM living_roster WHERE " + where);
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             binder.bind(ps);
             try (ResultSet rs = ps.executeQuery()) {
@@ -580,13 +580,13 @@ public final class LivingStore {
     }
 
     public void saveRoster(RosterEntry entry) {
-        String sql = "INSERT INTO living_roster (" + ROSTER_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        String sql = SqlTime.utc("INSERT INTO living_roster (" + ROSTER_COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 + " ON DUPLICATE KEY UPDATE state = VALUES(state), assignment = VALUES(assignment),"
                 + " assignment_item = VALUES(assignment_item), assignment_count = VALUES(assignment_count),"
                 + " camp_map_id = VALUES(camp_map_id), accrued_exp = VALUES(accrued_exp), haul_meso = VALUES(haul_meso),"
                 + " wages_paid_until = VALUES(wages_paid_until), benched_at = VALUES(benched_at),"
                 + " last_ledger_at = VALUES(last_ledger_at), farm_seconds_today = VALUES(farm_seconds_today), farm_day = VALUES(farm_day),"
-                + " eta_at = VALUES(eta_at), hold_map_id = VALUES(hold_map_id), parked_at = VALUES(parked_at)";
+                + " eta_at = VALUES(eta_at), hold_map_id = VALUES(hold_map_id), parked_at = VALUES(parked_at)");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, entry.characterId());
             ps.setString(2, entry.personaId());
@@ -597,15 +597,15 @@ public final class LivingStore {
             setNullableInt(ps, 7, entry.campMapId());
             ps.setLong(8, entry.accruedExp());
             ps.setLong(9, entry.haulMeso());
-            setNullableTime(ps, 10, entry.wagesPaidUntilMs());
-            ps.setTimestamp(11, new Timestamp(entry.recruitedAtMs() == 0L ? System.currentTimeMillis() : entry.recruitedAtMs()));
-            setNullableTime(ps, 12, entry.benchedAtMs());
-            setNullableTime(ps, 13, entry.lastLedgerAtMs());
+            SqlTime.setNullable(ps, 10, entry.wagesPaidUntilMs());
+            SqlTime.set(ps, 11, entry.recruitedAtMs() == 0L ? System.currentTimeMillis() : entry.recruitedAtMs());
+            SqlTime.setNullable(ps, 12, entry.benchedAtMs());
+            SqlTime.setNullable(ps, 13, entry.lastLedgerAtMs());
             ps.setInt(14, entry.farmSecondsToday());
             ps.setString(15, entry.farmDay());
-            setNullableTime(ps, 16, entry.etaAtMs());
+            SqlTime.setNullable(ps, 16, entry.etaAtMs());
             setNullableInt(ps, 17, entry.holdMapId());
-            setNullableTime(ps, 18, entry.parkedAtMs());
+            SqlTime.setNullable(ps, 18, entry.parkedAtMs());
             ps.executeUpdate();
         } catch (SQLException failure) {
             log.warn("living_roster write failed for {}/{}", entry.characterId(), entry.personaId(), failure);
@@ -618,7 +618,7 @@ public final class LivingStore {
      * (plan P2a, "Data model"). A row that is gone stays gone.
      */
     public void saveRosterProgress(RosterEntry entry) {
-        String sql = "UPDATE living_roster SET " + ROSTER_PROGRESS_COLUMNS + " WHERE character_id = ? AND persona_id = ?";
+        String sql = SqlTime.utc("UPDATE living_roster SET " + ROSTER_PROGRESS_COLUMNS + " WHERE character_id = ? AND persona_id = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setString(1, entry.assignment().name());
             setNullableInt(ps, 2, entry.assignmentItem());
@@ -626,9 +626,9 @@ public final class LivingStore {
             setNullableInt(ps, 4, entry.campMapId());
             ps.setLong(5, entry.accruedExp());
             ps.setLong(6, entry.haulMeso());
-            setNullableTime(ps, 7, entry.wagesPaidUntilMs());
-            setNullableTime(ps, 8, entry.benchedAtMs());
-            setNullableTime(ps, 9, entry.lastLedgerAtMs());
+            SqlTime.setNullable(ps, 7, entry.wagesPaidUntilMs());
+            SqlTime.setNullable(ps, 8, entry.benchedAtMs());
+            SqlTime.setNullable(ps, 9, entry.lastLedgerAtMs());
             ps.setInt(10, entry.farmSecondsToday());
             ps.setString(11, entry.farmDay());
             ps.setInt(12, entry.characterId());
@@ -1014,10 +1014,10 @@ public final class LivingStore {
         return new RosterEntry(rs.getInt("character_id"), rs.getString("persona_id"),
                 RosterState.valueOf(rs.getString("state")), Assignment.valueOf(rs.getString("assignment")),
                 rs.getInt("assignment_item"), rs.getInt("assignment_count"), rs.getInt("camp_map_id"),
-                rs.getLong("accrued_exp"), rs.getLong("haul_meso"), time(rs.getTimestamp("wages_paid_until")),
-                time(rs.getTimestamp("recruited_at")), time(rs.getTimestamp("benched_at")),
-                time(rs.getTimestamp("last_ledger_at")), rs.getInt("farm_seconds_today"), rs.getString("farm_day"),
-                time(rs.getTimestamp("eta_at")), rs.getInt("hold_map_id"), time(rs.getTimestamp("parked_at")));
+                rs.getLong("accrued_exp"), rs.getLong("haul_meso"), SqlTime.get(rs, "wages_paid_until"),
+                SqlTime.get(rs, "recruited_at"), SqlTime.get(rs, "benched_at"),
+                SqlTime.get(rs, "last_ledger_at"), rs.getInt("farm_seconds_today"), rs.getString("farm_day"),
+                SqlTime.get(rs, "eta_at"), rs.getInt("hold_map_id"), SqlTime.get(rs, "parked_at"));
     }
 
     // ---- haul ----------------------------------------------------------------------------
@@ -1092,13 +1092,13 @@ public final class LivingStore {
 
     /** Units of an item this persona handed to the player since {@code sinceMs}. */
     public int transferredSince(int characterId, String personaId, int itemId, long sinceMs) {
-        String sql = "SELECT COALESCE(SUM(quantity), 0) FROM living_haul_transfer WHERE character_id = ? AND persona_id = ?"
-                + " AND item_id = ? AND transferred_at >= ?";
+        String sql = SqlTime.utc("SELECT COALESCE(SUM(quantity), 0) FROM living_haul_transfer WHERE character_id = ? AND persona_id = ?"
+                + " AND item_id = ? AND transferred_at >= ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             ps.setString(2, personaId);
             ps.setInt(3, itemId);
-            ps.setTimestamp(4, new Timestamp(sinceMs));
+            SqlTime.set(ps, 4, sinceMs);
             try (ResultSet rs = ps.executeQuery()) {
                 return rs.next() ? rs.getInt(1) : 0;
             }
@@ -1112,12 +1112,12 @@ public final class LivingStore {
 
     public List<LearnedPhrase> learnedPhrases() {
         List<LearnedPhrase> out = new ArrayList<>();
-        String sql = "SELECT normalized_text, canonical, hits, source, approved, first_seen, last_seen FROM living_learned_phrase";
+        String sql = SqlTime.utc("SELECT normalized_text, canonical, hits, source, approved, first_seen, last_seen FROM living_learned_phrase");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql);
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 out.add(new LearnedPhrase(rs.getString(1), rs.getString(2), rs.getInt(3), rs.getString(4),
-                        rs.getBoolean(5), time(rs.getTimestamp(6)), time(rs.getTimestamp(7))));
+                        rs.getBoolean(5), SqlTime.get(rs, 6), SqlTime.get(rs, 7)));
             }
         } catch (SQLException failure) {
             log.warn("living_learned_phrase scan failed", failure);
@@ -1267,18 +1267,6 @@ public final class LivingStore {
         } else {
             ps.setInt(index, value);
         }
-    }
-
-    private static void setNullableTime(PreparedStatement ps, int index, long ms) throws SQLException {
-        if (ms <= 0L) {
-            ps.setNull(index, java.sql.Types.TIMESTAMP);
-        } else {
-            ps.setTimestamp(index, new Timestamp(ms));
-        }
-    }
-
-    private static long time(Timestamp value) {
-        return value == null ? 0L : value.getTime();
     }
 
     /** {@code ms} rounded to the nearest whole second, as MySQL stores it: the TIMESTAMP columns read it back unchanged. */
