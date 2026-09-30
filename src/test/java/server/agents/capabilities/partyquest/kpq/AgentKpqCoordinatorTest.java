@@ -401,6 +401,33 @@ class AgentKpqCoordinatorTest {
         }
     }
 
+    @Test
+    void anAgentLedTestRunStillEntersWhileAnotherLobbyIsOpen() {
+        // !kpqtest run owns its party too, but a GM test is not background and keeps the stock entry.
+        try (KpqRunFixture run = new KpqRunFixture()) {
+            Character kai = run.companion(1, "Kai");
+            AgentKpqSession session = run.session(AgentKpqSession.Mode.TEST_OBSERVATION, false,
+                    AgentKpqSession.Phase.ENTERING, kai, run.companion(2, "Mira"), run.companion(3, "Pip"));
+            session.setPartyOwnership(AgentKpqSession.PartyOwnership.KPQ_OWNED);
+            session.clearEventInstance();
+            for (int id = 1; id <= 3; id++) {
+                Character member = run.characters.findOnlineCharacterById(id);
+                run.outside(member, AgentKpqDefinition.RECRUIT_MAP);
+            }
+            Client client = mock(Client.class);
+            EventManager kerning = mock(EventManager.class);
+            when(kai.getClient()).thenReturn(client);
+            when(client.getEventManager("KerningPQ")).thenReturn(kerning);
+            when(kerning.getInstances()).thenReturn(List.of(mock(EventInstanceManager.class)));
+
+            AgentKpqCoordinator.tick(session, 2_000L);
+
+            // Lakelis is asked; this map mock has no Lakelis, so the stock entry blocker is what remains.
+            verify(run.map).getNPCById(AgentKpqDefinition.ENTRY_NPC);
+            assertEquals("enter-npc", session.blockerKey());
+        }
+    }
+
     private static AgentKpqMemberState member(int characterId, int partyNumber, int position) {
         AgentKpqMemberState member = new AgentKpqMemberState(
                 characterId, AgentKpqMemberState.MemberType.AGENT, partyNumber);

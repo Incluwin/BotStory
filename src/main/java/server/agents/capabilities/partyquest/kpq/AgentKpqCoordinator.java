@@ -269,7 +269,9 @@ final class AgentKpqCoordinator {
             if (nowMs < leaderState.nextRetryAtMs()) return;
             leaderState.setNextRetryAtMs(nowMs + INTERACTION_RETRY_MS);
             // A background party formed while a lobby was free may no longer take the last one a human could enter.
+            // An Agent-led !kpqtest run is KPQ_OWNED too, but it is not background and keeps the stock entry.
             if (session.partyOwnership() == AgentKpqSession.PartyOwnership.KPQ_OWNED
+                    && session.mode() != AgentKpqSession.Mode.TEST_OBSERVATION
                     && !AgentKpqLobbyPolicy.backgroundEntryAllowed(
                             KPQ.openInstances(leader, "KerningPQ"),
                             AgentKpqLobbyPolicy.maxLobbies(), AgentKpqLobbyPolicy.humanReservedLobbies())) {

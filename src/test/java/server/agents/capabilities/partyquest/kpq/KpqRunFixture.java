@@ -132,8 +132,14 @@ final class KpqRunFixture implements AutoCloseable {
      * companion holds the execution lease and narrates.
      */
     AgentKpqSession session(boolean companionAdopted, AgentKpqSession.Phase phase, Character... members) {
-        AgentKpqSession session = new AgentKpqSession(
-                AgentKpqSession.Mode.PRODUCTION, 7L, members[0].getId(), members.length, 1_000L);
+        return session(AgentKpqSession.Mode.PRODUCTION, companionAdopted, phase, members);
+    }
+
+    AgentKpqSession session(AgentKpqSession.Mode mode,
+                            boolean companionAdopted,
+                            AgentKpqSession.Phase phase,
+                            Character... members) {
+        AgentKpqSession session = new AgentKpqSession(mode, 7L, members[0].getId(), members.length, 1_000L);
         int executionAgentId = 0;
         for (Character member : members) {
             boolean companion = companionIds.contains(member.getId());
