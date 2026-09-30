@@ -1971,6 +1971,9 @@ final class AgentKpqCoordinator {
             return;
         }
         synchronized (session) {
+            // The watchdog read the phase outside this monitor, and an Agent's tick may have ended the run since (a
+            // cleared run must not hear it failed), or a release without the monitor may be under way.
+            if (terminal(session.phase()) || session.terminationStarted()) return;
             fail(session, reason, nowMs);
         }
     }

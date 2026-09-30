@@ -104,4 +104,33 @@ class WatchdogRespawnGraceTest {
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
                 tobi, "sorry, i went down. we need three for this, so let's head out."), times(1));
     }
+
+    @Test
+    void aRunCompletedBeforeTheFallbackTakesItsMonitorIsNeverToldItFailed() {
+        // The watchdog reads the phase outside the session's monitor; the leader's Agent tick can finish the run
+        // (release, then COMPLETED) before the fallback gets the monitor.
+        AgentKpqSession session = run.session(
+                true, AgentKpqSession.Phase.EXITING, ben, ann, run.human(3, "Cid"), tobi);
+        session.beginTermination();
+        session.complete(5_000L);
+
+        AgentKpqCoordinator.failWithoutLiveAgent(session, 5_000L);
+
+        assertEquals(AgentKpqSession.Phase.COMPLETED, session.phase());
+        assertEquals("", session.failure(), "no failure was recorded");
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), anyString()), never());
+    }
+
+    @Test
+    void aRunAnotherThreadIsAlreadyEndingIsLeftToThatEnd() {
+        // runtimeRemoved and forceStop release a run without its monitor; mid-release it is not yet terminal.
+        AgentKpqSession session = run.session(
+                true, AgentKpqSession.Phase.EXITING, ben, ann, run.human(3, "Cid"), tobi);
+        session.beginTermination();
+
+        AgentKpqCoordinator.failWithoutLiveAgent(session, 5_000L);
+
+        assertEquals(AgentKpqSession.Phase.EXITING, session.phase());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), anyString()), never());
+    }
 }
