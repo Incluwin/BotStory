@@ -573,8 +573,20 @@ Video: `docs/agents/evidence/video/p5-bench-alive.mp4` (122 s, captioned): a gri
 
 ## Not done / notes
 - **Exit "ledger and live EXP/h within +-25% after 5 slices per camp"** is not measured yet: no camp reached 5 slices in the session.
-- **A camp the owner (or an old grant) set** is kept even when measured deadly: Casse (Lv24 magician) died 3 of 4 slices at Excavation Site III (20 deaths/h). Only default camps skip deadly fields; "Your call" and the picker's rates show the risk.
+- ~~**A camp the owner (or an old grant) set** is kept even when measured deadly~~: fixed in `26492693d`, see "Rough camps" below.
 - **The Crew row of a REST companion** still says "rest @ <camp>", not the town it rests in (the card and the confirmation are right).
 - **The call-back report tally is in memory:** it covers only the time since the last restart (SilentSin's haul held 102k; the report said 21k).
 - **Found, not P5:** a citizen save fails when its `retires_at` falls in the US spring-forward gap (2027-03-14 02:28, "Incorrect datetime value"), so that row stops persisting; filed as its own task. The server was also found stopped at 19:43 on 09-29 with no shutdown log; no session or P5 agent stopped it, cause unknown.
 - **Test setup:** ohboy's HP restored and ohboy/Crewfriend moved by SQL while offline; Crewfriend granted Casse, Dorran and Lioren (`!grantcompanion`) and hired HappyWolf and IceCookie; stock for Ilse's stall was put in her haul by SQL (3 ETC stacks).
+
+## Rough camps (`26492693d`, 2026-09-30)
+A companion now leaves a camp that keeps killing it, even one its owner picked. The trigger was Casse (Lv24 magician): she died in 3 of 4 slices at Excavation Site III, a camp set when she was granted.
+- **Rule:** before a field slice, two conditions must both hold. Her kind (job branch, level band) is measured at 2+ deaths/h at the camp. Her own last 3 slices there, since the camp was last set, hold 2 deaths. Then she moves to the best safe field for her level and tells her owner once: a whisper when the owner is online ("Excavation Site III is too rough for me. i'll hunt at ... till you say otherwise."), otherwise a line at login ("While you were away, Casse moved camp to ...: the old one was too rough."). If no field is safe, she waits in the ledger. Her card and Crew row say "no safe camp", and she whispers that once.
+- **An owner's pick still counts:** re-picking a rough camp restarts her record there, so she tries it again. The picker marks rough camps ("rough for me (~N deaths/h)"), and picking one anyway gets "ok, i'll camp at X, but it's rough for me." A row on "Your call" is left to the bandit.
+- **Tests:** `RoughCampTest` (9), `RoughCampRosterTest` (2) and one in `CompanionCardScreensTest`. Without the fix, 3 of them fail. The living-world tree passes.
+- **Live (Crewfriend, 05:47 deploy):**
+  - At 05:49:19 Casse moved from Excavation Site III (101030103) to The Land of Wild Boar II (101030001). The camp event reads "camp 101030001 (too rough at 101030103)".
+  - The login line was written when Crewfriend logged in at 05:50:47 (`bench.camp-moved.told`).
+  - Her first slice there ended "resupplied" at 05:55:19 with +1,131 meso and 5 stacks, and no death.
+  - Her picker shows "Excavation Site III ... - rough for me (~10 deaths/h)" and "The Land of Wild Boar II ... - my camp now".
+- **Note:** she ran out of supplies 2 minutes into that slice, and the shop run took the other 4. That is the same P5 flow as before, not a death.
