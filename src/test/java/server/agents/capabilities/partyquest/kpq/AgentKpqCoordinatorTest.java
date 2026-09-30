@@ -1,8 +1,10 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import client.Character;
+import client.Client;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
+import scripting.event.EventManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
@@ -21,6 +23,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AgentKpqCoordinatorTest {
+    private static final long LOCAL_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.LOCAL_RECOVERY_TIMEOUT_MS");
+
     @Test
     void stageOnePassDropLineBelongsToTheDeliveringAgent() {
         assertEquals("AgentForSure, I dropped my pass beside you.",
@@ -365,6 +370,34 @@ class AgentKpqCoordinatorTest {
             } finally {
                 AgentPartyQuestEngagementRegistry.remove(engagement);
             }
+        }
+    }
+
+    @Test
+    void anOwnedBackgroundPartyLeavesTheLobbyHumansStillNeedFree() {
+        try (KpqRunFixture run = new KpqRunFixture()) {
+            Character kai = run.companion(1, "Kai");
+            AgentKpqSession session = run.session(false, AgentKpqSession.Phase.ENTERING,
+                    kai, run.companion(2, "Mira"), run.companion(3, "Pip"));
+            session.setPartyOwnership(AgentKpqSession.PartyOwnership.KPQ_OWNED);
+            session.clearEventInstance();
+            for (int id = 1; id <= 3; id++) {
+                Character member = run.characters.findOnlineCharacterById(id);
+                run.outside(member, AgentKpqDefinition.RECRUIT_MAP);
+            }
+            Client client = mock(Client.class);
+            EventManager kerning = mock(EventManager.class);
+            when(kai.getClient()).thenReturn(client);
+            when(client.getEventManager("KerningPQ")).thenReturn(kerning);
+            // One of the two lobbies is open, and the other is the one kept for human parties.
+            when(kerning.getInstances()).thenReturn(List.of(mock(EventInstanceManager.class)));
+
+            AgentKpqCoordinator.tick(session, 2_000L);
+            assertEquals("enter-lobby-reserved", session.blockerKey());
+
+            AgentKpqCoordinator.tick(session, 2_000L + LOCAL_RECOVERY_TIMEOUT_MS);
+            assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
+            assertEquals("No KPQ lobby became available before the admission deadline", session.failure());
         }
     }
 

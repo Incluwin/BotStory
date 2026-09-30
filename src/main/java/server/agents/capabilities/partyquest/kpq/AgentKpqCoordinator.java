@@ -268,6 +268,16 @@ final class AgentKpqCoordinator {
             AgentKpqMemberState leaderState = session.member(leader.getId());
             if (nowMs < leaderState.nextRetryAtMs()) return;
             leaderState.setNextRetryAtMs(nowMs + INTERACTION_RETRY_MS);
+            // A background party formed while a lobby was free may no longer take the last one a human could enter.
+            if (session.partyOwnership() == AgentKpqSession.PartyOwnership.KPQ_OWNED
+                    && !AgentKpqLobbyPolicy.backgroundEntryAllowed(
+                            KPQ.openInstances(leader, "KerningPQ"),
+                            AgentKpqLobbyPolicy.maxLobbies(), AgentKpqLobbyPolicy.humanReservedLobbies())) {
+                if (blockedTooLong(session, "enter-lobby-reserved", nowMs)) {
+                    fail(session, "No KPQ lobby became available before the admission deadline", nowMs);
+                }
+                return;
+            }
             boolean invoked = KPQ.runNpc(leader, AgentKpqDefinition.ENTRY_NPC, 0);
             if (leader.getMapId() == AgentKpqDefinition.RECRUIT_MAP
                     && blockedTooLong(session, invoked ? "enter-lobby-wait" : "enter-npc", nowMs)) {

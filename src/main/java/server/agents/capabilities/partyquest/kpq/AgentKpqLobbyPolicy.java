@@ -16,6 +16,16 @@ public final class AgentKpqLobbyPolicy {
                 "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_LOBBIES")));
     }
 
+    /** Lobbies per channel that background KPQ leaves free for human parties. */
+    static int humanReservedLobbies() {
+        return Math.max(0, config.AgentTuning.intValue(
+                "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.HUMAN_RESERVED_LOBBIES"));
+    }
+
+    static boolean backgroundEntryAllowed(int occupied, int maxLobbies, int reserved) {
+        return maxLobbies - occupied > reserved;
+    }
+
     static boolean backgroundSlotAvailable(int world, int channel) {
         int total = 0;
         int onChannel = 0;
