@@ -15,11 +15,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
+import static server.living.roster.LifecycleHarness.ANN;
 
 /**
  * The lost-run backstop (P6): a companion run whose KPQ session went away without a runEnded is let go by the
  * companion audit once it has been gone a minute, and not before. Only the session counts (addendum 8): a companion
- * that tapped out has left the session, and the run it left goes on.
+ * that tapped out has left the session, and so has a leader who passed the lead and then left, and the run goes on
+ * without them.
  */
 class LostRunSweepTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -71,6 +73,18 @@ class LostRunSweepTest {
         auditor.run();
 
         assertTrue(game.commitments.isCommitted(900), "the commitment stays until the run ends");
+        assertEquals(run, fx.service.runForSession(run.sessionId));
+    }
+
+    @Test
+    void aLeaderWhoPassedTheLeadAndLeftLeavesTheSessionAndTheRunGoesOn() {
+        AgentKpqSessionRegistry.unindexMember(fx.doors.session, ANN); // passed the lead, then dropped from the session
+
+        auditor.run();
+        now.addAndGet(2 * CompanionPartyQuestService.LOST_RUN_AFTER_MS);
+        auditor.run();
+
+        assertTrue(game.commitments.isCommitted(900), "its companions stay the run's");
         assertEquals(run, fx.service.runForSession(run.sessionId));
     }
 }

@@ -612,14 +612,24 @@ public final class CompanionPartyQuestService {
     }
 
     /**
-     * On companion-ops, from the audit: a run whose KPQ session is gone without ending it (no runEnded came; its
-     * leader is in no session of that id any more) is let go once it has been gone {@link #LOST_RUN_AFTER_MS}. Only
-     * the session counts: a companion that tapped out has left the session while the run goes on without it.
+     * The run's KPQ session while it is registered, else null. Admission makes the lineup's leader its operator, and
+     * the operator stays its index for as long as the session lives: a member (the leader too, once the lead passed
+     * and they left) is unindexed as it is ejected while the session goes on without it.
+     */
+    static AgentKpqSession session(CompanionRun run) {
+        AgentKpqSession session = AgentKpqSessionRegistry.forOperator(run.leaderId);
+        return session != null && session.sessionId().equals(run.sessionId) ? session : null;
+    }
+
+    /**
+     * On companion-ops, from the audit: a run whose KPQ session is gone without ending it (no runEnded came; no
+     * session of that id is registered any more) is let go once it has been gone {@link #LOST_RUN_AFTER_MS}. Only the
+     * session counts: a companion that tapped out, or a leader who passed the lead and left, has left the session
+     * while the run goes on without them.
      */
     void sweepLostRuns(long nowMs) {
         for (CompanionRun run : runs()) {
-            AgentKpqSession session = AgentKpqSessionRegistry.forMember(run.leaderId);
-            if (session != null && session.sessionId().equals(run.sessionId)) {
+            if (session(run) != null) {
                 run.goneSinceMs = 0L;
             } else if (run.goneSinceMs == 0L) {
                 run.goneSinceMs = Math.max(1L, nowMs);
