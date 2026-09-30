@@ -1923,6 +1923,28 @@ final class AgentKpqCoordinator {
     }
 
     /**
+     * The watchdog's end of a companion run that its downed Agents leave short-handed. With no Agent standing no
+     * tick of theirs could say it, so the humans were warped out in silence; the downed companion says it now.
+     */
+    static void failShortHanded(AgentKpqSession session, Character downed, long nowMs) {
+        synchronized (session) {
+            fail(session, wentDown(downed.getName()), Parting.of(Parting.Kind.WENT_DOWN, downed), nowMs);
+        }
+    }
+
+    /** The watchdog found no live Agent to run the session: a companion run hears it end, a stock run ends as ever. */
+    static void failWithoutLiveAgent(AgentKpqSession session, long nowMs) {
+        String reason = "No live Agent execution participant remains";
+        if (!session.companionAdopted()) {
+            AgentKpqTerminationService.fail(session, reason, nowMs);
+            return;
+        }
+        synchronized (session) {
+            fail(session, reason, nowMs);
+        }
+    }
+
+    /**
      * True inside an uncleared stage when fewer than three members still stand in the bound event (not down, alive,
      * inside it). A downed companion's respawn would then end the event, since KerningPQ ends it at three.
      */

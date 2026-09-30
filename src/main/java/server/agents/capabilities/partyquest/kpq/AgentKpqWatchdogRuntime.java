@@ -55,8 +55,7 @@ final class AgentKpqWatchdogRuntime {
                 .findFirst().orElse(null);
         if (candidateEntry == null) {
             if (session.companionAdopted() && awaitingRespawn(session, nowMs)) return;
-            AgentKpqTerminationService.fail(
-                    session, "No live Agent execution participant remains", nowMs);
+            AgentKpqCoordinator.failWithoutLiveAgent(session, nowMs);
             return;
         }
         Character candidate = AgentRuntimeIdentityRuntime.bot(candidateEntry);
@@ -92,9 +91,7 @@ final class AgentKpqWatchdogRuntime {
                 if (downed == null && member.down() && nowMs - member.downSinceMs() < timeoutMs) downed = agent;
             }
             if (downed == null) return false;
-            if (AgentKpqCoordinator.shortHanded(session)) {
-                AgentKpqTerminationService.fail(session, AgentKpqCoordinator.wentDown(downed.getName()), nowMs);
-            }
+            if (AgentKpqCoordinator.shortHanded(session)) AgentKpqCoordinator.failShortHanded(session, downed, nowMs);
             return true;
         }
     }

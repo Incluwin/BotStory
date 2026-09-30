@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 /**
@@ -58,6 +62,8 @@ class WatchdogRespawnGraceTest {
 
         assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
         assertEquals("No live Agent execution participant remains", session.failure());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(tobi, "we can't finish this one. let's head out."),
+                times(1));
     }
 
     @Test
@@ -69,6 +75,7 @@ class WatchdogRespawnGraceTest {
 
         assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
         assertEquals("No live Agent execution participant remains", session.failure());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), anyString()), never());
     }
 
     @Test
@@ -80,5 +87,21 @@ class WatchdogRespawnGraceTest {
 
         assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
         assertEquals("Tobi went down, and KPQ needs three of us", session.failure());
+        // No Agent stands to tick the run, so the humans heard nothing as the event sent them out.
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
+                tobi, "sorry, i went down. we need three for this, so let's head out."), times(1));
+    }
+
+    @Test
+    void bothCompanionsDownTogetherInAFourMemberRunSayItToo() {
+        Character pip = run.companion(5, "Pip");
+        when(pip.getHp()).thenReturn(0);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, ann, tobi, pip);
+
+        AgentKpqWatchdogRuntime.tick(session, 5_000L);
+
+        assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
+                tobi, "sorry, i went down. we need three for this, so let's head out."), times(1));
     }
 }
