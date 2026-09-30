@@ -116,22 +116,26 @@ final class AgentKpqCoordinator {
         Character narrator = narrator(session);
         if (nowMs - session.lastProgressAtMs() > KPQ_PHASE_TIMEOUT_MS) {
             if (leader == null) {
-                fail(session, "No KPQ progress for " + (KPQ_PHASE_TIMEOUT_MS / 60_000L) + " minutes", nowMs);
+                fail(session, "No KPQ progress for " + (KPQ_PHASE_TIMEOUT_MS / 60_000L) + " minutes",
+                        Parting.of(Parting.Kind.TOO_LONG), nowMs);
                 return;
             }
             if (session.phase() == AgentKpqSession.Phase.STAGE_1) {
                 endStageOneForTimeout(session, leader, nowMs);
             } else {
-                fail(session, "No KPQ progress for " + (KPQ_PHASE_TIMEOUT_MS / 60_000L) + " minutes", nowMs);
+                fail(session, "No KPQ progress for " + (KPQ_PHASE_TIMEOUT_MS / 60_000L) + " minutes",
+                        Parting.of(Parting.Kind.TOO_LONG), nowMs);
             }
             return;
         }
         if (leader == null) {
-            fail(session, "The event leader is no longer active", nowMs);
+            fail(session, "The event leader is no longer active", new Parting(Parting.Kind.GONE,
+                    session.eventLeaderId(), memberName(firstCharacter(session), session.eventLeaderId())), nowMs);
             return;
         }
         if (leader.getHp() <= 0) {
-            fail(session, "The event leader was defeated or left the KPQ", nowMs);
+            fail(session, "The event leader was defeated or left the KPQ",
+                    Parting.of(Parting.Kind.DEFEATED, leader), nowMs);
             return;
         }
         bindKnownEvent(session, leader);
@@ -139,7 +143,8 @@ final class AgentKpqCoordinator {
         if (!membersAlive(session, leader, nowMs)) return;
         if (insideEventPhase(session.phase()) && session.eventInstance() != null
                 && KPQ.event(leader) != session.eventInstance()) {
-            fail(session, "The KPQ event instance disappeared or the leader left it", nowMs);
+            fail(session, "The KPQ event instance disappeared or the leader left it",
+                    Parting.of(Parting.Kind.OVER), nowMs);
             return;
         }
         switch (session.phase()) {
@@ -157,11 +162,14 @@ final class AgentKpqCoordinator {
     }
 
     private static void endStageOneForTimeout(AgentKpqSession session, Character leader, long nowMs) {
-        narrate(session, narrator(session), "stage1-timeout",
-                "No KPQ progress in stage 1 for " + (KPQ_PHASE_TIMEOUT_MS / 60_000L)
-                        + " minutes. Ending KPQ and returning to Kerning.");
+        // A companion run's parting line says it in the players' own words.
+        if (!session.companionAdopted()) {
+            narrate(session, narrator(session), "stage1-timeout",
+                    "No KPQ progress in stage 1 for " + (KPQ_PHASE_TIMEOUT_MS / 60_000L)
+                            + " minutes. Ending KPQ and returning to Kerning.");
+        }
         fail(session, "No KPQ progress for " + (KPQ_PHASE_TIMEOUT_MS / 60_000L)
-                + " minutes in stage 1", nowMs);
+                + " minutes in stage 1", Parting.of(Parting.Kind.TOO_LONG), nowMs);
     }
 
     private static void prepare(
@@ -1122,7 +1130,9 @@ final class AgentKpqCoordinator {
                 member.observeBlocker("portal-member-missing", nowMs);
                 if (nowMs - member.blockerSinceMs() >= LOCAL_RECOVERY_TIMEOUT_MS) {
                     fail(session, "Party member " + member.characterId()
-                            + " disappeared during the Stage " + nextStage + " transition", nowMs);
+                            + " disappeared during the Stage " + nextStage + " transition",
+                            new Parting(Parting.Kind.GONE, member.characterId(),
+                                    memberName(leader(session), member.characterId())), nowMs);
                     return;
                 }
                 continue;
@@ -1321,15 +1331,60 @@ final class AgentKpqCoordinator {
     }
 
     private static void fail(AgentKpqSession session, String reason, long nowMs) {
+        fail(session, reason, Parting.GENERIC, nowMs);
+    }
+
+    private static void fail(AgentKpqSession session, String reason, Parting parting, long nowMs) {
         int failureSpeakerId = failureSpeakerId(session);
         Character failureSpeaker = failureSpeakerId <= 0 ? null : character(failureSpeakerId);
         if (failureSpeaker != null) {
-            narrate(session, failureSpeaker, "failed", "KPQ stopped: " + reason + '.');
+            narrate(session, failureSpeaker, "failed",
+                    failureLine(session.companionAdopted(), reason, parting, failureSpeakerId));
         }
         log.error("KPQ session failure: session={} phase={} reason={} blocker={} blockerMs={} diagnostics={}",
                 session.sessionId(), session.phase(), reason, session.blockerKey(),
                 session.blockerSinceMs(), sessionDiagnostics(session));
         AgentKpqTerminationService.fail(session, reason, nowMs);
+    }
+
+    /** A stock run says the engine's reason; a companion run hears its players' own words, and the log the reason. */
+    static String failureLine(boolean companionRun, String reason, Parting parting, int speakerId) {
+        return companionRun ? parting.line(speakerId) : "KPQ stopped: " + reason + '.';
+    }
+
+    /** How a companion puts a run's early end to the players it plays with: casual, and never an id or a reason. */
+    record Parting(Kind kind, int subjectId, String subject) {
+        enum Kind { GENERIC, WENT_DOWN, LEFT, DEFEATED, GONE, OVER, TOO_LONG }
+
+        static final Parting GENERIC = new Parting(Kind.GENERIC, 0, null);
+
+        static Parting of(Kind kind) {
+            return new Parting(kind, 0, null);
+        }
+
+        static Parting of(Kind kind, Character subject) {
+            return subject == null ? of(kind) : new Parting(kind, subject.getId(), subject.getName());
+        }
+
+        /** The line as this speaker says it: about itself when it is the one who went down. */
+        String line(int speakerId) {
+            boolean self = subjectId > 0 && subjectId == speakerId;
+            boolean named = subject != null && !subject.isBlank();
+            String generic = "we can't finish this one. let's head out.";
+            return switch (kind) {
+                case GENERIC -> generic;
+                case WENT_DOWN -> self ? "sorry, i went down. we need three for this, so let's head out."
+                        : named ? subject + " went down, and we need three for this. let's head out."
+                        : "we're short now, and we need three for this. let's head out.";
+                case LEFT -> named ? subject + " left, and we need three for this. let's head out."
+                        : "we're short now, and we need three for this. let's head out.";
+                case DEFEATED -> self ? "sorry, i went down. we can't finish this one, let's head out."
+                        : named ? subject + " went down, so we can't finish this one. let's head out." : generic;
+                case GONE -> named ? subject + " dropped out, so we can't finish this one. let's head out." : generic;
+                case OVER -> "looks like this run's over. let's head back.";
+                case TOO_LONG -> "we've been stuck too long. let's call it and head out.";
+            };
+        }
     }
 
     private static String sessionDiagnostics(AgentKpqSession session) {
@@ -1592,7 +1647,7 @@ final class AgentKpqCoordinator {
             }
         }
         if (partyAnchor == null || party == null) {
-            fail(session, "The KPQ party was disbanded; no rewards were awarded", nowMs);
+            fail(session, "The KPQ party was disbanded; no rewards were awarded", Parting.of(Parting.Kind.OVER), nowMs);
             return false;
         }
         Set<Integer> livePartyIds = party.members().stream()
@@ -1605,16 +1660,18 @@ final class AgentKpqCoordinator {
         EventInstanceManager event = session.eventInstance();
         AgentPartyQuestEngagement engagement =
                 AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
+        Parting left = Parting.of(Parting.Kind.LEFT);
         for (AgentKpqMemberState member : departed) {
             Character character = memberCharacter(member.characterId(), eventAnchor);
             log.warn("KPQ member left the live party and was ejected: session={} member={} type={} "
                             + "phase={} remainingBefore={}",
                     session.sessionId(), member.characterId(), member.memberType(),
                     session.phase(), session.memberCount());
+            if (left.subject() == null && character != null) left = Parting.of(Parting.Kind.LEFT, character);
             ejectMember(session, member, character, event, engagement, nowMs);
         }
         if (session.memberCount() < 3) {
-            fail(session, "The KPQ party fell below three members; no rewards were awarded", nowMs);
+            fail(session, "The KPQ party fell below three members; no rewards were awarded", left, nowMs);
             return false;
         }
         // Checked before the leadership reconcile, which would fail the humans for having no Agent to execute.
@@ -1701,7 +1758,8 @@ final class AgentKpqCoordinator {
                     member.observeBlocker("member-missing", nowMs);
                     if (nowMs - member.blockerSinceMs() >= LOCAL_RECOVERY_TIMEOUT_MS) {
                         fail(session, "Party member " + member.characterId()
-                                + " disconnected or left the channel", nowMs);
+                                + " disconnected or left the channel", new Parting(Parting.Kind.GONE,
+                                member.characterId(), memberName(eventAnchor, member.characterId())), nowMs);
                         return false;
                     }
                 }
@@ -1709,11 +1767,12 @@ final class AgentKpqCoordinator {
                     if ("member-missing".equals(member.blocker())) member.clearBlocker();
                 }
                 case DEFEATED -> {
-                    fail(session, character.getName() + " was defeated during KPQ", nowMs);
+                    fail(session, character.getName() + " was defeated during KPQ",
+                            Parting.of(Parting.Kind.DEFEATED, character), nowMs);
                     return false;
                 }
                 case SHORT_HANDED -> {
-                    fail(session, wentDown(character.getName()), nowMs);
+                    fail(session, wentDown(character.getName()), Parting.of(Parting.Kind.WENT_DOWN, character), nowMs);
                     return false;
                 }
                 case DROP_HUMAN -> {
@@ -1730,7 +1789,8 @@ final class AgentKpqCoordinator {
                     // departed-member path drops it on a later tick.
                     if (!AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
                             "kpq", session.sessionId(), member.characterId(), character.getMapId(), nowMs))) {
-                        fail(session, character.getName() + " was defeated during KPQ", nowMs);
+                        fail(session, character.getName() + " was defeated during KPQ",
+                                Parting.of(Parting.Kind.DEFEATED, character), nowMs);
                         return false;
                     }
                     member.markTapOutRequested();
@@ -1834,7 +1894,8 @@ final class AgentKpqCoordinator {
         ejectMember(session, member, character, session.eventInstance(),
                 AgentPartyQuestEngagementRegistry.forOperator(session.operatorId()), nowMs);
         if (session.memberCount() < 3) {
-            fail(session, name + " left, and KPQ needs three of us", nowMs);
+            fail(session, name + " left, and KPQ needs three of us", new Parting(Parting.Kind.LEFT,
+                    member.characterId(), memberName(eventAnchor, member.characterId())), nowMs);
             return;
         }
         coordinate(session, narrator(session), "drop-" + member.characterId(),
@@ -1842,12 +1903,19 @@ final class AgentKpqCoordinator {
     }
 
     private static String partyMemberName(Character eventAnchor, int characterId) {
-        server.agents.integration.AgentPartySnapshot party = AgentPartyGatewayRuntime.party().snapshot(eventAnchor);
-        return party == null ? "A party member" : party.members().stream()
+        String name = memberName(eventAnchor, characterId);
+        return name == null ? "A party member" : name;
+    }
+
+    /** A member's name from the live party, which keeps offline members; null when it is not there. */
+    private static String memberName(Character eventAnchor, int characterId) {
+        server.agents.integration.AgentPartySnapshot party =
+                eventAnchor == null ? null : AgentPartyGatewayRuntime.party().snapshot(eventAnchor);
+        return party == null ? null : party.members().stream()
                 .filter(java.util.Objects::nonNull)
                 .filter(member -> member.id() == characterId)
                 .map(server.agents.integration.AgentPartyMemberSnapshot::name)
-                .findFirst().orElse("A party member");
+                .findFirst().orElse(null);
     }
 
     static String wentDown(String name) {

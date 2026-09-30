@@ -190,6 +190,8 @@ class CompanionTapOutCoordinatorTest {
         assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
         assertEquals("Tobi was defeated during KPQ", session.failure());
         verify(run.event).dispose();
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
+                mira, "Tobi went down, so we can't finish this one. let's head out."), times(1));
     }
 
     @Test
@@ -201,9 +203,9 @@ class CompanionTapOutCoordinatorTest {
 
         assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
         assertEquals("Mira went down, and KPQ needs three of us", session.failure());
-        // Mira leads the speaking order, but she is down: Pip says it on the stage map.
+        // Mira leads the speaking order, but she is down: Pip says it on the stage map, in his own words.
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
-                pip, "KPQ stopped: Mira went down, and KPQ needs three of us."), times(1));
+                pip, "Mira went down, and we need three for this. let's head out."), times(1));
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(eq(mira), anyString()), never());
     }
 
