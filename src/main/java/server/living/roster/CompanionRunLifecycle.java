@@ -70,14 +70,15 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
      * A run's companion went down and respawned outside the event: it waits outside as a HOLD on that map, saying so
      * in party chat before it leaves the party, and the run carries on without it. Marked tapping out before the hold
      * is handed to companion-ops, so the recovery of the member it leaves stops it instead of sending it to follow.
-     * Its commitment stays (an unload of a session member fails the run). Refused after the stage-5 clear, and for a
-     * session or character no companion run holds.
+     * Its commitment stays (an unload of a session member fails the run). Refused only for a session or character no
+     * companion run holds: never for the stage-5 clear, which the coordinator reads on its own tick while a human's
+     * Cloto click can set it meanwhile, and a refusal there fails the cleared run (it asks nobody once it sees it).
      */
     @Override
     public boolean tapOut(AgentPartyQuestHandback.TapOut request) {
         CompanionRun run = service.runForSession(request.sessionId());
         int id = request.agentCharacterId();
-        Integer ownerId = run == null || run.cleared ? null : run.ownerByCompanion.get(id);
+        Integer ownerId = run == null ? null : run.ownerByCompanion.get(id);
         Persona persona = ownerId == null ? null : world.residents().personaOfCharacterId(id);
         if (persona == null) {
             return false;
