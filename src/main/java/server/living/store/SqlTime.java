@@ -18,6 +18,9 @@ import java.time.ZoneOffset;
  * write with "Incorrect datetime value", and one in the fall-back hour is ambiguous. So each statement that binds or
  * reads such a column is built with {@link #utc(String)}, which runs it in a +00:00 session. Values cross JDBC as UTC
  * {@link LocalDateTime}, which the driver passes through without zone conversion.
+ *
+ * <p>{@link tools.DatabaseConnection} now opens every pooled session in UTC too; the hint keeps these statements right
+ * whatever zone a connection has.
  */
 public final class SqlTime {
     private static final String UTC_SESSION = " /*+ SET_VAR(time_zone = '+00:00') */";

@@ -84,7 +84,7 @@ public class DatabaseConnection {
         return setting("DB_PASSWORD", setting("DB_PASS", YamlConfig.config.server.DB_PASS));
     }
 
-    private static HikariConfig getConfig() {
+    static HikariConfig getConfig() {
         HikariConfig config = new HikariConfig();
 
         config.setJdbcUrl(getDbUrl());
@@ -99,6 +99,14 @@ public class DatabaseConnection {
         config.addDataSourceProperty("cachePrepStmts", true);
         config.addDataSourceProperty("prepStmtCacheSize", 25);
         config.addDataSourceProperty("prepStmtCacheSqlLimit", 2048);
+
+        // Every session runs in UTC, so a java.sql.Timestamp crosses JDBC as its exact instant and NOW() is the UTC
+        // wall clock. Without this the session zone is the server's SYSTEM zone (America/New_York on the live host),
+        // and Connector/J renders a Timestamp in the JVM zone its connection captured when it opened: the machine zone
+        // before Server sets server.TIMEZONE, GMT after. A GMT wall clock in New York's spring-forward hour then fails
+        // the write ("Incorrect datetime value"). The driver sets the zone as '+00:00', which needs no time zone tables.
+        config.addDataSourceProperty("connectionTimeZone", "UTC");
+        config.addDataSourceProperty("forceConnectionTimeZoneToSession", true);
 
         return config;
     }

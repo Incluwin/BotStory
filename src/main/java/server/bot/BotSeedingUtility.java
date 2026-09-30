@@ -1,5 +1,6 @@
 package server.bot;
 
+import client.DefaultDates;
 import config.BotEconomyConfig;
 import config.YamlConfig;
 import org.slf4j.Logger;
@@ -11,6 +12,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.EnumMap;
 import java.util.Map;
 
@@ -133,9 +135,11 @@ public final class BotSeedingUtility {
             // guard in Client.login also rejects login attempts before password check.
             try (PreparedStatement ins = con.prepareStatement(
                     "INSERT INTO accounts (name, password, birthday, tempban, bot_flag, banned) " +
-                    "VALUES (?, 'bot-no-login', '1970-01-01', '1970-01-01 00:00:00', 1, 1)",
+                    "VALUES (?, 'bot-no-login', '1970-01-01', ?, 1, 1)",
                     Statement.RETURN_GENERATED_KEYS)) {
                 ins.setString(1, accountName);
+                // Not '1970-01-01 00:00:00': in a UTC session that is epoch 0, below TIMESTAMP's range.
+                ins.setTimestamp(2, Timestamp.valueOf(DefaultDates.getTempban()));
                 ins.executeUpdate();
                 try (ResultSet keys = ins.getGeneratedKeys()) {
                     if (keys.next()) return keys.getInt(1);

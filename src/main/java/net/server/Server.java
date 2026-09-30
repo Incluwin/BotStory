@@ -903,6 +903,9 @@ public class Server {
     }
 
     public void init() {
+        // Before anything captures the JVM default zone (the connection pool, startup tasks).
+        TimeZone.setDefault(TimeZone.getTimeZone(YamlConfig.config.server.TIMEZONE));
+
         Instant beforeInit = Instant.now();
         log.info("Cosmic v{} starting up.", ServerConstants.VERSION);
 
@@ -939,8 +942,6 @@ public class Server {
             futures.add(initExecutor.submit(soloMapling.itemPool.DesirableEquipList::load));
         }
         initExecutor.shutdown();
-
-        TimeZone.setDefault(TimeZone.getTimeZone(YamlConfig.config.server.TIMEZONE));
 
         final int worldCount = Math.min(GameConstants.WORLD_NAMES.length, YamlConfig.config.server.WORLDS);
         long startupDbStartedNs = SlowOperationLogger.start();

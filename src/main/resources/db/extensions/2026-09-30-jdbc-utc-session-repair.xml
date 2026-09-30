@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- JDBC sessions now run in UTC (tools.DatabaseConnection). Before, the session zone was the MySQL host's
+         SYSTEM zone (America/New_York on the live host) and Connector/J rendered a Timestamp in whichever JVM zone
+         its pooled connection captured when it opened: the machine zone at first, GMT once Server set
+         server.TIMEZONE. This repairs the rows the UTC convention would misread. It runs in UTC, as the pool does. -->
+    <changeSet id="2026-09-30-jdbc-utc-session-repair" author="ganre">
+        <sql>
+            SET time_zone = '+00:00';
+
+            -- The "never banned" tempban is DefaultDates.getTempban(), which Client and Character compare as a JVM
+            -- (GMT) wall clock, 2005-05-11 00:00. Rows written through the table default or an old session hold
+            -- 2005-05-11 00:00 in the host zone instead. No real temp ban ends in 2005.
+            UPDATE accounts SET tempban = '2005-05-11 00:00:00'
+            WHERE tempban BETWEEN '2005-05-10 00:00:00' AND '2005-05-12 00:00:00' AND tempban &lt;&gt; '2005-05-11 00:00:00';
+
+            -- A TIMESTAMP column's constant default is fixed in the zone of the session that set it.
+            ALTER TABLE accounts ALTER COLUMN tempban SET DEFAULT '2005-05-11 00:00:00';
+
+            -- A GMT wall clock sent through a New York session stored its instant 4-5 h late, and a load and save
+            -- across the two kinds of connection added another shift. Such a time can be in the future, which a
+            -- last login, logout or exp gain can't be. Older shifted rows can't be told apart and are left.
+            UPDATE accounts SET lastlogin = NOW() WHERE lastlogin &gt; NOW();
+            UPDATE characters SET lastLogoutTime = NOW() WHERE lastLogoutTime &gt; NOW();
+            UPDATE characters SET lastExpGainTime = NOW() WHERE lastExpGainTime &gt; NOW();
+        </sql>
+    </changeSet>
+</databaseChangeLog>
