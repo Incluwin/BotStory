@@ -726,7 +726,8 @@ public final class RosterService {
      * Calls a companion: benched ones join the party at once and travel from their camp (plan "Join-then-travel
      * arrival") unless a whistle is used. Once it is seated or on its way it no longer waits for room. One waiting
      * outside a run (HOLD) rejoins, unless the run is still on ("after the run"); one whose trip its owner's logout cut
-     * short sets off again for the time it had left (or walks in when that is up).
+     * short sets off again for the time it had left (or walks in when that is up). Nobody is called while the owner is
+     * inside an event instance: that is "after the run" too.
      */
     public RosterResult call(Character owner, Persona persona) {
         RosterResult result = call(owner, persona, null);
@@ -769,6 +770,10 @@ public final class RosterService {
         if (entry.state() == RosterState.HOLD) {
             return committed(persona.id()) || owner.getEventInstance() != null ? afterTheRun(owner, persona)
                     : rejoinHold(owner, persona, entry);
+        }
+        if (owner.getEventInstance() != null) {
+            // a load there lands on the run's map unregistered, and a join grows the party mid-run (P6)
+            return afterTheRun(owner, persona);
         }
         if (!canSeat(owner, entry)) {
             return world.slots().leaderCapped(owner) ? leaderCapped(owner, persona) : new RosterResult.PartyFull();
@@ -2819,11 +2824,12 @@ public final class RosterService {
      * An ACTIVE row whose companion is not loaded, not in the owner's party, not led by the owner or on another
      * channel. One that follows the owner on their map and channel and is only out of the party rejoins where it
      * stands (no pop-out). Anything else: whatever holds it lets go, and it is seated again the way login restores
-     * it, in the owner's party now.
+     * it, in the owner's party now. One committed to a run is the run's until it ends.
      */
     public void reseat(Character owner, Persona persona) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
-        if (entry == null || entry.state() != RosterState.ACTIVE || inFlight(owner.getId(), persona.id())) {
+        if (entry == null || entry.state() != RosterState.ACTIVE || inFlight(owner.getId(), persona.id())
+                || committed(persona.id())) {
             return;
         }
         Character bot = companion(entry);
@@ -2867,11 +2873,13 @@ public final class RosterService {
 
     /**
      * A BENCHED or AWAY row whose companion is still in the owner's party or still led by the owner: it leaves the
-     * party, and is unloaded unless something else (a bench slice) leads it. An offline member is expelled.
+     * party, and is unloaded unless something else (a bench slice) leads it. An offline member is expelled. One
+     * committed to a run is the run's until it ends.
      */
     public void unseat(Character owner, Persona persona) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
-        if (entry == null || !BenchSessions.benchGoverned(entry) || inFlight(owner.getId(), persona.id())) {
+        if (entry == null || !BenchSessions.benchGoverned(entry) || inFlight(owner.getId(), persona.id())
+                || committed(persona.id())) {
             return;
         }
         Character bot = companion(entry);

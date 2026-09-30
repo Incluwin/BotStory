@@ -343,7 +343,7 @@ public final class CompanionManager {
             return new RosterResult.Failed("There is no formation called " + token + ".");
         }
         List<String> names = new ArrayList<>();
-        List<AgentRuntimeEntry> crew = crew(owner, false, names);
+        List<AgentRuntimeEntry> crew = crew(owner, false, names, null);
         if (crew.isEmpty()) {
             return new RosterResult.Failed("Nobody of yours is out with you.");
         }
@@ -729,6 +729,9 @@ public final class CompanionManager {
         if (out.refusal() != null) {
             return out.refusal();
         }
+        if (committed(out.bot())) {
+            return world.roster().answerAfterTheRun(owner, persona); // the run moves it until it ends
+        }
         tell(owner, out.bot(), phrase);
         return new RosterResult.Ok(persona.name() + done);
     }
@@ -741,11 +744,16 @@ public final class CompanionManager {
     /**
      * The owner's chat line to their own companions out with them ({@code sameMap}: only those on the owner's map, as a
      * gathering reaches), in their party channel, through the Agent chat routes over exactly those companions. The
-     * line is "You tell Hadrik and Tobi: follow me."; each companion answers for itself.
+     * line is "You tell Hadrik and Tobi: follow me."; each companion answers for itself. Those committed to a run are
+     * left out; when that is all of them, one of them answers "after the run." for them all.
      */
     private RosterResult crewOrder(Character owner, String phrase, boolean sameMap) {
         List<String> names = new ArrayList<>();
-        List<AgentRuntimeEntry> crew = crew(owner, sameMap, names);
+        List<Persona> inARun = new ArrayList<>();
+        List<AgentRuntimeEntry> crew = crew(owner, sameMap, names, inARun);
+        if (crew.isEmpty() && !inARun.isEmpty()) {
+            return world.roster().answerAfterTheRun(owner, inARun.get(0));
+        }
         if (crew.isEmpty()) {
             return new RosterResult.Failed(sameMap ? "Nobody of yours is here with you." : "Nobody of yours is out with you.");
         }
@@ -758,19 +766,31 @@ public final class CompanionManager {
 
     /**
      * The owner's companions out with them that they may command ({@code sameMap}: only those on the owner's map), their
-     * names added to {@code names}.
+     * names added to {@code names}. With {@code inARun} (not null), those committed to a run are left out and added
+     * there instead.
      */
-    private List<AgentRuntimeEntry> crew(Character owner, boolean sameMap, List<String> names) {
+    private List<AgentRuntimeEntry> crew(Character owner, boolean sameMap, List<String> names, List<Persona> inARun) {
         List<AgentRuntimeEntry> crew = new ArrayList<>();
         for (RosterEntry entry : world.roster().roster(owner)) {
             Persona persona = world.content().persona(entry.personaId());
             Out out = persona == null ? null : out(owner, persona, entry, true);
-            if (out != null && out.refusal() == null && (!sameMap || out.bot().getMap() == owner.getMap())) {
+            if (out == null || out.refusal() != null || sameMap && out.bot().getMap() != owner.getMap()) {
+                continue;
+            }
+            if (inARun != null && committed(out.bot())) {
+                inARun.add(persona);
+            } else {
                 crew.add(out.runtime());
                 names.add(persona.name());
             }
         }
         return crew;
+    }
+
+    /** True while the companion is committed to a run (Commitments): the party quest moves it, not its owner's orders. */
+    private boolean committed(Character bot) {
+        Commitments commitments = world.commitments();
+        return commitments != null && commitments.isCommitted(bot.getId());
     }
 
     /** The formation {@link #FORMATIONS} offers by this token, or null. */
