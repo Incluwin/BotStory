@@ -107,10 +107,11 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
     /**
      * Decision 8b, on companion-ops (RosterService.onOwnerLogout): a lineup companion of a run that got in sees it
      * through for {@code heir}, the human of the party still in it, when the run goes on without its owner. Not the
-     * event leader's ({@link #leads}): the run ends with its leader. Not when fewer than three of the run would stay
-     * in the instance, since KerningPQ ends it then (isEventTeamLackingNow). Consent only: the companion stays its
-     * owner's Agent, the run's PQ controller drives it, and its tick leads itself once its owner is offline. The first
-     * of the owner's to stay says so in party chat.
+     * event leader's ({@link #leads}): the run ends with its leader. Before the stage-5 clear, not when fewer than
+     * three of the run would stay in the instance, since KerningPQ ends it then (isEventTeamLackingNow); after it the
+     * event goes on while anyone but the owner stays, and the companion itself does. Consent only: the companion
+     * stays its owner's Agent, the run's PQ controller drives it, and its tick leads itself once its owner is
+     * offline. The first of the owner's to stay says so in party chat.
      */
     @Override
     public boolean delegate(Character companion, Character heir, String key) {
@@ -122,7 +123,7 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
         }
         long staying = run.memberIds.stream()
                 .filter(id -> !id.equals(owner) && instance.getPlayerById(id) != null).count();
-        if (staying < LineupPlan.MIN_SIZE) {
+        if (!run.cleared && !instance.isEventCleared() && staying < LineupPlan.MIN_SIZE) {
             return false;
         }
         if (run.handoffLineSaid.add(owner)) {

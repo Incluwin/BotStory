@@ -33,8 +33,8 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * companions see it through for him, the first saying so once in party chat. They stay hers (rows ACTIVE, still
  * committed, led by nobody new), their recovery at the end only stops them, and they park once the run is over. The
  * event leader's companions are never handed over, since the run ends with its leader (whoever leads it now: the lead
- * can pass inside the run), and nobody's when fewer than three of the run would stay in it, since KerningPQ ends it
- * then.
+ * can pass inside the run), and before the stage-5 clear nobody's when fewer than three of the run would stay in it,
+ * since KerningPQ ends it then (after the clear it goes on while two stay).
  */
 class CompanionRunDelegationTest {
     private static final int BEN = 20;
@@ -173,6 +173,20 @@ class CompanionRunDelegationTest {
         assertFalse(game.commitments.isCommitted(900));
         assertTrue(game.partyChat.stream().noneMatch(line -> line.contains("see this through")),
                 game.partyChat.toString());
+    }
+
+    @Test
+    void afterTheClearAThreeMemberRunStillHandsTheCompanionOver() {
+        inTheRun(ben); // Ben, Ann and Mira
+        when(instance.isEventCleared()).thenReturn(true); // stage 5 cleared: KerningPQ goes on while two stay
+
+        game.roster().onOwnerLogout(game.ann, instance);
+
+        assertEquals(List.of("Mira: i'll see this through with you, Ben."), game.partyChat);
+        assertEquals(RosterState.ACTIVE, game.row(mira).state(), "not parked: an unload would fail the run");
+        assertTrue(game.roster().finishingForFriend(900));
+        assertTrue(game.commitments.isCommitted(900));
+        assertTrue(game.members.contains(900), "it finishes the bonus with Ben");
     }
 
     @Test
