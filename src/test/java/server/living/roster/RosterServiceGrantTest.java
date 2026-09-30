@@ -163,7 +163,7 @@ class RosterServiceGrantTest {
         FieldCatalog fields = mock(FieldCatalog.class);
         when(population.fields()).thenReturn(fields);
         int portRoad = 104010000;
-        when(fields.fieldsFor(1, LITH_HARBOR, 1)).thenReturn(List.of(new PopulationContent.Field(portRoad, "Port Road", "",
+        when(fields.fieldsFor(1, LITH_HARBOR, RosterService.CAMP_CANDIDATES)).thenReturn(List.of(new PopulationContent.Field(portRoad, "Port Road", "",
                 "victoria", false, 10, 3, 6)));
         RosterService roster = new RosterService(world);
 
@@ -175,6 +175,32 @@ class RosterServiceGrantTest {
         // it trains in a field from the start: the card never shows "train @" a town it cannot train in
         assertEquals(portRoad, rows.get(key(ALICE, "olwen")).campMapId());
         assertEquals(Assignment.TRAIN, rows.get(key(ALICE, "olwen")).assignment());
+    }
+
+    @Test
+    void aDefaultCampPassesOverAFieldItsKindWasMeasuredDyingAt() {
+        // found live 2026-09-30: the first fit for a Lv50 thief measured 43 deaths an hour and killed it slice after slice
+        Population population = mock(Population.class);
+        FieldCatalog fields = mock(FieldCatalog.class);
+        when(population.fields()).thenReturn(fields);
+        int deadly = 105090301;
+        int safe = 104010000;
+        when(fields.fieldsFor(1, LITH_HARBOR, RosterService.CAMP_CANDIDATES)).thenReturn(List.of(
+                new PopulationContent.Field(deadly, "Drake's Meal Table", "", "victoria", false, 10, 3, 6),
+                new PopulationContent.Field(safe, "Port Road", "", "victoria", false, 10, 3, 6)));
+        BenchYieldModel yields = mock(BenchYieldModel.class);
+        when(yields.deathsPerHour(any(), org.mockito.ArgumentMatchers.anyDouble())).thenAnswer(inv ->
+                ((BenchYieldModel.Key) inv.getArgument(0)).campMapId() == deadly ? 31.7d : 0.0d);
+        when(world.benchYields()).thenReturn(yields);
+        RosterService roster = new RosterService(world);
+
+        try (MockedStatic<Population> populations = mockStatic(Population.class)) {
+            populations.when(Population::get).thenReturn(population);
+            assertEquals(safe, roster.fieldCampFor(OLWEN, LITH_HARBOR));
+
+            org.mockito.Mockito.doReturn(31.7d).when(yields).deathsPerHour(any(), org.mockito.ArgumentMatchers.anyDouble()); // all deadly
+            assertEquals(0, roster.fieldCampFor(OLWEN, LITH_HARBOR), "none safe: the ledger keeps it");
+        }
     }
 
     @Test

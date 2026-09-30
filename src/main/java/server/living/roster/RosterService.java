@@ -542,16 +542,32 @@ public final class RosterService {
      */
     public int fieldCampFor(Persona persona, int nearMapId) {
         Population population = Population.get();
-        int level = world.store().characterLevel(world.residents().characterIdOf(persona.id()));
+        int[] read = world.store().characterLevelAndJob(world.residents().characterIdOf(persona.id()));
+        int[] levelAndJob = read != null && read.length >= 2 ? read : new int[] {0, -1};
+        int level = levelAndJob[0];
         if (level <= 0 && persona.level() != null) {
             level = persona.level().min();
         }
         if (population == null || level <= 0) {
             return 0;
         }
-        List<Field> fields = population.fields().fieldsFor(level, nearMapId, 1);
-        return fields.isEmpty() ? 0 : fields.get(0).mapId();
+        // the best fitting field its kind has not been measured dying at: found live 2026-09-30, the first fit for a
+        // Lv50 thief (Drake's Meal Table) measured 43 deaths an hour and killed Jinx 15 slices in 16. None safe: 0,
+        // the ledger keeps it rather than send it to die.
+        BenchYieldModel yields = world.benchYields();
+        for (Field field : population.fields().fieldsFor(level, nearMapId, CAMP_CANDIDATES)) {
+            if (yields == null || yields.deathsPerHour(BenchYieldModel.Key.of(levelAndJob[1], level, field.mapId()), 0.0d)
+                    < DEADLY_CAMP_DEATHS_PER_HOUR) {
+                return field.mapId();
+            }
+        }
+        return 0;
     }
+
+    /** How many of the best fitting fields a default camp is chosen among. */
+    static final int CAMP_CANDIDATES = 5;
+    /** A camp measured at this many deaths an hour or more (shrunk toward none) is passed over for a default camp. */
+    static final double DEADLY_CAMP_DEATHS_PER_HOUR = 2.0d;
 
     /** "Lith Harbor": the town's name as the game shows it, else its id in words. */
     private static String townName(String town) {

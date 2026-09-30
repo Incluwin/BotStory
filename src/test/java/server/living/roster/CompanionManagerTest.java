@@ -329,8 +329,8 @@ class CompanionManagerTest {
         when(fields.isTown(anyInt())).thenAnswer(inv -> (int) inv.getArgument(0) == HENESYS || (int) inv.getArgument(0) == LITH);
         PopulationContent.Field hill = new PopulationContent.Field(LifecycleHarness.HENESYS_FIELD, "The Hill", "", "victoria",
                 false, 10, 5, 8);
-        when(fields.fieldsFor(anyInt(), eq(HENESYS), eq(1))).thenReturn(List.of(hill));
-        when(fields.fieldsFor(anyInt(), eq(LITH), eq(1))).thenReturn(List.of()); // nothing fits near Lith Harbor
+        when(fields.fieldsFor(anyInt(), eq(HENESYS), anyInt())).thenReturn(List.of(hill));
+        when(fields.fieldsFor(anyInt(), eq(LITH), anyInt())).thenReturn(List.of()); // nothing fits near Lith Harbor
 
         RosterResult result;
         try (MockedStatic<Population> populations = mockStatic(Population.class)) {
