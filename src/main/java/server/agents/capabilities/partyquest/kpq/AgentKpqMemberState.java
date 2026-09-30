@@ -45,6 +45,9 @@ public final class AgentKpqMemberState {
     private Point stage1LandingSafetyTarget;
     private long stage1LandingSafetyDeadlineMs;
     private boolean stage1ManagedDarkSight;
+    private long downSinceMs;
+    private boolean tapOutRequested;
+    private long revivedSeenAtMs;
 
     public AgentKpqMemberState(int characterId, MemberType memberType, int partyNumber) {
         this.characterId = characterId;
@@ -149,6 +152,30 @@ public final class AgentKpqMemberState {
         if (enteredStage == stage) return;
         enteredStage = stage;
         stageMovementNotBeforeMs = Math.max(0L, notBeforeMs);
+    }
+
+    /** Marks this member down from its first sighting; a down sighting also breaks any revive streak. */
+    void markDown(long nowMs) {
+        if (downSinceMs == 0L) downSinceMs = Math.max(1L, nowMs);
+        revivedSeenAtMs = 0L;
+    }
+    void clearDown() {
+        downSinceMs = 0L;
+        tapOutRequested = false;
+        revivedSeenAtMs = 0L;
+    }
+    long downSinceMs() { return downSinceMs; }
+    boolean down() { return downSinceMs > 0L; }
+    boolean tapOutRequested() { return tapOutRequested; }
+    void markTapOutRequested() { tapOutRequested = true; }
+    /**
+     * True from the second tick in a row that sees this downed member standing in the event again. The respawn
+     * restores HP before it changes map, so a single sighting can be a companion on its way out.
+     */
+    boolean confirmRevived(long nowMs) {
+        if (revivedSeenAtMs > 0L) return true;
+        revivedSeenAtMs = Math.max(1L, nowMs);
+        return false;
     }
 
     boolean stage1RopeObserved() { return stage1RopeObserved; }

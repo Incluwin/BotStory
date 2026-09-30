@@ -251,22 +251,31 @@ public final class AgentKpqAdmissionService {
             if (memberParty == null || memberParty.id() != party.id()) {
                 return Validation.failure("Every KPQ member must already be in the event leader's party");
             }
-            if (member.getMapId() != AgentKpqDefinition.RECRUIT_MAP) {
-                return Validation.failure(member.getName() + " is not at the Kerning KPQ entrance");
-            }
-            if (member.getLevel() < 21 || member.getLevel() > 30) {
-                return Validation.failure(member.getName() + " must be level 21-30 for KPQ");
-            }
             if (AgentClientGatewayRuntime.clients().world(member) != world
                     || AgentClientGatewayRuntime.clients().channel(member) != channel) {
                 return Validation.failure("Every KPQ member must be on the same world and channel");
             }
-            if (!hasStageInventoryCapacity(member, member.getId() == eventLeader.getId())) {
-                return Validation.failure(member.getName()
-                        + " needs free Use and ETC capacity for KPQ items and rewards");
-            }
+            String problem = memberProblem(member, member.getId() == eventLeader.getId());
+            if (!problem.isEmpty()) return Validation.failure(problem);
         }
         return new Validation(true, "", List.copyOf(unique), agents, party, !isAgent(eventLeader));
+    }
+
+    /**
+     * Why this party member cannot enter KPQ from the Kerning entrance, in admission's own words, or "" when it
+     * can. A host can check its lineup with it before admitting it.
+     */
+    public static String memberProblem(Character member, boolean eventLeader) {
+        if (member.getMapId() != AgentKpqDefinition.RECRUIT_MAP) {
+            return member.getName() + " is not at the Kerning KPQ entrance";
+        }
+        if (member.getLevel() < 21 || member.getLevel() > 30) {
+            return member.getName() + " must be level 21-30 for KPQ";
+        }
+        if (!hasStageInventoryCapacity(member, eventLeader)) {
+            return member.getName() + " needs free Use and ETC capacity for KPQ items and rewards";
+        }
+        return "";
     }
 
     private static boolean isAgent(Character member) {

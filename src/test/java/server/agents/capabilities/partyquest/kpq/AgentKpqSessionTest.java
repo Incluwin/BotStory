@@ -220,6 +220,40 @@ class AgentKpqSessionTest {
     }
 
     @Test
+    void companionAdoptedDefaultsOff() {
+        AgentKpqSession session = new AgentKpqSession(
+                AgentKpqSession.Mode.PRODUCTION, 7L, 100, 3, 1_000L);
+
+        assertFalse(session.companionAdopted());
+        session.setCompanionAdopted(true);
+        assertTrue(session.companionAdopted());
+    }
+
+    @Test
+    void resetFormationKeepsTheAttemptAndRestartsTheBlockerClocks() {
+        AgentKpqSession session = new AgentKpqSession(
+                AgentKpqSession.Mode.PRODUCTION, 7L, 100, 4, 1_000L);
+        session.addMember(100, AgentKpqMemberState.MemberType.HUMAN);
+        session.addMember(20, AgentKpqMemberState.MemberType.AGENT);
+        session.transition(AgentKpqSession.Phase.STAGE_2, 1_000L);
+        session.setAttemptIndex(2);
+        int attemptId = session.nextAttemptId();
+        session.setCombination(java.util.List.of(1, 2, 4));
+        session.setPuzzleCheckAtMs(9_000L);
+        session.observeBlocker("stage2-npc-check", 2_000L);
+        session.member(20).observeBlocker("puzzle-position", 2_000L);
+
+        session.resetFormation();
+
+        assertTrue(session.combination().isEmpty());
+        assertEquals(0L, session.puzzleCheckAtMs());
+        assertEquals(2, session.attemptIndex());
+        assertEquals(attemptId, session.attemptId());
+        assertEquals("", session.blockerKey());
+        assertEquals("", session.member(20).blocker());
+    }
+
+    @Test
     void changingOrClearingABlockerAllowsOneFreshRecoveryAttempt() {
         AgentKpqMemberState member = new AgentKpqMemberState(
                 7, AgentKpqMemberState.MemberType.AGENT, 1);

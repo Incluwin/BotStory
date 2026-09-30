@@ -17,6 +17,7 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.plans.AgentScriptItemActionService;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
@@ -291,7 +292,7 @@ final class AgentKpqCoordinator {
         boolean allDelivered = true;
         AgentRuntimeEntry leaderEntry = entry(leader.getId());
         Point cloto = ACTIONS.npcPosition(leader, AgentKpqDefinition.CLOTO_NPC);
-        int needed = session.memberCount() - 1;
+        int needed = stageOnePassesNeeded(session.companionAdopted(), session.memberCount(), livePartySize(leader));
         boolean agentLeader = isAgent(session, leader.getId());
         List<MapItem> floorCoupons = liveCouponDrops(leader.getMap());
         int couponsOnGround = couponQuantityOnGround(floorCoupons);
@@ -540,6 +541,20 @@ final class AgentKpqCoordinator {
         }
     }
 
+    /**
+     * Cloto wants a pass from every party member but the leader, and still counts a member dropped from a companion
+     * run (offline or walked out). Asking for more passes than can arrive lets the missing-pass grace clear stage 1
+     * instead of telling the human leader to hand in too few.
+     */
+    static int stageOnePassesNeeded(boolean adopted, int sessionMembers, int partySize) {
+        return adopted ? Math.max(sessionMembers, partySize) - 1 : sessionMembers - 1;
+    }
+
+    private static int livePartySize(Character leader) {
+        server.agents.integration.AgentPartySnapshot party = AgentPartyGatewayRuntime.party().snapshot(leader);
+        return party == null ? 0 : (int) party.members().stream().filter(java.util.Objects::nonNull).count();
+    }
+
     static String stageOnePassDropMessage(String leaderName) {
         String name = leaderName == null || leaderName.isBlank() ? "Leader" : leaderName;
         return name + ", I dropped my pass beside you.";
@@ -598,7 +613,8 @@ final class AgentKpqCoordinator {
             session.setCombination(combination);
             session.setPuzzleCheckAtMs(0L);
             if (!movers.isEmpty()) {
-                coordinate(session, narrator, "s" + stage + "-a" + attempt,
+                // The attempt id changes when a reset formation is assigned again, so it is announced again.
+                coordinate(session, narrator, "s" + stage + "-a" + attempt + "-" + attemptId,
                         formationInstruction(movers, leader));
             }
         }
@@ -938,9 +954,15 @@ final class AgentKpqCoordinator {
                 if (!member.rewardResolved()) allInBonus = false;
                 continue;
             }
+            if (session.companionAdopted() && doneOutsideEvent(agent.getMapId(), KPQ.event(agent) != null)) {
+                // A member who died on the bonus map respawned outside the event and cannot come back for it.
+                session.forfeitReward(member.characterId());
+                continue;
+            }
             if (agent.getMapId() == AgentKpqDefinition.STAGE_5_MAP) {
                 allInBonus = false;
                 if (member.memberType() == AgentKpqMemberState.MemberType.AGENT) {
+                    if (agent.getHp() <= 0) continue;
                     if (shoesPending && member.characterId() == session.squishyShoesWinnerId()) {
                         AgentRuntimeEntry winnerEntry = entry(member.characterId());
                         if (winnerEntry != null) ACTIONS.stop(winnerEntry);
@@ -1006,6 +1028,9 @@ final class AgentKpqCoordinator {
                         session.sessionId(), member.characterId());
                 continue;
             }
+            if (session.companionAdopted() && doneOutsideEvent(agent.getMapId(), KPQ.event(agent) != null)) {
+                continue;
+            }
             if (agent.getMapId() == AgentKpqDefinition.BONUS_MAP
                     || agent.getMapId() == AgentKpqDefinition.EXIT_MAP) {
                 allOutside = false;
@@ -1044,9 +1069,19 @@ final class AgentKpqCoordinator {
         }
         if (!allOutside || !allGathered) return;
         stopAll(session);
-        coordinate(session, narrator(session), "wait-outside",
-                "Party is back in Kerning and waiting for the next command.");
+        if (!session.companionAdopted()) {
+            coordinate(session, narrator(session), "wait-outside",
+                    "Party is back in Kerning and waiting for the next command.");
+        }
         AgentKpqTerminationService.complete(session, nowMs);
+    }
+
+    /**
+     * In a companion run, a member outside the event and off the bonus map is done: it cannot come back in, and a
+     * human standing on the exit map held the run for the whole phase timeout.
+     */
+    static boolean doneOutsideEvent(int mapId, boolean inEvent) {
+        return !inEvent && mapId != AgentKpqDefinition.BONUS_MAP;
     }
 
     private static Character leader(AgentKpqSession session) {
@@ -1177,7 +1212,7 @@ final class AgentKpqCoordinator {
                     participants, initialCombination, session.seed(), attemptId, nowMs);
             session.setCombination(initialCombination);
             if (!movers.isEmpty()) {
-                coordinate(session, narrator, "s" + definition.stageNumber() + "-initial-position",
+                coordinate(session, narrator, "s" + definition.stageNumber() + "-initial-position-" + attemptId,
                         formationInstruction(movers, leader));
             }
         }
@@ -1553,18 +1588,16 @@ final class AgentKpqCoordinator {
                             + "phase={} remainingBefore={}",
                     session.sessionId(), member.characterId(), member.memberType(),
                     session.phase(), session.memberCount());
-            if (character != null && KPQ.event(character) == event) event.exitPlayer(character);
-            session.removeMember(member.characterId());
-            AgentKpqSessionRegistry.unindexMember(session, member.characterId());
-            if (engagement != null) {
-                AgentPartyQuestEngagementRegistry.unindexMember(engagement, member.characterId());
-            }
-            if (member.memberType() == AgentKpqMemberState.MemberType.AGENT) {
-                AgentPartyQuestLifecycleRuntime.recoverDetachedMember(member.characterId(), nowMs);
-            }
+            ejectMember(session, member, character, event, engagement, nowMs);
         }
         if (session.memberCount() < 3) {
             fail(session, "The KPQ party fell below three members; no rewards were awarded", nowMs);
+            return false;
+        }
+        // Checked before the leadership reconcile, which would fail the humans for having no Agent to execute.
+        if (session.companionAdopted() && session.members().stream()
+                .noneMatch(member -> member.memberType() == AgentKpqMemberState.MemberType.AGENT)) {
+            AgentKpqTerminationService.detach(session, "every companion tapped out; the humans carry on", nowMs);
             return false;
         }
         int liveLeaderId = party.members().stream()
@@ -1598,29 +1631,234 @@ final class AgentKpqCoordinator {
         return true;
     }
 
+    /**
+     * Takes one member out of the session and both indexes. The formation is reset for every session: a four-member
+     * leader re-entered participants() with no assigned position, and the stage kept waiting on the departed slot.
+     */
+    private static void ejectMember(AgentKpqSession session,
+                                    AgentKpqMemberState member,
+                                    Character character,
+                                    EventInstanceManager event,
+                                    AgentPartyQuestEngagement engagement,
+                                    long nowMs) {
+        if (character != null && KPQ.event(character) == event) event.exitPlayer(character);
+        session.removeMember(member.characterId());
+        AgentKpqSessionRegistry.unindexMember(session, member.characterId());
+        if (engagement != null) {
+            AgentPartyQuestEngagementRegistry.unindexMember(engagement, member.characterId());
+        }
+        if (member.memberType() == AgentKpqMemberState.MemberType.AGENT) {
+            AgentPartyQuestLifecycleRuntime.recoverDetachedMember(member.characterId(), nowMs);
+        }
+        session.resetFormation();
+    }
+
+    /** False pauses the stage logic for this tick, or means the run just ended. */
     private static boolean membersAlive(AgentKpqSession session, Character eventAnchor, long nowMs) {
+        EventInstanceManager event = session.eventInstance();
+        boolean leaderInBoundEvent = event != null && KPQ.event(eventAnchor) == event;
+        boolean cleared = "true".equals(KPQ.property(eventAnchor, "5stageclear"));
+        // Counted as the loop marks members, so two companions downed in one tick cannot both wait.
+        int down = (int) session.members().stream().filter(AgentKpqMemberState::down).count();
+        boolean waiting = false;
         for (AgentKpqMemberState member : session.members()) {
             Character character = memberCharacter(member.characterId(), eventAnchor);
-            if (character == null) {
-                member.observeBlocker("member-missing", nowMs);
-                if (nowMs - member.blockerSinceMs() >= LOCAL_RECOVERY_TIMEOUT_MS) {
-                    fail(session, "Party member " + member.characterId()
-                            + " disconnected or left the channel", nowMs);
+            MemberVerdict verdict = memberVerdict(new MemberFacts(
+                    session.companionAdopted(), session.phase(), member.memberType(),
+                    member.characterId() == session.eventLeaderId(), character != null,
+                    character == null ? 0 : character.getHp(),
+                    character != null && KPQ.event(character) == event, leaderInBoundEvent, cleared,
+                    member.downSinceMs(), member.tapOutRequested(),
+                    session.memberCount() - 1 - (down - (member.down() ? 1 : 0)),
+                    nowMs, LOCAL_RECOVERY_TIMEOUT_MS));
+            switch (verdict) {
+                case MISSING -> {
+                    member.observeBlocker("member-missing", nowMs);
+                    if (nowMs - member.blockerSinceMs() >= LOCAL_RECOVERY_TIMEOUT_MS) {
+                        fail(session, "Party member " + member.characterId()
+                                + " disconnected or left the channel", nowMs);
+                        return false;
+                    }
+                }
+                case OK -> {
+                    if ("member-missing".equals(member.blocker())) member.clearBlocker();
+                }
+                case DEFEATED -> {
+                    fail(session, character.getName() + " was defeated during KPQ", nowMs);
                     return false;
                 }
-            } else if (character.getHp() <= 0) {
-                fail(session, character.getName() + " was defeated during KPQ", nowMs);
-                return false;
-            } else if ("member-missing".equals(member.blocker())) {
-                member.clearBlocker();
+                case SHORT_HANDED -> {
+                    fail(session, wentDown(character.getName()), nowMs);
+                    return false;
+                }
+                case DROP_HUMAN -> {
+                    dropHuman(session, member, character, eventAnchor, nowMs);
+                    return false;
+                }
+                case DOWN_WAIT -> {
+                    if (!member.down()) down++;
+                    member.markDown(nowMs);
+                    waiting = true;
+                }
+                case REQUEST_TAP_OUT -> {
+                    // The stock respawn carried it out of the event; the host takes it out of the party, and the
+                    // departed-member path drops it on a later tick.
+                    if (!AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
+                            "kpq", session.sessionId(), member.characterId(), character.getMapId(), nowMs))) {
+                        fail(session, character.getName() + " was defeated during KPQ", nowMs);
+                        return false;
+                    }
+                    member.markTapOutRequested();
+                    waiting = true;
+                }
+                case REVIVED -> {
+                    if (member.confirmRevived(nowMs)) {
+                        member.clearDown();
+                        down--;
+                        session.resetFormation();
+                    } else {
+                        waiting = true;
+                    }
+                }
+                case IGNORE -> {
+                }
             }
         }
-        return true;
+        return !waiting;
+    }
+
+    enum MemberVerdict {
+        OK, MISSING, DROP_HUMAN, DOWN_WAIT, REQUEST_TAP_OUT, REVIVED, IGNORE, DEFEATED, SHORT_HANDED
+    }
+
+    record MemberFacts(boolean adopted,
+                       AgentKpqSession.Phase phase,
+                       AgentKpqMemberState.MemberType type,
+                       boolean eventLeader,
+                       boolean present,
+                       int hp,
+                       boolean inBoundEvent,
+                       boolean leaderInBoundEvent,
+                       boolean cleared,
+                       long downSinceMs,
+                       boolean tapOutRequested,
+                       int standingOthers,
+                       long nowMs,
+                       long timeoutMs) {
+    }
+
+    /**
+     * How one member's state bears on the run. Outside a companion run, and for the event leader, any death fails
+     * it as before. In a companion run a downed non-leader pauses the stage until the stock respawn carries it out
+     * of the event: a companion is then tapped out by its host, and a human is dropped once it revives outside.
+     * Fewer than three still standing ends the run, since KerningPQ would end the event at the respawn anyway.
+     */
+    static MemberVerdict memberVerdict(MemberFacts facts) {
+        boolean human = facts.type() == AgentKpqMemberState.MemberType.HUMAN;
+        if (!facts.present()) {
+            return facts.adopted() && human && !facts.eventLeader()
+                    ? MemberVerdict.DROP_HUMAN : MemberVerdict.MISSING;
+        }
+        if (!facts.adopted() || facts.eventLeader()) {
+            return facts.hp() <= 0 ? MemberVerdict.DEFEATED : MemberVerdict.OK;
+        }
+        // After the stage-5 clear nothing is asked of a downed member; it only must not hold the rewards up.
+        if (facts.cleared() || facts.phase() == AgentKpqSession.Phase.CLAIMING_REWARDS
+                || facts.phase() == AgentKpqSession.Phase.EXITING) {
+            return facts.hp() <= 0 || facts.downSinceMs() > 0L ? MemberVerdict.IGNORE : MemberVerdict.OK;
+        }
+        if (!insideEventPhase(facts.phase())) {
+            return facts.hp() <= 0 ? MemberVerdict.DEFEATED : MemberVerdict.OK;
+        }
+        // With the leader out of the bound event the event check fails the run with the real reason.
+        if (!facts.leaderInBoundEvent()) return MemberVerdict.OK;
+        boolean standing = facts.hp() > 0 && facts.inBoundEvent();
+        if (facts.downSinceMs() == 0L) {
+            if (standing) return MemberVerdict.OK;
+            if (human && facts.hp() > 0) return MemberVerdict.DROP_HUMAN;
+            // Alive outside the event is a death no tick saw: the respawn already carried it out.
+            return facts.standingOthers() < 3 ? MemberVerdict.SHORT_HANDED : MemberVerdict.DOWN_WAIT;
+        }
+        if (facts.nowMs() - facts.downSinceMs() >= facts.timeoutMs()) return MemberVerdict.DEFEATED;
+        if (standing) return MemberVerdict.REVIVED;
+        if (facts.standingOthers() < 3) return MemberVerdict.SHORT_HANDED;
+        if (facts.hp() > 0 && human) return MemberVerdict.DROP_HUMAN;
+        if (facts.hp() > 0 && !facts.tapOutRequested()) return MemberVerdict.REQUEST_TAP_OUT;
+        return MemberVerdict.DOWN_WAIT;
+    }
+
+    /** A companion run carries on without a non-leader human who went offline or left the instance. */
+    private static void dropHuman(AgentKpqSession session,
+                                  AgentKpqMemberState member,
+                                  Character character,
+                                  Character eventAnchor,
+                                  long nowMs) {
+        String name = partyMemberName(eventAnchor, member.characterId());
+        log.warn("KPQ human member dropped from a companion run: session={} member={} online={} phase={} "
+                        + "remainingBefore={}",
+                session.sessionId(), member.characterId(), character != null, session.phase(),
+                session.memberCount());
+        ejectMember(session, member, character, session.eventInstance(),
+                AgentPartyQuestEngagementRegistry.forOperator(session.operatorId()), nowMs);
+        if (session.memberCount() < 3) {
+            fail(session, name + " left, and KPQ needs three of us", nowMs);
+            return;
+        }
+        coordinate(session, narrator(session), "drop-" + member.characterId(),
+                name + " had to go. We'll carry on with three.");
+    }
+
+    private static String partyMemberName(Character eventAnchor, int characterId) {
+        server.agents.integration.AgentPartySnapshot party = AgentPartyGatewayRuntime.party().snapshot(eventAnchor);
+        return party == null ? "A party member" : party.members().stream()
+                .filter(java.util.Objects::nonNull)
+                .filter(member -> member.id() == characterId)
+                .map(server.agents.integration.AgentPartyMemberSnapshot::name)
+                .findFirst().orElse("A party member");
+    }
+
+    static String wentDown(String name) {
+        return name + " went down, and KPQ needs three of us";
+    }
+
+    /**
+     * True inside an uncleared stage when fewer than three members still stand in the bound event (not down, alive,
+     * inside it). A downed companion's respawn would then end the event, since KerningPQ ends it at three.
+     */
+    static boolean shortHanded(AgentKpqSession session) {
+        EventInstanceManager event = session.eventInstance();
+        if (!insideEventPhase(session.phase()) || event == null
+                || "true".equals(event.getProperty("5stageclear"))) {
+            return false;
+        }
+        Character anchor = firstCharacter(session);
+        return session.members().stream()
+                .filter(member -> !member.down())
+                .map(member -> memberCharacter(member.characterId(), anchor))
+                .filter(character -> character != null && standsInEvent(session, character))
+                .count() < 3;
     }
 
     private static Character narrator(AgentKpqSession session) {
         int speakerId = narrationSpeakerId(session);
-        return speakerId <= 0 ? null : character(speakerId);
+        Character speaker = speakerId <= 0 ? null : character(speakerId);
+        if (speaker == null || standsInEvent(session, speaker)) return speaker;
+        Character standing = firstStandingAgent(session);
+        return standing == null ? speaker : standing;
+    }
+
+    /** Narration is map chat: a downed speaker, or one already respawned outside, is heard by nobody in the run. */
+    private static boolean standsInEvent(AgentKpqSession session, Character character) {
+        return character.getHp() > 0 && KPQ.event(character) == session.eventInstance();
+    }
+
+    private static Character firstStandingAgent(AgentKpqSession session) {
+        return session.members().stream()
+                .filter(member -> member.memberType() == AgentKpqMemberState.MemberType.AGENT)
+                .sorted(Comparator.comparingInt(AgentKpqMemberState::partyNumber))
+                .map(member -> character(member.characterId()))
+                .filter(agent -> agent != null && standsInEvent(session, agent))
+                .findFirst().orElse(null);
     }
 
     static int narrationSpeakerId(AgentKpqSession session) {
@@ -1631,6 +1869,8 @@ final class AgentKpqCoordinator {
 
     static int failureSpeakerId(AgentKpqSession session) {
         if (session == null) return 0;
+        Character standing = firstStandingAgent(session);
+        if (standing != null) return standing.getId();
         return session.members().stream()
                 .filter(member -> member.memberType() == AgentKpqMemberState.MemberType.AGENT)
                 .min(Comparator.comparingInt(AgentKpqMemberState::partyNumber))

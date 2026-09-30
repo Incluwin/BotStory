@@ -37,6 +37,11 @@ final class AgentKpqTerminationService {
         release(session, "completed", nowMs, false, true);
     }
 
+    /** Lets go of a run whose last companion tapped out; the event stays up, and the humans carry on as stock. */
+    static void detach(AgentKpqSession session, String reason, long nowMs) {
+        release(session, reason, nowMs, false, false);
+    }
+
     static void stopTest(AgentKpqSession session, EventInstanceManager event, long nowMs) {
         if (session != null && event != null) session.bindEventInstance(event);
         release(session, "test stopped", nowMs, true, false);

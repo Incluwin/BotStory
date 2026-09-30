@@ -3,6 +3,9 @@ package server.agents.capabilities.partyquest.kpq;
 import client.Character;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -10,6 +13,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -328,6 +333,39 @@ class AgentKpqCoordinatorTest {
                 new AgentKpqMemberState.BossCombatDelta(4, 4, 0, 99), 1_000));
         assertEquals("ok", AgentKpqCoordinator.bossCombatConcern(
                 new AgentKpqMemberState.BossCombatDelta(4, 4, 0, 100), 1_000));
+    }
+
+    @Test
+    void departedAgentStillLeavesTheSessionAndEngagementIndex() {
+        try (KpqRunFixture run = new KpqRunFixture()) {
+            Character ben = run.human(1, "Ben");
+            Character mira = run.companion(2, "Mira");
+            Character pip = run.companion(3, "Pip");
+            Character tobi = run.companion(4, "Tobi");
+            AgentKpqSession session = run.session(false, AgentKpqSession.Phase.STAGE_2, ben, mira, pip, tobi);
+            AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
+                    "kpq", AgentPartyQuestEngagement.Mode.PRODUCTION, 7L, 1, 4, 1_000L);
+            engagement.addMember(1, AgentPartyQuestEngagement.MemberType.HUMAN, 1_000L);
+            for (int agentId = 2; agentId <= 4; agentId++) {
+                engagement.addMember(agentId, AgentPartyQuestEngagement.MemberType.AGENT, 1_000L);
+            }
+            AgentPartyQuestEngagementRegistry.register(engagement);
+            try {
+                run.leaveParty(tobi);
+
+                AgentKpqCoordinator.tick(session, 2_000L);
+
+                verify(run.event).exitPlayer(tobi);
+                assertNull(session.member(4));
+                assertNull(AgentKpqSessionRegistry.forMember(4));
+                assertNull(AgentPartyQuestEngagementRegistry.forMember(4));
+                assertSame(engagement, AgentPartyQuestEngagementRegistry.forMember(2));
+                run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.recoverDetachedMember(4, 2_000L));
+                assertEquals(AgentKpqSession.Phase.STAGE_2, session.phase());
+            } finally {
+                AgentPartyQuestEngagementRegistry.remove(engagement);
+            }
+        }
     }
 
     private static AgentKpqMemberState member(int characterId, int partyNumber, int position) {

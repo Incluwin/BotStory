@@ -129,8 +129,7 @@ public final class AgentKpqHumanDialogueRuntime {
     static void promptDelayed(
             AgentKpqSession session, Character human, String task, long nowMs,
             boolean allowLeaderTeasing) {
-        if (session == null || human == null || task == null
-                || session.mode() != AgentKpqSession.Mode.TEST_OBSERVATION) {
+        if (session == null || human == null || task == null || !guidancePrompts(session)) {
             return;
         }
         String waitKey = "human-wait-" + session.phase() + '-' + human.getId()
@@ -150,6 +149,15 @@ public final class AgentKpqHumanDialogueRuntime {
                     human.getName(), task, session.seed(), turn,
                     partyLeader, !partyLeader || allowLeaderTeasing));
         }
+    }
+
+    /**
+     * Delayed nudges belong to test observation, and to a companion run whose host turned coordination chat on; a
+     * human-led PRODUCTION run was otherwise left without them.
+     */
+    static boolean guidancePrompts(AgentKpqSession session) {
+        return session.mode() == AgentKpqSession.Mode.TEST_OBSERVATION
+                || (session.companionAdopted() && session.memberCoordinationChatEnabled());
     }
 
     static long responseDelayMs(long seed, int characterId, long minimumMs, long maximumMs) {
@@ -174,12 +182,18 @@ public final class AgentKpqHumanDialogueRuntime {
     }
 
     private static List<Character> agents(AgentKpqSession session) {
-        return session.members().stream()
+        List<Character> agents = session.members().stream()
                 .filter(member -> member.memberType() == AgentKpqMemberState.MemberType.AGENT)
                 .sorted(Comparator.comparingInt(AgentKpqMemberState::partyNumber))
                 .map(member -> agentCharacter(member.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .toList();
+        // Map chat from a downed Agent, or one already respawned outside, lands where the party cannot see it.
+        List<Character> standing = agents.stream()
+                .filter(agent -> agent.getHp() > 0
+                        && AgentPartyQuestGatewayRuntime.partyQuest().event(agent) == session.eventInstance())
+                .toList();
+        return standing.isEmpty() ? agents : standing;
     }
 
     private static Character agentCharacter(int characterId) {

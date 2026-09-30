@@ -44,6 +44,7 @@ public final class AgentKpqSession {
     private long lastExecutionTickMs = Long.MIN_VALUE;
     private boolean paused;
     private boolean memberCoordinationChatEnabled = DEFAULT_MEMBER_COORDINATION_CHAT_ENABLED;
+    private boolean companionAdopted;
     private String failure = "";
     private final LinkedHashSet<String> narrationKeys = new LinkedHashSet<>();
     private final Map<String, Long> dialogueTimes = new LinkedHashMap<>();
@@ -134,6 +135,30 @@ public final class AgentKpqSession {
 
     public synchronized void setMemberCoordinationChatEnabled(boolean enabled) {
         memberCoordinationChatEnabled = enabled;
+    }
+
+    /**
+     * A human-led run of owner-bound companions. Its host sets this after admission; a downed companion then waits
+     * for its respawn and taps out instead of failing the run, and a non-leader human who leaves is dropped.
+     */
+    public synchronized boolean companionAdopted() {
+        return companionAdopted;
+    }
+
+    public synchronized void setCompanionAdopted(boolean adopted) {
+        companionAdopted = adopted;
+    }
+
+    /**
+     * Forgets the puzzle formation so the next stage tick assigns the remaining members again, and restarts every
+     * blocker clock that kept running while a downed member paused the stage. The attempt is kept, so no puzzle
+     * attempt is burnt.
+     */
+    public synchronized void resetFormation() {
+        combination = List.of();
+        puzzleCheckAtMs = 0L;
+        clearBlocker();
+        members.values().forEach(AgentKpqMemberState::clearBlocker);
     }
 
     private int nextPartyNumber() {
