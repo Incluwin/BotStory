@@ -55,14 +55,15 @@ public final class AgentKpqLobbyPolicy {
                 if (engagement.state() != AgentPartyQuestEngagement.State.ACTIVE_EVENT) pendingOnChannel++;
             }
         }
-        return backgroundSlotAvailable(total, onChannel, pendingOnChannel,
-                AgentPartyQuestGatewayRuntime.partyQuest().openInstances(anchor, "KerningPQ"), maxLobbies(),
-                Math.max(0, config.AgentTuning.intValue(
-                        "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.HUMAN_RESERVED_LOBBIES")),
-                Math.max(0, config.AgentTuning.intValue(
-                        "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_PER_CHANNEL")),
-                Math.max(0, config.AgentTuning.intValue(
-                        "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_TOTAL")));
+        int globalLimit = Math.max(0, config.AgentTuning.intValue(
+                "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_TOTAL"));
+        int perChannelConfigured = Math.max(0, config.AgentTuning.intValue(
+                "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_PER_CHANNEL"));
+        int reserved = Math.max(0, config.AgentTuning.intValue(
+                "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.HUMAN_RESERVED_LOBBIES"));
+        int occupied = AgentPartyQuestGatewayRuntime.partyQuest().openInstances(anchor, "KerningPQ");
+        return backgroundSlotAvailable(total, onChannel, pendingOnChannel, occupied, maxLobbies(), reserved,
+                perChannelConfigured, globalLimit);
     }
 
     static boolean backgroundSlotAvailable(int total, int onChannel, int pendingOnChannel, int occupied,

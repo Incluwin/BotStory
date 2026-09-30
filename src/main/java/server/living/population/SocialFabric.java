@@ -84,7 +84,9 @@ public final class SocialFabric {
 
     /**
      * From memory only, since the background directors ask on the Agent scheduler. A citizen can only be owned as a
-     * hire, so the {@code hire:} row is the whole ownership check; citizens themselves hold POPULATION leases.
+     * hire, so the {@code hire:} row is the whole ownership check. A citizen session holds no lease (PresenceScheduler
+     * never loads a leased character), so a lease means something else took the character; only the population's own
+     * POPULATION kind is let through.
      */
     private boolean spokenFor(int characterId) {
         LivingWorld world = population.world();

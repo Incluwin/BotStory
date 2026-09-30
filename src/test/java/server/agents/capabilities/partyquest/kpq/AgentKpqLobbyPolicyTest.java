@@ -64,7 +64,7 @@ class AgentKpqLobbyPolicyTest {
 
     @Test
     void agentOperatedProductionEngagementCountsAsBackground() {
-        registerAgent(71_001);
+        registerAgent(71_001, CHANNEL);
         AgentPartyQuestEngagement forming = forming(
                 AgentPartyQuestEngagement.Mode.PRODUCTION, 71_001, 71_001);
 
@@ -75,8 +75,8 @@ class AgentKpqLobbyPolicyTest {
 
     @Test
     void aHumanLedCompanionLobbyAndAGmTestRunAreNotBackground() {
-        registerAgent(71_011);
-        registerAgent(71_021);
+        registerAgent(71_011, CHANNEL);
+        registerAgent(71_021, CHANNEL);
         AgentPartyQuestEngagement companions = forming(
                 AgentPartyQuestEngagement.Mode.PRODUCTION, 71_010, 71_011); // a human leader's companion run
         AgentPartyQuestEngagement test = forming(
@@ -84,6 +84,16 @@ class AgentKpqLobbyPolicyTest {
 
         assertFalse(AgentKpqLobbyPolicy.background(companions));
         assertFalse(AgentKpqLobbyPolicy.background(test));
+        assertTrue(AgentKpqLobbyPolicy.backgroundSlotAvailable(WORLD, CHANNEL, anchor(0)));
+    }
+
+    @Test
+    void aFailedRunAndALobbyOnAnotherChannelLeaveThisChannelsSlotFree() {
+        registerAgent(71_031, CHANNEL);
+        registerAgent(71_041, CHANNEL + 1);
+        forming(AgentPartyQuestEngagement.Mode.PRODUCTION, 71_031, 71_031).fail("wiped", 2_000L);
+        forming(AgentPartyQuestEngagement.Mode.PRODUCTION, 71_041, 71_041);
+
         assertTrue(AgentKpqLobbyPolicy.backgroundSlotAvailable(WORLD, CHANNEL, anchor(0)));
     }
 
@@ -97,8 +107,8 @@ class AgentKpqLobbyPolicyTest {
         return engagement;
     }
 
-    private void registerAgent(int characterId) {
-        Character agent = onChannel(mock(Character.class));
+    private void registerAgent(int characterId, int channel) {
+        Character agent = onChannel(mock(Character.class), channel);
         when(agent.getId()).thenReturn(characterId);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
         AgentRuntimeRegistry.registerEntry(entry);
@@ -107,7 +117,7 @@ class AgentKpqLobbyPolicyTest {
 
     /** A character on the channel whose Kerning PQ event manager has this many instances open. */
     private static Character anchor(int openInstances) {
-        Character anchor = onChannel(mock(Character.class));
+        Character anchor = onChannel(mock(Character.class), CHANNEL);
         EventManager kerningPq = mock(EventManager.class);
         List<EventInstanceManager> open = new ArrayList<>();
         for (int i = 0; i < openInstances; i++) open.add(mock(EventInstanceManager.class));
@@ -116,10 +126,10 @@ class AgentKpqLobbyPolicyTest {
         return anchor;
     }
 
-    private static Character onChannel(Character character) {
+    private static Character onChannel(Character character, int channel) {
         Client client = mock(Client.class);
         when(client.getWorld()).thenReturn(WORLD);
-        when(client.getChannel()).thenReturn(CHANNEL);
+        when(client.getChannel()).thenReturn(channel);
         when(character.getClient()).thenReturn(client);
         return character;
     }

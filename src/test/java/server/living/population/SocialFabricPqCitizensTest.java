@@ -27,8 +27,8 @@ import static org.mockito.Mockito.when;
 
 /**
  * The background KPQ/HPQ directors only get citizens the population may send (P6 WP4): never one some owner has
- * hired, and never one the living world has loaded for a companion or a live bench slice. A citizen's own
- * POPULATION lease keeps it eligible, as does no lease at all.
+ * hired, and never one the living world has loaded for a companion or a live bench slice. No lease at all (a citizen
+ * session holds none) keeps it eligible, as does the population's own POPULATION kind.
  */
 class SocialFabricPqCitizensTest {
     private static final int OWNED = 960;
