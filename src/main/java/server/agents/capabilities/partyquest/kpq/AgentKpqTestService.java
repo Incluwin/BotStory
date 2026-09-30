@@ -95,7 +95,7 @@ public final class AgentKpqTestService {
                         seed(params, 1, nowMs), nowMs);
                 case "wait" -> startMixed(operator, MixedFlow.HUMAN_INVITES_AGENTS,
                         seed(params, 1, nowMs), nowMs);
-                case "party", "adopt" -> adoptCurrentParty(operator, seed(params, 1, nowMs), nowMs);
+                case "party", "adopt" -> adoptCurrentParty(operator, adoptOptions(params, 1, nowMs), nowMs);
                 case "checkpoint" -> checkpoint(operator, params, nowMs);
                 case "complete" -> complete(operator, integerAt(params, 1), nowMs);
                 case "status" -> status(operator);
@@ -236,7 +236,8 @@ public final class AgentKpqTestService {
         return response;
     }
 
-    private static List<String> adoptCurrentParty(Character operator, long seed, long nowMs) {
+    private static List<String> adoptCurrentParty(Character operator, AdoptOptions options, long nowMs) {
+        long seed = options.seed();
         if (operator.getMapId() != AgentKpqDefinition.RECRUIT_MAP) {
             return List.of("Stand in Kerning City (103000000) before adopting a mixed KPQ party.");
         }
@@ -270,10 +271,16 @@ public final class AgentKpqTestService {
                 .findFirst().orElse(0);
         Character leader = online.stream().filter(member -> member.getId() == leaderId).findFirst().orElse(null);
         if (leader == null) return List.of("The current party leader must be online on this channel.");
+        if (options.production() && leader.getId() != operator.getId()) {
+            return List.of("Lead the party yourself for a PRODUCTION run: the public admit keys the run by its leader.");
+        }
 
         ArrayList<String> response = new ArrayList<>();
-        AgentKpqAdmissionService.AdmissionResult result = AgentKpqAdmissionService.admit(
-                operator, leader, online, seed, nowMs, AgentKpqSession.Mode.TEST_OBSERVATION);
+        // PRODUCTION goes through the public admit a player-facing caller uses (the leader operates its own run).
+        AgentKpqAdmissionService.AdmissionResult result = options.production()
+                ? AgentKpqAdmissionService.admit(leader, leader, online, seed, nowMs)
+                : AgentKpqAdmissionService.admit(operator, leader, online, seed, nowMs,
+                        AgentKpqSession.Mode.TEST_OBSERVATION);
         if (!result.success()) {
             response.add("Could not adopt the mixed party: " + result.message());
             return response;
@@ -288,7 +295,8 @@ public final class AgentKpqTestService {
         run.eventLeaderId = leader.getId();
         RUNS.put(operator.getId(), run);
         long humans = online.size() - agentNames.size();
-        response.add("Adopted current party for mixed KPQ observation: " + humans + " human(s), "
+        response.add("Adopted current party for " + (options.production() ? "PRODUCTION KPQ" : "mixed KPQ observation")
+                + ": " + humans + " human(s), "
                 + agentNames.size() + " Agent(s), leader " + leader.getName() + ", seed " + seed + '.');
         return response;
     }
@@ -906,6 +914,9 @@ public final class AgentKpqTestService {
         if (run.engagement.state() != AgentPartyQuestEngagement.State.POST_RUN_HOLD) {
             return List.of("A new run can start only while the Agents are waiting outside.");
         }
+        if (run.engagement.mode() == AgentPartyQuestEngagement.Mode.PRODUCTION) {
+            return List.of("A PRODUCTION run is not re-run by the test harness; stop it and adopt the party again.");
+        }
         if (!ensureHeldParty(run)) {
             return List.of("The held external party no longer matches the KPQ roster. "
                     + "Reassemble it, then use !kpqtest party to adopt it as a new test.");
@@ -1134,13 +1145,20 @@ public final class AgentKpqTestService {
         return params != null && params.length > index ? Long.parseLong(params[index]) : fallback;
     }
 
+    /** "party [prod] [seed]": prod adopts through the public PRODUCTION admit instead of TEST_OBSERVATION. */
+    static AdoptOptions adoptOptions(String[] params, int firstOptionIndex, long fallbackSeed) {
+        boolean production = params != null && params.length > firstOptionIndex
+                && "prod".equalsIgnoreCase(params[firstOptionIndex]);
+        return new AdoptOptions(production, seed(params, firstOptionIndex + (production ? 1 : 0), fallbackSeed));
+    }
+
     private static List<String> help() {
         return List.of("!kpqtest 4 [seed] (claw thief, knuckle pirate, warrior, magician)",
                 "!kpqtest start [3|4] [balanced] [seed]",
                 "!kpqtest withme [seed] (spawn 3 unpartied Agents; invite them yourself)",
                 "!kpqtest invite [seed] (request Agent invite through nearby KPQ chat)",
                 "!kpqtest wait [seed] (alias for withme)",
-                "!kpqtest party [seed] (adopt current mixed party)",
+                "!kpqtest party [prod] [seed] (adopt current mixed party; prod = PRODUCTION admit, you lead)",
                 "!kpqtest checkpoint <1-5> [3|4] [balanced] [seed]",
                 "!kpqtest complete [1-5]",
                 "!kpqtest coordination <on|off>",
@@ -1195,6 +1213,9 @@ public final class AgentKpqTestService {
     }
 
     record StartOptions(int partySize, long seed, boolean balanced) {
+    }
+
+    record AdoptOptions(boolean production, long seed) {
     }
 
     private enum MixedFlow {

@@ -57,6 +57,19 @@ class AgentKpqTestServiceTest {
     }
 
     @Test
+    void partyAdoptionTakesAnOptionalProdTokenBeforeItsSeed() {
+        // "!kpqtest party prod" used to fail with For input string: "prod" (the seed parser saw the token)
+        assertEquals(new AgentKpqTestService.AdoptOptions(true, 123L),
+                AgentKpqTestService.adoptOptions(new String[]{"party", "prod", "123"}, 1, 999L));
+        assertEquals(new AgentKpqTestService.AdoptOptions(true, 999L),
+                AgentKpqTestService.adoptOptions(new String[]{"party", "PROD"}, 1, 999L));
+        assertEquals(new AgentKpqTestService.AdoptOptions(false, 123L),
+                AgentKpqTestService.adoptOptions(new String[]{"party", "123"}, 1, 999L));
+        assertEquals(new AgentKpqTestService.AdoptOptions(false, 999L),
+                AgentKpqTestService.adoptOptions(new String[]{"adopt"}, 1, 999L));
+    }
+
+    @Test
     void stoppingTestExitsParticipantsBeforeDisposingTheLobby() {
         EventInstanceManager event = mock(EventInstanceManager.class);
         Character first = mock(Character.class);
