@@ -733,7 +733,7 @@ public final class RosterService {
      * arrival") unless a whistle is used. Once it is seated or on its way it no longer waits for room. One waiting
      * outside a run (HOLD) rejoins, unless the run is still on ("after the run"); one whose trip its owner's logout cut
      * short sets off again for the time it had left (or walks in when that is up). Nobody is called while the owner is
-     * inside an event instance: that is "after the run" too.
+     * inside a companion party-quest run's instance: that is "after the run" too.
      */
     public RosterResult call(Character owner, Persona persona) {
         RosterResult result = call(owner, persona, null);
@@ -777,7 +777,7 @@ public final class RosterService {
             return committed(persona.id()) || owner.getEventInstance() != null ? afterTheRun(owner, persona)
                     : rejoinHold(owner, persona, entry);
         }
-        if (owner.getEventInstance() != null) {
+        if (owner.getEventInstance() != null && inCompanionRun(owner.getId())) {
             // a load there lands on the run's map unregistered, and a join grows the party mid-run (P6)
             return afterTheRun(owner, persona);
         }
@@ -1381,6 +1381,17 @@ public final class RosterService {
     }
 
     /** True while the persona's companion is committed to an event instance or expedition (Commitments). */
+    /**
+     * True while the owner is in a companion party-quest run: one of theirs is committed to it, or they went in with
+     * its lineup. Any other event instance (a ride, a wedding, a job test) takes calls as it always did.
+     */
+    private boolean inCompanionRun(int ownerId) {
+        Commitments commitments = world.commitments();
+        CompanionPartyQuestService partyQuests = world.partyQuests();
+        return commitments != null && commitments.ownerCommitted(ownerId)
+                || partyQuests != null && partyQuests.runForCharacter(ownerId) != null;
+    }
+
     private boolean committed(String personaId) {
         Commitments commitments = world.commitments();
         int characterId = world.residents().characterIdOf(personaId);
