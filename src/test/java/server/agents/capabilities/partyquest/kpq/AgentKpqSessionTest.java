@@ -152,13 +152,14 @@ class AgentKpqSessionTest {
                 AgentKpqSession.Mode.TEST_OBSERVATION, 7L, 1, 3, 1_000L);
         session.setCouponSweepStartedAtMs(90_000L);
         session.setNextCouponSweepAtMs(180_000L);
-        session.setStageOneHelperAnchor(new Point(300, -240));
+        session.setStageOneHelperAnchor(33, new Point(300, -240));
         session.setMissingPassSinceMs(185_000L);
 
         session.transition(AgentKpqSession.Phase.STAGE_2, 2_000L);
 
         assertEquals(0L, session.couponSweepStartedAtMs());
         assertEquals(0L, session.nextCouponSweepAtMs());
+        assertEquals(0, session.stageOneHelperCollectorId());
         assertNull(session.stageOneHelperAnchor());
         assertEquals(0L, session.missingPassSinceMs());
     }

@@ -17,20 +17,20 @@ class AgentKpqCouponCollectionPolicyTest {
     private static final long MAXIMUM_MS = 30_000L;
 
     @Test
-    void startsRotatingCollectorAtNinetySecondsWhenCouponsRemainOnFloor() {
+    void startsSweepAtNinetySecondsAndRepicksWhenCouponsRemainOnFloor() {
         AgentKpqCouponCollectionPolicy.Decision before = decide(89_999L, 0L, 0L, 5, 20);
         assertFalse(before.sweepActive());
 
         AgentKpqCouponCollectionPolicy.Decision due = decide(90_000L, 0L, 0L, 5, 20);
         assertTrue(due.sweepActive());
-        assertTrue(due.rotateCollector());
+        assertTrue(due.repick());
         assertEquals(90_000L, due.sweepStartedAtMs());
 
-        AgentKpqCouponCollectionPolicy.Decision rotate = decide(
+        AgentKpqCouponCollectionPolicy.Decision repick = decide(
                 120_000L, due.sweepStartedAtMs(), due.nextSweepAtMs(), 2, 20);
-        assertTrue(rotate.sweepActive());
-        assertTrue(rotate.rotateCollector());
-        assertEquals(120_000L, rotate.sweepStartedAtMs());
+        assertTrue(repick.sweepActive());
+        assertTrue(repick.repick());
+        assertEquals(120_000L, repick.sweepStartedAtMs());
     }
 
     @Test
@@ -42,7 +42,7 @@ class AgentKpqCouponCollectionPolicyTest {
     }
 
     @Test
-    void emptyFloorEndsRotationAndSchedulesAnotherNinetySecondCheck() {
+    void emptyFloorEndsSweepAndSchedulesAnotherNinetySecondCheck() {
         AgentKpqCouponCollectionPolicy.Decision empty = decide(
                 100_000L, 90_000L, 90_000L, 0, 12);
 

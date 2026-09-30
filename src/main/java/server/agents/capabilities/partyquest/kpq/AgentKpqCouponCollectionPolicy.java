@@ -1,6 +1,6 @@
 package server.agents.capabilities.partyquest.kpq;
 
-/** Pure scheduling policy for Stage 1's map-wide coupon sweeps; a rotation re-picks every collector's coupon. */
+/** Pure scheduling policy for Stage 1's map-wide coupon sweeps; a repick hands out every collector's coupon again. */
 final class AgentKpqCouponCollectionPolicy {
     private AgentKpqCouponCollectionPolicy() {
     }
@@ -27,9 +27,9 @@ final class AgentKpqCouponCollectionPolicy {
             return new Decision(false, false, 0L, nextSweep);
         }
         if (sweepStarted > 0L) {
-            boolean rotateCollector = nowMs - sweepStarted >= sweepMaximumMs;
-            return new Decision(true, rotateCollector,
-                    rotateCollector ? nowMs : sweepStarted, nextSweep);
+            boolean repick = nowMs - sweepStarted >= sweepMaximumMs;
+            return new Decision(true, repick,
+                    repick ? nowMs : sweepStarted, nextSweep);
         }
         if (nowMs >= nextSweep) {
             return new Decision(true, true, nowMs, nextSweep);
@@ -38,7 +38,7 @@ final class AgentKpqCouponCollectionPolicy {
     }
 
     record Decision(boolean sweepActive,
-                    boolean rotateCollector,
+                    boolean repick,
                     long sweepStartedAtMs,
                     long nextSweepAtMs) {
     }

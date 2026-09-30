@@ -46,6 +46,7 @@ class StageOnePaceTest {
     private static final int ANCHOR_MOVE_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HELPER_ANCHOR_MOVE_PX");
     private static final String PASSES_AT_FEET = "Ben, the passes are at your feet. pick them up and talk to Cloto.";
+    private static final String PASS_DROPPED = AgentKpqCoordinator.stageOnePassDropMessage("Ben");
 
     private KpqRunFixture run;
     private MockedStatic<AgentGrindLootStateRuntime> loot;
@@ -117,6 +118,23 @@ class StageOnePaceTest {
     }
 
     @Test
+    void aLoneCouponGoesToTheCollectorBesideItNotTheEarlierOneAcrossTheMap() {
+        Character ben = at(run.human(1, "Ben"), 0, 0);
+        Character mira = at(run.companion(2, "Mira"), -900, 0);
+        Character pip = at(run.companion(3, "Pip"), 400, 0);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, mira, pip);
+        collecting(session, mira, 0);
+        collecting(session, pip, 0);
+        MapItem besidePip = coupon(11, 600, 0);
+        when(run.map.getDroppedItems()).thenReturn(List.of(besidePip));
+
+        AgentKpqCoordinator.tick(session, 1_000L + SWEEP_INTERVAL_MS);
+
+        loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(entry(3), besidePip));
+        loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(eq(entry(2)), any()), never());
+    }
+
+    @Test
     void helpersFightAtTheNeediestCollectorAndStayForItsSmallMoves() {
         Character kai = at(run.companion(1, "Kai"), 0, 0);
         Character mira = at(run.companion(2, "Mira"), 100, 0);
@@ -144,6 +162,40 @@ class StageOnePaceTest {
         assertEquals(List.of(firstSpot, firstSpot, movedOn), anchors.getAllValues());
         modes.verify(() -> AgentModeService.startFarmHere(eq(entry(3)), any(), any()), never());
         modes.verify(() -> AgentModeService.startFarmHere(eq(entry(4)), any(), any()), never());
+    }
+
+    @Test
+    void helpersStayWithOneCollectorWhileTwoEqualNeedsTakeTurnsPickingUp() {
+        Character kai = at(run.companion(1, "Kai"), 0, 0);
+        Character mira = at(run.companion(2, "Mira"), 100, 0);
+        Character pip = at(run.companion(3, "Pip"), 500, -240);
+        Character tobi = at(run.companion(4, "Tobi"), 0, -1156);
+        AgentKpqSession session = run.session(false, AgentKpqSession.Phase.STAGE_1, kai, mira, pip, tobi);
+        collecting(session, mira, 0);
+        session.member(2).markPassCreated();
+        session.member(2).markPassDelivered();
+        session.member(2).setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
+        collecting(session, pip, 0);
+        collecting(session, tobi, 0);
+        Point atPip = new Point(500, -240);
+        Point atTobi = new Point(0, -1156);
+
+        // Both need ten, so the helpers go to Pip; then the two keep passing each other by one coupon.
+        AgentKpqCoordinator.tick(session, 2_000L);
+        when(pip.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(1);
+        AgentKpqCoordinator.tick(session, 3_000L);
+        when(tobi.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(1);
+        AgentKpqCoordinator.tick(session, 4_000L);
+        when(pip.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(2);
+        AgentKpqCoordinator.tick(session, 5_000L);
+        // Pip is done collecting, so the helpers move on to Tobi.
+        session.member(3).markPassCreated();
+        session.member(3).setRole(AgentKpqMemberState.Role.PASS_DELIVERER);
+        AgentKpqCoordinator.tick(session, 6_000L);
+
+        ArgumentCaptor<Point> anchors = ArgumentCaptor.forClass(Point.class);
+        modes.verify(() -> AgentModeService.startFarmHere(eq(entry(2)), anchors.capture(), any()), times(5));
+        assertEquals(List.of(atPip, atPip, atPip, atPip, atTobi), anchors.getAllValues());
     }
 
     @Test
@@ -181,6 +233,27 @@ class StageOnePaceTest {
         AgentKpqCoordinator.tick(session, 5_000L);
 
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASSES_AT_FEET)), times(1));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASS_DROPPED)), never());
+    }
+
+    @Test
+    void anAgentRunForAHumanWithChatOffStillHearsEachPassDrop() {
+        Character ben = at(run.human(1, "Ben"), 0, 0);
+        Character mira = at(run.companion(2, "Mira"), 10, 0);
+        Character pip = at(run.companion(3, "Pip"), 20, 0);
+        AgentKpqSession session = run.session(false, AgentKpqSession.Phase.STAGE_1, ben, mira, pip);
+        session.setMemberCoordinationChatEnabled(false);
+        holdingPass(session, mira);
+        holdingPass(session, pip);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        List<MapItem> passes = List.of(pass(21), pass(22));
+        when(run.map.getDroppedItems()).thenReturn(passes);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, PASS_DROPPED));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(pip, PASS_DROPPED));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASSES_AT_FEET)), never());
     }
 
     @Test

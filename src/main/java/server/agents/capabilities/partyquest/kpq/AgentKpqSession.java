@@ -58,6 +58,7 @@ public final class AgentKpqSession {
     private boolean puzzleValidationAccepted;
     private long couponSweepStartedAtMs;
     private long nextCouponSweepAtMs;
+    private int stageOneHelperCollectorId;
     private Point stageOneHelperAnchor;
     private long missingPassSinceMs;
     private long puzzleCheckAtMs;
@@ -220,6 +221,7 @@ public final class AgentKpqSession {
         puzzleValidationAccepted = false;
         couponSweepStartedAtMs = 0L;
         nextCouponSweepAtMs = 0L;
+        stageOneHelperCollectorId = 0;
         stageOneHelperAnchor = null;
         missingPassSinceMs = 0L;
         puzzleCheckAtMs = 0L;
@@ -364,8 +366,12 @@ public final class AgentKpqSession {
     public synchronized void setNextCouponSweepAtMs(long value) {
         nextCouponSweepAtMs = Math.max(0L, value);
     }
+    synchronized int stageOneHelperCollectorId() { return stageOneHelperCollectorId; }
     synchronized Point stageOneHelperAnchor() { return stageOneHelperAnchor; }
-    synchronized void setStageOneHelperAnchor(Point anchor) { stageOneHelperAnchor = anchor; }
+    synchronized void setStageOneHelperAnchor(int collectorId, Point anchor) {
+        stageOneHelperCollectorId = Math.max(0, collectorId);
+        stageOneHelperAnchor = anchor;
+    }
     public synchronized long missingPassSinceMs() { return missingPassSinceMs; }
     public synchronized void setMissingPassSinceMs(long value) {
         missingPassSinceMs = Math.max(0L, value);

@@ -2129,15 +2129,15 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.KPQ_PHASE_TIMEOUT_MS: '900000'
     # Values: 1000-30000 milliseconds. Recommended: 5000. Keep this far below the server's three-minute item expiry so coupons from any member's kill are collected.
     # Purpose: Sets how long Stage 1 coupons may lie on the map before every unfinished coupon collector goes to pick one up.
-    # Technical: The wait restarts at stage entry and whenever the floor is empty; during a sweep each unfinished collector takes the nearest floor coupon no other collector has claimed, and nearby passive pickup continues in between.
+    # Technical: The wait restarts at stage entry and whenever the floor is empty; during a sweep each unfinished collector claims one floor coupon, closest collector and coupon pairs first, and nearby passive pickup continues in between.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.COUPON_SWEEP_INTERVAL_MS: '5000'
     # Values: 5000-60000 milliseconds. Recommended: 15000. Increase only if Stage 1 traversal regularly needs more time to reach visible coupon drops.
     # Purpose: Bounds how long a Stage 1 collector stays committed to one claimed floor coupon while nearer coupons may have dropped since.
-    # Technical: Each time an active sweep has run this long, every unfinished collector gives up its claimed coupon and takes the nearest unclaimed one again; the sweep itself continues while coupons remain on the floor.
+    # Technical: Each time an active sweep has run this long, every unfinished collector gives up its claimed coupon and the closest collector and coupon pairs are matched again; the sweep itself continues while coupons remain on the floor.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.COUPON_SWEEP_MAXIMUM_MS: '15000'
-    # Values: 40-300 map pixels. Recommended: 120. Lower values keep helper kills closer to the collector; higher values restart the helpers' anchored farming less often.
-    # Purpose: Sets how far the neediest KPQ Stage 1 coupon collector may walk from the spot its helpers fight at before that spot follows it.
-    # Technical: AgentKpqCoordinator compares the collector's position with the stored grounded anchor by Euclidean map-pixel distance; every move restarts anchored farming for each helper, so keep it inside the 180 px melee pickup radius but well above zero.
+    # Values: 40-180 map pixels. Recommended: 120. Lower values keep helper kills closer to the collector; higher values restart the helpers' anchored farming less often.
+    # Purpose: Sets how far the KPQ Stage 1 coupon collector the helpers follow may walk from the spot they fight at before that spot follows it.
+    # Technical: AgentKpqCoordinator follows the neediest collector until it has its coupons and compares its position with the stored grounded anchor by Euclidean map-pixel distance; every move restarts anchored farming for each helper, and the range stays within the 180 px melee immediate loot radius.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HELPER_ANCHOR_MOVE_PX: '120'
     # Values: 2000-30000 milliseconds. Recommended: 5000. Keep this long enough for a newly dropped pass to become pickup-eligible and appear in the next coordinator ticks.
     # Purpose: Allows Stage 1 to recover when every non-leader completed their Cloto exchange but a pass vanished before reaching the leader.
