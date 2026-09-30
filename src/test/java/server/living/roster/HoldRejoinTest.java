@@ -5,6 +5,10 @@ import net.server.world.PartyEvents;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.integration.AgentDialogueTransportRuntime;
+import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.PartyGateway;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
@@ -17,8 +21,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
@@ -32,7 +40,8 @@ import static server.living.roster.LifecycleHarness.portalX;
  * a run is loaded without follow, out of the party, standing where it was told, its seat kept as a HOLD reservation;
  * it refuses every party join but the roster's own rejoin. When its owner is out of the run (they come into a map
  * that is no event instance's copy) every hold rejoins: it walks over on the same map, or travels from another, once
- * the party changes that waited for the run are reconciled.
+ * the party changes that waited for the run are reconciled. P6: what it says as it steps out (HoldNote) is said in
+ * party chat before it leaves the party, aloud where it waits, or to its owner in a whisper, instead of the usual whisper.
  */
 class HoldRejoinTest {
     private static final Point BY_LAKELIS = new Point(1450, 120);
@@ -51,6 +60,71 @@ class HoldRejoinTest {
     @AfterEach
     void close() {
         game.close();
+    }
+
+    // ---- what it says as it steps out (P6, HoldNote) -----------------------------------------
+
+    @Test
+    void partyNoteIsSaidBeforeLeavingTheParty() {
+        PartyGateway gateway = AgentPartyGatewayRuntime.party();
+        doAnswer(inv -> game.calls.add("party " + inv.getArgument(1))).when(gateway).sendPartyChat(any(), anyString());
+
+        game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS, HoldNote.party("sorry, i'll wait outside."));
+
+        assertEquals(List.of("stop Olwen", "party sorry, i'll wait outside.", "leave Olwen", "walk Olwen to 1450,120"),
+                game.calls, "a bot outside the party cannot party-chat");
+        assertEquals(RosterState.HOLD, game.row(olwen).state());
+        verify(game.residents, never()).whisper(any(), any(), anyString());
+    }
+
+    @Test
+    void mapNoteIsSaidOnTheMapAndNobodyIsWhispered() {
+        try (MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class)) {
+            game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS, HoldNote.map("we'll wait here."));
+
+            dialogue.verify(() -> AgentDialogueTransportRuntime.sayMapNow(game.bot(olwen), "we'll wait here."));
+        }
+        verify(game.residents, never()).whisper(any(), any(), anyString());
+        assertTrue(game.partyChat.isEmpty());
+        assertEquals(RosterState.HOLD, game.row(olwen).state());
+    }
+
+    @Test
+    void aMapNoteFromAnotherChannelIsWhisperedInstead() {
+        game.companionOnChannel(olwen, 2); // left behind on channel 2: it logs off there and waits unloaded
+        try (MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class)) {
+            game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS, HoldNote.map("we'll wait here."));
+
+            dialogue.verifyNoInteractions();
+        }
+        verify(game.residents).whisper(olwen, game.ann, "we'll wait here.");
+    }
+
+    @Test
+    void whisperNoteReachesTheCompanionsOwner() {
+        try (MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class)) {
+            game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS, HoldNote.whisper("Ben asked me to wait outside."));
+
+            dialogue.verifyNoInteractions();
+        }
+        verify(game.residents).whisper(olwen, game.ann, "Ben asked me to wait outside.");
+        verify(game.residents, never()).whisper(olwen, game.ann, "i'll wait out here till you're done.");
+        assertTrue(game.partyChat.isEmpty());
+    }
+
+    @Test
+    void noNoteKeepsTheArcsWhisperAndANoteWithoutALineUsesIt() {
+        when(game.world.arcs().lines(olwen, "hold")).thenReturn(List.of("i'll keep watch here."));
+
+        game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS, null);
+
+        verify(game.residents).whisper(olwen, game.ann, "i'll keep watch here.");
+        assertTrue(game.partyChat.isEmpty());
+
+        game.roster().rejoinHolds(game.ann);
+        game.roster().hold(game.ann, olwen, KERNING, BY_LAKELIS, HoldNote.party(null));
+
+        assertEquals(List.of("Olwen: i'll keep watch here."), game.partyChat);
     }
 
     @Test

@@ -21,6 +21,7 @@ import server.agents.capabilities.follow.AgentFollowGuard;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.capabilities.party.JoinOutcome;
+import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
@@ -277,6 +278,11 @@ public final class RosterService {
     public boolean inFlight(int ownerId, String personaId) {
         return seating.contains(personaId) || leaving.containsKey(personaId) || travelMsLeft(ownerId, personaId) > 0L
                 || channelFollow.pending(personaId) || handoff.finishing(world.residents().characterIdOf(personaId));
+    }
+
+    /** True while the character finishes a run for a friend of its owner's, its owner gone (decision 8b). */
+    public boolean finishingForFriend(int characterId) {
+        return handoff.finishing(characterId);
     }
 
     /** True when the persona is active in the owner's party and on the owner's map (plan 5.3). */
@@ -1371,6 +1377,11 @@ public final class RosterService {
         return new RosterResult.InEventInstance();
     }
 
+    /** An order given to a companion committed to a run (CompanionManager): it answers "after the run." to its owner. */
+    public RosterResult answerAfterTheRun(Character owner, Persona persona) {
+        return afterTheRun(owner, persona);
+    }
+
     /** What a companion with no seat left whispers: its own words for it, else where its duty takes it. */
     public String overflowLine(Persona persona, int ownerId) {
         List<String> lines = world.arcs().lines(persona, "overflow");
@@ -2178,6 +2189,11 @@ public final class RosterService {
         }
     }
 
+    /** The companion says {@code line} in its party's chat (a party quest's lines); false when it could not. */
+    public boolean sayInParty(Character bot, String line) {
+        return partyChat(bot, line);
+    }
+
     /** Each row's banked EXP and haul meso now, which the login whisper compares with. */
     private static Map<String, long[]> progress(List<RosterEntry> rows) {
         Map<String, long[]> out = new HashMap<>();
@@ -2600,6 +2616,15 @@ public final class RosterService {
      * waits unloaded, and its rejoin sets off from {@code mapId} on its owner's channel.
      */
     public RosterResult hold(Character owner, Persona persona, int mapId, Point point) {
+        return hold(owner, persona, mapId, point, null);
+    }
+
+    /**
+     * {@link #hold(Character, Persona, int, Point)} saying {@code note} (null: the usual whisper to its owner). A party
+     * line is said before it leaves the party, which it cannot party-chat outside of; a map line once it stands where
+     * it waits. One it cannot say so (the companion left behind on another channel) is whispered to the owner instead.
+     */
+    public RosterResult hold(Character owner, Persona persona, int mapId, Point point, HoldNote note) {
         RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
         if (entry == null || entry.state() == RosterState.RELEASED) {
             return new RosterResult.NotOwned();
@@ -2617,11 +2642,14 @@ public final class RosterService {
             AgentMovementCommandRuntime.stop(runtime); // no follow warps it after its owner meanwhile
         }
         world.slots().reserve(owner.getId(), persona.id(), CompanionSlots.Kind.HOLD, Long.MAX_VALUE);
+        String line = holdLine(persona, owner.getId(), note);
         boolean elsewhere = !sameChannel(owner, bot);
+        boolean said = false;
         if (elsewhere) {
             despawn(entry, "waits outside the run from another channel");
             runtime = null;
         } else {
+            said = note != null && note.voice() == HoldNote.Voice.PARTY && partyChat(bot, line);
             leaveParty(bot, entry);
         }
         if (!elsewhere && bot.getMap() != map) {
@@ -2639,10 +2667,48 @@ public final class RosterService {
             AgentMovementCommandRuntime.moveTo(runtime, point, false);
         }
         write(current(entry).withHold(mapId, System.currentTimeMillis()));
-        List<String> lines = world.arcs().lines(persona, "hold");
-        world.residents().whisper(persona, owner, lines.isEmpty() ? "i'll wait out here till you're done."
-                : lines.get(Math.floorMod(owner.getId(), lines.size())));
+        if (!elsewhere && note != null && note.voice() == HoldNote.Voice.MAP) {
+            AgentDialogueTransportRuntime.sayMapNow(bot, line); // a recruited companion has no Resident session to say it
+            said = true;
+        }
+        if (!said) {
+            world.residents().whisper(persona, owner, line);
+        }
         world.store().event(owner.getId(), persona.id(), "companion.hold", "map " + mapId);
+        return new RosterResult.Ok(persona.name() + " waits at map " + mapId + ".");
+    }
+
+    /** What a companion says as it waits outside a run: the note's line, else its arc's "hold" line, else the usual one. */
+    private String holdLine(Persona persona, int ownerId, HoldNote note) {
+        if (note != null && note.line() != null) {
+            return note.line();
+        }
+        List<String> lines = world.arcs().lines(persona, "hold");
+        return lines.isEmpty() ? "i'll wait out here till you're done." : lines.get(Math.floorMod(ownerId, lines.size()));
+    }
+
+    /**
+     * The companion steps out of the run it is in to wait outside it on {@code mapId} (a tap-out, on companion-ops).
+     * With its owner online that is a {@link #hold}. With its owner gone (it finishes the run for a friend, decision 8b)
+     * it only stops, says the note in party chat and leaves the party: its row is not written, and it parks when its
+     * commitment ends (InstanceLogoutHandoff).
+     */
+    public RosterResult waitOutside(int ownerId, Persona persona, int mapId, HoldNote note) {
+        Character owner = onlineCharacter(ownerId);
+        if (owner != null) {
+            return hold(owner, persona, mapId, null, note);
+        }
+        RosterEntry entry = world.store().rosterEntry(ownerId, persona.id());
+        Character bot = entry == null ? null : companion(entry);
+        if (bot == null) {
+            return new RosterResult.Failed(persona.name() + " is not out right now.");
+        }
+        AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+        if (runtime != null) {
+            AgentMovementCommandRuntime.stop(runtime);
+        }
+        partyChat(bot, holdLine(persona, ownerId, note));
+        leaveParty(bot, entry);
         return new RosterResult.Ok(persona.name() + " waits at map " + mapId + ".");
     }
 
