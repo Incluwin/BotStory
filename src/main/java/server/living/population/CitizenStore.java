@@ -3,6 +3,7 @@ package server.living.population;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.living.population.Citizen.State;
+import server.living.store.SqlTime;
 import tools.DatabaseConnection;
 
 import java.sql.Connection;
@@ -10,7 +11,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -36,7 +36,7 @@ public final class CitizenStore {
 
     public List<Citizen> all(State state) {
         List<Citizen> out = new ArrayList<>();
-        String sql = "SELECT " + COLUMNS + " FROM living_citizen" + (state == null ? "" : " WHERE state = ?") + " ORDER BY character_id";
+        String sql = SqlTime.utc("SELECT " + COLUMNS + " FROM living_citizen" + (state == null ? "" : " WHERE state = ?") + " ORDER BY character_id");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             if (state != null) {
                 ps.setString(1, state.name());
@@ -53,7 +53,7 @@ public final class CitizenStore {
     }
 
     public Citizen citizen(int characterId) {
-        String sql = "SELECT " + COLUMNS + " FROM living_citizen WHERE character_id = ?";
+        String sql = SqlTime.utc("SELECT " + COLUMNS + " FROM living_citizen WHERE character_id = ?");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, characterId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -66,13 +66,13 @@ public final class CitizenStore {
     }
 
     public void save(Citizen citizen) {
-        String sql = "INSERT INTO living_citizen (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        String sql = SqlTime.utc("INSERT INTO living_citizen (" + COLUMNS + ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
                 + " ON DUPLICATE KEY UPDATE cohort = VALUES(cohort), circle_id = VALUES(circle_id), guild_id = VALUES(guild_id),"
                 + " home_region = VALUES(home_region), career = VALUES(career), personality = VALUES(personality), voice = VALUES(voice),"
                 + " pace = VALUES(pace), offset_minutes = VALUES(offset_minutes), channel = VALUES(channel), flags = VALUES(flags),"
                 + " state = VALUES(state), retires_at = VALUES(retires_at), last_online_at = VALUES(last_online_at),"
                 + " last_ledger_at = VALUES(last_ledger_at), accrued_exp = VALUES(accrued_exp), scheduled_minutes = VALUES(scheduled_minutes),"
-                + " life_summary = VALUES(life_summary)";
+                + " life_summary = VALUES(life_summary)");
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, citizen.characterId());
             ps.setString(2, citizen.name());
@@ -88,10 +88,10 @@ public final class CitizenStore {
             ps.setInt(12, citizen.channel());
             ps.setString(13, String.join(",", citizen.flags()));
             ps.setString(14, citizen.state().name());
-            ps.setTimestamp(15, new Timestamp(citizen.joinedAtMs()));
-            setNullableTime(ps, 16, citizen.retiresAtMs());
-            setNullableTime(ps, 17, citizen.lastOnlineAtMs());
-            setNullableTime(ps, 18, citizen.lastLedgerAtMs());
+            SqlTime.set(ps, 15, citizen.joinedAtMs());
+            SqlTime.setNullable(ps, 16, citizen.retiresAtMs());
+            SqlTime.setNullable(ps, 17, citizen.lastOnlineAtMs());
+            SqlTime.setNullable(ps, 18, citizen.lastLedgerAtMs());
             ps.setLong(19, citizen.accruedExp());
             ps.setInt(20, citizen.scheduledMinutes());
             ps.setString(21, citizen.lifeSummary() == null ? "" : citizen.lifeSummary());
@@ -343,21 +343,9 @@ public final class CitizenStore {
                 rs.getObject("guild_id") == null ? 0 : rs.getInt("guild_id"),
                 rs.getString("home_region"), rs.getString("career"), rs.getString("personality"), rs.getString("voice"),
                 rs.getDouble("pace"), rs.getInt("offset_minutes"), rs.getInt("channel"), flags,
-                State.valueOf(rs.getString("state")), time(rs.getTimestamp("joined_at")), time(rs.getTimestamp("retires_at")),
-                time(rs.getTimestamp("last_online_at")), time(rs.getTimestamp("last_ledger_at")), rs.getLong("accrued_exp"),
+                State.valueOf(rs.getString("state")), SqlTime.get(rs, "joined_at"), SqlTime.get(rs, "retires_at"),
+                SqlTime.get(rs, "last_online_at"), SqlTime.get(rs, "last_ledger_at"), rs.getLong("accrued_exp"),
                 rs.getInt("scheduled_minutes"), rs.getString("life_summary"));
-    }
-
-    private static long time(Timestamp value) {
-        return value == null ? 0L : value.getTime();
-    }
-
-    private static void setNullableTime(PreparedStatement ps, int index, long ms) throws SQLException {
-        if (ms <= 0L) {
-            ps.setNull(index, java.sql.Types.TIMESTAMP);
-        } else {
-            ps.setTimestamp(index, new Timestamp(ms));
-        }
     }
 
     private static void setNullableInt(PreparedStatement ps, int index, int value) throws SQLException {
