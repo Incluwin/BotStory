@@ -667,7 +667,7 @@ final class CompanionCardScreens {
             if (!(done instanceof RosterResult.Ok) || now == null) {
                 return RosterVoice.line(persona, done);
             }
-            String what = world.roster().describeAssignment(now) + " at " + menus.placeNames.apply(campOf(now, persona));
+            String what = world.roster().describeAssignment(now) + " at " + menus.placeNames.apply(placeOf(now, persona));
             boolean leaves = before != null && before.state() == RosterState.ACTIVE && now.state() == RosterState.AWAY;
             return persona.name() + (leaves ? ": ok, off to " + what + ". i'll keep my seat." : ": ok, i'll " + what + ".");
         });
@@ -1185,6 +1185,14 @@ final class CompanionCardScreens {
     /** Where it camps: its camp, else its home town (a new Resident's camp until one is picked). */
     private static int campOf(RosterEntry entry, Persona persona) {
         return entry.campMapId() != 0 || persona.homeTown() == null ? entry.campMapId() : ResidentSpots.townMapId(persona.homeTown());
+    }
+
+    /** Where the duty is done: a rest is taken in the town its form picks (the camp's town), not out on the field. */
+    private int placeOf(RosterEntry entry, Persona persona) {
+        BenchDutyDispatcher duty = world.benchDuty();
+        BenchDutyDispatcher.Form rest = entry.assignment() == Assignment.REST && duty != null ? duty.form(Assignment.REST) : null;
+        int town = rest == null ? 0 : rest.mapFor(entry, persona, world.residents().characterIdOf(persona.id()));
+        return town != 0 ? town : campOf(entry, persona);
     }
 
     /** Tied to a run now (checked again on companion-ops: the card may be older than the commitment). */

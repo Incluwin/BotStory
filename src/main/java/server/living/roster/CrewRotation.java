@@ -268,8 +268,13 @@ public final class CrewRotation {
 
     /** True when the saved USE tab of a companion nothing has loaded holds no HP potion (unreadable: none, this look). */
     private boolean savedTabHasNoHpPotion(int characterId) {
+        return savedTabHasNoHpPotion(world.store(), characterId);
+    }
+
+    /** No HP recovery potion in the character's saved USE tab (a failed read counts as none). */
+    static boolean savedTabHasNoHpPotion(LivingStore store, int characterId) {
         try {
-            for (int itemId : world.store().usableItems(characterId)) {
+            for (int itemId : store.usableItems(characterId)) {
                 StatEffect effect = AgentUseItemClassificationPolicy.itemEffect(itemId);
                 if (AgentUseItemClassificationPolicy.isRecoveryPotion(effect) && (effect.getHp() > 0 || effect.getHpRate() > 0)) {
                     return false;

@@ -764,10 +764,12 @@ public class MapleMap {
                                 for (Character pm : mpcs) {
                                     if (pm.isLoggedinWorld()) {
                                         pm.gainMeso(share, true, true, false);
+                                        server.living.LivingWorldHooks.looted(pm, 0, 0, share);
                                     }
                                 }
                             } else {
                                 chr.gainMeso(mesos, true, true, false);
+                                server.living.LivingWorldHooks.looted(chr, 0, 0, mesos);
                             }
                         }
                     }

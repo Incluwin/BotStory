@@ -218,6 +218,17 @@ public final class BenchDutyDispatcher {
     private final Set<String> yourCall = ConcurrentHashMap.newKeySet();
     /** The camps Your call chooses among for a level near a camp (BenchDutyChooser.camps; a test gives its own). */
     BiFunction<Integer, Integer, List<BenchDutyChooser.Camp>> yourCallCamps = BenchDutyChooser::camps;
+    /**
+     * The purse a companion with no HP potion needs to go and fight: enough for a stack of the cheapest potions. Below
+     * it, and with no HP potion in its saved USE tab, a field slice cannot resupply and ends in a death every time (found
+     * live 2026-09-30: a companion with 0 meso loaded, failed to buy, died and rested every 20 minutes for hours).
+     */
+    static final long FIELD_SUPPLY_MIN_MESO = 1_000L;
+    public static final String NO_SUPPLIES = "out of potions and meso";
+    /** Character id -> true when its saved state can neither heal nor buy potions (a test gives its own). */
+    IntPredicate cannotSupplyItself = this::savedStateCannotSupply;
+    /** persona ids held in the ledger because they could not supply a field slice (the card says so). */
+    private final Set<String> unsupplied = ConcurrentHashMap.newKeySet();
 
     /** The dispatcher with {@code field} as the form of TRAIN, FARM_MESO and FARM_ITEM. */
     public BenchDutyDispatcher(LivingWorld world, BenchSessions field) {
@@ -408,10 +419,22 @@ public final class BenchDutyDispatcher {
         return new HashSet<>(byCharacter.keySet());
     }
 
-    /** What the card says of the companion's bench: {@link #ROUGH_HUNT} while it rests after a death, else "". */
+    /**
+     * What the card says of the companion's bench: {@link #ROUGH_HUNT} while it rests after a death, {@link #NO_SUPPLIES}
+     * while it cannot supply a field slice, else "".
+     */
     public String note(String personaId) {
         Long until = personaId == null ? null : restingUntilMs.get(personaId);
-        return until != null && until > clock.getAsLong() ? ROUGH_HUNT : "";
+        if (until != null && until > clock.getAsLong()) {
+            return ROUGH_HUNT;
+        }
+        return personaId != null && unsupplied.contains(personaId) ? NO_SUPPLIES : "";
+    }
+
+    /** Its saved USE tab holds no HP potion and its saved purse cannot buy a stack (a failed read: it may try). */
+    private boolean savedStateCannotSupply(int characterId) {
+        long meso = world.store().characterMeso(characterId);
+        return meso >= 0 && meso < FIELD_SUPPLY_MIN_MESO && CrewRotation.savedTabHasNoHpPotion(world.store(), characterId);
     }
 
     // ---- Your call (a standing intent) -------------------------------------------------------
@@ -707,6 +730,17 @@ public final class BenchDutyDispatcher {
         int characterId = persona == null ? 0 : world.residents().characterIdOf(persona.id());
         if (characterId == 0) {
             return;
+        }
+        if (form.pool() == CompanionBudget.Kind.BENCH_LIVE && cannotSupplyItself.test(characterId)) {
+            if (unsupplied.add(persona.id())) { // the ledger keeps it until its purse or bag can (coin for supplies)
+                CompanionViews.invalidate(world, entry.characterId(), persona.id());
+                world.store().event(entry.characterId(), persona.id(), "bench.unsupplied", NO_SUPPLIES);
+            }
+            lastLiveAtMs.put(persona.id(), now); // its turn passes
+            return;
+        }
+        if (unsupplied.remove(persona.id())) {
+            CompanionViews.invalidate(world, entry.characterId(), persona.id());
         }
         int mapId = form.mapFor(entry, persona, characterId);
         MapleMap map = mapId == 0 ? null : world.residents().map(mapId);

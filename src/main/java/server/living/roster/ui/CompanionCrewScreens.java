@@ -127,7 +127,7 @@ final class CompanionCrewScreens {
         options.add(Option.heading("\r\n#eBench (" + bench.size() + " of " + (world.config().ROSTER_MAX - party.size())
                 + " bench seats)#n"));
         for (CompanionView view : bench) {
-            options.add(row(owner, from, view, benchLine(view, resting(view))));
+            options.add(row(owner, from, view, benchLine(view, benchNote(view))));
         }
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
@@ -501,11 +501,14 @@ final class CompanionCrewScreens {
      * reads "away: ...".
      */
     static String benchLine(CompanionView view) {
-        return benchLine(view, false);
+        return benchLine(view, "");
     }
 
-    /** {@link #benchLine(CompanionView)}, ending " - resting" while it rests after a rough hunt (flow 12). */
-    static String benchLine(CompanionView view, boolean resting) {
+    /**
+     * {@link #benchLine(CompanionView)}, ending " - resting" while it rests after a rough hunt (flow 12) and " - out of
+     * supplies" while it can neither heal nor buy potions ({@code note}: BenchDutyDispatcher.note).
+     */
+    static String benchLine(CompanionView view, String note) {
         if (view.travelMs() > 0) {
             return benchRow(view); // "on the way (~40 s)"
         }
@@ -528,17 +531,19 @@ final class CompanionCrewScreens {
         if (!view.haul().isEmpty()) {
             line.append(" - ").append(view.haul());
         }
-        if (resting) {
+        if (BenchDutyDispatcher.ROUGH_HUNT.equals(note)) {
             line.append(" - resting");
+        } else if (BenchDutyDispatcher.NO_SUPPLIES.equals(note)) {
+            line.append(" - out of supplies");
         }
         return line.toString();
     }
 
-    /** True while the companion rests after a death on a live bench slice (BenchDutyDispatcher.note). */
-    private boolean resting(CompanionView view) {
+    /** What the live bench says of the companion (BenchDutyDispatcher.note): "" for nothing. */
+    private String benchNote(CompanionView view) {
         BenchDutyDispatcher bench = world.benchDuty();
         String note = bench == null ? null : bench.note(view.personaId());
-        return note != null && !note.isEmpty();
+        return note == null ? "" : note;
     }
 
     /** A bulk duty: its name and, where the priors know it, what it brings in ("~1.2% EXP/h", "~4.1k meso/h after upkeep"). */

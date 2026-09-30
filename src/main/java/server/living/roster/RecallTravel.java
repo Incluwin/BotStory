@@ -17,17 +17,18 @@ public final class RecallTravel {
     private static final long PER_HOP_MS = 40_000L;
     private static final long FIELD_EXTRA_MS = 20_000L;
     private static final long OFF_ISLAND_MS = 180_000L;
-    private static final Map<Integer, List<Integer>> ROADS = Map.of(
-            104, List.of(100, 120),          // Lith Harbor - Henesys, Nautilus
-            100, List.of(104, 101, 102, 103, 105, 120), // Henesys hub (six path crossway)
-            101, List.of(100, 102),          // Ellinia - Henesys, Perion
-            102, List.of(100, 101, 103, 106), // Perion - Henesys, Ellinia, Kerning, the valleys
-            103, List.of(100, 102, 107),     // Kerning City - Henesys, Perion, the swamp
-            105, List.of(100, 106),          // Sleepywood - Henesys, the valleys
-            106, List.of(102, 105),          // Deep / Dangerous Valley, Burnt Land - Perion, Sleepywood
-            107, List.of(103),               // Swamp of Despair - Kerning City
-            120, List.of(100, 104),          // Nautilus - Henesys, Lith
-            110, List.of(104));              // Florina beach - Lith
+    private static final Map<Integer, List<Integer>> ROADS = Map.ofEntries(
+            Map.entry(104, List.of(100, 120, 910)),          // Lith Harbor - Henesys, Nautilus, the Free Market
+            Map.entry(100, List.of(104, 101, 102, 103, 105, 120, 910)), // Henesys hub (six path crossway)
+            Map.entry(101, List.of(100, 102, 910)),          // Ellinia - Henesys, Perion
+            Map.entry(102, List.of(100, 101, 103, 106, 910)), // Perion - Henesys, Ellinia, Kerning, the valleys
+            Map.entry(103, List.of(100, 102, 107, 910)),     // Kerning City - Henesys, Perion, the swamp
+            Map.entry(105, List.of(100, 106)),               // Sleepywood - Henesys, the valleys
+            Map.entry(106, List.of(102, 105)),               // Deep / Dangerous Valley, Burnt Land - Perion, Sleepywood
+            Map.entry(107, List.of(103)),                    // Swamp of Despair - Kerning City
+            Map.entry(120, List.of(100, 104)),               // Nautilus - Henesys, Lith
+            Map.entry(110, List.of(104)),                    // Florina beach - Lith
+            Map.entry(910, List.of(100, 101, 102, 103, 104))); // the Free Market: a portal in each Victoria town
 
     private RecallTravel() {
     }
@@ -37,7 +38,7 @@ public final class RecallTravel {
     }
 
     static boolean isTown(int mapId) {
-        return mapId % 1_000_000 == 0 || mapId == 105040300;
+        return mapId % 1_000_000 == 0 || mapId == 105040300 || mapId >= 910000000 && mapId <= 910000022; // FM rooms
     }
 
     /** Milliseconds from one map to another; 0 when they are the same map. */

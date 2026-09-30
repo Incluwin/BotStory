@@ -336,7 +336,9 @@ class DoubleLoadGuardTest {
 
     /** The dispatcher over this world, with the field form. */
     private BenchDutyDispatcher benchDuty() {
-        return new BenchDutyDispatcher(world, new BenchSessions(world));
+        BenchDutyDispatcher duty = new BenchDutyDispatcher(world, new BenchSessions(world));
+        duty.cannotSupplyItself = characterId -> false; // the mocked store has no purse or bag: supplies are not under test
+        return duty;
     }
 
     /** A benched TRAIN companion at a field camp, far enough below its owner to go live; the loader returns {@code loaded}. */

@@ -6,7 +6,9 @@ import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.living.store.LivingStore.Assignment;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -111,6 +113,42 @@ class BenchDeathResupplyTest {
         assertTrue(game.store.events("bench.live-end").contains(ANN + " brin bench.live-end resupplied"));
         assertEquals(100, game.bags.get(BRIN).get(2000000));
         assertTrue(game.duty.live("cato"), "the next slice starts only after it");
+    }
+
+    @Test
+    void aCompanionThatCanNeitherHealNorBuyStaysInTheLedgerUntilItCan() {
+        // found live 2026-09-30: with 0 meso and no potions a companion loaded, failed to buy, died and rested, for hours
+        Set<Integer> broke = new HashSet<>(Set.of(BRIN));
+        game.duty.cannotSupplyItself = broke::contains;
+        game.companion(ANN, "brin", "Brin", BRIN, Assignment.FARM_MESO);
+
+        game.duty.tick();
+        game.now += 120_000L;
+        game.duty.tick();
+
+        assertFalse(game.duty.live("brin"), "no futile slice: it would die on the field");
+        assertEquals(BenchDutyDispatcher.NO_SUPPLIES, game.duty.note("brin"), "its card says why");
+        assertEquals(1, game.store.events("bench.unsupplied").size(), "logged once, not every tick");
+
+        broke.remove(BRIN); // its owner gave it coin for supplies
+        game.now += 120_000L;
+        game.duty.tick();
+
+        assertTrue(game.duty.live("brin"));
+        assertEquals("", game.duty.note("brin"));
+    }
+
+    @Test
+    void theSavedStateCheckNeedsBothNoPotionAndAnEmptyPurse() {
+        game.store.purses.put(BRIN, 0); // no potion in the fake's saved USE tab either
+        game.companion(ANN, "brin", "Brin", BRIN, Assignment.FARM_MESO);
+        game.duty.tick();
+        assertFalse(game.duty.live("brin"), "0 meso and no HP potion: it stays in the ledger");
+
+        game.store.purses.put(BRIN, (int) BenchDutyDispatcher.FIELD_SUPPLY_MIN_MESO);
+        game.now += 120_000L;
+        game.duty.tick();
+        assertTrue(game.duty.live("brin"), "a purse that buys a stack of potions goes");
     }
 
     @Test

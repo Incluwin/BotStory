@@ -129,7 +129,9 @@ class BenchLoadsOnExecutorTest {
         cleanup.when(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(OLWEN_CHARACTER)).thenAnswer(inv ->
                 calls.add("unload Olwen " + (onOps.get() ? "on companion-ops" : "elsewhere")));
         statics.add(cleanup);
-        return new BenchDutyDispatcher(world, new BenchSessions(world));
+        BenchDutyDispatcher duty = new BenchDutyDispatcher(world, new BenchSessions(world));
+        duty.cannotSupplyItself = characterId -> false; // the mocked store has no purse or bag: supplies are not under test
+        return duty;
     }
 
     @AfterEach

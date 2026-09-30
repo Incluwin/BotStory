@@ -555,6 +555,30 @@ class CompanionCardScreensTest {
     }
 
     @Test
+    void aRestIsSaidWhereItIsTakenInTheCampsTownNotOutOnTheField() {
+        // found live 2026-09-29: "Garrick: ok, i'll rest at The Burnt Land I." while he rested in Perion
+        rows.add(miraRow);
+        RosterEntry resting = new RosterEntry(ANN, "mira", RosterState.BENCHED, Assignment.REST, 0, 0, ANT_TUNNEL, 0L, 0L,
+                0L, 0L, 0L, 0L, 0, null);
+        when(roster.entry(ANN, "mira")).thenReturn(miraRow);
+        when(roster.describeAssignment(resting)).thenReturn("rest");
+        doAnswer(invocation -> {
+            when(roster.entry(ANN, "mira")).thenReturn(resting);
+            return new RosterResult.Ok("");
+        }).when(manager).assign(owner, mira, Assignment.REST, 0, 0);
+        BenchDutyDispatcher duty = dispatcher();
+        BenchDutyDispatcher.Form rest = mock(BenchDutyDispatcher.Form.class);
+        when(duty.form(Assignment.REST)).thenReturn(rest);
+        when(rest.mapFor(eq(resting), eq(mira), anyInt())).thenReturn(HENESYS);
+        menus.card(owner, miraRow);
+        pick("What you do at camp...");
+
+        pick("Rest (no upkeep)");
+
+        assertTrue(lastTalk().text().startsWith("Mira: ok, i'll rest at Henesys.\r\n#eMira#n"), lastTalk().text());
+    }
+
+    @Test
     void farmItemPicksFromTheCampsDropsAndTheQuestNeedsThenTakesACount() {
         rows.add(miraRow);
         when(roster.entry(ANN, "mira")).thenReturn(miraRow);

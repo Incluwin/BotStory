@@ -274,6 +274,7 @@ class BudgetWiringTest {
     /** A real dispatcher (its counts as the budget reads them stubbed), with the field form. */
     private BenchDutyDispatcher realBench() {
         BenchDutyDispatcher bench = spy(new BenchDutyDispatcher(world, new BenchSessions(world)));
+        bench.cannotSupplyItself = characterId -> false; // the mocked store has no purse or bag: supplies are not under test
         when(world.benchDuty()).thenReturn(bench);
         return bench;
     }

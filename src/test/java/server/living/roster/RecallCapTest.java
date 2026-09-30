@@ -45,6 +45,14 @@ class RecallCapTest {
     }
 
     @Test
+    void theFreeMarketIsOnTheIslandThroughEachTownsPortal() {
+        // found live 2026-09-29: an owner in FM room 4 waited 180 s for a companion called from Henesys
+        assertEquals(60_000L, RecallTravel.etaMs(100000000, 910000004), "one portal from Henesys to an FM room");
+        assertEquals(60_000L, RecallTravel.etaMs(106000101, 910000004, 60_000L), "the Burnt Land to an FM room, capped");
+        assertEquals(80_000L, RecallTravel.etaMs(910000004, 101020004), "an FM room to an Ellinia field, uncapped");
+    }
+
+    @Test
     void theDefaultsAreDecision7() throws IOException {
         LivingWorldConfig config = new LivingWorldConfig();
         assertEquals(60_000, config.RECALL_MAX_ETA_MS);

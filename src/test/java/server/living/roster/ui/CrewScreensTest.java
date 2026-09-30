@@ -22,6 +22,7 @@ import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
+import server.living.roster.BenchDutyDispatcher;
 import server.living.roster.BenchLedger;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionDirectory;
@@ -191,6 +192,23 @@ class CrewScreensTest {
         assertFalse(crew.text().contains("\r\nKira"), crew.text());
         // four of the ten roster places are in the party block
         assertTrue(crew.text().contains("\r\n#eBench (2 of 6 bench seats)#n\r\n#L"), crew.text());
+    }
+
+    @Test
+    void aBenchRowSaysWhyItIsNotOutRestingOrOutOfSupplies() {
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        add(row("tobi", RosterState.BENCHED), "Tobi", 902, 30, Job.CLERIC);
+        BenchDutyDispatcher bench = mock(BenchDutyDispatcher.class);
+        when(bench.note("mira")).thenReturn(BenchDutyDispatcher.ROUGH_HUNT);
+        when(bench.note("tobi")).thenReturn(BenchDutyDispatcher.NO_SUPPLIES);
+        when(world.benchDuty()).thenReturn(bench);
+
+        menus.crew(owner);
+
+        List<String> labels = lastTalk().labels();
+        assertTrue(labels.stream().anyMatch(label -> label.startsWith("Mira") && label.endsWith(" - resting")), labels.toString());
+        assertTrue(labels.stream().anyMatch(label -> label.startsWith("Tobi") && label.endsWith(" - out of supplies")),
+                labels.toString());
     }
 
     @Test
