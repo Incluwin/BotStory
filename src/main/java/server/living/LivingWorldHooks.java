@@ -222,12 +222,14 @@ public final class LivingWorldHooks {
             return;
         }
         try {
+            // first, and memory only: a companion run's stage-5 clear (nobody taps out after it, and it is on the
+            // companions' records as cleared) must not wait on a quest that fails to count it
+            world.partyQuests().cleared(players);
             for (Character chr : players) {
                 if (chr != null) {
                     world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName);
                 }
             }
-            world.partyQuests().cleared(players); // a companion run's stage-5 clear: nobody taps out after it
         } catch (RuntimeException failure) {
             log.warn("living world partyQuestCleared hook failed", failure);
         }

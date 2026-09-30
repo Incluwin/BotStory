@@ -162,6 +162,20 @@ class LineupPlanTest {
     }
 
     @Test
+    void aCompanionWhoseRowIsNotOutWithAnnBlocksAndIsNoExtra() {
+        fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
+        fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);
+        Persona casse = fx.companion("casse", "Casse", 903, 25, Job.BANDIT);
+        game.store.seed(game.row(casse).with(RosterState.BENCHED, 1_000L)); // still in the party, walking out to camp
+
+        LineupPlan plan = fx.ready().plan(game.ann, "kpq");
+
+        assertEquals("Casse is busy with something. Give them a moment.", plan.blocker());
+        assertEquals(List.of(), plan.extras(), "a hold refuses a companion that is not out with Ann");
+        assertFalse(plan.startable());
+    }
+
+    @Test
     void aCompanionCommittedToAnotherRunBlocks() {
         fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
         fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);

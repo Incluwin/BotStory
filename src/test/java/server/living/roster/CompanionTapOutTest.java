@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -37,8 +38,8 @@ import static org.mockito.Mockito.when;
  * A companion downed in a four-member run (P6, the tap-out): after its respawn put it on the exit map, the host takes
  * it out of the party. On companion-ops it waits there as a HOLD, saying "sorry, i'll wait outside." in party chat
  * before it leaves, still committed to the run; nothing is written on the thread that asked. With its owner gone it
- * only leaves the party. After the stage-5 clear, or for a session no companion run holds, the host refuses. A death
- * inside the run is counted for its record.
+ * only leaves the party. After the stage-5 clear, or for a session no companion run holds, the host refuses. The clear
+ * counts even when a quest fails to count it. A death inside the run is counted for its record.
  */
 class CompanionTapOutTest {
     private static final int EXIT = CompanionPqFixture.EXIT;
@@ -107,6 +108,21 @@ class CompanionTapOutTest {
         assertFalse(fx.lifecycle.tapOut(tapOut(run.sessionId)));
         assertEquals(RosterState.ACTIVE, game.row(tobi).state());
         assertTrue(game.members.contains(901));
+    }
+
+    @Test
+    void theClearCountsEvenWhenAQuestFailsToCountIt() {
+        QuestLedger quests = mock(QuestLedger.class);
+        doThrow(new IllegalStateException("quest step could not be saved")).when(quests)
+                .onPartyQuestCleared(any(), anyString());
+        when(game.world.quests()).thenReturn(quests);
+        try (MockedStatic<LivingWorld> living = mockStatic(LivingWorld.class)) {
+            living.when(LivingWorld::get).thenReturn(game.world);
+            LivingWorldHooks.partyQuestCleared(List.of(game.ann), "KerningPQ");
+        }
+
+        assertTrue(run.cleared, "on the companions' records as cleared");
+        assertFalse(fx.lifecycle.tapOut(tapOut(run.sessionId)));
     }
 
     @Test

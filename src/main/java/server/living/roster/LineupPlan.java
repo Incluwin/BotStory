@@ -14,9 +14,11 @@ import java.util.Set;
  * one seat per owner in turn (the leader's first: the leader's pick covers every companion in the party); the rest wait
  * outside as extras. It is startable when nothing blocks it, nobody chosen is still on the way, and it is three or four.
  * Built on the leader's I/O thread from memory ({@link CompanionPartyQuestService#plan}); it writes nothing.
+ * {@code picked}: the companions the leader chose (null: her own choice), so a Yes or "Are they here yet?" plans it
+ * again the same way: her choice takes whoever fits best by then, the leader's pick stays theirs.
  */
 public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Seat> extras, List<Seat> onTheWay,
-                         List<Waiting> waiting, String blocker, boolean benchUseful) {
+                         List<Waiting> waiting, String blocker, boolean benchUseful, Set<Integer> picked) {
     public static final int MIN_SIZE = 3;
     public static final int MAX_SIZE = 4;
     /** A companion's clear record is shown, and ranks it, from this many runs on. */
@@ -109,7 +111,7 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
         }
         boolean benchUseful = lineup.size() < MAX_SIZE && party.size() < RosterService.PARTY_CAP;
         return new LineupPlan(pqKey, leaderId, List.copyOf(lineup), List.copyOf(extras), List.copyOf(onTheWay),
-                List.copyOf(waiting), blocker, benchUseful);
+                List.copyOf(waiting), blocker, benchUseful, picked == null ? null : Set.copyOf(picked));
     }
 
     /**

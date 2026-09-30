@@ -54,9 +54,10 @@ import static org.mockito.Mockito.when;
 /**
  * Lakelis's windows (P6, flow 3; p6's "Lakelis window script"): the lineup offers Yes only when it can go in now and
  * "Are they here yet?" while a companion is on its way, the leader's pick keeps the humans and takes three or four,
- * "Never mind." does nothing, a stale Yes shows the lineup again with "Things changed meanwhile.", a companion sent for
- * from the bench is on its way (noted only when it set off), and an outcome is her OK window within ten seconds of the
- * click, else pink text. Every window is hers (9020000) with speaker 0. The lineups are the service's (mocked here).
+ * "Never mind." does nothing, a stale Yes shows the lineup again with "Things changed meanwhile." (a pick stays the
+ * leader's there and back from the bench), a companion sent for from the bench is on its way (noted only when it set
+ * off), and an outcome is her OK window within ten seconds of the click, else pink text. Every window is hers (9020000)
+ * with speaker 0. The lineups are the service's (mocked here).
  */
 class LakelisDeskTest {
     private static final int BEN = 10;
@@ -130,7 +131,7 @@ class LakelisDeskTest {
     void proposalOffersYesOnlyWhenStartable() {
         LineupPlan four = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, ANN_SEAT, MIRA_SEAT, TOBI_SEAT),
                 List.of(PIP_SEAT, CASSE_SEAT, HADRIK_SEAT), List.of(),
-                List.of(CASSE_WAITS, new Waiting(HADRIK, "Hadrik", "Lv32, too seasoned for this")), null, false);
+                List.of(CASSE_WAITS, new Waiting(HADRIK, "Hadrik", "Lv32, too seasoned for this")), null, false, null);
 
         desk.proposal(ben, four, null);
 
@@ -149,7 +150,7 @@ class LakelisDeskTest {
         verify(service).start(ben, four);
 
         LineupPlan tooFew = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, MIRA_SEAT), List.of(), List.of(), List.of(),
-                TOO_FEW, true);
+                TOO_FEW, true, null);
         desk.proposal(ben, tooFew, null);
 
         Talk blocked = lastTalk();
@@ -161,7 +162,7 @@ class LakelisDeskTest {
 
     @Test
     void travellerShowsAreTheyHereYetInsteadOfYes() {
-        desk.proposal(ben, onTheWay(), null);
+        desk.proposal(ben, onTheWay(null), null);
 
         Talk lineup = lastTalk();
         assertTrue(lineup.text().startsWith(TITLE + "\r\nThree of you, then? Here's who I'd send in:\r\n"
@@ -173,10 +174,10 @@ class LakelisDeskTest {
 
     @Test
     void areTheyHereYetReplansAndShowsYesOnceArrived() {
-        desk.proposal(ben, onTheWay(), null);
+        desk.proposal(ben, onTheWay(null), null);
         Seat arrived = companion(RIN, "Rin", 25, "Bandit", BEN, 0, 0);
         LineupPlan here = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, MIRA_SEAT, arrived), List.of(), List.of(),
-                List.of(), null, true);
+                List.of(), null, true, null);
         when(service.plan(ben, "kpq", null)).thenReturn(here);
 
         pick("Are they here yet?");
@@ -218,6 +219,24 @@ class LakelisDeskTest {
         assertTrue(again.text().startsWith(TITLE + "\r\nThings changed meanwhile.\r\n"
                 + "Three of you, then? Here's who I'd send in:\r\n"), again.text());
         assertFalse(again.text().contains("#bTobi#k"), "the lineup as it is now");
+    }
+
+    @Test
+    void thePickIsKeptWhenThingsChangedAndBackFromTheBench() {
+        desk.thingsChanged(ben, onTheWay(Set.of(RIN)));
+
+        pick("Are they here yet?");
+
+        verify(service).plan(ben, "kpq", Set.of(RIN));
+        pick("Never mind.");
+
+        benched("dorran", "Dorran", 907);
+        desk.thingsChanged(ben, choice(Set.of(PIP)));
+        pick("Call someone from my bench...");
+        pick("Back");
+
+        assertTrue(lastTalk().text().contains("#bPip#k"), lastTalk().text());
+        assertFalse(lastTalk().text().contains("#bMira#k"), "the leader's pick, not hers");
     }
 
     // ---- the leader's pick -----------------------------------------------------------------
@@ -386,14 +405,14 @@ class LakelisDeskTest {
         }
         extras.add(CASSE_SEAT);
         return new LineupPlan("kpq", BEN, List.copyOf(lineup), List.copyOf(extras), List.of(), List.of(CASSE_WAITS),
-                lineup.size() < LineupPlan.MIN_SIZE ? TOO_FEW : null, lineup.size() < LineupPlan.MAX_SIZE);
+                lineup.size() < LineupPlan.MIN_SIZE ? TOO_FEW : null, lineup.size() < LineupPlan.MAX_SIZE, picked);
     }
 
-    /** Ben and Mira here, Rin called over and 40 s away. */
-    private static LineupPlan onTheWay() {
+    /** Ben and Mira here, Rin called over and 40 s away; {@code picked} as the lineup was drawn. */
+    private static LineupPlan onTheWay(Set<Integer> picked) {
         Seat rin = new Seat(RIN, "Rin", 25, 420, "Bandit", false, BEN, "rin", 104_000_000, 40_000L, 0, 0);
         return new LineupPlan("kpq", BEN, List.of(BEN_SEAT, MIRA_SEAT, rin), List.of(), List.of(rin), List.of(), null,
-                true);
+                true, picked);
     }
 
     private static Seat human(int id, String name, int level, String job) {

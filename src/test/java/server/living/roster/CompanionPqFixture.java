@@ -51,6 +51,8 @@ final class CompanionPqFixture implements AutoCloseable {
     final Doors doors = new Doors();
     CompanionPartyQuestService service;
     CompanionRunLifecycle lifecycle;
+    /** The lineup Lakelis showed again when a Yes found things changed. */
+    LineupPlan shownAgain;
     /** The map lines of Ann's own companions as they step out beside Lakelis. */
     final MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class);
 
@@ -110,6 +112,7 @@ final class CompanionPqFixture implements AutoCloseable {
             @Override
             public void thingsChanged(Character leader, LineupPlan plan) {
                 game.calls.add("things changed");
+                shownAgain = plan;
             }
 
             @Override
@@ -159,12 +162,14 @@ final class CompanionPqFixture implements AutoCloseable {
 
     /**
      * The doors into the quest: admission registers a real session with the lineup (or refuses with {@link #refusal}),
-     * the start answers {@link #start}, and the stop runs {@link #onStop}. Each logs itself.
+     * the start answers {@link #start} (or throws {@link #startThrows}), and the stop runs {@link #onStop}. Each logs
+     * itself.
      */
     final class Doors implements PqEntryPort {
         AgentKpqSession session;
         String refusal;
         Start start = Start.STARTED;
+        RuntimeException startThrows;
         Runnable onStop = () -> { };
         /** Ann's party as admission saw it. */
         List<Integer> partyAtAdmit;
@@ -195,6 +200,9 @@ final class CompanionPqFixture implements AutoCloseable {
             if (session != null) {
                 adoptedAtStart = session.companionAdopted();
                 committedAtStart = game.commitments.members("pq:kpq:" + session.sessionId()).size();
+            }
+            if (startThrows != null) {
+                throw startThrows;
             }
             return start;
         }

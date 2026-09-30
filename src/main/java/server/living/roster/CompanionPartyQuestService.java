@@ -213,8 +213,9 @@ public final class CompanionPartyQuestService {
     /**
      * A bot in the party. A companion goes in when it is loaded, ACTIVE, on the leader's channel, standing, tied to no
      * run, admissible and carries its potions; one called over is on its way; one loaded otherwise waits outside with
-     * its reason. A companion not loaded (logged off with a friend), one tied to a run and any other Agent (a citizen,
-     * which carries its own engagement) keep the run from starting.
+     * its reason. A companion not loaded (logged off with a friend), one tied to a run, one whose row is not out with
+     * its owner (a hold would refuse it: walking out to the bench, say) and any other Agent (a citizen, which carries
+     * its own engagement) keep the run from starting.
      */
     private LineupPlan.Candidate companion(Character leader, PartyCharacter member) {
         int id = member.getId();
@@ -233,14 +234,16 @@ public final class CompanionPartyQuestService {
                     LakelisLines.CATCHING_BREATH, false);
         }
         RosterEntry row = world.views().row(owner, persona.id());
+        if (row == null || !CompanionSeatState.partyMember(row.state())) {
+            return blocks(id, name, LakelisLines.BUSY);
+        }
         boolean usual = world.views().lineup(owner).contains(persona.id());
-        if (row != null && row.state() == RosterState.TRAVELLING) {
+        if (row.state() == RosterState.TRAVELLING) {
             long etaMs = Math.max(0L, row.etaAtMs() - System.currentTimeMillis());
             return new LineupPlan.Candidate(seat(id, name, bot, false, owner, persona.id(), etaMs),
                     LineupPlan.Fit.ON_THE_WAY, null, usual);
         }
-        String reason = row == null || row.state() != RosterState.ACTIVE ? LakelisLines.BUSY
-                : !RosterService.sameChannel(leader, bot) ? LakelisLines.OTHER_CHANNEL
+        String reason = !RosterService.sameChannel(leader, bot) ? LakelisLines.OTHER_CHANNEL
                 : bot.getHp() <= 0 ? LakelisLines.KNOCKED_OUT
                 : waitingReason(bot);
         return new LineupPlan.Candidate(seat(id, name, bot, false, owner, persona.id(), 0L),
@@ -309,9 +312,10 @@ public final class CompanionPartyQuestService {
     // ---- Yes: the extras step out, then admission and the start in one I/O step -----------------
 
     /**
-     * The leader said Yes to {@code clicked} (on their I/O thread, as the answer to that click). Re-planned with the
-     * same companions chosen; when that is no longer the lineup they saw, or it cannot start, the lineup is shown again
-     * instead. Otherwise the extras step out on companion-ops ({@link #prepareEntry}) and the run starts back here.
+     * The leader said Yes to {@code clicked} (on their I/O thread, as the answer to that click). Re-planned the way it
+     * was drawn (her choice, or the leader's pick); when that is no longer the lineup they saw, or it cannot start, the
+     * lineup is shown again instead. Otherwise the extras step out on companion-ops ({@link #prepareEntry}) and the run
+     * starts back here. A Yes that throws lets the next one through: only its log is left.
      */
     public void start(Character leader, LineupPlan clicked) {
         int leaderId = leader.getId();
@@ -319,60 +323,64 @@ public final class CompanionPartyQuestService {
             desk.outcome(leader, LakelisLines.HOLD_ON, System.currentTimeMillis());
             return;
         }
-        LineupPlan fresh = plan(leader, clicked.pqKey(), companionsOf(clicked));
-        if (!fresh.startable() || !fresh.memberIds().equals(clicked.memberIds())) {
-            entering.remove(leaderId);
-            desk.thingsChanged(leader, fresh);
-            return;
-        }
-        long clickedAt = System.currentTimeMillis();
-        world.executor().submit("pq.prepare " + leaderId, () -> prepareEntry(leader, fresh, clickedAt));
-    }
-
-    private static Set<Integer> companionsOf(LineupPlan plan) {
-        Set<Integer> ids = new HashSet<>();
-        for (LineupPlan.Seat seat : plan.lineup()) {
-            if (!seat.human()) {
-                ids.add(seat.characterId());
+        try {
+            LineupPlan fresh = plan(leader, clicked.pqKey(), clicked.picked());
+            if (!fresh.startable() || !fresh.memberIds().equals(clicked.memberIds())) {
+                entering.remove(leaderId);
+                desk.thingsChanged(leader, fresh);
+                return;
             }
+            long clickedAt = System.currentTimeMillis();
+            world.executor().submit("pq.prepare " + leaderId, () -> prepareEntry(leader, fresh, clickedAt));
+        } catch (RuntimeException failure) {
+            entering.remove(leaderId);
+            throw failure;
         }
-        return ids;
     }
 
     /**
      * On companion-ops: every extra steps out of the party to wait outside the run (a HOLD), beside Lakelis when it is
      * at the entrance and where it stands when it is on its way. The leader's own say so aloud; another owner's tell
-     * their owner. Then the run starts on the leader's I/O thread; one that cannot step out calls the others back.
+     * their owner. Then the run starts on the leader's I/O thread; one that cannot step out calls the others back, and
+     * so does a hold that throws (the leader hears the generic line; companion-ops logs the failure).
      */
     void prepareEntry(Character leader, LineupPlan fresh, long clickedAt) {
         Set<Integer> touched = new LinkedHashSet<>();
-        Point lakelis = lakelis(leader);
-        int beside = 0;
-        for (LineupPlan.Seat extra : fresh.extras()) {
-            Character owner = world.roster().onlineCharacter(extra.ownerId());
-            Persona persona = world.content().persona(extra.personaId());
-            Point point = lakelis != null && extra.mapId() == AgentKpqDefinition.RECRUIT_MAP
-                    ? new Point(lakelis.x + 40 + 30 * beside++, lakelis.y) : null;
-            HoldNote note = extra.ownerId() == leader.getId() ? HoldNote.map(null)
-                    : HoldNote.whisper(leader.getName() + " asked me to wait outside.");
-            RosterResult held = owner == null || persona == null ? new RosterResult.NotOwned()
-                    : world.roster().hold(owner, persona, extra.mapId(), point, note);
-            if (!held.ok()) {
-                log.info("companion KPQ for {}: {} could not wait outside: {}", leader.getName(), extra.name(), held);
-                rejoin(touched);
+        try {
+            Point lakelis = lakelis(leader);
+            int beside = 0;
+            for (LineupPlan.Seat extra : fresh.extras()) {
+                Character owner = world.roster().onlineCharacter(extra.ownerId());
+                Persona persona = world.content().persona(extra.personaId());
+                Point point = lakelis != null && extra.mapId() == AgentKpqDefinition.RECRUIT_MAP
+                        ? new Point(lakelis.x + 40 + 30 * beside++, lakelis.y) : null;
+                HoldNote note = extra.ownerId() == leader.getId() ? HoldNote.map(null)
+                        : HoldNote.whisper(leader.getName() + " asked me to wait outside.");
+                RosterResult held = owner == null || persona == null ? new RosterResult.NotOwned()
+                        : world.roster().hold(owner, persona, extra.mapId(), point, note);
+                if (!held.ok()) {
+                    log.info("companion KPQ for {}: {} could not wait outside: {}", leader.getName(), extra.name(),
+                            held);
+                    rejoin(touched);
+                    entering.remove(leader.getId());
+                    answerOnIo(leader, LakelisLines.PARTY_CHANGED, clickedAt);
+                    return;
+                }
+                touched.add(extra.ownerId());
+            }
+            Client client = leader.getClient();
+            if (client == null) {
+                rejoin(touched); // logged off meanwhile
                 entering.remove(leader.getId());
-                answerOnIo(leader, LakelisLines.PARTY_CHANGED, clickedAt);
                 return;
             }
-            touched.add(extra.ownerId());
+            client.runOnIoThread(() -> enter(leader, fresh, clickedAt));
+        } catch (RuntimeException failure) {
+            entering.remove(leader.getId()); // first: the next Yes goes through even if the rejoin throws too
+            rejoin(touched);
+            answerOnIo(leader, LakelisLines.GENERIC, clickedAt);
+            throw failure;
         }
-        Client client = leader.getClient();
-        if (client == null) {
-            rejoin(touched); // logged off meanwhile
-            entering.remove(leader.getId());
-            return;
-        }
-        client.runOnIoThread(() -> enter(leader, fresh, clickedAt));
     }
 
     /** Where Lakelis stands on the leader's map; null when she is not on it. */
@@ -397,7 +405,7 @@ public final class CompanionPartyQuestService {
             }
             List<LineupPlan.Seat> companions = fresh.lineup().stream().filter(seat -> !seat.human()).toList();
             if (companions.isEmpty()) {
-                PqEntryPort.Start started = port.startInstance(leader); // the extras rejoin as their owners come out
+                PqEntryPort.Start started = startInstance(leader); // the extras rejoin as their owners come out
                 if (started != PqEntryPort.Start.STARTED) {
                     rejoinLater(leader, owners);
                     desk.outcome(leader, LakelisLines.forStart(started), clickedAt);
@@ -427,7 +435,7 @@ public final class CompanionPartyQuestService {
                 desk.outcome(leader, LakelisLines.GENERIC, clickedAt);
                 return;
             }
-            PqEntryPort.Start started = port.startInstance(leader);
+            PqEntryPort.Start started = startInstance(leader);
             if (started != PqEntryPort.Start.STARTED) {
                 abort(leader, run, firstAgent, LakelisLines.forStart(started), clickedAt);
                 return;
@@ -435,6 +443,19 @@ public final class CompanionPartyQuestService {
             run.started = true;
         } finally {
             entering.remove(leader.getId());
+        }
+    }
+
+    /**
+     * KerningPQ's start; one that throws (EventManager.startInstance rethrows a setup script's failure) did not start,
+     * and ends as an event error does: the session stopped, the extras called back and the leader answered.
+     */
+    private PqEntryPort.Start startInstance(Character leader) {
+        try {
+            return port.startInstance(leader);
+        } catch (RuntimeException failure) {
+            log.warn("companion KPQ start for {} failed", leader.getName(), failure);
+            return PqEntryPort.Start.NO_EVENT;
         }
     }
 

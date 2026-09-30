@@ -58,23 +58,13 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
 
     // ---- the lineup ----------------------------------------------------------------------------
 
-    @Override
-    public void proposal(Character leader, LineupPlan plan, String topLine) {
-        lineup(leader, plan, null, topLine);
-    }
-
-    /** A Yes found the party changed since the lineup was drawn: the lineup as it is now. */
-    @Override
-    public void thingsChanged(Character leader, LineupPlan plan) {
-        proposal(leader, plan, CompanionMenus.THINGS_CHANGED);
-    }
-
     /**
      * Who she would send in and who waits with her; Yes only when they can go in now, "Are they here yet?" while a
-     * companion called over is still on its way. {@code picked}: the companions the leader chose (null: her own
-     * choice), kept when the leader asks again.
+     * companion called over is still on its way. Asked again, the lineup is planned the way it was drawn: the leader's
+     * pick stays theirs.
      */
-    private void lineup(Character leader, LineupPlan plan, Set<Integer> picked, String topLine) {
+    @Override
+    public void proposal(Character leader, LineupPlan plan, String topLine) {
         String pqKey = plan.pqKey();
         List<Option> options = new ArrayList<>();
         if (plan.startable()) {
@@ -82,14 +72,20 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
         }
         if (!plan.onTheWay().isEmpty()) {
             options.add(new Option("Are they here yet?",
-                    () -> lineup(leader, service.plan(leader, pqKey, picked), picked, null)));
+                    () -> proposal(leader, service.plan(leader, pqKey, plan.picked()), null)));
         }
         options.add(new Option("Let me choose...", () -> choose(leader, pqKey, companions(plan), null)));
         if (plan.benchUseful()) {
-            options.add(new Option("Call someone from my bench...", () -> bench(leader, pqKey)));
+            options.add(new Option("Call someone from my bench...", () -> bench(leader, plan)));
         }
         options.add(new Option("Never mind.", null));
         talk(leader).menu(lineupText(plan, topLine), options).show();
+    }
+
+    /** A Yes found the party changed since the lineup was drawn: the lineup as it is now. */
+    @Override
+    public void thingsChanged(Character leader, LineupPlan plan) {
+        proposal(leader, plan, CompanionMenus.THINGS_CHANGED);
     }
 
     private static String lineupText(LineupPlan plan, String topLine) {
@@ -213,12 +209,12 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
                 if (plan.startable()) {
                     service.start(leader, plan);
                 } else {
-                    lineup(leader, service.plan(leader, pqKey, in), in, null);
+                    proposal(leader, service.plan(leader, pqKey, in), null);
                 }
             }));
         }
         talk(leader).menu((prompt == null ? WHO_GOES_IN : prompt) + "\r\n", options)
-                .back(() -> lineup(leader, service.plan(leader, pqKey, in), in, null))
+                .back(() -> proposal(leader, service.plan(leader, pqKey, in), null))
                 .show();
     }
 
@@ -226,9 +222,11 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
 
     /**
      * The leader's benched and away companions in KPQ's levels, to send for; the rest are named under them. A pick
-     * calls the companion (join-then-travel) on companion-ops.
+     * calls the companion (join-then-travel) on companion-ops; Back is the lineup {@code shown} again, planned the way
+     * it was drawn.
      */
-    private void bench(Character leader, String pqKey) {
+    private void bench(Character leader, LineupPlan shown) {
+        String pqKey = shown.pqKey();
         List<Option> options = new ArrayList<>();
         List<String> notReady = new ArrayList<>();
         for (RosterEntry entry : menus.rows(leader)) {
@@ -248,13 +246,14 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
             options.add(Option.heading("Not ready for this: " + String.join(", ", notReady)));
         }
         talk(leader).menu("Who should I send for? They'll meet you here in Kerning City.\r\n", options)
-                .back(() -> proposal(leader, service.plan(leader, pqKey), null))
+                .back(() -> proposal(leader, service.plan(leader, pqKey, shown.picked()), null))
                 .show();
     }
 
     /**
      * Calls the companion on companion-ops. One that sets off is on its way (and says so to the party as it arrives);
-     * anything else ("your party is full") tops the lineup again.
+     * anything else ("your party is full") tops the lineup again. Either way she chooses again, so a companion that
+     * joined is not left out by a pick made before it.
      */
     private void call(Character leader, String pqKey, Persona persona) {
         AtomicBoolean travelling = new AtomicBoolean();

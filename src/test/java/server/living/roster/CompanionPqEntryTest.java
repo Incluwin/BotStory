@@ -2,6 +2,8 @@ package server.living.roster;
 
 import client.Character;
 import client.Job;
+import client.inventory.Inventory;
+import client.inventory.InventoryType;
 import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +21,11 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
@@ -30,7 +36,8 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * aloud), then, back on Ann's I/O thread, the lineup is admitted, marked a companion run with guidance, committed
  * with its extras, and the event started, in that order and in one step. A refused admission is answered in
  * Lakelis's words and calls the extras back; so does a party that changed meanwhile, without admitting anyone. A lineup
- * of humans only takes the stock start. A second Yes while the first is carried out only hears "hold on".
+ * of humans only takes the stock start. A second Yes while the first is carried out only hears "hold on"; one that
+ * threw is over all the same. A Yes on her own choice is planned again by her own choice.
  */
 class CompanionPqEntryTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -200,6 +207,58 @@ class CompanionPqEntryTest {
         assertTrue(game.calls.contains("answer Hold on, they're lining up."));
         CompanionPqFixture.drain(fx.io);
         assertEquals(1, game.calls.stream().filter(call -> call.startsWith("admit")).count());
+    }
+
+    @Test
+    void aYesThatThrowsLetsTheNextYesThrough() {
+        fx.ready();
+        LineupPlan seen = fx.service.plan(game.ann, "kpq");
+        Inventory use = game.bots.get(901).getInventory(InventoryType.USE);
+        when(use.getNextFreeSlot()).thenThrow(new IllegalStateException("Tobi's bags are being saved"));
+
+        assertThrows(IllegalStateException.class, () -> fx.service.start(game.ann, seen)); // LivingTalk logs it
+
+        doReturn((short) 0).when(use).getNextFreeSlot();
+        fx.service.start(game.ann, seen);
+        assertFalse(game.calls.contains("answer Hold on, they're lining up."), "the Yes that threw is over");
+        assertTrue(game.calls.contains("admit [Ann, Mira, Tobi, Pip]"));
+    }
+
+    @Test
+    void aHoldThatThrowsCallsTheOthersBackAndLetsTheNextYesThrough() {
+        fx.ready();
+        List<Runnable> ops = fx.holdCompanionOps();
+        fx.dialogue.when(() -> AgentDialogueTransportRuntime.sayMapNow(eq(game.bot(hadrik)), anyString()))
+                .thenThrow(new IllegalStateException("map chat is down"));
+        fx.yes();
+
+        assertThrows(IllegalStateException.class, () -> CompanionPqFixture.drain(ops)); // companion-ops logs it
+
+        assertTrue(game.calls.contains("answer " + LakelisLines.GENERIC));
+        assertFalse(game.calls.stream().anyMatch(call -> call.startsWith("admit")));
+        CompanionPqFixture.drain(ops);
+        assertEquals(RosterState.ACTIVE, game.row(casse).state(), "the one that stepped out comes back");
+        assertEquals(RosterState.ACTIVE, game.row(hadrik).state());
+        game.calls.clear();
+        fx.yes();
+        assertFalse(game.calls.contains("answer Hold on, they're lining up."), "the Yes that threw is over");
+    }
+
+    @Test
+    void herOwnChoiceIsPlannedAgainByHerOwnChoice() {
+        fx.potions.put(903, 50); // Casse carries potions this time: four can go and Pip is left over
+        fx.ready();
+        LineupPlan seen = fx.service.plan(game.ann, "kpq");
+        assertEquals(Set.of(ANN, 900, 901, 903), seen.memberIds());
+        Inventory miras = game.bots.get(900).getInventory(InventoryType.USE);
+        when(miras.getNextFreeSlot()).thenReturn((short) -1); // Mira's bags filled since
+
+        fx.service.start(game.ann, seen);
+
+        assertEquals(List.of("things changed"), game.calls);
+        assertEquals(Set.of(ANN, 901, 902, 903), fx.shownAgain.memberIds(), "Pip takes the seat, as a new one would");
+        assertTrue(fx.shownAgain.startable());
+        assertNull(fx.shownAgain.picked(), "still her own choice");
     }
 
     @Test

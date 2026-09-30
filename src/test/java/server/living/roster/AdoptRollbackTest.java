@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * A start that fails after admission (P6, flow 3 step 6: both lobbies of the channel taken): the session is stopped
  * through the first companion, its end hands everyone back and ends the run, and Lakelis gives 9020000.js's own line.
  * Nothing stays committed and the companions that waited outside rejoin. With no session left to stop, the run is
- * ended here all the same.
+ * ended here all the same. A start that throws ends as 9020000.js's event error does.
  */
 class AdoptRollbackTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -52,6 +52,21 @@ class AdoptRollbackTest {
         assertEquals(List.of(), game.commitments.members("pq:kpq:" + fx.doors.session.sessionId()));
         assertEquals(RosterState.ACTIVE, game.row(casse).state(), "the one that waited outside rejoins");
         assertTrue(game.members.contains(903));
+        assertNull(fx.service.runForSession(fx.doors.session.sessionId()));
+    }
+
+    @Test
+    void aStartThatThrowsIsStoppedAndAnsweredAsAnEventError() {
+        fx.doors.startThrows = new NullPointerException("setup"); // EventManager.startInstance rethrows a setup failure
+        fx.doors.onStop = () -> fx.sessionEnds(false);
+
+        fx.yes();
+
+        assertEquals(List.of("stop 900: companion KPQ start failed"),
+                game.calls.stream().filter(call -> call.startsWith("stop 9")).toList());
+        assertTrue(game.calls.contains("answer " + LakelisLines.NO_EVENT));
+        assertEquals(List.of(), game.commitments.members("pq:kpq:" + fx.doors.session.sessionId()));
+        assertEquals(RosterState.ACTIVE, game.row(casse).state(), "the one that waited outside rejoins");
         assertNull(fx.service.runForSession(fx.doors.session.sessionId()));
     }
 
