@@ -3,7 +3,16 @@ package server.agents.capabilities.partyquest.kpq;
 import client.Character;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
+import server.agents.auth.AgentAuthorityService;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.integration.AgentCharacterGatewayRuntime;
+import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.AgentPartyMemberSnapshot;
+import server.agents.integration.AgentPartySnapshot;
+import server.agents.integration.CharacterGateway;
+import server.agents.integration.PartyGateway;
 
 import java.util.List;
 import java.util.Map;
@@ -12,8 +21,12 @@ import java.util.Set;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 
@@ -67,6 +80,64 @@ class AgentKpqTestServiceTest {
                 AgentKpqTestService.adoptOptions(new String[]{"party", "123"}, 1, 999L));
         assertEquals(new AgentKpqTestService.AdoptOptions(false, 999L),
                 AgentKpqTestService.adoptOptions(new String[]{"adopt"}, 1, 999L));
+    }
+
+    @Test
+    void adoptingAgainClearsAFinishedProductionRunInsteadOfRefusing() {
+        // Live: a failed PRODUCTION run closed its engagement but kept the harness entry, so the next
+        // "!kpqtest party prod" was refused and Lakelis started a stock instance with no session.
+        Character leader = partyMember(760_100, "Ben");
+        Character ann = partyMember(760_101, "Ann");
+        Character tobi = partyMember(760_102, "Tobi");
+        PartyGateway party = mock(PartyGateway.class);
+        when(party.snapshot(leader)).thenReturn(new AgentPartySnapshot(1, List.of(
+                new AgentPartyMemberSnapshot(760_100, "Ben", true, AgentKpqDefinition.RECRUIT_MAP),
+                new AgentPartyMemberSnapshot(760_101, "Ann", false, AgentKpqDefinition.RECRUIT_MAP),
+                new AgentPartyMemberSnapshot(760_102, "Tobi", false, AgentKpqDefinition.RECRUIT_MAP))));
+        when(party.onlineMembers(leader)).thenReturn(List.of(leader, ann, tobi));
+        AgentPartyQuestEngagement failed = new AgentPartyQuestEngagement(
+                "kpq", AgentPartyQuestEngagement.Mode.PRODUCTION, 7L, 760_100, 3, 1_000L);
+        AgentPartyQuestEngagement next = new AgentPartyQuestEngagement(
+                "kpq", AgentPartyQuestEngagement.Mode.PRODUCTION, 8L, 760_100, 3, 1_000L);
+        String[] adopt = {"party", "prod", "7"};
+        try (MockedStatic<AgentAuthorityService> authority = mockStatic(AgentAuthorityService.class);
+             MockedStatic<AgentPartyGatewayRuntime> parties = mockStatic(AgentPartyGatewayRuntime.class);
+             MockedStatic<AgentKpqAdmissionService> admission = mockStatic(AgentKpqAdmissionService.class);
+             MockedStatic<AgentCharacterGatewayRuntime> characters =
+                     mockStatic(AgentCharacterGatewayRuntime.class)) {
+            authority.when(() -> AgentAuthorityService.mayOperate(leader)).thenReturn(true);
+            parties.when(AgentPartyGatewayRuntime::party).thenReturn(party);
+            characters.when(AgentCharacterGatewayRuntime::characters).thenReturn(mock(CharacterGateway.class));
+            admission.when(() -> AgentKpqAdmissionService.admit(
+                            eq(leader), eq(leader), anyList(), anyLong(), anyLong()))
+                    .thenReturn(new AgentKpqAdmissionService.AdmissionResult(true, "KPQ party admitted", null, failed),
+                            new AgentKpqAdmissionService.AdmissionResult(true, "KPQ party admitted", null, next));
+            try {
+                assertTrue(AgentKpqTestService.execute(leader, adopt, 2_000L).getFirst()
+                        .startsWith("Adopted current party for PRODUCTION KPQ"));
+                assertTrue(AgentKpqTestService.execute(leader, adopt, 2_100L).getFirst()
+                        .startsWith("Stop the current KPQ test"), "a live run still refuses");
+
+                failed.beginRecovery("KPQ stopped: Tobi was defeated during KPQ", 3_000L);
+                failed.close(3_000L);
+
+                assertTrue(AgentKpqTestService.execute(leader, adopt, 4_000L).getFirst()
+                        .startsWith("Adopted current party for PRODUCTION KPQ"));
+                admission.verify(() -> AgentKpqAdmissionService.admit(
+                        eq(leader), eq(leader), anyList(), anyLong(), anyLong()), times(2));
+            } finally {
+                AgentKpqTestService.execute(leader, new String[]{"stop"}, 5_000L);
+            }
+        }
+    }
+
+    private static Character partyMember(int id, String name) {
+        Character member = mock(Character.class);
+        when(member.getId()).thenReturn(id);
+        when(member.getName()).thenReturn(name);
+        when(member.getMapId()).thenReturn(AgentKpqDefinition.RECRUIT_MAP);
+        when(member.getLevel()).thenReturn(25);
+        return member;
     }
 
     @Test

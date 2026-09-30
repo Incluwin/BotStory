@@ -241,6 +241,13 @@ public final class AgentKpqTestService {
         if (operator.getMapId() != AgentKpqDefinition.RECRUIT_MAP) {
             return List.of("Stand in Kerning City (103000000) before adopting a mixed KPQ party.");
         }
+        // A failed PRODUCTION run closes its engagement but left its entry here, and that refused the next adopt
+        // (live: Lakelis then started a stock instance with no session). A finished run has nothing to clean up.
+        Run finished = RUNS.get(operator.getId());
+        if (finished != null && (finished.engagement.state() == AgentPartyQuestEngagement.State.FAILED
+                || finished.engagement.state() == AgentPartyQuestEngagement.State.CLOSED)) {
+            RUNS.remove(operator.getId(), finished);
+        }
         if (RUNS.containsKey(operator.getId())) {
             return List.of("Stop the current KPQ test before adopting another party; "
                     + "this prevents the old engagement cleanup from disbanding the party being adopted.");
