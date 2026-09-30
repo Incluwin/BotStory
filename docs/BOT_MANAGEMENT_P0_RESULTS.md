@@ -589,4 +589,14 @@ A companion now leaves a camp that keeps killing it, even one its owner picked. 
   - The login line was written when Crewfriend logged in at 05:50:47 (`bench.camp-moved.told`).
   - Her first slice there ended "resupplied" at 05:55:19 with +1,131 meso and 5 stacks, and no death.
   - Her picker shows "Excavation Site III ... - rough for me (~10 deaths/h)" and "The Land of Wild Boar II ... - my camp now".
-- **Note:** she ran out of supplies 2 minutes into that slice, and the shop run took the other 4. That is the same P5 flow as before, not a death.
+- **Second slice** there (05:55-05:59) also ended "resupplied" with no death.
+- **Found behind the deaths, fixed in `b73105a85`:** Casse was never really hunting.
+  - She had 60 Blue Potions and 2 Mana Elixirs, no HP potion, and 1,706 meso. Each slice she went straight to the Ellinia potion shop. The log reads "shop completed without increasing the required supply", and then she walked back.
+  - A self-led bench slice keeps the journey reserve (500 + 50/level = 1,700 at Lv24, kept since `407512dd1`), so she had 6 meso to spend. The P5 "can supply itself" check only asked for 1,000 meso in total.
+  - 4 of her 5 deaths at Excavation Site III came during those shop walks.
+  - The check now needs 1,000 meso over that reserve (`AgentSupplyRecoveryPolicy.minimumWalletReserve(level)`, a new level-only reader for a character that is not loaded). Below that she waits in the ledger, and her card reads "out of potions and meso" until her owner gives coin.
+  - Test `aPurseTheShopKeepsAsItsReserveIsNotEnough` fails without the fix. The living-world tree passes, and the architecture test fails only on its 4 known baseline failures.
+  - Live after the 06:07 restart:
+    - Casse was held at 06:09:52 ("bench.unsupplied: out of potions and meso") instead of walking to the shop.
+    - Sadie (32 meso) was held as before.
+    - Hadrik (2.7M meso) went live at the same tick.
