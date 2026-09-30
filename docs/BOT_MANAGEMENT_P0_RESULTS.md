@@ -528,3 +528,53 @@ Clip: `docs/agents/evidence/video/p4-stranger-to-crew.mp4` (83 s, captioned): in
 - **Offer cooldowns and pending offers are in memory** (a restart forgets them).
 - **Registrar clerk NPC** (decision 4 c) not built, as planned.
 - `living_citizen.joined_at` for trickle births (e.g. Givina 18:50:50 while local time was 15:18) looks written in GMT; older population behaviour, not P4.
+
+---
+
+# P5 results (2026-09-29 / 30)
+
+## Branch and suite
+- **Merge:** P5 is fast-forwarded into `feat/companion-manager`: core `0418b3605`, duties `5478c5251`, learning `4f2d23195`, rotation `a3a551fdf`, integration `50a640895`, review fixes `f2fdc1b19` (all 28 review findings, 11 major).
+- **Live fixes:** `beabaca8a`, `428fff2cb`, `2c38a4336` (below).
+- **Migrations:** changesets `42-companion-bench-learning` (`companion_yield`, `living_stall_stock`, `living_roster.your_call`) and `43-companion-crew-fresh`, applied on boot.
+- **Full suite** on `beabaca8a`: 8469 tests, 25 failures + 4 errors, the same 29 as the baseline. The living-world tree (1197 tests) passes on `2c38a4336`.
+
+## What P5 adds
+- **BenchDutyDispatcher:** one place a benched companion goes live, one form per duty. Pools: BENCH_LIVE (2 per owner, server cap), BENCH_TOWN for REST (1 per owner, 4 total) and COMMERCE for stalls (1 per owner, 2 total). Owners online go first; live forms run on channel 1 only. Harvest counts only what the companion picks up. Flow 12: a death ends the slice after the stock revive and the companion rests one slice; running out of potions ends the hunt and the shop resupply runs before the next slice.
+- **Visible duties:** TRAIN / FARM_MESO / FARM_ITEM grind at the camp; GATHER picks up quest drops; STALL (and SELL) opens a real Free Market shop from the haul at market-index prices, with sales back to the haul and stock kept durable across restarts; REST is town life in the camp's town.
+- **Learning:** `companion_yield` rates per job branch, level band and camp, shrunk toward the ledger's prior. "Your call" is a standing UCB bandit over duty and camp. Pickers show learned rates; the card shows live, out of sight, resting, stall and resupply states; one call-back report whisper.
+- **Upkeep** is capped at 15% of the predicted meso/h; hire wages follow the same rule.
+- **Bench combat learning:** LEARN mode only while no human is on the map, into candidate tables that live play never reads; adoption only through `!combatarena <agent> job=<job> policy=candidate`.
+- **"Keep my crew fresh"** (off by default, in the Crew window): a rested bench companion swaps in for one that is down, out of potions or 10+ levels off the owner, and says why in party chat.
+
+## Live checks (ohboy + Crewfriend, two clients; 2026-09-29 22:15 - 2026-09-30 05:21)
+| Check | Result |
+|---|---|
+| A companion grinds at its camp | **Pass.** SilentSin farmed at Tree Dungeon, levelled there and ended at its owner's level by the rule. Hadrik and Jinx grind at their camps (clip). |
+| Buy from a STALL companion's real shop | **Pass.** Ilse: "blue snail shell and more, fresh from camp" in FM room 4, 3 listings at market-like prices. ohboy bought 40 Orange Mushroom Caps for 400 meso: his purse -400, Ilse's haul +400 exactly, the caps left the stall stock, the rest stayed listed. |
+| Watch a REST companion in town | **Pass.** Garrick rests in Perion (his camp's return town) and chats ("cold up here."). |
+| Call one back and read its report | **Pass.** "SilentSin>> farmed 21k meso at Tree Dungeon, Forest Up North III." |
+| See an auto-rotation in party chat | **Pass.** Seven seconds after the toggle: "Liriki : i'm closer to your level. i'll take Fenna's spot." |
+| Duty and camp pickers | **Pass.** "(out of sight)", level-appropriate camp list, "i can't do that in town. where should i go?", "~25k meso/h after upkeep", "(1 hunt measured at Excavation Site I...)". |
+| Coin for supplies unblocks a broke companion | **Pass.** Casse "out of potions and meso" on the card and Crew row; 5,000 coin, next tick she went live and farmed. |
+| Two accounts, 5 active + bench | **Pass.** ohboy 4 out + SilentSin away (seat kept) + Garrick and Ilse on live duties; Crewfriend 4 out + Casse away + IceCookie and Lioren on the bench (2 hires from its list). |
+| Soak, 1 h at -Xmx2048m (04:15-05:19, 129 samples) | **Pass.** Queue-lag p50 29 ms, p95 55 ms median / 59 ms max (target < 100), one p99 spike to 411 ms; LOW_PRIORITY lag p95 20 ms (one 116 ms); old gen after GC 311-421 MB; 0.12 cores; 0 double loads; no OOM. Load was light: at 04:00-05:00 New York time the population's own schedule keeps most citizens offline (14-52 agents vs ~230 in the evening). |
+
+Video: `docs/agents/evidence/video/p5-bench-alive.mp4` (122 s, captioned): a grinder at camp, a real FM stall and a purchase, a rest in town, "Keep my crew fresh".
+
+## Bugs found live and fixed
+1. **Meso harvest always 0** (`beabaca8a`). Mob meso on this server goes to the top damager at the kill (`MapleMap.dropFromMonster`) and never through `Character.pickupItem`, so the loot hook never saw it. Both grants now report to it; `MesoLootHookBoundaryTest` pins every meso grant (fails without the fix). Live: "+1326 meso, 2 stacks" for Casse.
+2. **Recall to an owner in the Free Market took 180 s** (`beabaca8a`): FM rooms joined the road graph through each town's portal. `RecallCapTest`.
+3. **"ok, i'll rest at The Burnt Land I"** while resting in Perion (`beabaca8a`): the confirmation names the rest form's town.
+4. **A broke companion died every 20 min for hours** (`beabaca8a`): Sadie, 0 meso and no potions, loaded, failed to buy, died, rested, repeated. Field slices now stay in the ledger until it can supply itself; card "out of potions and meso", Crew row "out of supplies". `BenchDeathResupplyTest`.
+5. **Companions loaded at their stock-revive HP and died in seconds** (`428fff2cb`): Jinx 15 deaths in 16 slices, Hadrik and Sadie the same. A slice now loads its companion healed. Test fails without it.
+6. **Plain headings drawn over the option above them** (`428fff2cb`, "What I pick up:" over "Drink an MP potion below 50%"): `LivingTalk` puts a blank line before a heading that follows an option. `LivingTalkTest`.
+7. **The default camp was the first fit even when measured deadly** (`2c38a4336`): Drake's Meal Table for a Lv50 thief measured 43 deaths/h. The default camp is now the best of the top 5 fits under 2 deaths/h, else the ledger. After it: Hadrik and Jinx 0 deaths in 6 slices.
+
+## Not done / notes
+- **Exit "ledger and live EXP/h within +-25% after 5 slices per camp"** is not measured yet: no camp reached 5 slices in the session.
+- **A camp the owner (or an old grant) set** is kept even when measured deadly: Casse (Lv24 magician) died 3 of 4 slices at Excavation Site III (20 deaths/h). Only default camps skip deadly fields; "Your call" and the picker's rates show the risk.
+- **The Crew row of a REST companion** still says "rest @ <camp>", not the town it rests in (the card and the confirmation are right).
+- **The call-back report tally is in memory:** it covers only the time since the last restart (SilentSin's haul held 102k; the report said 21k).
+- **Found, not P5:** a citizen save fails when its `retires_at` falls in the US spring-forward gap (2027-03-14 02:28, "Incorrect datetime value"), so that row stops persisting; filed as its own task. The server was also found stopped at 19:43 on 09-29 with no shutdown log; no session or P5 agent stopped it, cause unknown.
+- **Test setup:** ohboy's HP restored and ohboy/Crewfriend moved by SQL while offline; Crewfriend granted Casse, Dorran and Lioren (`!grantcompanion`) and hired HappyWolf and IceCookie; stock for Ilse's stall was put in her haul by SQL (3 ETC stacks).
