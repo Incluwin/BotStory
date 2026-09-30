@@ -1356,8 +1356,8 @@ final class AgentKpqCoordinator {
         int failureSpeakerId = failureSpeakerId(session);
         Character failureSpeaker = failureSpeakerId <= 0 ? null : character(failureSpeakerId);
         if (failureSpeaker != null) {
-            narrate(session, failureSpeaker, "failed",
-                    failureLine(session.companionAdopted(), reason, parting, failureSpeakerId));
+            narrate(session, failureSpeaker, "failed", failureLine(
+                    session.companionAdopted(), reason, parting, failureSpeakerId, pastTheClear(session)));
         }
         log.error("KPQ session failure: session={} phase={} reason={} blocker={} blockerMs={} diagnostics={}",
                 session.sessionId(), session.phase(), reason, session.blockerKey(),
@@ -1370,9 +1370,20 @@ final class AgentKpqCoordinator {
      * lost lobby is said casually by every run: that end is new with the background entry gate, and nothing stock
      * ever said it.
      */
-    static String failureLine(boolean companionRun, String reason, Parting parting, int speakerId) {
+    static String failureLine(
+            boolean companionRun, String reason, Parting parting, int speakerId, boolean pastTheClear) {
         return companionRun || parting.kind() == Parting.Kind.LOBBY_TAKEN
-                ? parting.line(speakerId) : "KPQ stopped: " + reason + '.';
+                ? parting.line(speakerId, pastTheClear) : "KPQ stopped: " + reason + '.';
+    }
+
+    /** Stage 5 is cleared: the players have finished the run, whatever ends it on the bonus map or the way out. */
+    private static boolean pastTheClear(AgentKpqSession session) {
+        if (session.phase() == AgentKpqSession.Phase.CLAIMING_REWARDS
+                || session.phase() == AgentKpqSession.Phase.EXITING) {
+            return true;
+        }
+        EventInstanceManager event = session.eventInstance();
+        return event != null && "true".equals(event.getProperty("5stageclear"));
     }
 
     /** How an Agent puts a run's early end to the players around it: casual, and never an id or a reason. */
@@ -1389,10 +1400,17 @@ final class AgentKpqCoordinator {
             return subject == null ? of(kind) : new Parting(kind, subject.getId(), subject.getName());
         }
 
-        /** The line as this speaker says it: about itself when it is the one who went down. */
-        String line(int speakerId) {
+        /**
+         * The line as this speaker says it: about itself when it is the one who went down, and as a wrap-up once the
+         * run is cleared.
+         */
+        String line(int speakerId, boolean pastTheClear) {
             boolean self = subjectId > 0 && subjectId == speakerId;
             boolean named = subject != null && !subject.isBlank();
+            return pastTheClear ? wrapUp(self, named) : beforeTheClear(self, named);
+        }
+
+        private String beforeTheClear(boolean self, boolean named) {
             String generic = "we can't finish this one. let's head out.";
             return switch (kind) {
                 case GENERIC -> generic;
@@ -1407,6 +1425,20 @@ final class AgentKpqCoordinator {
                 case OVER -> "looks like this run's over. let's head back.";
                 case TOO_LONG -> "we've been stuck too long. let's call it and head out.";
                 case LOBBY_TAKEN -> "someone beat us to it. let's try again later.";
+            };
+        }
+
+        /** After the clear nobody is told the run can't be finished, or that it needs three: it is done. */
+        private String wrapUp(boolean self, boolean named) {
+            String wrapUp = "let's wrap it up and head back.";
+            return switch (kind) {
+                case GENERIC -> wrapUp;
+                case WENT_DOWN, DEFEATED -> self ? "sorry, i went down. " + wrapUp
+                        : named ? subject + " went down. " + wrapUp : wrapUp;
+                case LEFT -> named ? subject + " left. " + wrapUp : wrapUp;
+                case GONE -> named ? subject + " dropped out. " + wrapUp : wrapUp;
+                case TOO_LONG -> "we've been at this a while. " + wrapUp;
+                case OVER, LOBBY_TAKEN -> beforeTheClear(self, named);
             };
         }
     }

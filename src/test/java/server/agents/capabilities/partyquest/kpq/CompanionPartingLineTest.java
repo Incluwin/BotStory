@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -46,27 +47,51 @@ class CompanionPartingLineTest {
     void eachKindIsSaidCasuallyAndAboutTheSpeakerWhenItWentDown() {
         AgentKpqCoordinator.Parting tobi = new AgentKpqCoordinator.Parting(
                 AgentKpqCoordinator.Parting.Kind.WENT_DOWN, 4, "Tobi");
-        assertEquals("Tobi went down, and we need three for this. let's head out.", tobi.line(3));
-        assertEquals("sorry, i went down. we need three for this, so let's head out.", tobi.line(4));
+        assertEquals("Tobi went down, and we need three for this. let's head out.", tobi.line(3, false));
+        assertEquals("sorry, i went down. we need three for this, so let's head out.", tobi.line(4, false));
         assertEquals("Tobi went down, so we can't finish this one. let's head out.", new AgentKpqCoordinator.Parting(
-                AgentKpqCoordinator.Parting.Kind.DEFEATED, 4, "Tobi").line(3));
+                AgentKpqCoordinator.Parting.Kind.DEFEATED, 4, "Tobi").line(3, false));
         assertEquals("Ann left, and we need three for this. let's head out.", new AgentKpqCoordinator.Parting(
-                AgentKpqCoordinator.Parting.Kind.LEFT, 2, "Ann").line(3));
+                AgentKpqCoordinator.Parting.Kind.LEFT, 2, "Ann").line(3, false));
         // A name the party no longer knows is left out rather than replaced by an id.
         assertEquals("we can't finish this one. let's head out.", new AgentKpqCoordinator.Parting(
-                AgentKpqCoordinator.Parting.Kind.GONE, 2, null).line(3));
+                AgentKpqCoordinator.Parting.Kind.GONE, 2, null).line(3, false));
         assertEquals("looks like this run's over. let's head back.",
-                AgentKpqCoordinator.Parting.of(AgentKpqCoordinator.Parting.Kind.OVER).line(3));
+                AgentKpqCoordinator.Parting.of(AgentKpqCoordinator.Parting.Kind.OVER).line(3, false));
     }
 
     @Test
     void aStockRunStillSaysTheReason() {
         assertEquals("KPQ stopped: Party member 2 disconnected or left the channel.",
                 AgentKpqCoordinator.failureLine(false, "Party member 2 disconnected or left the channel",
-                        AgentKpqCoordinator.Parting.GENERIC, 3));
+                        AgentKpqCoordinator.Parting.GENERIC, 3, false));
+        assertEquals("KPQ stopped: The event leader is no longer active.",
+                AgentKpqCoordinator.failureLine(false, "The event leader is no longer active",
+                        AgentKpqCoordinator.Parting.GENERIC, 3, true));
         assertEquals("we can't finish this one. let's head out.",
                 AgentKpqCoordinator.failureLine(true, "Stage 2 formation movement exhausted for member 4",
-                        AgentKpqCoordinator.Parting.GENERIC, 3));
+                        AgentKpqCoordinator.Parting.GENERIC, 3, false));
+    }
+
+    @Test
+    void pastTheClearEachKindIsAWrapUpNotALoss() {
+        AgentKpqCoordinator.Parting tobi = new AgentKpqCoordinator.Parting(
+                AgentKpqCoordinator.Parting.Kind.DEFEATED, 4, "Tobi");
+        assertEquals("Tobi went down. let's wrap it up and head back.", tobi.line(3, true));
+        assertEquals("sorry, i went down. let's wrap it up and head back.", tobi.line(4, true));
+        assertEquals("Tobi went down. let's wrap it up and head back.", new AgentKpqCoordinator.Parting(
+                AgentKpqCoordinator.Parting.Kind.WENT_DOWN, 4, "Tobi").line(3, true));
+        assertEquals("Ann left. let's wrap it up and head back.", new AgentKpqCoordinator.Parting(
+                AgentKpqCoordinator.Parting.Kind.LEFT, 2, "Ann").line(3, true));
+        assertEquals("Ben dropped out. let's wrap it up and head back.", new AgentKpqCoordinator.Parting(
+                AgentKpqCoordinator.Parting.Kind.GONE, 1, "Ben").line(3, true));
+        assertEquals("let's wrap it up and head back.", new AgentKpqCoordinator.Parting(
+                AgentKpqCoordinator.Parting.Kind.GONE, 2, null).line(3, true));
+        assertEquals("let's wrap it up and head back.", AgentKpqCoordinator.Parting.GENERIC.line(3, true));
+        assertEquals("we've been at this a while. let's wrap it up and head back.",
+                AgentKpqCoordinator.Parting.of(AgentKpqCoordinator.Parting.Kind.TOO_LONG).line(3, true));
+        assertEquals("looks like this run's over. let's head back.",
+                AgentKpqCoordinator.Parting.of(AgentKpqCoordinator.Parting.Kind.OVER).line(3, true));
     }
 
     @Test
@@ -101,8 +126,49 @@ class CompanionPartingLineTest {
 
         assertEquals("Party member 4 disconnected or left the channel", session.failure());
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
-                mira, "Pip dropped out, so we can't finish this one. let's head out."), times(1));
+                mira, "Pip dropped out. let's wrap it up and head back."), times(1));
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), startsWith("KPQ stopped")), never());
+    }
+
+    @Test
+    void theLeaderLoggingOutOnTheBonusMapIsAWrapUpNotALoss() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.CLAIMING_REWARDS, ben, ann, mira, pip);
+        for (Character member : new Character[]{ben, ann, mira, pip}) {
+            when(member.getMapId()).thenReturn(AgentKpqDefinition.BONUS_MAP);
+        }
+        run.offline(ben);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        assertEquals("The event leader is no longer active", session.failure());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
+                mira, "Ben dropped out. let's wrap it up and head back."), times(1));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), contains("can't finish")), never());
+    }
+
+    @Test
+    void theClearCountsBeforeTheRunMovesOnToItsRewards() {
+        // The leader's thread set 5stageclear; the next tick would have moved the run to CLAIMING_REWARDS.
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, ann, mira, pip);
+        when(run.event.getProperty("5stageclear")).thenReturn("true");
+        run.offline(ben);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
+                mira, "Ben dropped out. let's wrap it up and head back."), times(1));
+    }
+
+    @Test
+    void anUnclearedStageStillSaysTheRunCannotBeFinished() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, ann, mira, pip);
+        run.offline(ben);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
+                mira, "Ben dropped out, so we can't finish this one. let's head out."), times(1));
     }
 
     @Test
