@@ -2245,7 +2245,7 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_LOBBIES: '2'
     # Values: 0-16 parties. Recommended: 2 during initial rollout. Zero disables new background admissions without disabling manual mixed KPQ.
     # Purpose: Caps exact off-screen autonomous KPQ parties across all channels so background combat and physics cannot consume unbounded server work.
-    # Technical: AgentKpqLobbyPolicy counts registered BACKGROUND_POPULATION sessions before the population director reserves and admits another party.
+    # Technical: AgentKpqLobbyPolicy counts live KPQ engagements operated by a registered Agent (and legacy BACKGROUND_POPULATION ones) before the population director reserves and admits another party.
     server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_TOTAL: '2'
     # Values: 0-7 parties per channel. Recommended: 1 while two total lobbies are configured and one remains reserved for human entry.
     # Purpose: Limits autonomous KPQ concentration on an individual channel while still allowing the managed Agent population to participate.

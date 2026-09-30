@@ -2,6 +2,7 @@ package server.agents.integration.cosmic;
 
 import client.Character;
 import scripting.event.EventInstanceManager;
+import scripting.event.EventManager;
 import scripting.npc.NPCScriptManager;
 import server.agents.integration.PartyQuestGateway;
 
@@ -66,5 +67,12 @@ public enum CosmicPartyQuestGateway implements PartyQuestGateway {
     public List<Character> eventMembers(Character character) {
         EventInstanceManager event = event(character);
         return event == null ? List.of() : List.copyOf(event.getPlayers());
+    }
+
+    @Override
+    public int openInstances(Character anchor, String eventName) {
+        EventManager em = anchor == null || anchor.getClient() == null
+                ? null : anchor.getClient().getEventManager(eventName);
+        return em == null ? 0 : em.getInstances().size();
     }
 }

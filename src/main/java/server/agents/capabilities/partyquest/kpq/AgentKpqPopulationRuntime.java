@@ -114,7 +114,7 @@ public final class AgentKpqPopulationRuntime {
         int admitted = 0;
         for (Map.Entry<ChannelKey, List<Character>> channel : eligible.entrySet()) {
             if (!AgentKpqLobbyPolicy.backgroundSlotAvailable(
-                    channel.getKey().world(), channel.getKey().channel())) continue;
+                    channel.getKey().world(), channel.getKey().channel(), channel.getValue().getFirst())) continue;
             List<Character> candidates = channel.getValue().stream()
                     .sorted(Comparator.comparingInt(Character::getId)).limit(partySize).toList();
             if (candidates.size() < partySize) continue;

@@ -32,4 +32,9 @@ public interface PartyQuestGateway {
     boolean sameEvent(Character first, Character second);
 
     List<Character> eventMembers(Character character);
+
+    /** Instances of this event open on the anchor's channel, human and Agent lobbies alike. */
+    default int openInstances(Character anchor, String eventName) {
+        return 0;
+    }
 }

@@ -1,7 +1,10 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import client.Character;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.integration.AgentClientGatewayRuntime;
+import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -16,35 +19,77 @@ public final class AgentKpqLobbyPolicy {
                 "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_LOBBIES")));
     }
 
-    static boolean backgroundSlotAvailable(int world, int channel) {
-        int total = 0;
-        int onChannel = 0;
-        for (AgentKpqSession session : AgentKpqSessionRegistry.sessions()) {
-            if (session.mode() != AgentKpqSession.Mode.BACKGROUND_POPULATION) continue;
-            total++;
-            Character anchor = anchor(session);
-            if (anchor != null
-                    && AgentClientGatewayRuntime.clients().world(anchor) == world
-                    && AgentClientGatewayRuntime.clients().channel(anchor) == channel) {
-                onChannel++;
-            }
-        }
-        int globalLimit = Math.max(0, config.AgentTuning.intValue(
-                "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_TOTAL"));
-        int configuredPerChannel = Math.max(0, config.AgentTuning.intValue(
-                "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_PER_CHANNEL"));
-        int reserved = Math.max(0, config.AgentTuning.intValue(
-                "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.HUMAN_RESERVED_LOBBIES"));
-        int perChannelLimit = Math.min(configuredPerChannel, Math.max(0, maxLobbies() - reserved));
-        return total < globalLimit && onChannel < perChannelLimit;
+    /**
+     * A live KPQ lobby the population runs: operated by a registered Agent, or a legacy BACKGROUND_POPULATION one.
+     * The population admits PRODUCTION, so counting BACKGROUND_POPULATION sessions alone never bound the caps. A
+     * human's lobby (companions included) and a GM test run are never background.
+     */
+    static boolean background(AgentPartyQuestEngagement engagement) {
+        if (!"kpq".equals(engagement.questKey())
+                || engagement.mode() == AgentPartyQuestEngagement.Mode.TEST_OBSERVATION) return false;
+        if (engagement.mode() != AgentPartyQuestEngagement.Mode.BACKGROUND_POPULATION
+                && AgentRuntimeRegistry.findByAgentCharacterId(engagement.operatorId()) == null) return false;
+        return switch (engagement.state()) {
+            case ACQUIRING_AGENTS, LOBBY_FORMING, LOBBY_READY, RESERVING_ENTRY, ACTIVE_EVENT -> true;
+            default -> false;
+        };
     }
 
-    private static Character anchor(AgentKpqSession session) {
-        for (AgentKpqMemberState member : session.members()) {
-            AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
-            Character character = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
-            if (character != null) return character;
+    /**
+     * True when the population may form another KPQ party on this channel. Instances already open there (read
+     * through {@code anchor}, human ones included) and background lobbies still forming both use up free lobbies,
+     * so a background party never takes the last one a human could enter.
+     */
+    static boolean backgroundSlotAvailable(int world, int channel, Character anchor) {
+        int total = 0;
+        int onChannel = 0;
+        int pendingOnChannel = 0;
+        for (AgentPartyQuestEngagement engagement : AgentPartyQuestEngagementRegistry.engagements()) {
+            if (!background(engagement)) continue;
+            total++;
+            Character agent = firstAgent(engagement);
+            if (agent != null
+                    && AgentClientGatewayRuntime.clients().world(agent) == world
+                    && AgentClientGatewayRuntime.clients().channel(agent) == channel) {
+                onChannel++;
+                if (engagement.state() != AgentPartyQuestEngagement.State.ACTIVE_EVENT) pendingOnChannel++;
+            }
+        }
+        return backgroundSlotAvailable(total, onChannel, pendingOnChannel,
+                AgentPartyQuestGatewayRuntime.partyQuest().openInstances(anchor, "KerningPQ"), maxLobbies(),
+                Math.max(0, config.AgentTuning.intValue(
+                        "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.HUMAN_RESERVED_LOBBIES")),
+                Math.max(0, config.AgentTuning.intValue(
+                        "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_PER_CHANNEL")),
+                Math.max(0, config.AgentTuning.intValue(
+                        "server.agents.capabilities.partyquest.kpq.AgentKpqLobbyPolicy.MAX_BACKGROUND_TOTAL")));
+    }
+
+    static boolean backgroundSlotAvailable(int total, int onChannel, int pendingOnChannel, int occupied,
+                                           int maxLobbies, int reserved, int perChannelConfigured,
+                                           int globalLimit) {
+        return total < globalLimit
+                && onChannel < Math.min(perChannelConfigured, Math.max(0, maxLobbies - reserved))
+                && maxLobbies - occupied - pendingOnChannel > reserved;
+    }
+
+    static boolean backgroundEntryAllowed(int occupied, int maxLobbies, int reserved) {
+        return maxLobbies - occupied > reserved;
+    }
+
+    /** The channel of an engagement is its operator's, else its first loaded Agent member's. */
+    private static Character firstAgent(AgentPartyQuestEngagement engagement) {
+        Character operator = agent(engagement.operatorId());
+        if (operator != null) return operator;
+        for (int agentId : engagement.agentIds()) {
+            Character agent = agent(agentId);
+            if (agent != null) return agent;
         }
         return null;
+    }
+
+    private static Character agent(int characterId) {
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
+        return entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
     }
 }

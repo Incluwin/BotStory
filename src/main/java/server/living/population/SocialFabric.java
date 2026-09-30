@@ -14,12 +14,15 @@ import org.slf4j.LoggerFactory;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.personality.AgentPersonalityProfileRepository;
 import server.integration.AgentPresence;
+import server.living.LivingWorld;
+import server.living.config.LivingContent;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.CitizenStore.Acquaintance;
 import server.living.population.CitizenStore.Circle;
 import server.living.population.CitizenStore.GuildMeta;
 import server.living.population.PopulationContent.GuildNames;
 import server.living.population.PopulationContent.Lobby;
+import server.living.roster.CompanionLeases;
 import tools.PacketCreator;
 
 import java.util.ArrayList;
@@ -60,12 +63,16 @@ public final class SocialFabric {
         }
     }
 
-    /** Citizens on a PQ session become eligible for the engine's background KPQ/HPQ parties. */
+    /**
+     * Citizens on a PQ session become eligible for the engine's background KPQ/HPQ parties, unless some owner has
+     * them (a hire) or the living world has them loaded for anything but the population (a companion, a live bench
+     * slice): a background party would otherwise pull them out from under their owner.
+     */
     void installSeams() {
         java.util.function.Supplier<java.util.Set<Integer>> pqCitizens = () -> {
             java.util.Set<Integer> ids = new java.util.HashSet<>();
             for (CitizenSession session : population.presence().sessions()) {
-                if (!session.virtual && session.activity == Activity.PQ) {
+                if (!session.virtual && session.activity == Activity.PQ && !spokenFor(session.characterId)) {
                     ids.add(session.characterId);
                 }
             }
@@ -73,6 +80,17 @@ public final class SocialFabric {
         };
         server.agents.capabilities.partyquest.kpq.AgentKpqPopulationRuntime.installHostManaged(() -> population.config().ENABLED, pqCitizens);
         server.agents.capabilities.partyquest.hpq.AgentHpqPopulationRuntime.installHostManaged(() -> population.config().ENABLED, pqCitizens);
+    }
+
+    /**
+     * From memory only, since the background directors ask on the Agent scheduler. A citizen can only be owned as a
+     * hire, so the {@code hire:} row is the whole ownership check; citizens themselves hold POPULATION leases.
+     */
+    private boolean spokenFor(int characterId) {
+        LivingWorld world = population.world();
+        CompanionLeases.Lease lease = world.leases().holder(characterId);
+        return (lease != null && lease.kind() != CompanionLeases.Kind.POPULATION)
+                || world.roster().cachedOwnerOf(LivingContent.HIRE_PREFIX + characterId) != 0;
     }
 
     public int sociability(Citizen citizen) {
