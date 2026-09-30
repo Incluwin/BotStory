@@ -13,7 +13,12 @@ import server.agents.integration.AgentPartyMemberSnapshot;
 import server.agents.integration.AgentPartySnapshot;
 import server.agents.integration.CharacterGateway;
 import server.agents.integration.PartyGateway;
+import server.agents.runtime.AgentRuntimeCleanupService;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -129,6 +134,69 @@ class AgentKpqTestServiceTest {
                 AgentKpqTestService.execute(leader, new String[]{"stop"}, 5_000L);
             }
         }
+    }
+
+    @Test
+    void adoptingAgainStopsAFinishedRunThatSpawnedItsAgents() throws Exception {
+        // Only an adopted run has nothing left to clean up. Dropping this entry silently left its spawned Agents
+        // logged in, and "!kpqtest stop" could no longer find them.
+        Character leader = partyMember(760_200, "Ben");
+        Character ann = partyMember(760_201, "Ann");
+        Character tobi = partyMember(760_202, "Tobi");
+        PartyGateway party = mock(PartyGateway.class);
+        when(party.snapshot(leader)).thenReturn(new AgentPartySnapshot(1, List.of(
+                new AgentPartyMemberSnapshot(760_200, "Ben", true, AgentKpqDefinition.RECRUIT_MAP),
+                new AgentPartyMemberSnapshot(760_201, "Ann", false, AgentKpqDefinition.RECRUIT_MAP),
+                new AgentPartyMemberSnapshot(760_202, "Tobi", false, AgentKpqDefinition.RECRUIT_MAP))));
+        when(party.onlineMembers(leader)).thenReturn(List.of(leader, ann, tobi));
+        AgentPartyQuestEngagement spawned = new AgentPartyQuestEngagement(
+                "kpq", AgentPartyQuestEngagement.Mode.TEST_OBSERVATION, 5L, 760_200, 3, 1_000L);
+        spawned.addMember(760_299, AgentPartyQuestEngagement.MemberType.AGENT, 1_000L);
+        spawned.beginRecovery("KPQ stopped: KPQer01 was defeated during KPQ", 2_000L);
+        spawned.close(2_000L);
+        AgentPartyQuestEngagement next = new AgentPartyQuestEngagement(
+                "kpq", AgentPartyQuestEngagement.Mode.PRODUCTION, 8L, 760_200, 3, 1_000L);
+        try (MockedStatic<AgentAuthorityService> authority = mockStatic(AgentAuthorityService.class);
+             MockedStatic<AgentPartyGatewayRuntime> parties = mockStatic(AgentPartyGatewayRuntime.class);
+             MockedStatic<AgentKpqAdmissionService> admission = mockStatic(AgentKpqAdmissionService.class);
+             MockedStatic<AgentCharacterGatewayRuntime> characters =
+                     mockStatic(AgentCharacterGatewayRuntime.class);
+             MockedStatic<AgentRuntimeCleanupService> cleanup = mockStatic(AgentRuntimeCleanupService.class)) {
+            authority.when(() -> AgentAuthorityService.mayOperate(leader)).thenReturn(true);
+            parties.when(AgentPartyGatewayRuntime::party).thenReturn(party);
+            characters.when(AgentCharacterGatewayRuntime::characters).thenReturn(mock(CharacterGateway.class));
+            admission.when(() -> AgentKpqAdmissionService.admit(
+                            eq(leader), eq(leader), anyList(), anyLong(), anyLong()))
+                    .thenReturn(new AgentKpqAdmissionService.AdmissionResult(true, "KPQ party admitted", null, next));
+            putSpawnedRun(leader, spawned);
+            try {
+                List<String> lines = AgentKpqTestService.execute(leader, new String[]{"party", "prod", "8"}, 3_000L);
+
+                assertTrue(lines.getFirst().startsWith("Stopped KPQ test " + spawned.engagementId()), lines::toString);
+                assertTrue(lines.get(1).startsWith("Adopted current party for PRODUCTION KPQ"), lines::toString);
+                cleanup.verify(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(760_299), times(1));
+            } finally {
+                AgentKpqTestService.execute(leader, new String[]{"stop"}, 4_000L);
+            }
+        }
+    }
+
+    /** The harness entry a finished "!kpqtest start" run leaves: it spawned its Agents and owns their party. */
+    @SuppressWarnings("unchecked")
+    private static void putSpawnedRun(Character operator, AgentPartyQuestEngagement engagement) throws Exception {
+        Class<?> runType = Class.forName(AgentKpqTestService.class.getName() + "$Run");
+        Class<?> flowType = Class.forName(AgentKpqTestService.class.getName() + "$MixedFlow");
+        Constructor<?> constructor = runType.getDeclaredConstructor(Character.class, AgentPartyQuestEngagement.class,
+                long.class, Set.class, boolean.class, flowType, AgentKpqSession.PartyOwnership.class, int.class,
+                Map.class);
+        constructor.setAccessible(true);
+        Object agentsOnly = Arrays.stream(flowType.getEnumConstants())
+                .filter(flow -> ((Enum<?>) flow).name().equals("AGENTS_ONLY")).findFirst().orElseThrow();
+        Object run = constructor.newInstance(operator, engagement, 5L, new LinkedHashSet<>(Set.of("KPQer01")), true,
+                agentsOnly, AgentKpqSession.PartyOwnership.KPQ_OWNED, 1, Map.of());
+        Field runs = AgentKpqTestService.class.getDeclaredField("RUNS");
+        runs.setAccessible(true);
+        ((Map<Integer, Object>) runs.get(null)).put(operator.getId(), run);
     }
 
     private static Character partyMember(int id, String name) {

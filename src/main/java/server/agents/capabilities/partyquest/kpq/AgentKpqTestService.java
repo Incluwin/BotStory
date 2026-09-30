@@ -242,11 +242,14 @@ public final class AgentKpqTestService {
             return List.of("Stand in Kerning City (103000000) before adopting a mixed KPQ party.");
         }
         // A failed PRODUCTION run closes its engagement but left its entry here, and that refused the next adopt
-        // (live: Lakelis then started a stock instance with no session). A finished run has nothing to clean up.
+        // (live: Lakelis then started a stock instance with no session). A finished adopted run has nothing left to
+        // clean up; one that spawned its Agents still needs the stop that logs them out.
+        ArrayList<String> response = new ArrayList<>();
         Run finished = RUNS.get(operator.getId());
         if (finished != null && (finished.engagement.state() == AgentPartyQuestEngagement.State.FAILED
                 || finished.engagement.state() == AgentPartyQuestEngagement.State.CLOSED)) {
-            RUNS.remove(operator.getId(), finished);
+            if (finished.ownsAgents) response.addAll(stop(operator));
+            else RUNS.remove(operator.getId(), finished);
         }
         if (RUNS.containsKey(operator.getId())) {
             return List.of("Stop the current KPQ test before adopting another party; "
@@ -282,7 +285,6 @@ public final class AgentKpqTestService {
             return List.of("Lead the party yourself for a PRODUCTION run: the public admit keys the run by its leader.");
         }
 
-        ArrayList<String> response = new ArrayList<>();
         // PRODUCTION goes through the public admit a player-facing caller uses (the leader operates its own run).
         AgentKpqAdmissionService.AdmissionResult result = options.production()
                 ? AgentKpqAdmissionService.admit(leader, leader, online, seed, nowMs)
