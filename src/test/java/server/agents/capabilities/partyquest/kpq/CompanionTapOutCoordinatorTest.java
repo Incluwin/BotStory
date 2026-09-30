@@ -143,6 +143,41 @@ class CompanionTapOutCoordinatorTest {
     }
 
     @Test
+    void aRevivedCompanionResumesTheStageWithFreshDeadlines() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_2, ben, mira, pip, tobi);
+        AgentKpqCoordinator.tick(session, 2_000L);
+        clocksThePauseKeepsRunning(session);
+        when(tobi.getHp()).thenReturn(0);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        when(tobi.getHp()).thenReturn(250);
+        AgentKpqCoordinator.tick(session, 8_000L);
+        AgentKpqCoordinator.tick(session, 8_100L);
+
+        assertFalse(session.member(4).down());
+        assertEquals("", session.blockerKey());
+        assertEquals("", session.member(2).blocker());
+    }
+
+    @Test
+    void theTappedOutCompanionLeavingRestartsTheDeadlinesThePauseKeptRunning() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_2, ben, mira, pip, tobi);
+        AgentKpqCoordinator.tick(session, 2_000L);
+        clocksThePauseKeepsRunning(session);
+        when(tobi.getHp()).thenReturn(0);
+        AgentKpqCoordinator.tick(session, 3_000L);
+        respawnOutside(tobi);
+        AgentKpqCoordinator.tick(session, 8_000L);
+
+        run.leaveParty(tobi);
+        AgentKpqCoordinator.tick(session, 9_000L);
+
+        assertEquals(3, session.memberCount());
+        assertEquals("", session.blockerKey());
+        assertEquals("", session.member(2).blocker());
+    }
+
+    @Test
     void hostDecliningTapOutFailsWithTheStockLine() {
         hostTakesItOut = false;
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_2, ben, mira, pip, tobi);
@@ -195,6 +230,12 @@ class CompanionTapOutCoordinatorTest {
         verify(run.event, never()).exitPlayer(any());
         run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
                 eq(session.sessionId()), eq(false), contains("every companion tapped out"), anyLong()), times(1));
+    }
+
+    /** Deadlines started before the death: a pause of 45 s would otherwise leave Mira's 90 s formation clock half spent. */
+    private static void clocksThePauseKeepsRunning(AgentKpqSession session) {
+        session.observeBlocker("stage2-npc-check", 2_000L);
+        session.member(2).observeBlocker("puzzle-position", 2_000L);
     }
 
     private void respawnOutside(Character companion) {

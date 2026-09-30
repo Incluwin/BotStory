@@ -140,6 +140,22 @@ class OfflineHumanDropTest {
     }
 
     @Test
+    void aDepartureFromARunThatIsNotAdoptedKeepsTheMissingClock() {
+        AgentKpqSession session = run.session(false, AgentKpqSession.Phase.STAGE_2, ben, ann, mira, pip);
+        run.offline(ann);
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        run.leaveParty(pip);
+        AgentKpqCoordinator.tick(session, 10_000L);
+        assertEquals(3, session.memberCount());
+
+        AgentKpqCoordinator.tick(session, 2_000L + TIMEOUT_MS);
+
+        assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
+        assertEquals("Party member 2 disconnected or left the channel", session.failure());
+    }
+
+    @Test
     void offlineEventLeaderStillFails() {
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_2, ben, ann, mira, pip);
         run.offline(ben);

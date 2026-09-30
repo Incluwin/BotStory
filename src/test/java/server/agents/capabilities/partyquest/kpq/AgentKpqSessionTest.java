@@ -230,7 +230,7 @@ class AgentKpqSessionTest {
     }
 
     @Test
-    void resetFormationKeepsTheAttemptAndRestartsTheBlockerClocks() {
+    void resetFormationKeepsTheAttemptAndOnlyTheRestartClearsTheBlockerClocks() {
         AgentKpqSession session = new AgentKpqSession(
                 AgentKpqSession.Mode.PRODUCTION, 7L, 100, 4, 1_000L);
         session.addMember(100, AgentKpqMemberState.MemberType.HUMAN);
@@ -249,6 +249,12 @@ class AgentKpqSessionTest {
         assertEquals(0L, session.puzzleCheckAtMs());
         assertEquals(2, session.attemptIndex());
         assertEquals(attemptId, session.attemptId());
+        // A stock departure keeps every clock, a missing member's 45 s one among them.
+        assertEquals("stage2-npc-check", session.blockerKey());
+        assertEquals("puzzle-position", session.member(20).blocker());
+
+        session.restartBlockerClocks();
+
         assertEquals("", session.blockerKey());
         assertEquals("", session.member(20).blocker());
     }

@@ -1644,6 +1644,7 @@ final class AgentKpqCoordinator {
     /**
      * Takes one member out of the session and both indexes. The formation is reset for every session: a four-member
      * leader re-entered participants() with no assigned position, and the stage kept waiting on the departed slot.
+     * Only a companion run also restarts the blocker clocks, which kept running while its downed member paused it.
      */
     private static void ejectMember(AgentKpqSession session,
                                     AgentKpqMemberState member,
@@ -1661,6 +1662,7 @@ final class AgentKpqCoordinator {
             AgentPartyQuestLifecycleRuntime.recoverDetachedMember(member.characterId(), nowMs);
         }
         session.resetFormation();
+        if (session.companionAdopted()) session.restartBlockerClocks();
     }
 
     /** False pauses the stage logic for this tick, or means the run just ended. */
@@ -1726,6 +1728,7 @@ final class AgentKpqCoordinator {
                         member.clearDown();
                         down--;
                         session.resetFormation();
+                        session.restartBlockerClocks();
                     } else {
                         waiting = true;
                     }

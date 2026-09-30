@@ -150,13 +150,16 @@ public final class AgentKpqSession {
     }
 
     /**
-     * Forgets the puzzle formation so the next stage tick assigns the remaining members again, and restarts every
-     * blocker clock that kept running while a downed member paused the stage. The attempt is kept, so no puzzle
-     * attempt is burnt.
+     * Forgets the puzzle formation so the next stage tick assigns the remaining members again. The attempt is kept,
+     * so no puzzle attempt is burnt.
      */
     public synchronized void resetFormation() {
         combination = List.of();
         puzzleCheckAtMs = 0L;
+    }
+
+    /** Restarts every blocker clock that kept running while a downed member paused a companion run's stage. */
+    synchronized void restartBlockerClocks() {
         clearBlocker();
         members.values().forEach(AgentKpqMemberState::clearBlocker);
     }
