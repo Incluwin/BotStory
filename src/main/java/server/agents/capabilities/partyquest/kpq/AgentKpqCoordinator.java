@@ -98,6 +98,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.NPC_APPROACH_PX");
     private static final int GATHER_RADIUS_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.GATHER_RADIUS_PX");
+    private static final int HELPER_ANCHOR_MOVE_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HELPER_ANCHOR_MOVE_PX");
 
     private AgentKpqCoordinator() {
     }
@@ -322,21 +324,13 @@ final class AgentKpqCoordinator {
                         COUPON_SWEEP_MAXIMUM_MS);
         session.setCouponSweepStartedAtMs(collection.sweepStartedAtMs());
         session.setNextCouponSweepAtMs(collection.nextSweepAtMs());
-        int sweepCollectorId = session.couponSweepCollectorId();
-        if (!collection.sweepActive()) {
-            sweepCollectorId = 0;
-        } else if (collection.rotateCollector()
-                || !couponSweepCollectorEligible(session, leader, sweepCollectorId)) {
-            sweepCollectorId = nextCouponSweepCollectorId(session, leader, sweepCollectorId);
-            if (sweepCollectorId > 0) {
-                session.setCouponSweepStartedAtMs(nowMs);
-            } else {
-                session.setCouponSweepStartedAtMs(0L);
-                session.setNextCouponSweepAtMs(nowMs + COUPON_SWEEP_INTERVAL_MS);
-            }
-        }
-        session.setCouponSweepCollectorId(sweepCollectorId);
-        syncCouponLootObjectives(session, leader, floorCoupons, sweepCollectorId);
+        syncCouponLootObjectives(session, leader,
+                collection.sweepActive() ? floorCoupons : List.of(), collection.rotateCollector());
+        Point helperAnchor = stageOneHelperAnchor(session, leader);
+        // A human leader picks the passes up by hand, and a dropped pass expires after 180 s: live, two of three
+        // passes dropped one by one expired before the leader got to them. So a companion keeps its pass, and helps
+        // the collectors, until every pass exists; then they all go down together.
+        boolean holdPasses = !agentLeader && !everyNonLeaderPassCreated(session);
         for (AgentKpqMemberState member : session.members()) {
             Character agent = memberCharacter(member.characterId(), leader);
             AgentRuntimeEntry entry = entry(member.characterId());
@@ -379,7 +373,7 @@ final class AgentKpqCoordinator {
                     cancelStageOneLandingSafety(member, entry, agent);
                     moveTowardStageOneExit(session, member, agent, entry);
                 } else {
-                    grindStageOne(member, entry, agent, nowMs);
+                    grindStageOne(member, entry, agent, null, nowMs);
                 }
                 continue;
             }
@@ -459,12 +453,16 @@ final class AgentKpqCoordinator {
                         }
                     }
                 } else {
-                    grindStageOne(member, entry, agent, nowMs);
+                    grindStageOne(member, entry, agent, null, nowMs);
                 }
             }
             if (member.passCreated() && !member.passDelivered()) {
-                cancelStageOneLandingSafety(member, entry, agent);
                 allDelivered = false;
+                if (holdPasses) {
+                    grindStageOne(member, entry, agent, helperAnchor, nowMs);
+                    continue;
+                }
+                cancelStageOneLandingSafety(member, entry, agent);
                 if (near(agent, leader, NEAR_PX)) {
                     ACTIONS.stop(entry);
                     int passesBeforeDrop = agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
@@ -488,7 +486,7 @@ final class AgentKpqCoordinator {
                     cancelStageOneLandingSafety(member, entry, agent);
                     moveTowardStageOneExit(session, member, agent, entry);
                 }
-                else grindStageOne(member, entry, agent, nowMs);
+                else grindStageOne(member, entry, agent, helperAnchor, nowMs);
             }
         }
         List<MapItem> floorPasses = livePassDrops(leader.getMap());
@@ -501,6 +499,12 @@ final class AgentKpqCoordinator {
         int leaderPasses = leader.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
         reportLeaderPassProgress(session, narrator, leaderState, leaderPasses, needed);
         int floorPassQuantity = passQuantityOnGround(floorPasses);
+        if (!agentLeader && allDelivered && floorPassQuantity > 0
+                && (session.companionAdopted() || memberCoordinationVisible(session))) {
+            // A companion run says it even with coordination chat off: the passes expire where they lie.
+            narrate(session, narrator != null ? narrator : firstStandingAgent(session), "stage1-passes-at-feet",
+                    leader.getName() + ", the passes are at your feet. pick them up and talk to Cloto.");
+        }
         if (leaderPasses >= needed) {
             session.setMissingPassSinceMs(0L);
             if (!agentLeader) {
@@ -1975,11 +1979,16 @@ final class AgentKpqCoordinator {
         return configured.isEmpty() ? STAGE_1_MOBS : configured;
     }
 
-    private static void grindStageOne(
-            AgentKpqMemberState member, AgentRuntimeEntry entry, Character agent, long nowMs) {
-        if (!AgentKpqStageOneThiefLandingRuntime.tick(member, entry, agent, nowMs)) {
-            ACTIONS.grind(entry, stage1GrindTargets(agent));
-        }
+    /** With an anchor, the member fights from that spot instead of hunting map-wide. */
+    private static void grindStageOne(AgentKpqMemberState member,
+                                      AgentRuntimeEntry entry,
+                                      Character agent,
+                                      Point anchor,
+                                      long nowMs) {
+        if (AgentKpqStageOneThiefLandingRuntime.tick(member, entry, agent, nowMs)) return;
+        Set<Integer> mobs = stage1GrindTargets(agent);
+        if (anchor == null) ACTIONS.grind(entry, mobs);
+        else ACTIONS.grindFromAnchor(entry, anchor, mobs, mobs);
     }
 
     private static void cancelStageOneLandingSafety(
@@ -2397,52 +2406,93 @@ final class AgentKpqCoordinator {
                 < member.couponTarget();
     }
 
-    private static int nextCouponSweepCollectorId(
-            AgentKpqSession session, Character eventAnchor, int currentCollectorId) {
-        int currentPartyNumber = session.member(currentCollectorId) == null
-                ? 0 : session.member(currentCollectorId).partyNumber();
-        List<AgentKpqMemberState> collectors = session.members().stream()
-                .filter(member -> member.memberType() == AgentKpqMemberState.MemberType.AGENT)
-                .filter(member -> member.characterId() != session.eventLeaderId())
-                .filter(member -> couponSweepCollectorEligible(
-                        session, eventAnchor, member.characterId()))
-                .sorted(Comparator.comparingInt(AgentKpqMemberState::partyNumber))
-                .toList();
-        if (collectors.isEmpty()) return 0;
-        for (AgentKpqMemberState member : collectors) {
-            if (member.partyNumber() > currentPartyNumber) return member.characterId();
-        }
-        return collectors.get(0).characterId();
-    }
-
+    /**
+     * Every collector still short of its target goes for the floor coupon nearest to it that no other collector is
+     * already after, so a coupon from anyone's kill is picked up within seconds. Live, one rotating sweeper every 90 s
+     * left the helpers' and the human's coupons on the floor until they expired. A collector keeps its coupon until it
+     * is picked up, or until {@code repick} (the sweep's rotation) hands out the nearest ones again.
+     */
     private static void syncCouponLootObjectives(
             AgentKpqSession session,
             Character eventAnchor,
             List<MapItem> floorCoupons,
-            int sweepCollectorId) {
+            boolean repick) {
+        Set<Integer> claimedDropIds = new LinkedHashSet<>();
+        List<AgentKpqMemberState> unassigned = new ArrayList<>();
         for (AgentKpqMemberState member : session.members()) {
             if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) continue;
             AgentRuntimeEntry memberEntry = entry(member.characterId());
             if (memberEntry == null) continue;
-            if (member.characterId() != sweepCollectorId) {
+            if (floorCoupons.isEmpty()
+                    || !couponSweepCollectorEligible(session, eventAnchor, member.characterId())) {
                 AgentGrindLootStateRuntime.clearObjectiveLootTarget(memberEntry);
                 continue;
             }
-            Character collector = memberCharacter(member.characterId(), eventAnchor);
-            if (collector == null) continue;
             MapItem current = AgentGrindLootStateRuntime.grindLootTarget(memberEntry);
-            if (AgentGrindLootStateRuntime.hasObjectiveLootTarget(memberEntry)
+            if (!repick && AgentGrindLootStateRuntime.hasObjectiveLootTarget(memberEntry)
                     && floorCoupons.contains(current)) {
-                continue;
+                claimedDropIds.add(current.getObjectId());
+            } else {
+                unassigned.add(member);
             }
+        }
+        for (AgentKpqMemberState member : unassigned) {
+            AgentRuntimeEntry memberEntry = entry(member.characterId());
+            Character collector = memberCharacter(member.characterId(), eventAnchor);
+            if (memberEntry == null || collector == null) continue;
             MapItem closest = floorCoupons.stream()
+                    .filter(drop -> !claimedDropIds.contains(drop.getObjectId()))
                     .min(Comparator
                             .comparingDouble((MapItem drop) ->
                                     drop.getPosition().distanceSq(collector.getPosition()))
                             .thenComparingInt(MapItem::getObjectId))
                     .orElse(null);
+            if (closest == null) {
+                AgentGrindLootStateRuntime.clearObjectiveLootTarget(memberEntry);
+                continue;
+            }
+            claimedDropIds.add(closest.getObjectId());
             AgentGrindLootStateRuntime.setObjectiveLootTarget(memberEntry, closest);
         }
+    }
+
+    /**
+     * Stage 1 helpers fight where the collector that still needs the most coupons stands, so their kills drop near it
+     * and its next sweep walk is short. Live, helpers grinding map-wide made the collectors slower, not faster. Every
+     * new anchor restarts the helpers' farming, so the spot follows the collector only once it walked past
+     * HELPER_ANCHOR_MOVE_PX.
+     */
+    private static Point stageOneHelperAnchor(AgentKpqSession session, Character eventAnchor) {
+        Character neediest = null;
+        int mostNeeded = 0;
+        for (AgentKpqMemberState member : session.members()) {
+            if (!couponSweepCollectorEligible(session, eventAnchor, member.characterId())) continue;
+            Character collector = memberCharacter(member.characterId(), eventAnchor);
+            if (collector == null) continue;
+            int needed = member.couponTarget()
+                    - collector.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false);
+            if (needed > mostNeeded && collector.getPosition() != null) {
+                mostNeeded = needed;
+                neediest = collector;
+            }
+        }
+        if (neediest == null) {
+            session.setStageOneHelperAnchor(null);
+            return null;
+        }
+        Point anchor = session.stageOneHelperAnchor();
+        if (anchor == null || anchor.distance(neediest.getPosition()) > HELPER_ANCHOR_MOVE_PX) {
+            Point grounded = ACTIONS.groundPoint(neediest.getMap(), neediest.getPosition());
+            anchor = grounded == null ? new Point(neediest.getPosition()) : grounded;
+            session.setStageOneHelperAnchor(anchor);
+        }
+        return anchor;
+    }
+
+    private static boolean everyNonLeaderPassCreated(AgentKpqSession session) {
+        return session.members().stream()
+                .filter(member -> member.characterId() != session.eventLeaderId())
+                .allMatch(AgentKpqMemberState::passCreated);
     }
 
     private static void clearCouponLootObjectives(AgentKpqSession session) {
@@ -2450,7 +2500,6 @@ final class AgentKpqCoordinator {
         for (AgentKpqMemberState member : session.members()) {
             AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry(member.characterId()));
         }
-        session.setCouponSweepCollectorId(0);
         session.setCouponSweepStartedAtMs(0L);
     }
 

@@ -1,6 +1,6 @@
 package server.agents.capabilities.partyquest.kpq;
 
-/** Pure scheduling policy for Stage 1's rotating map-wide coupon collector. */
+/** Pure scheduling policy for Stage 1's map-wide coupon sweeps; a rotation re-picks every collector's coupon. */
 final class AgentKpqCouponCollectionPolicy {
     private AgentKpqCouponCollectionPolicy() {
     }

@@ -2,6 +2,7 @@ package server.agents.capabilities.partyquest.kpq;
 
 import scripting.event.EventInstanceManager;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -57,7 +58,7 @@ public final class AgentKpqSession {
     private boolean puzzleValidationAccepted;
     private long couponSweepStartedAtMs;
     private long nextCouponSweepAtMs;
-    private int couponSweepCollectorId;
+    private Point stageOneHelperAnchor;
     private long missingPassSinceMs;
     private long puzzleCheckAtMs;
     private int puzzleCheckLoggedAttemptId = -1;
@@ -219,7 +220,7 @@ public final class AgentKpqSession {
         puzzleValidationAccepted = false;
         couponSweepStartedAtMs = 0L;
         nextCouponSweepAtMs = 0L;
-        couponSweepCollectorId = 0;
+        stageOneHelperAnchor = null;
         missingPassSinceMs = 0L;
         puzzleCheckAtMs = 0L;
         puzzleCheckLoggedAttemptId = -1;
@@ -363,10 +364,8 @@ public final class AgentKpqSession {
     public synchronized void setNextCouponSweepAtMs(long value) {
         nextCouponSweepAtMs = Math.max(0L, value);
     }
-    public synchronized int couponSweepCollectorId() { return couponSweepCollectorId; }
-    public synchronized void setCouponSweepCollectorId(int value) {
-        couponSweepCollectorId = Math.max(0, value);
-    }
+    synchronized Point stageOneHelperAnchor() { return stageOneHelperAnchor; }
+    synchronized void setStageOneHelperAnchor(Point anchor) { stageOneHelperAnchor = anchor; }
     public synchronized long missingPassSinceMs() { return missingPassSinceMs; }
     public synchronized void setMissingPassSinceMs(long value) {
         missingPassSinceMs = Math.max(0L, value);
