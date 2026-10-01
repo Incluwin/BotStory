@@ -600,3 +600,58 @@ A companion now leaves a camp that keeps killing it, even one its owner picked. 
     - Casse was held at 06:09:52 ("bench.unsupplied: out of potions and meso") instead of walking to the shop.
     - Sadie (32 meso) was held as before.
     - Hadrik (2.7M meso) went live at the same tick.
+
+---
+
+# P6 results (2026-09-30 / 10-01)
+
+## Branch and suite
+- **Commits:** `a72e9c8aa` (`!kpqtest party prod`), then 48 commits up to `132a31e69` (including the two live fixes below), fast-forwarded into `feat/companion-manager`. Built in two waves in separate worktrees (agent layer, background lobby, living layer; then lineup/run lifecycle/records/Lakelis desk, and stage-1 pace), each adversarially reviewed and fixed, then a 5-dimension integration review whose 19 confirmed findings were fixed (`64e94edfd`..`e4975d6fd`).
+- **Switch:** `living_world.COMPANION_PQ_ENABLED_KEYS: "kpq"` (`c8a6cf7c4`); `""` restores the stock Lakelis.
+- **Full suite** on `f69d5c675`+switch: 8759 tests, 25 failures + 4 errors = the 29 baseline names (run with `-Dtest=!BotManagerTest,!BotCombatManagerTest`; those two exhaust the fork heap on pristine upstream too).
+- **No new changeset** (`companion_performance` existed since changeset 40); no `server.living` import under `server.agents`.
+
+## What P6 adds
+- **Lakelis lineup window** (a living-world window over the stock NPC): "Four of you, then? Here's who I'd send in:" with Yes / Let me choose... / Call someone from my bench... / Never mind. Ineligible companions wait beside her with a reason (too seasoned, low on potions, bags full, busy); bench calls show "on the way (~60 s)" and "Are they here yet?". A clear record shows once a companion has 3 runs ("cleared 1 of 7").
+- **One-click entry:** Yes holds the extras beside Lakelis, admits through the public PRODUCTION admit, marks the session companion-adopted, commits everyone to the run and starts the stock instance in one step (no 45 s gather check).
+- **Tap-out (user decision, replaces 10a):** a companion that goes down in a 4-member run revives at the exit, leaves the party with its line, waits on HOLD and rejoins after the run; the run carries on with three. A 3-member run ends with "<name> went down, and we need three for this. let's head out."
+- **Recover to owner:** after any run end, companions follow their owner again (handback seam); no TownLife at Kerning, no 90 s post-run hold.
+- **Guidance and in-character lines:** coordination chat in companion runs ("the passes are at your feet. pick them up and talk to Cloto.", "check this formation with Cloto."); failures are spoken in character, raw reasons only in the log.
+- **Stage-1 pace:** every kill's coupon is collected (sweeps every 5 s, nearest coupon per collector, helpers fight beside one collector), passes dropped together.
+- **Background KPQ** never takes the last free lobby and never recruits owned or leased companions.
+- **8b handoff** (4-member runs): a non-leader owner logging out leaves their companions to finish with the leader.
+- **Run records:** one `companion_performance` row per companion per run (cleared / failed / tapped_out, duration, deaths, party size), read back into the lineup.
+
+## Live checks (Crewfriend + companions, channel 1, 2026-09-30 08:34 - 10-01 02:16)
+| Check | Result |
+|---|---|
+| PRODUCTION smoke (`!kpqtest party prod`) | **Pass** after setup fixes; found the unsupplied-companion deaths, the 11-min stage 1, and TownLife recovery (all fixed in P6). |
+| Kill switch / Lakelis window | **Pass.** W1 proposal, W2 (Let me choose), W3 bench list with "Not ready for this: Dorran (Lv33), ...", W4 "Rurik is on the way (~60 s)". |
+| Full clear, player + 3 companions | **Pass** (20:38-21:11, 32.5 min incl. bonus): stage 1 11.7 min, stages 2-4 9.5 min, King Slime by the companions, rewards for all four, `outcome=completed`, three `cleared` rows. First KPQ clear on this server (0 of 119 background runs before). |
+| Six-member party | **Pass.** Two extras on HOLD beside Lakelis (`hold_map 103000000`), out of the party; after the run both rejoined (party back to 6). |
+| Bench call at Lakelis | **Pass.** Rurik sent for, arrived in ~60 s, the re-planned window listed him. His "here! ready for Lakelis" party line was not seen on screen (chat scrolled); covered by `ArrivalNoteTest`. |
+| Companion death, 4-member run | **Pass.** Yara died in stage 1 (19:13:45), revived on 103000890, left the party (HOLD), log "KPQ member left the live party and was ejected"; the run went on with three. |
+| Companion death, 3-member run | **Pass.** Rurik's death then ended it: "Rurik went down, and KPQ needs three of us". |
+| Recover to owner | **Pass.** After every run end the companions followed Crewfriend (subway and back); no Kerning TownLife. |
+| Run records | **Pass.** 21+ rows; the next proposal showed "cleared 1 of 7". |
+| Back-to-back runs | **Pass** (no "operator already owns" refusal; next Yes worked right after a run). |
+| 3 consecutive clears with no GM help | **Not met.** 2 clears in 10 recorded runs: 20:38-21:11 and 01:45-02:15 (`outcome=completed` at 02:15:31; three `cleared` rows, 1,777 s, 0 deaths). Most failed runs were my scripted leader losing time (stuck dialogs, unread chat, the stage-4 climb), not the companions; the second clear still needed my hand on the stage-4 climb and `!itemvac` for the stage-5 passes, and finished with 25 s on the clock. |
+| Two-owner run, owner logout (8b) | **Not done live** (needs a second client); covered by `CompanionRunDelegationTest`, `OfflineHumanDropTest`. |
+| Forced failed start | **Not done live** (needs both lobbies occupied); covered by `AdoptRollbackTest`, `AgentKpqAdoptRollbackTest`. |
+
+## Bugs found live and fixed
+1. **A companion held outside a run stood on the potion shop map for the whole run** (`2eda7efb8`): its shop trip was abandoned while it was on HOLD, and the "follow brings it back" shortcut does not apply to a held companion. It now walks back.
+2. **A Cloto click while the companions were still moving burned a formation** (`132a31e69`, plan open risk 5): a rejection is now counted only once the coordinator holds the formation ready; early clicks are ignored and the leader is asked again.
+
+## Found, not P6 (filed as their own tasks)
+- **TownLife arrival lines named Lith Harbor in Kerning** (fixed by a separate session, uncommitted in the main tree; live in this deploy).
+- **Agents' career bundles mismatch their job and leave AP/SP unspent** (130 of 684 bundles; 215 Agents >Lv30 with unspent AP). Warrior companions have ~30 accuracy and hit King Slime 0-21% of the time (Rurik 0 of 95), which slows KPQ. Filed.
+
+## Video
+`docs/agents/evidence/video/p6-kpq-companions.mp4` (130 s, captioned): the Lakelis lineup and one-click entry, the stage-1 passes, Cloto, a stage-2 formation, the stage-5 clear and rewards, the party following its owner again, and a six-member party with the extras waiting outside. Raw recordings `p6-raw-*.mp4` alongside.
+
+## Not done / notes
+- Stage 1 still takes 7.5-12 min with three Lv25-30 companions (kills of Lv32 Ligators at 2-3 per minute each); a clear needs the leader to play stages 2-4 promptly.
+- The human leader does a lot (about 20 Cloto checks, the stage-4 climb, 10 stage-5 passes); the guidance lines help.
+- A clear takes 28-32 of the 30 minutes with three Lv24-29 companions and a scripted leader; stage 1 took 7.5-12 min. Warrior accuracy (filed) is the biggest lever.
+- Live tests used `!giveitem` for potions, `!level 30` resets (owner EXP share takes Lv30 to 31 in one run), and a scripted leader (session scratchpad `kpq_run.py`, reading the KPQ session through an attach probe because bot chat lines are not OCR-readable).
