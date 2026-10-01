@@ -56,6 +56,8 @@ public final class AgentKpqSession {
     private int consumedPuzzleValidationRevision;
     private int puzzleValidationStage;
     private boolean puzzleValidationAccepted;
+    private int formationReadyAttemptId = -1;
+    private int earlyPuzzleRejections;
     private long couponSweepStartedAtMs;
     private long nextCouponSweepAtMs;
     private int stageOneHelperCollectorId;
@@ -158,6 +160,7 @@ public final class AgentKpqSession {
     public synchronized void resetFormation() {
         combination = List.of();
         puzzleCheckAtMs = 0L;
+        formationReadyAttemptId = -1;
     }
 
     /** Restarts every blocker clock that kept running while a downed member paused a companion run's stage. */
@@ -219,6 +222,8 @@ public final class AgentKpqSession {
         consumedPuzzleValidationRevision = 0;
         puzzleValidationStage = 0;
         puzzleValidationAccepted = false;
+        formationReadyAttemptId = -1;
+        earlyPuzzleRejections = 0;
         couponSweepStartedAtMs = 0L;
         nextCouponSweepAtMs = 0L;
         stageOneHelperCollectorId = 0;
@@ -301,7 +306,18 @@ public final class AgentKpqSession {
         return startedAtMs == null ? 0L : Math.max(0L, nowMs - startedAtMs);
     }
 
+    /**
+     * Cloto judges whoever stands on the puzzle at the moment the human leader clicks her. Live (2026-09-30) the
+     * leader clicked while the companions were still climbing to their spots; her "wrong" waited until they stood
+     * still, then dropped a formation nobody had checked, and Stage 2 alone took 10 minutes. A rejection therefore
+     * counts only while the coordinator holds this attempt's formation ready. An early one is dropped, and the leader
+     * is asked again. An acceptance always counts, since Cloto has already cleared the stage.
+     */
     public synchronized void recordHumanPuzzleValidation(int stage, boolean accepted) {
+        if (!accepted && formationReadyAttemptId != attemptId) {
+            earlyPuzzleRejections++;
+            return;
+        }
         puzzleValidationStage = stage;
         puzzleValidationAccepted = accepted;
         puzzleValidationRevision++;
@@ -314,6 +330,20 @@ public final class AgentKpqSession {
         }
         consumedPuzzleValidationRevision = puzzleValidationRevision;
         return new PuzzleValidation(puzzleValidationRevision, puzzleValidationAccepted);
+    }
+
+    /** Every participant of the current attempt stands in place and has held still for the settle time. */
+    synchronized void markFormationReady() {
+        formationReadyAttemptId = attemptId;
+    }
+
+    synchronized void clearFormationReady() {
+        formationReadyAttemptId = -1;
+    }
+
+    /** Rejections dropped because Cloto gave them before the formation was ready. */
+    synchronized int earlyPuzzleRejections() {
+        return earlyPuzzleRejections;
     }
 
     public synchronized String sessionId() { return sessionId; }

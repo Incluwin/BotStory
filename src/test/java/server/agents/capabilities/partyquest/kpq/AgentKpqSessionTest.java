@@ -125,6 +125,7 @@ class AgentKpqSessionTest {
         assertEquals(21, session.executionAgentId());
         assertEquals(0, session.formationCallerId());
 
+        session.markFormationReady();
         session.recordHumanPuzzleValidation(2, false);
         assertFalse(session.consumeHumanPuzzleValidation(2).accepted());
         assertNull(session.consumeHumanPuzzleValidation(2));

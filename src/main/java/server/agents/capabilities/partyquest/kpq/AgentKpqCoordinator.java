@@ -717,7 +717,12 @@ final class AgentKpqCoordinator {
                         participant, agent, entry, definition, nowMs);
             }
         }
-        if (!stable) return;
+        // A human leader's Cloto rejection counts only while this mark stands (recordHumanPuzzleValidation).
+        if (!stable) {
+            session.clearFormationReady();
+            return;
+        }
+        session.markFormationReady();
         AgentKpqMemberState fidgeter = AgentKpqPuzzleFidgetBehavior.select(
                 session, participants.subList(0, 3));
         if (fidgeter != null && fidgeter.fidgetedAttemptId() != session.attemptId()) {
@@ -758,7 +763,9 @@ final class AgentKpqCoordinator {
         if (!isAgent(session, leader.getId())) {
             AgentKpqSession.PuzzleValidation validation = session.consumeHumanPuzzleValidation(stage);
             if (validation == null) {
-                coordinate(session, narrator, "human-stage" + stage + "-check-" + attempt,
+                // Asked again when a reset forms the attempt anew, and after each rejection dropped as early.
+                coordinate(session, narrator, "human-stage" + stage + "-check-" + attempt + "-"
+                                + session.attemptId() + "-" + session.earlyPuzzleRejections(),
                         leader.getName() + ", please check this formation with Cloto.");
                 AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
                         "check this formation with Cloto", nowMs, true);
@@ -1311,6 +1318,8 @@ final class AgentKpqCoordinator {
                                              long nowMs) {
         int next = attempt + 1;
         session.setPuzzleCheckAtMs(0L);
+        // The attempt id moves on only when the next formation is assigned; a click before then must not count.
+        session.clearFormationReady();
         if (next >= attemptCount) {
             failExhaustedPuzzle(session, leader, definition, nowMs);
             return;
