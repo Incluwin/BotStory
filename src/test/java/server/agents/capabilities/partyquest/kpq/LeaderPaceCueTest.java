@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
  * leader holding all ten stage-5 passes heard so only after the shoes window and the drop cleanup.
  */
 class LeaderPaceCueTest {
-    private static final String COME_UP = "Ben, come on up by Cloto, the way out's at the top. stay off the barrels.";
+    private static final String COME_UP = "Ben, come on up by cloto, the way out's at the top. stay off the barrels.";
     private static final String ALL_PASSES = "Ben, that's all 10 passes. go talk to cloto.";
     private static final Point STAGE_4_CLOTO = new Point(1147, -81);
 

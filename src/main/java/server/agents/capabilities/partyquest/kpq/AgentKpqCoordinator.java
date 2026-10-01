@@ -874,7 +874,7 @@ final class AgentKpqCoordinator {
             return;
         }
         narrate(session, narrator != null ? narrator : firstStandingAgent(session), "stage4-come-up",
-                leader.getName() + ", come on up by Cloto, the way out's at the top. stay off the barrels.");
+                leader.getName() + ", come on up by cloto, the way out's at the top. stay off the barrels.");
     }
 
     private static void stage5(
