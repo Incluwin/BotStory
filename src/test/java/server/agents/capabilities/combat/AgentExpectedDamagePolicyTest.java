@@ -7,11 +7,14 @@ import client.SkillFactory;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
+import client.inventory.WeaponType;
 import constants.skills.Magician;
 import constants.skills.Warrior;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.StatEffect;
+import server.agents.integration.AgentInventoryGatewayRuntime;
+import server.agents.integration.InventoryGateway;
 import server.life.Element;
 import server.life.Monster;
 
@@ -29,9 +32,13 @@ import static org.mockito.Mockito.when;
 /**
  * What an Agent's attacks are worth against one KPQ monster (the lineup at Lakelis ranks by it): hit chance decides
  * it before damage does, as it did live when Rurik swung 95 times at King Slime and never hit, and a magician is
- * weighed by its spell and its magic accuracy, not by its wand swing. Each attack counts per second of its animation.
+ * weighed by its spell and its magic accuracy, not by its wand swing, and a bowman by its shot. Each attack counts per
+ * second of its animation.
  */
 class AgentExpectedDamagePolicyTest {
+    /** Item.wz 1452002, a War Bow. */
+    private static final int WAR_BOW = 1_452_002;
+
     @Test
     void aWarriorThatCannotHitALigatorIsWorthNothingThere() {
         Monster ligator = monster(32, 10); // Mob.wz 9300001
@@ -91,9 +98,39 @@ class AgentExpectedDamagePolicyTest {
         }
     }
 
+    @Test
+    void aBowmanIsWeighedByItsShot() {
+        Monster ligator = monster(32, 10);
+        InventoryGateway items = mock(InventoryGateway.class);
+        when(items.getWeaponType(WAR_BOW)).thenReturn(WeaponType.BOW);
+        when(items.isTwoHandedWeapon(WAR_BOW)).thenReturn(true);
+
+        try (MockedStatic<AgentInventoryGatewayRuntime> gateway = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            gateway.when(AgentInventoryGatewayRuntime::inventory).thenReturn(items);
+            double accuracy22 = AgentExpectedDamagePolicy.damagePerSecond(hunter(25), ligator);
+            double accuracy50 = AgentExpectedDamagePolicy.damagePerSecond(hunter(60), ligator);
+
+            assertTrue(accuracy22 > 0.0d && accuracy50 > 20 * accuracy22, accuracy22 + " vs " + accuracy50);
+        }
+    }
+
     /** A Lv29 Fighter with no weapon mastery: physical accuracy floor(DEX * 0.8 + 4 * 0.5), 22 at DEX 25. */
     private static Character fighter(int dex) {
         Character bot = bare(29, Job.FIGHTER);
+        when(bot.getTotalDex()).thenReturn(dex);
+        when(bot.getTotalLuk()).thenReturn(4);
+        when(bot.getTotalWatk()).thenReturn(60);
+        when(bot.calculateMaxBaseDamage(anyInt())).thenReturn(250);
+        when(bot.calculateMinBaseDamage(anyInt(), anyDouble())).thenReturn(100);
+        return bot;
+    }
+
+    /** A Lv25 Hunter shooting a War Bow: physical accuracy 22 at DEX 25, 50 at DEX 60. */
+    private static Character hunter(int dex) {
+        Character bot = bare(25, Job.HUNTER);
+        Item bow = mock(Item.class);
+        when(bow.getItemId()).thenReturn(WAR_BOW);
+        when(bot.getInventory(InventoryType.EQUIPPED).getItem((short) -11)).thenReturn(bow);
         when(bot.getTotalDex()).thenReturn(dex);
         when(bot.getTotalLuk()).thenReturn(4);
         when(bot.getTotalWatk()).thenReturn(60);

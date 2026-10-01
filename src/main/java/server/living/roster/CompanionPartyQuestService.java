@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 
@@ -77,8 +78,11 @@ public final class CompanionPartyQuestService {
      * still at it is answered at once, and the extras do not step out and back again.
      */
     static final long FINISHING_MS = 30_000L;
+    /** A failed KPQ damage estimate is logged at info at most this often (else at debug). */
+    static final long ESTIMATE_FAILURE_LOG_MS = 60_000L;
     /** KPQ's monsters a companion is weighed against: stage 1's Ligator, stage 5's Jr. Necki and King Slime. */
     private static final int[] KPQ_MOBS = {9_300_001, 9_300_000, 9_300_003};
+    private static final AtomicLong estimateFailureLoggedAtMs = new AtomicLong();
     /** A run whose session went away without ending it is let go once it has been gone this long (the audit's pace). */
     static final long LOST_RUN_AFTER_MS = 60_000L;
     /** A companion Lakelis sent for from the bench says it is ready for her when it arrives within this long. */
@@ -261,7 +265,8 @@ public final class CompanionPartyQuestService {
     /**
      * The lineup the leader's party would go in with, {@code picked} (companion ids, null: the best) chosen. On the
      * leader's I/O thread, from memory: the party, the loaded characters, the Crew menus' row cache, the commitments,
-     * the companions' records and the game data's KPQ monsters (what a companion that can go hits for).
+     * the companions' records and the game data's KPQ monsters (what a companion that can go hits for; read at boot,
+     * {@link #warmKpqMobs}).
      */
     public LineupPlan plan(Character leader, String pqKey, Set<Integer> picked) {
         Party party = leader.getParty();
@@ -388,7 +393,8 @@ public final class CompanionPartyQuestService {
     /**
      * What a loaded companion hits for in KPQ: its expected damage per second against each of {@link #KPQ_MOBS}
      * (AgentExpectedDamagePolicy: its best attack after hit chance and defense), averaged. One that cannot be
-     * estimated counts as 0, so the lineup never fails on it.
+     * estimated counts as 0, so the lineup never fails on it; that is logged at info now and then, so an estimate
+     * that fails for a whole job shows in a live run.
      */
     static double kpqDps(Character bot) {
         try {
@@ -399,8 +405,26 @@ public final class CompanionPartyQuestService {
             }
             return total / KPQ_MOBS.length;
         } catch (RuntimeException failure) {
-            log.debug("no KPQ damage estimate for {}", bot.getName(), failure);
+            long now = System.currentTimeMillis();
+            long loggedAt = estimateFailureLoggedAtMs.get();
+            if (now - loggedAt >= ESTIMATE_FAILURE_LOG_MS && estimateFailureLoggedAtMs.compareAndSet(loggedAt, now)) {
+                log.info("no KPQ damage estimate for {} (job {}); it counts as 0 in the lineup", bot.getName(),
+                        bot.getJob(), failure);
+            } else {
+                log.debug("no KPQ damage estimate for {}", bot.getName(), failure);
+            }
             return 0.0d;
+        }
+    }
+
+    /**
+     * At boot, on companion-ops: KPQ's monsters are read from the game data once (LifeFactory keeps them), so the first
+     * lineup at Lakelis never parses Mob.wz on a leader's I/O thread. The attack timings it also reads are loaded by
+     * the first swing of any Agent.
+     */
+    public void warmKpqMobs() {
+        for (int mobId : KPQ_MOBS) {
+            LifeFactory.getMonster(mobId);
         }
     }
 

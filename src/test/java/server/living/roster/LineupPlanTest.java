@@ -10,13 +10,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.StatEffect;
+import server.agents.capabilities.combat.AgentExpectedDamagePolicy;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.runtime.AgentRuntimeConfig;
+import server.life.LifeFactory;
+import server.life.Monster;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.RosterState;
 import tools.Pair;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
@@ -24,6 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
@@ -39,7 +47,8 @@ import static server.living.roster.LifecycleHarness.LITH;
  * The rest wait outside with their reason. A companion low on potions, or on mana potions when it fights with skills,
  * waits and is never sent in, a guest Agent or a companion that is not up blocks the start, and one on its way keeps
  * the lineup from starting until it is here. A companion's clear rate counts, and its record shows, once it has three
- * KPQ runs on record, and what it hits for in KPQ counts too. All of it from memory: the plan reads no store.
+ * KPQ runs on record, and what it hits for in KPQ counts too. All of it from memory (KPQ's monsters are read at boot):
+ * the plan reads no store.
  */
 class LineupPlanTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -390,6 +399,74 @@ class LineupPlanTest {
 
             assertEquals(34, CompanionPartyQuestService.mpPotions(bot), "Blue and the Elixirs; no Red, no buff");
         }
+    }
+
+    @Test
+    void whatACompanionHitsForIsAveragedOverLigatorJrNeckiAndKingSlime() {
+        Character rurik = game.bot(900, "Rurik");
+        Monster ligator = mock(Monster.class);
+        Monster necki = mock(Monster.class);
+        Monster kingSlime = mock(Monster.class);
+        try (MockedStatic<LifeFactory> mobs = mockStatic(LifeFactory.class);
+             MockedStatic<AgentExpectedDamagePolicy> hits = mockStatic(AgentExpectedDamagePolicy.class)) {
+            mobs.when(() -> LifeFactory.getMonster(9_300_001)).thenReturn(ligator);
+            mobs.when(() -> LifeFactory.getMonster(9_300_000)).thenReturn(necki);
+            mobs.when(() -> LifeFactory.getMonster(9_300_003)).thenReturn(kingSlime);
+            hits.when(() -> AgentExpectedDamagePolicy.damagePerSecond(rurik, ligator)).thenReturn(30.0d);
+            hits.when(() -> AgentExpectedDamagePolicy.damagePerSecond(rurik, necki)).thenReturn(12.0d);
+            hits.when(() -> AgentExpectedDamagePolicy.damagePerSecond(rurik, kingSlime)).thenReturn(3.0d);
+
+            assertEquals(15.0d, CompanionPartyQuestService.kpqDps(rurik), 1e-9);
+
+            hits.when(() -> AgentExpectedDamagePolicy.damagePerSecond(rurik, kingSlime))
+                    .thenThrow(new IllegalStateException("no timing for its weapon"));
+            assertEquals(0.0d, CompanionPartyQuestService.kpqDps(rurik), "one that cannot be estimated hits for 0");
+        }
+    }
+
+    @Test
+    void theLiveLineupCountsTheBagsAndWhatEachHitsFor() {
+        List<Persona> crew = List.of(fx.companion("rurik", "Rurik", 901, 25, Job.FIGHTER),
+                fx.companion("brann", "Brann", 902, 27, Job.FIGHTER), fx.companion("b24", "Mira", 903, 24, Job.HUNTER),
+                fx.companion("c26", "Pip", 904, 26, Job.FP_WIZARD), fx.companion("c25", "Nell", 905, 25, Job.FP_WIZARD));
+        for (Persona companion : crew) { // Red and Blue Potions; Nell carries no Blue
+            List<Item> tab = companion.id().equals("c25") ? List.of(item(2000000, 50))
+                    : List.of(item(2000000, 50), item(2000003, 50));
+            when(game.bot(companion).getInventory(InventoryType.USE).list()).thenReturn(tab);
+        }
+        StatEffect red = effect(50, 0, false);
+        StatEffect blue = effect(0, 100, false);
+        Monster mob = mock(Monster.class);
+        fx.ready();
+        CompanionPartyQuestService live = new CompanionPartyQuestService(game.world);
+        try (MockedStatic<AgentUseItemClassificationPolicy> items =
+                     mockStatic(AgentUseItemClassificationPolicy.class, CALLS_REAL_METHODS);
+             MockedStatic<LifeFactory> mobs = mockStatic(LifeFactory.class);
+             MockedStatic<AgentExpectedDamagePolicy> hits = mockStatic(AgentExpectedDamagePolicy.class)) {
+            items.when(() -> AgentUseItemClassificationPolicy.itemEffect(2000000)).thenReturn(red);
+            items.when(() -> AgentUseItemClassificationPolicy.itemEffect(2000003)).thenReturn(blue);
+            mobs.when(() -> LifeFactory.getMonster(anyInt())).thenReturn(mob);
+            hits.when(() -> AgentExpectedDamagePolicy.damagePerSecond(any(), any()))
+                    .thenAnswer(inv -> inv.<Character>getArgument(0).getId() == 901 ? 0.4d : 30.0d);
+
+            LineupPlan plan = live.plan(game.ann, "kpq");
+
+            assertEquals(List.of("Ann", "Mira", "Brann", "Pip"), names(plan.lineup()), "Rurik hits nothing");
+            assertEquals(List.of(new LineupPlan.Waiting(905, "Nell", "low on mana potions")), plan.waiting());
+        }
+    }
+
+    @Test
+    void kpqsMonstersAreReadAtBootOnCompanionOps() throws IOException {
+        try (MockedStatic<LifeFactory> mobs = mockStatic(LifeFactory.class)) {
+            fx.ready().warmKpqMobs();
+
+            for (int mobId : List.of(9_300_001, 9_300_000, 9_300_003)) {
+                mobs.verify(() -> LifeFactory.getMonster(mobId));
+            }
+        }
+        assertTrue(Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"))
+                .contains("world.executor.submit(\"pq.kpq_mobs\", world.partyQuests::warmKpqMobs);"));
     }
 
     /** {@code runs} KPQ runs on the companion's record, the first {@code clears} of them cleared. */
