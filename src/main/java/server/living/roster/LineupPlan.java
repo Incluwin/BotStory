@@ -162,6 +162,9 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             if (LakelisLines.LOW_ON_POTIONS.equals(member.reason())) {
                 return LakelisLines.named(LakelisLines.LOW_ON_POTIONS_LINE, member.name());
             }
+            if (LakelisLines.LOW_ON_MANA.equals(member.reason())) {
+                return LakelisLines.named(LakelisLines.LOW_ON_MANA_LINE, member.name());
+            }
         }
         return LakelisLines.TOO_FEW;
     }

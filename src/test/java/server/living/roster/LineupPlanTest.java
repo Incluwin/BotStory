@@ -35,10 +35,10 @@ import static server.living.roster.LifecycleHarness.LITH;
 /**
  * The lineup Lakelis proposes (P6, flow 3): the humans always, then the companions that fit, one seat per owner in
  * turn, the closest in level first and a new job branch before a second of one; four when four can go, else three.
- * The rest wait outside with their reason. A companion low on potions waits and is never sent in, a guest Agent or a
- * companion that is not up blocks the start, and one on its way keeps the lineup from starting until it is here. A
- * companion's clear rate counts, and its record shows, once it has three KPQ runs on record. All of it from memory:
- * the plan reads no store.
+ * The rest wait outside with their reason. A companion low on potions, or on mana potions when it fights with skills,
+ * waits and is never sent in, a guest Agent or a companion that is not up blocks the start, and one on its way keeps
+ * the lineup from starting until it is here. A companion's clear rate counts, and its record shows, once it has three
+ * KPQ runs on record. All of it from memory: the plan reads no store.
  */
 class LineupPlanTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -112,6 +112,34 @@ class LineupPlanTest {
         assertEquals(List.of("Ann", "Mira"), names(short1.lineup()));
         assertEquals("Casse is low on potions.", short1.blocker());
         assertFalse(short1.startable());
+    }
+
+    @Test
+    void aCompanionLowOnManaPotionsWaitsWhenItFightsWithSkills() {
+        fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
+        fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);
+        fx.companion("rurik", "Rurik", 903, 25, Job.FIGHTER);
+        fx.manaPotions.put(903, CompanionPartyQuestService.KPQ_MIN_MP_POTIONS - 1); // live: none sold inside the run
+
+        LineupPlan plan = fx.ready().plan(game.ann, "kpq");
+
+        assertEquals(List.of("Ann", "Mira", "Pip"), names(plan.lineup()), "Rurik fits best, but has no Power Strike left");
+        assertEquals(List.of(new LineupPlan.Waiting(903, "Rurik", "low on mana potions")), plan.waiting());
+
+        game.members.remove((Integer) 902); // Pip goes: Rurik is the only one left to take the seat, and still waits
+        assertEquals("Rurik is low on mana potions.", fx.service.plan(game.ann, "kpq").blocker());
+    }
+
+    @Test
+    void aBeginnerFightsWithoutSkillsAndGoesInWithoutManaPotions() {
+        fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
+        fx.companion("nob", "Nob", 902, 25, Job.BEGINNER);
+        fx.manaPotions.put(902, 0);
+
+        LineupPlan plan = fx.ready().plan(game.ann, "kpq");
+
+        assertEquals(List.of("Ann", "Nob", "Mira"), names(plan.lineup()));
+        assertEquals(List.of(), plan.waiting());
     }
 
     @Test
@@ -305,6 +333,28 @@ class LineupPlanTest {
             items.when(() -> AgentUseItemClassificationPolicy.itemEffect(2002000)).thenReturn(buff);
 
             assertEquals(19, CompanionPartyQuestService.hpPotions(bot), "Red and Orange; no Blue, no buff");
+        }
+    }
+
+    @Test
+    void manaPotionsAreCountedByQuantityOfTheOnesThatRestoreMp() {
+        Character bot = game.bot(900, "Rurik");
+        Inventory use = mock(Inventory.class);
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        List<Item> tab = List.of(item(2000000, 12), item(2000003, 30), item(2000004, 4), item(2002000, 5));
+        when(use.list()).thenReturn(tab);
+        StatEffect red = effect(50, 0, false);
+        StatEffect blue = effect(0, 100, false);
+        StatEffect elixir = effect(50, 50, false);
+        StatEffect buff = effect(0, 50, true);
+        try (MockedStatic<AgentUseItemClassificationPolicy> items =
+                     mockStatic(AgentUseItemClassificationPolicy.class, CALLS_REAL_METHODS)) {
+            items.when(() -> AgentUseItemClassificationPolicy.itemEffect(2000000)).thenReturn(red);
+            items.when(() -> AgentUseItemClassificationPolicy.itemEffect(2000003)).thenReturn(blue);
+            items.when(() -> AgentUseItemClassificationPolicy.itemEffect(2000004)).thenReturn(elixir);
+            items.when(() -> AgentUseItemClassificationPolicy.itemEffect(2002000)).thenReturn(buff);
+
+            assertEquals(34, CompanionPartyQuestService.mpPotions(bot), "Blue and the Elixirs; no Red, no buff");
         }
     }
 

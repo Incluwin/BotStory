@@ -10,6 +10,8 @@ import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.StatEffect;
+import server.agents.capabilities.dialogue.AgentDialogueCatalog;
+import server.agents.capabilities.dialogue.AgentDialogueSelector;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
@@ -55,6 +57,14 @@ public final class CompanionPartyQuestService {
     static final int LAKELIS = 9_020_000;
     /** Live: 2 of 3 runs whose companions carried no potions lost one in stage 1. Fewer than this and it waits. */
     static final int KPQ_MIN_HP_POTIONS = 20;
+    /**
+     * Live (2026-09-30, two runs): Rurik and Yara, then Casse and Rurik, went in without mana potions and nothing
+     * inside sells them ("no MP_POTION supplier ... from map 103000800"), so they fought on without their skills. A
+     * warrior drinks about 15 a run. A companion that fights with skills and carries fewer waits.
+     */
+    static final int KPQ_MIN_MP_POTIONS = 15;
+    /** A companion short on mana potions asks for some at most this often (the Agents' own resupply waits as long). */
+    static final long MANA_ASK_EVERY_MS = 300_000L;
     /** A run whose session went away without ending it is let go once it has been gone this long (the audit's pace). */
     static final long LOST_RUN_AFTER_MS = 60_000L;
     /** A companion Lakelis sent for from the bench says it is ready for her when it arrives within this long. */
@@ -91,6 +101,7 @@ public final class CompanionPartyQuestService {
     private final LivingWorld world;
     private final PqEntryPort port;
     private final ToIntFunction<Character> hpPotions;
+    private final ToIntFunction<Character> mpPotions;
     private final CompanionRunRecorder records;
     private volatile Desk desk = PINK_TEXT;
     /** Leaders whose Yes is being carried out: a second Yes meanwhile only hears "hold on". */
@@ -101,16 +112,20 @@ public final class CompanionPartyQuestService {
     private final Map<Integer, CompanionRun> runByCharacter = new ConcurrentHashMap<>();
     /** "ownerId personaId" -> when Lakelis sent for that companion from its owner's bench. */
     private final Map<String, Long> calledForLakelis = new ConcurrentHashMap<>();
+    /** Companion character id -> when it last asked for mana potions at Lakelis. */
+    private final Map<Integer, Long> askedForMana = new ConcurrentHashMap<>();
 
     public CompanionPartyQuestService(LivingWorld world) {
-        this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions);
+        this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions, CompanionPartyQuestService::mpPotions);
     }
 
-    /** {@code port}: the doors into the quest; {@code hpPotions}: the HP potions a loaded companion carries. */
-    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions) {
+    /** {@code port}: the doors into the quest; {@code hpPotions}, {@code mpPotions}: what a loaded companion carries. */
+    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
+                               ToIntFunction<Character> mpPotions) {
         this.world = world;
         this.port = port;
         this.hpPotions = hpPotions;
+        this.mpPotions = mpPotions;
         this.records = new CompanionRunRecorder(world);
     }
 
@@ -133,7 +148,36 @@ public final class CompanionPartyQuestService {
         if (!world.config().companionPqEnabled(pqKey) || standsAside(leader, pqKey)) {
             return false; // the stock start, untouched
         }
-        return LivingTalk.answerScriptClick(leader, () -> desk.proposal(leader, plan(leader, pqKey), null));
+        return LivingTalk.answerScriptClick(leader, () -> {
+            LineupPlan plan = plan(leader, pqKey);
+            desk.proposal(leader, plan, null);
+            askForMana(plan);
+        });
+    }
+
+    /**
+     * Before entry: a companion the lineup leaves waiting for mana potions asks for some in party chat, where its owner
+     * reads it, in the Agents' own pot-share words; at most once per {@link #MANA_ASK_EVERY_MS}, said on companion-ops.
+     */
+    private void askForMana(LineupPlan plan) {
+        long now = System.currentTimeMillis();
+        for (LineupPlan.Waiting member : plan.waiting()) {
+            int id = member.characterId();
+            if (!LakelisLines.LOW_ON_MANA.equals(member.reason())) {
+                continue;
+            }
+            long askedAt = askedForMana.compute(id, (key, at) -> at != null && now - at < MANA_ASK_EVERY_MS ? at : now);
+            if (askedAt != now) {
+                continue;
+            }
+            world.executor().submit("pq.ask_mana " + id, () -> {
+                Character bot = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(id));
+                if (bot != null) {
+                    world.roster().sayInParty(bot,
+                            AgentDialogueSelector.randomReply(AgentDialogueCatalog.potRequestMpReplies()));
+                }
+            });
+        }
     }
 
     /**
@@ -250,13 +294,20 @@ public final class CompanionPartyQuestService {
                 reason == null ? LineupPlan.Fit.READY : LineupPlan.Fit.WAITS, reason, usual);
     }
 
-    /** Why admission would refuse the companion, or why it would go in unready (low on potions); null: it can go. */
+    /**
+     * Why admission would refuse the companion, or why it would go in unready: low on potions, or on mana potions when
+     * it fights with skills (every job past a Beginner's); null: it can go.
+     */
     private String waitingReason(Character bot) {
         String problem = AgentKpqAdmissionService.memberProblem(bot, false);
         if (!problem.isEmpty()) {
             return LakelisLines.reason(problem, bot.getLevel());
         }
-        return hpPotions.applyAsInt(bot) < KPQ_MIN_HP_POTIONS ? LakelisLines.LOW_ON_POTIONS : null;
+        if (hpPotions.applyAsInt(bot) < KPQ_MIN_HP_POTIONS) {
+            return LakelisLines.LOW_ON_POTIONS;
+        }
+        return bot.getJob().getId() % 1000 != 0 && mpPotions.applyAsInt(bot) < KPQ_MIN_MP_POTIONS
+                ? LakelisLines.LOW_ON_MANA : null;
     }
 
     private LineupPlan.Candidate blocks(int id, String name, String line) {
@@ -283,11 +334,21 @@ public final class CompanionPartyQuestService {
 
     /** The HP-restoring potions in the companion's USE inventory, by quantity (CrewRotation's potion test, counted). */
     static int hpPotions(Character bot) {
+        return potions(bot, true);
+    }
+
+    /** The MP-restoring potions in the companion's USE inventory, by quantity (an Elixir counts here too). */
+    static int mpPotions(Character bot) {
+        return potions(bot, false);
+    }
+
+    private static int potions(Character bot, boolean hp) {
         Inventory use = bot.getInventory(InventoryType.USE);
         int count = 0;
         for (Item item : use == null ? List.<Item>of() : use.list()) {
             StatEffect effect = item.getQuantity() > 0 ? AgentUseItemClassificationPolicy.itemEffect(item.getItemId()) : null;
-            if (AgentUseItemClassificationPolicy.isRecoveryPotion(effect) && (effect.getHp() > 0 || effect.getHpRate() > 0)) {
+            if (AgentUseItemClassificationPolicy.isRecoveryPotion(effect) && (hp
+                    ? effect.getHp() > 0 || effect.getHpRate() > 0 : effect.getMp() > 0 || effect.getMpRate() > 0)) {
                 count += item.getQuantity();
             }
         }

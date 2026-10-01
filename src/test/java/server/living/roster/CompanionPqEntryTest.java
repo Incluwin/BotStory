@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import client.Client;
 import client.Job;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
@@ -8,6 +9,8 @@ import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import scripting.npc.NPCConversationManager;
+import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.living.config.Content.Persona;
@@ -40,7 +43,8 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * with its extras, and the event started, in that order and in one step. A refused admission is answered in
  * Lakelis's words and calls the extras back; so does a party that changed meanwhile, without admitting anyone. A lineup
  * of humans only takes the stock start. A second Yes while the first is carried out only hears "hold on"; one that
- * threw is over all the same. A Yes on her own choice is planned again by her own choice.
+ * threw is over all the same. A Yes on her own choice is planned again by her own choice. A companion the lineup leaves
+ * waiting for mana potions asks for some in party chat, once, as the lineup is shown.
  */
 class CompanionPqEntryTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -261,6 +265,31 @@ class CompanionPqEntryTest {
         game.calls.clear();
         fx.yes();
         assertFalse(game.calls.contains("answer Hold on, they're lining up."), "the Yes that threw is over");
+    }
+
+    @Test
+    void aCompanionShortOfManaAsksForSomeOnceAsTheLineupIsShown() {
+        fx.manaPotions.put(901, 0); // Tobi, a Page: live, no MP_POTION supplier inside the run
+        fx.ready();
+        game.config.COMPANION_PQ_ENABLED_KEYS = "kpq";
+        for (int id : List.of(900, 901, 902, 903, 904)) {
+            when(game.world.directory().ownerOfCharacter(id)).thenReturn(ANN);
+        }
+        Client client = game.ann.getClient();
+        when(client.onIoThread()).thenReturn(true); // the click on Lakelis, on its own thread
+        when(client.getCM()).thenReturn(mock(NPCConversationManager.class));
+        List<Runnable> ops = fx.holdCompanionOps();
+
+        assertTrue(fx.service.offerAtDesk(game.ann, "kpq"));
+        assertTrue(fx.service.offerAtDesk(game.ann, "kpq")); // and once more a moment later
+
+        assertEquals(List.of("proposal", "proposal"), game.calls);
+        assertEquals(List.of(), game.partyChat, "said on companion-ops, not on Ann's I/O thread");
+        CompanionPqFixture.drain(ops);
+        assertEquals(1, game.partyChat.size(), "asked once: " + game.partyChat);
+        String asked = game.partyChat.getFirst();
+        assertTrue(asked.startsWith("Tobi: ")
+                && AgentDialogueCatalog.potRequestMpReplies().contains(asked.substring("Tobi: ".length())), asked);
     }
 
     @Test

@@ -46,6 +46,8 @@ final class CompanionPqFixture implements AutoCloseable {
     final LifecycleHarness game = new LifecycleHarness();
     /** Character id -> the HP potions it carries (50 unless a test says otherwise). */
     final Map<Integer, Integer> potions = new HashMap<>();
+    /** Character id -> the mana potions it carries (50 unless a test says otherwise). */
+    final Map<Integer, Integer> manaPotions = new HashMap<>();
     /** Ann's I/O thread: null runs each task at once. */
     List<Runnable> io;
     final Doors doors = new Doors();
@@ -100,7 +102,8 @@ final class CompanionPqFixture implements AutoCloseable {
     CompanionPartyQuestService ready() {
         game.roster();
         when(game.world.views()).thenReturn(new CompanionViews(game.world, id -> "camp", id -> "item"));
-        service = new CompanionPartyQuestService(game.world, doors, bot -> potions.getOrDefault(bot.getId(), 50));
+        service = new CompanionPartyQuestService(game.world, doors, bot -> potions.getOrDefault(bot.getId(), 50),
+                bot -> manaPotions.getOrDefault(bot.getId(), 50));
         lifecycle = new CompanionRunLifecycle(game.world, service);
         when(game.world.partyQuests()).thenReturn(service);
         service.installDesk(new CompanionPartyQuestService.Desk() {

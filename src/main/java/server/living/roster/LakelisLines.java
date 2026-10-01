@@ -22,6 +22,7 @@ public final class LakelisLines {
     static final String NOT_UP = "<name> isn't up yet.";
     static final String NOT_IN_CREW = "<name> isn't part of your crew. Ask them to leave your party first.";
     static final String LOW_ON_POTIONS_LINE = "<name> is low on potions.";
+    static final String LOW_ON_MANA_LINE = "<name> is low on mana potions.";
     static final String BUSY = "<name> is busy with something. Give them a moment.";
     /** 9020000.js, when every lobby of the channel is taken. */
     static final String NO_LOBBY = "Another party has already entered the #rParty Quest#k in this channel. Please try "
@@ -35,6 +36,7 @@ public final class LakelisLines {
 
     /** Why a companion waits outside, as the lineup lists it: "Casse (low on potions)". */
     static final String LOW_ON_POTIONS = "low on potions";
+    static final String LOW_ON_MANA = "low on mana potions";
     static final String OTHER_CHANNEL = "on another channel";
     static final String KNOCKED_OUT = "knocked out";
 
