@@ -32,7 +32,8 @@ import static org.mockito.Mockito.when;
  */
 class HumanPuzzleVerdictTest {
     private static final AgentKpqDefinition.CombinationStage STAGE_2 = AgentKpqDefinition.combinationStage(2);
-    private static final String CHECK = "Ben, please check this formation with Cloto.";
+    private static final String CHECK = "Ben, we're set, check with cloto.";
+    private static final String STOCK_CHECK = "Ben, please check this formation with Cloto.";
     private static final long FULL_STABLE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.FORMATION_STABLE_MS");
     private static final long HUMAN_LED_STABLE_MS = config.AgentTuning.longValue(
@@ -300,11 +301,11 @@ class HumanPuzzleVerdictTest {
 
         AgentKpqSessionRegistry.recordHumanPuzzleValidation(ben.getId(), 2, false);
         AgentKpqCoordinator.tick(session, 3_000L + HUMAN_LED_STABLE_MS);
-        askedToCheck(never());
+        askedToCheck(STOCK_CHECK, never());
         AgentKpqCoordinator.tick(session, 3_000L + FULL_STABLE_MS);
 
         assertEquals(0, session.attemptIndex());
-        askedToCheck(times(1));
+        askedToCheck(STOCK_CHECK, times(1));
     }
 
     /** Ben leads from beside Cloto, off every rope, and the first formation has just been called. */
@@ -321,7 +322,11 @@ class HumanPuzzleVerdictTest {
     }
 
     private void askedToCheck(VerificationMode mode) {
-        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(CHECK)), mode);
+        askedToCheck(CHECK, mode);
+    }
+
+    private void askedToCheck(String line, VerificationMode mode) {
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(line)), mode);
     }
 
     private static void onStageTwo(Character... members) {

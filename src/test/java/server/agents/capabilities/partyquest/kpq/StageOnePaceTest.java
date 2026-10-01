@@ -20,6 +20,7 @@ import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.life.NPC;
 import server.maps.MapItem;
 
 import java.awt.Point;
@@ -50,6 +51,7 @@ class StageOnePaceTest {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HELPER_ANCHOR_MOVE_PX");
     private static final String PASSES_AT_FEET = "Ben, the passes are at your feet. pick them up and talk to Cloto.";
     private static final String PASS_DROPPED = AgentKpqCoordinator.stageOnePassDropMessage("Ben");
+    private static final String COME_DOWN = "Ben, come on down by cloto, we're almost done.";
 
     private KpqRunFixture run;
     private MockedStatic<AgentGrindLootStateRuntime> loot;
@@ -217,8 +219,9 @@ class StageOnePaceTest {
         AgentKpqCoordinator.tick(session, 2_000L);
 
         items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
-        modes.verify(() -> AgentModeService.startFarmHere(eq(entry(2)), eq(new Point(300, 0)), any()));
-        modes.verify(() -> AgentModeService.startFarmHere(eq(entry(3)), eq(new Point(300, 0)), any()));
+        // They help the collector meanwhile.
+        modes.verify(() -> AgentModeService.startGrind(eq(entry(2)), any()));
+        modes.verify(() -> AgentModeService.startGrind(eq(entry(3)), any()));
 
         // Tobi hands in his coupons and comes back to the others.
         when(tobi.getPosition()).thenReturn(new Point(30, 0));
@@ -237,6 +240,56 @@ class StageOnePaceTest {
 
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASSES_AT_FEET)), times(1));
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASS_DROPPED)), never());
+    }
+
+    @Test
+    void inACompanionRunThePassesSetOutOnceTheLastCollectorHasItsCoupons() {
+        AgentKpqSession session = lastCollectorHeadingToCloto(true, new Point(0, 0));
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        // Tobi still has to walk to Cloto and trade; the others are at Ben by then.
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+    }
+
+    @Test
+    void aStockHumanLedRunStillHoldsThePassesForTheLastOne() {
+        AgentKpqSession session = lastCollectorHeadingToCloto(false, new Point(0, 0));
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+    }
+
+    @Test
+    void aLeaderFarFromClotoIsAskedDownOnceAsTheLastCollectorHeadsThere() {
+        AgentKpqSession session = lastCollectorHeadingToCloto(true, new Point(-700, -900));
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(COME_DOWN)), times(1));
+    }
+
+    @Test
+    void aLeaderAlreadyByClotoIsNotAskedDown() {
+        AgentKpqSession session = lastCollectorHeadingToCloto(true, new Point(560, 106));
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(COME_DOWN)), never());
+    }
+
+    @Test
+    void aStockHumanLedRunDoesNotAskTheLeaderDown() {
+        AgentKpqSession session = lastCollectorHeadingToCloto(false, new Point(-700, -900));
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(COME_DOWN)), never());
     }
 
     @Test
@@ -323,6 +376,7 @@ class StageOnePaceTest {
             field.attack(1, 0);
             field.attack(1, 0);
             field.attack(0, 1);
+            // Mira has her ten, so Pip hands Ben its pass and helps.
             when(mira.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(10);
             AgentKpqCoordinator.tick(session, 4_000L);
             when(run.event.getProperty("1stageclear")).thenReturn("true");
@@ -334,7 +388,8 @@ class StageOnePaceTest {
                             "KPQ Stage 1 summary: session=" + id + " agent=Mira stageMs=3000 kills=2 coupons=10 "
                                     + "attacks=3 hits=2 misses=1 passAtMs=-1 roleMs={COUPON_COLLECTOR=3000}",
                             "KPQ Stage 1 summary: session=" + id + " agent=Pip stageMs=3000 kills=0 coupons=0 "
-                                    + "attacks=0 hits=0 misses=0 passAtMs=500 roleMs={PASS_DELIVERER=3000}"),
+                                    + "attacks=0 hits=0 misses=0 passAtMs=500 "
+                                    + "roleMs={PASS_DELIVERER=2000, COMBAT_HELPER=1000}"),
                     log.startingWith("KPQ Stage 1 summary: "));
         }
     }
@@ -352,6 +407,25 @@ class StageOnePaceTest {
     private static Character at(Character member, int x, int y) {
         when(member.getPosition()).thenReturn(new Point(x, y));
         return member;
+    }
+
+    /**
+     * Ben leads from {@code benAt}; Mira and Pip hold their passes beside where Ben's party started, and Tobi has
+     * just got his ten coupons and heads for Cloto, who stands at the foot of the map.
+     */
+    private AgentKpqSession lastCollectorHeadingToCloto(boolean companionRun, Point benAt) {
+        Character ben = at(run.human(1, "Ben"), benAt.x, benAt.y);
+        Character mira = at(run.companion(2, "Mira"), 10, 0);
+        Character pip = at(run.companion(3, "Pip"), 20, 0);
+        Character tobi = at(run.companion(4, "Tobi"), 300, 0);
+        AgentKpqSession session = run.session(companionRun, AgentKpqSession.Phase.STAGE_1, ben, mira, pip, tobi);
+        NPC cloto = mock(NPC.class);
+        when(cloto.getPosition()).thenReturn(new Point(592, 106));
+        when(run.map.getNPCById(AgentKpqDefinition.CLOTO_NPC)).thenReturn(cloto);
+        holdingPass(session, mira);
+        holdingPass(session, pip);
+        collecting(session, tobi, 10);
+        return session;
     }
 
     /** Cloto gave this companion a question of ten coupons, and it is fighting for them. */

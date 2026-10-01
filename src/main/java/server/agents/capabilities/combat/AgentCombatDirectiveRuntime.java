@@ -14,7 +14,17 @@ public final class AgentCombatDirectiveRuntime {
     }
 
     public static void assignAllowed(AgentRuntimeEntry entry, Set<Integer> allowedMobIds) {
-        assign(entry, allowedMobIds, Set.of(), AgentIncidentalMobPolicy.IGNORE);
+        assign(entry, allowedMobIds, Set.of(), AgentIncidentalMobPolicy.IGNORE, null);
+    }
+
+    /**
+     * The allowed mobs and a coordinator's region lease as one directive. A caller that repeats it every tick leaves
+     * it equal, so the tactical state survives; the lease set apart from the mobs was dropped by the next grind.
+     */
+    public static void assignAllowedInRegion(AgentRuntimeEntry entry,
+                                             Set<Integer> allowedMobIds,
+                                             AgentMapRegionAssignment regionAssignment) {
+        assign(entry, allowedMobIds, Set.of(), AgentIncidentalMobPolicy.IGNORE, regionAssignment);
     }
 
     public static void assignPreferences(AgentRuntimeEntry entry,
@@ -23,7 +33,7 @@ public final class AgentCombatDirectiveRuntime {
         AgentIncidentalMobPolicy policy = incidentalMobIds == null || incidentalMobIds.isEmpty()
                 ? AgentIncidentalMobPolicy.IGNORE
                 : AgentIncidentalMobPolicy.KILL_FOR_SPAWN_PRESSURE;
-        assign(entry, preferredMobIds, incidentalMobIds, policy);
+        assign(entry, preferredMobIds, incidentalMobIds, policy, null);
     }
 
     public static AgentCombatDirective directive(AgentRuntimeEntry entry) {
@@ -65,6 +75,14 @@ public final class AgentCombatDirectiveRuntime {
                 current.deadlineMs()));
     }
 
+    /** Drops a region lease and keeps the rest of the directive. */
+    public static void clearRegion(AgentRuntimeEntry entry) {
+        AgentCombatDirective current = directive(entry);
+        if (current != null && current.regionAssignment() != null) {
+            assignRegion(entry, null);
+        }
+    }
+
     /** Restores an exact directive captured before a temporary field exercise. */
     public static void assignExact(AgentRuntimeEntry entry, AgentCombatDirective directive) {
         if (entry == null) {
@@ -96,7 +114,8 @@ public final class AgentCombatDirectiveRuntime {
     private static void assign(AgentRuntimeEntry entry,
                                Set<Integer> requiredMobIds,
                                Set<Integer> incidentalMobIds,
-                               AgentIncidentalMobPolicy incidentalPolicy) {
+                               AgentIncidentalMobPolicy incidentalPolicy,
+                               AgentMapRegionAssignment regionAssignment) {
         if (entry == null) {
             return;
         }
@@ -108,7 +127,7 @@ public final class AgentCombatDirectiveRuntime {
         String directiveId = "objective:" + (objectiveId.isBlank() ? "runtime" : objectiveId)
                 + ':' + identity.hashCode();
         AgentCombatDirective directive = new AgentCombatDirective(
-                directiveId, objectiveId, required, Map.of(), incidentalPolicy, null, Long.MAX_VALUE);
+                directiveId, objectiveId, required, Map.of(), incidentalPolicy, regionAssignment, Long.MAX_VALUE);
         boolean changed = entry.capabilityStates()
                 .require(AgentCombatDirectiveState.STATE_KEY)
                 .assign(directive);

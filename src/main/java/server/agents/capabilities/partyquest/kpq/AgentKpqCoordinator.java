@@ -23,6 +23,7 @@ import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.looting.AgentLootCollectionPolicyConfig;
 import server.agents.capabilities.looting.AgentLootEligibility;
+import server.agents.catalog.AgentMapRegionAssignment;
 import server.agents.field.AgentFieldObservationState;
 import server.agents.operations.events.AgentOperationalEventProjectionState;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -113,8 +114,16 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.GATHER_RADIUS_PX");
     private static final int HELPER_ANCHOR_MOVE_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HELPER_ANCHOR_MOVE_PX");
+    private static final int STAGE1_TOWER_GAP_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_TOWER_GAP_PX");
+    private static final long STAGE1_HELPER_TERRITORY_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_HELPER_TERRITORY_MS");
+    private static final long STAGE1_HELPER_TERRITORY_EMPTY_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_HELPER_TERRITORY_EMPTY_MS");
     private static final int STAGE4_LEADER_BELOW_CLOTO_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE4_LEADER_BELOW_CLOTO_PX");
+    private static final int STAGE1_LEADER_FAR_FROM_CLOTO_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX");
 
     private AgentKpqCoordinator() {
     }
@@ -257,8 +266,8 @@ final class AgentKpqCoordinator {
             session.setReadyAtMs(nowMs + PREPARATION_DELAY_MS);
             KPQ.prepareNpcScripts(AgentKpqDefinition.ENTRY_NPC, AgentKpqDefinition.CLOTO_NPC,
                     AgentKpqDefinition.EXIT_NPC);
-            AgentKpqDialogue.sayMapNow(
-                    narrator, "Party ready. Everyone is here. Starting KPQ in 5 seconds.");
+            AgentKpqDialogue.sayMapNow(narrator, voice(session, "everyone's here. starting in 5.",
+                    "Party ready. Everyone is here. Starting KPQ in 5 seconds."));
         }
         if (nowMs >= session.readyAtMs()) transition(session, AgentKpqSession.Phase.ENTERING, nowMs);
     }
@@ -300,7 +309,9 @@ final class AgentKpqCoordinator {
                     AgentKpqCheckpointService.apply(session, leader, session.requestedCheckpointStage(), nowMs);
                     return;
                 }
-                coordinate(session, narrator, "entered", "We're in. Ask Cloto for your coupon number.");
+                coordinate(session, narrator, "entered", voice(session,
+                        "we're in. everyone ask cloto for a coupon number.",
+                        "We're in. Ask Cloto for your coupon number."));
                 initializeStageMovementDelays(session, 1, nowMs);
                 for (AgentKpqMemberState member : session.members()) {
                     AgentRuntimeEntry entry = entry(member.characterId());
@@ -334,8 +345,9 @@ final class AgentKpqCoordinator {
                         : "Lakelis repeatedly rejected or failed the KPQ entry request", nowMs);
             }
         } else {
-            coordinate(session, narrator, "human-enter",
-                    leader.getName() + ", please talk to Lakelis to start KPQ.");
+            coordinate(session, narrator, "human-enter", voice(session,
+                    leader.getName() + ", talk to lakelis when you're ready.",
+                    leader.getName() + ", please talk to Lakelis to start KPQ."));
         }
     }
 
@@ -346,6 +358,8 @@ final class AgentKpqCoordinator {
             if (session.claimStageOneSummary()) reportStageOne(session, nowMs);
             clearStageOneLandingSafety(session, leader);
             clearCouponLootObjectives(session);
+            // A territory now outlives the grind call, and every run's stage 1 is this map: it ends with the stage.
+            session.members().forEach(member -> ACTIONS.leaveTerritory(entry(member.characterId())));
             enterNextPortal(session, 2, nowMs);
             return;
         }
@@ -372,11 +386,23 @@ final class AgentKpqCoordinator {
         session.setNextCouponSweepAtMs(collection.nextSweepAtMs());
         syncCouponLootObjectives(session, leader,
                 collection.sweepActive() ? floorCoupons : List.of(), collection.repick());
-        Point helperAnchor = stageOneHelperAnchor(session, leader);
+        // A companion run's helpers hold the collector's tower; a stock run's fight from a spot under it.
+        AgentKpqSession.HelperTerritory helperTerritory =
+                session.companionAdopted() ? stageOneHelperTerritory(session, leader, nowMs) : null;
+        Point helperAnchor = session.companionAdopted() ? null : stageOneHelperAnchor(session, leader);
         // A human leader picks the passes up by hand, and a dropped pass expires after 180 s: live, two of three
         // passes dropped one by one expired before the leader got to them. So a companion keeps its pass, and helps
-        // the collectors, until every pass exists; then they all go down together.
-        boolean holdPasses = !agentLeader && !everyNonLeaderPassCreated(session);
+        // the collectors, until every pass exists; then they all go down together. In a companion run they set out
+        // once the last collector has its coupons: its walk to Cloto and trade take about as long as theirs to the
+        // leader, who is asked down to Cloto then, and not at entry, where it would stop killing for the coupons.
+        boolean lastCollectorDone = knownCouponNeedsCovered && !everyNonLeaderPassCreated(session);
+        boolean holdPasses = !agentLeader && !everyNonLeaderPassCreated(session)
+                && !(session.companionAdopted() && lastCollectorDone);
+        if (session.companionAdopted() && !agentLeader && lastCollectorDone && cloto != null
+                && leader.getPosition().distance(cloto) > STAGE1_LEADER_FAR_FROM_CLOTO_PX) {
+            narrate(session, narrator != null ? narrator : firstStandingAgent(session), "stage1-come-down",
+                    leader.getName() + ", come on down by cloto, we're almost done.");
+        }
         // A companion run says it even with coordination chat off: the passes expire where they lie.
         boolean passesAtFeetLine = !agentLeader
                 && (session.companionAdopted() || memberCoordinationVisible(session));
@@ -422,7 +448,7 @@ final class AgentKpqCoordinator {
                     cancelStageOneLandingSafety(member, entry, agent);
                     moveTowardStageOneExit(session, member, agent, entry);
                 } else {
-                    grindStageOne(member, entry, agent, null, nowMs);
+                    grindStageOne(member, entry, agent, null, null, nowMs);
                 }
                 continue;
             }
@@ -452,8 +478,8 @@ final class AgentKpqCoordinator {
                     member.setCouponTarget(target);
                     member.setActionNotBeforeMs(0L);
                     member.setRole(AgentKpqMemberState.Role.COUPON_COLLECTOR);
-                    narrate(session, agent, "coupon-target-" + agent.getId(),
-                            "I need " + target + " coupons.");
+                    narrate(session, agent, "coupon-target-" + agent.getId(), voice(session,
+                            "i need " + target + " coupons.", "I need " + target + " coupons."));
                 } else {
                     member.observeBlocker(invoked ? "stage1-question-state" : "stage1-question-npc", nowMs);
                     if (nowMs - member.blockerSinceMs() >= LOCAL_RECOVERY_TIMEOUT_MS) {
@@ -503,13 +529,13 @@ final class AgentKpqCoordinator {
                         }
                     }
                 } else {
-                    grindStageOne(member, entry, agent, null, nowMs);
+                    grindStageOne(member, entry, agent, null, null, nowMs);
                 }
             }
             if (member.passCreated() && !member.passDelivered()) {
                 allDelivered = false;
                 if (holdPasses) {
-                    grindStageOne(member, entry, agent, helperAnchor, nowMs);
+                    grindStageOne(member, entry, agent, helperAnchor, helperTerritory, nowMs);
                     continue;
                 }
                 cancelStageOneLandingSafety(member, entry, agent);
@@ -537,7 +563,7 @@ final class AgentKpqCoordinator {
                     cancelStageOneLandingSafety(member, entry, agent);
                     moveTowardStageOneExit(session, member, agent, entry);
                 }
-                else grindStageOne(member, entry, agent, helperAnchor, nowMs);
+                else grindStageOne(member, entry, agent, helperAnchor, helperTerritory, nowMs);
             }
         }
         List<MapItem> floorPasses = livePassDrops(leader.getMap());
@@ -548,7 +574,7 @@ final class AgentKpqCoordinator {
         }
         AgentKpqMemberState leaderState = session.member(session.eventLeaderId());
         int leaderPasses = leader.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
-        reportLeaderPassProgress(session, narrator, leaderState, leaderPasses, needed);
+        reportLeaderPassProgress(session, narrator, leader.getName(), leaderState, leaderPasses, needed);
         int floorPassQuantity = passQuantityOnGround(floorPasses);
         // Only the companions' drops: a second human may keep its pass for minutes while theirs lie there expiring.
         if (passesAtFeetLine && companionPassesDelivered(session) && floorPassQuantity > 0) {
@@ -558,9 +584,10 @@ final class AgentKpqCoordinator {
         if (leaderPasses >= needed) {
             session.setMissingPassSinceMs(0L);
             if (!agentLeader) {
-                coordinate(session, narrator, "human-stage1-submit",
+                coordinate(session, narrator, "human-stage1-submit", voice(session,
+                        leader.getName() + ", you've got all the passes, go talk to cloto.",
                         leader.getName() + ", you have " + leaderPasses + "/" + needed
-                                + " passes. Please talk to Cloto.");
+                                + " passes. Please talk to Cloto."));
                 return;
             }
             Point approach = npcApproachPoint(session, leaderState, leader, cloto, 191);
@@ -652,10 +679,11 @@ final class AgentKpqCoordinator {
                 if (!stationLeaderAtCloto(session, leader, stage, nowMs)) return;
                 KPQ.runNpc(leader, AgentKpqDefinition.CLOTO_NPC);
             } else {
-                coordinate(session, narrator, "human-stage" + stage + "-initialize",
-                        leader.getName() + ", please talk to Cloto to begin Stage " + stage + '.');
-                AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
-                        "talk to Cloto to begin Stage " + stage, nowMs);
+                coordinate(session, narrator, "human-stage" + stage + "-initialize", voice(session,
+                        leader.getName() + ", talk to cloto so we can start.",
+                        leader.getName() + ", please talk to Cloto to begin Stage " + stage + '.'));
+                AgentKpqHumanDialogueRuntime.promptDelayed(session, leader, voice(session,
+                        "talk to cloto so we can start", "talk to Cloto to begin Stage " + stage), nowMs);
                 if (stage == 4 && !leaderParticipates) inviteLeaderUpToCloto(session, leader, narrator);
             }
             return;
@@ -682,7 +710,7 @@ final class AgentKpqCoordinator {
             if (!movers.isEmpty()) {
                 // The attempt id changes when a reset formation is assigned again, so it is announced again.
                 coordinate(session, narrator, "s" + stage + "-a" + attempt + "-" + attemptId,
-                        formationInstruction(movers, leader));
+                        formationInstruction(movers, leader, stage, session.companionAdopted()));
             }
         }
         boolean humanLeader = !isAgent(session, leader.getId());
@@ -727,11 +755,13 @@ final class AgentKpqCoordinator {
                         return;
                     }
                 } else if (nowMs - participant.blockerSinceMs() >= LOCAL_RECOVERY_TIMEOUT_MS) {
+                    String spot = puzzleSpot(stage) + ' ' + participant.assignedPosition();
                     coordinate(session, narrator,
-                            "human-stage" + stage + "-position-" + participant.characterId(),
-                            agent.getName() + ", please move to " + participant.assignedPosition() + '.');
-                    AgentKpqHumanDialogueRuntime.promptDelayed(session, agent,
-                            "move to position " + participant.assignedPosition(), nowMs);
+                            "human-stage" + stage + "-position-" + participant.characterId(), voice(session,
+                                    agent.getName() + ", can you get on " + spot + '?',
+                                    agent.getName() + ", please move to " + participant.assignedPosition() + '.'));
+                    AgentKpqHumanDialogueRuntime.promptDelayed(session, agent, voice(session,
+                            "get on " + spot, "move to position " + participant.assignedPosition()), nowMs);
                 }
                 stable = false;
             } else if (participant.stableSinceMs() == 0L) {
@@ -797,9 +827,10 @@ final class AgentKpqCoordinator {
                 // Asked again when a reset forms the attempt anew, and after each rejection dropped as early.
                 coordinate(session, narrator, "human-stage" + stage + "-check-" + attempt + "-"
                                 + session.attemptId() + "-" + session.earlyPuzzleRejections(),
-                        leader.getName() + ", please check this formation with Cloto.");
-                AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
-                        "check this formation with Cloto", nowMs, true);
+                        voice(session, leader.getName() + ", we're set, check with cloto.",
+                                leader.getName() + ", please check this formation with Cloto."));
+                AgentKpqHumanDialogueRuntime.promptDelayed(session, leader, voice(session,
+                        "check with cloto", "check this formation with Cloto"), nowMs, true);
                 return;
             }
             if (validation.accepted()) return;
@@ -848,8 +879,9 @@ final class AgentKpqCoordinator {
             transition(session, AgentKpqSession.Phase.CLAIMING_REWARDS, nowMs);
             return;
         }
-        coordinate(session, narrator, "stage5-enter",
-                "Clearing the monsters and collecting 10 passes.");
+        coordinate(session, narrator, "stage5-enter", voice(session,
+                "let's clear these out and get the 10 passes.",
+                "Clearing the monsters and collecting 10 passes."));
         boolean agentLeader = isAgent(session, leader.getId());
         int normalAlive = ACTIONS.liveMonsterCount(leader, STAGE_5_NORMAL_MOBS);
         int bossAlive = ACTIONS.liveMonsterCount(leader, STAGE_5_BOSS_MOBS);
@@ -859,10 +891,11 @@ final class AgentKpqCoordinator {
         if (agentLeader && !lootDelayActive) {
             KPQ.lootNearby(leader, Set.of(AgentKpqDefinition.PASS_ITEM));
         } else if (!agentLeader) {
-            coordinate(session, narrator, "human-stage5-collect",
-                    leader.getName() + ", please collect the 10 passes while we clear the monsters.");
-            AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
-                    "collect the 10 passes while we clear the monsters", nowMs);
+            coordinate(session, narrator, "human-stage5-collect", voice(session,
+                    leader.getName() + ", grab the passes as they drop, we'll handle the monsters.",
+                    leader.getName() + ", please collect the 10 passes while we clear the monsters."));
+            AgentKpqHumanDialogueRuntime.promptDelayed(session, leader, voice(session,
+                    "grab the passes as they drop", "collect the 10 passes while we clear the monsters"), nowMs);
         }
         int leaderPasses = leader.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
         int stage5MobCount = normalAlive + bossAlive;
@@ -875,10 +908,11 @@ final class AgentKpqCoordinator {
         if (returningToCloto && !agentLeader) {
             // Said before the shoes window and the drop cleanup below: after them a leader holding all ten waited
             // another 6-17 s to hear it.
-            coordinate(session, narrator, "human-stage5-submit",
-                    leader.getName() + ", you have 10/10 passes. Please talk to Cloto.");
-            AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
-                    "talk to Cloto with the 10 passes", nowMs);
+            coordinate(session, narrator, "human-stage5-submit", voice(session,
+                    leader.getName() + ", that's all 10 passes. go talk to cloto.",
+                    leader.getName() + ", you have 10/10 passes. Please talk to Cloto."));
+            AgentKpqHumanDialogueRuntime.promptDelayed(session, leader, voice(session,
+                    "talk to cloto with the passes", "talk to Cloto with the 10 passes"), nowMs);
         }
         boolean shoesPending = returningToCloto && handleSquishyShoes(session, leader, nowMs);
         if (returningToCloto && shoesPending) {
@@ -1107,8 +1141,9 @@ final class AgentKpqCoordinator {
                         }
                     }
                 } else {
-                    coordinate(session, narrator(session), "human-claim-" + member.characterId(),
-                            agent.getName() + ", please talk to Cloto to claim your reward.");
+                    coordinate(session, narrator(session), "human-claim-" + member.characterId(), voice(session,
+                            agent.getName() + ", talk to cloto for your reward.",
+                            agent.getName() + ", please talk to Cloto to claim your reward."));
                 }
             } else if (agent.getMapId() == AgentKpqDefinition.BONUS_MAP) {
                 member.clearBlocker();
@@ -1175,8 +1210,9 @@ final class AgentKpqCoordinator {
                         if (event != null) event.exitPlayer(agent);
                     }
                 } else {
-                    coordinate(session, narrator(session), "human-exit-" + member.characterId(),
-                            agent.getName() + ", please use the exit NPC when you're ready.");
+                    coordinate(session, narrator(session), "human-exit-" + member.characterId(), voice(session,
+                            agent.getName() + ", talk to nella when you're ready to head out.",
+                            agent.getName() + ", please use the exit NPC when you're ready."));
                 }
                 allGathered = false;
             } else if (agent.getMapId() != AgentKpqDefinition.RECRUIT_MAP) {
@@ -1261,8 +1297,9 @@ final class AgentKpqCoordinator {
                     }
                 } else if (nowMs - member.blockerSinceMs() >= LOCAL_RECOVERY_TIMEOUT_MS) {
                     coordinate(session, narrator(session),
-                            "human-portal-" + nextStage + '-' + member.characterId(),
-                            agent.getName() + ", please enter the next portal.");
+                            "human-portal-" + nextStage + '-' + member.characterId(), voice(session,
+                                    agent.getName() + ", come through the portal.",
+                                    agent.getName() + ", please enter the next portal."));
                 }
             } else if (member.memberType() == AgentKpqMemberState.MemberType.AGENT && entry != null) {
                 member.clearBlocker();
@@ -1347,7 +1384,7 @@ final class AgentKpqCoordinator {
             session.setCombination(initialCombination);
             if (!movers.isEmpty()) {
                 coordinate(session, narrator, "s" + definition.stageNumber() + "-initial-position-" + attemptId,
-                        formationInstruction(movers, leader));
+                        formationInstruction(movers, leader, definition.stageNumber(), session.companionAdopted()));
             }
         }
         for (AgentKpqMemberState participant : participants.subList(0, 3)) {
@@ -1366,7 +1403,12 @@ final class AgentKpqCoordinator {
         }
     }
 
-    static String formationInstruction(List<AgentKpqMemberState> movers, Character eventAnchor) {
+    /**
+     * Who goes where. A companion run says it as a player calls it ("Rurik, grab rope 3. Yara, take 1."): live, the
+     * "Rurik -> 3; Yara -> 1." it used to hear on every attempt, some eighteen times a run, read like a status line.
+     */
+    static String formationInstruction(
+            List<AgentKpqMemberState> movers, Character eventAnchor, int stage, boolean companionRun) {
         List<AgentKpqMemberState> speakingOrder = movers.stream()
                 .sorted(Comparator
                         .comparing((AgentKpqMemberState member) ->
@@ -1377,9 +1419,32 @@ final class AgentKpqCoordinator {
         for (AgentKpqMemberState member : speakingOrder) {
             Character character = memberCharacter(member.characterId(), eventAnchor);
             String name = character == null ? "Party member " + member.partyNumber() : character.getName();
-            assignments.add(name + " -> " + member.assignedPosition());
+            if (!companionRun) {
+                assignments.add(name + " -> " + member.assignedPosition());
+            } else {
+                assignments.add(name + (assignments.isEmpty()
+                        ? (stage == 2 ? ", grab " : ", get on ") + puzzleSpot(stage) + ' ' : ", take ")
+                        + member.assignedPosition() + '.');
+            }
         }
-        return String.join("; ", assignments) + '.';
+        return companionRun ? String.join(" ", assignments) : String.join("; ", assignments) + '.';
+    }
+
+    /** What a stage's puzzle positions are to the players standing on them. */
+    static String puzzleSpot(int stage) {
+        return switch (stage) {
+            case 2 -> "rope";
+            case 3 -> "platform";
+            default -> "barrel";
+        };
+    }
+
+    /**
+     * A companion run hears its companions talk like players, never a status line; a stock or test run keeps the
+     * plain lines it always had.
+     */
+    private static String voice(AgentKpqSession session, String companionLine, String stockLine) {
+        return session.companionAdopted() ? companionLine : stockLine;
     }
 
     /** One line per phase with its time: a run's pace reads straight from the log instead of a 1 Hz sampler. */
@@ -2051,7 +2116,7 @@ final class AgentKpqCoordinator {
             return;
         }
         coordinate(session, narrator(session), "drop-" + member.characterId(),
-                name + " had to go. We'll carry on with three.");
+                name + " had to go. we'll keep going with three.");
     }
 
     private static String partyMemberName(Character eventAnchor, int characterId) {
@@ -2231,16 +2296,29 @@ final class AgentKpqCoordinator {
         return configured.isEmpty() ? STAGE_1_MOBS : configured;
     }
 
-    /** With an anchor, the member fights from that spot instead of hunting map-wide. */
+    /** With an anchor, the member fights from that spot, and in a territory inside it, instead of map-wide. */
     private static void grindStageOne(AgentKpqMemberState member,
                                       AgentRuntimeEntry entry,
                                       Character agent,
                                       Point anchor,
+                                      AgentKpqSession.HelperTerritory territory,
                                       long nowMs) {
         if (AgentKpqStageOneThiefLandingRuntime.tick(member, entry, agent, nowMs)) return;
         Set<Integer> mobs = stage1GrindTargets(agent);
-        if (anchor == null) ACTIONS.grind(entry, mobs);
-        else ACTIONS.grindFromAnchor(entry, anchor, mobs, mobs);
+        // The regions of its own graph, where its combat looks up each Ligator's region.
+        Set<Integer> regions = territory == null
+                ? Set.of() : ACTIONS.groundRegionIds(entry, agent, territory.spawns());
+        if (!regions.isEmpty()) {
+            ACTIONS.grindInTerritory(entry, mobs, new AgentMapRegionAssignment(
+                    territory.assignmentId(), AgentKpqDefinition.STAGE_1_MAP,
+                    regions.stream().sorted().map(String::valueOf).toList(), member.partyNumber(),
+                    territory.spawns().size(), territory.expiresAtMs(), STAGE1_HELPER_TERRITORY_EMPTY_MS,
+                    territory.minX(), territory.maxX(), true));
+        } else if (anchor == null) {
+            ACTIONS.grind(entry, mobs);
+        } else {
+            ACTIONS.grindFromAnchor(entry, anchor, mobs, mobs);
+        }
     }
 
     private static void cancelStageOneLandingSafety(
@@ -2318,8 +2396,8 @@ final class AgentKpqCoordinator {
                 session.squishyShoesSeenAtMs(), nowMs, SQUISHY_SHOES_HUMAN_PRIORITY_MS)) {
             return true;
         }
-        narrate(session, winner, "squishy-shoes-pickup-" + winner.getId(),
-                "I'll pick up the Squishy Shoes.");
+        narrate(session, winner, "squishy-shoes-pickup-" + winner.getId(), voice(session,
+                "i'll grab the squishy shoes.", "I'll pick up the Squishy Shoes."));
         KPQ.lootNearby(winner, Set.of(AgentKpqDefinition.SQUISHY_SHOES));
         if (winner.getItemQuantity(AgentKpqDefinition.SQUISHY_SHOES, false) > 0
                 || liveSquishyShoesDrops(stageFiveMap).isEmpty()) {
@@ -2725,23 +2803,7 @@ final class AgentKpqCoordinator {
      * it walked past HELPER_ANCHOR_MOVE_PX.
      */
     private static Point stageOneHelperAnchor(AgentKpqSession session, Character eventAnchor) {
-        int followedId = session.stageOneHelperCollectorId();
-        Character followed = stageOneHelperCollector(session, eventAnchor, followedId);
-        if (followed == null) {
-            followedId = 0;
-            int mostNeeded = 0;
-            for (AgentKpqMemberState member : session.members()) {
-                Character collector = stageOneHelperCollector(session, eventAnchor, member.characterId());
-                if (collector == null) continue;
-                int needed = member.couponTarget()
-                        - collector.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false);
-                if (needed > mostNeeded) {
-                    mostNeeded = needed;
-                    followedId = member.characterId();
-                    followed = collector;
-                }
-            }
-        }
+        Character followed = followedStageOneCollector(session, eventAnchor);
         if (followed == null) {
             session.setStageOneHelperAnchor(0, null);
             return null;
@@ -2751,8 +2813,79 @@ final class AgentKpqCoordinator {
             Point grounded = ACTIONS.groundPoint(followed.getMap(), followed.getPosition());
             anchor = grounded == null ? new Point(followed.getPosition()) : grounded;
         }
-        session.setStageOneHelperAnchor(followedId, anchor);
+        session.setStageOneHelperAnchor(followed.getId(), anchor);
         return anchor;
+    }
+
+    /**
+     * A companion run's helpers fight in that collector's tower instead. From the spot under it (run C) they lost it
+     * whenever it climbed the x=-437 rope, the spot falling to the Ligator-less floor, and every move of the spot
+     * restarted their farming: over the 200 s it worked alone they stood a median 370-410 px away and took 2 and 9 hits
+     * to its 24. The tower stays while that collector climbs or jumps, and moves once it lands in another tower or
+     * the territory runs out.
+     */
+    private static AgentKpqSession.HelperTerritory stageOneHelperTerritory(
+            AgentKpqSession session, Character eventAnchor, long nowMs) {
+        Character followed = followedStageOneCollector(session, eventAnchor);
+        if (followed == null) {
+            session.setStageOneHelperTerritory(0, null);
+            return null;
+        }
+        AgentKpqSession.HelperTerritory territory = session.stageOneHelperTerritory();
+        if (territory == null || nowMs >= territory.expiresAtMs()
+                || ACTIONS.grounded(followed) && !territory.covers(followed.getPosition().x)) {
+            territory = towerTerritory(session, followed, nowMs);
+        }
+        session.setStageOneHelperTerritory(followed.getId(), territory);
+        return territory;
+    }
+
+    /** The collector the helpers follow: the one they follow already while it still collects, else the neediest. */
+    private static Character followedStageOneCollector(AgentKpqSession session, Character eventAnchor) {
+        Character followed = stageOneHelperCollector(session, eventAnchor, session.stageOneHelperCollectorId());
+        if (followed != null) return followed;
+        int mostNeeded = 0;
+        for (AgentKpqMemberState member : session.members()) {
+            Character collector = stageOneHelperCollector(session, eventAnchor, member.characterId());
+            if (collector == null) continue;
+            int needed = member.couponTarget()
+                    - collector.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false);
+            if (needed > mostNeeded) {
+                mostNeeded = needed;
+                followed = collector;
+            }
+        }
+        return followed;
+    }
+
+    /**
+     * The tower {@code collector} is in: the map's Ligator spawns split where neighbours lie more than
+     * STAGE1_TOWER_GAP_PX apart (103000800's west, middle and east towers), each tower's x-band reaching to the middle
+     * of the gap. Its expiry is set once here, so the territory stays equal from tick to tick.
+     */
+    private static AgentKpqSession.HelperTerritory towerTerritory(
+            AgentKpqSession session, Character collector, long nowMs) {
+        List<Point> spawns = new ArrayList<>(
+                ACTIONS.monsterSpawnPositions(collector, stage1GrindTargets(collector)));
+        spawns.sort(Comparator.comparingInt(spawn -> spawn.x));
+        int x = collector.getPosition().x;
+        int minX = Integer.MIN_VALUE;
+        List<Point> tower = new ArrayList<>();
+        for (int index = 0; index < spawns.size(); index++) {
+            tower.add(spawns.get(index));
+            boolean last = index == spawns.size() - 1;
+            int gap = last ? 0 : spawns.get(index + 1).x - spawns.get(index).x;
+            if (!last && gap <= STAGE1_TOWER_GAP_PX) continue;
+            int maxX = last ? Integer.MAX_VALUE : spawns.get(index).x + gap / 2;
+            if (x <= maxX) {
+                return new AgentKpqSession.HelperTerritory(
+                        "kpq-stage1:" + session.sessionId() + ':' + minX + ':' + nowMs,
+                        minX, maxX, tower, nowMs + STAGE1_HELPER_TERRITORY_MS);
+            }
+            minX = maxX + 1;
+            tower = new ArrayList<>();
+        }
+        return null;
     }
 
     private static Character stageOneHelperCollector(
@@ -2942,8 +3075,10 @@ final class AgentKpqCoordinator {
         List<Integer> crossed = crossedCouponMilestones(member.couponMilestone(), have, target);
         if (crossed.isEmpty()) return;
         int milestone = crossed.getLast();
-        narrate(session, speaker, "coupon-" + speaker.getId() + '-' + milestone,
-                "Coupons: " + have + "/" + target + '.');
+        narrate(session, speaker, "coupon-" + speaker.getId() + '-' + milestone, voice(session,
+                have < target ? have + " coupons down, " + (target - have) + " to go."
+                        : "got all " + target + ", heading to cloto.",
+                "Coupons: " + have + "/" + target + '.'));
         member.setCouponMilestone(milestone);
     }
 
@@ -2989,16 +3124,25 @@ final class AgentKpqCoordinator {
     }
 
     private static void reportLeaderPassProgress(AgentKpqSession session,
-                                                 Character leader,
+                                                 Character speaker,
+                                                 String leaderName,
                                                  AgentKpqMemberState leaderState,
                                                  int have,
                                                  int needed) {
-        if (leader == null || leaderState == null || needed <= 0) return;
+        if (speaker == null || leaderState == null || needed <= 0) return;
         int capped = Math.min(have, needed);
-        for (int count = leaderState.reportedPassCount() + 1; count <= capped; count++) {
-            coordinate(session, leader, "leader-pass-" + count,
-                    "Passes with leader: " + count + "/" + needed
-                            + (count == needed ? " done" : ""));
+        if (session.companionAdopted()) {
+            // One line for what the leader holds now; the call to go to Cloto says the last.
+            if (capped > leaderState.reportedPassCount() && capped < needed) {
+                coordinate(session, speaker, "leader-pass-" + capped, leaderName + " has " + capped
+                        + (capped == 1 ? " pass, " : " passes, ") + (needed - capped) + " more to go.");
+            }
+        } else {
+            for (int count = leaderState.reportedPassCount() + 1; count <= capped; count++) {
+                coordinate(session, speaker, "leader-pass-" + count,
+                        "Passes with leader: " + count + "/" + needed
+                                + (count == needed ? " done" : ""));
+            }
         }
         leaderState.setReportedPassCount(capped);
     }

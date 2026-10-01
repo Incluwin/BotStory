@@ -2032,6 +2032,10 @@ tuning:
     # Purpose: Decides when a companion invites a human KPQ leader up the stage-4 staircase to Cloto, where the way out is, before the puzzle is begun.
     # Technical: AgentKpqCoordinator compares the leader's map y with Cloto's on map 103000803; a leader more than this many pixels below Cloto hears the invitation once per companion-adopted session.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE4_LEADER_BELOW_CLOTO_PX: '40'
+    # Values: 200-1500 map pixels. Recommended: 600. Lower values also ask a leader already close to Cloto; higher values only one across the map.
+    # Purpose: Decides when a companion asks a human KPQ leader down to Cloto in stage 1, as the last collector heads there with its coupons and the passes are about to follow.
+    # Technical: AgentKpqCoordinator measures the Euclidean map-pixel distance from the leader to Cloto on map 103000800; a leader farther than this hears the line once per companion-adopted session.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX: '600'
     # Values: 20-250 map pixels. Recommended: 85. Higher values allow pass delivery from farther away; lower values require tighter visual grouping.
     # Purpose: Defines how close a KPQ member must stand to the event leader before dropping a collected pass for coordinated stage completion.
     # Technical: AgentKpqCoordinator applies this Euclidean map-pixel threshold only to the ordinary pass-delivery interaction, not portal or NPC reachability.
@@ -2167,6 +2171,18 @@ tuning:
     # Purpose: Sets how far the KPQ Stage 1 coupon collector the helpers follow may walk from the spot they fight at before that spot follows it.
     # Technical: AgentKpqCoordinator follows the neediest collector until it has its coupons and compares its position with the stored grounded anchor by Euclidean map-pixel distance; every move restarts anchored farming for each helper, and the range stays within the 180 px melee immediate loot radius.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HELPER_ANCHOR_MOVE_PX: '120'
+    # Values: 80-220 map pixels. Recommended: 150. On 103000800 Ligator spawns within one tower lie at most 117 px apart and the towers 226 and 237 px apart; a value outside that range merges towers or splits one.
+    # Purpose: Splits the KPQ Stage 1 map into the towers a companion run's helpers fight in, so their kills drop where the collector they follow is working.
+    # Technical: AgentKpqCoordinator sorts the map's Ligator spawn points by x and starts a new tower wherever two neighbours lie more than this far apart; each tower's x-band reaches to the middle of the gap, and its spawn platforms become the helpers' navigation regions.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_TOWER_GAP_PX: '150'
+    # Values: 30000-600000 milliseconds. Recommended: 120000. Shorter values renew the territory, and so reset each helper's combat tactics, more often; longer values let a missed clean-up steer helpers longer.
+    # Purpose: Bounds how long one KPQ Stage 1 helper territory stands before it is made again, so a territory nothing cleared cannot steer an Agent for the rest of its life.
+    # Technical: The expiry is fixed when the coordinator makes the territory and stays the same on every tick, so the combat directive stays equal and the helpers do not restart; the coordinator makes it again once it expires, and the territory is also dropped at the stage-1 clear and whenever the run ends.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_HELPER_TERRITORY_MS: '120000'
+    # Values: 2000-15000 milliseconds. Recommended: 5000. Lower values send idle helpers to other towers sooner, where their coupons drop far from the collector; higher values leave them waiting for respawns.
+    # Purpose: Sets how long KPQ Stage 1 helpers wait in an empty tower before they fight anywhere on the map for a while.
+    # Technical: Passed as the region assignment's empty-borrow delay; after it, the combat region policy's empty-scan threshold and borrow window (AgentCombatPolicyConfig.REGION_ASSIGNMENT_BORROW_EMPTY_SCANS and REGION_ASSIGNMENT_BORROW_MS) decide when and how long they borrow.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_HELPER_TERRITORY_EMPTY_MS: '5000'
     # Values: 2000-30000 milliseconds. Recommended: 5000. Keep this long enough for a newly dropped pass to become pickup-eligible and appear in the next coordinator ticks.
     # Purpose: Allows Stage 1 to recover when every non-leader completed their Cloto exchange but a pass vanished before reaching the leader.
     # Technical: Recovery is blocked while any pass remains visible on the map; after this grace period the coordinator opens Stage 1 and writes a diagnostic warning.

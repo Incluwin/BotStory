@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
  */
 class LeaderPaceCueTest {
     private static final String COME_UP = "Ben, come on up by Cloto, the way out's at the top. stay off the barrels.";
-    private static final String ALL_PASSES = "Ben, you have 10/10 passes. Please talk to Cloto.";
+    private static final String ALL_PASSES = "Ben, that's all 10 passes. go talk to cloto.";
     private static final Point STAGE_4_CLOTO = new Point(1147, -81);
 
     private KpqRunFixture run;

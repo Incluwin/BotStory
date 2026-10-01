@@ -62,6 +62,7 @@ public final class AgentKpqSession {
     private long nextCouponSweepAtMs;
     private int stageOneHelperCollectorId;
     private Point stageOneHelperAnchor;
+    private HelperTerritory stageOneHelperTerritory;
     private long missingPassSinceMs;
     private long puzzleCheckAtMs;
     private int puzzleCheckLoggedAttemptId = -1;
@@ -231,6 +232,7 @@ public final class AgentKpqSession {
         nextCouponSweepAtMs = 0L;
         stageOneHelperCollectorId = 0;
         stageOneHelperAnchor = null;
+        stageOneHelperTerritory = null;
         missingPassSinceMs = 0L;
         puzzleCheckAtMs = 0L;
         puzzleCheckLoggedAttemptId = -1;
@@ -421,6 +423,11 @@ public final class AgentKpqSession {
         stageOneHelperCollectorId = Math.max(0, collectorId);
         stageOneHelperAnchor = anchor;
     }
+    synchronized HelperTerritory stageOneHelperTerritory() { return stageOneHelperTerritory; }
+    synchronized void setStageOneHelperTerritory(int collectorId, HelperTerritory territory) {
+        stageOneHelperCollectorId = Math.max(0, collectorId);
+        stageOneHelperTerritory = territory;
+    }
     public synchronized long missingPassSinceMs() { return missingPassSinceMs; }
     public synchronized void setMissingPassSinceMs(long value) {
         missingPassSinceMs = Math.max(0L, value);
@@ -555,5 +562,16 @@ public final class AgentKpqSession {
     }
 
     public record PuzzleValidation(int revision, boolean accepted) {
+    }
+
+    /** Where the stage-1 helpers fight: one tower's x-band and its spawns, until a fixed time. */
+    record HelperTerritory(String assignmentId, int minX, int maxX, List<Point> spawns, long expiresAtMs) {
+        HelperTerritory {
+            spawns = List.copyOf(spawns);
+        }
+
+        boolean covers(int x) {
+            return x >= minX && x <= maxX;
+        }
     }
 }

@@ -57,7 +57,7 @@ class StageOnePassesNeededTest {
 
             verify(run.event).setProperty("1stageclear", "true");
             run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
-                    mira, "Ben, you have 2/2 passes. Please talk to Cloto."), never());
+                    mira, "Ben, you've got all the passes, go talk to cloto."), never());
         }
     }
 }

@@ -19,14 +19,17 @@ import server.agents.capabilities.movement.AgentJumpActionService;
 import server.agents.capabilities.looting.AgentLootEligibility;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentAttackRoute;
+import server.agents.capabilities.combat.AgentCombatDirectiveRuntime;
 import server.agents.capabilities.combat.AgentCombatObjectiveTargetStateRuntime;
 import server.agents.capabilities.combat.AgentCombatVariationRuntime;
 import server.agents.capabilities.npc.AgentNpcInteractionType;
+import server.agents.catalog.AgentMapRegionAssignment;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.integration.AgentCharacterStateSnapshot;
 import server.agents.integration.AgentPacketGatewayRuntime;
@@ -55,6 +58,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import tools.PacketCreator;
 
@@ -308,6 +312,40 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public List<Point> monsterSpawnPositions(Character agent, Set<Integer> mobIds) {
+        if (agent == null || agent.getMap() == null) {
+            return List.of();
+        }
+        return agent.getMap().getMonsterSpawn().stream()
+                .filter(spawn -> spawn != null && spawn.getPosition() != null
+                        && (mobIds == null || mobIds.contains(spawn.getMonsterId())))
+                .map(spawn -> new Point(spawn.getPosition()))
+                .toList();
+    }
+
+    @Override
+    public Set<Integer> groundRegionIds(AgentRuntimeEntry entry, Character agent, Collection<Point> points) {
+        if (entry == null || agent == null || agent.getMap() == null || points == null) {
+            return Set.of();
+        }
+        var profile = AgentMovementStateRuntime.movementProfileOrCharacter(entry, agent);
+        AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(agent.getMap(), profile);
+        if (graph == null) {
+            AgentNavigationGraphService.warmGraphAsync(entry, agent.getMap(), profile);
+            return Set.of();
+        }
+        Set<Integer> regionIds = new TreeSet<>();
+        for (Point point : points) {
+            // From just above, as groundPoint looks: the point itself lies on its foothold.
+            int regionId = point == null ? -1 : graph.findRegionId(agent.getMap(), new Point(point.x, point.y - 1));
+            if (regionId >= 0) {
+                regionIds.add(regionId);
+            }
+        }
+        return regionIds;
+    }
+
+    @Override
     public void navigate(AgentRuntimeEntry entry, Point destination, boolean precise) {
         AgentModeService.startMoveTo(entry, destination, precise);
     }
@@ -336,13 +374,7 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
 
     @Override
     public void grind(AgentRuntimeEntry entry, Set<Integer> allowedMobIds) {
-        boolean authoredAnchorActive = AgentFarmAnchorStateRuntime.hasFarmAnchor(entry);
-        AgentCombatVariationRuntime.retainAutomaticAnchorFor(entry, allowedMobIds);
-        AgentCombatObjectiveTargetStateRuntime.setAllowedMobIds(entry, allowedMobIds);
-        if (!AgentModeStateRuntime.grinding(entry) || authoredAnchorActive) {
-            AgentModeService.startGrind(entry, AgentMovementStateResetService::clearNavigationState);
-            AgentCombatObjectiveTargetStateRuntime.setAllowedMobIds(entry, allowedMobIds);
-        }
+        grindInTerritory(entry, allowedMobIds, null);
     }
 
     @Override
@@ -384,6 +416,24 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
             AgentCombatObjectiveTargetStateRuntime.setTargetPreferences(
                     entry, preferredMobIds, fallbackMobIds);
         }
+    }
+
+    @Override
+    public void grindInTerritory(AgentRuntimeEntry entry,
+                                 Set<Integer> mobIds,
+                                 AgentMapRegionAssignment territory) {
+        boolean authoredAnchorActive = AgentFarmAnchorStateRuntime.hasFarmAnchor(entry);
+        AgentCombatVariationRuntime.retainAutomaticAnchorFor(entry, mobIds);
+        AgentCombatObjectiveTargetStateRuntime.setAllowedMobIdsInRegion(entry, mobIds, territory);
+        if (!AgentModeStateRuntime.grinding(entry) || authoredAnchorActive) {
+            AgentModeService.startGrind(entry, AgentMovementStateResetService::clearNavigationState);
+            AgentCombatObjectiveTargetStateRuntime.setAllowedMobIdsInRegion(entry, mobIds, territory);
+        }
+    }
+
+    @Override
+    public void leaveTerritory(AgentRuntimeEntry entry) {
+        AgentCombatDirectiveRuntime.clearRegion(entry);
     }
 
     @Override
