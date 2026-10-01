@@ -142,6 +142,24 @@ public interface PrimitiveCapabilityGateway {
         return Set.of();
     }
 
+    /**
+     * Whether this Agent's own navigation graph has any route from where it stands to the region under
+     * {@code target}. True while that graph is not built yet, or while either end has no region (the Agent in the
+     * air, a point off every foothold), so a caller then acts as it would without the answer; false proves that no
+     * route exists, as from anywhere below to a ledge whose only edges lead out of it.
+     */
+    default boolean canReach(AgentRuntimeEntry entry, Character agent, Point target) {
+        return true;
+    }
+
+    /** Where a character stands: on a foothold, on a rope or ladder, or in the air. */
+    enum Footing { GROUND, ROPE, AIR }
+
+    /** Whether this character, Agent or player, stands on a foothold, holds a rope or ladder, or is in the air. */
+    default Footing footing(Character character) {
+        return Footing.GROUND;
+    }
+
     void navigate(AgentRuntimeEntry entry, Point destination, boolean precise);
 
     /** Enables map-local virtual walls for an activity; ordinary maps remain unconstrained. */
