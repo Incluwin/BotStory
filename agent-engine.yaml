@@ -2041,9 +2041,13 @@ tuning:
     # Technical: AgentKpqCoordinator measures the Euclidean map-pixel distance from the leader to Cloto on map 103000800; a leader farther than this hears the line once per companion-adopted session.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX: '600'
     # Values: 20-250 map pixels. Recommended: 85. Higher values allow pass delivery from farther away; lower values require tighter visual grouping.
-    # Purpose: Defines how close a KPQ member must stand to the event leader before dropping a collected pass for coordinated stage completion.
-    # Technical: AgentKpqCoordinator applies this Euclidean map-pixel threshold only to the ordinary pass-delivery interaction, not portal or NPC reachability.
+    # Purpose: Defines how close a stock KPQ run's member must stand to the event leader before dropping a collected pass, and how near a companion run's floor pass must lie to count as within its human leader's reach.
+    # Technical: AgentKpqCoordinator tests this bound on each axis separately (|dx| and |dy|, not Euclidean); companion runs drop on the leader's spot by PASS_DROP_AT_FEET_PX instead and use this only for the stage-5 floor-pass reach.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.NEAR_PX: '85'
+    # Values: 4-40 map pixels. Recommended: 10. Lower values make deliverers stand nearer the leader's spot before dropping; above about 30 the WASM client's standing pickup (about 9 px left to 41 px right of a drop) misses.
+    # Purpose: Makes a companion run's companions drop stage-1 and stage-5 passes on the human leader's own spot, so a leader who presses pickup without moving gets them.
+    # Technical: AgentKpqCoordinator drops only when the deliverer and the leader both stand on a foothold (never in the air or on a rope or ladder) and the deliverer is within this many pixels of the leader's ground point on each axis; it walks there with a precise move first.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PASS_DROP_AT_FEET_PX: '10'
     # Values: true or false. Recommended: false when a human is the party leader.
     # Purpose: Allows an Agent member to visibly announce shared KPQ assignments, leader pass totals, and immediate NPC reminders for a human-led party.
     # Technical: Execution coordination remains active regardless; this flag controls presentation only and never changes puzzle solving, combat, navigation, or recovery.
@@ -2257,12 +2261,28 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqPuzzleParticipantOrder.HUMAN_MOST_MOVEMENT_WEIGHT: '1'
     # Values: 2000-30000 milliseconds. Recommended: 7000. Keep enough time for newly spawned passes to become visible and pickup-eligible.
     # Purpose: Allows Stage 5 to recover when every monster is dead but one or more required passes have disappeared from inventories and the floor.
-    # Technical: Recovery requires zero live Stage 5 monsters and zero visible floor passes, then records a structured warning before clearing the stage.
+    # Technical: Recovery requires zero live Stage 5 monsters, no pass carried by a live companion, and no floor pass still on its way (in companion runs a pass lying out of the leader's reach longer than STAGE5_FLOOR_PASS_PATIENCE_MS with nobody fetching it no longer counts, after one re-collect), held for this long; each restore logs a defect warning with its cause.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_MISSING_PASS_GRACE_MS: '7000'
-    # Values: 30000-600000 milliseconds. Recommended: 90000. Keep this well above a companion's climb from King Slime's floor to Cloto (about 2,300 px; roughly 25-40 s at the 140 px/s climb speed) and below KPQ_PHASE_TIMEOUT_MS.
-    # Purpose: Bounds how long a companion run's stage-5 companions try to bring their passes to the human leader before they drop them where they stand and tell the leader where they are.
-    # Technical: Measured from the session's pass hand-over; a PASS_DELIVERER still farther than NEAR_PX from the leader after it drops its passes on the spot, so the floor pickup and the STAGE5_MISSING_PASS_GRACE_MS recovery apply again.
-    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS: '90000'
+    # Values: 30000-600000 milliseconds. Recommended: 45000, about twice the 21-24 s offline route from King Slime's floor to Cloto. Keep it below KPQ_PHASE_TIMEOUT_MS.
+    # Purpose: Bounds how long a companion run's stage-5 companions try to reach a human leader they have a route to before they leave the passes by Cloto, on his way there, and tell him.
+    # Technical: The clock starts at the pass hand-over, or when the leader last could not be reached at all (a deliverer then waits by Cloto and the bound does not run); past it the deliverer walks to Cloto's approach and drops there, and past twice it, or when Cloto cannot be reached either, it drops where it stands.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS: '45000'
+    # Values: 5000-120000 milliseconds. Recommended: 20000. Live a full sweep took 15 s; lower values may set out while a reachable pass is still being fetched.
+    # Purpose: Starts a companion run's stage-5 pass hand-over even while a carrier still sweeps, and bounds the one re-collect of passes left lying, so a pass that cannot be fetched cannot hold the run up to its 180 s expiry.
+    # Technical: Measured from the first tick with no stage-5 mob alive and King Slime's revive grace over; the re-collector's sweep is measured from its start, and either way an unfetched pass then falls to STAGE5_FLOOR_PASS_PATIENCE_MS.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_SWEEP_LIMIT_MS: '20000'
+    # Values: 10000-170000 milliseconds. Recommended: 30000. Keep it well below the 180 s item expiry; lower values send a companion back for passes a leader is still walking to.
+    # Purpose: Lets a companion run's stage-5 floor passes that are going nowhere stop holding the missing-pass recovery back, after one in-character re-collect by the nearest companion.
+    # Technical: Measured from the drop's own drop time on the coordinator's clock; a pass within NEAR_PX of the leader on each axis, or the loot target of any companion, keeps counting as on its way however old it is.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_FLOOR_PASS_PATIENCE_MS: '30000'
+    # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values repeat the way to Cloto sooner; it is said again at most once.
+    # Purpose: Tells a companion run's human leader the way to Cloto once more if he still stands on stage 5's arrival ledge, where no companion can bring him the passes.
+    # Technical: Measured from the first time the route line was said; the repeat fires only while some grounded companion on stage 5 has no navigation route to the leader's position, and only with coordination chat on.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_ROUTE_REPEAT_MS: '30000'
+    # Values: 0.05-0.5 of maximum HP. Recommended: 0.25. Higher values make carriers leave their passes earlier; zero disables it.
+    # Purpose: Lets a companion run's stage-5 carrier that is about to go down drop its passes while it still stands, so they are not lost with it when the stock respawn takes it out of the event.
+    # Technical: A carrier or deliverer holding passes drops them all once when its HP is below this fraction of its current maximum and it holds no HP potion; it then loots no pass again, and the others or the re-collect pick them up.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_CARRIER_LOW_HP_FRACTION: '0.25'
     # Values: 0-30000 milliseconds. Recommended: 7000. Set zero only for Agent-only servers that do not require a human-first loot window.
     # Purpose: Gives human party members exclusive first opportunity to pick up Squishy Shoes before the assigned Agent attempts the drop.
     # Technical: The timer begins when the live shoe drop is first observed; other Agents may advance while only the selected shoe collector waits.

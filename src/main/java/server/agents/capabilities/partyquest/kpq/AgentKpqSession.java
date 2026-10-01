@@ -86,6 +86,16 @@ public final class AgentKpqSession {
     private Map<Integer, Integer> stage5Targets = Map.of();
     private long stage5TargetsAtMs = Long.MIN_VALUE;
     private long stage5HandOverStartedAtMs;
+    private long stage5MobsDownSinceMs;
+    private long stage5RouteToldAtMs;
+    private boolean stage5RouteRepeated;
+    private int stage5RecollectorId;
+    private long stage5RecollectStartedAtMs;
+    private boolean stage5RecollectSweepDone;
+    private boolean stage5RecollectTargetReleased;
+    private int stage5PassesLostWithMembers;
+    private int leaderPassesSeen = -1;
+    private long lastPassDropAtMs;
     private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
 
@@ -248,6 +258,9 @@ public final class AgentKpqSession {
         stage5LootNotBeforeMs = 0L;
         stage5CleanupStartedAtMs = 0L;
         stage5CleanupDeadlineMs = 0L;
+        // The leader's passes are counted afresh in each stage: Cloto takes stage 1's.
+        leaderPassesSeen = -1;
+        lastPassDropAtMs = 0L;
         // Companions fight King Slime while the leader still climbs stage 4; a fight under way is reported whole.
         boolean bossFightUnderWay = stage5BossCombatStartedAtMs > 0L && !stage5BossCombatReported;
         if (!bossFightUnderWay) {
@@ -582,13 +595,106 @@ public final class AgentKpqSession {
         return stage5HandOverStartedAtMs > 0L;
     }
 
-    synchronized void startStage5HandOver(long nowMs) {
-        if (stage5HandOverStartedAtMs == 0L) stage5HandOverStartedAtMs = Math.max(1L, nowMs);
+    /** True when this call started the hand-over. */
+    synchronized boolean startStage5HandOver(long nowMs) {
+        if (stage5HandOverStartedAtMs != 0L) return false;
+        stage5HandOverStartedAtMs = Math.max(1L, nowMs);
+        return true;
     }
 
-    /** Whether the carriers set out for the leader at least {@code boundMs} ago. */
-    synchronized boolean stage5HandOverOverdue(long nowMs, long boundMs) {
-        return stage5HandOverStartedAtMs > 0L && nowMs - stage5HandOverStartedAtMs >= Math.max(0L, boundMs);
+    synchronized long stage5HandOverStartedAtMs() {
+        return stage5HandOverStartedAtMs;
+    }
+
+    /** How long nothing has been left to fight on stage 5; 0 while something is. */
+    synchronized long observeStage5MobsDown(boolean mobsDown, long nowMs) {
+        if (!mobsDown) {
+            stage5MobsDownSinceMs = 0L;
+            return 0L;
+        }
+        if (stage5MobsDownSinceMs == 0L) stage5MobsDownSinceMs = Math.max(1L, nowMs);
+        return nowMs - stage5MobsDownSinceMs;
+    }
+
+    /** When the leader was first told the way to Cloto; 0 before. */
+    synchronized long stage5RouteToldAtMs() {
+        return stage5RouteToldAtMs;
+    }
+
+    synchronized void markStage5RouteTold(long nowMs) {
+        if (stage5RouteToldAtMs == 0L) stage5RouteToldAtMs = Math.max(1L, nowMs);
+    }
+
+    /** True once: the one time the way to Cloto may be said again. */
+    synchronized boolean claimStage5RouteRepeat() {
+        if (stage5RouteRepeated) return false;
+        stage5RouteRepeated = true;
+        return true;
+    }
+
+    synchronized boolean stage5RouteRepeated() {
+        return stage5RouteRepeated;
+    }
+
+    /** The companion sent back for passes left lying out of the leader's reach; 0 before the one re-collect. */
+    synchronized int stage5RecollectorId() {
+        return stage5RecollectorId;
+    }
+
+    synchronized boolean stage5RecollectStarted() {
+        return stage5RecollectStartedAtMs > 0L;
+    }
+
+    /** Starts the one re-collect a run gets; false when it already had it. */
+    synchronized boolean beginStage5Recollect(int characterId, long nowMs) {
+        if (stage5RecollectStartedAtMs > 0L) return false;
+        stage5RecollectorId = characterId;
+        stage5RecollectStartedAtMs = Math.max(1L, nowMs);
+        return true;
+    }
+
+    /** Whether the re-collector is still fetching passes: until none is left out of reach, or the bound runs out. */
+    synchronized boolean stage5RecollectSweeping(long nowMs, long boundMs) {
+        return stage5RecollectStartedAtMs > 0L && !stage5RecollectSweepDone
+                && nowMs - stage5RecollectStartedAtMs < Math.max(0L, boundMs);
+    }
+
+    synchronized void finishStage5RecollectSweep() {
+        stage5RecollectSweepDone = true;
+    }
+
+    /** True once, after the re-collect sweep: its last loot target is let go then. */
+    synchronized boolean claimStage5RecollectTargetRelease() {
+        if (stage5RecollectStartedAtMs == 0L || stage5RecollectTargetReleased) return false;
+        stage5RecollectTargetReleased = true;
+        return true;
+    }
+
+    /** Passes members held when they left the run, which went with them. */
+    synchronized int stage5PassesLostWithMembers() {
+        return stage5PassesLostWithMembers;
+    }
+
+    synchronized void addStage5PassesLostWithMember(int passes) {
+        stage5PassesLostWithMembers += Math.max(0, passes);
+    }
+
+    /**
+     * Records what the leader holds now and returns how many passes came into his bag since the last look; 0 on the
+     * first look in a stage.
+     */
+    synchronized int observeLeaderPasses(int held) {
+        int gained = leaderPassesSeen < 0 ? 0 : Math.max(0, held - leaderPassesSeen);
+        leaderPassesSeen = held;
+        return gained;
+    }
+
+    synchronized long lastPassDropAtMs() {
+        return lastPassDropAtMs;
+    }
+
+    synchronized void markPassDrop(long nowMs) {
+        lastPassDropAtMs = Math.max(1L, nowMs);
     }
 
     synchronized boolean claimStageOneSummary() {

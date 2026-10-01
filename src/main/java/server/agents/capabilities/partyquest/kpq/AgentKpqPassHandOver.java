@@ -1,0 +1,75 @@
+package server.agents.capabilities.partyquest.kpq;
+
+import java.awt.Point;
+import java.util.Locale;
+
+/**
+ * The rules a companion run's stage-5 pass hand-over decides by, and the lines its companions say, kept apart from
+ * the coordinator so each is pinned on its own. Live (2026-10-01, run pace1b) the human leader stood on the arrival
+ * ledge, which nothing below can reach; the carriers stood still for 90 s, dropped the passes 2,300 px under him, and
+ * the event timer ran out while those passes held the missing-pass recovery back.
+ */
+final class AgentKpqPassHandOver {
+    /** Why a companion let go of passes it carried, as the pass-drop log line names it. */
+    enum DropReason {
+        BESIDE, AT_CLOTO, OVERDUE, DYING, CLEAR, RECOLLECT;
+
+        String label() {
+            return name().toLowerCase(Locale.ROOT).replace('_', '-');
+        }
+    }
+
+    static final String CURSE_EYES_CAREFUL = "careful, curse eyes down there.";
+    static final String LEAVING_PASSES = "almost out of pots, leaving my passes here, grab them.";
+    static final String RECOLLECT_START = "i'll go grab the passes still lying around.";
+
+    private AgentKpqPassHandOver() {
+    }
+
+    /** Everyone arrives on the left top island; Cloto stands on the right one, past a gap no jump clears. */
+    static String routeLine(String leader) {
+        return leader + ", cloto's across the gap on the right. hop down and take the two ladders up,"
+                + " we'll bring the passes there.";
+    }
+
+    /** Said once more if the leader is still where nobody can bring him anything. */
+    static String routeAgainLine(String leader) {
+        return leader + ", you still up there? drop off the ledge and take the two ladders on the right up to cloto.";
+    }
+
+    static String leftByClotoLine(String leader) {
+        return leader + ", couldn't get to you, left the passes by cloto.";
+    }
+
+    static String recollectedLine(String leader) {
+        return leader + ", got the rest of the passes, they're at your feet.";
+    }
+
+    /**
+     * A player picks up only what lies almost under him (the WASM client from about 9 px left to 41 px right of a
+     * drop), so passes go down on the leader's own spot: both standing on a foothold, within {@code px} of each
+     * other on both axes. Never while either is in the air or on a rope or ladder, where the drop would fall away.
+     */
+    static boolean atFeet(Point dropper, Point leaderSpot, boolean dropperOnGround, boolean leaderOnGround, int px) {
+        return dropper != null && leaderSpot != null && dropperOnGround && leaderOnGround
+                && Math.abs(dropper.x - leaderSpot.x) <= px && Math.abs(dropper.y - leaderSpot.y) <= px;
+    }
+
+    /**
+     * A floor pass is no longer on its way to the leader once it has lain out of his reach longer than the patience
+     * and no companion is going for it; the missing-pass recovery may then count it as lost.
+     */
+    static boolean stale(long ageMs, boolean inLeadersReach, boolean fetched, long patienceMs) {
+        return ageMs >= patienceMs && !inLeadersReach && !fetched;
+    }
+
+    /** Still standing, below this fraction of its HP. */
+    static boolean lowOnHp(int hp, int maxHp, double hpFraction) {
+        return hp > 0 && maxHp > 0 && hp < maxHp * hpFraction;
+    }
+
+    /** A carrier low on HP with no HP potion left is about to go down, and its passes with it. */
+    static boolean aboutToGoDown(boolean lowOnHp, int hpPotions) {
+        return lowOnHp && hpPotions <= 0;
+    }
+}

@@ -4,6 +4,10 @@ import client.Character;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
+import server.agents.capabilities.movement.AgentClimbState;
+import server.agents.capabilities.movement.AgentMovementPhysicsState;
+import server.agents.capabilities.movement.AgentMovementProfileState;
+import server.agents.capabilities.navigation.AgentNavigationContinuityState;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -16,6 +20,7 @@ import server.agents.integration.PartyGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.simulation.AgentSimulationState;
 import server.agents.runtime.state.AgentCapabilityStateRegistry;
 import server.maps.MapleMap;
 
@@ -89,6 +94,12 @@ final class KpqRunFixture implements AutoCloseable {
         AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
         // Its kill and attack counters, which the pace lines read.
         when(entry.capabilityStates()).thenReturn(new AgentCapabilityStateRegistry());
+        // Standing on the ground, off any rope, simulated as the map's observers see it.
+        when(entry.movementPhysicsState()).thenReturn(new AgentMovementPhysicsState());
+        when(entry.climbState()).thenReturn(new AgentClimbState());
+        when(entry.movementProfileState()).thenReturn(new AgentMovementProfileState());
+        when(entry.simulationState()).thenReturn(new AgentSimulationState());
+        when(entry.navigationContinuityState()).thenReturn(new AgentNavigationContinuityState());
         registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(id)).thenReturn(entry);
         identity.when(() -> AgentRuntimeIdentityRuntime.bot(entry)).thenReturn(companion);
         when(characters.findOnlineCharacterById(id)).thenReturn(companion);

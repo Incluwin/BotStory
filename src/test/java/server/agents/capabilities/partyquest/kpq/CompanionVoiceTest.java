@@ -153,7 +153,8 @@ class CompanionVoiceTest {
 
         List<String> said = said();
         assertSaid(said, "let's clear these out and get the 10 passes.");
-        assertSaid(said, "Ben, wait by cloto, we'll bring the passes.");
+        assertSaid(said, "Ben, cloto's across the gap on the right. hop down and take the two ladders up,"
+                + " we'll bring the passes there.");
         assertSaid(said, "Ben, that's all 10 passes. go talk to cloto.");
         assertSpokenLikePlayers(said);
     }

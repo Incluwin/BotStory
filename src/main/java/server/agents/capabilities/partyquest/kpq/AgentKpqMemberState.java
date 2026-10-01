@@ -56,6 +56,10 @@ public final class AgentKpqMemberState {
     private int stage1CouponsHeld;
     private int stage1CouponsLooted;
     private long stage1PassAtMs;
+    private long stage5ChaseFromMs;
+    private boolean stage5LeaderUnreachable;
+    private boolean stage5PassesLeftBehind;
+    private int stage5PassesSeen;
 
     public AgentKpqMemberState(int characterId, MemberType memberType, int partyNumber) {
         this.characterId = characterId;
@@ -261,6 +265,21 @@ public final class AgentKpqMemberState {
         stage1CombatBaseline = baseline;
         stage1RoleTalliedAtMs = nowMs;
     }
+
+    /**
+     * The overdue clock of its stage-5 delivery restarts here: it runs only while the leader can be reached, so one
+     * who waited by Cloto for him has its whole bound once he is down off the ledge.
+     */
+    void restartStage5Chase(long nowMs) { stage5ChaseFromMs = Math.max(stage5ChaseFromMs, nowMs); }
+    long stage5ChaseFromMs() { return stage5ChaseFromMs; }
+    boolean stage5LeaderUnreachable() { return stage5LeaderUnreachable; }
+    void setStage5LeaderUnreachable(boolean unreachable) { stage5LeaderUnreachable = unreachable; }
+    /** It dropped its passes before going down and carries none from here on. */
+    boolean stage5PassesLeftBehind() { return stage5PassesLeftBehind; }
+    void markStage5PassesLeftBehind() { stage5PassesLeftBehind = true; }
+    /** The passes it was last seen holding on stage 5; they go with it if it leaves the run. */
+    int stage5PassesSeen() { return stage5PassesSeen; }
+    void observeStage5Passes(int held) { stage5PassesSeen = Math.max(0, held); }
 
     /** Adds the time since the last tally to the role held over it. */
     void tallyStage1Role(long nowMs) {
