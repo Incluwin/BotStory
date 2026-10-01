@@ -83,8 +83,9 @@ public final class AgentKpqSession {
     private boolean stage5BossCombatReported;
     private int stage5MobsSeen = -1;
     private long stage5ReachedAtMs;
-    private java.util.Map<Integer, Integer> stage5Targets = java.util.Map.of();
-    private boolean stage5HandOverStarted;
+    private Map<Integer, Integer> stage5Targets = Map.of();
+    private long stage5TargetsAtMs = Long.MIN_VALUE;
+    private long stage5HandOverStartedAtMs;
     private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
 
@@ -557,10 +558,19 @@ public final class AgentKpqSession {
         return stage5ReachedAtMs;
     }
 
-    /** Records the stage-5 mob type each Agent fights first; true when it changed, so each change is logged once. */
-    synchronized boolean observeStage5Targets(java.util.Map<Integer, Integer> targets) {
+    /** The stage-5 mob type each Agent fights first, as worked out in the tick at {@code nowMs}; null before that. */
+    synchronized Map<Integer, Integer> stage5Targets(long nowMs) {
+        return stage5TargetsAtMs == nowMs ? stage5Targets : null;
+    }
+
+    /**
+     * Records the stage-5 mob type each Agent fights first, once per tick; true when it changed, so each change is
+     * logged once.
+     */
+    synchronized boolean observeStage5Targets(Map<Integer, Integer> targets, long nowMs) {
+        stage5TargetsAtMs = nowMs;
         if (stage5Targets.equals(targets)) return false;
-        stage5Targets = java.util.Map.copyOf(targets);
+        stage5Targets = Map.copyOf(targets);
         return true;
     }
 
@@ -569,11 +579,16 @@ public final class AgentKpqSession {
      * of them may loot a pass, so none takes back what another dropped at the leader's feet.
      */
     synchronized boolean stage5HandOverStarted() {
-        return stage5HandOverStarted;
+        return stage5HandOverStartedAtMs > 0L;
     }
 
-    synchronized void startStage5HandOver() {
-        stage5HandOverStarted = true;
+    synchronized void startStage5HandOver(long nowMs) {
+        if (stage5HandOverStartedAtMs == 0L) stage5HandOverStartedAtMs = Math.max(1L, nowMs);
+    }
+
+    /** Whether the carriers set out for the leader at least {@code boundMs} ago. */
+    synchronized boolean stage5HandOverOverdue(long nowMs, long boundMs) {
+        return stage5HandOverStartedAtMs > 0L && nowMs - stage5HandOverStartedAtMs >= Math.max(0L, boundMs);
     }
 
     synchronized boolean claimStageOneSummary() {

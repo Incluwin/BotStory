@@ -36,9 +36,12 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 /** Party-level KPQ state machine. It uses ordinary NPC scripts, portals, combat, drops, and loot. */
 final class AgentKpqCoordinator {
@@ -94,6 +97,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PUZZLE_CHECK_VARIANCE_MS");
     private static final long STAGE5_MISSING_PASS_GRACE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_MISSING_PASS_GRACE_MS");
+    private static final long STAGE5_PASS_HANDOVER_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS");
     private static final long SQUISHY_SHOES_HUMAN_PRIORITY_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.SQUISHY_SHOES_HUMAN_PRIORITY_MS");
     private static final long KING_SLIME_LOOT_DELAY_MS = config.AgentTuning.longValue(
@@ -958,11 +963,11 @@ final class AgentKpqCoordinator {
                 } else if (mobsDown && member.role() == AgentKpqMemberState.Role.PASS_DELIVERER) {
                     handOverStageFivePasses(session, member, agent, entry, leader, nowMs);
                 } else {
-                    grindStageFive(session, entry, agent);
+                    grindStageFive(session, entry, agent, nowMs);
                 }
             }
         }
-        if (carriers && mobsDown && !lootDelayActive && !sweeping) session.startStage5HandOver();
+        if (carriers && mobsDown && !lootDelayActive && !sweeping) session.startStage5HandOver(nowMs);
         if (reviveGraceActive && stage5MobCount == 0) {
             session.setMissingPassSinceMs(0L);
             return;
@@ -1024,13 +1029,18 @@ final class AgentKpqCoordinator {
     private static boolean sweepStageFivePasses(
             AgentKpqSession session, AgentRuntimeEntry entry, Character agent, long nowMs) {
         // Entering grind mode clears a loot target, so the mode comes first.
-        grindStageFive(session, entry, agent);
+        grindStageFive(session, entry, agent, nowMs);
         return ACTIONS.prepareObjectiveLoot(entry, agent, Set.of(AgentKpqDefinition.PASS_ITEM))
                 || livePassDrops(agent.getMap()).stream().anyMatch(drop -> AgentLootEligibility.isWaitingForTargetAge(
                         entry, agent, agent.getMap(), drop, nowMs, AgentLootEligibility.MIN_TARGET_LOOT_AGE_MS));
     }
 
-    /** A deliverer walks to the leader and drops what it carries at the leader's feet, as stage 1's holders do. */
+    /**
+     * A deliverer walks to the leader and drops what it carries at the leader's feet, as stage 1's holders do. One
+     * that cannot get there (a failed route, a leader on a ledge or rope it cannot path to) would hold its passes, and
+     * so the missing-pass recovery, back until the phase timeout failed the run; after STAGE5_PASS_HANDOVER_MS it
+     * drops them where it stands and says where, so the leader can fetch them or the recovery makes them up.
+     */
     private static void handOverStageFivePasses(AgentKpqSession session, AgentKpqMemberState member,
                                                 Character agent, AgentRuntimeEntry entry, Character leader,
                                                 long nowMs) {
@@ -1039,7 +1049,9 @@ final class AgentKpqCoordinator {
             member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
             return;
         }
-        if (!near(agent, leader, NEAR_PX)) {
+        boolean beside = near(agent, leader, NEAR_PX);
+        boolean stuck = !beside && session.stage5HandOverOverdue(nowMs, STAGE5_PASS_HANDOVER_MS);
+        if (!beside && !stuck) {
             ACTIONS.navigate(entry, leader.getPosition(), false);
             return;
         }
@@ -1048,9 +1060,12 @@ final class AgentKpqCoordinator {
                 && passDropConfirmed(held, agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false))) {
             member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
             session.markProgress(nowMs);
-            // The last one there says it, once: the passes expire where they lie.
-            if (session.members().stream().noneMatch(
+            if (stuck) {
+                narrate(session, agent, "stage5-passes-dropped-" + agent.getId(),
+                        leader.getName() + ", can't get to you, i dropped the passes right here by me.");
+            } else if (session.members().stream().noneMatch(
                     other -> other.role() == AgentKpqMemberState.Role.PASS_DELIVERER)) {
+                // The last one there says it, once: the passes expire where they lie.
                 narrate(session, agent, "stage5-passes-at-feet",
                         leader.getName() + ", the passes are at your feet. grab them and talk to cloto.");
             }
@@ -1813,7 +1828,7 @@ final class AgentKpqCoordinator {
             }
             // Entering grind mode clears an old loot target. Establish the no-combat
             // movement mode first, then assign this member a distinct cleanup drop.
-            grindStageFive(session, memberEntry, agent);
+            grindStageFive(session, memberEntry, agent, nowMs);
             AgentGrindLootTargetService.refreshPreExitLootTarget(
                     memberEntry,
                     agent,
@@ -2541,7 +2556,7 @@ final class AgentKpqCoordinator {
                     .min(Comparator.comparingDouble(drop ->
                             drop.getPosition().distanceSq(winnerPosition)))
                     .orElse(null);
-            grindStageFive(session, winnerEntry, winner);
+            grindStageFive(session, winnerEntry, winner, nowMs);
             AgentGrindLootStateRuntime.setObjectiveLootTarget(winnerEntry, closest);
         }
         long exclusiveWindowMs = humanPriority
@@ -3058,7 +3073,8 @@ final class AgentKpqCoordinator {
         session.setCouponSweepStartedAtMs(0L);
     }
 
-    private static void grindStageFive(AgentKpqSession session, AgentRuntimeEntry entry, Character agent) {
+    private static void grindStageFive(
+            AgentKpqSession session, AgentRuntimeEntry entry, Character agent, long nowMs) {
         Set<Integer> configured = ACTIONS.configuredMonsterSpawnIds(agent);
         if (configured.isEmpty()) {
             configured = new LinkedHashSet<>(STAGE_5_NORMAL_MOBS);
@@ -3069,7 +3085,7 @@ final class AgentKpqCoordinator {
         if (normalAlive > 0) {
             Set<Integer> anyMob = new LinkedHashSet<>(STAGE_5_NORMAL_MOBS);
             anyMob.addAll(configured);
-            ACTIONS.grind(entry, stageFiveTargets(session, agent), anyMob);
+            ACTIONS.grind(entry, stageFiveTargets(session, agent, nowMs), anyMob);
         } else if (bossAlive > 0) {
             ACTIONS.grind(entry, STAGE_5_BOSS_MOBS, configured);
         } else {
@@ -3077,23 +3093,33 @@ final class AgentKpqCoordinator {
         }
     }
 
-    /** The live mob type the target policy gives this Agent; any of them while nobody could be judged. */
-    private static Set<Integer> stageFiveTargets(AgentKpqSession session, Character agent) {
-        java.util.Map<Integer, java.util.Map<Integer, Double>> damage = new java.util.TreeMap<>();
-        for (AgentKpqMemberState member : session.members()) {
-            Character fighter = character(member.characterId());
-            AgentRuntimeEntry fighterEntry = entry(member.characterId());
-            if (fighter == null || fighterEntry == null || fighter.getHp() <= 0
-                    || fighter.getMapId() != AgentKpqDefinition.STAGE_5_MAP) {
-                continue;
+    /**
+     * The live mob type the target policy gives this Agent; any of them while nobody could be judged. Worked out once
+     * a tick, not once per fighter: each estimate reads every fighter's gear and skills against every live type. The
+     * Squishy Shoes' winner is left out while it fetches them, so a type only it covered goes to someone else.
+     */
+    private static Set<Integer> stageFiveTargets(AgentKpqSession session, Character agent, long nowMs) {
+        Map<Integer, Integer> targets = session.stage5Targets(nowMs);
+        if (targets == null) {
+            Map<Integer, Map<Integer, Double>> damage = new TreeMap<>();
+            for (AgentKpqMemberState member : session.members()) {
+                Character fighter = character(member.characterId());
+                AgentRuntimeEntry fighterEntry = entry(member.characterId());
+                if (fighter == null || fighterEntry == null || fighter.getHp() <= 0
+                        || fighter.getMapId() != AgentKpqDefinition.STAGE_5_MAP
+                        || (member.characterId() == session.squishyShoesWinnerId()
+                        && !session.squishyShoesResolved())) {
+                    continue;
+                }
+                damage.put(member.characterId(),
+                        ACTIONS.expectedLineDamage(fighterEntry, fighter, STAGE_5_NORMAL_MOBS));
             }
-            damage.put(member.characterId(), ACTIONS.expectedLineDamage(fighterEntry, fighter, STAGE_5_NORMAL_MOBS));
-        }
-        java.util.Map<Integer, Integer> targets = AgentKpqStageFiveTargetPolicy.assign(damage);
-        if (session.observeStage5Targets(targets)) {
-            log.info("KPQ Stage 5 targets: session={} targets={}", session.sessionId(),
-                    targets.entrySet().stream().map(target -> character(target.getKey()).getName() + ':'
-                            + target.getValue()).toList());
+            targets = AgentKpqStageFiveTargetPolicy.assign(damage);
+            if (session.observeStage5Targets(targets, nowMs)) {
+                log.info("KPQ Stage 5 targets: session={} targets={}", session.sessionId(),
+                        targets.entrySet().stream().map(target -> character(target.getKey()).getName() + ':'
+                                + target.getValue()).toList());
+            }
         }
         Integer mobId = targets.get(agent.getId());
         return mobId == null ? STAGE_5_NORMAL_MOBS : Set.of(mobId);
@@ -3140,7 +3166,7 @@ final class AgentKpqCoordinator {
                 || !order.get(session.attemptIndex()).equals(session.combination())) {
             return false;
         }
-        java.util.Map<Integer, Integer> assigned = new java.util.HashMap<>();
+        Map<Integer, Integer> assigned = new HashMap<>();
         participants.subList(0, 3).forEach(member -> assigned.put(member.characterId(), member.assignedPosition()));
         Set<Integer> livePartyIds = party.members().stream().filter(java.util.Objects::nonNull)
                 .map(server.agents.integration.AgentPartyMemberSnapshot::id)
@@ -3178,7 +3204,7 @@ final class AgentKpqCoordinator {
                     return;
                 }
             }
-            grindStageFive(session, entry, agent);
+            grindStageFive(session, entry, agent, nowMs);
             return;
         }
         AgentKpqDefinition.CombinationStage definition = AgentKpqDefinition.combinationStage(nextStage);
@@ -3284,7 +3310,7 @@ final class AgentKpqCoordinator {
                     session.sessionId(), agent.getName(), nowMs - session.phaseEnteredAtMs(), combat.kills(),
                     member.stage1CouponsLooted(), combat.attacks(), combat.hitLines(), combat.missLines(),
                     member.stage1PassAtMs() == 0L ? -1L : member.stage1PassAtMs() - session.phaseEnteredAtMs(),
-                    new java.util.TreeMap<>(member.stage1RoleMs()));
+                    new TreeMap<>(member.stage1RoleMs()));
         }
     }
 

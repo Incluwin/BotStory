@@ -2255,6 +2255,10 @@ tuning:
     # Purpose: Allows Stage 5 to recover when every monster is dead but one or more required passes have disappeared from inventories and the floor.
     # Technical: Recovery requires zero live Stage 5 monsters and zero visible floor passes, then records a structured warning before clearing the stage.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_MISSING_PASS_GRACE_MS: '7000'
+    # Values: 30000-600000 milliseconds. Recommended: 90000. Keep this well above a companion's climb from King Slime's floor to Cloto (about 2,300 px; roughly 25-40 s at the 140 px/s climb speed) and below KPQ_PHASE_TIMEOUT_MS.
+    # Purpose: Bounds how long a companion run's stage-5 companions try to bring their passes to the human leader before they drop them where they stand and tell the leader where they are.
+    # Technical: Measured from the session's pass hand-over; a PASS_DELIVERER still farther than NEAR_PX from the leader after it drops its passes on the spot, so the floor pickup and the STAGE5_MISSING_PASS_GRACE_MS recovery apply again.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS: '90000'
     # Values: 0-30000 milliseconds. Recommended: 7000. Set zero only for Agent-only servers that do not require a human-first loot window.
     # Purpose: Gives human party members exclusive first opportunity to pick up Squishy Shoes before the assigned Agent attempts the drop.
     # Technical: The timer begins when the live shoe drop is first observed; other Agents may advance while only the selected shoe collector waits.

@@ -61,6 +61,9 @@ class Stage5PassCarryTest {
     private static final String WAIT = "Ben, wait by cloto, we'll bring the passes.";
     private static final String AT_FEET = "Ben, the passes are at your feet. grab them and talk to cloto.";
     private static final String GRAB_SHOES = "i'll grab the squishy shoes.";
+    private static final String RIGHT_HERE = "Ben, can't get to you, i dropped the passes right here by me.";
+    private static final long HANDOVER_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS");
 
     private KpqRunFixture run;
     // The coordinator's own gateway is the real one; these are what its grind, move, stop, loot and drop calls reach.
@@ -253,6 +256,34 @@ class Stage5PassCarryTest {
         at(mira, BEN_BY_CLOTO.x + 30, BEN_BY_CLOTO.y);
         AgentKpqCoordinator.tick(session, 21_000L);
         AgentKpqCoordinator.tick(session, 28_100L);
+
+        verify(inventoryGateway, times(1))
+                .addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 10);
+    }
+
+    @Test
+    void oneThatCannotGetUpToTheLeaderLeavesThePassesWhereItIsAndSaysSo() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 10);
+
+        // They set out at 4.1 s, and Mira's route up never gets her near Ben.
+        AgentKpqCoordinator.tick(session, 2_000L);
+        long setOutMs = 4_100L;
+        for (long nowMs = setOutMs; nowMs < setOutMs + HANDOVER_MS; nowMs += 10_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+
+        AgentKpqCoordinator.tick(session, setOutMs + HANDOVER_MS);
+
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 10), times(1));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, RIGHT_HERE));
+        assertFalse(said().contains(AT_FEET), said()::toString);
+
+        // Gone from the floor before Ben fetches them, they are made up 7 s later, long before the phase timeout.
+        AgentKpqCoordinator.tick(session, setOutMs + HANDOVER_MS + 1_000L);
+        AgentKpqCoordinator.tick(session, setOutMs + HANDOVER_MS + 8_100L);
 
         verify(inventoryGateway, times(1))
                 .addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 10);

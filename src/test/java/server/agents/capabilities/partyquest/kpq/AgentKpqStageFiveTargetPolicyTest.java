@@ -13,6 +13,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.combat.CombatFormulaProvider;
 import server.life.Monster;
+import server.maps.MapItem;
 
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 /**
@@ -114,6 +116,8 @@ class AgentKpqStageFiveTargetPolicyTest {
 
             AgentKpqCoordinator.tick(session, 2_000L);
 
+            // Worked out once for all three this tick (two live types each), not again for each of them.
+            scoring.verify(() -> AgentAttackPlanScoringPolicy.expectedLineDamage(any(), any(), any()), times(6));
             objective.verify(() -> AgentCombatObjectiveTargetStateRuntime.setTargetPreferences(
                     eq(entry(2)), eq(Set.of(CURSE_EYE)), any()), atLeastOnce());
             objective.verify(() -> AgentCombatObjectiveTargetStateRuntime.setTargetPreferences(
@@ -138,6 +142,57 @@ class AgentKpqStageFiveTargetPolicyTest {
                 objective.verify(() -> AgentCombatObjectiveTargetStateRuntime.setTargetPreferences(
                         eq(entry(companion)), eq(Set.of(KING_SLIME)), any()), atLeastOnce());
             }
+        }
+    }
+
+    @Test
+    void whileTheShoesWinnerFetchesTheShoesItsTypeGoesToSomeoneElse() {
+        try (KpqRunFixture run = new KpqRunFixture();
+             KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class);
+             MockedStatic<AgentModeService> modes = mockStatic(AgentModeService.class);
+             MockedStatic<AgentModeStateRuntime> modeState = mockStatic(AgentModeStateRuntime.class);
+             MockedStatic<AgentFarmAnchorStateRuntime> farmAnchors = mockStatic(AgentFarmAnchorStateRuntime.class);
+             MockedStatic<AgentCombatVariationRuntime> variation = mockStatic(AgentCombatVariationRuntime.class);
+             MockedStatic<AgentCombatObjectiveTargetStateRuntime> objective =
+                     mockStatic(AgentCombatObjectiveTargetStateRuntime.class);
+             MockedStatic<AgentAttackPlanScoringPolicy> scoring = mockStatic(AgentAttackPlanScoringPolicy.class)) {
+            // A companion run: King Slime is down and his shoes lie on the floor while the others still live.
+            Character ben = onStageFive(run.human(1, "Ben"));
+            Character mira = onStageFive(run.companion(2, "Mira"));
+            Character pip = onStageFive(run.companion(3, "Pip"));
+            Character rurik = onStageFive(run.companion(4, "Rurik"));
+            AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip, rurik);
+            List<Monster> stillAlive = List.of(monster(JR_NECKI, Set.of()), monster(CURSE_EYE, Set.of()));
+            when(run.map.getAllMonsters()).thenReturn(stillAlive);
+            MapItem shoes = mock(MapItem.class);
+            when(shoes.getItemId()).thenReturn(AgentKpqDefinition.SQUISHY_SHOES);
+            when(run.map.getDroppedItems()).thenReturn(List.of(shoes));
+            // Pip alone covers the Curse Eyes; the seed makes him the shoes' winner.
+            Map<Integer, Map<Integer, Double>> damage = Map.of(
+                    2, Map.of(JR_NECKI, 100.0, CURSE_EYE, 90.0),
+                    3, Map.of(JR_NECKI, 1.0, CURSE_EYE, 35.0),
+                    4, Map.of(JR_NECKI, 120.0, CURSE_EYE, 30.0));
+            scoring.when(() -> AgentAttackPlanScoringPolicy.expectedLineDamage(any(), any(), any()))
+                    .thenAnswer(call -> damage.get(call.<Character>getArgument(1).getId())
+                            .get(call.<Monster>getArgument(2).getId()));
+
+            // King Slime's revive grace runs out at 4 s; the winner then waits out his 3 s loot delay.
+            AgentKpqCoordinator.tick(session, 2_000L);
+            AgentKpqCoordinator.tick(session, 4_100L);
+
+            assertEquals(3, session.squishyShoesWinnerId());
+            objective.verify(() -> AgentCombatObjectiveTargetStateRuntime.setTargetPreferences(
+                    eq(entry(2)), eq(Set.of(CURSE_EYE)), any()), atLeastOnce());
+
+            // Shoes in hand, Pip is back on the Curse Eyes.
+            when(pip.getItemQuantity(AgentKpqDefinition.SQUISHY_SHOES, false)).thenReturn(1);
+            AgentKpqCoordinator.tick(session, 5_000L);
+
+            String targets = "KPQ Stage 5 targets: session=" + session.sessionId() + " targets=";
+            assertEquals(List.of(targets + "[Mira:9300000, Pip:9300002, Rurik:9300000]",
+                            targets + "[Mira:9300002, Rurik:9300000]",
+                            targets + "[Mira:9300000, Pip:9300002, Rurik:9300000]"),
+                    log.startingWith("KPQ Stage 5 targets: "));
         }
     }
 
