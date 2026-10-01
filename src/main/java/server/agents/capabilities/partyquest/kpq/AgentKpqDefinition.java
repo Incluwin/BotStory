@@ -116,5 +116,13 @@ public final class AgentKpqDefinition {
         public boolean containsAny(Point point) {
             return point != null && positions.stream().anyMatch(area -> area.contains(point));
         }
+
+        /** The one-based position Cloto counts this point on, the first that contains it as 9020001.js does; 0 if none. */
+        public int firstContaining(Point point) {
+            for (int index = 0; point != null && index < positions.size(); index++) {
+                if (positions.get(index).contains(point)) return index + 1;
+            }
+            return 0;
+        }
     }
 }

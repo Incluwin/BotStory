@@ -33,6 +33,10 @@ import static org.mockito.Mockito.when;
 class HumanPuzzleVerdictTest {
     private static final AgentKpqDefinition.CombinationStage STAGE_2 = AgentKpqDefinition.combinationStage(2);
     private static final String CHECK = "Ben, please check this formation with Cloto.";
+    private static final long FULL_STABLE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.FORMATION_STABLE_MS");
+    private static final long HUMAN_LED_STABLE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HUMAN_LED_FORMATION_STABLE_MS");
 
     private KpqRunFixture run;
     private MockedStatic<AgentModeService> modes;
@@ -200,6 +204,120 @@ class HumanPuzzleVerdictTest {
         assertEquals(0, session.attemptIndex());
         assertEquals(formation, session.combination());
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), contains("check this formation")), never());
+    }
+
+    @Test
+    void aRejectionOfTheFormationAsPlacedCountsBeforeTheHoldEvenIfAMoverStepsOffAfter() {
+        Character ben = run.human(1, "Ben");
+        Character mira = run.companion(2, "Mira");
+        Character pip = run.companion(3, "Pip");
+        Character tobi = run.companion(4, "Tobi");
+        AgentKpqSession session = puzzleRun(true, ben, mira, pip, tobi);
+        holdTheirRopes(session, mira, pip, tobi);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        // Cloto judged them on their ropes, before they had held them long enough to be asked; then Pip slips.
+        AgentKpqSessionRegistry.recordHumanPuzzleValidation(ben.getId(), 2, false);
+        climbing(pip);
+        AgentKpqCoordinator.tick(session, 3_100L);
+
+        assertEquals(1, session.attemptIndex());
+        askedToCheck(never());
+
+        // Pip is back on his old rope and Ben clicks before the next formation is called: that formation is spent.
+        holdTheirRopes(session, pip);
+        AgentKpqSessionRegistry.recordHumanPuzzleValidation(ben.getId(), 2, false);
+        AgentKpqCoordinator.tick(session, 3_200L);
+        AgentKpqCoordinator.tick(session, 3_300L);
+
+        assertEquals(1, session.attemptIndex());
+    }
+
+    @Test
+    void aRejectionWhileAMoverIsOffItsRopeIsStillDropped() {
+        Character ben = run.human(1, "Ben");
+        Character mira = run.companion(2, "Mira");
+        Character pip = run.companion(3, "Pip");
+        Character tobi = run.companion(4, "Tobi");
+        AgentKpqSession session = puzzleRun(true, ben, mira, pip, tobi);
+        holdTheirRopes(session, mira, tobi);
+
+        AgentKpqSessionRegistry.recordHumanPuzzleValidation(ben.getId(), 2, false);
+        holdTheirRopes(session, pip);
+        AgentKpqCoordinator.tick(session, 3_000L);
+        AgentKpqCoordinator.tick(session, 4_000L);
+
+        assertEquals(0, session.attemptIndex());
+        askedToCheck(times(1));
+    }
+
+    @Test
+    void aRejectionWithTheLeaderOnTheSpareRopeIsDropped() {
+        Character ben = run.human(1, "Ben");
+        Character mira = run.companion(2, "Mira");
+        Character pip = run.companion(3, "Pip");
+        Character tobi = run.companion(4, "Tobi");
+        AgentKpqSession session = puzzleRun(true, ben, mira, pip, tobi);
+        holdTheirRopes(session, mira, pip, tobi);
+        int spare = java.util.stream.IntStream.rangeClosed(1, 4)
+                .filter(position -> !session.combination().contains(position)).findFirst().orElseThrow();
+        doReturn(STAGE_2.center(spare)).when(ben).getPosition();
+
+        // Cloto counted Ben on the fourth rope, so her "wrong" says nothing about the companions' three.
+        AgentKpqSessionRegistry.recordHumanPuzzleValidation(ben.getId(), 2, false);
+        AgentKpqCoordinator.tick(session, 3_000L);
+        AgentKpqCoordinator.tick(session, 4_000L);
+
+        assertEquals(0, session.attemptIndex());
+        askedToCheck(times(1));
+    }
+
+    @Test
+    void aCompanionRunAsksForTheCheckAfterTheShorterHold() {
+        Character ben = run.human(1, "Ben");
+        Character mira = run.companion(2, "Mira");
+        Character pip = run.companion(3, "Pip");
+        Character tobi = run.companion(4, "Tobi");
+        AgentKpqSession session = puzzleRun(true, ben, mira, pip, tobi);
+        holdTheirRopes(session, mira, pip, tobi);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        AgentKpqCoordinator.tick(session, 3_000L + HUMAN_LED_STABLE_MS - 1L);
+        askedToCheck(never());
+        AgentKpqCoordinator.tick(session, 3_000L + HUMAN_LED_STABLE_MS);
+        askedToCheck(times(1));
+    }
+
+    @Test
+    void aStockHumanLedRunStillHoldsTheFullTimeAndDropsAnEarlyRejection() {
+        Character ben = run.human(1, "Ben");
+        Character mira = run.companion(2, "Mira");
+        Character pip = run.companion(3, "Pip");
+        Character tobi = run.companion(4, "Tobi");
+        AgentKpqSession session = puzzleRun(false, ben, mira, pip, tobi);
+        holdTheirRopes(session, mira, pip, tobi);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        AgentKpqSessionRegistry.recordHumanPuzzleValidation(ben.getId(), 2, false);
+        AgentKpqCoordinator.tick(session, 3_000L + HUMAN_LED_STABLE_MS);
+        askedToCheck(never());
+        AgentKpqCoordinator.tick(session, 3_000L + FULL_STABLE_MS);
+
+        assertEquals(0, session.attemptIndex());
+        askedToCheck(times(1));
+    }
+
+    /** Ben leads from beside Cloto, off every rope, and the first formation has just been called. */
+    private AgentKpqSession puzzleRun(boolean companionRun, Character ben, Character... companions) {
+        Character[] members = new Character[companions.length + 1];
+        members[0] = ben;
+        System.arraycopy(companions, 0, members, 1, companions.length);
+        AgentKpqSession session = run.session(companionRun, AgentKpqSession.Phase.STAGE_2, members);
+        onStageTwo(members);
+        climbing(members);
+        when(run.event.getPlayers()).thenReturn(List.of(members));
+        AgentKpqCoordinator.tick(session, 2_000L);
+        return session;
     }
 
     private void askedToCheck(VerificationMode mode) {

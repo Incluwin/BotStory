@@ -80,6 +80,9 @@ public final class AgentKpqSession {
     private long stage5CleanupDeadlineMs;
     private long stage5BossCombatStartedAtMs;
     private boolean stage5BossCombatReported;
+    private int stage5MobsSeen = -1;
+    private long stage5ReachedAtMs;
+    private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
 
     public AgentKpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
@@ -240,8 +243,12 @@ public final class AgentKpqSession {
         stage5LootNotBeforeMs = 0L;
         stage5CleanupStartedAtMs = 0L;
         stage5CleanupDeadlineMs = 0L;
-        stage5BossCombatStartedAtMs = 0L;
-        stage5BossCombatReported = false;
+        // Companions fight King Slime while the leader still climbs stage 4; a fight under way is reported whole.
+        boolean bossFightUnderWay = stage5BossCombatStartedAtMs > 0L && !stage5BossCombatReported;
+        if (!bossFightUnderWay) {
+            stage5BossCombatStartedAtMs = 0L;
+            stage5BossCombatReported = false;
+        }
         dialogueTimes.clear();
         dialogueWaitStartedAtMs.clear();
         members.values().forEach(member -> {
@@ -251,7 +258,7 @@ public final class AgentKpqSession {
             member.setFidgetedAttemptId(-1);
             member.clearFidget();
             member.clearBlocker();
-            member.resetStage5BossCombat();
+            if (!bossFightUnderWay) member.resetStage5BossCombat();
         });
     }
 
@@ -310,17 +317,23 @@ public final class AgentKpqSession {
      * Cloto judges whoever stands on the puzzle at the moment the human leader clicks her. Live (2026-09-30) the
      * leader clicked while the companions were still climbing to their spots; her "wrong" waited until they stood
      * still, then dropped a formation nobody had checked, and Stage 2 alone took 10 minutes. A rejection therefore
-     * counts only while the coordinator holds this attempt's formation ready. An early one is dropped, and the leader
-     * is asked again. An acceptance always counts, since Cloto has already cleared the stage.
+     * counts only while the coordinator holds this attempt's formation ready, or when {@code placementHeld} says she
+     * saw it anyway: every participant on its own spot and nobody else on one, as read while she judged. Waiting out
+     * the hold for that cost every wrong check of a companion run about a second. An early one is dropped, and the
+     * leader is asked again. An acceptance always counts, since Cloto has already cleared the stage.
+     *
+     * @return how the verdict was taken, for the log
      */
-    public synchronized void recordHumanPuzzleValidation(int stage, boolean accepted) {
-        if (!accepted && formationReadyAttemptId != attemptId) {
+    public synchronized String recordHumanPuzzleValidation(int stage, boolean accepted, boolean placementHeld) {
+        boolean formationReady = formationReadyAttemptId == attemptId;
+        if (!accepted && !formationReady && !placementHeld) {
             earlyPuzzleRejections++;
-            return;
+            return "dropped-early";
         }
         puzzleValidationStage = stage;
         puzzleValidationAccepted = accepted;
         puzzleValidationRevision++;
+        return accepted ? "accepted" : formationReady ? "rejected" : "rejected-as-placed";
     }
 
     public synchronized PuzzleValidation consumeHumanPuzzleValidation(int stage) {
@@ -330,6 +343,12 @@ public final class AgentKpqSession {
         }
         consumedPuzzleValidationRevision = puzzleValidationRevision;
         return new PuzzleValidation(puzzleValidationRevision, puzzleValidationAccepted);
+    }
+
+    /** Takes a counted rejection without waiting for the formation to hold; an acceptance is left for later. */
+    synchronized boolean consumeHumanPuzzleRejection(int stage) {
+        if (puzzleValidationAccepted) return false;
+        return consumeHumanPuzzleValidation(stage) != null;
     }
 
     /** Every participant of the current attempt stands in place and has held still for the settle time. */
@@ -511,6 +530,27 @@ public final class AgentKpqSession {
     public synchronized boolean claimStage5BossCombatReport() {
         if (stage5BossCombatStartedAtMs <= 0L || stage5BossCombatReported) return false;
         stage5BossCombatReported = true;
+        return true;
+    }
+
+    /**
+     * Records the live stage-5 monster count a member there sees, in or before the STAGE_5 phase, and returns how many
+     * died since the last sighting. The first sighting is when the run reached stage 5; no phase change resets it.
+     */
+    synchronized int observeStage5Mobs(int alive, long nowMs) {
+        if (stage5MobsSeen < 0) stage5ReachedAtMs = nowMs;
+        int died = stage5MobsSeen < 0 ? 0 : Math.max(0, stage5MobsSeen - alive);
+        stage5MobsSeen = alive;
+        return died;
+    }
+
+    synchronized long stage5ReachedAtMs() {
+        return stage5ReachedAtMs;
+    }
+
+    synchronized boolean claimStageOneSummary() {
+        if (stageOneSummarized) return false;
+        stageOneSummarized = true;
         return true;
     }
 

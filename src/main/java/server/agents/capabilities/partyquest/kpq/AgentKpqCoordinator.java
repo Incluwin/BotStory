@@ -24,6 +24,7 @@ import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.looting.AgentLootCollectionPolicyConfig;
 import server.agents.capabilities.looting.AgentLootEligibility;
 import server.agents.field.AgentFieldObservationState;
+import server.agents.operations.events.AgentOperationalEventProjectionState;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import scripting.event.EventInstanceManager;
@@ -50,6 +51,18 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.KING_SLIME_REVIVE_GRACE_MS");
     private static final long FORMATION_STABLE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.FORMATION_STABLE_MS");
+    private static final long HUMAN_LED_FORMATION_STABLE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HUMAN_LED_FORMATION_STABLE_MS");
+    private static final long FORMATION_MOVER_DELAY_PER_SLOT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.FORMATION_MOVER_DELAY_PER_SLOT_MS");
+    private static final long FORMATION_MOVER_DELAY_SPREAD_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.FORMATION_MOVER_DELAY_SPREAD_MS");
+    private static final long STAGE_MOVEMENT_DELAY_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE_MOVEMENT_DELAY_MS");
+    private static final long STAGE_MOVEMENT_DELAY_PER_SLOT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE_MOVEMENT_DELAY_PER_SLOT_MS");
+    private static final long STAGE_MOVEMENT_DELAY_SPREAD_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE_MOVEMENT_DELAY_SPREAD_MS");
     private static final long KPQ_PHASE_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.KPQ_PHASE_TIMEOUT_MS");
     private static final long COUPON_SWEEP_INTERVAL_MS = config.AgentTuning.longValue(
@@ -100,6 +113,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.GATHER_RADIUS_PX");
     private static final int HELPER_ANCHOR_MOVE_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HELPER_ANCHOR_MOVE_PX");
+    private static final int STAGE4_LEADER_BELOW_CLOTO_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE4_LEADER_BELOW_CLOTO_PX");
 
     private AgentKpqCoordinator() {
     }
@@ -287,6 +302,10 @@ final class AgentKpqCoordinator {
                 }
                 coordinate(session, narrator, "entered", "We're in. Ask Cloto for your coupon number.");
                 initializeStageMovementDelays(session, 1, nowMs);
+                for (AgentKpqMemberState member : session.members()) {
+                    AgentRuntimeEntry entry = entry(member.characterId());
+                    if (entry != null) member.beginStage1Tally(combatCounts(entry, nowMs), nowMs);
+                }
                 transition(session, AgentKpqSession.Phase.STAGE_1, nowMs);
             } else if (blockedTooLong(session, "enter-partial-party", nowMs)) {
                 fail(session, "Only part of the party entered the KPQ instance", nowMs);
@@ -322,7 +341,9 @@ final class AgentKpqCoordinator {
 
     private static void stage1(
             AgentKpqSession session, Character leader, Character narrator, long nowMs) {
+        session.members().forEach(member -> member.tallyStage1Role(nowMs));
         if ("true".equals(KPQ.property(leader, "1stageclear"))) {
+            if (session.claimStageOneSummary()) reportStageOne(session, nowMs);
             clearStageOneLandingSafety(session, leader);
             clearCouponLootObjectives(session);
             enterNextPortal(session, 2, nowMs);
@@ -369,7 +390,7 @@ final class AgentKpqCoordinator {
             }
             if (member.memberType() == AgentKpqMemberState.MemberType.HUMAN) {
                 if (member.characterId() != session.eventLeaderId()) {
-                    if (KPQ.playerGrid(agent) == 0) member.markPassCreated();
+                    if (KPQ.playerGrid(agent) == 0) member.markPassCreated(nowMs);
                     if (member.passCreated()
                             && agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false) == 0) {
                         member.markPassDelivered();
@@ -445,6 +466,7 @@ final class AgentKpqCoordinator {
                 member.setRole(AgentKpqMemberState.Role.COUPON_COLLECTOR);
                 allDelivered = false;
                 int have = agent.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false);
+                member.tallyStage1Coupons(have);
                 reportCouponProgress(session, agent, member, have);
                 if (member.couponTarget() > 0 && have >= member.couponTarget()) {
                     cancelStageOneLandingSafety(member, entry, agent);
@@ -468,7 +490,7 @@ final class AgentKpqCoordinator {
                     KPQ.runNpc(agent, AgentKpqDefinition.CLOTO_NPC);
                     if (agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false) > 0) {
                         member.clearBlocker();
-                        member.markPassCreated();
+                        member.markPassCreated(nowMs);
                         member.setActionNotBeforeMs(0L);
                         member.setRole(AgentKpqMemberState.Role.PASS_DELIVERER);
                         session.markProgress(nowMs);
@@ -634,6 +656,7 @@ final class AgentKpqCoordinator {
                         leader.getName() + ", please talk to Cloto to begin Stage " + stage + '.');
                 AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
                         "talk to Cloto to begin Stage " + stage, nowMs);
+                if (stage == 4 && !leaderParticipates) inviteLeaderUpToCloto(session, leader, narrator);
             }
             return;
         }
@@ -662,6 +685,14 @@ final class AgentKpqCoordinator {
                         formationInstruction(movers, leader));
             }
         }
+        boolean humanLeader = !isAgent(session, leader.getId());
+        // A rejection Cloto gave the formation as it stood counts now, even if a mover has stepped off since.
+        if (humanLeader && session.consumeHumanPuzzleRejection(stage)) {
+            advancePuzzleAttempt(session, leader, definition, order.size(), attempt, nowMs);
+            return;
+        }
+        long formationStableMs = humanLeader && session.companionAdopted()
+                ? HUMAN_LED_FORMATION_STABLE_MS : FORMATION_STABLE_MS;
         boolean stable = true;
         for (AgentKpqMemberState participant : participants.subList(0, 3)) {
             Character agent = memberCharacter(participant.characterId(), leader);
@@ -708,7 +739,7 @@ final class AgentKpqCoordinator {
                 if (entry != null) ACTIONS.stop(entry);
                 participant.setStableSinceMs(nowMs);
                 stable = false;
-            } else if (nowMs - participant.stableSinceMs() < FORMATION_STABLE_MS) {
+            } else if (nowMs - participant.stableSinceMs() < formationStableMs) {
                 stable = false;
             }
             if (puzzlePositionReady(definition, participant.assignedPosition(),
@@ -760,7 +791,7 @@ final class AgentKpqCoordinator {
                                 .toList());
             }
         }
-        if (!isAgent(session, leader.getId())) {
+        if (humanLeader) {
             AgentKpqSession.PuzzleValidation validation = session.consumeHumanPuzzleValidation(stage);
             if (validation == null) {
                 // Asked again when a reset forms the attempt anew, and after each rejection dropped as early.
@@ -788,6 +819,24 @@ final class AgentKpqCoordinator {
         if (!"true".equals(KPQ.property(leader, definition.clearProperty()))) {
             advancePuzzleAttempt(session, leader, definition, order.size(), attempt, nowMs);
         }
+    }
+
+    /**
+     * Stage 4 starts at the bottom of a long staircase, and its way out is at the top beside Cloto. Live (run 6) the
+     * human leader stayed below for the whole puzzle and then took seven minutes to climb out while the passes waited
+     * on stage 5. A companion run asks the leader up once, in passing, and warns off the barrels, since Cloto counts
+     * anyone standing on one. A leader who must stand on a barrel (three members) is not asked: the formation call
+     * gives it its barrel.
+     */
+    private static void inviteLeaderUpToCloto(AgentKpqSession session, Character leader, Character narrator) {
+        Point cloto = ACTIONS.npcPosition(leader, AgentKpqDefinition.CLOTO_NPC);
+        if (!session.companionAdopted() || cloto == null || leader.getPosition() == null
+                || leader.getMapId() != AgentKpqDefinition.STAGE_4_MAP
+                || leader.getPosition().y - cloto.y <= STAGE4_LEADER_BELOW_CLOTO_PX) {
+            return;
+        }
+        narrate(session, narrator != null ? narrator : firstStandingAgent(session), "stage4-come-up",
+                leader.getName() + ", come on up by Cloto, the way out's at the top. stay off the barrels.");
     }
 
     private static void stage5(
@@ -823,6 +872,14 @@ final class AgentKpqCoordinator {
         if (session.observeStage5Progress(stage5MobCount, leaderPasses)) session.markProgress(nowMs);
         boolean returningToCloto = stageFiveReadyToReturn(
                 leaderPasses, normalAlive, bossAlive, reviveGraceActive);
+        if (returningToCloto && !agentLeader) {
+            // Said before the shoes window and the drop cleanup below: after them a leader holding all ten waited
+            // another 6-17 s to hear it.
+            coordinate(session, narrator, "human-stage5-submit",
+                    leader.getName() + ", you have 10/10 passes. Please talk to Cloto.");
+            AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
+                    "talk to Cloto with the 10 passes", nowMs);
+        }
         boolean shoesPending = returningToCloto && handleSquishyShoes(session, leader, nowMs);
         if (returningToCloto && shoesPending) {
             int winnerId = session.squishyShoesWinnerId();
@@ -867,13 +924,7 @@ final class AgentKpqCoordinator {
         }
         session.setMissingPassSinceMs(0L);
         if (returningToCloto) {
-            if (!agentLeader) {
-                coordinate(session, narrator, "human-stage5-submit",
-                        leader.getName() + ", you have 10/10 passes. Please talk to Cloto.");
-                AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
-                        "talk to Cloto with the 10 passes", nowMs);
-                return;
-            }
+            if (!agentLeader) return;
             AgentKpqMemberState leaderState = session.member(session.eventLeaderId());
             Point approach = npcApproachPoint(session, leaderState, leader,
                     ACTIONS.npcPosition(leader, AgentKpqDefinition.CLOTO_NPC), 501);
@@ -912,8 +963,23 @@ final class AgentKpqCoordinator {
                 .noneMatch(member -> member.characterId() == leaderId);
     }
 
+    /**
+     * Times each stage-5 death and King Slime's fight from whichever member is there first. Live (run 6) the
+     * companions killed all ten while the leader still climbed out of stage 4; the boss had been dead a minute when
+     * the STAGE_5 phase began, so its fight was never reported and the kill time read as the leader's.
+     */
     private static void observeStageFiveBossCombat(
             AgentKpqSession session, int normalAlive, int bossAlive, long nowMs) {
+        boolean firstSighting = session.stage5ReachedAtMs() == 0L;
+        int died = session.observeStage5Mobs(normalAlive + bossAlive, nowMs);
+        if (firstSighting) {
+            log.info("KPQ Stage 5 reached: session={} alive={} phase={} runMs={}",
+                    session.sessionId(), normalAlive + bossAlive, session.phase(), nowMs - session.startedAtMs());
+        } else if (died > 0) {
+            log.info("KPQ Stage 5 mobs died: session={} died={} alive={} boss={} sinceReachedMs={} phase={}",
+                    session.sessionId(), died, normalAlive + bossAlive, bossAlive,
+                    nowMs - session.stage5ReachedAtMs(), session.phase());
+        }
         if (normalAlive == 0 && bossAlive > 0 && session.beginStage5BossCombat(nowMs)) {
             for (AgentKpqMemberState member : session.members()) {
                 if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) continue;
@@ -1146,6 +1212,15 @@ final class AgentKpqCoordinator {
 
     private static void enterNextPortal(AgentKpqSession session, int nextStage, long nowMs) {
         int expectedMap = AgentKpqDefinition.STAGE_1_MAP + nextStage - 1;
+        if (nextStage == 5) {
+            session.members().stream()
+                    .map(member -> memberCharacter(member.characterId(), leader(session)))
+                    .filter(character -> character != null && character.getMapId() == expectedMap)
+                    .findFirst()
+                    .ifPresent(there -> observeStageFiveBossCombat(session,
+                            ACTIONS.liveMonsterCount(there, STAGE_5_NORMAL_MOBS),
+                            ACTIONS.liveMonsterCount(there, STAGE_5_BOSS_MOBS), nowMs));
+        }
         boolean allThere = true;
         for (AgentKpqMemberState member : session.members()) {
             Character agent = memberCharacter(member.characterId(), leader(session));
@@ -1247,8 +1322,9 @@ final class AgentKpqCoordinator {
             if (!retained.contains(member.assignedPosition())) {
                 member.setAssignedPosition(open.get(openIndex++));
                 movers.add(member);
-                member.setActionNotBeforeMs(nowMs + 180L * member.partyNumber()
-                        + Math.floorMod(seed + attemptId * 31L + member.characterId(), 220L));
+                member.setActionNotBeforeMs(nowMs + FORMATION_MOVER_DELAY_PER_SLOT_MS * member.partyNumber()
+                        + Math.floorMod(seed + attemptId * 31L + member.characterId(),
+                        Math.max(1L, FORMATION_MOVER_DELAY_SPREAD_MS)));
             } else {
                 member.setActionNotBeforeMs(nowMs);
             }
@@ -1306,7 +1382,11 @@ final class AgentKpqCoordinator {
         return String.join("; ", assignments) + '.';
     }
 
+    /** One line per phase with its time: a run's pace reads straight from the log instead of a 1 Hz sampler. */
     private static void transition(AgentKpqSession session, AgentKpqSession.Phase phase, long nowMs) {
+        log.info("KPQ phase: session={} {}->{} phaseMs={} runMs={} earlyRejections={} companionRun={}",
+                session.sessionId(), session.phase(), phase, nowMs - session.phaseEnteredAtMs(),
+                nowMs - session.startedAtMs(), session.earlyPuzzleRejections(), session.companionAdopted());
         session.transition(phase, nowMs);
     }
 
@@ -2746,6 +2826,38 @@ final class AgentKpqCoordinator {
                 && (definition.holdMode() != AgentKpqDefinition.HoldMode.GROUNDED || grounded);
     }
 
+    /**
+     * Whether Cloto, judging now, sees this attempt's formation as assigned: every participant on its own spot and no
+     * other live party member on any. Each event member of the leader's live party counts on the first spot that
+     * contains it, as rectangleStages in 9020001.js counts. Read while she judges, under the session's monitor: by the
+     * coordinator's next tick a mover may have stepped off.
+     */
+    static boolean formationStandsAsAssigned(AgentKpqSession session, int stage) {
+        AgentKpqDefinition.CombinationStage definition = AgentKpqDefinition.combinationStage(stage);
+        List<List<Integer>> order = AgentKpqCombinationOrder.forPositionCount(definition.positions().size());
+        List<AgentKpqMemberState> participants = participants(session);
+        Character leader = eventLeader(session);
+        server.agents.integration.AgentPartySnapshot party =
+                leader == null ? null : AgentPartyGatewayRuntime.party().snapshot(leader);
+        if (party == null || participants.size() < 3 || session.attemptIndex() >= order.size()
+                || !order.get(session.attemptIndex()).equals(session.combination())) {
+            return false;
+        }
+        java.util.Map<Integer, Integer> assigned = new java.util.HashMap<>();
+        participants.subList(0, 3).forEach(member -> assigned.put(member.characterId(), member.assignedPosition()));
+        Set<Integer> livePartyIds = party.members().stream().filter(java.util.Objects::nonNull)
+                .map(server.agents.integration.AgentPartyMemberSnapshot::id)
+                .collect(java.util.stream.Collectors.toSet());
+        int placed = 0;
+        for (Character member : KPQ.eventMembers(leader)) {
+            if (!livePartyIds.contains(member.getId())) continue;
+            int spot = definition.firstContaining(member.getPosition());
+            if (spot != assigned.getOrDefault(member.getId(), 0)) return false;
+            if (spot > 0) placed++;
+        }
+        return placed == assigned.size();
+    }
+
     private static void prePositionAfterEntry(AgentKpqSession session,
                                               AgentKpqMemberState member,
                                               Character agent,
@@ -2800,8 +2912,9 @@ final class AgentKpqCoordinator {
     }
 
     static long stageMovementDelayMs(long seed, AgentKpqMemberState member, int stage) {
-        return 140L + 170L * Math.max(1, member.partyNumber())
-                + Math.floorMod(seed + member.characterId() * 43L + stage * 101L, 180L);
+        return STAGE_MOVEMENT_DELAY_MS + STAGE_MOVEMENT_DELAY_PER_SLOT_MS * Math.max(1, member.partyNumber())
+                + Math.floorMod(seed + member.characterId() * 43L + stage * 101L,
+                Math.max(1L, STAGE_MOVEMENT_DELAY_SPREAD_MS));
     }
 
     private static void moveTowardStageOneExit(
@@ -2843,6 +2956,36 @@ final class AgentKpqCoordinator {
         }
         if (have >= target && previous < 100 && !crossed.contains(100)) crossed.add(100);
         return List.copyOf(crossed);
+    }
+
+    /**
+     * One line per Agent at the stage-1 clear: what it killed, looted and missed, how long it spent in each role, and
+     * when its pass came (the gap between the last two is the tail one collector works alone).
+     */
+    private static void reportStageOne(AgentKpqSession session, long nowMs) {
+        for (AgentKpqMemberState member : session.members()) {
+            AgentRuntimeEntry entry = entry(member.characterId());
+            Character agent = character(member.characterId());
+            if (member.memberType() != AgentKpqMemberState.MemberType.AGENT || entry == null || agent == null) {
+                continue;
+            }
+            AgentKpqMemberState.CombatCounts combat = member.stage1Combat(combatCounts(entry, nowMs));
+            log.info("KPQ Stage 1 summary: session={} agent={} stageMs={} kills={} coupons={} attacks={} hits={} "
+                            + "misses={} passAtMs={} roleMs={}",
+                    session.sessionId(), agent.getName(), nowMs - session.phaseEnteredAtMs(), combat.kills(),
+                    member.stage1CouponsLooted(), combat.attacks(), combat.hitLines(), combat.missLines(),
+                    member.stage1PassAtMs() == 0L ? -1L : member.stage1PassAtMs() - session.phaseEnteredAtMs(),
+                    new java.util.TreeMap<>(member.stage1RoleMs()));
+        }
+    }
+
+    /** The kills and attack lines an Agent has had since it logged in; a stage's figures are differences. */
+    private static AgentKpqMemberState.CombatCounts combatCounts(AgentRuntimeEntry entry, long nowMs) {
+        AgentFieldObservationState.Snapshot field = entry.capabilityStates()
+                .require(AgentFieldObservationState.STATE_KEY).snapshot(nowMs);
+        long kills = entry.capabilityStates()
+                .require(AgentOperationalEventProjectionState.STATE_KEY).snapshot().kills();
+        return new AgentKpqMemberState.CombatCounts(kills, field.attacks(), field.hitLines(), field.missLines());
     }
 
     private static void reportLeaderPassProgress(AgentKpqSession session,

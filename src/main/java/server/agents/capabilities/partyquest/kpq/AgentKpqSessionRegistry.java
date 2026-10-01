@@ -1,6 +1,8 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import client.Character;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Map;
@@ -8,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Indexes active KPQ sessions by session, operator, and member without touching Agent entries. */
 public final class AgentKpqSessionRegistry {
+    private static final Logger log = LoggerFactory.getLogger(AgentKpqSessionRegistry.class);
     private static final Map<String, AgentKpqSession> sessions = new ConcurrentHashMap<>();
     private static final Map<Integer, String> sessionByMember = new ConcurrentHashMap<>();
     private static final Map<Integer, String> sessionByOperator = new ConcurrentHashMap<>();
@@ -93,7 +96,10 @@ public final class AgentKpqSessionRegistry {
                 && session.squishyShoesWinnerId() == characterId;
     }
 
-    /** Called by Cloto's ordinary NPC script after a human event leader checks a puzzle formation. */
+    /**
+     * Called by Cloto's ordinary NPC script after a human event leader checks a puzzle formation. In a companion run
+     * where everyone stands is read here, on the script thread, while she judges.
+     */
     public static void recordHumanPuzzleValidation(int characterId, int stage, boolean accepted) {
         AgentKpqSession session = forMember(characterId);
         AgentKpqMemberState member = session == null ? null : session.member(characterId);
@@ -101,7 +107,16 @@ public final class AgentKpqSessionRegistry {
                 || member.memberType() != AgentKpqMemberState.MemberType.HUMAN) {
             return;
         }
-        session.recordHumanPuzzleValidation(stage, accepted);
+        String verdict;
+        int attempt;
+        synchronized (session) {
+            boolean placementHeld = !accepted && session.companionAdopted()
+                    && AgentKpqCoordinator.formationStandsAsAssigned(session, stage);
+            verdict = session.recordHumanPuzzleValidation(stage, accepted, placementHeld);
+            attempt = session.attemptIndex();
+        }
+        log.info("KPQ human puzzle verdict: session={} stage={} attempt={} verdict={} companionRun={}",
+                session.sessionId(), stage, attempt, verdict, session.companionAdopted());
     }
 
     public static boolean isManagedEvent(Character character) {

@@ -12,6 +12,9 @@ import server.agents.capabilities.combat.AgentCombatVariationRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.capabilities.movement.AgentGroundingService;
+import server.agents.field.AgentFieldObservationState;
+import server.agents.operations.events.AgentMobKilledEvent;
+import server.agents.operations.events.AgentOperationalEventProjectionState;
 import server.agents.plans.AgentScriptItemActionService;
 import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
@@ -296,6 +299,50 @@ class StageOnePaceTest {
                 entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
         assertEquals(AgentKpqMemberState.Role.COMBAT_HELPER, session.member(2).role());
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASSES_AT_FEET)), never());
+    }
+
+    @Test
+    void theClearLogsWhatEachCompanionDidInStageOne() {
+        Character ben = at(run.human(1, "Ben"), 0, 0);
+        Character mira = at(run.companion(2, "Mira"), 500, 0);
+        Character pip = at(run.companion(3, "Pip"), 20, 0);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.ENTERING, ben, mira, pip);
+        // What Mira did before this run is not stage 1's.
+        kill(mira, 1);
+        entry(2).capabilityStates().require(AgentFieldObservationState.STATE_KEY).attack(1, 0);
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            AgentKpqCoordinator.tick(session, 2_000L);
+            collecting(session, mira, 0);
+            session.member(3).markPassCreated(2_500L);
+            holdingPass(session, pip);
+            when(mira.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(4);
+            AgentKpqCoordinator.tick(session, 3_000L);
+            kill(mira, 2);
+            kill(mira, 3);
+            AgentFieldObservationState field = entry(2).capabilityStates().require(AgentFieldObservationState.STATE_KEY);
+            field.attack(1, 0);
+            field.attack(1, 0);
+            field.attack(0, 1);
+            when(mira.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(10);
+            AgentKpqCoordinator.tick(session, 4_000L);
+            when(run.event.getProperty("1stageclear")).thenReturn("true");
+            AgentKpqCoordinator.tick(session, 5_000L);
+            AgentKpqCoordinator.tick(session, 6_000L);
+
+            String id = session.sessionId();
+            assertEquals(List.of(
+                            "KPQ Stage 1 summary: session=" + id + " agent=Mira stageMs=3000 kills=2 coupons=10 "
+                                    + "attacks=3 hits=2 misses=1 passAtMs=-1 roleMs={COUPON_COLLECTOR=3000}",
+                            "KPQ Stage 1 summary: session=" + id + " agent=Pip stageMs=3000 kills=0 coupons=0 "
+                                    + "attacks=0 hits=0 misses=0 passAtMs=500 roleMs={PASS_DELIVERER=3000}"),
+                    log.startingWith("KPQ Stage 1 summary: "));
+        }
+    }
+
+    private static void kill(Character companion, int mobObjectId) {
+        entry(companion.getId()).capabilityStates().require(AgentOperationalEventProjectionState.STATE_KEY)
+                .record(new AgentMobKilledEvent(companion.getId(), 0L, AgentKpqDefinition.STAGE_1_MAP,
+                        9_300_001, mobObjectId, 32, ""));
     }
 
     private static AgentRuntimeEntry entry(int companionId) {
