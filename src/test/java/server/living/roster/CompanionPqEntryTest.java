@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import client.Client;
 import client.Job;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
@@ -8,6 +9,8 @@ import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import scripting.npc.NPCConversationManager;
+import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.living.config.Content.Persona;
@@ -24,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -38,9 +42,12 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * Yes at Lakelis (P6, flow 3): the companions left out step out of the party beside Lakelis first (a HOLD, saying so
  * aloud), then, back on Ann's I/O thread, the lineup is admitted, marked a companion run with guidance, committed
  * with its extras, and the event started, in that order and in one step. A refused admission is answered in
- * Lakelis's words and calls the extras back; so does a party that changed meanwhile, without admitting anyone. A lineup
+ * Lakelis's words and calls the extras back; so does a party that changed meanwhile, without admitting anyone. One that
+ * refuses a companion still finishing something shows the lineup again at once, for a Yes that goes in; a Yes while it
+ * is at it still, under half a minute later, is answered the same at once and steps nobody out. A lineup
  * of humans only takes the stock start. A second Yes while the first is carried out only hears "hold on"; one that
- * threw is over all the same. A Yes on her own choice is planned again by her own choice.
+ * threw is over all the same. A Yes on her own choice is planned again by her own choice. A companion the lineup leaves
+ * waiting for mana potions asks for some in party chat, once, as the lineup is shown.
  */
 class CompanionPqEntryTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -129,7 +136,7 @@ class CompanionPqEntryTest {
 
     @Test
     void admitFailureSpeaksTheMappedLineAndRejoinsTheHolds() {
-        fx.doors.refusal = "Tobi could not leave its current activity";
+        fx.doors.refusal = "Tobi is not owned by this KPQ lobby";
         fx.ready();
 
         CompanionRun run = fx.yes();
@@ -143,6 +150,89 @@ class CompanionPqEntryTest {
         assertEquals(RosterState.ACTIVE, game.row(casse).state(), "called back");
         assertEquals(RosterState.ACTIVE, game.row(hadrik).state());
         assertTrue(game.members.containsAll(List.of(903, 904)));
+    }
+
+    @Test
+    void aCompanionStillFinishingSomethingIsAnsweredWithTheLineupAgainAndTheNextYesGoesIn() {
+        fx.doors.refusal = "Tobi could not leave its current activity"; // live: HappyWolf at 19:56, Rurik at 19:58
+        fx.ready();
+
+        assertNull(fx.yes());
+
+        assertEquals(List.of("still finishing: Give Tobi a sec, they're finishing something."),
+                game.calls.stream().filter(call -> call.startsWith("still") || call.startsWith("answer")).toList());
+        assertEquals(List.of(ANN, 900, 901, 902), List.copyOf(fx.shownAgain.memberIds()), "the same lineup");
+        assertTrue(fx.shownAgain.startable(), "Yes is one click away");
+        assertEquals(RosterState.ACTIVE, game.row(casse).state(), "called back meanwhile");
+
+        fx.doors.refusal = null; // its step is done
+        fx.service.start(game.ann, fx.shownAgain);
+
+        assertEquals(2, game.calls.stream().filter(call -> call.startsWith("admit")).count());
+        assertTrue(game.calls.contains("start"));
+        assertTrue(fx.service.runForSession(fx.doors.session.sessionId()).started);
+    }
+
+    @Test
+    void aCompanionStillFinishingSomethingIsNeverWaitedFor() {
+        fx.doors.refusal = "Tobi could not leave its current activity";
+        fx.ready();
+        List<Runnable> ops = fx.holdCompanionOps();
+        fx.io = new ArrayList<>();
+
+        fx.yes(); // Ann's click returns at once: the extras step out on companion-ops
+        CompanionPqFixture.drain(ops);
+        CompanionPqFixture.drain(fx.io); // admission, refused, and the answer: one pass on Ann's I/O thread
+        CompanionPqFixture.drain(ops); // the extras come back
+
+        assertEquals(1, game.calls.stream().filter(call -> call.startsWith("admit")).count(), "no retry loop");
+        assertTrue(game.calls.contains("still finishing: Give Tobi a sec, they're finishing something."));
+        assertEquals(List.of(), game.timers, "no timer to try again");
+        assertEquals(List.of(), fx.io, "nothing left to run on Ann's I/O thread");
+        assertEquals(List.of(), ops);
+        assertEquals(List.of("Casse", "Hadrik"), fx.shownAgain.extras().stream().map(LineupPlan.Seat::name).toList(),
+                "the lineup Ann said Yes to, though its extras were still out of the party as it was answered");
+        assertEquals(List.of("low on potions", "Lv32, too seasoned for this"),
+                fx.shownAgain.waiting().stream().map(LineupPlan.Waiting::reason).toList());
+    }
+
+    @Test
+    void aYesWhileItIsStillAtItIsAnsweredAtOnceAndTheExtrasStayPut() {
+        fx.doors.refusal = "Tobi could not leave its current activity";
+        fx.ready();
+        fx.yes();
+        fx.doors.finishing.add(901); // Tobi's step is not done yet
+        game.calls.clear();
+        fx.dialogue.clearInvocations();
+
+        fx.service.start(game.ann, fx.shownAgain); // Ann clicks Yes again a few seconds later
+
+        assertEquals(List.of("still finishing: Give Tobi a sec, they're finishing something."), game.calls,
+                "nobody steps out and back, and admission is not asked again");
+        assertEquals(RosterState.ACTIVE, game.row(casse).state());
+        fx.dialogue.verify(() -> AgentDialogueTransportRuntime.sayMapNow(any(), anyString()), never());
+
+        fx.doors.finishing.clear(); // done
+        fx.doors.refusal = null;
+        fx.service.start(game.ann, fx.shownAgain);
+
+        assertTrue(game.calls.contains("start"), game.calls.toString());
+    }
+
+    @Test
+    void aYesHalfAMinuteLaterOrWithoutItAsksAdmissionAgain() {
+        fx.doors.refusal = "Tobi could not leave its current activity";
+        fx.ready();
+        fx.doors.finishing.add(901); // something keeps it busy all along
+        fx.yes();
+        long now = System.currentTimeMillis();
+
+        assertEquals("Give Tobi a sec, they're finishing something.",
+                fx.service.stillFinishing(ANN, fx.shownAgain, now));
+        assertNull(fx.service.stillFinishing(ANN, fx.service.plan(game.ann, "kpq", Set.of(900, 902)), now),
+                "a lineup without Tobi");
+        fx.yes(); // refused again, and noted again
+        assertNull(fx.service.stillFinishing(ANN, fx.shownAgain, now + CompanionPartyQuestService.FINISHING_MS + 1_000L));
     }
 
     @Test
@@ -261,6 +351,31 @@ class CompanionPqEntryTest {
         game.calls.clear();
         fx.yes();
         assertFalse(game.calls.contains("answer Hold on, they're lining up."), "the Yes that threw is over");
+    }
+
+    @Test
+    void aCompanionShortOfManaAsksForSomeOnceAsTheLineupIsShown() {
+        fx.manaPotions.put(901, 0); // Tobi, a Page: live, no MP_POTION supplier inside the run
+        fx.ready();
+        game.config.COMPANION_PQ_ENABLED_KEYS = "kpq";
+        for (int id : List.of(900, 901, 902, 903, 904)) {
+            when(game.world.directory().ownerOfCharacter(id)).thenReturn(ANN);
+        }
+        Client client = game.ann.getClient();
+        when(client.onIoThread()).thenReturn(true); // the click on Lakelis, on its own thread
+        when(client.getCM()).thenReturn(mock(NPCConversationManager.class));
+        List<Runnable> ops = fx.holdCompanionOps();
+
+        assertTrue(fx.service.offerAtDesk(game.ann, "kpq"));
+        assertTrue(fx.service.offerAtDesk(game.ann, "kpq")); // and once more a moment later
+
+        assertEquals(List.of("proposal", "proposal"), game.calls);
+        assertEquals(List.of(), game.partyChat, "said on companion-ops, not on Ann's I/O thread");
+        CompanionPqFixture.drain(ops);
+        assertEquals(1, game.partyChat.size(), "asked once: " + game.partyChat);
+        String asked = game.partyChat.getFirst();
+        assertTrue(asked.startsWith("Tobi: ")
+                && AgentDialogueCatalog.potRequestMpReplies().contains(asked.substring("Tobi: ".length())), asked);
     }
 
     @Test

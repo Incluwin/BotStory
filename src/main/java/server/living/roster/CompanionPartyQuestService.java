@@ -10,6 +10,9 @@ import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.StatEffect;
+import server.agents.capabilities.combat.AgentExpectedDamagePolicy;
+import server.agents.capabilities.dialogue.AgentDialogueCatalog;
+import server.agents.capabilities.dialogue.AgentDialogueSelector;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
@@ -18,8 +21,11 @@ import server.agents.capabilities.partyquest.kpq.AgentKpqDefinition;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
+import server.life.LifeFactory;
+import server.life.Monster;
 import server.life.NPC;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
@@ -38,6 +44,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 
 /**
@@ -55,6 +63,26 @@ public final class CompanionPartyQuestService {
     static final int LAKELIS = 9_020_000;
     /** Live: 2 of 3 runs whose companions carried no potions lost one in stage 1. Fewer than this and it waits. */
     static final int KPQ_MIN_HP_POTIONS = 20;
+    /**
+     * Live (2026-09-30, two runs): Rurik and Yara, then Casse and Rurik, went in without mana potions and nothing
+     * inside sells them ("no MP_POTION supplier ... from map 103000800"), so they fought on without their skills. A
+     * warrior drinks about 15 a run, and its own resupply goes looking for a supplier once it is under POT_STOP (10).
+     * A companion that fights with skills goes in with a run's worth above that ({@link #kpqMinMpPotions}).
+     */
+    static final int KPQ_MP_POTIONS_PER_RUN = 15;
+    /** A companion short on mana potions asks for some at most this often (the Agents' own resupply waits as long). */
+    static final long MANA_ASK_EVERY_MS = 300_000L;
+    /**
+     * Admission asks the activity a companion is on to stop and lets it finish its step, within 30 s (town life,
+     * hunting and questing's DEFAULT_GRACEFUL_EXIT_TIMEOUT_MS, a shop or trade's drain). Until then a Yes that finds it
+     * still at it is answered at once, and the extras do not step out and back again.
+     */
+    static final long FINISHING_MS = 30_000L;
+    /** A failed KPQ damage estimate is logged at info at most this often (else at debug). */
+    static final long ESTIMATE_FAILURE_LOG_MS = 60_000L;
+    /** KPQ's monsters a companion is weighed against: stage 1's Ligator, stage 5's Jr. Necki and King Slime. */
+    private static final int[] KPQ_MOBS = {9_300_001, 9_300_000, 9_300_003};
+    private static final AtomicLong estimateFailureLoggedAtMs = new AtomicLong();
     /** A run whose session went away without ending it is let go once it has been gone this long (the audit's pace). */
     static final long LOST_RUN_AFTER_MS = 60_000L;
     /** A companion Lakelis sent for from the bench says it is ready for her when it arrives within this long. */
@@ -70,6 +98,15 @@ public final class CompanionPartyQuestService {
         void thingsChanged(Character leader, LineupPlan plan);
 
         void outcome(Character leader, String line, long clickedAtMs);
+
+        /**
+         * A Yes found a companion still finishing what it was doing ({@code line} says so; admission asked it to stop):
+         * {@code plan}, the lineup the leader said Yes to (its extras and their reasons too), goes in with the next Yes
+         * once it is done. Without a window of its own, the line is the outcome.
+         */
+        default void stillFinishing(Character leader, LineupPlan plan, String line, long clickedAtMs) {
+            outcome(leader, line, clickedAtMs);
+        }
     }
 
     /** Until the desk is installed: no window, and an outcome is pink text. */
@@ -91,6 +128,8 @@ public final class CompanionPartyQuestService {
     private final LivingWorld world;
     private final PqEntryPort port;
     private final ToIntFunction<Character> hpPotions;
+    private final ToIntFunction<Character> mpPotions;
+    private final ToDoubleFunction<Character> kpqDps;
     private final CompanionRunRecorder records;
     private volatile Desk desk = PINK_TEXT;
     /** Leaders whose Yes is being carried out: a second Yes meanwhile only hears "hold on". */
@@ -101,16 +140,30 @@ public final class CompanionPartyQuestService {
     private final Map<Integer, CompanionRun> runByCharacter = new ConcurrentHashMap<>();
     /** "ownerId personaId" -> when Lakelis sent for that companion from its owner's bench. */
     private final Map<String, Long> calledForLakelis = new ConcurrentHashMap<>();
+    /** Companion character id -> when it last asked for mana potions at Lakelis. */
+    private final Map<Integer, Long> askedForMana = new ConcurrentHashMap<>();
+    /** Leader id -> the companion admission last found still finishing something for their Yes. */
+    private final Map<Integer, Finishing> finishing = new ConcurrentHashMap<>();
+
+    /** A companion admission asked to stop what it was doing ({@code line}: Lakelis's word for it), at {@code atMs}. */
+    private record Finishing(int characterId, String line, long atMs) { }
 
     public CompanionPartyQuestService(LivingWorld world) {
-        this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions);
+        this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions, CompanionPartyQuestService::mpPotions,
+                CompanionPartyQuestService::kpqDps);
     }
 
-    /** {@code port}: the doors into the quest; {@code hpPotions}: the HP potions a loaded companion carries. */
-    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions) {
+    /**
+     * {@code port}: the doors into the quest; {@code hpPotions}, {@code mpPotions}: what a loaded companion carries;
+     * {@code kpqDps}: what it hits for in KPQ.
+     */
+    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
+                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps) {
         this.world = world;
         this.port = port;
         this.hpPotions = hpPotions;
+        this.mpPotions = mpPotions;
+        this.kpqDps = kpqDps;
         this.records = new CompanionRunRecorder(world);
     }
 
@@ -133,7 +186,36 @@ public final class CompanionPartyQuestService {
         if (!world.config().companionPqEnabled(pqKey) || standsAside(leader, pqKey)) {
             return false; // the stock start, untouched
         }
-        return LivingTalk.answerScriptClick(leader, () -> desk.proposal(leader, plan(leader, pqKey), null));
+        return LivingTalk.answerScriptClick(leader, () -> {
+            LineupPlan plan = plan(leader, pqKey);
+            desk.proposal(leader, plan, null);
+            askForMana(plan);
+        });
+    }
+
+    /**
+     * Before entry: a companion the lineup leaves waiting for mana potions asks for some in party chat, where its owner
+     * reads it, in the Agents' own pot-share words; at most once per {@link #MANA_ASK_EVERY_MS}, said on companion-ops.
+     */
+    private void askForMana(LineupPlan plan) {
+        long now = System.currentTimeMillis();
+        for (LineupPlan.Waiting member : plan.waiting()) {
+            int id = member.characterId();
+            if (!LakelisLines.LOW_ON_MANA.equals(member.reason())) {
+                continue;
+            }
+            long askedAt = askedForMana.compute(id, (key, at) -> at != null && now - at < MANA_ASK_EVERY_MS ? at : now);
+            if (askedAt != now) {
+                continue;
+            }
+            world.executor().submit("pq.ask_mana " + id, () -> {
+                Character bot = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(id));
+                if (bot != null) {
+                    world.roster().sayInParty(bot,
+                            AgentDialogueSelector.randomReply(AgentDialogueCatalog.potRequestMpReplies()));
+                }
+            });
+        }
     }
 
     /**
@@ -182,8 +264,9 @@ public final class CompanionPartyQuestService {
 
     /**
      * The lineup the leader's party would go in with, {@code picked} (companion ids, null: the best) chosen. On the
-     * leader's I/O thread, from memory: the party, the loaded characters, the Crew menus' row cache, the commitments
-     * and the companions' records.
+     * leader's I/O thread, from memory: the party, the loaded characters, the Crew menus' row cache, the commitments,
+     * the companions' records and the game data's KPQ monsters (what a companion that can go hits for; read at boot,
+     * {@link #warmKpqMobs}).
      */
     public LineupPlan plan(Character leader, String pqKey, Set<Integer> picked) {
         Party party = leader.getParty();
@@ -241,22 +324,38 @@ public final class CompanionPartyQuestService {
         if (row.state() == RosterState.TRAVELLING) {
             long etaMs = Math.max(0L, row.etaAtMs() - System.currentTimeMillis());
             return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), etaMs),
-                    LineupPlan.Fit.ON_THE_WAY, null, usual);
+                    LineupPlan.Fit.ON_THE_WAY, null, usual, kpqDps.applyAsDouble(bot));
         }
         String reason = !RosterService.sameChannel(leader, bot) ? LakelisLines.OTHER_CHANNEL
                 : bot.getHp() <= 0 ? LakelisLines.KNOCKED_OUT
                 : waitingReason(bot);
         return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), 0L),
-                reason == null ? LineupPlan.Fit.READY : LineupPlan.Fit.WAITS, reason, usual);
+                reason == null ? LineupPlan.Fit.READY : LineupPlan.Fit.WAITS, reason, usual,
+                reason == null ? kpqDps.applyAsDouble(bot) : 0.0d);
     }
 
-    /** Why admission would refuse the companion, or why it would go in unready (low on potions); null: it can go. */
+    /**
+     * Why admission would refuse the companion, or why it would go in unready: low on potions, or on mana potions when
+     * it fights with skills (every job past a Beginner's); null: it can go.
+     */
     private String waitingReason(Character bot) {
         String problem = AgentKpqAdmissionService.memberProblem(bot, false);
         if (!problem.isEmpty()) {
             return LakelisLines.reason(problem, bot.getLevel());
         }
-        return hpPotions.applyAsInt(bot) < KPQ_MIN_HP_POTIONS ? LakelisLines.LOW_ON_POTIONS : null;
+        if (hpPotions.applyAsInt(bot) < KPQ_MIN_HP_POTIONS) {
+            return LakelisLines.LOW_ON_POTIONS;
+        }
+        return bot.getJob().getId() % 1000 != 0 && mpPotions.applyAsInt(bot) < kpqMinMpPotions()
+                ? LakelisLines.LOW_ON_MANA : null;
+    }
+
+    /**
+     * The mana potions a companion that fights with skills goes in with at least: a run's worth above the count its
+     * own resupply calls critical (AgentRuntimeConfig POT_STOP), so it never asks the party for some mid-run.
+     */
+    static int kpqMinMpPotions() {
+        return AgentRuntimeConfig.cfg.POT_STOP + KPQ_MP_POTIONS_PER_RUN;
     }
 
     private LineupPlan.Candidate blocks(int id, String name, String line) {
@@ -283,11 +382,59 @@ public final class CompanionPartyQuestService {
 
     /** The HP-restoring potions in the companion's USE inventory, by quantity (CrewRotation's potion test, counted). */
     static int hpPotions(Character bot) {
+        return potions(bot, true);
+    }
+
+    /** The MP-restoring potions in the companion's USE inventory, by quantity (an Elixir counts here too). */
+    static int mpPotions(Character bot) {
+        return potions(bot, false);
+    }
+
+    /**
+     * What a loaded companion hits for in KPQ: its expected damage per second against each of {@link #KPQ_MOBS}
+     * (AgentExpectedDamagePolicy: its best attack after hit chance and defense), averaged. One that cannot be
+     * estimated counts as 0, so the lineup never fails on it; that is logged at info now and then, so an estimate
+     * that fails for a whole job shows in a live run.
+     */
+    static double kpqDps(Character bot) {
+        try {
+            double total = 0.0d;
+            for (int mobId : KPQ_MOBS) {
+                Monster mob = LifeFactory.getMonster(mobId);
+                total += mob == null ? 0.0d : AgentExpectedDamagePolicy.damagePerSecond(bot, mob);
+            }
+            return total / KPQ_MOBS.length;
+        } catch (RuntimeException failure) {
+            long now = System.currentTimeMillis();
+            long loggedAt = estimateFailureLoggedAtMs.get();
+            if (now - loggedAt >= ESTIMATE_FAILURE_LOG_MS && estimateFailureLoggedAtMs.compareAndSet(loggedAt, now)) {
+                log.info("no KPQ damage estimate for {} (job {}); it counts as 0 in the lineup", bot.getName(),
+                        bot.getJob(), failure);
+            } else {
+                log.debug("no KPQ damage estimate for {}", bot.getName(), failure);
+            }
+            return 0.0d;
+        }
+    }
+
+    /**
+     * At boot, on companion-ops: KPQ's monsters are read from the game data once (LifeFactory keeps them), so the first
+     * lineup at Lakelis never parses Mob.wz on a leader's I/O thread. The attack timings it also reads are loaded by
+     * the first swing of any Agent.
+     */
+    public void warmKpqMobs() {
+        for (int mobId : KPQ_MOBS) {
+            LifeFactory.getMonster(mobId);
+        }
+    }
+
+    private static int potions(Character bot, boolean hp) {
         Inventory use = bot.getInventory(InventoryType.USE);
         int count = 0;
         for (Item item : use == null ? List.<Item>of() : use.list()) {
             StatEffect effect = item.getQuantity() > 0 ? AgentUseItemClassificationPolicy.itemEffect(item.getItemId()) : null;
-            if (AgentUseItemClassificationPolicy.isRecoveryPotion(effect) && (effect.getHp() > 0 || effect.getHpRate() > 0)) {
+            if (AgentUseItemClassificationPolicy.isRecoveryPotion(effect) && (hp
+                    ? effect.getHp() > 0 || effect.getHpRate() > 0 : effect.getMp() > 0 || effect.getMpRate() > 0)) {
                 count += item.getQuantity();
             }
         }
@@ -316,8 +463,9 @@ public final class CompanionPartyQuestService {
     /**
      * The leader said Yes to {@code clicked} (on their I/O thread, as the answer to that click). Re-planned the way it
      * was drawn (her choice, or the leader's pick); when that is no longer the lineup they saw, or it cannot start, the
-     * lineup is shown again instead. Otherwise the extras step out on companion-ops ({@link #prepareEntry}) and the run
-     * starts back here. A Yes that throws lets the next one through: only its log is left.
+     * lineup is shown again instead, and so it is while a companion the last Yes found finishing something is at it
+     * still ({@link #stillFinishing}). Otherwise the extras step out on companion-ops ({@link #prepareEntry}) and the
+     * run starts back here. A Yes that throws lets the next one through: only its log is left.
      */
     public void start(Character leader, LineupPlan clicked) {
         int leaderId = leader.getId();
@@ -333,11 +481,35 @@ public final class CompanionPartyQuestService {
                 return;
             }
             long clickedAt = System.currentTimeMillis();
+            String finishingLine = stillFinishing(leaderId, fresh, clickedAt);
+            if (finishingLine != null) {
+                entering.remove(leaderId);
+                desk.stillFinishing(leader, fresh, finishingLine, clickedAt);
+                return;
+            }
             world.executor().submit("pq.prepare " + leaderId, () -> prepareEntry(leader, fresh, clickedAt));
         } catch (RuntimeException failure) {
             entering.remove(leaderId);
             throw failure;
         }
+    }
+
+    /**
+     * Her line while the companion that admission found still finishing something at the leader's last Yes, under
+     * {@link #FINISHING_MS} ago, is in this lineup and at it still: it was asked to stop then, so this Yes would only
+     * step the extras out and back for the same answer. Null: the Yes goes ahead, and admission asks again.
+     */
+    String stillFinishing(int leaderId, LineupPlan fresh, long nowMs) {
+        Finishing note = finishing.get(leaderId);
+        if (note == null) {
+            return null;
+        }
+        if (nowMs - note.atMs() < FINISHING_MS && fresh.memberIds().contains(note.characterId())
+                && port.finishing(note.characterId())) {
+            return note.line();
+        }
+        finishing.remove(leaderId, note);
+        return null;
     }
 
     /**
@@ -396,7 +568,10 @@ public final class CompanionPartyQuestService {
     /**
      * On the leader's I/O thread: the party must still be the lineup, all of it at the entrance; a lineup of humans
      * only takes the stock start. Otherwise it is admitted, marked a companion run (tap-outs, guidance), committed with
-     * its extras, and the event started, in one step. A start that fails after admission stops the session again.
+     * its extras, and the event started, in one step. A start that fails after admission stops the session again. A
+     * companion still finishing another activity is never waited for on this thread (live, 19:56 and 19:58 on
+     * 2026-09-30, the refusals came on the Netty one): the lineup the leader said Yes to is shown again for the next
+     * Yes, and the companion is noted for it ({@link #stillFinishing}).
      */
     void enter(Character leader, LineupPlan fresh, long clickedAt) {
         Set<Integer> owners = owners(fresh);
@@ -422,7 +597,18 @@ public final class CompanionPartyQuestService {
             if (!admitted.success()) {
                 log.info("companion KPQ admission refused for {}: {}", leader.getName(), admitted.message());
                 rejoinLater(leader, owners); // its own rollback handed the companions back already
-                desk.outcome(leader, LakelisLines.forAdmit(admitted.message(), leader.getName()), clickedAt);
+                String line = LakelisLines.forAdmit(admitted.message(), leader.getName());
+                String finishingName = LakelisLines.stillFinishing(admitted.message());
+                if (finishingName != null) {
+                    for (Character member : members) {
+                        if (member.getName().equals(finishingName)) {
+                            finishing.put(leader.getId(), new Finishing(member.getId(), line, now));
+                        }
+                    }
+                    desk.stillFinishing(leader, fresh, line, clickedAt);
+                } else {
+                    desk.outcome(leader, line, clickedAt);
+                }
                 return;
             }
             AgentKpqSession session = admitted.session();

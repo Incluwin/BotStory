@@ -20,8 +20,10 @@ import server.living.store.LivingStore.RosterState;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -37,7 +39,8 @@ import static server.living.roster.LifecycleHarness.LITH;
  * the KPQ entrance, her companions beside her, the lineup planned from warm CompanionViews. The doors into the quest
  * are {@link Doors}, a fake that logs admission, the start and the stop into the harness's calls ("admit [..]",
  * "start", "stop 900: ...") and registers a real PRODUCTION session. Lakelis's answers are logged there too ("answer
- * ...", "things changed"). Ann's I/O thread runs a task at once, or keeps it in {@link #io} while a test sets that.
+ * ...", "things changed", "still finishing: ..."). Ann's I/O thread runs a task at once, or keeps it in {@link #io}
+ * while a test sets that.
  */
 final class CompanionPqFixture implements AutoCloseable {
     static final int EXIT = AgentKpqDefinition.EXIT_MAP;
@@ -46,12 +49,16 @@ final class CompanionPqFixture implements AutoCloseable {
     final LifecycleHarness game = new LifecycleHarness();
     /** Character id -> the HP potions it carries (50 unless a test says otherwise). */
     final Map<Integer, Integer> potions = new HashMap<>();
+    /** Character id -> the mana potions it carries (50 unless a test says otherwise). */
+    final Map<Integer, Integer> manaPotions = new HashMap<>();
+    /** Character id -> what it hits for in KPQ, damage per second (0 unless a test says otherwise). */
+    final Map<Integer, Double> dps = new HashMap<>();
     /** Ann's I/O thread: null runs each task at once. */
     List<Runnable> io;
     final Doors doors = new Doors();
     CompanionPartyQuestService service;
     CompanionRunLifecycle lifecycle;
-    /** The lineup Lakelis showed again when a Yes found things changed. */
+    /** The lineup Lakelis showed again when a Yes found things changed, or a companion still finishing something. */
     LineupPlan shownAgain;
     /** The map lines of Ann's own companions as they step out beside Lakelis. */
     final MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class);
@@ -100,7 +107,8 @@ final class CompanionPqFixture implements AutoCloseable {
     CompanionPartyQuestService ready() {
         game.roster();
         when(game.world.views()).thenReturn(new CompanionViews(game.world, id -> "camp", id -> "item"));
-        service = new CompanionPartyQuestService(game.world, doors, bot -> potions.getOrDefault(bot.getId(), 50));
+        service = new CompanionPartyQuestService(game.world, doors, bot -> potions.getOrDefault(bot.getId(), 50),
+                bot -> manaPotions.getOrDefault(bot.getId(), 50), bot -> dps.getOrDefault(bot.getId(), 0.0d));
         lifecycle = new CompanionRunLifecycle(game.world, service);
         when(game.world.partyQuests()).thenReturn(service);
         service.installDesk(new CompanionPartyQuestService.Desk() {
@@ -118,6 +126,12 @@ final class CompanionPqFixture implements AutoCloseable {
             @Override
             public void outcome(Character leader, String line, long clickedAtMs) {
                 game.calls.add("answer " + line);
+            }
+
+            @Override
+            public void stillFinishing(Character leader, LineupPlan plan, String line, long clickedAtMs) {
+                game.calls.add("still finishing: " + line);
+                shownAgain = plan;
             }
         });
         return service;
@@ -163,7 +177,7 @@ final class CompanionPqFixture implements AutoCloseable {
     /**
      * The doors into the quest: admission registers a real session with the lineup (or refuses with {@link #refusal}),
      * the start answers {@link #start} (or throws {@link #startThrows}), and the stop runs {@link #onStop}. Each logs
-     * itself.
+     * itself. The companions in {@link #finishing} are still on another activity.
      */
     final class Doors implements PqEntryPort {
         AgentKpqSession session;
@@ -171,6 +185,7 @@ final class CompanionPqFixture implements AutoCloseable {
         Start start = Start.STARTED;
         RuntimeException startThrows;
         Runnable onStop = () -> { };
+        final Set<Integer> finishing = new HashSet<>();
         /** Ann's party as admission saw it. */
         List<Integer> partyAtAdmit;
         /** The session's companion flag, and how many were committed, as the start saw them. */
@@ -211,6 +226,11 @@ final class CompanionPqFixture implements AutoCloseable {
         public void forceStop(int agentId, String reason, long nowMs) {
             game.calls.add("stop " + agentId + ": " + reason);
             onStop.run();
+        }
+
+        @Override
+        public boolean finishing(int agentId) {
+            return finishing.contains(agentId);
         }
     }
 }

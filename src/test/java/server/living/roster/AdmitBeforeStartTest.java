@@ -36,7 +36,7 @@ class AdmitBeforeStartTest {
         REFUSALS.put("Mira needs free Use and ETC capacity for KPQ items and rewards",
                 "Mira's bags are full. Free a Use and an Etc slot first.");
         // prepare
-        REFUSALS.put("Tobi could not leave its current activity", "Tobi is busy with something. Give them a moment.");
+        REFUSALS.put("Tobi could not leave its current activity", "Give Tobi a sec, they're finishing something.");
         // admitFromLobby
         REFUSALS.put("KPQ admission requires a registered matching lobby engagement", LakelisLines.CATCHING_BREATH);
         REFUSALS.put("The authoritative party changed before KPQ entry", LakelisLines.CATCHING_BREATH);

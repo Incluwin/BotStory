@@ -653,7 +653,7 @@ public final class AgentAttackExecutionProvider {
         };
     }
 
-    private static boolean isTwoHandedWeapon(Character bot) {
+    static boolean isTwoHandedWeapon(Character bot) {
         Item weapon = bot != null ? bot.getInventory(InventoryType.EQUIPPED).getItem((short) -11) : null;
         if (weapon == null) {
             return false;
