@@ -57,7 +57,7 @@ class OfflineHumanDropTest {
         assertSame(session, AgentKpqSessionRegistry.forMember(1));
         assertEquals(AgentKpqSession.Phase.STAGE_2, session.phase());
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
-                mira, "Ann had to go. We'll carry on with three."), times(1));
+                mira, "Ann had to go. we'll keep going with three."), times(1));
     }
 
     @Test
@@ -81,7 +81,7 @@ class OfflineHumanDropTest {
         AgentKpqCoordinator.tick(session, 2_000L);
 
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
-                pip, "Ann had to go. We'll carry on with three."), times(1));
+                pip, "Ann had to go. we'll keep going with three."), times(1));
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(eq(mira), anyString()), never());
     }
 
@@ -144,7 +144,7 @@ class OfflineHumanDropTest {
         assertEquals(AgentKpqSession.Phase.FAILED, session.phase());
         assertEquals("The KPQ event instance disappeared or the leader left it", session.failure());
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
-                mira, "Ann had to go. We'll carry on with three."), never());
+                mira, "Ann had to go. we'll keep going with three."), never());
     }
 
     @Test

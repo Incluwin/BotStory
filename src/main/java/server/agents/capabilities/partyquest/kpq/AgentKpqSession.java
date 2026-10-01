@@ -62,6 +62,7 @@ public final class AgentKpqSession {
     private long nextCouponSweepAtMs;
     private int stageOneHelperCollectorId;
     private Point stageOneHelperAnchor;
+    private HelperTerritory stageOneHelperTerritory;
     private long missingPassSinceMs;
     private long puzzleCheckAtMs;
     private int puzzleCheckLoggedAttemptId = -1;
@@ -80,6 +81,12 @@ public final class AgentKpqSession {
     private long stage5CleanupDeadlineMs;
     private long stage5BossCombatStartedAtMs;
     private boolean stage5BossCombatReported;
+    private int stage5MobsSeen = -1;
+    private long stage5ReachedAtMs;
+    private Map<Integer, Integer> stage5Targets = Map.of();
+    private long stage5TargetsAtMs = Long.MIN_VALUE;
+    private long stage5HandOverStartedAtMs;
+    private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
 
     public AgentKpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
@@ -228,6 +235,7 @@ public final class AgentKpqSession {
         nextCouponSweepAtMs = 0L;
         stageOneHelperCollectorId = 0;
         stageOneHelperAnchor = null;
+        stageOneHelperTerritory = null;
         missingPassSinceMs = 0L;
         puzzleCheckAtMs = 0L;
         puzzleCheckLoggedAttemptId = -1;
@@ -240,8 +248,12 @@ public final class AgentKpqSession {
         stage5LootNotBeforeMs = 0L;
         stage5CleanupStartedAtMs = 0L;
         stage5CleanupDeadlineMs = 0L;
-        stage5BossCombatStartedAtMs = 0L;
-        stage5BossCombatReported = false;
+        // Companions fight King Slime while the leader still climbs stage 4; a fight under way is reported whole.
+        boolean bossFightUnderWay = stage5BossCombatStartedAtMs > 0L && !stage5BossCombatReported;
+        if (!bossFightUnderWay) {
+            stage5BossCombatStartedAtMs = 0L;
+            stage5BossCombatReported = false;
+        }
         dialogueTimes.clear();
         dialogueWaitStartedAtMs.clear();
         members.values().forEach(member -> {
@@ -251,7 +263,7 @@ public final class AgentKpqSession {
             member.setFidgetedAttemptId(-1);
             member.clearFidget();
             member.clearBlocker();
-            member.resetStage5BossCombat();
+            if (!bossFightUnderWay) member.resetStage5BossCombat();
         });
     }
 
@@ -310,17 +322,23 @@ public final class AgentKpqSession {
      * Cloto judges whoever stands on the puzzle at the moment the human leader clicks her. Live (2026-09-30) the
      * leader clicked while the companions were still climbing to their spots; her "wrong" waited until they stood
      * still, then dropped a formation nobody had checked, and Stage 2 alone took 10 minutes. A rejection therefore
-     * counts only while the coordinator holds this attempt's formation ready. An early one is dropped, and the leader
-     * is asked again. An acceptance always counts, since Cloto has already cleared the stage.
+     * counts only while the coordinator holds this attempt's formation ready, or when {@code placementHeld} says she
+     * saw it anyway: every participant on its own spot and nobody else on one, as read while she judged. Waiting out
+     * the hold for that cost every wrong check of a companion run about a second. An early one is dropped, and the
+     * leader is asked again. An acceptance always counts, since Cloto has already cleared the stage.
+     *
+     * @return how the verdict was taken, for the log
      */
-    public synchronized void recordHumanPuzzleValidation(int stage, boolean accepted) {
-        if (!accepted && formationReadyAttemptId != attemptId) {
+    public synchronized String recordHumanPuzzleValidation(int stage, boolean accepted, boolean placementHeld) {
+        boolean formationReady = formationReadyAttemptId == attemptId;
+        if (!accepted && !formationReady && !placementHeld) {
             earlyPuzzleRejections++;
-            return;
+            return "dropped-early";
         }
         puzzleValidationStage = stage;
         puzzleValidationAccepted = accepted;
         puzzleValidationRevision++;
+        return accepted ? "accepted" : formationReady ? "rejected" : "rejected-as-placed";
     }
 
     public synchronized PuzzleValidation consumeHumanPuzzleValidation(int stage) {
@@ -330,6 +348,12 @@ public final class AgentKpqSession {
         }
         consumedPuzzleValidationRevision = puzzleValidationRevision;
         return new PuzzleValidation(puzzleValidationRevision, puzzleValidationAccepted);
+    }
+
+    /** Takes a counted rejection without waiting for the formation to hold; an acceptance is left for later. */
+    synchronized boolean consumeHumanPuzzleRejection(int stage) {
+        if (puzzleValidationAccepted) return false;
+        return consumeHumanPuzzleValidation(stage) != null;
     }
 
     /** Every participant of the current attempt stands in place and has held still for the settle time. */
@@ -401,6 +425,11 @@ public final class AgentKpqSession {
     synchronized void setStageOneHelperAnchor(int collectorId, Point anchor) {
         stageOneHelperCollectorId = Math.max(0, collectorId);
         stageOneHelperAnchor = anchor;
+    }
+    synchronized HelperTerritory stageOneHelperTerritory() { return stageOneHelperTerritory; }
+    synchronized void setStageOneHelperTerritory(int collectorId, HelperTerritory territory) {
+        stageOneHelperCollectorId = Math.max(0, collectorId);
+        stageOneHelperTerritory = territory;
     }
     public synchronized long missingPassSinceMs() { return missingPassSinceMs; }
     public synchronized void setMissingPassSinceMs(long value) {
@@ -514,6 +543,71 @@ public final class AgentKpqSession {
         return true;
     }
 
+    /**
+     * Records the live stage-5 monster count a member there sees, in or before the STAGE_5 phase, and returns how many
+     * died since the last sighting. The first sighting is when the run reached stage 5; no phase change resets it.
+     */
+    synchronized int observeStage5Mobs(int alive, long nowMs) {
+        if (stage5MobsSeen < 0) stage5ReachedAtMs = nowMs;
+        int died = stage5MobsSeen < 0 ? 0 : Math.max(0, stage5MobsSeen - alive);
+        stage5MobsSeen = alive;
+        return died;
+    }
+
+    synchronized long stage5ReachedAtMs() {
+        return stage5ReachedAtMs;
+    }
+
+    /** The stage-5 mob type each Agent fights first, as worked out in the tick at {@code nowMs}; null before that. */
+    synchronized Map<Integer, Integer> stage5Targets(long nowMs) {
+        return stage5TargetsAtMs == nowMs ? stage5Targets : null;
+    }
+
+    /**
+     * Records the stage-5 mob type each Agent fights first, once per tick; true when it changed, so each change is
+     * logged once.
+     */
+    synchronized boolean observeStage5Targets(Map<Integer, Integer> targets, long nowMs) {
+        stage5TargetsAtMs = nowMs;
+        if (stage5Targets.equals(targets)) return false;
+        stage5Targets = Map.copyOf(targets);
+        return true;
+    }
+
+    /**
+     * Whether the stage-5 pass carriers have stopped picking passes up and set out for the leader. From then on none
+     * of them may loot a pass, so none takes back what another dropped at the leader's feet.
+     */
+    synchronized boolean stage5HandOverStarted() {
+        return stage5HandOverStartedAtMs > 0L;
+    }
+
+    synchronized void startStage5HandOver(long nowMs) {
+        if (stage5HandOverStartedAtMs == 0L) stage5HandOverStartedAtMs = Math.max(1L, nowMs);
+    }
+
+    /** Whether the carriers set out for the leader at least {@code boundMs} ago. */
+    synchronized boolean stage5HandOverOverdue(long nowMs, long boundMs) {
+        return stage5HandOverStartedAtMs > 0L && nowMs - stage5HandOverStartedAtMs >= Math.max(0L, boundMs);
+    }
+
+    synchronized boolean claimStageOneSummary() {
+        if (stageOneSummarized) return false;
+        stageOneSummarized = true;
+        return true;
+    }
+
     public record PuzzleValidation(int revision, boolean accepted) {
+    }
+
+    /** Where the stage-1 helpers fight: one tower's x-band and its spawns, until a fixed time. */
+    record HelperTerritory(String assignmentId, int minX, int maxX, List<Point> spawns, long expiresAtMs) {
+        HelperTerritory {
+            spawns = List.copyOf(spawns);
+        }
+
+        boolean covers(int x) {
+            return x >= minX && x <= maxX;
+        }
     }
 }

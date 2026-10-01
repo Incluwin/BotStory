@@ -1,5 +1,6 @@
 package server.agents.capabilities.combat;
 
+import server.agents.catalog.AgentMapRegionAssignment;
 import server.agents.runtime.AgentRuntimeEntry;
 
 import java.util.Set;
@@ -11,10 +12,17 @@ public final class AgentCombatObjectiveTargetStateRuntime {
     }
 
     public static void setAllowedMobIds(AgentRuntimeEntry entry, Set<Integer> mobIds) {
+        setAllowedMobIdsInRegion(entry, mobIds, null);
+    }
+
+    /** The allowed mobs, fought inside a coordinator's region lease; null leaves the directive without one. */
+    public static void setAllowedMobIdsInRegion(AgentRuntimeEntry entry,
+                                                Set<Integer> mobIds,
+                                                AgentMapRegionAssignment regionAssignment) {
         if (entry.capabilityStates().require(AgentCombatObjectiveTargetState.STATE_KEY).setAllowedMobIds(mobIds)) {
             clearDisallowedTarget(entry);
         }
-        AgentCombatDirectiveRuntime.assignAllowed(entry, mobIds);
+        AgentCombatDirectiveRuntime.assignAllowedInRegion(entry, mobIds, regionAssignment);
     }
 
     public static void setTargetPreferences(AgentRuntimeEntry entry,

@@ -1,6 +1,7 @@
 package server.agents.integration;
 
 import client.Character;
+import server.agents.catalog.AgentMapRegionAssignment;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.npc.AgentNpcInteractionType;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -10,6 +11,7 @@ import server.maps.MapleMap;
 import java.awt.Point;
 import java.util.Collection;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -119,6 +121,27 @@ public interface PrimitiveCapabilityGateway {
         return Map.of();
     }
 
+    /** Where the map's authored spawn points of these mobs stand. */
+    default List<Point> monsterSpawnPositions(Character agent, Set<Integer> mobIds) {
+        return List.of();
+    }
+
+    /**
+     * What one line of this Agent's usual attack is expected to deal to each of these mobs alive on its map: the hit
+     * chance times the damage left after the mob's defense. A mob with none alive is left out.
+     */
+    default Map<Integer, Double> expectedLineDamage(AgentRuntimeEntry entry, Character agent, Set<Integer> mobIds) {
+        return Map.of();
+    }
+
+    /**
+     * This Agent's own navigation regions under the given ground points, the ids its combat filters a region
+     * assignment by. Empty while its graph is not built yet.
+     */
+    default Set<Integer> groundRegionIds(AgentRuntimeEntry entry, Character agent, Collection<Point> points) {
+        return Set.of();
+    }
+
     void navigate(AgentRuntimeEntry entry, Point destination, boolean precise);
 
     /** Enables map-local virtual walls for an activity; ordinary maps remain unconstrained. */
@@ -158,6 +181,20 @@ public interface PrimitiveCapabilityGateway {
                                  Set<Integer> preferredMobIds,
                                  Set<Integer> fallbackMobIds) {
         grind(entry, preferredMobIds, fallbackMobIds);
+    }
+
+    /**
+     * Grinds inside a coordinator's territory. The mobs and the region lease are set as one combat directive, and an
+     * equal one changes nothing, so a caller may repeat this every tick without restarting the fight or its tactics.
+     */
+    default void grindInTerritory(AgentRuntimeEntry entry,
+                                  Set<Integer> mobIds,
+                                  AgentMapRegionAssignment territory) {
+        grind(entry, mobIds);
+    }
+
+    /** Lets go of a territory and keeps the rest of the combat directive. */
+    default void leaveTerritory(AgentRuntimeEntry entry) {
     }
 
     void stop(AgentRuntimeEntry entry);

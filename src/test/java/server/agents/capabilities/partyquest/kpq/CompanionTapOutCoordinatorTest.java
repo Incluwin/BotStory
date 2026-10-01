@@ -128,7 +128,7 @@ class CompanionTapOutCoordinatorTest {
         assertEquals(tobiPosition, session.member(1).assignedPosition());
         assertEquals(Set.copyOf(session.combination()), session.members().stream()
                 .map(AgentKpqMemberState::assignedPosition).collect(Collectors.toSet()));
-        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, "Ben -> " + tobiPosition + "."), times(1));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, "Ben, grab rope " + tobiPosition + "."), times(1));
     }
 
     @Test

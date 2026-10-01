@@ -1,13 +1,15 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import java.awt.Point;
+import java.util.EnumMap;
+import java.util.Map;
 
 /** Mutable per-member state owned by one party-level KPQ session. */
 public final class AgentKpqMemberState {
     public enum MemberType { AGENT, HUMAN }
     public enum Role {
         EVENT_LEADER, COUPON_COLLECTOR, PASS_DELIVERER, COMBAT_HELPER,
-        PUZZLE_PARTICIPANT, STAGE5_PASS_COLLECTOR, SQUISHY_SHOES_COLLECTOR, WAITING
+        PUZZLE_PARTICIPANT, STAGE5_PASS_COLLECTOR, STAGE5_PASS_CARRIER, SQUISHY_SHOES_COLLECTOR, WAITING
     }
     public enum RewardState { PENDING, CLAIMING, CLAIMED, FORFEITED }
 
@@ -48,6 +50,12 @@ public final class AgentKpqMemberState {
     private long downSinceMs;
     private boolean tapOutRequested;
     private long revivedSeenAtMs;
+    private CombatCounts stage1CombatBaseline = new CombatCounts(0L, 0L, 0L, 0L);
+    private final EnumMap<Role, Long> stage1RoleMs = new EnumMap<>(Role.class);
+    private long stage1RoleTalliedAtMs;
+    private int stage1CouponsHeld;
+    private int stage1CouponsLooted;
+    private long stage1PassAtMs;
 
     public AgentKpqMemberState(int characterId, MemberType memberType, int partyNumber) {
         this.characterId = characterId;
@@ -66,6 +74,11 @@ public final class AgentKpqMemberState {
     public void markQuestionRequested() { questionRequested = true; }
     public boolean passCreated() { return passCreated; }
     public void markPassCreated() { passCreated = true; }
+    /** As {@link #markPassCreated()}, and the first time it is seen is when stage 1's summary says the pass came. */
+    void markPassCreated(long nowMs) {
+        if (!passCreated) stage1PassAtMs = nowMs;
+        passCreated = true;
+    }
     public boolean passDelivered() { return passDelivered; }
     public void markPassDelivered() { passDelivered = true; }
     public RewardState rewardState() { return rewardState; }
@@ -241,6 +254,40 @@ public final class AgentKpqMemberState {
     }
 
     public record BossCombatDelta(long attacks, long hitLines, long missLines, long damage) {
+    }
+
+    /** Stage 1 starts here: its summary counts from these totals and from this time. */
+    void beginStage1Tally(CombatCounts baseline, long nowMs) {
+        stage1CombatBaseline = baseline;
+        stage1RoleTalliedAtMs = nowMs;
+    }
+
+    /** Adds the time since the last tally to the role held over it. */
+    void tallyStage1Role(long nowMs) {
+        if (stage1RoleTalliedAtMs > 0L && nowMs > stage1RoleTalliedAtMs) {
+            stage1RoleMs.merge(role, nowMs - stage1RoleTalliedAtMs, Long::sum);
+        }
+        stage1RoleTalliedAtMs = nowMs;
+    }
+
+    /** Counts coupons that came into the bag since the last look; a hand-in or a dropped spare counts none. */
+    void tallyStage1Coupons(int held) {
+        stage1CouponsLooted += Math.max(0, held - stage1CouponsHeld);
+        stage1CouponsHeld = held;
+    }
+
+    CombatCounts stage1Combat(CombatCounts now) {
+        return new CombatCounts(delta(now.kills(), stage1CombatBaseline.kills()),
+                delta(now.attacks(), stage1CombatBaseline.attacks()),
+                delta(now.hitLines(), stage1CombatBaseline.hitLines()),
+                delta(now.missLines(), stage1CombatBaseline.missLines()));
+    }
+
+    Map<Role, Long> stage1RoleMs() { return Map.copyOf(stage1RoleMs); }
+    int stage1CouponsLooted() { return stage1CouponsLooted; }
+    long stage1PassAtMs() { return stage1PassAtMs; }
+
+    public record CombatCounts(long kills, long attacks, long hitLines, long missLines) {
     }
 
 }

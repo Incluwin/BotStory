@@ -16,6 +16,7 @@ import server.agents.integration.PartyGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.state.AgentCapabilityStateRegistry;
 import server.maps.MapleMap;
 
 import java.util.ArrayList;
@@ -86,6 +87,8 @@ final class KpqRunFixture implements AutoCloseable {
     Character companion(int id, String name) {
         Character companion = member(id, name);
         AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
+        // Its kill and attack counters, which the pace lines read.
+        when(entry.capabilityStates()).thenReturn(new AgentCapabilityStateRegistry());
         registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(id)).thenReturn(entry);
         identity.when(() -> AgentRuntimeIdentityRuntime.bot(entry)).thenReturn(companion);
         when(characters.findOnlineCharacterById(id)).thenReturn(companion);

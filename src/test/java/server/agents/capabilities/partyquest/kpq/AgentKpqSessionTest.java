@@ -3,6 +3,7 @@ package server.agents.capabilities.partyquest.kpq;
 import org.junit.jupiter.api.Test;
 
 import java.awt.Point;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -126,10 +127,10 @@ class AgentKpqSessionTest {
         assertEquals(0, session.formationCallerId());
 
         session.markFormationReady();
-        session.recordHumanPuzzleValidation(2, false);
+        session.recordHumanPuzzleValidation(2, false, false);
         assertFalse(session.consumeHumanPuzzleValidation(2).accepted());
         assertNull(session.consumeHumanPuzzleValidation(2));
-        session.recordHumanPuzzleValidation(2, true);
+        session.recordHumanPuzzleValidation(2, true, false);
         assertTrue(session.consumeHumanPuzzleValidation(2).accepted());
     }
 
@@ -154,6 +155,8 @@ class AgentKpqSessionTest {
         session.setCouponSweepStartedAtMs(90_000L);
         session.setNextCouponSweepAtMs(180_000L);
         session.setStageOneHelperAnchor(33, new Point(300, -240));
+        session.setStageOneHelperTerritory(33, new AgentKpqSession.HelperTerritory(
+                "kpq-stage1:t", -449, 200, List.of(new Point(0, -900)), 120_000L));
         session.setMissingPassSinceMs(185_000L);
 
         session.transition(AgentKpqSession.Phase.STAGE_2, 2_000L);
@@ -162,6 +165,7 @@ class AgentKpqSessionTest {
         assertEquals(0L, session.nextCouponSweepAtMs());
         assertEquals(0, session.stageOneHelperCollectorId());
         assertNull(session.stageOneHelperAnchor());
+        assertNull(session.stageOneHelperTerritory());
         assertEquals(0L, session.missingPassSinceMs());
     }
 
