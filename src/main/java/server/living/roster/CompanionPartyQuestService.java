@@ -71,6 +71,12 @@ public final class CompanionPartyQuestService {
     static final int KPQ_MP_POTIONS_PER_RUN = 15;
     /** A companion short on mana potions asks for some at most this often (the Agents' own resupply waits as long). */
     static final long MANA_ASK_EVERY_MS = 300_000L;
+    /**
+     * Admission asks the activity a companion is on to stop and lets it finish its step, within 30 s (town life,
+     * hunting and questing's DEFAULT_GRACEFUL_EXIT_TIMEOUT_MS, a shop or trade's drain). Until then a Yes that finds it
+     * still at it is answered at once, and the extras do not step out and back again.
+     */
+    static final long FINISHING_MS = 30_000L;
     /** KPQ's monsters a companion is weighed against: stage 1's Ligator, stage 5's Jr. Necki and King Slime. */
     private static final int[] KPQ_MOBS = {9_300_001, 9_300_000, 9_300_003};
     /** A run whose session went away without ending it is let go once it has been gone this long (the audit's pace). */
@@ -91,8 +97,8 @@ public final class CompanionPartyQuestService {
 
         /**
          * A Yes found a companion still finishing what it was doing ({@code line} says so; admission asked it to stop):
-         * {@code plan}, the same lineup planned again, goes in with the next Yes once it is done. Without a window of
-         * its own, the line is the outcome.
+         * {@code plan}, the lineup the leader said Yes to (its extras and their reasons too), goes in with the next Yes
+         * once it is done. Without a window of its own, the line is the outcome.
          */
         default void stillFinishing(Character leader, LineupPlan plan, String line, long clickedAtMs) {
             outcome(leader, line, clickedAtMs);
@@ -132,6 +138,11 @@ public final class CompanionPartyQuestService {
     private final Map<String, Long> calledForLakelis = new ConcurrentHashMap<>();
     /** Companion character id -> when it last asked for mana potions at Lakelis. */
     private final Map<Integer, Long> askedForMana = new ConcurrentHashMap<>();
+    /** Leader id -> the companion admission last found still finishing something for their Yes. */
+    private final Map<Integer, Finishing> finishing = new ConcurrentHashMap<>();
+
+    /** A companion admission asked to stop what it was doing ({@code line}: Lakelis's word for it), at {@code atMs}. */
+    private record Finishing(int characterId, String line, long atMs) { }
 
     public CompanionPartyQuestService(LivingWorld world) {
         this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions, CompanionPartyQuestService::mpPotions,
@@ -428,8 +439,9 @@ public final class CompanionPartyQuestService {
     /**
      * The leader said Yes to {@code clicked} (on their I/O thread, as the answer to that click). Re-planned the way it
      * was drawn (her choice, or the leader's pick); when that is no longer the lineup they saw, or it cannot start, the
-     * lineup is shown again instead. Otherwise the extras step out on companion-ops ({@link #prepareEntry}) and the run
-     * starts back here. A Yes that throws lets the next one through: only its log is left.
+     * lineup is shown again instead, and so it is while a companion the last Yes found finishing something is at it
+     * still ({@link #stillFinishing}). Otherwise the extras step out on companion-ops ({@link #prepareEntry}) and the
+     * run starts back here. A Yes that throws lets the next one through: only its log is left.
      */
     public void start(Character leader, LineupPlan clicked) {
         int leaderId = leader.getId();
@@ -445,11 +457,35 @@ public final class CompanionPartyQuestService {
                 return;
             }
             long clickedAt = System.currentTimeMillis();
+            String finishingLine = stillFinishing(leaderId, fresh, clickedAt);
+            if (finishingLine != null) {
+                entering.remove(leaderId);
+                desk.stillFinishing(leader, fresh, finishingLine, clickedAt);
+                return;
+            }
             world.executor().submit("pq.prepare " + leaderId, () -> prepareEntry(leader, fresh, clickedAt));
         } catch (RuntimeException failure) {
             entering.remove(leaderId);
             throw failure;
         }
+    }
+
+    /**
+     * Her line while the companion that admission found still finishing something at the leader's last Yes, under
+     * {@link #FINISHING_MS} ago, is in this lineup and at it still: it was asked to stop then, so this Yes would only
+     * step the extras out and back for the same answer. Null: the Yes goes ahead, and admission asks again.
+     */
+    String stillFinishing(int leaderId, LineupPlan fresh, long nowMs) {
+        Finishing note = finishing.get(leaderId);
+        if (note == null) {
+            return null;
+        }
+        if (nowMs - note.atMs() < FINISHING_MS && fresh.memberIds().contains(note.characterId())
+                && port.finishing(note.characterId())) {
+            return note.line();
+        }
+        finishing.remove(leaderId, note);
+        return null;
     }
 
     /**
@@ -510,7 +546,8 @@ public final class CompanionPartyQuestService {
      * only takes the stock start. Otherwise it is admitted, marked a companion run (tap-outs, guidance), committed with
      * its extras, and the event started, in one step. A start that fails after admission stops the session again. A
      * companion still finishing another activity is never waited for on this thread (live, 19:56 and 19:58 on
-     * 2026-09-30, the refusals came on the Netty one): the lineup is shown again for the next Yes.
+     * 2026-09-30, the refusals came on the Netty one): the lineup the leader said Yes to is shown again for the next
+     * Yes, and the companion is noted for it ({@link #stillFinishing}).
      */
     void enter(Character leader, LineupPlan fresh, long clickedAt) {
         Set<Integer> owners = owners(fresh);
@@ -537,8 +574,14 @@ public final class CompanionPartyQuestService {
                 log.info("companion KPQ admission refused for {}: {}", leader.getName(), admitted.message());
                 rejoinLater(leader, owners); // its own rollback handed the companions back already
                 String line = LakelisLines.forAdmit(admitted.message(), leader.getName());
-                if (LakelisLines.stillFinishing(admitted.message())) {
-                    desk.stillFinishing(leader, plan(leader, fresh.pqKey(), fresh.picked()), line, clickedAt);
+                String finishingName = LakelisLines.stillFinishing(admitted.message());
+                if (finishingName != null) {
+                    for (Character member : members) {
+                        if (member.getName().equals(finishingName)) {
+                            finishing.put(leader.getId(), new Finishing(member.getId(), line, now));
+                        }
+                    }
+                    desk.stillFinishing(leader, fresh, line, clickedAt);
                 } else {
                     desk.outcome(leader, line, clickedAt);
                 }

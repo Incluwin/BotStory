@@ -100,11 +100,13 @@ public final class LakelisLines {
     }
 
     /**
-     * True when admission refused a companion that is still finishing another activity: the refusal itself asked that
-     * activity to stop (AgentActivityAdmissionCoordinator.prepare), so the same lineup goes in once its step is done.
+     * The name of the companion admission refused as still finishing another activity, else null: the refusal itself
+     * asked that activity to stop (AgentActivityAdmissionCoordinator.prepare), so the same lineup goes in once its step
+     * is done.
      */
-    static boolean stillFinishing(String message) {
-        return message != null && message.contains(LEAVING_ACTIVITY);
+    static String stillFinishing(String message) {
+        int at = message == null ? -1 : message.indexOf(LEAVING_ACTIVITY);
+        return at > 0 ? message.substring(0, at) : null;
     }
 
     /** Her line for a stock start that did not go through. */

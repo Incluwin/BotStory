@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -42,7 +43,8 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * aloud), then, back on Ann's I/O thread, the lineup is admitted, marked a companion run with guidance, committed
  * with its extras, and the event started, in that order and in one step. A refused admission is answered in
  * Lakelis's words and calls the extras back; so does a party that changed meanwhile, without admitting anyone. One that
- * refuses a companion still finishing something shows the lineup again at once, for a Yes that goes in. A lineup
+ * refuses a companion still finishing something shows the lineup again at once, for a Yes that goes in; a Yes while it
+ * is at it still, under half a minute later, is answered the same at once and steps nobody out. A lineup
  * of humans only takes the stock start. A second Yes while the first is carried out only hears "hold on"; one that
  * threw is over all the same. A Yes on her own choice is planned again by her own choice. A companion the lineup leaves
  * waiting for mana potions asks for some in party chat, once, as the lineup is shown.
@@ -188,6 +190,49 @@ class CompanionPqEntryTest {
         assertEquals(List.of(), game.timers, "no timer to try again");
         assertEquals(List.of(), fx.io, "nothing left to run on Ann's I/O thread");
         assertEquals(List.of(), ops);
+        assertEquals(List.of("Casse", "Hadrik"), fx.shownAgain.extras().stream().map(LineupPlan.Seat::name).toList(),
+                "the lineup Ann said Yes to, though its extras were still out of the party as it was answered");
+        assertEquals(List.of("low on potions", "Lv32, too seasoned for this"),
+                fx.shownAgain.waiting().stream().map(LineupPlan.Waiting::reason).toList());
+    }
+
+    @Test
+    void aYesWhileItIsStillAtItIsAnsweredAtOnceAndTheExtrasStayPut() {
+        fx.doors.refusal = "Tobi could not leave its current activity";
+        fx.ready();
+        fx.yes();
+        fx.doors.finishing.add(901); // Tobi's step is not done yet
+        game.calls.clear();
+        fx.dialogue.clearInvocations();
+
+        fx.service.start(game.ann, fx.shownAgain); // Ann clicks Yes again a few seconds later
+
+        assertEquals(List.of("still finishing: Give Tobi a sec, they're finishing something."), game.calls,
+                "nobody steps out and back, and admission is not asked again");
+        assertEquals(RosterState.ACTIVE, game.row(casse).state());
+        fx.dialogue.verify(() -> AgentDialogueTransportRuntime.sayMapNow(any(), anyString()), never());
+
+        fx.doors.finishing.clear(); // done
+        fx.doors.refusal = null;
+        fx.service.start(game.ann, fx.shownAgain);
+
+        assertTrue(game.calls.contains("start"), game.calls.toString());
+    }
+
+    @Test
+    void aYesHalfAMinuteLaterOrWithoutItAsksAdmissionAgain() {
+        fx.doors.refusal = "Tobi could not leave its current activity";
+        fx.ready();
+        fx.doors.finishing.add(901); // something keeps it busy all along
+        fx.yes();
+        long now = System.currentTimeMillis();
+
+        assertEquals("Give Tobi a sec, they're finishing something.",
+                fx.service.stillFinishing(ANN, fx.shownAgain, now));
+        assertNull(fx.service.stillFinishing(ANN, fx.service.plan(game.ann, "kpq", Set.of(900, 902)), now),
+                "a lineup without Tobi");
+        fx.yes(); // refused again, and noted again
+        assertNull(fx.service.stillFinishing(ANN, fx.shownAgain, now + CompanionPartyQuestService.FINISHING_MS + 1_000L));
     }
 
     @Test

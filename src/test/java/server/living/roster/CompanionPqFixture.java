@@ -20,8 +20,10 @@ import server.living.store.LivingStore.RosterState;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -175,7 +177,7 @@ final class CompanionPqFixture implements AutoCloseable {
     /**
      * The doors into the quest: admission registers a real session with the lineup (or refuses with {@link #refusal}),
      * the start answers {@link #start} (or throws {@link #startThrows}), and the stop runs {@link #onStop}. Each logs
-     * itself.
+     * itself. The companions in {@link #finishing} are still on another activity.
      */
     final class Doors implements PqEntryPort {
         AgentKpqSession session;
@@ -183,6 +185,7 @@ final class CompanionPqFixture implements AutoCloseable {
         Start start = Start.STARTED;
         RuntimeException startThrows;
         Runnable onStop = () -> { };
+        final Set<Integer> finishing = new HashSet<>();
         /** Ann's party as admission saw it. */
         List<Integer> partyAtAdmit;
         /** The session's companion flag, and how many were committed, as the start saw them. */
@@ -223,6 +226,11 @@ final class CompanionPqFixture implements AutoCloseable {
         public void forceStop(int agentId, String reason, long nowMs) {
             game.calls.add("stop " + agentId + ": " + reason);
             onStop.run();
+        }
+
+        @Override
+        public boolean finishing(int agentId) {
+            return finishing.contains(agentId);
         }
     }
 }
