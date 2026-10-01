@@ -8,9 +8,14 @@ import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.follow.AgentFollowGuard;
+import server.agents.capabilities.navigation.AgentRouteOutcome;
+import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.capabilities.shop.AgentShopStateRuntime;
 import server.agents.capabilities.shop.AgentShopWorkflowPhase;
+import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.objectives.AgentObjectiveDefinition;
 import server.agents.objectives.AgentObjectiveKernel;
 import server.agents.objectives.AgentObjectiveSource;
@@ -26,7 +31,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -247,6 +258,89 @@ class AgentSupplyProcurementReachabilityTest {
         assertFalse(execution.isActive());
         assertTrue(AgentModeStateRuntime.following(entry));
         assertEquals(owner, AgentRelationshipRuntime.followTarget(entry));
+    }
+
+    @Test
+    void companionHeldOffFollowWalksBackToTheMapItLeftWhenTheShopBuysNothing() {
+        // Live 2026-09-30: its owner entered a party quest mid-trip and the host held it
+        // off follow by Lakelis, so follow never brought it back and it stood in the shop.
+        Character agent = agent(309, "Corin", KERNING_SHOP);
+        AgentRuntimeEntry entry = companionWhoseShopVisitBoughtNothing(agent, "supply:MP_POTION:309");
+        AgentSupplyProcurementState execution = execution(entry);
+        AgentFollowGuard.install(holdingOffFollow(309));
+        try {
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 200L));
+            assertTrue(execution.abandoned());
+            assertEquals(AgentSupplyProcurementState.Phase.RETURNING, execution.phase());
+
+            PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
+            when(gateway.travelTo(entry, agent, KERNING, 300L)).thenReturn(
+                    new AgentRouteOutcome(AgentRouteStatus.MOVING, KERNING_SHOP, KERNING, KERNING, false));
+            try (var gatewayRuntime = mockStatic(AgentPrimitiveCapabilityGatewayRuntime.class)) {
+                gatewayRuntime.when(AgentPrimitiveCapabilityGatewayRuntime::gateway).thenReturn(gateway);
+
+                assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 300L));
+            }
+
+            verify(gateway).travelTo(entry, agent, KERNING, 300L);
+            assertTrue(execution.isActive());
+            assertFalse(AgentModeStateRuntime.following(entry));
+        } finally {
+            AgentFollowGuard.install(null);
+        }
+    }
+
+    @Test
+    void followingCompanionWhoseShopBoughtNothingIsNotWalkedBack() {
+        Character agent = agent(310, "Wren", KERNING_SHOP);
+        AgentRuntimeEntry entry = companionWhoseShopVisitBoughtNothing(agent, "supply:MP_POTION:310");
+        AgentSupplyProcurementState execution = execution(entry);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 200L));
+        assertTrue(execution.abandoned());
+
+        PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
+        try (var gatewayRuntime = mockStatic(AgentPrimitiveCapabilityGatewayRuntime.class)) {
+            gatewayRuntime.when(AgentPrimitiveCapabilityGatewayRuntime::gateway).thenReturn(gateway);
+
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, 300L));
+        }
+
+        // Follow brings it back beside its owner; no walk to the map it left.
+        verify(gateway, never()).travelTo(any(), any(), anyInt(), anyLong());
+        assertFalse(execution.isActive());
+        assertTrue(AgentModeStateRuntime.following(entry));
+    }
+
+    private static AgentRuntimeEntry companionWhoseShopVisitBoughtNothing(Character agent, String requestId) {
+        when(agent.getJob()).thenReturn(Job.ASSASSIN);
+        when(agent.getLevel()).thenReturn(30);
+        when(agent.getMeso()).thenReturn(448);
+        AgentRuntimeEntry entry = entryWithBundle(agent, "thief-claw-standard-v1");
+        AgentRelationshipRuntime.setInteractionTarget(entry, mock(Character.class));
+        planShortage(entry, requestId, "");
+        AgentSupplyProcurementState execution = execution(entry);
+        startTrip(entry, execution, requestId, AgentResourceCategory.MP_POTION, KERNING);
+        execution.rememberForegroundMode(true, false);
+        execution.markShopRequested();
+        AgentShopStateRuntime.startShopVisit(entry, new Point(-297, -79), new Point(-297, -78), 0, 100L);
+        AgentShopStateRuntime.workflow(entry).transition(AgentShopWorkflowPhase.TRANSACTING, "buying", 120L);
+        AgentShopStateRuntime.completeWorkflow(entry, "nothing affordable", 150L);
+        AgentShopStateRuntime.clearShopState(entry);
+        return entry;
+    }
+
+    private static AgentFollowGuard.Rule holdingOffFollow(int heldId) {
+        return new AgentFollowGuard.Rule() {
+            @Override
+            public boolean holdsOffFollow(int agentCharacterId) {
+                return agentCharacterId == heldId;
+            }
+
+            @Override
+            public AgentFollowGuard.Crossing crossing(int agentCharacterId, Character anchor) {
+                return null;
+            }
+        };
     }
 
     private static Character agent(int id, String name, int mapId) {

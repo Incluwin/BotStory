@@ -15,6 +15,7 @@ import server.agents.capabilities.shop.AgentShopWorkflowPhase;
 import server.agents.capabilities.movement.AgentChairService;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
@@ -466,9 +467,14 @@ public final class AgentSupplyProcurementRuntime {
                                         AgentResourcePlanningState planning,
                                         AgentSupplyProcurementState execution,
                                         long nowMs) {
-        if (execution.resumeFollow() && followAnchor(entry) != null) {
+        if (execution.resumeFollow() && followAnchor(entry) != null
+                && AgentModeService.mayStartFollow(entry)) {
             // A companion's plan location is its owner, and follow warps it back beside the
             // owner; walking to the map it left can detour for minutes away from the party.
+            // Only while follow may start, though: live, an owner entered a party quest
+            // mid-trip and the host held the companion off follow to wait outside, so follow
+            // never came and it stood on the shop map for the whole run. A held companion
+            // walks back to the map it left, like an Agent with no owner.
             if (execution.abandoned()) {
                 return finishAbandoned(entry, agent, planning, execution, nowMs);
             }
