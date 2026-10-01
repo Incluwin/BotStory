@@ -37,7 +37,8 @@ import static server.living.roster.LifecycleHarness.LITH;
  * the KPQ entrance, her companions beside her, the lineup planned from warm CompanionViews. The doors into the quest
  * are {@link Doors}, a fake that logs admission, the start and the stop into the harness's calls ("admit [..]",
  * "start", "stop 900: ...") and registers a real PRODUCTION session. Lakelis's answers are logged there too ("answer
- * ...", "things changed"). Ann's I/O thread runs a task at once, or keeps it in {@link #io} while a test sets that.
+ * ...", "things changed", "still finishing: ..."). Ann's I/O thread runs a task at once, or keeps it in {@link #io}
+ * while a test sets that.
  */
 final class CompanionPqFixture implements AutoCloseable {
     static final int EXIT = AgentKpqDefinition.EXIT_MAP;
@@ -55,7 +56,7 @@ final class CompanionPqFixture implements AutoCloseable {
     final Doors doors = new Doors();
     CompanionPartyQuestService service;
     CompanionRunLifecycle lifecycle;
-    /** The lineup Lakelis showed again when a Yes found things changed. */
+    /** The lineup Lakelis showed again when a Yes found things changed, or a companion still finishing something. */
     LineupPlan shownAgain;
     /** The map lines of Ann's own companions as they step out beside Lakelis. */
     final MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class);
@@ -123,6 +124,12 @@ final class CompanionPqFixture implements AutoCloseable {
             @Override
             public void outcome(Character leader, String line, long clickedAtMs) {
                 game.calls.add("answer " + line);
+            }
+
+            @Override
+            public void stillFinishing(Character leader, LineupPlan plan, String line, long clickedAtMs) {
+                game.calls.add("still finishing: " + line);
+                shownAgain = plan;
             }
         });
         return service;

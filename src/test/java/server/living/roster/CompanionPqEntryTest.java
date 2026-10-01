@@ -41,7 +41,8 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * Yes at Lakelis (P6, flow 3): the companions left out step out of the party beside Lakelis first (a HOLD, saying so
  * aloud), then, back on Ann's I/O thread, the lineup is admitted, marked a companion run with guidance, committed
  * with its extras, and the event started, in that order and in one step. A refused admission is answered in
- * Lakelis's words and calls the extras back; so does a party that changed meanwhile, without admitting anyone. A lineup
+ * Lakelis's words and calls the extras back; so does a party that changed meanwhile, without admitting anyone. One that
+ * refuses a companion still finishing something shows the lineup again at once, for a Yes that goes in. A lineup
  * of humans only takes the stock start. A second Yes while the first is carried out only hears "hold on"; one that
  * threw is over all the same. A Yes on her own choice is planned again by her own choice. A companion the lineup leaves
  * waiting for mana potions asks for some in party chat, once, as the lineup is shown.
@@ -133,7 +134,7 @@ class CompanionPqEntryTest {
 
     @Test
     void admitFailureSpeaksTheMappedLineAndRejoinsTheHolds() {
-        fx.doors.refusal = "Tobi could not leave its current activity";
+        fx.doors.refusal = "Tobi is not owned by this KPQ lobby";
         fx.ready();
 
         CompanionRun run = fx.yes();
@@ -147,6 +148,46 @@ class CompanionPqEntryTest {
         assertEquals(RosterState.ACTIVE, game.row(casse).state(), "called back");
         assertEquals(RosterState.ACTIVE, game.row(hadrik).state());
         assertTrue(game.members.containsAll(List.of(903, 904)));
+    }
+
+    @Test
+    void aCompanionStillFinishingSomethingIsAnsweredWithTheLineupAgainAndTheNextYesGoesIn() {
+        fx.doors.refusal = "Tobi could not leave its current activity"; // live: HappyWolf at 19:56, Rurik at 19:58
+        fx.ready();
+
+        assertNull(fx.yes());
+
+        assertEquals(List.of("still finishing: Give Tobi a sec, they're finishing something."),
+                game.calls.stream().filter(call -> call.startsWith("still") || call.startsWith("answer")).toList());
+        assertEquals(List.of(ANN, 900, 901, 902), List.copyOf(fx.shownAgain.memberIds()), "the same lineup");
+        assertTrue(fx.shownAgain.startable(), "Yes is one click away");
+        assertEquals(RosterState.ACTIVE, game.row(casse).state(), "called back meanwhile");
+
+        fx.doors.refusal = null; // its step is done
+        fx.service.start(game.ann, fx.shownAgain);
+
+        assertEquals(2, game.calls.stream().filter(call -> call.startsWith("admit")).count());
+        assertTrue(game.calls.contains("start"));
+        assertTrue(fx.service.runForSession(fx.doors.session.sessionId()).started);
+    }
+
+    @Test
+    void aCompanionStillFinishingSomethingIsNeverWaitedFor() {
+        fx.doors.refusal = "Tobi could not leave its current activity";
+        fx.ready();
+        List<Runnable> ops = fx.holdCompanionOps();
+        fx.io = new ArrayList<>();
+
+        fx.yes(); // Ann's click returns at once: the extras step out on companion-ops
+        CompanionPqFixture.drain(ops);
+        CompanionPqFixture.drain(fx.io); // admission, refused, and the answer: one pass on Ann's I/O thread
+        CompanionPqFixture.drain(ops); // the extras come back
+
+        assertEquals(1, game.calls.stream().filter(call -> call.startsWith("admit")).count(), "no retry loop");
+        assertTrue(game.calls.contains("still finishing: Give Tobi a sec, they're finishing something."));
+        assertEquals(List.of(), game.timers, "no timer to try again");
+        assertEquals(List.of(), fx.io, "nothing left to run on Ann's I/O thread");
+        assertEquals(List.of(), ops);
     }
 
     @Test

@@ -86,6 +86,15 @@ public final class CompanionPartyQuestService {
         void thingsChanged(Character leader, LineupPlan plan);
 
         void outcome(Character leader, String line, long clickedAtMs);
+
+        /**
+         * A Yes found a companion still finishing what it was doing ({@code line} says so; admission asked it to stop):
+         * {@code plan}, the same lineup planned again, goes in with the next Yes once it is done. Without a window of
+         * its own, the line is the outcome.
+         */
+        default void stillFinishing(Character leader, LineupPlan plan, String line, long clickedAtMs) {
+            outcome(leader, line, clickedAtMs);
+        }
     }
 
     /** Until the desk is installed: no window, and an outcome is pink text. */
@@ -489,7 +498,9 @@ public final class CompanionPartyQuestService {
     /**
      * On the leader's I/O thread: the party must still be the lineup, all of it at the entrance; a lineup of humans
      * only takes the stock start. Otherwise it is admitted, marked a companion run (tap-outs, guidance), committed with
-     * its extras, and the event started, in one step. A start that fails after admission stops the session again.
+     * its extras, and the event started, in one step. A start that fails after admission stops the session again. A
+     * companion still finishing another activity is never waited for on this thread (live, 19:56 and 19:58 on
+     * 2026-09-30, the refusals came on the Netty one): the lineup is shown again for the next Yes.
      */
     void enter(Character leader, LineupPlan fresh, long clickedAt) {
         Set<Integer> owners = owners(fresh);
@@ -515,7 +526,12 @@ public final class CompanionPartyQuestService {
             if (!admitted.success()) {
                 log.info("companion KPQ admission refused for {}: {}", leader.getName(), admitted.message());
                 rejoinLater(leader, owners); // its own rollback handed the companions back already
-                desk.outcome(leader, LakelisLines.forAdmit(admitted.message(), leader.getName()), clickedAt);
+                String line = LakelisLines.forAdmit(admitted.message(), leader.getName());
+                if (LakelisLines.stillFinishing(admitted.message())) {
+                    desk.stillFinishing(leader, plan(leader, fresh.pqKey(), fresh.picked()), line, clickedAt);
+                } else {
+                    desk.outcome(leader, line, clickedAt);
+                }
                 return;
             }
             AgentKpqSession session = admitted.session();

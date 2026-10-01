@@ -309,6 +309,17 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
      */
     @Override
     public void outcome(Character leader, String line, long clickedAtMs) {
+        answer(leader, line, clickedAtMs, () -> talk(leader).ok(line).show());
+    }
+
+    /** A companion still finishing what it was doing: the lineup again under her line, so the next Yes is one click. */
+    @Override
+    public void stillFinishing(Character leader, LineupPlan plan, String line, long clickedAtMs) {
+        answer(leader, line, clickedAtMs, () -> proposal(leader, plan, line));
+    }
+
+    /** {@code window} as the answer to the click, as {@link #outcome} draws it; else her line in pink text. */
+    private static void answer(Character leader, String line, long clickedAtMs, Runnable window) {
         Client client = leader.getClient();
         if (client == null) {
             return; // logged off meanwhile
@@ -316,7 +327,7 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
         client.runOnIoThread(() -> {
             if (System.currentTimeMillis() - clickedAtMs <= ANSWER_MS && LivingTalk.mayShow(leader)
                     && leader.getMapId() == AgentKpqDefinition.RECRUIT_MAP) {
-                talk(leader).ok(line).show();
+                window.run();
             } else {
                 leader.dropMessage(5, "Lakelis: " + LakelisLines.plain(line));
             }

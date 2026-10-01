@@ -24,6 +24,10 @@ public final class LakelisLines {
     static final String LOW_ON_POTIONS_LINE = "<name> is low on potions.";
     static final String LOW_ON_MANA_LINE = "<name> is low on mana potions.";
     static final String BUSY = "<name> is busy with something. Give them a moment.";
+    /** Admission asked the companion to stop what it was doing, and it finishes its step first. */
+    static final String FINISHING = "Give <name> a sec, they're finishing something.";
+    /** Admission's refusal of a companion still on another activity (AgentKpqAdmissionService.admit). */
+    private static final String LEAVING_ACTIVITY = " could not leave its current activity";
     /** 9020000.js, when every lobby of the channel is taken. */
     static final String NO_LOBBY = "Another party has already entered the #rParty Quest#k in this channel. Please try "
             + "another channel, or wait for the current party to finish.";
@@ -58,7 +62,7 @@ public final class LakelisLines {
             new Rule(" needs free Use and ETC capacity", true,
                     "<name>'s bags are full. Free a Use and an Etc slot first.",
                     "Your bags are full. Free a Use and an Etc slot first."),
-            new Rule(" could not leave its current activity", true, BUSY), // a companion's, never the leader's
+            new Rule(LEAVING_ACTIVITY, true, FINISHING), // a companion's, never the leader's
             new Rule(" is not owned by this KPQ lobby", true, BUSY),
             new Rule("already owns", false, CATCHING_BREATH),
             new Rule("already belongs to another", false, CATCHING_BREATH),
@@ -93,6 +97,14 @@ public final class LakelisLines {
             }
         }
         return GENERIC;
+    }
+
+    /**
+     * True when admission refused a companion that is still finishing another activity: the refusal itself asked that
+     * activity to stop (AgentActivityAdmissionCoordinator.prepare), so the same lineup goes in once its step is done.
+     */
+    static boolean stillFinishing(String message) {
+        return message != null && message.contains(LEAVING_ACTIVITY);
     }
 
     /** Her line for a stock start that did not go through. */

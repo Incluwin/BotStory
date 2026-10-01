@@ -56,8 +56,9 @@ import static org.mockito.Mockito.when;
  * "Are they here yet?" while a companion is on its way, the leader's pick keeps the humans and takes three or four,
  * "Never mind." does nothing, a stale Yes shows the lineup again with "Things changed meanwhile." (a pick stays the
  * leader's there and back from the bench), a companion sent for from the bench is on its way (noted only when it set
- * off), and an outcome is her OK window within ten seconds of the click, else pink text. Every window is hers (9020000)
- * with speaker 0. The lineups are the service's (mocked here).
+ * off), and an outcome is her OK window within ten seconds of the click, else pink text; a companion still finishing
+ * something is answered with the lineup again under her line. Every window is hers (9020000) with speaker 0. The
+ * lineups are the service's (mocked here).
  */
 class LakelisDeskTest {
     private static final int BEN = 10;
@@ -375,6 +376,25 @@ class LakelisDeskTest {
 
         assertEquals(OK, lastTalk().msgType());
         assertEquals(noLobby, lastTalk().text());
+    }
+
+    @Test
+    void aCompanionStillFinishingSomethingIsAnsweredWithTheLineupAgainUnderHerLine() {
+        LineupPlan shown = choice(null);
+        String finishing = "Give Mira a sec, they're finishing something.";
+
+        desk.stillFinishing(ben, shown, finishing, System.currentTimeMillis());
+
+        Talk again = lastTalk();
+        assertEquals(MENU, again.msgType());
+        assertTrue(again.text().startsWith(TITLE + "\r\n" + finishing + "\r\n"
+                + "Four of you, then? Here's who I'd send in:\r\n"), again.text());
+        pick("Yes, send us in.");
+        verify(service).start(ben, shown);
+
+        desk.stillFinishing(ben, shown, finishing, System.currentTimeMillis() - 10_001L);
+
+        verify(ben).dropMessage(5, "Lakelis: " + finishing);
     }
 
     @Test
