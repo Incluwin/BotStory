@@ -19,6 +19,7 @@ public final class AgentCombatSkillUsageState {
                     AgentCombatSkillUsageState.class, AgentCombatSkillUsageState::new);
 
     private final Map<Integer, long[]> usage = new LinkedHashMap<>();
+    private long degenerateAttacks;
 
     public synchronized void record(int skillId, long damage) {
         long[] acc = usage.computeIfAbsent(skillId, ignored -> new long[2]);
@@ -31,6 +32,19 @@ public final class AgentCombatSkillUsageState {
         usage.computeIfAbsent(skillId, ignored -> new long[2])[1] += Math.max(0, damage);
     }
 
+    /**
+     * A basic attack swung at close range with a bow, crossbow, claw or gun (a whack instead of a shot); it is also
+     * counted under skill 0.
+     */
+    public synchronized void recordDegenerate() {
+        degenerateAttacks++;
+    }
+
+    /** Degenerate basic attacks since the last reset. */
+    public synchronized long degenerateAttacks() {
+        return degenerateAttacks;
+    }
+
     /** Copy of {skillId -> [attacks, damage]} since the last reset. */
     public synchronized Map<Integer, long[]> snapshot() {
         Map<Integer, long[]> copy = new LinkedHashMap<>();
@@ -40,5 +54,6 @@ public final class AgentCombatSkillUsageState {
 
     public synchronized void reset() {
         usage.clear();
+        degenerateAttacks = 0L;
     }
 }

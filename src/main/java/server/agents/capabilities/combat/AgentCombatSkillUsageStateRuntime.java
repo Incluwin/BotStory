@@ -17,6 +17,14 @@ public final class AgentCombatSkillUsageStateRuntime {
         entry.capabilityStates().require(AgentCombatSkillUsageState.STATE_KEY).addDamage(skillId, damage);
     }
 
+    public static void recordDegenerate(AgentRuntimeEntry entry) {
+        entry.capabilityStates().require(AgentCombatSkillUsageState.STATE_KEY).recordDegenerate();
+    }
+
+    public static long degenerateAttacks(AgentRuntimeEntry entry) {
+        return entry.capabilityStates().require(AgentCombatSkillUsageState.STATE_KEY).degenerateAttacks();
+    }
+
     public static Map<Integer, long[]> snapshot(AgentRuntimeEntry entry) {
         return entry.capabilityStates().require(AgentCombatSkillUsageState.STATE_KEY).snapshot();
     }
