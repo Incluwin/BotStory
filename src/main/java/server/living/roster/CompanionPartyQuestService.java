@@ -21,6 +21,7 @@ import server.agents.capabilities.partyquest.kpq.AgentKpqDefinition;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
 import server.life.LifeFactory;
@@ -64,9 +65,10 @@ public final class CompanionPartyQuestService {
     /**
      * Live (2026-09-30, two runs): Rurik and Yara, then Casse and Rurik, went in without mana potions and nothing
      * inside sells them ("no MP_POTION supplier ... from map 103000800"), so they fought on without their skills. A
-     * warrior drinks about 15 a run. A companion that fights with skills and carries fewer waits.
+     * warrior drinks about 15 a run, and its own resupply goes looking for a supplier once it is under POT_STOP (10).
+     * A companion that fights with skills goes in with a run's worth above that ({@link #kpqMinMpPotions}).
      */
-    static final int KPQ_MIN_MP_POTIONS = 15;
+    static final int KPQ_MP_POTIONS_PER_RUN = 15;
     /** A companion short on mana potions asks for some at most this often (the Agents' own resupply waits as long). */
     static final long MANA_ASK_EVERY_MS = 300_000L;
     /** KPQ's monsters a companion is weighed against: stage 1's Ligator, stage 5's Jr. Necki and King Slime. */
@@ -328,8 +330,16 @@ public final class CompanionPartyQuestService {
         if (hpPotions.applyAsInt(bot) < KPQ_MIN_HP_POTIONS) {
             return LakelisLines.LOW_ON_POTIONS;
         }
-        return bot.getJob().getId() % 1000 != 0 && mpPotions.applyAsInt(bot) < KPQ_MIN_MP_POTIONS
+        return bot.getJob().getId() % 1000 != 0 && mpPotions.applyAsInt(bot) < kpqMinMpPotions()
                 ? LakelisLines.LOW_ON_MANA : null;
+    }
+
+    /**
+     * The mana potions a companion that fights with skills goes in with at least: a run's worth above the count its
+     * own resupply calls critical (AgentRuntimeConfig POT_STOP), so it never asks the party for some mid-run.
+     */
+    static int kpqMinMpPotions() {
+        return AgentRuntimeConfig.cfg.POT_STOP + KPQ_MP_POTIONS_PER_RUN;
     }
 
     private LineupPlan.Candidate blocks(int id, String name, String line) {

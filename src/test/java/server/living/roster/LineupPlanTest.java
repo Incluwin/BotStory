@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.StatEffect;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
+import server.agents.runtime.AgentRuntimeConfig;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.RosterState;
@@ -119,7 +120,7 @@ class LineupPlanTest {
         fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
         fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);
         fx.companion("rurik", "Rurik", 903, 25, Job.FIGHTER);
-        fx.manaPotions.put(903, CompanionPartyQuestService.KPQ_MIN_MP_POTIONS - 1); // live: none sold inside the run
+        fx.manaPotions.put(903, CompanionPartyQuestService.kpqMinMpPotions() - 1); // live: none sold inside the run
 
         LineupPlan plan = fx.ready().plan(game.ann, "kpq");
 
@@ -128,6 +129,21 @@ class LineupPlanTest {
 
         game.members.remove((Integer) 902); // Pip goes: Rurik is the only one left to take the seat, and still waits
         assertEquals("Rurik is low on mana potions.", fx.service.plan(game.ann, "kpq").blocker());
+    }
+
+    @Test
+    void aCompanionWhoseManaPotionsWouldRunOutMidRunWaits() {
+        fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
+        fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);
+        fx.companion("rurik", "Rurik", 903, 25, Job.FIGHTER);
+        fx.manaPotions.put(903, AgentRuntimeConfig.cfg.POT_STOP + 5); // its own resupply would ask after 5 drinks
+
+        LineupPlan plan = fx.ready().plan(game.ann, "kpq");
+
+        assertEquals(List.of(new LineupPlan.Waiting(903, "Rurik", "low on mana potions")), plan.waiting());
+
+        fx.manaPotions.put(903, AgentRuntimeConfig.cfg.POT_STOP + CompanionPartyQuestService.KPQ_MP_POTIONS_PER_RUN);
+        assertEquals(List.of(), fx.service.plan(game.ann, "kpq").waiting(), "a run's worth above that goes in");
     }
 
     @Test
