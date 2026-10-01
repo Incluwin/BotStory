@@ -10,6 +10,7 @@ import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.StatEffect;
+import server.agents.capabilities.combat.AgentExpectedDamagePolicy;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.dialogue.AgentDialogueSelector;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
@@ -22,6 +23,8 @@ import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
+import server.life.LifeFactory;
+import server.life.Monster;
 import server.life.NPC;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
@@ -40,6 +43,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 
 /**
@@ -65,6 +69,8 @@ public final class CompanionPartyQuestService {
     static final int KPQ_MIN_MP_POTIONS = 15;
     /** A companion short on mana potions asks for some at most this often (the Agents' own resupply waits as long). */
     static final long MANA_ASK_EVERY_MS = 300_000L;
+    /** KPQ's monsters a companion is weighed against: stage 1's Ligator, stage 5's Jr. Necki and King Slime. */
+    private static final int[] KPQ_MOBS = {9_300_001, 9_300_000, 9_300_003};
     /** A run whose session went away without ending it is let go once it has been gone this long (the audit's pace). */
     static final long LOST_RUN_AFTER_MS = 60_000L;
     /** A companion Lakelis sent for from the bench says it is ready for her when it arrives within this long. */
@@ -102,6 +108,7 @@ public final class CompanionPartyQuestService {
     private final PqEntryPort port;
     private final ToIntFunction<Character> hpPotions;
     private final ToIntFunction<Character> mpPotions;
+    private final ToDoubleFunction<Character> kpqDps;
     private final CompanionRunRecorder records;
     private volatile Desk desk = PINK_TEXT;
     /** Leaders whose Yes is being carried out: a second Yes meanwhile only hears "hold on". */
@@ -116,16 +123,21 @@ public final class CompanionPartyQuestService {
     private final Map<Integer, Long> askedForMana = new ConcurrentHashMap<>();
 
     public CompanionPartyQuestService(LivingWorld world) {
-        this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions, CompanionPartyQuestService::mpPotions);
+        this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions, CompanionPartyQuestService::mpPotions,
+                CompanionPartyQuestService::kpqDps);
     }
 
-    /** {@code port}: the doors into the quest; {@code hpPotions}, {@code mpPotions}: what a loaded companion carries. */
+    /**
+     * {@code port}: the doors into the quest; {@code hpPotions}, {@code mpPotions}: what a loaded companion carries;
+     * {@code kpqDps}: what it hits for in KPQ.
+     */
     CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
-                               ToIntFunction<Character> mpPotions) {
+                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps) {
         this.world = world;
         this.port = port;
         this.hpPotions = hpPotions;
         this.mpPotions = mpPotions;
+        this.kpqDps = kpqDps;
         this.records = new CompanionRunRecorder(world);
     }
 
@@ -226,8 +238,8 @@ public final class CompanionPartyQuestService {
 
     /**
      * The lineup the leader's party would go in with, {@code picked} (companion ids, null: the best) chosen. On the
-     * leader's I/O thread, from memory: the party, the loaded characters, the Crew menus' row cache, the commitments
-     * and the companions' records.
+     * leader's I/O thread, from memory: the party, the loaded characters, the Crew menus' row cache, the commitments,
+     * the companions' records and the game data's KPQ monsters (what a companion that can go hits for).
      */
     public LineupPlan plan(Character leader, String pqKey, Set<Integer> picked) {
         Party party = leader.getParty();
@@ -285,13 +297,14 @@ public final class CompanionPartyQuestService {
         if (row.state() == RosterState.TRAVELLING) {
             long etaMs = Math.max(0L, row.etaAtMs() - System.currentTimeMillis());
             return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), etaMs),
-                    LineupPlan.Fit.ON_THE_WAY, null, usual);
+                    LineupPlan.Fit.ON_THE_WAY, null, usual, kpqDps.applyAsDouble(bot));
         }
         String reason = !RosterService.sameChannel(leader, bot) ? LakelisLines.OTHER_CHANNEL
                 : bot.getHp() <= 0 ? LakelisLines.KNOCKED_OUT
                 : waitingReason(bot);
         return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), 0L),
-                reason == null ? LineupPlan.Fit.READY : LineupPlan.Fit.WAITS, reason, usual);
+                reason == null ? LineupPlan.Fit.READY : LineupPlan.Fit.WAITS, reason, usual,
+                reason == null ? kpqDps.applyAsDouble(bot) : 0.0d);
     }
 
     /**
@@ -340,6 +353,25 @@ public final class CompanionPartyQuestService {
     /** The MP-restoring potions in the companion's USE inventory, by quantity (an Elixir counts here too). */
     static int mpPotions(Character bot) {
         return potions(bot, false);
+    }
+
+    /**
+     * What a loaded companion hits for in KPQ: its expected damage per second against each of {@link #KPQ_MOBS}
+     * (AgentExpectedDamagePolicy: its best attack after hit chance and defense), averaged. One that cannot be
+     * estimated counts as 0, so the lineup never fails on it.
+     */
+    static double kpqDps(Character bot) {
+        try {
+            double total = 0.0d;
+            for (int mobId : KPQ_MOBS) {
+                Monster mob = LifeFactory.getMonster(mobId);
+                total += mob == null ? 0.0d : AgentExpectedDamagePolicy.damagePerSecond(bot, mob);
+            }
+            return total / KPQ_MOBS.length;
+        } catch (RuntimeException failure) {
+            log.debug("no KPQ damage estimate for {}", bot.getName(), failure);
+            return 0.0d;
+        }
     }
 
     private static int potions(Character bot, boolean hp) {

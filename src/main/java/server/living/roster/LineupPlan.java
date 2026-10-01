@@ -23,6 +23,11 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
     public static final int MAX_SIZE = 4;
     /** A companion's clear record is shown, and ranks it, from this many runs on. */
     static final int RECORD_RUNS = 3;
+    /**
+     * A companion is up to this much better by what it hits for in KPQ, against the best of those that can go. Live
+     * (2026-09-30): Rurik went in on his level and job, and hit King Slime 0 times in 95.
+     */
+    static final double HITTING = 5.0d;
 
     /**
      * One party member as the lineup shows it; a human has no owner (0), no persona and no record. {@code here}: it
@@ -44,10 +49,15 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
     enum Fit { READY, ON_THE_WAY, WAITS, BLOCKS }
 
     /**
-     * A party member for {@link #build}: its seat, how it fits, the line that says why when it waits or blocks, and
-     * whether it has a place in its owner's usual lineup (the tie-break after its score).
+     * A party member for {@link #build}: its seat, how it fits, the line that says why when it waits or blocks,
+     * whether it has a place in its owner's usual lineup (the tie-break after its score), and what it hits for in KPQ
+     * (a companion that can go: its expected damage per second against KPQ's monsters; else 0).
      */
-    record Candidate(Seat seat, Fit fit, String line, boolean usual) { }
+    record Candidate(Seat seat, Fit fit, String line, boolean usual, double dps) {
+        Candidate(Seat seat, Fit fit, String line, boolean usual) {
+            this(seat, fit, line, usual, 0.0d);
+        }
+    }
 
     public boolean startable() {
         return blocker == null && onTheWay.isEmpty() && lineup.size() >= MIN_SIZE && lineup.size() <= MAX_SIZE;
@@ -66,7 +76,8 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
      * The lineup of {@code party} (in party order) for a leader at {@code leaderLevel}. Four go in when the humans and
      * the companions that can go reach four, else three; {@code picked} (the companion ids the leader chose, null: the
      * best) overrides the choice. Within an owner the best companion is the closest in level to the leader, 2 better
-     * for a job branch nobody in the lineup has yet, and up to 3 better by its clear rate once it has 3 runs.
+     * for a job branch nobody in the lineup has yet, up to 3 better by its clear rate once it has 3 runs, and up to
+     * {@link #HITTING} better by what it hits for in KPQ.
      */
     static LineupPlan build(String pqKey, int leaderId, int leaderLevel, List<Candidate> party, Set<Integer> picked) {
         List<Seat> humans = new ArrayList<>();
@@ -130,6 +141,7 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
         for (Seat human : humans) {
             branches.add(human.jobId() / 100);
         }
+        double bestDps = pool.stream().mapToDouble(Candidate::dps).max().orElse(0.0d);
         List<Candidate> chosen = new ArrayList<>();
         boolean picking = true;
         while (picking && chosen.size() < room) {
@@ -139,7 +151,7 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
                     continue;
                 }
                 Candidate best = own.stream().min(Comparator
-                        .comparingDouble((Candidate member) -> -score(member.seat(), leaderLevel, branches))
+                        .comparingDouble((Candidate member) -> -score(member, leaderLevel, branches, bestDps))
                         .thenComparing(member -> !member.usual())
                         .thenComparing(member -> member.seat().personaId())).orElseThrow();
                 own.remove(best);
@@ -151,9 +163,15 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
         return chosen;
     }
 
-    static double score(Seat seat, int leaderLevel, Set<Integer> branches) {
+    /**
+     * What it hits for counts in whole points against the best of the pool ({@code bestDps}), so a buff that wears off
+     * between the lineup and the Yes rarely reorders it.
+     */
+    static double score(Candidate member, int leaderLevel, Set<Integer> branches, double bestDps) {
+        Seat seat = member.seat();
         return -Math.abs(seat.level() - leaderLevel) + (branches.contains(seat.jobId() / 100) ? 0 : 2)
-                + (seat.runs() >= RECORD_RUNS ? 3.0d * seat.clears() / seat.runs() : 0.0d);
+                + (seat.runs() >= RECORD_RUNS ? 3.0d * seat.clears() / seat.runs() : 0.0d)
+                + (bestDps > 0.0d ? Math.round(HITTING * member.dps() / bestDps) : 0L);
     }
 
     /** Too few can go in: a companion that waits for potions says so (it is never sent in without), else the rule. */

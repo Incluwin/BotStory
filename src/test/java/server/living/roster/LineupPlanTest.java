@@ -38,7 +38,7 @@ import static server.living.roster.LifecycleHarness.LITH;
  * The rest wait outside with their reason. A companion low on potions, or on mana potions when it fights with skills,
  * waits and is never sent in, a guest Agent or a companion that is not up blocks the start, and one on its way keeps
  * the lineup from starting until it is here. A companion's clear rate counts, and its record shows, once it has three
- * KPQ runs on record. All of it from memory: the plan reads no store.
+ * KPQ runs on record, and what it hits for in KPQ counts too. All of it from memory: the plan reads no store.
  */
 class LineupPlanTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -298,6 +298,24 @@ class LineupPlanTest {
 
         assertEquals(List.of("Ann", "Bel", "Rook", "Tobi"), names(plan.lineup()));
         assertEquals(List.of("Ash"), names(plan.extras()), "the same level and job as Bel, and one clear in three");
+    }
+
+    @Test
+    void aCompanionThatCannotHitKpqsMonstersGivesWayToOnesThatCan() {
+        fx.companion("rurik", "Rurik", 901, 25, Job.FIGHTER);
+        fx.companion("brann", "Brann", 902, 27, Job.FIGHTER);
+        fx.companion("b24", "Mira", 903, 24, Job.HUNTER);
+        fx.companion("c26", "Pip", 904, 26, Job.FP_WIZARD);
+        fx.dps.put(901, 0.4d); // live: Rurik hit King Slime 0 times in 95
+        fx.dps.put(902, 30.0d);
+        fx.dps.put(903, 30.0d);
+        fx.dps.put(904, 30.0d);
+
+        LineupPlan plan = fx.ready().plan(game.ann, "kpq");
+
+        assertEquals(List.of("Ann", "Mira", "Brann", "Pip"), names(plan.lineup()),
+                "Rurik is Ann's level, and still the one left out");
+        assertEquals(List.of("Rurik"), names(plan.extras()));
     }
 
     @Test
