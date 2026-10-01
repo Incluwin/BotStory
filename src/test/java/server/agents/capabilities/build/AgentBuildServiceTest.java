@@ -17,6 +17,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.build.profiles.AgentApBuildProfileRepository;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileRepository;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 import server.agents.capabilities.build.AgentBuildRuntime;
@@ -132,6 +133,40 @@ class AgentBuildServiceTest {
         assertEquals(10, AgentBuildStateRuntime.lastKnownLevel(entry));
         assertEquals(0, remainingSps[warriorBook]);
         assertEquals(1, skillLevels.getOrDefault(Warrior.IMPROVED_HPREC, 0));
+    }
+
+    @Test
+    void profilesForAnotherFamilyHandSpAndApToTheLegacyBuild() {
+        Character bot = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, mock(Character.class), mock(ScheduledFuture.class));
+        entry.apBuildProfileState().assign(AgentApBuildProfileRepository.defaultRepository()
+                .find("pirate-str20-dex-lv30-v1").orElseThrow());
+        entry.spBuildProfileState().assign(AgentSpBuildProfileRepository.defaultRepository()
+                .find("mapleroyals-optimal-2026-pirate-gunslinger-first-job").orElseThrow());
+        AgentBuildStateRuntime.setApBuild(entry, new AgentBuildService.ApBuild(
+                AgentBuildService.StatType.STR, AgentBuildService.StatType.DEX, 25));
+        int warriorBook = GameConstants.getSkillBook(Warrior.IMPROVED_HPREC / 10000);
+        int[] remainingSps = new int[5];
+        remainingSps[warriorBook] = 1;
+        Map<Integer, Integer> skillLevels = new HashMap<>();
+
+        when(bot.getLevel()).thenReturn(10);
+        when(bot.getJob()).thenReturn(Job.WARRIOR);
+        when(bot.getRemainingAp()).thenReturn(5);
+        when(bot.getDex()).thenReturn(26);
+        stubSkillState(bot, remainingSps, skillLevels);
+        when(bot.getMasterLevel(any(Skill.class))).thenReturn(0);
+
+        try (MockedStatic<SkillFactory> skillFactory = mockStatic(SkillFactory.class)) {
+            skillFactory.when(() -> SkillFactory.getSkill(anyInt()))
+                    .thenAnswer(invocation -> mockSkill(invocation.getArgument(0), 20, false));
+
+            AgentBuildService.checkLevelUp(entry, bot);
+        }
+
+        assertEquals(0, remainingSps[warriorBook]);
+        assertEquals(1, skillLevels.getOrDefault(Warrior.IMPROVED_HPREC, 0));
+        verify(bot).assignStrDexIntLuk(5, 0, 0, 0);
     }
 
     @Test

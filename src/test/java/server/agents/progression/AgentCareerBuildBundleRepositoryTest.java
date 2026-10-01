@@ -29,7 +29,7 @@ class AgentCareerBuildBundleRepositoryTest {
         }
 
         Map<String, String> expectedApProfiles = Map.of(
-                "warrior-standard-v1", "warrior-dex20-str-lv30-v1",
+                "warrior-standard-v1", "warrior-dex40-str-lv30-v1",
                 "bowman-standard-v1", "bowman-str4-dex-lv30-v1",
                 "magician-standard-v1", "magician-luk4-int-lv30-v1",
                 "thief-dagger-standard-v1", "thief-dex60-luk-lv30-v1",

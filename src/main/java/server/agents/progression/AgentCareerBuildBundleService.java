@@ -10,7 +10,10 @@ import server.agents.runtime.AgentRuntimeEntry;
 import java.io.IOException;
 import java.util.List;
 
-/** Restores a durable assignment or makes one deterministic first-time assignment. */
+/**
+ * Restores a durable assignment, re-picking one whose bundle no longer covers the Agent's job,
+ * or makes one deterministic first-time assignment.
+ */
 public final class AgentCareerBuildBundleService {
     private static final Logger log = LoggerFactory.getLogger(AgentCareerBuildBundleService.class);
     private static final AgentCareerAssignmentStore STORE = FileAgentCareerAssignmentStore.runtimeDefault();
@@ -115,6 +118,21 @@ public final class AgentCareerBuildBundleService {
                 throw new IOException("assigned career bundle version changed without migration: "
                         + assignment.bundleId());
             }
+            // A Beginner draws from every bundle; one that then advanced into another class or branch
+            // (shaping, GM, owner chat) kept a bundle whose AP/SP profiles cannot serve its job.
+            int jobId = agent.getJob().getId();
+            if (jobId != 0 && !covers(bundle, jobId)) {
+                List<AgentCareerBuildBundle> choices = compatibleChoices(repository.all(), jobId);
+                AgentCareerBuildBundle repicked = choices.get(Math.floorMod(agent.getId(), choices.size()));
+                if (covers(repicked, jobId)) {
+                    log.info("Reassigning career build bundle for {} ({}): {} does not cover job {}, now {}",
+                            agent.getName(), agent.getId(), bundle.bundleId(), jobId, repicked.bundleId());
+                    bundle = repicked;
+                    assignment = new AgentCareerAssignment(2, assignment.characterId(), assignment.characterName(),
+                            bundle.bundleId(), bundle.bundleVersion(), assignment.progressionProfileId(), nowMs);
+                    store.save(assignment);
+                }
+            }
         }
         AgentProgressionProfileRepository profiles = AgentProgressionProfileRepository.defaultRepository();
         AgentProgressionProfile profile;
@@ -147,10 +165,22 @@ public final class AgentCareerBuildBundleService {
         if (jobId == 0) {
             return all;
         }
-        int firstJobId = jobId < 1_000 ? (jobId / 100) * 100 : jobId;
         List<AgentCareerBuildBundle> compatible = all.stream()
-                .filter(bundle -> bundle.firstJobId() == firstJobId)
+                .filter(bundle -> covers(bundle, jobId))
                 .toList();
         return compatible.isEmpty() ? all : compatible;
+    }
+
+    /**
+     * The bundle's first job matches; from 2nd job on, its first-job SP profile must also be the one
+     * the Agent's branch descends from (claw vs dagger, gun vs knuckle).
+     */
+    private static boolean covers(AgentCareerBuildBundle bundle, int jobId) {
+        int firstJobId = jobId < 1_000 ? (jobId / 100) * 100 : jobId;
+        if (bundle.firstJobId() != firstJobId) {
+            return false;
+        }
+        return jobId % 100 == 0
+                || bundle.spProfileId().equals(AgentSpBuildProfileService.firstJobProfileId(jobId));
     }
 }

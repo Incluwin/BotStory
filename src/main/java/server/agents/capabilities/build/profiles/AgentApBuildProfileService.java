@@ -20,15 +20,19 @@ public final class AgentApBuildProfileService {
 
     /**
      * Applies the independently configured Agent profile. The return value indicates that this
-     * layer owns AP allocation, even when no AP can be spent at the current level/job.
+     * layer owns AP allocation, even when no AP is pending; it is false for a job outside the
+     * profile's family so the caller's fallback build runs. Past the last profiled level the
+     * target stat stays at its cap and the rest goes to the primary stat.
      */
     public static boolean autoAssign(AgentRuntimeEntry entry, Character agent) {
         AgentApBuildProfile profile = entry.apBuildProfileState().profile();
         if (profile == null) {
             return false;
         }
-        if (agent == null || agent.getLevel() > profile.supportedThroughLevel()
-                || !profile.supports(agent.getJob()) || agent.getRemainingAp() < 1) {
+        if (agent != null && !profile.supports(agent.getJob())) {
+            return false;
+        }
+        if (agent == null || agent.getRemainingAp() < 1) {
             return true;
         }
 

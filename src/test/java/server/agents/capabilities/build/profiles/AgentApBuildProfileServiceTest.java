@@ -1,12 +1,22 @@
 package server.agents.capabilities.build.profiles;
 
+import client.Character;
+import client.Job;
 import org.junit.jupiter.api.Test;
+import server.agents.runtime.AgentRuntimeEntry;
 
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class AgentApBuildProfileServiceTest {
     private final Map<String, AgentApBuildProfile> profiles = AgentApBuildProfileRepository.defaultRepository().all()
@@ -54,6 +64,37 @@ class AgentApBuildProfileServiceTest {
                 AgentApBuildProfileService.allocation(thief, 10, 5, 25));
         assertEquals(new AgentApBuildProfileService.Allocation(5, 0, 0, 0),
                 AgentApBuildProfileService.allocation(pirate, 10, 5, 20));
+    }
+
+    @Test
+    void autoAssignDeclinesAJobOutsideTheProfileFamilySoTheFallbackRuns() {
+        Character warrior = warrior(29, 10, 121, 26);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(warrior, null, null);
+        entry.apBuildProfileState().assign(profile("pirate-str20-dex-lv30-v1"));
+
+        assertFalse(AgentApBuildProfileService.autoAssign(entry, warrior));
+        verify(warrior, never()).assignStrDexIntLuk(anyInt(), anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void autoAssignKeepsSpendingPastTheLastProfiledLevelAtTheCappedTarget() {
+        Character warrior = warrior(31, 20, 121, 26);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(warrior, null, null);
+        entry.apBuildProfileState().assign(profile("warrior-dex40-str-lv30-v1"));
+
+        assertTrue(AgentApBuildProfileService.autoAssign(entry, warrior));
+        verify(warrior).assignStrDexIntLuk(6, 14, 0, 0);
+    }
+
+    private static Character warrior(int level, int remainingAp, int str, int dex) {
+        Character agent = mock(Character.class);
+        when(agent.getJob()).thenReturn(Job.WARRIOR);
+        when(agent.getLevel()).thenReturn(level);
+        when(agent.getRemainingAp()).thenReturn(remainingAp);
+        when(agent.getStr()).thenReturn(str);
+        when(agent.getDex()).thenReturn(dex);
+        when(agent.assignStrDexIntLuk(anyInt(), anyInt(), anyInt(), anyInt())).thenReturn(true);
+        return agent;
     }
 
     private AgentApBuildProfile profile(String profileId) {

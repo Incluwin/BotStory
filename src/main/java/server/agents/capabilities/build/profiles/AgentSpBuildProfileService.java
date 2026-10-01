@@ -75,7 +75,8 @@ public final class AgentSpBuildProfileService {
         return learnedLevels(agent) - before;
     }
 
-    private static String firstJobProfileId(int jobId) {
+    /** The default first-job profile an Explorer job's branch descends from, or null outside Explorers. */
+    public static String firstJobProfileId(int jobId) {
         int family = jobId / 100;
         int branch = (jobId / 10) % 10;
         return switch (family) {
@@ -118,15 +119,20 @@ public final class AgentSpBuildProfileService {
         return total;
     }
 
-    /** Returns true when an independent profile owns SP allocation for this Agent. */
+    /**
+     * Returns true when an independent profile owns SP allocation for this Agent; false for a job
+     * the profile does not cover, so the caller's fallback build runs.
+     */
     public static boolean autoAssign(AgentRuntimeEntry entry, Character agent, SkillGateway skills) {
         AgentSpBuildProfile profile = entry.spBuildProfileState().profile();
         if (profile == null) {
             return false;
         }
         profile = transitionOptimalProfile(entry, agent, profile);
-        if (agent == null || agent.getLevel() > profile.supportedThroughLevel()
-                || !profile.supports(agent.getJob())) {
+        if (agent != null && !profile.supports(agent.getJob())) {
+            return false;
+        }
+        if (agent == null || agent.getLevel() > profile.supportedThroughLevel()) {
             return true;
         }
 
