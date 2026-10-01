@@ -82,12 +82,14 @@ public final class AgentKpqSessionRegistry {
         return member != null && member.role() == AgentKpqMemberState.Role.COUPON_COLLECTOR;
     }
 
+    /** The leader, and in a companion run the stage-5 carriers, who bring the passes up to a human leader. */
     public static boolean canLootPass(int characterId) {
         AgentKpqSession session = forMember(characterId);
         AgentKpqMemberState member = session == null ? null : session.member(characterId);
         return member != null && !session.stage5LootDelayActive(System.currentTimeMillis())
                 && (member.role() == AgentKpqMemberState.Role.EVENT_LEADER
-                        || member.role() == AgentKpqMemberState.Role.STAGE5_PASS_COLLECTOR);
+                        || member.role() == AgentKpqMemberState.Role.STAGE5_PASS_COLLECTOR
+                        || member.role() == AgentKpqMemberState.Role.STAGE5_PASS_CARRIER);
     }
 
     public static boolean canLootSquishyShoes(int characterId) {

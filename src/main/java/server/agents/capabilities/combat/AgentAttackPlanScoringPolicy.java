@@ -3,6 +3,7 @@ package server.agents.capabilities.combat;
 import client.Character;
 import java.util.ArrayList;
 import java.util.List;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.combat.CombatFormulaProvider;
 import server.life.Monster;
 
@@ -69,5 +70,20 @@ public final class AgentAttackPlanScoringPolicy {
         double animationSeconds = Math.max(1, attackPlan.cooldownMs) / 1000.0d;
         return new AgentAttackPlanScore<>(attackPlan, usefulDamage, rawDamage,
                 usefulDamage / animationSeconds, rawDamage / animationSeconds, minimumKillsFullHpTargets);
+    }
+
+    /**
+     * One line of the Agent's usual single-target attack on this monster: its hit chance times the damage left after
+     * the monster's defense, from wherever the Agent stands. A coordinator sends each Agent to the mobs it hurts.
+     */
+    public static double expectedLineDamage(AgentRuntimeEntry entry, Character agent, Monster target) {
+        int skillId = AgentCombatSkillCacheStateRuntime.attackSkillId(entry);
+        int skillLevel = skillId == 0 ? 0 : agent.getSkillLevel(skillId);
+        if (skillLevel <= 0) skillId = 0;
+        boolean magic = skillId != 0
+                && AgentAttackExecutionProvider.determineSkillRoute(agent, skillId) == AgentAttackRoute.MAGIC;
+        CombatFormulaProvider formulas = CombatFormulaProvider.getInstance();
+        return formulas.estimateExpectedDamage(agent, target, 1, skillId,
+                formulas.resolveDamageProfile(agent, skillId, skillLevel, magic));
     }
 }

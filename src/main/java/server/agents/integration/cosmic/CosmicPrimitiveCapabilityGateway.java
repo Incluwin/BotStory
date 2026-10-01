@@ -24,6 +24,7 @@ import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
+import server.agents.capabilities.combat.AgentAttackPlanScoringPolicy;
 import server.agents.capabilities.combat.AgentAttackRoute;
 import server.agents.capabilities.combat.AgentCombatDirectiveRuntime;
 import server.agents.capabilities.combat.AgentCombatObjectiveTargetStateRuntime;
@@ -321,6 +322,21 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
                         && (mobIds == null || mobIds.contains(spawn.getMonsterId())))
                 .map(spawn -> new Point(spawn.getPosition()))
                 .toList();
+    }
+
+    @Override
+    public Map<Integer, Double> expectedLineDamage(AgentRuntimeEntry entry, Character agent, Set<Integer> mobIds) {
+        if (entry == null || agent == null || agent.getMap() == null || mobIds == null) {
+            return Map.of();
+        }
+        Map<Integer, Double> damage = new LinkedHashMap<>();
+        for (Monster monster : server.agents.perception.AgentMapPerception.monsters(agent.getMap())) {
+            if (monster.isAlive() && mobIds.contains(monster.getId())) {
+                damage.computeIfAbsent(monster.getId(),
+                        mobId -> AgentAttackPlanScoringPolicy.expectedLineDamage(entry, agent, monster));
+            }
+        }
+        return Map.copyOf(damage);
     }
 
     @Override

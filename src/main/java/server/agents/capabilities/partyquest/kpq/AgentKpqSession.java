@@ -83,6 +83,8 @@ public final class AgentKpqSession {
     private boolean stage5BossCombatReported;
     private int stage5MobsSeen = -1;
     private long stage5ReachedAtMs;
+    private java.util.Map<Integer, Integer> stage5Targets = java.util.Map.of();
+    private boolean stage5HandOverStarted;
     private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
 
@@ -553,6 +555,25 @@ public final class AgentKpqSession {
 
     synchronized long stage5ReachedAtMs() {
         return stage5ReachedAtMs;
+    }
+
+    /** Records the stage-5 mob type each Agent fights first; true when it changed, so each change is logged once. */
+    synchronized boolean observeStage5Targets(java.util.Map<Integer, Integer> targets) {
+        if (stage5Targets.equals(targets)) return false;
+        stage5Targets = java.util.Map.copyOf(targets);
+        return true;
+    }
+
+    /**
+     * Whether the stage-5 pass carriers have stopped picking passes up and set out for the leader. From then on none
+     * of them may loot a pass, so none takes back what another dropped at the leader's feet.
+     */
+    synchronized boolean stage5HandOverStarted() {
+        return stage5HandOverStarted;
+    }
+
+    synchronized void startStage5HandOver() {
+        stage5HandOverStarted = true;
     }
 
     synchronized boolean claimStageOneSummary() {

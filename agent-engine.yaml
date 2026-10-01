@@ -2259,6 +2259,10 @@ tuning:
     # Purpose: Gives human party members exclusive first opportunity to pick up Squishy Shoes before the assigned Agent attempts the drop.
     # Technical: The timer begins when the live shoe drop is first observed; other Agents may advance while only the selected shoe collector waits.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.SQUISHY_SHOES_HUMAN_PRIORITY_MS: '7000'
+    # Values: 100-2000 map pixels. Recommended: 600. Higher values keep the human-first window for a human farther from the shoes; lower values only for one standing beside them.
+    # Purpose: Lets a companion run skip the Squishy Shoes human-first window when no human is near the shoes, as when the leader waits up by Cloto for the stage-5 passes.
+    # Technical: In companion-adopted sessions with a human leader, AgentKpqCoordinator keeps SQUISHY_SHOES_HUMAN_PRIORITY_MS only while a human member on map 103000804 stands within this Euclidean distance of a live shoe drop.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.SQUISHY_SHOES_HUMAN_NEAR_PX: '600'
     # Values: 0-10000 milliseconds. Recommended: 3000. Keep this below the human-priority window so mixed parties retain their full first chance.
     # Purpose: Leaves King Slime drops visible briefly before any Agent collects passes or the assigned Agent takes Squishy Shoes.
     # Technical: Shared hunting eligibility and explicit KPQ pickup both observe the same session deadline after King Slime is defeated.

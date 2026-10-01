@@ -98,6 +98,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.SQUISHY_SHOES_HUMAN_PRIORITY_MS");
     private static final long KING_SLIME_LOOT_DELAY_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.KING_SLIME_LOOT_DELAY_MS");
+    private static final int SQUISHY_SHOES_HUMAN_NEAR_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.SQUISHY_SHOES_HUMAN_NEAR_PX");
     private static final long STAGE5_CLEANUP_MIN_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_CLEANUP_MIN_MS");
     private static final long STAGE5_CLEANUP_MAX_MS = config.AgentTuning.longValue(
@@ -873,6 +875,7 @@ final class AgentKpqCoordinator {
     private static void stage5(
             AgentKpqSession session, Character leader, Character narrator, long nowMs) {
         if ("true".equals(KPQ.property(leader, "5stageclear"))) {
+            dropCarriedStageFivePasses(session);
             clearStageFiveLootTargets(session);
             stopAll(session);
             session.freezeRewardEligibility();
@@ -883,6 +886,7 @@ final class AgentKpqCoordinator {
                 "let's clear these out and get the 10 passes.",
                 "Clearing the monsters and collecting 10 passes."));
         boolean agentLeader = isAgent(session, leader.getId());
+        boolean carriers = stageFivePassCarriers(session);
         int normalAlive = ACTIONS.liveMonsterCount(leader, STAGE_5_NORMAL_MOBS);
         int bossAlive = ACTIONS.liveMonsterCount(leader, STAGE_5_BOSS_MOBS);
         observeStageFiveBossCombat(session, normalAlive, bossAlive, nowMs);
@@ -891,11 +895,15 @@ final class AgentKpqCoordinator {
         if (agentLeader && !lootDelayActive) {
             KPQ.lootNearby(leader, Set.of(AgentKpqDefinition.PASS_ITEM));
         } else if (!agentLeader) {
+            // A companion run's companions bring the passes up, so its leader waits by Cloto, at the top, instead of
+            // going 2,300 px down for them and back; there is nothing to nudge it about.
             coordinate(session, narrator, "human-stage5-collect", voice(session,
-                    leader.getName() + ", grab the passes as they drop, we'll handle the monsters.",
+                    leader.getName() + ", wait by cloto, we'll bring the passes.",
                     leader.getName() + ", please collect the 10 passes while we clear the monsters."));
-            AgentKpqHumanDialogueRuntime.promptDelayed(session, leader, voice(session,
-                    "grab the passes as they drop", "collect the 10 passes while we clear the monsters"), nowMs);
+            if (!carriers) {
+                AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
+                        "collect the 10 passes while we clear the monsters", nowMs);
+            }
         }
         int leaderPasses = leader.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
         int stage5MobCount = normalAlive + bossAlive;
@@ -905,6 +913,7 @@ final class AgentKpqCoordinator {
         if (session.observeStage5Progress(stage5MobCount, leaderPasses)) session.markProgress(nowMs);
         boolean returningToCloto = stageFiveReadyToReturn(
                 leaderPasses, normalAlive, bossAlive, reviveGraceActive);
+        boolean mobsDown = stage5MobCount == 0 && !reviveGraceActive;
         if (returningToCloto && !agentLeader) {
             // Said before the shoes window and the drop cleanup below: after them a leader holding all ten waited
             // another 6-17 s to hear it.
@@ -914,7 +923,10 @@ final class AgentKpqCoordinator {
             AgentKpqHumanDialogueRuntime.promptDelayed(session, leader, voice(session,
                     "talk to cloto with the passes", "talk to Cloto with the 10 passes"), nowMs);
         }
-        boolean shoesPending = returningToCloto && handleSquishyShoes(session, leader, nowMs);
+        // Carriers send the shoes' winner as soon as King Slime is down, while they are still below: by the time the
+        // leader holds all ten, up by Cloto, the shoes lie 2,300 px down.
+        boolean shoesPending = (returningToCloto || (carriers && bossAlive == 0 && !reviveGraceActive))
+                && handleSquishyShoes(session, leader, nowMs);
         if (returningToCloto && shoesPending) {
             int winnerId = session.squishyShoesWinnerId();
             AgentRuntimeEntry winnerEntry = entry(winnerId);
@@ -926,13 +938,12 @@ final class AgentKpqCoordinator {
         if (returningToCloto && drainStageFiveLoot(session, leader, nowMs)) {
             return;
         }
+        boolean sweeping = false;
         for (AgentKpqMemberState member : session.members()) {
             AgentRuntimeEntry entry = entry(member.characterId());
             Character agent = memberCharacter(member.characterId(), leader);
             if (agent == null || agent.getMapId() != AgentKpqDefinition.STAGE_5_MAP) continue;
-            member.setRole(member.characterId() == session.eventLeaderId()
-                    ? AgentKpqMemberState.Role.STAGE5_PASS_COLLECTOR
-                    : AgentKpqMemberState.Role.COMBAT_HELPER);
+            member.setRole(stageFiveRole(session, member, agent, carriers));
             if (member.memberType() == AgentKpqMemberState.MemberType.AGENT && entry != null) {
                 if (nowMs < member.stageMovementNotBeforeMs()) {
                     ACTIONS.stop(entry);
@@ -940,16 +951,25 @@ final class AgentKpqCoordinator {
                     Point cloto = ACTIONS.npcPosition(agent, AgentKpqDefinition.CLOTO_NPC);
                     Point approach = npcApproachPoint(session, member, agent, cloto, 501);
                     walkToPoint(agent, approach, entry, NPC_APPROACH_PX);
+                } else if (shoesPending && member.characterId() == session.squishyShoesWinnerId()) {
+                    continue;
+                } else if (mobsDown && member.role() == AgentKpqMemberState.Role.STAGE5_PASS_CARRIER) {
+                    sweeping |= sweepStageFivePasses(session, entry, agent, nowMs);
+                } else if (mobsDown && member.role() == AgentKpqMemberState.Role.PASS_DELIVERER) {
+                    handOverStageFivePasses(session, member, agent, entry, leader, nowMs);
                 } else {
-                    grindStageFive(entry, agent);
+                    grindStageFive(session, entry, agent);
                 }
             }
         }
+        if (carriers && mobsDown && !lootDelayActive && !sweeping) session.startStage5HandOver();
         if (reviveGraceActive && stage5MobCount == 0) {
             session.setMissingPassSinceMs(0L);
             return;
         }
-        if (!returningToCloto && stage5MobCount == 0 && floorPasses == 0) {
+        // Passes on their way to the leader are not missing: the recovery would make up all ten 7 s after the last
+        // kill while the carriers still held them.
+        if (!returningToCloto && stage5MobCount == 0 && floorPasses == 0 && carriedStageFivePasses(session) == 0) {
             if (session.missingPassSinceMs() == 0L) session.setMissingPassSinceMs(nowMs);
             if (nowMs - session.missingPassSinceMs() >= STAGE5_MISSING_PASS_GRACE_MS) {
                 recoverMissingStageFivePasses(session, leader, leaderPasses, nowMs);
@@ -964,6 +984,106 @@ final class AgentKpqCoordinator {
                     ACTIONS.npcPosition(leader, AgentKpqDefinition.CLOTO_NPC), 501);
             if (walkToPoint(leader, approach, entry(leader.getId()), NPC_APPROACH_PX)) {
                 KPQ.runNpc(leader, AgentKpqDefinition.CLOTO_NPC);
+            }
+        }
+    }
+
+    /**
+     * A companion run's companions carry the stage-5 passes to its human leader. Live (runs 6 and D) only the leader
+     * could pick them up: the passes lay 2,300 px below Cloto, or expired there, for 106-134 s until the missing-pass
+     * recovery made them up.
+     */
+    private static boolean stageFivePassCarriers(AgentKpqSession session) {
+        return session.companionAdopted() && !isAgent(session, session.eventLeaderId());
+    }
+
+    /**
+     * Carriers pick up every pass they can until none is left to fetch, then all set out together and stop looting
+     * passes, so none takes back what another dropped at the leader's feet; one with none to bring, or that has
+     * dropped them, just fights.
+     */
+    private static AgentKpqMemberState.Role stageFiveRole(
+            AgentKpqSession session, AgentKpqMemberState member, Character agent, boolean carriers) {
+        if (member.characterId() == session.eventLeaderId()) return AgentKpqMemberState.Role.STAGE5_PASS_COLLECTOR;
+        if (!carriers || member.memberType() != AgentKpqMemberState.MemberType.AGENT) {
+            return AgentKpqMemberState.Role.COMBAT_HELPER;
+        }
+        if (!session.stage5HandOverStarted()) return AgentKpqMemberState.Role.STAGE5_PASS_CARRIER;
+        return switch (member.role()) {
+            case STAGE5_PASS_CARRIER -> agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false) > 0
+                    ? AgentKpqMemberState.Role.PASS_DELIVERER : AgentKpqMemberState.Role.COMBAT_HELPER;
+            case PASS_DELIVERER -> AgentKpqMemberState.Role.PASS_DELIVERER;
+            default -> AgentKpqMemberState.Role.COMBAT_HELPER;
+        };
+    }
+
+    /**
+     * A carrier fetches the nearest pass left on the floor once nothing is left to fight. True while it has one to
+     * fetch, or one too fresh to target yet, so the hand-over waits for it.
+     */
+    private static boolean sweepStageFivePasses(
+            AgentKpqSession session, AgentRuntimeEntry entry, Character agent, long nowMs) {
+        // Entering grind mode clears a loot target, so the mode comes first.
+        grindStageFive(session, entry, agent);
+        return ACTIONS.prepareObjectiveLoot(entry, agent, Set.of(AgentKpqDefinition.PASS_ITEM))
+                || livePassDrops(agent.getMap()).stream().anyMatch(drop -> AgentLootEligibility.isWaitingForTargetAge(
+                        entry, agent, agent.getMap(), drop, nowMs, AgentLootEligibility.MIN_TARGET_LOOT_AGE_MS));
+    }
+
+    /** A deliverer walks to the leader and drops what it carries at the leader's feet, as stage 1's holders do. */
+    private static void handOverStageFivePasses(AgentKpqSession session, AgentKpqMemberState member,
+                                                Character agent, AgentRuntimeEntry entry, Character leader,
+                                                long nowMs) {
+        int held = agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
+        if (held == 0) {
+            member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
+            return;
+        }
+        if (!near(agent, leader, NEAR_PX)) {
+            ACTIONS.navigate(entry, leader.getPosition(), false);
+            return;
+        }
+        ACTIONS.stop(entry);
+        if (AgentScriptItemActionService.dropItem(entry, InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) held)
+                && passDropConfirmed(held, agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false))) {
+            member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
+            session.markProgress(nowMs);
+            // The last one there says it, once: the passes expire where they lie.
+            if (session.members().stream().noneMatch(
+                    other -> other.role() == AgentKpqMemberState.Role.PASS_DELIVERER)) {
+                narrate(session, agent, "stage5-passes-at-feet",
+                        leader.getName() + ", the passes are at your feet. grab them and talk to cloto.");
+            }
+        }
+    }
+
+    /** What the companions alive on stage 5 still carry; a downed one's passes are as good as missing. */
+    private static int carriedStageFivePasses(AgentKpqSession session) {
+        int carried = 0;
+        for (AgentKpqMemberState member : session.members()) {
+            Character agent = character(member.characterId());
+            if (agent == null || member.characterId() == session.eventLeaderId() || agent.getHp() <= 0
+                    || agent.getMapId() != AgentKpqDefinition.STAGE_5_MAP) {
+                continue;
+            }
+            carried += agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
+        }
+        return carried;
+    }
+
+    /** Carriers never take a pass out of stage 5: what they still hold when Cloto clears it, they drop there. */
+    private static void dropCarriedStageFivePasses(AgentKpqSession session) {
+        for (AgentKpqMemberState member : session.members()) {
+            Character agent = character(member.characterId());
+            AgentRuntimeEntry entry = entry(member.characterId());
+            if (agent == null || entry == null || member.characterId() == session.eventLeaderId()
+                    || agent.getMapId() != AgentKpqDefinition.STAGE_5_MAP) {
+                continue;
+            }
+            int held = agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
+            if (held > 0) {
+                AgentScriptItemActionService.dropItem(entry, InventoryType.ETC, AgentKpqDefinition.PASS_ITEM,
+                        (short) held);
             }
         }
     }
@@ -1253,9 +1373,15 @@ final class AgentKpqCoordinator {
                     .map(member -> memberCharacter(member.characterId(), leader(session)))
                     .filter(character -> character != null && character.getMapId() == expectedMap)
                     .findFirst()
-                    .ifPresent(there -> observeStageFiveBossCombat(session,
-                            ACTIONS.liveMonsterCount(there, STAGE_5_NORMAL_MOBS),
-                            ACTIONS.liveMonsterCount(there, STAGE_5_BOSS_MOBS), nowMs));
+                    .ifPresent(there -> {
+                        int bossAlive = ACTIONS.liveMonsterCount(there, STAGE_5_BOSS_MOBS);
+                        observeStageFiveBossCombat(session,
+                                ACTIONS.liveMonsterCount(there, STAGE_5_NORMAL_MOBS), bossAlive, nowMs);
+                        // Carriers loot here already, behind the same King Slime delay as in the STAGE_5 phase.
+                        if (stageFivePassCarriers(session)) {
+                            session.beginStage5LootDelayIfBossDefeated(bossAlive, nowMs, KING_SLIME_LOOT_DELAY_MS);
+                        }
+                    });
         }
         boolean allThere = true;
         for (AgentKpqMemberState member : session.members()) {
@@ -1687,7 +1813,7 @@ final class AgentKpqCoordinator {
             }
             // Entering grind mode clears an old loot target. Establish the no-combat
             // movement mode first, then assign this member a distinct cleanup drop.
-            grindStageFive(memberEntry, agent);
+            grindStageFive(session, memberEntry, agent);
             AgentGrindLootTargetService.refreshPreExitLootTarget(
                     memberEntry,
                     agent,
@@ -2391,7 +2517,10 @@ final class AgentKpqCoordinator {
         if (lootDelayActive(session.squishyShoesSeenAtMs(), nowMs, KING_SLIME_LOOT_DELAY_MS)) {
             return true;
         }
-        boolean humanPriority = hasHumanPartyMember(session);
+        // A carrier run's leader waits up by Cloto, 2,300 px above where King Slime dropped the shoes: a window for a
+        // human nowhere near them only holds the winner back.
+        boolean humanPriority = hasHumanPartyMember(session)
+                && (!stageFivePassCarriers(session) || humanNearSquishyShoes(session, eventAnchor, shoes));
         if (squishyShoesHumanWindowActive(humanPriority,
                 session.squishyShoesSeenAtMs(), nowMs, SQUISHY_SHOES_HUMAN_PRIORITY_MS)) {
             return true;
@@ -2412,7 +2541,7 @@ final class AgentKpqCoordinator {
                     .min(Comparator.comparingDouble(drop ->
                             drop.getPosition().distanceSq(winnerPosition)))
                     .orElse(null);
-            grindStageFive(winnerEntry, winner);
+            grindStageFive(session, winnerEntry, winner);
             AgentGrindLootStateRuntime.setObjectiveLootTarget(winnerEntry, closest);
         }
         long exclusiveWindowMs = humanPriority
@@ -2429,6 +2558,17 @@ final class AgentKpqCoordinator {
             return false;
         }
         return true;
+    }
+
+    private static boolean humanNearSquishyShoes(
+            AgentKpqSession session, Character eventAnchor, List<MapItem> shoes) {
+        return session.members().stream()
+                .filter(member -> member.memberType() == AgentKpqMemberState.MemberType.HUMAN)
+                .map(member -> memberCharacter(member.characterId(), eventAnchor))
+                .filter(human -> human != null && human.getPosition() != null
+                        && human.getMapId() == AgentKpqDefinition.STAGE_5_MAP)
+                .anyMatch(human -> shoes.stream().anyMatch(drop ->
+                        drop.getPosition().distance(human.getPosition()) <= SQUISHY_SHOES_HUMAN_NEAR_PX));
     }
 
     static int chooseSquishyShoesWinner(AgentKpqSession session, Character eventAnchor) {
@@ -2918,7 +3058,7 @@ final class AgentKpqCoordinator {
         session.setCouponSweepStartedAtMs(0L);
     }
 
-    private static void grindStageFive(AgentRuntimeEntry entry, Character agent) {
+    private static void grindStageFive(AgentKpqSession session, AgentRuntimeEntry entry, Character agent) {
         Set<Integer> configured = ACTIONS.configuredMonsterSpawnIds(agent);
         if (configured.isEmpty()) {
             configured = new LinkedHashSet<>(STAGE_5_NORMAL_MOBS);
@@ -2927,12 +3067,36 @@ final class AgentKpqCoordinator {
         int normalAlive = ACTIONS.liveMonsterCount(agent, STAGE_5_NORMAL_MOBS);
         int bossAlive = ACTIONS.liveMonsterCount(agent, STAGE_5_BOSS_MOBS);
         if (normalAlive > 0) {
-            ACTIONS.grind(entry, STAGE_5_NORMAL_MOBS, configured);
+            Set<Integer> anyMob = new LinkedHashSet<>(STAGE_5_NORMAL_MOBS);
+            anyMob.addAll(configured);
+            ACTIONS.grind(entry, stageFiveTargets(session, agent), anyMob);
         } else if (bossAlive > 0) {
             ACTIONS.grind(entry, STAGE_5_BOSS_MOBS, configured);
         } else {
             ACTIONS.grind(entry, configured);
         }
+    }
+
+    /** The live mob type the target policy gives this Agent; any of them while nobody could be judged. */
+    private static Set<Integer> stageFiveTargets(AgentKpqSession session, Character agent) {
+        java.util.Map<Integer, java.util.Map<Integer, Double>> damage = new java.util.TreeMap<>();
+        for (AgentKpqMemberState member : session.members()) {
+            Character fighter = character(member.characterId());
+            AgentRuntimeEntry fighterEntry = entry(member.characterId());
+            if (fighter == null || fighterEntry == null || fighter.getHp() <= 0
+                    || fighter.getMapId() != AgentKpqDefinition.STAGE_5_MAP) {
+                continue;
+            }
+            damage.put(member.characterId(), ACTIONS.expectedLineDamage(fighterEntry, fighter, STAGE_5_NORMAL_MOBS));
+        }
+        java.util.Map<Integer, Integer> targets = AgentKpqStageFiveTargetPolicy.assign(damage);
+        if (session.observeStage5Targets(targets)) {
+            log.info("KPQ Stage 5 targets: session={} targets={}", session.sessionId(),
+                    targets.entrySet().stream().map(target -> character(target.getKey()).getName() + ':'
+                            + target.getValue()).toList());
+        }
+        Integer mobId = targets.get(agent.getId());
+        return mobId == null ? STAGE_5_NORMAL_MOBS : Set.of(mobId);
     }
 
     private static Point formationTarget(AgentKpqDefinition.CombinationStage definition,
@@ -3004,7 +3168,17 @@ final class AgentKpqCoordinator {
             return;
         }
         if (nextStage == 5) {
-            grindStageFive(entry, agent);
+            // Carriers start before the leader is up: live (run 6) the companions killed all ten while the leader
+            // still climbed out of stage 4, and the passes they left expired on the floor.
+            if (stageFivePassCarriers(session)) {
+                member.setRole(AgentKpqMemberState.Role.STAGE5_PASS_CARRIER);
+                if (ACTIONS.liveMonsterCount(agent, STAGE_5_NORMAL_MOBS)
+                        + ACTIONS.liveMonsterCount(agent, STAGE_5_BOSS_MOBS) == 0) {
+                    sweepStageFivePasses(session, entry, agent, nowMs);
+                    return;
+                }
+            }
+            grindStageFive(session, entry, agent);
             return;
         }
         AgentKpqDefinition.CombinationStage definition = AgentKpqDefinition.combinationStage(nextStage);

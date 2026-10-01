@@ -127,6 +127,14 @@ public interface PrimitiveCapabilityGateway {
     }
 
     /**
+     * What one line of this Agent's usual attack is expected to deal to each of these mobs alive on its map: the hit
+     * chance times the damage left after the mob's defense. A mob with none alive is left out.
+     */
+    default Map<Integer, Double> expectedLineDamage(AgentRuntimeEntry entry, Character agent, Set<Integer> mobIds) {
+        return Map.of();
+    }
+
+    /**
      * This Agent's own navigation regions under the given ground points, the ids its combat filters a region
      * assignment by. Empty while its graph is not built yet.
      */
