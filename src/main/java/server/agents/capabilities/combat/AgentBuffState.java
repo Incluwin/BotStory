@@ -10,13 +10,21 @@ public final class AgentBuffState {
             new AgentCapabilityStateKey<>("combat.consumable-buffs",
                     AgentBuffState.class, AgentBuffState::new);
 
-    private boolean consumablesEnabled = false;
+    private static final boolean CONSUMABLES_ENABLED_BY_DEFAULT = config.AgentTuning.booleanValue(
+            "server.agents.capabilities.combat.AgentBuffState.CONSUMABLES_ENABLED_BY_DEFAULT");
+
+    private boolean consumablesEnabled = CONSUMABLES_ENABLED_BY_DEFAULT;
     private boolean cheapMode = true;
     private long lastConsumableScanMs = 0L;
     private long lastConsumableActionAtMs = 0L;
     private String lastConsumableActionSummary = "no buff scans yet";
     private long lastSkillActionAtMs = 0L;
     private String lastSkillActionSummary = "no skill buff checks yet";
+
+    /** Whether a new session (and an unchanged companion setting) uses buff potions. */
+    public static boolean consumablesEnabledByDefault() {
+        return CONSUMABLES_ENABLED_BY_DEFAULT;
+    }
 
     public boolean consumablesEnabled() {
         return consumablesEnabled;

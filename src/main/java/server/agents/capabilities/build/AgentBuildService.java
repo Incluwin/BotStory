@@ -9,6 +9,7 @@ import constants.game.GameConstants;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import server.agents.capabilities.build.profiles.AgentApBuildProfile;
 import server.agents.capabilities.build.profiles.AgentApBuildProfileService;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 import server.agents.capabilities.build.profiles.BowmanBuilds;
@@ -201,17 +202,34 @@ public final class AgentBuildService {
     }
 
     private static boolean reallocateAp(AgentRuntimeEntry entry, Character bot) {
-        int minStr = AssignAPProcessor.getMinStatFloor(bot.getJob(), Stat.STR);
-        int minDex = AssignAPProcessor.getMinStatFloor(bot.getJob(), Stat.DEX);
-        int minInt = AssignAPProcessor.getMinStatFloor(bot.getJob(), Stat.INT);
-        int minLuk = AssignAPProcessor.getMinStatFloor(bot.getJob(), Stat.LUK);
-
-        if (!bot.assignStrDexIntLuk(minStr - bot.getStr(), minDex - bot.getDex(), minInt - bot.getInt(), minLuk - bot.getLuk())) {
+        if (!resetToStatFloors(bot)) {
             return false;
         }
 
         autoAssignAp(entry, bot);
         return true;
+    }
+
+    /**
+     * One-time repair for stats built under a career bundle that never fit the Agent's job: back to
+     * the job's stat floors, then every AP through the assigned AP profile. False, with the stats
+     * untouched, when no profile covers the job.
+     */
+    public static boolean resetApToProfile(AgentRuntimeEntry entry, Character bot) {
+        AgentApBuildProfile profile = entry.apBuildProfileState().profile();
+        if (profile == null || !profile.supports(bot.getJob()) || !resetToStatFloors(bot)) {
+            return false;
+        }
+        return AgentApBuildProfileService.autoAssign(entry, bot);
+    }
+
+    private static boolean resetToStatFloors(Character bot) {
+        int minStr = AssignAPProcessor.getMinStatFloor(bot.getJob(), Stat.STR);
+        int minDex = AssignAPProcessor.getMinStatFloor(bot.getJob(), Stat.DEX);
+        int minInt = AssignAPProcessor.getMinStatFloor(bot.getJob(), Stat.INT);
+        int minLuk = AssignAPProcessor.getMinStatFloor(bot.getJob(), Stat.LUK);
+
+        return bot.assignStrDexIntLuk(minStr - bot.getStr(), minDex - bot.getDex(), minInt - bot.getInt(), minLuk - bot.getLuk());
     }
 
     /**

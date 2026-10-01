@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.combat.AgentBuffState;
 import server.agents.capabilities.dialogue.AgentChatToggleHook;
 import server.agents.capabilities.looting.AgentLootPolicy;
 import server.agents.runtime.AgentRuntimeConfig;
@@ -81,8 +82,8 @@ public record CompanionSettings(int hpPercent, int mpPercent, AgentLootPolicy.Mo
      */
     public static CompanionSettings defaults() {
         return new CompanionSettings(percent(AgentRuntimeConfig.cfg.AUTOPOT_HP_THRESH),
-                percent(AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH), AgentLootPolicy.Mode.ALL, true, true, true, false,
-                null, false);
+                percent(AgentRuntimeConfig.cfg.AUTOPOT_MP_THRESH), AgentLootPolicy.Mode.ALL, true, true, true,
+                AgentBuffState.consumablesEnabledByDefault(), null, false);
     }
 
     /** The settings in {@code json}: the defaults for null, blank or unreadable JSON, and for each bad value. */

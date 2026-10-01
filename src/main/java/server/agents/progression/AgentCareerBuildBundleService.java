@@ -3,6 +3,7 @@ package server.agents.progression;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.build.AgentBuildService;
 import server.agents.capabilities.build.profiles.AgentApBuildProfileService;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -17,6 +18,7 @@ import java.util.List;
 public final class AgentCareerBuildBundleService {
     private static final Logger log = LoggerFactory.getLogger(AgentCareerBuildBundleService.class);
     private static final AgentCareerAssignmentStore STORE = FileAgentCareerAssignmentStore.runtimeDefault();
+    private static final FileAgentApResetStore AP_RESETS = FileAgentApResetStore.runtimeDefault();
 
     private AgentCareerBuildBundleService() {
     }
@@ -28,7 +30,7 @@ public final class AgentCareerBuildBundleService {
         }
         try {
             return restoreOrAssign(entry, agent, nowMs,
-                    AgentCareerBuildBundleRepository.defaultRepository(), STORE);
+                    AgentCareerBuildBundleRepository.defaultRepository(), STORE, AP_RESETS);
         } catch (IOException | RuntimeException failure) {
             log.warn("Could not restore Agent career build bundle for {} ({})",
                     agent.getName(), agent.getId(), failure);
@@ -98,7 +100,8 @@ public final class AgentCareerBuildBundleService {
                                                    Character agent,
                                                    long nowMs,
                                                    AgentCareerBuildBundleRepository repository,
-                                                   AgentCareerAssignmentStore store) throws IOException {
+                                                   AgentCareerAssignmentStore store,
+                                                   FileAgentApResetStore apResets) throws IOException {
         AgentCareerAssignment assignment = store.load(agent.getId()).orElse(null);
         AgentCareerBuildBundle bundle;
         if (assignment == null) {
@@ -127,6 +130,11 @@ public final class AgentCareerBuildBundleService {
                 if (covers(repicked, jobId)) {
                     log.info("Reassigning career build bundle for {} ({}): {} does not cover job {}, now {}",
                             agent.getName(), agent.getId(), bundle.bundleId(), jobId, repicked.bundleId());
+                    if (!repicked.apProfileId().equals(bundle.apProfileId())) {
+                        // Saved before the new assignment, so a failure in between repeats the re-pick.
+                        apResets.save(new AgentApReset(1, agent.getId(), agent.getName(),
+                                bundle.bundleId(), repicked.bundleId(), nowMs, 0L));
+                    }
                     bundle = repicked;
                     assignment = new AgentCareerAssignment(2, assignment.characterId(), assignment.characterName(),
                             bundle.bundleId(), bundle.bundleVersion(), assignment.progressionProfileId(), nowMs);
@@ -148,8 +156,41 @@ public final class AgentCareerBuildBundleService {
                             + assignedProfileId));
         }
         assignProfiles(entry, bundle, profile);
+        completeOwedApReset(entry, agent, apResets, nowMs);
         entry.capabilityStates().require(AgentCareerProgressionState.STATE_KEY).assign(bundle);
         return bundle;
+    }
+
+    /**
+     * Runs the reset owed since a re-pick changed the Agent's AP profile, once. A reset from the job's
+     * stat floors lands on the same stats every time, so a marker that failed to save only repeats it.
+     */
+    private static void completeOwedApReset(AgentRuntimeEntry entry,
+                                            Character agent,
+                                            FileAgentApResetStore apResets,
+                                            long nowMs) {
+        try {
+            AgentApReset reset = apResets.load(agent.getId()).orElse(null);
+            if (reset == null || reset.completed()) {
+                return;
+            }
+            String before = statLine(agent);
+            if (!AgentBuildService.resetApToProfile(entry, agent)) {
+                log.warn("Could not reset AP for {} ({}); it stays owed", agent.getName(), agent.getId());
+                return;
+            }
+            apResets.save(reset.completedAt(nowMs));
+            log.info("Reset AP for {} ({}) after its career bundle moved {} -> {}: {} -> {}",
+                    agent.getName(), agent.getId(), reset.fromBundleId(), reset.toBundleId(),
+                    before, statLine(agent));
+        } catch (IOException | RuntimeException failure) {
+            log.warn("Could not complete the owed AP reset for {} ({})", agent.getName(), agent.getId(), failure);
+        }
+    }
+
+    private static String statLine(Character agent) {
+        return "STR " + agent.getStr() + " DEX " + agent.getDex() + " INT " + agent.getInt()
+                + " LUK " + agent.getLuk() + " AP " + agent.getRemainingAp();
     }
 
     private static void assignProfiles(AgentRuntimeEntry entry,

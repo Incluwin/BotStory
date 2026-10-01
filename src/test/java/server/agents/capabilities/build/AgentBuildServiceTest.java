@@ -26,6 +26,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyByte;
@@ -87,6 +88,29 @@ class AgentBuildServiceTest {
 
         assertEquals(0, skillLevels.getOrDefault(1120003, 0));
         assertEquals(3, remainingSps[book]);
+    }
+
+    @Test
+    void sourceProfileKeepsSpendingSpPastItsLastProfiledLevel() {
+        // Rurik: Lv31 Warrior that has not taken 2nd job; the first-job profile ends at Lv30.
+        Character bot = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        entry.spBuildProfileState().assign(AgentSpBuildProfileRepository.defaultRepository()
+                .find("mapleroyals-optimal-2026-warrior-first-job").orElseThrow());
+        int book = GameConstants.getSkillBook(Job.WARRIOR.getId());
+        int[] remainingSps = new int[5];
+        remainingSps[book] = 3;
+        Map<Integer, Integer> skillLevels = new HashMap<>();
+        SkillGateway skills = mock(SkillGateway.class);
+        when(skills.getSkill(anyInt())).thenAnswer(invocation -> mockSkill(invocation.getArgument(0), 20, false));
+        when(bot.getJob()).thenReturn(Job.WARRIOR);
+        when(bot.getLevel()).thenReturn(31);
+        stubSkillState(bot, remainingSps, skillLevels);
+
+        assertTrue(AgentSpBuildProfileService.autoAssign(entry, bot, skills));
+
+        assertEquals(0, remainingSps[book]);
+        assertEquals(3, skillLevels.values().stream().mapToInt(Integer::intValue).sum());
     }
 
     @Test
@@ -598,7 +622,7 @@ class AgentBuildServiceTest {
             Skill skill = invocation.getArgument(0);
             byte newLevel = invocation.getArgument(1);
             skillLevels.put(skill.getId(), (int) newLevel);
-            return null;
+            return true;
         }).when(bot).changeSkillLevel(any(Skill.class), anyByte(), anyInt(), anyLong());
     }
 

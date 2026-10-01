@@ -3,12 +3,14 @@ package server.agents.capabilities.shop;
 import server.agents.capabilities.movement.AgentMovementTimers;
 
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
+import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatAmmoCounter;
 
 import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.shop.AgentShopAmmoPolicy;
 import server.agents.capabilities.shop.AgentShopApproachPolicy;
 import server.agents.capabilities.shop.AgentShopPotionPolicy;
+import server.agents.capabilities.supplies.AgentBuffConsumableSupplyPolicy;
 import server.agents.capabilities.supplies.AgentPotionInventoryPolicy;
 import server.agents.capabilities.supplies.AgentPotionRecoveryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
@@ -69,6 +71,7 @@ public final class AgentShopService {
     private static final int SHOP_NPC_SEARCH_DIST = config.AgentTuning.intValue(
             "server.agents.capabilities.shop.AgentShopService.SHOP_NPC_SEARCH_DIST");
     private static final int SHOP_APPROACH_DELAY_MAX_MS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SHOP_APPROACH_DELAY_MAX_MS");
+    private static final int BUFF_POTION_SPEND_PERCENT = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.BUFF_POTION_SPEND_PERCENT");
     private static final int SHOP_STEP_DELAY_MIN_MS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SHOP_STEP_DELAY_MIN_MS");
     private static final int SHOP_STEP_DELAY_MAX_MS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SHOP_STEP_DELAY_MAX_MS");
     private static final int SELL_TRASH_STEP_DELAY_MS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SELL_TRASH_STEP_DELAY_MS");
@@ -342,6 +345,37 @@ public final class AgentShopService {
         return sequence;
     }
 
+    /**
+     * Accuracy and attack potions for the Agent's job, topped up only on a visit that happens anyway.
+     * They are optional stock: each is capped at a share of the spare mesos, and a capped or failed
+     * purchase never counts as the visit's shortfall.
+     */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyBuffConsumables(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, int minimumMesoReserve) {
+        Character bot = sequence.bot();
+        Map<Integer, Integer> targets = AgentBuffConsumableSupplyPolicy.targets(
+                bot, AgentBuffStateRuntime.enabled(sequence.entry()));
+        for (Map.Entry<Integer, Integer> target : targets.entrySet()) {
+            int missing = AgentSkillConsumablePolicy.shortfall(bot, target.getKey(), target.getValue());
+            ShopSlotItem item = findShopItem(shop, target.getKey());
+            if (missing <= 0 || item == null) {
+                continue;
+            }
+            AgentShopBuyReport report = buyFixedCostItem(bot, shop, item, missing, missing, minimumMesoReserve,
+                    buffPotionBudget(bot.getMeso(), minimumMesoReserve));
+            if (report.quantity() > 0) {
+                sequence.bought().add(report.quantity() + " "
+                        + resolveItemName(report.itemId(), "buff potion", sequence.inventory()));
+            }
+        }
+        return sequence;
+    }
+
+    static int buffPotionBudget(int mesos, int minimumMesoReserve) {
+        long spare = Math.max(0, mesos - Math.max(0, minimumMesoReserve));
+        return (int) (spare * BUFF_POTION_SPEND_PERCENT / 100);
+    }
+
     private static void executePurchases(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory, Point npcPos) {
         if (!isShopSequenceValid(entry, bot, npcPos)) {
             abortShop(entry, bot, AgentDialogueCatalog.shopKeeperUnreachableReply());
@@ -411,6 +445,8 @@ public final class AgentShopService {
                     buyPotionStock(sequence, shop, minimumMesoReserve));
             actions.add((sequence, shop) ->
                     buySkillConsumables(sequence, shop, minimumMesoReserve));
+            actions.add((sequence, shop) ->
+                    buyBuffConsumables(sequence, shop, minimumMesoReserve));
         }
 
         runPurchaseStep(new AgentShopPurchaseSequence<>(entry, bot, inventory, npcPos, actions, new ArrayList<>(), null), 0);

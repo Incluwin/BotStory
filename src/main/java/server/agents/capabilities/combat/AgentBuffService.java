@@ -150,16 +150,16 @@ public final class AgentBuffService {
         return result;
     }
 
-    private static boolean needsAnyBuffStat(AgentRuntimeEntry entry, Character bot, StatEffect fx) {
+    static boolean needsAnyBuffStat(AgentRuntimeEntry entry, Character bot, StatEffect fx) {
         for (Pair<BuffStat, Integer> statup : fx.getStatups()) {
             BuffStat stat = statup.getLeft();
-            if (bot.getBuffedValue(stat) != null) {
+            if (stacksWithSkillBuffs(stat) ? itemBuffActive(bot, stat) : bot.getBuffedValue(stat) != null) {
                 continue;
             }
             if (!isRelevantBuffStat(bot, stat)) {
                 continue;
             }
-            if (stat == BuffStat.ACC && !needsAccBuff(entry, bot)) {
+            if (stat == BuffStat.ACC && !needsAccBuff(entry, bot, statup.getRight())) {
                 continue;
             }
             return true;
@@ -167,7 +167,30 @@ public final class AgentBuffService {
         return false;
     }
 
-    private static boolean needsAccBuff(AgentRuntimeEntry entry, Character bot) {
+    /**
+     * Item W.ATT/M.ATT adds on top of every skill source (Rage, Meditation) in
+     * Character.getStackedBuffedValue; only another item buff of the stat makes a potion redundant.
+     */
+    private static boolean stacksWithSkillBuffs(BuffStat stat) {
+        return stat == BuffStat.WATK || stat == BuffStat.MATK;
+    }
+
+    private static boolean itemBuffActive(Character bot, BuffStat stat) {
+        for (PlayerBuffValueHolder holder : bot.getAllBuffs()) {
+            if (holder.effect == null || holder.effect.isSkill()) {
+                continue;
+            }
+            for (Pair<BuffStat, Integer> statup : holder.effect.getStatups()) {
+                if (statup.getLeft() == stat) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Below the hit threshold on the current target, and only when the potion's ACC raises the chance there. */
+    private static boolean needsAccBuff(AgentRuntimeEntry entry, Character bot, int accuracyGain) {
         Monster ref = AgentGrindTargetStateRuntime.target(entry);
         if (ref == null) {
             for (Monster monster : server.agents.perception.AgentMapPerception.monsters(bot.getMap())) {
@@ -178,7 +201,11 @@ public final class AgentBuffService {
             }
         }
         if (ref == null) return false;
-        return CombatFormulaProvider.getInstance().calculateMobHitChance(bot, ref) < ACC_HIT_THRESHOLD;
+        CombatFormulaProvider formulas = CombatFormulaProvider.getInstance();
+        double hitChance = formulas.calculateMobHitChance(bot, ref);
+        if (hitChance >= ACC_HIT_THRESHOLD) return false;
+        return formulas.calculatePhysicalMobHitChance(formulas.getTotalAccuracy(bot) + accuracyGain,
+                bot.getLevel(), ref.getLevel(), ref.getAvoidability()) > hitChance;
     }
 
     private static List<ActiveBuff> collectActiveItemBuffs(Character bot, InventoryGateway inventory) {
@@ -248,7 +275,8 @@ public final class AgentBuffService {
 
     public static boolean isRelevantBuffStat(Character bot, BuffStat stat) {
         boolean mageJob = bot.getJobStyle() == Job.MAGICIAN;
-        if (stat == BuffStat.WATK) {
+        // Magic accuracy ignores ACC buffs (CombatFormulaProvider), so ACC only helps physical attackers.
+        if (stat == BuffStat.WATK || stat == BuffStat.ACC) {
             return !mageJob;
         }
         if (stat == BuffStat.MATK) {

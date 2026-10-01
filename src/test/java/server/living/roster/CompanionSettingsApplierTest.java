@@ -56,7 +56,7 @@ import static server.living.roster.LifecycleHarness.LITH;
  */
 class CompanionSettingsApplierTest {
     private static final int HADRIK = 901;
-    private static final String CUSTOM = "{\"hp\":40,\"mp\":30,\"loot\":\"NONE\",\"buffs\":false,\"buffPotions\":true}";
+    private static final String CUSTOM = "{\"hp\":40,\"mp\":30,\"loot\":\"NONE\",\"buffs\":false,\"buffPotions\":false}";
 
     private LifecycleHarness game;
     private Persona hadrik;
@@ -115,7 +115,7 @@ class CompanionSettingsApplierTest {
         assertNull(applier().policy(characterId));
     }
 
-    /** The last support toggles set on the companion's runtime: buffs off, heals as default, buff potions on. */
+    /** The last support toggles set on the companion's runtime: buffs off, heals as default, buff potions off. */
     private void assertTogglesSetOn(int characterId) {
         AgentRuntimeEntry runtime = null;
         for (AgentRuntimeEntry candidate : runtimes) {
@@ -126,7 +126,7 @@ class CompanionSettingsApplierTest {
         assertTrue(runtime != null, "a mailbox action for " + characterId);
         assertFalse(AgentCombatBuffStateRuntime.skillBuffsEnabled(runtime));
         assertTrue(AgentCombatBuffStateRuntime.supportHealsEnabled(runtime));
-        assertTrue(AgentBuffStateRuntime.enabled(runtime));
+        assertFalse(AgentBuffStateRuntime.enabled(runtime));
     }
 
     // ---- every load and seat path ------------------------------------------------------------------
@@ -322,7 +322,7 @@ class CompanionSettingsApplierTest {
         manager.setPotionThresholds(game.ann, hadrik, 40, 30);
         manager.setLootPolicy(game.ann, hadrik, AgentLootPolicy.Mode.NONE);
         manager.setSupport(game.ann, hadrik, CompanionSettings.Support.BUFFS, false);
-        manager.setSupport(game.ann, hadrik, CompanionSettings.Support.BUFF_POTIONS, true);
+        manager.setSupport(game.ann, hadrik, CompanionSettings.Support.BUFF_POTIONS, false);
         assertEquals(CUSTOM, game.store.settings.get(FakeLivingStore.key(ANN, "hadrik")), "settings_json");
 
         // the restart: nothing is loaded, no party survived, and a new roster (with an empty cache) boots

@@ -132,15 +132,18 @@ public final class AgentSpBuildProfileService {
         if (agent != null && !profile.supports(agent.getJob())) {
             return false;
         }
-        if (agent == null || agent.getLevel() > profile.supportedThroughLevel()) {
+        if (agent == null) {
             return true;
         }
+        // Past the last profiled level (an Agent that has not advanced yet) the plan stays complete
+        // and the extra SP goes to its dump skills, as assignOffline does.
+        int level = Math.min(agent.getLevel(), profile.supportedThroughLevel());
 
         AgentSpBuildProfileRepository repository = AgentSpBuildProfileRepository.defaultRepository();
         Map<Integer, Integer> cumulativeTargets = new LinkedHashMap<>();
         if (!profile.segments().isEmpty()) {
             for (AgentSpBuildProfile.AllocationSegment segment : profile.segments()) {
-                if (segment.minimumLevel() > agent.getLevel()) {
+                if (segment.minimumLevel() > level) {
                     break;
                 }
                 addTarget(profile, cumulativeTargets, segment.skillId(), segment.points());
@@ -152,7 +155,7 @@ public final class AgentSpBuildProfileService {
             return true;
         }
         for (AgentSpBuildProfile.LevelPlan levelPlan : profile.levels()) {
-            if (levelPlan.level() > agent.getLevel()) {
+            if (levelPlan.level() > level) {
                 break;
             }
             for (AgentSpBuildProfile.SkillPoints allocation : levelPlan.allocations()) {

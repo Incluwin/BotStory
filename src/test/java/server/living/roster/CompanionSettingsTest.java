@@ -29,7 +29,7 @@ class CompanionSettingsTest {
         assertTrue(defaults.leaveBossDrops(), "the plan's NO_BOSS default");
         assertTrue(defaults.buffs());
         assertTrue(defaults.heals());
-        assertFalse(defaults.buffPotions());
+        assertTrue(defaults.buffPotions(), "buff potions are on for every Agent (agent-engine.yaml)");
         assertEquals(null, defaults.formation(), "the crew's formation");
         assertTrue(defaults.potionsAsConfigured());
         assertTrue(defaults.supportAsDefault());
@@ -47,7 +47,7 @@ class CompanionSettingsTest {
                 .withLeaveBossDrops(false)
                 .withSupport(CompanionSettings.Support.BUFFS, false)
                 .withSupport(CompanionSettings.Support.HEALS, false)
-                .withSupport(CompanionSettings.Support.BUFF_POTIONS, true)
+                .withSupport(CompanionSettings.Support.BUFF_POTIONS, false)
                 .withFormation("left");
 
         String json = changed.toJson();

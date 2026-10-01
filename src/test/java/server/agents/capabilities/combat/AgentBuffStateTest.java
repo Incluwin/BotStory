@@ -11,15 +11,15 @@ class AgentBuffStateTest {
     void tracksConsumableBuffToggleModeAndScan() {
         AgentBuffState state = new AgentBuffState();
 
-        assertFalse(state.consumablesEnabled());
+        assertTrue(state.consumablesEnabled(), "buff potions are on by default (agent-engine.yaml)");
         assertTrue(state.cheapMode());
         assertTrue(state.consumableScanDue(1_000L, 750L));
 
-        state.setConsumablesEnabled(true);
+        state.setConsumablesEnabled(false);
         state.setCheapMode(false);
         state.setLastConsumableScanMs(1_000L);
 
-        assertTrue(state.consumablesEnabled());
+        assertFalse(state.consumablesEnabled());
         assertFalse(state.cheapMode());
         assertFalse(state.consumableScanDue(1_500L, 750L));
         assertTrue(state.consumableScanDue(1_750L, 750L));

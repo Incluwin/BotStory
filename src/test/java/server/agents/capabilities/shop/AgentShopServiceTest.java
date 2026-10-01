@@ -46,6 +46,15 @@ class AgentShopServiceTest {
     }
 
     @Test
+    void buffPotionsSpendOnlyTheirShareOfTheMesosAboveTheReserve() {
+        int percent = config.AgentTuning.intValue(
+                "server.agents.capabilities.shop.AgentShopService.BUFF_POTION_SPEND_PERCENT");
+
+        assertEquals(4_000 * percent / 100, AgentShopService.buffPotionBudget(5_000, 1_000));
+        assertEquals(0, AgentShopService.buffPotionBudget(900, 1_000));
+    }
+
+    @Test
     void sellTrashNoItemsReplyUsesAgentReplyAdapter() {
         Character bot = mock(Character.class);
         MapleMap map = mock(MapleMap.class);

@@ -193,15 +193,15 @@ class CompanionManagerSettingsTest {
         h.outWithAnn(hadrik);
 
         RosterResult off = manager.setSupport(h.ann, hadrik, CompanionSettings.Support.BUFFS, false);
-        manager.setSupport(h.ann, hadrik, CompanionSettings.Support.BUFF_POTIONS, true);
+        manager.setSupport(h.ann, hadrik, CompanionSettings.Support.BUFF_POTIONS, false);
 
         assertEquals("Hadrik stops buffing the party.", ((RosterResult.Ok) off).line());
         whispers.verifyNoInteractions(); // the card's page is the answer: no second, differently worded line in chat
         replies.verifyNoInteractions();
         assertEquals(2, dispatched.size());
         assertFalse(AgentCombatBuffStateRuntime.skillBuffsEnabled(dispatched.get(1)));
-        assertTrue(AgentBuffStateRuntime.enabled(dispatched.get(1)));
-        assertEquals("{\"buffs\":false,\"buffPotions\":true}", json(hadrik));
+        assertFalse(AgentBuffStateRuntime.enabled(dispatched.get(1)));
+        assertEquals("{\"buffs\":false,\"buffPotions\":false}", json(hadrik));
     }
 
     @Test
@@ -219,7 +219,7 @@ class CompanionManagerSettingsTest {
         assertNull(h.store.settings.get(FakeLivingStore.key(ANN, "jinx")));
         assertTrue(dispatched.isEmpty());
         assertTrue(manager.setSupport(h.ann, mira, CompanionSettings.Support.HEALS, false).ok(), "a Cleric heals");
-        assertTrue(manager.setSupport(h.ann, jinx, CompanionSettings.Support.BUFF_POTIONS, true).ok(), "anyone");
+        assertTrue(manager.setSupport(h.ann, jinx, CompanionSettings.Support.BUFF_POTIONS, false).ok(), "anyone");
     }
 
     @Test
@@ -234,9 +234,9 @@ class CompanionManagerSettingsTest {
         assertFalse(AgentCombatBuffStateRuntime.skillBuffsEnabled(dispatched.get(0)));
 
         dispatched.clear();
-        manager.setSupport(h.ann, hadrik, CompanionSettings.Support.BUFF_POTIONS, true); // not loaded: its next load
+        manager.setSupport(h.ann, hadrik, CompanionSettings.Support.BUFF_POTIONS, false); // not loaded: its next load
         assertTrue(dispatched.isEmpty());
-        assertEquals("{\"buffPotions\":true}", json(hadrik));
+        assertEquals("{\"buffPotions\":false}", json(hadrik));
     }
 
     @Test

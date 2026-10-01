@@ -714,6 +714,10 @@ tuning:
     # Purpose: Controls how frequently tick updates. Lower values make Agents react more quickly and smoothly but use more server work; higher values react more slowly and reduce load.
     # Technical: the "buff service" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled. It governs recurring work, so lowering it increases invocation frequency and operational load.
     server.agents.capabilities.combat.AgentBuffService.TICK_MS: '3000'
+    # Values: true or false. Recommended: true, so Agents drink the buff potions they carry and stock them on shop visits.
+    # Purpose: Decides whether a new Agent session uses buff potions before an owner or companion setting says otherwise; owners can still switch it per Agent with the 'buff on/off' chat command.
+    # Technical: AgentBuffState seeds consumablesEnabled from this value, CompanionSettings uses it as the buffPotions default (an unchanged companion follows it), and AgentShopService only buys buff potions while the flag is on.
+    server.agents.capabilities.combat.AgentBuffState.CONSUMABLES_ENABLED_BY_DEFAULT: 'true'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 2500-10000 around the tested baseline 5000; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents remain in or wait for alert duration. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "combat alert runtime" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
@@ -2395,6 +2399,10 @@ tuning:
     # Purpose: Controls how long Agents wait or remain in ammo trigger threshold. Higher values make the pause or activity last longer; lower values make them move on sooner.
     # Technical: the "shop service" component consumes this as an integer. Domain: non-negative count, capacity, or threshold unless the owning component documents a sentinel.
     server.agents.capabilities.shop.AgentShopService.AMMO_TRIGGER_THRESHOLD: '8'
+    # Values: an integer percentage from 0 to 100. Recommended: 15-35 around the baseline 25; 0 stops buff potion purchases.
+    # Purpose: Caps what one shop visit spends on each buff potion so optional accuracy and attack potions never eat the money an Agent needs for recovery stock, ammo or travel.
+    # Technical: After HP/MP, ammo and skill consumables, AgentShopService buys each buff potion target with at most this share of the mesos above the visit's reserve; a capped or failed buff purchase is never reported as a visit shortfall.
+    server.agents.capabilities.shop.AgentShopService.BUFF_POTION_SPEND_PERCENT: '25'
     # Values: an integer from 5000 to 9000 basis points. Recommended: 6500-8000 around the baseline 7000.
     # Purpose: Sets the smallest useful recovery for an Agent's automatic potion use; higher values preserve small potions but can waste more recovery, while lower values consume weaker potions sooner.
     # Technical: The deficit-aware autopot selector treats recovery at or above this fraction of the current missing stat as an ideal match; 10000 basis points equals the full deficit.
@@ -4660,6 +4668,14 @@ tuning:
     # Purpose: Combo orbs a Hero-line Agent holds before it plans Panic or Coma. Finishers spend the whole stack and scale from x1.2 at two orbs to x2.5 at five on this server, so spending early is a damage loss; 1 restores the client-minimum behaviour.
     # Technical: the "combo finisher policy" component consumes this as an integer; it is the deterministic prior the combat self-improvement loop starts from (docs/agents/COMBAT_SELF_IMPROVEMENT_PLAN.md).
     server.agents.capabilities.combat.AgentComboFinisherPolicy.MIN_ORBS: '5'
+    # Values: a positive whole-item count. Recommended: 5-20 around the baseline 10 (30-50 minutes of buff per potion type).
+    # Purpose: Sets how many of each buff potion (Sniper Potion for warriors and young brawlers, Warrior or Magic Potion for attack) an Agent tops up to when it visits a shop.
+    # Technical: AgentBuffConsumableSupplyPolicy returns this quantity per eligible item and AgentShopService buys the shortfall from the visited shop's stock within BUFF_POTION_SPEND_PERCENT; buff potions alone never start a shop trip.
+    server.agents.capabilities.supplies.AgentBuffConsumableSupplyPolicy.TARGET_QUANTITY: '10'
+    # Values: a character level from 1 to 200. Recommended: 50, where brawler mastery and accuracy skills keep hit chance high.
+    # Purpose: Brawlers (STR pirates) stock accuracy potions only below this level; warriors stock them at every level because they lack accuracy skills.
+    # Technical: AgentBuffConsumableSupplyPolicy adds the Sniper Potion target when Character.getJobStyle() is BRAWLER and the level is below this value; whether one is drunk is still decided against the current target's hit chance.
+    server.agents.capabilities.supplies.AgentBuffConsumableSupplyPolicy.BRAWLER_ACCURACY_LEVEL_LIMIT: '50'
     # Values: a positive integer; unit: divisor of the stock target. Recommended: 2-4; 3 restocks at a third of the target (10 casts of 30).
     # Purpose: Fraction of the skill consumable target below which a shop that sells the item is worth a visit.
     # Technical: AgentShopService compares the carried quantity with target divided by this value when deciding whether a nearby shop has anything the Agent needs; Summoning Rocks and Magic Rocks are the items in v83.
