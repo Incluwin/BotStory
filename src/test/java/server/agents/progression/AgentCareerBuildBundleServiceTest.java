@@ -44,10 +44,7 @@ class AgentCareerBuildBundleServiceTest {
     @Test
     void restoreReassignsBundleWhoseFirstJobDiffersFromTheAgentsJob() throws Exception {
         // Rurik (831) drew pirate-gun as a Beginner (831 mod 7 = 5) and then became a Warrior.
-        Character agent = mock(Character.class);
-        when(agent.getId()).thenReturn(831);
-        when(agent.getName()).thenReturn("Rurik");
-        when(agent.getJob()).thenReturn(Job.WARRIOR);
+        Character agent = agent(831, "Rurik", Job.WARRIOR);
         when(agent.getLevel()).thenReturn(31);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
         FileAgentCareerAssignmentStore store = new FileAgentCareerAssignmentStore(temp);
@@ -104,10 +101,7 @@ class AgentCareerBuildBundleServiceTest {
 
     @Test
     void restoreKeepsStoredBundleWhenNoBundleCoversTheAgentsJob() throws Exception {
-        Character agent = mock(Character.class);
-        when(agent.getId()).thenReturn(92);
-        when(agent.getName()).thenReturn("DawnFixture");
-        when(agent.getJob()).thenReturn(Job.DAWNWARRIOR1);
+        Character agent = agent(92, "DawnFixture", Job.DAWNWARRIOR1);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
         FileAgentCareerAssignmentStore store = new FileAgentCareerAssignmentStore(temp);
         // Not the id-mod-7 pick (bowman), so a re-pick across all bundles would show.
@@ -207,7 +201,6 @@ class AgentCareerBuildBundleServiceTest {
     private static Character statefulAgent(int id, String name, Job job, int level, Stats stats) {
         Character agent = agent(id, name, job);
         when(agent.getLevel()).thenReturn(level);
-        when(agent.getRemainingSps()).thenReturn(new int[10]);
         when(agent.getStr()).thenAnswer(invocation -> stats.str().get());
         when(agent.getDex()).thenAnswer(invocation -> stats.dex().get());
         when(agent.getInt()).thenAnswer(invocation -> stats.intelligence().get());
@@ -233,6 +226,8 @@ class AgentCareerBuildBundleServiceTest {
         when(agent.getId()).thenReturn(id);
         when(agent.getName()).thenReturn(name);
         when(agent.getJob()).thenReturn(job);
+        // Without it the SP profile's targets throw once another test has loaded SkillFactory.
+        when(agent.getRemainingSps()).thenReturn(new int[10]);
         return agent;
     }
 }
