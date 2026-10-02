@@ -255,6 +255,69 @@ public record AgentPqPaceCalibration(String questKey, int epoch, Map<String, Dou
     }
 
     /**
+     * What one recorded run's complete spans say about each term on their own, every other term at its prior: per
+     * segment key, the term it implies and its value, in the prior's units. A fixed segment implies its own time (less
+     * any unseen fixed segment it folds in); a quota its combat efficiency (the policy's attacks per kill over the
+     * measured ones) and the seek that efficiency leaves for its kill rate; a clear its efficiency (water-fill seconds
+     * over the measured ones); a puzzle of two or more checks its per-check time. This is the value a pace batch's
+     * priors are set from when the epoch is bumped. Pure; a party size the profile does not take implies nothing.
+     */
+    public static Map<String, Map<String, Double>> implied(AgentPqPaceProfile profile, AgentPqPace pace) {
+        Map<String, Map<String, Double>> implied = new TreeMap<>();
+        if (profile == null || pace == null) return implied;
+        int size = pace.members().size();
+        List<AgentPqPaceSegment> segments;
+        try {
+            segments = size >= profile.minSize() && size <= profile.maxSize() ? profile.segments(size) : null;
+        } catch (RuntimeException unsupported) {
+            segments = null;
+        }
+        if (segments == null) return implied;
+        AgentPqPaceCalibration prior = prior(profile);
+        Set<String> leaderTerms = profile.leaderTerms();
+        Map<String, Integer> ignored = new TreeMap<>();
+        for (Visit visit : visits(new Run(pace, segments, 1.0d))) {
+            if (!usable(visit, ignored)) continue;
+            AgentPqPace.Span span = visit.span();
+            double observedMs = span.durationMs() - folded(visit, prior.companion(), prior.leader(), leaderTerms);
+            Map<String, Double> terms = new TreeMap<>();
+            switch (visit.segment()) {
+                case AgentPqPaceSegment.Fixed fixed -> {
+                    if (observedMs > 0.0d) terms.put(fixed.term(), observedMs);
+                }
+                case AgentPqPaceSegment.Quota quota -> {
+                    double combat = runCombatEfficiency(quota, pace);
+                    if (combat > 0.0d) terms.put(quota.combatTerm(), combat);
+                    double seconds = observedMs / 1000.0d;
+                    double atCombat = combat > 0.0d ? combat : prior.companion().get(quota.combatTerm());
+                    if (seconds > 0.0d && span.work() > 0.0d
+                            && AgentPqPaceModel.killsPerSecond(quota, pace.members(), 0.0d, atCombat) > 0.0d) {
+                        terms.put(quota.seekTerm(), solveSeekMs(quota, pace.members(), atCombat,
+                                span.work() / seconds, SEEK_MAX_MS));
+                    }
+                }
+                case AgentPqPaceSegment.Clear clear -> {
+                    AgentPqPaceModel.Fill fill = AgentPqPaceModel.waterFill(clear, pace.members());
+                    if (fill.clearable() && observedMs > 0.0d) {
+                        terms.put(clear.key(), fill.seconds() / (observedMs / 1000.0d));
+                    }
+                }
+                case AgentPqPaceSegment.Puzzle puzzle -> {
+                    int checks = (int) Math.round(span.work());
+                    if (checks >= 2) {
+                        terms.put(puzzle.checkTerm(), span.durationMs() / (double) (checks - 1)
+                                - puzzle.leaderMoveShare() * prior.leader().get(puzzle.moveTerm()));
+                    }
+                }
+                case AgentPqPaceSegment.Parallel ignoredParallel -> {
+                }
+            }
+            if (!terms.isEmpty()) implied.put(visit.segment().key(), Collections.unmodifiableMap(terms));
+        }
+        return implied;
+    }
+
+    /**
      * The seek (ms) at which the quota's members would have killed at {@code killsPerSecond}: the kill rate falls as
      * seek grows, so bisection on [0, maxMs]. A run faster than the zero-seek bound gives 0, slower than the max gives
      * the max.
