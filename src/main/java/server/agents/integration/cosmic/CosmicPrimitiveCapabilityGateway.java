@@ -327,6 +327,24 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public List<Point> liveMonsterPositions(Character agent, Set<Integer> mobIds) {
+        if (agent == null || agent.getMap() == null || mobIds == null) {
+            return List.of();
+        }
+        return server.agents.perception.AgentMapPerception.monsters(agent.getMap()).stream()
+                .filter(monster -> monster != null && monster.isAlive() && mobIds.contains(monster.getId())
+                        && monster.getPosition() != null)
+                .map(monster -> new Point(monster.getPosition()))
+                .toList();
+    }
+
+    @Override
+    public boolean rangedWeapon(Character agent) {
+        return AgentAttackExecutionProvider.isDegenerateCapableRangedWeapon(
+                AgentAttackExecutionProvider.getEquippedWeaponType(agent));
+    }
+
+    @Override
     public Map<Integer, Double> expectedLineDamage(AgentRuntimeEntry entry, Character agent, Set<Integer> mobIds) {
         if (entry == null || agent == null || agent.getMap() == null || mobIds == null) {
             return Map.of();

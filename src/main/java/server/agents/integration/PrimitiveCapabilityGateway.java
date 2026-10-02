@@ -126,6 +126,16 @@ public interface PrimitiveCapabilityGateway {
         return List.of();
     }
 
+    /** Where the live mobs of these ids on this character's map stand now. */
+    default List<Point> liveMonsterPositions(Character agent, Set<Integer> mobIds) {
+        return List.of();
+    }
+
+    /** Whether this character's equipped weapon shoots: a bow, crossbow, claw or gun. */
+    default boolean rangedWeapon(Character agent) {
+        return false;
+    }
+
     /**
      * What one line of this Agent's usual attack is expected to deal to each of these mobs alive on its map: the hit
      * chance times the damage left after the mob's defense. A mob with none alive is left out.
