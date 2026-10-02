@@ -21,8 +21,17 @@ public final class AgentExpectedDamagePolicy {
     }
 
     public static double damagePerSecond(Character agent, Monster monster) {
+        return bestAttack(agent, monster).damagePerSecond();
+    }
+
+    /**
+     * The attack {@link #damagePerSecond} rates, with what it is made of: one attack's expected damage, its cooldown and
+     * its hit chance (magic accuracy for a spell). The PQ clear-time estimate turns the cooldown into the policy's
+     * attacks per kill, to set against the attacks a member really needed.
+     */
+    public static ExpectedAttack bestAttack(Character agent, Monster monster) {
         WeaponType weapon = AgentAttackExecutionProvider.getEquippedWeaponType(agent);
-        double best = damagePerSecond(agent, monster, weapon, null, 0);
+        ExpectedAttack best = expectedAttack(agent, monster, weapon, null, 0);
         for (Skill skill : agent.getSkills().keySet()) {
             int level = agent.getSkillLevel(skill);
             StatEffect effect = level > 0 ? skill.getEffect(level) : null;
@@ -30,14 +39,23 @@ public final class AgentExpectedDamagePolicy {
                     == AgentCombatSkillClassifier.SkillCacheBucket.ACTIVE_ATTACK
                     && AgentCombatWeaponPolicy.canUseSkillWithWeapon(skill.getId(), weapon)
                     && !AgentCombatSkillClassifier.requiresPreAction(skill.getId())) {
-                best = Math.max(best, damagePerSecond(agent, monster, weapon, skill, level));
+                ExpectedAttack candidate = expectedAttack(agent, monster, weapon, skill, level);
+                if (candidate.damagePerSecond() > best.damagePerSecond()) best = candidate;
             }
         }
         return best;
     }
 
+    /** One attack: its expected damage after hit chance, crits and defense, its cooldown, and its hit chance. */
+    public record ExpectedAttack(double damagePerAttack, int cooldownMs, double hitChance) {
+        public double damagePerSecond() {
+            return damagePerAttack * 1000.0d / Math.max(1, cooldownMs);
+        }
+    }
+
     /** One attack's expected damage over its animation; {@code skill} null: the basic swing. */
-    private static double damagePerSecond(Character agent, Monster monster, WeaponType weapon, Skill skill, int level) {
+    private static ExpectedAttack expectedAttack(Character agent, Monster monster, WeaponType weapon, Skill skill,
+                                                 int level) {
         int skillId = skill == null ? 0 : skill.getId();
         StatEffect effect = skill == null ? null : skill.getEffect(level);
         boolean magic = skill != null
@@ -51,6 +69,6 @@ public final class AgentExpectedDamagePolicy {
         int cooldownMs = AgentAttackExecutionProvider.resolveSkillAttackTiming(skill, action != null ? action
                 : AgentAttackDataProvider.getInstance().getBasicAttackSpec(weapon).primaryAction(), agent, null)
                 .cooldownMs();
-        return damage * 1000.0d / Math.max(1, cooldownMs);
+        return new ExpectedAttack(damage, cooldownMs, formulas.calculateMobHitChance(agent, monster, magic));
     }
 }
