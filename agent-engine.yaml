@@ -2221,7 +2221,7 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_ENABLED: 'true'
     # Values: 20000-300000 milliseconds. Recommended: 75000; assumed quick human, never measured: exit, Nella, walk to Lakelis, Yes, the question walk.
     # Purpose: What starting a KPQ run over costs a party, set against the grind a heavy stage-1 draw would cost, when a companion run decides whether a re-roll is worth offering.
-    # Technical: The expected saving is grind(drawn kills) - (this + grind(a fresh draw's mean kills)) at the stage-1 theory rate of the party; the clear-time estimate adds this as a fixed time per re-roll in its stage-1 mixture, unscaled by the efficiency multiplier.
+    # Technical: The expected saving is grind(the coupons still needed) - (this + grind(a fresh draw's mean kills)) at the stage-1 theory rate of the party; the clear-time estimate adds this as a fixed time per re-roll in its stage-1 mixture, unscaled by the efficiency multiplier. Measured live by the 'KPQ re-roll restart' line (toDrawMs: from a re-roll's release to the next run's draw; add the re-rolled run's waitedMs); retune it from those.
     server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_RESTART_MS: '75000'
     # Values: 0-600000 milliseconds. Recommended: 60000. Higher values offer fewer re-rolls, only for the heaviest draws; 0 offers one whenever a fresh draw is expected to be quicker at all.
     # Purpose: The least expected time a re-roll must save before a companion run with warm pace data offers it to its human leader.
@@ -2231,14 +2231,18 @@ tuning:
     # Purpose: Bounds how many KPQ runs in a row one human leader is offered a stage-1 re-roll, so a party never loops on the entrance.
     # Technical: AgentKpqRerollStreaks counts a leader's re-rolls in a row; a clear, a normal failure or REROLL_STREAK_RESET_MS without a re-roll starts it over; the estimate's mixture allows this many redraws in a row, the last draw kept whatever it is.
     server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_MAX_STREAK: '2'
-    # Values: 60000-7200000 milliseconds. Recommended: 900000. Lower values forget a leader's re-rolls sooner; Lakelis also greets a leader back within this long after a re-roll.
+    # Values: 60000-7200000 milliseconds. Recommended: 900000. Lower values forget a leader's re-rolls sooner; Lakelis also greets a leader back once within this long after a re-roll.
     # Purpose: How long a stage-1 re-roll counts toward its leader's streak, and how long Lakelis remembers it to greet the same leader back at the entrance.
-    # Technical: AgentKpqRerollStreaks treats a streak whose last re-roll is this old as 0; CompanionPartyQuestService shows Lakelis's back-already line above the lineup when the leader's last companion run ended in a re-roll less than this long ago.
+    # Technical: AgentKpqRerollStreaks treats a streak whose last re-roll is this old as 0; CompanionPartyQuestService shows Lakelis's back-already line above the lineup once, the first time the leader talks to her after his last companion run ended in a re-roll less than this long ago.
     server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_STREAK_RESET_MS: '900000'
     # Values: 5000-120000 milliseconds. Recommended: 25000. Shorter values carry on sooner when the leader is busy fighting; the companions never stop collecting while they wait.
     # Purpose: How long a companion run waits for its human leader to answer the stage-1 re-roll question before the companions say they will grind it out.
-    # Technical: Measured on the coordinator's clock from the question; the answer (the companion's window or a typed yes or no in chat) is recorded in AgentKpqSessionRegistry and read on the next tick; after this long with none the question is closed and later answers are ignored.
+    # Technical: Measured on the coordinator's clock from the question, or from the tick that saw the companion's window on screen once it is (the window is offered only within this long of the question, at a lull), so at most twice this; the answer (the window or a typed answer in chat) is recorded in AgentKpqSessionRegistry and read on the next tick; after this long with none the question is closed and a later pick on the window is answered in pink text. A bare yes or no typed counts only when no other companion line asked the leader something within this long before the question.
     server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_ANSWER_MS: '25000'
+    # Values: 0-800 map pixels. Recommended: 250. Higher values wait longer for a quiet moment before the window opens; 0 opens it whenever the leader stands on a foothold out of his combat stance.
+    # Purpose: Keeps the companion's re-roll window from opening on a human leader mid-fight: the v83 window holds his input until he answers it, while the Ligators keep hitting him.
+    # Technical: AgentKpqRerollPolicy.lull: the window is offered on a coordinator tick only while the leader stands on a foothold (his client's last stance not rope, ladder or jump), not in the alert stance, and no live Ligator lies within this Euclidean map-pixel distance of his position; until then the question stands in chat alone.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_WINDOW_CLEAR_PX: '250'
     # Values: 60-300 map pixels. Recommended: 150. Higher values let a fighting collector step further off for a coupon; lower values keep it on the Ligator.
     # Purpose: Sets how close a floor coupon must lie for a companion run's stage-1 collector to pick it up while a Ligator still lives on the platform it fights on.
     # Technical: AgentKpqCoordinator's coupon sweep measures the Euclidean map-pixel distance from the collector to the coupon; nearer coupons are matched as before, farther ones wait for the platform to clear, STAGE1_LOOT_MAX_AGE_MS, or a floor that finishes the collector's count.

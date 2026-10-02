@@ -7,6 +7,7 @@ import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 
 import java.util.List;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Pattern;
 
@@ -193,6 +194,87 @@ class RerollFlowTest {
     }
 
     @Test
+    void aQuestionStillOutAtTheStageOneClearIsClosedWithoutALine() {
+        // A human collector handed in and Cloto cleared the stage before Ben answered.
+        when(fx.run.event.getProperty("1stageclear")).thenReturn("true");
+
+        AgentKpqCoordinator.tick(session, ASKED_AT + 3_000L);
+
+        assertFalse(session.rerollPending());
+        assertFalse(AgentKpqSessionRegistry.rerollAsked(session.sessionId()));
+        assertFalse(AgentKpqSessionRegistry.answerRerollInChat(1, "ok"), "his ok is chat again");
+        assertFalse(AgentKpqSessionRegistry.answerReroll(session.sessionId(), 1, true), "a late pick is no answer");
+        assertEquals(0, AgentKpqSessionRegistry.rerollQuestionsOut());
+        assertEquals(List.of("Mira: " + THIRTY_FIVES_LINE), rerollLines(fx.said()), "nothing more is said of it");
+        assertEquals(List.of("KPQ stage 1 re-roll answer: session=" + session.sessionId()
+                + " answer=stage-cleared waitedMs=3000"), fx.coordinatorLog.startingWith("KPQ stage 1 re-roll answer: "));
+        verify(fx.run.event, never()).dispose();
+    }
+
+    @Test
+    void whileTheQuestionIsOutNoOtherLineAsksTheLeaderAnything() {
+        // The stage-1 levers as production runs them, Ben holding coupons a collector could use.
+        session.setStageOneLevers(new AgentKpqStageOneLevers(true, false, false, false));
+        when(fx.ben.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(2);
+
+        AgentKpqCoordinator.tick(session, ASKED_AT + 1_000L);
+        AgentKpqCoordinator.tick(session, ASKED_AT + 10_000L);
+
+        assertEquals(List.of(), couponAsks(), "the coupon ask waits for his answer");
+        AgentKpqCoordinator.tick(session, ASKED_AT + POLICY.answerMs()); // he let it pass
+        assertEquals(List.of("Mira: " + THIRTY_FIVES_LINE, "Mira: " + GRIND_IT_OUT_LINE), rerollLines(fx.said()));
+        AgentKpqCoordinator.tick(session, ASKED_AT + POLICY.answerMs() + 1_000L);
+        assertEquals(1, couponAsks().size(), "then it goes out");
+
+        AgentKpqHumanDialogueRuntime.observeChat(fx.ben, "ok", ASKED_AT + POLICY.answerMs() + 1_500L);
+        AgentKpqCoordinator.tick(session, ASKED_AT + POLICY.answerMs() + 2_000L);
+
+        verify(fx.run.event, never()).dispose();
+        assertEquals(AgentKpqSession.Phase.STAGE_1, session.phase(), "his ok to the coupons is no re-roll");
+    }
+
+    @Test
+    void anAnswerIsKeptWithItsQuestionAndLeavesWithIt() {
+        assertEquals(1, AgentKpqSessionRegistry.rerollQuestionsOut());
+        assertTrue(AgentKpqSessionRegistry.answerReroll(session.sessionId(), 1, false));
+        assertEquals(1, AgentKpqSessionRegistry.rerollQuestionsOut(), "one entry: the question and its answer");
+        assertEquals(Boolean.FALSE, AgentKpqSessionRegistry.takeRerollAnswer(session.sessionId(), 1));
+        assertEquals(0, AgentKpqSessionRegistry.rerollQuestionsOut(), "an answered question is over");
+        assertFalse(AgentKpqSessionRegistry.answerReroll(session.sessionId(), 1, true));
+        assertEquals(0, AgentKpqSessionRegistry.rerollQuestionsOut());
+    }
+
+    @Test
+    void anAnswerThatRacesTheQuestionsCloseIsNeverLeftBehind() throws Exception {
+        String sessionId = session.sessionId();
+        for (int round = 0; round < 2_000; round++) {
+            AgentKpqSessionRegistry.askReroll(sessionId, 1, ASKED_AT, true);
+            CyclicBarrier start = new CyclicBarrier(2);
+            AtomicBoolean recorded = new AtomicBoolean();
+            Thread io = new Thread(() -> {
+                await(start);
+                recorded.set(AgentKpqSessionRegistry.answerReroll(sessionId, 1, true));
+            }, "leader-io");
+            io.start();
+            await(start);
+            AgentKpqSessionRegistry.closeReroll(sessionId);
+            io.join(5_000L);
+            assertEquals(0, AgentKpqSessionRegistry.rerollQuestionsOut(), "round " + round);
+            assertNull(AgentKpqSessionRegistry.takeRerollAnswer(sessionId, 1), "round " + round);
+        }
+    }
+
+    @Test
+    void aRerollStreakStartsOverWhenHisNextRunEndsAnyOtherWay() {
+        AgentKpqRerollStreaks.rerolled(1, 1_000L, POLICY.streakResetMs());
+        assertEquals(1, AgentKpqRerollStreaks.current(1, ASKED_AT, POLICY.streakResetMs()));
+
+        AgentKpqTerminationService.fail(session, "KPQ stopped", ASKED_AT + 1_000L);
+
+        assertEquals(0, AgentKpqRerollStreaks.current(1, ASKED_AT + 2_000L, POLICY.streakResetMs()));
+    }
+
+    @Test
     void everyRerollLineIsPlayerChat() {
         List<String> lines = List.of(THIRTY_FIVES_LINE, AgentKpqRerollPolicy.askLine(List.of(35, 35, 35)),
                 AgentKpqRerollPolicy.LOT_OF_COUPONS_LINE, GO_AGAIN_LINE, GRIND_IT_OUT_LINE,
@@ -209,5 +291,18 @@ class RerollFlowTest {
         assertEquals("ugh, three of us got 35s. that's a long grind, wanna bail and run it again?", lines.get(1));
         assertEquals(GO_AGAIN_LINE, lines.get(5));
         assertEquals(GO_AGAIN_LINE, lines.get(6));
+    }
+
+    /** The L2 coupon asks said to Ben so far. */
+    private List<String> couponAsks() {
+        return fx.said().stream().filter(line -> line.contains("drop them by me")).toList();
+    }
+
+    private static void await(CyclicBarrier barrier) {
+        try {
+            barrier.await();
+        } catch (Exception interrupted) {
+            throw new IllegalStateException(interrupted);
+        }
     }
 }

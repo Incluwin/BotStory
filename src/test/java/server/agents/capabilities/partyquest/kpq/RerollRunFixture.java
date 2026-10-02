@@ -12,6 +12,7 @@ import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.plans.AgentScriptItemActionService;
 import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
+import server.life.Monster;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -26,11 +28,16 @@ import static org.mockito.Mockito.when;
  * Stage 1 of a live KPQ run for the re-roll tests (round 2b), over {@link KpqRunFixture}: Ben, a human, leads Mira, Pip
  * and Tobi, three companions collecting their coupons, with the stage-1 levers off so only the re-roll differs from a
  * plain stage 1. The grind, stop and ground calls the coordinator's real gateway makes are stubbed as StageOnePaceTest
- * stubs them. The host's handback rule records every re-roll question it is asked to show.
+ * stubs them. The host's handback rule records every re-roll question it is asked to show and, as the living host's
+ * I/O thread would, puts its window on screen at once ({@link #windowsOnScreen} false: it never gets there, as when
+ * another window awaits the leader's reply; {@link #hostShowsWindows} false: a host that shows none).
  */
 final class RerollRunFixture implements AutoCloseable {
     /** The yaml's defaults, written out so a test reads the same numbers whatever the deployment sets. */
-    static final AgentKpqRerollPolicy POLICY = new AgentKpqRerollPolicy(true, 75_000L, 60_000L, 2, 900_000L, 25_000L);
+    static final AgentKpqRerollPolicy POLICY = new AgentKpqRerollPolicy(true, 75_000L, 60_000L, 2, 900_000L, 25_000L,
+            250);
+    /** Ligator, stage 1's only mob. */
+    static final int LIGATOR = 9_300_001;
     static final String THIRTY_FIVES_LINE = "ugh, two of us got 35s. that's a long grind, wanna bail and run it again?";
     static final String GO_AGAIN_LINE = "ok, out we go. see you at lakelis.";
     static final String GRIND_IT_OUT_LINE = "alright, let's grind it out.";
@@ -39,6 +46,11 @@ final class RerollRunFixture implements AutoCloseable {
     final KpqLogLines coordinatorLog = new KpqLogLines(AgentKpqCoordinator.class);
     final KpqLogLines terminationLog = new KpqLogLines(AgentKpqTerminationService.class);
     final List<AgentPartyQuestHandback.RerollAsk> asked = new CopyOnWriteArrayList<>();
+    /** The host shows the window when asked (false: it says it cannot, and the question stands in chat). */
+    volatile boolean hostShowsWindows = true;
+    /** The window it was asked for goes on the leader's screen at once (false: refused there, another is open). */
+    volatile boolean windowsOnScreen = true;
+    private final List<Monster> liveMonsters = new CopyOnWriteArrayList<>();
     final Character ben;
     final Character mira;
     final Character pip;
@@ -68,9 +80,27 @@ final class RerollRunFixture implements AutoCloseable {
             @Override
             public boolean askLeaderToReroll(AgentPartyQuestHandback.RerollAsk ask) {
                 asked.add(ask);
+                if (!hostShowsWindows) return false;
+                if (windowsOnScreen) AgentKpqSessionRegistry.markRerollWindowShown(ask.sessionId(), ask.leaderId());
                 return true;
             }
         });
+        when(run.map.getAllMonsters()).thenReturn(liveMonsters);
+    }
+
+    /** A live Ligator stands here on the stage-1 map. */
+    Monster ligatorAt(int x, int y) {
+        Monster ligator = mock(Monster.class);
+        when(ligator.isAlive()).thenReturn(true);
+        when(ligator.getId()).thenReturn(LIGATOR);
+        when(ligator.getPosition()).thenReturn(new Point(x, y));
+        liveMonsters.add(ligator);
+        return ligator;
+    }
+
+    /** That Ligator died. */
+    void killed(Monster ligator) {
+        liveMonsters.remove(ligator);
     }
 
     /** Ben's companion run in stage 1, Cloto having given Mira, Pip and Tobi these numbers. */

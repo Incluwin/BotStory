@@ -20,7 +20,6 @@ import server.living.config.Content.Persona;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -45,8 +44,8 @@ class RerollAtLakelisTest {
     private final LifecycleHarness game = fx.game;
     private Persona mira;
 
-    /** One question shown: who to, from whom, and what it said, with the pick it hands back. */
-    private record Shown(Character leader, Persona asker, String question, Consumer<Boolean> answer) {
+    /** One question shown: who to, from whom, and what it said, with the run's side of its picks. */
+    private record Shown(Character leader, Persona asker, String question, CompanionRunLifecycle.RerollPicks picks) {
     }
 
     @BeforeEach
@@ -73,6 +72,25 @@ class RerollAtLakelisTest {
 
         assertEquals(List.of("proposal"), game.calls.stream().filter("proposal"::equals).toList());
         assertEquals("Back already? Cloto must have been in a mood.", fx.topLine);
+    }
+
+    @Test
+    void sheGreetsHimOncePerRerollNotOnEveryVisit() {
+        readyAtTheDesk();
+        fx.yes();
+        fx.sessionRerolled();
+        assertTrue(fx.service.offerAtDesk(game.ann, "kpq"));
+        assertEquals(LakelisLines.BACK_ALREADY, fx.topLine);
+
+        // "Never mind.", then he talks to her again
+        assertTrue(fx.service.offerAtDesk(game.ann, "kpq"));
+
+        assertNull(fx.topLine);
+        assertFalse(fx.service.backAfterReroll(ANN, System.currentTimeMillis()));
+        fx.yes();
+        fx.sessionRerolled(); // his next re-roll is greeted again
+        assertTrue(fx.service.offerAtDesk(game.ann, "kpq"));
+        assertEquals(LakelisLines.BACK_ALREADY, fx.topLine);
     }
 
     @Test
@@ -176,8 +194,8 @@ class RerollAtLakelisTest {
     void theCompanionAsksInAWindowOfItsOwnOnTheLeadersThreadAndThePickIsOnlyRecorded() {
         fx.ready();
         List<Shown> shown = new ArrayList<>();
-        fx.lifecycle.installRerollWindow((leader, asker, question, answer) ->
-                shown.add(new Shown(leader, asker, question, answer)));
+        fx.lifecycle.installRerollWindow((leader, asker, question, picks) ->
+                shown.add(new Shown(leader, asker, question, picks)));
         CompanionRun run = fx.yes();
         fx.io = new ArrayList<>();
 
@@ -196,11 +214,36 @@ class RerollAtLakelisTest {
             assertEquals("ugh, two of us got 35s. that's a long grind, wanna bail and run it again?",
                     shown.getFirst().question());
             registry.verify(() -> AgentKpqSessionRegistry.answerReroll(run.sessionId, ANN, true), never());
+            CompanionRunLifecycle.RerollPicks picks = shown.getFirst().picks();
+            assertEquals(run.sessionId, picks.sessionId());
 
-            shown.getFirst().answer().accept(true);
+            picks.wanted();
+            picks.shown();
+            picks.pick(true);
+            picks.runGoesOn();
 
+            registry.verify(() -> AgentKpqSessionRegistry.rerollWindowWanted(run.sessionId, ANN));
+            registry.verify(() -> AgentKpqSessionRegistry.markRerollWindowShown(run.sessionId, ANN));
             registry.verify(() -> AgentKpqSessionRegistry.answerReroll(run.sessionId, ANN, true));
+            registry.verify(() -> AgentKpqSessionRegistry.runGoesOn(run.sessionId));
         }
+    }
+
+    @Test
+    void theScriptedTestLeadersAreAskedInChatAloneTheirDriverExpectsNoWindowMidRun() {
+        fx.ready();
+        fx.lifecycle.installRerollWindow((leader, asker, question, picks) -> { });
+        CompanionRun run = fx.yes();
+        fx.io = new ArrayList<>();
+        game.config.COMPANION_PQ_PACE_EXCLUDED_LEADERS = "2," + ANN;
+
+        assertFalse(fx.lifecycle.askLeaderToReroll(new AgentPartyQuestHandback.RerollAsk("kpq", run.sessionId, ANN,
+                900, "thirty-fives", "q")));
+        assertEquals(List.of(), fx.io, "nothing goes to his I/O thread");
+
+        game.config.COMPANION_PQ_PACE_EXCLUDED_LEADERS = "2,865";
+        assertTrue(fx.lifecycle.askLeaderToReroll(new AgentPartyQuestHandback.RerollAsk("kpq", run.sessionId, ANN,
+                900, "thirty-fives", "q")));
     }
 
     @Test
@@ -212,7 +255,7 @@ class RerollAtLakelisTest {
 
         assertFalse(fx.lifecycle.askLeaderToReroll(ask), "no window installed");
 
-        fx.lifecycle.installRerollWindow((leader, asker, question, answer) -> { });
+        fx.lifecycle.installRerollWindow((leader, asker, question, picks) -> { });
         assertFalse(fx.lifecycle.askLeaderToReroll(new AgentPartyQuestHandback.RerollAsk("kpq", "kpq-gone", ANN, 900,
                 "thirty-fives", "q")), "no such run");
         assertTrue(fx.lifecycle.askLeaderToReroll(ask));

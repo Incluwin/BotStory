@@ -15,6 +15,9 @@ import server.living.resident.LivingTalk;
 import server.living.resident.ResidentRuntime;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionPartyQuestService;
+import server.living.roster.CompanionRunLifecycle;
+import server.living.roster.LakelisLines;
+import server.living.roster.LivingLogLines;
 import server.living.roster.DirectExecutor;
 import server.living.roster.LineupPlan;
 import server.living.roster.LineupPlan.Seat;
@@ -36,6 +39,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -130,7 +134,7 @@ class LakelisDeskTest {
 
     @Test
     void aLeaderBackSoonAfterARerollHearsHerLineAboveTheLineup() {
-        desk.proposal(ben, choice(null), "Back already? Cloto must have been in a mood.");
+        desk.proposal(ben, choice(null), LakelisLines.BACK_ALREADY);
 
         assertTrue(lastTalk().text().startsWith(TITLE + "\r\nBack already? Cloto must have been in a mood.\r\n"
                 + "Four of you, then? Here's who I'd send in:\r\n#bBen#k (leader)\r\n"), lastTalk().text());
@@ -139,13 +143,11 @@ class LakelisDeskTest {
 
     @Test
     void aCompanionAsksAboutARerollInAWindowOfItsOwnAndThePickIsOnlyHandedBack() {
-        Persona mira = mock(Persona.class);
-        when(mira.name()).thenReturn("Mira");
-        when(mira.portraitNpcId()).thenReturn(9_970_123);
-        List<Boolean> answers = new ArrayList<>();
+        Persona mira = mira();
+        Picks picks = new Picks();
         String question = "ugh, two of us got 35s. that's a long grind, wanna bail and run it again?";
 
-        new RerollQuestion().ask(ben, mira, question, answers::add);
+        new RerollQuestion().ask(ben, mira, question, picks);
 
         Talk asked = lastTalk();
         assertEquals(MENU, asked.msgType());
@@ -153,16 +155,137 @@ class LakelisDeskTest {
         assertEquals(0, asked.speaker());
         assertTrue(asked.text().startsWith("#eMira#n\r\n" + question + "\r\n"), asked.text());
         assertEquals(List.of("Let's go again.", "Nah, let's push through."), asked.labels());
+        assertEquals(1, picks.shown);
         int shown = talks().size();
-        new RerollQuestion().ask(ben, mira, question, answers::add);
+        new RerollQuestion().ask(ben, mira, question, new Picks());
         assertEquals(shown, talks().size(), "never drawn over the window on screen");
 
         pick("Let's go again.");
-        assertEquals(List.of(true), answers);
+        assertEquals(List.of(true), picks.picked);
 
-        new RerollQuestion().ask(ben, mira, question, answers::add);
+        Picks again = new Picks();
+        new RerollQuestion().ask(ben, mira, question, again);
         pick("Nah, let's push through.");
-        assertEquals(List.of(true, false), answers);
+        assertEquals(List.of(false), again.picked);
+        verify(ben, never()).dropMessage(anyInt(), anyString());
+    }
+
+    @Test
+    void aWindowTheRunNoLongerWantsIsNeverDrawn() {
+        Picks gone = new Picks();
+        gone.wanted = false; // on screen already, or answered or let pass meanwhile
+
+        new RerollQuestion().ask(ben, mira(), "q", gone);
+
+        verify(client, never()).sendPacket(any());
+        assertEquals(0, gone.shown);
+    }
+
+    @Test
+    void aWindowRefusedOverAnotherIsNotMarkedShownAndIsLoggedOncePerQuestion() {
+        LivingTalk.open(ben, 9_020_000).ok("Cloto's words.").show(); // another window awaits his reply
+        int before = talks().size();
+        try (LivingLogLines logs = new LivingLogLines(RerollQuestion.class)) {
+            Picks first = new Picks();
+            RerollQuestion window = new RerollQuestion();
+            window.ask(ben, mira(), "q", first);
+            window.ask(ben, mira(), "q", first);
+
+            assertEquals(before, talks().size());
+            assertEquals(0, first.shown, "the run offers it again at its next lull");
+            assertEquals(List.of("KPQ stage 1 re-roll window refused: session=kpq-1 leader=Ben reason=window-open"),
+                    logs.startingWith("KPQ stage 1 re-roll window"));
+        }
+    }
+
+    @Test
+    void aLateGoAgainIsAnsweredInTheCompanionsWordsWhileTheRunGoesOn() {
+        Picks late = new Picks();
+        late.recorded = false; // he let it pass, and the companions grind it out
+        new RerollQuestion().ask(ben, mira(), "q", late);
+
+        pick("Let's go again.");
+
+        verify(ben).dropMessage(5, "Mira: eh, we're already into it now. let's just finish.");
+        assertFalse(LivingTalk.active(client), "and the window is closed");
+    }
+
+    @Test
+    void aLatePushThroughOrALatePickAfterTheRunEndedSaysNothing() {
+        Picks late = new Picks();
+        late.recorded = false;
+        new RerollQuestion().ask(ben, mira(), "q", late);
+        pick("Nah, let's push through."); // what the companions do anyway
+
+        Picks over = new Picks();
+        over.recorded = false;
+        over.goesOn = false; // he typed "go again" first: the run is ending
+        new RerollQuestion().ask(ben, mira(), "q", over);
+        pick("Let's go again.");
+
+        verify(ben, never()).dropMessage(anyInt(), anyString());
+    }
+
+    @Test
+    void everyRerollLineAtTheEntranceAndInTheWindowIsInCharacter() {
+        Pattern counter = Pattern.compile("\\d+\\s*/\\s*\\d+");
+        for (String line : List.of(LakelisLines.BACK_ALREADY, RerollQuestion.GO_AGAIN, RerollQuestion.PUSH_THROUGH,
+                RerollQuestion.TOO_LATE)) {
+            assertFalse(line.contains("->"), line);
+            assertFalse(counter.matcher(line).find(), line);
+            for (String engine : List.of("%", "~", "DPS", "estimate", "reroll", "re-roll", "session", "rule")) {
+                assertFalse(line.toLowerCase().contains(engine.toLowerCase()), engine + " in " + line);
+            }
+        }
+        for (String sentence : List.of(LakelisLines.BACK_ALREADY, RerollQuestion.GO_AGAIN,
+                RerollQuestion.PUSH_THROUGH)) {
+            assertTrue(java.lang.Character.isUpperCase(sentence.charAt(0)), "sentence case: " + sentence);
+            assertTrue(sentence.endsWith(".") || sentence.endsWith("?"), "a sentence: " + sentence);
+        }
+        assertEquals(RerollQuestion.TOO_LATE.toLowerCase(), RerollQuestion.TOO_LATE, "the companion's own chat voice");
+    }
+
+    private static Persona mira() {
+        Persona mira = mock(Persona.class);
+        when(mira.name()).thenReturn("Mira");
+        when(mira.portraitNpcId()).thenReturn(9_970_123);
+        return mira;
+    }
+
+    /** The run's side of one question, as the window sees it. */
+    private static final class Picks implements CompanionRunLifecycle.RerollPicks {
+        boolean wanted = true;
+        boolean recorded = true;
+        boolean goesOn = true;
+        int shown;
+        final List<Boolean> picked = new ArrayList<>();
+
+        @Override
+        public String sessionId() {
+            return "kpq-1";
+        }
+
+        @Override
+        public boolean wanted() {
+            return wanted && shown == 0;
+        }
+
+        @Override
+        public boolean shown() {
+            shown++;
+            return true;
+        }
+
+        @Override
+        public boolean pick(boolean goAgain) {
+            picked.add(goAgain);
+            return recorded;
+        }
+
+        @Override
+        public boolean runGoesOn() {
+            return goesOn;
+        }
     }
 
     @Test

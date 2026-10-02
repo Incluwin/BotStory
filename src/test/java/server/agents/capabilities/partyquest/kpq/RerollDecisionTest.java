@@ -1,5 +1,6 @@
 package server.agents.capabilities.partyquest.kpq;
 
+import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,7 @@ import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
+import server.maps.MapItem;
 
 import java.util.List;
 import java.util.Map;
@@ -17,7 +19,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 import static server.agents.capabilities.partyquest.kpq.RerollRunFixture.POLICY;
 import static server.agents.capabilities.partyquest.kpq.RerollRunFixture.THIRTY_FIVES_LINE;
 
@@ -127,6 +131,49 @@ class RerollDecisionTest {
     }
 
     @Test
+    void theSavingPricesOnlyTheCouponsStillNeeded() {
+        // 95 drawn, 20 of them picked up while the last number came: the 75 left save little against a fresh draw.
+        AgentKpqRerollPolicy.Decision decision = POLICY.decide(new AgentKpqRerollPolicy.Draw(true, false, 0, false,
+                List.of(35, 30, 30), 75, 8.2d, FRESH_MEAN));
+
+        assertEquals((75.0d - FRESH_MEAN) * 8_200.0d - 75_000.0d, decision.savingMs(), 1e-6);
+        assertFalse(decision.proposed());
+        assertEquals("saving-under-minimum", decision.reason());
+        assertTrue(POLICY.decide(warm(8.2d, 35, 30, 30)).proposed(), "the same draw untouched is worth it");
+        // The players' rule of thumb reads the numbers, not the progress.
+        assertTrue(POLICY.decide(new AgentKpqRerollPolicy.Draw(true, false, 0, false, List.of(35, 35, 10), 20,
+                Double.NaN, Double.NaN)).proposed());
+    }
+
+    @Test
+    void theWindowWaitsForALull() {
+        java.awt.Point ben = new java.awt.Point(0, 0);
+
+        assertTrue(POLICY.lull(ben, true, false, List.of()));
+        assertTrue(POLICY.lull(ben, true, false, List.of(new java.awt.Point(251, 0))));
+        assertFalse(POLICY.lull(ben, true, false, List.of(new java.awt.Point(250, 0))), "a Ligator beside him");
+        assertFalse(POLICY.lull(ben, true, false, List.of(new java.awt.Point(150, -200))), "within 250 px");
+        assertFalse(POLICY.lull(ben, false, false, List.of()), "in the air or on a rope");
+        assertFalse(POLICY.lull(ben, true, true, List.of()), "in his combat stance");
+        assertFalse(POLICY.lull(null, true, false, List.of()));
+    }
+
+    @Test
+    void aOneWordAnswerCountsOnlyWhenNothingElseWasJustAsked() {
+        for (String word : List.of("ok", "yes", "sure", "yeah", "Yep.", "okay")) {
+            assertEquals(Boolean.TRUE, AgentKpqRerollPolicy.typedAnswer(word, true), word);
+            assertNull(AgentKpqRerollPolicy.typedAnswer(word, false), word);
+        }
+        for (String word : List.of("no", "nah", "nope")) {
+            assertEquals(Boolean.FALSE, AgentKpqRerollPolicy.typedAnswer(word, true), word);
+            assertNull(AgentKpqRerollPolicy.typedAnswer(word, false), word);
+        }
+        assertEquals(Boolean.TRUE, AgentKpqRerollPolicy.typedAnswer("let's go again", false));
+        assertEquals(Boolean.TRUE, AgentKpqRerollPolicy.typedAnswer("ok let's go again", false));
+        assertEquals(Boolean.FALSE, AgentKpqRerollPolicy.typedAnswer("push through", false));
+    }
+
+    @Test
     void theConfiguredPolicyIsTheYamls() {
         assertEquals(POLICY, AgentKpqRerollPolicy.configured());
         assertEquals(35, AgentKpqRerollPolicy.highestAnswer());
@@ -161,7 +208,7 @@ class RerollDecisionTest {
                 session.sessionId(), 1, 2, "thirty-fives", THIRTY_FIVES_LINE), fx.asked.getFirst());
         assertTrue(AgentKpqSessionRegistry.rerollAsked(session.sessionId()));
         assertEquals(List.of("KPQ stage 1 draw: session=" + session.sessionId()
-                        + " targets=[35, 35, 10] total=80 rule=thirty-fives savingMs=- proposed=true"
+                        + " targets=[35, 35, 10] total=80 remaining=80 rule=thirty-fives savingMs=- proposed=true"
                         + " reason=two-or-more-35s"),
                 fx.coordinatorLog.startingWith("KPQ stage 1 draw: "));
         assertEquals(AgentKpqSession.Phase.STAGE_1, session.phase(), "the collectors carry on meanwhile");
@@ -177,7 +224,7 @@ class RerollDecisionTest {
         assertEquals(List.of(), rerollLines(fx.said()));
         assertEquals(List.of(), fx.asked);
         assertEquals(List.of("KPQ stage 1 draw: session=" + session.sessionId()
-                        + " targets=[35, 20, 10] total=65 rule=thirty-fives savingMs=- proposed=false"
+                        + " targets=[35, 20, 10] total=65 remaining=65 rule=thirty-fives savingMs=- proposed=false"
                         + " reason=fewer-than-two-35s"),
                 fx.coordinatorLog.startingWith("KPQ stage 1 draw: "));
     }
@@ -272,7 +319,7 @@ class RerollDecisionTest {
             assertEquals(List.of("Mira: " + AgentKpqRerollPolicy.LOT_OF_COUPONS_LINE), rerollLines(fx.said()));
             long saving = Math.round((95.0d - FRESH_MEAN) * secondsPerKill * 1_000.0d - 75_000.0d);
             assertEquals(List.of("KPQ stage 1 draw: session=" + slow.sessionId() + " targets=[35, 30, 30] total=95"
-                            + " rule=estimate savingMs=" + saving + " proposed=true reason=saving-reaches-minimum"),
+                            + " remaining=95 rule=estimate savingMs=" + saving + " proposed=true reason=saving-reaches-minimum"),
                     fx.coordinatorLog.startingWith("KPQ stage 1 draw: "));
             assertEquals("estimate", fx.asked.getFirst().rule());
         }
@@ -298,6 +345,154 @@ class RerollDecisionTest {
             assertTrue(line.contains(" rule=estimate ") && line.endsWith("proposed=false reason=saving-under-minimum"),
                     line);
         }
+    }
+
+    @Test
+    void aHumanCollectorsNumberIsClotosAndWaitsUntilHeHasOne() {
+        Character ann = annCollecting();
+        AgentKpqSession session = annsRun(ann, 35, 10);
+        when(fx.run.event.gridCheck(ann)).thenReturn(-1); // he has not asked Cloto yet
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        assertEquals(List.of(), fx.coordinatorLog.startingWith("KPQ stage 1 draw: "), "his number is not known");
+
+        when(fx.run.event.gridCheck(ann)).thenReturn(1); // Cloto asked him for 10
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        assertEquals(List.of("KPQ stage 1 draw: session=" + session.sessionId()
+                        + " targets=[35, 10, 10] total=55 remaining=55 rule=thirty-fives savingMs=- proposed=false"
+                        + " reason=fewer-than-two-35s"),
+                fx.coordinatorLog.startingWith("KPQ stage 1 draw: "));
+        assertEquals(List.of(), fx.asked);
+    }
+
+    @Test
+    void aHumanCollectorsThirtyFiveCountsTowardTheTwo() {
+        Character ann = annCollecting();
+        AgentKpqSession session = annsRun(ann, 35, 10);
+        when(fx.run.event.gridCheck(ann)).thenReturn(2); // 35
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(List.of("Mira: " + THIRTY_FIVES_LINE), rerollLines(fx.said()));
+        assertTrue(fx.coordinatorLog.startingWith("KPQ stage 1 draw: ").getFirst()
+                .contains(" targets=[35, 10, 35] total=80 "));
+    }
+
+    @Test
+    void aHumanCollectorWhosePassIsMadeKeepsTheRunAsDrawn() {
+        Character ann = annCollecting();
+        AgentKpqSession session = annsRun(ann, 35, 35);
+        when(fx.run.event.gridCheck(ann)).thenReturn(0); // Cloto cleared his grid: his pass is made
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(List.of(), fx.asked);
+        assertTrue(fx.coordinatorLog.startingWith("KPQ stage 1 draw: ").getFirst()
+                .endsWith("proposed=false reason=pass-exists"));
+    }
+
+    @Test
+    void aPassLyingOnTheFloorKeepsTheRunAsDrawn() {
+        AgentKpqSession session = fx.companionRun(35, 35, 10);
+        MapItem pass = mock(MapItem.class);
+        when(pass.getItemId()).thenReturn(AgentKpqDefinition.PASS_ITEM);
+        when(fx.run.map.getDroppedItems()).thenReturn(List.of(pass));
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(List.of(), fx.asked);
+        assertEquals(List.of(), rerollLines(fx.said()));
+        assertTrue(fx.coordinatorLog.startingWith("KPQ stage 1 draw: ").getFirst()
+                .endsWith("proposed=false reason=pass-exists"));
+    }
+
+    @Test
+    void aPassInTheLeadersBagKeepsTheRunAsDrawn() {
+        AgentKpqSession session = fx.companionRun(35, 35, 10);
+        when(fx.ben.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false)).thenReturn(1);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(List.of(), fx.asked);
+        assertTrue(fx.coordinatorLog.startingWith("KPQ stage 1 draw: ").getFirst()
+                .endsWith("proposed=false reason=pass-exists"));
+    }
+
+    @Test
+    void theCoordinatorPricesTheCouponsStillNeededTheLeadersIncluded() {
+        try (MockedStatic<AgentPqPaceProfiles> profiles = mockStatic(AgentPqPaceProfiles.class)) {
+            profiles.when(() -> AgentPqPaceProfiles.cached("kpq")).thenReturn(PROFILE);
+            AgentKpqSession session = fx.companionRun(35, 30, 30);
+            List<AgentPqMemberPower> power = party(100.0d);
+            session.pace().beginStageOne(power, List.of(2, 3, 4));
+            double secondsPerKill = AgentPqPaceEstimator.theorySeconds(PROFILE, power,
+                    AgentPqPaceCalibration.prior(PROFILE), AgentKpqPaceProfile.S1_GRIND, 1.0d);
+            // Mira picked up 20 of her 35 while the last number came, and Ben 5 he will drop by a collector.
+            when(fx.mira.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(20);
+            when(fx.ben.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(5);
+
+            AgentKpqCoordinator.tick(session, 2_000L);
+
+            double saving = (70.0d - FRESH_MEAN) * secondsPerKill * 1_000.0d - 75_000.0d;
+            String line = fx.coordinatorLog.startingWith("KPQ stage 1 draw: ").getFirst();
+            assertTrue(line.contains(" targets=[35, 30, 30] total=95 remaining=70 rule=estimate savingMs="
+                    + Math.round(saving) + " proposed=" + (saving >= 60_000.0d) + " "), line);
+        }
+    }
+
+    @Test
+    void withThePolicyOffTheRunNeverDecidesSaysOrShowsAnything() {
+        AgentKpqSession session = fx.companionRun(35, 35, 35);
+        session.setRerollPolicy(POLICY.off());
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        assertEquals(List.of(), fx.asked);
+        assertEquals(List.of(), rerollLines(fx.said()));
+        assertEquals(List.of(), fx.coordinatorLog.startingWith("KPQ stage 1 draw: "));
+        assertFalse(AgentKpqSessionRegistry.rerollAsked(session.sessionId()));
+    }
+
+    @Test
+    void theNextRunsDrawMeasuresWhatTheLastRerollCost() {
+        AgentKpqRerollStreaks.rerolled(1, 400L, POLICY.streakResetMs()); // Ben's last run let go at 400
+        AgentKpqSession session = fx.companionRun(35, 20, 10); // in stage 1 from 1000
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        assertEquals(List.of("KPQ re-roll restart: session=" + session.sessionId()
+                        + " leader=Ben toStageOneMs=600 toDrawMs=1600 assumedMs=75000"),
+                fx.coordinatorLog.startingWith("KPQ re-roll restart: "));
+    }
+
+    @Test
+    void aLeaderWithNoRecentRerollHasNoRestartToMeasure() {
+        AgentKpqRerollStreaks.rerolled(1, 400L, POLICY.streakResetMs());
+        AgentKpqSession session = fx.companionRun(35, 20, 10);
+
+        AgentKpqCoordinator.tick(session, 400L + POLICY.streakResetMs());
+
+        assertEquals(1, fx.coordinatorLog.startingWith("KPQ stage 1 draw: ").size());
+        assertEquals(List.of(), fx.coordinatorLog.startingWith("KPQ re-roll restart: "));
+    }
+
+    /** Ann, a second human, collects beside Mira and Pip in Ben's run; Tobi stays out of it. */
+    private Character annCollecting() {
+        Character ann = RerollRunFixture.at(fx.run.human(5, "Ann"), 100, 0);
+        fx.run.leaveParty(fx.tobi);
+        return ann;
+    }
+
+    private AgentKpqSession annsRun(Character ann, int miraTarget, int pipTarget) {
+        AgentKpqSession session = fx.run.session(true, AgentKpqSession.Phase.STAGE_1, fx.ben, fx.mira, fx.pip, ann);
+        session.setStageOneLevers(AgentKpqStageOneLevers.NONE);
+        session.setRerollPolicy(POLICY);
+        RerollRunFixture.collecting(session, fx.mira, miraTarget);
+        RerollRunFixture.collecting(session, fx.pip, pipTarget);
+        return session;
     }
 
     /** The re-roll's own lines among those said on the map. */

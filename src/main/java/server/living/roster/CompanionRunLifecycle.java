@@ -13,7 +13,6 @@ import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * What the living world tells the Agent layer's party-quest recovery (P6, the handback seam), from memory on whatever
@@ -37,10 +36,60 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
 
     /**
      * A run's companion asking its leader, in a window of its own, whether to leave in stage 1 and run it again (the
-     * KPQ re-roll), on the leader's I/O thread; {@code answer} takes true for "go again" and only records it.
+     * KPQ re-roll), on the leader's I/O thread, through {@code picks}: shown only while the run still wants it and no
+     * other window awaits his reply.
      */
     public interface RerollWindow {
-        void ask(Character leader, Persona asker, String question, Consumer<Boolean> answer);
+        void ask(Character leader, Persona asker, String question, RerollPicks picks);
+    }
+
+    /**
+     * The re-roll window's side of the run, on the leader's I/O thread: lookups and records in the run's registry
+     * (AgentKpqSessionRegistry), never a session's lock.
+     */
+    public interface RerollPicks {
+        /** The run's id, for the window's log lines. */
+        String sessionId();
+
+        /** True while the question is out, unanswered, and its window not on screen yet. */
+        boolean wanted();
+
+        /** The window goes on screen now; false when the question was answered or closed meanwhile (then it does not). */
+        boolean shown();
+
+        /** His pick (true: go again), recorded for the run's next tick; false when it came after the question closed. */
+        boolean pick(boolean goAgain);
+
+        /** True while the run still goes on (a late "go again" is then answered: the run carries on). */
+        boolean runGoesOn();
+    }
+
+    /** {@link RerollPicks} for one question, bound to the KPQ registry. */
+    private record RegistryPicks(AgentPartyQuestHandback.RerollAsk ask) implements RerollPicks {
+        @Override
+        public String sessionId() {
+            return ask.sessionId();
+        }
+
+        @Override
+        public boolean wanted() {
+            return AgentKpqSessionRegistry.rerollWindowWanted(ask.sessionId(), ask.leaderId());
+        }
+
+        @Override
+        public boolean shown() {
+            return AgentKpqSessionRegistry.markRerollWindowShown(ask.sessionId(), ask.leaderId());
+        }
+
+        @Override
+        public boolean pick(boolean goAgain) {
+            return AgentKpqSessionRegistry.answerReroll(ask.sessionId(), ask.leaderId(), goAgain);
+        }
+
+        @Override
+        public boolean runGoesOn() {
+            return AgentKpqSessionRegistry.runGoesOn(ask.sessionId());
+        }
     }
 
     public CompanionRunLifecycle(LivingWorld world, CompanionPartyQuestService service) {
@@ -136,23 +185,28 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
     }
 
     /**
-     * The KPQ re-roll (round 2b), from the run's tick: the run's companion that asked shows its leader a window of its
-     * own on his I/O thread, its portrait and name like its card's; his pick is only recorded
+     * The KPQ re-roll (round 2b), from the run's tick at a lull: the run's companion that asked shows its leader a
+     * window of its own on his I/O thread, its portrait and name like its card's; his pick is only recorded
      * (AgentKpqSessionRegistry.answerReroll) and the run acts on it on its next tick. False when there is no such
-     * run, leader online, companion persona or window installed: the question then stands in chat alone.
+     * run, leader online, companion persona or window installed, and for the scripted test leaders
+     * (COMPANION_PQ_PACE_EXCLUDED_LEADERS), whose driver expects no window mid-run: the question then stands in chat
+     * alone.
      */
     @Override
     public boolean askLeaderToReroll(AgentPartyQuestHandback.RerollAsk ask) {
         RerollWindow window = rerollWindow;
         CompanionRun run = service.runForSession(ask.sessionId());
-        Character leader = run == null || window == null ? null : world.roster().onlineCharacter(ask.leaderId());
+        if (window == null || run == null || world.config().companionPqPaceExcludedLeaders().contains(ask.leaderId())) {
+            return false;
+        }
+        Character leader = world.roster().onlineCharacter(ask.leaderId());
         Persona asker = leader == null ? null : world.residents().personaOfCharacterId(ask.companionId());
         Client client = asker == null ? null : leader.getClient();
         if (client == null) {
             return false;
         }
-        client.runOnIoThread(() -> window.ask(leader, asker, ask.question(),
-                goAgain -> AgentKpqSessionRegistry.answerReroll(ask.sessionId(), ask.leaderId(), goAgain)));
+        RerollPicks picks = new RegistryPicks(ask);
+        client.runOnIoThread(() -> window.ask(leader, asker, ask.question(), picks));
         return true;
     }
 

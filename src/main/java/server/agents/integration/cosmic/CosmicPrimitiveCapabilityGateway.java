@@ -428,6 +428,15 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public boolean inCombatStance(Character character) {
+        if (character == null || AgentRuntimeRegistry.findByAgentCharacterId(character.getId()) != null) {
+            return false;
+        }
+        int stance = character.getStance();
+        return stance == CharacterStance.ALERT_RIGHT_STANCE || stance == CharacterStance.ALERT_LEFT_STANCE;
+    }
+
+    @Override
     public void navigate(AgentRuntimeEntry entry, Point destination, boolean precise) {
         AgentModeService.startMoveTo(entry, destination, precise);
     }

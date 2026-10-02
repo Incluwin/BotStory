@@ -175,6 +175,14 @@ public interface PrimitiveCapabilityGateway {
         return Footing.GROUND;
     }
 
+    /**
+     * True while this player's client last reported its combat (alert) stance: he hit or was hit moments ago and has
+     * not moved off it. False for an Agent, whose stance nobody reports.
+     */
+    default boolean inCombatStance(Character character) {
+        return false;
+    }
+
     void navigate(AgentRuntimeEntry entry, Point destination, boolean precise);
 
     /** Enables map-local virtual walls for an activity; ordinary maps remain unconstrained. */

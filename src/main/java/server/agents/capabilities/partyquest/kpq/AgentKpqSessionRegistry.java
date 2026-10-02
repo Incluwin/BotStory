@@ -14,13 +14,31 @@ public final class AgentKpqSessionRegistry {
     private static final Map<String, AgentKpqSession> sessions = new ConcurrentHashMap<>();
     private static final Map<Integer, String> sessionByMember = new ConcurrentHashMap<>();
     private static final Map<Integer, String> sessionByOperator = new ConcurrentHashMap<>();
-    /** Leader id -> the stage-1 re-roll question put to him (round 2b), while it awaits his answer. */
+    /**
+     * Leader id -> the stage-1 re-roll question put to him (round 2b), with his answer once he gives it, until the
+     * coordinator takes the answer or the question is closed. One entry holds both, replaced whole under the map's
+     * per-key lock, so an answer can never outlive its question.
+     */
     private static final Map<Integer, RerollQuestion> rerollQuestions = new ConcurrentHashMap<>();
-    /** Session id -> its leader's answer to the re-roll question (true: go again), until the coordinator takes it. */
-    private static final Map<String, Boolean> rerollAnswers = new ConcurrentHashMap<>();
 
-    /** A re-roll question put to a leader in {@code sessionId} at {@code askedAtMs}. */
-    private record RerollQuestion(String sessionId, long askedAtMs) {
+    /**
+     * A re-roll question put to a leader in {@code sessionId} at {@code askedAtMs}: {@code oneWordCounts} lets a bare yes
+     * or no typed in chat answer it (nothing else was just asked of him), {@code windowShown} once the companion's window
+     * went on his screen, and {@code answer} his answer (true: go again), null until he gives one.
+     */
+    private record RerollQuestion(String sessionId, long askedAtMs, boolean oneWordCounts, boolean windowShown,
+                                  Boolean answer) {
+        RerollQuestion answered(boolean goAgain) {
+            return new RerollQuestion(sessionId, askedAtMs, oneWordCounts, windowShown, goAgain);
+        }
+
+        RerollQuestion shown() {
+            return new RerollQuestion(sessionId, askedAtMs, oneWordCounts, true, answer);
+        }
+
+        boolean open(String session) {
+            return sessionId.equals(session) && answer == null;
+        }
     }
 
     private AgentKpqSessionRegistry() {
@@ -71,10 +89,16 @@ public final class AgentKpqSessionRegistry {
 
     public static synchronized void remove(AgentKpqSession session) {
         if (session == null) return;
-        closeReroll(session.sessionId());
         sessions.remove(session.sessionId(), session);
         sessionByOperator.remove(session.operatorId(), session.sessionId());
         session.members().forEach(member -> sessionByMember.remove(member.characterId(), session.sessionId()));
+        // after the session: a pick that finds the question closed never finds its run still going (runGoesOn)
+        closeReroll(session.sessionId());
+    }
+
+    /** True while the session is registered: its run goes on. A lookup only, never the session's lock. */
+    public static boolean runGoesOn(String sessionId) {
+        return sessionId != null && sessions.containsKey(sessionId);
     }
 
     public static synchronized void unindexMember(AgentKpqSession session, int characterId) {
@@ -132,56 +156,115 @@ public final class AgentKpqSessionRegistry {
 
     /**
      * The coordinator put the re-roll question to {@code leaderId} (on its tick): from now his window's or typed
-     * answer is recorded. Asked before the window is shown, so no answer can arrive first.
+     * answer is recorded. Asked before the window is offered, so no answer can arrive first. {@code oneWordCounts}: a
+     * bare yes or no he types answers it too (no other companion line asked him something just before).
      */
-    static void askReroll(String sessionId, int leaderId, long nowMs) {
-        rerollAnswers.remove(sessionId);
-        rerollQuestions.put(leaderId, new RerollQuestion(sessionId, nowMs));
+    static void askReroll(String sessionId, int leaderId, long nowMs, boolean oneWordCounts) {
+        rerollQuestions.put(leaderId, new RerollQuestion(sessionId, nowMs, oneWordCounts, false, null));
     }
 
     /**
      * The leader answered the re-roll question in {@code sessionId} (true: go again): on whatever thread the answer
      * came, his I/O thread for the window. It is only recorded, the first answer only, and only while the question is
-     * still out; the coordinator acts on it on its next tick. Never takes a session's lock.
+     * still out; the coordinator acts on it on its next tick. Atomic with the question's close: an answer is kept in
+     * the question's own entry, so one that comes as the question closes is refused rather than left behind. Never
+     * takes a session's lock.
      *
      * @return true when the answer was recorded
      */
     public static boolean answerReroll(String sessionId, int leaderId, boolean goAgain) {
-        RerollQuestion question = rerollQuestions.get(leaderId);
-        if (sessionId == null || question == null || !question.sessionId().equals(sessionId)) return false;
-        return rerollAnswers.putIfAbsent(sessionId, goAgain) == null;
+        if (sessionId == null) return false;
+        boolean[] recorded = {false};
+        rerollQuestions.computeIfPresent(leaderId, (id, question) -> {
+            if (!question.open(sessionId)) return question;
+            recorded[0] = true;
+            return question.answered(goAgain);
+        });
+        return recorded[0];
     }
 
     /**
      * A typed reply in party or map chat, on the speaker's I/O thread: recorded as his answer when a re-roll question
-     * awaits him and the whole line is one ("yes", "ok", "go again" / "no", "nah", "push through"). Costs one map
-     * lookup for anyone else.
+     * awaits him and the whole line is one ("go again", "push through"; a bare "ok" or "nah" only while nothing else
+     * was just asked of him). Costs one map lookup for anyone else.
      *
      * @return true when the line was his answer
      */
     public static boolean answerRerollInChat(int speakerId, String message) {
         RerollQuestion question = rerollQuestions.get(speakerId);
         if (question == null) return false;
-        Boolean goAgain = AgentKpqRerollPolicy.typedAnswer(message);
+        Boolean goAgain = AgentKpqRerollPolicy.typedAnswer(message, question.oneWordCounts());
         return goAgain != null && answerReroll(question.sessionId(), speakerId, goAgain);
     }
 
-    /** The leader's answer to the session's re-roll question, taken once; null while none came. */
-    static Boolean takeRerollAnswer(String sessionId) {
-        return sessionId == null ? null : rerollAnswers.remove(sessionId);
+    /**
+     * The leader's answer to the session's re-roll question, taken once: an answered question is over, and leaves
+     * with its answer. Null while none came (the question stays out).
+     */
+    static Boolean takeRerollAnswer(String sessionId, int leaderId) {
+        if (sessionId == null) return null;
+        Boolean[] taken = {null};
+        rerollQuestions.computeIfPresent(leaderId, (id, question) -> {
+            if (!question.sessionId().equals(sessionId) || question.answer() == null) return question;
+            taken[0] = question.answer();
+            return null;
+        });
+        return taken[0];
     }
 
-    /** The session's re-roll question is over (answered, let pass, or the run ended): later answers are ignored. */
+    /**
+     * The session's re-roll question is over (answered, let pass, or the run ended): later answers are refused. Each
+     * entry goes under its own key's lock, answered or not.
+     */
     static void closeReroll(String sessionId) {
         if (sessionId == null) return;
-        rerollQuestions.values().removeIf(question -> question.sessionId().equals(sessionId));
-        rerollAnswers.remove(sessionId);
+        for (Integer leaderId : rerollQuestions.keySet()) {
+            rerollQuestions.computeIfPresent(leaderId,
+                    (id, question) -> question.sessionId().equals(sessionId) ? null : question);
+        }
     }
 
     /** True while a re-roll question of this session awaits its leader. */
     static boolean rerollAsked(String sessionId) {
         return sessionId != null && rerollQuestions.values().stream()
                 .anyMatch(question -> question.sessionId().equals(sessionId));
+    }
+
+    /**
+     * On the leader's I/O thread, before the companion's window is drawn: true while the question is out, unanswered,
+     * and its window not on screen yet. A lookup only.
+     */
+    public static boolean rerollWindowWanted(String sessionId, int leaderId) {
+        RerollQuestion question = sessionId == null ? null : rerollQuestions.get(leaderId);
+        return question != null && question.open(sessionId) && !question.windowShown();
+    }
+
+    /**
+     * On the leader's I/O thread: the companion's window goes on his screen now, once per question; the coordinator
+     * times the answer from it at its next tick.
+     *
+     * @return true when this call marked it (false: answered or closed meanwhile, or already shown)
+     */
+    public static boolean markRerollWindowShown(String sessionId, int leaderId) {
+        if (sessionId == null) return false;
+        boolean[] marked = {false};
+        rerollQuestions.computeIfPresent(leaderId, (id, question) -> {
+            if (!question.open(sessionId) || question.windowShown()) return question;
+            marked[0] = true;
+            return question.shown();
+        });
+        return marked[0];
+    }
+
+    /** True once the companion's window for the session's question went on the leader's screen. */
+    static boolean rerollWindowShown(String sessionId, int leaderId) {
+        RerollQuestion question = sessionId == null ? null : rerollQuestions.get(leaderId);
+        return question != null && question.sessionId().equals(sessionId) && question.windowShown();
+    }
+
+    /** Tests only: the re-roll questions out, answered or not. */
+    static int rerollQuestionsOut() {
+        return rerollQuestions.size();
     }
 
     public static boolean isManagedEvent(Character character) {

@@ -268,6 +268,11 @@ public final class AgentPqPaceEstimator {
      * {@code rate}, as the party decides, and at most {@code maxRedraws} times in a row: attempt j is reached with the
      * chance q^j that every earlier draw was thrown away, and its draw is kept unless it is thrown away again, the last
      * attempt's always. Exact over the kill distribution; the chances sum to 1.
+     *
+     * <p>The restarts are on the run's timeline, so its chance to run over the event timer is conservative: a restart
+     * opens a new instance with a fresh timer, yet its fixed time is counted against the one timer, by up to
+     * {@code maxRedraws x restartMs} on a re-rolled outcome; the clear-time quantiles
+     * are what the leader waits, restarts included, and exact.</p>
      */
     record QuotaMixture(double[] fixedMs, double[] kills, double[] p) {
         static QuotaMixture of(AgentPqPaceSegment.Quota quota, double rate) {

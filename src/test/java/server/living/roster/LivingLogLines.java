@@ -11,13 +11,13 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /** One class's INFO and higher log lines while a test runs; the test configuration keeps every logger off. */
-final class LivingLogLines implements AutoCloseable {
+public final class LivingLogLines implements AutoCloseable {
     private final List<String> lines = new CopyOnWriteArrayList<>();
     private final LoggerContext context = LoggerContext.getContext(false);
     private final String loggerName;
     private final AbstractAppender appender;
 
-    LivingLogLines(Class<?> source) {
+    public LivingLogLines(Class<?> source) {
         loggerName = source.getName();
         appender = new AbstractAppender("living-lines-" + loggerName, null, null, true, Property.EMPTY_ARRAY) {
             @Override
@@ -32,7 +32,7 @@ final class LivingLogLines implements AutoCloseable {
         context.updateLoggers();
     }
 
-    List<String> startingWith(String prefix) {
+    public List<String> startingWith(String prefix) {
         return lines.stream().filter(line -> line.startsWith(prefix)).toList();
     }
 

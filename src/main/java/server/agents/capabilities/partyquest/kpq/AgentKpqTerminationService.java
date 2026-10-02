@@ -47,8 +47,8 @@ final class AgentKpqTerminationService {
     /**
      * A companion run's human leader chose to run it again after a heavy stage-1 draw (round 2b): everyone leaves
      * through the stock exit path, as a failure's dispose takes them, but it is no failure: its outcome is
-     * {@link AgentPartyQuestHandback#REROLLED}, which the engagement holds like a finished run, the host records apart
-     * from clears and failures, and the leader's re-roll streak counts.
+     * {@link AgentPartyQuestHandback#REROLLED}, which the engagement lets go at once (its leader is straight back at the
+     * entrance), the host records apart from clears and failures, and the leader's re-roll streak counts.
      */
     static void reroll(AgentKpqSession session, long nowMs) {
         release(session, AgentPartyQuestHandback.REROLLED, nowMs, true, false);

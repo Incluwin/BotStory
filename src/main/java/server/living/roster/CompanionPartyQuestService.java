@@ -308,7 +308,7 @@ public final class CompanionPartyQuestService {
         }
         return LivingTalk.answerScriptClick(leader, () -> {
             LineupPlan plan = plan(leader, pqKey);
-            desk.proposal(leader, plan, backAfterReroll(leader.getId(), System.currentTimeMillis())
+            desk.proposal(leader, plan, greetAfterReroll(leader.getId(), System.currentTimeMillis())
                     ? LakelisLines.BACK_ALREADY : null);
             askForMana(plan);
         });
@@ -320,6 +320,15 @@ public final class CompanionPartyQuestService {
      */
     boolean backAfterReroll(int leaderId, long nowMs) {
         Long at = rerolledAt.get(leaderId);
+        return at != null && nowMs - at < AgentKpqRerollPolicy.configured().streakResetMs();
+    }
+
+    /**
+     * {@link #backAfterReroll}, once per re-roll: the greeting is spent as she says it, so his next visit (after
+     * "Never mind.", say) gets the lineup alone. The streak itself is the Agent layer's and unchanged.
+     */
+    private boolean greetAfterReroll(int leaderId, long nowMs) {
+        Long at = rerolledAt.remove(leaderId); // one step against companion-ops recording his next re-roll
         return at != null && nowMs - at < AgentKpqRerollPolicy.configured().streakResetMs();
     }
 

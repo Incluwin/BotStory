@@ -24,6 +24,15 @@ final class AgentKpqRerollStreaks {
         return streak == null || nowMs - streak.lastAtMs() >= resetMs ? 0 : streak.count();
     }
 
+    /**
+     * When the leader's last run was re-rolled (its release), while that counts toward his streak as of {@code nowMs};
+     * 0 otherwise. The next run's decision measures what the restart cost from it.
+     */
+    static long lastRerollAtMs(int leaderId, long nowMs, long resetMs) {
+        Streak streak = STREAKS.get(leaderId);
+        return streak == null || nowMs - streak.lastAtMs() >= resetMs ? 0L : streak.lastAtMs();
+    }
+
     /** The leader's run was re-rolled at {@code nowMs}. */
     static void rerolled(int leaderId, long nowMs, long resetMs) {
         STREAKS.compute(leaderId, (id, streak) -> new Streak(

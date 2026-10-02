@@ -120,7 +120,7 @@ class AgentPartyQuestEngagementTest {
     }
 
     @Test
-    void aRerolledRunHoldsLikeAFinishedOneNotAFailedOne() {
+    void aRerolledRunRecoversAtOnceKeepingItsReason() {
         AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
                 "kpq", AgentPartyQuestEngagement.Mode.PRODUCTION,
                 7L, 100, 4, 1_000L);
@@ -129,11 +129,13 @@ class AgentPartyQuestEngagementTest {
         engagement.reserveEntry(1_200L);
         engagement.activateSession("session", 1_300L);
 
-        // The leader left stage 1 to run it again (the KPQ re-roll): no clear, and no failure either.
+        // The leader left stage 1 to run it again (the KPQ re-roll): he is straight back at Lakelis, so nothing holds
+        // the engagement (a TownLife member's hold would refuse his next Yes), and the reason still says what it was.
         engagement.finishRun(false, AgentPartyQuestHandback.REROLLED, 2_000L);
 
-        assertEquals(AgentPartyQuestEngagement.State.POST_RUN_HOLD, engagement.state());
-        assertTrue(engagement.ownsAgent(101));
+        assertEquals(AgentPartyQuestEngagement.State.RECOVERING, engagement.state());
+        assertEquals(AgentPartyQuestHandback.REROLLED, engagement.diagnostics().getLast());
+        assertEquals("", engagement.failure(), "and no failure");
     }
 
     private static AgentPartyQuestEngagement engagement(int operatorId, long nowMs) {

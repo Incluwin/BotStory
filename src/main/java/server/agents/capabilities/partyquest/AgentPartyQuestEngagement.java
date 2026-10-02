@@ -108,13 +108,14 @@ public final class AgentPartyQuestEngagement {
     }
 
     /**
-     * The run ended: a cleared run, a test run's and a re-rolled one (its leader chose to run it again, no failure)
-     * hold before recovery; a failed one recovers at once.
+     * The run ended: a cleared run and a test run's hold before recovery; any other recovers at once, a re-rolled one
+     * too (its leader chose to run it again: no failure, its reason says so, but he is straight back at the entrance,
+     * where a held engagement would refuse his next Yes).
      */
     public synchronized void finishRun(boolean success, String reason, long nowMs) {
         requireState(State.ACTIVE_EVENT);
         activeSessionId = "";
-        if (mode == Mode.TEST_OBSERVATION || success || AgentPartyQuestHandback.REROLLED.equals(reason)) {
+        if (mode == Mode.TEST_OBSERVATION || success) {
             transition(State.POST_RUN_HOLD, nowMs, reason);
         } else {
             transition(State.RECOVERING, nowMs, reason);

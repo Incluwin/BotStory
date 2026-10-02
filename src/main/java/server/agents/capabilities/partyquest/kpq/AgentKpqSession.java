@@ -113,9 +113,16 @@ public final class AgentKpqSession {
     private AgentKpqRerollPolicy rerollPolicy = AgentKpqRerollPolicy.CONFIGURED;
     private AgentPqPaceCalibration paceCalibration;
     private boolean rerollDecided;
-    private long rerollAskedAtMs;
     private int rerollAskerId;
+    private int rerollLeaderId;
+    private String rerollRule = "";
+    private String rerollQuestion = "";
+    private long rerollAskedAtMs;
+    private long rerollWindowShownAtMs;
+    private boolean rerollWindowUnavailable;
     private boolean rerollSettled;
+    /** When a companion last said a stage-1 line that asks something of the human leader by name (0: none). */
+    private long stageOneLeaderLineAtMs;
 
     public AgentKpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (requestedPartySize < 3 || requestedPartySize > 4) {
@@ -269,6 +276,7 @@ public final class AgentKpqSession {
         stageOneClusterOf = null;
         stageOneLeaderCouponAskAtMs = 0L;
         stageOneLeaderCouponAsks = 0;
+        stageOneLeaderLineAtMs = 0L;
         stageOneLeaderKillCoupons.clear();
         missingPassSinceMs = 0L;
         puzzleCheckAtMs = 0L;
@@ -520,13 +528,35 @@ public final class AgentKpqSession {
     /** The run made its one re-roll decision. */
     synchronized boolean rerollDecided() { return rerollDecided; }
     synchronized void markRerollDecided() { rerollDecided = true; }
-    /** The re-roll question went out from {@code askerId}: the leader's answer is awaited from now. */
-    synchronized void markRerollAsked(int askerId, long nowMs) {
+    /**
+     * The re-roll question went out from {@code askerId} to {@code leaderId}, by {@code rule}, in these words: his
+     * answer is awaited from now.
+     */
+    synchronized void markRerollAsked(int askerId, int leaderId, String rule, String question, long nowMs) {
         rerollAskerId = askerId;
+        rerollLeaderId = leaderId;
+        rerollRule = rule == null ? "" : rule;
+        rerollQuestion = question == null ? "" : question;
         rerollAskedAtMs = Math.max(1L, nowMs);
     }
     synchronized long rerollAskedAtMs() { return rerollAskedAtMs; }
     synchronized int rerollAskerId() { return rerollAskerId; }
+    synchronized int rerollLeaderId() { return rerollLeaderId; }
+    synchronized String rerollRule() { return rerollRule; }
+    synchronized String rerollQuestion() { return rerollQuestion; }
+    /** The companion's window went on the leader's screen (seen at this tick): his answer is timed from it. */
+    synchronized void markRerollWindowShown(long nowMs) {
+        if (rerollWindowShownAtMs == 0L) rerollWindowShownAtMs = Math.max(1L, nowMs);
+    }
+    /** When the window went on screen as the coordinator saw it; 0 while it is not. */
+    synchronized long rerollWindowShownAtMs() { return rerollWindowShownAtMs; }
+    /** The host cannot show this leader the window (none installed, or a leader it is never shown to). */
+    synchronized void markRerollWindowUnavailable() { rerollWindowUnavailable = true; }
+    /** No more offers of the window: it is on screen, or the host cannot show one. */
+    synchronized boolean rerollWindowSettled() { return rerollWindowShownAtMs > 0L || rerollWindowUnavailable; }
+    /** A companion said a stage-1 line asking the human leader something by name (L2's coupon asks, "come on down"). */
+    synchronized void markStageOneLeaderLine(long nowMs) { stageOneLeaderLineAtMs = Math.max(1L, nowMs); }
+    synchronized long stageOneLeaderLineAtMs() { return stageOneLeaderLineAtMs; }
     /** A question is out and neither answered nor let pass. */
     synchronized boolean rerollPending() { return rerollAskedAtMs > 0L && !rerollSettled; }
     /** The leader pushed through, or let the question pass: no other offer this run. */
