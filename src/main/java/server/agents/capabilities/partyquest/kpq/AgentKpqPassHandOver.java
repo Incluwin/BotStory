@@ -2,6 +2,7 @@ package server.agents.capabilities.partyquest.kpq;
 
 import java.awt.Point;
 import java.util.Locale;
+import java.util.function.UnaryOperator;
 
 /**
  * The rules a companion run's stage-5 pass hand-over decides by, and the lines its companions say, kept apart from
@@ -87,6 +88,54 @@ final class AgentKpqPassHandOver {
     static boolean atFeet(Point dropper, Point leaderSpot, boolean dropperOnGround, boolean leaderOnGround, int px) {
         return dropper != null && leaderSpot != null && dropperOnGround && leaderOnGround
                 && Math.abs(dropper.x - leaderSpot.x) <= px && Math.abs(dropper.y - leaderSpot.y) <= px;
+    }
+
+    /** A drop the map would land within {@code px} of this spot on both axes: on that foothold, not on one over it. */
+    static boolean landsAt(Point landing, Point spot, int px) {
+        return landing != null && spot != null
+                && Math.abs(landing.x - spot.x) <= px && Math.abs(landing.y - spot.y) <= px;
+    }
+
+    /**
+     * Where on the leader's foothold a deliverer stands to drop for him. The map lands a player's drop on the first
+     * foothold under a point 85 px over the dropper, so a ramp, stair or platform less than that over him catches
+     * it: live (2026-10-02, kpq-fea2a83b) a pass dropped 6 px from him landed 83 px up. This walks his foothold from
+     * his spot, {@code stepPx} at a time ({@code groundAt} gives the ground nearest a point, and his foothold ends
+     * where it lies more than {@code feetPx} above or below the last step's), up to {@code searchPx} either way, the
+     * dropper's side ({@code dropperSide}, its sign) first, and returns the nearest spot from which a drop, and one
+     * from anywhere within {@code feetPx} of it where a deliverer may stop, lands back on that spot's ground by
+     * {@code landing}. His own spot when drops around it land there; null when no spot does, or none can be told.
+     */
+    static Point dropSpot(Point leaderSpot, int dropperSide, UnaryOperator<Point> groundAt,
+                          UnaryOperator<Point> landing, int feetPx, int searchPx, int stepPx) {
+        if (leaderSpot == null || stepPx <= 0 || searchPx < 0 || feetPx < 0) return null;
+        int margin = (feetPx + stepPx - 1) / stepPx;
+        int reach = searchPx / stepPx + margin;
+        Point[] ground = new Point[2 * reach + 1];
+        ground[reach] = new Point(leaderSpot);
+        for (int side = -1; side <= 1; side += 2) {
+            Point previous = ground[reach];
+            for (int step = 1; step <= reach; step++) {
+                Point next = groundAt.apply(new Point(leaderSpot.x + side * step * stepPx, previous.y));
+                if (next == null || Math.abs(next.y - previous.y) > feetPx) break;
+                ground[reach + side * step] = next;
+                previous = next;
+            }
+        }
+        boolean[] landsThere = new boolean[ground.length];
+        for (int i = 0; i < ground.length; i++) {
+            landsThere[i] = ground[i] != null && landsAt(landing.apply(new Point(ground[i])), ground[i], feetPx);
+        }
+        int first = dropperSide < 0 ? -1 : 1;
+        for (int distance = 0; distance * stepPx <= searchPx; distance++) {
+            for (int side : distance == 0 ? new int[] {first} : new int[] {first, -first}) {
+                int center = reach + side * distance;
+                boolean clear = true;
+                for (int i = center - margin; i <= center + margin && clear; i++) clear = landsThere[i];
+                if (clear) return new Point(ground[center]);
+            }
+        }
+        return null;
     }
 
     /**

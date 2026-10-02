@@ -81,6 +81,14 @@ public interface PrimitiveCapabilityGateway {
         return candidate == null ? null : new Point(candidate);
     }
 
+    /**
+     * Where an item this character drops while standing at {@code at} on its map would come to lie, by the map's
+     * own placement of a player's drop; null when that cannot be told. It only reads: nothing is dropped.
+     */
+    default Point predictDropLanding(Character dropper, Point at) {
+        return null;
+    }
+
     /** Warms navigation data without exposing movement-profile implementation details to callers. */
     default void prepareNavigation(AgentRuntimeEntry entry, Character agent) {
     }

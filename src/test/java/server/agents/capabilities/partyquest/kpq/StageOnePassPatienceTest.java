@@ -529,10 +529,11 @@ class StageOnePassPatienceTest {
             List<String> drops = log.startingWith("KPQ pass drop: ");
             assertEquals(List.of(
                     "KPQ pass drop: session=" + session.sessionId() + " stage=1 agent=Liriki reason=beside passes=1 "
-                            + "dx=-10 dy=0 sameFoothold=true leaderFooting=GROUND "
+                            + "dx=-10 dy=0 sameFoothold=true leaderFooting=GROUND spot=feet predicted=? "
                             + "landed=[(-10,0):dx=-10:dy=0:passes=1:oid=23:ffa=false]",
                     "KPQ pass drop: session=" + session.sessionId() + " stage=1 agent=Fenna reason=beside passes=1 "
-                            + "dx=6 dy=0 sameFoothold=true leaderFooting=GROUND landed=none"), drops);
+                            + "dx=6 dy=0 sameFoothold=true leaderFooting=GROUND spot=feet predicted=? "
+                            + "landed=none"), drops);
         }
     }
 
