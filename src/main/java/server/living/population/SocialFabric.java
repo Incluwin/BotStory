@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import server.agents.capabilities.party.AgentPartyLifecycleService;
 import server.agents.personality.AgentPersonalityProfileRepository;
 import server.integration.AgentPresence;
+import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorld;
 import server.living.config.LivingContent;
 import server.living.population.CitizenSession.Activity;
@@ -26,11 +27,14 @@ import server.living.roster.CompanionLeases;
 import tools.PacketCreator;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -47,6 +51,12 @@ public final class SocialFabric {
     private static final int GUILD_LEVEL_SPREAD = 15;
     private static final long FAME_COOLDOWN_MS = 24 * 3_600_000L;
     private static final long ACQUAINTANCE_STEP_MS = 60_000L;
+    /** Gossip (plan 7.5): per pair and tick, this chance times their tie times their mean sociability. */
+    private static final double GOSSIP_CHANCE = 0.05d;
+    private static final int GOSSIP_PER_TICK = 24;
+    private static final double TIE_PARTY = 1.0d;
+    private static final double TIE_CIRCLE = 0.7d;
+    private static final double TIE_GUILD = 0.4d;
 
     private final Population population;
     private final Random random;
@@ -147,6 +157,7 @@ public final class SocialFabric {
             partyUp(now);
             acquaintances(now);
             fame(now);
+            gossip();
         } catch (RuntimeException failure) {
             log.warn("social tick failed", failure);
         }
@@ -540,6 +551,74 @@ public final class SocialFabric {
                 }
             }
         }
+    }
+
+    // ---- gossip --------------------------------------------------------------------------
+
+    /** Who a citizen is to the others online: its live party, circle, guild, and where it stands. */
+    record Ties(int id, int party, int circle, int guild, int channel, int map, int sociability) { }
+
+    /**
+     * Party, circle and guild mates online together pass first-hand facts silently (docs/SERVER_KNOWLEDGE_PLAN.md 7.5): a
+     * training spot and its mob, a mob and what it drops, an item and who drops it. A party is the closest tie, a circle on
+     * the same map and channel next, a guild (whose chat crosses maps) the loosest; at most {@value #GOSSIP_PER_TICK} a tick.
+     */
+    private void gossip() {
+        PersonalKnowledge personal = PersonalKnowledge.shared();
+        if (!personal.on()) {
+            return;
+        }
+        Map<String, List<Ties>> groups = new HashMap<>();
+        for (CitizenSession session : population.presence().sessions()) {
+            Character agent = session.agent();
+            if (session.virtual || agent == null || agent.getMap() == null || session.activity == Activity.AFK) {
+                continue;
+            }
+            Ties ties = new Ties(session.characterId, agent.getParty() == null ? 0 : agent.getParty().getId(),
+                    session.citizen.circleId(), agent.getGuildId(), session.channel, agent.getMapId(), sociability(session.citizen));
+            if (ties.party() != 0) {
+                groups.computeIfAbsent("p" + ties.party(), key -> new ArrayList<>()).add(ties);
+            }
+            if (ties.circle() != 0) {
+                groups.computeIfAbsent("c" + ties.circle() + ":" + ties.channel() + ":" + ties.map(), key -> new ArrayList<>()).add(ties);
+            }
+            if (ties.guild() != 0) {
+                groups.computeIfAbsent("g" + ties.guild(), key -> new ArrayList<>()).add(ties);
+            }
+        }
+        Set<Long> paired = new HashSet<>();
+        int transfers = 0;
+        for (List<Ties> group : groups.values()) {
+            Collections.shuffle(group, random);
+            for (int i = 0; i < group.size(); i++) {
+                for (int j = i + 1; j < group.size(); j++) {
+                    Ties a = group.get(i);
+                    Ties b = group.get(j);
+                    if (!paired.add((long) Math.min(a.id(), b.id()) << 32 | Math.max(a.id(), b.id()))) {
+                        continue; // a pair in two groups is drawn once, at its closest tie
+                    }
+                    if (random.nextDouble() >= GOSSIP_CHANCE * tie(a, b) * (a.sociability() + b.sociability()) / 200d) {
+                        continue;
+                    }
+                    boolean aTells = random.nextBoolean();
+                    if (personal.gossip(aTells ? a.id() : b.id(), aTells ? b.id() : a.id(), random.nextLong())
+                            && ++transfers >= GOSSIP_PER_TICK) {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    /** The closest tie two citizens share: party 1.0, circle on the same map and channel 0.7, guild 0.4, else 0. */
+    static double tie(Ties a, Ties b) {
+        if (a.party() != 0 && a.party() == b.party()) {
+            return TIE_PARTY;
+        }
+        if (a.circle() != 0 && a.circle() == b.circle() && a.channel() == b.channel() && a.map() == b.map()) {
+            return TIE_CIRCLE;
+        }
+        return a.guild() != 0 && a.guild() == b.guild() ? TIE_GUILD : 0d;
     }
 
     private int pick(List<Integer> values) {

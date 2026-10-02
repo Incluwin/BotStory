@@ -14,6 +14,7 @@
       - { from: 6, to: 22, spot: "venue:central-camp", activity: LINGER }
       - { from: 22, to: 6, materialize: false }
   recruitable: true
+  knows: [ant tunnel, sleepywood]
   contract: thane-guides-fee
   questLines: [thane-the-first-descent, thane-walk-me-down]
   arc: thane-last-descent

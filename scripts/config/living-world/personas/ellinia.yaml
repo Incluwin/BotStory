@@ -218,6 +218,7 @@
       - { from: 5, to: 22, spot: "venue:shop-approach", activity: LINGER }
       - { from: 22, to: 5, materialize: false }
   recruitable: false
+  knows: [orbis, ellinia station]
   questLines: [oda-wings-on-the-tracks]
   dialogue:
     greetFirst: ["ticket? no? then you're in the way of people who have one."]
@@ -247,6 +248,7 @@
       - { from: 16, to: 22, spot: "venue:middle-tree", activity: SOCIALIZE }
       - { from: 22, to: 6, materialize: false }
   recruitable: false
+  knows: [zombie lupin, lupin]
   questLines: [pell-banana-trail, pell-zombie-lupins]
   dialogue:
     greetFirst: ["smell that? bananas. lupins. they're closer than you think."]

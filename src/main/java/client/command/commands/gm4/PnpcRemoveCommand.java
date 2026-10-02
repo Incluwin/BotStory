@@ -106,5 +106,6 @@ public class PnpcRemoveCommand extends Command {
         }
 
         player.yellowMessage("Cleared " + toRemove.size() + " pNPC placements.");
+        server.knowledge.KnowledgeLoader.requestOverlayRebuild();
     }
 }

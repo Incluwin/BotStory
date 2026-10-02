@@ -2,10 +2,18 @@ package server.living.roster;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import server.knowledge.KnowledgeTestKit;
 import server.living.bond.BondService;
+import server.living.config.Content.Quest;
+import server.living.config.Content.Step;
+import server.living.config.Content.StepType;
 import server.living.store.LivingStore.Assignment;
+import server.living.store.LivingStore.QuestState;
+import server.living.store.LivingStore.QuestStatus;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -90,6 +98,39 @@ class BenchUpkeepTest {
         assertEquals(0.85d * predicted, net, 3.0d, "farmed " + predicted + ", 15% of it went to upkeep (not 300)");
         assertEquals("farmed " + BenchReport.meso(Math.round(predicted)) + " meso at Ant Tunnel I.",
                 ledger.takeReport(ANN, "brin", 10));
+    }
+
+    @Test
+    void aGatherItCanGetNothingForChargesNoUpkeep() throws Exception {
+        game.companion(ANN, "brin", "Brin", 902, Assignment.GATHER);
+        long hourAgo = System.currentTimeMillis() - 3_600_000L;
+        try (AutoCloseable seed = KnowledgeTestKit.publishSeed()) {
+            annNeeds(4003003); // Fairy Wings: only Happyville's script-spawned snowmen drop them (plan 8.3)
+            game.store.seed(new RosterEntry(ANN, "brin", RosterState.BENCHED, Assignment.GATHER, 0, 0, FIELD, 0L, 0L, 0L,
+                    1_000L, hourAgo, hourAgo, 0, null));
+            ledger.tick();
+            assertEquals(0L, game.row(ANN, "brin").haulMeso(), "it can do nothing, so it costs nothing");
+
+            annNeeds(4000019); // Snail Shells: it can, so the hour costs its upkeep
+            game.store.seed(new RosterEntry(ANN, "brin", RosterState.BENCHED, Assignment.GATHER, 0, 0, FIELD, 0L, 0L, 0L,
+                    1_000L, hourAgo, hourAgo, 0, null));
+            ledger.tick();
+            assertTrue(game.row(ANN, "brin").haulMeso() < 0, "upkeep: " + game.row(ANN, "brin").haulMeso());
+        }
+    }
+
+    /** Ann's active quest (another persona's) needs ten of the item. */
+    private void annNeeds(int itemId) {
+        Step step = mock(Step.class);
+        when(step.type()).thenReturn(StepType.COLLECT_ITEM);
+        when(step.itemId()).thenReturn(itemId);
+        when(step.count()).thenReturn(10);
+        Quest quest = mock(Quest.class);
+        when(quest.persona()).thenReturn("wren");
+        when(quest.step(0)).thenReturn(step);
+        when(game.content.quest("errand")).thenReturn(quest);
+        when(game.store.store.questStates(ANN, QuestStatus.ACTIVE)).thenReturn(List.of(
+                new QuestState(ANN, "errand", 0, 0, QuestStatus.ACTIVE, 0L, 0L, 0)));
     }
 
     @Test

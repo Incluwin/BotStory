@@ -3,6 +3,8 @@ package server.living;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.integration.AgentPresence;
+import server.knowledge.PersonalKnowledge;
 import server.life.Monster;
 import server.living.roster.CompanionPartyRouter;
 import server.maps.MapleMap;
@@ -30,6 +32,15 @@ public final class LivingWorldHooks {
             world.quests().onMobKilled(monster.getId(), attackerIds, map);
             world.contracts().onMobKilled(monster.getId(), attackerIds, map);
             server.living.population.PopulationHooks.mobKilled(monster, attackerIds, map);
+            PersonalKnowledge personal = PersonalKnowledge.shared();
+            if (personal.on()) {
+                for (int attackerId : attackerIds) { // every bot that fought it lived it (plan 7.4)
+                    Character attacker = map.getCharacterById(attackerId);
+                    if (attacker != null && AgentPresence.isAgent(attacker)) {
+                        personal.killed(attackerId, monster.getId(), map.getId());
+                    }
+                }
+            }
         } catch (RuntimeException failure) {
             log.warn("living world mobKilled hook failed", failure);
         }
@@ -77,6 +88,13 @@ public final class LivingWorldHooks {
             return;
         }
         world.benchDuty().looted(chr.getId(), itemId, quantity, meso);
+        try {
+            if (itemId > 0 && AgentPresence.isAgent(chr)) {
+                PersonalKnowledge.shared().gained(chr.getId(), itemId);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("living world looted hook failed", failure);
+        }
     }
 
     /** {@code chr} is moving into {@code map}, to stand at {@code at} (it is not there yet). */
@@ -92,6 +110,9 @@ public final class LivingWorldHooks {
             world.markers().enteredMap(chr);
             world.residents().onPlayerPresence(chr, map);
             world.roster().ownerEnteredMap(chr, map, at); // out of a run: companions waiting outside it rejoin (companion-ops)
+            if (AgentPresence.isAgent(chr)) {
+                PersonalKnowledge.shared().visited(chr.getId(), map.getId());
+            }
         } catch (RuntimeException failure) {
             log.warn("living world mapEntered hook failed", failure);
         }
@@ -209,6 +230,7 @@ public final class LivingWorldHooks {
             return;
         }
         try {
+            PersonalKnowledge.shared().forget(characterId);
             world.executor().submit("roster.owner_deleted " + characterId, () -> world.roster().ownerDeleted(characterId));
         } catch (RuntimeException failure) {
             log.warn("living world characterDeleted hook failed", failure);

@@ -1,0 +1,259 @@
+# Player names for game entities (docs/SERVER_KNOWLEDGE_PLAN.md 5.2), read by server.knowledge.NameIndex.
+# Started from tmp/knowledge-research/aliases.draft.yaml (every id checked against String.wz); every id
+# here is checked again against server-knowledge.json at load and by AliasCatalogTest.
+#
+# alias: what players type (matched after normalization: lowercase, no punctuation, singular tokens).
+# kind:  item | mob | map | npc | region (several maps) | pq (lobby map first; npc + levels) | role (an NPC
+#        job such as the potion shop, found by func / name token / an item its shop sells).
+# ids:   canonical id first. say: the spoken name bots use (default: the first alias). wz: the String.wz name.
+# Short or chat-like aliases (pe, cs, fm, ht) only resolve inside a typed question slot, never in free text.
+# The `jobs` list maps class words to the branch and its advancement instructors (1st/2nd, 3rd, 4th).
+aliases:
+  # ---- potions and consumables ---------------------------------------------------------------
+  - {alias: [reds, "red pots", "red pot", "red potions", "red potion"], kind: item, ids: [2000000], say: "red pots", wz: "Red Potion"}
+  - {alias: [oranges, "orange pots", "orange pot", "orange potions", "orange potion"], kind: item, ids: [2000001], say: "orange pots", wz: "Orange Potion"}
+  - {alias: [whites, "white pots", "white pot", "white potions", "white potion"], kind: item, ids: [2000002], say: "white pots", wz: "White Potion"}
+  - {alias: [blues, "blue pots", "blue pot", "blue potions", "blue potion"], kind: item, ids: [2000003], say: "blue pots", wz: "Blue Potion"}
+  - {alias: [elixirs, elixers, elixir, elixer, elix, elixs], kind: item, ids: [2000004], say: "elixirs", wz: "Elixir"}
+  - {alias: ["power elixirs", "power elixir", "power elixers", "power elix", pe, pes], kind: item, ids: [2000005], say: "power elixirs", wz: "Power Elixir"}
+  - {alias: [manas, "mana elixirs", "mana elixir", "mana elix", "mana elixers"], kind: item, ids: [2000006], say: "manas", wz: "Mana Elixir"}
+  - {alias: [unagi, unagis], kind: item, ids: [2022003], say: "unagi", wz: "Unagi"}
+  - {alias: ["pure water", "pure waters"], kind: item, ids: [2022000], wz: "Pure Water"}
+  - {alias: ["sunrise dew", "sunrise dews"], kind: item, ids: [2020014], wz: "Sunrise Dew"}
+  - {alias: ["sunset dew", "sunset dews"], kind: item, ids: [2020015], wz: "Sunset Dew"}
+  - {alias: ["reindeer milk"], kind: item, ids: [2020013], wz: "Reindeer Milk"}
+  - {alias: ["melting cheese"], kind: item, ids: [2020012], wz: "Melting Cheese"}
+  - {alias: [cider, ciders], kind: item, ids: [2022002], wz: "Cider"}
+  - {alias: ["onyx apples", "onyx apple", onyx], kind: item, ids: [2022179], wz: "Onyx Apple"}
+  - {alias: ["all cures", "all cure", "all cure potion", "all cure potions"], kind: item, ids: [2050004], wz: "All Cure Potion"}
+  - {alias: ["wa pots", "warrior pots", "warrior potion", "warrior potions"], kind: item, ids: [2002004], say: "warrior pots", wz: "Warrior Potion"}
+  - {alias: ["warrior pills", "warrior pill"], kind: item, ids: [2002006], wz: "Warrior Pill"}
+  - {alias: ["warrior elixirs", "warrior elixir"], kind: item, ids: [2002017], wz: "Warrior Elixir"}
+  - {alias: ["magic pots", "ma pots", "magic potion", "magic potions"], kind: item, ids: [2002002], wz: "Magic Potion"}
+  - {alias: ["sniper pots", "sniper potion", "sniper potions"], kind: item, ids: [2002005], wz: "Sniper Potion"}
+  - {alias: ["dex pots", "dexterity potion", "dexterity potions"], kind: item, ids: [2002000], wz: "Dexterity Potion"}
+  - {alias: ["speed pots", "speed potion", "speed potions"], kind: item, ids: [2002001], wz: "Speed Potion"}
+  - {alias: ["return scrolls", "return scroll", "town scroll", "town scrolls", "nearest town scroll"], kind: item, ids: [2030000], say: "return scrolls", wz: "Return Scroll - Nearest Town"}
+  - {alias: ["perfect pitch", "perfect pitches", pitch, pitches], kind: item, ids: [4310000], say: "perfect pitch", wz: "Perfect Pitch"}
+  - {alias: ["maple leaves", "maple leaf"], kind: item, ids: [4001126], say: "maple leaves", wz: "Maple Leaf"}
+  - {alias: ["kpq coupons", "kpq coupon", coupons, coupon], kind: item, ids: [4001007], say: "coupons", wz: "Coupon"}
+  - {alias: ["hyper teleport rock", "hyper tele rock", "tele rock", "teleport rock", "hyper rock"], kind: item, ids: [5041000], say: "tele rock", wz: "Hyper Teleport Rock"}
+  # ---- ammo ----------------------------------------------------------------------------------
+  - {alias: [subis, subi, stars, "throwing stars"], kind: item, ids: [2070000], say: "subis", wz: "Subi Throwing-Stars"}
+  - {alias: [wolbis, wolbi], kind: item, ids: [2070001], wz: "Wolbi Throwing-Stars"}
+  - {alias: [mokbis, mokbi], kind: item, ids: [2070002], wz: "Mokbi Throwing-Stars"}
+  - {alias: [kumbis, kumbi], kind: item, ids: [2070003], wz: "Kumbi Throwing-Stars"}
+  - {alias: [tobis, tobi], kind: item, ids: [2070004], wz: "Tobi Throwing-Stars"}
+  - {alias: [steelies, steely, steelys, "steely knives"], kind: item, ids: [2070005], wz: "Steely Throwing-Knives"}
+  - {alias: [ilbis, ilbi], kind: item, ids: [2070006], wz: "Ilbi Throwing-Stars"}
+  - {alias: [hwabis, hwabi], kind: item, ids: [2070007], wz: "Hwabi Throwing-Stars"}
+  - {alias: ["crystal ilbis", "crystal ilbi"], kind: item, ids: [2070016], wz: "Crystal Ilbi Throwing-Stars"}
+  - {alias: [arrows, "bow arrows", arrow], kind: item, ids: [2060000], wz: "Arrow for Bow"}
+  - {alias: [bolts, "xbow arrows", "crossbow arrows", "xbow bolts"], kind: item, ids: [2061000], wz: "Arrow for Crossbow"}
+  - {alias: [bullets], kind: item, ids: [2330000], wz: "Bullet"}
+  # ---- scrolls (the scroll grammar "glove att 60" covers the rest) ----------------------------
+  - {alias: ["chaos scrolls", "chaos scroll", chaos, cs], kind: item, ids: [2049100], say: "chaos scrolls", wz: "Chaos Scroll 60%"}
+  - {alias: ["white scrolls", "white scroll", ws], kind: item, ids: [2340000], say: "white scrolls", wz: "White Scroll"}
+  - {alias: ["clean slates", "clean slate", css], kind: item, ids: [2049000, 2049001, 2049002, 2049003], say: "clean slates", wz: "Clean Slate Scroll 1%; 3%; 5%; 20%"}
+  # ---- equips --------------------------------------------------------------------------------
+  - {alias: [zhelm, zhelms, "z helm", "zak helm", "zakum helm", "zakum helmet"], kind: item, ids: [1002357, 1002390, 1002430], say: "zhelm", wz: "Zakum Helmet"}
+  - {alias: [bwg, "brown work gloves"], kind: item, ids: [1082149], wz: "Brown Work Gloves"}
+  - {alias: ["work gloves"], kind: item, ids: [1082002], wz: "Work Gloves"}
+  - {alias: [pac, "pink adventurer cape"], kind: item, ids: [1102041], wz: "Pink Adventurer Cape"}
+  - {alias: ["ht necklace", "ht pendant", "horntail pendant", "horntail necklace", ht], kind: item, ids: [1122000], say: "ht pendant", wz: "Horntail Necklace"}
+  - {alias: [stormcasters, "stormcaster gloves", stormies], kind: item, ids: [1082223], wz: "Stormcaster Gloves"}
+  - {alias: [facestompers, stompers], kind: item, ids: [1072344], wz: "Facestompers"}
+  - {alias: ["maple shield"], kind: item, ids: [1092030], wz: "Maple Shield"}
+  - {alias: ["maple sword"], kind: item, ids: [1302020], wz: "Maple Sword"}
+  - {alias: [cutlass, cutlasses, cutlus], kind: item, ids: [1302004], say: "cutlass", wz: "Cutlus"}
+  - {alias: ["maple bow"], kind: item, ids: [1452016], wz: "Maple Bow"}
+  - {alias: ["maple claw"], kind: item, ids: [1472030], wz: "Maple Claw"}
+  - {alias: ["maple staff"], kind: item, ids: [1382009], wz: "Maple Staff"}
+  # ---- etc -----------------------------------------------------------------------------------
+  - {alias: ["bronze ore", "bronze ores"], kind: item, ids: [4010000], wz: "Bronze Ore"}
+  - {alias: ["steel ore", "steel ores"], kind: item, ids: [4010001], wz: "Steel Ore"}
+  - {alias: ["mithril ore", "mith ore", "mithril ores"], kind: item, ids: [4010002], wz: "Mithril Ore"}
+  - {alias: ["adamantium ore", "adam ore", "adamantium ores"], kind: item, ids: [4010003], wz: "Adamantium Ore"}
+  - {alias: ["silver ore", "silver ores"], kind: item, ids: [4010004], wz: "Silver Ore"}
+  - {alias: ["orihalcon ore", "ori ore", "orihalcon ores", orihalcon, ori], kind: item, ids: [4010005], wz: "Orihalcon Ore"}
+  - {alias: ["gold ore", "gold ores"], kind: item, ids: [4010006], wz: "Gold Ore"}
+  - {alias: ["dark crystal ore", "dark ore", "dark ores"], kind: item, ids: [4004004], wz: "Dark Crystal Ore"}
+  - {alias: ["dark crystals", "dark crystal"], kind: item, ids: [4005004], wz: "Dark Crystal"}
+  - {alias: ["black crystals", "black crystal"], kind: item, ids: [4021008], wz: "Black Crystal"}
+  - {alias: ["pig heads", "pigs head", "pig head"], kind: item, ids: [4000017], say: "pig heads", wz: "Pig's Head"}
+  - {alias: ["pig ribbons", "pigs ribbon", "pig ribbon"], kind: item, ids: [4000002], say: "pig ribbons", wz: "Pig's Ribbon"}
+  - {alias: ["snail shells", "snail shell"], kind: item, ids: [4000019], wz: "Snail Shell"}
+  - {alias: ["blue snail shells", "blue shells", "blue snail shell"], kind: item, ids: [4000000], wz: "Blue Snail Shell"}
+  - {alias: ["red snail shells", "red shells", "red snail shell"], kind: item, ids: [4000016], wz: "Red Snail Shell"}
+  - {alias: ["necki skins", "jr necki skins", "jr necki skin", "necki skin"], kind: item, ids: [4000034], say: "necki skins", wz: "Jr. Necki Skin"}
+  - {alias: ["ligator skins", "gator skins", "ligator skin"], kind: item, ids: [4000032], wz: "Ligator Skin"}
+  - {alias: ["curse eye tails", "curse eye tail"], kind: item, ids: [4000013], wz: "Curse Eye Tail"}
+  - {alias: ["lupin bananas", bananas, banana], kind: item, ids: [4000029], say: "bananas", wz: "Lupin's Banana"}
+  - {alias: [screws, screw], kind: item, ids: [4003000], wz: "Screw"}
+  - {alias: [leather, leathers], kind: item, ids: [4000021], wz: "Leather"}
+  - {alias: ["eye of fire", eof, "eyes of fire"], kind: item, ids: [4001017], wz: "Eye of Fire"}
+  - {alias: ["fairy wings", "fairy wing"], kind: item, ids: [4003003], say: "fairy wings", wz: "Fairy Wing"}
+  # ---- monsters (say: the plural players use) --------------------------------------------------
+  - {alias: [snails, snail], kind: mob, ids: [100100], wz: "Snail"}
+  - {alias: ["blue snails", "blue snail"], kind: mob, ids: [100101], wz: "Blue Snail"}
+  - {alias: ["red snails", "red snail"], kind: mob, ids: [130101], wz: "Red Snail"}
+  - {alias: [stumps, stump], kind: mob, ids: [130100], wz: "Stump"}
+  - {alias: ["dark stumps"], kind: mob, ids: [1110101], wz: "Dark Stump"}
+  - {alias: ["axe stumps"], kind: mob, ids: [1130100], wz: "Axe Stump"}
+  - {alias: ["ghost stumps"], kind: mob, ids: [1140100], wz: "Ghost Stump"}
+  - {alias: ["orange mushies", "orange shrooms", "orange mushrooms", "orange mush"], kind: mob, ids: [1210102], wz: "Orange Mushroom"}
+  - {alias: ["green mushies", "green shrooms", "green mushrooms"], kind: mob, ids: [1110100], wz: "Green Mushroom"}
+  - {alias: ["blue mushies", "blue shrooms", "blue mushrooms"], kind: mob, ids: [2220100], wz: "Blue Mushroom"}
+  - {alias: ["horny mushies", "horny shrooms", "horny mushrooms", hornies, "horny mush"], kind: mob, ids: [2110200], wz: "Horny Mushroom"}
+  - {alias: ["zombie mushies", "zombie shrooms", "zombie mushrooms", "zombie mush", zmush], kind: mob, ids: [2230101], wz: "Zombie Mushroom"}
+  - {alias: [pigs, pig], kind: mob, ids: [1210100], wz: "Pig"}
+  - {alias: ["ribbon pigs"], kind: mob, ids: [1210101], wz: "Ribbon Pig"}
+  - {alias: ["iron hogs"], kind: mob, ids: [4230103], wz: "Iron Hog"}
+  - {alias: ["wild boars", boars], kind: mob, ids: [2230102], wz: "Wild Boar"}
+  - {alias: ["fire boars"], kind: mob, ids: [3210100], wz: "Fire Boar"}
+  - {alias: ["jr neckis", "jr necki", neckis, necki], kind: mob, ids: [2130103], wz: "Jr. Necki"}
+  - {alias: [ligators, gators], kind: mob, ids: [3110100], wz: "Ligator"}
+  - {alias: [crocos, croco], kind: mob, ids: [5130103], wz: "Croco"}
+  - {alias: [octopuses, octopus, octopi, octos], kind: mob, ids: [1120100], wz: "Octopus"}
+  - {alias: [lupins, monkeys], kind: mob, ids: [3210800], wz: "Lupin"}
+  - {alias: [zlupins, "zombie lupins", "z lupins", zlupin, "zombie monkeys"], kind: mob, ids: [4230101], wz: "Zombie Lupin"}
+  - {alias: ["curse eyes"], kind: mob, ids: [3230100], wz: "Curse Eye"}
+  - {alias: ["evil eyes"], kind: mob, ids: [2230100], wz: "Evil Eye"}
+  - {alias: ["cold eyes"], kind: mob, ids: [4230100], wz: "Cold Eye"}
+  - {alias: ["jr wraiths", "jr wraith"], kind: mob, ids: [3230101], wz: "Jr. Wraith"}
+  - {alias: [wraiths, wraith], kind: mob, ids: [4230102], wz: "Wraith"}
+  - {alias: [drakes, drake], kind: mob, ids: [5130100], wz: "Drake"}
+  - {alias: ["copper drakes"], kind: mob, ids: [4130100], wz: "Copper Drake"}
+  - {alias: ["red drakes"], kind: mob, ids: [6130100], wz: "Red Drake"}
+  - {alias: ["ice drakes"], kind: mob, ids: [6230600], wz: "Ice Drake"}
+  - {alias: ["dark drakes"], kind: mob, ids: [6230601], wz: "Dark Drake"}
+  - {alias: ["jr balrog", "jr rog", jrog], kind: mob, ids: [8130100], wz: "Jr. Balrog"}
+  - {alias: ["crimson balrog", crog], kind: mob, ids: [8150000], wz: "Crimson Balrog"}
+  - {alias: [zakum, zak, zakk], kind: mob, ids: [8800000, 8800001, 8800002], say: "zakum", wz: "Zakum1; Zakum2; Zakum3"}
+  - {alias: [horntail, ht], kind: mob, ids: [8810018], say: "horntail", wz: "Horntail"}
+  - {alias: [mushmom, mushmum], kind: mob, ids: [6130101], wz: "Mushmom"}
+  - {alias: ["zombie mushmom", zmm], kind: mob, ids: [6300005], wz: "Zombie Mushmom"}
+  - {alias: [pepes], kind: mob, ids: [6130103], wz: "Pepe"}
+  - {alias: ["jr pepes", "jr pepe"], kind: mob, ids: [5400000], wz: "Jr. Pepe"}
+  - {alias: [yetis], kind: mob, ids: [6300000], wz: "Yeti"}
+  - {alias: ["jr yetis", "jr yeti"], kind: mob, ids: [5100000], wz: "Jr. Yeti"}
+  - {alias: [stirges], kind: mob, ids: [2300100], wz: "Stirge"}
+  - {alias: [slimes], kind: mob, ids: [210100], wz: "Slime"}
+  - {alias: [bubblings], kind: mob, ids: [1210103], wz: "Bubbling"}
+  - {alias: ["block golems"], kind: mob, ids: [4230109], wz: "Block Golem"}
+  - {alias: ["king block golems"], kind: mob, ids: [4230110], wz: "King Block Golem"}
+  - {alias: [ratz], kind: mob, ids: [3110102], wz: "Ratz"}
+  - {alias: ["black ratz"], kind: mob, ids: [3210205], wz: "Black Ratz"}
+  - {alias: [chronos], kind: mob, ids: [3230306], wz: "Chronos"}
+  - {alias: ["platoon chronos"], kind: mob, ids: [4230114], wz: "Platoon Chronos"}
+  - {alias: ["master chronos"], kind: mob, ids: [4230115], wz: "Master Chronos"}
+  - {alias: ["tick tocks", ticktocks], kind: mob, ids: [4230113], wz: "Tick-Tock"}
+  - {alias: [buffies, buffy], kind: mob, ids: [6130200], wz: "Buffy"}
+  - {alias: ["lazy buffies", "lazy buffy"], kind: mob, ids: [6230300], wz: "Lazy Buffy"}
+  - {alias: ["soul teddies", "soul teddy"], kind: mob, ids: [6230400], wz: "Soul Teddy"}
+  - {alias: ["master soul teddies"], kind: mob, ids: [6230500], wz: "Master Soul Teddy"}
+  - {alias: ["death teddies", "death teddy"], kind: mob, ids: [7130010], wz: "Death Teddy"}
+  - {alias: ["ghost pirates"], kind: mob, ids: [7140000], wz: "Ghost Pirate"}
+  - {alias: [skeledogs], kind: mob, ids: [4230125], wz: "Skeledog"}
+  - {alias: [mummydogs], kind: mob, ids: [4230126], wz: "Mummydog"}
+  - {alias: [coolies, "coolie zombies"], kind: mob, ids: [5130107], wz: "Coolie Zombie"}
+  - {alias: ["miner zombies"], kind: mob, ids: [5130108], wz: "Miner Zombie"}
+  - {alias: ["white fangs"], kind: mob, ids: [5140000], wz: "White Fang"}
+  - {alias: [hectors], kind: mob, ids: [5130104], wz: "Hector"}
+  - {alias: [papu, papulatus], kind: mob, ids: [8500002], say: "papu", wz: "Papulatus"}
+  - {alias: [pianus], kind: mob, ids: [8510000], wz: "Pianus"}
+  - {alias: ["happyville snowmen", "kid snowmen", "kid snowman"], kind: mob, ids: [9500317], say: "snowmen", wz: "Kid Snowman"}
+  # ---- towns and maps ------------------------------------------------------------------------
+  - {alias: [henesys, henny, hene, henesis], kind: map, ids: [100000000], wz: "Henesys"}
+  - {alias: [ellinia, elli, elinia], kind: map, ids: [101000000], wz: "Ellinia"}
+  - {alias: [perion, peri], kind: map, ids: [102000000], wz: "Perion"}
+  - {alias: [kerning, "kerning city", kc], kind: map, ids: [103000000], wz: "Kerning City"}
+  - {alias: [lith, "lith harbor", lh], kind: map, ids: [104000000], wz: "Lith Harbor"}
+  - {alias: [sleepywood, sleepy], kind: map, ids: [105040300], wz: "Sleepywood"}
+  - {alias: [nautilus, naut, "nautilus harbor"], kind: map, ids: [120000000], wz: "Nautilus Harbor"}
+  - {alias: [fm, "free market", "the fm", "fm entrance", "free market entrance", "fm portal"], kind: map, ids: [910000000], say: "fm", wz: "Free Market Entrance"}
+  - {alias: [subway, "kerning subway", "subway station", "subway booth"], kind: map, ids: [103000100], say: "kerning subway", wz: "Subway Ticketing Booth"}
+  - {alias: ["pig beach", "the pig beach"], kind: map, ids: [104010001], wz: "The Pig Beach"}
+  - {alias: ["ant tunnel", ants, "ant tunnels"], kind: region, ids: [105050000, 105050100, 105050200, 105050300], say: "ant tunnel", wz: "Ant Tunnel I-IV"}
+  - {alias: ["deep ant tunnel", "deep ants", dat], kind: region, ids: [105060100, 105070000], say: "deep ants", wz: "Deep Ant Tunnel I-II"}
+  - {alias: ["ant tunnel park"], kind: map, ids: [105070001], wz: "Ant Tunnel Park"}
+  - {alias: ["drake hunting ground", "drake area"], kind: map, ids: [105080000], wz: "Drake Hunting Ground"}
+  - {alias: ["cursed sanctuary", "jr balrog room"], kind: map, ids: [105090900], wz: "The Cursed Sanctuary"}
+  - {alias: [hhg, "henesys hunting ground", "henesys hunting grounds"], kind: region, ids: [104040000, 104040001, 104040002], say: "hhg", wz: "Henesys Hunting Ground I-III"}
+  - {alias: ["excavation site", excav], kind: region, ids: [101030101, 101030102, 101030103], say: "excavation site", wz: "Excavation Site I-III"}
+  - {alias: ["wolf territory", wolves], kind: region, ids: [211040500, 211040600, 211040800, 211040900, 211041000], say: "wolf territory", wz: "Wolf Territory I-V"}
+  - {alias: [orbis], kind: map, ids: [200000000], wz: "Orbis"}
+  - {alias: ["orbis station"], kind: map, ids: [200000100], wz: "Orbis Station Enterence"}
+  - {alias: ["ellinia station"], kind: map, ids: [101000300], wz: "Ellinia Station"}
+  - {alias: ["el nath", elnath], kind: map, ids: [211000000], wz: "El Nath"}
+  - {alias: [ludi, ludibrium], kind: map, ids: [220000000], wz: "Ludibrium"}
+  - {alias: [omega, "omega sector"], kind: map, ids: [221000000], wz: "Omega Sector"}
+  - {alias: [aqua, aquarium], kind: map, ids: [230000000], wz: "Aquarium"}
+  - {alias: [leafre], kind: map, ids: [240000000], wz: "Leafre"}
+  - {alias: ["mu lung", mulung], kind: map, ids: [250000000], wz: "Mu Lung"}
+  - {alias: ["herb town"], kind: map, ids: [251000000], wz: "Herb Town"}
+  - {alias: [ariant], kind: map, ids: [260000000], wz: "Ariant"}
+  - {alias: [nlc, "new leaf city"], kind: map, ids: [600000000], say: "nlc", wz: "New Leaf City - Town Center"}
+  - {alias: [amoria], kind: map, ids: [680000000], wz: "Amoria"}
+  - {alias: ["mushroom shrine", zipangu], kind: map, ids: [800000000], wz: "Mushroom Shrine"}
+  - {alias: [showa, "showa town"], kind: map, ids: [801000000], wz: "Showa Town"}
+  - {alias: [kft, "korean folk town"], kind: map, ids: [222000000], wz: "Korean Folk Town"}
+  - {alias: [ereve], kind: map, ids: [130000000], wz: "Ereve"}
+  - {alias: [rien], kind: map, ids: [140000000], wz: "Rien"}
+  - {alias: [happyville], kind: map, ids: [209000000], wz: "Happyville"}
+  - {alias: [tot, "temple of time"], kind: map, ids: [270000100], wz: "Temple of Time"}
+  - {alias: ["zak altar", "zakum altar"], kind: map, ids: [280030000], wz: "Zakum's Altar"}
+  - {alias: ["door to zakum", "zak door"], kind: map, ids: [211042300], wz: "The Door to Zakum"}
+  - {alias: ["bowman school", "bowman instructional school"], kind: map, ids: [100000201], wz: "Bowman Instructional School"}
+  - {alias: ["magic library"], kind: map, ids: [101000003], wz: "Magic Library"}
+  - {alias: ["warrior sanctuary", "warriors sanctuary"], kind: map, ids: [102000003], wz: "Warriors' Sanctuary"}
+  - {alias: ["thieves hideout", "thief hideout"], kind: map, ids: [103000003], wz: "Thieves' Hideout"}
+  - {alias: ["navigation room"], kind: map, ids: [120000101], wz: "Navigation Room"}
+  - {alias: ["chiefs residence", "chief residence"], kind: map, ids: [211000001], wz: "Chief's Residence"}
+  - {alias: ["forest of the priest"], kind: map, ids: [240010501], wz: "Forest of the Priest"}
+  # ---- party quests --------------------------------------------------------------------------
+  - {alias: [kpq, "kerning pq", "kerning party quest"], kind: pq, ids: [103000000, 103000800], npc: 9020000, levels: [21, 30], say: "kpq", wz: "Kerning City; 1st Accompaniment"}
+  - {alias: [lpq, "ludi pq", ludipq, "ludibrium pq"], kind: pq, ids: [221024500, 922010100], npc: 2040034, levels: [35, 50], say: "lpq", wz: "Eos Tower 101st Floor; Abandoned Tower"}
+  - {alias: [opq, "orbis pq", "orbis party quest"], kind: pq, ids: [200080101, 920010000], npc: 2013000, levels: [51, 70], say: "opq", wz: "The Unknown Tower"}
+  - {alias: [hpq, "henesys pq", "moon bunny pq", "rice cake pq"], kind: pq, ids: [100000200, 910010000], npc: 1012112, levels: [10, 200], say: "hpq", wz: "Henesys Park; Primrose Hill"}
+  # ---- NPCs ----------------------------------------------------------------------------------
+  - {alias: [lakelis], kind: npc, ids: [9020000], wz: "Lakelis"}
+  - {alias: ["red sign"], kind: npc, ids: [2040034], wz: "Red Sign"}
+  - {alias: [wonky, "wonky the fairy"], kind: npc, ids: [2013000], wz: "Wonky the Fairy"}
+  - {alias: [tory], kind: npc, ids: [1012112], wz: "Tory"}
+  - {alias: [athena, "athena pierce", "bowman instructor"], kind: npc, ids: [1012100], wz: "Athena Pierce"}
+  - {alias: [grendel, "grendel the really old", "magician instructor", "mage instructor"], kind: npc, ids: [1032001], wz: "Grendel the Really Old"}
+  - {alias: [dwb, "dances with balrog", "warrior instructor"], kind: npc, ids: [1022000], wz: "Dances with Balrog"}
+  - {alias: ["dark lord", "thief instructor"], kind: npc, ids: [1052001], wz: "Dark Lord"}
+  - {alias: [kyrin, "pirate instructor"], kind: npc, ids: [1090000], wz: "Kyrin"}
+  - {alias: [duey], kind: npc, ids: [9010009], wz: "Duey"}
+  - {alias: [fredrick], kind: npc, ids: [9030000], wz: "Fredrick"}
+  - {alias: [pickall, "mr pickall"], kind: npc, ids: [9000008], wz: "Mr. Pickall"}
+  - {alias: [spinel, "world tour"], kind: npc, ids: [9000020], wz: "Spinel"}
+  - {alias: [adobis], kind: npc, ids: [2030008], wz: "Adobis"}
+  - {alias: [shanks], kind: npc, ids: [22000], wz: "Shanks"}
+  - {alias: [isa, "isa the station guide"], kind: npc, ids: [2012006], wz: "Isa the Station Guide"}
+  - {alias: [joel], kind: npc, ids: [1032007], wz: "Joel"}
+  - {alias: ["chief stan"], kind: npc, ids: [1012003], wz: "Chief Stan"}
+  - {alias: [happy], kind: npc, ids: [9220004], wz: "Happy"}
+  - {alias: ["hidden appraiser", appraiser], kind: npc, ids: [1092017], wz: "Hidden Appraiser"}
+  - {alias: [inkwell], kind: npc, ids: [9000069], wz: "Inkwell"}
+  # ---- NPC roles (resolved to the nearest NPC doing the job) -----------------------------------
+  - {alias: ["potion shop", "pot shop", "potion store", "potion guy", "potion seller", grocer, pots, potions, "hp pots", "mp pots"], kind: role, funcs: [Grocer, "Potion Seller"], sells: 2000000, say: "potion shop"}
+  - {alias: ["weapon store", "weapon shop", "weapons store", "weapon seller", weapons, swords, bows, claws, wands, staffs, staves, daggers, spears, axes], kind: role, funcs: ["Weapon Seller"], say: "weapon store"}
+  - {alias: ["armor store", "armor shop", "armour shop", "armor seller", armor, armour, hats, helmets, shoes, gloves, overalls, tops, pants, capes, shields], kind: role, funcs: ["Armor Seller"], say: "armor store"}
+  - {alias: [storage, "storage guy", "storage keeper", bank], kind: role, funcs: ["Storage Keeper"], say: "storage"}
+  - {alias: [taxi, cab, taxis, cabs, "regular cab"], kind: role, nameHas: [cab, taxi], say: "taxi"}
+  - {alias: [gach, gacha, gachapon, gachas], kind: role, nameHas: [gachapon], say: "gach"}
+  - {alias: ["hair salon", "hair guy", hair, haircut, "hair stylist"], kind: role, funcs: ["Hair Salon Owner", "Hair Salon Assistant", "Hair Stylist", "Lead Hair Stylist", "Assistant Hair Stylist"], say: "hair salon"}
+  - {alias: ["plastic surgery", "plastic surgeon", "face guy", "face change"], kind: role, funcs: ["Plastic Surgeon"], say: "plastic surgery"}
+  - {alias: ["skin care", dermatologist], kind: role, funcs: [Dermatologist], say: "skin care"}
+  - {alias: ["pet master", "pet guy"], kind: role, funcs: ["Pet Master"], say: "pet master"}
+  - {alias: [boat, ship, "boat ticket", "ship ticket", ticket, tickets, station], kind: role, funcs: ["Station Cleark", "Ticketing Usher", "Cabin Crew"], say: "station"}
+  - {alias: ["scroll shop", "scroll seller", scrolls], kind: role, funcs: ["Scroll Seller"], say: "scroll shop"}
+jobs:
+  - {branch: warrior, words: [warrior, warriors, war, fighter, page, spearman, spear, sader, crusader, hero, wk, "white knight", paladin, pally, dk, "dragon knight", drk, "dark knight"], first: 1022000, third: 2020008, fourth: 2081100}
+  - {branch: magician, words: [mage, mages, magician, wizard, wiz, cleric, priest, bishop, fp, il, "fire poison", "ice lightning", "arch mage", am], first: 1032001, third: 2020009, fourth: 2081200}
+  - {branch: bowman, words: [bowman, bowmen, archer, hunter, crossbowman, xbowman, xbow, ranger, sniper, bowmaster, bm, marksman, mm], first: 1012100, third: 2020010, fourth: 2081300}
+  - {branch: thief, words: [thief, theif, sin, assassin, hermit, nl, "night lord", bandit, dit, cb, "chief bandit", shadower, shad], first: 1052001, third: 2020011, fourth: 2081400}
+  - {branch: pirate, words: [pirate, brawler, gunslinger, gs, marauder, outlaw, buccaneer, bucc, corsair, sair], first: 1090000, third: 2020013, fourth: 2081500}

@@ -12,6 +12,8 @@ import server.ItemInformationProvider;
 import server.agents.capabilities.shop.AgentFreeMarketStallService;
 import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService;
 import server.agents.economy.integration.cosmic.AgentFreeMarketBuyerService.ObservedStall;
+import server.knowledge.ContentAnswers;
+import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorldHooks;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Good;
@@ -84,6 +86,26 @@ public final class Market {
         index.put(itemId, new long[]{seed, 0});
         population.store().savePrice(itemId, seed, 0);
         return seed;
+    }
+
+    /**
+     * What the index knows without guessing, for content PRICE answers: a quote only for an item a sale has
+     * nudged (observations &gt; 0) or a basket good (its basket price until a sale moves it: a seed row nobody
+     * bought at is not an observation); null otherwise. Unlike {@link #price} it never seeds a row and never
+     * writes the DB, so it is safe on the chat thread.
+     */
+    public ContentAnswers.PriceQuote known(int itemId) {
+        long[] row = index.get(itemId);
+        long basket = 0L;
+        for (Good good : population.content().basket()) {
+            if (good.itemId() == itemId) {
+                basket = good.price();
+            }
+        }
+        if (row != null && row[1] > 0) {
+            return new ContentAnswers.PriceQuote(row[0], (int) row[1], basket > 0L);
+        }
+        return basket > 0L ? new ContentAnswers.PriceQuote(basket, 0, true) : null;
     }
 
     /** Observed sale: nudge the index toward the price (exponential moving average). */
@@ -321,6 +343,7 @@ public final class Market {
                 AgentFreeMarketBuyerService.PurchaseResult result = buyers.buy(agent, stall.objectId(), view.slot(), (short) 1);
                 if (result.success()) {
                     bought(stall.ownerCharacterId(), view.itemId(), unit);
+                    PersonalKnowledge.shared().gained(session.characterId, view.itemId());
                     session.journal.add("market", "bought " + itemName(view.itemId()) + " from " + stall.ownerName() + " for " + formatPrice(view.bundlePrice()));
                     log.info("citizen {} bought {} x{} from {} for {}", session.name(), itemName(view.itemId()), view.perBundle(), stall.ownerName(), view.bundlePrice());
                     return; // one purchase per tick per citizen

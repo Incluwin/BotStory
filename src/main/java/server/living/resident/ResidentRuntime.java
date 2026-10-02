@@ -24,6 +24,7 @@ import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRequest;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
 import server.integration.AgentPresence;
+import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorld;
 import server.living.config.Content.Chapter;
 import server.living.config.Content.Loadout;
@@ -366,6 +367,7 @@ public final class ResidentRuntime {
         sessions.put(persona.id(), session);
         personaByCharacter.put(characterId, persona.id());
         shapeIfNeeded(session, agent);
+        world.dialogue().openKnowledge(persona, characterId, agent);
         dress(session.persona, agent);
         applySlot(session, map, slot, now);
         log.info("Resident {} ({}) materialized in {} {}", persona.id(), persona.name(), persona.homeTown(),
@@ -405,6 +407,7 @@ public final class ResidentRuntime {
         Character agent = session.agent();
         if (agent == null) {
             sessions.remove(session.persona.id());
+            PersonalKnowledge.shared().close(session.characterId);
             world.leases().release(session.characterId, CompanionLeases.Kind.RESIDENT);
             return;
         }
@@ -471,6 +474,7 @@ public final class ResidentRuntime {
         AgentRuntimeEntry entry = session.entry;
         session.entry = null;
         sessions.remove(session.persona.id());
+        PersonalKnowledge.shared().close(session.characterId);
         if (entry == null) {
             return;
         }

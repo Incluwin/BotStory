@@ -1,5 +1,7 @@
 package server.living.config;
 
+import server.knowledge.EntityKind;
+import server.knowledge.KnowledgeLint;
 import server.living.config.Content.Arc;
 import server.living.config.Content.Chapter;
 import server.living.config.Content.Contract;
@@ -10,6 +12,7 @@ import server.living.config.Content.Step;
 import server.living.config.Content.StepType;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -18,7 +21,8 @@ import java.util.Set;
 
 /**
  * Cross-reference checks over a loaded {@link LivingContent}. Findings prefixed {@code ERROR}
- * make {@link #hasErrors(List)} true; the rest are warnings (flags never read, etc.).
+ * make {@link #hasErrors(List)} true; the rest are warnings (flags never read, etc.). When server knowledge is
+ * available ({@link KnowledgeLint#current()}), item, mob, map and NPC ids are checked against it too.
  */
 public final class ContentLint {
     /** TownLife profile ids shipped in resources/agents/town-life. */
@@ -33,6 +37,7 @@ public final class ContentLint {
     }
 
     public static List<String> check(LivingContent content) {
+        KnowledgeLint knowledge = KnowledgeLint.current();
         List<String> out = new ArrayList<>();
         Set<String> flagsSet = new LinkedHashSet<>();
         Set<String> flagsRead = new LinkedHashSet<>();
@@ -300,13 +305,127 @@ public final class ContentLint {
                 }
                 for (int itemId : slot.getValue()) {
                     if (itemId != 0 && !prefixes.contains(itemId / 10000)) {
-                        out.add("ERROR loadouts.yaml loadout " + loadout.id() + ": outfit " + slot.getKey() + " item " + itemId
+                        out.add("ERROR loadouts.yaml loadout " + loadout.id() + ": outfit " + slot.getKey() + " item "
+                                + (knowledge == null ? String.valueOf(itemId) : knowledge.label(EntityKind.ITEM, itemId))
                                 + " is not a " + slot.getKey() + " item");
                     }
                 }
             }
         }
+        if (knowledge != null) {
+            knowledgeChecks(content, knowledge, out);
+        }
         return out;
+    }
+
+    /**
+     * Ids against the server knowledge (docs/SERVER_KNOWLEDGE_PLAN.md 9.4): an unknown item, mob or map is an ERROR; an item
+     * players cannot get in the open, a mob they never meet and gear its holders never wear are WARNs.
+     */
+    private static void knowledgeChecks(LivingContent content, KnowledgeLint knowledge, List<String> out) {
+        Map<String, List<KnowledgeLint.Holder>> holders = new LinkedHashMap<>();
+        for (Persona persona : content.personas().values()) {
+            String where = persona.file() + " persona " + persona.id();
+            for (int itemId : persona.giftItemIds()) {
+                knowledge.require(EntityKind.ITEM, itemId, where, out);
+            }
+            for (String known : content.knows(persona.id())) {
+                knowledge.personaKnows(known, where, out);
+            }
+            if (persona.loadout() != null) {
+                holders.computeIfAbsent(persona.loadout(), id -> new ArrayList<>())
+                        .add(new KnowledgeLint.Holder("persona " + persona.id(), persona.level().min(), persona.level().max()));
+            }
+        }
+        for (Quest quest : content.quests().values()) {
+            String where = quest.file() + " quest " + quest.id();
+            Set<Integer> dropped = new HashSet<>(); // the living world drops these itself (QuestLedger dropFrom)
+            for (Step step : quest.steps()) {
+                if (step.dropFrom() != null) {
+                    dropped.add(step.itemId());
+                }
+            }
+            Set<Integer> sourced = new HashSet<>();
+            for (Step step : quest.steps()) {
+                String stepWhere = where + " step " + step.id();
+                List<Integer> items = new ArrayList<>();
+                if (step.type() == StepType.COLLECT_ITEM || step.type() == StepType.GIVE_ITEM) {
+                    items.add(step.itemId());
+                }
+                if (step.take() != null) {
+                    items.add(step.take().itemId());
+                }
+                for (int itemId : items) {
+                    if (knowledge.require(EntityKind.ITEM, itemId, stepWhere, out) && !dropped.contains(itemId) && sourced.add(itemId)) {
+                        knowledge.obtainable(itemId, stepWhere, out);
+                    }
+                }
+                Set<Integer> mobs = new LinkedHashSet<>(step.mobIds());
+                if (step.dropFrom() != null) {
+                    mobs.addAll(step.dropFrom().mobIds());
+                }
+                for (int mobId : mobs) {
+                    if (knowledge.require(EntityKind.MOB, mobId, stepWhere, out)) {
+                        knowledge.spawns(mobId, stepWhere, out);
+                    }
+                }
+                for (int mapId : step.mapIds()) {
+                    knowledge.require(EntityKind.MAP, mapId, stepWhere, out);
+                }
+                if (step.type() == StepType.DELIVER && step.to().startsWith("npc:")) {
+                    try {
+                        knowledge.require(EntityKind.NPC, Integer.parseInt(step.to().substring(4)), stepWhere, out);
+                    } catch (NumberFormatException malformed) {
+                        out.add("ERROR " + stepWhere + ": deliver target '" + step.to() + "' is not an NPC id");
+                    }
+                }
+            }
+            for (Content.ItemStack reward : quest.rewards().items()) {
+                knowledge.require(EntityKind.ITEM, reward.itemId(), where + " rewards", out);
+            }
+        }
+        for (Contract contract : content.contracts().values()) {
+            String where = contract.file() + " contract " + contract.id();
+            Set<Integer> priced = new HashSet<>();
+            for (Content.ContractItem item : contract.price().items()) {
+                if (knowledge.require(EntityKind.ITEM, item.itemId(), where, out) && priced.add(item.itemId())) {
+                    knowledge.obtainable(item.itemId(), where, out);
+                }
+            }
+            if (contract.price().proof() != null) {
+                for (int mobId : contract.price().proof().mobIds()) {
+                    if (knowledge.require(EntityKind.MOB, mobId, where, out)) {
+                        knowledge.spawns(mobId, where, out);
+                    }
+                }
+            }
+        }
+        for (Arc arc : content.arcs().values()) {
+            Persona owner = authored(content, arc.persona());
+            for (Chapter chapter : arc.chapters()) {
+                if (owner != null && chapter.loadout() != null) {
+                    holders.computeIfAbsent(chapter.loadout(), id -> new ArrayList<>()).add(new KnowledgeLint.Holder(
+                            "arc " + arc.id() + " chapter " + chapter.id(), owner.level().min(), owner.level().max()));
+                }
+            }
+        }
+        for (Content.Loadout loadout : content.loadouts().values()) {
+            String where = "loadouts.yaml loadout " + loadout.id();
+            for (int itemId : loadout.equipIds()) {
+                knowledge.require(EntityKind.ITEM, itemId, where, out);
+            }
+            for (Content.ItemStack consumable : loadout.consumables()) {
+                knowledge.require(EntityKind.ITEM, consumable.itemId(), where, out);
+            }
+            for (List<Integer> pool : loadout.outfit().values()) {
+                for (int itemId : pool) {
+                    if (itemId != 0) {
+                        knowledge.require(EntityKind.ITEM, itemId, where, out);
+                    }
+                }
+            }
+            knowledge.gear(where, loadout.equipIds(), loadout.outfit(), holders.getOrDefault(loadout.id(), List.of()), out);
+        }
     }
 
     /**

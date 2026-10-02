@@ -1,5 +1,8 @@
 package server.living.population;
 
+import server.knowledge.EntityKind;
+import server.knowledge.KnowledgeLint;
+import server.living.config.Content;
 import server.living.config.ContentException;
 import server.living.config.ContentLoader;
 import server.living.config.LivingContent;
@@ -32,7 +35,8 @@ import java.util.stream.Stream;
 /**
  * Reads the population content directory: cohorts.yaml, careers.yaml, names.yaml, voices.yaml,
  * guild-names.yaml, regions.yaml, fields.yaml and chatter/*.yaml. Lint findings ride along as
- * warnings ({@code ERROR ...} lines fail {@code !citizens reload}).
+ * warnings ({@code ERROR ...} lines fail {@code !citizens reload}); with server knowledge
+ * ({@link KnowledgeLint#current()}) map and item ids, PQ lobbies, training fields and career gear are checked too.
  */
 public final class PopulationLoader {
     private static final Set<String> TRIGGERS = Set.of("enter", "dwell", "levelup.other", "levelup.self", "death.other",
@@ -108,6 +112,7 @@ public final class PopulationLoader {
     }
 
     static List<String> lint(PopulationContent content, LivingContent living) {
+        KnowledgeLint knowledge = KnowledgeLint.current();
         List<String> out = new ArrayList<>();
         int share = 0;
         for (Cohort cohort : content.cohorts().values()) {
@@ -122,13 +127,26 @@ public final class PopulationLoader {
         if (!content.cohorts().isEmpty() && share != 100) {
             out.add("WARN cohorts.yaml: shares sum to " + share + ", not 100");
         }
+        Map<String, List<KnowledgeLint.Holder>> holders = new LinkedHashMap<>();
         for (Career career : content.careers().values()) {
             if (server.living.resident.ResidentShaper.job(career.job()) == client.Job.BEGINNER && !"BEGINNER".equalsIgnoreCase(career.job())) {
                 out.add("ERROR careers.yaml " + career.id() + ": unknown job '" + career.job() + "'");
             }
+            int from = 1;
             for (LoadoutBand band : career.loadouts()) {
                 if (living != null && living.loadout(band.loadout()) == null) {
                     out.add("ERROR careers.yaml " + career.id() + ": loadout '" + band.loadout() + "' not in living-world loadouts.yaml");
+                }
+                holders.computeIfAbsent(band.loadout(), id -> new ArrayList<>())
+                        .add(new KnowledgeLint.Holder("career " + career.id(), from, band.maxLevel()));
+                from = band.maxLevel() + 1;
+            }
+        }
+        if (knowledge != null && living != null) {
+            for (Map.Entry<String, List<KnowledgeLint.Holder>> entry : holders.entrySet()) {
+                Content.Loadout loadout = living.loadout(entry.getKey());
+                if (loadout != null) {
+                    knowledge.gear("careers.yaml loadout " + loadout.id(), loadout.equipIds(), loadout.outfit(), entry.getValue(), out);
                 }
             }
         }
@@ -145,10 +163,38 @@ public final class PopulationLoader {
         for (Region region : content.regions().values()) {
             for (int town : region.towns()) {
                 Field field = content.field(town);
+                String label = knowledge == null ? String.valueOf(town) : knowledge.label(EntityKind.MAP, town);
                 if (field == null) {
-                    out.add("WARN regions.yaml " + region.id() + ": town map " + town + " not in fields.yaml");
+                    out.add("WARN regions.yaml " + region.id() + ": town map " + label + " not in fields.yaml");
                 } else if (!field.town()) {
-                    out.add("ERROR regions.yaml " + region.id() + ": map " + town + " is not a town");
+                    out.add("ERROR regions.yaml " + region.id() + ": map " + label + " is not a town");
+                }
+                if (knowledge != null) {
+                    knowledge.require(EntityKind.MAP, town, "regions.yaml " + region.id() + " town", out);
+                }
+            }
+            if (knowledge != null) {
+                knowledge.require(EntityKind.MAP, region.fm(), "regions.yaml " + region.id() + " fm", out);
+                for (Lobby lobby : region.lobbies()) {
+                    String where = "regions.yaml " + region.id() + " lobby " + lobby.id();
+                    if (knowledge.require(EntityKind.MAP, lobby.mapId(), where, out)) {
+                        knowledge.lobby(lobby.id(), lobby.mapId(), where, out);
+                    }
+                }
+            }
+        }
+        if (knowledge != null) {
+            for (Field field : content.fields().values()) {
+                // the TRAIN filter of FieldCatalog.trainingField: citizens are sent to train here
+                if (knowledge.require(EntityKind.MAP, field.mapId(), "fields.yaml", out) && !field.town() && field.capacity() > 0
+                        && field.mobLevel() > 0) {
+                    knowledge.trainingField(field.mapId(), "fields.yaml", out);
+                }
+            }
+            knowledge.require(EntityKind.ITEM, content.permitItemId(), "market.yaml permit", out);
+            for (PopulationContent.Good good : content.basket()) {
+                if (knowledge.require(EntityKind.ITEM, good.itemId(), "market.yaml basket", out)) {
+                    knowledge.obtainable(good.itemId(), "market.yaml basket", out);
                 }
             }
         }
@@ -169,6 +215,11 @@ public final class PopulationLoader {
             }
             if (intent.lines().isEmpty()) {
                 out.add("ERROR " + where + ": no lines");
+            }
+            if (knowledge != null) {
+                for (int mapId : intent.mapIds()) {
+                    knowledge.require(EntityKind.MAP, mapId, where, out);
+                }
             }
             for (String line : intent.lines()) {
                 for (char c : line.toCharArray()) {
@@ -280,7 +331,7 @@ public final class PopulationLoader {
         }
         return new Intent(node.get("id").string(), node.get("trigger").string("dwell"), node.get("where").string("any"),
                 node.get("mapIds").integers(), node.get("channel").string("map"), node.get("weight").integer(5),
-                node.get("cooldownMs").longValue(300_000L), node.get("lines").strings(), styles, file);
+                node.get("cooldownMs").longValue(300_000L), node.get("lines").strings(), styles, file, node.get("maxLevel").integer(0));
     }
 
     private static Map<String, Integer> intMap(Node node) {

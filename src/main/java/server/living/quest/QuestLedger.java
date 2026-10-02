@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
 import server.integration.AgentPresence;
+import server.knowledge.ContentChat;
 import server.living.LivingWorld;
 import server.living.config.Content.ItemStack;
 import server.living.config.Content.Persona;
@@ -649,15 +650,15 @@ public final class QuestLedger {
     public String describe(Step step, QuestState state) {
         switch (step.type()) {
             case TALK: return "talk to " + giverName(step);
-            case KILL_MOBS: case KILL_BOSS: return "defeat " + mobNames(step.mobIds()) + " " + state.progress() + "/" + step.count()
-                    + (step.with() != null ? " with " + personaName(step.with()) : "");
-            case HUNT_WITH: return "hunt " + mobNames(step.mobIds()) + " with " + personaName(step.persona()) + " "
+            case KILL_MOBS: case KILL_BOSS: return "defeat " + mobNames(step.mobIds()) + mobPlace(step.mobIds()) + " "
+                    + state.progress() + "/" + step.count() + (step.with() != null ? " with " + personaName(step.with()) : "");
+            case HUNT_WITH: return "hunt " + mobNames(step.mobIds()) + mobPlace(step.mobIds()) + " with " + personaName(step.persona()) + " "
                     + state.progress() + "/" + step.count();
             case COLLECT_ITEM: return "collect " + (step.label() != null ? step.label() : itemName(step.itemId())) + " "
                     + state.progress() + "/" + step.count();
             case DELIVER: return "bring " + (step.take() == null ? "word" : itemName(step.take().itemId()) + " x" + step.take().count())
                     + " to " + personaName(step.to());
-            case VISIT_MAP: return "go to map " + step.mapIds().get(0);
+            case VISIT_MAP: return "go to " + mapName(step.mapIds().get(0));
             case TALK_TO: return "talk to " + personaName(step.persona());
             case HEAR_RUMOR: return "learn what the townsfolk say";
             case ESCORT: return "escort " + personaName(step.persona());
@@ -679,7 +680,13 @@ public final class QuestLedger {
             return "?";
         }
         if (personaId.startsWith("npc:")) {
-            return "NPC " + personaId.substring(4);
+            String npc = null;
+            try {
+                npc = places() ? ContentChat.npcPlace(Integer.parseInt(personaId.substring(4))) : null; // "Athena Pierce in Henesys"
+            } catch (NumberFormatException ignored) {
+                // a malformed id keeps the raw form
+            }
+            return npc == null ? "NPC " + personaId.substring(4) : npc;
         }
         Persona persona = world.content().persona(personaId);
         return persona == null ? personaId : persona.name();
@@ -698,6 +705,23 @@ public final class QuestLedger {
                 : server.life.LifeFactory.getMonster(mobIds.get(0)).getName();
         String first = name == null ? "monsters" : name;
         return mobIds.size() > 1 ? first + " and others" : first;
+    }
+
+    /** " (Tree Dungeon, near Ellinia)": where the first mob is met, from server knowledge; "" when unknown. */
+    private static String mobPlace(List<Integer> mobIds) {
+        String place = mobIds.isEmpty() || !places() ? null : ContentChat.mobPlace(mobIds.get(0));
+        return place == null ? "" : " (" + place + ")";
+    }
+
+    /** "Pig Beach, near Lith Harbor"; "map <id>" until server knowledge is loaded. */
+    private static String mapName(int mapId) {
+        String place = places() ? ContentChat.mapPlace(mapId) : null;
+        return place == null ? "map " + mapId : place;
+    }
+
+    /** Quest text names places only while knowledge is on for residents (config.yaml knowledge.RESIDENTS). */
+    private static boolean places() {
+        return ContentChat.shared().on(ContentChat.Host.RESIDENTS);
     }
 
     private static boolean sameParty(Character owner, Character agent) {

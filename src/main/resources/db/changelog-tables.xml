@@ -587,4 +587,14 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="45-living-knowledge" author="ganre">
+        <!-- Personal knowledge (step 4): living_known_world, what each bot has lived and heard, written behind every
+             five minutes. Ships behind knowledge.PERSONAL. Id 45 / file 036 come after 44-pq-run-pace / 035, which the
+             live branch feat/companion-manager holds: at the merge 45 goes after 44. See docs/SERVER_KNOWLEDGE_PLAN.md 7.6. -->
+        <sqlFile path="db/tables/036-living-knowledge.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/036-living-knowledge-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

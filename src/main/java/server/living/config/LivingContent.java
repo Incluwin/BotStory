@@ -41,6 +41,8 @@ public final class LivingContent {
     private final Map<String, Integer> questLogIds;
     /** persona id -> NPC id showing that Resident's own look (Npc.wz/String.wz), from portrait-npc-ids.yaml. */
     private final Map<String, Integer> portraitNpcIds;
+    /** persona id -> its {@code knows:} names (plan 7.7), in file order; personas without one are absent. */
+    private final Map<String, List<String>> personaKnows;
     private final List<String> warnings;
 
     LivingContent(Map<String, Persona> personas,
@@ -52,6 +54,20 @@ public final class LivingContent {
                   List<Phrase> phrases,
                   Map<String, Integer> questLogIds,
                   Map<String, Integer> portraitNpcIds,
+                  List<String> warnings) {
+        this(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, portraitNpcIds, Map.of(), warnings);
+    }
+
+    LivingContent(Map<String, Persona> personas,
+                  Map<String, Quest> quests,
+                  Map<String, Contract> contracts,
+                  Map<String, Arc> arcs,
+                  Map<String, Rumor> rumors,
+                  Map<String, Loadout> loadouts,
+                  List<Phrase> phrases,
+                  Map<String, Integer> questLogIds,
+                  Map<String, Integer> portraitNpcIds,
+                  Map<String, List<String>> personaKnows,
                   List<String> warnings) {
         this.personas = Collections.unmodifiableMap(new LinkedHashMap<>(personas));
         Map<String, Persona> byName = new LinkedHashMap<>();
@@ -67,6 +83,9 @@ public final class LivingContent {
         this.phrases = List.copyOf(phrases);
         this.questLogIds = Collections.unmodifiableMap(new LinkedHashMap<>(questLogIds));
         this.portraitNpcIds = Collections.unmodifiableMap(new LinkedHashMap<>(portraitNpcIds));
+        Map<String, List<String>> knows = new LinkedHashMap<>();
+        personaKnows.forEach((id, names) -> knows.put(id, List.copyOf(names)));
+        this.personaKnows = Collections.unmodifiableMap(knows);
         this.warnings = List.copyOf(warnings);
     }
 
@@ -96,6 +115,12 @@ public final class LivingContent {
 
     public Map<String, Persona> personas() {
         return personas;
+    }
+
+    /** A persona's {@code knows:} names ("prices", "free market", "ellinia"), in file order; empty when it has none. */
+    public List<String> knows(String personaId) {
+        List<String> names = personaId == null ? null : personaKnows.get(personaId);
+        return names == null ? List.of() : names;
     }
 
     /** An authored persona by id, or a hired citizen's synthetic one through the installed resolver (null without one). */

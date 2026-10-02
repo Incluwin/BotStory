@@ -202,6 +202,7 @@
       - { from: 20, to: 24, activity: STROLL }
       - { from: 0, to: 6, materialize: false }
   recruitable: false
+  knows: [prices, free market]
   questLines: [tavi-market-delivery, tavi-octopus-order]
   dialogue:
     greetFirst: ["coming through! oh, hi. need something carried?"]

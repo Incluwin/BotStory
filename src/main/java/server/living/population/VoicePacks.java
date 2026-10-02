@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * How a citizen types (plan 5.3): a deterministic transform (abbreviations, lowercase, typos,
@@ -18,6 +19,10 @@ public final class VoicePacks {
     private static final Voice DEFAULT = new Voice("default", "friendly-casual-v1", 100, 0.8d, 0.02d, 0.4d,
             Map.of("you", "u", "please", "pls", "thanks", "ty"), List.of("lol", ":)"), 0.2d, List.of(), 0.0d, 50, 0.15d);
     private static final int MIN_TYPO_WORD = 4;
+    /** A content answer is typed this many times slower per character than ambient chatter (people look things up). */
+    private static final int ANSWER_TYPING_FACTOR = 3;
+    /** Pet phrases that misread on an answer: "k" after a price reads as thousand, "np" needs a thanks. */
+    private static final Set<String> ANSWER_UNSAFE_PETS = Set.of("k", "np");
 
     private final Population population;
 
@@ -50,6 +55,34 @@ public final class VoicePacks {
 
     public String render(Citizen citizen, String line, long seed) {
         return renderWith(voiceOf(citizen), line, seed ^ (citizen == null ? 0 : citizen.characterId()));
+    }
+
+    /** Typing speed for a content answer, in ms per character. */
+    public int answerMsPerChar(Citizen citizen) {
+        return voiceOf(citizen).delayMsPerChar() * ANSWER_TYPING_FACTOR;
+    }
+
+    /**
+     * The voice on a content answer (docs/SERVER_KNOWLEDGE_PLAN.md 6.2): its abbreviations, case and emoticons, but
+     * no typos (a misspelt map or a garbled price is a wrong answer), and no pet phrase on a line with a number or,
+     * unless it answers a thanks, "k" / "np".
+     */
+    public String renderAnswer(Citizen citizen, String line, long seed, boolean thanks) {
+        return renderAnswerWith(voiceOf(citizen), line, seed ^ (citizen == null ? 0 : citizen.characterId()), thanks);
+    }
+
+    static String renderAnswerWith(Voice voice, String line, long seed, boolean thanks) {
+        List<String> pets = new ArrayList<>();
+        for (String phrase : voice.petPhrases()) {
+            if (thanks || !ANSWER_UNSAFE_PETS.contains(phrase)) {
+                pets.add(phrase);
+            }
+        }
+        boolean number = line != null && line.chars().anyMatch(java.lang.Character::isDigit);
+        Voice answering = new Voice(voice.id(), voice.style(), voice.share(), voice.lowercase(), 0d, voice.abbreviationRate(),
+                voice.abbreviations(), voice.emoticons(), voice.emoticonRate(), pets, number ? 0d : voice.petPhraseRate(),
+                voice.delayMsPerChar(), voice.ignoreRate());
+        return renderWith(answering, line, seed);
     }
 
     /** The transform itself, exposed for tests and previews. */

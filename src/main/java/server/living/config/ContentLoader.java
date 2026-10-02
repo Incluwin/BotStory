@@ -73,11 +73,16 @@ public final class ContentLoader {
         List<Phrase> phrases = new ArrayList<>();
         Map<String, Integer> questLogIds = new LinkedHashMap<>();
         Map<String, Integer> portraitNpcIds = new LinkedHashMap<>();
+        Map<String, List<String>> personaKnows = new LinkedHashMap<>();
         List<String> warnings = new ArrayList<>();
 
         for (Node node : documents(root.resolve("personas"))) {
             Persona persona = persona(node);
             putUnique(personas, persona.id(), persona, node);
+            List<String> knows = node.get("knows").strings();
+            if (!knows.isEmpty()) {
+                personaKnows.put(persona.id(), knows);
+            }
         }
         for (Node node : documents(root.resolve("quests"))) {
             Quest quest = quest(node);
@@ -122,10 +127,10 @@ public final class ContentLoader {
             }
         }
         LivingContent content = new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds,
-                portraitNpcIds, warnings);
+                portraitNpcIds, personaKnows, warnings);
         warnings.addAll(ContentLint.check(content));
         return new LivingContent(personas, quests, contracts, arcs, rumors, loadouts, phrases, questLogIds, portraitNpcIds,
-                warnings);
+                personaKnows, warnings);
     }
 
     public static final String QUEST_LOG_IDS_FILE = "quest-log-ids.yaml";

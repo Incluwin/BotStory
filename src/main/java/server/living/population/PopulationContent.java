@@ -91,9 +91,9 @@ public final class PopulationContent {
     /** A market-basket entry: an item citizens trade and its seed price. */
     public record Good(int itemId, long price) { }
 
-    /** A chatter template group: when it fires, where, on which channel, with what lines. */
+    /** A chatter template group: when it fires, where, on which channel, with what lines; {@code maxLevel} 0 for any level. */
     public record Intent(String id, String trigger, String where, List<Integer> mapIds, String channel, int weight,
-                         long cooldownMs, List<String> lines, Map<String, List<String>> styles, String file) {
+                         long cooldownMs, List<String> lines, Map<String, List<String>> styles, String file, int maxLevel) {
         public List<String> linesFor(String style) {
             List<String> styled = style == null ? null : styles.get(style);
             return styled == null || styled.isEmpty() ? lines : styled;

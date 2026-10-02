@@ -31,6 +31,10 @@ import server.agents.runtime.AgentRuntimeCleanupService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
+import server.knowledge.Decisions;
+import server.knowledge.EntityKind;
+import server.knowledge.FarmSites;
+import server.knowledge.WorldKnowledge;
 import server.living.LivingWorld;
 import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
@@ -576,6 +580,87 @@ public final class RosterService {
         return 0;
     }
 
+    /** Where FARM_ITEM farms (docs/SERVER_KNOWLEDGE_PLAN.md 8.3): a map plus what it says about it, or a refusal in its words. */
+    private record FarmPick(int mapId, String said, RosterResult.Failed refusal) { }
+
+    /**
+     * FARM_ITEM's field for {@code itemId}: {@code preferred} when a monster there drops it for a companion of its level;
+     * otherwise (or never, when {@code here}) the nearest such field from {@code anchor} (an open field by the knowledge
+     * file, so no map is loaded for the choice) that roughCampFor does not rule out. An item any monster drops keeps
+     * {@code preferred}. Null when knowledge is off (today's rules).
+     */
+    private FarmPick farmPick(Persona persona, int itemId, int preferred, int anchor, boolean here) {
+        WorldKnowledge k = Decisions.active();
+        if (k == null) {
+            return null;
+        }
+        int characterId = world.residents().characterIdOf(persona.id());
+        FarmSites.Plan plan = FarmSites.plan(k, itemId, farmLevel(persona, characterId), anchor, false);
+        if (plan.verdict() == FarmSites.Verdict.ANY_MONSTER) {
+            return new FarmPick(preferred, null, null);
+        }
+        if (plan.verdict() == FarmSites.Verdict.FARM) {
+            for (FarmSites.Site site : plan.sites()) {
+                if (site.mapId() == preferred) {
+                    return new FarmPick(preferred, null, null);
+                }
+            }
+            for (FarmSites.Site site : plan.sites().subList(0, here ? 0 : Math.min(FARM_SITES_TRIED, plan.sites().size()))) {
+                if (!roughCampFor(characterId, site.mapId())) {
+                    return new FarmPick(site.mapId(), site.mobs() + " drop those at " + site.place(), null);
+                }
+            }
+        }
+        return new FarmPick(preferred, null, new RosterResult.Failed(persona.name() + ": " + refusal(plan, here)));
+    }
+
+    /** The character's level, else the persona band's min (as fieldCampFor). */
+    private int farmLevel(Persona persona, int characterId) {
+        int[] read = world.store().characterLevelAndJob(characterId);
+        int level = read != null && read.length >= 1 ? read[0] : 0;
+        return level <= 0 && persona.level() != null ? persona.level().min() : level;
+    }
+
+    /** Why it cannot farm what {@code plan} is about, in its words (docs/SERVER_KNOWLEDGE_PLAN.md 8.3). */
+    private static String refusal(FarmSites.Plan plan, boolean here) {
+        String mobs = plan.mobs() == null ? "some monsters" : plan.mobs();
+        return switch (plan.verdict()) {
+            case ANY_MONSTER, FARM -> here && !plan.sites().isEmpty()
+                    ? "nothing here drops those. " + plan.sites().get(0).mobs() + " at " + plan.sites().get(0).place() + " do."
+                    : "those drop from " + mobs + ", but i can't get to them.";
+            case CASH -> "that's cash shop stuff, nothing drops it.";
+            case SHOP_ONLY -> "nothing drops those. " + plan.npc() + " sells them.";
+            case NO_SOURCE -> "nothing drops those that i know of.";
+            case SCRIPT_ONLY -> plan.mobs() == null || plan.npc() == null ? "only some event monsters drop those. can't farm that."
+                    : "only the " + mobs + " drop those, " + plan.npc() + " calls em up. can't farm that.";
+            case QUEST_ONLY -> "those only drop from " + mobs + " while you're on the quest.";
+            case PQ_ONLY -> "those only drop inside " + plan.npc() + ". run it with me?";
+            case TOO_STRONG -> "those only drop from " + mobs + ". way too strong for me.";
+            case BOSS_ONLY -> "those only drop from " + mobs + ", and that's a boss hunt, not a farm.";
+        };
+    }
+
+    /**
+     * GATHER (8.3): the first item its owner's quests still need that nothing it could farm drops, as " {name}: {item}?
+     * {why}" for the Ok line; "" when it can get them all or knowledge is off. The ledger credits nothing for those.
+     */
+    private String gatherWarning(Persona persona, RosterEntry entry, int camp) {
+        WorldKnowledge k = Decisions.active();
+        if (k == null || world.bench() == null) {
+            return "";
+        }
+        int level = farmLevel(persona, world.residents().characterIdOf(persona.id()));
+        for (int itemId : world.bench().gatherNeeds(entry, persona)) {
+            if (FarmSites.creditSource(k, itemId, level, camp, true) == null) {
+                return " " + persona.name() + ": " + k.names().say(EntityKind.ITEM, itemId) + "? "
+                        + refusal(FarmSites.plan(k, itemId, level, camp, true), false);
+            }
+        }
+        return "";
+    }
+
+    /** FARM_ITEM tries at most this many of the nearest fields (each one a roughCampFor check). */
+    static final int FARM_SITES_TRIED = 3;
     /** How many of the best fitting fields a default camp is chosen among. */
     static final int CAMP_CANDIDATES = 5;
     /** A camp measured at this many deaths an hour or more (shrunk toward none) is passed over for a default camp. */
@@ -1708,15 +1793,29 @@ public final class RosterService {
         if (assignment == Assignment.FARM_ITEM && world.quests().isOwnQuestTarget(owner, persona, itemId)) {
             return refuseOwnErrand(persona);
         }
+        int camp = entry.campMapId();
+        if (assignment == Assignment.FARM_ITEM) { // it camps where the item drops, or says why it can't
+            FarmPick pick = farmPick(persona, itemId, camp, camp != 0 ? camp
+                    : server.living.resident.ResidentSpots.townMapId(persona.homeTown()), false);
+            if (pick != null && pick.refusal() != null) {
+                return pick.refusal();
+            }
+            camp = pick == null ? camp : pick.mapId();
+        }
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
-                itemId, count, entry.campMapId(), entry.accruedExp(), entry.haulMeso(), entry.wagesPaidUntilMs(),
+                itemId, count, camp, entry.accruedExp(), entry.haulMeso(), entry.wagesPaidUntilMs(),
                 entry.recruitedAtMs(), entry.benchedAtMs(), entry.lastLedgerAtMs(), entry.farmSecondsToday(), entry.farmDay(),
                 entry.etaAtMs(), entry.holdMapId(), entry.parkedAtMs());
         write(updated);
+        if (camp != entry.campMapId()) { // as moveCamp: its record at the new camp starts again
+            world.store().event(owner.getId(), persona.id(), CAMP_EVENT, "camp " + camp + " (farm " + itemId + ")");
+        }
         endYourCall(owner.getId(), persona.id());
         world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated));
         return new RosterResult.Ok(persona.name() + " will " + describeAssignment(updated)
-                + (entry.state() == RosterState.ACTIVE ? " once benched." : "."));
+                + (camp != entry.campMapId() ? " at " + CompanionView.placeName(camp) : "")
+                + (entry.state() == RosterState.ACTIVE ? " once benched." : ".")
+                + (assignment == Assignment.GATHER ? gatherWarning(persona, updated, camp) : ""));
     }
 
     private RosterResult refuseOwnErrand(Persona persona) {
@@ -1742,6 +1841,18 @@ public final class RosterService {
             return refuseOwnErrand(persona);
         }
         int workMap = mapId != 0 ? mapId : entry.campMapId() != 0 ? entry.campMapId() : server.living.resident.ResidentSpots.townMapId(persona.homeTown());
+        String movedLine = null;
+        if (assignment == Assignment.FARM_ITEM) { // out with its owner it looks from where they stand, else from its work map
+            FarmPick pick = farmPick(persona, itemId, workMap, mapId != 0 ? mapId
+                    : entry.state() == RosterState.ACTIVE ? owner.getMapId() : workMap, mapId != 0);
+            if (pick != null && pick.refusal() != null) {
+                return pick.refusal();
+            }
+            if (pick != null && pick.mapId() != workMap) {
+                workMap = pick.mapId();
+                movedLine = pick.said() + ". heading there.";
+            }
+        }
         boolean fighting = assignment == Assignment.TRAIN || assignment == Assignment.FARM_MESO
                 || assignment == Assignment.FARM_ITEM || assignment == Assignment.GATHER;
         RosterEntry updated = new RosterEntry(entry.characterId(), entry.personaId(), entry.state(), assignment,
@@ -1754,20 +1865,22 @@ public final class RosterService {
                     + describeAssignment(updated) + " here'.");
         }
         endYourCall(owner.getId(), persona.id());
+        String warning = assignment == Assignment.GATHER ? gatherWarning(persona, updated, workMap) : "";
         if (entry.state() != RosterState.ACTIVE) {
             write(updated);
             world.store().event(owner.getId(), persona.id(), "roster.assign", describeAssignment(updated) + " at map " + workMap);
-            return new RosterResult.Ok(persona.name() + " will " + describeAssignment(updated) + " at map " + workMap + ".");
+            return new RosterResult.Ok(persona.name() + " will " + describeAssignment(updated) + " at map " + workMap + "." + warning);
         }
         List<String> lines = world.arcs().lines(persona, "delegate");
-        world.residents().reply(persona, owner, lines.isEmpty() ? "on it. call me when you want me back." : lines.get(Math.floorMod(owner.getId(), lines.size())));
+        world.residents().reply(persona, owner, movedLine != null ? movedLine
+                : lines.isEmpty() ? "on it. call me when you want me back." : lines.get(Math.floorMod(owner.getId(), lines.size())));
         keepAwaySeat(owner.getId(), persona.id()); // before it leaves the party, so its seat is never up for grabs
         walkOut(owner, entry); // it walks out to the portal (off its owner's map it goes at once)
         RosterEntry away = updated.with(RosterState.AWAY, System.currentTimeMillis());
         write(away);
         world.store().event(owner.getId(), persona.id(), "roster.delegate", describeAssignment(away) + " at map " + workMap);
         return new RosterResult.Ok(persona.name() + " leaves to " + describeAssignment(away) + (mapId != 0 ? " here" : " at map " + workMap)
-                + ", keeping the party slot. Say '" + persona.name().toLowerCase(Locale.ROOT) + " come back' to recall.");
+                + ", keeping the party slot. Say '" + persona.name().toLowerCase(Locale.ROOT) + " come back' to recall." + warning);
     }
 
     public String describeAssignment(RosterEntry entry) {

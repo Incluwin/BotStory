@@ -8,6 +8,8 @@ import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.TimerManager;
+import server.knowledge.ContentAnswers;
+import server.knowledge.ContentChat;
 import server.living.LivingWorld;
 import server.living.config.ContentException;
 import server.maps.MapleMap;
@@ -115,6 +117,14 @@ public final class Population {
         }
         population.social.installSeams();
         population.conversation.installSeams();
+        ContentAnswers.installPrices(itemId -> {
+            Population current = instance;
+            return current == null ? null : current.market.known(itemId); // read-only: never seeds or saves
+        });
+        ContentChat.installCitizens(characterId -> {
+            Population current = instance;
+            return current != null && current.isCitizen(characterId);
+        });
         TimerManager timers = TimerManager.getInstance();
         population.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, population.presence::sweep,
                 15_000L, config.SWEEP_MS));

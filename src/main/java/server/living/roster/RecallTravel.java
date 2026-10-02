@@ -1,5 +1,8 @@
 package server.living.roster;
 
+import server.knowledge.Decisions;
+import server.knowledge.WorldKnowledge;
+
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.HashMap;
@@ -10,7 +13,9 @@ import java.util.Set;
 
 /**
  * How long a benched companion takes to reach its owner (plan 11.3): a coarse Victoria Island
- * region graph keyed by the map id's first three digits, one hop per road between towns.
+ * region graph keyed by the map id's first three digits, one hop per road between towns. Off those
+ * roads, server knowledge gives a trip that needs no ride (Ossyria on foot) its town hops
+ * (docs/SERVER_KNOWLEDGE_PLAN.md 8.6); any other trip is the off-island time.
  */
 public final class RecallTravel {
     private static final long BASE_MS = 20_000L;
@@ -49,25 +54,42 @@ public final class RecallTravel {
         int from = region(fromMapId);
         int to = region(toMapId);
         if (!ROADS.containsKey(from) || !ROADS.containsKey(to)) {
-            return OFF_ISLAND_MS;
+            return offRoads(fromMapId, toMapId);
         }
         int hops = hops(from, to);
         if (hops < 0) {
-            return OFF_ISLAND_MS;
+            return offRoads(fromMapId, toMapId);
         }
         return BASE_MS + PER_HOP_MS * hops + (isTown(toMapId) ? 0L : FIELD_EXTRA_MS);
     }
 
     /**
-     * Decision 7: the road estimate capped at {@code sameContinentCapMs} while both maps are on the island's road graph;
-     * an off-island trip keeps its full time.
+     * Decision 7: the road estimate capped at {@code sameContinentCapMs} while both maps are on the island's road graph
+     * or a walk apart by server knowledge; an off-island trip keeps its full time.
      */
     public static long etaMs(int fromMapId, int toMapId, long sameContinentCapMs) {
         long eta = etaMs(fromMapId, toMapId);
+        return walkable(fromMapId, toMapId) ? Math.min(eta, Math.max(0L, sameContinentCapMs)) : eta;
+    }
+
+    /** On the island's road graph (checked first, so Victoria is as before), or a trip server knowledge says needs no ride. */
+    private static boolean walkable(int fromMapId, int toMapId) {
         int from = region(fromMapId);
         int to = region(toMapId);
-        boolean onIsland = ROADS.containsKey(from) && ROADS.containsKey(to) && hops(from, to) >= 0;
-        return onIsland ? Math.min(eta, Math.max(0L, sameContinentCapMs)) : eta;
+        if (ROADS.containsKey(from) && ROADS.containsKey(to) && hops(from, to) >= 0) {
+            return true;
+        }
+        WorldKnowledge k = Decisions.active();
+        return k != null && k.rides(fromMapId, toMapId) == 0;
+    }
+
+    /** Off the Victoria roads: the knowledge route's town hops when it needs no ride (Ossyria on foot), else the off-island time. */
+    private static long offRoads(int fromMapId, int toMapId) {
+        WorldKnowledge k = Decisions.active();
+        if (k == null || k.rides(fromMapId, toMapId) != 0) {
+            return OFF_ISLAND_MS;
+        }
+        return BASE_MS + PER_HOP_MS * (k.route(fromMapId, toMapId).size() - 1) + (isTown(toMapId) ? 0L : FIELD_EXTRA_MS);
     }
 
     static int hops(int from, int to) {

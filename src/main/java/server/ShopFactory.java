@@ -67,5 +67,6 @@ public class ShopFactory {
     public void reloadShops() {
         shops.clear();
         npcShops.clear();
+        server.knowledge.KnowledgeLoader.requestOverlayRebuild();
     }
 }

@@ -178,6 +178,7 @@
       - { from: 18, to: 24, spot: "venue:central-benches", activity: SOCIALIZE }
       - { from: 0, to: 8, materialize: false }
   recruitable: false
+  knows: [ellinia, perion, kerning city, sleepywood, lith harbor, nautilus]
   questLines: [sable-three-roads, sable-hill-survey]
   dialogue:
     greetFirst: ["you walk like someone who gets lost. good. i can use that."]

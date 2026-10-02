@@ -11,7 +11,11 @@ It does not modify or wire into runtime code.
 powershell -ExecutionPolicy Bypass -File tools\game-catalog\Export-GameKnowledgeCatalog.ps1
 ```
 
-The export parses WZ XML and SQL seed files. It can take a few minutes.
+The export parses WZ XML and the Liquibase seed data. It can take a few minutes.
+Drops, global drops and shops come from a replay of the Liquibase changelogs
+(`server.knowledge.export.SeedDataMain`, so changesets such as the KPQ coupon
+80% are applied), which needs `target\Cosmic.jar` (`mvnw.cmd package -DskipTests`);
+pass `-SeedDataPath <seed-data.json>` to reuse a replay.
 
 Machine-readable compact export summary:
 
@@ -83,6 +87,7 @@ Generated files are written to `tmp/game-catalog/`:
 - `generated_map_catalog.json`
 - `generated_mob_catalog.json`
 - `generated_drop_catalog.json`
+- `generated_global_drop_catalog.json`
 - `generated_item_catalog.json`
 - `generated_shop_catalog.json`
 - `generated_quest_catalog.json`
@@ -102,9 +107,7 @@ not need to parse display text to make gameplay decisions.
 - `wz/String.wz`
 - `wz/Quest.wz/Check.img.xml`
 - `wz/Quest.wz/Act.img.xml`
-- `src/main/resources/db/data/101-shops-data.sql`
-- `src/main/resources/db/data/102-shopitems-data.sql`
-- `src/main/resources/db/data/152-drop-data.sql`
+- `src/main/resources/db` (Liquibase replay: `drop_data`, `drop_data_global`, `shops`, `shopitems`)
 
 ## Relationship To NPC Catalog
 

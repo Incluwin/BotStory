@@ -38,6 +38,7 @@ public final class AgentChatIntentRuntime {
     private static volatile AgentChatIntentJudge judge;
     private static volatile Prejudge prejudge;
     private static volatile Learner learner;
+    private static volatile ContentGate contentGate;
 
     private AgentChatIntentRuntime() {
     }
@@ -76,6 +77,20 @@ public final class AgentChatIntentRuntime {
 
     public static void installLearner(Learner replacement) {
         learner = replacement;
+    }
+
+    /**
+     * Lines a host answers from its own knowledge (server knowledge: "who drops steelies", or the owner's reply to the
+     * agent's own ask-back "blue or red snail?"). Consulted after pending asks and the prejudge, so phrase packs still
+     * resolve first; true skips the judge and leaves the line to the social reply, saving one Jev call per companion.
+     */
+    @FunctionalInterface
+    public interface ContentGate {
+        boolean answers(Character agent, Character speaker, String message);
+    }
+
+    public static void installContentGate(ContentGate replacement) {
+        contentGate = replacement;
     }
 
     public static JevJudgmentMode mode() {
@@ -134,6 +149,10 @@ public final class AgentChatIntentRuntime {
                 return redispatch.handle(entry, canonical, channel)
                         .thenApply(handled -> actHandled(canonical, handled));
             }
+        }
+        ContentGate content = contentGate;
+        if (content != null && content.answers(entry.bot(), entry.owner(), message)) {
+            return CompletableFuture.completedFuture(false);
         }
         if (!mode.asks()) {
             return CompletableFuture.completedFuture(false);

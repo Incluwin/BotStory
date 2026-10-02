@@ -261,6 +261,7 @@ public final class LivingWorld {
         log.info("Living world started: {} (world {} channel {}, content {})", content.census(), config.WORLD,
                 config.CHANNEL, Path.of(config.CONTENT_DIR).toAbsolutePath());
         server.living.population.Population.start(world);
+        server.knowledge.PersonalKnowledge.shared().start(); // bots' known worlds: recorded from here, written behind (plan 7.4)
         // the roster's hire rows are the truth for the citizens' hired flags: checked once the population is up (P4)
         world.executor.submit("hire.reconcile", world.hiredHands::reconcileFlags);
     }
@@ -281,6 +282,7 @@ public final class LivingWorld {
         server.living.roster.CompanionSettingsApplier.uninstall();
         HiredHands.uninstall();
         server.living.population.Population.stop();
+        server.knowledge.PersonalKnowledge.shared().stop(); // the citizens logged out: their worlds are written now, DB still up
         for (ScheduledFuture<?> timer : world.timers) {
             timer.cancel(false);
         }

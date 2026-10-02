@@ -106,5 +106,6 @@ public class PmobRemoveCommand extends Command {
         }
 
         player.yellowMessage("Cleared " + toRemove.size() + " pmob placements.");
+        server.knowledge.KnowledgeLoader.requestOverlayRebuild();
     }
 }

@@ -62,6 +62,7 @@
       - { from: 12, to: 24, spot: "venue:west-shop-front", activity: LINGER }
       - { from: 0, to: 12, materialize: false }
   recruitable: false
+  knows: [prices]
   questLines: [lorca-a-fair-price, lorca-what-the-sewer-keeps]
   arc: lorca-the-ledger-under-the-floor
   rumors: [kerning-back-room-deal]

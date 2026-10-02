@@ -1,5 +1,7 @@
 package server.agents.social.contracts;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /** Safe immutable Agent context; no Cosmic or mutable runtime objects may cross this boundary. */
@@ -26,7 +28,8 @@ public record DialogueContextSnapshot(
         profileKey = profileKey.trim();
         activitySummary = activitySummary.trim();
         relationshipSummary = relationshipSummary.trim();
-        publicFacts = publicFacts == null ? Map.of() : Map.copyOf(publicFacts);
+        // insertion order is the prompt order (grounding providers sort what matters first)
+        publicFacts = publicFacts == null ? Map.of() : Collections.unmodifiableMap(new LinkedHashMap<>(publicFacts));
         if (publicFacts.size() > MAX_PUBLIC_FACTS
                 || publicFacts.entrySet().stream().anyMatch(entry -> invalidFact(entry.getKey(), entry.getValue()))) {
             throw new IllegalArgumentException("Public dialogue facts must be bounded and non-blank");

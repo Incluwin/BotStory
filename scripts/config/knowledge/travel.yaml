@@ -1,0 +1,90 @@
+# NPC travel the portal graph cannot see: ships, planes, the subway, cranes, elevators and taxis.
+# Each leg: board at `from` (the map where `npc` stands) and arrive at `to`. Ids are checked against
+# server-knowledge.json at load; a leg naming an unknown map or NPC is dropped with a warning.
+# kind: ship / plane / subway / crane / dolphin / elevator / boat / guide / world-tour / taxi. Routes (WorldKnowledge.route)
+# use every kind except taxi, which is a shortcut, not the way; taxis are listed for answers and for travel.
+# A guide or elevator hop counts like walking through one map; every other ride like walking ten.
+# cost: the fare in mesos from the NPC or ticket script (0 = free or ticket only). Sources: scripts/npc/*.js,
+# cross-checked with tmp/agent-llm-catalog/generated_travel_service_catalog.json.
+legs:
+  # Orbis Station: Isa sends you to each platform (the entrance has no portal to them)
+  - { from: 200000100, to: 200000110, npc: 2012006, kind: guide, cost: 0, note: "platform to Ellinia" }
+  - { from: 200000100, to: 200000120, npc: 2012006, kind: guide, cost: 0, note: "platform to Ludibrium" }
+  - { from: 200000100, to: 200000130, npc: 2012006, kind: guide, cost: 0, note: "platform to Leafre" }
+  - { from: 200000100, to: 200000140, npc: 2012006, kind: guide, cost: 0, note: "platform to Mu Lung" }
+  - { from: 200000100, to: 200000150, npc: 2012006, kind: guide, cost: 0, note: "platform to Ariant" }
+  - { from: 200000100, to: 200000160, npc: 2012006, kind: guide, cost: 0, note: "platform to Ereve" }
+  # Victoria <-> Orbis (tickets: Joel 1032007 at Ellinia station, Agatha 2012000 at Orbis station)
+  - { from: 101000300, to: 200000100, npc: 1032008, kind: ship, cost: 5000, note: "Ellinia Station -> Orbis" }
+  - { from: 200000111, to: 101000300, npc: 2012001, kind: ship, cost: 5000, note: "Orbis -> Ellinia Station" }
+  # Orbis <-> Ludibrium (tickets: Agatha, Mel 2040000)
+  - { from: 200000121, to: 220000100, npc: 2012013, kind: ship, cost: 6000, note: "Orbis -> Ludibrium" }
+  - { from: 220000110, to: 200000100, npc: 2041000, kind: ship, cost: 6000, note: "Ludibrium -> Orbis" }
+  # Orbis <-> Leafre (tickets: Agatha, Mue 2082000)
+  - { from: 200000131, to: 240000100, npc: 2012021, kind: ship, cost: 30000, note: "Orbis -> Leafre" }
+  - { from: 240000110, to: 200000100, npc: 2082001, kind: ship, cost: 30000, note: "Leafre -> Orbis" }
+  # Orbis <-> Ariant (tickets: Agatha, Syras 2102002)
+  - { from: 200000151, to: 260000100, npc: 2012025, kind: ship, cost: 6000, note: "Orbis -> Ariant" }
+  - { from: 260000100, to: 200000100, npc: 2102000, kind: ship, cost: 6000, note: "Ariant -> Orbis" }
+  # Orbis <-> Mu Lung <-> Herb Town (Hak the crane)
+  - { from: 200000141, to: 250000100, npc: 2090005, kind: crane, cost: 1500, note: "Orbis -> Mu Lung" }
+  - { from: 250000100, to: 200000141, npc: 2090005, kind: crane, cost: 1500, note: "Mu Lung -> Orbis" }
+  - { from: 250000100, to: 251000000, npc: 2090005, kind: crane, cost: 500, note: "Mu Lung -> Herb Town" }
+  - { from: 251000000, to: 250000100, npc: 2090005, kind: crane, cost: 500, note: "Herb Town -> Mu Lung" }
+  # Aquarium <-> Herb Town (the dolphin)
+  - { from: 230000000, to: 251000100, npc: 2060009, kind: dolphin, cost: 10000, note: "Aquarium -> Herb Town" }
+  - { from: 251000100, to: 230000000, npc: 2060009, kind: dolphin, cost: 10000, note: "Herb Town -> Aquarium" }
+  # Ludibrium <-> Korean Folk Town (Helios Tower elevator)
+  - { from: 222020200, to: 222020100, npc: 0, kind: elevator, cost: 0, note: "Helios Tower 99th -> 2nd floor (Korean Folk Town side)" }
+  - { from: 222020100, to: 222020200, npc: 0, kind: elevator, cost: 0, note: "Helios Tower 2nd -> 99th floor (Ludibrium side)" }
+  # Ereve (Kiriru from Ellinia, Kiru from Orbis)
+  - { from: 101000400, to: 130000210, npc: 1100007, kind: boat, cost: 1000, note: "Ellinia -> Ereve" }
+  - { from: 130000210, to: 101000400, npc: 1100003, kind: boat, cost: 1000, note: "Ereve -> Ellinia" }
+  - { from: 200000161, to: 130000210, npc: 1100008, kind: boat, cost: 1000, note: "Orbis -> Ereve" }
+  - { from: 130000210, to: 200000161, npc: 1100004, kind: boat, cost: 1000, note: "Ereve -> Orbis" }
+  # Rien (Puro at Lith Harbor)
+  - { from: 104000000, to: 140020300, npc: 1200004, kind: boat, cost: 800, note: "Lith Harbor -> Rien" }
+  - { from: 140020300, to: 104000000, npc: 1200003, kind: boat, cost: 800, note: "Rien -> Lith Harbor" }
+  # Florina Beach (Pason at Lith Harbor; Pison sends you back where you came from, Lith by default)
+  - { from: 104000000, to: 110000000, npc: 1002002, kind: boat, cost: 1500, note: "Lith Harbor -> Florina Beach" }
+  - { from: 110000000, to: 104000000, npc: 1081001, kind: boat, cost: 0, note: "Florina Beach -> Lith Harbor" }
+  # Kerning City <-> New Leaf City (subway; tickets from Bell 9201057)
+  - { from: 103000100, to: 600010001, npc: 1052007, kind: subway, cost: 5000, note: "Kerning subway -> New Leaf City" }
+  - { from: 600010001, to: 103000100, npc: 9201068, kind: subway, cost: 5000, note: "New Leaf City -> Kerning subway" }
+  # Kerning City <-> Singapore (Irene / Shalon)
+  - { from: 103000000, to: 540010000, npc: 9270041, kind: plane, cost: 5000, note: "Kerning City -> Singapore" }
+  - { from: 540010000, to: 103000000, npc: 9270038, kind: plane, cost: 5000, note: "Singapore -> Kerning City" }
+  # World tour to Zipangu (Spinel; the way back returns to wherever the tour started)
+  - { from: 100000000, to: 800000000, npc: 9000020, kind: world-tour, cost: 3000, note: "Henesys -> Mushroom Shrine" }
+  - { from: 104000000, to: 800000000, npc: 9000020, kind: world-tour, cost: 3000, note: "Lith Harbor -> Mushroom Shrine" }
+  # Victoria Island regular cabs (beginners pay a tenth)
+  - { from: 104000000, to: 100000000, npc: 1002007, kind: taxi, cost: 1000 }
+  - { from: 104000000, to: 101000000, npc: 1002007, kind: taxi, cost: 800 }
+  - { from: 104000000, to: 102000000, npc: 1002007, kind: taxi, cost: 1000 }
+  - { from: 104000000, to: 103000000, npc: 1002007, kind: taxi, cost: 1000 }
+  - { from: 104000000, to: 120000000, npc: 1002007, kind: taxi, cost: 800 }
+  - { from: 100000000, to: 104000000, npc: 1012000, kind: taxi, cost: 1000 }
+  - { from: 100000000, to: 101000000, npc: 1012000, kind: taxi, cost: 800 }
+  - { from: 100000000, to: 102000000, npc: 1012000, kind: taxi, cost: 1000 }
+  - { from: 100000000, to: 103000000, npc: 1012000, kind: taxi, cost: 1000 }
+  - { from: 100000000, to: 120000000, npc: 1012000, kind: taxi, cost: 800 }
+  - { from: 101000000, to: 104000000, npc: 1032000, kind: taxi, cost: 1000 }
+  - { from: 101000000, to: 100000000, npc: 1032000, kind: taxi, cost: 1000 }
+  - { from: 101000000, to: 102000000, npc: 1032000, kind: taxi, cost: 1000 }
+  - { from: 101000000, to: 103000000, npc: 1032000, kind: taxi, cost: 1000 }
+  - { from: 101000000, to: 120000000, npc: 1032000, kind: taxi, cost: 800 }
+  - { from: 102000000, to: 104000000, npc: 1022001, kind: taxi, cost: 1000 }
+  - { from: 102000000, to: 100000000, npc: 1022001, kind: taxi, cost: 1000 }
+  - { from: 102000000, to: 101000000, npc: 1022001, kind: taxi, cost: 800 }
+  - { from: 102000000, to: 103000000, npc: 1022001, kind: taxi, cost: 1000 }
+  - { from: 102000000, to: 120000000, npc: 1022001, kind: taxi, cost: 800 }
+  - { from: 103000000, to: 104000000, npc: 1052016, kind: taxi, cost: 1000 }
+  - { from: 103000000, to: 102000000, npc: 1052016, kind: taxi, cost: 1000 }
+  - { from: 103000000, to: 100000000, npc: 1052016, kind: taxi, cost: 1000 }
+  - { from: 103000000, to: 101000000, npc: 1052016, kind: taxi, cost: 800 }
+  - { from: 103000000, to: 120000000, npc: 1052016, kind: taxi, cost: 800 }
+  - { from: 120000000, to: 104000000, npc: 1092014, kind: taxi, cost: 1000 }
+  - { from: 120000000, to: 102000000, npc: 1092014, kind: taxi, cost: 1000 }
+  - { from: 120000000, to: 100000000, npc: 1092014, kind: taxi, cost: 1000 }
+  - { from: 120000000, to: 101000000, npc: 1092014, kind: taxi, cost: 800 }
+  - { from: 120000000, to: 103000000, npc: 1092014, kind: taxi, cost: 1000 }

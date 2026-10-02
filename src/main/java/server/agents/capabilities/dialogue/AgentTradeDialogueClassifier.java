@@ -110,6 +110,13 @@ public final class AgentTradeDialogueClassifier {
     private static final Pattern DROP_ITEM_COMMAND_PATTERN = Pattern.compile(
             "\\b" + DROP_CMD_VERB + "\\s+" + TRANSFER_RECIPIENT + TRANSFER_OWNER + "(?:(?:your|ur|my)\\s+)?([\\w][\\w '\\-]{1,39})[?!.,]?\\s*$",
             Pattern.CASE_INSENSITIVE);
+    /**
+     * "what mobs drop steelies?" asks about the game: a clause that starts with a wh-word and runs into the drop verb is
+     * a question, unless the drop says who gets it or whose it is ("where r u drop me pots", "wat ever drop ur elixirs").
+     */
+    private static final Pattern QUESTION_BEFORE_DROP = Pattern.compile(
+            "(?:^|[?!.,])\\s*(?:(?:hey|so|ok|yo)\\s+)?(?:what|which|who|whom|where|wat|wut)\\b[^?!.,]*$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DROP_ADDRESSED = Pattern.compile("\\b(?:me|us|your|ur|my|all)\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern DROP_BUFF_COMMAND_PATTERN = Pattern.compile(
             "\\b" + DROP_CMD_VERB + "\\s+" + TRANSFER_RECIPIENT + TRANSFER_OWNER + BUFF_WORDS + "\\b",
             Pattern.CASE_INSENSITIVE);
@@ -196,7 +203,10 @@ public final class AgentTradeDialogueClassifier {
         if (DROP_TRASH_COMMAND_PATTERN.matcher(message).find()) return TRASH_CATEGORY;
         if (DROP_ETC_COMMAND_PATTERN.matcher(message).find()) return "etc";
         Matcher dropMatcher = DROP_ITEM_COMMAND_PATTERN.matcher(message);
-        if (dropMatcher.find()) return namedItemCategory(AgentItemQueryNormalizer.normalize(dropMatcher.group(1)));
+        if (dropMatcher.find() && (DROP_ADDRESSED.matcher(message.substring(dropMatcher.start(), dropMatcher.start(1))).find()
+                || !QUESTION_BEFORE_DROP.matcher(message.substring(0, dropMatcher.start())).find())) {
+            return namedItemCategory(AgentItemQueryNormalizer.normalize(dropMatcher.group(1)));
+        }
 
         if (ASK_SCROLLS_COMMAND_PATTERN.matcher(message).find()) return "scrolls";
         if (ASK_POTS_COMMAND_PATTERN.matcher(message).find()) return "pots";

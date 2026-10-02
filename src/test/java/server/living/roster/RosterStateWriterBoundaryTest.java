@@ -68,7 +68,7 @@ class RosterStateWriterBoundaryTest {
     }
 
     @Test
-    void changesets40To43AreRegisteredLastWithTheirRollbacks() throws IOException {
+    void changesets40To43AreRegisteredInOrderWithTheirRollbacks() throws IOException {
         String changelog = Files.readString(CHANGELOG);
         int start = changelog.indexOf("<changeSet id=\"40-companion-manager\"");
         assertTrue(start >= 0, "changeset 40 is registered");
@@ -82,7 +82,7 @@ class RosterStateWriterBoundaryTest {
         String crewSet = changelog.substring(crew, changelog.indexOf("</changeSet>", crew));
         assertTrue(crewSet.contains("<sqlFile path=\"db/tables/032-companion-crew.sql\""));
         assertTrue(crewSet.indexOf("<rollback>") < crewSet.indexOf("032-companion-crew-down.sql"));
-        // P5: the measured bench yields (companion_yield), then the crews kept fresh (living_crew.keep_fresh), last
+        // P5: the measured bench yields (companion_yield), then the crews kept fresh (living_crew.keep_fresh)
         int yields = changelog.indexOf("<changeSet id=\"42-companion-bench-learning\"");
         assertTrue(yields > crew, "changeset 42 is registered after 41");
         String yieldSet = changelog.substring(yields, changelog.indexOf("</changeSet>", yields));
@@ -107,12 +107,16 @@ class RosterStateWriterBoundaryTest {
             fortyTwo += id == 42 ? 1 : 0;
             fortyThree += id == 43 ? 1 : 0;
         }
-        assertEquals(43, highest);
+        assertTrue(highest >= 43);
         assertEquals(1, forty);
         assertEquals(1, fortyOne);
         assertEquals(1, fortyTwo);
         assertEquals(1, fortyThree);
-        assertEquals(changelog.lastIndexOf("<changeSet "), fresh);
+        // what comes after 43 is newer work (45-living-knowledge, docs/SERVER_KNOWLEDGE_PLAN.md 7.6), never an older id
+        Matcher later = Pattern.compile("<changeSet id=\"(\\d+)").matcher(changelog.substring(fresh + 1));
+        while (later.find()) {
+            assertTrue(Integer.parseInt(later.group(1)) > 43, "changeset " + later.group(1) + " registered after 43");
+        }
         String yieldUp = Files.readString(Path.of("src/main/resources/db/tables/033-companion-bench-learning.sql"));
         assertTrue(yieldUp.contains("CREATE TABLE IF NOT EXISTS companion_yield"));
         for (String column : List.of("job_branch      VARCHAR(16)", "level_band      TINYINT", "camp_map_id     INT",

@@ -17,6 +17,7 @@ import server.agents.social.personality.DialogueStyleProfileRepository;
 import server.agents.behavior.AgentBehaviorAdaptationPersistenceRuntime;
 import server.agents.runtime.activity.AgentActivityHostState;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -24,19 +25,22 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Builds model-safe dialogue requests from immutable Agent OS projections. */
 public final class AgentSocialDialogueRequestFactory {
     private static final AtomicLong NEXT_REQUEST_ID = new AtomicLong();
-    private static volatile Grounding grounding;
+    private static final String LEGACY_GROUNDING = "legacy";
 
     /**
      * Host-supplied facts for the model prompt (persona card, journal, scene). Keys become
      * labelled lines under "Public context"; values are truncated to the snapshot's fact limit.
+     * Kept for single-hook hosts; new hosts register a {@link GroundingRegistry.Provider}, which also sees the line.
      */
     @FunctionalInterface
     public interface Grounding {
         Map<String, String> facts(int agentCharacterId, int speakerCharacterId);
     }
 
+    /** The legacy single hook, now the registry's {@code "legacy"} provider; null removes it. */
     public static void installGrounding(Grounding replacement) {
-        grounding = replacement;
+        GroundingRegistry.register(LEGACY_GROUNDING, replacement == null ? null
+                : request -> replacement.facts(request.agentCharacterId(), request.speakerCharacterId()));
     }
 
     private final SocialDialogueSettings settings;
@@ -109,7 +113,8 @@ public final class AgentSocialDialogueRequestFactory {
                                 .find(AgentActivityHostState.STATE_KEY)
                                 .map(AgentActivityHostState::activityKind).orElse(null),
                         nowMs).energyPercent(),
-                publicFacts(operational.facts(), identity.characterId(), speakerId));
+                publicFacts(operational.facts(), new GroundingRequest(identity.characterId(), speakerId, speakerName,
+                        speakerText, intentKey, mapId(operational.facts()), operational.facts())));
         DialogueRequest request = new DialogueRequest(
                 requestId,
                 intentKey,
@@ -146,10 +151,10 @@ public final class AgentSocialDialogueRequestFactory {
     }
 
     private static Map<String, String> publicFacts(Map<String, String> facts) {
-        return publicFacts(facts, 0, 0);
+        return publicFacts(facts, null);
     }
 
-    private static Map<String, String> publicFacts(Map<String, String> facts, int agentId, int speakerId) {
+    private static Map<String, String> publicFacts(Map<String, String> facts, GroundingRequest request) {
         Map<String, String> safe = new LinkedHashMap<>();
         for (String key : new String[]{
                 "world.mapId", "progression.level", "progression.jobId",
@@ -159,24 +164,18 @@ public final class AgentSocialDialogueRequestFactory {
                 safe.put(key, value);
             }
         }
-        Grounding provider = grounding;
-        if (provider != null && agentId > 0) {
-            try {
-                for (Map.Entry<String, String> fact : provider.facts(agentId, speakerId).entrySet()) {
-                    if (safe.size() >= DialogueContextSnapshot.MAX_PUBLIC_FACTS) {
-                        break;
-                    }
-                    String value = fact.getValue();
-                    if (value != null && !value.isBlank()) {
-                        safe.put(fact.getKey(), value.length() > DialogueContextSnapshot.MAX_FACT_CHARS
-                                ? value.substring(0, DialogueContextSnapshot.MAX_FACT_CHARS) : value);
-                    }
-                }
-            } catch (RuntimeException ignored) {
-                // grounding is optional; the prompt still has the operational facts
-            }
+        if (request != null && request.agentCharacterId() > 0) {
+            GroundingRegistry.collect(request, safe);
         }
-        return Map.copyOf(safe);
+        return Collections.unmodifiableMap(safe);
+    }
+
+    private static int mapId(Map<String, String> facts) {
+        try {
+            return Integer.parseInt(facts.getOrDefault("world.mapId", "").trim());
+        } catch (NumberFormatException unknown) {
+            return 0;
+        }
     }
 
     public record PreparedDialogue(

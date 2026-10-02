@@ -1,6 +1,7 @@
 package server.living.population;
 
 import client.Character;
+import config.YamlConfig;
 import net.server.Server;
 import net.server.world.World;
 import org.slf4j.Logger;
@@ -20,12 +21,16 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRequest;
 import server.agents.runtime.townlife.AgentTownLifeVisitLeaseRuntime;
+import server.knowledge.IntList;
+import server.knowledge.KnownWorld;
+import server.knowledge.PersonalKnowledge;
 import server.living.LivingWorld;
 import server.living.config.LivingContent;
 import server.living.population.CitizenSession.Activity;
 import server.living.population.PopulationContent.Cohort;
 import server.living.population.PopulationContent.Field;
 import server.living.population.PopulationContent.Lobby;
+import server.living.population.PopulationContent.Region;
 import server.living.resident.ResidentSpots;
 import server.living.roster.CompanionLeases;
 import server.living.roster.RosterService;
@@ -58,6 +63,9 @@ public final class PresenceScheduler {
     private static final int WANDER_MAX_DROP_PX = 40;
     private static final int CIRCLE_BOOST = 3;
     private static final double MAX_LOGIN_CHANCE = 0.5d;
+    /** An old hand this close below knowledge.VETERAN_LEVEL talks like a veteran (exact chances, rate numbers). */
+    private static final int VETERAN_EARLY_LEVELS = 20;
+    private static final int VETERAN_DAYS = 120;
 
     private final Population population;
     private final Map<Integer, CitizenSession> sessions = new ConcurrentHashMap<>();
@@ -249,6 +257,7 @@ public final class PresenceScheduler {
             session.channel = citizen.channel();
             session.activity = activity;
             session.lastPlanAtMs = now;
+            openKnowledge(session, agent, map.getId(), now);
             startActivity(session, map, now);
             World world = population.gameWorld();
             if (world != null) {
@@ -295,8 +304,37 @@ public final class PresenceScheduler {
                 agent.getClient().forceDisconnect();
             }
         }
+        PersonalKnowledge.shared().close(session.characterId);
         book(session);
         log.info("citizen {} offline: {}", session.name(), reason);
+    }
+
+    /**
+     * Its known world (docs/SERVER_KNOWLEDGE_PLAN.md 7.2): a past of training in Maple Island below 10, Victoria until its
+     * home region's levels, then at home; the home region's towns; a veteran at knowledge.VETERAN_LEVEL, or an old hand
+     * close below it; a merchant knows prices. Then the map it stands on (the offline load placed it without a map
+     * change). Never fails the login: a failure here costs only what it knows.
+     */
+    private void openKnowledge(CitizenSession session, Character agent, int mapId, long now) {
+        PersonalKnowledge personal = PersonalKnowledge.shared();
+        if (!personal.on()) {
+            return;
+        }
+        try {
+            Citizen citizen = session.citizen;
+            Region home = population.content().regions().get(citizen.homeRegion());
+            int level = agent.getLevel();
+            int veteranLevel = YamlConfig.config.knowledge.VETERAN_LEVEL;
+            boolean veteran = level >= veteranLevel || level >= veteranLevel - VETERAN_EARLY_LEVELS
+                    && citizen.ageDays(now) >= VETERAN_DAYS && !"afk-townie".equals(citizen.cohort());
+            IntList towns = home == null ? IntList.EMPTY : IntList.of(home.towns().stream().mapToInt(Integer::intValue).toArray());
+            personal.open(citizen.characterId(), new PersonalKnowledge.Spec(KnownWorld.Past.SYNTHESIZED, citizen.characterId(), level,
+                    band -> band < 10 ? "maple-island" : home == null || band < home.levelMin() ? "victoria" : home.id(), towns,
+                    List.of(), veteran, citizen.has(Citizen.FLAG_MERCHANT)));
+            personal.visited(citizen.characterId(), mapId);
+        } catch (RuntimeException failure) {
+            log.warn("citizen {}: opening its known world failed", session.name(), failure);
+        }
     }
 
     /** Books a session's minutes online and folds its journal into the life summary. */

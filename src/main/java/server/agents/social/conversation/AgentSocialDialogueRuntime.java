@@ -14,6 +14,8 @@ import server.agents.social.memory.SocialCounterpartyType;
 import server.agents.social.provider.DeterministicDialogueProvider;
 import server.agents.social.provider.DialogueProvider;
 
+import java.util.List;
+
 /** Live entry point for optional generic social replies. */
 public final class AgentSocialDialogueRuntime {
     private static final SocialDialogueSettings SETTINGS = SocialDialogueSettings.runtime();
@@ -26,6 +28,7 @@ public final class AgentSocialDialogueRuntime {
             new AgentSocialDialogueRequestFactory(SETTINGS);
 
     private static volatile Styler styler;
+    private static volatile Answerer answerer;
 
     /** A styled reply: the text to say and how long to "type" it; null leaves the reply untouched. */
     public record Styled(String text, long delayMs) { }
@@ -38,6 +41,20 @@ public final class AgentSocialDialogueRuntime {
 
     public static void installStyler(Styler replacement) {
         styler = replacement;
+    }
+
+    /**
+     * Host-supplied deterministic answers (server knowledge content questions), consulted on the mailbox after the
+     * request is prepared and before the model: the lines to say, each with its delay from now; an empty list when
+     * the host deliberately says nothing; null leaves the line to the model.
+     */
+    @FunctionalInterface
+    public interface Answerer {
+        List<Styled> answer(Character agent, Character speaker, String message, String styleId);
+    }
+
+    public static void installAnswerer(Answerer replacement) {
+        answerer = replacement;
     }
 
     private AgentSocialDialogueRuntime() {
@@ -64,7 +81,6 @@ public final class AgentSocialDialogueRuntime {
         if (entry == null || speaker == null || message == null || message.isBlank()) {
             return;
         }
-        int speakerId = speaker.getId();
         String speakerName = speaker.getName();
         SocialCounterpartyType counterpartyType = AgentCharacterGatewayRuntime.characters()
                 .isHeadlessControlled(speaker)
@@ -72,23 +88,29 @@ public final class AgentSocialDialogueRuntime {
                 : SocialCounterpartyType.PLAYER;
         String normalized = message.trim();
         AgentMailboxRuntime.dispatch(entry, ignored -> {
-            prepareAndSubmit(entry, speakerId, speakerName, counterpartyType, normalized);
+            prepareAndSubmit(entry, speaker, speakerName, counterpartyType, normalized);
             return null;
         });
     }
 
     private static void prepareAndSubmit(
             AgentRuntimeEntry entry,
-            int speakerId,
+            Character speaker,
             String speakerName,
             SocialCounterpartyType counterpartyType,
             String message) {
         long nowMs = System.currentTimeMillis();
+        int speakerId = speaker.getId();
         AgentSocialDialogueRequestFactory.PreparedDialogue prepared;
         try {
             prepared = REQUESTS.prepare(
                     entry, speakerId, speakerName, message, counterpartyType, nowMs);
         } catch (IllegalArgumentException ignored) {
+            return;
+        }
+        List<Styled> answer = answer(entry, speaker, message, prepared);
+        if (answer != null) {
+            deliverAnswer(entry, speaker, prepared, answer);
             return;
         }
         APPLICATION.submit(entry, prepared.request(), result -> {
@@ -118,5 +140,49 @@ public final class AgentSocialDialogueRuntime {
                     agentTurn,
                     repliedAtMs);
         });
+    }
+
+    private static List<Styled> answer(AgentRuntimeEntry entry, Character speaker, String message,
+                                       AgentSocialDialogueRequestFactory.PreparedDialogue prepared) {
+        Answerer host = answerer;
+        if (host == null) {
+            return null;
+        }
+        try {
+            return host.answer(entry.bot(), speaker, message, prepared.request().context().style().styleId());
+        } catch (RuntimeException ignored) {
+            return null; // the model keeps the turn
+        }
+    }
+
+    /**
+     * A host's answer goes out like a styled model reply (typing delay, same channel) and is remembered the same way;
+     * a line still waiting when the asker has changed maps is dropped (they left before it was typed).
+     */
+    private static void deliverAnswer(AgentRuntimeEntry entry, Character speaker,
+                                      AgentSocialDialogueRequestFactory.PreparedDialogue prepared, List<Styled> lines) {
+        if (lines.isEmpty()) {
+            return;
+        }
+        int askedOn = speaker.getMapId();
+        StringBuilder said = new StringBuilder();
+        for (Styled line : lines) {
+            String text = line.text();
+            server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+                if (speaker.getMapId() == askedOn) {
+                    AgentDialogueTransportRuntime.replyNow(entry, text);
+                }
+            }, Math.max(1L, line.delayMs()));
+            said.append(said.isEmpty() ? "" : " ").append(text);
+        }
+        long repliedAtMs = System.currentTimeMillis();
+        SocialMemoryPersistenceRuntime.recordConversation(
+                prepared.relationshipKey(),
+                prepared.sessionId(),
+                prepared.speakerId(),
+                prepared.speakerTurn(),
+                new ConversationTurn(ConversationTurn.Role.AGENT, prepared.request().context().agentName(), said.toString(),
+                        repliedAtMs),
+                repliedAtMs);
     }
 }

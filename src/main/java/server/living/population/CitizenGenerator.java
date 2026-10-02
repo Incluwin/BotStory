@@ -140,6 +140,7 @@ public final class CitizenGenerator {
             Job job = ResidentShaper.job(career.job());
             Loadout loadout = population.world().content().loadout(career.loadoutFor(level));
             ResidentShaper.shapeTo(agent, job, level, loadout);
+            CitizenGear.upgrade(agent, job, loadout);
             agent.saveCharToDB();
             if (agent.getClient() != null) {
                 agent.getClient().forceDisconnect();

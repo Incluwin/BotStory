@@ -91,6 +91,7 @@ public class PmobCommand extends Command {
                 }
 
                 player.yellowMessage("Pmob created.");
+                server.knowledge.KnowledgeLoader.requestOverlayRebuild(); // "where do X spawn" sees the new placement
             } catch (SQLException e) {
                 monitoring.RuntimeFailureLogger.log(e);
                 player.dropMessage(5, "Failed to store pmob in the database.");

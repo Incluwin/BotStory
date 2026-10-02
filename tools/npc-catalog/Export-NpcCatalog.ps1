@@ -1,6 +1,7 @@
 param(
     [string] $WzRoot = "wz",
     [string] $OutputDir = "tmp/npc-catalog",
+    [string] $SeedDataPath = "",
     [int] $ApproachLeftPx = 120,
     [int] $ApproachRightPx = 120,
     [int] $ApproachUpPx = 80,
@@ -134,18 +135,33 @@ function Get-MapStringTable {
     return $result
 }
 
+function Read-SeedData {
+    param(
+        [string] $Path,
+        [string] $OutputDir
+    )
+
+    # drop_data, drop_data_global, shops and shopitems as a fresh DB holds them after Liquibase (server.knowledge.SeedData)
+    if ([string]::IsNullOrEmpty($Path)) {
+        if (!(Test-Path -LiteralPath "target/Cosmic.jar")) {
+            throw "target\Cosmic.jar not found - run mvnw.cmd package -DskipTests first (the seed data replay needs it)."
+        }
+        $Path = Join-Path $OutputDir "seed-data.json"
+        & java -cp "target/Cosmic.jar" server.knowledge.export.SeedDataMain "src/main/resources/db" $Path | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "SeedDataMain failed with exit code $LASTEXITCODE."
+        }
+    }
+    return Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
+}
+
 function Get-ShopNpcIds {
-    param([string] $Path)
+    param($ShopRows)
 
     $result = @{}
-    if (!(Test-Path $Path)) {
-        return $result
-    }
-
-    $text = Get-Content -Raw $Path
-    foreach ($match in [regex]::Matches($text, "\((\d+),\s*(\d+)\)")) {
-        $shopId = [int] $match.Groups[1].Value
-        $npcId = [int] $match.Groups[2].Value
+    foreach ($parts in $ShopRows) {
+        $shopId = [int] $parts[0]
+        $npcId = [int] $parts[1]
         if (!$result.ContainsKey($npcId)) {
             $result[$npcId] = @()
         }
@@ -155,26 +171,21 @@ function Get-ShopNpcIds {
 }
 
 function Get-ShopItems {
-    param([string] $Path)
+    param($ShopItemRows)
 
     $result = @{}
-    if (!(Test-Path $Path)) {
-        return $result
-    }
-
-    $text = Get-Content -Raw $Path
-    foreach ($match in [regex]::Matches($text, "\((\d+),\s*(\d+),\s*(-?\d+),\s*(-?\d+),\s*(-?\d+)\)")) {
-        $shopId = [int] $match.Groups[1].Value
+    foreach ($parts in $ShopItemRows) {
+        $shopId = [int] $parts[0]
         if (!$result.ContainsKey($shopId)) {
             $result[$shopId] = New-Object System.Collections.Generic.List[object]
         }
 
         [void] $result[$shopId].Add([pscustomobject] @{
             shopId = $shopId
-            itemId = [int] $match.Groups[2].Value
-            price = [int] $match.Groups[3].Value
-            pitch = [int] $match.Groups[4].Value
-            position = [int] $match.Groups[5].Value
+            itemId = [int] $parts[1]
+            price = [int] $parts[2]
+            pitch = [int] $parts[3]
+            position = [int] $parts[4]
         })
     }
     return $result
@@ -203,8 +214,7 @@ function Get-NpcShopInventoryRows {
                 itemCount = $items.Count
                 items = $items
                 sources = @(
-                    "src/main/resources/db/data/101-shops-data.sql",
-                    "src/main/resources/db/data/102-shopitems-data.sql"
+                    "src/main/resources/db (Liquibase replay)"
                 )
             })
         }
@@ -1416,8 +1426,9 @@ New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
 $npcNames = Get-StringTable (Join-Path $WzRoot "String.wz/Npc.img.xml")
 $mapNames = Get-MapStringTable (Join-Path $WzRoot "String.wz/Map.img.xml")
-$shopNpcIds = Get-ShopNpcIds "src/main/resources/db/data/101-shops-data.sql"
-$shopItems = Get-ShopItems "src/main/resources/db/data/102-shopitems-data.sql"
+$seed = Read-SeedData $SeedDataPath $OutputDir
+$shopNpcIds = Get-ShopNpcIds @($seed.tables.shops.rows)
+$shopItems = Get-ShopItems @($seed.tables.shopitems.rows)
 $questNpcMap = Get-QuestNpcMap (Join-Path $WzRoot "Quest.wz/Check.img.xml")
 $questDefinitions = Get-QuestDefinitionRows `
     (Join-Path $WzRoot "Quest.wz/Check.img.xml") `
@@ -1546,7 +1557,7 @@ $catalog = foreach ($npcId in ($npcIds | Sort-Object)) {
         }
         automation = $automationProfile
         confidence = $automationProfile.confidence
-        sources = @("Map.wz", "String.wz", "Quest.wz/Check.img.xml", "src/main/resources/db/data/101-shops-data.sql")
+        sources = @("Map.wz", "String.wz", "Quest.wz/Check.img.xml", "src/main/resources/db (Liquibase replay)")
     }
 }
 
@@ -1810,7 +1821,7 @@ $summary = @(
     "- Catalog NPCs: $(@($catalog).Count)"
     "- NPC placements: $(@($placements).Count)"
     "- NPCs with at least one placement: $placedNpcCount"
-    "- NPCs with shops from SQL seed data: $shopNpcCount"
+    "- NPCs with shops from the Liquibase seed replay: $shopNpcCount"
     "- NPCs referenced by quest start/complete checks: $questNpcCount"
     "- NPCs missing String.wz names: $missingNameCount"
     "- NPC placements with generated approach candidates: $placementsWithApproachCount"
@@ -1856,7 +1867,7 @@ $summary = @(
     "- Approach boxes and timing ranges are default placeholders for future manual tuning."
     "- Quest interactions come from ``Quest.wz/Check.img.xml`` ``0`` start and ``1`` complete NPC checks."
     "- Quest requirements and rewards are canonical in ``tmp/game-catalog/generated_quest_catalog.json``; NPC action rows copy compact summaries for fast runtime lookup."
-    "- Shop interactions come from ``src/main/resources/db/data/101-shops-data.sql``."
+    "- Shop interactions come from ``src/main/resources/db`` (Liquibase replay, ``server.knowledge.SeedData``)."
     "- Candidate standing points are generated from a default interaction box and raw foothold samples."
     "- Candidate points are not reachability/path validated yet; runtime integration should verify navigation before use."
     "- The interaction-spot catalog joins every NPC placement with its interaction types, quest links, and bounded approach candidates."
@@ -1864,7 +1875,7 @@ $summary = @(
     "- Quest dialogue timing is an estimate from WZ text length/options; runtime profiles should still apply per-agent jitter."
     "- Script dialogue options and services are pattern-scanned hints; they require runtime validators or manual overrides before automation."
     "- Reward choice rows identify NPC-facing quest rewards that need profile/build/inventory selection policy."
-    "- Shop inventory snapshots come from SQL seed data and are useful for fast buy/sell planning."
+    "- Shop inventory snapshots come from the Liquibase seed replay and are useful for fast buy/sell planning."
     "- Fast indexes are generated to avoid full-array scans during Agent/LLM runtime queries."
     "- Interaction types and automation confidence are generated hints for review, not permission to execute NPC actions."
 ) -join "`n"

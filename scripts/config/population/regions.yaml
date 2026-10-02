@@ -17,14 +17,14 @@ regions:
     levels: { min: 40, max: 70 }
     towns: [200000000]
     lobbies:
-      - { id: opq, mapId: 200000000, levels: { min: 51, max: 70 }, name: "OPQ" }
+      - { id: opq, mapId: 200080101, levels: { min: 51, max: 70 }, name: "OPQ" }
     fm: 910000000
     weight: 10
   - id: ludibrium
     levels: { min: 35, max: 65 }
     towns: [220000000]
     lobbies:
-      - { id: lpq, mapId: 220000000, levels: { min: 35, max: 50 }, name: "LPQ" }
+      - { id: lpq, mapId: 221024500, levels: { min: 35, max: 50 }, name: "LPQ" }
     fm: 910000000
     weight: 12
   - id: el-nath

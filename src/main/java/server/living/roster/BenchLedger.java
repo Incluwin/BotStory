@@ -8,6 +8,10 @@ import net.server.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.knowledge.Decisions;
+import server.knowledge.DropSource;
+import server.knowledge.FarmSites;
+import server.knowledge.WorldKnowledge;
 import server.living.LivingWorld;
 import server.living.config.Content.BondStage;
 import server.living.config.Content.Persona;
@@ -22,6 +26,7 @@ import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.QuestState;
 import server.living.store.LivingStore.RosterEntry;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -130,6 +135,7 @@ public final class BenchLedger {
             efficiency *= 0.5d; // unpaid upkeep: half speed until the haul recovers
         }
         String note = null;
+        boolean stalled = false;
 
         switch (assignment) {
             case TRAIN -> {
@@ -159,7 +165,8 @@ public final class BenchLedger {
                     int have = haulCount(entry, entry.assignmentItem());
                     if (entry.assignmentCount() <= 0 || have < entry.assignmentCount()) {
                         int gained = farmItem(entry, entry.assignmentItem(), hours, efficiency,
-                                entry.assignmentCount() <= 0 ? Integer.MAX_VALUE : entry.assignmentCount() - have, key.campMapId());
+                                entry.assignmentCount() <= 0 ? Integer.MAX_VALUE : entry.assignmentCount() - have, key.campMapId(),
+                                botLevel, false);
                         farmSecondsToday += (int) (hours * 3600);
                         note = "farm item " + entry.assignmentItem() + " +" + gained;
                     }
@@ -167,8 +174,14 @@ public final class BenchLedger {
             }
             case GATHER -> {
                 if (withinDailyCap(entry, farmSecondsToday, hours)) {
-                    note = gather(entry, persona, hours, efficiency, key.campMapId());
+                    note = gather(entry, persona, hours, efficiency, key.campMapId(), botLevel);
                     farmSecondsToday += (int) (hours * 3600);
+                    List<Integer> needs = note == null && Decisions.active() != null ? gatherNeeds(entry, persona) : List.of();
+                    stalled = !needs.isEmpty()
+                            && needs.stream().allMatch(item -> chancePerKill(item, botLevel, key.campMapId(), true) <= 0);
+                    if (stalled) {
+                        note = "gather stalled: nothing it can farm drops " + needs; // and no upkeep for doing nothing
+                    }
                 }
             }
             case SELL -> {
@@ -185,7 +198,7 @@ public final class BenchLedger {
             }
             case REST -> { }
         }
-        if (assignment != Assignment.REST && entry.wagesPaidUntilMs() < now) {
+        if (assignment != Assignment.REST && !stalled && entry.wagesPaidUntilMs() < now) {
             long upkeep = Math.round(upkeepPerHour(botLevel, key) * hours);
             haulMeso -= upkeep; // prepaid wages cover upkeep; otherwise the haul pays, and an unpaid haul slows the work
         }
@@ -370,13 +383,16 @@ public final class BenchLedger {
         return KILLS_PER_HOUR * chancePerMillion / 1_000_000.0d * dropRate() * world.config().BENCH_FARM_EFFICIENCY;
     }
 
-    private int farmItem(RosterEntry entry, int itemId, double hours, double efficiency, int limit, int campMapId) {
-        List<int[]> droppers = world.store().mobsDropping(itemId);
-        if (droppers.isEmpty()) {
+    /**
+     * FARM_ITEM's and GATHER's credit; {@code questDrops}: the owner's active quests are served (GATHER), so quest-gated
+     * drops count.
+     */
+    private int farmItem(RosterEntry entry, int itemId, double hours, double efficiency, int limit, int campMapId,
+                         int botLevel, boolean questDrops) {
+        double chance = chancePerKill(itemId, botLevel, campMapId, questDrops);
+        if (chance <= 0) {
             return 0;
         }
-        int[] best = droppers.get(0);
-        double chance = best[1] / 1_000_000.0d * dropRate();
         String key = entry.characterId() + ":" + entry.personaId() + ":" + itemId;
         double expectation = fractions.getOrDefault(key, 0.0d) + KILLS_PER_HOUR * hours * chance * efficiency;
         int whole = (int) Math.min(expectation, limit);
@@ -391,7 +407,22 @@ public final class BenchLedger {
         return whole;
     }
 
-    private String gather(RosterEntry entry, Persona persona, double hours, double efficiency, int campMapId) {
+    /**
+     * Chance per kill of the item at the live drop rate for a companion of {@code level} farming at {@code campMapId}; 0
+     * when nothing it could farm drops it (docs/SERVER_KNOWLEDGE_PLAN.md 8.3: no script-only, quest-only, too strong or boss
+     * dropper). Without server knowledge: the top {@code drop_data} row, as before.
+     */
+    double chancePerKill(int itemId, int level, int campMapId, boolean questDrops) {
+        WorldKnowledge k = Decisions.active();
+        if (k == null) {
+            List<int[]> droppers = world.store().mobsDropping(itemId);
+            return droppers.isEmpty() ? 0.0d : droppers.get(0)[1] / 1_000_000.0d * dropRate();
+        }
+        DropSource source = FarmSites.creditSource(k, itemId, level, campMapId, questDrops);
+        return source == null ? 0.0d : source.effectiveChance((int) dropRate(), (int) bossDropRate());
+    }
+
+    private String gather(RosterEntry entry, Persona persona, double hours, double efficiency, int campMapId, int botLevel) {
         StringBuilder note = new StringBuilder();
         for (QuestState state : world.store().questStates(entry.characterId(), server.living.store.LivingStore.QuestStatus.ACTIVE)) {
             Quest quest = world.content().quest(state.questId());
@@ -406,12 +437,29 @@ public final class BenchLedger {
             if (remaining <= 0) {
                 continue;
             }
-            int gained = farmItem(entry, step.itemId(), hours, efficiency, remaining, campMapId);
+            int gained = farmItem(entry, step.itemId(), hours, efficiency, remaining, campMapId, botLevel, true);
             if (gained > 0) {
                 note.append("gathered ").append(gained).append(" of item ").append(step.itemId()).append("; ");
             }
         }
         return note.length() == 0 ? null : note.toString();
+    }
+
+    /**
+     * The items GATHER works for: each active COLLECT_ITEM step of its owner's quests (not its own) still short after the
+     * haul, once per item.
+     */
+    List<Integer> gatherNeeds(RosterEntry entry, Persona persona) {
+        List<Integer> needs = new ArrayList<>();
+        for (QuestState state : world.store().questStates(entry.characterId(), server.living.store.LivingStore.QuestStatus.ACTIVE)) {
+            Quest quest = world.content().quest(state.questId());
+            Step step = quest == null ? null : quest.step(state.stepIndex());
+            if (step != null && step.type() == StepType.COLLECT_ITEM && !quest.persona().equals(persona.id())
+                    && step.count() - state.progress() - haulCount(entry, step.itemId()) > 0 && !needs.contains(step.itemId())) {
+                needs.add(step.itemId());
+            }
+        }
+        return needs;
     }
 
     private long sellHaul(RosterEntry entry, double markup, double fraction) {
@@ -494,6 +542,11 @@ public final class BenchLedger {
     private double dropRate() {
         World w = Server.getInstance().getWorld(world.config().WORLD);
         return w == null ? 1.0d : Math.max(1, w.getDropRate());
+    }
+
+    private double bossDropRate() {
+        World w = Server.getInstance().getWorld(world.config().WORLD);
+        return w == null ? 1.0d : Math.max(1, w.getBossDropRate());
     }
 
     private double mesoRate() {

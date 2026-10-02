@@ -924,6 +924,7 @@ public class Server {
         }
 
         DatabaseMigrations.runDatabaseMigrations();
+        server.knowledge.KnowledgeLoader.start(); // async: knowledge file + live drop/shop overlay
         EconomyTransactionCoordinator.initializePersistentJournal();
 
         channelDependencies = registerChannelDependencies();

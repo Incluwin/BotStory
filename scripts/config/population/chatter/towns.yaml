@@ -1,4 +1,5 @@
-# Town chatter (plan 5.1). trigger: enter | dwell; where: town | field | fm | lobby | any (or mapIds: [...]).
+# Town chatter (plan 5.1). trigger: enter | dwell; where: town | field | fm | lobby | any (or mapIds: [...]);
+# maxLevel: only citizens up to that level use the intent (a level-90 asking the way to Orbis reads scripted).
 # Slots: {me} {name} {level} {item} {price} {map} {guild} {job} {pq} {region}. Lines are templates;
 # the citizen's voice pack lowercases, abbreviates and typos them afterwards.
 intents:
@@ -8,6 +9,7 @@ intents:
     channel: map
     weight: 6
     cooldownMs: 600000
+    maxLevel: 20
     lines:
       - "how do i get to ellinia from here"
       - "where is the job advancement npc"
@@ -28,8 +30,17 @@ intents:
       - "lf> party for {map} area"
       - "anyone {level}ish want to party"
       - "lf> cleric for training"
-      - "pt at pig beach anyone"
       - "anyone training around here?"
+  # Victoria newbie lines: only citizens in Victoria's levels say them (Orbis, Ludibrium and the rest start at 35+)
+  - id: town.lfg.newbie
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 1
+    cooldownMs: 300000
+    maxLevel: 20
+    lines:
+      - "pt at pig beach anyone"
   - id: town.sell
     trigger: dwell
     where: town
@@ -66,13 +77,21 @@ intents:
       - "is the server always this busy"
       - "brb food"
       - "back"
-      - "im so tired of snails"
       - "finally got my {job} advancement today"
       - "just saw someone with a zhelm, jealous"
       - "who wants to do a pq"
       - "does anyone actually read these"
       - "gm event when"
       - "my potions are so expensive omg"
+  - id: town.smalltalk.newbie
+    trigger: dwell
+    where: town
+    channel: map
+    weight: 1
+    cooldownMs: 400000
+    maxLevel: 15
+    lines:
+      - "im so tired of snails"
   - id: town.enter
     trigger: enter
     where: town

@@ -287,6 +287,7 @@ public class MonsterInformationProvider {
         globaldrops.clear();
         continentDrops.clear();
         retrieveGlobal();
+        server.knowledge.KnowledgeLoader.requestOverlayRebuild();
     }
 
     /**

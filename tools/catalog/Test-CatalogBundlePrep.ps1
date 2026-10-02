@@ -1,6 +1,6 @@
 param(
     [string] $WzRoot = "wz",
-    [string] $SqlRoot = "sql",
+    [string] $SqlRoot = "src/main/resources/db",
     [string] $ScriptRoot = "scripts",
     [string] $OverrideRoot = "docs/agents/catalog-overrides",
     [string] $GameCatalogDir = "tmp/game-catalog",

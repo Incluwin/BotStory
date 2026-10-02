@@ -45,11 +45,13 @@ function Get-DirectoryStatus {
 
     $item = Get-Item -LiteralPath $Path
     $files = @(Get-ChildItem -LiteralPath $Path -File -ErrorAction SilentlyContinue)
+    # a folder's own time only moves when entries are added or removed; the newest file says when it was last written
+    $newest = $files | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     return [ordered]@{
         path = $item.FullName
         exists = $true
         fileCount = $files.Count
-        lastWriteTime = $item.LastWriteTime.ToString("o")
+        lastWriteTime = if ($newest) { $newest.LastWriteTime.ToString("o") } else { $item.LastWriteTime.ToString("o") }
     }
 }
 

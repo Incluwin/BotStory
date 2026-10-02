@@ -9,7 +9,10 @@ It does not modify or wire into runtime code.
 powershell -ExecutionPolicy Bypass -File tools\npc-catalog\Export-NpcCatalog.ps1
 ```
 
-The full export parses map footholds and can take several minutes.
+The full export parses map footholds and can take several minutes. Shops come
+from a replay of the Liquibase changelogs (`server.knowledge.export.SeedDataMain`),
+which needs `target\Cosmic.jar` (`mvnw.cmd package -DskipTests`); pass
+`-SeedDataPath <seed-data.json>` to reuse a replay.
 
 When map/NPC placement WZ data is unchanged and only joined metadata or output
 schemas changed, reuse the last validated approach-point file to avoid a second
@@ -76,8 +79,7 @@ Generated files are written to `tmp/npc-catalog/`:
 - `wz/Quest.wz/Say.img.xml`
 - `wz/Quest.wz/Act.img.xml`
 - `scripts/npc`
-- `src/main/resources/db/data/101-shops-data.sql`
-- `src/main/resources/db/data/102-shopitems-data.sql`
+- `src/main/resources/db` (Liquibase replay: `shops`, `shopitems`)
 
 ## Notes
 

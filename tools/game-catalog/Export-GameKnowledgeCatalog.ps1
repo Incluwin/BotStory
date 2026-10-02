@@ -1,6 +1,7 @@
 param(
     [string] $WzRoot = "wz",
     [string] $OutputDir = "tmp/game-catalog",
+    [string] $SeedDataPath = "",
     [switch] $SummaryOnly,
     [switch] $Json
 )
@@ -210,11 +211,15 @@ function Get-QuestInfoTable {
 function Get-ItemCategory {
     param([int] $ItemId)
 
+    if ($ItemId -eq 0) { return "meso" }
+    if ($ItemId -ge 20000 -and $ItemId -lt 30000) { return "face" }
+    if ($ItemId -ge 30000 -and $ItemId -lt 40000) { return "hair" }
     if ($ItemId -ge 1000000 -and $ItemId -lt 2000000) { return "equip" }
     if ($ItemId -ge 2000000 -and $ItemId -lt 3000000) { return "consume" }
     if ($ItemId -ge 3000000 -and $ItemId -lt 4000000) { return "install" }
     if ($ItemId -ge 4000000 -and $ItemId -lt 5000000) { return "etc" }
-    if ($ItemId -ge 5000000 -and $ItemId -lt 6000000) { return "pet" }
+    if ($ItemId -ge 5000000 -and $ItemId -lt 5010000) { return "pet" }
+    if ($ItemId -ge 5000000 -and $ItemId -lt 6000000) { return "cash" }
     return "unknown"
 }
 
@@ -245,29 +250,24 @@ function Get-ItemNames {
     return $result
 }
 
-function Read-SqlTupleRows {
+function Read-SeedData {
     param(
         [string] $Path,
-        [int] $ExpectedColumns
+        [string] $OutputDir
     )
 
-    $rows = New-Object System.Collections.Generic.List[object]
-    if (!(Test-Path $Path)) {
-        return $rows
-    }
-
-    $text = Get-Content -Raw $Path
-    foreach ($match in [regex]::Matches($text, "\(([^()]*)\)")) {
-        $parts = @($match.Groups[1].Value -split "," | ForEach-Object { $_.Trim().Trim("'") })
-        if ($parts.Count -ne $ExpectedColumns) {
-            continue
+    # drop_data, drop_data_global, shops and shopitems as a fresh DB holds them after Liquibase (server.knowledge.SeedData)
+    if ([string]::IsNullOrEmpty($Path)) {
+        if (!(Test-Path -LiteralPath "target/Cosmic.jar")) {
+            throw "target\Cosmic.jar not found - run mvnw.cmd package -DskipTests first (the seed data replay needs it)."
         }
-        if ($parts[0] -notmatch "^-?\d+$") {
-            continue
+        $Path = Join-Path $OutputDir "seed-data.json"
+        & java -cp "target/Cosmic.jar" server.knowledge.export.SeedDataMain "src/main/resources/db" $Path | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "SeedDataMain failed with exit code $LASTEXITCODE."
         }
-        [void] $rows.Add($parts)
     }
-    return $rows
+    return Get-Content -Raw -LiteralPath $Path | ConvertFrom-Json
 }
 
 function Export-MapCatalog {
@@ -402,14 +402,14 @@ function Export-MobCatalog {
 
 function Export-DropCatalog {
     param(
-        [string] $DropSqlPath,
+        $DropRows,
         [hashtable] $ItemNames,
         [hashtable] $MobNames,
         [hashtable] $MapsByMob
     )
 
     $rows = New-Object System.Collections.Generic.List[object]
-    foreach ($parts in (Read-SqlTupleRows $DropSqlPath 6)) {
+    foreach ($parts in $DropRows) {
         $dropperId = [int] $parts[0]
         $itemId = [int] $parts[1]
         [void] $rows.Add([pscustomobject] @{
@@ -430,15 +430,43 @@ function Export-DropCatalog {
     return $rows
 }
 
+function Export-GlobalDropCatalog {
+    param(
+        $GlobalRows,
+        [hashtable] $ItemNames
+    )
+
+    $rows = New-Object System.Collections.Generic.List[object]
+    foreach ($parts in $GlobalRows) {
+        $itemId = [int] $parts[1]
+        [void] $rows.Add([pscustomobject] @{
+            schemaVersion = 1
+            sourceType = "global"
+            continent = [int] $parts[0]
+            itemId = $itemId
+            itemName = $ItemNames[$itemId]
+            minimumQuantity = [int] $parts[2]
+            maximumQuantity = [int] $parts[3]
+            questId = [int] $parts[4]
+            chance = [int] $parts[5]
+        })
+    }
+    return $rows
+}
+
 function Export-ItemCatalog {
     param(
         [hashtable] $ItemNames,
         $Drops,
-        $ShopItems
+        $ShopItems,
+        $GlobalDrops
     )
 
     $Drops = ConvertTo-RowArray $Drops
     $ShopItems = ConvertTo-RowArray $ShopItems
+    $GlobalDrops = ConvertTo-RowArray $GlobalDrops
+    $globalItems = New-Object System.Collections.Generic.HashSet[int]
+    foreach ($globalDrop in $GlobalDrops) { [void] $globalItems.Add([int] $globalDrop.itemId) }
 
     $itemIds = New-Object System.Collections.Generic.HashSet[int]
     foreach ($id in $ItemNames.Keys) { [void] $itemIds.Add([int] $id) }
@@ -462,6 +490,7 @@ function Export-ItemCatalog {
         $flags = New-Object System.Collections.Generic.List[string]
         if ($dropCounts.ContainsKey($itemId)) { [void] $flags.Add("drops-from-mobs") }
         if ($shopCounts.ContainsKey($itemId)) { [void] $flags.Add("sold-in-shop") }
+        if ($globalItems.Contains([int] $itemId)) { [void] $flags.Add("global-drop") }
         if ($itemId -ge 4030000 -and $itemId -lt 4040000) { [void] $flags.Add("quest-item-range") }
 
         [void] $rows.Add([pscustomobject] @{
@@ -480,15 +509,15 @@ function Export-ItemCatalog {
 
 function Export-ShopCatalog {
     param(
-        [string] $ShopSqlPath,
-        [string] $ShopItemsSqlPath,
+        $ShopRows,
+        $ShopItemRows,
         [hashtable] $ItemNames,
         [hashtable] $NpcNames,
         [hashtable] $MapsByNpc
     )
 
     $shopsById = @{}
-    foreach ($parts in (Read-SqlTupleRows $ShopSqlPath 2)) {
+    foreach ($parts in $ShopRows) {
         $shopId = [int] $parts[0]
         $npcId = [int] $parts[1]
         $shopsById[$shopId] = @{
@@ -499,7 +528,7 @@ function Export-ShopCatalog {
     }
 
     $shopItems = New-Object System.Collections.Generic.List[object]
-    foreach ($parts in (Read-SqlTupleRows $ShopItemsSqlPath 5)) {
+    foreach ($parts in $ShopItemRows) {
         $shopId = [int] $parts[0]
         $itemId = [int] $parts[1]
         $row = [pscustomobject] @{
@@ -772,16 +801,18 @@ $skillNames = Get-StringTableFlat (Join-Path $stringRoot "Skill.img.xml")
 $itemNames = Get-ItemNames $stringRoot
 $questInfo = Get-QuestInfoTable (Join-Path $WzRoot "Quest.wz/QuestInfo.img.xml")
 
+$seed = Read-SeedData $SeedDataPath $OutputDir
 $mapRows = Export-MapCatalog (Join-Path $WzRoot "Map.wz/Map") $mapNames
 $indexes = Build-MobAndNpcMapIndexes $mapRows
 $shopExport = Export-ShopCatalog `
-    "src/main/resources/db/data/101-shops-data.sql" `
-    "src/main/resources/db/data/102-shopitems-data.sql" `
+    @($seed.tables.shops.rows) `
+    @($seed.tables.shopitems.rows) `
     $itemNames `
     $npcNames `
     $indexes.mapsByNpc
-$dropRows = Export-DropCatalog "src/main/resources/db/data/152-drop-data.sql" $itemNames $mobNames $indexes.mapsByMob
-$itemRows = Export-ItemCatalog $itemNames $dropRows $shopExport.shopItems
+$dropRows = Export-DropCatalog @($seed.tables.drop_data.rows) $itemNames $mobNames $indexes.mapsByMob
+$globalDropRows = Export-GlobalDropCatalog @($seed.tables.drop_data_global.rows) $itemNames
+$itemRows = Export-ItemCatalog $itemNames $dropRows $shopExport.shopItems $globalDropRows
 $mobRows = Export-MobCatalog (Join-Path $WzRoot "Mob.wz") $mobNames $indexes.mapsByMob
 $questRows = Export-QuestCatalog `
     (Join-Path $WzRoot "Quest.wz/Check.img.xml") `
@@ -793,6 +824,7 @@ $paths = @{
     maps = Join-Path $OutputDir "generated_map_catalog.json"
     mobs = Join-Path $OutputDir "generated_mob_catalog.json"
     drops = Join-Path $OutputDir "generated_drop_catalog.json"
+    globalDrops = Join-Path $OutputDir "generated_global_drop_catalog.json"
     items = Join-Path $OutputDir "generated_item_catalog.json"
     shops = Join-Path $OutputDir "generated_shop_catalog.json"
     quests = Join-Path $OutputDir "generated_quest_catalog.json"
@@ -803,6 +835,7 @@ $paths = @{
 $mapRows | ConvertTo-Json -Depth 12 | Set-Content -Encoding UTF8 $paths.maps
 $mobRows | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 $paths.mobs
 $dropRows | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 $paths.drops
+$globalDropRows | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 $paths.globalDrops
 $itemRows | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 $paths.items
 $shopExport.shops | ConvertTo-Json -Depth 12 | Set-Content -Encoding UTF8 $paths.shops
 $questRows | ConvertTo-Json -Depth 12 | Set-Content -Encoding UTF8 $paths.quests
@@ -811,6 +844,8 @@ $skillRows | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 $paths.skills
 $mapCount = (ConvertTo-RowArray $mapRows).Count
 $mobCount = (ConvertTo-RowArray $mobRows).Count
 $dropCount = (ConvertTo-RowArray $dropRows).Count
+$globalDropCount = (ConvertTo-RowArray $globalDropRows).Count
+$seedWarningCount = @($seed.warnings).Count
 $itemCount = (ConvertTo-RowArray $itemRows).Count
 $shopCount = (ConvertTo-RowArray $shopExport.shops).Count
 $shopItemCount = (ConvertTo-RowArray $shopExport.shopItems).Count
@@ -839,6 +874,8 @@ $summary = @(
     "- Mobs: $mobCount"
     "- Mobs with map placements: $mobWithMapCount"
     "- Drop rows: $dropCount"
+    "- Global drop rows: $globalDropCount"
+    "- Seed data replay warnings: $seedWarningCount"
     "- Items: $itemCount"
     "- Items with mob drops: $itemWithDropCount"
     "- Items sold in shops: $itemWithShopCount"
@@ -853,6 +890,7 @@ $summary = @(
     "- ``generated_map_catalog.json``"
     "- ``generated_mob_catalog.json``"
     "- ``generated_drop_catalog.json``"
+    "- ``generated_global_drop_catalog.json``"
     "- ``generated_item_catalog.json``"
     "- ``generated_shop_catalog.json``"
     "- ``generated_quest_catalog.json``"
@@ -863,7 +901,7 @@ $summary = @(
     ""
     "- NPC placements and approach points remain in ``tmp/npc-catalog``."
     "- Quest data is parsed from ``Quest.wz/Check.img.xml`` and ``Quest.wz/Act.img.xml``."
-    "- Drops and shops are parsed from SQL seed data."
+    "- Drops, global drops and shops come from the Liquibase replay (``server.knowledge.SeedData``, ``seed-data.json``)."
     "- Skill classification fields are hints only. Runtime should use server skill logic as source of truth."
     "- Route reachability, script behavior, market prices, and live perception are not solved by this static catalog."
 ) -join "`n"
@@ -874,6 +912,7 @@ $outputFiles = @(
     [pscustomobject] @{ key = "maps"; path = $paths.maps }
     [pscustomobject] @{ key = "mobs"; path = $paths.mobs }
     [pscustomobject] @{ key = "drops"; path = $paths.drops }
+    [pscustomobject] @{ key = "globalDrops"; path = $paths.globalDrops }
     [pscustomobject] @{ key = "items"; path = $paths.items }
     [pscustomobject] @{ key = "shops"; path = $paths.shops }
     [pscustomobject] @{ key = "quests"; path = $paths.quests }
@@ -898,6 +937,8 @@ $report = [ordered]@{
         mobs = $mobCount
         mobsWithMapPlacements = $mobWithMapCount
         drops = $dropCount
+        globalDrops = $globalDropCount
+        seedDataWarnings = $seedWarningCount
         items = $itemCount
         itemsWithMobDrops = $itemWithDropCount
         itemsSoldInShops = $itemWithShopCount
@@ -916,6 +957,6 @@ if ($Json) {
 }
 
 Write-Host "Game knowledge catalog generated:"
-foreach ($key in @("maps", "mobs", "drops", "items", "shops", "quests", "skills", "summary")) {
+foreach ($key in @("maps", "mobs", "drops", "globalDrops", "items", "shops", "quests", "skills", "summary")) {
     Write-Host "  $($paths[$key])"
 }

@@ -35,7 +35,11 @@ flags by weight, generates a name that passes the same checks as a player's (syn
 the Jev name screen), creates an Agent-only account and character with a random look, backdates
 its join date (squared random, so most are newcomers) and shapes it to the level its age and pace
 say it should have (job chain, growth, AP, gear from the living-world loadouts). Verified: 120
-citizens, levels 1-82, average 34, 22 beginners, every job branch represented.
+citizens, levels 1-82, average 34, 22 beginners, every job branch represented. Past the last loadout band (lv30-40), a
+citizen of level 10+ in a job wears obtainable gear of its own level band and job from server knowledge each time it
+loads (`knowledge.CITIZEN_GEAR`, docs/SERVER_KNOWLEDGE_PLAN.md 8.4; never a downgrade, the weapon keeps its type, and gear
+already given stays when the flag is off). Clerics, priests and bishops of level 30+ train on undead-majority fields 70%
+of the time when one is in band (8.5).
 
 **Presence.** Every `SWEEP_MS` offline citizens log in with a probability derived from their
 cohort's hour weight, so the online fraction follows the curve (evenings busy, 4am dead, weekends
@@ -75,7 +79,12 @@ Choice when several citizens are near and it is unclear who was meant, then gene
 social dialogue runtime with grounding facts installed (who I am, my recent weeks, what happened
 this session, scene, rules). Replies are styled by the voice pack and delayed like typing. Budgets:
 `CONVERSATION_PER_PLAYER_PER_DAY` generated replies per human (then "gtg, ttyl"), a per-citizen
-cooldown, `CONVERSATION_MAX_CONCURRENT`.
+cooldown, `CONVERSATION_MAX_CONCURRENT`. Content questions ("who drops steelies") are answered from server knowledge
+as each citizen knows it (`knowledge.PERSONAL`, docs/SERVER_KNOWLEDGE_PLAN.md 7): a past rebuilt from its id, level and
+home region (training spots per five levels, their towns and mobs, the drops those kills showed), what it killed, looted,
+bought and walked through, and true answers to open questions it overheard; party, circle and guild mates online
+together pass first-hand facts to each other silently. Only veterans (`knowledge.VETERAN_LEVEL`, or old hands within 20
+levels of it) quote drop percentages and rate numbers. Known worlds are written to `living_known_world` every 5 minutes.
 
 **Market.** `market.yaml` seeds a price index (`living_price_index`) that drifts toward observed
 sales. Merchant citizens on a `MARKET` session walk into a Free Market room and open a real stall
@@ -95,7 +104,9 @@ AdminControlPort: `GET /runtime/citizens` (census, online, cohorts, recent chatt
 page shows all of it under "Citizens right now" and edits the population files (saving runs
 `tools\population-lint.bat` semantics on a temp copy).
 
-Tools: `tools\population-lint.bat` validates content; `tools\population-fields.bat` regenerates
+Tools: `tools\population-lint.bat` validates content (map and item ids against the server knowledge: an
+unknown id is an error; PQ lobbies away from their NPC, training fields players cannot walk into, unfarmable
+basket goods and career gear above its band are warnings); `tools\population-fields.bat` regenerates
 `fields.yaml` from `wz/` (730 open-world maps: name, region, mob count, average mob level,
 capacity; Neo City is skipped). Logs: `citizen born`, `citizen X online/offline`, `bot guild`,
 `circle formed`, `opened a stall`; `[chatter]` lines at debug on `server.living.population.ChatterEngine`.

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -51,6 +52,27 @@ class AgentTradeDialogueClassifierTest {
         assertEquals("warrior potion", AgentTradeDialogueClassifier.matchItemQuery("anybody got warrior potions?"));
         assertNull(AgentTradeDialogueClassifier.matchItemQuery("got trash?"));
         assertNull(AgentTradeDialogueClassifier.matchItemQuery("got pot?"));
+    }
+
+    @Test
+    void aQuestionAboutWhatDropsAnItemIsNotADropCommand() {
+        assertNull(AgentTradeDialogueClassifier.matchChoiceCategory("what mobs drop steelies?"));
+        assertNull(AgentTradeDialogueClassifier.matchChoiceCategory("hey what mobs drop steelies"));
+        assertNull(AgentTradeDialogueClassifier.matchChoiceCategory("which monsters drop pig heads"));
+        assertNull(AgentTradeDialogueClassifier.matchChoiceCategory("where do zombies drop chaos scrolls"));
+        assertEquals("name:warrior potion", AgentTradeDialogueClassifier.matchChoiceCategory("drop warrior potions?"));
+        assertEquals("name:flaming feather", AgentTradeDialogueClassifier.matchChoiceCategory("give me flaming feather"));
+        assertEquals("pots", AgentTradeDialogueClassifier.matchChoiceCategory("who can give me pots?"));
+        assertEquals("pots", AgentTradeDialogueClassifier.matchChoiceCategory("what? give me your pots"));
+        assertTrue(String.valueOf(AgentTradeDialogueClassifier.matchChoiceCategory("what? drop steelies")).startsWith("name:"),
+                "a wh-word in an earlier sentence does not make the command a question");
+        assertNotNull(AgentTradeDialogueClassifier.matchChoiceCategory("drop me pots"));
+        assertEquals(AgentTradeDialogueClassifier.matchChoiceCategory("drop me pots"),
+                AgentTradeDialogueClassifier.matchChoiceCategory("where r u drop me pots"), "a drop for someone is a command");
+        assertEquals(AgentTradeDialogueClassifier.matchChoiceCategory("drop ur elixirs"),
+                AgentTradeDialogueClassifier.matchChoiceCategory("wat ever drop ur elixirs"), "a drop of someone's item is a command");
+        assertTrue(String.valueOf(AgentTradeDialogueClassifier.matchChoiceCategory("dude who cares drop steelies")).startsWith("name:"),
+                "a wh-word that does not start the clause is not a question");
     }
 
     @Test

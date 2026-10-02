@@ -13,6 +13,7 @@ import server.agents.social.contracts.DialogueStyleSnapshot;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,6 +57,40 @@ class OllamaDialogueProviderTest {
     }
 
     @Test
+    void contentFactsAddTheFactsOnlyRuleAndKeepTheirOrderInThePrompt() throws Exception {
+        AtomicReference<String> body = new AtomicReference<>();
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/api/generate", exchange -> {
+            body.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] response = "{\"response\":\"centipedes\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        OllamaDialogueProvider provider = provider(30_000);
+
+        provider.generate(request()).orElseThrow();
+        assertTrue(!body.get().contains("State only game facts"), "small talk keeps the plain prompt");
+
+        Map<String, String> facts = new LinkedHashMap<>();
+        facts.put("world.mapId", "100000000");
+        facts.put("content.question", "is pig beach good exp");
+        facts.put("content.about.pig_beach", "pig beach: map, level 12");
+        facts.put("world.map", "Henesys");
+        facts.put("progression.job", "Hermit");
+        provider.generate(request(facts)).orElseThrow();
+        String sent = body.get();
+        assertTrue(sent.contains("State only game facts listed in Public context"));
+        int last = -1;
+        for (String key : facts.keySet()) {
+            int at = sent.indexOf("- " + key + ": ");
+            assertTrue(at > last, key + " keeps its place in Public context");
+            last = at;
+        }
+    }
+
+    @Test
     void failedExternalServiceOpensCircuitAndReturnsEmpty() throws Exception {
         AtomicInteger calls = new AtomicInteger();
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -87,6 +122,10 @@ class OllamaDialogueProviderTest {
     }
 
     private static DialogueRequest request() {
+        return request(Map.of("world.mapId", "100000000"));
+    }
+
+    private static DialogueRequest request(Map<String, String> facts) {
         return new DialogueRequest(
                 "request-1",
                 "casual.greeting",
@@ -102,7 +141,7 @@ class OllamaDialogueProviderTest {
                         "between activities",
                         "No prior relationship history.",
                         100,
-                        Map.of("world.mapId", "100000000")),
+                        facts),
                 List.of(),
                 List.of("hey"),
                 true,

@@ -73,8 +73,15 @@ at its camp (fighting jobs need a field camp, selling works from town). The rost
 bench rule (ledger, live sessions, haul, no own-quest credit) and `freeSlots` still counts it, so
 two humans sharing a party see each other's away companions in the slot count.
 
+With server knowledge (`knowledge.DECISIONS`, docs/SERVER_KNOWLEDGE_PLAN.md 8.3) `farm <item>` reads players' names and
+slang ("steelies", "red pots", "pig heads") and asks back on a tie ("glove att 60 or glove att 10?"). The companion camps
+at the nearest field where a monster it can fight drops the item, and says where; it refuses in its own words what it
+cannot farm: cash items, shop-only items, script-spawned or event monsters, quest-only drops, monsters far above it and
+bosses. The bench ledger credits FARM_ITEM and GATHER only from such droppers, with no DB query.
+
 Calling a benched companion is a trip: it whispers an ETA from its camp (Victoria road hops, 20 s
-plus 40 s per town) and appears beside you when it arrives; a recall whistle
+plus 40 s per town; off Victoria, a trip server knowledge walks with no ride, Orbis to El Nath, counts its town hops the
+same way, and anything needing a ship is 3 min) and appears beside you when it arrives; a recall whistle
 (`living_world.RECALL_WHISTLE_ITEM_ID`, off by default) makes it instant. Up to `BENCH_LIVE_MAX`
 benched or away companions on TRAIN, FARM_MESO or FARM_ITEM duty are materialized at their camp
 fields in rotating slices (`BENCH_LIVE_SLICE_MS`, extended while a human watches) and fight for
@@ -148,7 +155,10 @@ have sub-directories last: its directory offsets assume that order.
 `teach <canonical> <phrase...>`, `haul <player>`, `events <player>`.
 
 `tools\living-world-lint.bat [dir]` validates content offline (exit 1 on errors);
-`tools\living-world-questlog.bat` exports the quest log (above).
+`tools\living-world-questlog.bat` exports the quest log (above). Item, mob, map and NPC ids are checked
+against the server knowledge (`scripts/config/knowledge`, plus the Liquibase seed rows offline): an unknown
+item, mob or map is an error; quest items nobody can farm, mobs that never spawn and gear its holders never
+wear are warnings (docs/SERVER_KNOWLEDGE_PLAN.md section 9).
 
 **Operator endpoints** (loopback AdminControlPort, Bearer token): `GET /runtime/budget` gives heap and
 old gen after the last GC, CPU, threads, registered Agents by kind, humans online, scheduler registrations
@@ -164,14 +174,17 @@ the roster row (ACTIVE: seated again; BENCHED/AWAY: taken out of the party), log
 
 MapleEdit has a **Living World** page (`/living`): the content tree with every id, a one-file
 YAML editor, "Save (lint first)" which runs the server's own lint on the whole tree with the edit
-applied and refuses on errors (backups under MapleEdit `backups/`), "Reload on server" and the
-materialized-Residents table through the AdminControlPort (`/runtime/living`,
-`/actions/living-reload`), and "Export quest log" (the two steps above, minus the deploy).
+applied and refuses on errors (backups under MapleEdit `backups/`; of the knowledge checks only unknown
+ids are errors), "Reload on server" and the materialized-Residents table through the AdminControlPort
+(`/runtime/living`, `/actions/living-reload`), and "Export quest log" (the two steps above, minus the deploy).
 It needs `cosmic_root` set on the Deploy page and `target/Cosmic.jar` built.
 
 One YAML file per town under `personas/`, `quests/`, `contracts/`, `arcs/`, `rumors/`; each file
 holds a list. `loadouts.yaml` and `command-phrases.yaml` are single files. Schemas are the records
-in `server.living.config.Content`; the plan's section 4 has annotated examples.
+in `server.living.config.Content`; the plan's section 4 has annotated examples. A persona may carry
+`knows: [prices, free market]` (docs/SERVER_KNOWLEDGE_PLAN.md 7.7): maps, regions, PQs, mobs or items, by alias or exact
+name, that the Resident knows on top of its home town and a past around it, and `prices` for what things go for; an entry
+that names nothing is a lint warning. VETERAN and ELITE Residents quote exact drop chances.
 
 Persona dialogue intents the runtime looks up (chapter overrides first, then the persona):
 `greetFirst`, `greet`, `idle`, `noWork`, `nothingDue`, `who`, `bye`, `thanks`, `smallTalk`,

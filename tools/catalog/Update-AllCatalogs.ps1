@@ -1,5 +1,6 @@
 param(
     [string] $WzRoot = "wz",
+    [string] $SqlRoot = "src/main/resources/db",
     [string] $GameCatalogDir = "tmp/game-catalog",
     [string] $NpcCatalogDir = "tmp/npc-catalog",
     [string] $AgentLlmCatalogDir = "tmp/agent-llm-catalog",
@@ -75,12 +76,21 @@ if (!$Json) {
 }
 
 $hadSnapshot = Copy-DirectorySnapshot $AgentLlmCatalogDir $snapshotDir
+$seedDataPath = Join-Path $runDir "seed-data.json"
 
 if (!$SkipExport) {
+    Invoke-Step "Replay Liquibase seed data" {
+        if (!(Test-Path -LiteralPath "target\Cosmic.jar")) {
+            throw "target\Cosmic.jar not found - run mvnw.cmd package -DskipTests first."
+        }
+        java -cp "target\Cosmic.jar" server.knowledge.export.SeedDataMain $SqlRoot $seedDataPath
+    }
+
     Invoke-Step "Export game knowledge catalog" {
         powershell -ExecutionPolicy Bypass -File "tools/game-catalog/Export-GameKnowledgeCatalog.ps1" `
             -WzRoot $WzRoot `
-            -OutputDir $GameCatalogDir
+            -OutputDir $GameCatalogDir `
+            -SeedDataPath $seedDataPath
     }
 
     Invoke-Step "Export NPC catalog" {
@@ -88,7 +98,8 @@ if (!$SkipExport) {
             "-ExecutionPolicy", "Bypass",
             "-File", "tools/npc-catalog/Export-NpcCatalog.ps1",
             "-WzRoot", $WzRoot,
-            "-OutputDir", $NpcCatalogDir
+            "-OutputDir", $NpcCatalogDir,
+            "-SeedDataPath", $seedDataPath
         )
         if ($SkipNpcApproach) {
             $arguments += "-SkipApproach"
@@ -145,6 +156,7 @@ Invoke-Step "Write reactor catalog validation report" {
 Invoke-Step "Write catalog bundle prep report" {
     powershell -ExecutionPolicy Bypass -File "tools/catalog/Test-CatalogBundlePrep.ps1" `
         -WzRoot $WzRoot `
+        -SqlRoot $SqlRoot `
         -GameCatalogDir $GameCatalogDir `
         -NpcCatalogDir $NpcCatalogDir `
         -AgentLlmCatalogDir $AgentLlmCatalogDir `
@@ -177,6 +189,7 @@ $summary = [ordered]@{
     skipNpcApproach = [bool] $SkipNpcApproach
     hadAgentLlmSnapshot = [bool] $hadSnapshot
     reports = [ordered]@{
+        seedData = if ($SkipExport) { $null } else { $seedDataPath }
         dropSourceGap = Join-Path $runDir "drop-source-gap-report.md"
         catalogVerification = Join-Path $runDir "catalog-verification-report.md"
         mapleIslandMvpValidation = Join-Path $runDir "maple-island-mvp-validation-report.md"
@@ -193,15 +206,6 @@ $summary = [ordered]@{
 $summaryPath = Join-Path $runDir "summary.json"
 $summary | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $summaryPath -Encoding UTF8
 
-Invoke-Step "Write catalog status report" {
-    powershell -ExecutionPolicy Bypass -File "tools/catalog/Get-CatalogStatus.ps1" `
-        -GameCatalogDir $GameCatalogDir `
-        -NpcCatalogDir $NpcCatalogDir `
-        -AgentLlmCatalogDir $AgentLlmCatalogDir `
-        -ReportDir $ReportDir `
-        -OutputPath (Join-Path $runDir "catalog-status.md")
-}
-
 Invoke-Step "Write catalog runtime readiness report" {
     powershell -ExecutionPolicy Bypass -File "tools/catalog/Get-CatalogRuntimeReadiness.ps1" `
         -GameCatalogDir $GameCatalogDir `
@@ -209,6 +213,15 @@ Invoke-Step "Write catalog runtime readiness report" {
         -AgentLlmCatalogDir $AgentLlmCatalogDir `
         -ReactorCatalogDir $ReactorCatalogDir `
         -OutputPath (Join-Path $runDir "catalog-runtime-readiness.md")
+}
+
+Invoke-Step "Write catalog status report" {
+    powershell -ExecutionPolicy Bypass -File "tools/catalog/Get-CatalogStatus.ps1" `
+        -GameCatalogDir $GameCatalogDir `
+        -NpcCatalogDir $NpcCatalogDir `
+        -AgentLlmCatalogDir $AgentLlmCatalogDir `
+        -ReportDir $ReportDir `
+        -OutputPath (Join-Path $runDir "catalog-status.md")
 }
 
 $reportRows = @(

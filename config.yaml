@@ -902,3 +902,20 @@ population:
     MARKET_ENABLED: true
     MARKET_STALLS_MAX: 30
     MARKET_BUY_BUDGET_PER_DAY: 200000
+
+# Server knowledge: what bots know about this server's content (drops, shops, maps, routes, quests),
+# from scripts/config/knowledge/server-knowledge.json (tools\knowledge-export.bat) plus the live
+# drop/shop tables (docs/SERVER_KNOWLEDGE_PLAN.md). Independent of living_world. ASCII only.
+knowledge:
+    ENABLED: true
+    CONTENT_DIR: scripts/config/knowledge
+    CITIZENS: true
+    COMPANIONS: true
+    RESIDENTS: true
+    HORIZON_LEVEL_SLACK: 10
+    MAX_REPLY_CHARS: 70
+    LOG_UNRESOLVED: true
+    PERSONAL: true
+    VETERAN_LEVEL: 70
+    DECISIONS: true
+    CITIZEN_GEAR: true

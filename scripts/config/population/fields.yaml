@@ -124,7 +124,7 @@ fields:
   - { mapId: 103000202, name: "Line 2 <Area 3>", street: "Kerning City Subway", region: victoria, town: false, mobs: 69, mobLevel: 48, capacity: 6 }
   - { mapId: 103000901, name: "B1 <Area 2>", street: "Line 3 Construction Site", region: victoria, town: false, mobs: 12, mobLevel: 200, capacity: 3 }
   - { mapId: 103000904, name: "B2 <Area 2>", street: "Line 3 Construction Site", region: victoria, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
-  - { mapId: 103000906, name: "B3 <Area 1>", street: "Line 3 Construction Site", region: victoria, town: false, mobs: 4, mobLevel: 200, capacity: 1 }
+  - { mapId: 103000906, name: "B3 <Area 1>", street: "Line 3 Construction Site", region: victoria, town: false, mobs: 4, mobLevel: 200, capacity: 0 }
   - { mapId: 103010000, name: "Kerning City Construction Site", street: "Victoria Road", region: victoria, town: false, mobs: 51, mobLevel: 7, capacity: 6 }
   - { mapId: 103010001, name: "Caution Falling Down", street: "Hidden Street", region: victoria, town: false, mobs: 10, mobLevel: 13, capacity: 2 }
   - { mapId: 103020000, name: "L Forest I", street: "Victoria Road", region: victoria, town: false, mobs: 32, mobLevel: 7, capacity: 6 }
@@ -296,7 +296,7 @@ fields:
   - { mapId: 200050000, name: "Cloud Park IV", street: "Orbis", region: orbis, town: false, mobs: 33, mobLevel: 43, capacity: 6 }
   - { mapId: 200050001, name: "Old Man's House", street: "Orbis", region: orbis, town: true, mobs: 0, mobLevel: 0, capacity: 0 }
   - { mapId: 200060000, name: "Strolling Path II", street: "Orbis", region: orbis, town: false, mobs: 25, mobLevel: 46, capacity: 6 }
-  - { mapId: 200060001, name: "Neglected Strolling Path", street: "Hidden Street", region: orbis, town: false, mobs: 7, mobLevel: 45, capacity: 1 }
+  - { mapId: 200060001, name: "Neglected Strolling Path", street: "Hidden Street", region: orbis, town: false, mobs: 7, mobLevel: 45, capacity: 0 }
   - { mapId: 200070000, name: "Cloud Park V", street: "Orbis", region: orbis, town: false, mobs: 33, mobLevel: 50, capacity: 6 }
   - { mapId: 200080000, name: "Cloud Park VI", street: "Orbis", region: orbis, town: false, mobs: 35, mobLevel: 51, capacity: 6 }
   - { mapId: 200080200, name: "Orbis Tower <20th Floor>", street: "Orbis", region: orbis, town: false, mobs: 23, mobLevel: 23, capacity: 5 }
@@ -713,4 +713,4 @@ fields:
   - { mapId: 261020401, name: "Authorized Personnel Only", street: "Hidden Street", region: magatia, town: false, mobs: 15, mobLevel: 68, capacity: 3 }
   - { mapId: 261020500, name: "Lab - Area C-3", street: "Alcadno Research Institute", region: magatia, town: false, mobs: 28, mobLevel: 59, capacity: 6 }
   - { mapId: 261020600, name: "Lab - Area B-3", street: "Alcadno Research Institute", region: magatia, town: false, mobs: 14, mobLevel: 44, capacity: 3 }
-  - { mapId: 261020700, name: "Lab - Area A-3", street: "Alcadno Research Institute", region: magatia, town: false, mobs: 27, mobLevel: 44, capacity: 6 }
+  - { mapId: 261020700, name: "Lab - Area A-3", street: "Alcadno Research Institute", region: magatia, town: false, mobs: 27, mobLevel: 44, capacity: 0 }

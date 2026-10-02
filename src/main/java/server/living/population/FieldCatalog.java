@@ -1,5 +1,8 @@
 package server.living.population;
 
+import server.knowledge.Decisions;
+import server.knowledge.WorldKnowledge;
+import server.living.population.PopulationContent.Career;
 import server.living.population.PopulationContent.Field;
 import server.living.population.PopulationContent.Lobby;
 import server.living.population.PopulationContent.Region;
@@ -7,6 +10,7 @@ import server.living.population.PopulationContent.Region;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 /** Where citizens go (plan 3.3): training fields by level and region with occupancy, towns, lobbies, FM. */
 public final class FieldCatalog {
@@ -14,6 +18,11 @@ public final class FieldCatalog {
     private static final int FM_LAST_ROOM = 910000022;
     private static final int LEVEL_BELOW = 6;
     private static final int LEVEL_ABOVE = 3;
+    /** Clerics, priests and bishops of this level or more lean toward undead fields: Heal hurts undead monsters. */
+    private static final int HEALER_MIN_LEVEL = 30;
+    private static final int HEALER_UNDEAD_PERCENT = 70;
+    private static final double UNDEAD_MAJORITY = 0.5;
+    private static final Set<String> HEALERS = Set.of("CLERIC", "PRIEST", "BISHOP");
 
     private final Population population;
 
@@ -89,7 +98,8 @@ public final class FieldCatalog {
 
     /**
      * Picks a training field: in the citizen's region, mob level within [level-6, level+3], with
-     * free capacity given citizens already there; prefers maps humans are on when {@code social}.
+     * free capacity given citizens already there; a healer of level 30+ mostly picks among the
+     * undead-majority ones (docs/SERVER_KNOWLEDGE_PLAN.md 8.5); prefers maps humans are on when {@code social}.
      */
     public Field trainingField(Citizen citizen, int level, Random random, boolean social) {
         List<Field> candidates = new ArrayList<>();
@@ -117,6 +127,13 @@ public final class FieldCatalog {
         if (candidates.isEmpty()) {
             return null;
         }
+        Career career = population.content().career(citizen.career());
+        if (career != null && HEALERS.contains(career.job()) && level >= HEALER_MIN_LEVEL) {
+            List<Field> undead = healerFields(candidates, Decisions.active());
+            if (!undead.isEmpty() && random.nextInt(100) < HEALER_UNDEAD_PERCENT) {
+                candidates = undead;
+            }
+        }
         if (social) {
             java.util.Set<Integer> humanMaps = population.humanMaps();
             for (Field field : candidates) {
@@ -126,6 +143,19 @@ public final class FieldCatalog {
             }
         }
         return candidates.get(random.nextInt(candidates.size()));
+    }
+
+    /** The candidates whose spawn points are mostly undead monsters (server knowledge); none without knowledge. */
+    static List<Field> healerFields(List<Field> candidates, WorldKnowledge k) {
+        List<Field> out = new ArrayList<>();
+        if (k != null) {
+            for (Field field : candidates) {
+                if (k.undeadShare(field.mapId()) >= UNDEAD_MAJORITY) {
+                    out.add(field);
+                }
+            }
+        }
+        return out;
     }
 
     /**

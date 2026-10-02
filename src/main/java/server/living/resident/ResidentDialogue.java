@@ -1,14 +1,28 @@
 package server.living.resident;
 
 import client.Character;
+import config.YamlConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.TimerManager;
 import server.agents.commands.AgentReplyChannel;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.integration.AgentPresence;
+import server.knowledge.ContentChat;
+import server.knowledge.ContentQuestionDetector.Kind;
+import server.knowledge.Decisions;
+import server.knowledge.EntityKind;
+import server.knowledge.IntList;
+import server.knowledge.KnownWorld;
+import server.knowledge.NameIndex;
+import server.knowledge.PersonalKnowledge;
+import server.knowledge.WorldKnowledge;
 import server.living.LivingWorld;
+import server.living.config.Content;
 import server.living.config.Content.Persona;
+import server.living.config.Content.Quest;
+import server.living.config.Content.Step;
 import server.living.config.Content.StepType;
 import server.living.config.LivingContent;
 import server.living.phrases.PhraseMatcher;
@@ -28,10 +42,12 @@ import server.living.store.LivingStore.RosterState;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -46,6 +62,8 @@ import java.util.regex.Pattern;
 public final class ResidentDialogue {
     private static final Logger log = LoggerFactory.getLogger(ResidentDialogue.class);
     private static final int PROXIMITY_PX = 320;
+    /** The {@code knows:} word for "knows what things go for" (docs/SERVER_KNOWLEDGE_PLAN.md 7.7). */
+    private static final String PRICES = "prices";
 
     private static final Pattern GREET = Pattern.compile("^(hi|hello|hey|yo|sup|hiya|greetings|good (morning|evening|day))( there)?( \\w+)?$");
     private static final Pattern ASK_QUEST = Pattern.compile("\\b(quest|work|job|task|errand|favou?r|anything (for me|to do|i can do)|need (help|a hand|anything)|got anything|help you|what do you need|any work)\\b");
@@ -57,7 +75,7 @@ public final class ResidentDialogue {
     private static final Pattern THANKS = Pattern.compile("^(thanks|thank you|thx|ty|cheers|appreciate it)( .*)?$");
     private static final Pattern DECLINE = Pattern.compile("^(no|nah|nope|not now|maybe later|decline|pass|no thanks)( .*)?$");
     private static final Pattern PAY = Pattern.compile("^pay (\\d+)k?$");
-    private static final Pattern ASK_ABOUT = Pattern.compile("^(tell me about|who is|what about|whats with|know anything about|heard about) (\\w+)$");
+    private static final Pattern ASK_ABOUT = Pattern.compile("^(tell me about|who is|what about|whats with|know anything about|heard about) (.+)$");
     private static final Pattern TALK = Pattern.compile("^(talk|lets talk|menu|options|speak|chat|talk to me|can we talk|got a minute|a word)$");
 
     /** Borrowed townsperson portraits for personas with neither portraitNpcId nor a generated one (portrait-npc-ids.yaml). */
@@ -234,10 +252,24 @@ public final class ResidentDialogue {
                 nearest = session;
             }
         }
-        if (nearest != null && directed(normalized)) {
+        if (nearest != null && directed(normalized) && !openContentQuestion(normalized)) {
             return new Target(nearest.persona, normalized);
         }
         return null;
+    }
+
+    /**
+     * A content question nobody was named in ("wheres the job advancement npc", "how do i join kpq") is for the
+     * townsfolk and companions who know, not the nearest resident's quest and contract patterns.
+     */
+    private static boolean openContentQuestion(String normalized) {
+        ContentChat knowledge = ContentChat.shared();
+        if (!knowledge.on(ContentChat.Host.RESIDENTS) && !knowledge.on(ContentChat.Host.CITIZENS)
+                && !knowledge.on(ContentChat.Host.COMPANIONS)) {
+            return false; // knowledge off: no detector pass on every line near residents
+        }
+        Kind kind = ContentChat.kind(normalized);
+        return kind != null && kind != Kind.THANKS && kind != Kind.FOLLOW_UP;
     }
 
     private static boolean directed(String normalized) {
@@ -284,6 +316,9 @@ public final class ResidentDialogue {
             world.residents().reply(persona, speaker, world.contracts().pay(speaker, persona, amount));
             return true;
         }
+        if (knows(speaker, persona, withoutName(original, persona.name()))) {
+            return true; // before the patterns below, which read "job" in "job advancement" and "join" in "join kpq"
+        }
         if (ACCEPT.matcher(normalized).matches()) {
             if (!world.quests().accept(speaker, persona)) {
                 if (world.contracts().blocker(speaker, persona) == null
@@ -322,7 +357,7 @@ public final class ResidentDialogue {
             return true;
         }
         Matcher about = ASK_ABOUT.matcher(normalized);
-        if (about.matches()) {
+        if (about.matches() && (about.group(2).indexOf(' ') < 0 || longTopics(about.group(2)))) {
             askAbout(speaker, persona, about.group(2));
             return true;
         }
@@ -362,7 +397,7 @@ public final class ResidentDialogue {
                 case ACCEPT -> { if (!world.quests().accept(speaker, persona)) { sayLine(speaker, persona, "idle", "nothing to accept right now."); } }
                 case TURN_IN -> { if (!world.quests().turnIn(speaker, persona)) { sayLine(speaker, persona, "nothingDue", "you don't owe me anything."); } }
                 case ASK_JOIN -> world.residents().reply(persona, speaker, world.contracts().askToJoin(speaker, persona));
-                case ASK_ABOUT -> askAbout(speaker, persona, lastWord(normalized));
+                case ASK_ABOUT -> askAbout(speaker, persona, longTopics(aboutTopic(normalized)) ? aboutTopic(normalized) : lastWord(normalized));
                 case GOODBYE -> sayLine(speaker, persona, "bye", "later.");
                 case SMALL_TALK -> sayLine(speaker, persona, "smallTalk", "mm.");
                 case NOT_FOR_ME -> { }
@@ -484,6 +519,9 @@ public final class ResidentDialogue {
         String key = topic == null ? "" : topic.toLowerCase(Locale.ROOT);
         Persona other = world.content().personaByName(key);
         List<String> lines = world.arcs().lines(persona, "about." + (other == null ? key : other.id()));
+        if (lines.isEmpty() && other == null && knows(speaker, persona, "where is " + key)) {
+            return; // a game thing, not a person: what it is known for (where it is, where it drops)
+        }
         if (lines.isEmpty()) {
             lines = world.arcs().lines(persona, "aboutUnknown");
         }
@@ -500,6 +538,104 @@ public final class ResidentDialogue {
 
     private static String pick(List<String> lines, Character speaker) {
         return lines.get(Math.floorMod(speaker.getId() + (int) (System.currentTimeMillis() / 9000L), lines.size()));
+    }
+
+    /**
+     * A content question answered from server knowledge as this resident knows it (its level, its town's region,
+     * everything its own quests mention), typed with a think-and-typing delay; false when the line is not one.
+     */
+    private boolean knows(Character speaker, Persona persona, String line) {
+        ContentChat knowledge = ContentChat.shared();
+        if (!knowledge.on(ContentChat.Host.RESIDENTS)) {
+            return false;
+        }
+        ResidentRuntime.Session session = world.residents().session(persona.id());
+        Character agent = session == null ? null : session.agent();
+        List<ContentChat.Line> lines = knowledge.resident(session == null ? persona.id().hashCode() : session.characterId,
+                agent == null ? persona.level().max() : agent.getLevel(), ContentChat.region(ResidentSpots.townMapId(persona.homeTown())),
+                ownRefs(persona), speaker, line, System.currentTimeMillis());
+        if (lines == null) {
+            return false;
+        }
+        for (ContentChat.Line said : lines) {
+            TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY,
+                    () -> world.residents().reply(persona, speaker, said.text()), Math.max(1L, said.delayMs()));
+        }
+        return true;
+    }
+
+    /**
+     * Its known world (docs/SERVER_KNOWLEDGE_PLAN.md 7.2): a past in Maple Island below 10, else around its home town; the
+     * town itself and its persona's {@code knows:} list; a veteran when its strength is VETERAN or ELITE or it reached
+     * knowledge.VETERAN_LEVEL; {@code knows: [prices]} knows what things go for.
+     */
+    void openKnowledge(Persona persona, int characterId, Character agent) {
+        PersonalKnowledge personal = PersonalKnowledge.shared();
+        if (!personal.on() || agent == null) {
+            return;
+        }
+        try { // never fails the materialize: a failure here costs only what it knows
+            int townMap = ResidentSpots.townMapId(persona.homeTown());
+            String region = ContentChat.region(townMap);
+            List<String> knows = new ArrayList<>(world.content().knows(persona.id()));
+            boolean prices = knows.remove(PRICES);
+            int level = agent.getLevel();
+            boolean veteran = persona.strength() == Content.Strength.VETERAN || persona.strength() == Content.Strength.ELITE
+                    || level >= YamlConfig.config.knowledge.VETERAN_LEVEL;
+            personal.open(characterId, new PersonalKnowledge.Spec(KnownWorld.Past.SYNTHESIZED, persona.id().hashCode(), level,
+                    band -> band < 10 ? "maple-island" : region, townMap == 0 ? IntList.EMPTY : IntList.of(townMap), knows, veteran,
+                    prices));
+        } catch (RuntimeException failure) {
+            log.warn("Resident {}: opening its known world failed", persona.id(), failure);
+        }
+    }
+
+    /** What the persona's own quests mention (mobs, items, maps, NPCs): always known to it. */
+    private Set<Long> ownRefs(Persona persona) {
+        Set<Long> refs = new HashSet<>();
+        for (Quest quest : world.content().questsOf(persona.id())) {
+            for (Step step : quest.steps()) {
+                step.mobIds().forEach(mob -> refs.add(ContentChat.ref(EntityKind.MOB, mob)));
+                step.mapIds().forEach(map -> refs.add(ContentChat.ref(EntityKind.MAP, map)));
+                if (step.itemId() > 0) {
+                    refs.add(ContentChat.ref(EntityKind.ITEM, step.itemId()));
+                }
+                if (step.take() != null) {
+                    refs.add(ContentChat.ref(EntityKind.ITEM, step.take().itemId()));
+                }
+                for (String npc : new String[]{step.persona(), step.to()}) {
+                    if (npc != null && npc.startsWith("npc:")) {
+                        try {
+                            refs.add(ContentChat.ref(EntityKind.NPC, Integer.parseInt(npc.substring(4))));
+                        } catch (NumberFormatException ignored) {
+                            // a malformed id names nothing
+                        }
+                    }
+                }
+            }
+        }
+        return refs;
+    }
+
+    /** The line as typed (punctuation kept, so "where?" stays a question) without the persona's name. */
+    static String withoutName(String original, String name) {
+        String out = original.replaceAll("(?i)(^|[^\\p{L}\\p{N}])" + Pattern.quote(name) + "(?=$|[^\\p{L}\\p{N}])", "$1");
+        return out.replaceAll("^[\\s,.:;!]+", "").replaceAll("\\s{2,}", " ").trim();
+    }
+
+    /**
+     * A topic of several words ("who is the strongest here", "tell me about mia wolfe") is asked about only when it
+     * names a persona or server knowledge can answer it for residents; otherwise the line keeps its old way to the
+     * judged intent (one word, the last one).
+     */
+    boolean longTopics(String topic) {
+        return ContentChat.shared().on(ContentChat.Host.RESIDENTS) || world.content().personaByName(topic) != null;
+    }
+
+    /** "tell me about steely throwing knives" -> "steely throwing knives"; otherwise the last word. */
+    private static String aboutTopic(String normalized) {
+        int about = normalized.lastIndexOf(" about ");
+        return about >= 0 ? normalized.substring(about + " about ".length()) : lastWord(normalized);
     }
 
     private static String lastWord(String normalized) {
@@ -647,8 +783,11 @@ public final class ResidentDialogue {
             if (farm.matches()) {
                 String itemText = farm.group(2).trim();
                 count = farm.group(4) != null ? Integer.parseInt(farm.group(4)) : farm.group(1) != null ? Integer.parseInt(farm.group(1).trim()) : 0;
-                itemId = itemIdFor(itemText);
-                if (itemId <= 0) {
+                itemId = itemFor(owner, persona, itemText);
+                if (itemId < 0) {
+                    return true; // it asked back which one
+                }
+                if (itemId == 0) {
                     owner.dropMessage(5, persona.name() + ": i don't know what '" + itemText + "' is.");
                     return true;
                 }
@@ -753,6 +892,29 @@ public final class ResidentDialogue {
             }
         }
         return null;
+    }
+
+    /**
+     * The item a farm order names (docs/SERVER_KNOWLEDGE_PLAN.md 8.3): its id; 0 when unknown; -1 when it asked the owner
+     * back which one. With server knowledge players' names and slang resolve ("steelies", "red pots"), and there is no
+     * prefix scan (it turns "snail" into a cash pet); without it, {@link #itemIdFor} as before.
+     */
+    private static int itemFor(Character owner, Persona persona, String text) {
+        WorldKnowledge k = Decisions.active();
+        if (k == null) {
+            return itemIdFor(text);
+        }
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException notNumeric) {
+            NameIndex.Resolution resolution = k.names().resolveSlot(text, List.of(EntityKind.ITEM));
+            if (resolution.tie()) {
+                owner.dropMessage(5, persona.name() + ": " + resolution.candidates().get(0).entity().say() + " or "
+                        + resolution.candidates().get(1).entity().say() + "?");
+                return -1;
+            }
+            return resolution.best().map(candidate -> candidate.entity().id()).orElse(0);
+        }
     }
 
     private static int itemIdFor(String text) {

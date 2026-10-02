@@ -98,6 +98,7 @@ public class PnpcCommand extends Command {
                 }
 
                 player.yellowMessage("Pnpc created.");
+                server.knowledge.KnowledgeLoader.requestOverlayRebuild(); // "where is X" / "who sells X" see the new placement
             } catch (SQLException e) {
                 monitoring.RuntimeFailureLogger.log(e);
                 player.dropMessage(5, "Failed to store pNPC in the database.");

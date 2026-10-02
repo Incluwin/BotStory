@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.UnaryOperator;
 
 /**
  * Zero-cost chat (plan 5): world events propose templated lines to citizens in range; a citizen
@@ -36,6 +37,8 @@ public final class ChatterEngine {
     private static final long INTENT_COOLDOWN_DEFAULT_MS = 300_000L;
     private static final int MAX_REACTORS = 2;
     private static final double DWELL_BASE_CHANCE = 0.05d;
+    /** Shorter map names than this ("fm") are not looked for inside chatter lines. */
+    private static final int MIN_PLACE_NAME = 4;
 
     /** Something that may make nearby citizens talk. */
     public static final class Event {
@@ -232,9 +235,13 @@ public final class ChatterEngine {
         String where = population.fields().kind(session.mapId);
         List<Intent> fitting = new ArrayList<>();
         int total = 0;
+        int level = session.agent() == null ? 0 : session.agent().getLevel();
         for (Intent intent : population.content().intents(trigger)) {
             if (!intent.where().equals("any") && !intent.where().equals(where) && !intent.mapIds().contains(session.mapId)) {
                 continue;
+            }
+            if (intent.maxLevel() > 0 && level > intent.maxLevel()) {
+                continue; // "how do i get to orbis" from a level-90 reads scripted
             }
             if (!channelAvailable(session, intent.channel())) {
                 continue;
@@ -270,7 +277,7 @@ public final class ChatterEngine {
         if (channel.equals("map") && !takeToken(session.channel, session.mapId, where, now)) {
             return false;
         }
-        List<String> lines = chosen.linesFor(population.voices().styleOf(session.citizen));
+        List<String> lines = elsewhere(chosen.linesFor(population.voices().styleOf(session.citizen)), session.mapId);
         String template = event.text != null ? event.text : lines.get(random.nextInt(lines.size()));
         String filled = fill(template, session, event);
         if (filled == null || filled.isBlank()) {
@@ -283,8 +290,27 @@ public final class ChatterEngine {
         while (session.recentIntents.size() > population.config().CHATTER_RECENT_MEMORY) {
             session.recentIntents.removeFirst();
         }
-        deliver(session, channel, rendered, urgent ? 400L : population.voices().delayMs(session.citizen, rendered));
+        long delay = urgent ? 400L : population.voices().delayMs(session.citizen, rendered);
+        deliver(session, channel, rendered, delay);
+        if (channel.equals("map")) {
+            population.conversation().overheard(session, filled, delay); // another citizen may answer its question
+        }
         return true;
+    }
+
+    /** The lines that do not name the map the citizen stands on ("how do i get to ellinia" is not asked in Ellinia). */
+    private List<String> elsewhere(List<String> lines, int mapId) {
+        String here = population.fields().name(mapId).toLowerCase(Locale.ROOT).split(" ")[0]; // "kerning" of "Kerning City"
+        if (here.length() < MIN_PLACE_NAME) {
+            return lines;
+        }
+        List<String> out = new ArrayList<>();
+        for (String line : lines) {
+            if (!line.toLowerCase(Locale.ROOT).contains(here)) {
+                out.add(line);
+            }
+        }
+        return out.isEmpty() ? lines : out;
     }
 
     private boolean channelAvailable(CitizenSession session, String channel) {
@@ -358,13 +384,22 @@ public final class ChatterEngine {
     // ---- delivery ------------------------------------------------------------------------
 
     private void deliver(CitizenSession session, String channel, String text, long delayMs) {
+        deliver(session, channel, text, delayMs, null);
+    }
+
+    /** {@code atSend} (may be null) gets the line at send time and returns what to send instead, or null to drop it. */
+    private void deliver(CitizenSession session, String channel, String text, long delayMs, UnaryOperator<String> atSend) {
         Runnable send = () -> {
             try {
                 Character agent = session.agent();
                 if (agent == null || population.presence().session(session.characterId) == null) {
                     return;
                 }
-                String clean = AgentChatTextSanitizer.sanitize(text);
+                String sent = atSend == null ? text : atSend.apply(text);
+                if (sent == null) {
+                    return;
+                }
+                String clean = AgentChatTextSanitizer.sanitize(sent);
                 switch (channel) {
                     case "party" -> AgentDialogueTransportRuntime.sayPartyNow(agent, clean);
                     case "guild" -> {
@@ -396,6 +431,38 @@ public final class ChatterEngine {
             }
         };
         TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, send, Math.max(1L, delayMs));
+    }
+
+    /**
+     * A citizen replies on map chat in its voice with its typing delay (greetings, conversation templates): no intent
+     * picker or map line budget, because someone spoke to it, but nothing while chatter is off and at most one line per
+     * self cooldown, so "hi mia" typed every second gets one "hey".
+     */
+    public void say(CitizenSession session, String text) {
+        long now = System.currentTimeMillis();
+        if (!mayReply(session, now)) {
+            return;
+        }
+        String rendered = population.voices().render(session.citizen, text, now);
+        deliver(session, "map", rendered, population.voices().delayMs(session.citizen, rendered));
+    }
+
+    /** {@link #say}'s gate: chatter is on and the citizen said nothing on map chat for the self cooldown; takes the slot. */
+    boolean mayReply(CitizenSession session, long now) {
+        Long last = session.lastSpokeAtMs.get("map");
+        if (!population.config().CHATTER_ENABLED || last != null && now - last < SELF_COOLDOWN_MS) {
+            return false;
+        }
+        session.lastSpokeAtMs.put("map", now);
+        return true;
+    }
+
+    /**
+     * A content answer already in the citizen's voice ({@link VoicePacks#renderAnswer}), sent on map chat after
+     * {@code delayMs}; {@code atSend} may drop it then (the asker left) or swap it ("^" when a human answered first).
+     */
+    public void answer(CitizenSession session, String text, long delayMs, UnaryOperator<String> atSend) {
+        deliver(session, "map", text, delayMs, atSend);
     }
 
     /** Whisper to a human from a citizen (used by social and conversation). */
