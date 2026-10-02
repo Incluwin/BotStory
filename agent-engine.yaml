@@ -2223,10 +2223,14 @@ tuning:
     # Purpose: Bounds how long a floor coupon may wait for a fighting companion-run collector before the collector leaves its fight for it anyway.
     # Technical: Measured from the coupon's own drop time on the coordinator's clock; an older coupon is matched in the sweep however busy the collector is, closest collector and coupon pairs first as before.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_MAX_AGE_MS: '120000'
-    # Values: 60-250 map pixels. Recommended: 100. Higher values need longer platforms (some cluster platforms then have no spot); lower values let Ligators reach the shooter sooner.
+    # Values: 60-250 map pixels. Recommended: 80, still past the 50 px point-blank range. Higher values need longer platforms: at 100 four of 103000800's five clusters had a spot only on a one-spawn platform, at 80 three have one on a platform of two or three spawns.
     # Purpose: Sets how far from the Ligator spawn points of its territory a companion run's ranged member stands to shoot in stage 1, so it is not on the point-blank whack-and-retreat loop.
-    # Technical: The firing spot is the foothold point this many pixels left or right of a territory spawn on that spawn's navigation region, kept only if every spawn of the territory is at least this far away (Euclidean); the spot on the platform with the most spawns wins, then the nearest to a spawn.
-    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX: '100'
+    # Technical: The firing spot is the foothold point this many pixels left or right of a territory spawn on that spawn's navigation region, kept only if every spawn of the territory is at least this far away (Euclidean) and that region holds at least STAGE1_RANGED_SPOT_MIN_SPAWNS of the territory's spawns; the spot on the platform with the most spawns wins, then the nearest to a spawn.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX: '80'
+    # Values: 1-6 spawn points. Recommended: 2. One lets a ranged member camp a platform fed by a single spawn's respawn; higher values leave more clusters without a firing spot.
+    # Purpose: Keeps a companion run's ranged member from shooting stage 1 from a platform too poor in Ligators to keep it busy; with no platform rich enough it grinds its territory as before.
+    # Technical: An anchored member attacks only what comes into range of its spot without moving, so AgentKpqStageOneClusterPolicy.firingSpot keeps only spots on a navigation region holding at least this many of the territory's spawn points.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPOT_MIN_SPAWNS: '2'
     # Values: 60-300 map pixels. Recommended: 150. Higher values join neighbouring platforms into one; lower values split a platform's spawns into groups that STAGE1_CLUSTER_MIN_SPAWNS then joins again.
     # Purpose: Decides which KPQ Stage 1 Ligator spawns stand on one platform when a companion run's spawns are split into the clusters its companions camp.
     # Technical: AgentKpqStageOneClusterPolicy links two spawn points whose x differs by at most this and whose y differs by at most STAGE1_CLUSTER_LINK_Y_PX, transitively; the linked groups are the platforms that clusters are built from.

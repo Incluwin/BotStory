@@ -160,6 +160,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_MAX_AGE_MS");
     private static final int STAGE1_RANGED_SPAWN_STANDOFF_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX");
+    private static final int STAGE1_RANGED_SPOT_MIN_SPAWNS = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPOT_MIN_SPAWNS");
     private static final int STAGE1_CLUSTER_LINK_X_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_LINK_X_PX");
     private static final int STAGE1_CLUSTER_LINK_Y_PX = config.AgentTuning.intValue(
@@ -3090,9 +3092,10 @@ final class AgentKpqCoordinator {
 
     /**
      * L4: where a bow, crossbow, claw or gun member fights from in its territory, worked out once per territory: a
-     * spot STAGE1_RANGED_SPAWN_STANDOFF_PX beside a spawn on that spawn's platform. By their damage per line, the
-     * 2026-10-01 ranged pair spent about 40-45% of their stage-1 attacks on point-blank whacks, each followed by a
-     * retreat. None for anyone else, or while its graph cannot tell the platforms apart.
+     * spot STAGE1_RANGED_SPAWN_STANDOFF_PX beside a spawn on that spawn's platform, one holding at least
+     * STAGE1_RANGED_SPOT_MIN_SPAWNS of the territory's spawns (anchored, it attacks only what comes into range). By
+     * their damage per line, the 2026-10-01 ranged pair spent about 40-45% of their stage-1 attacks on point-blank
+     * whacks, each followed by a retreat. None for anyone else, or while its graph cannot tell the platforms apart.
      */
     private static Point stageOneFiringSpot(AgentKpqSession session, AgentKpqMemberState member,
                                             AgentRuntimeEntry entry, Character agent,
@@ -3101,7 +3104,7 @@ final class AgentKpqCoordinator {
         List<Point> area = territory.spawns();
         if (!member.stage1FiringSpotKnownFor(area)) {
             Point spot = AgentKpqStageOneClusterPolicy.firingSpot(area, STAGE1_RANGED_SPAWN_STANDOFF_PX,
-                    candidate -> ACTIONS.groundPoint(agent.getMap(), candidate),
+                    STAGE1_RANGED_SPOT_MIN_SPAWNS, candidate -> ACTIONS.groundPoint(agent.getMap(), candidate),
                     point -> platformOf(entry, agent, point));
             member.setStage1FiringSpot(area, spot);
             log.info("KPQ Stage 1 firing spot: session={} agent={} spot={} area={}", session.sessionId(),

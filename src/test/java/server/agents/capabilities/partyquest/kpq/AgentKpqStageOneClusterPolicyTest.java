@@ -42,6 +42,8 @@ class AgentKpqStageOneClusterPolicyTest {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_MIN_SPAWNS");
     private static final int STANDOFF = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX");
+    private static final int SPOT_MIN_SPAWNS = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPOT_MIN_SPAWNS");
     private static final Point CLOTO = new Point(592, 106);
 
     private static MapleMap stageOne;
@@ -120,11 +122,24 @@ class AgentKpqStageOneClusterPolicyTest {
         List<Point> area = List.of(new Point(400, -1000), new Point(450, -1000), new Point(500, -1000));
 
         assertEquals(new Point(600, -1000),
-                AgentKpqStageOneClusterPolicy.firingSpot(area, 100, ground, platform));
+                AgentKpqStageOneClusterPolicy.firingSpot(area, 100, 2, ground, platform));
         // No spot on a platform too short for the standoff: off its end lies the floor.
-        assertNull(AgentKpqStageOneClusterPolicy.firingSpot(area, 160, ground, platform));
+        assertNull(AgentKpqStageOneClusterPolicy.firingSpot(area, 160, 2, ground, platform));
         // Nor while the platforms are unknown.
-        assertNull(AgentKpqStageOneClusterPolicy.firingSpot(area, 100, ground, point -> -1));
+        assertNull(AgentKpqStageOneClusterPolicy.firingSpot(area, 100, 2, ground, point -> -1));
+    }
+
+    @Test
+    void aFiringSpotIsNeverOnAPlatformFedByTooFewSpawns() {
+        // Two spawns crowd the low platform (x 0 to 200); the high one (x 350 to 650) holds a single spawn.
+        UnaryOperator<Point> ground = point -> point.x >= 350 && point.x <= 650 && point.y <= -1000
+                ? new Point(point.x, -1000) : new Point(point.x, 100);
+        ToIntFunction<Point> platform = point -> point.y == -1000 ? 30 : point.x >= 0 && point.x <= 200 ? 1 : 2;
+        List<Point> area = List.of(new Point(60, 100), new Point(140, 100), new Point(500, -1000));
+
+        // Anchored by the lone spawn, it would wait out that one respawn after every kill.
+        assertNull(AgentKpqStageOneClusterPolicy.firingSpot(area, 100, 2, ground, platform));
+        assertEquals(new Point(400, -1000), AgentKpqStageOneClusterPolicy.firingSpot(area, 100, 1, ground, platform));
     }
 
     @Test
@@ -136,15 +151,18 @@ class AgentKpqStageOneClusterPolicyTest {
         int withSpot = 0;
 
         for (List<Point> cluster : clusters) {
-            Point spot = AgentKpqStageOneClusterPolicy.firingSpot(cluster, STANDOFF, ground, platform);
+            Point spot = AgentKpqStageOneClusterPolicy.firingSpot(cluster, STANDOFF, SPOT_MIN_SPAWNS, ground,
+                    platform);
             if (spot == null) continue;
             withSpot++;
             for (Point spawn : cluster) {
                 assertTrue(spawn.distance(spot) >= STANDOFF, () -> spot + " stands too near " + spawn);
             }
             int spotPlatform = platform.applyAsInt(spot);
-            assertTrue(spotPlatform >= 0 && cluster.stream().anyMatch(spawn -> platform.applyAsInt(spawn)
-                    == spotPlatform), () -> spot + " is on no spawn platform of " + cluster);
+            long fedBy = cluster.stream().filter(spawn -> platform.applyAsInt(spawn) == spotPlatform).count();
+            // Live geometry at the shipped values: never a platform a single spawn feeds.
+            assertTrue(spotPlatform >= 0 && fedBy >= Math.max(2, SPOT_MIN_SPAWNS),
+                    () -> spot + " stands on a platform of " + cluster + " fed by too few spawns");
             assertEquals(spot, ground.apply(spot), () -> spot + " is not on a foothold");
         }
         assertTrue(withSpot >= 3, "a ranged companion finds a firing spot in most clusters, got " + withSpot);
