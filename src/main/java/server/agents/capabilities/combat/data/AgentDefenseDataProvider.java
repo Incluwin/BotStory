@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.random.RandomGenerator;
 
 public final class AgentDefenseDataProvider {
     private static final double MIN_DAMAGE_FACTOR = config.AgentTuning.doubleValue("server.agents.capabilities.combat.data.AgentDefenseDataProvider.MIN_DAMAGE_FACTOR");
@@ -160,6 +161,11 @@ public final class AgentDefenseDataProvider {
     }
 
     public int rollPhysicalTouchDamage(Character bot, Monster mob, int attackOverride) {
+        return rollPhysicalTouchDamage(bot, mob, attackOverride, ThreadLocalRandom.current());
+    }
+
+    /** The touch roll with its damage factor drawn from {@code random} (the hit roll stays the formula provider's). */
+    public int rollPhysicalTouchDamage(Character bot, Monster mob, int attackOverride, RandomGenerator random) {
         int physicalAttackDamage = Math.max(0, attackOverride);
         if (physicalAttackDamage <= 0) {
             return 1;
@@ -168,17 +174,64 @@ public final class AgentDefenseDataProvider {
             return 0;
         }
 
+        TouchDefense defense = touchDefense(bot, mob);
+        double randomFactor = random.nextDouble(MIN_DAMAGE_FACTOR, Math.nextUp(MAX_DAMAGE_FACTOR));
+
+        double damage = (physicalAttackDamage * (double) physicalAttackDamage * randomFactor)
+                - (defense.wdef() * defense.a())
+                - ((defense.wdef() - defense.standardPdd()) * defense.b());
+        return Math.max(1, (int) Math.floor(damage));
+    }
+
+    /**
+     * The mean of {@link #rollPhysicalTouchDamage(Character, Monster)} given that the touch lands: the same formula
+     * averaged exactly over its uniform random factor in [MIN_DAMAGE_FACTOR, MAX_DAMAGE_FACTOR], floor and the minimum
+     * of 1 included. The PQ clear-time estimate divides a member's effective HP by it (touches to go down).
+     */
+    public double expectedPhysicalTouchDamage(Character bot, Monster mob) {
+        int physicalAttackDamage = Math.max(0, mob.getPADamage());
+        if (physicalAttackDamage <= 0) {
+            return 1.0d;
+        }
+        TouchDefense defense = touchDefense(bot, mob);
+        double reduction = (defense.wdef() * defense.a()) + ((defense.wdef() - defense.standardPdd()) * defense.b());
+        double square = physicalAttackDamage * (double) physicalAttackDamage;
+        return meanFlooredAtLeastOne(square * MIN_DAMAGE_FACTOR - reduction, square * MAX_DAMAGE_FACTOR - reduction);
+    }
+
+    /** E[max(1, floor(u))] for u uniform on [lo, hi]. */
+    static double meanFlooredAtLeastOne(double lo, double hi) {
+        if (!(hi > lo)) {
+            return Math.max(1.0d, Math.floor(lo));
+        }
+        double integral = 0.0d;
+        double onesEnd = Math.min(hi, 2.0d);
+        if (onesEnd > lo) {
+            integral += onesEnd - lo;
+        }
+        double from = Math.max(lo, 2.0d);
+        if (hi > from) {
+            integral += floorIntegral(hi) - floorIntegral(from);
+        }
+        return integral / (hi - lo);
+    }
+
+    /** The integral of floor(u) from 0 to x, x >= 0. */
+    private static double floorIntegral(double x) {
+        double whole = Math.floor(x);
+        return whole * (whole - 1.0d) / 2.0d + whole * (x - whole);
+    }
+
+    private record TouchDefense(int standardPdd, int wdef, double a, double b) {
+    }
+
+    private TouchDefense touchDefense(Character bot, Monster mob) {
         int standardPdd = getStandardPdd(bot.getJob(), bot.getLevel());
         int wdef = Math.max(0, bot.getTotalWdef());
         double c = computeC(bot);
         double a = c + 0.28d;
         double b = computeB(bot, mob, c, wdef, standardPdd);
-        double randomFactor = ThreadLocalRandom.current().nextDouble(MIN_DAMAGE_FACTOR, Math.nextUp(MAX_DAMAGE_FACTOR));
-
-        double damage = (physicalAttackDamage * (double) physicalAttackDamage * randomFactor)
-                - (wdef * a)
-                - ((wdef - standardPdd) * b);
-        return Math.max(1, (int) Math.floor(damage));
+        return new TouchDefense(standardPdd, wdef, a, b);
     }
 
     /** Rolls incoming WZ magic-attack damage for server-owned monster actions. */
