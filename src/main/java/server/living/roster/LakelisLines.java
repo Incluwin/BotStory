@@ -234,9 +234,12 @@ public final class LakelisLines {
             return List.of();
         }
         List<LineupPlan.Seat> companions = plan.lineup().stream().filter(seat -> !seat.human()).toList();
+        // Everyone who fights King Slime: the leader waits by Cloto, a player beside him fights with the companions.
+        List<LineupPlan.Seat> fighters = plan.lineup().stream()
+                .filter(seat -> !(seat.human() && seat.characterId() == plan.leaderId())).toList();
         Set<String> lines = new LinkedHashSet<>();
         boolean bossUnhittable = has(estimate, 0, Kind.UNHITTABLE, AgentKpqPaceProfile.S5_BOSS, 0);
-        boolean everyoneMissesBoss = !companions.isEmpty() && companions.stream().allMatch(seat ->
+        boolean everyoneMissesBoss = !companions.isEmpty() && fighters.stream().allMatch(seat ->
                 has(estimate, seat.characterId(), Kind.MISSES, AgentKpqPaceProfile.S5_BOSS, 0));
         if (bossUnhittable || everyoneMissesBoss) {
             lines.add(NOBODY_HITS_KING_SLIME);

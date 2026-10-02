@@ -257,6 +257,21 @@ class AgentPqPaceEstimatorTest {
     }
 
     @Test
+    void aHumanBesideTheLeaderIsWeighedForHisHitsButTheLeaderNever() {
+        AgentPqMemberPower ben = new AgentPqMemberPower(5, "ben", true, false, 22, 100,
+                Map.of(MOB_A, 10.0d, MOB_B, 10.0d, MOB_C, 10.0d, BOSS, 10.0d),
+                Map.of(MOB_A, 0.9d, MOB_B, 0.9d, MOB_C, 0.9d, BOSS, 0.3d), Map.of(), 20.0d);
+        AgentPqMemberPower blindLeader = new AgentPqMemberPower(1, "leader", true, true, 26, 0,
+                Map.of(), Map.of(MOB_A, 0.01d), Map.of(), 2.0d);
+
+        AgentPqPaceEstimate estimate = estimate(PaceStubProfile.standard(), List.of(blindLeader,
+                companion(2, 100, 50, 200, 80), ben), calibration(0.0d, Map.of()));
+
+        assertEquals(List.of(new AgentPqPaceEstimate.Weakness(5, BOSS, "boss", AgentPqPaceEstimate.Kind.MISSES)),
+                estimate.weaknesses().stream().filter(weakness -> weakness.characterId() != 0).toList());
+    }
+
+    @Test
     void theTimerChanceCountsOnlyTimesPastTheTimer() {
         Map<String, Double> priors = Map.of("only", 100_000.0d);
         List<AgentPqPaceSegment> fixed = List.of(new AgentPqPaceSegment.Fixed("only", AgentPqPaceSegment.Side.LEADER));

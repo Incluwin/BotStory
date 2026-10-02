@@ -205,7 +205,10 @@ public final class AgentPqPaceEstimator {
         };
     }
 
-    /** MISSES and FRAGILE, per companion, in member order. */
+    /**
+     * MISSES and FRAGILE, in member order, for every member but the human leader (he waits out the fights a profile
+     * parks him from; a human beside him fights, so whether he lands his hits counts too).
+     */
     private static List<AgentPqPaceEstimate.Weakness> memberWeaknesses(AgentPqPaceProfile profile,
                                                                      List<AgentPqPaceSegment> segments,
                                                                      List<AgentPqMemberPower> members) {
@@ -219,7 +222,7 @@ public final class AgentPqPaceEstimator {
             }
         }
         for (AgentPqMemberPower member : members) {
-            if (member.human()) continue;
+            if (member.humanLeader()) continue;
             for (AgentPqPaceSegment segment : AgentPqPaceSegment.leaves(segments)) {
                 List<Integer> mobs = segment instanceof AgentPqPaceSegment.Quota quota ? List.of(quota.mobId())
                         : segment instanceof AgentPqPaceSegment.Clear clear ? List.copyOf(clear.counts().keySet())

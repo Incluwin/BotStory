@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LakelisPaceLinesTest {
     private static final long HALF_AN_HOUR_MS = 1_800_000L;
     private static final int ANN = 10;
+    private static final int BEN = 20;
     private static final int MIRA = 901;
     private static final int PIP = 902;
     private static final int TOBI = 903;
@@ -135,6 +136,19 @@ class LakelisPaceLinesTest {
                 cautions(4, party(Kind.SLOW, "s1.grind", 9_300_001)));
         assertEquals(List.of(), cautions(4, member(ANN, Kind.MISSES, "s1.grind", 9_300_001),
                 member(ANN, Kind.FRAGILE, "s5.boss", 9_300_003)), "the leader is never named");
+    }
+
+    @Test
+    void aPlayerBesideTheLeaderCountsAmongThoseWhoHitKingSlimeButIsNeverNamed() {
+        Weakness miraMisses = member(MIRA, Kind.MISSES, "s5.boss", 9_300_003);
+        Weakness pipMisses = member(PIP, Kind.MISSES, "s5.boss", 9_300_003);
+        Weakness benMisses = member(BEN, Kind.MISSES, "s5.boss", 9_300_003);
+
+        assertEquals(List.of(), cautionsWithBen(miraMisses, pipMisses), "Ben lands his");
+        assertEquals(List.of("Nobody here really lands a hit on King Slime, so the end could drag."),
+                cautionsWithBen(miraMisses, pipMisses, benMisses));
+        assertEquals(List.of(), cautionsWithBen(member(BEN, Kind.MISSES, "s1.grind", 9_300_001),
+                member(BEN, Kind.FRAGILE, "s5.boss", 9_300_003)), "a player is never named");
     }
 
     @Test
@@ -266,6 +280,19 @@ class LakelisPaceLinesTest {
         AgentPqPaceEstimate estimate = new AgentPqPaceEstimate(true, 800, 1000, 1300, 1000, 0.0d, Map.of(), Map.of(),
                 List.of(weaknesses), AgentPqPaceCalibration.Source.PRIOR, 0);
         return LakelisLines.cautions(estimate, plan(size, null));
+    }
+
+    /** Ann leading Ben, another player, with Mira and Pip. */
+    private static List<String> cautionsWithBen(Weakness... weaknesses) {
+        AgentPqPaceEstimate estimate = new AgentPqPaceEstimate(true, 800, 1000, 1300, 1000, 0.0d, Map.of(), Map.of(),
+                List.of(weaknesses), AgentPqPaceCalibration.Source.PRIOR, 0);
+        List<LineupPlan.Seat> seats = List.of(
+                new LineupPlan.Seat(ANN, "Ann", 25, 230, "Cleric", true, 0, null, 103_000_000, true, 0L, 0, 0),
+                new LineupPlan.Seat(BEN, "Ben", 25, 130, "Page", true, 0, null, 103_000_000, true, 0L, 0, 0),
+                new LineupPlan.Seat(MIRA, "Mira", 25, 300, "Hunter", false, ANN, "mira", 103_000_000, true, 0L, 0, 0),
+                new LineupPlan.Seat(PIP, "Pip", 25, 300, "Hunter", false, ANN, "pip", 103_000_000, true, 0L, 0, 0));
+        return LakelisLines.cautions(estimate, new LineupPlan("kpq", ANN, seats, List.of(), List.of(), List.of(), null,
+                false, null, null));
     }
 
     private static Weakness member(int characterId, Kind kind, String segment, int mobId) {
