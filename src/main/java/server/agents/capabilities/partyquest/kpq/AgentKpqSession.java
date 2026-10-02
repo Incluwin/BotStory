@@ -5,6 +5,7 @@ import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -103,6 +104,11 @@ public final class AgentKpqSession {
     private boolean stage5RecollectSweepDone;
     private boolean stage5RecollectTargetReleased;
     private int stage5PassesLostWithMembers;
+    /** Stage-5 passes companions dropped, by map object id, and why: read by the nudge and the in-reach patience. */
+    private final Map<Integer, AgentKpqPassHandOver.DropReason> stage5PassDropReasons = new HashMap<>();
+    /** When each stage-5 floor pass, by map object id, was first seen lying in the leader's reach. */
+    private final Map<Integer, Long> stage5PassInReachSinceMs = new HashMap<>();
+    private boolean stage5PassesLeftAtFeet;
     private int leaderPassesSeen = -1;
     private long lastPassDropAtMs;
     private long lastPuzzleVerdictAtMs;
@@ -817,6 +823,30 @@ public final class AgentKpqSession {
 
     synchronized void addStage5PassesLostWithMember(int passes) {
         stage5PassesLostWithMembers += Math.max(0, passes);
+    }
+
+    /** A pass a companion dropped on stage 5, as it lies on the map, and why it dropped it there. */
+    synchronized void markStage5PassDrop(int objectId, AgentKpqPassHandOver.DropReason reason) {
+        if (reason != null) stage5PassDropReasons.put(objectId, reason);
+    }
+
+    /** Why a companion dropped this stage-5 floor pass; null for one no companion dropped (a mob's, a human's). */
+    synchronized AgentKpqPassHandOver.DropReason stage5PassDropReason(int objectId) {
+        return stage5PassDropReasons.get(objectId);
+    }
+
+    /** When this stage-5 floor pass was first seen in the leader's reach: now, the first time it is. */
+    synchronized long observeStage5PassInReach(int objectId, long nowMs) {
+        return stage5PassInReachSinceMs.computeIfAbsent(objectId, id -> Math.max(1L, nowMs));
+    }
+
+    /** Whether the leader has left stage-5 passes lying in his reach past the in-reach patience. */
+    synchronized boolean stage5PassesLeftAtFeet() {
+        return stage5PassesLeftAtFeet;
+    }
+
+    synchronized void markStage5PassesLeftAtFeet() {
+        stage5PassesLeftAtFeet = true;
     }
 
     /**

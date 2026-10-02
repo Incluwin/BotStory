@@ -505,6 +505,38 @@ class StageOnePassPatienceTest {
     }
 
     @Test
+    void eachPassDropLogsWhereThePassLanded() {
+        Character ben = at(run.human(1, "Ben"), 0, 0);
+        Character liriki = at(run.companion(2, "Liriki"), -10, 0);
+        Character fenna = at(run.companion(3, "Fenna"), 6, 0);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, liriki, fenna);
+        holdingPass(session, liriki);
+        holdingPass(session, fenna);
+        // Liriki's pass lands on the floor as the map's would, owned by it and stamped now; Fenna's leaves nothing.
+        items.when(() -> AgentScriptItemActionService.dropItem(
+                        eq(entry(2)), eq(InventoryType.ETC), eq(AgentKpqDefinition.PASS_ITEM), eq((short) 1)))
+                .thenAnswer(call -> {
+                    passesHeld.put(liriki, 0);
+                    MapItem dropped = pass(23, liriki, -10, DROPPED_AT_MS);
+                    when(dropped.isPlayerDrop()).thenReturn(true);
+                    floor.add(dropped);
+                    return true;
+                });
+
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            AgentKpqCoordinator.tick(session, DROPPED_AT_MS);
+
+            List<String> drops = log.startingWith("KPQ pass drop: ");
+            assertEquals(List.of(
+                    "KPQ pass drop: session=" + session.sessionId() + " stage=1 agent=Liriki reason=beside passes=1 "
+                            + "dx=-10 dy=0 sameFoothold=true leaderFooting=GROUND "
+                            + "landed=[(-10,0):dx=-10:dy=0:passes=1:oid=23:ffa=false]",
+                    "KPQ pass drop: session=" + session.sessionId() + " stage=1 agent=Fenna reason=beside passes=1 "
+                            + "dx=6 dy=0 sameFoothold=true leaderFooting=GROUND landed=none"), drops);
+        }
+    }
+
+    @Test
     void theNudgeLinesSoundLikePlayers() {
         for (String line : List.of(
                 AgentKpqPassHandOver.stageOneNudgeLine("Ben", 1, true),

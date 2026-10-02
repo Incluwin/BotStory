@@ -115,12 +115,18 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_SWEEP_LIMIT_MS");
     private static final long STAGE5_FLOOR_PASS_PATIENCE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_FLOOR_PASS_PATIENCE_MS");
+    private static final long STAGE5_PASS_NUDGE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_NUDGE_MS");
+    private static final long STAGE5_INREACH_PASS_PATIENCE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_INREACH_PASS_PATIENCE_MS");
     private static final long STAGE5_ROUTE_REPEAT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_ROUTE_REPEAT_MS");
     private static final double STAGE5_CARRIER_LOW_HP_FRACTION = config.AgentTuning.doubleValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_CARRIER_LOW_HP_FRACTION");
     private static final int PASS_DROP_AT_FEET_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PASS_DROP_AT_FEET_PX");
+    private static final long PASS_DROP_LANDED_WINDOW_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PASS_DROP_LANDED_WINDOW_MS");
     private static final long SQUISHY_SHOES_HUMAN_PRIORITY_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.SQUISHY_SHOES_HUMAN_PRIORITY_MS");
     private static final long KING_SLIME_LOOT_DELAY_MS = config.AgentTuning.longValue(
@@ -1203,7 +1209,11 @@ final class AgentKpqCoordinator {
             }
         }
         int leaderPasses = leader.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
-        if (carriers) observeLeaderPassPickup(session, 5, leader, leaderPasses, nowMs);
+        if (carriers && observeLeaderPassPickup(session, 5, leader, leaderPasses, nowMs) > 0) {
+            // A leader bending down for his passes gets the missing-pass grace afresh: run out, the recovery would make
+            // the rest vanish from under him while he picks them up.
+            session.setMissingPassSinceMs(0L);
+        }
         int stage5MobCount = normalAlive + bossAlive;
         boolean reviveGraceActive = session.stage5ReviveGraceActive(
                 bossAlive, nowMs, KING_SLIME_REVIVE_GRACE_MS);
@@ -1212,6 +1222,9 @@ final class AgentKpqCoordinator {
         // In a companion run a pass left lying out of the leader's reach stops counting as on its way after a while:
         // live, two passes dropped 2,300 px under the leader held the recovery back until they expired.
         List<MapItem> stalePasses = carriers ? stalePasses(session, leader, passDrops, nowMs) : List.of();
+        // So does one he leaves lying at his feet, after longer: live (kpq-a6f696f0) ten passes dropped beside him were
+        // never picked up and held the recovery back until they expired 180 s later.
+        List<MapItem> leftAtFeet = carriers ? passesLeftAtFeet(session, leader, passDrops, nowMs) : List.of();
         if (session.observeStage5Progress(stage5MobCount, leaderPasses)) session.markProgress(nowMs);
         boolean returningToCloto = stageFiveReadyToReturn(
                 leaderPasses, normalAlive, bossAlive, reviveGraceActive);
@@ -1288,13 +1301,15 @@ final class AgentKpqCoordinator {
             logStageFiveHandOverStart(session, leader, sweeping, nowMs);
         }
         if (carriers && !returningToCloto) repeatRouteToCloto(session, leader, narrator, nowMs);
+        if (carriers && leaderPasses < 10) nudgeLeaderAboutStageFivePasses(session, leader, narrator, passDrops, nowMs);
         if (reviveGraceActive && stage5MobCount == 0) {
             session.setMissingPassSinceMs(0L);
             return;
         }
         // Passes on their way to the leader are not missing: the recovery would make up all ten 7 s after the last
-        // kill while the carriers still held them. A companion run's stale floor passes are fetched once more first.
-        int waitingFloorPasses = floorPasses - passQuantityOnGround(stalePasses);
+        // kill while the carriers still held them. A companion run's stale floor passes are fetched once more first;
+        // the ones he left at his feet already lie by him.
+        int waitingFloorPasses = floorPasses - passQuantityOnGround(stalePasses) - passQuantityOnGround(leftAtFeet);
         if (!returningToCloto && stage5MobCount == 0 && waitingFloorPasses == 0
                 && carriedStageFivePasses(session) == 0) {
             if (carriers && session.stage5RecollectSweeping(nowMs, STAGE5_SWEEP_LIMIT_MS)) {
@@ -1312,8 +1327,12 @@ final class AgentKpqCoordinator {
                     return;
                 }
             }
-            recoverMissingStageFivePasses(session, leader, leaderPasses, floorPasses,
-                    passQuantityOnGround(stalePasses), nowMs);
+            if (recoverMissingStageFivePasses(session, leader, leaderPasses, floorPasses,
+                    passQuantityOnGround(stalePasses), passQuantityOnGround(leftAtFeet), nowMs) && carriers) {
+                // What the recovery made up is no pickup of his: the pickup line is how a live check tells them apart.
+                session.observeLeaderPasses(leader.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false));
+                takeBackStageFivePasses(session, leader, passDrops);
+            }
             return;
         }
         session.setMissingPassSinceMs(0L);
@@ -1525,7 +1544,8 @@ final class AgentKpqCoordinator {
         }
         member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
         session.markProgress(nowMs);
-        logPassDrop(session, 5, agent, leader, reason, held, nowMs);
+        recordStageFivePassDrops(session, leader, logPassDrop(session, 5, agent, leader, reason, held, nowMs), reason,
+                nowMs);
         switch (reason) {
             case OVERDUE -> narrate(session, agent, "stage5-passes-dropped-" + agent.getId(),
                     leader.getName() + ", can't get to you, i dropped the passes right here by me.");
@@ -1570,7 +1590,9 @@ final class AgentKpqCoordinator {
         member.markStage5PassesLeftBehind();
         member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
         session.markProgress(nowMs);
-        logPassDrop(session, 5, agent, leader, AgentKpqPassHandOver.DropReason.DYING, held, nowMs);
+        recordStageFivePassDrops(session, leader,
+                logPassDrop(session, 5, agent, leader, AgentKpqPassHandOver.DropReason.DYING, held, nowMs),
+                AgentKpqPassHandOver.DropReason.DYING, nowMs);
         narrate(session, agent, "stage5-leaving-passes-" + agent.getId(), AgentKpqPassHandOver.LEAVING_PASSES);
         return true;
     }
@@ -1599,6 +1621,79 @@ final class AgentKpqCoordinator {
 
     private static boolean inLeadersReach(Character leader, MapItem drop) {
         return leader.getMap() != null && near(leader.getPosition(), drop.getPosition(), NEAR_PX);
+    }
+
+    /**
+     * The floor passes a companion run's leader has left lying in his reach longer than
+     * STAGE5_INREACH_PASS_PATIENCE_MS with nobody going for them: they already lie by him, so nobody fetches them
+     * again, and they no longer hold the recovery back. The patience runs from the pass's own drop time, or from when
+     * it first lay in his reach if that was later: passes left by Cloto long before he comes, or a kill's old pass he
+     * walks up to, are not made up while he walks up to them. Once he has left passes so, the ones the re-collect then
+     * brings him get only STAGE5_PASS_NUDGE_MS: the whole patience again would put the clear back near their expiry.
+     */
+    private static List<MapItem> passesLeftAtFeet(
+            AgentKpqSession session, Character leader, List<MapItem> passDrops, long nowMs) {
+        if (passDrops.isEmpty()) return List.of();
+        boolean leftBefore = session.stage5PassesLeftAtFeet();
+        List<MapItem> left = new ArrayList<>();
+        for (MapItem drop : passDrops) {
+            if (!inLeadersReach(leader, drop)) continue;
+            long inReachFromMs = Math.max(drop.getDropTime(),
+                    session.observeStage5PassInReach(drop.getObjectId(), nowMs));
+            boolean recollected = session.stage5PassDropReason(drop.getObjectId())
+                    == AgentKpqPassHandOver.DropReason.RECOLLECT;
+            long patienceMs = leftBefore && recollected ? STAGE5_PASS_NUDGE_MS : STAGE5_INREACH_PASS_PATIENCE_MS;
+            if (AgentKpqPassHandOver.leftAtFeet(nowMs - inReachFromMs, true, fetchedByCompanion(session, drop),
+                    patienceMs)) {
+                left.add(drop);
+            }
+        }
+        if (!left.isEmpty()) session.markStage5PassesLeftAtFeet();
+        return left;
+    }
+
+    /**
+     * Remembers the passes a companion just dropped on stage 5 by their map objects: why it dropped them, and, for
+     * those that landed in the leader's reach, that they lie there from now.
+     */
+    private static void recordStageFivePassDrops(AgentKpqSession session, Character leader, List<MapItem> landed,
+                                                 AgentKpqPassHandOver.DropReason reason, long nowMs) {
+        for (MapItem drop : landed) {
+            session.markStage5PassDrop(drop.getObjectId(), reason);
+            if (leader != null && inLeadersReach(leader, drop)) {
+                session.observeStage5PassInReach(drop.getObjectId(), nowMs);
+            }
+        }
+    }
+
+    /**
+     * Passes a companion dropped on a companion run's human leader's spot that he has left lying STAGE5_PASS_NUDGE_MS
+     * get him one reminder, from the companion that dropped the oldest, or the narrator once its Agent is no longer
+     * loaded. Passes left by Cloto, where a companion stood, or before it went down were explained as they were
+     * dropped.
+     */
+    private static void nudgeLeaderAboutStageFivePasses(
+            AgentKpqSession session, Character leader, Character narrator, List<MapItem> passDrops, long nowMs) {
+        List<MapItem> lying = new ArrayList<>();
+        MapItem oldest = null;
+        boolean byHisFeet = true;
+        for (MapItem drop : passDrops) {
+            // Only what a companion dropped on his spot, known by its map object: a pass a companion's kill left lying
+            // is owned by it too, and a second human's lying pass must not have the run speak, least of all as him.
+            if (!AgentKpqPassHandOver.droppedOnLeadersSpot(session.stage5PassDropReason(drop.getObjectId()))
+                    || nowMs - drop.getDropTime() < STAGE5_PASS_NUDGE_MS) {
+                continue;
+            }
+            lying.add(drop);
+            byHisFeet &= inLeadersReach(leader, drop);
+            if (oldest == null || drop.getDropTime() < oldest.getDropTime()) oldest = drop;
+        }
+        if (oldest == null) return;
+        // As in stage 1, the stage logic runs only while every companion of the run stands in it.
+        Character dropper = character(oldest.getOwnerId());
+        Character speaker = dropper != null ? dropper : narrator != null ? narrator : firstStandingAgent(session);
+        narrate(session, speaker, "stage5-pass-nudge",
+                AgentKpqPassHandOver.stageFiveNudgeLine(leader.getName(), passQuantityOnGround(lying), byHisFeet));
     }
 
     private static boolean fetchedByCompanion(AgentKpqSession session, MapItem drop) {
@@ -1692,34 +1787,77 @@ final class AgentKpqCoordinator {
                 session.stage5ReachedAtMs() == 0L ? -1L : nowMs - session.stage5ReachedAtMs(), carriers);
     }
 
-    /** One line per pass drop in a companion run: why, how many, and where it landed against the leader. */
-    private static void logPassDrop(AgentKpqSession session, int stage, Character agent, Character leader,
-                                    AgentKpqPassHandOver.DropReason reason, int passes, long nowMs) {
+    /**
+     * One line per pass drop in a companion run: why, how many, and where it landed against the leader. Returns the
+     * dropped passes as they lie on the map (see droppedPasses).
+     */
+    private static List<MapItem> logPassDrop(AgentKpqSession session, int stage, Character agent, Character leader,
+                                             AgentKpqPassHandOver.DropReason reason, int passes, long nowMs) {
         session.markPassDrop(nowMs);
         Point at = agent.getPosition();
         Point leaderAt = leader == null ? null : leader.getPosition();
         boolean measured = at != null && leaderAt != null;
         PrimitiveCapabilityGateway.Footing leaderFooting = leader == null ? null : ACTIONS.footing(leader);
+        List<MapItem> landed = droppedPasses(agent, nowMs);
         log.info("KPQ pass drop: session={} stage={} agent={} reason={} passes={} dx={} dy={} sameFoothold={} "
-                        + "leaderFooting={}",
+                        + "leaderFooting={} landed={}",
                 session.sessionId(), stage, agent.getName(), reason.label(), passes,
                 measured ? at.x - leaderAt.x : "?", measured ? at.y - leaderAt.y : "?",
                 measured && leader.getMap() == agent.getMap()
                         && ACTIONS.footing(agent) == PrimitiveCapabilityGateway.Footing.GROUND
                         && leaderFooting == PrimitiveCapabilityGateway.Footing.GROUND
                         && Math.abs(at.y - leaderAt.y) <= PASS_DROP_AT_FEET_PX,
-                leaderFooting);
+                leaderFooting, landedText(landed, leaderAt));
+        return landed;
     }
 
-    /** When the leader's passes go up in a companion run: how many came, and how long after the last drop. */
-    private static void observeLeaderPassPickup(
+    /**
+     * The passes a companion just dropped, as they lie on its map: the map's player-dropped passes it owns, stamped
+     * within PASS_DROP_LANDED_WINDOW_MS of now (the map stamps them with the server's slightly delayed clock). A pass a
+     * kill of its own left lying is owned by it too, but is no player drop. One read of the map's drop list.
+     */
+    private static List<MapItem> droppedPasses(Character dropper, long nowMs) {
+        List<MapItem> landed = new ArrayList<>();
+        for (MapItem drop : livePassDrops(dropper.getMap())) {
+            if (drop.isPlayerDrop() && drop.getOwnerId() == dropper.getId()
+                    && Math.abs(nowMs - drop.getDropTime()) <= PASS_DROP_LANDED_WINDOW_MS) {
+                landed.add(drop);
+            }
+        }
+        return landed;
+    }
+
+    /**
+     * Where the dropped passes lie against the leader, with their map objects and whether anyone may pick them up
+     * yet, to set against what his client showed. Live (2026-10-02, kpq-a6f696f0) ten passes dropped beside the
+     * leader were never seen near him, and nothing said where they had landed. Diagnostics only.
+     */
+    private static String landedText(List<MapItem> landed, Point leaderAt) {
+        if (landed.isEmpty()) return "none";
+        List<String> lines = new ArrayList<>();
+        for (MapItem drop : landed) {
+            Point lies = drop.getPosition();
+            lines.add(pointText(lies) + (lies != null && leaderAt != null
+                    ? ":dx=" + (lies.x - leaderAt.x) + ":dy=" + (lies.y - leaderAt.y) : "")
+                    + ":passes=" + passQuantityOnGround(List.of(drop)) + ":oid=" + drop.getObjectId()
+                    + ":ffa=" + drop.isFFADrop());
+        }
+        return lines.toString();
+    }
+
+    /**
+     * When the leader's passes go up in a companion run: how many came, and how long after the last drop. Returns how
+     * many came.
+     */
+    private static int observeLeaderPassPickup(
             AgentKpqSession session, int stage, Character leader, int held, long nowMs) {
         int gained = session.observeLeaderPasses(held);
-        if (gained <= 0) return;
+        if (gained <= 0) return 0;
         long lastDropAtMs = session.lastPassDropAtMs();
         log.info("KPQ pass pickup: session={} stage={} leader={} delta={} held={} sinceDropMs={}",
                 session.sessionId(), stage, leader.getName(), gained, held,
                 lastDropAtMs == 0L ? -1L : nowMs - lastDropAtMs);
+        return gained;
     }
 
     private static String pointText(Point point) {
@@ -3943,30 +4081,51 @@ final class AgentKpqCoordinator {
      * Passes appear in the leader's bag with nothing in the game making them: the last resort, and a defect each time
      * it runs in a run whose passes were all made, so every restore names its cause.
      */
-    private static void recoverMissingStageFivePasses(AgentKpqSession session, Character leader, int leaderPasses,
-                                                      int floorPasses, int stalePasses, long nowMs) {
+    private static boolean recoverMissingStageFivePasses(AgentKpqSession session, Character leader, int leaderPasses,
+                                                         int floorPasses, int stalePasses, int leftAtFeet,
+                                                         long nowMs) {
         int missing = Math.max(0, 10 - leaderPasses);
         if (missing == 0) {
             session.setMissingPassSinceMs(0L);
-            return;
+            return false;
         }
         if (!AgentInventoryGatewayRuntime.inventory().addItem(
                 leader, AgentKpqDefinition.PASS_ITEM, (short) missing)) {
             fail(session, "Stage 5 passes disappeared and the leader has no ETC space for recovery", nowMs);
-            return;
+            return false;
         }
         session.pace().markStageFivePassesRestored();
-        String cause = stalePasses > 0 ? "stale-floor-passes"
+        String cause = stalePasses > 0 ? "stale-floor-passes" : leftAtFeet > 0 ? "left-at-feet"
                 : session.stage5PassesLostWithMembers() > 0 ? "lost-with-member" : "passes-gone";
         log.warn("KPQ Stage 5 missing-pass recovery restored inventory only: session={} "
                         + "leader={}({}) map={} leaderPasses={}/10 restored={} floorPasses={} stalePasses={} "
-                        + "defect=true cause={} recollect={} lostWithMembers={} mobs=0 graceMs={} members={}",
+                        + "leftAtFeet={} defect=true cause={} recollect={} lostWithMembers={} mobs=0 graceMs={} "
+                        + "members={}",
                 session.sessionId(), leader.getName(), leader.getId(), leader.getMapId(),
-                leaderPasses, missing, floorPasses, stalePasses, cause, session.stage5RecollectStarted(),
+                leaderPasses, missing, floorPasses, stalePasses, leftAtFeet, cause, session.stage5RecollectStarted(),
                 session.stage5PassesLostWithMembers(), STAGE5_MISSING_PASS_GRACE_MS,
                 stageOnePassDiagnostics(session, leader));
         session.setMissingPassSinceMs(0L);
         session.markProgress(nowMs);
+        return true;
+    }
+
+    /**
+     * After a companion run's recovery made up stage 5's passes, the ones still lying vanish as expired drops do, as
+     * the stage-1 take-back does: left there, the leader could pick them up on top of the ten, or a companion sweep
+     * them up again. What he holds beyond the ten Cloto takes is no matter.
+     */
+    private static void takeBackStageFivePasses(AgentKpqSession session, Character leader, List<MapItem> floorPasses) {
+        if (floorPasses.isEmpty()) return;
+        int lying = passQuantityOnGround(floorPasses);
+        MapleMap map = leader.getMap();
+        int fromFloor = 0;
+        for (MapItem drop : floorPasses) {
+            if (AgentMapGatewayRuntime.map().expireItemDrop(map, drop)) fromFloor++;
+        }
+        log.info("KPQ Stage 5 passes taken back at the recovery: session={} leader={}({}) floorDrops={}/{} "
+                        + "floorPasses={}",
+                session.sessionId(), leader.getName(), leader.getId(), fromFloor, floorPasses.size(), lying);
     }
 
     private static String stageOnePassDiagnostics(AgentKpqSession session, Character eventAnchor) {
