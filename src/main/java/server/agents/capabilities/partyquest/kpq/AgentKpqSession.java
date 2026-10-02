@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -109,6 +110,12 @@ public final class AgentKpqSession {
     private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
     private final AgentKpqPaceMarks pace = new AgentKpqPaceMarks();
+    private AgentKpqRerollPolicy rerollPolicy = AgentKpqRerollPolicy.CONFIGURED;
+    private AgentPqPaceCalibration paceCalibration;
+    private boolean rerollDecided;
+    private long rerollAskedAtMs;
+    private int rerollAskerId;
+    private boolean rerollSettled;
 
     public AgentKpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (requestedPartySize < 3 || requestedPartySize > 4) {
@@ -499,6 +506,32 @@ public final class AgentKpqSession {
     synchronized void setStageOneLevers(AgentKpqStageOneLevers levers) {
         stageOneLevers = levers == null ? AgentKpqStageOneLevers.NONE : levers;
     }
+    /** The stage-1 re-roll policy this session uses (round 2b); a test may switch it. */
+    synchronized AgentKpqRerollPolicy rerollPolicy() { return rerollPolicy; }
+    synchronized void setRerollPolicy(AgentKpqRerollPolicy policy) {
+        rerollPolicy = policy == null ? AgentKpqRerollPolicy.CONFIGURED.off() : policy;
+    }
+    /**
+     * What the clear-time records taught for this run's leader, as the entry NPC priced its lineup; null: the pace
+     * profile's priors. The host sets it at admission, so a re-roll is weighed at the rate the estimate assumed.
+     */
+    public synchronized AgentPqPaceCalibration paceCalibration() { return paceCalibration; }
+    public synchronized void setPaceCalibration(AgentPqPaceCalibration calibration) { paceCalibration = calibration; }
+    /** The run made its one re-roll decision. */
+    synchronized boolean rerollDecided() { return rerollDecided; }
+    synchronized void markRerollDecided() { rerollDecided = true; }
+    /** The re-roll question went out from {@code askerId}: the leader's answer is awaited from now. */
+    synchronized void markRerollAsked(int askerId, long nowMs) {
+        rerollAskerId = askerId;
+        rerollAskedAtMs = Math.max(1L, nowMs);
+    }
+    synchronized long rerollAskedAtMs() { return rerollAskedAtMs; }
+    synchronized int rerollAskerId() { return rerollAskerId; }
+    /** A question is out and neither answered nor let pass. */
+    synchronized boolean rerollPending() { return rerollAskedAtMs > 0L && !rerollSettled; }
+    /** The leader pushed through, or let the question pass: no other offer this run. */
+    synchronized boolean rerollDeclined() { return rerollSettled; }
+    synchronized void settleReroll() { rerollSettled = true; }
     synchronized boolean stageOneClustersAssigned() { return stageOneClusterOf != null; }
     /** Stage 1's platform clusters and the one each collector camps, set once per stage. */
     synchronized void assignStageOneClusters(List<List<Point>> clusters, Map<Integer, Integer> clusterOf) {

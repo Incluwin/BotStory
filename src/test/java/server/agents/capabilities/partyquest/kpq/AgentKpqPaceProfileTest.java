@@ -164,6 +164,70 @@ class AgentKpqPaceProfileTest {
         assertEquals(PROFILE.epoch(), prior.epoch());
     }
 
+    /**
+     * The re-roll (round 2b): a heavy stage-1 draw is thrown away for a restart and a fresh one, at most twice in a row,
+     * so the estimate's mean and its p90 come down; with the policy off the estimate is the one the code gave before
+     * the re-roll existed, string for string (pinned from the r2/int build, 2026-10-02).
+     */
+    @Test
+    void theRerollLowersTheMeanAndTheP90AndOffLeavesTheEstimateAsItWas() {
+        AgentKpqPaceProfile off = AgentKpqPaceProfile.load(AgentKpqPaceProfile.Census.WZ,
+                AgentKpqRerollPolicy.configured().off());
+        AgentKpqPaceProfile on = AgentKpqPaceProfile.load(AgentKpqPaceProfile.Census.WZ, RerollRunFixture.POLICY);
+        AgentPqMemberPower leader = probe(2, true, 0, 0, 0, 0, 0.01d);
+        AgentPqMemberPower silentSin = probe(543, false, 236, 205, 259, 120, 0.88d);
+        AgentPqMemberPower fenna = probe(336, false, 164, 205, 158, 95, 1.0d);
+        AgentPqMemberPower faro = probe(744, false, 228, 322, 215, 84, 1.0d);
+        List<AgentPqMemberPower> four = List.of(leader, silentSin, fenna, faro);
+        List<AgentPqMemberPower> three = List.of(leader, silentSin, faro);
+
+        AgentPqPaceEstimate fourAsDrawn = AgentPqPaceEstimator.estimate(off, four, AgentPqPaceCalibration.prior(off));
+        AgentPqPaceEstimate threeAsDrawn = AgentPqPaceEstimator.estimate(off, three, AgentPqPaceCalibration.prior(off));
+        assertEquals("AgentPqPaceEstimate[clearable=true, p10S=815.0, p50S=1060.0, p90S=1400.0, meanS=1086.69470" +
+                "11658474, overTimerChance=0.008101571892375642, segmentMeanS={s1.grind=538.9432286812308, " +
+                "s1.handin=25.0, s1.open=17.0, s2.accept=11.999999999999998, s2.checks=13.5, s2.entry=23.99" +
+                "9999999999996, s3.accept=11.999999999999998, s3.checks=40.5, s3.entry=23.999999999999996, " +
+                "s4.checks=85.49999999999999, s4.entry=23.999999999999996, s5.boss=120.022499054716, s5.car" +
+                "ry=35.0, s5.climb=40.0, s5.descent=29.999999999999996, s5.loot=2.9999999999999996, s5.move" +
+                "=2.9999999999999996, s5.normals=63.228973429900606, s5.race=254.2514724846166, s5.talks=14" +
+                ".999999999999998, yes=0.9999999999999999}, partyDpsByMob={9300000=732.0, 9300001=628.0, 93" +
+                "00002=632.0, 9300003=299.0}, weaknesses=[], source=PRIOR, recordsUsed=0]", fourAsDrawn.toString());
+        assertEquals("AgentPqPaceEstimate[clearable=true, p10S=855.0, p50S=1130.0, p90S=1510.0, meanS=1162.84811" +
+                "69774673, overTimerChance=0.017244414101114165, segmentMeanS={s1.grind=518.3423735707645, " +
+                "s1.handin=25.0, s1.open=17.0, s2.accept=11.999999999999998, s2.checks=15.499999999999998, " +
+                "s2.entry=23.999999999999996, s3.accept=11.999999999999998, s3.checks=46.49999999999999, s3" +
+                ".entry=23.999999999999996, s4.checks=98.16666666666664, s4.entry=23.999999999999996, s5.bo" +
+                "ss=175.91532949686314, s5.carry=35.0, s5.climb=40.0, s5.descent=29.999999999999996, s5.loo" +
+                "t=2.9999999999999996, s5.move=2.9999999999999996, s5.normals=83.42374724317311, s5.race=33" +
+                "0.3390767400363, s5.talks=14.999999999999998, yes=0.9999999999999999}, partyDpsByMob={9300" +
+                "000=527.0, 9300001=464.0, 9300002=474.0, 9300003=204.0}, weaknesses=[], source=PRIOR, reco" +
+                "rdsUsed=0]", threeAsDrawn.toString());
+        assertEquals(null, ((AgentPqPaceSegment.Quota) segmentOf(off.segments(4), "s1.grind")).redraw());
+
+        AgentPqPaceEstimate fourRerolled = AgentPqPaceEstimator.estimate(on, four, AgentPqPaceCalibration.prior(on));
+        AgentPqPaceEstimate threeRerolled = AgentPqPaceEstimator.estimate(on, three, AgentPqPaceCalibration.prior(on));
+        assertEquals(new AgentPqPaceSegment.Redraw(75_000L, 60_000L, 2),
+                ((AgentPqPaceSegment.Quota) segmentOf(on.segments(4), "s1.grind")).redraw());
+        assertTrue(fourRerolled.meanS() < fourAsDrawn.meanS(), fourRerolled.meanS() + " vs " + fourAsDrawn.meanS());
+        assertTrue(fourRerolled.p90S() < fourAsDrawn.p90S(), fourRerolled.p90S() + " vs " + fourAsDrawn.p90S());
+        assertTrue(threeRerolled.meanS() < threeAsDrawn.meanS(), threeRerolled.meanS() + " vs " + threeAsDrawn.meanS());
+        assertTrue(threeRerolled.p90S() < threeAsDrawn.p90S(), threeRerolled.p90S() + " vs " + threeAsDrawn.p90S());
+        // Everything after stage 1's grind is priced as before.
+        for (String key : List.of("s1.open", "s1.handin", "s2.checks", "s5.race", "s5.talks")) {
+            assertEquals(fourAsDrawn.segmentMeanS().get(key), fourRerolled.segmentMeanS().get(key), key);
+        }
+        assertTrue(fourRerolled.segmentMeanS().get("s1.grind") < fourAsDrawn.segmentMeanS().get("s1.grind"));
+    }
+
+    /** A member as the 2026-10-01 probe party reads (Ligator, Jr. Necki, Curse Eye, King Slime), 800 ms attacks. */
+    private static AgentPqMemberPower probe(int id, boolean human, double ligator, double necki, double eye,
+                                            double kingSlime, double hit) {
+        return new AgentPqMemberPower(id, "m" + id, human, human, 25, 100,
+                Map.of(9_300_001, ligator, 9_300_000, necki, 9_300_002, eye, 9_300_003, kingSlime),
+                Map.of(9_300_001, hit, 9_300_000, hit, 9_300_002, hit, 9_300_003, hit),
+                Map.of(9_300_001, 800.0d, 9_300_000, 800.0d, 9_300_002, 800.0d, 9_300_003, 800.0d), 10.0d);
+    }
+
     @Test
     void aCensusThatIsNotKpqsLeavesTheProfileUnbuilt() {
         AgentKpqPaceProfile.Census twoTypes = census(Map.of(9_300_001, 22, 9_300_000, 1),

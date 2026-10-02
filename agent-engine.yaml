@@ -2215,6 +2215,30 @@ tuning:
     # Purpose: Sets how long after its first request a companion run's neediest collector asks the human leader once more to drop the coupons he holds by it.
     # Technical: Measured from the first request on the coordinator's clock; the repeat is said only while the leader still holds a 4001007 coupon and a companion collector is still short, by whichever collector is neediest then.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_COUPON_REPEAT_MS: '60000'
+    # Values: true or false. Recommended: true. False never offers a re-roll and prices stage 1 in the Lakelis clear time exactly as drawn, as before.
+    # Purpose: Lets the companions of a human-led KPQ run offer to leave and start over when Cloto's stage-1 coupon answers come out heavy, as human parties abandon a run when two or more of them drew 35, to cut clear time.
+    # Technical: AgentKpqCoordinator decides once per companion-adopted run with a human event leader, after every collector has its coupon number and before any pass exists; AgentKpqPaceProfile gives the stage-1 quota the same policy as its redraw only while this is true. Stock and all-Agent runs never re-roll.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_ENABLED: 'true'
+    # Values: 20000-300000 milliseconds. Recommended: 75000; assumed quick human, never measured: exit, Nella, walk to Lakelis, Yes, the question walk.
+    # Purpose: What starting a KPQ run over costs a party, set against the grind a heavy stage-1 draw would cost, when a companion run decides whether a re-roll is worth offering.
+    # Technical: The expected saving is grind(drawn kills) - (this + grind(a fresh draw's mean kills)) at the stage-1 theory rate of the party; the clear-time estimate adds this as a fixed time per re-roll in its stage-1 mixture, unscaled by the efficiency multiplier.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_RESTART_MS: '75000'
+    # Values: 0-600000 milliseconds. Recommended: 60000. Higher values offer fewer re-rolls, only for the heaviest draws; 0 offers one whenever a fresh draw is expected to be quicker at all.
+    # Purpose: The least expected time a re-roll must save before a companion run with warm pace data offers it to its human leader.
+    # Technical: Compared with AgentPqPaceSegment.Redraw.savingMs at the party's stage-1 theory seconds per kill (the warm KPQ profile, the members' power read at stage 1 and the leader's calibration); with the pace data cold the players' rule of thumb (two or more 35s) decides instead.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_MIN_SAVING_MS: '60000'
+    # Values: 0-5 re-rolls. Recommended: 2. 0 never offers one; higher values let a leader re-roll more runs in a row before the companions grind out whatever Cloto asks.
+    # Purpose: Bounds how many KPQ runs in a row one human leader is offered a stage-1 re-roll, so a party never loops on the entrance.
+    # Technical: AgentKpqRerollStreaks counts a leader's re-rolls in a row; a clear, a normal failure or REROLL_STREAK_RESET_MS without a re-roll starts it over; the estimate's mixture allows this many redraws in a row, the last draw kept whatever it is.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_MAX_STREAK: '2'
+    # Values: 60000-7200000 milliseconds. Recommended: 900000. Lower values forget a leader's re-rolls sooner; Lakelis also greets a leader back within this long after a re-roll.
+    # Purpose: How long a stage-1 re-roll counts toward its leader's streak, and how long Lakelis remembers it to greet the same leader back at the entrance.
+    # Technical: AgentKpqRerollStreaks treats a streak whose last re-roll is this old as 0; CompanionPartyQuestService shows Lakelis's back-already line above the lineup when the leader's last companion run ended in a re-roll less than this long ago.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_STREAK_RESET_MS: '900000'
+    # Values: 5000-120000 milliseconds. Recommended: 25000. Shorter values carry on sooner when the leader is busy fighting; the companions never stop collecting while they wait.
+    # Purpose: How long a companion run waits for its human leader to answer the stage-1 re-roll question before the companions say they will grind it out.
+    # Technical: Measured on the coordinator's clock from the question; the answer (the companion's window or a typed yes or no in chat) is recorded in AgentKpqSessionRegistry and read on the next tick; after this long with none the question is closed and later answers are ignored.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_ANSWER_MS: '25000'
     # Values: 60-300 map pixels. Recommended: 150. Higher values let a fighting collector step further off for a coupon; lower values keep it on the Ligator.
     # Purpose: Sets how close a floor coupon must lie for a companion run's stage-1 collector to pick it up while a Ligator still lives on the platform it fights on.
     # Technical: AgentKpqCoordinator's coupon sweep measures the Euclidean map-pixel distance from the collector to the coupon; nearer coupons are matched as before, farther ones wait for the platform to clear, STAGE1_LOOT_MAX_AGE_MS, or a floor that finishes the collector's count.

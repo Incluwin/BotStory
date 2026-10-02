@@ -14,6 +14,11 @@ import java.util.List;
  */
 public final class AgentPartyQuestHandback {
     private static final Logger log = LoggerFactory.getLogger(AgentPartyQuestHandback.class);
+    /**
+     * The reason of a run that ended because its leader chose to leave and run it again (KPQ's stage-1 re-roll): no
+     * clear, and no failure either; the host neither counts it against anyone nor learns a full run from it.
+     */
+    public static final String REROLLED = "rerolled";
 
     /** Where a released Agent goes once its run lets it go. */
     public enum Handback {
@@ -42,6 +47,22 @@ public final class AgentPartyQuestHandback {
                         long endedAtMs) {
             this(questKey, sessionId, operatorId, success, reason, endedAtMs, null);
         }
+
+        /** The leader chose to leave and run it again ({@link #REROLLED}). */
+        public boolean rerolled() {
+            return !success && REROLLED.equals(reason);
+        }
+    }
+
+    /**
+     * A run's companion asks its human leader whether to leave and run the quest again (KPQ's stage-1 re-roll): the
+     * host shows the leader a window from {@code companionId} with {@code question}, its words as it said them, and
+     * records the answer where the quest reads it (KPQ: AgentKpqSessionRegistry.answerReroll).
+     *
+     * @param rule what the offer went by, for logs
+     */
+    public record RerollAsk(String questKey, String sessionId, int leaderId, int companionId, String rule,
+                            String question) {
     }
 
     /**
@@ -59,6 +80,14 @@ public final class AgentPartyQuestHandback {
 
         /** The run ended; called once per finished child session, after its Agents were handed back or deferred. */
         default void runEnded(RunEnded ended) {
+        }
+
+        /**
+         * Shows the leader the companion's re-roll question; from the quest's tick, so the window goes to the leader's
+         * own I/O thread. False when it could not be shown (the question then stands in chat alone).
+         */
+        default boolean askLeaderToReroll(RerollAsk ask) {
+            return false;
         }
     }
 
@@ -104,6 +133,18 @@ public final class AgentPartyQuestHandback {
             current.runEnded(ended);
         } catch (RuntimeException failure) {
             log.warn("party-quest run-ended rule failed for {}", ended, failure);
+        }
+    }
+
+    /** True when the installed host shows the leader the re-roll question; false with none installed or a failing rule. */
+    public static boolean askLeaderToReroll(RerollAsk ask) {
+        Rule current = rule;
+        if (current == null || ask == null) return false;
+        try {
+            return current.askLeaderToReroll(ask);
+        } catch (RuntimeException failure) {
+            log.warn("party-quest re-roll question failed for {}", ask, failure);
+            return false;
         }
     }
 

@@ -20,8 +20,11 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceSegment;
 import server.agents.capabilities.combat.AgentCombatSkillUsageStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
@@ -516,6 +519,7 @@ final class AgentKpqCoordinator {
             enterNextPortal(session, 2, nowMs);
             return;
         }
+        if (stageOneReroll(session, leader, nowMs)) return;
         boolean allDelivered = true;
         AgentRuntimeEntry leaderEntry = entry(leader.getId());
         Point cloto = ACTIONS.npcPosition(leader, AgentKpqDefinition.CLOTO_NPC);
@@ -2255,7 +2259,7 @@ final class AgentKpqCoordinator {
 
     /** How an Agent puts a run's early end to the players around it: casual, and never an id or a reason. */
     record Parting(Kind kind, int subjectId, String subject) {
-        enum Kind { GENERIC, WENT_DOWN, LEFT, DEFEATED, GONE, OVER, TOO_LONG, LOBBY_TAKEN }
+        enum Kind { GENERIC, WENT_DOWN, LEFT, DEFEATED, GONE, OVER, TOO_LONG, LOBBY_TAKEN, REROLL }
 
         static final Parting GENERIC = new Parting(Kind.GENERIC, 0, null);
 
@@ -2292,6 +2296,7 @@ final class AgentKpqCoordinator {
                 case OVER -> "looks like this run's over. let's head back.";
                 case TOO_LONG -> "we've been stuck too long. let's call it and head out.";
                 case LOBBY_TAKEN -> "someone beat us to it. let's try again later.";
+                case REROLL -> AgentKpqRerollPolicy.GO_AGAIN_LINE;
             };
         }
 
@@ -2305,7 +2310,7 @@ final class AgentKpqCoordinator {
                 case LEFT -> named ? subject + " left. " + wrapUp : wrapUp;
                 case GONE -> named ? subject + " dropped out. " + wrapUp : wrapUp;
                 case TOO_LONG -> "we've been at this a while. " + wrapUp;
-                case OVER, LOBBY_TAKEN -> beforeTheClear(self, named);
+                case OVER, LOBBY_TAKEN, REROLL -> beforeTheClear(self, named);
             };
         }
     }
@@ -3248,6 +3253,150 @@ final class AgentKpqCoordinator {
 
     static String stageOneLeaderCouponAskAgain(String leaderName) {
         return leaderName + ", still short on coupons over here, toss yours by me when you get a sec.";
+    }
+
+    /**
+     * Round 2b: a heavy stage-1 draw in a companion run with a human leader. Once every collector has its coupon
+     * number, and before any pass exists, the run decides once whether to offer a re-roll (AgentKpqRerollPolicy, one
+     * "KPQ stage 1 draw" line): the companion with the highest draw says so in its own words, the host shows the leader
+     * its window, and the collectors carry on meanwhile. His answer is only recorded where it came
+     * (AgentKpqSessionRegistry, his I/O thread) and acted on here: "go again" ends the run through the stock exit
+     * path; "push through", or no answer within REROLL_ANSWER_MS, carries on. Stock and all-Agent runs never get here.
+     *
+     * @return true when the run was let go
+     */
+    private static boolean stageOneReroll(AgentKpqSession session, Character leader, long nowMs) {
+        if (!session.companionAdopted() || isAgent(session, leader.getId())) return false;
+        AgentKpqRerollPolicy policy = session.rerollPolicy();
+        if (session.rerollPending()) {
+            Boolean goAgain = AgentKpqSessionRegistry.takeRerollAnswer(session.sessionId());
+            long waitedMs = nowMs - session.rerollAskedAtMs();
+            if (Boolean.TRUE.equals(goAgain)) {
+                log.info("KPQ stage 1 re-roll answer: session={} answer=go-again waitedMs={}", session.sessionId(),
+                        waitedMs);
+                reroll(session, nowMs);
+                return true;
+            }
+            if (Boolean.FALSE.equals(goAgain) || waitedMs >= policy.answerMs()) {
+                session.settleReroll();
+                AgentKpqSessionRegistry.closeReroll(session.sessionId());
+                log.info("KPQ stage 1 re-roll answer: session={} answer={} waitedMs={}", session.sessionId(),
+                        goAgain == null ? "none" : "push-through", waitedMs);
+                narrate(session, rerollSpeaker(session), "stage1-reroll-carry-on",
+                        AgentKpqRerollPolicy.GRIND_IT_OUT_LINE);
+            }
+            return false;
+        }
+        if (session.rerollDecided()) return false;
+        List<Integer> targets = new ArrayList<>();
+        boolean everyTarget = true;
+        boolean passExists = leader.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false) > 0
+                || !livePassDrops(leader.getMap()).isEmpty();
+        for (AgentKpqMemberState member : session.members()) {
+            if (member.characterId() == session.eventLeaderId()) continue;
+            if (member.passCreated()) passExists = true;
+            int target = member.couponTarget();
+            if (target <= 0 && member.memberType() == AgentKpqMemberState.MemberType.HUMAN) {
+                // A player's number is Cloto's alone: read where she keeps it (0 once his pass is made).
+                Character human = memberCharacter(member.characterId(), leader);
+                int grid = human == null ? -1 : KPQ.playerGrid(human);
+                if (grid == 0) passExists = true;
+                target = AgentKpqDefinition.couponTarget(grid);
+            }
+            if (target > 0) targets.add(target);
+            else everyTarget = false;
+        }
+        if (!everyTarget && !passExists) return false;
+        session.markRerollDecided();
+        double[] grind = stageOneGrind(session);
+        AgentKpqRerollPolicy.Decision decision = policy.decide(new AgentKpqRerollPolicy.Draw(true,
+                session.rerollDeclined(), AgentKpqRerollStreaks.current(leader.getId(), nowMs, policy.streakResetMs()),
+                passExists, targets, grind[0], grind[1]));
+        Character asker = decision.proposed() ? rerollAsker(session, leader) : null;
+        boolean proposed = asker != null;
+        log.info("KPQ stage 1 draw: session={} targets={} total={} rule={} savingMs={} proposed={} reason={}",
+                session.sessionId(), targets, targets.stream().mapToInt(Integer::intValue).sum(),
+                decision.rule().label(), Double.isFinite(decision.savingMs()) ? Math.round(decision.savingMs()) : "-",
+                proposed, decision.proposed() && !proposed ? "nobody-to-ask" : decision.reason());
+        if (proposed) askLeaderToReroll(session, leader, asker, decision, targets, nowMs);
+        return false;
+    }
+
+    /**
+     * Stage 1's theory per kill for this party and a fresh draw's mean kills, from the warm pace profile, the members'
+     * power read at stage-1 entry and the calibration the leader's lineup was priced with (its priors without one);
+     * NaN for both while the profile is cold or no power was read, and the players' rule of thumb decides.
+     */
+    private static double[] stageOneGrind(AgentKpqSession session) {
+        double[] cold = {Double.NaN, Double.NaN};
+        AgentPqPaceProfile profile = AgentPqPaceProfiles.cached(AgentKpqPaceProfile.QUEST_KEY);
+        List<AgentPqMemberPower> members = session.pace().snapshot().members();
+        if (profile == null || members.isEmpty()) return cold;
+        try {
+            AgentPqPaceCalibration calibration = session.paceCalibration();
+            if (calibration == null || calibration.epoch() != profile.epoch()) {
+                calibration = AgentPqPaceCalibration.prior(profile);
+            }
+            for (AgentPqPaceSegment segment : profile.segments(members.size())) {
+                if (segment instanceof AgentPqPaceSegment.Quota quota
+                        && AgentKpqPaceProfile.S1_GRIND.equals(quota.key())) {
+                    return new double[]{AgentPqPaceEstimator.theorySeconds(profile, members, calibration,
+                            AgentKpqPaceProfile.S1_GRIND, 1.0d), quota.kills().mean()};
+                }
+            }
+        } catch (RuntimeException failure) {
+            log.debug("KPQ stage 1 grind unreadable: session={}", session.sessionId(), failure);
+        }
+        return cold;
+    }
+
+    /** The companion with the highest draw that stands in the run (the first of the party on a tie), or null. */
+    private static Character rerollAsker(AgentKpqSession session, Character leader) {
+        return session.members().stream()
+                .filter(member -> member.memberType() == AgentKpqMemberState.MemberType.AGENT
+                        && member.characterId() != session.eventLeaderId() && member.couponTarget() > 0)
+                .sorted(Comparator.comparingInt(AgentKpqMemberState::couponTarget).reversed()
+                        .thenComparingInt(AgentKpqMemberState::partyNumber))
+                .map(member -> memberCharacter(member.characterId(), leader))
+                .filter(agent -> agent != null && standsInEvent(session, agent))
+                .findFirst().orElse(null);
+    }
+
+    /** Who answers for the re-roll: the companion that asked while it stands in the run, else any that does. */
+    private static Character rerollSpeaker(AgentKpqSession session) {
+        Character asker = session.rerollAskerId() > 0 ? character(session.rerollAskerId()) : null;
+        return asker != null && standsInEvent(session, asker) ? asker : firstStandingAgent(session);
+    }
+
+    /**
+     * The question: recorded as out first (so no answer can come before it), then said once in the companion's own
+     * words, then shown to the leader as its window by the host.
+     */
+    private static void askLeaderToReroll(AgentKpqSession session, Character leader, Character asker,
+                                          AgentKpqRerollPolicy.Decision decision, List<Integer> targets, long nowMs) {
+        String question = AgentKpqRerollPolicy.askLine(targets);
+        AgentKpqSessionRegistry.askReroll(session.sessionId(), leader.getId(), nowMs);
+        session.markRerollAsked(asker.getId(), nowMs);
+        narrate(session, asker, "stage1-reroll-ask", question);
+        boolean window = AgentPartyQuestHandback.askLeaderToReroll(new AgentPartyQuestHandback.RerollAsk(
+                AgentKpqPaceProfile.QUEST_KEY, session.sessionId(), leader.getId(), asker.getId(),
+                decision.rule().label(), question));
+        if (!window) {
+            log.info("KPQ stage 1 re-roll window not shown: session={} leader={}; the question stands in chat",
+                    session.sessionId(), leader.getName());
+        }
+    }
+
+    /**
+     * The leader said go again: the asking companion says so, and the run ends through the stock exit path, as a
+     * re-roll (AgentKpqTerminationService.reroll), never as a failure.
+     */
+    private static void reroll(AgentKpqSession session, long nowMs) {
+        Character speaker = rerollSpeaker(session);
+        if (speaker != null) {
+            narrate(session, speaker, "rerolled", Parting.of(Parting.Kind.REROLL).line(speaker.getId(), false));
+        }
+        AgentKpqTerminationService.reroll(session, nowMs);
     }
 
     /** The human leader's stage 1, beside the companions' summaries: his kills, the coupons he kept, the asks. */

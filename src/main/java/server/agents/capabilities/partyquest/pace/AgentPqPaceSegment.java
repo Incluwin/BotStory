@@ -36,13 +36,22 @@ public sealed interface AgentPqPaceSegment {
      * {@code 1 / (seek + mobHp / (combat x dps))} a second; the human leader counts {@code leaderCredit} of that, since
      * the kills are asked of the others and his only help when he hands over what they drop. Every other member counts
      * in full, a human beside the leader included: he collects his own share.
+     *
+     * @param redraw how a party throws a heavy draw away and starts over; null when it never does (the estimate then
+     *               prices the kills exactly as drawn)
      */
-    record Quota(String key, int mobId, int mobHp, Pmf kills, double leaderCredit) implements AgentPqPaceSegment {
+    record Quota(String key, int mobId, int mobHp, Pmf kills, double leaderCredit, Redraw redraw)
+            implements AgentPqPaceSegment {
         public Quota {
             requireKey(key);
             if (mobId <= 0 || mobHp <= 0 || kills == null || !(leaderCredit >= 0.0d)) {
                 throw new IllegalArgumentException("a quota needs a mob, its HP, a kill distribution and a credit >= 0");
             }
+        }
+
+        /** A quota whose draw is always kept. */
+        public Quota(String key, int mobId, int mobHp, Pmf kills, double leaderCredit) {
+            this(key, mobId, mobHp, kills, leaderCredit, null);
         }
 
         public String seekTerm() {
@@ -51,6 +60,34 @@ public sealed interface AgentPqPaceSegment {
 
         public String combatTerm() {
             return key + ".combat";
+        }
+    }
+
+    /**
+     * A quota's draw thrown away for a fresh one, as players leave a run whose random work came out heavy and start it
+     * again: drawn kills K are given up when {@link #savingMs} reaches {@code minSavingMs}, at most {@code maxRedraws}
+     * times in a row, the last draw kept whatever it is. The decision is made at the theory's kill rate (efficiency
+     * multiplier 1), the one a party can know when it decides; the restart is a fixed time, not a kill term.
+     */
+    record Redraw(long restartMs, long minSavingMs, int maxRedraws) {
+        public Redraw {
+            if (restartMs < 0L || minSavingMs < 0L || maxRedraws < 0) {
+                throw new IllegalArgumentException("a redraw needs a restart, a minimum saving and a bound >= 0");
+            }
+        }
+
+        /**
+         * What giving up {@code kills} saves, in ms: their grind less the restart and a fresh draw's mean grind, each
+         * kill taking {@code secondsPerKill}.
+         */
+        public double savingMs(double kills, double meanKills, double secondsPerKill) {
+            return kills * secondsPerKill * 1000.0d - (restartMs + meanKills * secondsPerKill * 1000.0d);
+        }
+
+        /** True when a draw of {@code kills} is thrown away; never at a rate nobody can kill at. */
+        public boolean redraws(double kills, double meanKills, double secondsPerKill) {
+            return Double.isFinite(secondsPerKill) && secondsPerKill > 0.0d
+                    && savingMs(kills, meanKills, secondsPerKill) >= minSavingMs;
         }
     }
 

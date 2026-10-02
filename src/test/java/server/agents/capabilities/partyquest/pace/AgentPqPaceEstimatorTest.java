@@ -299,6 +299,60 @@ class AgentPqPaceEstimatorTest {
                 AgentPqPaceEstimator.theorySeconds(profile, PARTY, prior, "race", 0.0d), 1e-9);
     }
 
+    // ---- a quota whose heavy draw is thrown away (the KPQ re-roll) ----------------------------------------------
+
+    /** Kills 10 or 30, equally likely, at one kill a second: the hand-worked case of the redraw mixture. */
+    private static AgentPqPaceEstimate tenOrThirty(AgentPqPaceSegment.Redraw redraw) {
+        PaceStubProfile profile = PaceStubProfile.standard().with(List.of(new AgentPqPaceSegment.Quota("q", MOB_A,
+                1_000, Pmf.sumOfDraws(List.of(10, 30), 1), 0.5d, redraw)), Map.of("q.seek", 0.0d, "q.combat", 1.0d));
+        return estimate(profile, List.of(humanLeader(1), companion(2, 1_000, 0, 0, 0)),
+                new AgentPqPaceCalibration("stub", 1, Map.of("q.seek", 0.0d, "q.combat", 1.0d), Map.of(), 0.0d, 0,
+                        AgentPqPaceCalibration.Source.PRIOR, Map.of()));
+    }
+
+    @Test
+    void aRedrawMixesTheKeptDrawsWithTheRestartsExactly() {
+        // Mean 20 kills. A draw of 30 saves 30 - (5 + 20) = 5 s >= 0 and is thrown away; 10 is kept. With one redraw:
+        // 10 s (1/2), 5 + 10 s (1/4), 5 + 30 s (1/4): mean 17.5 s instead of 20.
+        AgentPqPaceEstimate once = tenOrThirty(new AgentPqPaceSegment.Redraw(5_000L, 0L, 1));
+        assertEquals(17.5d, once.segmentMeanS().get("q"), 1e-9);
+        assertEquals(17.5d, once.meanS(), 1e-9);
+        assertEquals(10.0d, once.p10S(), 1e-9);
+        assertEquals(10.0d, once.p50S(), 1e-9);
+        assertEquals(35.0d, once.p90S(), 1e-9);
+
+        // Two in a row: 10 s (1/2), 15 s (1/4), then 20 s (1/8) and 40 s (1/8): mean 16.25 s.
+        AgentPqPaceEstimate twice = tenOrThirty(new AgentPqPaceSegment.Redraw(5_000L, 0L, 2));
+        assertEquals(16.25d, twice.segmentMeanS().get("q"), 1e-9);
+        assertEquals(40.0d, twice.p90S(), 1e-9);
+
+        // As drawn: 10 s or 30 s.
+        AgentPqPaceEstimate drawn = tenOrThirty(null);
+        assertEquals(20.0d, drawn.meanS(), 1e-9);
+        assertEquals(30.0d, drawn.p90S(), 1e-9);
+    }
+
+    @Test
+    void aSavingUnderTheMinimumOrNoRedrawsLeaveTheDrawAsItIs() {
+        AgentPqPaceEstimate drawn = tenOrThirty(null);
+        // 5 s saved is under a 6 s minimum; and a bound of 0 redraws keeps every first draw.
+        assertEquals(drawn, tenOrThirty(new AgentPqPaceSegment.Redraw(5_000L, 6_000L, 2)));
+        assertEquals(drawn, tenOrThirty(new AgentPqPaceSegment.Redraw(5_000L, 0L, 0)));
+        // The quota as it was built before redraws existed is the same segment.
+        assertEquals(new AgentPqPaceSegment.Quota("q", MOB_A, 1_000, Pmf.sumOfDraws(List.of(10, 30), 1), 0.5d),
+                new AgentPqPaceSegment.Quota("q", MOB_A, 1_000, Pmf.sumOfDraws(List.of(10, 30), 1), 0.5d, null));
+    }
+
+    @Test
+    void theRedrawRuleIsTheSavingAgainstAFreshDrawAndTheRestart() {
+        AgentPqPaceSegment.Redraw redraw = new AgentPqPaceSegment.Redraw(75_000L, 60_000L, 2);
+        assertEquals((95.0d - 65.0d) * 8_000.0d - 75_000.0d, redraw.savingMs(95.0d, 65.0d, 8.0d), 1e-9);
+        assertTrue(redraw.redraws(95.0d, 65.0d, 8.0d));
+        assertFalse(redraw.redraws(80.0d, 65.0d, 8.0d), "120 s of grind saves 45 s");
+        assertFalse(redraw.redraws(95.0d, 65.0d, Double.POSITIVE_INFINITY), "nobody kills: nothing to weigh");
+        assertFalse(redraw.redraws(95.0d, 65.0d, 0.0d));
+    }
+
     private static AgentPqPaceEstimate estimate(AgentPqPaceProfile profile, List<AgentPqMemberPower> members,
                                                 AgentPqPaceCalibration calibration) {
         return AgentPqPaceEstimator.estimate(profile, members, calibration);

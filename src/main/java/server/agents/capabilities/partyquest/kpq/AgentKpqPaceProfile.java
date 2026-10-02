@@ -27,7 +27,8 @@ import java.util.TreeMap;
  *   + max(s5.move + s5.descent + s5.normals + s5.boss + s5.loot + s5.carry, s5.climb) + s5.talks
  * </pre>
  * Stage 1's kills are the sum of the non-leaders' Cloto answers (one coupon per Ligator), hunted by every member, the
- * human leader at STAGE1_HUMAN_CREDIT of his rate; a puzzle's checks are uniform over its combinations, tried in
+ * human leader at STAGE1_HUMAN_CREDIT of his rate, a heavy draw re-rolled as AgentKpqRerollPolicy offers it (a
+ * restart and a fresh draw, at most its streak in a row; the estimate assumes the leader takes every offer); a puzzle's checks are uniform over its combinations, tried in
  * {@link AgentKpqCombinationOrder}'s order; stage 4 has no accept of its own, its exit being the leader's climb in
  * stage 5. In a party of three the leader holds a puzzle spot, and his share of the formation changes is replayed from
  * the combination order and {@link AgentKpqPuzzleParticipantOrder}'s rank ratios. Stage 5's normals and King Slime are
@@ -138,7 +139,7 @@ public final class AgentKpqPaceProfile implements AgentPqPaceProfile {
      * a leader's I/O thread finds them in memory. On companion-ops: it parses game data.
      */
     public static AgentKpqPaceProfile load() {
-        AgentKpqPaceProfile profile = load(Census.WZ);
+        AgentKpqPaceProfile profile = load(Census.WZ, AgentKpqRerollPolicy.CONFIGURED);
         for (int mobId : profile.mobIds()) {
             if (LifeFactory.getMonster(mobId) == null) {
                 throw new IllegalStateException("LifeFactory cannot load KPQ mob " + mobId);
@@ -148,6 +149,15 @@ public final class AgentKpqPaceProfile implements AgentPqPaceProfile {
     }
 
     static AgentKpqPaceProfile load(Census census) {
+        return load(census, AgentKpqRerollPolicy.CONFIGURED);
+    }
+
+    /**
+     * As above, pricing stage 1 under {@code reroll}: a companion run with a human leader throws a heavy draw away and
+     * starts over (AgentKpqRerollPolicy), so its stage-1 quota carries that policy's redraw; switched off, stage 1 is
+     * priced exactly as drawn.
+     */
+    static AgentKpqPaceProfile load(Census census, AgentKpqRerollPolicy reroll) {
         Map<Integer, Integer> stageOne = census.mobCounts(AgentKpqDefinition.STAGE_1_MAP);
         if (stageOne.size() != 1) {
             throw new IllegalStateException("KPQ stage 1 should hold one mob type, Map.wz lists " + stageOne);
@@ -173,7 +183,8 @@ public final class AgentKpqPaceProfile implements AgentPqPaceProfile {
         double[] rankWeights = AgentKpqPuzzleParticipantOrder.humanRoleWeights();
         Map<Integer, List<AgentPqPaceSegment>> segments = new TreeMap<>();
         for (int size = definition.minimumPartySize(); size <= definition.maximumPartySize(); size++) {
-            segments.put(size, segments(size, quotaMob, quotaFacts.hp(), normals, bosses, hp, rankWeights));
+            segments.put(size, segments(size, quotaMob, quotaFacts.hp(), normals, bosses, hp, rankWeights,
+                    reroll.redraw()));
         }
         List<Integer> mobIds = new ArrayList<>();
         mobIds.add(quotaMob);
@@ -186,13 +197,14 @@ public final class AgentKpqPaceProfile implements AgentPqPaceProfile {
 
     private static List<AgentPqPaceSegment> segments(int size, int quotaMob, int quotaHp, Map<Integer, Integer> normals,
                                                      Map<Integer, Integer> bosses, Map<Integer, Integer> hp,
-                                                     double[] rankWeights) {
+                                                     double[] rankWeights, AgentPqPaceSegment.Redraw redraw) {
         List<AgentPqPaceSegment> segments = new ArrayList<>();
         segments.add(new AgentPqPaceSegment.Fixed(YES, AgentPqPaceSegment.Side.COMPANION));
         segments.add(new AgentPqPaceSegment.Fixed(S1_OPEN, AgentPqPaceSegment.Side.COMPANION));
-        // Every member but the leader answers one Cloto question; each coupon is one Ligator.
+        // Every member but the leader answers one Cloto question; each coupon is one Ligator. A heavy draw may be
+        // thrown away for a fresh one (the re-roll), when the policy is on.
         segments.add(new AgentPqPaceSegment.Quota(S1_GRIND, quotaMob, quotaHp,
-                Pmf.sumOfDraws(AgentKpqDefinition.couponTargets(), size - 1), STAGE1_HUMAN_CREDIT));
+                Pmf.sumOfDraws(AgentKpqDefinition.couponTargets(), size - 1), STAGE1_HUMAN_CREDIT, redraw));
         segments.add(new AgentPqPaceSegment.Fixed(S1_HANDIN, AgentPqPaceSegment.Side.LEADER));
         for (int stage = 2; stage <= 4; stage++) {
             List<List<Integer>> order = AgentKpqCombinationOrder.forPositionCount(

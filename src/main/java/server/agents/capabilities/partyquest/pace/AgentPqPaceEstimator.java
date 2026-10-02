@@ -11,7 +11,8 @@ import java.util.TreeMap;
  * terms, as an exact distribution on a GRID_MS grid. Every kill term (quota, clear) shares one lognormal efficiency
  * multiplier of spread {@code calibration.logSpread()}, since a party that fights slowly is slow everywhere; it is
  * integrated with a 7-point Gauss-Hermite rule. A quota's kill count and a puzzle's check count are drawn exactly from
- * the profile. Pure and in memory: no game data, I/O or locks, so it may run on a leader's I/O thread.
+ * the profile; a quota with a redraw is the exact mixture of the draws kept and the restarts thrown-away draws cost
+ * ({@link QuotaMixture}). Pure and in memory: no game data, I/O or locks, so it may run on a leader's I/O thread.
  */
 public final class AgentPqPaceEstimator {
     private static final long GRID_MS = config.AgentTuning.longValue(
@@ -196,7 +197,8 @@ public final class AgentPqPaceEstimator {
             case AgentPqPaceSegment.Quota quota -> {
                 double rate = AgentPqPaceModel.killsPerSecond(quota, members, terms.value(quota.seekTerm()),
                         terms.value(quota.combatTerm()));
-                yield rate > 0.0d ? quota.kills().mean() / rate : Double.POSITIVE_INFINITY;
+                yield !(rate > 0.0d) ? Double.POSITIVE_INFINITY
+                        : quota.redraw() == null ? quota.kills().mean() / rate : QuotaMixture.of(quota, rate).meanS(rate);
             }
             case AgentPqPaceSegment.Puzzle puzzle -> theorySeconds(puzzle, puzzle.key(), puzzle.checks().mean(), members,
                     terms);
@@ -260,6 +262,58 @@ public final class AgentPqPaceEstimator {
         return normalized;
     }
 
+    /**
+     * A quota's outcomes under its redraw: per outcome the restarts it took (their fixed time, ms), the kills it kept
+     * and its chance. A draw is thrown away ({@link AgentPqPaceSegment.Redraw#redraws}) at the theory's kill rate
+     * {@code rate}, as the party decides, and at most {@code maxRedraws} times in a row: attempt j is reached with the
+     * chance q^j that every earlier draw was thrown away, and its draw is kept unless it is thrown away again, the last
+     * attempt's always. Exact over the kill distribution; the chances sum to 1.
+     */
+    record QuotaMixture(double[] fixedMs, double[] kills, double[] p) {
+        static QuotaMixture of(AgentPqPaceSegment.Quota quota, double rate) {
+            AgentPqPaceSegment.Redraw redraw = quota.redraw();
+            Pmf drawn = quota.kills();
+            double[] mass = drawn.p();
+            double mean = drawn.mean();
+            boolean[] thrown = new boolean[mass.length];
+            double thrownChance = 0.0d;
+            for (int index = 0; index < mass.length; index++) {
+                thrown[index] = redraw.redraws(drawn.offset() + index, mean, 1.0d / rate);
+                if (thrown[index]) thrownChance += mass[index];
+            }
+            List<double[]> outcomes = new ArrayList<>();
+            double reach = 1.0d;
+            for (int attempt = 0; attempt <= redraw.maxRedraws(); attempt++) {
+                boolean last = attempt == redraw.maxRedraws();
+                for (int index = 0; index < mass.length; index++) {
+                    if (!last && thrown[index]) continue;
+                    outcomes.add(new double[]{(double) attempt * redraw.restartMs(), drawn.offset() + index,
+                            reach * mass[index]});
+                }
+                reach *= thrownChance;
+                if (reach == 0.0d) break;
+            }
+            double[] fixedMs = new double[outcomes.size()];
+            double[] kills = new double[outcomes.size()];
+            double[] p = new double[outcomes.size()];
+            for (int index = 0; index < outcomes.size(); index++) {
+                fixedMs[index] = outcomes.get(index)[0];
+                kills[index] = outcomes.get(index)[1];
+                p[index] = outcomes.get(index)[2];
+            }
+            return new QuotaMixture(fixedMs, kills, p);
+        }
+
+        /** The mean seconds at the multiplier 1: the restarts plus the kept kills at {@code rate}. */
+        double meanS(double rate) {
+            double mean = 0.0d;
+            for (int index = 0; index < p.length; index++) {
+                mean += p[index] * (fixedMs[index] / 1000.0d + kills[index] / rate);
+            }
+            return mean;
+        }
+    }
+
     /** Prices segments at one value of the shared efficiency multiplier. */
     private record Evaluation(AgentPqPaceModel.Terms terms, Map<String, Double> quotaRates,
                               Map<String, Double> killSeconds, long horizonBins) {
@@ -281,6 +335,15 @@ public final class AgentPqPaceEstimator {
                 case AgentPqPaceSegment.Clear clear -> Timeline.point(multiplier * killSeconds.get(clear.key()) * 1000.0d);
                 case AgentPqPaceSegment.Quota quota -> {
                     double rate = quotaRates.get(quota.key());
+                    if (quota.redraw() != null) {
+                        QuotaMixture mixture = QuotaMixture.of(quota, rate);
+                        double[] times = new double[mixture.p().length];
+                        for (int index = 0; index < times.length; index++) {
+                            times[index] = mixture.fixedMs()[index]
+                                    + multiplier * mixture.kills()[index] / rate * 1000.0d;
+                        }
+                        yield Timeline.outcomes(times, mixture.p(), horizonBins);
+                    }
                     Pmf kills = quota.kills();
                     double[] times = new double[kills.p().length];
                     for (int index = 0; index < times.length; index++) {

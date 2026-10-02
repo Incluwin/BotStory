@@ -107,10 +107,14 @@ public final class AgentPartyQuestEngagement {
         transition(State.ACTIVE_EVENT, nowMs, "");
     }
 
+    /**
+     * The run ended: a cleared run, a test run's and a re-rolled one (its leader chose to run it again, no failure)
+     * hold before recovery; a failed one recovers at once.
+     */
     public synchronized void finishRun(boolean success, String reason, long nowMs) {
         requireState(State.ACTIVE_EVENT);
         activeSessionId = "";
-        if (mode == Mode.TEST_OBSERVATION || success) {
+        if (mode == Mode.TEST_OBSERVATION || success || AgentPartyQuestHandback.REROLLED.equals(reason)) {
             transition(State.POST_RUN_HOLD, nowMs, reason);
         } else {
             transition(State.RECOVERING, nowMs, reason);
