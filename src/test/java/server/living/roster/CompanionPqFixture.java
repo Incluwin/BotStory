@@ -55,6 +55,8 @@ final class CompanionPqFixture implements AutoCloseable {
     final Map<Integer, Double> dps = new HashMap<>();
     /** Where the lineup's clear time is read from: none unless a test says otherwise (set it before ready()). */
     CompanionPartyQuestService.PaceSource pace = CompanionPartyQuestService.PaceSource.COLD;
+    /** Where each run's clear-time record goes: a ledger of the service's own unless a test sets one before ready(). */
+    PqPaceLedger ledger;
     /** Ann's I/O thread: null runs each task at once. */
     List<Runnable> io;
     final Doors doors = new Doors();
@@ -110,7 +112,8 @@ final class CompanionPqFixture implements AutoCloseable {
         game.roster();
         when(game.world.views()).thenReturn(new CompanionViews(game.world, id -> "camp", id -> "item"));
         service = new CompanionPartyQuestService(game.world, doors, bot -> potions.getOrDefault(bot.getId(), 50),
-                bot -> manaPotions.getOrDefault(bot.getId(), 50), bot -> dps.getOrDefault(bot.getId(), 0.0d), pace);
+                bot -> manaPotions.getOrDefault(bot.getId(), 50), bot -> dps.getOrDefault(bot.getId(), 0.0d), pace,
+                ledger == null ? new PqPaceLedger(game.world) : ledger);
         lifecycle = new CompanionRunLifecycle(game.world, service);
         when(game.world.partyQuests()).thenReturn(service);
         service.installDesk(new CompanionPartyQuestService.Desk() {
@@ -147,9 +150,14 @@ final class CompanionPqFixture implements AutoCloseable {
 
     /** The run's KPQ session ends, as the Agent layer tells the host (childFinished, then runEnded). */
     void sessionEnds(boolean success) {
+        sessionEnds(success, null);
+    }
+
+    /** {@link #sessionEnds(boolean)} with the pace the session reported (null: none). */
+    void sessionEnds(boolean success, server.agents.capabilities.partyquest.pace.AgentPqPace pace) {
         AgentKpqSessionRegistry.remove(doors.session);
         lifecycle.runEnded(new AgentPartyQuestHandback.RunEnded("kpq", doors.session.sessionId(), ANN, success,
-                success ? "completed" : "KPQ stopped", 5_000L));
+                success ? "completed" : "KPQ stopped", 5_000L, pace));
     }
 
     /** Companion-ops keeps its commands in the returned queue until {@link #drain}. */

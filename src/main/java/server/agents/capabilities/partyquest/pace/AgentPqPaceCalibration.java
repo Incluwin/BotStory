@@ -62,6 +62,11 @@ public record AgentPqPaceCalibration(String questKey, int epoch, Map<String, Dou
         if (source == null) source = Source.PRIOR;
     }
 
+    /** How many of a quest's newest recorded runs a fit reads at most (MAX_ROWS): a host need keep no more. */
+    public static int maxRows() {
+        return Math.max(0, MAX_ROWS);
+    }
+
     /** The profile's priors, split by side, with the prior spread. */
     public static AgentPqPaceCalibration prior(AgentPqPaceProfile profile) {
         Set<String> leaderTerms = profile.leaderTerms();

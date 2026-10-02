@@ -1,5 +1,7 @@
 package server.living.roster;
 
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -27,6 +29,11 @@ final class CompanionRun {
     final Set<Integer> owners = new HashSet<>();
     final int partySize;
     final long startedAtMs;
+    /**
+     * The entry NPC's clear-time estimate of the lineup at the Yes (null: none was made, the pace data cold or the kill
+     * switch off), kept for the run's clear-time record beside how long it took (PqPaceLedger).
+     */
+    final AgentPqPaceEstimate estimateAtYes;
     /** The event instance started; a run that never got in has nothing to record. */
     volatile boolean started;
     /** The party cleared stage 5 (EventInstanceManager.clearPQ): its companions' records count it cleared. */
@@ -60,6 +67,7 @@ final class CompanionRun {
         owners.addAll(ownerByExtra.values());
         this.partySize = plan.lineup().size();
         this.startedAtMs = nowMs;
+        this.estimateAtYes = plan.estimate();
     }
 
     /** Every character the run holds: its lineup and its extras. */

@@ -23,6 +23,7 @@ import server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
 import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator;
@@ -124,8 +125,8 @@ public final class CompanionPartyQuestService {
     /**
      * Where a lineup's clear time is read from, all in memory on the leader's I/O thread: the quest's pace profile once
      * companion-ops warmed it ({@link #warmPace}; null while cold, and it never loads anything), its calibration for a
-     * leader (the profile's priors until runs are recorded), a party member's power against it, and how long the
-     * leader's last clear with exactly these companions took (seconds; 0: none on record).
+     * leader (what the clear-time records taught, the profile's priors until runs are recorded), a party member's power
+     * against it, and how long the leader's last clear with exactly these companions took (seconds; 0: none on record).
      */
     interface PaceSource {
         AgentPqPaceProfile profile(String pqKey);
@@ -136,28 +137,36 @@ public final class CompanionPartyQuestService {
 
         double lastClearS(String pqKey, int leaderId, Set<Integer> companionIds);
 
-        /** The warmed profiles, their priors and the characters' own attacks; no clear on record yet. */
-        PaceSource LIVE = new PaceSource() {
-            @Override
-            public AgentPqPaceProfile profile(String pqKey) {
-                return AgentPqPaceProfiles.cached(pqKey);
-            }
+        /**
+         * The warmed profiles, the characters' own attacks, and the clear-time records {@code ledger} holds: what they
+         * taught for the leader, or the profile's priors while none were read (or they were read under another epoch).
+         */
+        static PaceSource live(PqPaceLedger ledger) {
+            return new PaceSource() {
+                @Override
+                public AgentPqPaceProfile profile(String pqKey) {
+                    return AgentPqPaceProfiles.cached(pqKey);
+                }
 
-            @Override
-            public AgentPqPaceCalibration calibration(AgentPqPaceProfile profile, int leaderId) {
-                return AgentPqPaceCalibration.prior(profile);
-            }
+                @Override
+                public AgentPqPaceCalibration calibration(AgentPqPaceProfile profile, int leaderId) {
+                    AgentPqPaceCalibration learned = ledger.calibration(profile.questKey(), leaderId);
+                    return learned != null && learned.epoch() == profile.epoch() ? learned
+                            : AgentPqPaceCalibration.prior(profile);
+                }
 
-            @Override
-            public AgentPqMemberPower power(Character chr, AgentPqPaceProfile profile, boolean human, boolean leader) {
-                return AgentPqMemberPower.of(chr, profile, human, leader);
-            }
+                @Override
+                public AgentPqMemberPower power(Character chr, AgentPqPaceProfile profile, boolean human,
+                                                boolean leader) {
+                    return AgentPqMemberPower.of(chr, profile, human, leader);
+                }
 
-            @Override
-            public double lastClearS(String pqKey, int leaderId, Set<Integer> companionIds) {
-                return 0.0d;
-            }
-        };
+                @Override
+                public double lastClearS(String pqKey, int leaderId, Set<Integer> companionIds) {
+                    return ledger.lastClearS(pqKey, leaderId, companionIds);
+                }
+            };
+        }
 
         /** No profile ever: every lineup is chosen and shown as before the clear time. */
         PaceSource COLD = new PaceSource() {
@@ -206,6 +215,7 @@ public final class CompanionPartyQuestService {
     private final ToDoubleFunction<Character> kpqDps;
     private final PaceSource pace;
     private final CompanionRunRecorder records;
+    private final PqPaceLedger ledger;
     private volatile Desk desk = PINK_TEXT;
     /** Leaders whose Yes is being carried out: a second Yes meanwhile only hears "hold on". */
     private final Set<Integer> entering = ConcurrentHashMap.newKeySet();
@@ -225,7 +235,7 @@ public final class CompanionPartyQuestService {
 
     public CompanionPartyQuestService(LivingWorld world) {
         this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions, CompanionPartyQuestService::mpPotions,
-                CompanionPartyQuestService::kpqDps, PaceSource.LIVE);
+                CompanionPartyQuestService::kpqDps, new PqPaceLedger(world));
     }
 
     /** The service below with no clear time ever ({@link PaceSource#COLD}). */
@@ -234,14 +244,28 @@ public final class CompanionPartyQuestService {
         this(world, port, hpPotions, mpPotions, kpqDps, PaceSource.COLD);
     }
 
-    /**
-     * {@code port}: the doors into the quest; {@code hpPotions}, {@code mpPotions}: what a loaded companion carries;
-     * {@code kpqDps}: what it hits for in KPQ (the lineup's choice without a clear time); {@code pace}: where the
-     * lineup's clear time is read from.
-     */
+    /** The service below whose clear time is read from the warm profiles and {@code ledger}'s records. */
+    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
+                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps,
+                               PqPaceLedger ledger) {
+        this(world, port, hpPotions, mpPotions, kpqDps, PaceSource.live(ledger), ledger);
+    }
+
+    /** The service below with clear-time records of its own, which its lineups do not read. */
     CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
                                ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps,
                                PaceSource pace) {
+        this(world, port, hpPotions, mpPotions, kpqDps, pace, new PqPaceLedger(world));
+    }
+
+    /**
+     * {@code port}: the doors into the quest; {@code hpPotions}, {@code mpPotions}: what a loaded companion carries;
+     * {@code kpqDps}: what it hits for in KPQ (the lineup's choice without a clear time); {@code pace}: where the
+     * lineup's clear time is read from; {@code ledger}: where each run's clear-time record goes as it ends.
+     */
+    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
+                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps,
+                               PaceSource pace, PqPaceLedger ledger) {
         this.world = world;
         this.port = port;
         this.hpPotions = hpPotions;
@@ -249,11 +273,17 @@ public final class CompanionPartyQuestService {
         this.kpqDps = kpqDps;
         this.pace = pace;
         this.records = new CompanionRunRecorder(world);
+        this.ledger = ledger;
     }
 
     /** The companions' KPQ records, which the lineup ranks by. */
     public CompanionRunRecorder records() {
         return records;
+    }
+
+    /** The PQ clear-time records (pq_run_pace), which the lineup's clear time is learned from. */
+    public PqPaceLedger paceLedger() {
+        return ledger;
     }
 
     /** The desk's windows (roster.ui); null: none, and outcomes are pink text. */
@@ -993,10 +1023,18 @@ public final class CompanionPartyQuestService {
         return run;
     }
 
-    /** The run is over: taken out (once), and {@link #finish finished} on companion-ops. */
+    /** {@link #endRun(CompanionRun, AgentPqPace)} with no pace reported (a start that failed, a lost session). */
     void endRun(CompanionRun run) {
+        endRun(run, null);
+    }
+
+    /**
+     * The run is over: taken out (once), and {@link #finish finished} on companion-ops with {@code pace}, how it went
+     * as its session reported it (null: not reported).
+     */
+    void endRun(CompanionRun run, AgentPqPace pace) {
         if (takeRun(run.sessionId) == run) {
-            world.executor().submit("pq.run_ended " + run.key, () -> finish(run));
+            world.executor().submit("pq.run_ended " + run.key, () -> finish(run, pace));
         }
     }
 
@@ -1004,12 +1042,14 @@ public final class CompanionPartyQuestService {
      * On companion-ops, once a run is over: its commitments end (a companion finishing it for a friend parks, the
      * party changes that waited go through), and the owners already out of the event get their held companions back.
      * An owner still inside gets them as they come out (RosterService.ownerEnteredMap). A run that got in goes on its
-     * companions' records.
+     * companions' records, and with its pace on the clear-time records.
      */
-    void finish(CompanionRun run) {
+    void finish(CompanionRun run, AgentPqPace pace) {
         world.commitments().releaseKey(run.key);
         rejoin(run.owners); // an owner still in the event instance: none yet
-        records.record(run, System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        records.record(run, now);
+        ledger.record(run, pace, now);
     }
 
     /**

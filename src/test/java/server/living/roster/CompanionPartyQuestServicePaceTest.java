@@ -112,7 +112,7 @@ class CompanionPartyQuestServicePaceTest {
     void aColdProfileAndAThrowingStoreStillPlanALineupWithoutAClearTime() {
         fx.companion("mira", "Mira", 901, 24, Job.HUNTER);
         fx.companion("pip", "Pip", 902, 26, Job.FP_WIZARD);
-        fx.pace = CompanionPartyQuestService.PaceSource.LIVE;
+        fx.pace = CompanionPartyQuestService.PaceSource.live(new PqPaceLedger(game.world));
         CompanionPartyQuestService service = fx.ready();
         try (MockedStatic<AgentPqPaceProfiles> profiles = mockStatic(AgentPqPaceProfiles.class)) {
             service.plan(game.ann, "kpq"); // warms the views, as the Crew menus do

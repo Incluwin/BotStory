@@ -102,12 +102,15 @@ public final class CompanionRunLifecycle implements AgentPartyQuestHandback.Rule
         return lines.isEmpty() ? TAP_OUT_LINE : lines.get(Math.floorMod(ownerId, lines.size()));
     }
 
-    /** A session ended: its run, if any and once, ends on companion-ops (CompanionPartyQuestService.finish). */
+    /**
+     * A session ended: its run, if any and once, ends on companion-ops (CompanionPartyQuestService.finish), with the
+     * pace the session reported for its clear-time record.
+     */
     @Override
     public void runEnded(AgentPartyQuestHandback.RunEnded ended) {
         CompanionRun run = service.runForSession(ended.sessionId());
         if (run != null) {
-            service.endRun(run);
+            service.endRun(run, ended.pace());
         }
     }
 

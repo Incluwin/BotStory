@@ -197,6 +197,8 @@ public final class LivingWorld {
         // and KPQ's pace data (the clear-time estimate's monster census, its monsters, the attack timings) the lineups
         // weigh each party member against, read here, not on an I/O thread
         world.executor.submit("pq.pace", world.partyQuests::warmPace);
+        // then its clear-time records (pq_run_pace), fitted against that warm data, which the estimate learns from
+        world.executor.submit("pq.pace.records", world.partyQuests.paceLedger()::load);
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             world.executor.submit("residents.allocation", world.residentAllocation::sweep);
