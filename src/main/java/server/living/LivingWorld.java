@@ -194,8 +194,9 @@ public final class LivingWorld {
         world.executor.submit("bench.yields", world.benchYields::load);
         // the companions' KPQ records (companion_performance), which the lineups at Lakelis rank by
         world.executor.submit("pq.records.load", world.partyQuests.records()::load);
-        // and KPQ's game-data monsters the lineups weigh each companion's hits against, read here, not on an I/O thread
-        world.executor.submit("pq.kpq_mobs", world.partyQuests::warmKpqMobs);
+        // and KPQ's pace data (the clear-time estimate's monster census, its monsters, the attack timings) the lineups
+        // weigh each party member against, read here, not on an I/O thread
+        world.executor.submit("pq.pace", world.partyQuests::warmPace);
         TimerManager timers = TimerManager.getInstance();
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             world.executor.submit("residents.allocation", world.residentAllocation::sweep);

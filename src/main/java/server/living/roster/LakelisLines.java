@@ -1,6 +1,14 @@
 package server.living.roster;
 
+import server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate.Kind;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate.Weakness;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * What Lakelis says at the KPQ entrance about a companion lineup (P6, flow 3), in her own plain words. Admission's
@@ -131,6 +139,218 @@ public final class LakelisLines {
 
     static String named(String line, String name) {
         return line.replace("<name>", name);
+    }
+
+    // ---- how long a lineup should take ----------------------------------------------------------
+
+    /** KPQ's last-room monsters she names (Map.wz life of 103000804; their mob ids in the clear-time weaknesses). */
+    static final int JR_NECKI = 9_300_000;
+    static final int CURSE_EYE = 9_300_002;
+    /** The time is "a quarter of an hour" when it rounds to these minutes. */
+    private static final int QUARTER_FROM = 14;
+    private static final int QUARTER_TO = 16;
+    /** Within this of the timer (or past it), she doubts the crew beats the clock. */
+    private static final double CLOSE_TO_TIMER_S = 180.0d;
+    /** The range is said only when it spans this much. */
+    private static final double RANGE_FROM_S = 180.0d;
+    /** A crew all but sure to be out within this is told so. */
+    private static final double QUICK_S = 600.0d;
+    /** At most this many cautions are said. */
+    private static final int CAUTIONS = 2;
+    /** A record-backed time is said once the crew's estimate rests on this many recorded runs; a hedged one before. */
+    static final int SEEN_RUNS = 3;
+
+    static final String QUICK_CREW = "With this crew, you'll be out in under 10 minutes.";
+    static final String NOBODY_HITS_KING_SLIME = "Nobody here really lands a hit on King Slime, so the end could drag.";
+    static final String GREEN_OF_THREE = "<name> is a bit green for King Slime, and with only three of you, one going "
+            + "down ends it.";
+    static final String MISSES_LIGATORS = "<name> will have a hard time landing hits on the Ligators.";
+    static final String MISSES_LAST_ROOM = "<name> will hardly land a hit on anything in the last room.";
+    static final String GREEN_OF_FOUR = "<name> is a bit green for King Slime. Keep an eye on them.";
+    static final String NECKIS_DODGE = "Those Jr. Neckis dodge most of what this crew throws.";
+    static final String CURSE_EYES_SLOW = "The Curse Eyes will take this crew a while.";
+    static final String LIGATORS_TOUGH = "The Ligators are tough on this crew, so the coupons will take a while.";
+    static final String DOUBT_THE_CLOCK = "With these, I doubt you'd beat the clock.";
+
+    /**
+     * Her lines about the lineup's clear time, for the lineup window: the time, the clock, and up to two cautions;
+     * none without a clear time.
+     */
+    public static List<String> clearTime(LineupPlan plan) {
+        LineupPlan.ClearTime clearTime = plan.clearTime();
+        if (clearTime == null) {
+            return List.of();
+        }
+        List<String> lines = new ArrayList<>(clearTime(clearTime.estimate(), clearTime.lastClearS(),
+                clearTime.timerMs()));
+        lines.addAll(cautions(clearTime.estimate(), plan));
+        return List.copyOf(lines);
+    }
+
+    /**
+     * The time and the clock: how long she thinks it takes ({@code lastClearS}: this leader's last clear with exactly
+     * these companions, 0: none), hedged until the estimate rests on {@link #SEEN_RUNS} recorded runs; then whether
+     * the timer ({@code timerMs}, 0: unknown) is a worry. No time for a crew that cannot clear.
+     */
+    static List<String> clearTime(AgentPqPaceEstimate estimate, double lastClearS, long timerMs) {
+        if (estimate == null) {
+            return List.of();
+        }
+        List<String> lines = new ArrayList<>();
+        if (estimate.clearable()) {
+            long median = minutes(estimate.p50S());
+            if (lastClearS > 0.0d) {
+                lines.add("Last time you went in with them it took about " + minutesPhrase(minutes(lastClearS))
+                        + ". I'd say about " + median + " this time.");
+            } else if (estimate.p90S() < QUICK_S) {
+                lines.add(QUICK_CREW);
+            } else {
+                String time = median >= QUARTER_FROM && median <= QUARTER_TO ? "a quarter of an hour"
+                        : minutesPhrase(median);
+                lines.add((estimate.recordsUsed() < SEEN_RUNS
+                        ? "I haven't seen this crew at work yet, but I'd guess about " + time
+                        : "With this crew, I'd say about " + time) + " if you keep things moving." + range(estimate));
+            }
+        }
+        if (timerMs > 0L) {
+            if (beyondTheClock(estimate, timerMs)) {
+                lines.add("#rI don't think this crew would make it before the doors close.#k You only get "
+                        + timerPhrase(timerMs) + " in there.");
+            } else if (estimate.p90S() > timerMs / 1000.0d) {
+                lines.add("#rMind the clock:#k you only get " + timerPhrase(timerMs)
+                        + " in there, and this crew could cut it close.");
+            }
+        }
+        return lines;
+    }
+
+    /**
+     * Up to two cautions, in this order: nobody hits King Slime; a companion green for King Slime in a lineup of
+     * three; one that misses the Ligators; one that misses everything in the last room; one green for King Slime in a
+     * lineup of four; slow last-room monsters (the type that lasts longest); slow coupons.
+     */
+    static List<String> cautions(AgentPqPaceEstimate estimate, LineupPlan plan) {
+        if (estimate == null) {
+            return List.of();
+        }
+        List<LineupPlan.Seat> companions = plan.lineup().stream().filter(seat -> !seat.human()).toList();
+        Set<String> lines = new LinkedHashSet<>();
+        boolean bossUnhittable = has(estimate, 0, Kind.UNHITTABLE, AgentKpqPaceProfile.S5_BOSS, 0);
+        boolean everyoneMissesBoss = !companions.isEmpty() && companions.stream().allMatch(seat ->
+                has(estimate, seat.characterId(), Kind.MISSES, AgentKpqPaceProfile.S5_BOSS, 0));
+        if (bossUnhittable || everyoneMissesBoss) {
+            lines.add(NOBODY_HITS_KING_SLIME);
+        }
+        int size = plan.lineup().size();
+        for (LineupPlan.Seat seat : companions) {
+            if (size == LineupPlan.MIN_SIZE && has(estimate, seat.characterId(), Kind.FRAGILE, null, 0)) {
+                lines.add(named(GREEN_OF_THREE, seat.name()));
+            }
+        }
+        for (LineupPlan.Seat seat : companions) {
+            if (has(estimate, seat.characterId(), Kind.MISSES, AgentKpqPaceProfile.S1_GRIND, 0)) {
+                lines.add(named(MISSES_LIGATORS, seat.name()));
+            }
+        }
+        for (LineupPlan.Seat seat : companions) {
+            if (has(estimate, seat.characterId(), Kind.MISSES, null, JR_NECKI)
+                    && has(estimate, seat.characterId(), Kind.MISSES, null, CURSE_EYE)) {
+                lines.add(named(MISSES_LAST_ROOM, seat.name()));
+            }
+        }
+        for (LineupPlan.Seat seat : companions) {
+            if (size == LineupPlan.MAX_SIZE && has(estimate, seat.characterId(), Kind.FRAGILE, null, 0)) {
+                lines.add(named(GREEN_OF_FOUR, seat.name()));
+            }
+        }
+        if (has(estimate, 0, Kind.SLOW, AgentKpqPaceProfile.S5_NORMALS, JR_NECKI)) {
+            lines.add(NECKIS_DODGE);
+        } else if (has(estimate, 0, Kind.SLOW, AgentKpqPaceProfile.S5_NORMALS, CURSE_EYE)) {
+            lines.add(CURSE_EYES_SLOW);
+        }
+        if (has(estimate, 0, Kind.SLOW, AgentKpqPaceProfile.S1_GRIND, 0)) {
+            lines.add(LIGATORS_TOUGH);
+        }
+        return lines.stream().limit(CAUTIONS).toList();
+    }
+
+    /**
+     * Her line under "Who goes in?" for the leader's pick of three or four: how long it should take, and how much
+     * sooner her own choice would get them through, said when hers is {@link LineupPlan#SOONER_MS} better by the
+     * objective she weighs lineups by and that much sooner in time (the minutes she says are time, never the clock's
+     * risk); null without a clear time.
+     */
+    public static String chooseLine(LineupPlan plan) {
+        LineupPlan.ClearTime clearTime = plan.clearTime();
+        int size = plan.lineup().size();
+        if (clearTime == null || size < LineupPlan.MIN_SIZE || size > LineupPlan.MAX_SIZE) {
+            return null;
+        }
+        return chooseLine(clearTime.estimate(), clearTime.objectiveS(), clearTime.ownObjectiveS(), clearTime.timeS(),
+                clearTime.ownTimeS(), clearTime.timerMs());
+    }
+
+    static String chooseLine(AgentPqPaceEstimate estimate, double pickObjectiveS, double ownObjectiveS,
+                             double pickTimeS, double ownTimeS, long timerMs) {
+        if (estimate == null) {
+            return null;
+        }
+        String line = timerMs > 0L && beyondTheClock(estimate, timerMs) || !estimate.clearable() ? DOUBT_THE_CLOCK
+                : "With these, I'd say about " + minutesPhrase(minutes(estimate.p50S())) + ".";
+        double soonerS = LineupPlan.SOONER_MS / 1000.0d;
+        double timeGainS = pickTimeS - ownTimeS;
+        long sooner = Double.isFinite(timeGainS) ? minutes(timeGainS) : 0L;
+        if (pickObjectiveS - ownObjectiveS >= soonerS && timeGainS >= soonerS && sooner >= 2L) {
+            line += " The ones I picked would get you through about " + sooner + " minutes sooner.";
+        }
+        return line;
+    }
+
+    /** It cannot clear, or its median is within {@link #CLOSE_TO_TIMER_S} of the timer or past it. */
+    private static boolean beyondTheClock(AgentPqPaceEstimate estimate, long timerMs) {
+        return !estimate.clearable() || timerMs / 1000.0d - estimate.p50S() < CLOSE_TO_TIMER_S;
+    }
+
+    /** " Anywhere from 14 to 25, depending on what Cloto asks for." when the range is wide; else nothing. */
+    private static String range(AgentPqPaceEstimate estimate) {
+        long low = minutes(estimate.p10S());
+        long high = minutes(estimate.p90S());
+        return estimate.p90S() - estimate.p10S() >= RANGE_FROM_S && low != high
+                ? " Anywhere from " + low + " to " + high + ", depending on what Cloto asks for." : "";
+    }
+
+    /** Minutes as she says them: whole minutes under 20, to the nearest 5 from 20 up; at least 1. */
+    static long minutes(double seconds) {
+        double minutes = Math.max(0.0d, seconds) / 60.0d;
+        long whole = Math.round(minutes);
+        return Math.max(1L, whole < 20L ? whole : 5L * Math.round(minutes / 5.0d));
+    }
+
+    private static String minutesPhrase(long minutes) {
+        return minutes == 1L ? "a minute" : minutes + " minutes";
+    }
+
+    /** The timer in her words: "half an hour" for KPQ's 30 minutes. */
+    static String timerPhrase(long timerMs) {
+        long minutes = Math.round(timerMs / 60_000.0d);
+        return minutes == 15L ? "a quarter of an hour" : minutes == 30L ? "half an hour"
+                : minutes == 45L ? "three quarters of an hour" : minutes == 60L ? "an hour"
+                : minutesPhrase(minutes(timerMs / 1000.0d));
+    }
+
+    /**
+     * Whether the estimate names {@code kind} for the character ({@code characterId} 0: the party), in segment
+     * {@code segmentKey} (null: any) on mob {@code mobId} (0: any).
+     */
+    private static boolean has(AgentPqPaceEstimate estimate, int characterId, Kind kind, String segmentKey, int mobId) {
+        for (Weakness weakness : estimate.weaknesses()) {
+            if (weakness.characterId() == characterId && weakness.kind() == kind
+                    && (segmentKey == null || segmentKey.equals(weakness.segmentKey()))
+                    && (mobId == 0 || weakness.mobId() == mobId)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The line with the window's color and style codes taken out, for pink text. */

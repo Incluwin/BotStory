@@ -35,7 +35,7 @@ public final class AgentPartyQuestCatalog {
                 910_010_300, 100_000_200, 10, 255, 3, 6));
         add(definitions, new AgentPartyQuestDefinition(
                 "kpq", "KerningPQ", 103_000_000, 103_000_800, 103_000_805,
-                103_000_890, 103_000_000, 21, 30, 3, 4));
+                103_000_890, 103_000_000, 21, 30, 3, 4, 1_800_000L));
         add(definitions, new AgentPartyQuestDefinition(
                 "lpq", "LudiPQ", 221_024_500, 922_010_100, 922_011_000,
                 922_010_000, 221_024_500, 35, 50, 5, 6));

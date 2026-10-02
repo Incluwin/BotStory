@@ -2443,6 +2443,146 @@ tuning:
     # Purpose: Controls how many named fixture Agents the GM-only KPQ observation harness makes available for recruitment and participant replacement.
     # Technical: AgentKpqTestService generates KPQer01 through this inclusive count before deterministic seeded shuffling; production KPQ admission is unaffected.
     server.agents.capabilities.partyquest.kpq.AgentKpqTestService.ROSTER_SIZE: '24'
+    # Values: 0.03-1.0 fraction. Recommended: 0.60, the prior from session kpq-8353c615 (2026-10-01): the policy's attacks per kill over the attacks companions really needed (SilentSin 5.3 vs 8.8, Fenna 7.6 vs 13.3, Faro723 6.3 vs 8.9); circular until more runs are recorded.
+    # Purpose: Prior share of the expected-damage policy's rate a companion reaches while it is actually fighting a stage-1 Ligator, before any recorded run refits it.
+    # Technical: AgentKpqPaceProfile seeds the s1.grind.combat calibration term with it; each member kills one Ligator every s1.grind.seek + mobHp / (this x policy dps) seconds in the clear-time estimate.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_COMBAT_EFFICIENCY: '0.60'
+    # Values: 0-120000 milliseconds. Recommended: 15800, fitted so the session kpq-8353c615 party (SilentSin, Fenna, Faro723) makes its 63 kills in 519 - 17 s; circular until more runs are recorded.
+    # Purpose: Prior time a stage-1 companion spends per Ligator kill on walking, looting, roles and waiting for spawns rather than fighting, the main reason stage 1 is slow.
+    # Technical: AgentKpqPaceProfile seeds the s1.grind.seek term; the clear-time estimate adds it to every member's fighting time per kill, so stronger damage shortens stage 1 by less than half when it doubles.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_SEEK_MS: '15800'
+    # Values: 0.0-1.0 fraction. Recommended: 0.5; assumed quick human, never measured (a leader who fights helps only when he drops his coupons for a collector).
+    # Purpose: How much of a human member's own stage-1 kill rate counts toward the coupons Cloto asked the companions for in the clear-time estimate.
+    # Technical: AgentKpqPaceProfile passes it as the stage-1 Quota humanCredit; a human's 1 / (seek + HP / (combat x dps)) kills per second are multiplied by it, and 0 leaves humans out of stage 1 entirely.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_HUMAN_CREDIT: '0.5'
+    # Values: 0.03-1.0 fraction. Recommended: 0.19, the prior from session kpq-8353c615: 11.6 s of water-fill theory against the 90.8 - 30 s the companions took (measured while they were mostly throttled).
+    # Purpose: Prior share of the theoretical water-fill time the companions reach on stage 5's Jr. Neckis and Curse Eyes, before any recorded run refits it.
+    # Technical: AgentKpqPaceProfile seeds the s5.normals term; the estimate's normals time is the AgentKpqStageFiveTargetPolicy water-fill over the Map.wz census divided by this value and by the shared efficiency multiplier.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE5_NORMALS_EFFICIENCY: '0.19'
+    # Values: 0.03-1.0 fraction. Recommended: 0.23, the prior from session kpq-8353c615: King Slime's 8000 HP in 114.7 s against a summed policy rate of about 299 (partly throttled).
+    # Purpose: Prior share of the companions' summed expected damage per second that reaches King Slime, before any recorded run refits it.
+    # Technical: AgentKpqPaceProfile seeds the s5.boss term; the estimate's King Slime time is 8000 HP over (this x the companions' summed policy dps on King Slime), times the shared efficiency multiplier.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE5_BOSS_EFFICIENCY: '0.23'
+    # Values: 0-60000 milliseconds. Recommended: 1000; session kpq-8353c615 went from admission to stage 1 in 267 ms server-side.
+    # Purpose: Prior time from the leader's Yes at Lakelis until the party stands in stage 1, the first segment of the clear-time estimate.
+    # Technical: AgentKpqPaceProfile seeds the companion-side yes term with it; the estimate adds it as a fixed time and recorded runs refit it from the run start to the STAGE_1 phase entry.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.YES_TO_STAGE1_MS: '1000'
+    # Values: 0-120000 milliseconds. Recommended: 17000; session kpq-8353c615's companions took 15.2-17.9 s to walk from the spawn to Cloto and ask their question.
+    # Purpose: Prior time stage-1 companions spend on the opening walk and Cloto's question before they start hunting Ligators.
+    # Technical: AgentKpqPaceProfile seeds the s1.open term; it is a fixed companion time in the estimate and keeps the opening out of the s1.grind span the seek and efficiency are fitted from.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_OPENING_MS: '17000'
+    # Values: 0-60000 milliseconds. Recommended: 3000; session kpq-8353c615's companions were on stage 5 2.7 s after the stage-4 accept.
+    # Purpose: Prior time the companions need to leave stage 4 and arrive on stage 5 after Cloto accepts the stage-4 combination.
+    # Technical: AgentKpqPaceProfile seeds the s5.move term, the first fixed time of the companion branch that runs alongside the leader's s5.climb in the estimate.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE4_COMPANION_MOVE_MS: '3000'
+    # Values: 0-120000 milliseconds. Recommended: 30000; session kpq-8353c615's first stage-5 kill came 43 s after arrival, the rest of that being fighting.
+    # Purpose: Prior time stage-5 companions spend dropping from the arrival ledge to the Jr. Necki and Curse Eye platforms before the first kill.
+    # Technical: AgentKpqPaceProfile seeds the s5.descent term; a run reports it folded into the s5.normals span (zero-length incomplete span), and the fit subtracts this value before refitting the normals efficiency.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE5_DESCENT_MS: '30000'
+    # Values: 0-300000 milliseconds. Recommended: 35000; offline routes from King Slime's floor to Cloto run 21-24 s plus the drop and the pickup.
+    # Purpose: Prior time from King Slime's loot window until the ten passes are with the leader at Cloto, the last companion segment of stage 5.
+    # Technical: AgentKpqPaceProfile seeds the s5.carry term; recorded runs refit it from the end of the loot delay to the moment the leader holds the passes.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE5_CARRY_MS: '35000'
+    # Values: 0-600000 milliseconds. Recommended: 25000; assumed quick human, never measured (the scripted driver took longer).
+    # Purpose: Prior time a human leader needs to collect the stage-1 passes, hand them to Cloto and step through the portal, learned per leader from his runs.
+    # Technical: AgentKpqPaceProfile seeds the leader-side s1.handin term; recorded runs refit it per leader from the last pass existing to the STAGE_2 phase entry.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_STAGE1_HANDIN_MS: '25000'
+    # Values: 0-600000 milliseconds. Recommended: 15000; assumed quick human, never measured (the scripted driver took 90-156 s).
+    # Purpose: Prior time from entering a KPQ puzzle stage to Cloto's first judged check, shared by stages 2, 3 and 4 and learned per leader.
+    # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.entry term used by s2.entry, s3.entry and s4.entry; the estimate adds (checks - 1) x per-check time after it, since the first judged check ends this span.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_PUZZLE_ENTRY_MS: '15000'
+    # Values: 0-120000 milliseconds. Recommended: 9000; assumed quick human, never measured (the scripted driver checked every 19-20 s; companions re-form in 1.6-2.0 s plus 1-6 s of travel).
+    # Purpose: Prior time between two of the leader's judged Cloto checks in a puzzle stage, which with Cloto's random answer sets most of stages 2-4.
+    # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.check term; recorded runs refit it per leader as (accept - first judged check) / (checks - 1), less the leader's move share of HUMAN_PUZZLE_MOVE_MS.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_PUZZLE_CHECK_MS: '9000'
+    # Values: 0-60000 milliseconds. Recommended: 4000; assumed quick human, never measured.
+    # Purpose: Extra time a check takes in a three-member party when the human leader himself has to move to a new rope, platform or barrel.
+    # Technical: AgentKpqPaceProfile seeds the puzzle.move term; the estimate adds the leader's replayed move share x this to every puzzle check after the first, and the fit never learns it.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_PUZZLE_MOVE_MS: '4000'
+    # Values: 0-300000 milliseconds. Recommended: 12000; assumed quick human, never measured (the scripted driver took 22-35 s).
+    # Purpose: Prior time from Cloto accepting a stage-2 or stage-3 combination until the party stands on the next stage, mostly the leader walking into the portal.
+    # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.accept term used by s2.accept and s3.accept; stage 4 has no accept segment because its exit is the leader's s5.climb.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_STAGE_ACCEPT_MS: '12000'
+    # Values: 0-600000 milliseconds. Recommended: 40000; assumed quick human, never measured (the scripted driver took 166-418 s and failed its climbs).
+    # Purpose: Prior time from Cloto accepting the stage-4 combination until the human leader stands on stage 5, raced against the companions' stage-5 work.
+    # Technical: AgentKpqPaceProfile seeds the leader-side s5.climb term, the leader branch of the s5.race parallel segment; the estimate takes the slower of it and the companion branch.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_STAGE4_CLIMB_MS: '40000'
+    # Values: 0-600000 milliseconds. Recommended: 15000; assumed quick human, never measured (the scripted driver took 112-116 s).
+    # Purpose: Prior time from the leader holding the ten stage-5 passes until Cloto clears the stage, the last segment of the clear-time estimate.
+    # Technical: AgentKpqPaceProfile seeds the leader-side s5.talks term; recorded runs refit it per leader from passes-at-leader to the clear.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_FINAL_TALKS_MS: '15000'
+    # Values: 1-50 touches. Recommended: 7. Lower values flag only the very weakest members; higher values flag more of a Lv21-30 lineup.
+    # Purpose: A companion that goes down in fewer King Slime touches than this is named fragile, so the NPC can warn about it (one death ends a three-member run).
+    # Technical: AgentPqPaceEstimator compares AgentPqMemberPower.touchesToDown (effective max HP over AgentDefenseDataProvider.expectedPhysicalTouchDamage) with this and records a FRAGILE weakness; it never enters the time.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.0-1.0 hit chance. Recommended: 0.6; the formula tracks live hit rates within about 5 points.
+    # Purpose: A companion whose best attack lands less often than this on a KPQ mob it fights is named as missing it, so the NPC can warn the leader by name.
+    # Technical: AgentPqPaceEstimator records a MISSES weakness per companion and mob of each quota or clear segment where AgentPqMemberPower.hit is below it; it never enters the time.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 60000-1800000 milliseconds. Recommended: 720000; the measured party's mean grind is about 520 s.
+    # Purpose: A lineup whose mean stage-1 grind time is over this is called slow on the Ligators, so the NPC can say the coupons will take a while.
+    # Technical: AgentPqPaceEstimator records a party SLOW weakness on s1.grind with the Ligator id when the segment's mean seconds x 1000 pass this value.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.SLOW_STAGE1_MS: '720000'
+    # Values: 30000-1800000 milliseconds. Recommended: 180000; the measured party's mean normals time is about 60 s.
+    # Purpose: A lineup whose mean stage-5 normals time is over this is called slow on them, naming the mob type the water-fill leaves alive longest.
+    # Technical: AgentPqPaceEstimator records a party SLOW weakness on s5.normals with the water-fill's last type when the segment's mean seconds x 1000 pass this value.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.SLOW_NORMALS_MS: '180000'
+    # Values: 30000-1800000 milliseconds. Recommended: 180000; the measured party's mean King Slime time is about 116 s.
+    # Purpose: A lineup whose mean King Slime time is over this is called slow on the boss, so the NPC can warn that the end could drag.
+    # Technical: AgentPqPaceEstimator records a party SLOW weakness on s5.boss with King Slime's id when the segment's mean seconds x 1000 pass this value.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.SLOW_BOSS_MS: '180000'
+    # Values: a positive integer. Recommended: 1. Bump it when a pace change lands, and set the priors to that batch's timed-run implied values (the KPQ pace span lines print them).
+    # Purpose: Marks which recorded KPQ runs the clear-time calibration may learn from, so runs from before a pace change do not drag the new estimate.
+    # Technical: AgentPqPaceCalibration.fit ignores observations whose epoch differs from this; recorded runs store the epoch they were recorded under.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.PACE_EPOCH: '1'
+    # Values: 0.5-20 pseudo-runs. Recommended: 3.0. Higher values trust the priors longer; lower values follow the first recorded runs closely.
+    # Purpose: How many recorded runs' worth of weight the prior of each companion pace term carries when the calibration learns from recorded runs.
+    # Technical: AgentPqPaceCalibration.fit shrinks every companion term toward its prior with this many pseudo-runs (in log space for times and efficiencies, linearly for seek) and uses it for the spread too.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.PRIOR_WEIGHT_RUNS: '3.0'
+    # Values: 0.05-1.0 log units. Recommended: 0.25. Higher values widen the shown range; lower values narrow it.
+    # Purpose: Prior spread of the lognormal efficiency multiplier every kill term of a run shares, which sets how wide the estimated clear-time range is.
+    # Technical: AgentPqPaceCalibration.prior uses it as logSpread; fit shrinks the squared spread toward its square from the runs' log residuals with PRIOR_WEIGHT_RUNS pseudo-runs.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.PRIOR_LOG_SPREAD: '0.25'
+    # Values: 0.5-20 pseudo-runs. Recommended: 2.0. Higher values keep a leader on the quick-human prior longer.
+    # Purpose: How many runs' worth of weight the quick-human prior (or the other leaders' pooled terms) carries against one leader's own recorded runs.
+    # Technical: AgentPqPaceCalibration.fit shrinks each leader term in log space toward its base with this many pseudo-runs, first for the pool and then for the leader.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.LEADER_PRIOR_WEIGHT_RUNS: '2.0'
+    # Values: 2-20 leaders. Recommended: 3. Lower values let one leader's habits move another's estimate sooner.
+    # Purpose: How many distinct leaders who are not excluded need recorded runs before leaders' terms are pooled into the base other leaders start from.
+    # Technical: Below this count AgentPqPaceCalibration.fit keeps every leader's base at the quick-human prior, so leader A never moves leader B's terms.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.LEADER_POOL_MIN_LEADERS: '3'
+    # Values: 1-100 runs. Recommended: 10. Lower values follow recent runs; higher values average over more history.
+    # Purpose: How quickly older recorded runs lose weight when the clear-time calibration learns, so the estimate follows the companions as they level.
+    # Technical: AgentPqPaceCalibration.fit weights a run 0.5^(ageRank / this), ageRank 0 being the newest run of the quest, for every companion and leader term.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.HALF_LIFE_RUNS: '10'
+    # Values: 0.001-0.5 fraction. Recommended: 0.03. Keep it below EFFICIENCY_MAX.
+    # Purpose: Lowest efficiency a fitted kill term may take, so one disastrous recorded run cannot make the estimate think a party barely fights.
+    # Technical: AgentPqPaceCalibration.fit clamps every fitted combat and clear efficiency, and every run's attacks-per-kill efficiency, to at least this value.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.EFFICIENCY_MIN: '0.03'
+    # Values: 0.5-2.0 fraction. Recommended: 1.0. Keep it above EFFICIENCY_MIN.
+    # Purpose: Highest efficiency a fitted kill term may take, so a run that beat the policy's theory cannot make the estimate promise more than the theory.
+    # Technical: AgentPqPaceCalibration.fit clamps every fitted combat and clear efficiency, and every run's attacks-per-kill efficiency, to at most this value.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.EFFICIENCY_MAX: '1.0'
+    # Values: 10000-600000 milliseconds. Recommended: 120000. A run slower than this per kill is fitted at this bound and noted.
+    # Purpose: Upper bound of the per-kill seek time the calibration may fit from a slow run, so a stalled stage 1 cannot dominate the seek estimate.
+    # Technical: AgentPqPaceCalibration.solveSeekMs bisects on [0, this] and fit clamps the shrunk seek to it; a run at either bound is counted in fitNotes.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.SEEK_MAX_MS: '120000'
+    # Values: 10-1000 rows. Recommended: 60. Higher values cost more fit time on companion-ops for runs that weigh little after HALF_LIFE_RUNS.
+    # Purpose: How many of a quest's newest recorded runs the clear-time calibration learns from at most, oldest dropped first.
+    # Technical: AgentPqPaceCalibration.fit keeps the observations with the lowest ageRank up to this count before weighting them by HALF_LIFE_RUNS.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.MAX_ROWS: '60'
+    # Values: 1000-30000 milliseconds. Recommended: 5000. Smaller grids cost more time per lineup; larger grids round the shown minutes coarsely.
+    # Purpose: Time resolution of the clear-time distribution, which an NPC rounds to whole minutes before saying it.
+    # Technical: AgentPqPaceEstimator rounds each drawn outcome (kill counts, puzzle checks, parallel branches) to this grid and reports quantiles in its multiples; fixed times keep full precision.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator.GRID_MS: '5000'
+    # Values: 600000-7200000 milliseconds. Recommended: 3600000. Keep it well above the longest event timer the estimate is used for.
+    # Purpose: Longest clear time the estimate represents; slower outcomes and parties that cannot clear are reported at this bound.
+    # Technical: AgentPqPaceEstimator folds the distribution's tail beyond this into its last bin and reports every quantile and the mean at it when the party cannot clear.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator.HORIZON_MS: '3600000'
+    # Values: 1000-3600000 milliseconds. Recommended: 60000. Lower values show more failures in the log; higher values keep a failing job quieter.
+    # Purpose: Limits how often a failed damage or touch estimate for a party member is logged at info, so a job whose estimate always fails still shows up in a live run.
+    # Technical: AgentPqMemberPower.of counts a failed policy call as 0 damage (or an unknown touch as never fragile) and logs at info at most once per this interval, else at debug.
+    server.agents.capabilities.partyquest.pace.AgentPqMemberPower.FAILURE_LOG_MS: '60000'
     # Values: 0.0-1.0 probability. Recommended: 0.60 for level-25 observation fixtures facing the first KPQ map's Ligators.
     # Purpose: Requires ordinary observation fixture equipment selection to reach a useful minimum hit chance before accepting the generated build.
     # Technical: AgentFieldObservationFixtureService compares calculated accuracy against this fraction while evaluating legal equipment combinations.
