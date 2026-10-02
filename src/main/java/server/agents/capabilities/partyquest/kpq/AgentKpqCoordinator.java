@@ -1327,7 +1327,8 @@ final class AgentKpqCoordinator {
      * A deliverer drops what it carries on the leader's own spot, as players hand items over: a player picks up only
      * what lies almost under him. One that cannot reach the leader at all (he stands on the arrival ledge, which has
      * no way in) waits with its passes by Cloto, where he is told to go and where held passes cannot expire, and
-     * goes to him once he is down off the ledge. One whose route fails for STAGE5_PASS_HANDOVER_MS though he can be
+     * goes to him once he is up on Cloto's island, or has been in reach for STAGE5_PASS_HANDOVER_MS without coming.
+     * One whose route fails for STAGE5_PASS_HANDOVER_MS though he can be
      * reached leaves the passes by Cloto, on his way there, or where it stands when it cannot get there either.
      */
     private static void handOverStageFivePasses(AgentKpqSession session, AgentKpqMemberState member,
@@ -1343,14 +1344,22 @@ final class AgentKpqCoordinator {
         // Only where it stands on a foothold does its region, and so the answer, mean anything; in the air or on a
         // ladder on its way it keeps the last one.
         if (ACTIONS.footing(agent) == PrimitiveCapabilityGateway.Footing.GROUND) {
-            member.setStage5LeaderUnreachable(!ACTIONS.canReach(entry, agent, leader.getPosition()));
+            member.observeStage5LeaderReach(ACTIONS.canReach(entry, agent, leader.getPosition()), nowMs);
         }
-        if (member.stage5LeaderUnreachable()) {
-            member.restartStage5Chase(nowMs);
-            if (clotoApproach == null || walkToPoint(agent, clotoApproach, entry, NPC_APPROACH_PX)) {
-                ACTIONS.stop(entry);
+        if (member.stage5MeetsLeaderAtCloto()) {
+            // Having told him it brings the passes there, it waits by Cloto until he is up on Cloto's level; chasing
+            // him once he drops off the ledge, it would pass him on his way up the ladders. Only a leader who could be
+            // reached for STAGE5_PASS_HANDOVER_MS and still has not come is gone to.
+            if (!leaderUpByCloto(member, leader, clotoApproach)
+                    && member.stage5LeaderReachableForMs(nowMs) < STAGE5_PASS_HANDOVER_MS) {
+                member.restartStage5Chase(nowMs);
+                if (clotoApproach == null || walkToPoint(agent, clotoApproach, entry, NPC_APPROACH_PX)) {
+                    ACTIONS.stop(entry);
+                }
+                return;
             }
-            return;
+            member.endStage5MeetAtCloto();
+            member.restartStage5Chase(nowMs);
         }
         Point leaderSpot = groundSpot(leader);
         if (passesAtLeadersFeet(agent, leader, leaderSpot)) {
@@ -1376,6 +1385,17 @@ final class AgentKpqCoordinator {
         }
         dropStageFivePasses(session, member, agent, entry, leader, held,
                 AgentKpqPassHandOver.DropReason.OVERDUE, nowMs);
+    }
+
+    /**
+     * The leader stands on a foothold at the height of Cloto's approach and this deliverer has a route to him: he is
+     * up on Cloto's island. The arrival ledge is at that height too, but has no way in.
+     */
+    private static boolean leaderUpByCloto(AgentKpqMemberState member, Character leader, Point clotoApproach) {
+        Point position = leader.getPosition();
+        return !member.stage5LeaderUnreachable() && clotoApproach != null && position != null
+                && ACTIONS.footing(leader) == PrimitiveCapabilityGateway.Footing.GROUND
+                && Math.abs(position.y - clotoApproach.y) <= NEAR_PX;
     }
 
     /** Where a character stands, on its foothold: the spot a deliverer walks onto. */

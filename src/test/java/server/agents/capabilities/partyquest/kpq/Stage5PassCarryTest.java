@@ -117,6 +117,8 @@ class Stage5PassCarryTest {
     private final InventoryGateway inventoryGateway = mock(InventoryGateway.class);
     private final Map<Character, Integer> passesHeld = new HashMap<>();
     private final Set<Integer> unreachable = new HashSet<>(Set.of(LEDGE));
+    // Where a companion stands on no region of its graph (mid-jump), from where any route counts as there.
+    private final Set<Point> offFoothold = new HashSet<>();
     private final List<MapItem> floor = new ArrayList<>();
     private Character ben;
     private Character mira;
@@ -158,7 +160,7 @@ class Stage5PassCarryTest {
         when(graph.findRegionId(any(), any())).thenAnswer(call -> region(call.getArgument(1)));
         graphs.when(() -> AgentNavigationGraphService.peekBestGraph(any(), any())).thenReturn(graph);
         regions.when(() -> AgentNavigationRegionService.resolveCurrentRegionId(any(), any(), any(), any()))
-                .thenAnswer(call -> region(call.getArgument(3)));
+                .thenAnswer(call -> offFoothold.contains(call.<Point>getArgument(3)) ? -1 : region(call.getArgument(3)));
         regions.when(() -> AgentNavigationRegionService.resolvePointTargetRegionId(any(), any(), any()))
                 .thenAnswer(call -> region(call.getArgument(2)));
         NPC cloto = mock(NPC.class);
@@ -341,6 +343,92 @@ class Stage5PassCarryTest {
                 entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 4), times(1));
         assertEquals(1, said().stream().filter(AT_FEET::equals).count(), said()::toString);
         assertFalse(said().contains(BY_CLOTO), said()::toString);
+    }
+
+    @Test
+    void deliverersWaitingByClotoStayThereWhileTheLeaderClimbsUpToThem() {
+        at(ben, BEN_ON_ARRIVAL_LEDGE.x, BEN_ON_ARRIVAL_LEDGE.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 6);
+        holding(pip, 4);
+        Point miraByCloto = waitingByCloto(session);
+
+        // He drops to the Curse Eye floor, which they can reach, and climbs the ladders up toward them.
+        Point curseEyeFloor = new Point(200, -2175);
+        at(ben, curseEyeFloor.x, curseEyeFloor.y);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 21_000L);
+        Point onTheLadder = new Point(241, -2600);
+        at(ben, onTheLadder.x, onTheLadder.y);
+        when(ben.getStance()).thenReturn(14);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 26_000L);
+
+        // They said they would bring the passes there, and going down for him they would pass him on the ladders.
+        modes.verify(() -> AgentModeService.startMoveTo(any(), eq(curseEyeFloor), anyBoolean()), never());
+        modes.verify(() -> AgentModeService.startMoveTo(any(), eq(onTheLadder), anyBoolean()), never());
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true), atLeastOnce());
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+
+        // Up on Cloto's island he gets them at his feet.
+        when(ben.getStance()).thenReturn(4);
+        at(ben, BEN_BY_CLOTO.x, BEN_BY_CLOTO.y);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 30_000L);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), BEN_BY_CLOTO, true));
+        modes.verify(() -> AgentModeService.startMoveTo(entry(3), BEN_BY_CLOTO, true));
+        at(mira, BEN_BY_CLOTO.x + 6, BEN_BY_CLOTO.y);
+        at(pip, BEN_BY_CLOTO.x - 6, BEN_BY_CLOTO.y);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 31_000L);
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 6), times(1));
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 4), times(1));
+    }
+
+    @Test
+    void aLeaderInReachWhoNeverComesUpIsGoneToAfterTheBound() {
+        at(ben, BEN_ON_ARRIVAL_LEDGE.x, BEN_ON_ARRIVAL_LEDGE.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 10);
+        waitingByCloto(session);
+
+        // He dropped to the Curse Eye floor and stays there.
+        Point curseEyeFloor = new Point(200, -2175);
+        at(ben, curseEyeFloor.x, curseEyeFloor.y);
+        long reachableAtMs = SET_OUT_MS + 21_000L;
+        for (long nowMs = reachableAtMs; nowMs < reachableAtMs + HANDOVER_MS; nowMs += 5_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        modes.verify(() -> AgentModeService.startMoveTo(any(), eq(curseEyeFloor), anyBoolean()), never());
+
+        AgentKpqCoordinator.tick(session, reachableAtMs + HANDOVER_MS);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), curseEyeFloor, true));
+        // The overdue bound starts only now.
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+    }
+
+    @Test
+    void inTheAirOrOnALadderOnItsWayToClotoItKeepsWhatItLastFoundOnAFoothold() {
+        at(ben, BEN_ON_ARRIVAL_LEDGE.x, BEN_ON_ARRIVAL_LEDGE.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 10);
+        Point miraByCloto = clotoApproach(session, mira);
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 1_000L);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true));
+
+        // Mid-jump between two floors, then up a ladder: no region under her, where her graph says yes to anything.
+        Point midJump = new Point(100, -1200);
+        offFoothold.add(midJump);
+        at(mira, midJump.x, midJump.y);
+        entry(2).movementPhysicsState().setInAir(true);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 2_000L);
+        entry(2).movementPhysicsState().setInAir(false);
+        entry(2).climbState().setClimbingFlag(true);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 3_000L);
+
+        modes.verify(() -> AgentModeService.startMoveTo(any(), eq(BEN_ON_ARRIVAL_LEDGE), anyBoolean()), never());
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true), times(3));
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
     }
 
     @Test
@@ -871,6 +959,20 @@ class Stage5PassCarryTest {
         when(shoes.getPosition()).thenReturn(KING_SLIMES_FLOOR);
         floor.add(shoes);
         return session;
+    }
+
+    /** Ben stands on the arrival ledge; the deliverers set out, walk to Cloto's approach and wait there for him. */
+    private Point waitingByCloto(AgentKpqSession session) {
+        Point miraByCloto = clotoApproach(session, mira);
+        Point pipByCloto = clotoApproach(session, pip);
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 1_000L);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true));
+        at(mira, miraByCloto.x, miraByCloto.y);
+        at(pip, pipByCloto.x, pipByCloto.y);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 20_000L);
+        return miraByCloto;
     }
 
     private Point clotoApproach(AgentKpqSession session, Character companion) {
