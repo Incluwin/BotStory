@@ -618,6 +618,19 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public Point predictDropLanding(Character dropper, Point at) {
+        MapleMap map = dropper == null ? null : dropper.getMap();
+        if (map == null || at == null) {
+            return null;
+        }
+        // As InventoryManipulator.drop hands a player's drop to MapleMap.spawnItemDrop: one copy of where it stands,
+        // as both the start and the fallback, which calcDropPos may clamp to the map's drop bounds.
+        Point from = new Point(at);
+        Point landing = map.calcDropPos(from, from);
+        return landing == null ? null : new Point(landing);
+    }
+
+    @Override
     public void prepareNavigation(AgentRuntimeEntry entry, Character agent) {
         if (entry == null || agent == null || agent.getMap() == null) {
             return;

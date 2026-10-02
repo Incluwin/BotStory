@@ -2,6 +2,7 @@ package server.agents.capabilities.partyquest.kpq;
 
 import java.awt.Point;
 import java.util.Locale;
+import java.util.function.UnaryOperator;
 
 /**
  * The rules a companion run's stage-5 pass hand-over decides by, and the lines its companions say, kept apart from
@@ -76,7 +77,66 @@ final class AgentKpqPassHandOver {
     }
 
     static String recollectedLine(String leader) {
-        return leader + ", got the rest of the passes, they're at your feet.";
+        return recollectedLine(leader, PassPlace.FEET);
+    }
+
+    /** The re-collect's line, by where the passes it brought lie (see PassPlace). */
+    static String recollectedLine(String leader, PassPlace place) {
+        return leader + ", got the rest of the passes, " + switch (place == null ? PassPlace.FEET : place) {
+            case FEET -> "they're at your feet.";
+            case LEFT -> "they're just to your left.";
+            case RIGHT -> "they're just to your right.";
+            case AROUND -> "they're right around you.";
+            case ABOVE -> "they landed up above you.";
+        };
+    }
+
+    /** Said once, when a companion run's stage-1 passes are all down, by where they lie (see PassPlace). */
+    static String stageOnePassesLine(String leader, PassPlace place) {
+        return leader + ", " + passesLie(place) + (place == PassPlace.ABOVE
+                ? ". hop up, grab them and talk to cloto." : ". pick them up and talk to cloto.");
+    }
+
+    /** Said once by the last stage-5 deliverer to drop at the leader's feet, by where the passes lie. */
+    static String stageFivePassesLine(String leader, PassPlace place) {
+        return leader + ", " + passesLie(place) + (place == PassPlace.ABOVE
+                ? ". hop up, grab them and talk to cloto." : ". grab them and talk to cloto.");
+    }
+
+    private static String passesLie(PassPlace place) {
+        return switch (place == null ? PassPlace.FEET : place) {
+            case FEET -> "the passes are at your feet";
+            case LEFT -> "the passes are just to your left";
+            case RIGHT -> "the passes are just to your right";
+            case AROUND -> "the passes are right around you";
+            case ABOVE -> "the passes landed up above you";
+        };
+    }
+
+    /**
+     * Where passes a companion dropped for a companion run's leader lie against his spot, by the map's own placement
+     * of the drop, as the lines that tell him name it: a drop from a spot a deliverer stepped aside to lies to his
+     * left or right, up to PASS_DROP_SPOT_SEARCH_PX plus PASS_DROP_AT_FEET_PX from him, where "at your feet" would be
+     * false, and one the map put on a foothold over him, where no spot by him lands on his, lies above him.
+     */
+    enum PassPlace {
+        FEET, LEFT, RIGHT, AROUND, ABOVE;
+
+        /** Where the passes of two drops lie, told as one: what he has to go to; at his feet only when both are. */
+        PassPlace and(PassPlace other) {
+            if (other == null || other == this || other == FEET) return this;
+            if (this == FEET) return other;
+            if (this == ABOVE || other == ABOVE) return ABOVE;
+            return AROUND;
+        }
+
+        /** Where a drop the map lands at {@code landing} lies against his spot; at his feet when it cannot be told. */
+        static PassPlace of(Point landing, Point leaderSpot, int feetPx) {
+            if (landing == null || leaderSpot == null) return FEET;
+            if (landing.y < leaderSpot.y - feetPx) return ABOVE;
+            if (Math.abs(landing.x - leaderSpot.x) <= feetPx) return FEET;
+            return landing.x < leaderSpot.x ? LEFT : RIGHT;
+        }
     }
 
     /**
@@ -87,6 +147,69 @@ final class AgentKpqPassHandOver {
     static boolean atFeet(Point dropper, Point leaderSpot, boolean dropperOnGround, boolean leaderOnGround, int px) {
         return dropper != null && leaderSpot != null && dropperOnGround && leaderOnGround
                 && Math.abs(dropper.x - leaderSpot.x) <= px && Math.abs(dropper.y - leaderSpot.y) <= px;
+    }
+
+    /**
+     * How far a deliverer may step aside along the leader's foothold to drop: {@code searchPx}, but never so far that
+     * a drop landing up to {@code feetPx} past the spot lies outside his reach ({@code nearPx} on each axis).
+     */
+    static int spotReach(int searchPx, int nearPx, int feetPx) {
+        return Math.max(0, Math.min(searchPx, nearPx - feetPx));
+    }
+
+    /** A drop the map would land within {@code px} of this spot on both axes: on that foothold, not on one over it. */
+    static boolean landsAt(Point landing, Point spot, int px) {
+        return landing != null && spot != null
+                && Math.abs(landing.x - spot.x) <= px && Math.abs(landing.y - spot.y) <= px;
+    }
+
+    /**
+     * Where on the leader's foothold a deliverer stands to drop for him. The map lands a player's drop on the first
+     * foothold under a point 85 px over the dropper, so a ramp, stair or platform less than that over him catches
+     * it: live (2026-10-02, kpq-fea2a83b) a pass dropped 6 px from him landed 83 px up. This walks his foothold from
+     * his spot, {@code stepPx} at a time ({@code groundAt} gives the ground nearest a point, and his foothold ends
+     * where it lies more than {@code feetPx} above or below the last step's), up to {@code searchPx} either way, the
+     * dropper's side first, and returns the nearest spot from which a drop, and one from anywhere within
+     * {@code feetPx} of it where a deliverer may stop, lands back on that spot's ground by {@code landing}. Where the
+     * dropper already stands within {@code feetPx} of a spot, its own drop ({@code dropperLanding}, where the map
+     * puts a drop from where it stands) must land there too: a catch narrower than a step between two of those looks
+     * would otherwise have it drop into it, or walk on the spot it stands on until its bound. His own spot when drops
+     * around it land there; null when no spot does, or none can be told.
+     */
+    static Point dropSpot(Point leaderSpot, Point dropper, Point dropperLanding, UnaryOperator<Point> groundAt,
+                          UnaryOperator<Point> landing, int feetPx, int searchPx, int stepPx) {
+        if (leaderSpot == null || stepPx <= 0 || searchPx < 0 || feetPx < 0) return null;
+        int margin = (feetPx + stepPx - 1) / stepPx;
+        int reach = searchPx / stepPx + margin;
+        Point[] ground = new Point[2 * reach + 1];
+        ground[reach] = new Point(leaderSpot);
+        for (int side = -1; side <= 1; side += 2) {
+            Point previous = ground[reach];
+            for (int step = 1; step <= reach; step++) {
+                Point next = groundAt.apply(new Point(leaderSpot.x + side * step * stepPx, previous.y));
+                if (next == null || Math.abs(next.y - previous.y) > feetPx) break;
+                ground[reach + side * step] = next;
+                previous = next;
+            }
+        }
+        boolean[] landsThere = new boolean[ground.length];
+        for (int i = 0; i < ground.length; i++) {
+            landsThere[i] = ground[i] != null && landsAt(landing.apply(new Point(ground[i])), ground[i], feetPx);
+        }
+        int first = dropper != null && dropper.x < leaderSpot.x ? -1 : 1;
+        for (int distance = 0; distance * stepPx <= searchPx; distance++) {
+            for (int side : distance == 0 ? new int[] {first} : new int[] {first, -first}) {
+                int center = reach + side * distance;
+                boolean clear = true;
+                for (int i = center - margin; i <= center + margin && clear; i++) clear = landsThere[i];
+                if (clear && dropperLanding != null && landsAt(dropper, ground[center], feetPx)
+                        && !landsAt(dropperLanding, ground[center], feetPx)) {
+                    clear = false;
+                }
+                if (clear) return new Point(ground[center]);
+            }
+        }
+        return null;
     }
 
     /**

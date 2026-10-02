@@ -109,6 +109,8 @@ public final class AgentKpqSession {
     /** When each stage-5 floor pass, by map object id, was first seen lying in the leader's reach. */
     private final Map<Integer, Long> stage5PassInReachSinceMs = new HashMap<>();
     private boolean stage5PassesLeftAtFeet;
+    /** Where the passes companions dropped at a companion run's leader's feet lie against him, by stage. */
+    private final Map<Integer, AgentKpqPassHandOver.PassPlace> passPlaces = new HashMap<>();
     private int leaderPassesSeen = -1;
     private long lastPassDropAtMs;
     private long lastPuzzleVerdictAtMs;
@@ -847,6 +849,16 @@ public final class AgentKpqSession {
 
     synchronized void markStage5PassesLeftAtFeet() {
         stage5PassesLeftAtFeet = true;
+    }
+
+    /** A companion dropped passes at the leader's feet in this stage, and they lie there against him. */
+    synchronized void notePassPlace(int stage, AgentKpqPassHandOver.PassPlace place) {
+        if (place != null) passPlaces.merge(stage, place, AgentKpqPassHandOver.PassPlace::and);
+    }
+
+    /** Where this stage's at-feet passes lie against the leader, told as one; at his feet before any is noted. */
+    synchronized AgentKpqPassHandOver.PassPlace passPlace(int stage) {
+        return passPlaces.getOrDefault(stage, AgentKpqPassHandOver.PassPlace.FEET);
     }
 
     /**

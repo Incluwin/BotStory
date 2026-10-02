@@ -6,9 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
 import server.agents.capabilities.supplies.AgentSupplyInventorySnapshot;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.maps.MapleMap;
 import server.quest.Quest;
 
 import java.awt.Point;
@@ -16,6 +18,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -47,6 +51,34 @@ class CosmicPrimitiveCapabilityGatewayTest {
             assertEquals(12, CosmicPrimitiveCapabilityGateway.INSTANCE.hpPotionCount(agent));
         }
         assertEquals(-1, CosmicPrimitiveCapabilityGateway.INSTANCE.hpPotionCount(null));
+    }
+
+    @Test
+    void aDropLandingIsPreviewedByTheMapsOwnPlacementOfAPlayersDrop() {
+        // Stage 1 of KPQ, where the ramp over the leader's foothold runs within 85 px of it.
+        MapleMap stageOne = AgentNavigationMapLoader.loadMapGeometry(103000800);
+        stageOne.generateMapDropRangeCache();
+        Character dropper = mock(Character.class);
+        when(dropper.getMap()).thenReturn(stageOne);
+
+        // Live (2026-10-02, kpq-fea2a83b): dropped at (470,111), 6 px from the leader, the pass landed on the ramp.
+        assertEquals(new Point(470, 28),
+                CosmicPrimitiveCapabilityGateway.INSTANCE.predictDropLanding(dropper, new Point(470, 111)));
+        // 16 px further left the ramp is high enough over him: it lands on his foothold.
+        assertEquals(new Point(454, 112),
+                CosmicPrimitiveCapabilityGateway.INSTANCE.predictDropLanding(dropper, new Point(454, 112)));
+        Point from = new Point(470, 111);
+        assertEquals(stageOne.calcDropPos(new Point(from), new Point(from)),
+                CosmicPrimitiveCapabilityGateway.INSTANCE.predictDropLanding(dropper, from));
+        // Past the map's drop bounds the map clamps its own copy, never the caller's point.
+        Point outside = new Point(100_000, 111);
+        Point clamped = CosmicPrimitiveCapabilityGateway.INSTANCE.predictDropLanding(dropper, outside);
+        assertEquals(new Point(100_000, 111), outside);
+        assertTrue(clamped.x < 100_000, clamped::toString);
+
+        assertNull(CosmicPrimitiveCapabilityGateway.INSTANCE.predictDropLanding(dropper, null));
+        assertNull(CosmicPrimitiveCapabilityGateway.INSTANCE.predictDropLanding(mock(Character.class),
+                new Point(470, 111)));
     }
 
     @Test

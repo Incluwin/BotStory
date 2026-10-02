@@ -16,6 +16,7 @@ import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
+import server.agents.capabilities.navigation.AgentNavigationMapLoader;
 import server.agents.capabilities.navigation.AgentNavigationRegionService;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.InventoryGateway;
@@ -25,6 +26,7 @@ import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapItem;
+import server.maps.MapleMap;
 import server.life.NPC;
 
 import java.awt.Point;
@@ -38,10 +40,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -82,6 +86,9 @@ class StageFivePassPatienceTest {
             "Ben, you left a pass on the ground back there.");
     private static final String RECOLLECT = "i'll go grab the passes still lying around.";
     private static final String RECOLLECTED = "Ben, got the rest of the passes, they're at your feet.";
+    private static final String AT_FEET = "Ben, the passes are at your feet. grab them and talk to cloto.";
+    private static final String PASSES_TO_HIS_LEFT =
+            "Ben, the passes are just to your left. grab them and talk to cloto.";
     private static final String RECOVERY = "KPQ Stage 5 missing-pass recovery restored inventory only: ";
     private static final String TAKEN_BACK = "KPQ Stage 5 passes taken back at the recovery: ";
     private static final Pattern ENGINE = Pattern.compile("->|\\d+\\s*/\\s*\\d+|%|~|(?i:dps|estimate)");
@@ -564,6 +571,151 @@ class StageFivePassPatienceTest {
     }
 
     @Test
+    void passesClotosStairsWouldCatchAreDroppedFromWhereTheyLandOnTheLeadersFloor() {
+        // Stage 5's own geometry: Cloto stands under the stairs up to the bonus portal, whose four steps run 11 to 45
+        // px over her floor from x 264 to 420, and the map lands a drop on the first foothold under a point 85 px over
+        // the dropper. Live (run 3, kpq-a6f696f0) passes dropped beside a leader by her were likely caught so.
+        MapleMap stageFive = onStageFivesOwnGeometry();
+        Point byCloto = new Point(300, -2715);
+        Point besideHim = new Point(306, -2715);
+        at(ben, byCloto);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 4);
+        holding(silentSin, 0);
+        tick(session, 2_000L);
+        tick(session, SET_OUT_MS);
+
+        // Beside him they would land on the top step, 45 px over his head: Faro walks along his floor to the
+        // nearest spot clear of the stairs instead of dropping them there.
+        at(faro, besideHim);
+        tick(session, DROPPED_AT_MS);
+        assertEquals(new Point(306, -2760), stageFive.calcDropPos(new Point(besideHim), new Point(besideHim)));
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                eq(entry(2)), eq(InventoryType.ETC), eq(AgentKpqDefinition.PASS_ITEM), anyShort()), never());
+        Point spot = new Point(250, -2715);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), spot, true));
+
+        at(faro, spot);
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            tick(session, DROPPED_AT_MS + 1_000L);
+
+            items.verify(() -> AgentScriptItemActionService.dropItem(
+                    entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 4), times(1));
+            assertEquals(List.of("KPQ pass drop: session=" + session.sessionId() + " stage=5 agent=Faro723 "
+                            + "reason=beside passes=4 dx=-50 dy=0 sameFoothold=true leaderFooting=GROUND spot=moved "
+                            + "predicted=(250,-2715) landed=[(250,-2715):dx=-50:dy=0:passes=4:oid=40:ffa=false]"),
+                    log.startingWith("KPQ pass drop: "));
+        }
+        // On his floor, in his reach, and he is told where: not at his feet, 50 px to his left.
+        assertEquals(List.of(spot), floor.stream().map(MapItem::getPosition).toList());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(faro, PASSES_TO_HIS_LEFT), times(1));
+        assertNotNudgedWith(AT_FEET);
+    }
+
+    @Test
+    void aLeaderAFewStepsRightOfClotoStillGetsASpotPastTheStairs() {
+        // 70 px left of him is the nearest clear spot: inside PASS_DROP_SPOT_SEARCH_PX's 75 px (at 60 px there was
+        // none, and the passes went onto the top step), and a drop there still lies in his reach (NEAR_PX).
+        onStageFivesOwnGeometry();
+        at(ben, new Point(320, -2715));
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 4);
+        holding(silentSin, 0);
+        tick(session, 2_000L);
+        tick(session, SET_OUT_MS);
+        at(faro, new Point(326, -2715));
+        tick(session, DROPPED_AT_MS);
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        Point spot = new Point(250, -2715);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), spot, true));
+
+        at(faro, spot);
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            tick(session, DROPPED_AT_MS + 1_000L);
+
+            assertEquals(List.of("KPQ pass drop: session=" + session.sessionId() + " stage=5 agent=Faro723 "
+                            + "reason=beside passes=4 dx=-70 dy=0 sameFoothold=true leaderFooting=GROUND spot=moved "
+                            + "predicted=(250,-2715) landed=[(250,-2715):dx=-70:dy=0:passes=4:oid=40:ffa=false]"),
+                    log.startingWith("KPQ pass drop: "));
+        }
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(faro, PASSES_TO_HIS_LEFT), times(1));
+    }
+
+    @Test
+    void aLeaderUnderTheMiddleOfClotosStairsHasNoSpotAndIsToldThePassesLandedAboveHim() {
+        // 35 px right of Cloto the stairs reach more than 75 px either way of him: no spot on his floor is clear of
+        // them, so Faro drops at his feet at once, as before, and they land on the top step 45 px over him. The line
+        // says so instead of "at your feet".
+        onStageFivesOwnGeometry();
+        at(ben, new Point(340, -2715));
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 4);
+        holding(silentSin, 0);
+        tick(session, 2_000L);
+        tick(session, SET_OUT_MS);
+        at(faro, new Point(346, -2715));
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            tick(session, DROPPED_AT_MS);
+
+            items.verify(() -> AgentScriptItemActionService.dropItem(
+                    entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 4), times(1));
+            assertEquals(List.of("KPQ pass drop: session=" + session.sessionId() + " stage=5 agent=Faro723 "
+                            + "reason=beside passes=4 dx=6 dy=0 sameFoothold=true leaderFooting=GROUND spot=none "
+                            + "predicted=(346,-2760) landed=[(346,-2760):dx=6:dy=-45:passes=4:oid=40:ffa=false]"),
+                    log.startingWith("KPQ pass drop: "));
+        }
+        modes.verify(() -> AgentModeService.startMoveTo(eq(entry(2)), any(), anyBoolean()), never());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(faro,
+                "Ben, the passes landed up above you. hop up, grab them and talk to cloto."), times(1));
+        assertNotNudgedWith(AT_FEET);
+    }
+
+    @Test
+    void theRecollectUnderClotosStairsStepsAsideAndSaysWhereThePassesAre() {
+        onStageFivesOwnGeometry();
+        at(ben, new Point(300, -2715));
+        at(faro, new Point(290, -2715));
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 0);
+        holding(silentSin, 0);
+        // Only a kill's pass lies 2,300 px under him, nobody going for it; after its patience and the grace SilentSin
+        // goes back for it, picks it up and comes up beside him.
+        MapItem below = killPass(silentSin, 1, 1_000L, FAR_BELOW);
+        floor.add(below);
+        long recollectAtMs = 1_000L + STALE_MS + GRACE_MS;
+        tickEverySecond(session, 2_000L, recollectAtMs);
+        assertEquals(silentSin.getId(), session.stage5RecollectorId());
+        long pickedUpMs = recollectAtMs + 5_000L;
+        tickEverySecond(session, recollectAtMs + 1_000L, pickedUpMs - 1_000L);
+        floor.remove(below);
+        passesHeld.put(silentSin, 1);
+        long backMs = pickedUpMs + 10_000L;
+        tickEverySecond(session, pickedUpMs, backMs - 1_000L);
+        at(silentSin, new Point(306, -2715));
+        tick(session, backMs);
+
+        // Beside him the stairs would catch it: it steps aside to the clear floor left of them first.
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                eq(entry(3)), eq(InventoryType.ETC), eq(AgentKpqDefinition.PASS_ITEM), anyShort()), never());
+        Point spot = new Point(250, -2715);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(3), spot, true));
+        at(silentSin, spot);
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            tick(session, backMs + 1_000L);
+
+            assertEquals(List.of("KPQ pass drop: session=" + session.sessionId() + " stage=5 agent=SilentSin "
+                            + "reason=recollect passes=1 dx=-50 dy=0 sameFoothold=true leaderFooting=GROUND "
+                            + "spot=moved predicted=(250,-2715) "
+                            + "landed=[(250,-2715):dx=-50:dy=0:passes=1:oid=41:ffa=false]"),
+                    log.startingWith("KPQ pass drop: "));
+        }
+        assertEquals(List.of(spot), floor.stream().map(MapItem::getPosition).toList());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(silentSin,
+                "Ben, got the rest of the passes, they're just to your left."), times(1));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(RECOLLECTED)), never());
+    }
+
+    @Test
     void eachDropLogsWhereItsPassesLanded() {
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
         holding(faro, 4);
@@ -592,11 +744,11 @@ class StageFivePassPatienceTest {
 
             assertEquals(List.of(
                             "KPQ pass drop: session=" + session.sessionId() + " stage=5 agent=Faro723 reason=beside "
-                                    + "passes=4 dx=-6 dy=0 sameFoothold=true leaderFooting=GROUND "
-                                    + "landed=[(254,-2777):dx=-6:dy=-60:passes=4:oid=42:ffa=false]",
+                                    + "passes=4 dx=-6 dy=0 sameFoothold=true leaderFooting=GROUND spot=feet "
+                                    + "predicted=? landed=[(254,-2777):dx=-6:dy=-60:passes=4:oid=42:ffa=false]",
                             "KPQ pass drop: session=" + session.sessionId() + " stage=5 agent=SilentSin "
                                     + "reason=beside passes=6 dx=-6 dy=0 sameFoothold=true leaderFooting=GROUND "
-                                    + "landed=none"),
+                                    + "spot=feet predicted=? landed=none"),
                     log.startingWith("KPQ pass drop: "));
         }
     }
@@ -639,6 +791,33 @@ class StageFivePassPatienceTest {
     private void tick(AgentKpqSession session, long nowMs) {
         clockMs = nowMs;
         AgentKpqCoordinator.tick(session, nowMs);
+    }
+
+    /**
+     * The fixture's map stands for stage 5's own: its foothold lookup and its placement of a player's drop, by which
+     * a drop that goes through lands, as MapleMap.spawnItemDrop places it.
+     */
+    private MapleMap onStageFivesOwnGeometry() {
+        MapleMap stageFive = AgentNavigationMapLoader.loadMapGeometry(AgentKpqDefinition.STAGE_5_MAP);
+        stageFive.generateMapDropRangeCache();
+        doAnswer(call -> stageFive.getPointBelow(new Point(call.<Point>getArgument(0))))
+                .when(run.map).getPointBelow(any());
+        doAnswer(call -> stageFive.calcDropPos(call.getArgument(0), call.getArgument(1)))
+                .when(run.map).calcDropPos(any(), any());
+        items.when(() -> AgentScriptItemActionService.dropItem(
+                        any(), eq(InventoryType.ETC), eq(AgentKpqDefinition.PASS_ITEM), anyShort()))
+                .thenAnswer(call -> {
+                    AgentRuntimeEntry dropper = call.getArgument(0);
+                    short quantity = call.getArgument(3);
+                    for (Character holder : List.copyOf(passesHeld.keySet())) {
+                        if (entry(holder.getId()) != dropper) continue;
+                        passesHeld.merge(holder, -quantity, Integer::sum);
+                        Point from = new Point(holder.getPosition());
+                        floor.add(pass(holder, quantity, clockMs, run.map.calcDropPos(from, from)));
+                    }
+                    return true;
+                });
+        return stageFive;
     }
 
     private void tickEverySecond(AgentKpqSession session, long fromMs, long toMs) {
