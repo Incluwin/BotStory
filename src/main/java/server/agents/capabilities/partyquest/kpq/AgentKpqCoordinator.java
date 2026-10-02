@@ -236,14 +236,17 @@ final class AgentKpqCoordinator {
 
     /**
      * A companion run's companions standing in its instance run at full rate until their reward; a stock run's, and
-     * every background KPQ's, keep the cadence their map's observers give them.
+     * every background KPQ's, keep the cadence their map's observers give them. A run whose release has begun (a
+     * force stop or removal from another thread, which lets go of the holds before the phase turns FAILED) takes
+     * none back.
      */
     private static void holdFullRateSimulation(AgentKpqSession session) {
         AgentKpqSession.Phase phase = session.phase();
+        boolean ending = session.terminationStarted();
         for (AgentKpqMemberState member : session.members()) {
             if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
-            boolean wanted = session.companionAdopted() && agent != null && standsInEvent(session, agent)
+            boolean wanted = !ending && session.companionAdopted() && agent != null && standsInEvent(session, agent)
                     && (insideEventPhase(phase)
                     || phase == AgentKpqSession.Phase.CLAIMING_REWARDS && !member.rewardResolved());
             AgentKpqFullRateSimulation.apply(member, entry(member.characterId()), wanted);

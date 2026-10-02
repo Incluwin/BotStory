@@ -117,6 +117,22 @@ class CompanionFullRateSimulationTest {
     }
 
     @Test
+    void aTickThatRacesTheRunsReleaseDoesNotTakeTheHoldBack() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        AgentKpqCoordinator.tick(session, 2_000L);
+        assertTrue(fullRate(mira));
+
+        // A force stop on another thread has begun the release and let go of the holds; the phase turns FAILED only
+        // at its end, so this tick still runs.
+        assertTrue(session.beginTermination());
+        AgentKpqFullRateSimulation.releaseAll(session);
+        AgentKpqCoordinator.tick(session, 3_000L);
+
+        assertFalse(fullRate(mira));
+        assertFalse(fullRate(pip));
+    }
+
+    @Test
     void anEjectedCompanionIsLetGoAndTheOthersKeepIt() {
         Character tobi = onStageFive(run.companion(4, "Tobi"));
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip, tobi);
