@@ -212,7 +212,9 @@ public final class PqPaceLedger {
     /**
      * The run-end line: what the entry NPC was shown at the Yes (median, then p10-p90 and whether records or priors
      * backed it) against the actual time, then per segment the estimate's mean seconds over the measured ones
-     * ("-": no estimate; in brackets: an incomplete span the fit skips), then what the records teach now.
+     * ("-": no estimate; in brackets: an incomplete span the fit skips), then what the records teach now. A span the
+     * run never saw (incomplete and zero long, as KPQ's descent) is shown as "-", and its estimate is added to the next
+     * span's, the one that took it in, as the fit folds it.
      */
     static String line(PqRunPaceRow row, AgentPqPace pace, AgentPqPaceEstimate estimate,
                        AgentPqPaceCalibration learned, boolean written) {
@@ -223,8 +225,18 @@ public final class PqPaceLedger {
                 .append(" shown=").append(shown(estimate))
                 .append(" actual=").append(row.actualS() == null ? "none" : row.actualS() + "s")
                 .append(" outcome=").append(row.outcome());
+        double unseenS = 0.0d;
         for (AgentPqPace.Span span : pace.spans()) {
             Double estimated = estimate == null ? null : estimate.segmentMeanS().get(span.key());
+            if (!span.complete() && span.durationMs() == 0L) {
+                unseenS += estimated == null ? 0.0d : estimated;
+                line.append(' ').append(span.key()).append("=-");
+                continue;
+            }
+            if (estimated != null) {
+                estimated += unseenS;
+            }
+            unseenS = 0.0d;
             long actual = Math.round(span.durationMs() / 1000.0d);
             line.append(' ').append(span.key()).append('=')
                     .append(estimated == null ? "-" : Long.toString(Math.round(estimated))).append('/')

@@ -311,6 +311,25 @@ class PqPaceLedgerTest {
     }
 
     @Test
+    void anUnseenSpanIsADashAndTheSpanThatTookItInCarriesItsEstimate() {
+        // KPQ's descent is never seen: its span is zero long and incomplete, and the normals' span runs from arrival.
+        AgentPqPace base = pace("kpq-a", ANN, List.of(900, 901), true);
+        long arrival = base.spans().getLast().fromMs();
+        List<AgentPqPace.Span> spans = new ArrayList<>(base.spans().subList(0, 3));
+        spans.add(new AgentPqPace.Span("s5.descent", arrival, arrival, 0.0d, false));
+        spans.add(new AgentPqPace.Span("s5.normals", arrival, arrival + 91_000L, 0.0d, true));
+        AgentPqPace reported = new AgentPqPace(base.questKey(), base.sessionId(), base.leaderId(), base.startedAtMs(),
+                base.clearedAtMs(), spans, base.members(), base.runs(), base.drawn());
+        AgentPqPaceEstimate shown = estimate(810.4d, 1_062.2d, 1_398.7d, 2, Map.of("s1.open", 61.0d,
+                "s1.grind", 118.6d, "s1.handin", 25.0d, "s5.descent", 30.0d, "s5.normals", 61.0d));
+        PqRunPaceRow row = PqPaceLedger.row(run("kpq-a", ANN, List.of(900, 901), shown), reported, 1, START);
+
+        assertEquals("PQ pace: session=kpq-a leader=10 size=3 epoch=1 shown=1062s (810-1399, records) actual=226s "
+                + "outcome=cleared s1.open=61/60 s1.grind=119/120 s1.handin=25/25 s5.descent=- s5.normals=91/91 "
+                + "learned=none", PqPaceLedger.line(row, reported, shown, null, true));
+    }
+
+    @Test
     void theRecordsAreReadOnCompanionOpsAtBootAfterThePaceDataIsWarm() throws IOException {
         String source = Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"));
         String start = source.substring(source.indexOf("public static synchronized void start()"),
