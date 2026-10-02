@@ -74,9 +74,11 @@ class StageOneLeversTest {
         }
     }
 
-    // Clusters in the coordinator's order: west (10), middle (20), low by Cloto (40), east (30); the floor is 1.
+    // Clusters in the coordinator's order: west (10), middle (20), low by Cloto (40), east (30); the floor is 1, and a
+    // ledge without spawns (50) lies under the middle cluster.
     private static final List<Platform> PLATFORMS = List.of(new Platform(10, -950, -750, -500),
-            new Platform(20, -150, 50, -900), new Platform(40, 250, 450, -300), new Platform(30, 350, 650, -1000));
+            new Platform(20, -150, 50, -900), new Platform(40, 250, 450, -300), new Platform(30, 350, 650, -1000),
+            new Platform(50, -200, 100, -700));
     private static final List<Point> SPAWNS = List.of(
             new Point(-900, -500), new Point(-850, -500), new Point(-800, -500),
             new Point(-100, -900), new Point(-50, -900), new Point(0, -900),
@@ -235,6 +237,19 @@ class StageOneLeversTest {
         AgentKpqCoordinator.tick(session, 3_000L);
         assertEquals(List.of("20"), territory(tobi).regionIds());
         modes.verify(() -> AgentModeService.startGrind(eq(entry(tobi)), any()));
+    }
+
+    @Test
+    void onItsWayBetweenItsPlatformsItIsNotTurnedAround() {
+        AgentKpqSession session = threeCollecting();
+        // On the ledge 200 px under its cluster, where its combat sees the middle cluster's Ligators itself.
+        at(tobi, 0, -700);
+        ligator(-50, -900);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        modes.verify(() -> AgentModeService.startMoveTo(eq(entry(tobi)), any(), Mockito.anyBoolean()), never());
+        assertEquals(List.of("20"), territory(tobi).regionIds());
     }
 
     @Test
@@ -405,6 +420,16 @@ class StageOneLeversTest {
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(pip, ASK_AGAIN), times(1));
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(ASK)), times(1));
         assertEquals(2, session.stageOneLeaderCouponAsks());
+    }
+
+    @Test
+    void theAsksSoundLikeAPlayer() {
+        for (String line : List.of(ASK, ASK_AGAIN)) {
+            String spoken = line.substring("Ben".length());
+            assertEquals(spoken.toLowerCase(java.util.Locale.ROOT), spoken, line);
+            assertFalse(java.util.regex.Pattern.compile("->|\\d+\\s*/\\s*\\d+|%|~|(?i)dps|(?i)estimate")
+                    .matcher(line).find(), line);
+        }
     }
 
     @Test

@@ -2239,6 +2239,10 @@ tuning:
     # Purpose: Sets how long a companion run's stage-1 member waits in its empty platform cluster for the respawn before it fights anywhere for a while.
     # Technical: Passed as the cluster territory's empty-borrow delay; after it, the combat region policy's empty-scan threshold and borrow window (AgentCombatPolicyConfig.REGION_ASSIGNMENT_BORROW_EMPTY_SCANS and REGION_ASSIGNMENT_BORROW_MS) decide when and how long it borrows.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RESPAWN_WAIT_MS: '15000'
+    # Values: 300-780 map pixels. Recommended: 600. Keep it below the combat seek range (GRIND_SEEK_RANGE, 800), within which a member's own combat sees its cluster's Ligators and walks to them itself.
+    # Purpose: Sets how far from its platform cluster a companion run's stage-1 member must have been knocked or have dropped before it walks straight back while a Ligator lives there.
+    # Technical: AgentKpqCoordinator measures the Euclidean map-pixel distance from the grounded member to the nearest spawn of its cluster; nearer, as on the way between two of the cluster's platforms, its territory-bound combat paths there itself, and a walk back would turn it around.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RETURN_PX: '600'
     # Values: 2000-30000 milliseconds. Recommended: 5000. Keep this long enough for a newly dropped pass to become pickup-eligible and appear in the next coordinator ticks.
     # Purpose: Allows Stage 1 to recover when every non-leader completed their Cloto exchange but a pass vanished before reaching the leader.
     # Technical: Recovery is blocked while any pass remains visible on the map; after this grace period the coordinator opens Stage 1 and writes a diagnostic warning.

@@ -163,6 +163,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_MIN_SPAWNS");
     private static final long STAGE1_CLUSTER_RESPAWN_WAIT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RESPAWN_WAIT_MS");
+    private static final int STAGE1_CLUSTER_RETURN_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RETURN_PX");
 
     private AgentKpqCoordinator() {
     }
@@ -2962,23 +2964,23 @@ final class AgentKpqCoordinator {
     }
 
     /**
-     * L1: a member knocked or dropped out of its cluster while a Ligator lives there walks back to the cluster's
-     * nearest spawn. With nothing alive at home it waits for the respawn where it is, and borrows once its territory
-     * lets it; it is not called back from a borrow before something lives at home again.
+     * L1: a member knocked or dropped farther than STAGE1_CLUSTER_RETURN_PX from its cluster while a Ligator lives
+     * there walks back to the cluster's nearest spawn; its combat, bound to the cluster, sees nothing that far off.
+     * Nearer, as on its way between two of the cluster's platforms, its combat walks there itself and is not turned
+     * around. With nothing alive at home it waits for the respawn where it is, and borrows once its territory lets
+     * it; it is not called back from a borrow before something lives at home again.
      */
     private static boolean walkBackToCluster(AgentRuntimeEntry entry, Character agent,
                                              AgentKpqSession.HelperTerritory territory, Set<Integer> regions,
                                              List<Point> liveLigators) {
         Point position = agent.getPosition();
         if (liveLigators.isEmpty() || position == null || !ACTIONS.grounded(agent)) return false;
-        Set<Integer> standing = ACTIONS.groundRegionIds(entry, agent, List.of(position));
-        if (standing.isEmpty() || !Collections.disjoint(standing, regions)) return false;
-        if (Collections.disjoint(ACTIONS.groundRegionIds(entry, agent, liveLigators), regions)) return false;
         Point home = territory.spawns().stream()
                 .min(Comparator.comparingDouble((Point spawn) -> spawn.distanceSq(position))
                         .thenComparingInt(spawn -> spawn.x))
                 .orElse(null);
-        if (home == null) return false;
+        if (home == null || home.distance(position) <= STAGE1_CLUSTER_RETURN_PX) return false;
+        if (Collections.disjoint(ACTIONS.groundRegionIds(entry, agent, liveLigators), regions)) return false;
         ACTIONS.navigate(entry, home, false);
         return true;
     }
