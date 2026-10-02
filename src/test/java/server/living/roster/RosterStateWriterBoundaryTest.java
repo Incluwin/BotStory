@@ -68,7 +68,7 @@ class RosterStateWriterBoundaryTest {
     }
 
     @Test
-    void changesets40To43AreRegisteredLastWithTheirRollbacks() throws IOException {
+    void changesets40To44AreRegisteredLastWithTheirRollbacks() throws IOException {
         String changelog = Files.readString(CHANGELOG);
         int start = changelog.indexOf("<changeSet id=\"40-companion-manager\"");
         assertTrue(start >= 0, "changeset 40 is registered");
@@ -93,12 +93,16 @@ class RosterStateWriterBoundaryTest {
         String freshSet = changelog.substring(fresh, changelog.indexOf("</changeSet>", fresh));
         assertTrue(freshSet.contains("<sqlFile path=\"db/tables/034-companion-crew-fresh.sql\""));
         assertTrue(freshSet.indexOf("<rollback>") < freshSet.indexOf("034-companion-crew-fresh-down.sql"));
+        // the PQ clear-time records (pq_run_pace), last; PqRunPaceSchemaTest checks the table
+        int pace = changelog.indexOf("<changeSet id=\"44-pq-run-pace\"");
+        assertTrue(pace > fresh, "changeset 44 is registered after 43");
         Matcher ids = Pattern.compile("<changeSet id=\"(\\d+)").matcher(changelog);
         int highest = 0;
         int forty = 0;
         int fortyOne = 0;
         int fortyTwo = 0;
         int fortyThree = 0;
+        int fortyFour = 0;
         while (ids.find()) {
             int id = Integer.parseInt(ids.group(1));
             highest = Math.max(highest, id);
@@ -106,13 +110,15 @@ class RosterStateWriterBoundaryTest {
             fortyOne += id == 41 ? 1 : 0;
             fortyTwo += id == 42 ? 1 : 0;
             fortyThree += id == 43 ? 1 : 0;
+            fortyFour += id == 44 ? 1 : 0;
         }
-        assertEquals(43, highest);
+        assertEquals(44, highest);
         assertEquals(1, forty);
         assertEquals(1, fortyOne);
         assertEquals(1, fortyTwo);
         assertEquals(1, fortyThree);
-        assertEquals(changelog.lastIndexOf("<changeSet "), fresh);
+        assertEquals(1, fortyFour);
+        assertEquals(changelog.lastIndexOf("<changeSet "), pace);
         String yieldUp = Files.readString(Path.of("src/main/resources/db/tables/033-companion-bench-learning.sql"));
         assertTrue(yieldUp.contains("CREATE TABLE IF NOT EXISTS companion_yield"));
         for (String column : List.of("job_branch      VARCHAR(16)", "level_band      TINYINT", "camp_map_id     INT",

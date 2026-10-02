@@ -10,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -1039,6 +1040,98 @@ public final class LivingStore {
             log.warn("companion_performance read failed for {}", activity, failure);
             throw new ReadFailed("companion_performance " + activity, failure);
         }
+    }
+
+    // ---- PQ clear-time records ------------------------------------------------------------------
+
+    /**
+     * One pq_run_pace row (changeset 44): how one companion party-quest run went against the entry NPC's estimate at
+     * its Yes. {@code outcome} is cleared or failed; the est_* fields are null when no estimate was made, and
+     * {@code actualS} is null unless the run cleared. {@code spans}, {@code members} and {@code drawn} are JSON
+     * (PqPaceLedger writes and reads them); {@code recordedAtMs} is kept in UTC. {@code id} is 0 until written.
+     */
+    public record PqRunPaceRow(long id, String pqKey, String sessionId, int leaderId, int partySize, int humans,
+                               int epoch, String outcome, Integer estP10S, Integer estP50S, Integer estP90S,
+                               Integer estRecords, Integer actualS, long startedAtMs, long clearedAtMs, String spans,
+                               String members, String drawn, long recordedAtMs) { }
+
+    private static final String PQ_RUN_PACE_COLUMNS = "pq_key, session_id, leader_character_id, party_size, humans, epoch,"
+            + " outcome, est_p10_s, est_p50_s, est_p90_s, est_records, actual_s, started_at_ms, cleared_at_ms, spans,"
+            + " members, drawn, recorded_at";
+
+    /** Adds one pq_run_pace row (recorded_at bound in UTC); false when the write failed. */
+    public boolean savePqRunPace(PqRunPaceRow row) {
+        String sql = SqlTime.utc("INSERT INTO pq_run_pace (" + PQ_RUN_PACE_COLUMNS + ")"
+                + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, row.pqKey());
+            ps.setString(2, row.sessionId());
+            ps.setInt(3, row.leaderId());
+            ps.setInt(4, row.partySize());
+            ps.setInt(5, row.humans());
+            ps.setInt(6, row.epoch());
+            ps.setString(7, row.outcome());
+            setNullableInt(ps, 8, row.estP10S());
+            setNullableInt(ps, 9, row.estP50S());
+            setNullableInt(ps, 10, row.estP90S());
+            setNullableInt(ps, 11, row.estRecords());
+            setNullableInt(ps, 12, row.actualS());
+            ps.setLong(13, row.startedAtMs());
+            ps.setLong(14, row.clearedAtMs());
+            ps.setString(15, row.spans());
+            ps.setString(16, row.members());
+            ps.setString(17, row.drawn());
+            SqlTime.set(ps, 18, row.recordedAtMs());
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException failure) {
+            log.warn("pq_run_pace write failed for {}", row.sessionId(), failure);
+            return false;
+        }
+    }
+
+    /**
+     * The newest {@code limit} pq_run_pace rows of one quest recorded under {@code epoch}, newest first.
+     *
+     * @throws ReadFailed when the read failed (not the same as no runs yet)
+     */
+    public List<PqRunPaceRow> pqRunPaces(String pqKey, int epoch, int limit) {
+        List<PqRunPaceRow> out = new ArrayList<>();
+        String sql = SqlTime.utc("SELECT id, " + PQ_RUN_PACE_COLUMNS + " FROM pq_run_pace WHERE pq_key = ? AND epoch = ?"
+                + " ORDER BY id DESC LIMIT ?");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, pqKey);
+            ps.setInt(2, epoch);
+            ps.setInt(3, Math.max(0, limit));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new PqRunPaceRow(rs.getLong("id"), rs.getString("pq_key"), rs.getString("session_id"),
+                            rs.getInt("leader_character_id"), rs.getInt("party_size"), rs.getInt("humans"),
+                            rs.getInt("epoch"), rs.getString("outcome"), nullableInt(rs, "est_p10_s"),
+                            nullableInt(rs, "est_p50_s"), nullableInt(rs, "est_p90_s"), nullableInt(rs, "est_records"),
+                            nullableInt(rs, "actual_s"), rs.getLong("started_at_ms"), rs.getLong("cleared_at_ms"),
+                            rs.getString("spans"), rs.getString("members"), rs.getString("drawn"),
+                            SqlTime.get(rs, "recorded_at")));
+                }
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("pq_run_pace read failed for {} epoch {}", pqKey, epoch, failure);
+            throw new ReadFailed("pq_run_pace " + pqKey, failure);
+        }
+    }
+
+    private static void setNullableInt(PreparedStatement ps, int index, Integer value) throws SQLException {
+        if (value == null) {
+            ps.setNull(index, Types.INTEGER);
+        } else {
+            ps.setInt(index, value);
+        }
+    }
+
+    private static Integer nullableInt(ResultSet rs, String column) throws SQLException {
+        int value = rs.getInt(column);
+        return rs.wasNull() ? null : value;
     }
 
     /** The meso in the purse of a character nothing has loaded (a benched companion's); -1 when unknown. */
