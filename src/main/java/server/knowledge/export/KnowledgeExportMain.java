@@ -131,7 +131,7 @@ public final class KnowledgeExportMain {
         List<QuestRow> quests = readQuests(wz.resolve("Quest.wz"));
         List<SpawnRow> spawns = readScriptSpawns(root, mobs.keySet(), npcMaps, reactorMaps,
                 portalScriptMaps, enterScriptMaps);
-        return write(KnowledgeSources.measure(root), generatedAt, maps, mobs, items, npcs, npcFuncs, npcMaps, quests, spawns);
+        return write(KnowledgeSources.measureLf(root), generatedAt, maps, mobs, items, npcs, npcFuncs, npcMaps, quests, spawns);
     }
 
     // ---- maps ------------------------------------------------------------------------------

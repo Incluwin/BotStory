@@ -199,8 +199,11 @@ public final class KnowledgeLoader {
         List<String> changed = new ArrayList<>();
         for (KnowledgeSources.Source exported : loaded.sources) {
             KnowledgeSources.Source current = now.get(exported.path());
-            if (current == null || current.fileCount() != exported.fileCount() || current.totalBytes() != exported.totalBytes()) {
+            if (current == null || current.fileCount() != exported.fileCount()) {
                 changed.add(exported.path());
+            } else if (current.totalBytes() != exported.totalBytes()
+                    && KnowledgeSources.lfBytes(Path.of("."), exported.path()) != exported.totalBytes()) {
+                changed.add(exported.path()); // a size difference that is not just CRLF working files
             }
         }
         if (loaded.sources.size() != now.size()) {

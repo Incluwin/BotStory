@@ -57,6 +57,43 @@ public final class KnowledgeSources {
         return out;
     }
 
+    /**
+     * Like {@link #measure} but counts bytes as if every file had LF line endings, so a checkout with CRLF
+     * working files (git normalises them, the content is the same) fingerprints like an LF one. Reads every file;
+     * the exporter records this, and the boot check falls back to it only for an input whose listed size differs.
+     */
+    public static List<Source> measureLf(Path root) throws IOException {
+        List<Source> out = new ArrayList<>(INPUTS.size());
+        for (String input : INPUTS) {
+            Path path = root.resolve(input);
+            List<Path> inputFiles = Files.isRegularFile(path) ? List.of(path)
+                    : Files.isDirectory(path) ? files(path) : List.of();
+            out.add(new Source(input, inputFiles.size(), lfBytes(inputFiles)));
+        }
+        return out;
+    }
+
+    /** Total size of the files with every CR byte dropped. */
+    static long lfBytes(List<Path> inputFiles) throws IOException {
+        long bytes = 0;
+        for (Path file : inputFiles) {
+            byte[] content = Files.readAllBytes(file);
+            bytes += content.length;
+            for (byte b : content) {
+                if (b == '\r') {
+                    bytes--;
+                }
+            }
+        }
+        return bytes;
+    }
+
+    /** {@link #lfBytes} of one input path (a file or a directory walked like {@link #measure}). */
+    static long lfBytes(Path root, String input) throws IOException {
+        Path path = root.resolve(input);
+        return lfBytes(Files.isRegularFile(path) ? List.of(path) : Files.isDirectory(path) ? files(path) : List.of());
+    }
+
     /** Input files under a directory, sorted; skips {@code *_old.js} leftovers the server never runs. */
     public static List<Path> files(Path dir) throws IOException {
         try (Stream<Path> walk = Files.walk(dir)) {
