@@ -287,11 +287,11 @@ public final class ContentChat {
     /**
      * The companion seam: lines with delays, null to leave the line to the model. A companion answers its owner or
      * party without a budget, and a question it already answered twice goes to the model (grounded) instead of
-     * getting nothing back; citizens are not companions here.
+     * getting nothing back; citizens are companions here only for their own party ({@link #citizenTo}).
      */
     List<Styled> companionAnswer(Character agent, Character speaker, String message, String style) {
         long now = System.currentTimeMillis();
-        if (agent == null || speaker == null || message == null || !on(Host.COMPANIONS) || citizens.test(agent.getId())
+        if (agent == null || speaker == null || message == null || !on(Host.COMPANIONS) || citizenTo(agent.getId(), speaker)
                 || !content(message, speaker.getId(), agent.getId(), now)) {
             return null;
         }
@@ -308,11 +308,24 @@ public final class ContentChat {
 
     /** The chat-intent gate: a content question, or the reply to this companion's own ask-back, skips the Jev judge. */
     boolean companionGate(Character agent, Character speaker, String message) {
-        if (agent == null || !on(Host.COMPANIONS) || citizens.test(agent.getId())) {
+        if (agent == null || !on(Host.COMPANIONS) || citizenTo(agent.getId(), speaker)) {
             return false;
         }
         return answers.answerable(message)
                 || speaker != null && pendingResponder(speaker.getId(), System.currentTimeMillis()) == agent.getId();
+    }
+
+    /**
+     * A citizen talking as a citizen: one not in the speaker's party. A citizen hired into the speaker's crew is that
+     * party's companion (Conversation.hasCompanionHere hands the owner's lines to the companion route), so the
+     * companion seams must answer for it, or it gets a Jev call per line and no content answer at all.
+     */
+    private boolean citizenTo(int agentId, Character speaker) {
+        if (!citizens.test(agentId)) {
+            return false;
+        }
+        Party party = speaker == null ? null : speaker.getParty();
+        return party == null || party.getMemberById(agentId) == null;
     }
 
     /** A content question, or the asker's reply to this bot's pending ask-back ("red", "35", "warrior"). */
@@ -324,7 +337,7 @@ public final class ContentChat {
     boolean companionKnows(int agentId, Character speaker, String message) {
         Kind kind = kind(message);
         if (speaker == null || kind == null || kind == Kind.OPINION || kind == Kind.THANKS || kind == Kind.FOLLOW_UP
-                || speaker.getMap() == null || !on(Host.COMPANIONS) || citizens.test(agentId)) {
+                || speaker.getMap() == null || !on(Host.COMPANIONS) || citizenTo(agentId, speaker)) {
             return false;
         }
         Character agent = speaker.getMap().getCharacterById(agentId);

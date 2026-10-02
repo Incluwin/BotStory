@@ -3,6 +3,8 @@ package server.knowledge;
 import client.Character;
 import client.Job;
 import config.KnowledgeConfig;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import org.junit.jupiter.api.Test;
 import server.agents.social.conversation.AgentSocialDialogueRuntime.Styled;
 import server.agents.social.conversation.GroundingRequest;
@@ -158,6 +160,28 @@ class ContentChatTest {
                     .isEmpty(), "CITIZENS off: a citizen's prompt is today's");
             assertEquals("Henesys", noCitizens.grounding(new GroundingRequest(505, 6, "Owner", "who drops steelies", "casual.question",
                     HENESYS, ops)).get("world.map"), "a companion keeps its facts");
+        } finally {
+            ContentChat.installCitizens(null);
+        }
+    }
+
+    @Test
+    void aCitizenHiredIntoTheSpeakersPartyAnswersAsTheirCompanion() {
+        // live 2026-10-02: ohboy's crew had two hired citizens; each made a Jev call per line and none could answer
+        Character speaker = character(7, "Owner", 30, Job.HERMIT);
+        Character citizen = character(506, "Faro", 90, Job.HERMIT);
+        MapleMap map = mock(MapleMap.class);
+        Party party = mock(Party.class);
+        when(speaker.getMap()).thenReturn(map);
+        when(speaker.getParty()).thenReturn(party);
+        when(party.getMemberById(506)).thenReturn(mock(PartyCharacter.class));
+        when(map.getCharacterById(506)).thenReturn(citizen);
+        ContentChat.installCitizens(id -> id == 506);
+        try {
+            assertTrue(chat.companionGate(citizen, speaker, "who drops steelies"), "the owner's question skips the Jev judge");
+            assertNotNull(chat.companionAnswer(citizen, speaker, "how do i get to ludi", null), "and the hired citizen answers it");
+            Character stranger = character(8, "Stranger", 30, Job.HERMIT);
+            assertFalse(chat.companionGate(citizen, stranger, "who drops steelies"), "outside the party it stays a citizen");
         } finally {
             ContentChat.installCitizens(null);
         }
