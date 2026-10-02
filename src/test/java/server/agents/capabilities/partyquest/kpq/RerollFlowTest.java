@@ -107,6 +107,7 @@ class RerollFlowTest {
         AgentKpqCoordinator.tick(session, ASKED_AT + 61_000L);
         assertEquals(AgentKpqSession.Phase.STAGE_1, session.phase());
         assertEquals(1, fx.asked.size(), "never asked again this run");
+        assertEquals(1, fx.coordinatorLog.startingWith("KPQ stage 1 draw: ").size(), "nor decided again");
         assertEquals(List.of("KPQ stage 1 re-roll answer: session=" + session.sessionId()
                 + " answer=push-through waitedMs=3000"), fx.coordinatorLog.startingWith("KPQ stage 1 re-roll answer: "));
     }
