@@ -56,11 +56,13 @@ final class AgentKpqPassHandOver {
     }
 
     /**
-     * A floor pass is no longer on its way to the leader once it has lain out of his reach longer than the patience
-     * and no companion is going for it; the missing-pass recovery may then count it as lost.
+     * A floor pass is no longer on its way to the leader once it has lain out of his reach longer than the patience,
+     * no companion is going for it, and it does not wait for him by Cloto; the missing-pass recovery may then count
+     * it as lost.
      */
-    static boolean stale(long ageMs, boolean inLeadersReach, boolean fetched, long patienceMs) {
-        return ageMs >= patienceMs && !inLeadersReach && !fetched;
+    static boolean stale(long ageMs, boolean inLeadersReach, boolean waitingByCloto, boolean fetched,
+                         long patienceMs) {
+        return ageMs >= patienceMs && !inLeadersReach && !waitingByCloto && !fetched;
     }
 
     /** Still standing, below this fraction of its HP. */

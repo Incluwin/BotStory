@@ -1474,13 +1474,19 @@ final class AgentKpqCoordinator {
 
     /**
      * The floor passes no longer on their way to a companion run's leader: older than the patience, out of his
-     * reach (NEAR_PX on each axis, a step for him), and nobody going for them.
+     * reach (NEAR_PX on each axis, a step for him), and nobody going for them. Passes left by Cloto (within NEAR_PX
+     * of her) lie where he has to go to clear the stage, and where he was told they are: they wait for him there
+     * until he is by Cloto himself, bounded by their expiry.
      */
     private static List<MapItem> stalePasses(
             AgentKpqSession session, Character leader, List<MapItem> passDrops, long nowMs) {
+        if (passDrops.isEmpty()) return List.of();
+        Point cloto = ACTIONS.npcPosition(leader, AgentKpqDefinition.CLOTO_NPC);
+        boolean leaderByCloto = near(leader.getPosition(), cloto, NEAR_PX);
         List<MapItem> stale = new ArrayList<>();
         for (MapItem drop : passDrops) {
-            if (AgentKpqPassHandOver.stale(nowMs - drop.getDropTime(), inLeadersReach(leader, drop),
+            boolean waitingByCloto = !leaderByCloto && near(drop.getPosition(), cloto, NEAR_PX);
+            if (AgentKpqPassHandOver.stale(nowMs - drop.getDropTime(), inLeadersReach(leader, drop), waitingByCloto,
                     fetchedByCompanion(session, drop), STAGE5_FLOOR_PASS_PATIENCE_MS)) {
                 stale.add(drop);
             }

@@ -2325,7 +2325,7 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_SWEEP_LIMIT_MS: '20000'
     # Values: 10000-170000 milliseconds. Recommended: 30000. Keep it well below the 180 s item expiry; lower values send a companion back for passes a leader is still walking to.
     # Purpose: Lets a companion run's stage-5 floor passes that are going nowhere stop holding the missing-pass recovery back, after one in-character re-collect by the nearest companion.
-    # Technical: Measured from the drop's own drop time on the coordinator's clock; a pass within NEAR_PX of the leader on each axis, or the loot target of any companion, keeps counting as on its way however old it is.
+    # Technical: Measured from the drop's own drop time on the coordinator's clock; a pass within NEAR_PX of the leader on each axis, the loot target of any companion, or one lying within NEAR_PX of Cloto while the leader is not by Cloto himself keeps counting as on its way however old it is (until its expiry).
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_FLOOR_PASS_PATIENCE_MS: '30000'
     # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values repeat the way to Cloto sooner; it is said again at most once.
     # Purpose: Tells a companion run's human leader the way to Cloto once more if he still stands on stage 5's arrival ledge, where no companion can bring him the passes.

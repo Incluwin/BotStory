@@ -710,6 +710,78 @@ class Stage5PassCarryTest {
     }
 
     @Test
+    void aPassLyingAtTheLeadersFeetIsNeverTakenForLostHoweverOld() {
+        // Ben stands on Cloto's island, away from her, with an old pass at his feet; nobody holds one.
+        at(ben, 180, CLOTO.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        floor.add(pass(31, -39_000L, new Point(190, CLOTO.y)));
+
+        for (long nowMs = 2_000L; nowMs <= 2_000L + PATIENCE_MS + SWEEP_LIMIT_MS + GRACE_MS * 3; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        assertEquals(0, session.stage5RecollectorId());
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
+    void aPassACompanionIsGoingForIsNeverTakenForLost() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        MapItem far = pass(31, -39_000L, new Point(0, -451));
+        floor.add(far);
+        loot.when(() -> AgentGrindLootStateRuntime.grindLootTarget(entry(3))).thenReturn(far);
+
+        for (long nowMs = 2_000L; nowMs <= 2_000L + PATIENCE_MS + SWEEP_LIMIT_MS + GRACE_MS * 3; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
+    void passesLeftByClotoWaitThereForTheLeaderOnHisWay() {
+        // They were left by Cloto at 1 s; Ben is still on the Curse Eye floor, on his way up to her.
+        at(ben, 200, -2175);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        floor.add(pass(31, 1_000L, new Point(CLOTO.x - 50, CLOTO.y)));
+
+        long arrivesMs = 1_000L + PATIENCE_MS + SWEEP_LIMIT_MS + GRACE_MS * 2;
+        for (long nowMs = 2_000L; nowMs < arrivesMs; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+
+        // He comes up, finds them where he was told, and picks them up.
+        at(ben, CLOTO.x - 40, CLOTO.y);
+        AgentKpqCoordinator.tick(session, arrivesMs);
+        floor.clear();
+        holding(ben, 10);
+        AgentKpqCoordinator.tick(session, arrivesMs + 1_000L);
+        AgentKpqCoordinator.tick(session, arrivesMs + 1_000L + GRACE_MS);
+
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
+    void passesByClotoALeaderStandingThereMissesAreFetchedForHim() {
+        // Ben stands just right of Cloto; the passes lie left of her, out of his reach.
+        at(ben, CLOTO.x + 30, CLOTO.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        floor.add(pass(31, 1_000L, new Point(CLOTO.x - 70, CLOTO.y)));
+
+        for (long nowMs = 2_000L; nowMs <= 1_000L + PATIENCE_MS + GRACE_MS; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+
+        assertEquals(1, said().stream().filter(RECOLLECT::equals).count(), said()::toString);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
     void theOneRecollectWaitsForTheCarriersToSetOut() {
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
         // Nobody carries a pass and an old one lies far below Ben, while Pip still sweeps for passes.
