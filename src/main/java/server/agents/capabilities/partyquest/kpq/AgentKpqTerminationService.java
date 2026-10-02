@@ -55,6 +55,7 @@ final class AgentKpqTerminationService {
         if (session == null || !session.beginTermination()) return;
         EventInstanceManager event = session.eventInstance();
         tryCleanup(session, "stop-actions", () -> stopAll(session));
+        tryCleanup(session, "release-full-rate", () -> AgentKpqFullRateSimulation.releaseAll(session));
         if (disposeEvent && event != null) {
             tryCleanup(session, "dispose-event", () -> closeEvent(event));
         }

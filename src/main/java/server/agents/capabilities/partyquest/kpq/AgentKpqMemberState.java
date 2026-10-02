@@ -60,6 +60,8 @@ public final class AgentKpqMemberState {
     private boolean stage5LeaderUnreachable;
     private boolean stage5PassesLeftBehind;
     private int stage5PassesSeen;
+    private boolean fullRateHeld;
+    private boolean fullRateWasRequired;
 
     public AgentKpqMemberState(int characterId, MemberType memberType, int partyNumber) {
         this.characterId = characterId;
@@ -280,6 +282,18 @@ public final class AgentKpqMemberState {
     /** The passes it was last seen holding on stage 5; they go with it if it leaves the run. */
     int stage5PassesSeen() { return stage5PassesSeen; }
     void observeStage5Passes(int held) { stage5PassesSeen = Math.max(0, held); }
+
+    /** The KPQ run keeps this Agent at full simulation rate; whether something else already did is kept. */
+    boolean fullRateHeld() { return fullRateHeld; }
+    boolean fullRateWasRequired() { return fullRateWasRequired; }
+    void holdFullRate(boolean alreadyRequired) {
+        fullRateHeld = true;
+        fullRateWasRequired = alreadyRequired;
+    }
+    void releaseFullRate() {
+        fullRateHeld = false;
+        fullRateWasRequired = false;
+    }
 
     /** Adds the time since the last tally to the role held over it. */
     void tallyStage1Role(long nowMs) {

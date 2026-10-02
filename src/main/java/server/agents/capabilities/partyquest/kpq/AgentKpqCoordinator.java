@@ -184,6 +184,7 @@ final class AgentKpqCoordinator {
             return;
         }
         bindKnownEvent(session, leader);
+        holdFullRateSimulation(session);
         if (!reconcileLiveParty(session, leader, nowMs)) return;
         if (!membersAlive(session, leader, nowMs)) return;
         if (insideEventPhase(session.phase()) && session.eventInstance() != null
@@ -203,6 +204,22 @@ final class AgentKpqCoordinator {
             case CLAIMING_REWARDS -> claimRewards(session, nowMs);
             case EXITING -> exit(session, nowMs);
             default -> { }
+        }
+    }
+
+    /**
+     * A companion run's companions standing in its instance run at full rate until their reward; a stock run's, and
+     * every background KPQ's, keep the cadence their map's observers give them.
+     */
+    private static void holdFullRateSimulation(AgentKpqSession session) {
+        AgentKpqSession.Phase phase = session.phase();
+        for (AgentKpqMemberState member : session.members()) {
+            if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) continue;
+            Character agent = character(member.characterId());
+            boolean wanted = session.companionAdopted() && agent != null && standsInEvent(session, agent)
+                    && (insideEventPhase(phase)
+                    || phase == AgentKpqSession.Phase.CLAIMING_REWARDS && !member.rewardResolved());
+            AgentKpqFullRateSimulation.apply(member, entry(member.characterId()), wanted);
         }
     }
 
@@ -2448,6 +2465,7 @@ final class AgentKpqCoordinator {
                                     AgentPartyQuestEngagement engagement,
                                     long nowMs) {
         if (character != null && KPQ.event(character) == event) event.exitPlayer(character);
+        AgentKpqFullRateSimulation.apply(member, entry(member.characterId()), false);
         session.removeMember(member.characterId());
         AgentKpqSessionRegistry.unindexMember(session, member.characterId());
         if (engagement != null && session.companionAdopted()) {
