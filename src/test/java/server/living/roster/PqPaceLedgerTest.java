@@ -91,6 +91,51 @@ class PqPaceLedgerTest {
         assertEquals(START + 2_000_000L, row.recordedAtMs());
     }
 
+    /**
+     * A run its leader left in stage 1 to run again (the KPQ re-roll): written as rerolled, with no time, and learned
+     * from for its opening only: its complete opening spans count, its members' stage-1 swings and kills, cut short,
+     * teach no combat efficiency, and it is never anyone's last clear.
+     */
+    @Test
+    void aRerolledRunIsWrittenAsSuchAndTeachesItsOpeningOnly() {
+        AgentPqPace rerolled = rerolledPace("kpq-r", ANN, List.of(900, 901));
+        CompanionRun run = run("kpq-r", ANN, List.of(900, 901), SHOWN);
+        run.rerolled = true;
+
+        record(run, rerolled, START + 200_000L);
+
+        assertEquals("kpq kpq-r leader 10 size 3 humans 1 epoch 1 rerolled est 810/1062/1399 records 2 actual -",
+                describe(store.paces.getFirst()));
+        assertTrue(lines.startingWith("PQ pace: session=kpq-r ").getFirst().contains(" outcome=rerolled "));
+        AgentPqPaceCalibration learned = ledger.calibration("kpq", ANN);
+        AgentPqPace openingOnly = new AgentPqPace(rerolled.questKey(), rerolled.sessionId(), rerolled.leaderId(),
+                rerolled.startedAtMs(), 0L, rerolled.spans(), rerolled.members(), List.of(), rerolled.drawn());
+        assertEquals(fit(List.of(openingOnly), ANN), learned);
+        AgentPqPaceCalibration prior = AgentPqPaceCalibration.prior(profile);
+        assertEquals(prior.companion().get("s1.grind.combat"), learned.companion().get("s1.grind.combat"),
+                "its cut-short swings teach no combat efficiency");
+        assertNotEquals(prior.companion().get("s1.grind.combat"),
+                fit(List.of(rerolled), ANN).companion().get("s1.grind.combat"), "as a whole run they would have");
+        assertNotEquals(prior.companion().get("s1.open"), learned.companion().get("s1.open"), "its opening is learned");
+        assertEquals(0.0d, ledger.lastClearS("kpq", ANN, ids(900, 901)), 1e-12);
+    }
+
+    /** A run re-rolled 20 s into its grind: a 60 s opening complete, the grind cut short, its members' few swings. */
+    private static AgentPqPace rerolledPace(String sessionId, int leaderId, List<Integer> companions) {
+        AgentPqPace whole = pace(sessionId, leaderId, companions, false);
+        List<AgentPqPace.MemberRun> runs = new ArrayList<>();
+        for (AgentPqPace.MemberRun memberRun : whole.runs()) {
+            runs.add(memberRun.characterId() == leaderId ? memberRun
+                    : new AgentPqPace.MemberRun(memberRun.characterId(), 0, false, 30, 1));
+        }
+        long open = START + 1_000L;
+        long grind = open + 60_000L;
+        return new AgentPqPace("kpq", sessionId, leaderId, START, 0L, List.of(
+                new AgentPqPace.Span("s1.open", open, grind, 0.0d, true),
+                new AgentPqPace.Span("s1.grind", grind, grind + 20_000L, 3.0d, false)),
+                whole.members(), runs, whole.drawn());
+    }
+
     @Test
     void aFailedRunHasNoTimeAndARunShownNoEstimateHasNone() {
         record(run("kpq-b", ANN, List.of(900, 901), null), pace("kpq-b", ANN, List.of(900, 901), false), START);

@@ -129,6 +129,43 @@ class LakelisDeskTest {
     // ---- the lineup ------------------------------------------------------------------------
 
     @Test
+    void aLeaderBackSoonAfterARerollHearsHerLineAboveTheLineup() {
+        desk.proposal(ben, choice(null), "Back already? Cloto must have been in a mood.");
+
+        assertTrue(lastTalk().text().startsWith(TITLE + "\r\nBack already? Cloto must have been in a mood.\r\n"
+                + "Four of you, then? Here's who I'd send in:\r\n#bBen#k (leader)\r\n"), lastTalk().text());
+        assertEquals(List.of("Yes, send us in.", "Let me choose...", "Never mind."), lastTalk().labels());
+    }
+
+    @Test
+    void aCompanionAsksAboutARerollInAWindowOfItsOwnAndThePickIsOnlyHandedBack() {
+        Persona mira = mock(Persona.class);
+        when(mira.name()).thenReturn("Mira");
+        when(mira.portraitNpcId()).thenReturn(9_970_123);
+        List<Boolean> answers = new ArrayList<>();
+        String question = "ugh, two of us got 35s. that's a long grind, wanna bail and run it again?";
+
+        new RerollQuestion().ask(ben, mira, question, answers::add);
+
+        Talk asked = lastTalk();
+        assertEquals(MENU, asked.msgType());
+        assertEquals(9_970_123, asked.npcId(), "her own portrait, as on her card");
+        assertEquals(0, asked.speaker());
+        assertTrue(asked.text().startsWith("#eMira#n\r\n" + question + "\r\n"), asked.text());
+        assertEquals(List.of("Let's go again.", "Nah, let's push through."), asked.labels());
+        int shown = talks().size();
+        new RerollQuestion().ask(ben, mira, question, answers::add);
+        assertEquals(shown, talks().size(), "never drawn over the window on screen");
+
+        pick("Let's go again.");
+        assertEquals(List.of(true), answers);
+
+        new RerollQuestion().ask(ben, mira, question, answers::add);
+        pick("Nah, let's push through.");
+        assertEquals(List.of(true, false), answers);
+    }
+
+    @Test
     void proposalOffersYesOnlyWhenStartable() {
         LineupPlan four = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, ANN_SEAT, MIRA_SEAT, TOBI_SEAT),
                 List.of(PIP_SEAT, CASSE_SEAT, HADRIK_SEAT), List.of(),

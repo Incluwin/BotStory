@@ -20,6 +20,7 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.kpq.AgentKpqAdmissionService;
 import server.agents.capabilities.partyquest.kpq.AgentKpqDefinition;
 import server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile;
+import server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
 import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
@@ -229,6 +230,11 @@ public final class CompanionPartyQuestService {
     private final Map<Integer, Long> askedForMana = new ConcurrentHashMap<>();
     /** Leader id -> the companion admission last found still finishing something for their Yes. */
     private final Map<Integer, Finishing> finishing = new ConcurrentHashMap<>();
+    /**
+     * Lineup leader id -> when his last companion run that got in ended in a re-roll (he left stage 1 to run it
+     * again); a run of his that ends any other way takes him out. Written on companion-ops, read on his I/O thread.
+     */
+    private final Map<Integer, Long> rerolledAt = new ConcurrentHashMap<>();
 
     /** A companion admission asked to stop what it was doing ({@code line}: Lakelis's word for it), at {@code atMs}. */
     private record Finishing(int characterId, String line, long atMs) { }
@@ -302,9 +308,19 @@ public final class CompanionPartyQuestService {
         }
         return LivingTalk.answerScriptClick(leader, () -> {
             LineupPlan plan = plan(leader, pqKey);
-            desk.proposal(leader, plan, null);
+            desk.proposal(leader, plan, backAfterReroll(leader.getId(), System.currentTimeMillis())
+                    ? LakelisLines.BACK_ALREADY : null);
             askForMana(plan);
         });
+    }
+
+    /**
+     * True when the leader's last companion run ended in a re-roll less than REROLL_STREAK_RESET_MS ago: Lakelis
+     * greets him back above the lineup. From memory, on his I/O thread.
+     */
+    boolean backAfterReroll(int leaderId, long nowMs) {
+        Long at = rerolledAt.get(leaderId);
+        return at != null && nowMs - at < AgentKpqRerollPolicy.configured().streakResetMs();
     }
 
     /**
@@ -862,6 +878,11 @@ public final class CompanionPartyQuestService {
             }
             AgentKpqSession session = admitted.session();
             session.setCompanionAdopted(true);
+            AgentPqPaceProfile paced = pace.profile(fresh.pqKey());
+            if (paced != null) {
+                // a heavy stage-1 draw is weighed for a re-roll at the rate this lineup was priced with
+                session.setPaceCalibration(pace.calibration(paced, leader.getId()));
+            }
             session.setMemberCoordinationChatEnabled(world.config().COMPANION_PQ_GUIDANCE);
             CompanionRun run = register(new CompanionRun(session.sessionId(), fresh, now));
             int firstAgent = companions.getFirst().characterId();
@@ -1056,12 +1077,18 @@ public final class CompanionPartyQuestService {
      * On companion-ops, once a run is over: its commitments end (a companion finishing it for a friend parks, the
      * party changes that waited go through), and the owners already out of the event get their held companions back.
      * An owner still inside gets them as they come out (RosterService.ownerEnteredMap). A run that got in goes on its
-     * companions' records, and with its pace on the clear-time records.
+     * companions' records (a re-roll does not), and with its pace on the clear-time records; a re-roll is remembered
+     * for Lakelis's greeting, which any other end of the leader's runs forgets.
      */
     void finish(CompanionRun run, AgentPqPace pace) {
         world.commitments().releaseKey(run.key);
         rejoin(run.owners); // an owner still in the event instance: none yet
         long now = System.currentTimeMillis();
+        if (run.rerolled) {
+            rerolledAt.put(run.leaderId, now); // Lakelis greets him back
+        } else if (run.started) {
+            rerolledAt.remove(run.leaderId);
+        }
         records.record(run, now);
         ledger.record(run, pace, now);
     }

@@ -64,6 +64,8 @@ final class CompanionPqFixture implements AutoCloseable {
     CompanionRunLifecycle lifecycle;
     /** The lineup Lakelis showed again when a Yes found things changed, or a companion still finishing something. */
     LineupPlan shownAgain;
+    /** Her line above the last lineup she showed (null: none). */
+    String topLine;
     /** The map lines of Ann's own companions as they step out beside Lakelis. */
     final MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class);
 
@@ -118,8 +120,9 @@ final class CompanionPqFixture implements AutoCloseable {
         when(game.world.partyQuests()).thenReturn(service);
         service.installDesk(new CompanionPartyQuestService.Desk() {
             @Override
-            public void proposal(Character leader, LineupPlan plan, String topLine) {
+            public void proposal(Character leader, LineupPlan plan, String top) {
                 game.calls.add("proposal");
+                topLine = top;
             }
 
             @Override
@@ -158,6 +161,13 @@ final class CompanionPqFixture implements AutoCloseable {
         AgentKpqSessionRegistry.remove(doors.session);
         lifecycle.runEnded(new AgentPartyQuestHandback.RunEnded("kpq", doors.session.sessionId(), ANN, success,
                 success ? "completed" : "KPQ stopped", 5_000L, pace));
+    }
+
+    /** Ann left stage 1 to run it again (the KPQ re-roll): the run's session ends as the Agent layer tells it. */
+    void sessionRerolled() {
+        AgentKpqSessionRegistry.remove(doors.session);
+        lifecycle.runEnded(new AgentPartyQuestHandback.RunEnded("kpq", doors.session.sessionId(), ANN, false,
+                AgentPartyQuestHandback.REROLLED, 5_000L, null));
     }
 
     /** Companion-ops keeps its commands in the returned queue until {@link #drain}. */

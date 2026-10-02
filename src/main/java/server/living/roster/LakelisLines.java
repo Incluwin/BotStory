@@ -18,6 +18,8 @@ import java.util.Set;
  */
 public final class LakelisLines {
     static final String HOLD_ON = "Hold on, they're lining up.";
+    /** Above the lineup, to a leader back soon after he left stage 1 to run it again (the KPQ re-roll). */
+    static final String BACK_ALREADY = "Back already? Cloto must have been in a mood.";
     static final String PARTY_CHANGED = "Your party changed while I was getting things ready. Talk to me again.";
     static final String CATCHING_BREATH = "Your crew is still catching their breath. Give them a moment.";
     static final String TOO_FEW = "I need at least three of you, all between level 21 and 30.";

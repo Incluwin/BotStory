@@ -38,6 +38,11 @@ final class CompanionRun {
     volatile boolean started;
     /** The party cleared stage 5 (EventInstanceManager.clearPQ): its companions' records count it cleared. */
     volatile boolean cleared;
+    /**
+     * The leader chose to leave in stage 1 and run it again (the KPQ re-roll, AgentPartyQuestHandback.REROLLED): no
+     * clear and no failure, so its companions' records skip it, and its clear-time record learns its opening only.
+     */
+    volatile boolean rerolled;
     /** Companions asked to tap out, marked before their hold runs: recovery asks the handback meanwhile. */
     final Set<Integer> tappingOut = ConcurrentHashMap.newKeySet();
     /** Companions whose tap-out hold ran before the stage-5 clear: their records count it tapped out. */

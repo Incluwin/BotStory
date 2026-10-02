@@ -121,6 +121,32 @@ class CompanionRunRecorderTest {
     }
 
     @Test
+    void aRerolledRunWritesNoRowAndTheClearRecordCountsOnlyTheRunsThatWentTheDistance() {
+        game.store.performance.addAll(List.of(row(900, "cleared"), row(900, "failed"), row(900, "cleared")));
+        records.load();
+        assertEquals("cleared 2 of 3", clearRecord(900));
+
+        fx.yes();
+        fx.sessionRerolled(); // Ann left stage 1 to run it again
+
+        assertEquals(3, game.store.performance.size(), "no row for a re-roll");
+        assertEquals(new CompanionRunStats(3, 2), records.stats(900));
+        assertEquals(CompanionRunRecorder.NONE, records.stats(901));
+        assertEquals("cleared 2 of 3", clearRecord(900), "the lineup's record is as it was");
+
+        fx.yes();
+        fx.sessionEnds(false); // a run that went the distance and failed does count
+        assertEquals("cleared 2 of 4", clearRecord(900));
+    }
+
+    /** The lineup's "cleared X of Y" for this companion as Lakelis would show it now. */
+    private String clearRecord(int companionId) {
+        LineupPlan plan = fx.service.plan(game.ann, "kpq");
+        return java.util.stream.Stream.concat(plan.lineup().stream(), plan.extras().stream())
+                .filter(seat -> seat.characterId() == companionId).findFirst().orElseThrow().clearRecord();
+    }
+
+    @Test
     void anAbortedRunWritesNothing() {
         fx.doors.start = PqEntryPort.Start.NO_LOBBY;
 

@@ -37,6 +37,8 @@ public final class PqPaceLedger {
     private static final Logger log = LoggerFactory.getLogger(PqPaceLedger.class);
     /** The leader a fit is made for when the lineup's leader has no run on record: no run has id 0. */
     static final int ANY_LEADER = 0;
+    /** pq_run_pace.outcome of a run its leader left in stage 1 to run again (AgentPartyQuestHandback.REROLLED). */
+    static final String REROLLED = "rerolled";
 
     private final LivingWorld world;
     private final Function<String, AgentPqPaceProfile> profiles;
@@ -68,6 +70,19 @@ public final class PqPaceLedger {
 
         boolean cleared() {
             return "cleared".equals(outcome) && actualS != null && actualS > 0;
+        }
+
+        /**
+         * The run as the fit reads it. A re-rolled run (its leader left stage 1 to run it again) teaches its opening
+         * only: the spans it saw complete (the Yes and stage 1's opening; its grind was cut short and is incomplete),
+         * and nothing of its members' stage-1 swings and kills, cut short with it.
+         */
+        AgentPqPace fitted() {
+            if (!REROLLED.equals(outcome)) {
+                return pace;
+            }
+            return new AgentPqPace(pace.questKey(), pace.sessionId(), pace.leaderId(), pace.startedAtMs(), 0L,
+                    pace.spans(), pace.members(), List.of(), pace.drawn());
         }
     }
 
@@ -192,7 +207,8 @@ public final class PqPaceLedger {
     }
 
     /**
-     * The row of a run that ended: its outcome (cleared when the run or its pace saw the clear), the estimate it was
+     * The row of a run that ended: its outcome (cleared when the run or its pace saw the clear, rerolled when its
+     * leader left stage 1 to run it again, else failed), the estimate it was
      * shown at the Yes (its quantiles null when none was made, and when it said the lineup could not clear: then only
      * the records behind it are kept, so an unclearable estimate never counts as a time), its time from the start to
      * the clear (null unless the pace saw the clear), and its pace.
@@ -205,7 +221,7 @@ public final class PqPaceLedger {
                 ? (int) Math.round(Math.max(0L, pace.clearedAtMs() - pace.startedAtMs()) / 1000.0d) : null;
         return new PqRunPaceRow(0L, pace.questKey(), pace.sessionId().isEmpty() ? run.sessionId : pace.sessionId(),
                 pace.leaderId(), run.partySize, Math.max(0, run.memberIds.size() - companions.size()), epoch,
-                pace.cleared() || run.cleared ? "cleared" : "failed",
+                pace.cleared() || run.cleared ? "cleared" : run.rerolled ? REROLLED : "failed",
                 timed == null ? null : seconds(timed.p10S()), timed == null ? null : seconds(timed.p50S()),
                 timed == null ? null : seconds(timed.p90S()), estimate == null ? null : estimate.recordsUsed(),
                 actualS, pace.startedAtMs(), pace.clearedAtMs(), PqPaceJson.spans(pace),
@@ -280,7 +296,7 @@ public final class PqPaceLedger {
     private Snapshot fit(AgentPqPaceProfile profile, List<Recorded> runs) {
         List<AgentPqPaceObservation> observations = new ArrayList<>();
         for (int rank = 0; rank < runs.size(); rank++) {
-            observations.add(new AgentPqPaceObservation(rank, profile.epoch(), runs.get(rank).pace()));
+            observations.add(new AgentPqPaceObservation(rank, profile.epoch(), runs.get(rank).fitted()));
         }
         Set<Integer> excluded = world.config().companionPqPaceExcludedLeaders();
         Map<Integer, AgentPqPaceCalibration> byLeader = new TreeMap<>();

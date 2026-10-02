@@ -42,10 +42,12 @@ public final class CompanionRunRecorder {
     /**
      * On companion-ops, as the run ends: a row for each lineup companion of a run that got in, tapped out (before the
      * clear), else cleared or failed with the run, added to its record once it is written. A run that never got in has
-     * nothing to record.
+     * nothing to record, and neither has a re-rolled one (its leader left stage 1 to run it again): it is neither a
+     * clear nor a failure of its companions, so "cleared X of Y" counts only the runs that went the distance, and the
+     * re-roll itself is kept in the run's clear-time record (pq_run_pace, outcome rerolled).
      */
     void record(CompanionRun run, long nowMs) {
-        if (!run.started) {
+        if (!run.started || run.rerolled) {
             return;
         }
         int durationS = (int) Math.max(0L, (nowMs - run.startedAtMs) / 1000L);

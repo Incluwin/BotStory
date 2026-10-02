@@ -182,6 +182,8 @@ public final class LivingWorld {
         // Lakelis offers a party with companions its lineup (living_world.COMPANION_PQ_ENABLED_KEYS)
         world.partyQuests.installDesk(new server.living.roster.ui.LakelisDesk(world, world.partyQuests,
                 new server.living.roster.ui.CompanionMenus(world)));
+        // inside a run, a companion asks its leader in a window of its own whether to re-roll a heavy stage 1
+        world.partyQuestRuns.installRerollWindow(new server.living.roster.ui.RerollQuestion());
         // a companion out with its owner drinks and loots by its own settings (P3b)
         world.roster.settings().install();
         // hire:<characterId> ids resolve to hired citizens, and a released hire goes back to the population (P4)

@@ -1046,9 +1046,10 @@ public final class LivingStore {
 
     /**
      * One pq_run_pace row (changeset 44): how one companion party-quest run went against the entry NPC's estimate at
-     * its Yes. {@code outcome} is cleared or failed; the est_* fields are null when no estimate was made, and
-     * {@code actualS} is null unless the run cleared. {@code spans}, {@code members} and {@code drawn} are JSON
-     * (PqPaceLedger writes and reads them); {@code recordedAtMs} is kept in UTC. {@code id} is 0 until written.
+     * its Yes. {@code outcome} is cleared, failed or rerolled (its leader left stage 1 to run it again); the est_*
+     * fields are null when no estimate was made, and {@code actualS} is null unless the run cleared. {@code spans},
+     * {@code members} and {@code drawn} are JSON (PqPaceLedger writes and reads them); {@code recordedAtMs} is kept in
+     * UTC. {@code id} is 0 until written.
      */
     public record PqRunPaceRow(long id, String pqKey, String sessionId, int leaderId, int partySize, int humans,
                                int epoch, String outcome, Integer estP10S, Integer estP50S, Integer estP90S,
