@@ -8,6 +8,7 @@ import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestTestDeploymentRuntime;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 import server.agents.capabilities.townlife.AgentTownLifeAdmissionMode;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeVisitRequest;
@@ -60,13 +61,18 @@ public final class AgentPartyQuestLifecycleRuntime {
     }
 
     public static void childFinished(String sessionId, boolean success, String reason, long nowMs) {
+        childFinished(sessionId, success, reason, nowMs, null);
+    }
+
+    /** As above, with the run's pace for the host's clear-time records (null when the quest reports none). */
+    public static void childFinished(String sessionId, boolean success, String reason, long nowMs, AgentPqPace pace) {
         if (sessionId == null || sessionId.isBlank()) return;
         AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.engagements().stream()
                 .filter(candidate -> sessionId.equals(candidate.activeSessionId()))
                 .findFirst().orElse(null);
         if (engagement == null) {
             AgentPartyQuestHandback.runEnded(
-                    new AgentPartyQuestHandback.RunEnded("", sessionId, 0, success, reason, nowMs));
+                    new AgentPartyQuestHandback.RunEnded("", sessionId, 0, success, reason, nowMs, pace));
             return;
         }
         engagement.finishRun(success, reason, nowMs);
@@ -79,7 +85,7 @@ public final class AgentPartyQuestLifecycleRuntime {
         }
         if (engagement.state() == AgentPartyQuestEngagement.State.RECOVERING) recover(engagement, nowMs);
         AgentPartyQuestHandback.runEnded(new AgentPartyQuestHandback.RunEnded(
-                engagement.questKey(), sessionId, engagement.operatorId(), success, reason, nowMs));
+                engagement.questKey(), sessionId, engagement.operatorId(), success, reason, nowMs, pace));
     }
 
     /** Only a test run (its next run starts from the hold) or an Agent bound for TownLife still needs the hold. */

@@ -2,9 +2,11 @@ package server.agents.capabilities.partyquest;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -92,6 +94,39 @@ class PostRunHandbackTest {
                 new AgentPartyQuestHandback.RunEnded("", "session-gone", 0, true, "completed", 6_000L)), ended);
         // The run's engagement was already recovered and removed when its host heard the run end.
         assertNull(engagementAtRunEnd.getFirst());
+    }
+
+    @Test
+    void aRunsPaceReachesItsHostWhetherOrNotAnEngagementHeldTheRun() {
+        List<AgentPartyQuestHandback.RunEnded> ended = new ArrayList<>();
+        AgentPartyQuestHandback.install(new AgentPartyQuestHandback.Rule() {
+            @Override
+            public AgentPartyQuestHandback.Handback handback(int agentCharacterId, String questKey) {
+                return AgentPartyQuestHandback.Handback.FOLLOW_LEADER;
+            }
+
+            @Override
+            public void runEnded(AgentPartyQuestHandback.RunEnded run) {
+                ended.add(run);
+            }
+        });
+        activeRun(AgentPartyQuestEngagement.Mode.PRODUCTION, "session-5");
+        AgentPqPace held = pace("session-5", 4_900L);
+        AgentPqPace orphan = pace("session-orphan", 0L);
+
+        AgentPartyQuestLifecycleRuntime.childFinished("session-5", true, "completed", 5_000L, held);
+        AgentPartyQuestLifecycleRuntime.childFinished("session-orphan", false, "KPQ stopped", 6_000L, orphan);
+        AgentPartyQuestLifecycleRuntime.childFinished("session-plain", true, "completed", 7_000L);
+
+        assertEquals(List.of(
+                new AgentPartyQuestHandback.RunEnded("kpq", "session-5", OPERATOR, true, "completed", 5_000L, held),
+                new AgentPartyQuestHandback.RunEnded("", "session-orphan", 0, false, "KPQ stopped", 6_000L, orphan),
+                new AgentPartyQuestHandback.RunEnded("", "session-plain", 0, true, "completed", 7_000L, null)), ended);
+    }
+
+    private static AgentPqPace pace(String sessionId, long clearedAtMs) {
+        return new AgentPqPace("kpq", sessionId, OPERATOR, 1_000L, clearedAtMs,
+                List.of(new AgentPqPace.Span("s1.open", 1_200L, 16_400L, 0.0d, true)), List.of(), List.of(), Map.of());
     }
 
     private AgentPartyQuestEngagement activeRun(AgentPartyQuestEngagement.Mode mode, String sessionId) {
