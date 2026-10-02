@@ -2317,7 +2317,7 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_MISSING_PASS_GRACE_MS: '7000'
     # Values: 30000-600000 milliseconds. Recommended: 45000, about twice the 21-24 s offline route from King Slime's floor to Cloto. Keep it below KPQ_PHASE_TIMEOUT_MS.
     # Purpose: Bounds how long a companion run's stage-5 companions try to reach a human leader they have a route to before they leave the passes by Cloto, on his way there, and tell him.
-    # Technical: The clock starts at the pass hand-over, or when the leader last could not be reached at all (a deliverer then waits by Cloto and the bound does not run); past it the deliverer walks to Cloto's approach and drops there, and past twice it, or when Cloto cannot be reached either, it drops where it stands.
+    # Technical: The clock starts at the pass hand-over, or when a deliverer that found no route to the leader (it then waits by Cloto and the bound does not run) sets out for him: once he stands on Cloto's level with a route to him, or once he has been in reach this long without coming. Past it the deliverer walks to Cloto's approach and drops there, and past twice it, or when Cloto cannot be reached either, it drops where it stands.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS: '45000'
     # Values: 5000-120000 milliseconds. Recommended: 20000. Live a full sweep took 15 s; lower values may set out while a reachable pass is still being fetched.
     # Purpose: Starts a companion run's stage-5 pass hand-over even while a carrier still sweeps, and bounds the one re-collect of passes left lying, so a pass that cannot be fetched cannot hold the run up to its 180 s expiry.
