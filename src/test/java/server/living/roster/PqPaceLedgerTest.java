@@ -228,6 +228,23 @@ class PqPaceLedgerTest {
     }
 
     @Test
+    void onlyTheNewestRunsAFitReadsAreKeptAsARestartWouldReadThem() {
+        record(run("kpq-old", ANN, List.of(900, 901), SHOWN), pace("kpq-old", ANN, List.of(900, 901), true), START);
+        for (int i = 0; i < AgentPqPaceCalibration.maxRows() - 1; i++) {
+            record(run("kpq-" + i, BEN, List.of(902), SHOWN), pace("kpq-" + i, BEN, List.of(902), true), START);
+        }
+        assertEquals(226.0d, ledger.lastClearS("kpq", ANN, ids(900, 901)), "still among the newest");
+
+        record(run("kpq-new", BEN, List.of(902), SHOWN), pace("kpq-new", BEN, List.of(902), true), START);
+
+        assertEquals(0.0d, ledger.lastClearS("kpq", ANN, ids(900, 901)), "aged out of what a fit reads");
+        PqPaceLedger restarted = new PqPaceLedger(world, key -> profile);
+        restarted.load();
+        assertEquals(0.0d, restarted.lastClearS("kpq", ANN, ids(900, 901)));
+        assertEquals(restarted.calibration("kpq", ANN), ledger.calibration("kpq", ANN));
+    }
+
+    @Test
     void aColdProfileReadsNothingAndWritesItsRunUnderNoEpochLearningNothing() {
         profile = null;
 
