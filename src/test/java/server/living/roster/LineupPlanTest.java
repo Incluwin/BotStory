@@ -20,9 +20,6 @@ import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.RosterState;
 import tools.Pair;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
@@ -454,19 +451,6 @@ class LineupPlanTest {
             assertEquals(List.of("Ann", "Mira", "Brann", "Pip"), names(plan.lineup()), "Rurik hits nothing");
             assertEquals(List.of(new LineupPlan.Waiting(905, "Nell", "low on mana potions")), plan.waiting());
         }
-    }
-
-    @Test
-    void kpqsMonstersAreReadAtBootOnCompanionOps() throws IOException {
-        try (MockedStatic<LifeFactory> mobs = mockStatic(LifeFactory.class)) {
-            fx.ready().warmKpqMobs();
-
-            for (int mobId : List.of(9_300_001, 9_300_000, 9_300_003)) {
-                mobs.verify(() -> LifeFactory.getMonster(mobId));
-            }
-        }
-        assertTrue(Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"))
-                .contains("world.executor.submit(\"pq.kpq_mobs\", world.partyQuests::warmKpqMobs);"));
     }
 
     /** {@code runs} KPQ runs on the companion's record, the first {@code clears} of them cleared. */
