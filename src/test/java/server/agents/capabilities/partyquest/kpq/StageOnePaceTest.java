@@ -12,7 +12,9 @@ import server.agents.capabilities.combat.AgentCombatVariationRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.capabilities.movement.AgentGroundingService;
+import server.agents.capabilities.combat.AgentCombatSkillUsageStateRuntime;
 import server.agents.field.AgentFieldObservationState;
+import server.agents.operations.events.AgentCombatPostureChangedEvent;
 import server.agents.operations.events.AgentMobKilledEvent;
 import server.agents.operations.events.AgentOperationalEventProjectionState;
 import server.agents.plans.AgentScriptItemActionService;
@@ -20,6 +22,7 @@ import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.simulation.AgentSimulationMode;
 import server.life.NPC;
 import server.maps.MapItem;
 
@@ -363,22 +366,34 @@ class StageOnePaceTest {
         // What Mira did before this run is not stage 1's.
         kill(mira, 1);
         entry(2).capabilityStates().require(AgentFieldObservationState.STATE_KEY).attack(1, 0);
+        AgentCombatSkillUsageStateRuntime.record(entry(2), 0, 10L);
+        AgentCombatSkillUsageStateRuntime.recordDegenerate(entry(2));
         try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
             AgentKpqCoordinator.tick(session, 2_000L);
             collecting(session, mira, 0);
             session.member(3).markPassCreated(2_500L);
             holdingPass(session, pip);
             when(mira.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(4);
+            AgentFieldObservationState field = entry(2).capabilityStates().require(AgentFieldObservationState.STATE_KEY);
+            field.posture(AgentCombatPostureChangedEvent.Posture.MELEE, 9_300_001, new Point(), "", 2_500L);
+            // Unwatched for its first second, she runs at the background cadence.
+            entry(2).simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 2_000L);
             AgentKpqCoordinator.tick(session, 3_000L);
+            entry(2).simulationState().transitionTo(AgentSimulationMode.PRESENTATION, 3_000L);
+            entry(2).movementPhysicsState().setInAir(true);
             kill(mira, 2);
             kill(mira, 3);
-            AgentFieldObservationState field = entry(2).capabilityStates().require(AgentFieldObservationState.STATE_KEY);
             field.attack(1, 0);
             field.attack(1, 0);
             field.attack(0, 1);
+            AgentCombatSkillUsageStateRuntime.record(entry(2), 0, 50L);
+            AgentCombatSkillUsageStateRuntime.record(entry(2), 0, 50L);
+            AgentCombatSkillUsageStateRuntime.record(entry(2), 4_001_344, 80L);
+            AgentCombatSkillUsageStateRuntime.recordDegenerate(entry(2));
             // Mira has her ten, so Pip hands Ben its pass and helps.
             when(mira.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(10);
             AgentKpqCoordinator.tick(session, 4_000L);
+            entry(2).movementPhysicsState().setInAir(false);
             when(run.event.getProperty("1stageclear")).thenReturn("true");
             AgentKpqCoordinator.tick(session, 5_000L);
             AgentKpqCoordinator.tick(session, 6_000L);
@@ -386,10 +401,17 @@ class StageOnePaceTest {
             String id = session.sessionId();
             assertEquals(List.of(
                             "KPQ Stage 1 summary: session=" + id + " agent=Mira stageMs=3000 kills=2 coupons=10 "
-                                    + "attacks=3 hits=2 misses=1 passAtMs=-1 roleMs={COUPON_COLLECTOR=3000}",
+                                    + "attacks=3 hits=2 misses=1 passAtMs=-1 roleMs={COUPON_COLLECTOR=3000} "
+                                    + "roleKills={COUPON_COLLECTOR=2} roleAttacks={COUPON_COLLECTOR=3} "
+                                    + "postureMs={MELEE=2500} climbMs=0 airMs=1000 "
+                                    + "simulationMs={BACKGROUND_ACTIVE=1000, PRESENTATION=2000} "
+                                    + "skills={0=2, 4001344=1} degenerate=1",
                             "KPQ Stage 1 summary: session=" + id + " agent=Pip stageMs=3000 kills=0 coupons=0 "
                                     + "attacks=0 hits=0 misses=0 passAtMs=500 "
-                                    + "roleMs={PASS_DELIVERER=2000, COMBAT_HELPER=1000}"),
+                                    + "roleMs={PASS_DELIVERER=2000, COMBAT_HELPER=1000} "
+                                    + "roleKills={PASS_DELIVERER=0, COMBAT_HELPER=0} "
+                                    + "roleAttacks={PASS_DELIVERER=0, COMBAT_HELPER=0} postureMs={} climbMs=0 "
+                                    + "airMs=0 simulationMs={PRESENTATION=3000} skills={} degenerate=0"),
                     log.startingWith("KPQ Stage 1 summary: "));
         }
     }

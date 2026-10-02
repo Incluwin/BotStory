@@ -96,6 +96,8 @@ public final class AgentKpqSession {
     private int stage5PassesLostWithMembers;
     private int leaderPassesSeen = -1;
     private long lastPassDropAtMs;
+    private long lastPuzzleVerdictAtMs;
+    private int formationReadyLoggedAttemptId = -1;
     private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
 
@@ -261,6 +263,7 @@ public final class AgentKpqSession {
         // The leader's passes are counted afresh in each stage: Cloto takes stage 1's.
         leaderPassesSeen = -1;
         lastPassDropAtMs = 0L;
+        formationReadyLoggedAttemptId = -1;
         // Companions fight King Slime while the leader still climbs stage 4; a fight under way is reported whole.
         boolean bossFightUnderWay = stage5BossCombatStartedAtMs > 0L && !stage5BossCombatReported;
         if (!bossFightUnderWay) {
@@ -369,9 +372,24 @@ public final class AgentKpqSession {
         return consumeHumanPuzzleValidation(stage) != null;
     }
 
-    /** Every participant of the current attempt stands in place and has held still for the settle time. */
-    synchronized void markFormationReady() {
+    /**
+     * Every participant of the current attempt stands in place and has held still for the settle time. True the first
+     * time this attempt's formation is ready in this stage, for the one log line that times it.
+     */
+    synchronized boolean markFormationReady() {
         formationReadyAttemptId = attemptId;
+        if (formationReadyLoggedAttemptId == attemptId) return false;
+        formationReadyLoggedAttemptId = attemptId;
+        return true;
+    }
+
+    /** When Cloto's last puzzle verdict, accepted or not, reached the coordinator; 0 before the first. */
+    synchronized long lastPuzzleVerdictAtMs() {
+        return lastPuzzleVerdictAtMs;
+    }
+
+    synchronized void markPuzzleVerdict(long nowMs) {
+        lastPuzzleVerdictAtMs = Math.max(1L, nowMs);
     }
 
     synchronized void clearFormationReady() {

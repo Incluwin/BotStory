@@ -19,6 +19,7 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.combat.AgentCombatSkillUsageStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.looting.AgentLootCollectionPolicyConfig;
@@ -353,7 +354,11 @@ final class AgentKpqCoordinator {
                 initializeStageMovementDelays(session, 1, nowMs);
                 for (AgentKpqMemberState member : session.members()) {
                     AgentRuntimeEntry entry = entry(member.characterId());
-                    if (entry != null) member.beginStage1Tally(combatCounts(entry, nowMs), nowMs);
+                    if (entry != null) {
+                        member.beginStage1Tally(combatCounts(entry, nowMs), nowMs);
+                        member.beginStage1Profile(postureMs(entry, nowMs, Map.of()), skillAttacks(entry, Map.of()),
+                                AgentCombatSkillUsageStateRuntime.degenerateAttacks(entry));
+                    }
                 }
                 transition(session, AgentKpqSession.Phase.STAGE_1, nowMs);
             } else if (blockedTooLong(session, "enter-partial-party", nowMs)) {
@@ -391,7 +396,7 @@ final class AgentKpqCoordinator {
 
     private static void stage1(
             AgentKpqSession session, Character leader, Character narrator, long nowMs) {
-        session.members().forEach(member -> member.tallyStage1Role(nowMs));
+        session.members().forEach(member -> tallyStageOne(member, nowMs));
         if ("true".equals(KPQ.property(leader, "1stageclear"))) {
             if (session.claimStageOneSummary()) reportStageOne(session, nowMs);
             clearStageOneLandingSafety(session, leader);
@@ -764,6 +769,7 @@ final class AgentKpqCoordinator {
         boolean humanLeader = !isAgent(session, leader.getId());
         // A rejection Cloto gave the formation as it stood counts now, even if a mover has stepped off since.
         if (humanLeader && session.consumeHumanPuzzleRejection(stage)) {
+            session.markPuzzleVerdict(nowMs);
             advancePuzzleAttempt(session, leader, definition, order.size(), attempt, nowMs);
             return;
         }
@@ -831,7 +837,15 @@ final class AgentKpqCoordinator {
             session.clearFormationReady();
             return;
         }
-        session.markFormationReady();
+        if (session.markFormationReady() && session.mode() != AgentKpqSession.Mode.BACKGROUND_POPULATION) {
+            // Paired with the verdict lines, it splits each check into the companions re-forming and the check.
+            long verdictAtMs = session.lastPuzzleVerdictAtMs();
+            log.info("KPQ puzzle formation ready: session={} stage={} attempt={} attemptId={} sinceVerdictMs={} "
+                            + "phaseMs={} humanLeader={}",
+                    session.sessionId(), stage, attempt, session.attemptId(),
+                    verdictAtMs == 0L ? -1L : nowMs - verdictAtMs, nowMs - session.phaseEnteredAtMs(),
+                    humanLeader);
+        }
         AgentKpqMemberState fidgeter = AgentKpqPuzzleFidgetBehavior.select(
                 session, participants.subList(0, 3));
         if (fidgeter != null && fidgeter.fidgetedAttemptId() != session.attemptId()) {
@@ -881,6 +895,7 @@ final class AgentKpqCoordinator {
                         "check with cloto", "check this formation with Cloto"), nowMs, true);
                 return;
             }
+            session.markPuzzleVerdict(nowMs);
             if (validation.accepted()) return;
             advancePuzzleAttempt(session, leader, definition, order.size(), attempt, nowMs);
             return;
@@ -895,6 +910,7 @@ final class AgentKpqCoordinator {
             return;
         }
         session.clearBlocker();
+        session.markPuzzleVerdict(nowMs);
         if (!"true".equals(KPQ.property(leader, definition.clearProperty()))) {
             advancePuzzleAttempt(session, leader, definition, order.size(), attempt, nowMs);
         }
@@ -3703,14 +3719,72 @@ final class AgentKpqCoordinator {
             if (member.memberType() != AgentKpqMemberState.MemberType.AGENT || entry == null || agent == null) {
                 continue;
             }
-            AgentKpqMemberState.CombatCounts combat = member.stage1Combat(combatCounts(entry, nowMs));
+            AgentKpqMemberState.CombatCounts now = combatCounts(entry, nowMs);
+            AgentKpqMemberState.CombatCounts combat = member.stage1Combat(now);
+            member.closeStage1RoleCombat(now);
+            Map<AgentKpqMemberState.Role, Long> roleKills = new TreeMap<>();
+            Map<AgentKpqMemberState.Role, Long> roleAttacks = new TreeMap<>();
+            Map<AgentKpqMemberState.Role, Long> roleMs = member.stage1RoleMs();
+            member.stage1RoleCombat().forEach((role, counts) -> {
+                // A role held for no time and nothing done in it (WAITING at entry) is left out.
+                if (counts.kills() > 0L || counts.attacks() > 0L || roleMs.containsKey(role)) {
+                    roleKills.put(role, counts.kills());
+                    roleAttacks.put(role, counts.attacks());
+                }
+            });
+            Map<String, Long> footingMs = member.stage1FootingMs();
             log.info("KPQ Stage 1 summary: session={} agent={} stageMs={} kills={} coupons={} attacks={} hits={} "
-                            + "misses={} passAtMs={} roleMs={}",
+                            + "misses={} passAtMs={} roleMs={} roleKills={} roleAttacks={} postureMs={} climbMs={} "
+                            + "airMs={} simulationMs={} skills={} degenerate={}",
                     session.sessionId(), agent.getName(), nowMs - session.phaseEnteredAtMs(), combat.kills(),
                     member.stage1CouponsLooted(), combat.attacks(), combat.hitLines(), combat.missLines(),
                     member.stage1PassAtMs() == 0L ? -1L : member.stage1PassAtMs() - session.phaseEnteredAtMs(),
-                    new TreeMap<>(member.stage1RoleMs()));
+                    new TreeMap<>(member.stage1RoleMs()), roleKills, roleAttacks,
+                    postureMs(entry, nowMs, member.stage1PostureBaseline()),
+                    footingMs.getOrDefault(PrimitiveCapabilityGateway.Footing.ROPE.name(), 0L),
+                    footingMs.getOrDefault(PrimitiveCapabilityGateway.Footing.AIR.name(), 0L),
+                    new TreeMap<>(member.stage1SimulationMs()),
+                    skillAttacks(entry, member.stage1SkillBaseline()),
+                    Math.max(0L, AgentCombatSkillUsageStateRuntime.degenerateAttacks(entry)
+                            - member.stage1DegenerateBaseline()));
         }
+    }
+
+    /**
+     * Each stage-1 tick: the role's time, the kills and attacks of a role just left, and where the Agent stood and
+     * how it was simulated. Only a role change reads the kill and attack counters.
+     */
+    private static void tallyStageOne(AgentKpqMemberState member, long nowMs) {
+        member.tallyStage1Role(nowMs);
+        if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) return;
+        AgentRuntimeEntry entry = entry(member.characterId());
+        Character agent = entry == null ? null : character(member.characterId());
+        if (agent == null) return;
+        if (member.stage1CombatRoleChanged()) member.closeStage1RoleCombat(combatCounts(entry, nowMs));
+        var simulation = entry.simulationState();
+        member.sampleStage1(ACTIONS.footing(agent).name(),
+                simulation == null ? null : simulation.mode().name(), nowMs);
+    }
+
+    /** Milliseconds per combat posture since {@code baseline}, from the field observation's own accounting. */
+    private static Map<String, Long> postureMs(AgentRuntimeEntry entry, long nowMs, Map<String, Long> baseline) {
+        Map<String, Long> spent = new TreeMap<>();
+        entry.capabilityStates().require(AgentFieldObservationState.STATE_KEY).snapshot(nowMs).postureTimeMs()
+                .forEach((posture, ms) -> {
+                    long since = ms - baseline.getOrDefault(posture.name(), 0L);
+                    if (since > 0L) spent.put(posture.name(), since);
+                });
+        return spent;
+    }
+
+    /** Attacks per skill id (0 is the basic attack) since {@code baseline}. */
+    private static Map<Integer, Long> skillAttacks(AgentRuntimeEntry entry, Map<Integer, Long> baseline) {
+        Map<Integer, Long> swung = new TreeMap<>();
+        AgentCombatSkillUsageStateRuntime.snapshot(entry).forEach((skillId, usage) -> {
+            long since = usage[0] - baseline.getOrDefault(skillId, 0L);
+            if (since > 0L) swung.put(skillId, since);
+        });
+        return swung;
     }
 
     /** The kills and attack lines an Agent has had since it logged in; a stage's figures are differences. */
