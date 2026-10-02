@@ -55,9 +55,9 @@
   look: { gender: female }
   title: "Gunner"
   job: GUNSLINGER
-  level: { min: 28, max: 31 }
+  level: { min: 30, max: 31 }
   strength: SEASONED
-  loadout: nautilus-gunslinger-l28
+  loadout: nautilus-gunslinger-l30
   personality: efficient-v1
   home:
     town: nautilus

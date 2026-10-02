@@ -52,6 +52,7 @@ public final class ProgressionLedger {
             if (agent.getLevel() < target || agent.getJob() == Job.BEGINNER && target >= 10 || !agent.getJob().equals(job) && target >= 30) {
                 ResidentShaper.shapeTo(agent, job, target, loadout);
             }
+            ResidentShaper.wearMissingEquips(agent, loadout, false); // a band edited after shaping (citizens are never dressed)
             CitizenGear.upgrade(agent, job, loadout); // every load: a level bumped in SQL skipped the shaping above
             long expectedMeso = Market.expectedMeso(agent.getLevel());
             if (agent.getMeso() < expectedMeso / 2) {

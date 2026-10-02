@@ -380,6 +380,7 @@ public final class ResidentRuntime {
         String loadoutId = currentLoadoutId(session.persona);
         int wanted = ResidentShaper.RECIPE_VERSION * 1000 + Math.abs(loadoutId == null ? 0 : loadoutId.hashCode() % 1000);
         if (state.shapedVersion() == wanted) {
+            wearMissingEquips(session.persona, agent, loadoutId);
             return;
         }
         Loadout loadout = world.content().loadout(loadoutId);
@@ -395,9 +396,23 @@ public final class ResidentRuntime {
         return chapter != null && chapter.loadout() != null ? chapter.loadout() : persona.loadout();
     }
 
+    /** Pieces its loadout gained since it was shaped (an edit keeps the shaped version); a hire keeps its own gear. */
+    private void wearMissingEquips(Persona persona, Character agent, String loadoutId) {
+        Loadout loadout = world.content().loadout(loadoutId);
+        if (agent == null || loadout == null || LivingContent.isHire(persona.id())) {
+            return;
+        }
+        try {
+            ResidentShaper.wearMissingEquips(agent, loadout, true);
+        } catch (RuntimeException failure) {
+            log.warn("Resident {}: wearing missing loadout equips failed", persona.id(), failure);
+        }
+    }
+
     private void dress(Persona persona, Character agent) {
         try {
-            ResidentWardrobe.dress(agent, persona, world.content().loadout(currentLoadoutId(persona)));
+            ResidentWardrobe.dress(agent, persona, world.content().loadout(currentLoadoutId(persona)),
+                    ResidentWardrobe.handedOut(world.content().loadouts().values()));
         } catch (RuntimeException failure) {
             log.warn("Resident {}: dressing failed", persona.id(), failure);
         }
@@ -518,6 +533,7 @@ public final class ResidentRuntime {
             } else if (!wearsLook(session.agent(), looks.resolve(current))) {
                 standby(session, "look changed"); // reloads from the database with the new look
             } else {
+                wearMissingEquips(current, session.agent(), currentLoadoutId(current));
                 dress(current, session.agent());
             }
         }
