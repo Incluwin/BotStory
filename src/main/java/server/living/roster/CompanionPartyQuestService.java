@@ -684,11 +684,13 @@ public final class CompanionPartyQuestService {
         }
         AgentPqPaceEstimate estimate = clearTime.estimate();
         log.info("companion {} clear time at Yes for {}: members={} clearable={} p10/p50/p90={}/{}/{}s overTimer={}"
-                        + " objective={}s own={}s source={} records={} partyDps={} weaknesses={}", plan.pqKey(),
+                        + " time={}s objective={}s ownTime={}s ownObjective={}s source={} records={} partyDps={}"
+                        + " weaknesses={}", plan.pqKey(),
                 leader.getName(), plan.memberIds(), estimate.clearable(), Math.round(estimate.p10S()),
                 Math.round(estimate.p50S()), Math.round(estimate.p90S()),
                 String.format(java.util.Locale.ROOT, "%.3f", estimate.overTimerChance()),
-                seconds(clearTime.objectiveS()), seconds(clearTime.ownObjectiveS()),
+                seconds(clearTime.timeS()), seconds(clearTime.objectiveS()), seconds(clearTime.ownTimeS()),
+                seconds(clearTime.ownObjectiveS()),
                 estimate.source(), estimate.recordsUsed(), estimate.partyDpsByMob(), estimate.weaknesses());
     }
 

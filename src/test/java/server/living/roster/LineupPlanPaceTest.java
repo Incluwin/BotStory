@@ -101,6 +101,7 @@ class LineupPlanPaceTest {
         assertTrue(names(near.lineup()).contains("Rin"), "30 s away to save 100 s");
         assertEquals(List.of("Rin"), names(near.onTheWay()));
         assertEquals(930.0d, near.clearTime().objectiveS(), 1e-9, "the wait counts in the objective");
+        assertEquals(930.0d, near.clearTime().timeS(), 1e-9, "and in the time");
         assertFalse(near.startable());
     }
 
@@ -191,6 +192,14 @@ class LineupPlanPaceTest {
 
         assertFalse(plan.memberIds().contains(904));
         assertEquals(1200.0d, plan.clearTime().objectiveS(), 1e-9);
+        assertEquals(1200.0d, plan.clearTime().timeS(), 1e-9);
+
+        LineupPlan pick = LineupPlan.build("kpq", ANN, 25, party, Set.of(901, 902, 904), pace);
+
+        assertEquals(1900.0d, pick.clearTime().objectiveS(), 1e-9, "the clock's risk weighs");
+        assertEquals(1000.0d, pick.clearTime().timeS(), 1e-9, "but the time is the median");
+        assertEquals(1200.0d, pick.clearTime().ownObjectiveS(), 1e-9);
+        assertEquals(1200.0d, pick.clearTime().ownTimeS(), 1e-9);
     }
 
     @Test

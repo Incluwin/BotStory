@@ -276,7 +276,9 @@ public final class LakelisLines {
 
     /**
      * Her line under "Who goes in?" for the leader's pick of three or four: how long it should take, and how much
-     * sooner her own choice would be once that is {@link LineupPlan#SOONER_MS} or more; null without a clear time.
+     * sooner her own choice would get them through, said when hers is {@link LineupPlan#SOONER_MS} better by the
+     * objective she weighs lineups by and that much sooner in time (the minutes she says are time, never the clock's
+     * risk); null without a clear time.
      */
     public static String chooseLine(LineupPlan plan) {
         LineupPlan.ClearTime clearTime = plan.clearTime();
@@ -284,20 +286,21 @@ public final class LakelisLines {
         if (clearTime == null || size < LineupPlan.MIN_SIZE || size > LineupPlan.MAX_SIZE) {
             return null;
         }
-        return chooseLine(clearTime.estimate(), clearTime.objectiveS(), clearTime.ownObjectiveS(),
-                clearTime.timerMs());
+        return chooseLine(clearTime.estimate(), clearTime.objectiveS(), clearTime.ownObjectiveS(), clearTime.timeS(),
+                clearTime.ownTimeS(), clearTime.timerMs());
     }
 
     static String chooseLine(AgentPqPaceEstimate estimate, double pickObjectiveS, double ownObjectiveS,
-                             long timerMs) {
+                             double pickTimeS, double ownTimeS, long timerMs) {
         if (estimate == null) {
             return null;
         }
         String line = timerMs > 0L && beyondTheClock(estimate, timerMs) || !estimate.clearable() ? DOUBT_THE_CLOCK
                 : "With these, I'd say about " + minutesPhrase(minutes(estimate.p50S())) + ".";
-        double gainS = pickObjectiveS - ownObjectiveS;
-        long sooner = Double.isFinite(gainS) ? minutes(gainS) : 0L;
-        if (gainS >= LineupPlan.SOONER_MS / 1000.0d && sooner >= 2L) {
+        double soonerS = LineupPlan.SOONER_MS / 1000.0d;
+        double timeGainS = pickTimeS - ownTimeS;
+        long sooner = Double.isFinite(timeGainS) ? minutes(timeGainS) : 0L;
+        if (pickObjectiveS - ownObjectiveS >= soonerS && timeGainS >= soonerS && sooner >= 2L) {
             line += " The ones I picked would get you through about " + sooner + " minutes sooner.";
         }
         return line;

@@ -160,21 +160,41 @@ class LakelisPaceLinesTest {
     void thePickHearsItsTimeAndHowMuchSoonerHersWouldBe() {
         AgentPqPaceEstimate fifteen = estimate(700, 900, 1150, 0);
 
-        assertEquals("With these, I'd say about 15 minutes.",
-                LakelisLines.chooseLine(fifteen, 900.0d, 900.0d, HALF_AN_HOUR_MS));
+        assertEquals("With these, I'd say about 15 minutes.", choose(fifteen, 900.0d, 900.0d));
         assertEquals("With these, I'd say about 15 minutes. The ones I picked would get you through about 3 minutes "
-                + "sooner.", LakelisLines.chooseLine(fifteen, 1100.0d, 900.0d, HALF_AN_HOUR_MS));
-        assertEquals("With these, I'd say about 15 minutes.",
-                LakelisLines.chooseLine(fifteen, 1010.0d, 900.0d, HALF_AN_HOUR_MS), "under 2 minutes: not said");
+                + "sooner.", choose(fifteen, 1100.0d, 900.0d));
+        assertEquals("With these, I'd say about 15 minutes.", choose(fifteen, 1010.0d, 900.0d),
+                "under 2 minutes: not said");
         assertEquals("With these, I'd say about 15 minutes. The ones I picked would get you through about 2 minutes "
-                + "sooner.", LakelisLines.chooseLine(fifteen, 1020.0d, 900.0d, HALF_AN_HOUR_MS));
-        assertEquals("With these, I'd say about 15 minutes.",
-                LakelisLines.chooseLine(fifteen, 1100.0d, Double.NaN, HALF_AN_HOUR_MS), "hers has no time");
+                + "sooner.", choose(fifteen, 1020.0d, 900.0d));
+        assertEquals("With these, I'd say about 15 minutes.", choose(fifteen, 1100.0d, Double.NaN), "hers has no time");
         assertEquals("With these, I doubt you'd beat the clock.",
-                LakelisLines.chooseLine(estimate(1300, 1650, 2300, 0), 1650.0d, 1650.0d, HALF_AN_HOUR_MS));
+                choose(estimate(1300, 1650, 2300, 0), 1650.0d, 1650.0d));
+        assertEquals("With these, I doubt you'd beat the clock. The ones I picked would get you through about 13 "
+                + "minutes sooner.", choose(estimate(1300, 1650, 2300, 0), 1650.0d, 900.0d));
         assertEquals("With these, I doubt you'd beat the clock.", LakelisLines.chooseLine(cannotClear(),
-                Double.POSITIVE_INFINITY, 1000.0d, HALF_AN_HOUR_MS), "never 'infinitely sooner'");
-        assertNull(LakelisLines.chooseLine(null, 0.0d, 0.0d, HALF_AN_HOUR_MS));
+                Double.POSITIVE_INFINITY, 1000.0d, Double.POSITIVE_INFINITY, 1000.0d, HALF_AN_HOUR_MS),
+                "never 'infinitely sooner'");
+        assertNull(LakelisLines.chooseLine(null, 0.0d, 0.0d, 0.0d, 0.0d, HALF_AN_HOUR_MS));
+    }
+
+    @Test
+    void sheSaysSoonerInTimeNeverInTheClocksRisk() {
+        // live probe: a pick with a 40 minute median against her 25, its objective swollen by the timer's risk
+        assertEquals("With these, I doubt you'd beat the clock. The ones I picked would get you through about 15 "
+                        + "minutes sooner.", LakelisLines.chooseLine(estimate(1800, 2400, 3300, 0), 2400.0d + 1700.0d,
+                        1500.0d + 400.0d, 2400.0d, 1500.0d, HALF_AN_HOUR_MS));
+        assertEquals("With these, I'd say about 17 minutes.", LakelisLines.chooseLine(estimate(800, 1000, 1500, 0),
+                1000.0d + 300.0d, 950.0d, 1000.0d, 950.0d, HALF_AN_HOUR_MS),
+                "hers is safer by the clock, but not 2 minutes sooner");
+        assertEquals("With these, I'd say about 17 minutes.", LakelisLines.chooseLine(estimate(800, 1000, 1500, 0),
+                1000.0d, 1000.0d, 1000.0d, 800.0d, HALF_AN_HOUR_MS),
+                "hers is quicker but riskier: not better by what she weighs");
+    }
+
+    /** Her line for a pick whose objective is its time (no risk from the clock) against hers. */
+    private static String choose(AgentPqPaceEstimate estimate, double pickS, double ownS) {
+        return LakelisLines.chooseLine(estimate, pickS, ownS, pickS, ownS, HALF_AN_HOUR_MS);
     }
 
     @Test
@@ -187,7 +207,7 @@ class LakelisPaceLinesTest {
         assertEquals(List.of(), LakelisLines.cautions(null, plan));
 
         LineupPlan.ClearTime two = new LineupPlan.ClearTime(estimate(700, 900, 1150, 0), HALF_AN_HOUR_MS, 900.0d,
-                900.0d, 0.0d);
+                900.0d, 900.0d, 900.0d, 0.0d);
         assertNull(LakelisLines.chooseLine(plan(2, two)), "a pick of two cannot go in: no time for it");
         assertEquals("With these, I'd say about 15 minutes.", LakelisLines.chooseLine(plan(3, two)));
         assertEquals(List.of("I haven't seen this crew at work yet, but I'd guess about a quarter of an hour if you "
@@ -211,7 +231,7 @@ class LakelisPaceLinesTest {
                 lines.addAll(LakelisLines.clearTime(estimate, 0.0d, HALF_AN_HOUR_MS));
                 lines.addAll(LakelisLines.clearTime(estimate, p50 * 1.1d, HALF_AN_HOUR_MS));
                 lines.addAll(LakelisLines.clearTime(estimate, 0.0d, 2_700_000L));
-                lines.add(LakelisLines.chooseLine(estimate, p50 + 400.0d, p50, HALF_AN_HOUR_MS));
+                lines.add(choose(estimate, p50 + 400.0d, p50));
             }
         }
         lines.addAll(LakelisLines.clearTime(cannotClear(), 0.0d, HALF_AN_HOUR_MS));

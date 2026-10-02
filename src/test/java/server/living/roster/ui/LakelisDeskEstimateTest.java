@@ -227,7 +227,7 @@ class LakelisDeskEstimateTest {
     }
 
     private static LineupPlan.ClearTime clearTime(AgentPqPaceEstimate estimate, double objectiveS, double ownS) {
-        return new LineupPlan.ClearTime(estimate, HALF_AN_HOUR_MS, objectiveS, ownS, 0.0d);
+        return new LineupPlan.ClearTime(estimate, HALF_AN_HOUR_MS, objectiveS, objectiveS, ownS, ownS, 0.0d);
     }
 
     private void whenPicked(LineupPlan plan) {

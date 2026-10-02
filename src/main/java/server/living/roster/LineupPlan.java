@@ -70,13 +70,14 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
     public record Waiting(int characterId, String name, String reason) { }
 
     /**
-     * How long the lineup should take: its estimate, the quest's timer (0: unknown), its objective (seconds; infinite
-     * when it cannot clear) and the objective of the lineup she would choose herself (the same for her own choice; for
-     * the leader's pick hers, so she can say hers is sooner; NaN when hers has none), and how long the leader's last
-     * clear with exactly these companions took (seconds; 0: none on record).
+     * How long the lineup should take: its estimate, the quest's timer (0: unknown), its objective (seconds, what she
+     * weighs lineups by; infinite when it cannot clear) and its time (the longest wait for one still on its way plus
+     * the median; infinite when it cannot clear); the objective and time of the lineup she would choose herself (the
+     * same for her own choice; for the leader's pick hers, so she can say how much sooner hers is; NaN when hers has
+     * none); and how long the leader's last clear with exactly these companions took (seconds; 0: none on record).
      */
-    public record ClearTime(AgentPqPaceEstimate estimate, long timerMs, double objectiveS, double ownObjectiveS,
-                            double lastClearS) { }
+    public record ClearTime(AgentPqPaceEstimate estimate, long timerMs, double objectiveS, double timeS,
+                            double ownObjectiveS, double ownTimeS, double lastClearS) { }
 
     /**
      * What a lineup's clear time is read from: the estimate of its members' power (humans first, the leader first of
@@ -174,14 +175,14 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
                 Weighed best = weighing.best(seatable, ownRoom, chosen);
                 if (best != null) {
                     chosen = best.chosen();
-                    clearTime = weighing.clearTime(best, best.objectiveS());
+                    clearTime = weighing.clearTime(best, best);
                 }
             } else {
                 Weighed pick = weighing.weigh(chosen);
                 if (pick != null) {
                     Weighed own = weighing.best(seatable, ownRoom,
                             roundRobin(leaderId, leaderLevel, humanSeats, seatable, ownRoom));
-                    clearTime = weighing.clearTime(pick, own == null ? Double.NaN : own.objectiveS());
+                    clearTime = weighing.clearTime(pick, own);
                 }
             }
         }
@@ -276,8 +277,11 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
         return LakelisLines.TOO_FEW;
     }
 
-    /** A lineup's companions (in the order shown), its estimate and its objective (seconds; infinite: cannot clear). */
-    private record Weighed(List<Candidate> chosen, AgentPqPaceEstimate estimate, double objectiveS) { }
+    /**
+     * A lineup's companions (in the order shown), its estimate, its objective and its time (the wait plus the median),
+     * in seconds; both infinite when it cannot clear.
+     */
+    private record Weighed(List<Candidate> chosen, AgentPqPaceEstimate estimate, double objectiveS, double timeS) { }
 
     /** Weighs lineups of the party's companions beside its humans by their clear-time estimate. */
     private record Weighing(Pace pace, int leaderId, int leaderLevel, List<Candidate> humans) {
@@ -323,7 +327,7 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             // shown in the order her turns seat them: the choice without an estimate's, when it is the same lineup
             List<Candidate> shown = Set.copyOf(best.chosen()).equals(Set.copyOf(greedy)) ? greedy
                     : roundRobin(leaderId, leaderLevel, humanSeats, best.chosen(), best.chosen().size());
-            return new Weighed(List.copyOf(shown), best.estimate(), best.objectiveS());
+            return new Weighed(List.copyOf(shown), best.estimate(), best.objectiveS(), best.timeS());
         }
 
         /** The lineup of {@code chosen} beside the humans: its estimate and objective; null without an estimate. */
@@ -346,17 +350,19 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             if (estimate == null) {
                 return null;
             }
-            double objectiveS = !estimate.clearable() ? Double.POSITIVE_INFINITY
-                    : waitS + estimate.p50S() + pace.timerMs() / 1000.0d * estimate.overTimerChance();
-            return new Weighed(List.copyOf(chosen), estimate, objectiveS);
+            double timeS = !estimate.clearable() ? Double.POSITIVE_INFINITY : waitS + estimate.p50S();
+            double objectiveS = timeS + pace.timerMs() / 1000.0d * estimate.overTimerChance();
+            return new Weighed(List.copyOf(chosen), estimate, objectiveS, timeS);
         }
 
-        ClearTime clearTime(Weighed lineup, double ownObjectiveS) {
+        /** The clear time of {@code lineup}, beside {@code own}: her own choice (null: she has none). */
+        ClearTime clearTime(Weighed lineup, Weighed own) {
             Set<Integer> companions = new LinkedHashSet<>();
             for (Candidate member : lineup.chosen()) {
                 companions.add(member.seat().characterId());
             }
-            return new ClearTime(lineup.estimate(), pace.timerMs(), lineup.objectiveS(), ownObjectiveS,
+            return new ClearTime(lineup.estimate(), pace.timerMs(), lineup.objectiveS(), lineup.timeS(),
+                    own == null ? Double.NaN : own.objectiveS(), own == null ? Double.NaN : own.timeS(),
                     pace.lastClearS().applyAsDouble(Set.copyOf(companions)));
         }
 
