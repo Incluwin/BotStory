@@ -677,6 +677,9 @@ class Stage5PassCarryTest {
         long droppedAtMs = 1_000L;
         MapItem left = pass(31, droppedAtMs, new Point(0, -451));
         floor.add(left);
+        // A drop the recovery takes back leaves the floor, through Cosmic's own disappear.
+        when(run.map.makeDisappearItemFromMap(any(MapItem.class)))
+                .thenAnswer(call -> floor.remove(call.<MapItem>getArgument(0)));
 
         // Past the patience it is stale; once that has held for the grace, the nearest companion goes back for it,
         // once, as a player would.
@@ -708,6 +711,8 @@ class Stage5PassCarryTest {
         assertEquals(1, said().stream().filter(RECOLLECT::equals).count(), said()::toString);
         // Passes made up from nothing: the carry's pace span is kept out of the calibration.
         assertTrue(session.pace().snapshot().stageFivePassesRestored());
+        // The stale one it never reached goes with the restore, as an expired drop does: nobody picks it up on top.
+        assertEquals(List.of(), List.copyOf(floor));
     }
 
     @Test
@@ -719,8 +724,10 @@ class Stage5PassCarryTest {
         floor.add(pass(31, droppedAtMs, new Point(190, CLOTO.y)));
 
         // Long past the out-of-reach patience it still counts as on its way: nobody is sent back for it, and the
-        // recovery waits for it until the in-reach patience and the grace after it are over.
-        long recoveryAtMs = droppedAtMs + INREACH_PATIENCE_MS + GRACE_MS;
+        // recovery waits for it until the in-reach patience and the grace after it are over. The patience runs from
+        // the first tick that sees it by him, 1 s after its drop.
+        long firstSeenByHimMs = 2_000L;
+        long recoveryAtMs = firstSeenByHimMs + INREACH_PATIENCE_MS + GRACE_MS;
         for (long nowMs = 2_000L; nowMs < recoveryAtMs; nowMs += 1_000L) {
             AgentKpqCoordinator.tick(session, nowMs);
         }

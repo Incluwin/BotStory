@@ -517,7 +517,9 @@ class StageOnePassPatienceTest {
                         eq(entry(2)), eq(InventoryType.ETC), eq(AgentKpqDefinition.PASS_ITEM), eq((short) 1)))
                 .thenAnswer(call -> {
                     passesHeld.put(liriki, 0);
-                    floor.add(pass(23, liriki, -10, DROPPED_AT_MS));
+                    MapItem dropped = pass(23, liriki, -10, DROPPED_AT_MS);
+                    when(dropped.isPlayerDrop()).thenReturn(true);
+                    floor.add(dropped);
                     return true;
                 });
 
@@ -528,7 +530,7 @@ class StageOnePassPatienceTest {
             assertEquals(List.of(
                     "KPQ pass drop: session=" + session.sessionId() + " stage=1 agent=Liriki reason=beside passes=1 "
                             + "dx=-10 dy=0 sameFoothold=true leaderFooting=GROUND "
-                            + "landed=[(-10,0):dx=-10:dy=0:passes=1]",
+                            + "landed=[(-10,0):dx=-10:dy=0:passes=1:oid=23:ffa=false]",
                     "KPQ pass drop: session=" + session.sessionId() + " stage=1 agent=Fenna reason=beside passes=1 "
                             + "dx=6 dy=0 sameFoothold=true leaderFooting=GROUND landed=none"), drops);
         }

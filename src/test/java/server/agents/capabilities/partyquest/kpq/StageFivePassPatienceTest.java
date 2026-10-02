@@ -56,7 +56,8 @@ import static org.mockito.Mockito.when;
  * (stage 5's carry took 229 s against 35 s). Now he hears about them once, and past the in-reach patience they stop
  * holding the recovery back, which then makes the ones still lying vanish. Every pass drop logs where it landed.
  *
- * <p>Drops here land on the floor as the map's own would: owned by the dropper, stamped with the drop's time.
+ * <p>Drops here land on the floor as the map's own would: player drops owned by the dropper, stamped with the drop's
+ * time. A pass a kill left lying is owned by the killer too, but is no player drop.
  */
 class StageFivePassPatienceTest {
     private static final Point BEN_BY_CLOTO = new Point(260, -2717);
@@ -80,6 +81,7 @@ class StageFivePassPatienceTest {
     private static final List<String> NUDGES = List.of(NUDGE, NUDGE_ONE, NUDGE_BACK_THERE,
             "Ben, you left a pass on the ground back there.");
     private static final String RECOLLECT = "i'll go grab the passes still lying around.";
+    private static final String RECOLLECTED = "Ben, got the rest of the passes, they're at your feet.";
     private static final String RECOVERY = "KPQ Stage 5 missing-pass recovery restored inventory only: ";
     private static final String TAKEN_BACK = "KPQ Stage 5 passes taken back at the recovery: ";
     private static final Pattern ENGINE = Pattern.compile("->|\\d+\\s*/\\s*\\d+|%|~|(?i:dps|estimate)");
@@ -99,8 +101,6 @@ class StageFivePassPatienceTest {
     private MockedStatic<AgentAttackPlanScoringPolicy> scoring;
     private final InventoryGateway inventoryGateway = mock(InventoryGateway.class);
     private final Map<Character, Integer> passesHeld = new HashMap<>();
-    /** Where a dropper's passes land, when not where it stands. */
-    private final Map<Character, Point> landsAt = new HashMap<>();
     /** What lies on stage 5's floor. */
     private final List<MapItem> floor = new CopyOnWriteArrayList<>();
     private long clockMs;
@@ -139,7 +139,7 @@ class StageFivePassPatienceTest {
                     for (Character holder : List.copyOf(passesHeld.keySet())) {
                         if (entry(holder.getId()) != dropper) continue;
                         passesHeld.merge(holder, -quantity, Integer::sum);
-                        floor.add(pass(holder, quantity, clockMs, landsAt.getOrDefault(holder, holder.getPosition())));
+                        floor.add(pass(holder, quantity, clockMs, holder.getPosition()));
                     }
                     return true;
                 });
@@ -213,6 +213,9 @@ class StageFivePassPatienceTest {
                     + "leftAtFeet=10 defect=true cause=left-at-feet recollect=false "), restores.getFirst());
             assertEquals(List.of(TAKEN_BACK + "session=" + session.sessionId() + " leader=Ben(1) floorDrops=2/2 "
                     + "floorPasses=10"), log.startingWith(TAKEN_BACK));
+            tick(session, recoveryAtMs + 1_000L);
+            // He picked none up: the made-up ten are not logged as his pickup, which a live check reads.
+            assertEquals(List.of(), log.startingWith("KPQ pass pickup: "));
         }
         // 67 s after the drop, not 7 s after their 180 s expiry; the carry's pace span is kept out of the calibration.
         verify(inventoryGateway, times(1)).addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 10);
@@ -223,7 +226,7 @@ class StageFivePassPatienceTest {
         assertFalse(said().contains(RECOLLECT), said()::toString);
         assertEquals(0, session.stage5RecollectorId());
 
-        tick(session, recoveryAtMs + 1_000L);
+        tick(session, recoveryAtMs + 2_000L);
         verify(inventoryGateway, times(1)).addItem(any(), anyInt(), anyShort());
         assertEquals(1, said().stream().filter(NUDGES::contains).count(), said()::toString);
         assertSpokenLikePlayers();
@@ -263,8 +266,8 @@ class StageFivePassPatienceTest {
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
         holding(faro, 4);
         holding(silentSin, 0);
-        // One lies 2,300 px under Ben, nobody going for it.
-        MapItem below = pass(silentSin, 1, 1_000L, FAR_BELOW);
+        // One a kill left 2,300 px under Ben, nobody going for it.
+        MapItem below = killPass(silentSin, 1, 1_000L, FAR_BELOW);
         floor.add(below);
         tick(session, 2_000L);
         tick(session, SET_OUT_MS);
@@ -285,6 +288,194 @@ class StageFivePassPatienceTest {
         // The re-collect goes for the stale one only; the ones at his feet already lie by him.
         loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(entry(3), below), atLeast(1));
         assertTrue(STALE_MS < PATIENCE_MS);
+    }
+
+    @Test
+    void aPassAKillOfTheDroppersLeftBelowIsNotTakenForOneItDroppedAtHisFeet() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        session.setMemberCoordinationChatEnabled(false);
+        holding(faro, 4);
+        holding(silentSin, 6);
+        // One of Faro's kills dropped a pass 2,300 px below during the fight, and no sweep reached it: it is Faro's.
+        floor.add(killPass(faro, 1, -30_000L, FAR_BELOW));
+        bothDropAtHisFeet(session);
+
+        // Not as Faro drops its four (the pass below is 35 s old by then), and never about a place he never stood.
+        tickEverySecond(session, DROPPED_AT_MS + 1_000L, DROPPED_AT_MS + NUDGE_MS - 1_000L);
+        assertNotNudged();
+        tick(session, DROPPED_AT_MS + NUDGE_MS);
+
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(faro, NUDGE), times(1));
+        assertEquals(1, said().stream().filter(NUDGES::contains).count(), said()::toString);
+    }
+
+    @Test
+    void theNudgeComesFromTheCompanionThatDroppedTheOldestPasses() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        session.setMemberCoordinationChatEnabled(false);
+        holding(faro, 4);
+        holding(silentSin, 6);
+        tick(session, 2_000L);
+        tick(session, SET_OUT_MS);
+        // SilentSin gets to his feet first; Faro, the run's first companion, a second later.
+        at(silentSin, AT_HIS_FEET);
+        tick(session, DROPPED_AT_MS);
+        at(faro, AT_HIS_FEET);
+        tick(session, DROPPED_AT_MS + 1_000L);
+        assertEquals(2, floor.size(), floor::toString);
+
+        tickEverySecond(session, DROPPED_AT_MS + 2_000L, DROPPED_AT_MS + NUDGE_MS - 1_000L);
+        assertNotNudged();
+        tick(session, DROPPED_AT_MS + NUDGE_MS);
+
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(silentSin, NUDGE), times(1));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(eq(faro), eq(NUDGE)), never());
+    }
+
+    @Test
+    void aLeaderHoldingAllTenIsNotRemindedOfPassesStillAtHisFeet() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 4);
+        holding(silentSin, 6);
+        bothDropAtHisFeet(session);
+        // He has his ten from elsewhere, and both stacks still lie at his feet.
+        passesHeld.put(ben, 10);
+
+        tickEverySecond(session, DROPPED_AT_MS + 1_000L, DROPPED_AT_MS + NUDGE_MS + 5_000L);
+
+        assertEquals(2, floor.size(), floor::toString);
+        assertNotNudged();
+    }
+
+    @Test
+    void aLeaderPickingUpPassesDuringTheGraceGetsItAfresh() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 4);
+        holding(silentSin, 6);
+        bothDropAtHisFeet(session);
+        long gateOpenMs = DROPPED_AT_MS + PATIENCE_MS;
+        tickEverySecond(session, DROPPED_AT_MS + 1_000L, gateOpenMs + 3_000L);
+        // He bends down for Faro's four, 3 s into the grace.
+        MapItem faros = floor.stream().filter(drop -> drop.getOwnerId() == faro.getId()).findFirst().orElseThrow();
+        floor.remove(faros);
+        passesHeld.put(ben, 4);
+
+        // The grace starts again from his pickup: SilentSin's six do not vanish from under him meanwhile.
+        long pickedUpMs = gateOpenMs + 4_000L;
+        tickEverySecond(session, pickedUpMs, pickedUpMs + GRACE_MS - 1_000L);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+        assertEquals(1, floor.size(), floor::toString);
+
+        // He leaves those: once the grace from his pickup is over, only the six he lacks are made up.
+        tick(session, pickedUpMs + GRACE_MS);
+        verify(inventoryGateway, times(1)).addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 6);
+        assertEquals(List.of(), List.copyOf(floor));
+    }
+
+    @Test
+    void aPassTheRecollectBringsAfterHeLeftOthersAtHisFeetWaitsOnlyTheNudge() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 4);
+        holding(silentSin, 0);
+        // A kill's pass 2,300 px under Ben, nobody going for it; Faro drops its four at his feet.
+        MapItem below = killPass(silentSin, 1, 1_000L, FAR_BELOW);
+        floor.add(below);
+        tick(session, 2_000L);
+        tick(session, SET_OUT_MS);
+        at(faro, AT_HIS_FEET);
+        tick(session, DROPPED_AT_MS);
+        // He leaves Faro's four past the patience; after the grace SilentSin goes back for the one below.
+        long recollectAtMs = DROPPED_AT_MS + PATIENCE_MS + GRACE_MS;
+        tickEverySecond(session, DROPPED_AT_MS + 1_000L, recollectAtMs);
+        assertEquals(silentSin.getId(), session.stage5RecollectorId());
+        // It picks it up 15 s later and is at his feet with it 20 s after that.
+        long pickedUpMs = recollectAtMs + 15_000L;
+        tickEverySecond(session, recollectAtMs + 1_000L, pickedUpMs - 1_000L);
+        floor.remove(below);
+        passesHeld.put(silentSin, 1);
+        long backMs = pickedUpMs + 20_000L;
+        tickEverySecond(session, pickedUpMs, backMs - 1_000L);
+        at(silentSin, AT_HIS_FEET);
+        tick(session, backMs);
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(silentSin, RECOLLECTED), times(1));
+
+        // He has already shown he leaves passes at his feet: the one it brings counts as left after the nudge's
+        // wait, not the whole patience again, which would put the clear back near the passes' expiry.
+        long recoveryAtMs = backMs + NUDGE_MS + GRACE_MS;
+        tickEverySecond(session, backMs + 1_000L, recoveryAtMs - 1_000L);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            tick(session, recoveryAtMs);
+            assertTrue(log.startingWith(RECOVERY).getFirst().contains(" floorPasses=5 stalePasses=0 leftAtFeet=5 "
+                    + "defect=true cause=left-at-feet recollect=true "), log.startingWith(RECOVERY)::toString);
+        }
+        verify(inventoryGateway, times(1)).addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 10);
+        assertEquals(List.of(), List.copyOf(floor));
+        assertEquals(1, said().stream().filter(RECOLLECT::equals).count(), said()::toString);
+    }
+
+    @Test
+    void aPassTheRecollectBringsWaitsTheWholePatienceWhenHeLeftNoneAtHisFeetBefore() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 0);
+        holding(silentSin, 0);
+        // Faro waits up by Ben; only a kill's pass lies 2,300 px under him, nobody going for it, none at his feet.
+        at(faro, AT_HIS_FEET);
+        MapItem below = killPass(silentSin, 1, 1_000L, FAR_BELOW);
+        floor.add(below);
+        // Stale after its patience; after the grace SilentSin goes back for it, as before.
+        long recollectAtMs = 1_000L + STALE_MS + GRACE_MS;
+        tickEverySecond(session, 2_000L, recollectAtMs);
+        assertEquals(silentSin.getId(), session.stage5RecollectorId());
+        long pickedUpMs = recollectAtMs + 5_000L;
+        tickEverySecond(session, recollectAtMs + 1_000L, pickedUpMs - 1_000L);
+        floor.remove(below);
+        passesHeld.put(silentSin, 1);
+        long backMs = pickedUpMs + 10_000L;
+        tickEverySecond(session, pickedUpMs, backMs - 1_000L);
+        at(silentSin, AT_HIS_FEET);
+        tick(session, backMs);
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(silentSin, RECOLLECTED), times(1));
+
+        // He has left nothing at his feet yet: the pass it brings gets the whole in-reach patience, and a reminder.
+        long recoveryAtMs = backMs + PATIENCE_MS + GRACE_MS;
+        tickEverySecond(session, backMs + 1_000L, recoveryAtMs - 1_000L);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(silentSin, NUDGE_ONE), times(1));
+        tick(session, recoveryAtMs);
+        verify(inventoryGateway, times(1)).addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 10);
+        assertEquals(List.of(), List.copyOf(floor));
+    }
+
+    @Test
+    void passesLeftByClotoLongBeforeHeComesAreNotMadeUpAsHeWalksUpToThem() {
+        // Ben is down below on his way up; ten passes left by Cloto lie there from 1 s.
+        at(ben, new Point(150, FAR_BELOW.y));
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
+        holding(faro, 0);
+        holding(silentSin, 0);
+        MapItem byCloto = pass(faro, 10, 1_000L, new Point(CLOTO.x - 20, CLOTO.y));
+        floor.add(byCloto);
+        long arrivesMs = 100_000L;
+        tickEverySecond(session, 2_000L, arrivesMs - 1_000L);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+
+        // He comes up beside them 99 s after they were left: the patience runs from now, not from their drop.
+        at(ben, BEN_BY_CLOTO);
+        long recoveryAtMs = arrivesMs + PATIENCE_MS + GRACE_MS;
+        tickEverySecond(session, arrivesMs, recoveryAtMs - 1_000L);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+        assertEquals(List.of(byCloto), List.copyOf(floor));
+
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            tick(session, recoveryAtMs);
+            assertTrue(log.startingWith(RECOVERY).getFirst().contains(" floorPasses=10 stalePasses=0 leftAtFeet=10 "
+                    + "defect=true cause=left-at-feet "), log.startingWith(RECOVERY)::toString);
+        }
+        verify(inventoryGateway, times(1)).addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 10);
+        assertEquals(List.of(), List.copyOf(floor));
+        // They were never dropped on his spot: nobody reminds him of them.
+        assertNotNudged();
     }
 
     @Test
@@ -377,8 +568,16 @@ class StageFivePassPatienceTest {
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, faro, silentSin);
         holding(faro, 4);
         holding(silentSin, 6);
-        // Faro's land on the foothold 60 px over his head; SilentSin's drop leaves nothing on the floor.
-        landsAt.put(faro, new Point(AT_HIS_FEET.x, AT_HIS_FEET.y - 60));
+        // Faro's land on the foothold 60 px over his head, and a pass its last kill left lands at the same moment,
+        // owned by it too; SilentSin's drop leaves nothing on the floor.
+        items.when(() -> AgentScriptItemActionService.dropItem(
+                        eq(entry(2)), eq(InventoryType.ETC), eq(AgentKpqDefinition.PASS_ITEM), anyShort()))
+                .thenAnswer(call -> {
+                    passesHeld.put(faro, 0);
+                    floor.add(killPass(faro, 1, clockMs, FAR_BELOW));
+                    floor.add(pass(faro, 4, clockMs, new Point(AT_HIS_FEET.x, AT_HIS_FEET.y - 60)));
+                    return true;
+                });
         items.when(() -> AgentScriptItemActionService.dropItem(
                         eq(entry(3)), eq(InventoryType.ETC), eq(AgentKpqDefinition.PASS_ITEM), anyShort()))
                 .thenAnswer(call -> {
@@ -394,7 +593,7 @@ class StageFivePassPatienceTest {
             assertEquals(List.of(
                             "KPQ pass drop: session=" + session.sessionId() + " stage=5 agent=Faro723 reason=beside "
                                     + "passes=4 dx=-6 dy=0 sameFoothold=true leaderFooting=GROUND "
-                                    + "landed=[(254,-2777):dx=-6:dy=-60:passes=4]",
+                                    + "landed=[(254,-2777):dx=-6:dy=-60:passes=4:oid=42:ffa=false]",
                             "KPQ pass drop: session=" + session.sessionId() + " stage=5 agent=SilentSin "
                                     + "reason=beside passes=6 dx=-6 dy=0 sameFoothold=true leaderFooting=GROUND "
                                     + "landed=none"),
@@ -477,6 +676,15 @@ class StageFivePassPatienceTest {
 
     /** A stack of passes {@code owner} dropped at {@code droppedAtMs}, as the map keeps it. */
     private MapItem pass(Character owner, int quantity, long droppedAtMs, Point position) {
+        return pass(owner, quantity, droppedAtMs, position, true);
+    }
+
+    /** A pass a kill of {@code owner}'s left lying at {@code droppedAtMs}: the killer owns it, but did not drop it. */
+    private MapItem killPass(Character owner, int quantity, long droppedAtMs, Point position) {
+        return pass(owner, quantity, droppedAtMs, position, false);
+    }
+
+    private MapItem pass(Character owner, int quantity, long droppedAtMs, Point position, boolean playerDrop) {
         // Read before stubbing: the owner is a mock too.
         int ownerId = owner.getId();
         MapItem drop = mock(MapItem.class);
@@ -488,6 +696,7 @@ class StageFivePassPatienceTest {
         when(drop.getOwnerId()).thenReturn(ownerId);
         when(drop.getDropTime()).thenReturn(droppedAtMs);
         when(drop.getPosition()).thenReturn(new Point(position));
+        when(drop.isPlayerDrop()).thenReturn(playerDrop);
         return drop;
     }
 

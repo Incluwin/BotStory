@@ -108,6 +108,15 @@ final class AgentKpqPassHandOver {
         return ageMs >= patienceMs && inLeadersReach && !fetched;
     }
 
+    /**
+     * A drop on the leader's own spot, at the hand-over or the re-collect: the only stage-5 drops he is reminded of.
+     * Passes left by Cloto, where a companion stood, or before it went down were explained as they were dropped, and
+     * a pass a companion's kill left lying is no drop of its at all.
+     */
+    static boolean droppedOnLeadersSpot(DropReason reason) {
+        return reason == DropReason.BESIDE || reason == DropReason.RECOLLECT;
+    }
+
     /** Still standing, below this fraction of its HP. */
     static boolean lowOnHp(int hp, int maxHp, double hpFraction) {
         return hp > 0 && maxHp > 0 && hp < maxHp * hpFraction;

@@ -76,7 +76,6 @@ public final class AgentKpqMemberState {
     private boolean stage5MeetsLeaderAtCloto;
     private long stage5LeaderReachableSinceMs;
     private boolean stage5PassesLeftBehind;
-    private boolean stage5DroppedOnLeadersSpot;
     private int stage5PassesSeen;
     private boolean fullRateHeld;
     private boolean fullRateWasRequired;
@@ -385,9 +384,6 @@ public final class AgentKpqMemberState {
     /** It dropped its passes before going down and carries none from here on. */
     boolean stage5PassesLeftBehind() { return stage5PassesLeftBehind; }
     void markStage5PassesLeftBehind() { stage5PassesLeftBehind = true; }
-    /** It dropped passes on the leader's own spot (the hand-over or the re-collect), not by Cloto or where it stood. */
-    boolean stage5DroppedOnLeadersSpot() { return stage5DroppedOnLeadersSpot; }
-    void markStage5DroppedOnLeadersSpot() { stage5DroppedOnLeadersSpot = true; }
     /** The passes it was last seen holding on stage 5; they go with it if it leaves the run. */
     int stage5PassesSeen() { return stage5PassesSeen; }
     void observeStage5Passes(int held) { stage5PassesSeen = Math.max(0, held); }
