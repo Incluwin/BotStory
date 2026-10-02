@@ -531,6 +531,37 @@ class Stage5PassCarryTest {
     }
 
     @Test
+    void oneWhoseWalkToClotoFailsTooLeavesThePassesWhereItIsAtTwiceTheBound() {
+        // Ben stands on Cloto's island, a little way from her; Mira has a route to both but gets nowhere.
+        at(ben, 180, CLOTO.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 10);
+        Point miraByCloto = clotoApproach(session, mira);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        for (long nowMs = SET_OUT_MS; nowMs < SET_OUT_MS + HANDOVER_MS * 2; nowMs += 5_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + HANDOVER_MS * 2 - 1_000L);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true), atLeastOnce());
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+
+        // Held for good, the passes would hold the recovery back for good: past twice the bound she lets go.
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            AgentKpqCoordinator.tick(session, SET_OUT_MS + HANDOVER_MS * 2);
+
+            assertEquals(1, log.startingWith("KPQ pass drop: ").size());
+            assertTrue(log.startingWith("KPQ pass drop: ").getFirst().contains(" reason=overdue "),
+                    log.startingWith("KPQ pass drop: ")::toString);
+        }
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 10), times(1));
+        assertEquals(1, said().stream().filter(RIGHT_HERE::equals).count(), said()::toString);
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, RIGHT_HERE));
+        assertFalse(said().contains(BY_CLOTO), said()::toString);
+    }
+
+    @Test
     void oneThatCanReachNeitherTheLeaderNorClotoLeavesThePassesWhereItIs() {
         // Ben fights below; Cloto's island cannot be reached from where Mira is stuck.
         at(ben, 900, -451);
