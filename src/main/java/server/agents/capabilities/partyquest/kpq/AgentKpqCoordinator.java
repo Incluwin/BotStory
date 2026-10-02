@@ -1084,15 +1084,19 @@ final class AgentKpqCoordinator {
             // A companion run's companions bring the passes up, so its leader goes to Cloto instead of 2,300 px down for
             // them and back. Everyone arrives on the left top island, which nothing below can reach, and Cloto stands
             // across a gap no jump clears: live (pace1b) a leader told to wait by Cloto stood on that ledge, out of
-            // everyone's reach, until the event timer ran out. So he is told the way.
-            if (coordinate(session, narrator, "human-stage5-collect", voice(session,
-                    AgentKpqPassHandOver.routeLine(leader.getName()),
-                    leader.getName() + ", please collect the 10 passes while we clear the monsters."))
-                    && carriers) {
-                session.markStage5RouteTold(nowMs);
-                warnOfCurseEyes(session, leader, narrator);
-            }
-            if (!carriers) {
+            // everyone's reach, until the event timer ran out. So he is told the way, even with coordination chat
+            // off: nothing else moves him, and his passes wait by Cloto for him.
+            if (carriers) {
+                Character speaker = stageFiveSpeaker(session, narrator);
+                if (narrate(session, speaker, "human-stage5-collect",
+                        AgentKpqPassHandOver.routeLine(leader.getName()))) {
+                    session.markStage5RouteTold(nowMs);
+                    warnOfCurseEyes(session, leader, speaker, "human-stage5-curse-eyes");
+                }
+            } else {
+                coordinate(session, narrator, "human-stage5-collect", voice(session,
+                        AgentKpqPassHandOver.routeLine(leader.getName()),
+                        leader.getName() + ", please collect the 10 passes while we clear the monsters."));
                 AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
                         "collect the 10 passes while we clear the monsters", nowMs);
             }
@@ -1214,17 +1218,26 @@ final class AgentKpqCoordinator {
         }
     }
 
+    /**
+     * Who tells a companion run's leader the way to Cloto: the narrator, or with coordination chat off (no narrator)
+     * the first companion standing in the run.
+     */
+    private static Character stageFiveSpeaker(AgentKpqSession session, Character narrator) {
+        return narrator != null ? narrator : firstStandingAgent(session);
+    }
+
     /** With the way to Cloto, while a Curse Eye still lives on the floor the leader drops to. */
-    private static void warnOfCurseEyes(AgentKpqSession session, Character leader, Character narrator) {
+    private static void warnOfCurseEyes(AgentKpqSession session, Character leader, Character speaker, String key) {
         if (ACTIONS.liveMonsterCount(leader, STAGE_5_CURSE_EYES) > 0) {
-            coordinate(session, narrator, "human-stage5-curse-eyes", AgentKpqPassHandOver.CURSE_EYES_CAREFUL);
+            narrate(session, speaker, key, AgentKpqPassHandOver.CURSE_EYES_CAREFUL);
         }
     }
 
     /**
      * Says the way to Cloto once more, STAGE5_ROUTE_REPEAT_MS after the first time, if the leader still stands where
-     * no companion can reach him. Nothing else can move a leader who stays on the arrival ledge; his passes wait by
-     * Cloto, where they cannot expire, until he comes.
+     * no companion can reach him, with the Curse Eye caution again while one lives. Like the first time it is said
+     * with coordination chat off too. Nothing else can move a leader who stays on the arrival ledge; his passes wait
+     * by Cloto, where they cannot expire, until he comes.
      */
     private static void repeatRouteToCloto(
             AgentKpqSession session, Character leader, Character narrator, long nowMs) {
@@ -1233,9 +1246,9 @@ final class AgentKpqCoordinator {
                 || !leaderOutOfReach(session, leader) || !session.claimStage5RouteRepeat()) {
             return;
         }
-        coordinate(session, narrator, "human-stage5-route-again",
-                AgentKpqPassHandOver.routeAgainLine(leader.getName()));
-        warnOfCurseEyes(session, leader, narrator);
+        Character speaker = stageFiveSpeaker(session, narrator);
+        narrate(session, speaker, "human-stage5-route-again", AgentKpqPassHandOver.routeAgainLine(leader.getName()));
+        warnOfCurseEyes(session, leader, speaker, "human-stage5-curse-eyes-again");
     }
 
     /** True when a companion standing on stage 5's ground has no route at all to where the leader stands. */

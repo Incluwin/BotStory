@@ -2329,7 +2329,7 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_FLOOR_PASS_PATIENCE_MS: '30000'
     # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values repeat the way to Cloto sooner; it is said again at most once.
     # Purpose: Tells a companion run's human leader the way to Cloto once more if he still stands on stage 5's arrival ledge, where no companion can bring him the passes.
-    # Technical: Measured from the first time the route line was said; the repeat fires only while some grounded companion on stage 5 has no navigation route to the leader's position, and only with coordination chat on.
+    # Technical: Measured from the first time the route line was said; the repeat fires only while some grounded companion on stage 5 has no navigation route to the leader's position. Both lines, and the Curse Eye caution with each while a Curse Eye lives, are said with coordination chat on or off, by the narrator or else the first companion standing in the run.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_ROUTE_REPEAT_MS: '30000'
     # Values: 0.05-0.5 of maximum HP. Recommended: 0.25. Higher values make carriers leave their passes earlier; zero disables it.
     # Purpose: Lets a companion run's stage-5 carrier that is about to go down drop its passes while it still stands, so they are not lost with it when the stock respawn takes it out of the event.

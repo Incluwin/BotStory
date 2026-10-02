@@ -246,6 +246,22 @@ class Stage5PassCarryTest {
     }
 
     @Test
+    void withCoordinationChatOffTheLedgeLeaderStillHearsTheWayAndItsOneRepeat() {
+        at(ben, BEN_ON_ARRIVAL_LEDGE.x, BEN_ON_ARRIVAL_LEDGE.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        // Guidance off: no narrator and no status chatter. His passes wait by Cloto, so only the way moves him.
+        session.setMemberCoordinationChatEnabled(false);
+        fighting(CURSE_EYE, JR_NECKI);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, 2_000L + REPEAT_MS);
+        AgentKpqCoordinator.tick(session, 2_000L + REPEAT_MS * 3);
+
+        assertEquals(List.of(ROUTE, CAREFUL, ROUTE_AGAIN, CAREFUL), said());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, ROUTE));
+    }
+
+    @Test
     void aLeaderWhoLeftTheLedgeIsNotToldTheWayAgain() {
         at(ben, BEN_BY_NELLA.x, BEN_BY_NELLA.y);
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
