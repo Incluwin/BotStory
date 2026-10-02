@@ -10,6 +10,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -19,8 +20,9 @@ import static server.agents.capabilities.partyquest.pace.PaceStubProfile.MOB_B;
 import static server.agents.capabilities.partyquest.pace.PaceStubProfile.MOB_C;
 
 /**
- * A member's power is read once per profile mob from the damage policy and once from the danger mob's touch; a policy
- * call that throws counts as no damage (and an unknown touch as never fragile), so an estimate never fails a lineup.
+ * A member's power is read once per profile mob from the damage policy and once from the danger mob's touch. A damage
+ * read that fails leaves the member unread (it throws, and the caller has no power for it), never weak: a transient
+ * failure must not make Lakelis say a companion misses. An unknown touch counts as never fragile.
  */
 class AgentPqMemberPowerTest {
     @Test
@@ -40,16 +42,37 @@ class AgentPqMemberPowerTest {
     }
 
     @Test
-    void aFailedPolicyCallCountsAsNothingAndAnUnknownTouchAsNeverFragile() {
-        AgentPqMemberPower power = AgentPqMemberPower.of(character(), PaceStubProfile.standard(), true, true,
-                new StubSources(true, true));
+    void aFailedPolicyCallLeavesTheMemberUnreadNotWeak() {
+        IllegalStateException failure = assertThrows(IllegalStateException.class, () -> AgentPqMemberPower.of(
+                character(), PaceStubProfile.standard(), false, false, new StubSources(true, false)));
 
-        assertEquals(0.0d, power.dps(BOSS));
-        assertEquals(0.0d, power.hit(BOSS));
-        assertEquals(0.0d, power.attackMs(BOSS));
+        assertTrue(failure.getMessage().contains("SilentSin") && failure.getMessage().contains(String.valueOf(BOSS)),
+                failure.getMessage());
+        assertEquals("no attack data", failure.getCause().getMessage());
+    }
+
+    @Test
+    void aProfileMobThatIsNotLoadedLeavesTheMemberUnread() {
+        StubSources noBoss = new StubSources(false, false) {
+            @Override
+            public Monster monster(int mobId) {
+                return mobId == BOSS ? null : super.monster(mobId);
+            }
+        };
+
+        assertThrows(IllegalStateException.class, () -> AgentPqMemberPower.of(character(), PaceStubProfile.standard(),
+                false, false, noBoss));
+    }
+
+    @Test
+    void anUnknownTouchCountsAsNeverFragile() {
+        AgentPqMemberPower power = AgentPqMemberPower.of(character(), PaceStubProfile.standard(), true, true,
+                new StubSources(false, true));
+
         assertEquals(236.0d, power.dps(MOB_A), 1e-9);
+        assertEquals(120.0d, power.dps(BOSS), 1e-9);
         assertEquals(Double.MAX_VALUE, power.touchesToDown());
-        assertTrue(power.human() && power.leader());
+        assertTrue(power.human() && power.leader() && power.humanLeader());
     }
 
     @Test
@@ -80,10 +103,17 @@ class AgentPqMemberPowerTest {
     }
 
     /** SilentSin's policy figures against the stub's mobs; optionally the boss's attack and the touch throw. */
-    private record StubSources(boolean bossFails, boolean touchFails) implements AgentPqMemberPower.Sources {
+    private static class StubSources implements AgentPqMemberPower.Sources {
         private static final Map<Integer, double[]> ATTACKS = Map.of(
                 MOB_A, new double[]{236.0d * 0.8d, 0.88d}, MOB_B, new double[]{205.0d * 0.8d, 0.65d},
                 MOB_C, new double[]{259.0d * 0.8d, 1.0d}, BOSS, new double[]{120.0d * 0.8d, 0.56d});
+        private final boolean bossFails;
+        private final boolean touchFails;
+
+        StubSources(boolean bossFails, boolean touchFails) {
+            this.bossFails = bossFails;
+            this.touchFails = touchFails;
+        }
 
         @Override
         public Monster monster(int mobId) {

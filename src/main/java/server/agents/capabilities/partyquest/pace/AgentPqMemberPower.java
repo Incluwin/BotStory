@@ -68,9 +68,14 @@ public record AgentPqMemberPower(int characterId, String name, boolean human, bo
     }
 
     /**
-     * Reads a member against a warmed profile's mobs. Each policy call is wrapped: one that fails counts as 0 damage (and
-     * an unknown touch as never fragile), logged at info at most once per FAILURE_LOG_MS, so an estimate never fails a
-     * lineup. Reads only data the profile's warm-up loaded.
+     * Reads a member against a warmed profile's mobs. A damage read that fails (the policy throws, or a profile mob is
+     * not loaded) leaves the member unread rather than weak: it is logged at info at most once per FAILURE_LOG_MS and
+     * thrown, so the caller has no power for the member (a lineup then has no clear time, a run's pace no members) and
+     * an estimate never names a member that misses, or calls a party slow, on a reading it never got. An unknown touch
+     * only counts as never fragile, since the touch never enters the time. Reads only data the profile's warm-up
+     * loaded.
+     *
+     * @throws IllegalStateException when the member's damage against a profile mob could not be read
      */
     public static AgentPqMemberPower of(Character character, AgentPqPaceProfile profile, boolean human, boolean leader) {
         return of(character, profile, human, leader, Sources.LIVE);
@@ -82,18 +87,20 @@ public record AgentPqMemberPower(int characterId, String name, boolean human, bo
         Map<Integer, Double> hit = new TreeMap<>();
         Map<Integer, Double> attackMs = new TreeMap<>();
         for (int mobId : profile.mobIds()) {
+            AgentExpectedDamagePolicy.ExpectedAttack attack;
             try {
                 Monster monster = sources.monster(mobId);
-                AgentExpectedDamagePolicy.ExpectedAttack attack = monster == null ? null : sources.attack(character, monster);
-                dps.put(mobId, attack == null ? 0.0d : attack.damagePerSecond());
-                hit.put(mobId, attack == null ? 0.0d : attack.hitChance());
-                attackMs.put(mobId, attack == null ? 0.0d : (double) attack.cooldownMs());
+                if (monster == null) throw new IllegalStateException("mob " + mobId + " is not loaded");
+                attack = sources.attack(character, monster);
+                if (attack == null) throw new IllegalStateException("no attack read against mob " + mobId);
             } catch (RuntimeException failure) {
                 logFailure(character, "damage against mob " + mobId, failure);
-                dps.put(mobId, 0.0d);
-                hit.put(mobId, 0.0d);
-                attackMs.put(mobId, 0.0d);
+                throw new IllegalStateException("no PQ pace power for " + character.getName() + ": damage against mob "
+                        + mobId + " could not be read", failure);
             }
+            dps.put(mobId, attack.damagePerSecond());
+            hit.put(mobId, attack.hitChance());
+            attackMs.put(mobId, (double) attack.cooldownMs());
         }
         double touches = Double.MAX_VALUE;
         if (profile.dangerMobId() > 0) {
@@ -146,7 +153,7 @@ public record AgentPqMemberPower(int characterId, String name, boolean human, bo
         long now = System.currentTimeMillis();
         long loggedAt = failureLoggedAtMs.get();
         if (now - loggedAt >= FAILURE_LOG_MS && failureLoggedAtMs.compareAndSet(loggedAt, now)) {
-            log.info("no PQ pace estimate of {} for {} (job {}); it counts as 0", what, character.getName(),
+            log.info("no PQ pace estimate of {} for {} (job {}); it is left unread", what, character.getName(),
                     character.getJob(), failure);
         } else {
             log.debug("no PQ pace estimate of {} for {}", what, character.getName(), failure);
