@@ -61,6 +61,7 @@ public final class AgentKpqMemberState {
     private int stage1CouponsHeld;
     private int stage1CouponsLooted;
     private long stage1PassAtMs;
+    private long stage1PassChaseFromMs;
     private Role stage1CombatRole;
     private CombatCounts stage1RoleCombatBaseline;
     private final EnumMap<Role, CombatCounts> stage1RoleCombat = new EnumMap<>(Role.class);
@@ -103,6 +104,18 @@ public final class AgentKpqMemberState {
     }
     public boolean passDelivered() { return passDelivered; }
     public void markPassDelivered() { passDelivered = true; }
+
+    /**
+     * Whether its stage-1 delivery to the leader has run for {@code boundMs}; the first call, as it sets out, starts
+     * that clock.
+     */
+    boolean stage1PassChaseOverdue(long nowMs, long boundMs) {
+        if (stage1PassChaseFromMs == 0L) {
+            stage1PassChaseFromMs = Math.max(1L, nowMs);
+            return false;
+        }
+        return nowMs - stage1PassChaseFromMs >= boundMs;
+    }
     public RewardState rewardState() { return rewardState; }
     public boolean rewardClaimed() { return rewardState == RewardState.CLAIMED; }
     public boolean rewardResolved() {

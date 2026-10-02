@@ -1054,6 +1054,7 @@ class Stage5PassCarryTest {
         Pattern engine = Pattern.compile("->|\\d+\\s*/\\s*\\d+|%|~|(?i:dps|estimate)");
         for (String line : List.of(AgentKpqPassHandOver.routeLine("Ben"), AgentKpqPassHandOver.routeAgainLine("Ben"),
                 AgentKpqPassHandOver.leftByClotoLine("Ben"), AgentKpqPassHandOver.recollectedLine("Ben"),
+                AgentKpqPassHandOver.passBesideLine("Ben"),
                 AgentKpqPassHandOver.CURSE_EYES_CAREFUL, AgentKpqPassHandOver.LEAVING_PASSES,
                 AgentKpqPassHandOver.RECOLLECT_START)) {
             assertFalse(engine.matcher(line).find(), line);

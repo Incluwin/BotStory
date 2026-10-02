@@ -2048,6 +2048,10 @@ tuning:
     # Purpose: Makes a companion run's companions drop stage-1 and stage-5 passes on the human leader's own spot, so a leader who presses pickup without moving gets them.
     # Technical: AgentKpqCoordinator drops only when the deliverer and the leader both stand on a foothold (never in the air or on a rope or ladder) and the deliverer is within this many pixels of the leader's ground point on each axis; it walks there with a precise move first.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PASS_DROP_AT_FEET_PX: '10'
+    # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values give up on the leader's own spot sooner; higher values keep a holder chasing a leader who keeps moving or stays on a rope or ladder.
+    # Purpose: Bounds how long a companion run's stage-1 pass holder tries to drop its pass on the human leader's own spot before it drops it beside him, as a stock run's holders do.
+    # Technical: Measured per holder from the first tick it sets out for the leader; past it AgentKpqCoordinator drops within NEAR_PX of him on each axis, wherever he stands, walks there with a non-precise move, and says it dropped the pass next to him.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_AT_FEET_MS: '30000'
     # Values: true or false. Recommended: false when a human is the party leader.
     # Purpose: Allows an Agent member to visibly announce shared KPQ assignments, leader pass totals, and immediate NPC reminders for a human-led party.
     # Technical: Execution coordination remains active regardless; this flag controls presentation only and never changes puzzle solving, combat, navigation, or recovery.

@@ -55,6 +55,9 @@ class StageOnePaceTest {
     private static final String PASSES_AT_FEET = "Ben, the passes are at your feet. pick them up and talk to Cloto.";
     private static final String PASS_DROPPED = AgentKpqCoordinator.stageOnePassDropMessage("Ben");
     private static final String COME_DOWN = "Ben, come on down by cloto, we're almost done.";
+    private static final String PASS_BESIDE = "Ben, dropped my pass right next to you.";
+    private static final long PASS_AT_FEET_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_AT_FEET_MS");
 
     private KpqRunFixture run;
     private MockedStatic<AgentGrindLootStateRuntime> loot;
@@ -443,6 +446,57 @@ class StageOnePaceTest {
         AgentKpqCoordinator.tick(session, 4_000L);
         items.verify(() -> AgentScriptItemActionService.dropItem(
                 entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+    }
+
+    @Test
+    void aHolderThatCannotGetOntoTheLeadersSpotDropsBesideHimAfterTheBound() {
+        Character ben = at(run.human(1, "Ben"), 0, 0);
+        Character mira = at(run.companion(2, "Mira"), 40, 0);
+        Character pip = at(run.companion(3, "Pip"), 4, 0);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, mira, pip);
+        holdingPass(session, mira);
+        holdingPass(session, pip);
+        // Ben idles up a ladder.
+        when(ben.getStance()).thenReturn(14);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, 2_000L + PASS_AT_FEET_MS - 1_000L);
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), new Point(0, 0), true), times(2));
+
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            AgentKpqCoordinator.tick(session, 2_000L + PASS_AT_FEET_MS);
+            assertEquals(2, log.startingWith("KPQ pass drop: ").stream()
+                    .filter(line -> line.contains(" stage=1 ") && line.contains(" reason=overdue ")).count(),
+                    log.startingWith("KPQ pass drop: ")::toString);
+        }
+
+        // Within NEAR_PX, as a stock run's holders drop, and each says so.
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, PASS_BESIDE));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(pip, PASS_BESIDE));
+    }
+
+    @Test
+    void anAgentLedCompanionRunsHoldersStillDropBesideTheirLeader() {
+        Character kai = at(run.companion(1, "Kai"), 0, 0);
+        Character mira = at(run.companion(2, "Mira"), 40, 0);
+        Character pip = at(run.companion(3, "Pip"), 300, 0);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, kai, mira, pip);
+        holdingPass(session, mira);
+        holdingPass(session, pip);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        // The leader is an Agent: within NEAR_PX on each axis, walked to without a precise move, as before.
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+        modes.verify(() -> AgentModeService.startMoveTo(entry(3), new Point(0, 0), false));
+        modes.verify(() -> AgentModeService.startMoveTo(eq(entry(3)), any(), eq(true)), never());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASS_BESIDE)), never());
     }
 
     @Test

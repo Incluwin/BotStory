@@ -41,6 +41,11 @@ final class AgentKpqPassHandOver {
         return leader + ", couldn't get to you, left the passes by cloto.";
     }
 
+    /** A stage-1 holder that could not get onto the leader's own spot in time. */
+    static String passBesideLine(String leader) {
+        return leader + ", dropped my pass right next to you.";
+    }
+
     static String recollectedLine(String leader) {
         return leader + ", got the rest of the passes, they're at your feet.";
     }

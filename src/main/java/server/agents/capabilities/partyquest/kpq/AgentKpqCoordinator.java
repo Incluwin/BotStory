@@ -150,6 +150,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE4_LEADER_BELOW_CLOTO_PX");
     private static final int STAGE1_LEADER_FAR_FROM_CLOTO_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX");
+    private static final long STAGE1_PASS_AT_FEET_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_AT_FEET_MS");
     private static final long STAGE1_LEADER_COUPON_REPEAT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_COUPON_REPEAT_MS");
     private static final int STAGE1_LOOT_NEAR_PX = config.AgentTuning.intValue(
@@ -701,7 +703,10 @@ final class AgentKpqCoordinator {
                     continue;
                 }
                 cancelStageOneLandingSafety(member, entry, agent);
-                if (dropAtFeet ? passesAtLeadersFeet(agent, leader, leaderSpot) : near(agent, leader, NEAR_PX)) {
+                // A holder that cannot get onto the leader's own spot within STAGE1_PASS_AT_FEET_MS (he keeps moving,
+                // or stays up a rope or ladder) drops beside him as a stock run's do, and tells him.
+                boolean onHisSpot = dropAtFeet && !member.stage1PassChaseOverdue(nowMs, STAGE1_PASS_AT_FEET_MS);
+                if (onHisSpot ? passesAtLeadersFeet(agent, leader, leaderSpot) : near(agent, leader, NEAR_PX)) {
                     ACTIONS.stop(entry);
                     int passesBeforeDrop = agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
                     boolean dropRequested = AgentScriptItemActionService.dropItem(
@@ -712,15 +717,21 @@ final class AgentKpqCoordinator {
                         member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
                         session.markProgress(nowMs);
                         if (dropAtFeet) {
-                            logPassDrop(session, 1, agent, leader, AgentKpqPassHandOver.DropReason.BESIDE, 1, nowMs);
+                            logPassDrop(session, 1, agent, leader, onHisSpot
+                                    ? AgentKpqPassHandOver.DropReason.BESIDE
+                                    : AgentKpqPassHandOver.DropReason.OVERDUE, 1, nowMs);
                         }
-                        // The leader gets the one pickup line below instead of a line per companion.
+                        // The leader gets the one pickup line below instead of a line per companion, unless this
+                        // one could not get onto his spot.
                         if (!agentLeader && !passesAtFeetLine) {
                             narrate(session, agent, "pass-dropped-" + agent.getId(),
                                     stageOnePassDropMessage(leader.getName()));
+                        } else if (dropAtFeet && !onHisSpot) {
+                            narrate(session, agent, "pass-dropped-" + agent.getId(),
+                                    AgentKpqPassHandOver.passBesideLine(leader.getName()));
                         }
                     }
-                } else if (dropAtFeet) {
+                } else if (onHisSpot) {
                     if (leaderSpot != null) ACTIONS.navigate(entry, leaderSpot, true);
                 } else {
                     ACTIONS.navigate(entry, leader.getPosition(), false);
