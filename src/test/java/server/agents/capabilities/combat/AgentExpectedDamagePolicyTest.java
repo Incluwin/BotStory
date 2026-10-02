@@ -15,6 +15,7 @@ import org.mockito.MockedStatic;
 import server.StatEffect;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.InventoryGateway;
+import server.combat.CombatFormulaProvider;
 import server.life.Element;
 import server.life.Monster;
 
@@ -111,6 +112,42 @@ class AgentExpectedDamagePolicyTest {
             double accuracy50 = AgentExpectedDamagePolicy.damagePerSecond(hunter(60), ligator);
 
             assertTrue(accuracy22 > 0.0d && accuracy50 > 20 * accuracy22, accuracy22 + " vs " + accuracy50);
+        }
+    }
+
+    @Test
+    void theBestAttackCarriesItsCooldownAndTheHitChanceOfItsRoute() {
+        Monster ligator = monster(32, 10);
+        Character swinger = fighter(40);
+
+        AgentExpectedDamagePolicy.ExpectedAttack swing = AgentExpectedDamagePolicy.bestAttack(swinger, ligator);
+        assertEquals(AgentExpectedDamagePolicy.damagePerSecond(swinger, ligator), swing.damagePerSecond(), 1e-12);
+        assertEquals(swing.damagePerAttack() * 1000.0d / swing.cooldownMs(), swing.damagePerSecond(), 1e-9);
+        assertTrue(swing.cooldownMs() > 0);
+        assertEquals(CombatFormulaProvider.getInstance().calculateMobHitChance(swinger, ligator, false),
+                swing.hitChance(), 1e-12);
+
+        Monster necki = monster(21, 15);
+        Skill magicClaw = mock(Skill.class);
+        StatEffect claw = mock(StatEffect.class);
+        when(magicClaw.getId()).thenReturn(Magician.MAGIC_CLAW);
+        when(magicClaw.getElement()).thenReturn(Element.NEUTRAL);
+        when(magicClaw.getEffect(10)).thenReturn(claw);
+        when(claw.hasMatk()).thenReturn(true);
+        when(claw.getMatk()).thenReturn((short) 30);
+        when(claw.getMpCon()).thenReturn((short) 14);
+        when(claw.getAttackCount()).thenReturn(2);
+        Character caster = wizard();
+        when(caster.getSkills()).thenReturn(Map.of(magicClaw, new Character.SkillEntry((byte) 10, 20, -1L)));
+        when(caster.getSkillLevel(magicClaw)).thenReturn((byte) 10);
+        try (MockedStatic<SkillFactory> skills = mockStatic(SkillFactory.class)) {
+            skills.when(() -> SkillFactory.getSkill(Magician.MAGIC_CLAW)).thenReturn(magicClaw);
+            AgentExpectedDamagePolicy.ExpectedAttack spell = AgentExpectedDamagePolicy.bestAttack(caster, necki);
+
+            assertEquals(CombatFormulaProvider.getInstance().calculateMobHitChance(caster, necki, true),
+                    spell.hitChance(), 1e-12);
+            assertTrue(spell.hitChance() > CombatFormulaProvider.getInstance()
+                    .calculateMobHitChance(caster, necki, false), "magic accuracy, not the wand swing's");
         }
     }
 

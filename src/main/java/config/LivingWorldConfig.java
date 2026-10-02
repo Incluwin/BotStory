@@ -211,6 +211,19 @@ public class LivingWorldConfig {
     public String COMPANION_PQ_ENABLED_KEYS = "";
     /** A companion KPQ run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does. */
     public boolean COMPANION_PQ_GUIDANCE = true;
+    /**
+     * The entry NPC says how long the lineup should take (a range, and who would struggle where) and picks the quickest
+     * lineup within each owner's seats (the PQ clear-time estimate, server.agents...partyquest.pace). false = the kill
+     * switch: her window and her lineup exactly as before the estimate.
+     */
+    public boolean COMPANION_PQ_CLEAR_TIME = true;
+    /**
+     * Character ids, a comma list, whose runs as party leader teach the clear-time records no leader term (how fast
+     * the leader talks to the NPCs and works the puzzles): a scripted test driver leads far slower than a person, so
+     * its runs would make every human leader's estimate too long. Their companions' times still count. Empty = every
+     * leader is learned from. The live config.yaml lists the characters the test driver leads with.
+     */
+    public String COMPANION_PQ_PACE_EXCLUDED_LEADERS = "";
 
     // Rumors
     public int RUMOR_TICK_MS = 60000;
@@ -227,6 +240,18 @@ public class LivingWorldConfig {
             }
         }
         return false;
+    }
+
+    /** COMPANION_PQ_PACE_EXCLUDED_LEADERS as character ids, blank entries and spaces ignored. */
+    public java.util.Set<Integer> companionPqPaceExcludedLeaders() {
+        java.util.Set<Integer> ids = new java.util.TreeSet<>();
+        for (String entry : COMPANION_PQ_PACE_EXCLUDED_LEADERS == null ? new String[0]
+                : COMPANION_PQ_PACE_EXCLUDED_LEADERS.split(",")) {
+            if (!entry.isBlank()) {
+                ids.add(Integer.parseInt(entry.trim()));
+            }
+        }
+        return java.util.Collections.unmodifiableSet(ids);
     }
 
     public void validate() {
@@ -316,6 +341,13 @@ public class LivingWorldConfig {
         for (String key : COMPANION_PQ_ENABLED_KEYS == null ? new String[0] : COMPANION_PQ_ENABLED_KEYS.split(",")) {
             if (!key.isBlank() && !key.trim().equalsIgnoreCase("kpq")) {
                 throw new IllegalArgumentException("living_world.COMPANION_PQ_ENABLED_KEYS must list only kpq");
+            }
+        }
+        for (String id : COMPANION_PQ_PACE_EXCLUDED_LEADERS == null ? new String[0]
+                : COMPANION_PQ_PACE_EXCLUDED_LEADERS.split(",")) {
+            if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
+                throw new IllegalArgumentException(
+                        "living_world.COMPANION_PQ_PACE_EXCLUDED_LEADERS must list character ids, not \"" + id.trim() + "\"");
             }
         }
     }

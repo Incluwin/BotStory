@@ -37,6 +37,8 @@ public final class AgentKpqHumanDialogueRuntime {
 
     public static void observeChat(Character speaker, String message, long nowMs) {
         if (speaker == null || message == null || message.isBlank()) return;
+        // A leader's typed answer to a stage-1 re-roll question: only recorded here, the coordinator acts on its tick.
+        if (AgentKpqSessionRegistry.answerRerollInChat(speaker.getId(), message)) return;
         AgentKpqSession session = AgentKpqSessionRegistry.forMember(speaker.getId());
         AgentKpqMemberState member = session == null ? null : session.member(speaker.getId());
         if (session == null || session.phase() != AgentKpqSession.Phase.STAGE_1

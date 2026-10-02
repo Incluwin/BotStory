@@ -166,6 +166,9 @@ public final class AgentCombatAttackRuntime {
                 .mapToLong(damage -> damage)
                 .sum();
         AgentCombatSkillUsageStateRuntime.record(entry, attackPlan.skillId, dealt);
+        if (degenerateBasicAttack(bot, attackPlan)) {
+            AgentCombatSkillUsageStateRuntime.recordDegenerate(entry);
+        }
         AgentCombatLearner.onAttackCommitted(entry, attackPlan.skillId, dealt, expected);
         AgentSkillShowcase.used(entry, bot, attackPlan.skillId);
         AgentCombatFacingRuntime.rememberAttackFacing(entry, attackPlan.stance);
@@ -228,6 +231,13 @@ public final class AgentCombatAttackRuntime {
 
     private static int skillId(AgentAttackPlan attackPlan) {
         return attackPlan == null ? 0 : attackPlan.skillId;
+    }
+
+    /** A basic attack at close range with a weapon made to shoot: the whack an archer or thief swings point-blank. */
+    static boolean degenerateBasicAttack(Character bot, AgentAttackPlan attackPlan) {
+        return attackPlan != null && attackPlan.skillId == 0 && attackPlan.isCloseRangeRoute()
+                && AgentAttackExecutionProvider.isDegenerateCapableRangedWeapon(
+                AgentAttackExecutionProvider.getEquippedWeaponType(bot));
     }
 
 }

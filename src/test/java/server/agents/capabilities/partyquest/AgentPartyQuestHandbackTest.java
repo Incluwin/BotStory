@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AgentPartyQuestHandbackTest {
+    private static final AgentPartyQuestHandback.RerollAsk REROLL_ASK = new AgentPartyQuestHandback.RerollAsk("kpq",
+            "kpq-1", 1, 2, "thirty-fives", "ugh, two of us got 35s. that's a long grind, wanna bail and run it again?");
     private static final AgentPartyQuestHandback.TapOut TAP_OUT =
             new AgentPartyQuestHandback.TapOut("kpq", "session", 101, 103_000_890, 1_000L);
     private static final AgentPartyQuestHandback.RunEnded RUN_ENDED =
@@ -47,11 +49,39 @@ class AgentPartyQuestHandbackTest {
             public void runEnded(AgentPartyQuestHandback.RunEnded ended) {
                 throw new IllegalStateException("roster not loaded");
             }
+
+            @Override
+            public boolean askLeaderToReroll(AgentPartyQuestHandback.RerollAsk ask) {
+                throw new IllegalStateException("roster not loaded");
+            }
         });
 
         assertEquals(AgentPartyQuestHandback.Handback.TOWN_LIFE, AgentPartyQuestHandback.handback(101, "kpq"));
         assertFalse(AgentPartyQuestHandback.tapOut(TAP_OUT));
         assertDoesNotThrow(() -> AgentPartyQuestHandback.runEnded(RUN_ENDED));
+        assertFalse(AgentPartyQuestHandback.askLeaderToReroll(REROLL_ASK), "the question stands in chat alone");
+    }
+
+    @Test
+    void aRerollQuestionIsShownOnlyByAHostThatShowsIt() {
+        assertFalse(AgentPartyQuestHandback.askLeaderToReroll(REROLL_ASK), "nothing installed");
+        AgentPartyQuestHandback.install((agentCharacterId, questKey) -> null);
+        assertFalse(AgentPartyQuestHandback.askLeaderToReroll(REROLL_ASK), "a host without the window");
+        List<AgentPartyQuestHandback.RerollAsk> shown = new ArrayList<>();
+        AgentPartyQuestHandback.install(new AgentPartyQuestHandback.Rule() {
+            @Override
+            public AgentPartyQuestHandback.Handback handback(int agentCharacterId, String questKey) {
+                return null;
+            }
+
+            @Override
+            public boolean askLeaderToReroll(AgentPartyQuestHandback.RerollAsk ask) {
+                return shown.add(ask);
+            }
+        });
+
+        assertTrue(AgentPartyQuestHandback.askLeaderToReroll(REROLL_ASK));
+        assertEquals(List.of(REROLL_ASK), shown);
     }
 
     @Test

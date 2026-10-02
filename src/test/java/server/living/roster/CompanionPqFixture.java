@@ -53,6 +53,10 @@ final class CompanionPqFixture implements AutoCloseable {
     final Map<Integer, Integer> manaPotions = new HashMap<>();
     /** Character id -> what it hits for in KPQ, damage per second (0 unless a test says otherwise). */
     final Map<Integer, Double> dps = new HashMap<>();
+    /** Where the lineup's clear time is read from: none unless a test says otherwise (set it before ready()). */
+    CompanionPartyQuestService.PaceSource pace = CompanionPartyQuestService.PaceSource.COLD;
+    /** Where each run's clear-time record goes: a ledger of the service's own unless a test sets one before ready(). */
+    PqPaceLedger ledger;
     /** Ann's I/O thread: null runs each task at once. */
     List<Runnable> io;
     final Doors doors = new Doors();
@@ -60,6 +64,8 @@ final class CompanionPqFixture implements AutoCloseable {
     CompanionRunLifecycle lifecycle;
     /** The lineup Lakelis showed again when a Yes found things changed, or a companion still finishing something. */
     LineupPlan shownAgain;
+    /** Her line above the last lineup she showed (null: none). */
+    String topLine;
     /** The map lines of Ann's own companions as they step out beside Lakelis. */
     final MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class);
 
@@ -108,13 +114,15 @@ final class CompanionPqFixture implements AutoCloseable {
         game.roster();
         when(game.world.views()).thenReturn(new CompanionViews(game.world, id -> "camp", id -> "item"));
         service = new CompanionPartyQuestService(game.world, doors, bot -> potions.getOrDefault(bot.getId(), 50),
-                bot -> manaPotions.getOrDefault(bot.getId(), 50), bot -> dps.getOrDefault(bot.getId(), 0.0d));
+                bot -> manaPotions.getOrDefault(bot.getId(), 50), bot -> dps.getOrDefault(bot.getId(), 0.0d), pace,
+                ledger == null ? new PqPaceLedger(game.world) : ledger);
         lifecycle = new CompanionRunLifecycle(game.world, service);
         when(game.world.partyQuests()).thenReturn(service);
         service.installDesk(new CompanionPartyQuestService.Desk() {
             @Override
-            public void proposal(Character leader, LineupPlan plan, String topLine) {
+            public void proposal(Character leader, LineupPlan plan, String top) {
                 game.calls.add("proposal");
+                topLine = top;
             }
 
             @Override
@@ -145,9 +153,21 @@ final class CompanionPqFixture implements AutoCloseable {
 
     /** The run's KPQ session ends, as the Agent layer tells the host (childFinished, then runEnded). */
     void sessionEnds(boolean success) {
+        sessionEnds(success, null);
+    }
+
+    /** {@link #sessionEnds(boolean)} with the pace the session reported (null: none). */
+    void sessionEnds(boolean success, server.agents.capabilities.partyquest.pace.AgentPqPace pace) {
         AgentKpqSessionRegistry.remove(doors.session);
         lifecycle.runEnded(new AgentPartyQuestHandback.RunEnded("kpq", doors.session.sessionId(), ANN, success,
-                success ? "completed" : "KPQ stopped", 5_000L));
+                success ? "completed" : "KPQ stopped", 5_000L, pace));
+    }
+
+    /** Ann left stage 1 to run it again (the KPQ re-roll): the run's session ends as the Agent layer tells it. */
+    void sessionRerolled() {
+        AgentKpqSessionRegistry.remove(doors.session);
+        lifecycle.runEnded(new AgentPartyQuestHandback.RunEnded("kpq", doors.session.sessionId(), ANN, false,
+                AgentPartyQuestHandback.REROLLED, 5_000L, null));
     }
 
     /** Companion-ops keeps its commands in the returned queue until {@link #drain}. */

@@ -2041,9 +2041,25 @@ tuning:
     # Technical: AgentKpqCoordinator measures the Euclidean map-pixel distance from the leader to Cloto on map 103000800; a leader farther than this hears the line once per companion-adopted session.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX: '600'
     # Values: 20-250 map pixels. Recommended: 85. Higher values allow pass delivery from farther away; lower values require tighter visual grouping.
-    # Purpose: Defines how close a KPQ member must stand to the event leader before dropping a collected pass for coordinated stage completion.
-    # Technical: AgentKpqCoordinator applies this Euclidean map-pixel threshold only to the ordinary pass-delivery interaction, not portal or NPC reachability.
+    # Purpose: Defines how close a stock KPQ run's member must stand to the event leader before dropping a collected pass, and how near a companion run's floor pass must lie to count as within its human leader's reach.
+    # Technical: AgentKpqCoordinator tests this bound on each axis separately (|dx| and |dy|, not Euclidean); companion runs drop on the leader's spot by PASS_DROP_AT_FEET_PX instead, and use this for a stage-1 holder's drop only past STAGE1_PASS_AT_FEET_MS, for the stage-5 floor-pass reach, and for which floor passes lie by Cloto.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.NEAR_PX: '85'
+    # Values: 4-40 map pixels. Recommended: 10. Lower values make deliverers stand nearer the leader's spot before dropping; above about 30 the WASM client's standing pickup (about 9 px left to 41 px right of a drop) misses.
+    # Purpose: Makes a companion run's companions drop stage-1 and stage-5 passes on the human leader's own spot, so a leader who presses pickup without moving gets them.
+    # Technical: AgentKpqCoordinator drops only when the deliverer and the leader both stand on a foothold (never in the air or on a rope or ladder) and the deliverer is within this many pixels of the leader's ground point on each axis; it walks there with a precise move first; a stage-1 holder that has not managed it within STAGE1_PASS_AT_FEET_MS drops by NEAR_PX instead.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PASS_DROP_AT_FEET_PX: '10'
+    # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values give up on the leader's own spot sooner; higher values keep a holder chasing a leader who keeps moving or stays on a rope or ladder.
+    # Purpose: Bounds how long a companion run's stage-1 pass holder tries to drop its pass on the human leader's own spot before it drops it beside him, as a stock run's holders do.
+    # Technical: Measured per holder from the first tick it sets out for the leader; past it AgentKpqCoordinator drops within NEAR_PX of him on each axis, wherever he stands, walks there with a non-precise move, and says it dropped the pass next to him.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_AT_FEET_MS: '30000'
+    # Values: 5000-120000 milliseconds. Recommended: 20000. Keep it below STAGE1_FLOOR_PASS_PATIENCE_MS so the leader hears about the pass before the recovery stops waiting for it; lower values remind a leader who is still bending down for it.
+    # Purpose: Reminds a companion run's human leader, once, of a stage-1 pass a companion dropped for him that he has not picked up.
+    # Technical: Measured from the floor pass's own drop time on the coordinator's clock, for passes whose owner is a companion of the run while the leader still holds fewer passes than Cloto needs and no re-roll question is out; the companion that dropped the oldest such pass says it (the narrator, else the first companion standing, when that companion's Agent is no longer loaded), with coordination chat on or off, once a session; a second human's pass never prompts it. Stock and Agent-led runs never say it.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_NUDGE_MS: '20000'
+    # Values: 20000-170000 milliseconds. Recommended: 60000. Keep it well below the 180 s item expiry and above STAGE1_PASS_NUDGE_MS; lower values clear stage 1 without a pass the leader was about to pick up.
+    # Purpose: Lets a stage-1 floor pass that a companion run's human leader has left lying stop holding the missing-pass recovery back, so the stage clears soon after instead of when the pass expires.
+    # Technical: Measured from each floor pass's own drop time on the coordinator's clock; an older pass no longer counts as on its way however near the leader it lies, and once every non-leader pass is delivered and none younger lies on the map, the MISSING_PASS_GRACE_MS grace and the recovery run and log a warning naming the cause (stale-floor-passes), and the recovery then takes the stage-1 passes back from the floor and the leader's bag as Cloto's own clear does, so none reaches stage 5. Passes companions still hold, or younger than this, block as before, and so does every floor pass while the re-roll question is out; stock and Agent-led runs keep the old rule (any floor pass blocks) and their passes.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_FLOOR_PASS_PATIENCE_MS: '60000'
     # Values: true or false. Recommended: false when a human is the party leader.
     # Purpose: Allows an Agent member to visibly announce shared KPQ assignments, leader pass totals, and immediate NPC reminders for a human-led party.
     # Technical: Execution coordination remains active regardless; this flag controls presentation only and never changes puzzle solving, combat, navigation, or recovery.
@@ -2179,17 +2195,101 @@ tuning:
     # Purpose: Splits the KPQ Stage 1 map into the towers a companion run's helpers fight in, so their kills drop where the collector they follow is working.
     # Technical: AgentKpqCoordinator sorts the map's Ligator spawn points by x and starts a new tower wherever two neighbours lie more than this far apart; each tower's x-band reaches to the middle of the gap, and its spawn platforms become the helpers' navigation regions.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_TOWER_GAP_PX: '150'
-    # Values: 30000-600000 milliseconds. Recommended: 120000. Shorter values renew the territory, and so reset each helper's combat tactics, more often; longer values let a missed clean-up steer helpers longer.
-    # Purpose: Bounds how long one KPQ Stage 1 helper territory stands before it is made again, so a territory nothing cleared cannot steer an Agent for the rest of its life.
-    # Technical: The expiry is fixed when the coordinator makes the territory and stays the same on every tick, so the combat directive stays equal and the helpers do not restart; the coordinator makes it again once it expires, and the territory is also dropped at the stage-1 clear and whenever the run ends.
+    # Values: 30000-600000 milliseconds. Recommended: 120000. Shorter values renew the territory, and so reset each member's combat tactics, more often; longer values let a missed clean-up steer members longer.
+    # Purpose: Bounds how long one KPQ Stage 1 territory (a helper's tower, or with the cluster lever a collector's platform cluster) stands before it is made again, so a territory nothing cleared cannot steer an Agent for the rest of its life.
+    # Technical: The expiry is fixed when the coordinator makes the territory and stays the same on every tick, so the combat directive stays equal and the members do not restart; the coordinator makes it again once it expires, and the territory is also dropped at the stage-1 clear and whenever the run ends.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_HELPER_TERRITORY_MS: '120000'
     # Values: 2000-15000 milliseconds. Recommended: 5000. Lower values send idle helpers to other towers sooner, where their coupons drop far from the collector; higher values leave them waiting for respawns.
     # Purpose: Sets how long KPQ Stage 1 helpers wait in an empty tower before they fight anywhere on the map for a while.
     # Technical: Passed as the region assignment's empty-borrow delay; after it, the combat region policy's empty-scan threshold and borrow window (AgentCombatPolicyConfig.REGION_ASSIGNMENT_BORROW_EMPTY_SCANS and REGION_ASSIGNMENT_BORROW_MS) decide when and how long they borrow.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_HELPER_TERRITORY_EMPTY_MS: '5000'
+    # Values: true or false. Recommended: true. False keeps a companion run's human leader unasked about the coupons he picks up.
+    # Purpose: Lets the neediest coupon collector of a companion run ask its human KPQ leader, in character, to drop the Ligator coupons he picks up by it, since Cloto gives a leader no coupon question of his own.
+    # Technical: AgentKpqCoordinator says the line once while the leader holds any 4001007 coupon and a companion collector is short, and once more at most after STAGE1_LEADER_COUPON_REPEAT_MS; stock and all-Agent runs never ask. The leader's kills and held coupons are logged at the stage-1 clear either way.
+    server.agents.capabilities.partyquest.kpq.AgentKpqStageOneLevers.LEADER_COUPONS_ENABLED: 'true'
+    # Values: true or false. Recommended: true. False sends a companion run's collectors to floor coupons in the middle of a fight, as stock runs do.
+    # Purpose: Makes a companion run's stage-1 coupon collector finish the Ligators on the platform it fights on before it walks off for a floor coupon, so it stops leaving fights for coupons across the map.
+    # Technical: In AgentKpqCoordinator's coupon sweep a collector with a live Ligator in its own navigation region is matched only to a coupon within STAGE1_LOOT_NEAR_PX, one older than STAGE1_LOOT_MAX_AGE_MS, or any coupon once the floor's coupons would finish its count; stock and all-Agent runs sweep as before.
+    server.agents.capabilities.partyquest.kpq.AgentKpqStageOneLevers.FIGHT_BEFORE_LOOT_ENABLED: 'true'
+    # Values: true or false. Recommended: true. False leaves a companion run's ranged members on the point-blank whack-and-retreat loop against Ligators.
+    # Purpose: Makes a companion run's bow, crossbow, claw and gun members fight stage 1 from a firing spot away from the Ligator spawn points of their territory, so the Ligators walk into their shots.
+    # Technical: AgentKpqCoordinator anchors such a member with the existing anchored farming at a ground spot STAGE1_RANGED_SPAWN_STANDOFF_PX beside a spawn on that spawn's platform and at least that far from every spawn of its territory; a coupon objective takes it off the spot, and with no such spot it grinds the territory as before.
+    server.agents.capabilities.partyquest.kpq.AgentKpqStageOneLevers.RANGED_STANDOFF_ENABLED: 'true'
+    # Values: true or false. Recommended: true. False gives a companion run's collectors the map-wide grind and its helpers the collector's tower again.
+    # Purpose: Gives every companion of a companion run a platform cluster of Ligator spawns to camp in stage 1, instead of a map-wide grind for collectors and a whole tower for helpers.
+    # Technical: Once every companion has its coupon target, AgentKpqCoordinator splits the map's Ligator spawns into clusters (STAGE1_CLUSTER_LINK_X_PX, STAGE1_CLUSTER_LINK_Y_PX, STAGE1_CLUSTER_MIN_SPAWNS) and shares them out; holders and helpers camp the neediest collector's cluster; stock and all-Agent runs are unchanged.
+    server.agents.capabilities.partyquest.kpq.AgentKpqStageOneLevers.CLUSTERS_ENABLED: 'true'
+    # Values: 20000-170000 milliseconds. Recommended: 60000. Lower values ask the leader again sooner; the request is repeated at most once.
+    # Purpose: Sets how long after its first request a companion run's neediest collector asks the human leader once more to drop the coupons he holds by it.
+    # Technical: Measured from the first request on the coordinator's clock; the repeat is said only while the leader still holds a 4001007 coupon and a companion collector is still short, by whichever collector is neediest then.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_COUPON_REPEAT_MS: '60000'
+    # Values: true or false. Recommended: true. False never offers a re-roll and prices stage 1 in the Lakelis clear time exactly as drawn, as before.
+    # Purpose: Lets the companions of a human-led KPQ run offer to leave and start over when Cloto's stage-1 coupon answers come out heavy, as human parties abandon a run when two or more of them drew 35, to cut clear time.
+    # Technical: AgentKpqCoordinator decides once per companion-adopted run with a human event leader, after every collector has its coupon number and before any pass exists; AgentKpqPaceProfile gives the stage-1 quota the same policy as its redraw only while this is true. Stock and all-Agent runs never re-roll.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_ENABLED: 'true'
+    # Values: 20000-300000 milliseconds. Recommended: 75000; assumed quick human, never measured: exit, Nella, walk to Lakelis, Yes, the question walk.
+    # Purpose: What starting a KPQ run over costs a party, set against the grind a heavy stage-1 draw would cost, when a companion run decides whether a re-roll is worth offering.
+    # Technical: The expected saving is grind(the coupons still needed) - (this + grind(a fresh draw's mean kills)) at the stage-1 theory rate of the party; the clear-time estimate adds this as a fixed time per re-roll in its stage-1 mixture, unscaled by the efficiency multiplier. Measured live by the 'KPQ re-roll restart' line (toDrawMs: from a re-roll's release to the next run's draw; add the re-rolled run's waitedMs); retune it from those.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_RESTART_MS: '75000'
+    # Values: 0-600000 milliseconds. Recommended: 60000. Higher values offer fewer re-rolls, only for the heaviest draws; 0 offers one whenever a fresh draw is expected to be quicker at all.
+    # Purpose: The least expected time a re-roll must save before a companion run with warm pace data offers it to its human leader.
+    # Technical: Compared with AgentPqPaceSegment.Redraw.savingMs at the party's stage-1 theory seconds per kill (the warm KPQ profile, the members' power read at stage 1 and the leader's calibration); with the pace data cold the players' rule of thumb (two or more 35s) decides instead.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_MIN_SAVING_MS: '60000'
+    # Values: 0-5 re-rolls. Recommended: 2. 0 never offers one; higher values let a leader re-roll more runs in a row before the companions grind out whatever Cloto asks.
+    # Purpose: Bounds how many KPQ runs in a row one human leader is offered a stage-1 re-roll, so a party never loops on the entrance.
+    # Technical: AgentKpqRerollStreaks counts a leader's re-rolls in a row; a clear, a normal failure or REROLL_STREAK_RESET_MS without a re-roll starts it over; the estimate's mixture allows this many redraws in a row, the last draw kept whatever it is.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_MAX_STREAK: '2'
+    # Values: 60000-7200000 milliseconds. Recommended: 900000. Lower values forget a leader's re-rolls sooner; Lakelis also greets a leader back once within this long after a re-roll.
+    # Purpose: How long a stage-1 re-roll counts toward its leader's streak, and how long Lakelis remembers it to greet the same leader back at the entrance.
+    # Technical: AgentKpqRerollStreaks treats a streak whose last re-roll is this old as 0; CompanionPartyQuestService shows Lakelis's back-already line above the lineup once, the first time the leader talks to her after his last companion run ended in a re-roll less than this long ago.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_STREAK_RESET_MS: '900000'
+    # Values: 5000-120000 milliseconds. Recommended: 25000. Shorter values carry on sooner when the leader is busy fighting; the companions never stop collecting while they wait.
+    # Purpose: How long a companion run waits for its human leader to answer the stage-1 re-roll question before the companions say they will grind it out.
+    # Technical: Measured on the coordinator's clock from the question, or from the tick that saw the companion's window on screen once it is (the window is offered only within this long of the question, at a lull), so at most twice this; the answer (the window or a typed answer in chat) is recorded in AgentKpqSessionRegistry and read on the next tick; after this long with none the question is closed and a later pick on the window is answered in pink text. A bare yes or no typed counts only when no other companion line asked the leader something within this long before the question.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_ANSWER_MS: '25000'
+    # Values: 0-800 map pixels. Recommended: 250. Higher values wait longer for a quiet moment before the window opens; 0 opens it whenever the leader stands on a foothold out of his combat stance.
+    # Purpose: Keeps the companion's re-roll window from opening on a human leader mid-fight: the v83 window holds his input until he answers it, while the Ligators keep hitting him.
+    # Technical: AgentKpqRerollPolicy.lull: the window is offered on a coordinator tick only while the leader stands on a foothold (his client's last stance not rope, ladder or jump), not in the alert stance, and no live Ligator lies within this Euclidean map-pixel distance of his position; until then the question stands in chat alone.
+    server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy.REROLL_WINDOW_CLEAR_PX: '250'
+    # Values: 60-300 map pixels. Recommended: 150. Higher values let a fighting collector step further off for a coupon; lower values keep it on the Ligator.
+    # Purpose: Sets how close a floor coupon must lie for a companion run's stage-1 collector to pick it up while a Ligator still lives on the platform it fights on.
+    # Technical: AgentKpqCoordinator's coupon sweep measures the Euclidean map-pixel distance from the collector to the coupon; nearer coupons are matched as before, farther ones wait for the platform to clear, STAGE1_LOOT_MAX_AGE_MS, or a floor that finishes the collector's count.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_NEAR_PX: '150'
+    # Values: 30000-160000 milliseconds. Recommended: 120000. Keep it well below the server's 180 s item expiry so a waiting coupon is never lost.
+    # Purpose: Bounds how long a floor coupon may wait for a fighting companion-run collector before the collector leaves its fight for it anyway.
+    # Technical: Measured from the coupon's own drop time on the coordinator's clock; an older coupon is matched in the sweep however busy the collector is, closest collector and coupon pairs first as before.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_MAX_AGE_MS: '120000'
+    # Values: 60-250 map pixels. Recommended: 80, still past the 50 px point-blank range. Higher values need longer platforms: at 100 four of 103000800's five clusters had a spot only on a one-spawn platform, at 80 three have one on a platform of two or three spawns.
+    # Purpose: Sets how far from the Ligator spawn points of its territory a companion run's ranged member stands to shoot in stage 1, so it is not on the point-blank whack-and-retreat loop.
+    # Technical: The firing spot is the foothold point this many pixels left or right of a territory spawn on that spawn's navigation region, kept only if every spawn of the territory is at least this far away (Euclidean) and that region holds at least STAGE1_RANGED_SPOT_MIN_SPAWNS of the territory's spawns; the spot on the platform with the most spawns wins, then the nearest to a spawn.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX: '80'
+    # Values: 1-6 spawn points. Recommended: 2. One lets a ranged member camp a platform fed by a single spawn's respawn; higher values leave more clusters without a firing spot.
+    # Purpose: Keeps a companion run's ranged member from shooting stage 1 from a platform too poor in Ligators to keep it busy; with no platform rich enough it grinds its territory as before.
+    # Technical: An anchored member attacks only what comes into range of its spot without moving, so AgentKpqStageOneClusterPolicy.firingSpot keeps only spots on a navigation region holding at least this many of the territory's spawn points.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPOT_MIN_SPAWNS: '2'
+    # Values: 60-300 map pixels. Recommended: 150. Higher values join neighbouring platforms into one; lower values split a platform's spawns into groups that STAGE1_CLUSTER_MIN_SPAWNS then joins again.
+    # Purpose: Decides which KPQ Stage 1 Ligator spawns stand on one platform when a companion run's spawns are split into the clusters its companions camp.
+    # Technical: AgentKpqStageOneClusterPolicy links two spawn points whose x differs by at most this and whose y differs by at most STAGE1_CLUSTER_LINK_Y_PX, transitively; the linked groups are the platforms that clusters are built from.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_LINK_X_PX: '150'
+    # Values: 10-150 map pixels. Recommended: 60. Higher values join platforms stacked above each other; lower values split one sloped platform.
+    # Purpose: Sets how far apart in height two KPQ Stage 1 Ligator spawns may be and still count as one platform when a companion run's clusters are made.
+    # Technical: AgentKpqStageOneClusterPolicy links two spawn points only when their y differs by at most this and their x by at most STAGE1_CLUSTER_LINK_X_PX; platforms then join into clusters by STAGE1_CLUSTER_MIN_SPAWNS.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_LINK_Y_PX: '60'
+    # Values: 1-11 spawn points. Recommended: 3. On 103000800 three gives five clusters of three to six Ligators; four gives two clusters of nine and thirteen.
+    # Purpose: Sets the fewest Ligator spawns a companion run's stage-1 cluster may have, so a companion camping it has enough Ligators respawning to keep fighting.
+    # Technical: AgentKpqStageOneClusterPolicy joins a platform group with fewer spawns to its nearest neighbour (fewest pixels walked plus climbed between their closest spawns), closest pair first, until no cluster is short or one is left.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_MIN_SPAWNS: '3'
+    # Values: 5000-60000 milliseconds. Recommended: 15000, the KPQ event's 15 s instance respawn. Lower values send members to borrow other clusters before their own Ligators return.
+    # Purpose: Sets how long a companion run's stage-1 member waits in its empty platform cluster for the respawn before it fights anywhere for a while.
+    # Technical: Passed as the cluster territory's empty-borrow delay; after it, the combat region policy's empty-scan threshold and borrow window (AgentCombatPolicyConfig.REGION_ASSIGNMENT_BORROW_EMPTY_SCANS and REGION_ASSIGNMENT_BORROW_MS) decide when and how long it borrows.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RESPAWN_WAIT_MS: '15000'
+    # Values: 300-780 map pixels. Recommended: 600. Keep it below the combat seek range (GRIND_SEEK_RANGE, 800), within which a member's own combat sees its cluster's Ligators and walks to them itself.
+    # Purpose: Sets how far from its platform cluster a companion run's stage-1 member must have been knocked or have dropped before it walks straight back while a Ligator lives there.
+    # Technical: AgentKpqCoordinator measures the Euclidean map-pixel distance from the grounded member to the nearest spawn of its cluster; nearer, as on the way between two of the cluster's platforms, its territory-bound combat paths there itself, and a walk back would turn it around.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RETURN_PX: '600'
     # Values: 2000-30000 milliseconds. Recommended: 5000. Keep this long enough for a newly dropped pass to become pickup-eligible and appear in the next coordinator ticks.
     # Purpose: Allows Stage 1 to recover when every non-leader completed their Cloto exchange but a pass vanished before reaching the leader.
-    # Technical: Recovery is blocked while any pass remains visible on the map; after this grace period the coordinator opens Stage 1 and writes a diagnostic warning.
+    # Technical: Recovery is blocked while any pass remains visible on the map (in a companion run with a human leader and no re-roll question out, only a pass younger than STAGE1_FLOOR_PASS_PATIENCE_MS); after this grace period the coordinator opens Stage 1 and writes a diagnostic warning naming the cause.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.MISSING_PASS_GRACE_MS: '5000'
     # Values: 3000-60000 milliseconds. Recommended: 10000. Keep this shorter than LOCAL_RECOVERY_TIMEOUT_MS so a complete party cannot remain stranded behind leader navigation.
     # Purpose: Submits a complete Stage 1 pass set through Cloto if the Agent leader cannot finish its ordinary walk to the NPC.
@@ -2257,12 +2357,28 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqPuzzleParticipantOrder.HUMAN_MOST_MOVEMENT_WEIGHT: '1'
     # Values: 2000-30000 milliseconds. Recommended: 7000. Keep enough time for newly spawned passes to become visible and pickup-eligible.
     # Purpose: Allows Stage 5 to recover when every monster is dead but one or more required passes have disappeared from inventories and the floor.
-    # Technical: Recovery requires zero live Stage 5 monsters and zero visible floor passes, then records a structured warning before clearing the stage.
+    # Technical: Recovery requires zero live Stage 5 monsters, no pass carried by a live companion, and no floor pass still on its way (in companion runs a pass lying out of the leader's reach longer than STAGE5_FLOOR_PASS_PATIENCE_MS with nobody fetching it no longer counts), held for this long; in companion runs with such stale passes the first expiry instead starts the run's one re-collect, once the carriers have set out, and the gate must then hold this long again; each restore logs a defect warning with its cause.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_MISSING_PASS_GRACE_MS: '7000'
-    # Values: 30000-600000 milliseconds. Recommended: 90000. Keep this well above a companion's climb from King Slime's floor to Cloto (about 2,300 px; roughly 25-40 s at the 140 px/s climb speed) and below KPQ_PHASE_TIMEOUT_MS.
-    # Purpose: Bounds how long a companion run's stage-5 companions try to bring their passes to the human leader before they drop them where they stand and tell the leader where they are.
-    # Technical: Measured from the session's pass hand-over; a PASS_DELIVERER still farther than NEAR_PX from the leader after it drops its passes on the spot, so the floor pickup and the STAGE5_MISSING_PASS_GRACE_MS recovery apply again.
-    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS: '90000'
+    # Values: 30000-600000 milliseconds. Recommended: 45000, about twice the 21-24 s offline route from King Slime's floor to Cloto. Keep it below KPQ_PHASE_TIMEOUT_MS.
+    # Purpose: Bounds how long a companion run's stage-5 companions try to reach a human leader they have a route to before they leave the passes by Cloto, on his way there, and tell him.
+    # Technical: The clock starts at the pass hand-over, or when a deliverer that found no route to the leader (it then waits by Cloto and the bound does not run) sets out for him: once he stands on Cloto's level with a route to him, or once he has been in reach this long without coming. Past it the deliverer walks to Cloto's approach and drops there, and past twice it, or when Cloto cannot be reached either, it drops where it stands.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS: '45000'
+    # Values: 5000-120000 milliseconds. Recommended: 20000. Live a full sweep took 15 s; lower values may set out while a reachable pass is still being fetched.
+    # Purpose: Starts a companion run's stage-5 pass hand-over even while a carrier still sweeps, and bounds the one re-collect of passes left lying, so a pass that cannot be fetched cannot hold the run up to its 180 s expiry.
+    # Technical: Measured from the first tick with no stage-5 mob alive and King Slime's revive grace over; the re-collector's sweep is measured from its start, and either way an unfetched pass then falls to STAGE5_FLOOR_PASS_PATIENCE_MS.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_SWEEP_LIMIT_MS: '20000'
+    # Values: 10000-170000 milliseconds. Recommended: 30000. Keep it well below the 180 s item expiry; lower values send a companion back for passes a leader is still walking to.
+    # Purpose: Lets a companion run's stage-5 floor passes that are going nowhere stop holding the missing-pass recovery back, after one in-character re-collect by the nearest companion.
+    # Technical: Measured from the drop's own drop time on the coordinator's clock; a pass within NEAR_PX of the leader on each axis, the loot target of any companion, or one lying within NEAR_PX of Cloto while the leader is not by Cloto himself keeps counting as on its way however old it is (until its expiry).
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_FLOOR_PASS_PATIENCE_MS: '30000'
+    # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values repeat the way to Cloto sooner; it is said again at most once.
+    # Purpose: Tells a companion run's human leader the way to Cloto once more if he still stands on stage 5's arrival ledge, where no companion can bring him the passes.
+    # Technical: Measured from the first time the route line was said; the repeat fires only while some grounded companion on stage 5 has no navigation route to the leader's position. Both lines, and the Curse Eye caution with each while a Curse Eye lives, are said with coordination chat on or off, by the narrator or else the first companion standing in the run.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_ROUTE_REPEAT_MS: '30000'
+    # Values: 0.05-0.5 of maximum HP. Recommended: 0.25. Higher values make carriers leave their passes earlier; zero disables it.
+    # Purpose: Lets a companion run's stage-5 carrier that is about to go down drop its passes while it still stands, so they are not lost with it when the stock respawn takes it out of the event.
+    # Technical: A carrier or deliverer holding passes drops them all once when its HP is below this fraction of its current maximum, it holds no HP potion (read through the capability gateway; an unknown count never counts as none), and a stage-5 mob is still alive; it then loots no pass again, and the others or the re-collect pick them up. Stock and all-Agent runs never do this.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_CARRIER_LOW_HP_FRACTION: '0.25'
     # Values: 0-30000 milliseconds. Recommended: 7000. Set zero only for Agent-only servers that do not require a human-first loot window.
     # Purpose: Gives human party members exclusive first opportunity to pick up Squishy Shoes before the assigned Agent attempts the drop.
     # Technical: The timer begins when the live shoe drop is first observed; other Agents may advance while only the selected shoe collector waits.
@@ -2371,6 +2487,150 @@ tuning:
     # Purpose: Controls how many named fixture Agents the GM-only KPQ observation harness makes available for recruitment and participant replacement.
     # Technical: AgentKpqTestService generates KPQer01 through this inclusive count before deterministic seeded shuffling; production KPQ admission is unaffected.
     server.agents.capabilities.partyquest.kpq.AgentKpqTestService.ROSTER_SIZE: '24'
+    # Values: 0.03-1.0 fraction. Recommended: 0.60, the prior from session kpq-8353c615 (2026-10-01): the policy's attacks per kill over the attacks companions really needed (SilentSin 5.3 vs 8.8, Fenna 7.6 vs 13.3, Faro723 6.3 vs 8.9); circular until more runs are recorded.
+    # Purpose: Prior share of the expected-damage policy's rate a companion reaches while it is actually fighting a stage-1 Ligator, before any recorded run refits it.
+    # Technical: AgentKpqPaceProfile seeds the s1.grind.combat calibration term with it; each member kills one Ligator every s1.grind.seek + mobHp / (this x policy dps) seconds in the clear-time estimate.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_COMBAT_EFFICIENCY: '0.60'
+    # Values: 0-120000 milliseconds. Recommended: 15800, fitted so the session kpq-8353c615 party (SilentSin, Fenna, Faro723) makes its 63 kills in 519 - 17 s; circular until more runs are recorded.
+    # Purpose: Prior time a stage-1 companion spends per Ligator kill on walking, looting, roles and waiting for spawns rather than fighting, the main reason stage 1 is slow.
+    # Technical: AgentKpqPaceProfile seeds the s1.grind.seek term; the clear-time estimate adds it to every member's fighting time per kill, so stronger damage shortens stage 1 by less than half when it doubles.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_SEEK_MS: '15800'
+    # Values: 0.0-1.0 fraction. Recommended: 0.5; assumed quick human, never measured (a leader who fights helps only when he drops his coupons for a collector).
+    # Purpose: How much of the human leader's own stage-1 kill rate counts toward the coupons Cloto asked the other members for in the clear-time estimate; another human in the party collects his own coupons and counts in full.
+    # Technical: AgentKpqPaceProfile passes it as the stage-1 Quota leaderCredit; the human leader's 1 / (seek + HP / (combat x dps)) kills per second are multiplied by it, and 0 leaves him out of stage 1 entirely; every other member, human or Agent, counts at 1.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_HUMAN_CREDIT: '0.5'
+    # Values: 0.03-1.0 fraction. Recommended: 0.19, the prior from session kpq-8353c615: 11.6 s of water-fill theory against the 90.8 - 30 s the companions took (measured while they were mostly throttled).
+    # Purpose: Prior share of the theoretical water-fill time the companions reach on stage 5's Jr. Neckis and Curse Eyes, before any recorded run refits it.
+    # Technical: AgentKpqPaceProfile seeds the s5.normals term; the estimate's normals time is the AgentKpqStageFiveTargetPolicy water-fill over the Map.wz census divided by this value and by the shared efficiency multiplier.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE5_NORMALS_EFFICIENCY: '0.19'
+    # Values: 0.03-1.0 fraction. Recommended: 0.23, the prior from session kpq-8353c615: King Slime's 8000 HP in 114.7 s against a summed policy rate of about 299 (partly throttled).
+    # Purpose: Prior share of the companions' summed expected damage per second that reaches King Slime, before any recorded run refits it.
+    # Technical: AgentKpqPaceProfile seeds the s5.boss term; the estimate's King Slime time is 8000 HP over (this x the companions' summed policy dps on King Slime), times the shared efficiency multiplier.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE5_BOSS_EFFICIENCY: '0.23'
+    # Values: 0-60000 milliseconds. Recommended: 1000; session kpq-8353c615 went from admission to stage 1 in 267 ms server-side.
+    # Purpose: Prior time from the leader's Yes at Lakelis until the party stands in stage 1, the first segment of the clear-time estimate.
+    # Technical: AgentKpqPaceProfile seeds the companion-side yes term with it; the estimate adds it as a fixed time and recorded runs refit it from the run start to the STAGE_1 phase entry.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.YES_TO_STAGE1_MS: '1000'
+    # Values: 0-120000 milliseconds. Recommended: 17000; session kpq-8353c615's companions took 15.2-17.9 s to walk from the spawn to Cloto and ask their question.
+    # Purpose: Prior time stage-1 companions spend on the opening walk and Cloto's question before they start hunting Ligators.
+    # Technical: AgentKpqPaceProfile seeds the s1.open term; it is a fixed companion time in the estimate and keeps the opening out of the s1.grind span the seek and efficiency are fitted from.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_OPENING_MS: '17000'
+    # Values: 0-60000 milliseconds. Recommended: 3000; session kpq-8353c615's companions were on stage 5 2.7 s after the stage-4 accept.
+    # Purpose: Prior time the companions need to leave stage 4 and arrive on stage 5 after Cloto accepts the stage-4 combination.
+    # Technical: AgentKpqPaceProfile seeds the s5.move term, the first fixed time of the companion branch that runs alongside the leader's s5.climb in the estimate.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE4_COMPANION_MOVE_MS: '3000'
+    # Values: 0-120000 milliseconds. Recommended: 30000; session kpq-8353c615's first stage-5 kill came 43 s after arrival, the rest of that being fighting.
+    # Purpose: Prior time stage-5 companions spend dropping from the arrival ledge to the Jr. Necki and Curse Eye platforms before the first kill.
+    # Technical: AgentKpqPaceProfile seeds the s5.descent term; a run reports it folded into the s5.normals span (zero-length incomplete span), and the fit subtracts this value before refitting the normals efficiency.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE5_DESCENT_MS: '30000'
+    # Values: 0-300000 milliseconds. Recommended: 35000; offline routes from King Slime's floor to Cloto run 21-24 s plus the drop and the pickup.
+    # Purpose: Prior time from King Slime's loot window until the ten passes are with the leader at Cloto, the last companion segment of stage 5.
+    # Technical: AgentKpqPaceProfile seeds the s5.carry term; recorded runs refit it from the end of the loot delay to the moment the leader holds the passes.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE5_CARRY_MS: '35000'
+    # Values: 0-600000 milliseconds. Recommended: 25000; assumed quick human, never measured (the scripted driver took longer).
+    # Purpose: Prior time a human leader needs to collect the stage-1 passes, hand them to Cloto and step through the portal, learned per leader from his runs.
+    # Technical: AgentKpqPaceProfile seeds the leader-side s1.handin term; recorded runs refit it per leader from the last pass existing to the STAGE_2 phase entry.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_STAGE1_HANDIN_MS: '25000'
+    # Values: 0-600000 milliseconds. Recommended: 24000; assumed quick human, never measured: 15000 to form up plus one HUMAN_PUZZLE_CHECK_MS (9000) for the first judged check, which this span includes (the scripted driver took 90-156 s).
+    # Purpose: Prior time from entering a KPQ puzzle stage to Cloto's first judged check, that check included, shared by stages 2, 3 and 4 and learned per leader.
+    # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.entry term used by s2.entry, s3.entry and s4.entry; the estimate adds (checks - 1) x per-check time after it, since the first judged check ends this span, so a quick human's stage is 15000 + checks x HUMAN_PUZZLE_CHECK_MS as the clear-time model has it.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_PUZZLE_ENTRY_MS: '24000'
+    # Values: 0-120000 milliseconds. Recommended: 9000; assumed quick human, never measured (the scripted driver checked every 19-20 s; companions re-form in 1.6-2.0 s plus 1-6 s of travel).
+    # Purpose: Prior time between two of the leader's judged Cloto checks in a puzzle stage, which with Cloto's random answer sets most of stages 2-4.
+    # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.check term; recorded runs refit it per leader as (accept - first judged check) / (checks - 1), less the leader's move share of HUMAN_PUZZLE_MOVE_MS.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_PUZZLE_CHECK_MS: '9000'
+    # Values: 0-60000 milliseconds. Recommended: 4000; assumed quick human, never measured.
+    # Purpose: Extra time a check takes in a three-member party when the human leader himself has to move to a new rope, platform or barrel.
+    # Technical: AgentKpqPaceProfile seeds the puzzle.move term; the estimate adds the leader's replayed move share x this to every puzzle check after the first, and the fit never learns it.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_PUZZLE_MOVE_MS: '4000'
+    # Values: 0-300000 milliseconds. Recommended: 12000; assumed quick human, never measured (the scripted driver took 22-35 s).
+    # Purpose: Prior time from Cloto accepting a stage-2 or stage-3 combination until the party stands on the next stage, mostly the leader walking into the portal.
+    # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.accept term used by s2.accept and s3.accept; stage 4 has no accept segment because its exit is the leader's s5.climb.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_STAGE_ACCEPT_MS: '12000'
+    # Values: 0-600000 milliseconds. Recommended: 40000; assumed quick human, never measured (the scripted driver took 166-418 s and failed its climbs).
+    # Purpose: Prior time from Cloto accepting the stage-4 combination until the human leader stands on stage 5, raced against the companions' stage-5 work.
+    # Technical: AgentKpqPaceProfile seeds the leader-side s5.climb term, the leader branch of the s5.race parallel segment; the estimate takes the slower of it and the companion branch.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_STAGE4_CLIMB_MS: '40000'
+    # Values: 0-600000 milliseconds. Recommended: 15000; assumed quick human, never measured (the scripted driver took 112-116 s).
+    # Purpose: Prior time from the leader holding the ten stage-5 passes until Cloto clears the stage, the last segment of the clear-time estimate.
+    # Technical: AgentKpqPaceProfile seeds the leader-side s5.talks term; recorded runs refit it per leader from passes-at-leader to the clear.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_FINAL_TALKS_MS: '15000'
+    # Values: 1-50 touches. Recommended: 7. Lower values flag only the very weakest members; higher values flag more of a Lv21-30 lineup.
+    # Purpose: A companion that goes down in fewer King Slime touches than this is named fragile, so the NPC can warn about it (one death ends a three-member run).
+    # Technical: AgentPqPaceEstimator compares AgentPqMemberPower.touchesToDown (effective max HP over AgentDefenseDataProvider.expectedPhysicalTouchDamage) with this and records a FRAGILE weakness; it never enters the time.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.0-1.0 hit chance. Recommended: 0.6; the formula tracks live hit rates within about 5 points.
+    # Purpose: A companion whose best attack lands less often than this on a KPQ mob it fights is named as missing it, so the NPC can warn the leader by name.
+    # Technical: AgentPqPaceEstimator records a MISSES weakness per companion and mob of each quota or clear segment where AgentPqMemberPower.hit is below it; it never enters the time.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 60000-1800000 milliseconds. Recommended: 720000; the measured party's mean grind is about 520 s.
+    # Purpose: A lineup whose mean stage-1 grind time is over this is called slow on the Ligators, so the NPC can say the coupons will take a while.
+    # Technical: AgentPqPaceEstimator records a party SLOW weakness on s1.grind with the Ligator id when the segment's mean seconds x 1000 pass this value.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.SLOW_STAGE1_MS: '720000'
+    # Values: 30000-1800000 milliseconds. Recommended: 180000; the measured party's mean normals time is about 60 s.
+    # Purpose: A lineup whose mean stage-5 normals time is over this is called slow on them, naming the mob type the water-fill leaves alive longest.
+    # Technical: AgentPqPaceEstimator records a party SLOW weakness on s5.normals with the water-fill's last type when the segment's mean seconds x 1000 pass this value.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.SLOW_NORMALS_MS: '180000'
+    # Values: 30000-1800000 milliseconds. Recommended: 180000; the measured party's mean King Slime time is about 116 s.
+    # Purpose: A lineup whose mean King Slime time is over this is called slow on the boss, so the NPC can warn that the end could drag.
+    # Technical: AgentPqPaceEstimator records a party SLOW weakness on s5.boss with King Slime's id when the segment's mean seconds x 1000 pass this value.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.SLOW_BOSS_MS: '180000'
+    # Values: a positive integer. Recommended: 1. Bump it when a pace change lands, and set the priors to that batch's timed-run implied values (the KPQ pace span lines print them).
+    # Purpose: Marks which recorded KPQ runs the clear-time calibration may learn from, so runs from before a pace change do not drag the new estimate.
+    # Technical: AgentPqPaceCalibration.fit ignores observations whose epoch differs from this; recorded runs store the epoch they were recorded under.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.PACE_EPOCH: '1'
+    # Values: 0.0-1.0 (a share of the Agents' time). Recommended: 0.10. Lower values drop more kill spans from the calibration; 1.0 keeps every one.
+    # Purpose: How much of a kill segment the companions may spend simulated below the presentation rate before its pace span stops counting, so throttled fights never set the clear-time priors.
+    # Technical: AgentKpqPaceReport marks the s1.grind, s5.normals and s5.boss spans incomplete when the member-milliseconds of the Agents standing in the run outside AgentSimulationMode.PRESENTATION, sampled each coordinator tick, are over this share of all of theirs; the KPQ pace span line prints the share as throttled=.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceReport.THROTTLED_SHARE_MAX: '0.10'
+    # Values: 0.5-20 pseudo-runs. Recommended: 3.0. Higher values trust the priors longer; lower values follow the first recorded runs closely.
+    # Purpose: How many recorded runs' worth of weight the prior of each companion pace term carries when the calibration learns from recorded runs.
+    # Technical: AgentPqPaceCalibration.fit shrinks every companion term toward its prior with this many pseudo-runs (in log space for times and efficiencies, linearly for seek) and uses it for the spread too.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.PRIOR_WEIGHT_RUNS: '3.0'
+    # Values: 0.05-1.0 log units. Recommended: 0.25. Higher values widen the shown range; lower values narrow it.
+    # Purpose: Prior spread of the lognormal efficiency multiplier every kill term of a run shares, which sets how wide the estimated clear-time range is.
+    # Technical: AgentPqPaceCalibration.prior uses it as logSpread; fit shrinks the squared spread toward its square from the runs' log residuals with PRIOR_WEIGHT_RUNS pseudo-runs.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.PRIOR_LOG_SPREAD: '0.25'
+    # Values: 0.5-20 pseudo-runs. Recommended: 2.0. Higher values keep a leader on the quick-human prior longer.
+    # Purpose: How many runs' worth of weight the quick-human prior (or the other leaders' pooled terms) carries against one leader's own recorded runs.
+    # Technical: AgentPqPaceCalibration.fit shrinks each leader term in log space toward its base with this many pseudo-runs, first for the pool and then for the leader.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.LEADER_PRIOR_WEIGHT_RUNS: '2.0'
+    # Values: 2-20 leaders. Recommended: 3. Lower values let one leader's habits move another's estimate sooner.
+    # Purpose: How many distinct leaders who are not excluded need recorded runs before leaders' terms are pooled into the base other leaders start from.
+    # Technical: Below this count AgentPqPaceCalibration.fit keeps every leader's base at the quick-human prior, so leader A never moves leader B's terms.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.LEADER_POOL_MIN_LEADERS: '3'
+    # Values: 1-100 runs. Recommended: 10. Lower values follow recent runs; higher values average over more history.
+    # Purpose: How quickly older recorded runs lose weight when the clear-time calibration learns, so the estimate follows the companions as they level.
+    # Technical: AgentPqPaceCalibration.fit weights a run 0.5^(ageRank / this), ageRank 0 being the newest run of the quest, for every companion and leader term.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.HALF_LIFE_RUNS: '10'
+    # Values: 0.001-0.5 fraction. Recommended: 0.03. Keep it below EFFICIENCY_MAX.
+    # Purpose: Lowest efficiency a fitted kill term may take, so one disastrous recorded run cannot make the estimate think a party barely fights.
+    # Technical: AgentPqPaceCalibration.fit clamps every fitted combat and clear efficiency, and every run's attacks-per-kill efficiency, to at least this value.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.EFFICIENCY_MIN: '0.03'
+    # Values: 0.5-2.0 fraction. Recommended: 1.0. Keep it above EFFICIENCY_MIN.
+    # Purpose: Highest efficiency a fitted kill term may take, so a run that beat the policy's theory cannot make the estimate promise more than the theory.
+    # Technical: AgentPqPaceCalibration.fit clamps every fitted combat and clear efficiency, and every run's attacks-per-kill efficiency, to at most this value.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.EFFICIENCY_MAX: '1.0'
+    # Values: 10000-600000 milliseconds. Recommended: 120000. A run slower than this per kill is fitted at this bound and noted.
+    # Purpose: Upper bound of the per-kill seek time the calibration may fit from a slow run, so a stalled stage 1 cannot dominate the seek estimate.
+    # Technical: AgentPqPaceCalibration.solveSeekMs bisects on [0, this] and fit clamps the shrunk seek to it; a run at either bound is counted in fitNotes.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.SEEK_MAX_MS: '120000'
+    # Values: 10-1000 rows. Recommended: 60. Higher values cost more fit time on companion-ops for runs that weigh little after HALF_LIFE_RUNS.
+    # Purpose: How many of a quest's newest recorded runs the clear-time calibration learns from at most, oldest dropped first.
+    # Technical: AgentPqPaceCalibration.fit keeps the observations with the lowest ageRank up to this count before weighting them by HALF_LIFE_RUNS.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration.MAX_ROWS: '60'
+    # Values: 1000-30000 milliseconds. Recommended: 5000. Smaller grids cost more time per lineup; larger grids round the shown minutes coarsely.
+    # Purpose: Time resolution of the clear-time distribution, which an NPC rounds to whole minutes before saying it.
+    # Technical: AgentPqPaceEstimator rounds each drawn outcome (kill counts, puzzle checks, parallel branches) to this grid and reports quantiles in its multiples; fixed times keep full precision.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator.GRID_MS: '5000'
+    # Values: 600000-7200000 milliseconds. Recommended: 3600000. Keep it well above the longest event timer the estimate is used for.
+    # Purpose: Longest clear time the estimate represents; slower outcomes and parties that cannot clear are reported at this bound.
+    # Technical: AgentPqPaceEstimator folds the distribution's tail beyond this into its last bin and reports every quantile and the mean at it when the party cannot clear.
+    server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator.HORIZON_MS: '3600000'
+    # Values: 1000-3600000 milliseconds. Recommended: 60000. Lower values show more failures in the log; higher values keep a failing job quieter.
+    # Purpose: Limits how often a failed damage or touch estimate for a party member is logged at info, so a job whose estimate always fails still shows up in a live run.
+    # Technical: AgentPqMemberPower.of counts a failed policy call as 0 damage (or an unknown touch as never fragile) and logs at info at most once per this interval, else at debug.
+    server.agents.capabilities.partyquest.pace.AgentPqMemberPower.FAILURE_LOG_MS: '60000'
     # Values: 0.0-1.0 probability. Recommended: 0.60 for level-25 observation fixtures facing the first KPQ map's Ligators.
     # Purpose: Requires ordinary observation fixture equipment selection to reach a useful minimum hit chance before accepting the generated build.
     # Technical: AgentFieldObservationFixtureService compares calculated accuracy against this fraction while evaluating legal equipment combinations.

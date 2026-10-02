@@ -1,13 +1,16 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** Party-level KPQ state. All mutation is synchronized through this aggregate. */
@@ -63,6 +66,12 @@ public final class AgentKpqSession {
     private int stageOneHelperCollectorId;
     private Point stageOneHelperAnchor;
     private HelperTerritory stageOneHelperTerritory;
+    private AgentKpqStageOneLevers stageOneLevers = AgentKpqStageOneLevers.CONFIGURED;
+    private List<List<Point>> stageOneClusters = List.of();
+    private Map<Integer, Integer> stageOneClusterOf;
+    private long stageOneLeaderCouponAskAtMs;
+    private int stageOneLeaderCouponAsks;
+    private final Set<Integer> stageOneLeaderKillCoupons = new HashSet<>();
     private long missingPassSinceMs;
     private long puzzleCheckAtMs;
     private int puzzleCheckLoggedAttemptId = -1;
@@ -86,8 +95,34 @@ public final class AgentKpqSession {
     private Map<Integer, Integer> stage5Targets = Map.of();
     private long stage5TargetsAtMs = Long.MIN_VALUE;
     private long stage5HandOverStartedAtMs;
+    private long stage5MobsDownSinceMs;
+    private long stage5RouteToldAtMs;
+    private boolean stage5RouteRepeated;
+    private int stage5RecollectorId;
+    private long stage5RecollectStartedAtMs;
+    private boolean stage5RecollectSweepDone;
+    private boolean stage5RecollectTargetReleased;
+    private int stage5PassesLostWithMembers;
+    private int leaderPassesSeen = -1;
+    private long lastPassDropAtMs;
+    private long lastPuzzleVerdictAtMs;
+    private int formationReadyLoggedAttemptId = -1;
     private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
+    private final AgentKpqPaceMarks pace = new AgentKpqPaceMarks();
+    private AgentKpqRerollPolicy rerollPolicy = AgentKpqRerollPolicy.CONFIGURED;
+    private AgentPqPaceCalibration paceCalibration;
+    private boolean rerollDecided;
+    private int rerollAskerId;
+    private int rerollLeaderId;
+    private String rerollRule = "";
+    private String rerollQuestion = "";
+    private long rerollAskedAtMs;
+    private long rerollWindowShownAtMs;
+    private boolean rerollWindowUnavailable;
+    private boolean rerollSettled;
+    /** When a companion last said a stage-1 line that asks something of the human leader by name (0: none). */
+    private long stageOneLeaderLineAtMs;
 
     public AgentKpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (requestedPartySize < 3 || requestedPartySize > 4) {
@@ -220,6 +255,7 @@ public final class AgentKpqSession {
     public synchronized void transition(Phase next, long nowMs) {
         phase = next;
         phaseEnteredAtMs = nowMs;
+        pace.markPhase(next, nowMs);
         lastProgressAtMs = nowMs;
         stageStep = 0;
         attemptIndex = 0;
@@ -236,6 +272,12 @@ public final class AgentKpqSession {
         stageOneHelperCollectorId = 0;
         stageOneHelperAnchor = null;
         stageOneHelperTerritory = null;
+        stageOneClusters = List.of();
+        stageOneClusterOf = null;
+        stageOneLeaderCouponAskAtMs = 0L;
+        stageOneLeaderCouponAsks = 0;
+        stageOneLeaderLineAtMs = 0L;
+        stageOneLeaderKillCoupons.clear();
         missingPassSinceMs = 0L;
         puzzleCheckAtMs = 0L;
         puzzleCheckLoggedAttemptId = -1;
@@ -248,6 +290,10 @@ public final class AgentKpqSession {
         stage5LootNotBeforeMs = 0L;
         stage5CleanupStartedAtMs = 0L;
         stage5CleanupDeadlineMs = 0L;
+        // The leader's passes are counted afresh in each stage: Cloto takes stage 1's.
+        leaderPassesSeen = -1;
+        lastPassDropAtMs = 0L;
+        formationReadyLoggedAttemptId = -1;
         // Companions fight King Slime while the leader still climbs stage 4; a fight under way is reported whole.
         boolean bossFightUnderWay = stage5BossCombatStartedAtMs > 0L && !stage5BossCombatReported;
         if (!bossFightUnderWay) {
@@ -356,9 +402,41 @@ public final class AgentKpqSession {
         return consumeHumanPuzzleValidation(stage) != null;
     }
 
-    /** Every participant of the current attempt stands in place and has held still for the settle time. */
-    synchronized void markFormationReady() {
+    /**
+     * Every participant of the current attempt stands in place and has held still for the settle time. True the first
+     * time this attempt's formation is ready in this stage, for the one log line that times it.
+     */
+    synchronized boolean markFormationReady() {
         formationReadyAttemptId = attemptId;
+        if (formationReadyLoggedAttemptId == attemptId) return false;
+        formationReadyLoggedAttemptId = attemptId;
+        return true;
+    }
+
+    /** When Cloto's last puzzle verdict, accepted or not, reached the coordinator; 0 before the first. */
+    synchronized long lastPuzzleVerdictAtMs() {
+        return lastPuzzleVerdictAtMs;
+    }
+
+    synchronized void markPuzzleVerdict(long nowMs) {
+        lastPuzzleVerdictAtMs = Math.max(1L, nowMs);
+        int stage = puzzleStage(phase);
+        if (stage > 0) pace.markJudged(stage, nowMs);
+    }
+
+    /** The puzzle stage a phase plays (2-4), or 0. */
+    static int puzzleStage(Phase phase) {
+        return switch (phase) {
+            case STAGE_2 -> 2;
+            case STAGE_3 -> 3;
+            case STAGE_4 -> 4;
+            default -> 0;
+        };
+    }
+
+    /** When each boundary of this run's pace was seen, for its pace report. */
+    AgentKpqPaceMarks pace() {
+        return pace;
     }
 
     synchronized void clearFormationReady() {
@@ -431,6 +509,80 @@ public final class AgentKpqSession {
         stageOneHelperCollectorId = Math.max(0, collectorId);
         stageOneHelperTerritory = territory;
     }
+    /** The companion-run stage-1 levers this session uses; a test may switch them one by one. */
+    synchronized AgentKpqStageOneLevers stageOneLevers() { return stageOneLevers; }
+    synchronized void setStageOneLevers(AgentKpqStageOneLevers levers) {
+        stageOneLevers = levers == null ? AgentKpqStageOneLevers.NONE : levers;
+    }
+    /** The stage-1 re-roll policy this session uses (round 2b); a test may switch it. */
+    synchronized AgentKpqRerollPolicy rerollPolicy() { return rerollPolicy; }
+    synchronized void setRerollPolicy(AgentKpqRerollPolicy policy) {
+        rerollPolicy = policy == null ? AgentKpqRerollPolicy.CONFIGURED.off() : policy;
+    }
+    /**
+     * What the clear-time records taught for this run's leader, as the entry NPC priced its lineup; null: the pace
+     * profile's priors. The host sets it at admission, so a re-roll is weighed at the rate the estimate assumed.
+     */
+    public synchronized AgentPqPaceCalibration paceCalibration() { return paceCalibration; }
+    public synchronized void setPaceCalibration(AgentPqPaceCalibration calibration) { paceCalibration = calibration; }
+    /** The run made its one re-roll decision. */
+    synchronized boolean rerollDecided() { return rerollDecided; }
+    synchronized void markRerollDecided() { rerollDecided = true; }
+    /**
+     * The re-roll question went out from {@code askerId} to {@code leaderId}, by {@code rule}, in these words: his
+     * answer is awaited from now.
+     */
+    synchronized void markRerollAsked(int askerId, int leaderId, String rule, String question, long nowMs) {
+        rerollAskerId = askerId;
+        rerollLeaderId = leaderId;
+        rerollRule = rule == null ? "" : rule;
+        rerollQuestion = question == null ? "" : question;
+        rerollAskedAtMs = Math.max(1L, nowMs);
+    }
+    synchronized long rerollAskedAtMs() { return rerollAskedAtMs; }
+    synchronized int rerollAskerId() { return rerollAskerId; }
+    synchronized int rerollLeaderId() { return rerollLeaderId; }
+    synchronized String rerollRule() { return rerollRule; }
+    synchronized String rerollQuestion() { return rerollQuestion; }
+    /** The companion's window went on the leader's screen (seen at this tick): his answer is timed from it. */
+    synchronized void markRerollWindowShown(long nowMs) {
+        if (rerollWindowShownAtMs == 0L) rerollWindowShownAtMs = Math.max(1L, nowMs);
+    }
+    /** When the window went on screen as the coordinator saw it; 0 while it is not. */
+    synchronized long rerollWindowShownAtMs() { return rerollWindowShownAtMs; }
+    /** The host cannot show this leader the window (none installed, or a leader it is never shown to). */
+    synchronized void markRerollWindowUnavailable() { rerollWindowUnavailable = true; }
+    /** No more offers of the window: it is on screen, or the host cannot show one. */
+    synchronized boolean rerollWindowSettled() { return rerollWindowShownAtMs > 0L || rerollWindowUnavailable; }
+    /** A companion said a stage-1 line asking the human leader something by name (L2's coupon asks, "come on down"). */
+    synchronized void markStageOneLeaderLine(long nowMs) { stageOneLeaderLineAtMs = Math.max(1L, nowMs); }
+    synchronized long stageOneLeaderLineAtMs() { return stageOneLeaderLineAtMs; }
+    /** A question is out and neither answered nor let pass. */
+    synchronized boolean rerollPending() { return rerollAskedAtMs > 0L && !rerollSettled; }
+    /** The leader pushed through, or let the question pass: no other offer this run. */
+    synchronized boolean rerollDeclined() { return rerollSettled; }
+    synchronized void settleReroll() { rerollSettled = true; }
+    synchronized boolean stageOneClustersAssigned() { return stageOneClusterOf != null; }
+    /** Stage 1's platform clusters and the one each collector camps, set once per stage. */
+    synchronized void assignStageOneClusters(List<List<Point>> clusters, Map<Integer, Integer> clusterOf) {
+        stageOneClusters = clusters == null ? List.of() : List.copyOf(clusters);
+        stageOneClusterOf = clusterOf == null ? Map.of() : Map.copyOf(clusterOf);
+    }
+    synchronized int stageOneClusterIndex(int characterId) {
+        return stageOneClusterOf == null ? -1 : stageOneClusterOf.getOrDefault(characterId, -1);
+    }
+    synchronized List<Point> stageOneClusterSpawns(int index) {
+        return index < 0 || index >= stageOneClusters.size() ? null : stageOneClusters.get(index);
+    }
+    synchronized long stageOneLeaderCouponAskAtMs() { return stageOneLeaderCouponAskAtMs; }
+    synchronized int stageOneLeaderCouponAsks() { return stageOneLeaderCouponAsks; }
+    synchronized void markStageOneLeaderCouponAsk(long nowMs) {
+        if (stageOneLeaderCouponAsks == 0) stageOneLeaderCouponAskAtMs = Math.max(1L, nowMs);
+        stageOneLeaderCouponAsks++;
+    }
+    /** A floor coupon a human leader's own kill dropped, counted once however many ticks it lies there. */
+    synchronized void observeStageOneLeaderKill(int couponObjectId) { stageOneLeaderKillCoupons.add(couponObjectId); }
+    synchronized int stageOneLeaderKills() { return stageOneLeaderKillCoupons.size(); }
     public synchronized long missingPassSinceMs() { return missingPassSinceMs; }
     public synchronized void setMissingPassSinceMs(long value) {
         missingPassSinceMs = Math.max(0L, value);
@@ -501,6 +653,7 @@ public final class AgentKpqSession {
             int bossCount, long nowMs, long delayMs) {
         if (bossCount == 0 && stage5BossCombatStartedAtMs > 0L && stage5LootNotBeforeMs == 0L) {
             stage5LootNotBeforeMs = nowMs + Math.max(0L, delayMs);
+            pace.markLootDelay(nowMs, stage5LootNotBeforeMs);
         }
     }
 
@@ -582,13 +735,119 @@ public final class AgentKpqSession {
         return stage5HandOverStartedAtMs > 0L;
     }
 
-    synchronized void startStage5HandOver(long nowMs) {
-        if (stage5HandOverStartedAtMs == 0L) stage5HandOverStartedAtMs = Math.max(1L, nowMs);
+    /** True when this call started the hand-over. */
+    synchronized boolean startStage5HandOver(long nowMs) {
+        if (stage5HandOverStartedAtMs != 0L) return false;
+        stage5HandOverStartedAtMs = Math.max(1L, nowMs);
+        return true;
     }
 
-    /** Whether the carriers set out for the leader at least {@code boundMs} ago. */
-    synchronized boolean stage5HandOverOverdue(long nowMs, long boundMs) {
-        return stage5HandOverStartedAtMs > 0L && nowMs - stage5HandOverStartedAtMs >= Math.max(0L, boundMs);
+    synchronized long stage5HandOverStartedAtMs() {
+        return stage5HandOverStartedAtMs;
+    }
+
+    /** How long nothing has been left to fight on stage 5; 0 while something is. */
+    synchronized long observeStage5MobsDown(boolean mobsDown, long nowMs) {
+        if (!mobsDown) {
+            stage5MobsDownSinceMs = 0L;
+            return 0L;
+        }
+        if (stage5MobsDownSinceMs == 0L) stage5MobsDownSinceMs = Math.max(1L, nowMs);
+        return nowMs - stage5MobsDownSinceMs;
+    }
+
+    /** When the leader was first told the way to Cloto; 0 before. */
+    synchronized long stage5RouteToldAtMs() {
+        return stage5RouteToldAtMs;
+    }
+
+    synchronized void markStage5RouteTold(long nowMs) {
+        if (stage5RouteToldAtMs == 0L) stage5RouteToldAtMs = Math.max(1L, nowMs);
+    }
+
+    /** True once: the one time the way to Cloto may be said again. */
+    synchronized boolean claimStage5RouteRepeat() {
+        if (stage5RouteRepeated) return false;
+        stage5RouteRepeated = true;
+        return true;
+    }
+
+    synchronized boolean stage5RouteRepeated() {
+        return stage5RouteRepeated;
+    }
+
+    /** The companion sent back for passes left lying out of the leader's reach; 0 before the one re-collect. */
+    synchronized int stage5RecollectorId() {
+        return stage5RecollectorId;
+    }
+
+    synchronized boolean stage5RecollectStarted() {
+        return stage5RecollectStartedAtMs > 0L;
+    }
+
+    /** Starts the one re-collect a run gets; false when it already had it. */
+    synchronized boolean beginStage5Recollect(int characterId, long nowMs) {
+        if (stage5RecollectStartedAtMs > 0L) return false;
+        stage5RecollectorId = characterId;
+        stage5RecollectStartedAtMs = Math.max(1L, nowMs);
+        return true;
+    }
+
+    /** Whether the re-collector is still fetching passes: until none is left out of reach, or the bound runs out. */
+    synchronized boolean stage5RecollectSweeping(long nowMs, long boundMs) {
+        return stage5RecollectStartedAtMs > 0L && !stage5RecollectSweepDone
+                && nowMs - stage5RecollectStartedAtMs < Math.max(0L, boundMs);
+    }
+
+    synchronized void finishStage5RecollectSweep() {
+        stage5RecollectSweepDone = true;
+    }
+
+    /** True once, after the re-collect sweep: its last loot target is let go then. */
+    synchronized boolean claimStage5RecollectTargetRelease() {
+        if (stage5RecollectStartedAtMs == 0L || stage5RecollectTargetReleased) return false;
+        stage5RecollectTargetReleased = true;
+        return true;
+    }
+
+    /** Passes members held when they left the run, which went with them. */
+    synchronized int stage5PassesLostWithMembers() {
+        return stage5PassesLostWithMembers;
+    }
+
+    synchronized void addStage5PassesLostWithMember(int passes) {
+        stage5PassesLostWithMembers += Math.max(0, passes);
+    }
+
+    /**
+     * Records what the leader holds now and returns how many passes came into his bag since the last look; 0 on the
+     * first look in a stage.
+     */
+    synchronized int observeLeaderPasses(int held) {
+        int gained = leaderPassesSeen < 0 ? 0 : Math.max(0, held - leaderPassesSeen);
+        leaderPassesSeen = held;
+        return gained;
+    }
+
+    synchronized long lastPassDropAtMs() {
+        return lastPassDropAtMs;
+    }
+
+    synchronized void markPassDrop(long nowMs) {
+        lastPassDropAtMs = Math.max(1L, nowMs);
+    }
+
+    /** Cloto gave a collector its coupon number: its question is answered, and the first one starts the grind. */
+    synchronized void assignCouponTarget(AgentKpqMemberState member, int target, long nowMs) {
+        member.markQuestionRequested();
+        member.setCouponTarget(target);
+        pace.markCouponTarget(member.characterId(), target, nowMs);
+    }
+
+    /** A member's stage-1 pass exists: its stage-1 summary and the run's pace both note when it came. */
+    synchronized void markPassCreated(AgentKpqMemberState member, long nowMs) {
+        member.markPassCreated(nowMs);
+        pace.markPassCreated(member.characterId(), nowMs);
     }
 
     synchronized boolean claimStageOneSummary() {
@@ -600,10 +859,18 @@ public final class AgentKpqSession {
     public record PuzzleValidation(int revision, boolean accepted) {
     }
 
-    /** Where the stage-1 helpers fight: one tower's x-band and its spawns, until a fixed time. */
-    record HelperTerritory(String assignmentId, int minX, int maxX, List<Point> spawns, long expiresAtMs) {
+    /**
+     * Where a stage-1 member fights until a fixed time: a tower's x-band and its spawns for a companion run's helpers,
+     * or, with the cluster lever, a platform cluster (no x-band) that its collector and their helpers camp.
+     */
+    record HelperTerritory(String assignmentId, int minX, int maxX, List<Point> spawns, long expiresAtMs,
+                           boolean cluster) {
         HelperTerritory {
             spawns = List.copyOf(spawns);
+        }
+
+        HelperTerritory(String assignmentId, int minX, int maxX, List<Point> spawns, long expiresAtMs) {
+            this(assignmentId, minX, maxX, spawns, expiresAtMs, false);
         }
 
         boolean covers(int x) {

@@ -861,8 +861,15 @@ living_world:
     # Party quests with companions (P6): the entry NPC of each listed party quest (a comma list; only "kpq", Lakelis,
     # so far) offers a party leader with companions in their party a lineup to take in; empty = off, the NPC is stock.
     # GUIDANCE: such a run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does.
+    # CLEAR_TIME: the NPC says how long the lineup should take (a range, and who would struggle where) and picks the
+    # quickest lineup within each owner's seats; false = the kill switch, her window and lineup exactly as before.
+    # PACE_EXCLUDED_LEADERS: character ids (a comma list) whose runs as leader teach the clear-time records no leader
+    # term; their companions' times still count. 2 (ohboy) and 865 (Crewfriend) are led by the scripted test driver,
+    # which talks and works the puzzles far slower than a person; empty this to learn from every leader.
     COMPANION_PQ_ENABLED_KEYS: "kpq"
     COMPANION_PQ_GUIDANCE: true
+    COMPANION_PQ_CLEAR_TIME: true
+    COMPANION_PQ_PACE_EXCLUDED_LEADERS: "2,865"
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 

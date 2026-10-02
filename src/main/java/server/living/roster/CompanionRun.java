@@ -1,5 +1,7 @@
 package server.living.roster;
 
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -27,10 +29,20 @@ final class CompanionRun {
     final Set<Integer> owners = new HashSet<>();
     final int partySize;
     final long startedAtMs;
+    /**
+     * The entry NPC's clear-time estimate of the lineup at the Yes (null: none was made, the pace data cold or the kill
+     * switch off), kept for the run's clear-time record beside how long it took (PqPaceLedger).
+     */
+    final AgentPqPaceEstimate estimateAtYes;
     /** The event instance started; a run that never got in has nothing to record. */
     volatile boolean started;
     /** The party cleared stage 5 (EventInstanceManager.clearPQ): its companions' records count it cleared. */
     volatile boolean cleared;
+    /**
+     * The leader chose to leave in stage 1 and run it again (the KPQ re-roll, AgentPartyQuestHandback.REROLLED): no
+     * clear and no failure, so its companions' records skip it, and its clear-time record learns its opening only.
+     */
+    volatile boolean rerolled;
     /** Companions asked to tap out, marked before their hold runs: recovery asks the handback meanwhile. */
     final Set<Integer> tappingOut = ConcurrentHashMap.newKeySet();
     /** Companions whose tap-out hold ran before the stage-5 clear: their records count it tapped out. */
@@ -60,6 +72,7 @@ final class CompanionRun {
         owners.addAll(ownerByExtra.values());
         this.partySize = plan.lineup().size();
         this.startedAtMs = nowMs;
+        this.estimateAtYes = plan.estimate();
     }
 
     /** Every character the run holds: its lineup and its extras. */

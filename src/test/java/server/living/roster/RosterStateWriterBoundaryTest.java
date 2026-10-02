@@ -68,7 +68,7 @@ class RosterStateWriterBoundaryTest {
     }
 
     @Test
-    void changesets40To43AreRegisteredInOrderWithTheirRollbacks() throws IOException {
+    void changesets40To44AreRegisteredInOrderWithTheirRollbacks() throws IOException {
         String changelog = Files.readString(CHANGELOG);
         int start = changelog.indexOf("<changeSet id=\"40-companion-manager\"");
         assertTrue(start >= 0, "changeset 40 is registered");
@@ -93,12 +93,16 @@ class RosterStateWriterBoundaryTest {
         String freshSet = changelog.substring(fresh, changelog.indexOf("</changeSet>", fresh));
         assertTrue(freshSet.contains("<sqlFile path=\"db/tables/034-companion-crew-fresh.sql\""));
         assertTrue(freshSet.indexOf("<rollback>") < freshSet.indexOf("034-companion-crew-fresh-down.sql"));
+        // the PQ clear-time records (pq_run_pace); PqRunPaceSchemaTest checks the table
+        int pace = changelog.indexOf("<changeSet id=\"44-pq-run-pace\"");
+        assertTrue(pace > fresh, "changeset 44 is registered after 43");
         Matcher ids = Pattern.compile("<changeSet id=\"(\\d+)").matcher(changelog);
         int highest = 0;
         int forty = 0;
         int fortyOne = 0;
         int fortyTwo = 0;
         int fortyThree = 0;
+        int fortyFour = 0;
         while (ids.find()) {
             int id = Integer.parseInt(ids.group(1));
             highest = Math.max(highest, id);
@@ -106,16 +110,18 @@ class RosterStateWriterBoundaryTest {
             fortyOne += id == 41 ? 1 : 0;
             fortyTwo += id == 42 ? 1 : 0;
             fortyThree += id == 43 ? 1 : 0;
+            fortyFour += id == 44 ? 1 : 0;
         }
-        assertTrue(highest >= 43);
+        assertTrue(highest >= 44);
         assertEquals(1, forty);
         assertEquals(1, fortyOne);
         assertEquals(1, fortyTwo);
         assertEquals(1, fortyThree);
-        // what comes after 43 is newer work (45-living-knowledge, docs/SERVER_KNOWLEDGE_PLAN.md 7.6), never an older id
-        Matcher later = Pattern.compile("<changeSet id=\"(\\d+)").matcher(changelog.substring(fresh + 1));
+        assertEquals(1, fortyFour);
+        // what comes after 44 is newer work (45-living-knowledge, docs/SERVER_KNOWLEDGE_PLAN.md 7.6), never an older id
+        Matcher later = Pattern.compile("<changeSet id=\"(\\d+)").matcher(changelog.substring(pace + 1));
         while (later.find()) {
-            assertTrue(Integer.parseInt(later.group(1)) > 43, "changeset " + later.group(1) + " registered after 43");
+            assertTrue(Integer.parseInt(later.group(1)) > 44, "changeset " + later.group(1) + " registered after 44");
         }
         String yieldUp = Files.readString(Path.of("src/main/resources/db/tables/033-companion-bench-learning.sql"));
         assertTrue(yieldUp.contains("CREATE TABLE IF NOT EXISTS companion_yield"));

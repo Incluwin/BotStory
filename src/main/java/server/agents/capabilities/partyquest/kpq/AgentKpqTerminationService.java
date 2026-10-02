@@ -12,7 +12,9 @@ import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.PartyQuestGateway;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapleMap;
@@ -42,6 +44,16 @@ final class AgentKpqTerminationService {
         release(session, reason, nowMs, false, false);
     }
 
+    /**
+     * A companion run's human leader chose to run it again after a heavy stage-1 draw (round 2b): everyone leaves
+     * through the stock exit path, as a failure's dispose takes them, but it is no failure: its outcome is
+     * {@link AgentPartyQuestHandback#REROLLED}, which the engagement lets go at once (its leader is straight back at the
+     * entrance), the host records apart from clears and failures, and the leader's re-roll streak counts.
+     */
+    static void reroll(AgentKpqSession session, long nowMs) {
+        release(session, AgentPartyQuestHandback.REROLLED, nowMs, true, false);
+    }
+
     static void stopTest(AgentKpqSession session, EventInstanceManager event, long nowMs) {
         if (session != null && event != null) session.bindEventInstance(event);
         release(session, "test stopped", nowMs, true, false);
@@ -55,6 +67,7 @@ final class AgentKpqTerminationService {
         if (session == null || !session.beginTermination()) return;
         EventInstanceManager event = session.eventInstance();
         tryCleanup(session, "stop-actions", () -> stopAll(session));
+        tryCleanup(session, "release-full-rate", () -> AgentKpqFullRateSimulation.releaseAll(session));
         if (disposeEvent && event != null) {
             tryCleanup(session, "dispose-event", () -> closeEvent(event));
         }
@@ -67,14 +80,43 @@ final class AgentKpqTerminationService {
         session.clearEventInstance();
         if (completed) session.complete(nowMs);
         else session.fail(reason, nowMs);
+        tryCleanup(session, "reroll-streak", () -> countRerollStreak(session, reason, completed, nowMs));
         // The parent engagement remains indexed, so removing the child first closes the
         // overlap without creating a controller-less Agent between systems.
         AgentKpqSessionRegistry.remove(session);
+        AgentKpqPaceReport.logRemainingSpans(session, nowMs);
         AgentPartyQuestLifecycleRuntime.childFinished(
-                session.sessionId(), completed, reason, nowMs);
+                session.sessionId(), completed, reason, nowMs, pace(session, nowMs));
         log.info("KPQ session released: session={} outcome={} phase={} event={} members={}",
                 session.sessionId(), completed ? "completed" : reason, session.phase(),
                 event == null ? "none" : event.getName(), session.memberCount());
+    }
+
+    /**
+     * A companion run's end moves its human leader's re-roll streak: a re-roll adds one, any other end starts it over.
+     * Stock and all-Agent runs never re-roll and leave it alone.
+     */
+    private static void countRerollStreak(AgentKpqSession session, String reason, boolean completed, long nowMs) {
+        AgentKpqMemberState leader = session.member(session.eventLeaderId());
+        if (!session.companionAdopted() || leader == null
+                || leader.memberType() != AgentKpqMemberState.MemberType.HUMAN) {
+            return;
+        }
+        if (!completed && AgentPartyQuestHandback.REROLLED.equals(reason)) {
+            AgentKpqRerollStreaks.rerolled(leader.characterId(), nowMs, session.rerollPolicy().streakResetMs());
+        } else {
+            AgentKpqRerollStreaks.ended(leader.characterId());
+        }
+    }
+
+    /** The run's pace for the host's records; a report that fails leaves it null rather than the release unfinished. */
+    private static AgentPqPace pace(AgentKpqSession session, long nowMs) {
+        try {
+            return AgentKpqPaceReport.of(session, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("KPQ pace report failed: session={}", session.sessionId(), failure);
+            return null;
+        }
     }
 
     static void closeEvent(EventInstanceManager event) {

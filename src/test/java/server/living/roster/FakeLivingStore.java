@@ -5,6 +5,7 @@ import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.CompanionRunStats;
 import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.PersonaState;
+import server.living.store.LivingStore.PqRunPaceRow;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import server.living.store.LivingStore.YieldRow;
@@ -38,7 +39,9 @@ import static org.mockito.Mockito.when;
  * living_crew is {@link #crews} (its keep_fresh {@link #keptFresh}) and companion_yield (an upsert by job branch, level band and camp) {@link #yields}.
  * companion_performance is {@link #performance} (saveCompanionRun appends; companionRunStats counts each companion's
  * runs and clears in an activity), and fails as the database would while {@link #performanceUnreadable} or
- * {@link #performanceUnwritable}.
+ * {@link #performanceUnwritable}. pq_run_pace is {@link #paces} (savePqRunPace appends with the next id; pqRunPaces
+ * reads a quest's epoch newest first, up to its limit), failing while {@link #pacesUnreadable} or
+ * {@link #pacesUnwritable}.
  */
 final class FakeLivingStore {
     /** Keyed by owner:persona. */
@@ -69,6 +72,10 @@ final class FakeLivingStore {
     final List<CompanionRunRow> performance = new ArrayList<>();
     boolean performanceUnreadable;
     boolean performanceUnwritable;
+    /** pq_run_pace, in the order the rows were added (each given the next id). */
+    final List<PqRunPaceRow> paces = new ArrayList<>();
+    boolean pacesUnreadable;
+    boolean pacesUnwritable;
     /** owner:persona -> item id -> units a live bench stall holds (living_stall_stock). */
     final Map<String, Map<Integer, Integer>> stallStock = new HashMap<>();
     /** owner:persona keys on "Your call" (living_roster.your_call). */
@@ -204,6 +211,29 @@ final class FakeLivingStore {
                     CompanionRunStats known = out.getOrDefault(row.companionCharacterId(), new CompanionRunStats(0, 0));
                     out.put(row.companionCharacterId(), new CompanionRunStats(known.runs() + 1,
                             known.clears() + (row.outcome().equals("cleared") ? 1 : 0)));
+                }
+            }
+            return out;
+        });
+        when(store.savePqRunPace(any())).thenAnswer(inv -> {
+            if (pacesUnwritable) {
+                return false;
+            }
+            PqRunPaceRow row = inv.getArgument(0);
+            return paces.add(new PqRunPaceRow(paces.size() + 1L, row.pqKey(), row.sessionId(), row.leaderId(),
+                    row.partySize(), row.humans(), row.epoch(), row.outcome(), row.estP10S(), row.estP50S(),
+                    row.estP90S(), row.estRecords(), row.actualS(), row.startedAtMs(), row.clearedAtMs(), row.spans(),
+                    row.members(), row.drawn(), row.recordedAtMs()));
+        });
+        when(store.pqRunPaces(anyString(), anyInt(), anyInt())).thenAnswer(inv -> {
+            if (pacesUnreadable) {
+                throw new LivingStore.ReadFailed("pq_run_pace", new SQLException("unreadable"));
+            }
+            List<PqRunPaceRow> out = new ArrayList<>();
+            for (int i = paces.size() - 1; i >= 0 && out.size() < (int) inv.getArgument(2); i--) {
+                PqRunPaceRow row = paces.get(i);
+                if (row.pqKey().equals(inv.getArgument(0)) && row.epoch() == (int) inv.getArgument(1)) {
+                    out.add(row);
                 }
             }
             return out;

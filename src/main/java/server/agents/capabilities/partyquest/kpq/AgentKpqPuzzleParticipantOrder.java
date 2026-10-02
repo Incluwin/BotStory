@@ -17,6 +17,11 @@ final class AgentKpqPuzzleParticipantOrder {
     private AgentKpqPuzzleParticipantOrder() {
     }
 
+    /** The configured least/middle/most-moving rank ratios a human draws from (the pace profile replays them). */
+    static double[] humanRoleWeights() {
+        return HUMAN_ROLE_WEIGHTS.clone();
+    }
+
     static List<AgentKpqMemberState> order(List<AgentKpqMemberState> participants, long seed) {
         if (participants == null || participants.size() < 3) return List.of();
         List<AgentKpqMemberState> firstThree = participants.stream()

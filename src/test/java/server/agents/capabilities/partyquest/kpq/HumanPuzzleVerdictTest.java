@@ -132,6 +132,67 @@ class HumanPuzzleVerdictTest {
     }
 
     @Test
+    void eachHeldFormationIsLoggedOnceWithTheTimeSinceTheLastVerdict() {
+        Character ben = run.human(1, "Ben");
+        Character mira = run.companion(2, "Mira");
+        Character pip = run.companion(3, "Pip");
+        Character tobi = run.companion(4, "Tobi");
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_2, ben, mira, pip, tobi);
+        onStageTwo(ben, mira, pip, tobi);
+        climbing(mira, pip, tobi);
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            AgentKpqCoordinator.tick(session, 2_000L);
+            holdTheirRopes(session, mira, pip, tobi);
+            AgentKpqCoordinator.tick(session, 3_000L);
+            AgentKpqCoordinator.tick(session, 4_000L);
+            AgentKpqCoordinator.tick(session, 4_200L);
+            // Ben checks it and Cloto says it is wrong; the companions re-form, and the next one is held at 7 s.
+            AgentKpqSessionRegistry.recordHumanPuzzleValidation(ben.getId(), 2, false);
+            AgentKpqCoordinator.tick(session, 4_500L);
+            AgentKpqCoordinator.tick(session, 5_000L);
+            AgentKpqCoordinator.tick(session, 6_000L);
+            AgentKpqCoordinator.tick(session, 7_000L);
+            AgentKpqCoordinator.tick(session, 7_500L);
+
+            String id = session.sessionId();
+            assertEquals(List.of(
+                            "KPQ puzzle formation ready: session=" + id + " stage=2 attempt=0 attemptId=1 "
+                                    + "sinceVerdictMs=-1 phaseMs=3000 humanLeader=true",
+                            "KPQ puzzle formation ready: session=" + id + " stage=2 attempt=1 attemptId=2 "
+                                    + "sinceVerdictMs=2500 phaseMs=6000 humanLeader=true"),
+                    log.startingWith("KPQ puzzle formation ready: "));
+        }
+    }
+
+    @Test
+    void anAllAgentRunsHeldFormationIsLoggedToo() {
+        assertEquals(1, formationReadyLines(AgentKpqSession.Mode.PRODUCTION).size());
+    }
+
+    @Test
+    void aBackgroundRunsHeldFormationIsNotLogged() {
+        // The background population's runs are not paced against anyone, and there are many of them.
+        assertEquals(List.of(), formationReadyLines(AgentKpqSession.Mode.BACKGROUND_POPULATION));
+    }
+
+    /** Kai leads two companions through stage 2's first formation, which they hold; what the ready line logged. */
+    private List<String> formationReadyLines(AgentKpqSession.Mode mode) {
+        Character kai = run.companion(1, "Kai");
+        Character mira = run.companion(2, "Mira");
+        Character pip = run.companion(3, "Pip");
+        AgentKpqSession session = run.session(mode, false, AgentKpqSession.Phase.STAGE_2, kai, mira, pip);
+        onStageTwo(kai, mira, pip);
+        climbing(kai, mira, pip);
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            AgentKpqCoordinator.tick(session, 2_000L);
+            holdTheirRopes(session, kai, mira, pip);
+            AgentKpqCoordinator.tick(session, 3_000L);
+            AgentKpqCoordinator.tick(session, 4_000L);
+            return log.startingWith("KPQ puzzle formation ready: ");
+        }
+    }
+
+    @Test
     void anAcceptanceCountsEvenBeforeTheFormationIsHeld() {
         Character ben = run.human(1, "Ben");
         Character mira = run.companion(2, "Mira");

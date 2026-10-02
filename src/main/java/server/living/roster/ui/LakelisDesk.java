@@ -59,9 +59,10 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
     // ---- the lineup ----------------------------------------------------------------------------
 
     /**
-     * Who she would send in, who waits with her and who stays behind where they are; Yes only when they can go in
-     * now, "Are they here yet?" while a companion called over is still on its way. Asked again, the lineup is planned
-     * the way it was drawn: the leader's pick stays theirs.
+     * Who she would send in, how long she thinks it takes and who would struggle (with a clear time), who waits with
+     * her and who stays behind where they are; Yes only when they can go in now, "Are they here yet?" while a
+     * companion called over is still on its way. Asked again, the lineup is planned the way it was drawn: the leader's
+     * pick stays theirs.
      */
     @Override
     public void proposal(Character leader, LineupPlan plan, String topLine) {
@@ -100,6 +101,7 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
         for (Seat seat : plan.lineup()) {
             lines.add("#b" + seat.name() + "#k" + (seat.characterId() == plan.leaderId() ? " (leader)" : about(plan, seat)));
         }
+        lines.addAll(LakelisLines.clearTime(plan)); // how long it should take, and who would struggle; none without
         if (!plan.extras().isEmpty()) {
             Map<Integer, String> reasons = new HashMap<>();
             for (Waiting member : plan.waiting()) {
@@ -162,7 +164,8 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
     /**
      * The leader picks who goes in: every companion that could go (here or on its way) is in or out, the humans always
      * go, and one that cannot come says why. Unpicked companions wait outside. {@code prompt}: null, or her line when
-     * a pick would make five.
+     * a pick would make five. Under her question, a pick of three or four with a clear time hears how long it should
+     * take (and how much sooner hers would be).
      */
     private void choose(Character leader, String pqKey, Set<Integer> picked, String prompt) {
         LineupPlan plan = service.plan(leader, pqKey, picked);
@@ -219,7 +222,9 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
                 }
             }));
         }
-        talk(leader).menu((prompt == null ? WHO_GOES_IN : prompt) + "\r\n", options)
+        String clearTime = prompt == null ? LakelisLines.chooseLine(plan) : null; // the pick's time, under the question
+        talk(leader).menu((prompt == null ? WHO_GOES_IN : prompt) + (clearTime == null ? "" : "\r\n" + clearTime)
+                        + "\r\n", options)
                 .back(() -> proposal(leader, service.plan(leader, pqKey, in), null))
                 .show();
     }

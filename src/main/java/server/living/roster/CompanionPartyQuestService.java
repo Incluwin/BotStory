@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.StatEffect;
 import server.agents.capabilities.combat.AgentExpectedDamagePolicy;
+import server.agents.capabilities.combat.data.AgentAttackDataProvider;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.dialogue.AgentDialogueSelector;
 import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
@@ -18,8 +19,17 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.kpq.AgentKpqAdmissionService;
 import server.agents.capabilities.partyquest.kpq.AgentKpqDefinition;
+import server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile;
+import server.agents.capabilities.partyquest.kpq.AgentKpqRerollPolicy;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -82,7 +92,11 @@ public final class CompanionPartyQuestService {
     static final long ESTIMATE_FAILURE_LOG_MS = 60_000L;
     /** KPQ's monsters a companion is weighed against: stage 1's Ligator, stage 5's Jr. Necki and King Slime. */
     private static final int[] KPQ_MOBS = {9_300_001, 9_300_000, 9_300_003};
+    /** Any body action: asking for its timing loads every body action's and stance's ({@link #warmPace}). */
+    private static final String WARM_ACTION = "swingO1";
     private static final AtomicLong estimateFailureLoggedAtMs = new AtomicLong();
+    /** A failed clear-time estimate is logged at info at most once per ESTIMATE_FAILURE_LOG_MS too. */
+    private static final AtomicLong clearTimeFailureLoggedAtMs = new AtomicLong();
     /** A run whose session went away without ending it is let go once it has been gone this long (the audit's pace). */
     static final long LOST_RUN_AFTER_MS = 60_000L;
     /** A companion Lakelis sent for from the bench says it is ready for her when it arrives within this long. */
@@ -109,6 +123,76 @@ public final class CompanionPartyQuestService {
         }
     }
 
+    /**
+     * Where a lineup's clear time is read from, all in memory on the leader's I/O thread: the quest's pace profile once
+     * companion-ops warmed it ({@link #warmPace}; null while cold, and it never loads anything), its calibration for a
+     * leader (what the clear-time records taught, the profile's priors until runs are recorded), a party member's power
+     * against it, and how long the leader's last clear with exactly these companions took (seconds; 0: none on record).
+     */
+    interface PaceSource {
+        AgentPqPaceProfile profile(String pqKey);
+
+        AgentPqPaceCalibration calibration(AgentPqPaceProfile profile, int leaderId);
+
+        AgentPqMemberPower power(Character chr, AgentPqPaceProfile profile, boolean human, boolean leader);
+
+        double lastClearS(String pqKey, int leaderId, Set<Integer> companionIds);
+
+        /**
+         * The warmed profiles, the characters' own attacks, and the clear-time records {@code ledger} holds: what they
+         * taught for the leader, or the profile's priors while none were read (or they were read under another epoch).
+         */
+        static PaceSource live(PqPaceLedger ledger) {
+            return new PaceSource() {
+                @Override
+                public AgentPqPaceProfile profile(String pqKey) {
+                    return AgentPqPaceProfiles.cached(pqKey);
+                }
+
+                @Override
+                public AgentPqPaceCalibration calibration(AgentPqPaceProfile profile, int leaderId) {
+                    AgentPqPaceCalibration learned = ledger.calibration(profile.questKey(), leaderId);
+                    return learned != null && learned.epoch() == profile.epoch() ? learned
+                            : AgentPqPaceCalibration.prior(profile);
+                }
+
+                @Override
+                public AgentPqMemberPower power(Character chr, AgentPqPaceProfile profile, boolean human,
+                                                boolean leader) {
+                    return AgentPqMemberPower.of(chr, profile, human, leader);
+                }
+
+                @Override
+                public double lastClearS(String pqKey, int leaderId, Set<Integer> companionIds) {
+                    return ledger.lastClearS(pqKey, leaderId, companionIds);
+                }
+            };
+        }
+
+        /** No profile ever: every lineup is chosen and shown as before the clear time. */
+        PaceSource COLD = new PaceSource() {
+            @Override
+            public AgentPqPaceProfile profile(String pqKey) {
+                return null;
+            }
+
+            @Override
+            public AgentPqPaceCalibration calibration(AgentPqPaceProfile profile, int leaderId) {
+                return null;
+            }
+
+            @Override
+            public AgentPqMemberPower power(Character chr, AgentPqPaceProfile profile, boolean human, boolean leader) {
+                return null;
+            }
+
+            @Override
+            public double lastClearS(String pqKey, int leaderId, Set<Integer> companionIds) {
+                return 0.0d;
+            }
+        };
+    }
+
     /** Until the desk is installed: no window, and an outcome is pink text. */
     private static final Desk PINK_TEXT = new Desk() {
         @Override
@@ -130,7 +214,9 @@ public final class CompanionPartyQuestService {
     private final ToIntFunction<Character> hpPotions;
     private final ToIntFunction<Character> mpPotions;
     private final ToDoubleFunction<Character> kpqDps;
+    private final PaceSource pace;
     private final CompanionRunRecorder records;
+    private final PqPaceLedger ledger;
     private volatile Desk desk = PINK_TEXT;
     /** Leaders whose Yes is being carried out: a second Yes meanwhile only hears "hold on". */
     private final Set<Integer> entering = ConcurrentHashMap.newKeySet();
@@ -144,32 +230,66 @@ public final class CompanionPartyQuestService {
     private final Map<Integer, Long> askedForMana = new ConcurrentHashMap<>();
     /** Leader id -> the companion admission last found still finishing something for their Yes. */
     private final Map<Integer, Finishing> finishing = new ConcurrentHashMap<>();
+    /**
+     * Lineup leader id -> when his last companion run that got in ended in a re-roll (he left stage 1 to run it
+     * again); a run of his that ends any other way takes him out. Written on companion-ops, read on his I/O thread.
+     */
+    private final Map<Integer, Long> rerolledAt = new ConcurrentHashMap<>();
 
     /** A companion admission asked to stop what it was doing ({@code line}: Lakelis's word for it), at {@code atMs}. */
     private record Finishing(int characterId, String line, long atMs) { }
 
     public CompanionPartyQuestService(LivingWorld world) {
         this(world, PqEntryPort.STOCK, CompanionPartyQuestService::hpPotions, CompanionPartyQuestService::mpPotions,
-                CompanionPartyQuestService::kpqDps);
+                CompanionPartyQuestService::kpqDps, new PqPaceLedger(world));
+    }
+
+    /** The service below with no clear time ever ({@link PaceSource#COLD}). */
+    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
+                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps) {
+        this(world, port, hpPotions, mpPotions, kpqDps, PaceSource.COLD);
+    }
+
+    /** The service below whose clear time is read from the warm profiles and {@code ledger}'s records. */
+    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
+                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps,
+                               PqPaceLedger ledger) {
+        this(world, port, hpPotions, mpPotions, kpqDps, PaceSource.live(ledger), ledger);
+    }
+
+    /** The service below with clear-time records of its own, which its lineups do not read. */
+    CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
+                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps,
+                               PaceSource pace) {
+        this(world, port, hpPotions, mpPotions, kpqDps, pace, new PqPaceLedger(world));
     }
 
     /**
      * {@code port}: the doors into the quest; {@code hpPotions}, {@code mpPotions}: what a loaded companion carries;
-     * {@code kpqDps}: what it hits for in KPQ.
+     * {@code kpqDps}: what it hits for in KPQ (the lineup's choice without a clear time); {@code pace}: where the
+     * lineup's clear time is read from; {@code ledger}: where each run's clear-time record goes as it ends.
      */
     CompanionPartyQuestService(LivingWorld world, PqEntryPort port, ToIntFunction<Character> hpPotions,
-                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps) {
+                               ToIntFunction<Character> mpPotions, ToDoubleFunction<Character> kpqDps,
+                               PaceSource pace, PqPaceLedger ledger) {
         this.world = world;
         this.port = port;
         this.hpPotions = hpPotions;
         this.mpPotions = mpPotions;
         this.kpqDps = kpqDps;
+        this.pace = pace;
         this.records = new CompanionRunRecorder(world);
+        this.ledger = ledger;
     }
 
     /** The companions' KPQ records, which the lineup ranks by. */
     public CompanionRunRecorder records() {
         return records;
+    }
+
+    /** The PQ clear-time records (pq_run_pace), which the lineup's clear time is learned from. */
+    public PqPaceLedger paceLedger() {
+        return ledger;
     }
 
     /** The desk's windows (roster.ui); null: none, and outcomes are pink text. */
@@ -188,9 +308,28 @@ public final class CompanionPartyQuestService {
         }
         return LivingTalk.answerScriptClick(leader, () -> {
             LineupPlan plan = plan(leader, pqKey);
-            desk.proposal(leader, plan, null);
+            desk.proposal(leader, plan, greetAfterReroll(leader.getId(), System.currentTimeMillis())
+                    ? LakelisLines.BACK_ALREADY : null);
             askForMana(plan);
         });
+    }
+
+    /**
+     * True when the leader's last companion run ended in a re-roll less than REROLL_STREAK_RESET_MS ago: Lakelis
+     * greets him back above the lineup. From memory, on his I/O thread.
+     */
+    boolean backAfterReroll(int leaderId, long nowMs) {
+        Long at = rerolledAt.get(leaderId);
+        return at != null && nowMs - at < AgentKpqRerollPolicy.configured().streakResetMs();
+    }
+
+    /**
+     * {@link #backAfterReroll}, once per re-roll: the greeting is spent as she says it, so his next visit (after
+     * "Never mind.", say) gets the lineup alone. The streak itself is the Agent layer's and unchanged.
+     */
+    private boolean greetAfterReroll(int leaderId, long nowMs) {
+        Long at = rerolledAt.remove(leaderId); // one step against companion-ops recording his next re-roll
+        return at != null && nowMs - at < AgentKpqRerollPolicy.configured().streakResetMs();
     }
 
     /**
@@ -266,19 +405,104 @@ public final class CompanionPartyQuestService {
      * The lineup the leader's party would go in with, {@code picked} (companion ids, null: the best) chosen. On the
      * leader's I/O thread, from memory: the party, the loaded characters, the Crew menus' row cache, the commitments,
      * the companions' records and the game data's KPQ monsters (what a companion that can go hits for; read at boot,
-     * {@link #warmKpqMobs}).
+     * {@link #warmPace}). While living_world.COMPANION_PQ_CLEAR_TIME is on and the quest's pace profile is warm, every
+     * member's power is read too, and the lineup is weighed and shown with its clear time; else it is as before.
      */
     public LineupPlan plan(Character leader, String pqKey, Set<Integer> picked) {
         Party party = leader.getParty();
+        AgentPqPaceProfile profile = world.config().COMPANION_PQ_CLEAR_TIME ? profile(leader, pqKey) : null;
         List<LineupPlan.Candidate> candidates = new ArrayList<>();
         for (PartyCharacter member : party == null ? List.<PartyCharacter>of() : party.getMembers()) {
-            candidates.add(member.isBot() ? companion(leader, member) : human(leader, member));
+            candidates.add(member.isBot() ? companion(leader, member, profile) : human(leader, member, profile));
         }
-        return LineupPlan.build(pqKey, leader.getId(), leader.getLevel(), candidates, picked);
+        return LineupPlan.build(pqKey, leader.getId(), leader.getLevel(), candidates, picked,
+                profile == null ? null : clearTime(leader, pqKey, profile));
+    }
+
+    /** The quest's warm pace profile; null while cold, or when reading it failed. */
+    private AgentPqPaceProfile profile(Character leader, String pqKey) {
+        try {
+            return pace.profile(pqKey);
+        } catch (RuntimeException | LinkageError failure) {
+            clearTimeFailed(leader, pqKey, "profile", failure);
+            return null;
+        }
+    }
+
+    /**
+     * How the lineup's clear time is estimated for this leader; null (the lineup as without one) when there is no
+     * calibration to estimate by, or reading it failed.
+     */
+    private LineupPlan.Pace clearTime(Character leader, String pqKey, AgentPqPaceProfile profile) {
+        AgentPqPaceCalibration calibration;
+        try {
+            calibration = pace.calibration(profile, leader.getId());
+        } catch (RuntimeException | LinkageError failure) {
+            clearTimeFailed(leader, profile.questKey(), "calibration", failure);
+            return null;
+        }
+        if (calibration == null) {
+            return null;
+        }
+        return new LineupPlan.Pace(members -> estimate(leader, profile, members, calibration), profile.timerMs(),
+                companions -> lastClearS(leader, pqKey, companions));
+    }
+
+    /**
+     * The estimate of a lineup; one that throws (or whose game data cannot initialise) counts as none: the lineup is
+     * chosen and shown as without a clear time, never failed by it. Logged at info now and then.
+     */
+    private static AgentPqPaceEstimate estimate(Character leader, AgentPqPaceProfile profile,
+                                                List<AgentPqMemberPower> members,
+                                                AgentPqPaceCalibration calibration) {
+        try {
+            return AgentPqPaceEstimator.estimate(profile, members, calibration);
+        } catch (RuntimeException | LinkageError failure) {
+            clearTimeFailed(leader, profile.questKey(), "estimate", failure);
+            return null;
+        }
+    }
+
+    /** The leader's last clear with exactly these companions, in seconds; 0 when none is on record or it failed. */
+    private double lastClearS(Character leader, String pqKey, Set<Integer> companions) {
+        try {
+            return pace.lastClearS(pqKey, leader.getId(), companions);
+        } catch (RuntimeException | LinkageError failure) {
+            clearTimeFailed(leader, pqKey, "last clear", failure);
+            return 0.0d;
+        }
+    }
+
+    /**
+     * A member's power against a warm profile ({@code profile} null: none); null when reading it failed, a class it
+     * reads that cannot initialise (game data that needs the database, say) included.
+     */
+    private AgentPqMemberPower power(Character chr, AgentPqPaceProfile profile, boolean human, boolean leader) {
+        if (profile == null) {
+            return null;
+        }
+        try {
+            return pace.power(chr, profile, human, leader);
+        } catch (RuntimeException | LinkageError failure) {
+            clearTimeFailed(chr, profile.questKey(), "power", failure);
+            return null;
+        }
+    }
+
+    /** A part of a lineup's clear time could not be read: logged at info at most once per ESTIMATE_FAILURE_LOG_MS. */
+    private static void clearTimeFailed(Character chr, String pqKey, String what, Throwable failure) {
+        long now = System.currentTimeMillis();
+        long loggedAt = clearTimeFailureLoggedAtMs.get();
+        if (now - loggedAt >= ESTIMATE_FAILURE_LOG_MS && clearTimeFailureLoggedAtMs.compareAndSet(loggedAt, now)) {
+            log.info("no {} clear time ({}) at {}'s lineup; it is chosen and shown as without one", pqKey, what,
+                    chr.getName(), failure);
+        } else {
+            log.debug("no {} clear time ({}) at {}'s lineup", pqKey, what, chr.getName(), failure);
+        }
     }
 
     /** A human always goes in; one that cannot keeps the run from starting, in the words admission would refuse it. */
-    private LineupPlan.Candidate human(Character leader, PartyCharacter member) {
+    private LineupPlan.Candidate human(Character leader, PartyCharacter member, AgentPqPaceProfile profile) {
         int id = member.getId();
         Character chr = id == leader.getId() ? leader : world.roster().onlineCharacter(id);
         if (chr == null) {
@@ -290,7 +514,8 @@ public final class CompanionPartyQuestService {
                 : engaged(leader, id) ? LakelisLines.CATCHING_BREATH
                 : refusal.isEmpty() ? null : LakelisLines.forAdmit(refusal, leader.getName());
         return new LineupPlan.Candidate(seat(leader, id, chr.getName(), chr, true, 0, null, 0L),
-                line == null ? LineupPlan.Fit.READY : LineupPlan.Fit.BLOCKS, line, false);
+                line == null ? LineupPlan.Fit.READY : LineupPlan.Fit.BLOCKS, line, false, 0.0d,
+                power(chr, profile, true, id == leader.getId()));
     }
 
     /**
@@ -300,7 +525,7 @@ public final class CompanionPartyQuestService {
      * its owner (a hold would refuse it: walking out to the bench, say) and any other Agent (a citizen, which carries
      * its own engagement) keep the run from starting.
      */
-    private LineupPlan.Candidate companion(Character leader, PartyCharacter member) {
+    private LineupPlan.Candidate companion(Character leader, PartyCharacter member, AgentPqPaceProfile profile) {
         int id = member.getId();
         Character bot = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(id));
         Persona persona = world.residents().personaOfCharacterId(id);
@@ -324,14 +549,15 @@ public final class CompanionPartyQuestService {
         if (row.state() == RosterState.TRAVELLING) {
             long etaMs = Math.max(0L, row.etaAtMs() - System.currentTimeMillis());
             return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), etaMs),
-                    LineupPlan.Fit.ON_THE_WAY, null, usual, kpqDps.applyAsDouble(bot));
+                    LineupPlan.Fit.ON_THE_WAY, null, usual, kpqDps.applyAsDouble(bot), power(bot, profile, false, false));
         }
         String reason = !RosterService.sameChannel(leader, bot) ? LakelisLines.OTHER_CHANNEL
                 : bot.getHp() <= 0 ? LakelisLines.KNOCKED_OUT
                 : waitingReason(bot);
         return new LineupPlan.Candidate(seat(leader, id, name, bot, false, owner, persona.id(), 0L),
                 reason == null ? LineupPlan.Fit.READY : LineupPlan.Fit.WAITS, reason, usual,
-                reason == null ? kpqDps.applyAsDouble(bot) : 0.0d);
+                reason == null ? kpqDps.applyAsDouble(bot) : 0.0d,
+                reason == null ? power(bot, profile, false, false) : null);
     }
 
     /**
@@ -418,13 +644,34 @@ public final class CompanionPartyQuestService {
     }
 
     /**
-     * At boot, on companion-ops: KPQ's monsters are read from the game data once (LifeFactory keeps them), so the first
-     * lineup at Lakelis never parses Mob.wz on a leader's I/O thread. The attack timings it also reads are loaded by
-     * the first swing of any Agent.
+     * At boot, on companion-ops: KPQ's pace profile is registered and built from the game data
+     * (AgentPqPaceProfiles.warm: Map.wz's monster census, and its monsters into LifeFactory), KPQ's monsters are read
+     * for the lineup without a clear time (LifeFactory keeps them, so a profile that could not be built leaves them warm
+     * all the same), and the body timings every attack's cooldown is read from are loaded: a lineup at Lakelis never
+     * parses Mob.wz or Character.wz on a leader's I/O thread. Each step is on its own: one that fails, even with a class
+     * that cannot initialise, is logged and the others still run.
      */
-    public void warmKpqMobs() {
-        for (int mobId : KPQ_MOBS) {
-            LifeFactory.getMonster(mobId);
+    public void warmPace() {
+        try {
+            AgentPqPaceProfiles.register(AgentKpqPaceProfile.QUEST_KEY, AgentKpqPaceProfile::load);
+            AgentPqPaceProfiles.warm(AgentKpqPaceProfile.QUEST_KEY);
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("KPQ's pace profile could not be warmed; its lineups show no clear time", failure);
+        }
+        try {
+            for (int mobId : KPQ_MOBS) {
+                LifeFactory.getMonster(mobId);
+            }
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("KPQ's monsters could not be warmed for the lineup", failure);
+        }
+        try {
+            AgentAttackDataProvider timings = AgentAttackDataProvider.getInstance();
+            timings.getBodyActionId(WARM_ACTION);
+            timings.getBodyActionDurationMs(WARM_ACTION);
+            timings.getBodyStanceDurationMs(WARM_ACTION);
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("attack timings could not be warmed; the first lineup at Lakelis reads them", failure);
         }
     }
 
@@ -487,11 +734,38 @@ public final class CompanionPartyQuestService {
                 desk.stillFinishing(leader, fresh, finishingLine, clickedAt);
                 return;
             }
+            logClearTime(leader, fresh);
             world.executor().submit("pq.prepare " + leaderId, () -> prepareEntry(leader, fresh, clickedAt));
         } catch (RuntimeException failure) {
             entering.remove(leaderId);
             throw failure;
         }
+    }
+
+    /**
+     * The clear time of the lineup the leader said Yes to, for the next timed run to set beside its clear: seconds,
+     * as the estimate gives them (nothing a player sees). Nothing without one.
+     */
+    private static void logClearTime(Character leader, LineupPlan plan) {
+        LineupPlan.ClearTime clearTime = plan.clearTime();
+        if (clearTime == null) {
+            return;
+        }
+        AgentPqPaceEstimate estimate = clearTime.estimate();
+        log.info("companion {} clear time at Yes for {}: members={} clearable={} p10/p50/p90={}/{}/{}s overTimer={}"
+                        + " time={}s objective={}s ownTime={}s ownObjective={}s source={} records={} partyDps={}"
+                        + " weaknesses={}", plan.pqKey(),
+                leader.getName(), plan.memberIds(), estimate.clearable(), Math.round(estimate.p10S()),
+                Math.round(estimate.p50S()), Math.round(estimate.p90S()),
+                String.format(java.util.Locale.ROOT, "%.3f", estimate.overTimerChance()),
+                seconds(clearTime.timeS()), seconds(clearTime.objectiveS()), seconds(clearTime.ownTimeS()),
+                seconds(clearTime.ownObjectiveS()),
+                estimate.source(), estimate.recordsUsed(), estimate.partyDpsByMob(), estimate.weaknesses());
+    }
+
+    /** Whole seconds for the log; "never" for a lineup that cannot clear, "none" for no objective. */
+    private static String seconds(double seconds) {
+        return Double.isNaN(seconds) ? "none" : Double.isInfinite(seconds) ? "never" : Long.toString(Math.round(seconds));
     }
 
     /**
@@ -613,6 +887,11 @@ public final class CompanionPartyQuestService {
             }
             AgentKpqSession session = admitted.session();
             session.setCompanionAdopted(true);
+            AgentPqPaceProfile paced = pace.profile(fresh.pqKey());
+            if (paced != null) {
+                // a heavy stage-1 draw is weighed for a re-roll at the rate this lineup was priced with
+                session.setPaceCalibration(pace.calibration(paced, leader.getId()));
+            }
             session.setMemberCoordinationChatEnabled(world.config().COMPANION_PQ_GUIDANCE);
             CompanionRun run = register(new CompanionRun(session.sessionId(), fresh, now));
             int firstAgent = companions.getFirst().characterId();
@@ -788,10 +1067,18 @@ public final class CompanionPartyQuestService {
         return run;
     }
 
-    /** The run is over: taken out (once), and {@link #finish finished} on companion-ops. */
+    /** {@link #endRun(CompanionRun, AgentPqPace)} with no pace reported (a start that failed, a lost session). */
     void endRun(CompanionRun run) {
+        endRun(run, null);
+    }
+
+    /**
+     * The run is over: taken out (once), and {@link #finish finished} on companion-ops with {@code pace}, how it went
+     * as its session reported it (null: not reported).
+     */
+    void endRun(CompanionRun run, AgentPqPace pace) {
         if (takeRun(run.sessionId) == run) {
-            world.executor().submit("pq.run_ended " + run.key, () -> finish(run));
+            world.executor().submit("pq.run_ended " + run.key, () -> finish(run, pace));
         }
     }
 
@@ -799,12 +1086,20 @@ public final class CompanionPartyQuestService {
      * On companion-ops, once a run is over: its commitments end (a companion finishing it for a friend parks, the
      * party changes that waited go through), and the owners already out of the event get their held companions back.
      * An owner still inside gets them as they come out (RosterService.ownerEnteredMap). A run that got in goes on its
-     * companions' records.
+     * companions' records (a re-roll does not), and with its pace on the clear-time records; a re-roll is remembered
+     * for Lakelis's greeting, which any other end of the leader's runs forgets.
      */
-    void finish(CompanionRun run) {
+    void finish(CompanionRun run, AgentPqPace pace) {
         world.commitments().releaseKey(run.key);
         rejoin(run.owners); // an owner still in the event instance: none yet
-        records.record(run, System.currentTimeMillis());
+        long now = System.currentTimeMillis();
+        if (run.rerolled) {
+            rerolledAt.put(run.leaderId, now); // Lakelis greets him back
+        } else if (run.started) {
+            rerolledAt.remove(run.leaderId);
+        }
+        records.record(run, now);
+        ledger.record(run, pace, now);
     }
 
     /**
