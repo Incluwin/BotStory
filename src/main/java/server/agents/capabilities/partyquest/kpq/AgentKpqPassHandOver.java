@@ -70,8 +70,11 @@ final class AgentKpqPassHandOver {
         return hp > 0 && maxHp > 0 && hp < maxHp * hpFraction;
     }
 
-    /** A carrier low on HP with no HP potion left is about to go down, and its passes with it. */
-    static boolean aboutToGoDown(boolean lowOnHp, int hpPotions) {
-        return lowOnHp && hpPotions <= 0;
+    /**
+     * A carrier low on HP, with no HP potion left, while something it could go down to still lives on stage 5, is
+     * about to go down, and its passes with it. A potion count that cannot be told (negative) is not none.
+     */
+    static boolean aboutToGoDown(boolean lowOnHp, int hpPotions, boolean mobsAlive) {
+        return lowOnHp && hpPotions == 0 && mobsAlive;
     }
 }

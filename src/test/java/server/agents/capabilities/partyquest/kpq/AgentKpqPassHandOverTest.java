@@ -29,6 +29,20 @@ class AgentKpqPassHandOverTest {
     }
 
     @Test
+    void aCarrierIsAboutToGoDownOnlyLowOnHpOutOfPotionsWithAMobAlive() {
+        assertTrue(AgentKpqPassHandOver.lowOnHp(124, 500, 0.25));
+        assertFalse(AgentKpqPassHandOver.lowOnHp(125, 500, 0.25));
+        assertFalse(AgentKpqPassHandOver.lowOnHp(0, 500, 0.25));
+        assertTrue(AgentKpqPassHandOver.aboutToGoDown(true, 0, true));
+        assertFalse(AgentKpqPassHandOver.aboutToGoDown(false, 0, true));
+        assertFalse(AgentKpqPassHandOver.aboutToGoDown(true, 3, true));
+        // Nothing left to fight: in no danger.
+        assertFalse(AgentKpqPassHandOver.aboutToGoDown(true, 0, false));
+        // A count the gateway cannot tell is not an empty bag.
+        assertFalse(AgentKpqPassHandOver.aboutToGoDown(true, -1, true));
+    }
+
+    @Test
     void aFloorPassIsStaleOnlyPastThePatienceOutOfReachUnfetchedAndNotWaitingByCloto() {
         assertTrue(AgentKpqPassHandOver.stale(30_000L, false, false, false, 30_000L));
         assertFalse(AgentKpqPassHandOver.stale(29_999L, false, false, false, 30_000L));

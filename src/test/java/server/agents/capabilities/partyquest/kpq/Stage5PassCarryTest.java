@@ -876,6 +876,45 @@ class Stage5PassCarryTest {
     }
 
     @Test
+    void aCarrierLowOnHpWithNothingLeftToFightKeepsItsPasses() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(pip, 3);
+        when(pip.getCurrentMaxHp()).thenReturn(500);
+        // At 5% with no HP potion left, but every stage-5 mob is dead: nothing can take it down.
+        when(pip.getHp()).thenReturn(25);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 1_000L);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 2_000L);
+
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        assertFalse(said().contains(LEAVING), said()::toString);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(3), BEN_BY_CLOTO, true), atLeastOnce());
+    }
+
+    @Test
+    void anAllAgentRunsLeaderLowOnHpKeepsItsPasses() {
+        // Kai, an Agent, leads; it collects the passes itself, as every all-Agent run's leader does.
+        Character kai = onStageFive(run.companion(4, "Kai"), new Point(100, -451));
+        run.leaveParty(ben);
+        run.leadParty(kai);
+        AgentKpqSession session = run.session(false, AgentKpqSession.Phase.STAGE_5, kai, mira, pip);
+        fighting(JR_NECKI);
+        holding(kai, 6);
+        when(kai.getCurrentMaxHp()).thenReturn(500);
+        when(kai.getHp()).thenReturn(25);
+
+        for (long nowMs = 2_000L; nowMs <= 8_000L; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        assertFalse(said().contains(LEAVING), said()::toString);
+        assertEquals(AgentKpqMemberState.Role.STAGE5_PASS_COLLECTOR, session.member(4).role());
+    }
+
+    @Test
     void theHandOverEachDropAndThePickupAreLogged() {
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
         holding(mira, 6);

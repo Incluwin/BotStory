@@ -2333,7 +2333,7 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_ROUTE_REPEAT_MS: '30000'
     # Values: 0.05-0.5 of maximum HP. Recommended: 0.25. Higher values make carriers leave their passes earlier; zero disables it.
     # Purpose: Lets a companion run's stage-5 carrier that is about to go down drop its passes while it still stands, so they are not lost with it when the stock respawn takes it out of the event.
-    # Technical: A carrier or deliverer holding passes drops them all once when its HP is below this fraction of its current maximum and it holds no HP potion; it then loots no pass again, and the others or the re-collect pick them up.
+    # Technical: A carrier or deliverer holding passes drops them all once when its HP is below this fraction of its current maximum, it holds no HP potion (read through the capability gateway; an unknown count never counts as none), and a stage-5 mob is still alive; it then loots no pass again, and the others or the re-collect pick them up. Stock and all-Agent runs never do this.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_CARRIER_LOW_HP_FRACTION: '0.25'
     # Values: 0-30000 milliseconds. Recommended: 7000. Set zero only for Agent-only servers that do not require a human-first loot window.
     # Purpose: Gives human party members exclusive first opportunity to pick up Squishy Shoes before the assigned Agent attempts the drop.

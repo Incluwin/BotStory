@@ -32,6 +32,8 @@ import server.agents.capabilities.combat.AgentCombatDirectiveRuntime;
 import server.agents.capabilities.combat.AgentCombatObjectiveTargetStateRuntime;
 import server.agents.capabilities.combat.AgentCombatVariationRuntime;
 import server.agents.capabilities.npc.AgentNpcInteractionType;
+import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.capabilities.supplies.AgentSupplyInventorySnapshot;
 import server.agents.catalog.AgentMapRegionAssignment;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.integration.AgentCharacterStateSnapshot;
@@ -342,6 +344,11 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     public boolean rangedWeapon(Character agent) {
         return AgentAttackExecutionProvider.isDegenerateCapableRangedWeapon(
                 AgentAttackExecutionProvider.getEquippedWeaponType(agent));
+    }
+
+    @Override
+    public int hpPotionCount(Character character) {
+        return character == null ? -1 : AgentSupplyInventorySnapshot.quantity(character, AgentResourceCategory.HP_POTION);
     }
 
     @Override

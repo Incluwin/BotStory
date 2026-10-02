@@ -27,8 +27,6 @@ import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.looting.AgentLootCollectionPolicyConfig;
 import server.agents.capabilities.looting.AgentLootEligibility;
-import server.agents.capabilities.contracts.AgentResourceCategory;
-import server.agents.capabilities.supplies.AgentSupplyInventorySnapshot;
 import server.agents.catalog.AgentMapRegionAssignment;
 import server.agents.field.AgentFieldObservationState;
 import server.agents.operations.events.AgentOperationalEventProjectionState;
@@ -1162,7 +1160,8 @@ final class AgentKpqCoordinator {
                     Point cloto = ACTIONS.npcPosition(agent, AgentKpqDefinition.CLOTO_NPC);
                     Point approach = npcApproachPoint(session, member, agent, cloto, 501);
                     walkToPoint(agent, approach, entry, NPC_APPROACH_PX);
-                } else if (carriers && leavePassesBeforeGoingDown(session, member, agent, entry, leader, nowMs)) {
+                } else if (carriers && leavePassesBeforeGoingDown(
+                        session, member, agent, entry, leader, stage5MobCount > 0, nowMs)) {
                     continue;
                 } else if (shoesPending && member.characterId() == session.squishyShoesWinnerId()) {
                     continue;
@@ -1443,20 +1442,21 @@ final class AgentKpqCoordinator {
     }
 
     /**
-     * A carrier about to go down (low on HP with no HP potion left; live, Faro723 went down so and its passes went
-     * with it) drops its passes while it still stands, says so, and carries none from then on; the others pick them
-     * up as they sweep, or the re-collect does. True when it dropped them this tick.
+     * A carrier about to go down (low on HP with no HP potion left while a stage-5 mob lives; live, Faro723 went down
+     * so and its passes went with it) drops its passes while it still stands, says so, and carries none from then
+     * on; the others pick them up as they sweep, or the re-collect does. One low on HP with nothing left to fight,
+     * as by Cloto, is in no danger and keeps them. True when it dropped them this tick.
      */
     private static boolean leavePassesBeforeGoingDown(AgentKpqSession session, AgentKpqMemberState member,
                                                       Character agent, AgentRuntimeEntry entry, Character leader,
-                                                      long nowMs) {
-        if (member.stage5PassesLeftBehind()) return false;
+                                                      boolean mobsAlive, long nowMs) {
+        if (member.stage5PassesLeftBehind() || !mobsAlive) return false;
         int held = agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
         // The potion count reads its bag, so only a carrier already low on HP is looked at.
         boolean lowOnHp = AgentKpqPassHandOver.lowOnHp(
                 agent.getHp(), agent.getCurrentMaxHp(), STAGE5_CARRIER_LOW_HP_FRACTION);
-        if (held <= 0 || !lowOnHp || !AgentKpqPassHandOver.aboutToGoDown(lowOnHp,
-                AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION))) {
+        if (held <= 0 || !lowOnHp
+                || !AgentKpqPassHandOver.aboutToGoDown(lowOnHp, ACTIONS.hpPotionCount(agent), mobsAlive)) {
             return false;
         }
         ACTIONS.stop(entry);
