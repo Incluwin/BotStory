@@ -69,6 +69,12 @@ class AgentKpqPaceProfileTest {
         AgentPqPaceSegment.Parallel race = (AgentPqPaceSegment.Parallel) segment(4, "s5.race");
         assertEquals(List.of(new AgentPqPaceSegment.Fixed("s5.climb", AgentPqPaceSegment.Side.LEADER)),
                 race.branches().get(1));
+        // Only the carry ends at the leader: an excluded leader's carry is never learned.
+        List<String> leaderBounded = new ArrayList<>();
+        for (AgentPqPaceSegment leaf : AgentPqPaceSegment.leaves(PROFILE.segments(4))) {
+            if (leaf instanceof AgentPqPaceSegment.Fixed fixed && fixed.leaderBounded()) leaderBounded.add(fixed.key());
+        }
+        assertEquals(List.of("s5.carry"), leaderBounded);
     }
 
     @Test

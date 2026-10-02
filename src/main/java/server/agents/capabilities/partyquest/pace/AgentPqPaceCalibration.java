@@ -20,12 +20,13 @@ import java.util.TreeMap;
  * efficiencies; a quota's seek, which a run faster than the zero-seek bound puts at 0, is shrunk linearly in
  * [0, SEEK_MAX_MS]. Leader terms are learned per leader with {@code LEADER_PRIOR_WEIGHT_RUNS} pseudo-runs toward the
  * quick-human prior, or toward the other leaders' pooled terms once {@code LEADER_POOL_MIN_LEADERS} distinct leaders
- * that are not excluded have runs; an excluded leader's runs teach no leader term (his companions' spans still count).
+ * that are not excluded have runs; an excluded leader's runs teach no leader term and no leader-bounded companion time
+ * (KPQ's carry, which ends at his feet), while his companions' other spans still count.
  * A puzzle's move term is never learned. The estimate itself is never fed back.</p>
  *
  * @param fitNotes counts of what the fit skipped or bounded, for the caller to log: {@code <key>.incomplete},
  *                 {@code <key>.nonPositive}, {@code <key>.seekAtZeroBound}, {@code <key>.seekAtMax},
- *                 {@code <key>.unclearableTheory}, {@code size<n>.unsupported}
+ *                 {@code <key>.unclearableTheory}, {@code <key>.excludedLeader}, {@code size<n>.unsupported}
  */
 public record AgentPqPaceCalibration(String questKey, int epoch, Map<String, Double> companion,
                                     Map<String, Double> leader, double logSpread, int records, Source source,
@@ -127,6 +128,10 @@ public record AgentPqPaceCalibration(String questKey, int epoch, Map<String, Dou
             for (Visit visit : visits(run)) {
                 if (visit.segment() instanceof AgentPqPaceSegment.Fixed fixed && !leaderTerms.contains(fixed.term())
                         && usable(visit, notes)) {
+                    if (fixed.leaderBounded() && excluded.contains(run.pace().leaderId())) {
+                        notes.merge(fixed.key() + ".excludedLeader", 1, Integer::sum);
+                        continue;
+                    }
                     double observed = visit.span().durationMs() - folded(visit, companion, prior.leader(), leaderTerms);
                     addObservation(fixedObservations, fixed.term(), observed, run, contributed, notes, fixed.key());
                 }

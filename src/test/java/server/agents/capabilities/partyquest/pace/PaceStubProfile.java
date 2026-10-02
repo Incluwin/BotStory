@@ -58,7 +58,8 @@ final class PaceStubProfile implements AgentPqPaceProfile {
                                         Map.of(MOB_B, 500, MOB_C, 1_000, BOSS, 4_000), GREEDY, false),
                                 new AgentPqPaceSegment.Clear("boss", Map.of(BOSS, 1),
                                         Map.of(MOB_B, 500, MOB_C, 1_000, BOSS, 4_000), GREEDY, false),
-                                new AgentPqPaceSegment.Fixed("carry", AgentPqPaceSegment.Side.COMPANION)),
+                                new AgentPqPaceSegment.Fixed("carry", AgentPqPaceSegment.Side.COMPANION, "carry",
+                                        true)),
                         List.of(new AgentPqPaceSegment.Fixed("climb", AgentPqPaceSegment.Side.LEADER)))),
                 new AgentPqPaceSegment.Fixed("talks", AgentPqPaceSegment.Side.LEADER));
     }

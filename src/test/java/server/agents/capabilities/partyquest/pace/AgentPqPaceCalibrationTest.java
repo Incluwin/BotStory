@@ -187,6 +187,23 @@ class AgentPqPaceCalibrationTest {
     }
 
     @Test
+    void anExcludedLeadersCarryTeachesNothingSinceItEndsAtHisFeet() {
+        // The scripted driver waits out of reach: his companions' carry runs long for his sake, their own walk does not.
+        List<AgentPqPaceObservation> driver = List.of(observation(0, 1, pace(865,
+                span("carry", 0L, 300_000L, true), span("move", 0L, 6_000L, true))));
+
+        AgentPqPaceCalibration fit = AgentPqPaceCalibration.fit(PROFILE, driver, 10, Set.of(865));
+
+        assertEquals(20_000.0d, fit.companion().get("carry"), 1e-12);
+        assertEquals(Map.of("carry.excludedLeader", 1), fit.fitNotes());
+        assertEquals(Math.exp((3.0d * Math.log(3_000.0d) + Math.log(6_000.0d)) / 4.0d), fit.companion().get("move"),
+                1e-6);
+        assertEquals(Math.exp((3.0d * Math.log(20_000.0d) + Math.log(300_000.0d)) / 4.0d),
+                AgentPqPaceCalibration.fit(PROFILE, driver, 10, Set.of()).companion().get("carry"), 1e-6,
+                "a leader who is learned teaches it");
+    }
+
+    @Test
     void puzzleChecksTeachThePerCheckTimeAfterTheFirstCheck() {
         AgentPqPaceCalibration fit = AgentPqPaceCalibration.fit(PROFILE, List.of(observation(0, 1, pace(1,
                 span("checks", 0L, 30_000L, true, 4.0d), span("entry", 0L, 20_000L, true)))), 1, Set.of());

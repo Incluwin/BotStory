@@ -215,7 +215,8 @@ public final class AgentKpqPaceProfile implements AgentPqPaceProfile {
                                 false),
                         new AgentPqPaceSegment.Clear(S5_BOSS, bosses, hp, AgentKpqStageFiveTargetPolicy::assign, false),
                         new AgentPqPaceSegment.Fixed(S5_LOOT, AgentPqPaceSegment.Side.COMPANION),
-                        new AgentPqPaceSegment.Fixed(S5_CARRY, AgentPqPaceSegment.Side.COMPANION)),
+                        // The carry ends with the passes at the leader's feet: where he waits shapes it.
+                        new AgentPqPaceSegment.Fixed(S5_CARRY, AgentPqPaceSegment.Side.COMPANION, S5_CARRY, true)),
                 List.of(new AgentPqPaceSegment.Fixed(S5_CLIMB, AgentPqPaceSegment.Side.LEADER)))));
         segments.add(new AgentPqPaceSegment.Fixed(S5_TALKS, AgentPqPaceSegment.Side.LEADER));
         return List.copyOf(segments);

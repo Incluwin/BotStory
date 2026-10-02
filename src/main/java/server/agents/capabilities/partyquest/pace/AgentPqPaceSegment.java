@@ -105,16 +105,24 @@ public sealed interface AgentPqPaceSegment {
         }
     }
 
-    /** A time that does not depend on the party's damage: its calibrated {@code term}, in milliseconds. */
-    record Fixed(String key, Side side, String term) implements AgentPqPaceSegment {
+    /**
+     * A time that does not depend on the party's damage: its calibrated {@code term}, in milliseconds.
+     * {@code leaderBounded}: a companion time that ends at the leader (KPQ's carry ends with the passes at his feet), so
+     * where he stands shapes it; the spans of a leader whose own terms are never learned do not teach it either.
+     */
+    record Fixed(String key, Side side, String term, boolean leaderBounded) implements AgentPqPaceSegment {
         public Fixed {
             requireKey(key);
             requireKey(term);
             if (side == null) throw new IllegalArgumentException("a fixed segment needs a side");
         }
 
+        public Fixed(String key, Side side, String term) {
+            this(key, side, term, false);
+        }
+
         public Fixed(String key, Side side) {
-            this(key, side, key);
+            this(key, side, key, false);
         }
     }
 
