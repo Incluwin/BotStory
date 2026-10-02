@@ -155,6 +155,10 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX");
     private static final long STAGE1_PASS_AT_FEET_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_AT_FEET_MS");
+    private static final long STAGE1_PASS_NUDGE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_NUDGE_MS");
+    private static final long STAGE1_FLOOR_PASS_PATIENCE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_FLOOR_PASS_PATIENCE_MS");
     private static final long STAGE1_LEADER_COUPON_REPEAT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_COUPON_REPEAT_MS");
     private static final int STAGE1_LOOT_NEAR_PX = config.AgentTuning.intValue(
@@ -772,7 +776,7 @@ final class AgentKpqCoordinator {
         // Only the companions' drops: a second human may keep its pass for minutes while theirs lie there expiring.
         if (passesAtFeetLine && companionPassesDelivered(session) && floorPassQuantity > 0) {
             narrate(session, narrator != null ? narrator : firstStandingAgent(session), "stage1-passes-at-feet",
-                    leader.getName() + ", the passes are at your feet. pick them up and talk to Cloto.");
+                    leader.getName() + ", the passes are at your feet. pick them up and talk to cloto.");
         }
         if (leaderPasses >= needed) {
             session.setMissingPassSinceMs(0L);
@@ -811,7 +815,14 @@ final class AgentKpqCoordinator {
             }
             return;
         }
-        if (!allDelivered || floorPassQuantity > 0) {
+        if (dropAtFeet && !session.rerollPending()) {
+            nudgeLeaderAboutFloorPasses(session, leader, narrator, floorPasses, nowMs);
+        }
+        // A companion run's human leader picks the passes up by hand, and one he leaves lying past the patience is not
+        // on its way: live, one of three dropped at his feet held the recovery back until it expired 180 s later.
+        int waitingFloorPasses = dropAtFeet
+                ? stageOneWaitingFloorPasses(floorPasses, nowMs, STAGE1_FLOOR_PASS_PATIENCE_MS) : floorPassQuantity;
+        if (!allDelivered || waitingFloorPasses > 0) {
             session.setMissingPassSinceMs(0L);
             return;
         }
@@ -820,11 +831,51 @@ final class AgentKpqCoordinator {
             return;
         }
         if (shouldBypassMissingPasses(allDelivered, leaderPasses, needed,
-                floorPassQuantity, session.missingPassSinceMs(), nowMs,
+                waitingFloorPasses, session.missingPassSinceMs(), nowMs,
                 MISSING_PASS_GRACE_MS)) {
             bypassMissingStageOnePasses(
-                    session, leader, leaderPasses, needed, "grace-timeout", nowMs);
+                    session, leader, leaderPasses, needed, floorPassQuantity, "grace-timeout", nowMs);
         }
+    }
+
+    /**
+     * The floor passes still on their way to a companion run's human leader: one he has left lying longer than the
+     * patience, by its own drop time, is not, however near him it lies.
+     */
+    static int stageOneWaitingFloorPasses(List<MapItem> floorPasses, long nowMs, long patienceMs) {
+        List<MapItem> waiting = new ArrayList<>();
+        for (MapItem drop : floorPasses) {
+            if (nowMs - drop.getDropTime() < patienceMs) waiting.add(drop);
+        }
+        return passQuantityOnGround(waiting);
+    }
+
+    /**
+     * A companion's pass that a companion run's human leader has left lying STAGE1_PASS_NUDGE_MS gets him one reminder,
+     * from the companion that dropped the oldest while it stands in the run, or else the narrator.
+     */
+    private static void nudgeLeaderAboutFloorPasses(
+            AgentKpqSession session, Character leader, Character narrator, List<MapItem> floorPasses, long nowMs) {
+        List<MapItem> lying = new ArrayList<>();
+        MapItem oldest = null;
+        boolean byHisFeet = true;
+        for (MapItem drop : floorPasses) {
+            AgentKpqMemberState dropper = session.member(drop.getOwnerId());
+            if (dropper == null || dropper.memberType() != AgentKpqMemberState.MemberType.AGENT
+                    || dropper.characterId() == session.eventLeaderId()
+                    || nowMs - drop.getDropTime() < STAGE1_PASS_NUDGE_MS) {
+                continue;
+            }
+            lying.add(drop);
+            byHisFeet &= inLeadersReach(leader, drop);
+            if (oldest == null || drop.getDropTime() < oldest.getDropTime()) oldest = drop;
+        }
+        if (oldest == null) return;
+        Character dropper = character(oldest.getOwnerId());
+        Character speaker = dropper != null && standsInEvent(session, dropper) ? dropper
+                : narrator != null ? narrator : firstStandingAgent(session);
+        narrate(session, speaker, "stage1-pass-nudge",
+                AgentKpqPassHandOver.stageOneNudgeLine(leader.getName(), passQuantityOnGround(lying), byHisFeet));
     }
 
     /**
@@ -3762,7 +3813,7 @@ final class AgentKpqCoordinator {
             return false;
         }
         bypassMissingStageOnePasses(
-                session, leader, leaderPasses, needed, "test-complete-command", nowMs);
+                session, leader, leaderPasses, needed, 0, "test-complete-command", nowMs);
         return true;
     }
 
@@ -3819,11 +3870,17 @@ final class AgentKpqCoordinator {
         return true;
     }
 
+    /**
+     * Clears stage 1 without the passes Cloto counts. The floor passes are the ones a companion run's leader left
+     * lying past the patience (none otherwise); every restore names its cause, and is a defect unless the party still
+     * counts a member the run no longer has or a test command asked for it.
+     */
     private static void bypassMissingStageOnePasses(
             AgentKpqSession session,
             Character leader,
             int leaderPasses,
             int needed,
+            int floorPasses,
             String trigger,
             long nowMs) {
         EventInstanceManager event = KPQ.event(leader);
@@ -3834,11 +3891,15 @@ final class AgentKpqCoordinator {
                     leaderPasses, needed, stageOnePassDiagnostics(session, leader));
             return;
         }
+        boolean testCommand = "test-complete-command".equals(trigger);
+        boolean memberGone = needed > session.memberCount() - 1;
+        String cause = testCommand ? "test-command" : floorPasses > 0 ? "stale-floor-passes"
+                : memberGone ? "member-gone" : "passes-gone";
         log.warn("KPQ Stage 1 missing-pass recovery: session={} leader={}({}) map={} "
-                        + "leaderPasses={}/{} floorPasses=0 trigger={} graceMs={} members={}",
+                        + "leaderPasses={}/{} floorPasses={} defect={} cause={} trigger={} graceMs={} members={}",
                 session.sessionId(), leader.getName(), leader.getId(), leader.getMapId(),
-                leaderPasses, needed, trigger, MISSING_PASS_GRACE_MS,
-                stageOnePassDiagnostics(session, leader));
+                leaderPasses, needed, floorPasses, !testCommand && !memberGone, cause, trigger,
+                MISSING_PASS_GRACE_MS, stageOnePassDiagnostics(session, leader));
         event.setProperty("1stageclear", "true");
         event.showClearEffect(true);
         event.linkToNextStage(1, "kpq", AgentKpqDefinition.STAGE_1_MAP);

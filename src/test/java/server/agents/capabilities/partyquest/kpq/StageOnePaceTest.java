@@ -52,7 +52,7 @@ class StageOnePaceTest {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.COUPON_SWEEP_INTERVAL_MS");
     private static final int ANCHOR_MOVE_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.HELPER_ANCHOR_MOVE_PX");
-    private static final String PASSES_AT_FEET = "Ben, the passes are at your feet. pick them up and talk to Cloto.";
+    private static final String PASSES_AT_FEET = "Ben, the passes are at your feet. pick them up and talk to cloto.";
     private static final String PASS_DROPPED = AgentKpqCoordinator.stageOnePassDropMessage("Ben");
     private static final String COME_DOWN = "Ben, come on down by cloto, we're almost done.";
     private static final String PASS_BESIDE = "Ben, dropped my pass right next to you.";

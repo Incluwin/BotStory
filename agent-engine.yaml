@@ -2052,6 +2052,14 @@ tuning:
     # Purpose: Bounds how long a companion run's stage-1 pass holder tries to drop its pass on the human leader's own spot before it drops it beside him, as a stock run's holders do.
     # Technical: Measured per holder from the first tick it sets out for the leader; past it AgentKpqCoordinator drops within NEAR_PX of him on each axis, wherever he stands, walks there with a non-precise move, and says it dropped the pass next to him.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_AT_FEET_MS: '30000'
+    # Values: 5000-120000 milliseconds. Recommended: 20000. Keep it below STAGE1_FLOOR_PASS_PATIENCE_MS so the leader hears about the pass before the recovery stops waiting for it; lower values remind a leader who is still bending down for it.
+    # Purpose: Reminds a companion run's human leader, once, of a stage-1 pass a companion dropped for him that he has not picked up.
+    # Technical: Measured from the floor pass's own drop time on the coordinator's clock, for passes whose owner is a companion of the run while the leader still holds fewer passes than Cloto needs and no re-roll question is out; the companion that dropped the oldest such pass says it while it stands in the run (else the narrator, else the first companion standing), with coordination chat on or off, once a session. Stock and Agent-led runs never say it.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_NUDGE_MS: '20000'
+    # Values: 20000-170000 milliseconds. Recommended: 60000. Keep it well below the 180 s item expiry and above STAGE1_PASS_NUDGE_MS; lower values clear stage 1 without a pass the leader was about to pick up.
+    # Purpose: Lets a stage-1 floor pass that a companion run's human leader has left lying stop holding the missing-pass recovery back, so the stage clears soon after instead of when the pass expires.
+    # Technical: Measured from each floor pass's own drop time on the coordinator's clock; an older pass no longer counts as on its way however near the leader it lies, and once every non-leader pass is delivered and none younger lies on the map, the MISSING_PASS_GRACE_MS grace and the recovery run and log a warning naming the cause (stale-floor-passes). Passes companions still hold, or younger than this, block as before; stock and Agent-led runs keep the old rule (any floor pass blocks).
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_FLOOR_PASS_PATIENCE_MS: '60000'
     # Values: true or false. Recommended: false when a human is the party leader.
     # Purpose: Allows an Agent member to visibly announce shared KPQ assignments, leader pass totals, and immediate NPC reminders for a human-led party.
     # Technical: Execution coordination remains active regardless; this flag controls presentation only and never changes puzzle solving, combat, navigation, or recovery.
@@ -2281,7 +2289,7 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RETURN_PX: '600'
     # Values: 2000-30000 milliseconds. Recommended: 5000. Keep this long enough for a newly dropped pass to become pickup-eligible and appear in the next coordinator ticks.
     # Purpose: Allows Stage 1 to recover when every non-leader completed their Cloto exchange but a pass vanished before reaching the leader.
-    # Technical: Recovery is blocked while any pass remains visible on the map; after this grace period the coordinator opens Stage 1 and writes a diagnostic warning.
+    # Technical: Recovery is blocked while any pass remains visible on the map (in a companion run with a human leader, only a pass younger than STAGE1_FLOOR_PASS_PATIENCE_MS); after this grace period the coordinator opens Stage 1 and writes a diagnostic warning naming the cause.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.MISSING_PASS_GRACE_MS: '5000'
     # Values: 3000-60000 milliseconds. Recommended: 10000. Keep this shorter than LOCAL_RECOVERY_TIMEOUT_MS so a complete party cannot remain stranded behind leader navigation.
     # Purpose: Submits a complete Stage 1 pass set through Cloto if the Agent leader cannot finish its ordinary walk to the NPC.

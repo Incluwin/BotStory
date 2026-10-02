@@ -46,6 +46,20 @@ final class AgentKpqPassHandOver {
         return leader + ", dropped my pass right next to you.";
     }
 
+    /**
+     * Said once to a companion run's human leader who has left a companion's stage-1 pass lying: live (2026-10-02,
+     * run kpq-af7b89bb) he picked up two of three passes dropped at his feet, and the third lay there until it
+     * expired. Where the passes no longer lie by his feet (he walked off), it says so instead.
+     */
+    static String stageOneNudgeLine(String leader, int passes, boolean byHisFeet) {
+        if (byHisFeet) {
+            return passes > 1 ? leader + ", there are still passes right by your feet."
+                    : leader + ", there's still a pass right by your feet.";
+        }
+        return passes > 1 ? leader + ", you left some passes on the ground back there."
+                : leader + ", you left a pass on the ground back there.";
+    }
+
     static String recollectedLine(String leader) {
         return leader + ", got the rest of the passes, they're at your feet.";
     }
