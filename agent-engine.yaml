@@ -2313,7 +2313,7 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqPuzzleParticipantOrder.HUMAN_MOST_MOVEMENT_WEIGHT: '1'
     # Values: 2000-30000 milliseconds. Recommended: 7000. Keep enough time for newly spawned passes to become visible and pickup-eligible.
     # Purpose: Allows Stage 5 to recover when every monster is dead but one or more required passes have disappeared from inventories and the floor.
-    # Technical: Recovery requires zero live Stage 5 monsters, no pass carried by a live companion, and no floor pass still on its way (in companion runs a pass lying out of the leader's reach longer than STAGE5_FLOOR_PASS_PATIENCE_MS with nobody fetching it no longer counts, after one re-collect), held for this long; each restore logs a defect warning with its cause.
+    # Technical: Recovery requires zero live Stage 5 monsters, no pass carried by a live companion, and no floor pass still on its way (in companion runs a pass lying out of the leader's reach longer than STAGE5_FLOOR_PASS_PATIENCE_MS with nobody fetching it no longer counts), held for this long; in companion runs with such stale passes the first expiry instead starts the run's one re-collect, once the carriers have set out, and the gate must then hold this long again; each restore logs a defect warning with its cause.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_MISSING_PASS_GRACE_MS: '7000'
     # Values: 30000-600000 milliseconds. Recommended: 45000, about twice the 21-24 s offline route from King Slime's floor to Cloto. Keep it below KPQ_PHASE_TIMEOUT_MS.
     # Purpose: Bounds how long a companion run's stage-5 companions try to reach a human leader they have a route to before they leave the passes by Cloto, on his way there, and tell him.

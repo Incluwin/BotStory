@@ -1195,15 +1195,23 @@ final class AgentKpqCoordinator {
         int waitingFloorPasses = floorPasses - passQuantityOnGround(stalePasses);
         if (!returningToCloto && stage5MobCount == 0 && waitingFloorPasses == 0
                 && carriedStageFivePasses(session) == 0) {
-            if (carriers && recollectHoldsRecovery(session, leader, stalePasses, nowMs)) {
+            if (carriers && session.stage5RecollectSweeping(nowMs, STAGE5_SWEEP_LIMIT_MS)) {
                 session.setMissingPassSinceMs(0L);
                 return;
             }
             if (session.missingPassSinceMs() == 0L) session.setMissingPassSinceMs(nowMs);
-            if (nowMs - session.missingPassSinceMs() >= STAGE5_MISSING_PASS_GRACE_MS) {
-                recoverMissingStageFivePasses(session, leader, leaderPasses, floorPasses,
-                        passQuantityOnGround(stalePasses), nowMs);
+            if (nowMs - session.missingPassSinceMs() < STAGE5_MISSING_PASS_GRACE_MS) return;
+            // The one re-collect waits for the carriers to set out and for the grace, as the recovery does: started
+            // in the middle of their sweep it would use up the run's only one on a pass they were about to fetch.
+            if (carriers && !stalePasses.isEmpty() && !session.stage5RecollectStarted()) {
+                if (!session.stage5HandOverStarted()) return;
+                if (beginStageFiveRecollect(session, leader, stalePasses, nowMs)) {
+                    session.setMissingPassSinceMs(0L);
+                    return;
+                }
             }
+            recoverMissingStageFivePasses(session, leader, leaderPasses, floorPasses,
+                    passQuantityOnGround(stalePasses), nowMs);
             return;
         }
         session.setMissingPassSinceMs(0L);
@@ -1475,12 +1483,10 @@ final class AgentKpqCoordinator {
 
     /**
      * Before the inventory recovery makes up passes left lying, the companion nearest them goes back for them once,
-     * as a player would, and brings them to the leader. True while that holds the recovery back.
+     * as a player would, and brings them to the leader. True when this started that one re-collect.
      */
-    private static boolean recollectHoldsRecovery(
+    private static boolean beginStageFiveRecollect(
             AgentKpqSession session, Character leader, List<MapItem> stalePasses, long nowMs) {
-        if (session.stage5RecollectSweeping(nowMs, STAGE5_SWEEP_LIMIT_MS)) return true;
-        if (stalePasses.isEmpty() || session.stage5RecollectStarted()) return false;
         AgentKpqMemberState recollector = null;
         Character recollectorCharacter = null;
         double nearest = Double.MAX_VALUE;

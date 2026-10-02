@@ -589,23 +589,25 @@ class Stage5PassCarryTest {
         MapItem left = pass(31, droppedAtMs, new Point(0, -451));
         floor.add(left);
 
+        // Past the patience it is stale; once that has held for the grace, the nearest companion goes back for it,
+        // once, as a player would.
+        long recollectAtMs = droppedAtMs + PATIENCE_MS + GRACE_MS;
         long nowMs = 2_000L;
-        for (; nowMs < droppedAtMs + PATIENCE_MS; nowMs += 1_000L) {
+        for (; nowMs < recollectAtMs; nowMs += 1_000L) {
             AgentKpqCoordinator.tick(session, nowMs);
         }
         assertFalse(said().contains(RECOLLECT), said()::toString);
 
-        // Past the patience the nearest companion goes back for it, once, as a player would.
-        AgentKpqCoordinator.tick(session, droppedAtMs + PATIENCE_MS);
+        AgentKpqCoordinator.tick(session, recollectAtMs);
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, RECOLLECT));
-        AgentKpqCoordinator.tick(session, droppedAtMs + PATIENCE_MS + 1_000L);
+        AgentKpqCoordinator.tick(session, recollectAtMs + 1_000L);
         assertEquals(AgentKpqMemberState.Role.STAGE5_PASS_CARRIER, session.member(2).role());
         loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(entry(2), left), atLeastOnce());
         loot.verify(() -> AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry(2)), never());
 
         // It never gets there; the sweep's bound ends the re-collect, and the grace after it the wait.
-        long recollectOverMs = droppedAtMs + PATIENCE_MS + SWEEP_LIMIT_MS;
-        for (nowMs = droppedAtMs + PATIENCE_MS + 2_000L; nowMs < recollectOverMs + GRACE_MS; nowMs += 1_000L) {
+        long recollectOverMs = recollectAtMs + SWEEP_LIMIT_MS;
+        for (nowMs = recollectAtMs + 2_000L; nowMs < recollectOverMs + GRACE_MS; nowMs += 1_000L) {
             AgentKpqCoordinator.tick(session, nowMs);
         }
         verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
@@ -620,18 +622,43 @@ class Stage5PassCarryTest {
     }
 
     @Test
+    void theOneRecollectWaitsForTheCarriersToSetOut() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        // Nobody carries a pass and an old one lies far below Ben, while Pip still sweeps for passes.
+        floor.add(pass(31, SET_OUT_MS - 40_000L, new Point(0, -451)));
+        fetching(pip, true);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        for (long nowMs = SET_OUT_MS; nowMs < SET_OUT_MS + SWEEP_LIMIT_MS; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        // Started now it would spend the run's only re-collect on a pass the sweep may still fetch.
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        assertEquals(0, session.stage5RecollectorId());
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+
+        // The sweep capped, the carriers set out; the grace long over, the nearest companion goes back for it.
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + SWEEP_LIMIT_MS);
+        assertTrue(session.stage5HandOverStarted());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, RECOLLECT));
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
     void stalePassesFetchedAgainAreBroughtToTheLeadersFeet() {
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
         long droppedAtMs = 1_000L;
         floor.add(pass(31, droppedAtMs, new Point(0, -451)));
-        for (long nowMs = 2_000L; nowMs <= droppedAtMs + PATIENCE_MS + 1_000L; nowMs += 1_000L) {
+        long recollectAtMs = droppedAtMs + PATIENCE_MS + GRACE_MS;
+        for (long nowMs = 2_000L; nowMs <= recollectAtMs + 1_000L; nowMs += 1_000L) {
             AgentKpqCoordinator.tick(session, nowMs);
         }
+        assertEquals(mira.getId(), session.stage5RecollectorId());
 
         // Mira picks the ten up off the floor and walks them to Ben.
         floor.clear();
         holding(mira, 10);
-        long pickedUpMs = droppedAtMs + PATIENCE_MS + 2_000L;
+        long pickedUpMs = recollectAtMs + 2_000L;
         AgentKpqCoordinator.tick(session, pickedUpMs);
         AgentKpqCoordinator.tick(session, pickedUpMs + 1_000L);
         modes.verify(() -> AgentModeService.startMoveTo(entry(2), BEN_BY_CLOTO, true));
