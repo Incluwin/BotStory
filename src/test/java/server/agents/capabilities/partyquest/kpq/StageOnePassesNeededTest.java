@@ -1,14 +1,18 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import client.Character;
+import client.inventory.InventoryType;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
+import server.agents.integration.AgentInventoryGatewayRuntime;
+import server.agents.integration.InventoryGateway;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -34,7 +38,10 @@ class StageOnePassesNeededTest {
         try (KpqRunFixture run = new KpqRunFixture();
              MockedStatic<AgentKpqStageOneThiefLandingRuntime> landing =
                      mockStatic(AgentKpqStageOneThiefLandingRuntime.class);
-             MockedStatic<AgentGrindLootStateRuntime> loot = mockStatic(AgentGrindLootStateRuntime.class)) {
+             MockedStatic<AgentGrindLootStateRuntime> loot = mockStatic(AgentGrindLootStateRuntime.class);
+             MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            InventoryGateway inventory = mock(InventoryGateway.class);
+            inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
             Character ben = run.human(1, "Ben");
             Character ann = run.human(2, "Ann");
             Character mira = run.companion(3, "Mira");
@@ -61,6 +68,8 @@ class StageOnePassesNeededTest {
                     mira, "Ben, you've got all the passes, go talk to cloto."), never());
             // Cleared on the grace, not on his own hand-in: the hand-in's pace span is kept out of the calibration.
             assertTrue(session.pace().snapshot().stageOnePassesRestored());
+            // His two go as Cloto's clear would take them, so neither counts toward stage 5's ten.
+            verify(inventory).removeById(ben, InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, 2, false, false);
         }
     }
 }

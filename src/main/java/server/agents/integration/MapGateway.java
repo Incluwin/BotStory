@@ -40,5 +40,11 @@ public interface MapGateway {
     Point pointBelow(MapleMap map, Point position);
 
     void removeItemDrop(MapleMap map, MapItem drop, int animation, int fromCharacterId);
+
+    /**
+     * Makes a drop vanish from the map as an expired one does (Cosmic's own lock and picked-up check), for every
+     * observer. True when it no longer lies there.
+     */
+    boolean expireItemDrop(MapleMap map, MapItem drop);
 }
 

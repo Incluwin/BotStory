@@ -3,6 +3,7 @@ package server.agents.integration.cosmic;
 import client.Character;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
+import server.maps.MapItem;
 import server.maps.MapleMap;
 import server.maps.Portal;
 
@@ -58,5 +59,17 @@ class CosmicMapGatewayTest {
 
         verify(agent).changeMap(map, portal);
         verify(agent, never()).forceChangeMap(map, portal);
+    }
+
+    @Test
+    void expireItemDropMakesTheDropVanishThroughCosmic() {
+        MapleMap map = mock(MapleMap.class);
+        MapItem drop = mock(MapItem.class);
+        when(map.makeDisappearItemFromMap(drop)).thenReturn(true);
+
+        assertTrue(CosmicMapGateway.INSTANCE.expireItemDrop(map, drop));
+        verify(map).makeDisappearItemFromMap(drop);
+        assertFalse(CosmicMapGateway.INSTANCE.expireItemDrop(null, drop));
+        assertFalse(CosmicMapGateway.INSTANCE.expireItemDrop(map, null));
     }
 }

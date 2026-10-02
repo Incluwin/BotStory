@@ -166,4 +166,9 @@ public enum CosmicMapGateway implements MapGateway {
         map.pickItemDrop(PacketCreator.removeItemFromMap(
                 drop.getObjectId(), animation, fromCharacterId), drop);
     }
+
+    @Override
+    public boolean expireItemDrop(MapleMap map, MapItem drop) {
+        return map != null && drop != null && map.makeDisappearItemFromMap(drop);
+    }
 }
