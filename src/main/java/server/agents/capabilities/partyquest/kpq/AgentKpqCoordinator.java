@@ -147,6 +147,13 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PREPARATION_DELAY_MS");
     private static final int NEAR_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.NEAR_PX");
+    /**
+     * How far along the leader's foothold a deliverer may step aside to drop: PASS_DROP_SPOT_SEARCH_PX, but never so
+     * far that a drop landing up to PASS_DROP_AT_FEET_PX past the spot lies outside his reach (NEAR_PX), where the
+     * nudges would call it left back there and the stage-5 re-collect would carry it back to the same spot.
+     */
+    private static final int PASS_DROP_SPOT_REACH_PX = AgentKpqPassHandOver.spotReach(
+            PASS_DROP_SPOT_SEARCH_PX, NEAR_PX, PASS_DROP_AT_FEET_PX);
     private static final int NPC_APPROACH_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.NPC_APPROACH_PX");
     private static final int GATHER_RADIUS_PX = config.AgentTuning.intValue(
@@ -750,6 +757,7 @@ final class AgentKpqCoordinator {
                                     ? AgentKpqPassHandOver.DropReason.BESIDE
                                     : AgentKpqPassHandOver.DropReason.OVERDUE, onHisSpot ? plan.spot() : null, 1,
                                     nowMs);
+                            if (onHisSpot) session.notePassPlace(1, plan.place());
                         }
                         // The leader gets the one pickup line below instead of a line per companion, unless this
                         // one could not get onto his spot.
@@ -786,9 +794,10 @@ final class AgentKpqCoordinator {
         reportLeaderPassProgress(session, narrator, leader.getName(), leaderState, leaderPasses, needed);
         int floorPassQuantity = passQuantityOnGround(floorPasses);
         // Only the companions' drops: a second human may keep its pass for minutes while theirs lie there expiring.
+        // Where a holder stepped aside to drop, or nowhere by him landed on his foothold, it says where they lie.
         if (passesAtFeetLine && companionPassesDelivered(session) && floorPassQuantity > 0) {
             narrate(session, narrator != null ? narrator : firstStandingAgent(session), "stage1-passes-at-feet",
-                    leader.getName() + ", the passes are at your feet. pick them up and talk to cloto.");
+                    AgentKpqPassHandOver.stageOnePassesLine(leader.getName(), session.passPlace(1)));
         }
         if (leaderPasses >= needed) {
             session.setMissingPassSinceMs(0L);
@@ -1494,7 +1503,7 @@ final class AgentKpqCoordinator {
             dropStageFivePasses(session, member, agent, entry, leader, held,
                     member.characterId() == session.stage5RecollectorId()
                             ? AgentKpqPassHandOver.DropReason.RECOLLECT : AgentKpqPassHandOver.DropReason.BESIDE,
-                    plan.spot(), nowMs);
+                    plan, nowMs);
             return;
         }
         long chasingMs = nowMs - Math.max(session.stage5HandOverStartedAtMs(), member.stage5ChaseFromMs());
@@ -1544,19 +1553,21 @@ final class AgentKpqCoordinator {
     /**
      * What a deliverer does about a companion run's leader this tick: drop now, or walk (precise) to {@code walkTo}.
      * {@code spot} names, for the drop log line, where it drops: at his feet, from a spot it moved to, or at his feet
-     * though nowhere near him lands on his foothold.
+     * though nowhere near him lands on his foothold; {@code place}, for the line that tells him, where the drop lies
+     * against him by the map's own placement.
      */
-    private record PassDropPlan(boolean dropNow, Point walkTo, String spot) {
+    private record PassDropPlan(boolean dropNow, Point walkTo, String spot, AgentKpqPassHandOver.PassPlace place) {
         static final String AT_FEET = "feet";
         static final String MOVED = "moved";
         static final String NO_SPOT = "none";
 
         static PassDropPlan walk(Point to) {
-            return new PassDropPlan(false, to, null);
+            return new PassDropPlan(false, to, null, null);
         }
 
-        static PassDropPlan drop(Point at, String spot) {
-            return new PassDropPlan(true, at, spot);
+        static PassDropPlan drop(Point at, String spot, Point landing, Point leaderSpot) {
+            return new PassDropPlan(true, at, spot,
+                    AgentKpqPassHandOver.PassPlace.of(landing, leaderSpot, PASS_DROP_AT_FEET_PX));
         }
     }
 
@@ -1566,47 +1577,68 @@ final class AgentKpqCoordinator {
      * 85 px over the dropper: live (2026-10-02, kpq-fea2a83b) a stage-1 pass dropped 6 px from the leader landed 83 px
      * up, on the ramp over him, and only the patience recovery cleared the stage. So the drop at his feet is previewed
      * with the map's own placement and goes down only where it lands at his feet; otherwise the deliverer walks to the
-     * nearest spot on his foothold, within PASS_DROP_SPOT_SEARCH_PX, where it lands on that foothold, and drops
+     * nearest spot on his foothold, within PASS_DROP_SPOT_REACH_PX, where it lands on that foothold, and drops
      * there. With no such spot it drops at his feet as before; a map that cannot tell where a drop lands is dropped on
      * as before.
      */
     private static PassDropPlan passDropPlan(Character dropper, Character leader, Point leaderSpot) {
         boolean atHisFeet = passesAtLeadersFeet(dropper, leader, leaderSpot);
         Point at = dropper.getPosition();
-        if (atHisFeet) {
-            Point predicted = ACTIONS.predictDropLanding(dropper, at);
-            if (predicted == null || AgentKpqPassHandOver.landsAt(predicted, leaderSpot, PASS_DROP_AT_FEET_PX)) {
-                return PassDropPlan.drop(leaderSpot, PassDropPlan.AT_FEET);
-            }
+        Point landing = ACTIONS.predictDropLanding(dropper, at);
+        if (atHisFeet && (landing == null || AgentKpqPassHandOver.landsAt(landing, leaderSpot, PASS_DROP_AT_FEET_PX))) {
+            return PassDropPlan.drop(leaderSpot, PassDropPlan.AT_FEET, landing, leaderSpot);
         }
         // A spot is looked for only once it is about at his feet, on his map, with him on a foothold.
         boolean leaderOnGround = ACTIONS.footing(leader) == PrimitiveCapabilityGateway.Footing.GROUND;
         if (leaderSpot == null || at == null || dropper.getMap() != leader.getMap() || !leaderOnGround
-                || Math.abs(at.x - leaderSpot.x) > PASS_DROP_SPOT_SEARCH_PX + PASS_DROP_AT_FEET_PX
+                || Math.abs(at.x - leaderSpot.x) > PASS_DROP_SPOT_REACH_PX + PASS_DROP_AT_FEET_PX
                 || Math.abs(at.y - leaderSpot.y) > NEAR_PX) {
             return PassDropPlan.walk(leaderSpot);
         }
+        // On its way, with nothing over his spot (the usual case), it walks onto it without a search.
+        if (!atHisFeet && dropsLandAroundHisSpot(dropper, leaderSpot)) return PassDropPlan.walk(leaderSpot);
+        boolean dropperOnGround = ACTIONS.footing(dropper) == PrimitiveCapabilityGateway.Footing.GROUND;
         MapleMap map = leader.getMap();
-        Point spot = AgentKpqPassHandOver.dropSpot(leaderSpot, at.x - leaderSpot.x,
+        Point spot = AgentKpqPassHandOver.dropSpot(leaderSpot, at, dropperOnGround ? landing : null,
                 point -> ACTIONS.groundPoint(map, point), point -> ACTIONS.predictDropLanding(dropper, point),
-                PASS_DROP_AT_FEET_PX, PASS_DROP_SPOT_SEARCH_PX, PASS_DROP_SPOT_STEP_PX);
-        if (spot == null || spot.equals(leaderSpot)) {
-            // Nowhere by him lands on his foothold (or only his own spot, by a catch too narrow to step over): at his
-            // feet as before, which the patience recovery covers.
-            return atHisFeet ? PassDropPlan.drop(leaderSpot, PassDropPlan.NO_SPOT) : PassDropPlan.walk(leaderSpot);
+                PASS_DROP_AT_FEET_PX, PASS_DROP_SPOT_REACH_PX, PASS_DROP_SPOT_STEP_PX);
+        if (spot == null) {
+            // Nowhere by him lands on his foothold: at his feet as before, which the patience recovery covers.
+            return atHisFeet ? PassDropPlan.drop(leaderSpot, PassDropPlan.NO_SPOT, landing, leaderSpot)
+                    : PassDropPlan.walk(leaderSpot);
         }
-        if (AgentKpqPassHandOver.atFeet(at, spot,
-                ACTIONS.footing(dropper) == PrimitiveCapabilityGateway.Footing.GROUND, leaderOnGround,
-                PASS_DROP_AT_FEET_PX)
-                && AgentKpqPassHandOver.landsAt(ACTIONS.predictDropLanding(dropper, at), spot, PASS_DROP_AT_FEET_PX)) {
-            return PassDropPlan.drop(spot, PassDropPlan.MOVED);
+        // Where it stands for the spot, its own drop lands there: the search does not pick a spot it stands by
+        // otherwise.
+        if (AgentKpqPassHandOver.atFeet(at, spot, dropperOnGround, leaderOnGround, PASS_DROP_AT_FEET_PX)
+                && AgentKpqPassHandOver.landsAt(landing, spot, PASS_DROP_AT_FEET_PX)) {
+            return PassDropPlan.drop(spot, PassDropPlan.MOVED, landing, leaderSpot);
         }
         return PassDropPlan.walk(spot);
     }
 
+    /**
+     * Drops from the leader's spot and from either edge of his feet (PASS_DROP_AT_FEET_PX either way) land at his
+     * feet, or the map cannot tell where a drop lands at all: either way a deliverer on its way walks onto his spot
+     * as before, after three previews and no ground reads.
+     */
+    private static boolean dropsLandAroundHisSpot(Character dropper, Point leaderSpot) {
+        Point fromHisSpot = ACTIONS.predictDropLanding(dropper, leaderSpot);
+        if (fromHisSpot == null) return true;
+        if (!AgentKpqPassHandOver.landsAt(fromHisSpot, leaderSpot, PASS_DROP_AT_FEET_PX)) return false;
+        for (int side = -1; side <= 1; side += 2) {
+            Point edge = new Point(leaderSpot.x + side * PASS_DROP_AT_FEET_PX, leaderSpot.y);
+            if (!AgentKpqPassHandOver.landsAt(ACTIONS.predictDropLanding(dropper, edge), leaderSpot,
+                    PASS_DROP_AT_FEET_PX)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static void dropStageFivePasses(AgentKpqSession session, AgentKpqMemberState member, Character agent,
                                             AgentRuntimeEntry entry, Character leader, int held,
-                                            AgentKpqPassHandOver.DropReason reason, String spot, long nowMs) {
+                                            AgentKpqPassHandOver.DropReason reason, PassDropPlan plan,
+                                            long nowMs) {
         ACTIONS.stop(entry);
         if (!AgentScriptItemActionService.dropItem(entry, InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) held)
                 || !passDropConfirmed(held, agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false))) {
@@ -1614,21 +1646,25 @@ final class AgentKpqCoordinator {
         }
         member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
         session.markProgress(nowMs);
-        recordStageFivePassDrops(session, leader, logPassDrop(session, 5, agent, leader, reason, spot, held, nowMs),
+        recordStageFivePassDrops(session, leader,
+                logPassDrop(session, 5, agent, leader, reason, plan == null ? null : plan.spot(), held, nowMs),
                 reason, nowMs);
+        AgentKpqPassHandOver.PassPlace place = plan == null ? null : plan.place();
+        if (reason == AgentKpqPassHandOver.DropReason.BESIDE) session.notePassPlace(5, place);
         switch (reason) {
             case OVERDUE -> narrate(session, agent, "stage5-passes-dropped-" + agent.getId(),
                     leader.getName() + ", can't get to you, i dropped the passes right here by me.");
             case AT_CLOTO -> narrate(session, agent, "stage5-passes-by-cloto-" + agent.getId(),
                     AgentKpqPassHandOver.leftByClotoLine(leader.getName()));
             case RECOLLECT -> narrate(session, agent, "stage5-recollected-at-feet",
-                    AgentKpqPassHandOver.recollectedLine(leader.getName()));
+                    AgentKpqPassHandOver.recollectedLine(leader.getName(), place));
             default -> {
                 if (session.members().stream().noneMatch(
                         other -> other.role() == AgentKpqMemberState.Role.PASS_DELIVERER)) {
-                    // The last one there says it, once: the passes expire where they lie.
+                    // The last one there says it, once: the passes expire where they lie. Where one stepped aside to
+                    // drop, or nowhere by him landed on his foothold, it says where they lie.
                     narrate(session, agent, "stage5-passes-at-feet",
-                            leader.getName() + ", the passes are at your feet. grab them and talk to cloto.");
+                            AgentKpqPassHandOver.stageFivePassesLine(leader.getName(), session.passPlace(5)));
                 }
             }
         }

@@ -60,6 +60,7 @@ class PassDropLandingTest {
     /** Where the leader and Faro723 stood live, on his foothold under the ramp. */
     private static final Point LIVE_LEADER = new Point(464, 111);
     private static final Point LIVE_DROPPER = new Point(470, 111);
+    private static final String PASSES_AT_FEET = "Ben, the passes are at your feet. pick them up and talk to cloto.";
 
     private static MapleMap stageOne;
 
@@ -164,6 +165,84 @@ class PassDropLandingTest {
                             + "predicted=(454,112) landed=[(454,112):dx=-10:dy=1:passes=1:oid=60:ffa=false]"),
                     log.startingWith("KPQ pass drop: "));
         }
+        // 10 px from him it is still at his feet, and he is told so.
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASSES_AT_FEET)), times(1));
+    }
+
+    @Test
+    void aLeaderFurtherUpUnderTheRampIsToldThePassLiesJustToHisLeft() {
+        // Under the ramp's middle the nearest clear spot is 45 px left of him, by the live leader's spot.
+        Point leader = groundUnderRamp(500);
+        Character ben = at(run.human(1, "Ben"), leader);
+        Character faro = at(run.companion(2, "Faro723"), groundUnderRamp(506));
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, faro, delivered());
+        holdingPass(session, faro);
+        assertEquals(new Point(500, 109), leader);
+
+        tick(session, DROPPED_AT_MS);
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        Point spot = new Point(455, 112);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), spot, true));
+
+        at(faro, spot);
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            tick(session, DROPPED_AT_MS + 1_000L);
+
+            assertEquals(List.of("KPQ pass drop: session=" + session.sessionId() + " stage=1 agent=Faro723 "
+                            + "reason=beside passes=1 dx=-45 dy=3 sameFoothold=true leaderFooting=GROUND spot=moved "
+                            + "predicted=(455,112) landed=[(455,112):dx=-45:dy=3:passes=1:oid=60:ffa=false]"),
+                    log.startingWith("KPQ pass drop: "));
+        }
+        // On his floor, in his reach, and he is told where: not at his feet.
+        assertEquals(List.of(spot), floor.stream().map(MapItem::getPosition).toList());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(),
+                eq("Ben, the passes are just to your left. pick them up and talk to cloto.")), times(1));
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(), eq(PASSES_AT_FEET)), never());
+    }
+
+    @Test
+    void aCatchNarrowerThanAStepUnderTheHolderIsNotDroppedIntoButSteppedOutOf() {
+        // A flat floor at y 0 under a ledge 40 px up only 3 px wide, x 2 to 4: drops from his spot and 5 px either
+        // side of it land on the floor, but Faro, 3 px from him, would drop onto the ledge.
+        geometry(point -> new Point(point.x, point.x >= 2 && point.x <= 4 && point.y <= -40 ? -40 : 0));
+        Character ben = at(run.human(1, "Ben"), new Point(0, 0));
+        Character faro = at(run.companion(2, "Faro723"), new Point(3, 0));
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, faro, delivered());
+        holdingPass(session, faro);
+
+        // It steps to the nearest spot whose stops all land on the floor and leave out where it stands, and drops
+        // there; before, it dropped where it stood, onto the ledge.
+        tick(session, DROPPED_AT_MS);
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        Point spot = new Point(-10, 0);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), spot, true));
+
+        at(faro, spot);
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            tick(session, DROPPED_AT_MS + 1_000L);
+
+            assertEquals(List.of("KPQ pass drop: session=" + session.sessionId() + " stage=1 agent=Faro723 "
+                            + "reason=beside passes=1 dx=-10 dy=0 sameFoothold=true leaderFooting=GROUND spot=feet "
+                            + "predicted=(-10,0) landed=[(-10,0):dx=-10:dy=0:passes=1:oid=60:ffa=false]"),
+                    log.startingWith("KPQ pass drop: "));
+        }
+    }
+
+    @Test
+    void onItsWayToALeaderWithNothingOverHimItWalksOntoHisSpotAfterThreePreviewsAndNoSearch() {
+        Point leader = groundUnderRamp(580);
+        Character ben = at(run.human(1, "Ben"), leader);
+        Character faro = at(run.companion(2, "Faro723"), groundUnderRamp(640));
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, faro, delivered());
+        holdingPass(session, faro);
+
+        tick(session, DROPPED_AT_MS);
+
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), leader, true));
+        // Its own drop, and drops from his spot and 10 px either side of it; the search along his foothold would
+        // read about 30 more.
+        verify(run.map, times(4)).calcDropPos(any(), any());
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
     }
 
     @Test
@@ -211,6 +290,8 @@ class PassDropLandingTest {
                     log.startingWith("KPQ pass drop: "));
         }
         modes.verify(() -> AgentModeService.startMoveTo(eq(entry(2)), any(), anyBoolean()), never());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(any(),
+                eq("Ben, the passes landed up above you. hop up, grab them and talk to cloto.")), times(1));
     }
 
     @Test
@@ -294,6 +375,11 @@ class PassDropLandingTest {
 
     private static Point ground(int x) {
         return stageOne.getPointBelow(new Point(x, 0));
+    }
+
+    /** The floor under the ramp at {@code x}, looked for from under the ramp. */
+    private static Point groundUnderRamp(int x) {
+        return stageOne.getPointBelow(new Point(x, 100));
     }
 
     private static String text(Point point) {
