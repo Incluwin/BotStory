@@ -93,6 +93,7 @@ class Stage5PassCarryTest {
     private static final String RECOLLECTED = "Ben, got the rest of the passes, they're at your feet.";
     private static final long HANDOVER_MS = tuning("STAGE5_PASS_HANDOVER_MS");
     private static final long PATIENCE_MS = tuning("STAGE5_FLOOR_PASS_PATIENCE_MS");
+    private static final long INREACH_PATIENCE_MS = tuning("STAGE5_INREACH_PASS_PATIENCE_MS");
     private static final long SWEEP_LIMIT_MS = tuning("STAGE5_SWEEP_LIMIT_MS");
     private static final long REPEAT_MS = tuning("STAGE5_ROUTE_REPEAT_MS");
     private static final long GRACE_MS = tuning("STAGE5_MISSING_PASS_GRACE_MS");
@@ -710,19 +711,26 @@ class Stage5PassCarryTest {
     }
 
     @Test
-    void aPassLyingAtTheLeadersFeetIsNeverTakenForLostHoweverOld() {
-        // Ben stands on Cloto's island, away from her, with an old pass at his feet; nobody holds one.
+    void aPassLyingAtTheLeadersFeetIsNeverFetchedAgainAndWaitsOutTheLongerPatience() {
+        // Ben stands on Cloto's island, away from her, with a pass at his feet; nobody holds one.
         at(ben, 180, CLOTO.y);
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
-        floor.add(pass(31, -39_000L, new Point(190, CLOTO.y)));
+        long droppedAtMs = 1_000L;
+        floor.add(pass(31, droppedAtMs, new Point(190, CLOTO.y)));
 
-        for (long nowMs = 2_000L; nowMs <= 2_000L + PATIENCE_MS + SWEEP_LIMIT_MS + GRACE_MS * 3; nowMs += 1_000L) {
+        // Long past the out-of-reach patience it still counts as on its way: nobody is sent back for it, and the
+        // recovery waits for it until the in-reach patience and the grace after it are over.
+        long recoveryAtMs = droppedAtMs + INREACH_PATIENCE_MS + GRACE_MS;
+        for (long nowMs = 2_000L; nowMs < recoveryAtMs; nowMs += 1_000L) {
             AgentKpqCoordinator.tick(session, nowMs);
         }
-
         assertFalse(said().contains(RECOLLECT), said()::toString);
         assertEquals(0, session.stage5RecollectorId());
         verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+
+        AgentKpqCoordinator.tick(session, recoveryAtMs);
+        verify(inventoryGateway, times(1)).addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 10);
+        assertFalse(said().contains(RECOLLECT), said()::toString);
     }
 
     @Test
@@ -937,9 +945,9 @@ class Stage5PassCarryTest {
                     log.startingWith("KPQ Stage 5 hand-over start: "));
             assertEquals(List.of(
                             "KPQ pass drop: session=" + id + " stage=5 agent=Mira reason=beside passes=6 dx=8 dy=0 "
-                                    + "sameFoothold=true leaderFooting=GROUND",
+                                    + "sameFoothold=true leaderFooting=GROUND landed=none",
                             "KPQ pass drop: session=" + id + " stage=5 agent=Pip reason=beside passes=4 dx=-8 dy=0 "
-                                    + "sameFoothold=true leaderFooting=GROUND"),
+                                    + "sameFoothold=true leaderFooting=GROUND landed=none"),
                     log.startingWith("KPQ pass drop: "));
             assertEquals(List.of("KPQ pass pickup: session=" + id + " stage=5 leader=Ben delta=10 held=10 "
                             + "sinceDropMs=1500"),

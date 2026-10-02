@@ -60,6 +60,21 @@ final class AgentKpqPassHandOver {
                 : leader + ", you left a pass on the ground back there.";
     }
 
+    /**
+     * Said once to a companion run's human leader who has left stage-5 passes a companion dropped on his spot: live
+     * (2026-10-02, run kpq-a6f696f0) two companions dropped ten passes beside him, he never picked them up, and the
+     * recovery waited for them until they expired 180 s later. Where they no longer lie by his feet (he walked off), it
+     * says so instead.
+     */
+    static String stageFiveNudgeLine(String leader, int passes, boolean byHisFeet) {
+        if (byHisFeet) {
+            return passes > 1 ? leader + ", the passes are right by your feet."
+                    : leader + ", the pass is right by your feet.";
+        }
+        return passes > 1 ? leader + ", you left the passes on the ground back there."
+                : leader + ", you left a pass on the ground back there.";
+    }
+
     static String recollectedLine(String leader) {
         return leader + ", got the rest of the passes, they're at your feet.";
     }
@@ -82,6 +97,15 @@ final class AgentKpqPassHandOver {
     static boolean stale(long ageMs, boolean inLeadersReach, boolean waitingByCloto, boolean fetched,
                          long patienceMs) {
         return ageMs >= patienceMs && !inLeadersReach && !waitingByCloto && !fetched;
+    }
+
+    /**
+     * A floor pass lying in the leader's reach is no longer on its way to him once he has left it there longer than
+     * the patience and no companion is going for it: it needs no re-collect, it already lies by him, and the
+     * missing-pass recovery may then count it as left.
+     */
+    static boolean leftAtFeet(long ageMs, boolean inLeadersReach, boolean fetched, long patienceMs) {
+        return ageMs >= patienceMs && inLeadersReach && !fetched;
     }
 
     /** Still standing, below this fraction of its HP. */
