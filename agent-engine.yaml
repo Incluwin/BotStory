@@ -2042,11 +2042,11 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX: '600'
     # Values: 20-250 map pixels. Recommended: 85. Higher values allow pass delivery from farther away; lower values require tighter visual grouping.
     # Purpose: Defines how close a stock KPQ run's member must stand to the event leader before dropping a collected pass, and how near a companion run's floor pass must lie to count as within its human leader's reach.
-    # Technical: AgentKpqCoordinator tests this bound on each axis separately (|dx| and |dy|, not Euclidean); companion runs drop on the leader's spot by PASS_DROP_AT_FEET_PX instead and use this only for the stage-5 floor-pass reach.
+    # Technical: AgentKpqCoordinator tests this bound on each axis separately (|dx| and |dy|, not Euclidean); companion runs drop on the leader's spot by PASS_DROP_AT_FEET_PX instead, and use this for a stage-1 holder's drop only past STAGE1_PASS_AT_FEET_MS, for the stage-5 floor-pass reach, and for which floor passes lie by Cloto.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.NEAR_PX: '85'
     # Values: 4-40 map pixels. Recommended: 10. Lower values make deliverers stand nearer the leader's spot before dropping; above about 30 the WASM client's standing pickup (about 9 px left to 41 px right of a drop) misses.
     # Purpose: Makes a companion run's companions drop stage-1 and stage-5 passes on the human leader's own spot, so a leader who presses pickup without moving gets them.
-    # Technical: AgentKpqCoordinator drops only when the deliverer and the leader both stand on a foothold (never in the air or on a rope or ladder) and the deliverer is within this many pixels of the leader's ground point on each axis; it walks there with a precise move first.
+    # Technical: AgentKpqCoordinator drops only when the deliverer and the leader both stand on a foothold (never in the air or on a rope or ladder) and the deliverer is within this many pixels of the leader's ground point on each axis; it walks there with a precise move first; a stage-1 holder that has not managed it within STAGE1_PASS_AT_FEET_MS drops by NEAR_PX instead.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PASS_DROP_AT_FEET_PX: '10'
     # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values give up on the leader's own spot sooner; higher values keep a holder chasing a leader who keeps moving or stays on a rope or ladder.
     # Purpose: Bounds how long a companion run's stage-1 pass holder tries to drop its pass on the human leader's own spot before it drops it beside him, as a stock run's holders do.
