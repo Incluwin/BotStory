@@ -3,7 +3,10 @@ package server.agents.integration.cosmic;
 import client.Character;
 import client.QuestStatus;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
+import server.agents.capabilities.supplies.AgentSupplyInventorySnapshot;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.quest.Quest;
@@ -15,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class CosmicPrimitiveCapabilityGatewayTest {
@@ -31,6 +35,18 @@ class CosmicPrimitiveCapabilityGatewayTest {
                 entry, Set.of(6400009), Set.of(8830009));
 
         assertFalse(AgentFarmAnchorStateRuntime.hasFarmAnchor(entry));
+    }
+
+    @Test
+    void hpPotionCountIsWhatTheSupplySnapshotCountsAndUnknownWithoutACharacter() {
+        Character agent = mock(Character.class);
+        try (MockedStatic<AgentSupplyInventorySnapshot> supplies = mockStatic(AgentSupplyInventorySnapshot.class)) {
+            supplies.when(() -> AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION))
+                    .thenReturn(12);
+
+            assertEquals(12, CosmicPrimitiveCapabilityGateway.INSTANCE.hpPotionCount(agent));
+        }
+        assertEquals(-1, CosmicPrimitiveCapabilityGateway.INSTANCE.hpPotionCount(null));
     }
 
     @Test

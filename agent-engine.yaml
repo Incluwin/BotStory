@@ -2042,12 +2042,16 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX: '600'
     # Values: 20-250 map pixels. Recommended: 85. Higher values allow pass delivery from farther away; lower values require tighter visual grouping.
     # Purpose: Defines how close a stock KPQ run's member must stand to the event leader before dropping a collected pass, and how near a companion run's floor pass must lie to count as within its human leader's reach.
-    # Technical: AgentKpqCoordinator tests this bound on each axis separately (|dx| and |dy|, not Euclidean); companion runs drop on the leader's spot by PASS_DROP_AT_FEET_PX instead and use this only for the stage-5 floor-pass reach.
+    # Technical: AgentKpqCoordinator tests this bound on each axis separately (|dx| and |dy|, not Euclidean); companion runs drop on the leader's spot by PASS_DROP_AT_FEET_PX instead, and use this for a stage-1 holder's drop only past STAGE1_PASS_AT_FEET_MS, for the stage-5 floor-pass reach, and for which floor passes lie by Cloto.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.NEAR_PX: '85'
     # Values: 4-40 map pixels. Recommended: 10. Lower values make deliverers stand nearer the leader's spot before dropping; above about 30 the WASM client's standing pickup (about 9 px left to 41 px right of a drop) misses.
     # Purpose: Makes a companion run's companions drop stage-1 and stage-5 passes on the human leader's own spot, so a leader who presses pickup without moving gets them.
-    # Technical: AgentKpqCoordinator drops only when the deliverer and the leader both stand on a foothold (never in the air or on a rope or ladder) and the deliverer is within this many pixels of the leader's ground point on each axis; it walks there with a precise move first.
+    # Technical: AgentKpqCoordinator drops only when the deliverer and the leader both stand on a foothold (never in the air or on a rope or ladder) and the deliverer is within this many pixels of the leader's ground point on each axis; it walks there with a precise move first; a stage-1 holder that has not managed it within STAGE1_PASS_AT_FEET_MS drops by NEAR_PX instead.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.PASS_DROP_AT_FEET_PX: '10'
+    # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values give up on the leader's own spot sooner; higher values keep a holder chasing a leader who keeps moving or stays on a rope or ladder.
+    # Purpose: Bounds how long a companion run's stage-1 pass holder tries to drop its pass on the human leader's own spot before it drops it beside him, as a stock run's holders do.
+    # Technical: Measured per holder from the first tick it sets out for the leader; past it AgentKpqCoordinator drops within NEAR_PX of him on each axis, wherever he stands, walks there with a non-precise move, and says it dropped the pass next to him.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_AT_FEET_MS: '30000'
     # Values: true or false. Recommended: false when a human is the party leader.
     # Purpose: Allows an Agent member to visibly announce shared KPQ assignments, leader pass totals, and immediate NPC reminders for a human-led party.
     # Technical: Execution coordination remains active regardless; this flag controls presentation only and never changes puzzle solving, combat, navigation, or recovery.
@@ -2219,10 +2223,14 @@ tuning:
     # Purpose: Bounds how long a floor coupon may wait for a fighting companion-run collector before the collector leaves its fight for it anyway.
     # Technical: Measured from the coupon's own drop time on the coordinator's clock; an older coupon is matched in the sweep however busy the collector is, closest collector and coupon pairs first as before.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_MAX_AGE_MS: '120000'
-    # Values: 60-250 map pixels. Recommended: 100. Higher values need longer platforms (some cluster platforms then have no spot); lower values let Ligators reach the shooter sooner.
+    # Values: 60-250 map pixels. Recommended: 80, still past the 50 px point-blank range. Higher values need longer platforms: at 100 four of 103000800's five clusters had a spot only on a one-spawn platform, at 80 three have one on a platform of two or three spawns.
     # Purpose: Sets how far from the Ligator spawn points of its territory a companion run's ranged member stands to shoot in stage 1, so it is not on the point-blank whack-and-retreat loop.
-    # Technical: The firing spot is the foothold point this many pixels left or right of a territory spawn on that spawn's navigation region, kept only if every spawn of the territory is at least this far away (Euclidean); the spot on the platform with the most spawns wins, then the nearest to a spawn.
-    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX: '100'
+    # Technical: The firing spot is the foothold point this many pixels left or right of a territory spawn on that spawn's navigation region, kept only if every spawn of the territory is at least this far away (Euclidean) and that region holds at least STAGE1_RANGED_SPOT_MIN_SPAWNS of the territory's spawns; the spot on the platform with the most spawns wins, then the nearest to a spawn.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX: '80'
+    # Values: 1-6 spawn points. Recommended: 2. One lets a ranged member camp a platform fed by a single spawn's respawn; higher values leave more clusters without a firing spot.
+    # Purpose: Keeps a companion run's ranged member from shooting stage 1 from a platform too poor in Ligators to keep it busy; with no platform rich enough it grinds its territory as before.
+    # Technical: An anchored member attacks only what comes into range of its spot without moving, so AgentKpqStageOneClusterPolicy.firingSpot keeps only spots on a navigation region holding at least this many of the territory's spawn points.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPOT_MIN_SPAWNS: '2'
     # Values: 60-300 map pixels. Recommended: 150. Higher values join neighbouring platforms into one; lower values split a platform's spawns into groups that STAGE1_CLUSTER_MIN_SPAWNS then joins again.
     # Purpose: Decides which KPQ Stage 1 Ligator spawns stand on one platform when a companion run's spawns are split into the clusters its companions camp.
     # Technical: AgentKpqStageOneClusterPolicy links two spawn points whose x differs by at most this and whose y differs by at most STAGE1_CLUSTER_LINK_Y_PX, transitively; the linked groups are the platforms that clusters are built from.
@@ -2313,11 +2321,11 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqPuzzleParticipantOrder.HUMAN_MOST_MOVEMENT_WEIGHT: '1'
     # Values: 2000-30000 milliseconds. Recommended: 7000. Keep enough time for newly spawned passes to become visible and pickup-eligible.
     # Purpose: Allows Stage 5 to recover when every monster is dead but one or more required passes have disappeared from inventories and the floor.
-    # Technical: Recovery requires zero live Stage 5 monsters, no pass carried by a live companion, and no floor pass still on its way (in companion runs a pass lying out of the leader's reach longer than STAGE5_FLOOR_PASS_PATIENCE_MS with nobody fetching it no longer counts, after one re-collect), held for this long; each restore logs a defect warning with its cause.
+    # Technical: Recovery requires zero live Stage 5 monsters, no pass carried by a live companion, and no floor pass still on its way (in companion runs a pass lying out of the leader's reach longer than STAGE5_FLOOR_PASS_PATIENCE_MS with nobody fetching it no longer counts), held for this long; in companion runs with such stale passes the first expiry instead starts the run's one re-collect, once the carriers have set out, and the gate must then hold this long again; each restore logs a defect warning with its cause.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_MISSING_PASS_GRACE_MS: '7000'
     # Values: 30000-600000 milliseconds. Recommended: 45000, about twice the 21-24 s offline route from King Slime's floor to Cloto. Keep it below KPQ_PHASE_TIMEOUT_MS.
     # Purpose: Bounds how long a companion run's stage-5 companions try to reach a human leader they have a route to before they leave the passes by Cloto, on his way there, and tell him.
-    # Technical: The clock starts at the pass hand-over, or when the leader last could not be reached at all (a deliverer then waits by Cloto and the bound does not run); past it the deliverer walks to Cloto's approach and drops there, and past twice it, or when Cloto cannot be reached either, it drops where it stands.
+    # Technical: The clock starts at the pass hand-over, or when a deliverer that found no route to the leader (it then waits by Cloto and the bound does not run) sets out for him: once he stands on Cloto's level with a route to him, or once he has been in reach this long without coming. Past it the deliverer walks to Cloto's approach and drops there, and past twice it, or when Cloto cannot be reached either, it drops where it stands.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_PASS_HANDOVER_MS: '45000'
     # Values: 5000-120000 milliseconds. Recommended: 20000. Live a full sweep took 15 s; lower values may set out while a reachable pass is still being fetched.
     # Purpose: Starts a companion run's stage-5 pass hand-over even while a carrier still sweeps, and bounds the one re-collect of passes left lying, so a pass that cannot be fetched cannot hold the run up to its 180 s expiry.
@@ -2325,15 +2333,15 @@ tuning:
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_SWEEP_LIMIT_MS: '20000'
     # Values: 10000-170000 milliseconds. Recommended: 30000. Keep it well below the 180 s item expiry; lower values send a companion back for passes a leader is still walking to.
     # Purpose: Lets a companion run's stage-5 floor passes that are going nowhere stop holding the missing-pass recovery back, after one in-character re-collect by the nearest companion.
-    # Technical: Measured from the drop's own drop time on the coordinator's clock; a pass within NEAR_PX of the leader on each axis, or the loot target of any companion, keeps counting as on its way however old it is.
+    # Technical: Measured from the drop's own drop time on the coordinator's clock; a pass within NEAR_PX of the leader on each axis, the loot target of any companion, or one lying within NEAR_PX of Cloto while the leader is not by Cloto himself keeps counting as on its way however old it is (until its expiry).
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_FLOOR_PASS_PATIENCE_MS: '30000'
     # Values: 10000-120000 milliseconds. Recommended: 30000. Lower values repeat the way to Cloto sooner; it is said again at most once.
     # Purpose: Tells a companion run's human leader the way to Cloto once more if he still stands on stage 5's arrival ledge, where no companion can bring him the passes.
-    # Technical: Measured from the first time the route line was said; the repeat fires only while some grounded companion on stage 5 has no navigation route to the leader's position, and only with coordination chat on.
+    # Technical: Measured from the first time the route line was said; the repeat fires only while some grounded companion on stage 5 has no navigation route to the leader's position. Both lines, and the Curse Eye caution with each while a Curse Eye lives, are said with coordination chat on or off, by the narrator or else the first companion standing in the run.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_ROUTE_REPEAT_MS: '30000'
     # Values: 0.05-0.5 of maximum HP. Recommended: 0.25. Higher values make carriers leave their passes earlier; zero disables it.
     # Purpose: Lets a companion run's stage-5 carrier that is about to go down drop its passes while it still stands, so they are not lost with it when the stock respawn takes it out of the event.
-    # Technical: A carrier or deliverer holding passes drops them all once when its HP is below this fraction of its current maximum and it holds no HP potion; it then loots no pass again, and the others or the re-collect pick them up.
+    # Technical: A carrier or deliverer holding passes drops them all once when its HP is below this fraction of its current maximum, it holds no HP potion (read through the capability gateway; an unknown count never counts as none), and a stage-5 mob is still alive; it then loots no pass again, and the others or the re-collect pick them up. Stock and all-Agent runs never do this.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE5_CARRIER_LOW_HP_FRACTION: '0.25'
     # Values: 0-30000 milliseconds. Recommended: 7000. Set zero only for Agent-only servers that do not require a human-first loot window.
     # Purpose: Gives human party members exclusive first opportunity to pick up Squishy Shoes before the assigned Agent attempts the drop.

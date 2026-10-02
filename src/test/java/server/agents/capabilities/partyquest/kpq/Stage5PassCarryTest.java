@@ -117,6 +117,8 @@ class Stage5PassCarryTest {
     private final InventoryGateway inventoryGateway = mock(InventoryGateway.class);
     private final Map<Character, Integer> passesHeld = new HashMap<>();
     private final Set<Integer> unreachable = new HashSet<>(Set.of(LEDGE));
+    // Where a companion stands on no region of its graph (mid-jump), from where any route counts as there.
+    private final Set<Point> offFoothold = new HashSet<>();
     private final List<MapItem> floor = new ArrayList<>();
     private Character ben;
     private Character mira;
@@ -158,7 +160,7 @@ class Stage5PassCarryTest {
         when(graph.findRegionId(any(), any())).thenAnswer(call -> region(call.getArgument(1)));
         graphs.when(() -> AgentNavigationGraphService.peekBestGraph(any(), any())).thenReturn(graph);
         regions.when(() -> AgentNavigationRegionService.resolveCurrentRegionId(any(), any(), any(), any()))
-                .thenAnswer(call -> region(call.getArgument(3)));
+                .thenAnswer(call -> offFoothold.contains(call.<Point>getArgument(3)) ? -1 : region(call.getArgument(3)));
         regions.when(() -> AgentNavigationRegionService.resolvePointTargetRegionId(any(), any(), any()))
                 .thenAnswer(call -> region(call.getArgument(2)));
         NPC cloto = mock(NPC.class);
@@ -246,6 +248,22 @@ class Stage5PassCarryTest {
     }
 
     @Test
+    void withCoordinationChatOffTheLedgeLeaderStillHearsTheWayAndItsOneRepeat() {
+        at(ben, BEN_ON_ARRIVAL_LEDGE.x, BEN_ON_ARRIVAL_LEDGE.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        // Guidance off: no narrator and no status chatter. His passes wait by Cloto, so only the way moves him.
+        session.setMemberCoordinationChatEnabled(false);
+        fighting(CURSE_EYE, JR_NECKI);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, 2_000L + REPEAT_MS);
+        AgentKpqCoordinator.tick(session, 2_000L + REPEAT_MS * 3);
+
+        assertEquals(List.of(ROUTE, CAREFUL, ROUTE_AGAIN, CAREFUL), said());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, ROUTE));
+    }
+
+    @Test
     void aLeaderWhoLeftTheLedgeIsNotToldTheWayAgain() {
         at(ben, BEN_BY_NELLA.x, BEN_BY_NELLA.y);
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
@@ -325,6 +343,92 @@ class Stage5PassCarryTest {
                 entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 4), times(1));
         assertEquals(1, said().stream().filter(AT_FEET::equals).count(), said()::toString);
         assertFalse(said().contains(BY_CLOTO), said()::toString);
+    }
+
+    @Test
+    void deliverersWaitingByClotoStayThereWhileTheLeaderClimbsUpToThem() {
+        at(ben, BEN_ON_ARRIVAL_LEDGE.x, BEN_ON_ARRIVAL_LEDGE.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 6);
+        holding(pip, 4);
+        Point miraByCloto = waitingByCloto(session);
+
+        // He drops to the Curse Eye floor, which they can reach, and climbs the ladders up toward them.
+        Point curseEyeFloor = new Point(200, -2175);
+        at(ben, curseEyeFloor.x, curseEyeFloor.y);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 21_000L);
+        Point onTheLadder = new Point(241, -2600);
+        at(ben, onTheLadder.x, onTheLadder.y);
+        when(ben.getStance()).thenReturn(14);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 26_000L);
+
+        // They said they would bring the passes there, and going down for him they would pass him on the ladders.
+        modes.verify(() -> AgentModeService.startMoveTo(any(), eq(curseEyeFloor), anyBoolean()), never());
+        modes.verify(() -> AgentModeService.startMoveTo(any(), eq(onTheLadder), anyBoolean()), never());
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true), atLeastOnce());
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+
+        // Up on Cloto's island he gets them at his feet.
+        when(ben.getStance()).thenReturn(4);
+        at(ben, BEN_BY_CLOTO.x, BEN_BY_CLOTO.y);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 30_000L);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), BEN_BY_CLOTO, true));
+        modes.verify(() -> AgentModeService.startMoveTo(entry(3), BEN_BY_CLOTO, true));
+        at(mira, BEN_BY_CLOTO.x + 6, BEN_BY_CLOTO.y);
+        at(pip, BEN_BY_CLOTO.x - 6, BEN_BY_CLOTO.y);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 31_000L);
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 6), times(1));
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 4), times(1));
+    }
+
+    @Test
+    void aLeaderInReachWhoNeverComesUpIsGoneToAfterTheBound() {
+        at(ben, BEN_ON_ARRIVAL_LEDGE.x, BEN_ON_ARRIVAL_LEDGE.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 10);
+        waitingByCloto(session);
+
+        // He dropped to the Curse Eye floor and stays there.
+        Point curseEyeFloor = new Point(200, -2175);
+        at(ben, curseEyeFloor.x, curseEyeFloor.y);
+        long reachableAtMs = SET_OUT_MS + 21_000L;
+        for (long nowMs = reachableAtMs; nowMs < reachableAtMs + HANDOVER_MS; nowMs += 5_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        modes.verify(() -> AgentModeService.startMoveTo(any(), eq(curseEyeFloor), anyBoolean()), never());
+
+        AgentKpqCoordinator.tick(session, reachableAtMs + HANDOVER_MS);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), curseEyeFloor, true));
+        // The overdue bound starts only now.
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+    }
+
+    @Test
+    void inTheAirOrOnALadderOnItsWayToClotoItKeepsWhatItLastFoundOnAFoothold() {
+        at(ben, BEN_ON_ARRIVAL_LEDGE.x, BEN_ON_ARRIVAL_LEDGE.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 10);
+        Point miraByCloto = clotoApproach(session, mira);
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 1_000L);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true));
+
+        // Mid-jump between two floors, then up a ladder: no region under her, where her graph says yes to anything.
+        Point midJump = new Point(100, -1200);
+        offFoothold.add(midJump);
+        at(mira, midJump.x, midJump.y);
+        entry(2).movementPhysicsState().setInAir(true);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 2_000L);
+        entry(2).movementPhysicsState().setInAir(false);
+        entry(2).climbState().setClimbingFlag(true);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 3_000L);
+
+        modes.verify(() -> AgentModeService.startMoveTo(any(), eq(BEN_ON_ARRIVAL_LEDGE), anyBoolean()), never());
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true), times(3));
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
     }
 
     @Test
@@ -515,6 +619,37 @@ class Stage5PassCarryTest {
     }
 
     @Test
+    void oneWhoseWalkToClotoFailsTooLeavesThePassesWhereItIsAtTwiceTheBound() {
+        // Ben stands on Cloto's island, a little way from her; Mira has a route to both but gets nowhere.
+        at(ben, 180, CLOTO.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(mira, 10);
+        Point miraByCloto = clotoApproach(session, mira);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        for (long nowMs = SET_OUT_MS; nowMs < SET_OUT_MS + HANDOVER_MS * 2; nowMs += 5_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + HANDOVER_MS * 2 - 1_000L);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true), atLeastOnce());
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+
+        // Held for good, the passes would hold the recovery back for good: past twice the bound she lets go.
+        try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
+            AgentKpqCoordinator.tick(session, SET_OUT_MS + HANDOVER_MS * 2);
+
+            assertEquals(1, log.startingWith("KPQ pass drop: ").size());
+            assertTrue(log.startingWith("KPQ pass drop: ").getFirst().contains(" reason=overdue "),
+                    log.startingWith("KPQ pass drop: ")::toString);
+        }
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 10), times(1));
+        assertEquals(1, said().stream().filter(RIGHT_HERE::equals).count(), said()::toString);
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, RIGHT_HERE));
+        assertFalse(said().contains(BY_CLOTO), said()::toString);
+    }
+
+    @Test
     void oneThatCanReachNeitherTheLeaderNorClotoLeavesThePassesWhereItIs() {
         // Ben fights below; Cloto's island cannot be reached from where Mira is stuck.
         at(ben, 900, -451);
@@ -542,23 +677,25 @@ class Stage5PassCarryTest {
         MapItem left = pass(31, droppedAtMs, new Point(0, -451));
         floor.add(left);
 
+        // Past the patience it is stale; once that has held for the grace, the nearest companion goes back for it,
+        // once, as a player would.
+        long recollectAtMs = droppedAtMs + PATIENCE_MS + GRACE_MS;
         long nowMs = 2_000L;
-        for (; nowMs < droppedAtMs + PATIENCE_MS; nowMs += 1_000L) {
+        for (; nowMs < recollectAtMs; nowMs += 1_000L) {
             AgentKpqCoordinator.tick(session, nowMs);
         }
         assertFalse(said().contains(RECOLLECT), said()::toString);
 
-        // Past the patience the nearest companion goes back for it, once, as a player would.
-        AgentKpqCoordinator.tick(session, droppedAtMs + PATIENCE_MS);
+        AgentKpqCoordinator.tick(session, recollectAtMs);
         run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, RECOLLECT));
-        AgentKpqCoordinator.tick(session, droppedAtMs + PATIENCE_MS + 1_000L);
+        AgentKpqCoordinator.tick(session, recollectAtMs + 1_000L);
         assertEquals(AgentKpqMemberState.Role.STAGE5_PASS_CARRIER, session.member(2).role());
         loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(entry(2), left), atLeastOnce());
         loot.verify(() -> AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry(2)), never());
 
         // It never gets there; the sweep's bound ends the re-collect, and the grace after it the wait.
-        long recollectOverMs = droppedAtMs + PATIENCE_MS + SWEEP_LIMIT_MS;
-        for (nowMs = droppedAtMs + PATIENCE_MS + 2_000L; nowMs < recollectOverMs + GRACE_MS; nowMs += 1_000L) {
+        long recollectOverMs = recollectAtMs + SWEEP_LIMIT_MS;
+        for (nowMs = recollectAtMs + 2_000L; nowMs < recollectOverMs + GRACE_MS; nowMs += 1_000L) {
             AgentKpqCoordinator.tick(session, nowMs);
         }
         verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
@@ -573,18 +710,115 @@ class Stage5PassCarryTest {
     }
 
     @Test
+    void aPassLyingAtTheLeadersFeetIsNeverTakenForLostHoweverOld() {
+        // Ben stands on Cloto's island, away from her, with an old pass at his feet; nobody holds one.
+        at(ben, 180, CLOTO.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        floor.add(pass(31, -39_000L, new Point(190, CLOTO.y)));
+
+        for (long nowMs = 2_000L; nowMs <= 2_000L + PATIENCE_MS + SWEEP_LIMIT_MS + GRACE_MS * 3; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        assertEquals(0, session.stage5RecollectorId());
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
+    void aPassACompanionIsGoingForIsNeverTakenForLost() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        MapItem far = pass(31, -39_000L, new Point(0, -451));
+        floor.add(far);
+        loot.when(() -> AgentGrindLootStateRuntime.grindLootTarget(entry(3))).thenReturn(far);
+
+        for (long nowMs = 2_000L; nowMs <= 2_000L + PATIENCE_MS + SWEEP_LIMIT_MS + GRACE_MS * 3; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
+    void passesLeftByClotoWaitThereForTheLeaderOnHisWay() {
+        // They were left by Cloto at 1 s; Ben is still on the Curse Eye floor, on his way up to her.
+        at(ben, 200, -2175);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        floor.add(pass(31, 1_000L, new Point(CLOTO.x - 50, CLOTO.y)));
+
+        long arrivesMs = 1_000L + PATIENCE_MS + SWEEP_LIMIT_MS + GRACE_MS * 2;
+        for (long nowMs = 2_000L; nowMs < arrivesMs; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+
+        // He comes up, finds them where he was told, and picks them up.
+        at(ben, CLOTO.x - 40, CLOTO.y);
+        AgentKpqCoordinator.tick(session, arrivesMs);
+        floor.clear();
+        holding(ben, 10);
+        AgentKpqCoordinator.tick(session, arrivesMs + 1_000L);
+        AgentKpqCoordinator.tick(session, arrivesMs + 1_000L + GRACE_MS);
+
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
+    void passesByClotoALeaderStandingThereMissesAreFetchedForHim() {
+        // Ben stands just right of Cloto; the passes lie left of her, out of his reach.
+        at(ben, CLOTO.x + 30, CLOTO.y);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        floor.add(pass(31, 1_000L, new Point(CLOTO.x - 70, CLOTO.y)));
+
+        for (long nowMs = 2_000L; nowMs <= 1_000L + PATIENCE_MS + GRACE_MS; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+
+        assertEquals(1, said().stream().filter(RECOLLECT::equals).count(), said()::toString);
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
+    void theOneRecollectWaitsForTheCarriersToSetOut() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        // Nobody carries a pass and an old one lies far below Ben, while Pip still sweeps for passes.
+        floor.add(pass(31, SET_OUT_MS - 40_000L, new Point(0, -451)));
+        fetching(pip, true);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        for (long nowMs = SET_OUT_MS; nowMs < SET_OUT_MS + SWEEP_LIMIT_MS; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+        // Started now it would spend the run's only re-collect on a pass the sweep may still fetch.
+        assertFalse(said().contains(RECOLLECT), said()::toString);
+        assertEquals(0, session.stage5RecollectorId());
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+
+        // The sweep capped, the carriers set out; the grace long over, the nearest companion goes back for it.
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + SWEEP_LIMIT_MS);
+        assertTrue(session.stage5HandOverStarted());
+        run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(mira, RECOLLECT));
+        verify(inventoryGateway, never()).addItem(any(), anyInt(), anyShort());
+    }
+
+    @Test
     void stalePassesFetchedAgainAreBroughtToTheLeadersFeet() {
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
         long droppedAtMs = 1_000L;
         floor.add(pass(31, droppedAtMs, new Point(0, -451)));
-        for (long nowMs = 2_000L; nowMs <= droppedAtMs + PATIENCE_MS + 1_000L; nowMs += 1_000L) {
+        long recollectAtMs = droppedAtMs + PATIENCE_MS + GRACE_MS;
+        for (long nowMs = 2_000L; nowMs <= recollectAtMs + 1_000L; nowMs += 1_000L) {
             AgentKpqCoordinator.tick(session, nowMs);
         }
+        assertEquals(mira.getId(), session.stage5RecollectorId());
 
         // Mira picks the ten up off the floor and walks them to Ben.
         floor.clear();
         holding(mira, 10);
-        long pickedUpMs = droppedAtMs + PATIENCE_MS + 2_000L;
+        long pickedUpMs = recollectAtMs + 2_000L;
         AgentKpqCoordinator.tick(session, pickedUpMs);
         AgentKpqCoordinator.tick(session, pickedUpMs + 1_000L);
         modes.verify(() -> AgentModeService.startMoveTo(entry(2), BEN_BY_CLOTO, true));
@@ -639,6 +873,45 @@ class Stage5PassCarryTest {
 
         items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
         assertTrue(AgentKpqSessionRegistry.canLootPass(3));
+    }
+
+    @Test
+    void aCarrierLowOnHpWithNothingLeftToFightKeepsItsPasses() {
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_5, ben, mira, pip);
+        holding(pip, 3);
+        when(pip.getCurrentMaxHp()).thenReturn(500);
+        // At 5% with no HP potion left, but every stage-5 mob is dead: nothing can take it down.
+        when(pip.getHp()).thenReturn(25);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 1_000L);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 2_000L);
+
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        assertFalse(said().contains(LEAVING), said()::toString);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(3), BEN_BY_CLOTO, true), atLeastOnce());
+    }
+
+    @Test
+    void anAllAgentRunsLeaderLowOnHpKeepsItsPasses() {
+        // Kai, an Agent, leads; it collects the passes itself, as every all-Agent run's leader does.
+        Character kai = onStageFive(run.companion(4, "Kai"), new Point(100, -451));
+        run.leaveParty(ben);
+        run.leadParty(kai);
+        AgentKpqSession session = run.session(false, AgentKpqSession.Phase.STAGE_5, kai, mira, pip);
+        fighting(JR_NECKI);
+        holding(kai, 6);
+        when(kai.getCurrentMaxHp()).thenReturn(500);
+        when(kai.getHp()).thenReturn(25);
+
+        for (long nowMs = 2_000L; nowMs <= 8_000L; nowMs += 1_000L) {
+            AgentKpqCoordinator.tick(session, nowMs);
+        }
+
+        items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        assertFalse(said().contains(LEAVING), said()::toString);
+        assertEquals(AgentKpqMemberState.Role.STAGE5_PASS_COLLECTOR, session.member(4).role());
     }
 
     @Test
@@ -781,6 +1054,7 @@ class Stage5PassCarryTest {
         Pattern engine = Pattern.compile("->|\\d+\\s*/\\s*\\d+|%|~|(?i:dps|estimate)");
         for (String line : List.of(AgentKpqPassHandOver.routeLine("Ben"), AgentKpqPassHandOver.routeAgainLine("Ben"),
                 AgentKpqPassHandOver.leftByClotoLine("Ben"), AgentKpqPassHandOver.recollectedLine("Ben"),
+                AgentKpqPassHandOver.passBesideLine("Ben"),
                 AgentKpqPassHandOver.CURSE_EYES_CAREFUL, AgentKpqPassHandOver.LEAVING_PASSES,
                 AgentKpqPassHandOver.RECOLLECT_START)) {
             assertFalse(engine.matcher(line).find(), line);
@@ -797,6 +1071,20 @@ class Stage5PassCarryTest {
         when(shoes.getPosition()).thenReturn(KING_SLIMES_FLOOR);
         floor.add(shoes);
         return session;
+    }
+
+    /** Ben stands on the arrival ledge; the deliverers set out, walk to Cloto's approach and wait there for him. */
+    private Point waitingByCloto(AgentKpqSession session) {
+        Point miraByCloto = clotoApproach(session, mira);
+        Point pipByCloto = clotoApproach(session, pip);
+        AgentKpqCoordinator.tick(session, 2_000L);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 1_000L);
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), miraByCloto, true));
+        at(mira, miraByCloto.x, miraByCloto.y);
+        at(pip, pipByCloto.x, pipByCloto.y);
+        AgentKpqCoordinator.tick(session, SET_OUT_MS + 20_000L);
+        return miraByCloto;
     }
 
     private Point clotoApproach(AgentKpqSession session, Character companion) {

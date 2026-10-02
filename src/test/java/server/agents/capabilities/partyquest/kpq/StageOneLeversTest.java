@@ -54,6 +54,8 @@ import static org.mockito.Mockito.when;
  */
 class StageOneLeversTest {
     private static final int LIGATOR = 9_300_001;
+    private static final int STANDOFF = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX");
     private static final long SWEEP_INTERVAL_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.COUPON_SWEEP_INTERVAL_MS");
     private static final long RESPAWN_WAIT_MS = config.AgentTuning.longValue(
@@ -288,11 +290,12 @@ class StageOneLeversTest {
             AgentKpqCoordinator.tick(session, 2_000L);
             AgentKpqCoordinator.tick(session, 3_000L);
 
-            // East of the east platform's last spawn, the only spot 100 px clear of all three on that platform.
-            modes.verify(() -> AgentModeService.startFarmHere(eq(entry(pip)), eq(new Point(600, -1000)), any()),
+            // East of the east platform's last spawn, the only spot the standoff clear of all three on it.
+            Point spot = new Point(500 + STANDOFF, -1000);
+            modes.verify(() -> AgentModeService.startFarmHere(eq(entry(pip)), eq(spot), any()),
                     Mockito.atLeastOnce());
             assertEquals(List.of("KPQ Stage 1 firing spot: session=" + session.sessionId()
-                            + " agent=Pip spot=600,-1000 area=[400,-1000, 450,-1000, 500,-1000]"),
+                            + " agent=Pip spot=" + spot.x + ",-1000 area=[400,-1000, 450,-1000, 500,-1000]"),
                     log.startingWith("KPQ Stage 1 firing spot: "));
         }
         modes.verify(() -> AgentModeService.startFarmHere(eq(entry(mira)), any(), any()), never());

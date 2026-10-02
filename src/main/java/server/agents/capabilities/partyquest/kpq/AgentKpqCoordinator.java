@@ -27,8 +27,6 @@ import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.looting.AgentLootCollectionPolicyConfig;
 import server.agents.capabilities.looting.AgentLootEligibility;
-import server.agents.capabilities.contracts.AgentResourceCategory;
-import server.agents.capabilities.supplies.AgentSupplyInventorySnapshot;
 import server.agents.catalog.AgentMapRegionAssignment;
 import server.agents.field.AgentFieldObservationState;
 import server.agents.operations.events.AgentOperationalEventProjectionState;
@@ -152,6 +150,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE4_LEADER_BELOW_CLOTO_PX");
     private static final int STAGE1_LEADER_FAR_FROM_CLOTO_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX");
+    private static final long STAGE1_PASS_AT_FEET_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_PASS_AT_FEET_MS");
     private static final long STAGE1_LEADER_COUPON_REPEAT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_COUPON_REPEAT_MS");
     private static final int STAGE1_LOOT_NEAR_PX = config.AgentTuning.intValue(
@@ -160,6 +160,8 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_MAX_AGE_MS");
     private static final int STAGE1_RANGED_SPAWN_STANDOFF_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX");
+    private static final int STAGE1_RANGED_SPOT_MIN_SPAWNS = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPOT_MIN_SPAWNS");
     private static final int STAGE1_CLUSTER_LINK_X_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_LINK_X_PX");
     private static final int STAGE1_CLUSTER_LINK_Y_PX = config.AgentTuning.intValue(
@@ -236,14 +238,17 @@ final class AgentKpqCoordinator {
 
     /**
      * A companion run's companions standing in its instance run at full rate until their reward; a stock run's, and
-     * every background KPQ's, keep the cadence their map's observers give them.
+     * every background KPQ's, keep the cadence their map's observers give them. A run whose release has begun (a
+     * force stop or removal from another thread, which lets go of the holds before the phase turns FAILED) takes
+     * none back.
      */
     private static void holdFullRateSimulation(AgentKpqSession session) {
         AgentKpqSession.Phase phase = session.phase();
+        boolean ending = session.terminationStarted();
         for (AgentKpqMemberState member : session.members()) {
             if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
-            boolean wanted = session.companionAdopted() && agent != null && standsInEvent(session, agent)
+            boolean wanted = !ending && session.companionAdopted() && agent != null && standsInEvent(session, agent)
                     && (insideEventPhase(phase)
                     || phase == AgentKpqSession.Phase.CLAIMING_REWARDS && !member.rewardResolved());
             AgentKpqFullRateSimulation.apply(member, entry(member.characterId()), wanted);
@@ -703,7 +708,10 @@ final class AgentKpqCoordinator {
                     continue;
                 }
                 cancelStageOneLandingSafety(member, entry, agent);
-                if (dropAtFeet ? passesAtLeadersFeet(agent, leader, leaderSpot) : near(agent, leader, NEAR_PX)) {
+                // A holder that cannot get onto the leader's own spot within STAGE1_PASS_AT_FEET_MS (he keeps moving,
+                // or stays up a rope or ladder) drops beside him as a stock run's do, and tells him.
+                boolean onHisSpot = dropAtFeet && !member.stage1PassChaseOverdue(nowMs, STAGE1_PASS_AT_FEET_MS);
+                if (onHisSpot ? passesAtLeadersFeet(agent, leader, leaderSpot) : near(agent, leader, NEAR_PX)) {
                     ACTIONS.stop(entry);
                     int passesBeforeDrop = agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
                     boolean dropRequested = AgentScriptItemActionService.dropItem(
@@ -714,15 +722,21 @@ final class AgentKpqCoordinator {
                         member.setRole(AgentKpqMemberState.Role.COMBAT_HELPER);
                         session.markProgress(nowMs);
                         if (dropAtFeet) {
-                            logPassDrop(session, 1, agent, leader, AgentKpqPassHandOver.DropReason.BESIDE, 1, nowMs);
+                            logPassDrop(session, 1, agent, leader, onHisSpot
+                                    ? AgentKpqPassHandOver.DropReason.BESIDE
+                                    : AgentKpqPassHandOver.DropReason.OVERDUE, 1, nowMs);
                         }
-                        // The leader gets the one pickup line below instead of a line per companion.
+                        // The leader gets the one pickup line below instead of a line per companion, unless this
+                        // one could not get onto his spot.
                         if (!agentLeader && !passesAtFeetLine) {
                             narrate(session, agent, "pass-dropped-" + agent.getId(),
                                     stageOnePassDropMessage(leader.getName()));
+                        } else if (dropAtFeet && !onHisSpot) {
+                            narrate(session, agent, "pass-dropped-" + agent.getId(),
+                                    AgentKpqPassHandOver.passBesideLine(leader.getName()));
                         }
                     }
-                } else if (dropAtFeet) {
+                } else if (onHisSpot) {
                     if (leaderSpot != null) ACTIONS.navigate(entry, leaderSpot, true);
                 } else {
                     ACTIONS.navigate(entry, leader.getPosition(), false);
@@ -1084,15 +1098,19 @@ final class AgentKpqCoordinator {
             // A companion run's companions bring the passes up, so its leader goes to Cloto instead of 2,300 px down for
             // them and back. Everyone arrives on the left top island, which nothing below can reach, and Cloto stands
             // across a gap no jump clears: live (pace1b) a leader told to wait by Cloto stood on that ledge, out of
-            // everyone's reach, until the event timer ran out. So he is told the way.
-            if (coordinate(session, narrator, "human-stage5-collect", voice(session,
-                    AgentKpqPassHandOver.routeLine(leader.getName()),
-                    leader.getName() + ", please collect the 10 passes while we clear the monsters."))
-                    && carriers) {
-                session.markStage5RouteTold(nowMs);
-                warnOfCurseEyes(session, leader, narrator);
-            }
-            if (!carriers) {
+            // everyone's reach, until the event timer ran out. So he is told the way, even with coordination chat
+            // off: nothing else moves him, and his passes wait by Cloto for him.
+            if (carriers) {
+                Character speaker = stageFiveSpeaker(session, narrator);
+                if (narrate(session, speaker, "human-stage5-collect",
+                        AgentKpqPassHandOver.routeLine(leader.getName()))) {
+                    session.markStage5RouteTold(nowMs);
+                    warnOfCurseEyes(session, leader, speaker, "human-stage5-curse-eyes");
+                }
+            } else {
+                coordinate(session, narrator, "human-stage5-collect", voice(session,
+                        AgentKpqPassHandOver.routeLine(leader.getName()),
+                        leader.getName() + ", please collect the 10 passes while we clear the monsters."));
                 AgentKpqHumanDialogueRuntime.promptDelayed(session, leader,
                         "collect the 10 passes while we clear the monsters", nowMs);
             }
@@ -1158,7 +1176,8 @@ final class AgentKpqCoordinator {
                     Point cloto = ACTIONS.npcPosition(agent, AgentKpqDefinition.CLOTO_NPC);
                     Point approach = npcApproachPoint(session, member, agent, cloto, 501);
                     walkToPoint(agent, approach, entry, NPC_APPROACH_PX);
-                } else if (carriers && leavePassesBeforeGoingDown(session, member, agent, entry, leader, nowMs)) {
+                } else if (carriers && leavePassesBeforeGoingDown(
+                        session, member, agent, entry, leader, stage5MobCount > 0, nowMs)) {
                     continue;
                 } else if (shoesPending && member.characterId() == session.squishyShoesWinnerId()) {
                     continue;
@@ -1191,15 +1210,23 @@ final class AgentKpqCoordinator {
         int waitingFloorPasses = floorPasses - passQuantityOnGround(stalePasses);
         if (!returningToCloto && stage5MobCount == 0 && waitingFloorPasses == 0
                 && carriedStageFivePasses(session) == 0) {
-            if (carriers && recollectHoldsRecovery(session, leader, stalePasses, nowMs)) {
+            if (carriers && session.stage5RecollectSweeping(nowMs, STAGE5_SWEEP_LIMIT_MS)) {
                 session.setMissingPassSinceMs(0L);
                 return;
             }
             if (session.missingPassSinceMs() == 0L) session.setMissingPassSinceMs(nowMs);
-            if (nowMs - session.missingPassSinceMs() >= STAGE5_MISSING_PASS_GRACE_MS) {
-                recoverMissingStageFivePasses(session, leader, leaderPasses, floorPasses,
-                        passQuantityOnGround(stalePasses), nowMs);
+            if (nowMs - session.missingPassSinceMs() < STAGE5_MISSING_PASS_GRACE_MS) return;
+            // The one re-collect waits for the carriers to set out and for the grace, as the recovery does: started
+            // in the middle of their sweep it would use up the run's only one on a pass they were about to fetch.
+            if (carriers && !stalePasses.isEmpty() && !session.stage5RecollectStarted()) {
+                if (!session.stage5HandOverStarted()) return;
+                if (beginStageFiveRecollect(session, leader, stalePasses, nowMs)) {
+                    session.setMissingPassSinceMs(0L);
+                    return;
+                }
             }
+            recoverMissingStageFivePasses(session, leader, leaderPasses, floorPasses,
+                    passQuantityOnGround(stalePasses), nowMs);
             return;
         }
         session.setMissingPassSinceMs(0L);
@@ -1214,17 +1241,26 @@ final class AgentKpqCoordinator {
         }
     }
 
+    /**
+     * Who tells a companion run's leader the way to Cloto: the narrator, or with coordination chat off (no narrator)
+     * the first companion standing in the run.
+     */
+    private static Character stageFiveSpeaker(AgentKpqSession session, Character narrator) {
+        return narrator != null ? narrator : firstStandingAgent(session);
+    }
+
     /** With the way to Cloto, while a Curse Eye still lives on the floor the leader drops to. */
-    private static void warnOfCurseEyes(AgentKpqSession session, Character leader, Character narrator) {
+    private static void warnOfCurseEyes(AgentKpqSession session, Character leader, Character speaker, String key) {
         if (ACTIONS.liveMonsterCount(leader, STAGE_5_CURSE_EYES) > 0) {
-            coordinate(session, narrator, "human-stage5-curse-eyes", AgentKpqPassHandOver.CURSE_EYES_CAREFUL);
+            narrate(session, speaker, key, AgentKpqPassHandOver.CURSE_EYES_CAREFUL);
         }
     }
 
     /**
      * Says the way to Cloto once more, STAGE5_ROUTE_REPEAT_MS after the first time, if the leader still stands where
-     * no companion can reach him. Nothing else can move a leader who stays on the arrival ledge; his passes wait by
-     * Cloto, where they cannot expire, until he comes.
+     * no companion can reach him, with the Curse Eye caution again while one lives. Like the first time it is said
+     * with coordination chat off too. Nothing else can move a leader who stays on the arrival ledge; his passes wait
+     * by Cloto, where they cannot expire, until he comes.
      */
     private static void repeatRouteToCloto(
             AgentKpqSession session, Character leader, Character narrator, long nowMs) {
@@ -1233,9 +1269,9 @@ final class AgentKpqCoordinator {
                 || !leaderOutOfReach(session, leader) || !session.claimStage5RouteRepeat()) {
             return;
         }
-        coordinate(session, narrator, "human-stage5-route-again",
-                AgentKpqPassHandOver.routeAgainLine(leader.getName()));
-        warnOfCurseEyes(session, leader, narrator);
+        Character speaker = stageFiveSpeaker(session, narrator);
+        narrate(session, speaker, "human-stage5-route-again", AgentKpqPassHandOver.routeAgainLine(leader.getName()));
+        warnOfCurseEyes(session, leader, speaker, "human-stage5-curse-eyes-again");
     }
 
     /** True when a companion standing on stage 5's ground has no route at all to where the leader stands. */
@@ -1306,7 +1342,8 @@ final class AgentKpqCoordinator {
      * A deliverer drops what it carries on the leader's own spot, as players hand items over: a player picks up only
      * what lies almost under him. One that cannot reach the leader at all (he stands on the arrival ledge, which has
      * no way in) waits with its passes by Cloto, where he is told to go and where held passes cannot expire, and
-     * goes to him once he is down off the ledge. One whose route fails for STAGE5_PASS_HANDOVER_MS though he can be
+     * goes to him once he is up on Cloto's island, or has been in reach for STAGE5_PASS_HANDOVER_MS without coming.
+     * One whose route fails for STAGE5_PASS_HANDOVER_MS though he can be
      * reached leaves the passes by Cloto, on his way there, or where it stands when it cannot get there either.
      */
     private static void handOverStageFivePasses(AgentKpqSession session, AgentKpqMemberState member,
@@ -1322,14 +1359,22 @@ final class AgentKpqCoordinator {
         // Only where it stands on a foothold does its region, and so the answer, mean anything; in the air or on a
         // ladder on its way it keeps the last one.
         if (ACTIONS.footing(agent) == PrimitiveCapabilityGateway.Footing.GROUND) {
-            member.setStage5LeaderUnreachable(!ACTIONS.canReach(entry, agent, leader.getPosition()));
+            member.observeStage5LeaderReach(ACTIONS.canReach(entry, agent, leader.getPosition()), nowMs);
         }
-        if (member.stage5LeaderUnreachable()) {
-            member.restartStage5Chase(nowMs);
-            if (clotoApproach == null || walkToPoint(agent, clotoApproach, entry, NPC_APPROACH_PX)) {
-                ACTIONS.stop(entry);
+        if (member.stage5MeetsLeaderAtCloto()) {
+            // Having told him it brings the passes there, it waits by Cloto until he is up on Cloto's level; chasing
+            // him once he drops off the ledge, it would pass him on his way up the ladders. Only a leader who could be
+            // reached for STAGE5_PASS_HANDOVER_MS and still has not come is gone to.
+            if (!leaderUpByCloto(member, leader, clotoApproach)
+                    && member.stage5LeaderReachableForMs(nowMs) < STAGE5_PASS_HANDOVER_MS) {
+                member.restartStage5Chase(nowMs);
+                if (clotoApproach == null || walkToPoint(agent, clotoApproach, entry, NPC_APPROACH_PX)) {
+                    ACTIONS.stop(entry);
+                }
+                return;
             }
-            return;
+            member.endStage5MeetAtCloto();
+            member.restartStage5Chase(nowMs);
         }
         Point leaderSpot = groundSpot(leader);
         if (passesAtLeadersFeet(agent, leader, leaderSpot)) {
@@ -1355,6 +1400,17 @@ final class AgentKpqCoordinator {
         }
         dropStageFivePasses(session, member, agent, entry, leader, held,
                 AgentKpqPassHandOver.DropReason.OVERDUE, nowMs);
+    }
+
+    /**
+     * The leader stands on a foothold at the height of Cloto's approach and this deliverer has a route to him: he is
+     * up on Cloto's island. The arrival ledge is at that height too, but has no way in.
+     */
+    private static boolean leaderUpByCloto(AgentKpqMemberState member, Character leader, Point clotoApproach) {
+        Point position = leader.getPosition();
+        return !member.stage5LeaderUnreachable() && clotoApproach != null && position != null
+                && ACTIONS.footing(leader) == PrimitiveCapabilityGateway.Footing.GROUND
+                && Math.abs(position.y - clotoApproach.y) <= NEAR_PX;
     }
 
     /** Where a character stands, on its foothold: the spot a deliverer walks onto. */
@@ -1402,20 +1458,21 @@ final class AgentKpqCoordinator {
     }
 
     /**
-     * A carrier about to go down (low on HP with no HP potion left; live, Faro723 went down so and its passes went
-     * with it) drops its passes while it still stands, says so, and carries none from then on; the others pick them
-     * up as they sweep, or the re-collect does. True when it dropped them this tick.
+     * A carrier about to go down (low on HP with no HP potion left while a stage-5 mob lives; live, Faro723 went down
+     * so and its passes went with it) drops its passes while it still stands, says so, and carries none from then
+     * on; the others pick them up as they sweep, or the re-collect does. One low on HP with nothing left to fight,
+     * as by Cloto, is in no danger and keeps them. True when it dropped them this tick.
      */
     private static boolean leavePassesBeforeGoingDown(AgentKpqSession session, AgentKpqMemberState member,
                                                       Character agent, AgentRuntimeEntry entry, Character leader,
-                                                      long nowMs) {
-        if (member.stage5PassesLeftBehind()) return false;
+                                                      boolean mobsAlive, long nowMs) {
+        if (member.stage5PassesLeftBehind() || !mobsAlive) return false;
         int held = agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false);
         // The potion count reads its bag, so only a carrier already low on HP is looked at.
         boolean lowOnHp = AgentKpqPassHandOver.lowOnHp(
                 agent.getHp(), agent.getCurrentMaxHp(), STAGE5_CARRIER_LOW_HP_FRACTION);
-        if (held <= 0 || !lowOnHp || !AgentKpqPassHandOver.aboutToGoDown(lowOnHp,
-                AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION))) {
+        if (held <= 0 || !lowOnHp
+                || !AgentKpqPassHandOver.aboutToGoDown(lowOnHp, ACTIONS.hpPotionCount(agent), mobsAlive)) {
             return false;
         }
         ACTIONS.stop(entry);
@@ -1433,13 +1490,19 @@ final class AgentKpqCoordinator {
 
     /**
      * The floor passes no longer on their way to a companion run's leader: older than the patience, out of his
-     * reach (NEAR_PX on each axis, a step for him), and nobody going for them.
+     * reach (NEAR_PX on each axis, a step for him), and nobody going for them. Passes left by Cloto (within NEAR_PX
+     * of her) lie where he has to go to clear the stage, and where he was told they are: they wait for him there
+     * until he is by Cloto himself, bounded by their expiry.
      */
     private static List<MapItem> stalePasses(
             AgentKpqSession session, Character leader, List<MapItem> passDrops, long nowMs) {
+        if (passDrops.isEmpty()) return List.of();
+        Point cloto = ACTIONS.npcPosition(leader, AgentKpqDefinition.CLOTO_NPC);
+        boolean leaderByCloto = near(leader.getPosition(), cloto, NEAR_PX);
         List<MapItem> stale = new ArrayList<>();
         for (MapItem drop : passDrops) {
-            if (AgentKpqPassHandOver.stale(nowMs - drop.getDropTime(), inLeadersReach(leader, drop),
+            boolean waitingByCloto = !leaderByCloto && near(drop.getPosition(), cloto, NEAR_PX);
+            if (AgentKpqPassHandOver.stale(nowMs - drop.getDropTime(), inLeadersReach(leader, drop), waitingByCloto,
                     fetchedByCompanion(session, drop), STAGE5_FLOOR_PASS_PATIENCE_MS)) {
                 stale.add(drop);
             }
@@ -1462,12 +1525,10 @@ final class AgentKpqCoordinator {
 
     /**
      * Before the inventory recovery makes up passes left lying, the companion nearest them goes back for them once,
-     * as a player would, and brings them to the leader. True while that holds the recovery back.
+     * as a player would, and brings them to the leader. True when this started that one re-collect.
      */
-    private static boolean recollectHoldsRecovery(
+    private static boolean beginStageFiveRecollect(
             AgentKpqSession session, Character leader, List<MapItem> stalePasses, long nowMs) {
-        if (session.stage5RecollectSweeping(nowMs, STAGE5_SWEEP_LIMIT_MS)) return true;
-        if (stalePasses.isEmpty() || session.stage5RecollectStarted()) return false;
         AgentKpqMemberState recollector = null;
         Character recollectorCharacter = null;
         double nearest = Double.MAX_VALUE;
@@ -3031,9 +3092,10 @@ final class AgentKpqCoordinator {
 
     /**
      * L4: where a bow, crossbow, claw or gun member fights from in its territory, worked out once per territory: a
-     * spot STAGE1_RANGED_SPAWN_STANDOFF_PX beside a spawn on that spawn's platform. By their damage per line, the
-     * 2026-10-01 ranged pair spent about 40-45% of their stage-1 attacks on point-blank whacks, each followed by a
-     * retreat. None for anyone else, or while its graph cannot tell the platforms apart.
+     * spot STAGE1_RANGED_SPAWN_STANDOFF_PX beside a spawn on that spawn's platform, one holding at least
+     * STAGE1_RANGED_SPOT_MIN_SPAWNS of the territory's spawns (anchored, it attacks only what comes into range). By
+     * their damage per line, the 2026-10-01 ranged pair spent about 40-45% of their stage-1 attacks on point-blank
+     * whacks, each followed by a retreat. None for anyone else, or while its graph cannot tell the platforms apart.
      */
     private static Point stageOneFiringSpot(AgentKpqSession session, AgentKpqMemberState member,
                                             AgentRuntimeEntry entry, Character agent,
@@ -3042,7 +3104,7 @@ final class AgentKpqCoordinator {
         List<Point> area = territory.spawns();
         if (!member.stage1FiringSpotKnownFor(area)) {
             Point spot = AgentKpqStageOneClusterPolicy.firingSpot(area, STAGE1_RANGED_SPAWN_STANDOFF_PX,
-                    candidate -> ACTIONS.groundPoint(agent.getMap(), candidate),
+                    STAGE1_RANGED_SPOT_MIN_SPAWNS, candidate -> ACTIONS.groundPoint(agent.getMap(), candidate),
                     point -> platformOf(entry, agent, point));
             member.setStage1FiringSpot(area, spot);
             log.info("KPQ Stage 1 firing spot: session={} agent={} spot={} area={}", session.sessionId(),

@@ -61,6 +61,7 @@ public final class AgentKpqMemberState {
     private int stage1CouponsHeld;
     private int stage1CouponsLooted;
     private long stage1PassAtMs;
+    private long stage1PassChaseFromMs;
     private Role stage1CombatRole;
     private CombatCounts stage1RoleCombatBaseline;
     private final EnumMap<Role, CombatCounts> stage1RoleCombat = new EnumMap<>(Role.class);
@@ -72,6 +73,8 @@ public final class AgentKpqMemberState {
     private long stage1DegenerateBaseline;
     private long stage5ChaseFromMs;
     private boolean stage5LeaderUnreachable;
+    private boolean stage5MeetsLeaderAtCloto;
+    private long stage5LeaderReachableSinceMs;
     private boolean stage5PassesLeftBehind;
     private int stage5PassesSeen;
     private boolean fullRateHeld;
@@ -101,6 +104,18 @@ public final class AgentKpqMemberState {
     }
     public boolean passDelivered() { return passDelivered; }
     public void markPassDelivered() { passDelivered = true; }
+
+    /**
+     * Whether its stage-1 delivery to the leader has run for {@code boundMs}; the first call, as it sets out, starts
+     * that clock.
+     */
+    boolean stage1PassChaseOverdue(long nowMs, long boundMs) {
+        if (stage1PassChaseFromMs == 0L) {
+            stage1PassChaseFromMs = Math.max(1L, nowMs);
+            return false;
+        }
+        return nowMs - stage1PassChaseFromMs >= boundMs;
+    }
     public RewardState rewardState() { return rewardState; }
     public boolean rewardClaimed() { return rewardState == RewardState.CLAIMED; }
     public boolean rewardResolved() {
@@ -337,13 +352,35 @@ public final class AgentKpqMemberState {
     long stage1DegenerateBaseline() { return stage1DegenerateBaseline; }
 
     /**
-     * The overdue clock of its stage-5 delivery restarts here: it runs only while the leader can be reached, so one
-     * who waited by Cloto for him has its whole bound once he is down off the ledge.
+     * The overdue clock of its stage-5 delivery restarts here: it runs only while it goes to the leader, so one who
+     * waited by Cloto for him has its whole bound once it sets out for him.
      */
     void restartStage5Chase(long nowMs) { stage5ChaseFromMs = Math.max(stage5ChaseFromMs, nowMs); }
     long stage5ChaseFromMs() { return stage5ChaseFromMs; }
     boolean stage5LeaderUnreachable() { return stage5LeaderUnreachable; }
-    void setStage5LeaderUnreachable(boolean unreachable) { stage5LeaderUnreachable = unreachable; }
+
+    /**
+     * What its own graph said, where it stood on a foothold, about a route to the leader. Once it had none, it meets
+     * him by Cloto, as it told him, until that is ended; since when a route has been there is kept for that bound.
+     */
+    void observeStage5LeaderReach(boolean reachable, long nowMs) {
+        stage5LeaderUnreachable = !reachable;
+        if (!reachable) {
+            stage5MeetsLeaderAtCloto = true;
+            stage5LeaderReachableSinceMs = 0L;
+        } else if (stage5LeaderReachableSinceMs == 0L) {
+            stage5LeaderReachableSinceMs = Math.max(1L, nowMs);
+        }
+    }
+
+    boolean stage5MeetsLeaderAtCloto() { return stage5MeetsLeaderAtCloto; }
+    void endStage5MeetAtCloto() { stage5MeetsLeaderAtCloto = false; }
+
+    /** How long a route to the leader has been there without a break; 0 while there is none. */
+    long stage5LeaderReachableForMs(long nowMs) {
+        return stage5LeaderUnreachable || stage5LeaderReachableSinceMs == 0L
+                ? 0L : Math.max(0L, nowMs - stage5LeaderReachableSinceMs);
+    }
     /** It dropped its passes before going down and carries none from here on. */
     boolean stage5PassesLeftBehind() { return stage5PassesLeftBehind; }
     void markStage5PassesLeftBehind() { stage5PassesLeftBehind = true; }

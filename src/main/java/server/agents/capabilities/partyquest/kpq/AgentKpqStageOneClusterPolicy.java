@@ -124,13 +124,15 @@ final class AgentKpqStageOneClusterPolicy {
     /**
      * Where a ranged member fights from in its area: a ground spot {@code standoffPx} to the side of one of the area's
      * spawns, on that spawn's own platform, and at least {@code standoffPx} from every spawn of the area, so a Ligator
-     * walks into its shots instead of onto it. The spot on the platform with the most of the area's spawns wins, then
-     * the one nearest a spawn, then the leftmost; null when no platform of the area is long enough for one.
+     * walks into its shots instead of onto it. Anchored there it attacks only what comes into range, so only a
+     * platform holding at least {@code minSpawns} of the area's spawns is used. The spot on the platform with the
+     * most of the area's spawns wins, then the one nearest a spawn, then the leftmost; null when no platform of the
+     * area is rich and long enough for one.
      *
      * @param ground   the foothold spot under a point, or null
      * @param platform the navigation region under a ground point, or a negative id when it is unknown
      */
-    static Point firingSpot(List<Point> area, int standoffPx, UnaryOperator<Point> ground,
+    static Point firingSpot(List<Point> area, int standoffPx, int minSpawns, UnaryOperator<Point> ground,
                             ToIntFunction<Point> platform) {
         if (area == null || area.isEmpty() || standoffPx <= 0) return null;
         List<Point> spawns = area.stream().filter(Objects::nonNull).sorted(BY_X_THEN_Y).toList();
@@ -143,6 +145,7 @@ final class AgentKpqStageOneClusterPolicy {
             int spawnPlatform = spawnPlatforms.get(spawn);
             if (spawnPlatform < 0) continue;
             long spawnsOnPlatform = spawnPlatforms.values().stream().filter(id -> id == spawnPlatform).count();
+            if (spawnsOnPlatform < minSpawns) continue;
             for (int side : new int[] {-1, 1}) {
                 Point spot = ground.apply(new Point(spawn.x + side * standoffPx, spawn.y));
                 if (spot == null || platform.applyAsInt(spot) != spawnPlatform) continue;

@@ -41,6 +41,11 @@ final class AgentKpqPassHandOver {
         return leader + ", couldn't get to you, left the passes by cloto.";
     }
 
+    /** A stage-1 holder that could not get onto the leader's own spot in time. */
+    static String passBesideLine(String leader) {
+        return leader + ", dropped my pass right next to you.";
+    }
+
     static String recollectedLine(String leader) {
         return leader + ", got the rest of the passes, they're at your feet.";
     }
@@ -56,11 +61,13 @@ final class AgentKpqPassHandOver {
     }
 
     /**
-     * A floor pass is no longer on its way to the leader once it has lain out of his reach longer than the patience
-     * and no companion is going for it; the missing-pass recovery may then count it as lost.
+     * A floor pass is no longer on its way to the leader once it has lain out of his reach longer than the patience,
+     * no companion is going for it, and it does not wait for him by Cloto; the missing-pass recovery may then count
+     * it as lost.
      */
-    static boolean stale(long ageMs, boolean inLeadersReach, boolean fetched, long patienceMs) {
-        return ageMs >= patienceMs && !inLeadersReach && !fetched;
+    static boolean stale(long ageMs, boolean inLeadersReach, boolean waitingByCloto, boolean fetched,
+                         long patienceMs) {
+        return ageMs >= patienceMs && !inLeadersReach && !waitingByCloto && !fetched;
     }
 
     /** Still standing, below this fraction of its HP. */
@@ -68,8 +75,11 @@ final class AgentKpqPassHandOver {
         return hp > 0 && maxHp > 0 && hp < maxHp * hpFraction;
     }
 
-    /** A carrier low on HP with no HP potion left is about to go down, and its passes with it. */
-    static boolean aboutToGoDown(boolean lowOnHp, int hpPotions) {
-        return lowOnHp && hpPotions <= 0;
+    /**
+     * A carrier low on HP, with no HP potion left, while something it could go down to still lives on stage 5, is
+     * about to go down, and its passes with it. A potion count that cannot be told (negative) is not none.
+     */
+    static boolean aboutToGoDown(boolean lowOnHp, int hpPotions, boolean mobsAlive) {
+        return lowOnHp && hpPotions == 0 && mobsAlive;
     }
 }
