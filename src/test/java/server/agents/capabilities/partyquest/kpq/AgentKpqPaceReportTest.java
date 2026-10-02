@@ -98,6 +98,28 @@ class AgentKpqPaceReportTest {
     }
 
     @Test
+    void aSpanWhoseEndWasNeverSeenRunsToTheNextBoundarySeen() {
+        AgentKpqSession session = companionRun();
+        session.transition(AgentKpqSession.Phase.STAGE_1, STAGE1);
+        session.pace().beginStageOne(List.of(), List.of(2, 3, 4));
+        for (int id = 2; id <= 4; id++) session.assignCouponTarget(session.member(id), 20, FIRST_NUMBER);
+        // Tobi tapped out before his pass; the grace cleared the stage without it.
+        session.markPassCreated(session.member(2), 300_000L);
+        session.markPassCreated(session.member(3), 400_000L);
+        session.transition(AgentKpqSession.Phase.STAGE_2, STAGE2);
+
+        AgentKpqPaceReport.SpanReport grind = report(session, 900_000L, "s1.grind");
+        assertEquals(STAGE2, grind.toMs());
+        assertFalse(grind.complete());
+        assertEquals("open", grind.why());
+        // The hand-in began at a last pass that never came, so it is not reported at all.
+        assertTrue(AgentKpqPaceReport.spans(session, session.pace().snapshot(), 900_000L, PROFILE).stream()
+                .noneMatch(span -> span.key().equals("s1.handin")));
+        assertEquals(new AgentPqPace.Span("s2.entry", STAGE2, 900_000L, 0, false),
+                AgentKpqPaceReport.of(session, 900_000L, PROFILE).span("s2.entry"));
+    }
+
+    @Test
     void eachPuzzleStageCountsTheChecksUpToTheAcceptedOne() {
         AgentKpqSession session = companionRun();
         throughStageOne(session);
