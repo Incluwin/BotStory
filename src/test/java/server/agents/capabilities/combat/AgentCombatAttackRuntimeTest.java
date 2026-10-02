@@ -151,4 +151,41 @@ class AgentCombatAttackRuntimeTest {
             verify(agent, never()).getMap();
         }
     }
+
+    @Test
+    void onlyAShootingWeaponsCloseRangeBasicAttackIsDegenerate() {
+        Character archer = mock(Character.class);
+        Character warrior = mock(Character.class);
+        AgentAttackPlan closeBasic = new AgentAttackPlan(
+                0, 0, 1, null, List.of(), AgentAttackRoute.CLOSE, 0, 0, 0, 0, 6, 0, 800, null);
+        AgentAttackPlan shot = new AgentAttackPlan(
+                0, 0, 1, null, List.of(), AgentAttackRoute.RANGED, 0, 0, 0, 0, 6, 0, 800, null);
+        AgentAttackPlan closeSkill = new AgentAttackPlan(
+                3_001_004, 1, 1, null, List.of(), AgentAttackRoute.CLOSE, 0, 0, 0, 0, 6, 0, 800, null);
+        try (MockedStatic<AgentAttackExecutionProvider> execution = Mockito.mockStatic(
+                AgentAttackExecutionProvider.class, Mockito.CALLS_REAL_METHODS)) {
+            execution.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(archer))
+                    .thenReturn(WeaponType.BOW);
+            execution.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(warrior))
+                    .thenReturn(WeaponType.GENERAL2H_SWING);
+
+            assertTrue(AgentCombatAttackRuntime.degenerateBasicAttack(archer, closeBasic));
+            assertFalse(AgentCombatAttackRuntime.degenerateBasicAttack(archer, shot));
+            assertFalse(AgentCombatAttackRuntime.degenerateBasicAttack(archer, closeSkill));
+            assertFalse(AgentCombatAttackRuntime.degenerateBasicAttack(warrior, closeBasic));
+        }
+    }
+
+    @Test
+    void degenerateAttacksAreCountedApartAndResetWithTheHistogram() {
+        AgentCombatSkillUsageState usage = new AgentCombatSkillUsageState();
+        usage.record(0, 40L);
+        usage.recordDegenerate();
+        usage.recordDegenerate();
+
+        assertEquals(2L, usage.degenerateAttacks());
+        assertEquals(1L, usage.snapshot().get(0)[0]);
+        usage.reset();
+        assertEquals(0L, usage.degenerateAttacks());
+    }
 }

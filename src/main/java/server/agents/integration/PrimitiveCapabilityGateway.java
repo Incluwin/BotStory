@@ -126,6 +126,16 @@ public interface PrimitiveCapabilityGateway {
         return List.of();
     }
 
+    /** Where the live mobs of these ids on this character's map stand now. */
+    default List<Point> liveMonsterPositions(Character agent, Set<Integer> mobIds) {
+        return List.of();
+    }
+
+    /** Whether this character's equipped weapon shoots: a bow, crossbow, claw or gun. */
+    default boolean rangedWeapon(Character agent) {
+        return false;
+    }
+
     /**
      * What one line of this Agent's usual attack is expected to deal to each of these mobs alive on its map: the hit
      * chance times the damage left after the mob's defense. A mob with none alive is left out.
@@ -140,6 +150,24 @@ public interface PrimitiveCapabilityGateway {
      */
     default Set<Integer> groundRegionIds(AgentRuntimeEntry entry, Character agent, Collection<Point> points) {
         return Set.of();
+    }
+
+    /**
+     * Whether this Agent's own navigation graph has any route from where it stands to the region under
+     * {@code target}. True while that graph is not built yet, or while either end has no region (the Agent in the
+     * air, a point off every foothold), so a caller then acts as it would without the answer; false proves that no
+     * route exists, as from anywhere below to a ledge whose only edges lead out of it.
+     */
+    default boolean canReach(AgentRuntimeEntry entry, Character agent, Point target) {
+        return true;
+    }
+
+    /** Where a character stands: on a foothold, on a rope or ladder, or in the air. */
+    enum Footing { GROUND, ROPE, AIR }
+
+    /** Whether this character, Agent or player, stands on a foothold, holds a rope or ladder, or is in the air. */
+    default Footing footing(Character character) {
+        return Footing.GROUND;
     }
 
     void navigate(AgentRuntimeEntry entry, Point destination, boolean precise);

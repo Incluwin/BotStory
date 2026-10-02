@@ -87,7 +87,10 @@ final class AgentKpqWatchdogRuntime {
                 AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
                 Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
                 if (agent == null) continue;
-                if (agent.getHp() <= 0) member.markDown(nowMs);
+                if (agent.getHp() <= 0) {
+                    if (!member.down()) session.pace().markDown(member.characterId(), nowMs);
+                    member.markDown(nowMs);
+                }
                 if (downed == null && member.down() && nowMs - member.downSinceMs() < timeoutMs) downed = agent;
             }
             if (downed == null) return false;

@@ -12,7 +12,9 @@ import server.agents.capabilities.combat.AgentCombatVariationRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.capabilities.movement.AgentGroundingService;
+import server.agents.capabilities.combat.AgentCombatSkillUsageStateRuntime;
 import server.agents.field.AgentFieldObservationState;
+import server.agents.operations.events.AgentCombatPostureChangedEvent;
 import server.agents.operations.events.AgentMobKilledEvent;
 import server.agents.operations.events.AgentOperationalEventProjectionState;
 import server.agents.plans.AgentScriptItemActionService;
@@ -20,6 +22,7 @@ import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.simulation.AgentSimulationMode;
 import server.life.NPC;
 import server.maps.MapItem;
 
@@ -206,8 +209,8 @@ class StageOnePaceTest {
     @Test
     void withAHumanLeaderThePassesWaitForTheLastOneAndGoDownTogether() {
         Character ben = at(run.human(1, "Ben"), 0, 0);
-        Character mira = at(run.companion(2, "Mira"), 10, 0);
-        Character pip = at(run.companion(3, "Pip"), 20, 0);
+        Character mira = at(run.companion(2, "Mira"), 4, 0);
+        Character pip = at(run.companion(3, "Pip"), -6, 0);
         Character tobi = at(run.companion(4, "Tobi"), 300, 0);
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, mira, pip, tobi);
         // A companion run says the pickup line even with coordination chat off.
@@ -223,8 +226,8 @@ class StageOnePaceTest {
         modes.verify(() -> AgentModeService.startGrind(eq(entry(2)), any()));
         modes.verify(() -> AgentModeService.startGrind(eq(entry(3)), any()));
 
-        // Tobi hands in his coupons and comes back to the others.
-        when(tobi.getPosition()).thenReturn(new Point(30, 0));
+        // Tobi hands in his coupons and comes back to the others, onto Ben's spot.
+        when(tobi.getPosition()).thenReturn(new Point(8, 0));
         holdingPass(session, tobi);
         AgentKpqCoordinator.tick(session, 3_000L);
 
@@ -296,8 +299,8 @@ class StageOnePaceTest {
     void aSecondHumanKeepingItsPassDoesNotHoldBackTheLeadersCue() {
         Character ben = at(run.human(1, "Ben"), 0, 0);
         Character ann = at(run.human(2, "Ann"), 400, 0);
-        Character mira = at(run.companion(3, "Mira"), 10, 0);
-        Character pip = at(run.companion(4, "Pip"), 20, 0);
+        Character mira = at(run.companion(3, "Mira"), 4, 0);
+        Character pip = at(run.companion(4, "Pip"), -6, 0);
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, ann, mira, pip);
         session.setMemberCoordinationChatEnabled(false);
         holdingPass(session, mira);
@@ -358,27 +361,39 @@ class StageOnePaceTest {
     void theClearLogsWhatEachCompanionDidInStageOne() {
         Character ben = at(run.human(1, "Ben"), 0, 0);
         Character mira = at(run.companion(2, "Mira"), 500, 0);
-        Character pip = at(run.companion(3, "Pip"), 20, 0);
+        Character pip = at(run.companion(3, "Pip"), 5, 0);
         AgentKpqSession session = run.session(true, AgentKpqSession.Phase.ENTERING, ben, mira, pip);
         // What Mira did before this run is not stage 1's.
         kill(mira, 1);
         entry(2).capabilityStates().require(AgentFieldObservationState.STATE_KEY).attack(1, 0);
+        AgentCombatSkillUsageStateRuntime.record(entry(2), 0, 10L);
+        AgentCombatSkillUsageStateRuntime.recordDegenerate(entry(2));
         try (KpqLogLines log = new KpqLogLines(AgentKpqCoordinator.class)) {
             AgentKpqCoordinator.tick(session, 2_000L);
             collecting(session, mira, 0);
             session.member(3).markPassCreated(2_500L);
             holdingPass(session, pip);
             when(mira.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(4);
+            AgentFieldObservationState field = entry(2).capabilityStates().require(AgentFieldObservationState.STATE_KEY);
+            field.posture(AgentCombatPostureChangedEvent.Posture.MELEE, 9_300_001, new Point(), "", 2_500L);
+            // Unwatched for its first second, she runs at the background cadence.
+            entry(2).simulationState().transitionTo(AgentSimulationMode.BACKGROUND_ACTIVE, 2_000L);
             AgentKpqCoordinator.tick(session, 3_000L);
+            entry(2).simulationState().transitionTo(AgentSimulationMode.PRESENTATION, 3_000L);
+            entry(2).movementPhysicsState().setInAir(true);
             kill(mira, 2);
             kill(mira, 3);
-            AgentFieldObservationState field = entry(2).capabilityStates().require(AgentFieldObservationState.STATE_KEY);
             field.attack(1, 0);
             field.attack(1, 0);
             field.attack(0, 1);
+            AgentCombatSkillUsageStateRuntime.record(entry(2), 0, 50L);
+            AgentCombatSkillUsageStateRuntime.record(entry(2), 0, 50L);
+            AgentCombatSkillUsageStateRuntime.record(entry(2), 4_001_344, 80L);
+            AgentCombatSkillUsageStateRuntime.recordDegenerate(entry(2));
             // Mira has her ten, so Pip hands Ben its pass and helps.
             when(mira.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)).thenReturn(10);
             AgentKpqCoordinator.tick(session, 4_000L);
+            entry(2).movementPhysicsState().setInAir(false);
             when(run.event.getProperty("1stageclear")).thenReturn("true");
             AgentKpqCoordinator.tick(session, 5_000L);
             AgentKpqCoordinator.tick(session, 6_000L);
@@ -386,12 +401,68 @@ class StageOnePaceTest {
             String id = session.sessionId();
             assertEquals(List.of(
                             "KPQ Stage 1 summary: session=" + id + " agent=Mira stageMs=3000 kills=2 coupons=10 "
-                                    + "attacks=3 hits=2 misses=1 passAtMs=-1 roleMs={COUPON_COLLECTOR=3000}",
+                                    + "attacks=3 hits=2 misses=1 passAtMs=-1 roleMs={COUPON_COLLECTOR=3000} "
+                                    + "roleKills={COUPON_COLLECTOR=2} roleAttacks={COUPON_COLLECTOR=3} "
+                                    + "postureMs={MELEE=2500} climbMs=0 airMs=1000 "
+                                    + "simulationMs={BACKGROUND_ACTIVE=1000, PRESENTATION=2000} "
+                                    + "skills={0=2, 4001344=1} degenerate=1",
                             "KPQ Stage 1 summary: session=" + id + " agent=Pip stageMs=3000 kills=0 coupons=0 "
                                     + "attacks=0 hits=0 misses=0 passAtMs=500 "
-                                    + "roleMs={PASS_DELIVERER=2000, COMBAT_HELPER=1000}"),
+                                    + "roleMs={PASS_DELIVERER=2000, COMBAT_HELPER=1000} "
+                                    + "roleKills={PASS_DELIVERER=0, COMBAT_HELPER=0} "
+                                    + "roleAttacks={PASS_DELIVERER=0, COMBAT_HELPER=0} postureMs={} climbMs=0 "
+                                    + "airMs=0 simulationMs={PRESENTATION=3000} skills={} degenerate=0"),
                     log.startingWith("KPQ Stage 1 summary: "));
         }
+    }
+
+    @Test
+    void aCompanionHolderDropsOnTheLeadersSpotNotBesideIt() {
+        Character ben = at(run.human(1, "Ben"), 0, 0);
+        Character mira = at(run.companion(2, "Mira"), 30, 0);
+        Character pip = at(run.companion(3, "Pip"), 4, 0);
+        AgentKpqSession session = run.session(true, AgentKpqSession.Phase.STAGE_1, ben, mira, pip);
+        holdingPass(session, mira);
+        holdingPass(session, pip);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        // 30 px off is where the old rule dropped; a leader standing still could not pick the pass up from there.
+        items.verify(() -> AgentScriptItemActionService.dropItem(eq(entry(2)), any(), anyInt(), anyShort()), never());
+        modes.verify(() -> AgentModeService.startMoveTo(entry(2), new Point(0, 0), true));
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+
+        // Not while he is up a rope.
+        at(mira, 6, 0);
+        when(ben.getStance()).thenReturn(17);
+        AgentKpqCoordinator.tick(session, 3_000L);
+        items.verify(() -> AgentScriptItemActionService.dropItem(eq(entry(2)), any(), anyInt(), anyShort()), never());
+
+        when(ben.getStance()).thenReturn(5);
+        AgentKpqCoordinator.tick(session, 4_000L);
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+    }
+
+    @Test
+    void aStockHumanLedRunStillDropsThePassesBesideItsLeader() {
+        Character ben = at(run.human(1, "Ben"), 0, 0);
+        Character mira = at(run.companion(2, "Mira"), 60, 30);
+        Character pip = at(run.companion(3, "Pip"), -80, 0);
+        AgentKpqSession session = run.session(false, AgentKpqSession.Phase.STAGE_1, ben, mira, pip);
+        holdingPass(session, mira);
+        holdingPass(session, pip);
+        when(ben.getStance()).thenReturn(17);
+
+        AgentKpqCoordinator.tick(session, 2_000L);
+
+        // Within NEAR_PX on each axis, wherever the leader stands.
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(2), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+        items.verify(() -> AgentScriptItemActionService.dropItem(
+                entry(3), InventoryType.ETC, AgentKpqDefinition.PASS_ITEM, (short) 1), times(1));
+        modes.verify(() -> AgentModeService.startMoveTo(any(), any(), eq(true)), never());
     }
 
     private static void kill(Character companion, int mobObjectId) {
@@ -415,8 +486,8 @@ class StageOnePaceTest {
      */
     private AgentKpqSession lastCollectorHeadingToCloto(boolean companionRun, Point benAt) {
         Character ben = at(run.human(1, "Ben"), benAt.x, benAt.y);
-        Character mira = at(run.companion(2, "Mira"), 10, 0);
-        Character pip = at(run.companion(3, "Pip"), 20, 0);
+        Character mira = at(run.companion(2, "Mira"), 6, 0);
+        Character pip = at(run.companion(3, "Pip"), -8, 0);
         Character tobi = at(run.companion(4, "Tobi"), 300, 0);
         AgentKpqSession session = run.session(companionRun, AgentKpqSession.Phase.STAGE_1, ben, mira, pip, tobi);
         NPC cloto = mock(NPC.class);

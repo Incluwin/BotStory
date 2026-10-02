@@ -13,6 +13,7 @@ import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.PartyQuestGateway;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapleMap;
@@ -55,6 +56,7 @@ final class AgentKpqTerminationService {
         if (session == null || !session.beginTermination()) return;
         EventInstanceManager event = session.eventInstance();
         tryCleanup(session, "stop-actions", () -> stopAll(session));
+        tryCleanup(session, "release-full-rate", () -> AgentKpqFullRateSimulation.releaseAll(session));
         if (disposeEvent && event != null) {
             tryCleanup(session, "dispose-event", () -> closeEvent(event));
         }
@@ -70,11 +72,22 @@ final class AgentKpqTerminationService {
         // The parent engagement remains indexed, so removing the child first closes the
         // overlap without creating a controller-less Agent between systems.
         AgentKpqSessionRegistry.remove(session);
+        AgentKpqPaceReport.logRemainingSpans(session, nowMs);
         AgentPartyQuestLifecycleRuntime.childFinished(
-                session.sessionId(), completed, reason, nowMs);
+                session.sessionId(), completed, reason, nowMs, pace(session, nowMs));
         log.info("KPQ session released: session={} outcome={} phase={} event={} members={}",
                 session.sessionId(), completed ? "completed" : reason, session.phase(),
                 event == null ? "none" : event.getName(), session.memberCount());
+    }
+
+    /** The run's pace for the host's records; a report that fails leaves it null rather than the release unfinished. */
+    private static AgentPqPace pace(AgentKpqSession session, long nowMs) {
+        try {
+            return AgentKpqPaceReport.of(session, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("KPQ pace report failed: session={}", session.sessionId(), failure);
+            return null;
+        }
     }
 
     static void closeEvent(EventInstanceManager event) {

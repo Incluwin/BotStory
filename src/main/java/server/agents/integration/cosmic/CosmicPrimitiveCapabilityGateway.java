@@ -5,6 +5,7 @@ import client.QuestStatus;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
+import constants.game.CharacterStance;
 import constants.inventory.ItemConstants;
 import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.movement.AgentChairService;
@@ -21,6 +22,7 @@ import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.movement.AgentFarmAnchorStateRuntime;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
+import server.agents.capabilities.navigation.AgentNavigationRegionService;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
@@ -325,6 +327,24 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public List<Point> liveMonsterPositions(Character agent, Set<Integer> mobIds) {
+        if (agent == null || agent.getMap() == null || mobIds == null) {
+            return List.of();
+        }
+        return server.agents.perception.AgentMapPerception.monsters(agent.getMap()).stream()
+                .filter(monster -> monster != null && monster.isAlive() && mobIds.contains(monster.getId())
+                        && monster.getPosition() != null)
+                .map(monster -> new Point(monster.getPosition()))
+                .toList();
+    }
+
+    @Override
+    public boolean rangedWeapon(Character agent) {
+        return AgentAttackExecutionProvider.isDegenerateCapableRangedWeapon(
+                AgentAttackExecutionProvider.getEquippedWeaponType(agent));
+    }
+
+    @Override
     public Map<Integer, Double> expectedLineDamage(AgentRuntimeEntry entry, Character agent, Set<Integer> mobIds) {
         if (entry == null || agent == null || agent.getMap() == null || mobIds == null) {
             return Map.of();
@@ -359,6 +379,45 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
             }
         }
         return regionIds;
+    }
+
+    @Override
+    public boolean canReach(AgentRuntimeEntry entry, Character agent, Point target) {
+        if (entry == null || agent == null || agent.getMap() == null || agent.getPosition() == null
+                || target == null) {
+            return true;
+        }
+        AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(
+                agent.getMap(), AgentMovementStateRuntime.movementProfileOrCharacter(entry, agent));
+        if (graph == null) {
+            return true;
+        }
+        int fromRegionId = AgentNavigationRegionService.resolveCurrentRegionId(
+                graph, entry, agent.getMap(), agent.getPosition());
+        // From just above, as groundPoint looks: a player's own position lies on its foothold.
+        int toRegionId = AgentNavigationRegionService.resolvePointTargetRegionId(
+                graph, agent.getMap(), new Point(target.x, target.y - 1));
+        return fromRegionId < 0 || toRegionId < 0 || graph.canReach(fromRegionId, toRegionId);
+    }
+
+    @Override
+    public Footing footing(Character character) {
+        if (character == null) {
+            return Footing.GROUND;
+        }
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(character.getId());
+        if (entry != null) {
+            if (AgentMovementStateRuntime.climbing(entry)) {
+                return Footing.ROPE;
+            }
+            return AgentMovementStateRuntime.inAir(entry) ? Footing.AIR : Footing.GROUND;
+        }
+        // A player's stance is what its client last reported moving.
+        int stance = character.getStance();
+        if (CharacterStance.isClimbing(stance)) {
+            return Footing.ROPE;
+        }
+        return CharacterStance.isJumping(stance) ? Footing.AIR : Footing.GROUND;
     }
 
     @Override

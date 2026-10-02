@@ -274,7 +274,8 @@ class CompanionTapOutCoordinatorTest {
         verify(run.event, never()).dispose();
         verify(run.event, never()).exitPlayer(any());
         run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
-                eq(session.sessionId()), eq(false), contains("every companion tapped out"), anyLong()), times(1));
+                eq(session.sessionId()), eq(false), contains("every companion tapped out"), anyLong(), any()),
+                times(1));
     }
 
     /** Deadlines started before the death: a pause of 45 s would otherwise leave Mira's 90 s formation clock half spent. */

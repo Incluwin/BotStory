@@ -2,6 +2,7 @@ package server.agents.capabilities.partyquest;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 
 import java.util.List;
 
@@ -28,9 +29,19 @@ public final class AgentPartyQuestHandback {
     public record TapOut(String questKey, String sessionId, int agentCharacterId, int mapId, long atMs) {
     }
 
-    /** A party-quest run ended: its child session id, and a blank quest key when no engagement held the run. */
+    /**
+     * A party-quest run ended: its child session id, and a blank quest key when no engagement held the run.
+     *
+     * @param pace how the run went segment by segment, for the host's clear-time records; null when the quest reports
+     *             no pace
+     */
     public record RunEnded(String questKey, String sessionId, int operatorId, boolean success, String reason,
-                           long endedAtMs) {
+                           long endedAtMs, AgentPqPace pace) {
+        /** A run that reports no pace. */
+        public RunEnded(String questKey, String sessionId, int operatorId, boolean success, String reason,
+                        long endedAtMs) {
+            this(questKey, sessionId, operatorId, success, reason, endedAtMs, null);
+        }
     }
 
     /**
