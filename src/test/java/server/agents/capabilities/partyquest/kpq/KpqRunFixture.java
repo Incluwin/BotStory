@@ -141,6 +141,12 @@ final class KpqRunFixture implements AutoCloseable {
         partyMembers.removeIf(snapshot -> snapshot.id() == member.getId());
     }
 
+    /** Makes this member the live party's leader (the first member made leads otherwise). */
+    void leadParty(Character member) {
+        partyMembers.replaceAll(snapshot -> new AgentPartyMemberSnapshot(snapshot.id(), snapshot.name(),
+                snapshot.id() == member.getId(), snapshot.mapId()));
+    }
+
     /**
      * A registered PRODUCTION session in {@code phase}, bound to the event: the first member leads, and the first
      * companion holds the execution lease and narrates.

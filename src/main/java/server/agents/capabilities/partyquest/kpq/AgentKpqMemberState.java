@@ -2,6 +2,7 @@ package server.agents.capabilities.partyquest.kpq;
 
 import java.awt.Point;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -48,6 +49,9 @@ public final class AgentKpqMemberState {
     private Point stage1LandingSafetyTarget;
     private long stage1LandingSafetyDeadlineMs;
     private boolean stage1ManagedDarkSight;
+    private AgentKpqSession.HelperTerritory stage1ClusterTerritory;
+    private List<Point> stage1FiringArea;
+    private Point stage1FiringSpot;
     private long downSinceMs;
     private boolean tapOutRequested;
     private long revivedSeenAtMs;
@@ -234,6 +238,16 @@ public final class AgentKpqMemberState {
         stage1LandingSafetyTarget = null;
         stage1LandingSafetyDeadlineMs = 0L;
         stage1ManagedDarkSight = false;
+    }
+    /** The cluster territory this collector camps in stage 1, kept equal until it expires. */
+    AgentKpqSession.HelperTerritory stage1ClusterTerritory() { return stage1ClusterTerritory; }
+    void setStage1ClusterTerritory(AgentKpqSession.HelperTerritory territory) { stage1ClusterTerritory = territory; }
+    /** Whether the firing spot of this area is worked out already (it may be none). */
+    boolean stage1FiringSpotKnownFor(List<Point> area) { return area != null && area.equals(stage1FiringArea); }
+    Point stage1FiringSpot() { return stage1FiringSpot == null ? null : new Point(stage1FiringSpot); }
+    void setStage1FiringSpot(List<Point> area, Point spot) {
+        stage1FiringArea = area == null ? null : List.copyOf(area);
+        stage1FiringSpot = spot == null ? null : new Point(spot);
     }
 
     public boolean hasStage5BossCombatBaseline() {

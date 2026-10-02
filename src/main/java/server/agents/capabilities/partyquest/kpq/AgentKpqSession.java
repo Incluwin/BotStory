@@ -4,10 +4,12 @@ import scripting.event.EventInstanceManager;
 
 import java.awt.Point;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** Party-level KPQ state. All mutation is synchronized through this aggregate. */
@@ -63,6 +65,12 @@ public final class AgentKpqSession {
     private int stageOneHelperCollectorId;
     private Point stageOneHelperAnchor;
     private HelperTerritory stageOneHelperTerritory;
+    private AgentKpqStageOneLevers stageOneLevers = AgentKpqStageOneLevers.CONFIGURED;
+    private List<List<Point>> stageOneClusters = List.of();
+    private Map<Integer, Integer> stageOneClusterOf;
+    private long stageOneLeaderCouponAskAtMs;
+    private int stageOneLeaderCouponAsks;
+    private final Set<Integer> stageOneLeaderKillCoupons = new HashSet<>();
     private long missingPassSinceMs;
     private long puzzleCheckAtMs;
     private int puzzleCheckLoggedAttemptId = -1;
@@ -248,6 +256,11 @@ public final class AgentKpqSession {
         stageOneHelperCollectorId = 0;
         stageOneHelperAnchor = null;
         stageOneHelperTerritory = null;
+        stageOneClusters = List.of();
+        stageOneClusterOf = null;
+        stageOneLeaderCouponAskAtMs = 0L;
+        stageOneLeaderCouponAsks = 0;
+        stageOneLeaderKillCoupons.clear();
         missingPassSinceMs = 0L;
         puzzleCheckAtMs = 0L;
         puzzleCheckLoggedAttemptId = -1;
@@ -462,6 +475,32 @@ public final class AgentKpqSession {
         stageOneHelperCollectorId = Math.max(0, collectorId);
         stageOneHelperTerritory = territory;
     }
+    /** The companion-run stage-1 levers this session uses; a test may switch them one by one. */
+    synchronized AgentKpqStageOneLevers stageOneLevers() { return stageOneLevers; }
+    synchronized void setStageOneLevers(AgentKpqStageOneLevers levers) {
+        stageOneLevers = levers == null ? AgentKpqStageOneLevers.NONE : levers;
+    }
+    synchronized boolean stageOneClustersAssigned() { return stageOneClusterOf != null; }
+    /** Stage 1's platform clusters and the one each collector camps, set once per stage. */
+    synchronized void assignStageOneClusters(List<List<Point>> clusters, Map<Integer, Integer> clusterOf) {
+        stageOneClusters = clusters == null ? List.of() : List.copyOf(clusters);
+        stageOneClusterOf = clusterOf == null ? Map.of() : Map.copyOf(clusterOf);
+    }
+    synchronized int stageOneClusterIndex(int characterId) {
+        return stageOneClusterOf == null ? -1 : stageOneClusterOf.getOrDefault(characterId, -1);
+    }
+    synchronized List<Point> stageOneClusterSpawns(int index) {
+        return index < 0 || index >= stageOneClusters.size() ? null : stageOneClusters.get(index);
+    }
+    synchronized long stageOneLeaderCouponAskAtMs() { return stageOneLeaderCouponAskAtMs; }
+    synchronized int stageOneLeaderCouponAsks() { return stageOneLeaderCouponAsks; }
+    synchronized void markStageOneLeaderCouponAsk(long nowMs) {
+        if (stageOneLeaderCouponAsks == 0) stageOneLeaderCouponAskAtMs = Math.max(1L, nowMs);
+        stageOneLeaderCouponAsks++;
+    }
+    /** A floor coupon a human leader's own kill dropped, counted once however many ticks it lies there. */
+    synchronized void observeStageOneLeaderKill(int couponObjectId) { stageOneLeaderKillCoupons.add(couponObjectId); }
+    synchronized int stageOneLeaderKills() { return stageOneLeaderKillCoupons.size(); }
     public synchronized long missingPassSinceMs() { return missingPassSinceMs; }
     public synchronized void setMissingPassSinceMs(long value) {
         missingPassSinceMs = Math.max(0L, value);
@@ -724,10 +763,18 @@ public final class AgentKpqSession {
     public record PuzzleValidation(int revision, boolean accepted) {
     }
 
-    /** Where the stage-1 helpers fight: one tower's x-band and its spawns, until a fixed time. */
-    record HelperTerritory(String assignmentId, int minX, int maxX, List<Point> spawns, long expiresAtMs) {
+    /**
+     * Where a stage-1 member fights until a fixed time: a tower's x-band and its spawns for a companion run's helpers,
+     * or, with the cluster lever, a platform cluster (no x-band) that its collector and their helpers camp.
+     */
+    record HelperTerritory(String assignmentId, int minX, int maxX, List<Point> spawns, long expiresAtMs,
+                           boolean cluster) {
         HelperTerritory {
             spawns = List.copyOf(spawns);
+        }
+
+        HelperTerritory(String assignmentId, int minX, int maxX, List<Point> spawns, long expiresAtMs) {
+            this(assignmentId, minX, maxX, spawns, expiresAtMs, false);
         }
 
         boolean covers(int x) {

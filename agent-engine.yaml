@@ -2183,14 +2183,62 @@ tuning:
     # Purpose: Splits the KPQ Stage 1 map into the towers a companion run's helpers fight in, so their kills drop where the collector they follow is working.
     # Technical: AgentKpqCoordinator sorts the map's Ligator spawn points by x and starts a new tower wherever two neighbours lie more than this far apart; each tower's x-band reaches to the middle of the gap, and its spawn platforms become the helpers' navigation regions.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_TOWER_GAP_PX: '150'
-    # Values: 30000-600000 milliseconds. Recommended: 120000. Shorter values renew the territory, and so reset each helper's combat tactics, more often; longer values let a missed clean-up steer helpers longer.
-    # Purpose: Bounds how long one KPQ Stage 1 helper territory stands before it is made again, so a territory nothing cleared cannot steer an Agent for the rest of its life.
-    # Technical: The expiry is fixed when the coordinator makes the territory and stays the same on every tick, so the combat directive stays equal and the helpers do not restart; the coordinator makes it again once it expires, and the territory is also dropped at the stage-1 clear and whenever the run ends.
+    # Values: 30000-600000 milliseconds. Recommended: 120000. Shorter values renew the territory, and so reset each member's combat tactics, more often; longer values let a missed clean-up steer members longer.
+    # Purpose: Bounds how long one KPQ Stage 1 territory (a helper's tower, or with the cluster lever a collector's platform cluster) stands before it is made again, so a territory nothing cleared cannot steer an Agent for the rest of its life.
+    # Technical: The expiry is fixed when the coordinator makes the territory and stays the same on every tick, so the combat directive stays equal and the members do not restart; the coordinator makes it again once it expires, and the territory is also dropped at the stage-1 clear and whenever the run ends.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_HELPER_TERRITORY_MS: '120000'
     # Values: 2000-15000 milliseconds. Recommended: 5000. Lower values send idle helpers to other towers sooner, where their coupons drop far from the collector; higher values leave them waiting for respawns.
     # Purpose: Sets how long KPQ Stage 1 helpers wait in an empty tower before they fight anywhere on the map for a while.
     # Technical: Passed as the region assignment's empty-borrow delay; after it, the combat region policy's empty-scan threshold and borrow window (AgentCombatPolicyConfig.REGION_ASSIGNMENT_BORROW_EMPTY_SCANS and REGION_ASSIGNMENT_BORROW_MS) decide when and how long they borrow.
     server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_HELPER_TERRITORY_EMPTY_MS: '5000'
+    # Values: true or false. Recommended: true. False keeps a companion run's human leader unasked about the coupons he picks up.
+    # Purpose: Lets the neediest coupon collector of a companion run ask its human KPQ leader, in character, to drop the Ligator coupons he picks up by it, since Cloto gives a leader no coupon question of his own.
+    # Technical: AgentKpqCoordinator says the line once while the leader holds any 4001007 coupon and a companion collector is short, and once more at most after STAGE1_LEADER_COUPON_REPEAT_MS; stock and all-Agent runs never ask. The leader's kills and held coupons are logged at the stage-1 clear either way.
+    server.agents.capabilities.partyquest.kpq.AgentKpqStageOneLevers.LEADER_COUPONS_ENABLED: 'true'
+    # Values: true or false. Recommended: true. False sends a companion run's collectors to floor coupons in the middle of a fight, as stock runs do.
+    # Purpose: Makes a companion run's stage-1 coupon collector finish the Ligators on the platform it fights on before it walks off for a floor coupon, so it stops leaving fights for coupons across the map.
+    # Technical: In AgentKpqCoordinator's coupon sweep a collector with a live Ligator in its own navigation region is matched only to a coupon within STAGE1_LOOT_NEAR_PX, one older than STAGE1_LOOT_MAX_AGE_MS, or any coupon once the floor's coupons would finish its count; stock and all-Agent runs sweep as before.
+    server.agents.capabilities.partyquest.kpq.AgentKpqStageOneLevers.FIGHT_BEFORE_LOOT_ENABLED: 'true'
+    # Values: true or false. Recommended: true. False leaves a companion run's ranged members on the point-blank whack-and-retreat loop against Ligators.
+    # Purpose: Makes a companion run's bow, crossbow, claw and gun members fight stage 1 from a firing spot away from the Ligator spawn points of their territory, so the Ligators walk into their shots.
+    # Technical: AgentKpqCoordinator anchors such a member with the existing anchored farming at a ground spot STAGE1_RANGED_SPAWN_STANDOFF_PX beside a spawn on that spawn's platform and at least that far from every spawn of its territory; a coupon objective takes it off the spot, and with no such spot it grinds the territory as before.
+    server.agents.capabilities.partyquest.kpq.AgentKpqStageOneLevers.RANGED_STANDOFF_ENABLED: 'true'
+    # Values: true or false. Recommended: true. False gives a companion run's collectors the map-wide grind and its helpers the collector's tower again.
+    # Purpose: Gives every companion of a companion run a platform cluster of Ligator spawns to camp in stage 1, instead of a map-wide grind for collectors and a whole tower for helpers.
+    # Technical: Once every companion has its coupon target, AgentKpqCoordinator splits the map's Ligator spawns into clusters (STAGE1_CLUSTER_LINK_X_PX, STAGE1_CLUSTER_LINK_Y_PX, STAGE1_CLUSTER_MIN_SPAWNS) and shares them out; holders and helpers camp the neediest collector's cluster; stock and all-Agent runs are unchanged.
+    server.agents.capabilities.partyquest.kpq.AgentKpqStageOneLevers.CLUSTERS_ENABLED: 'true'
+    # Values: 20000-170000 milliseconds. Recommended: 60000. Lower values ask the leader again sooner; the request is repeated at most once.
+    # Purpose: Sets how long after its first request a companion run's neediest collector asks the human leader once more to drop the coupons he holds by it.
+    # Technical: Measured from the first request on the coordinator's clock; the repeat is said only while the leader still holds a 4001007 coupon and a companion collector is still short, by whichever collector is neediest then.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_COUPON_REPEAT_MS: '60000'
+    # Values: 60-300 map pixels. Recommended: 150. Higher values let a fighting collector step further off for a coupon; lower values keep it on the Ligator.
+    # Purpose: Sets how close a floor coupon must lie for a companion run's stage-1 collector to pick it up while a Ligator still lives on the platform it fights on.
+    # Technical: AgentKpqCoordinator's coupon sweep measures the Euclidean map-pixel distance from the collector to the coupon; nearer coupons are matched as before, farther ones wait for the platform to clear, STAGE1_LOOT_MAX_AGE_MS, or a floor that finishes the collector's count.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_NEAR_PX: '150'
+    # Values: 30000-160000 milliseconds. Recommended: 120000. Keep it well below the server's 180 s item expiry so a waiting coupon is never lost.
+    # Purpose: Bounds how long a floor coupon may wait for a fighting companion-run collector before the collector leaves its fight for it anyway.
+    # Technical: Measured from the coupon's own drop time on the coordinator's clock; an older coupon is matched in the sweep however busy the collector is, closest collector and coupon pairs first as before.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_MAX_AGE_MS: '120000'
+    # Values: 60-250 map pixels. Recommended: 100. Higher values need longer platforms (some cluster platforms then have no spot); lower values let Ligators reach the shooter sooner.
+    # Purpose: Sets how far from the Ligator spawn points of its territory a companion run's ranged member stands to shoot in stage 1, so it is not on the point-blank whack-and-retreat loop.
+    # Technical: The firing spot is the foothold point this many pixels left or right of a territory spawn on that spawn's navigation region, kept only if every spawn of the territory is at least this far away (Euclidean); the spot on the platform with the most spawns wins, then the nearest to a spawn.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX: '100'
+    # Values: 60-300 map pixels. Recommended: 150. Higher values join neighbouring platforms into one; lower values split a platform's spawns into groups that STAGE1_CLUSTER_MIN_SPAWNS then joins again.
+    # Purpose: Decides which KPQ Stage 1 Ligator spawns stand on one platform when a companion run's spawns are split into the clusters its companions camp.
+    # Technical: AgentKpqStageOneClusterPolicy links two spawn points whose x differs by at most this and whose y differs by at most STAGE1_CLUSTER_LINK_Y_PX, transitively; the linked groups are the platforms that clusters are built from.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_LINK_X_PX: '150'
+    # Values: 10-150 map pixels. Recommended: 60. Higher values join platforms stacked above each other; lower values split one sloped platform.
+    # Purpose: Sets how far apart in height two KPQ Stage 1 Ligator spawns may be and still count as one platform when a companion run's clusters are made.
+    # Technical: AgentKpqStageOneClusterPolicy links two spawn points only when their y differs by at most this and their x by at most STAGE1_CLUSTER_LINK_X_PX; platforms then join into clusters by STAGE1_CLUSTER_MIN_SPAWNS.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_LINK_Y_PX: '60'
+    # Values: 1-11 spawn points. Recommended: 3. On 103000800 three gives five clusters of three to six Ligators; four gives two clusters of nine and thirteen.
+    # Purpose: Sets the fewest Ligator spawns a companion run's stage-1 cluster may have, so a companion camping it has enough Ligators respawning to keep fighting.
+    # Technical: AgentKpqStageOneClusterPolicy joins a platform group with fewer spawns to its nearest neighbour (fewest pixels walked plus climbed between their closest spawns), closest pair first, until no cluster is short or one is left.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_MIN_SPAWNS: '3'
+    # Values: 5000-60000 milliseconds. Recommended: 15000, the KPQ event's 15 s instance respawn. Lower values send members to borrow other clusters before their own Ligators return.
+    # Purpose: Sets how long a companion run's stage-1 member waits in its empty platform cluster for the respawn before it fights anywhere for a while.
+    # Technical: Passed as the cluster territory's empty-borrow delay; after it, the combat region policy's empty-scan threshold and borrow window (AgentCombatPolicyConfig.REGION_ASSIGNMENT_BORROW_EMPTY_SCANS and REGION_ASSIGNMENT_BORROW_MS) decide when and how long it borrows.
+    server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RESPAWN_WAIT_MS: '15000'
     # Values: 2000-30000 milliseconds. Recommended: 5000. Keep this long enough for a newly dropped pass to become pickup-eligible and appear in the next coordinator ticks.
     # Purpose: Allows Stage 1 to recover when every non-leader completed their Cloto exchange but a pass vanished before reaching the leader.
     # Technical: Recovery is blocked while any pass remains visible on the map; after this grace period the coordinator opens Stage 1 and writes a diagnostic warning.

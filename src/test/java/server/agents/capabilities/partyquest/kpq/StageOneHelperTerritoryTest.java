@@ -249,9 +249,13 @@ class StageOneHelperTerritoryTest {
         return miraHelpsWhilePipAndTobiCollect(tobiHas, true);
     }
 
-    /** Mira has handed in her pass and helps; Pip still needs ten coupons and Tobi {@code 10 - tobiHas}. */
+    /**
+     * Mira has handed in her pass and helps; Pip still needs ten coupons and Tobi {@code 10 - tobiHas}. The towers are
+     * what a companion run's helpers hold with the cluster lever off (StageOneLeversTest covers the clusters).
+     */
     private AgentKpqSession miraHelpsWhilePipAndTobiCollect(int tobiHas, boolean companionRun) {
         AgentKpqSession session = run.session(companionRun, AgentKpqSession.Phase.STAGE_1, ben, mira, pip, tobi);
+        session.setStageOneLevers(new AgentKpqStageOneLevers(true, true, true, false));
         collecting(session, mira, 0);
         session.member(2).markPassCreated();
         session.member(2).markPassDelivered();

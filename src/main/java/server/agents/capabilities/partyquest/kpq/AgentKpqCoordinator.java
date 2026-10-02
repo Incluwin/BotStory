@@ -38,6 +38,7 @@ import server.maps.MapleMap;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -146,6 +147,22 @@ final class AgentKpqCoordinator {
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE4_LEADER_BELOW_CLOTO_PX");
     private static final int STAGE1_LEADER_FAR_FROM_CLOTO_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_FAR_FROM_CLOTO_PX");
+    private static final long STAGE1_LEADER_COUPON_REPEAT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LEADER_COUPON_REPEAT_MS");
+    private static final int STAGE1_LOOT_NEAR_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_NEAR_PX");
+    private static final long STAGE1_LOOT_MAX_AGE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_LOOT_MAX_AGE_MS");
+    private static final int STAGE1_RANGED_SPAWN_STANDOFF_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_RANGED_SPAWN_STANDOFF_PX");
+    private static final int STAGE1_CLUSTER_LINK_X_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_LINK_X_PX");
+    private static final int STAGE1_CLUSTER_LINK_Y_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_LINK_Y_PX");
+    private static final int STAGE1_CLUSTER_MIN_SPAWNS = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_MIN_SPAWNS");
+    private static final long STAGE1_CLUSTER_RESPAWN_WAIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.kpq.AgentKpqCoordinator.STAGE1_CLUSTER_RESPAWN_WAIT_MS");
 
     private AgentKpqCoordinator() {
     }
@@ -398,7 +415,12 @@ final class AgentKpqCoordinator {
             AgentKpqSession session, Character leader, Character narrator, long nowMs) {
         session.members().forEach(member -> tallyStageOne(member, nowMs));
         if ("true".equals(KPQ.property(leader, "1stageclear"))) {
-            if (session.claimStageOneSummary()) reportStageOne(session, nowMs);
+            if (session.claimStageOneSummary()) {
+                reportStageOne(session, nowMs);
+                if (session.companionAdopted() && !isAgent(session, leader.getId())) {
+                    reportStageOneLeader(session, leader);
+                }
+            }
             clearStageOneLandingSafety(session, leader);
             clearCouponLootObjectives(session);
             // A territory now outlives the grind call, and every run's stage 1 is this map: it ends with the stage.
@@ -411,6 +433,11 @@ final class AgentKpqCoordinator {
         Point cloto = ACTIONS.npcPosition(leader, AgentKpqDefinition.CLOTO_NPC);
         int needed = stageOnePassesNeeded(session.companionAdopted(), session.memberCount(), livePartySize(leader));
         boolean agentLeader = isAgent(session, leader.getId());
+        // The stage-1 levers are a companion run's, for its human leader; stock and all-Agent runs use none of them.
+        AgentKpqStageOneLevers levers = session.companionAdopted() && !agentLeader
+                ? session.stageOneLevers() : AgentKpqStageOneLevers.NONE;
+        StageOneTick tick = new StageOneTick(session, levers, levers.watchesLigators()
+                ? ACTIONS.liveMonsterPositions(leader, stage1GrindTargets(leader)) : List.of());
         List<MapItem> floorCoupons = liveCouponDrops(leader.getMap());
         int couponsOnGround = couponQuantityOnGround(floorCoupons);
         int remainingPartyNeed = remainingPartyCouponNeed(session, leader);
@@ -428,10 +455,16 @@ final class AgentKpqCoordinator {
         session.setCouponSweepStartedAtMs(collection.sweepStartedAtMs());
         session.setNextCouponSweepAtMs(collection.nextSweepAtMs());
         syncCouponLootObjectives(session, leader,
-                collection.sweepActive() ? floorCoupons : List.of(), collection.repick());
-        // A companion run's helpers hold the collector's tower; a stock run's fight from a spot under it.
-        AgentKpqSession.HelperTerritory helperTerritory =
-                session.companionAdopted() ? stageOneHelperTerritory(session, leader, nowMs) : null;
+                collection.sweepActive() ? floorCoupons : List.of(), collection.repick(),
+                levers.fightBeforeLoot(), tick.liveLigators(), nowMs);
+        if (session.companionAdopted() && !agentLeader) {
+            observeLeaderKills(session, leader, floorCoupons);
+            if (levers.leaderCoupons()) askLeaderForCoupons(session, leader, nowMs);
+        }
+        if (levers.clusters()) assignStageOneClusters(session, leader, cloto);
+        // A companion run's helpers hold the collector's tower (or cluster); a stock run's fight from a spot under it.
+        AgentKpqSession.HelperTerritory helperTerritory = session.companionAdopted()
+                ? stageOneHelperTerritory(session, leader, levers.clusters(), nowMs) : null;
         Point helperAnchor = session.companionAdopted() ? null : stageOneHelperAnchor(session, leader);
         // A human leader picks the passes up by hand, and a dropped pass expires after 180 s: live, two of three
         // passes dropped one by one expired before the leader got to them. So a companion keeps its pass, and helps
@@ -495,7 +528,7 @@ final class AgentKpqCoordinator {
                     cancelStageOneLandingSafety(member, entry, agent);
                     moveTowardStageOneExit(session, member, agent, entry);
                 } else {
-                    grindStageOne(member, entry, agent, null, null, nowMs);
+                    grindStageOne(member, entry, agent, null, null, tick, nowMs);
                 }
                 continue;
             }
@@ -576,13 +609,15 @@ final class AgentKpqCoordinator {
                         }
                     }
                 } else {
-                    grindStageOne(member, entry, agent, null, null, nowMs);
+                    // With the cluster lever it camps its own cluster; otherwise it grinds map-wide.
+                    grindStageOne(member, entry, agent, null,
+                            levers.clusters() ? clusterTerritory(session, member, nowMs) : null, tick, nowMs);
                 }
             }
             if (member.passCreated() && !member.passDelivered()) {
                 allDelivered = false;
                 if (holdPasses) {
-                    grindStageOne(member, entry, agent, helperAnchor, helperTerritory, nowMs);
+                    grindStageOne(member, entry, agent, helperAnchor, helperTerritory, tick, nowMs);
                     continue;
                 }
                 cancelStageOneLandingSafety(member, entry, agent);
@@ -615,7 +650,7 @@ final class AgentKpqCoordinator {
                     cancelStageOneLandingSafety(member, entry, agent);
                     moveTowardStageOneExit(session, member, agent, entry);
                 }
-                else grindStageOne(member, entry, agent, helperAnchor, helperTerritory, nowMs);
+                else grindStageOne(member, entry, agent, helperAnchor, helperTerritory, tick, nowMs);
             }
         }
         List<MapItem> floorPasses = livePassDrops(leader.getMap());
@@ -2845,12 +2880,21 @@ final class AgentKpqCoordinator {
         return configured.isEmpty() ? STAGE_1_MOBS : configured;
     }
 
-    /** With an anchor, the member fights from that spot, and in a territory inside it, instead of map-wide. */
+    /** What one stage-1 tick works out once for every member: the levers in force and where the live Ligators are. */
+    private record StageOneTick(AgentKpqSession session, AgentKpqStageOneLevers levers, List<Point> liveLigators) {
+    }
+
+    /**
+     * With an anchor, the member fights from that spot, and in a territory inside it, instead of map-wide. In a
+     * companion run a ranged member shoots from its territory's firing spot (L4), and a member out of its cluster
+     * walks back while a Ligator lives there (L1); a coupon the sweep gave it comes first.
+     */
     private static void grindStageOne(AgentKpqMemberState member,
                                       AgentRuntimeEntry entry,
                                       Character agent,
                                       Point anchor,
                                       AgentKpqSession.HelperTerritory territory,
+                                      StageOneTick tick,
                                       long nowMs) {
         if (AgentKpqStageOneThiefLandingRuntime.tick(member, entry, agent, nowMs)) return;
         Set<Integer> mobs = stage1GrindTargets(agent);
@@ -2858,16 +2902,200 @@ final class AgentKpqCoordinator {
         Set<Integer> regions = territory == null
                 ? Set.of() : ACTIONS.groundRegionIds(entry, agent, territory.spawns());
         if (!regions.isEmpty()) {
+            MapItem objective = AgentGrindLootStateRuntime.hasObjectiveLootTarget(entry)
+                    ? AgentGrindLootStateRuntime.grindLootTarget(entry) : null;
+            if (objective == null) {
+                Point spot = tick.levers().rangedStandoff()
+                        ? stageOneFiringSpot(tick.session(), member, entry, agent, territory) : null;
+                if (spot != null) {
+                    ACTIONS.grindFromAnchor(entry, spot, mobs, mobs);
+                    return;
+                }
+                if (territory.cluster() && walkBackToCluster(entry, agent, territory, regions, tick.liveLigators())) {
+                    return;
+                }
+            }
             ACTIONS.grindInTerritory(entry, mobs, new AgentMapRegionAssignment(
                     territory.assignmentId(), AgentKpqDefinition.STAGE_1_MAP,
                     regions.stream().sorted().map(String::valueOf).toList(), member.partyNumber(),
-                    territory.spawns().size(), territory.expiresAtMs(), STAGE1_HELPER_TERRITORY_EMPTY_MS,
+                    territory.spawns().size(), territory.expiresAtMs(),
+                    territory.cluster() ? STAGE1_CLUSTER_RESPAWN_WAIT_MS : STAGE1_HELPER_TERRITORY_EMPTY_MS,
                     territory.minX(), territory.maxX(), true));
+            // Leaving the firing spot restarts the grind, which lets go of the coupon the sweep just gave it.
+            if (objective != null && !AgentGrindLootStateRuntime.hasObjectiveLootTarget(entry)) {
+                AgentGrindLootStateRuntime.setObjectiveLootTarget(entry, objective);
+            }
         } else if (anchor == null) {
             ACTIONS.grind(entry, mobs);
         } else {
             ACTIONS.grindFromAnchor(entry, anchor, mobs, mobs);
         }
+    }
+
+    /**
+     * L4: where a bow, crossbow, claw or gun member fights from in its territory, worked out once per territory: a
+     * spot STAGE1_RANGED_SPAWN_STANDOFF_PX beside a spawn on that spawn's platform. By their damage per line, the
+     * 2026-10-01 ranged pair spent about 40-45% of their stage-1 attacks on point-blank whacks, each followed by a
+     * retreat. None for anyone else, or while its graph cannot tell the platforms apart.
+     */
+    private static Point stageOneFiringSpot(AgentKpqSession session, AgentKpqMemberState member,
+                                            AgentRuntimeEntry entry, Character agent,
+                                            AgentKpqSession.HelperTerritory territory) {
+        if (!ACTIONS.rangedWeapon(agent)) return null;
+        List<Point> area = territory.spawns();
+        if (!member.stage1FiringSpotKnownFor(area)) {
+            Point spot = AgentKpqStageOneClusterPolicy.firingSpot(area, STAGE1_RANGED_SPAWN_STANDOFF_PX,
+                    candidate -> ACTIONS.groundPoint(agent.getMap(), candidate),
+                    point -> platformOf(entry, agent, point));
+            member.setStage1FiringSpot(area, spot);
+            log.info("KPQ Stage 1 firing spot: session={} agent={} spot={} area={}", session.sessionId(),
+                    agent.getName(), spot == null ? "none" : spot.x + "," + spot.y,
+                    area.stream().map(point -> point.x + "," + point.y).toList());
+        }
+        return member.stage1FiringSpot();
+    }
+
+    /** The navigation region of this Agent's own graph under a ground point, or -1 while it cannot tell. */
+    private static int platformOf(AgentRuntimeEntry entry, Character agent, Point point) {
+        Set<Integer> regions = ACTIONS.groundRegionIds(entry, agent, List.of(point));
+        return regions.isEmpty() ? -1 : regions.iterator().next();
+    }
+
+    /**
+     * L1: a member knocked or dropped out of its cluster while a Ligator lives there walks back to the cluster's
+     * nearest spawn. With nothing alive at home it waits for the respawn where it is, and borrows once its territory
+     * lets it; it is not called back from a borrow before something lives at home again.
+     */
+    private static boolean walkBackToCluster(AgentRuntimeEntry entry, Character agent,
+                                             AgentKpqSession.HelperTerritory territory, Set<Integer> regions,
+                                             List<Point> liveLigators) {
+        Point position = agent.getPosition();
+        if (liveLigators.isEmpty() || position == null || !ACTIONS.grounded(agent)) return false;
+        Set<Integer> standing = ACTIONS.groundRegionIds(entry, agent, List.of(position));
+        if (standing.isEmpty() || !Collections.disjoint(standing, regions)) return false;
+        if (Collections.disjoint(ACTIONS.groundRegionIds(entry, agent, liveLigators), regions)) return false;
+        Point home = territory.spawns().stream()
+                .min(Comparator.comparingDouble((Point spawn) -> spawn.distanceSq(position))
+                        .thenComparingInt(spawn -> spawn.x))
+                .orElse(null);
+        if (home == null) return false;
+        ACTIONS.navigate(entry, home, false);
+        return true;
+    }
+
+    /**
+     * L1: the cluster a collector camps, made once and again only when it expires, so the territory stays equal from
+     * tick to tick; null before the clusters are shared out, or with none for it.
+     */
+    private static AgentKpqSession.HelperTerritory clusterTerritory(
+            AgentKpqSession session, AgentKpqMemberState member, long nowMs) {
+        if (member == null) return null;
+        int index = session.stageOneClusterIndex(member.characterId());
+        List<Point> spawns = session.stageOneClusterSpawns(index);
+        if (spawns == null) return null;
+        AgentKpqSession.HelperTerritory territory = member.stage1ClusterTerritory();
+        if (territory == null || nowMs >= territory.expiresAtMs() || !territory.spawns().equals(spawns)) {
+            territory = new AgentKpqSession.HelperTerritory(
+                    "kpq-stage1-cluster:" + session.sessionId() + ':' + index + ':' + nowMs,
+                    Integer.MIN_VALUE, Integer.MAX_VALUE, spawns, nowMs + STAGE1_HELPER_TERRITORY_MS, true);
+            member.setStage1ClusterTerritory(territory);
+        }
+        return territory;
+    }
+
+    /**
+     * L1: once every companion has its coupon target, the map's Ligator spawns are split into platform clusters and
+     * shared out by target and by what each companion's line does to a Ligator. Sampled in run C, about 45-50% of a
+     * collector's time went on ropes and in the air, hopping between platforms of 1-3 spawns map-wide.
+     */
+    private static void assignStageOneClusters(AgentKpqSession session, Character leader, Point cloto) {
+        if (session.stageOneClustersAssigned()) return;
+        List<AgentKpqMemberState> companions = session.members().stream()
+                .filter(member -> member.memberType() == AgentKpqMemberState.MemberType.AGENT)
+                .filter(member -> member.characterId() != session.eventLeaderId())
+                .toList();
+        if (companions.stream().anyMatch(member -> !member.questionRequested() || member.couponTarget() <= 0)) return;
+        List<AgentKpqStageOneClusterPolicy.Collector> collectors = new ArrayList<>();
+        Map<Integer, String> names = new TreeMap<>();
+        for (AgentKpqMemberState member : companions) {
+            Character agent = memberCharacter(member.characterId(), leader);
+            AgentRuntimeEntry entry = entry(member.characterId());
+            double lineDamage = agent == null || entry == null ? 0.0
+                    : ACTIONS.expectedLineDamage(entry, agent, stage1GrindTargets(agent)).values().stream()
+                    .mapToDouble(Double::doubleValue).max().orElse(0.0);
+            collectors.add(new AgentKpqStageOneClusterPolicy.Collector(
+                    member.characterId(), member.couponTarget(), lineDamage));
+            names.put(member.characterId(), agent == null ? String.valueOf(member.characterId()) : agent.getName());
+        }
+        List<List<Point>> clusters = AgentKpqStageOneClusterPolicy.clusters(
+                ACTIONS.monsterSpawnPositions(leader, stage1GrindTargets(leader)),
+                STAGE1_CLUSTER_LINK_X_PX, STAGE1_CLUSTER_LINK_Y_PX, STAGE1_CLUSTER_MIN_SPAWNS);
+        Map<Integer, Integer> clusterOf = AgentKpqStageOneClusterPolicy.assign(clusters, collectors, cloto);
+        session.assignStageOneClusters(clusters, clusterOf);
+        Map<String, Integer> assigned = new TreeMap<>();
+        clusterOf.forEach((characterId, index) -> assigned.put(names.get(characterId), index));
+        log.info("KPQ Stage 1 clusters: session={} clusters={} assigned={}", session.sessionId(),
+                clusters.stream().map(cluster -> cluster.stream().map(spawn -> spawn.x + "," + spawn.y).toList())
+                        .toList(), assigned);
+    }
+
+    /** L6: whether a live Ligator stands on the platform (navigation region) this collector fights on. */
+    private static boolean platformBusy(AgentRuntimeEntry entry, Character collector, List<Point> liveLigators) {
+        Point position = collector.getPosition();
+        if (entry == null || position == null || liveLigators.isEmpty()) return false;
+        Set<Integer> standing = ACTIONS.groundRegionIds(entry, collector, List.of(position));
+        return !standing.isEmpty()
+                && !Collections.disjoint(standing, ACTIONS.groundRegionIds(entry, collector, liveLigators));
+    }
+
+    /**
+     * A human leader's stage-1 kills, as the coupons they drop: every Ligator drops one, owned by its killer. Counted
+     * once per coupon while it lies on the floor; a coupon he picks up before a tick sees it is missed.
+     */
+    private static void observeLeaderKills(AgentKpqSession session, Character leader, List<MapItem> floorCoupons) {
+        for (MapItem drop : floorCoupons) {
+            if (!drop.isPlayerDrop() && drop.getOwnerId() == leader.getId()) {
+                session.observeStageOneLeaderKill(drop.getObjectId());
+            }
+        }
+    }
+
+    /**
+     * L2: Cloto gives a human leader no coupon question, so every coupon he picks up counts for nobody. While he holds
+     * some and a collector is still short, the neediest collector asks him to drop them by it, once and at most once
+     * more STAGE1_LEADER_COUPON_REPEAT_MS later; its next sweep takes coupons lying that close even mid-fight. He is
+     * never asked to stop fighting.
+     */
+    private static void askLeaderForCoupons(AgentKpqSession session, Character leader, long nowMs) {
+        if (leader.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false) <= 0) return;
+        Character neediest = neediestStageOneCollector(session, leader);
+        if (neediest == null) return;
+        int asks = session.stageOneLeaderCouponAsks();
+        if (asks == 0) {
+            if (narrate(session, neediest, "stage1-leader-coupons", stageOneLeaderCouponAsk(leader.getName()))) {
+                session.markStageOneLeaderCouponAsk(nowMs);
+            }
+        } else if (asks == 1 && nowMs - session.stageOneLeaderCouponAskAtMs() >= STAGE1_LEADER_COUPON_REPEAT_MS) {
+            if (narrate(session, neediest, "stage1-leader-coupons-again",
+                    stageOneLeaderCouponAskAgain(leader.getName()))) {
+                session.markStageOneLeaderCouponAsk(nowMs);
+            }
+        }
+    }
+
+    static String stageOneLeaderCouponAsk(String leaderName) {
+        return leaderName + ", if you're picking up coupons, drop them by me, i still need a bunch.";
+    }
+
+    static String stageOneLeaderCouponAskAgain(String leaderName) {
+        return leaderName + ", still short on coupons over here, toss yours by me when you get a sec.";
+    }
+
+    /** The human leader's stage 1, beside the companions' summaries: his kills, the coupons he kept, the asks. */
+    private static void reportStageOneLeader(AgentKpqSession session, Character leader) {
+        log.info("KPQ Stage 1 leader: session={} leader={} kills={} coupons={} asked={}", session.sessionId(),
+                leader.getName(), session.stageOneLeaderKills(),
+                leader.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false), session.stageOneLeaderCouponAsks());
     }
 
     private static void cancelStageOneLandingSafety(
@@ -3312,13 +3540,18 @@ final class AgentKpqCoordinator {
      * and the human's coupons on the floor until they expired. The closest collector and coupon pairs are matched
      * first, so with fewer coupons than collectors the one standing by a coupon gets it rather than the earlier party
      * member across the map. A collector keeps its coupon until it is picked up, or until {@code repick} matches the
-     * pairs again.
+     * pairs again. With {@code fightFirst} (L6) a collector with a Ligator alive on its platform finishes the fight
+     * first: it is given only a coupon lying close by or getting old, unless the floor's coupons would finish its
+     * count.
      */
     private static void syncCouponLootObjectives(
             AgentKpqSession session,
             Character eventAnchor,
             List<MapItem> floorCoupons,
-            boolean repick) {
+            boolean repick,
+            boolean fightFirst,
+            List<Point> liveLigators,
+            long nowMs) {
         Set<Integer> claimedDropIds = new LinkedHashSet<>();
         List<AgentKpqMemberState> unassigned = new ArrayList<>();
         for (AgentKpqMemberState member : session.members()) {
@@ -3340,11 +3573,20 @@ final class AgentKpqCoordinator {
         }
         record Pair(AgentKpqMemberState member, MapItem drop, double distanceSq) { }
         List<Pair> pairs = new ArrayList<>();
+        int floorQuantity = fightFirst ? couponQuantityOnGround(floorCoupons) : 0;
         for (AgentKpqMemberState member : unassigned) {
             Character collector = memberCharacter(member.characterId(), eventAnchor);
             if (collector == null) continue;
+            boolean busy = fightFirst && platformBusy(entry(member.characterId()), collector, liveLigators);
+            boolean completesNeed = busy && collector.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false)
+                    + floorQuantity >= member.couponTarget();
             for (MapItem drop : floorCoupons) {
                 if (claimedDropIds.contains(drop.getObjectId())) continue;
+                if (busy && !AgentKpqStageOneClusterPolicy.lootNow(true,
+                        drop.getPosition().distance(collector.getPosition()), nowMs - drop.getDropTime(),
+                        completesNeed, STAGE1_LOOT_NEAR_PX, STAGE1_LOOT_MAX_AGE_MS)) {
+                    continue;
+                }
                 pairs.add(new Pair(member, drop, drop.getPosition().distanceSq(collector.getPosition())));
             }
         }
@@ -3395,14 +3637,21 @@ final class AgentKpqCoordinator {
      * the territory runs out.
      */
     private static AgentKpqSession.HelperTerritory stageOneHelperTerritory(
-            AgentKpqSession session, Character eventAnchor, long nowMs) {
+            AgentKpqSession session, Character eventAnchor, boolean clusters, long nowMs) {
         Character followed = followedStageOneCollector(session, eventAnchor);
         if (followed == null) {
             session.setStageOneHelperTerritory(0, null);
             return null;
         }
+        // With the cluster lever they camp that collector's cluster instead, wherever it walks for its coupons.
+        AgentKpqSession.HelperTerritory cluster =
+                clusters ? clusterTerritory(session, session.member(followed.getId()), nowMs) : null;
+        if (cluster != null) {
+            session.setStageOneHelperTerritory(followed.getId(), cluster);
+            return cluster;
+        }
         AgentKpqSession.HelperTerritory territory = session.stageOneHelperTerritory();
-        if (territory == null || nowMs >= territory.expiresAtMs()
+        if (territory == null || territory.cluster() || nowMs >= territory.expiresAtMs()
                 || ACTIONS.grounded(followed) && !territory.covers(followed.getPosition().x)) {
             territory = towerTerritory(session, followed, nowMs);
         }
@@ -3413,7 +3662,12 @@ final class AgentKpqCoordinator {
     /** The collector the helpers follow: the one they follow already while it still collects, else the neediest. */
     private static Character followedStageOneCollector(AgentKpqSession session, Character eventAnchor) {
         Character followed = stageOneHelperCollector(session, eventAnchor, session.stageOneHelperCollectorId());
-        if (followed != null) return followed;
+        return followed != null ? followed : neediestStageOneCollector(session, eventAnchor);
+    }
+
+    /** The companion collector still short the most coupons, the earlier member on a tie. */
+    private static Character neediestStageOneCollector(AgentKpqSession session, Character eventAnchor) {
+        Character neediest = null;
         int mostNeeded = 0;
         for (AgentKpqMemberState member : session.members()) {
             Character collector = stageOneHelperCollector(session, eventAnchor, member.characterId());
@@ -3422,10 +3676,10 @@ final class AgentKpqCoordinator {
                     - collector.getItemQuantity(AgentKpqDefinition.COUPON_ITEM, false);
             if (needed > mostNeeded) {
                 mostNeeded = needed;
-                followed = collector;
+                neediest = collector;
             }
         }
-        return followed;
+        return neediest;
     }
 
     /**
