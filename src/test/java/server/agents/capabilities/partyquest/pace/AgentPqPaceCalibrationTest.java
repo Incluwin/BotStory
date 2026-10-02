@@ -204,6 +204,23 @@ class AgentPqPaceCalibrationTest {
     }
 
     @Test
+    void aFitReadsOnlyTheNewestMaxRowsRuns() {
+        int maxRows = AgentPqPaceCalibration.maxRows();
+        long normalsMs = Math.round(NORMALS_THEORY_S / 0.4d * 1000.0d);
+        List<AgentPqPaceObservation> newest = new ArrayList<>();
+        for (int rank = 0; rank < maxRows; rank++) {
+            newest.add(observation(rank, 1, pace(1, span("normals", 0L, normalsMs, true))));
+        }
+        List<AgentPqPaceObservation> oneMore = new ArrayList<>(newest);
+        oneMore.addFirst(observation(maxRows, 1, pace(1, span("normals", 0L, normalsMs * 50L, true),
+                span("handin", 0L, 600_000L, true))));
+
+        assertEquals(AgentPqPaceCalibration.fit(PROFILE, newest, 1, Set.of()),
+                AgentPqPaceCalibration.fit(PROFILE, oneMore, 1, Set.of()), "the oldest beyond the newest "
+                        + maxRows + " is never read");
+    }
+
+    @Test
     void puzzleChecksTeachThePerCheckTimeAfterTheFirstCheck() {
         AgentPqPaceCalibration fit = AgentPqPaceCalibration.fit(PROFILE, List.of(observation(0, 1, pace(1,
                 span("checks", 0L, 30_000L, true, 4.0d), span("entry", 0L, 20_000L, true)))), 1, Set.of());
