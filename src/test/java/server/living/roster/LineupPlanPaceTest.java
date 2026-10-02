@@ -264,6 +264,35 @@ class LineupPlanPaceTest {
         }
     }
 
+    @Test
+    void insideTheTieWindowAndAtEqualFitAUsualCompanionGoesIn() {
+        // Rook and Sol are both Lv25 fighters; only Sol has a place in Ann's usual lineup
+        List<LineupPlan.Candidate> party = List.of(human(ANN, "Ann", Job.CLERIC),
+                ready(seat(901, "Mira", 25, Job.HUNTER, ANN)), ready(seat(902, "Tobi", 25, Job.BANDIT, ANN)),
+                ready(seat(903, "Rook", 25, Job.FIGHTER, ANN)),
+                new LineupPlan.Candidate(seat(904, "Sol", 25, Job.FIGHTER, ANN), LineupPlan.Fit.READY, null, true,
+                        0.0d, power(904, false)));
+
+        LineupPlan plan = LineupPlan.build("kpq", ANN, 25, party, null,
+                pace(members -> members.contains(903) ? 1000.0d : 1030.0d));
+
+        assertEquals(Set.of(ANN, 901, 902, 904), plan.memberIds(), "30 s is inside the minute: the usual one goes");
+        assertEquals(1030.0d, plan.clearTime().objectiveS(), 1e-9);
+    }
+
+    @Test
+    void insideTheTieWindowAtEqualFitAndUsualPlacesThePersonasDecide() {
+        // Zed comes first in the party, Abe's persona sorts first: Abe goes in
+        List<LineupPlan.Candidate> party = List.of(human(ANN, "Ann", Job.CLERIC),
+                ready(seat(901, "Mira", 25, Job.HUNTER, ANN)), ready(seat(902, "Tobi", 25, Job.BANDIT, ANN)),
+                ready(seat(903, "Zed", 25, Job.FIGHTER, ANN)), ready(seat(904, "Abe", 25, Job.FIGHTER, ANN)));
+
+        LineupPlan plan = LineupPlan.build("kpq", ANN, 25, party, null,
+                pace(members -> members.contains(903) ? 1000.0d : 1030.0d));
+
+        assertEquals(Set.of(ANN, 901, 902, 904), plan.memberIds());
+    }
+
     // ---- helpers ---------------------------------------------------------------------------
 
     /** The estimate of a member set: a 2 min range around {@code p50S(ids)}, never over the timer. */
