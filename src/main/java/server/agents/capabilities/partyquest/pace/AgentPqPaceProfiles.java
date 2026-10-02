@@ -3,24 +3,21 @@ package server.agents.capabilities.partyquest.pace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.partyquest.AgentPartyQuestDefinition;
-import server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
- * The party quests' pace profiles. {@link #warm} builds one from game data on the calling thread, which must be a
- * background executor (the living world's companion-ops); {@link #cached} only reads what a warm-up built and returns
- * null while the profile is cold, so an NPC's lineup on a leader's I/O thread never parses WZ data.
+ * The party quests' pace profiles. A quest's loader is registered by whoever warms it (KPQ's by the living world's
+ * warm-up), so this quest-neutral package names no quest. {@link #warm} builds one from game data on the calling
+ * thread, which must be a background executor (the living world's companion-ops); {@link #cached} only reads what a
+ * warm-up built and returns null while the profile is cold, so an NPC's lineup on a leader's I/O thread never parses WZ
+ * data.
  */
 public final class AgentPqPaceProfiles {
     private static final Logger log = LoggerFactory.getLogger(AgentPqPaceProfiles.class);
     private static final Registry REGISTRY = new Registry();
-
-    static {
-        REGISTRY.register(AgentKpqPaceProfile.QUEST_KEY, AgentKpqPaceProfile::load);
-    }
 
     private AgentPqPaceProfiles() {
     }
@@ -37,6 +34,11 @@ public final class AgentPqPaceProfiles {
     /** The warmed profile, or null while cold. Never loads anything. */
     public static AgentPqPaceProfile cached(String questKey) {
         return REGISTRY.cached(questKey);
+    }
+
+    /** Tests only: every profile cold again (the loaders stay), so no test leaves the shared registry warm. */
+    static void resetForTest() {
+        REGISTRY.forgetWarmed();
     }
 
     /** One set of loaders and warmed profiles (the static one above; tests build their own). */
@@ -66,10 +68,15 @@ public final class AgentPqPaceProfiles {
                 }
                 AgentPqPaceProfile raced = warmed.putIfAbsent(key, profile);
                 return raced != null ? raced : profile;
-            } catch (RuntimeException failure) {
+            } catch (RuntimeException | LinkageError failure) {
+                // LinkageError: game data whose class cannot initialise (LifeFactory without its database, say)
                 log.warn("PQ pace profile {} could not be built; its clear time stays unestimated", key, failure);
                 return null;
             }
+        }
+
+        void forgetWarmed() {
+            warmed.clear();
         }
 
         AgentPqPaceProfile cached(String questKey) {

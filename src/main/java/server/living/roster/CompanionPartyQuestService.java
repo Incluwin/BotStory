@@ -619,21 +619,35 @@ public final class CompanionPartyQuestService {
     }
 
     /**
-     * At boot, on companion-ops: KPQ's pace profile is built from the game data (AgentPqPaceProfiles.warm: Map.wz's
-     * monster census, and its monsters into LifeFactory), KPQ's monsters are read for the lineup without a clear time
-     * (LifeFactory keeps them, so a profile that could not be built leaves them warm all the same), and the body
-     * timings every attack's cooldown is read from are loaded: a lineup at Lakelis never parses Mob.wz or Character.wz
-     * on a leader's I/O thread.
+     * At boot, on companion-ops: KPQ's pace profile is registered and built from the game data
+     * (AgentPqPaceProfiles.warm: Map.wz's monster census, and its monsters into LifeFactory), KPQ's monsters are read
+     * for the lineup without a clear time (LifeFactory keeps them, so a profile that could not be built leaves them warm
+     * all the same), and the body timings every attack's cooldown is read from are loaded: a lineup at Lakelis never
+     * parses Mob.wz or Character.wz on a leader's I/O thread. Each step is on its own: one that fails, even with a class
+     * that cannot initialise, is logged and the others still run.
      */
     public void warmPace() {
-        AgentPqPaceProfiles.warm(AgentKpqPaceProfile.QUEST_KEY);
-        for (int mobId : KPQ_MOBS) {
-            LifeFactory.getMonster(mobId);
+        try {
+            AgentPqPaceProfiles.register(AgentKpqPaceProfile.QUEST_KEY, AgentKpqPaceProfile::load);
+            AgentPqPaceProfiles.warm(AgentKpqPaceProfile.QUEST_KEY);
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("KPQ's pace profile could not be warmed; its lineups show no clear time", failure);
         }
-        AgentAttackDataProvider timings = AgentAttackDataProvider.getInstance();
-        timings.getBodyActionId(WARM_ACTION);
-        timings.getBodyActionDurationMs(WARM_ACTION);
-        timings.getBodyStanceDurationMs(WARM_ACTION);
+        try {
+            for (int mobId : KPQ_MOBS) {
+                LifeFactory.getMonster(mobId);
+            }
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("KPQ's monsters could not be warmed for the lineup", failure);
+        }
+        try {
+            AgentAttackDataProvider timings = AgentAttackDataProvider.getInstance();
+            timings.getBodyActionId(WARM_ACTION);
+            timings.getBodyActionDurationMs(WARM_ACTION);
+            timings.getBodyStanceDurationMs(WARM_ACTION);
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("attack timings could not be warmed; the first lineup at Lakelis reads them", failure);
+        }
     }
 
     private static int potions(Character bot, boolean hp) {

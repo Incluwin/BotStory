@@ -25,7 +25,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -168,6 +170,7 @@ class CompanionPartyQuestServicePaceTest {
 
             fx.ready().warmPace();
 
+            profiles.verify(() -> AgentPqPaceProfiles.register(eq("kpq"), any()));
             profiles.verify(() -> AgentPqPaceProfiles.warm("kpq"));
             for (int mobId : List.of(9_300_001, 9_300_000, 9_300_003)) {
                 mobs.verify(() -> LifeFactory.getMonster(mobId));
@@ -179,6 +182,26 @@ class CompanionPartyQuestServicePaceTest {
         String world = Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"));
         assertTrue(world.contains("world.executor.submit(\"pq.pace\", world.partyQuests::warmPace);"));
         assertFalse(world.contains("warmKpqMobs"));
+    }
+
+    @Test
+    void aPaceProfileThatCannotInitialiseStillLeavesTheMonstersAndTimingsWarm() {
+        AgentAttackDataProvider timings = mock(AgentAttackDataProvider.class);
+        try (MockedStatic<AgentPqPaceProfiles> profiles = mockStatic(AgentPqPaceProfiles.class);
+             MockedStatic<LifeFactory> mobs = mockStatic(LifeFactory.class);
+             MockedStatic<AgentAttackDataProvider> provider = mockStatic(AgentAttackDataProvider.class)) {
+            profiles.when(() -> AgentPqPaceProfiles.warm("kpq"))
+                    .thenThrow(new ExceptionInInitializerError("game data without its database"));
+            provider.when(AgentAttackDataProvider::getInstance).thenReturn(timings);
+
+            fx.ready().warmPace();
+
+            for (int mobId : List.of(9_300_001, 9_300_000, 9_300_003)) {
+                mobs.verify(() -> LifeFactory.getMonster(mobId));
+            }
+            verify(timings).getBodyActionId(anyString());
+            verify(timings).getBodyStanceDurationMs(anyString());
+        }
     }
 
     /**

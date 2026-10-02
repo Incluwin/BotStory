@@ -1,5 +1,6 @@
 package server.agents.capabilities.partyquest.pace;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.combat.data.AgentAttackDataProvider;
@@ -7,8 +8,13 @@ import server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile;
 import server.life.LifeFactory;
 import server.life.Monster;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +34,12 @@ import static org.mockito.Mockito.mockStatic;
  * on a leader's I/O thread asks {@code cached}, which is null while cold and never touches game data.
  */
 class AgentPqPaceProfilesWarmTest {
+    /** The shared registry is cold again after each test, so no later test depends on this one having run. */
+    @AfterEach
+    void coldAgain() {
+        AgentPqPaceProfiles.resetForTest();
+    }
+
     @Test
     void cachedIsNullBeforeWarmAndWarmBuildsOnceOnTheWarmingThread() throws Exception {
         AgentPqPaceProfiles.Registry registry = new AgentPqPaceProfiles.Registry();
@@ -64,12 +76,29 @@ class AgentPqPaceProfilesWarmTest {
             throw new IllegalStateException("Map.wz has no life");
         });
         registry.register("cold", () -> PaceStubProfile.standard().cold());
+        registry.register("linkage", () -> {
+            throw new ExceptionInInitializerError("LifeFactory cannot initialise without its database");
+        });
 
         assertNull(registry.warm("broken"));
         assertNull(registry.warm("cold"));
         assertNull(registry.warm("unknown"));
+        assertNull(registry.warm("linkage"));
         assertNull(registry.cached("broken"));
         assertNull(registry.cached("cold"));
+        assertNull(registry.cached("linkage"));
+    }
+
+    @Test
+    void theQuestNeutralPackageNamesNoQuest() throws IOException {
+        Pattern questPackage = Pattern.compile("server\\.agents\\.capabilities\\.partyquest\\.(?!pace\\.)[a-z]+\\.");
+        List<String> naming = new ArrayList<>();
+        try (Stream<Path> sources = Files.list(Path.of("src/main/java/server/agents/capabilities/partyquest/pace"))) {
+            for (Path source : sources.toList()) {
+                if (questPackage.matcher(Files.readString(source)).find()) naming.add(source.getFileName().toString());
+            }
+        }
+        assertEquals(List.of(), naming, "a quest registers its own profile loader");
     }
 
     @Test
@@ -113,7 +142,9 @@ class AgentPqPaceProfilesWarmTest {
     }
 
     @Test
-    void theSharedRegistryWarmsKpqFromTheGameData() {
+    void theSharedRegistryWarmsKpqFromTheGameDataOnceItsLoaderIsRegistered() {
+        assertNull(AgentPqPaceProfiles.cached("kpq"));
+        AgentPqPaceProfiles.register(AgentKpqPaceProfile.QUEST_KEY, AgentKpqPaceProfile::load);
         AgentPqPaceProfile kpq;
         try (MockedStatic<LifeFactory> ignored = countingLifeFactory()) {
             kpq = AgentPqPaceProfiles.warm("kpq");
@@ -123,6 +154,9 @@ class AgentPqPaceProfilesWarmTest {
         assertSame(kpq, AgentPqPaceProfiles.cached("KPQ"));
         assertSame(kpq, AgentPqPaceProfiles.warm("kpq"));
         assertNull(AgentPqPaceProfiles.cached("no-such-pq"));
+
+        AgentPqPaceProfiles.resetForTest();
+        assertNull(AgentPqPaceProfiles.cached("kpq"), "reset: cold again");
     }
 
     /** LifeFactory stubbed on this thread (its real loader reads drop data from the database, which tests lack). */
