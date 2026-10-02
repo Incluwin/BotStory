@@ -2535,6 +2535,10 @@ tuning:
     # Purpose: Marks which recorded KPQ runs the clear-time calibration may learn from, so runs from before a pace change do not drag the new estimate.
     # Technical: AgentPqPaceCalibration.fit ignores observations whose epoch differs from this; recorded runs store the epoch they were recorded under.
     server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.PACE_EPOCH: '1'
+    # Values: 0.0-1.0 (a share of the Agents' time). Recommended: 0.10. Lower values drop more kill spans from the calibration; 1.0 keeps every one.
+    # Purpose: How much of a kill segment the companions may spend simulated below the presentation rate before its pace span stops counting, so throttled fights never set the clear-time priors.
+    # Technical: AgentKpqPaceReport marks the s1.grind, s5.normals and s5.boss spans incomplete when the member-milliseconds of the Agents standing in the run outside AgentSimulationMode.PRESENTATION, sampled each coordinator tick, are over this share of all of theirs; the KPQ pace span line prints the share as throttled=.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceReport.THROTTLED_SHARE_MAX: '0.10'
     # Values: 0.5-20 pseudo-runs. Recommended: 3.0. Higher values trust the priors longer; lower values follow the first recorded runs closely.
     # Purpose: How many recorded runs' worth of weight the prior of each companion pace term carries when the calibration learns from recorded runs.
     # Technical: AgentPqPaceCalibration.fit shrinks every companion term toward its prior with this many pseudo-runs (in log space for times and efficiencies, linearly for seek) and uses it for the spread too.

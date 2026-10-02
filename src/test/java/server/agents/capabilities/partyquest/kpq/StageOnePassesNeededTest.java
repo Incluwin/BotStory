@@ -6,6 +6,7 @@ import org.mockito.MockedStatic;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mockStatic;
@@ -58,6 +59,8 @@ class StageOnePassesNeededTest {
             verify(run.event).setProperty("1stageclear", "true");
             run.dialogue.verify(() -> AgentKpqDialogue.sayMapNow(
                     mira, "Ben, you've got all the passes, go talk to cloto."), never());
+            // Cleared on the grace, not on his own hand-in: the hand-in's pace span is kept out of the calibration.
+            assertTrue(session.pace().snapshot().stageOnePassesRestored());
         }
     }
 }

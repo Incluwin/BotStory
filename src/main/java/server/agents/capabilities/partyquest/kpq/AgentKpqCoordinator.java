@@ -19,6 +19,9 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.capabilities.combat.AgentCombatSkillUsageStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
@@ -31,6 +34,8 @@ import server.agents.field.AgentFieldObservationState;
 import server.agents.operations.events.AgentOperationalEventProjectionState;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.simulation.AgentSimulationMode;
+import server.agents.runtime.simulation.AgentSimulationState;
 import scripting.event.EventInstanceManager;
 import server.maps.MapItem;
 import server.maps.MapleMap;
@@ -172,6 +177,7 @@ final class AgentKpqCoordinator {
     static void tick(AgentKpqSession session, long nowMs) {
         synchronized (session) {
             tickSession(session, nowMs);
+            AgentKpqPaceReport.logClosedSpans(session, nowMs);
         }
     }
 
@@ -205,6 +211,7 @@ final class AgentKpqCoordinator {
         }
         bindKnownEvent(session, leader);
         holdFullRateSimulation(session);
+        observePaceSimulation(session, nowMs);
         if (!reconcileLiveParty(session, leader, nowMs)) return;
         if (!membersAlive(session, leader, nowMs)) return;
         if (insideEventPhase(session.phase()) && session.eventInstance() != null
@@ -240,6 +247,79 @@ final class AgentKpqCoordinator {
                     && (insideEventPhase(phase)
                     || phase == AgentKpqSession.Phase.CLAIMING_REWARDS && !member.rewardResolved());
             AgentKpqFullRateSimulation.apply(member, entry(member.characterId()), wanted);
+        }
+    }
+
+    /**
+     * How the Agents standing in the run are simulated while a kill segment runs, for its pace span: one measured
+     * below the presentation rate (no player on the map) is not one the clear-time calibration may learn from.
+     */
+    private static void observePaceSimulation(AgentKpqSession session, long nowMs) {
+        AgentKpqPaceMarks pace = session.pace();
+        String killSegment = pace.openKillSegment(session.phase());
+        int agents = 0;
+        int throttled = 0;
+        if (killSegment != null) {
+            for (AgentKpqMemberState member : session.members()) {
+                if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) continue;
+                AgentRuntimeEntry entry = entry(member.characterId());
+                Character agent = character(member.characterId());
+                if (entry == null || agent == null || !standsInEvent(session, agent)) continue;
+                agents++;
+                AgentSimulationState simulation = entry.simulationState();
+                if (simulation != null && simulation.mode() != AgentSimulationMode.PRESENTATION) throttled++;
+            }
+        }
+        pace.sampleSimulation(killSegment, agents, throttled, nowMs);
+    }
+
+    /**
+     * Stage 1 starts the run's pace record: each member's power against KPQ's mobs, read on this tick from the warmed
+     * pace profile (none while it is cold, or when any member cannot be read), and the members Cloto gives a coupon
+     * question, every one but the leader.
+     */
+    private static void beginPace(AgentKpqSession session, Character leader) {
+        List<Integer> collectors = new ArrayList<>();
+        List<AgentPqMemberPower> power = new ArrayList<>();
+        AgentPqPaceProfile profile = AgentPqPaceProfiles.cached(AgentKpqPaceProfile.QUEST_KEY);
+        boolean readable = profile != null;
+        for (AgentKpqMemberState member : session.members()) {
+            boolean leads = member.characterId() == session.eventLeaderId();
+            if (!leads) collectors.add(member.characterId());
+            if (!readable) continue;
+            Character character = memberCharacter(member.characterId(), leader);
+            if (character == null) {
+                readable = false;
+                continue;
+            }
+            try {
+                power.add(AgentPqMemberPower.of(character, profile,
+                        member.memberType() == AgentKpqMemberState.MemberType.HUMAN, leads));
+            } catch (RuntimeException | LinkageError failure) {
+                readable = false;
+                log.debug("KPQ pace power unreadable: session={} member={}", session.sessionId(),
+                        member.characterId(), failure);
+            }
+        }
+        session.pace().beginStageOne(readable ? power : List.of(), collectors);
+    }
+
+    /** The stage-5 race's own starts: the first companion on stage 5, and the leader. */
+    private static void observeStageFiveArrivals(AgentKpqSession session, Character anchor, long nowMs) {
+        AgentKpqPaceMarks pace = session.pace();
+        if (!pace.companionsOnStageFive()) {
+            for (AgentKpqMemberState member : session.members()) {
+                if (member.memberType() != AgentKpqMemberState.MemberType.AGENT) continue;
+                Character agent = memberCharacter(member.characterId(), anchor);
+                if (agent != null && agent.getMapId() == AgentKpqDefinition.STAGE_5_MAP) {
+                    pace.markCompanionsOnStageFive(nowMs);
+                    break;
+                }
+            }
+        }
+        Character leader = eventLeader(session);
+        if (!pace.leaderOnStageFive() && leader != null && leader.getMapId() == AgentKpqDefinition.STAGE_5_MAP) {
+            pace.markLeaderOnStageFive(nowMs);
         }
     }
 
@@ -379,6 +459,7 @@ final class AgentKpqCoordinator {
                                 AgentCombatSkillUsageStateRuntime.degenerateAttacks(entry));
                     }
                 }
+                beginPace(session, leader);
                 transition(session, AgentKpqSession.Phase.STAGE_1, nowMs);
             } else if (blockedTooLong(session, "enter-partial-party", nowMs)) {
                 fail(session, "Only part of the party entered the KPQ instance", nowMs);
@@ -498,7 +579,7 @@ final class AgentKpqCoordinator {
             }
             if (member.memberType() == AgentKpqMemberState.MemberType.HUMAN) {
                 if (member.characterId() != session.eventLeaderId()) {
-                    if (KPQ.playerGrid(agent) == 0) member.markPassCreated(nowMs);
+                    if (KPQ.playerGrid(agent) == 0) session.markPassCreated(member, nowMs);
                     if (member.passCreated()
                             && agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false) == 0) {
                         member.markPassDelivered();
@@ -556,8 +637,7 @@ final class AgentKpqCoordinator {
                 int target = AgentKpqDefinition.couponTarget(KPQ.playerGrid(agent));
                 if (target > 0) {
                     member.clearBlocker();
-                    member.markQuestionRequested();
-                    member.setCouponTarget(target);
+                    session.assignCouponTarget(member, target, nowMs);
                     member.setActionNotBeforeMs(0L);
                     member.setRole(AgentKpqMemberState.Role.COUPON_COLLECTOR);
                     narrate(session, agent, "coupon-target-" + agent.getId(), voice(session,
@@ -598,7 +678,7 @@ final class AgentKpqCoordinator {
                     KPQ.runNpc(agent, AgentKpqDefinition.CLOTO_NPC);
                     if (agent.getItemQuantity(AgentKpqDefinition.PASS_ITEM, false) > 0) {
                         member.clearBlocker();
-                        member.markPassCreated(nowMs);
+                        session.markPassCreated(member, nowMs);
                         member.setActionNotBeforeMs(0L);
                         member.setRole(AgentKpqMemberState.Role.PASS_DELIVERER);
                         session.markProgress(nowMs);
@@ -750,6 +830,7 @@ final class AgentKpqCoordinator {
                                          long nowMs) {
         AgentKpqDefinition.CombinationStage definition = AgentKpqDefinition.combinationStage(stage);
         if ("true".equals(KPQ.property(leader, definition.clearProperty()))) {
+            session.pace().markAccepted(stage, session.attemptIndex() + 1, nowMs);
             enterNextPortal(session, stage + 1, nowMs);
             return;
         }
@@ -933,7 +1014,10 @@ final class AgentKpqCoordinator {
                 return;
             }
             session.markPuzzleVerdict(nowMs);
-            if (validation.accepted()) return;
+            if (validation.accepted()) {
+                session.pace().markAccepted(stage, attempt + 1, nowMs);
+                return;
+            }
             advancePuzzleAttempt(session, leader, definition, order.size(), attempt, nowMs);
             return;
         }
@@ -950,6 +1034,8 @@ final class AgentKpqCoordinator {
         session.markPuzzleVerdict(nowMs);
         if (!"true".equals(KPQ.property(leader, definition.clearProperty()))) {
             advancePuzzleAttempt(session, leader, definition, order.size(), attempt, nowMs);
+        } else {
+            session.pace().markAccepted(stage, attempt + 1, nowMs);
         }
     }
 
@@ -988,6 +1074,7 @@ final class AgentKpqCoordinator {
         boolean carriers = stageFivePassCarriers(session);
         int normalAlive = ACTIONS.liveMonsterCount(leader, STAGE_5_NORMAL_MOBS);
         int bossAlive = ACTIONS.liveMonsterCount(leader, STAGE_5_BOSS_MOBS);
+        observeStageFiveArrivals(session, leader, nowMs);
         observeStageFiveBossCombat(session, normalAlive, bossAlive, nowMs);
         session.beginStage5LootDelayIfBossDefeated(bossAlive, nowMs, KING_SLIME_LOOT_DELAY_MS);
         boolean lootDelayActive = session.stage5LootDelayActive(nowMs);
@@ -1023,6 +1110,7 @@ final class AgentKpqCoordinator {
         if (session.observeStage5Progress(stage5MobCount, leaderPasses)) session.markProgress(nowMs);
         boolean returningToCloto = stageFiveReadyToReturn(
                 leaderPasses, normalAlive, bossAlive, reviveGraceActive);
+        if (returningToCloto) session.pace().markPassesAtLeader(nowMs);
         boolean mobsDown = stage5MobCount == 0 && !reviveGraceActive;
         long mobsDownMs = session.observeStage5MobsDown(mobsDown, nowMs);
         if (returningToCloto && !agentLeader) {
@@ -1560,6 +1648,7 @@ final class AgentKpqCoordinator {
      */
     private static void observeStageFiveBossCombat(
             AgentKpqSession session, int normalAlive, int bossAlive, long nowMs) {
+        session.pace().observeStageFiveMobs(normalAlive, bossAlive, nowMs);
         boolean firstSighting = session.stage5ReachedAtMs() == 0L;
         int died = session.observeStage5Mobs(normalAlive + bossAlive, nowMs);
         if (firstSighting) {
@@ -1805,6 +1894,7 @@ final class AgentKpqCoordinator {
     private static void enterNextPortal(AgentKpqSession session, int nextStage, long nowMs) {
         int expectedMap = AgentKpqDefinition.STAGE_1_MAP + nextStage - 1;
         if (nextStage == 5) {
+            observeStageFiveArrivals(session, leader(session), nowMs);
             session.members().stream()
                     .map(member -> memberCharacter(member.characterId(), leader(session)))
                     .filter(character -> character != null && character.getMapId() == expectedMap)
@@ -2520,6 +2610,7 @@ final class AgentKpqCoordinator {
         if (character != null && KPQ.event(character) == event) event.exitPlayer(character);
         AgentKpqFullRateSimulation.apply(member, entry(member.characterId()), false);
         session.removeMember(member.characterId());
+        session.pace().markDeparture(nowMs);
         AgentKpqSessionRegistry.unindexMember(session, member.characterId());
         if (engagement != null && session.companionAdopted()) {
             // Still listed, a tapped-out companion unloaded later (its owner logged out) answered TownLife at the
@@ -2580,7 +2671,10 @@ final class AgentKpqCoordinator {
                     return false;
                 }
                 case DOWN_WAIT -> {
-                    if (!member.down()) down++;
+                    if (!member.down()) {
+                        down++;
+                        session.pace().markDown(member.characterId(), nowMs);
+                    }
                     member.markDown(nowMs);
                     waiting = true;
                 }
@@ -2590,6 +2684,7 @@ final class AgentKpqCoordinator {
                     if (AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
                             "kpq", session.sessionId(), member.characterId(), character.getMapId(), nowMs))) {
                         member.markTapOutRequested();
+                        session.pace().markTappedOut(member.characterId());
                         waiting = true;
                     } else if (!"true".equals(KPQ.property(eventAnchor, "5stageclear"))) {
                         fail(session, character.getName() + " was defeated during KPQ",
@@ -3415,6 +3510,7 @@ final class AgentKpqCoordinator {
         clearCouponLootObjectives(session);
         session.setMissingPassSinceMs(0L);
         session.markProgress(nowMs);
+        session.pace().markStageOnePassesRestored();
         return true;
     }
 
@@ -3444,6 +3540,7 @@ final class AgentKpqCoordinator {
         event.gridClear();
         session.setMissingPassSinceMs(0L);
         session.markProgress(nowMs);
+        session.pace().markStageOnePassesRestored();
     }
 
     /**
@@ -3462,6 +3559,7 @@ final class AgentKpqCoordinator {
             fail(session, "Stage 5 passes disappeared and the leader has no ETC space for recovery", nowMs);
             return;
         }
+        session.pace().markStageFivePassesRestored();
         String cause = stalePasses > 0 ? "stale-floor-passes"
                 : session.stage5PassesLostWithMembers() > 0 ? "lost-with-member" : "passes-gone";
         log.warn("KPQ Stage 5 missing-pass recovery restored inventory only: session={} "
@@ -3977,6 +4075,7 @@ final class AgentKpqCoordinator {
             }
             AgentKpqMemberState.CombatCounts now = combatCounts(entry, nowMs);
             AgentKpqMemberState.CombatCounts combat = member.stage1Combat(now);
+            session.pace().recordStageOneCombat(member.characterId(), combat.attacks(), combat.kills());
             member.closeStage1RoleCombat(now);
             Map<AgentKpqMemberState.Role, Long> roleKills = new TreeMap<>();
             Map<AgentKpqMemberState.Role, Long> roleAttacks = new TreeMap<>();
@@ -4004,6 +4103,7 @@ final class AgentKpqCoordinator {
                     Math.max(0L, AgentCombatSkillUsageStateRuntime.degenerateAttacks(entry)
                             - member.stage1DegenerateBaseline()));
         }
+        session.pace().markStageOneCombatRecorded();
     }
 
     /**

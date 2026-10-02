@@ -568,6 +568,8 @@ class Stage5PassCarryTest {
 
         verify(inventoryGateway, times(1)).addItem(ben, AgentKpqDefinition.PASS_ITEM, (short) 10);
         assertEquals(1, said().stream().filter(RECOLLECT::equals).count(), said()::toString);
+        // Passes made up from nothing: the carry's pace span is kept out of the calibration.
+        assertTrue(session.pace().snapshot().stageFivePassesRestored());
     }
 
     @Test

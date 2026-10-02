@@ -108,6 +108,7 @@ public final class AgentKpqSession {
     private int formationReadyLoggedAttemptId = -1;
     private boolean stageOneSummarized;
     private boolean rewardEligibilityFrozen;
+    private final AgentKpqPaceMarks pace = new AgentKpqPaceMarks();
 
     public AgentKpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (requestedPartySize < 3 || requestedPartySize > 4) {
@@ -240,6 +241,7 @@ public final class AgentKpqSession {
     public synchronized void transition(Phase next, long nowMs) {
         phase = next;
         phaseEnteredAtMs = nowMs;
+        pace.markPhase(next, nowMs);
         lastProgressAtMs = nowMs;
         stageStep = 0;
         attemptIndex = 0;
@@ -403,6 +405,23 @@ public final class AgentKpqSession {
 
     synchronized void markPuzzleVerdict(long nowMs) {
         lastPuzzleVerdictAtMs = Math.max(1L, nowMs);
+        int stage = puzzleStage(phase);
+        if (stage > 0) pace.markJudged(stage, nowMs);
+    }
+
+    /** The puzzle stage a phase plays (2-4), or 0. */
+    static int puzzleStage(Phase phase) {
+        return switch (phase) {
+            case STAGE_2 -> 2;
+            case STAGE_3 -> 3;
+            case STAGE_4 -> 4;
+            default -> 0;
+        };
+    }
+
+    /** When each boundary of this run's pace was seen, for its pace report. */
+    AgentKpqPaceMarks pace() {
+        return pace;
     }
 
     synchronized void clearFormationReady() {
@@ -571,6 +590,7 @@ public final class AgentKpqSession {
             int bossCount, long nowMs, long delayMs) {
         if (bossCount == 0 && stage5BossCombatStartedAtMs > 0L && stage5LootNotBeforeMs == 0L) {
             stage5LootNotBeforeMs = nowMs + Math.max(0L, delayMs);
+            pace.markLootDelay(nowMs, stage5LootNotBeforeMs);
         }
     }
 
@@ -752,6 +772,19 @@ public final class AgentKpqSession {
 
     synchronized void markPassDrop(long nowMs) {
         lastPassDropAtMs = Math.max(1L, nowMs);
+    }
+
+    /** Cloto gave a collector its coupon number: its question is answered, and the first one starts the grind. */
+    synchronized void assignCouponTarget(AgentKpqMemberState member, int target, long nowMs) {
+        member.markQuestionRequested();
+        member.setCouponTarget(target);
+        pace.markCouponTarget(member.characterId(), target, nowMs);
+    }
+
+    /** A member's stage-1 pass exists: its stage-1 summary and the run's pace both note when it came. */
+    synchronized void markPassCreated(AgentKpqMemberState member, long nowMs) {
+        member.markPassCreated(nowMs);
+        pace.markPassCreated(member.characterId(), nowMs);
     }
 
     synchronized boolean claimStageOneSummary() {
