@@ -3,6 +3,8 @@
 -- model from them (AgentPqPaceCalibration.fit); the estimate itself is never learned from.
 -- est_p10_s/est_p50_s/est_p90_s and est_records: the entry NPC's estimate of the lineup at the Yes, in seconds, and the
 -- recorded runs behind it (NULL: none was made, the pace data was cold or living_world.COMPANION_PQ_CLEAR_TIME off).
+-- An estimate that the lineup could not clear keeps est_records and leaves the three quantiles NULL, so the coverage
+-- query below reads only timed estimates.
 -- actual_s: from the run's start (the Yes) to its clear, NULL unless it cleared. started_at_ms and cleared_at_ms are
 -- the run's own epoch milliseconds (cleared 0 unless it cleared), so spans read back exactly.
 -- spans: JSON [{key, fromMs, toMs, work, complete}], one per segment of the quest's pace profile. members: JSON

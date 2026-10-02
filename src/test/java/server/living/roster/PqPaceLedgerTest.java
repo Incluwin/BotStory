@@ -104,6 +104,20 @@ class PqPaceLedgerTest {
     }
 
     @Test
+    void anEstimateThatTheLineupCouldNotClearIsNoTimeButKeepsItsRecords() {
+        AgentPqPaceEstimate never = new AgentPqPaceEstimate(false, 3_600.0d, 3_600.0d, 3_600.0d, 3_600.0d, 1.0d,
+                Map.of(), Map.of(), List.of(), AgentPqPaceCalibration.Source.RECORDS, 4);
+        CompanionRun shownNever = run("kpq-n", ANN, List.of(900, 901), never);
+
+        record(shownNever, pace("kpq-n", ANN, List.of(900, 901), true), START);
+
+        assertEquals("kpq kpq-n leader 10 size 3 humans 1 epoch 1 cleared est -/-/- records 4 actual 226",
+                describe(store.paces.getFirst()));
+        assertEquals(1, lines.startingWith("PQ pace: session=kpq-n leader=10 size=3 epoch=1 shown=never (records) ")
+                .size());
+    }
+
+    @Test
     void theRowsJsonReadsBackAsTheRunItsSessionReported() {
         AgentPqPace reported = pace("kpq-a", ANN, List.of(900, 901, 902), true);
 

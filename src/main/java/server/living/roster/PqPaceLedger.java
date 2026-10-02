@@ -193,18 +193,21 @@ public final class PqPaceLedger {
 
     /**
      * The row of a run that ended: its outcome (cleared when the run or its pace saw the clear), the estimate it was
-     * shown at the Yes, its time from the start to the clear (null unless the pace saw the clear), and its pace.
+     * shown at the Yes (its quantiles null when none was made, and when it said the lineup could not clear: then only
+     * the records behind it are kept, so an unclearable estimate never counts as a time), its time from the start to
+     * the clear (null unless the pace saw the clear), and its pace.
      */
     static PqRunPaceRow row(CompanionRun run, AgentPqPace pace, int epoch, long nowMs) {
         AgentPqPaceEstimate estimate = run.estimateAtYes;
+        AgentPqPaceEstimate timed = estimate != null && estimate.clearable() ? estimate : null;
         Set<Integer> companions = run.ownerByCompanion.keySet();
         Integer actualS = pace.cleared()
                 ? (int) Math.round(Math.max(0L, pace.clearedAtMs() - pace.startedAtMs()) / 1000.0d) : null;
         return new PqRunPaceRow(0L, pace.questKey(), pace.sessionId().isEmpty() ? run.sessionId : pace.sessionId(),
                 pace.leaderId(), run.partySize, Math.max(0, run.memberIds.size() - companions.size()), epoch,
                 pace.cleared() || run.cleared ? "cleared" : "failed",
-                estimate == null ? null : seconds(estimate.p10S()), estimate == null ? null : seconds(estimate.p50S()),
-                estimate == null ? null : seconds(estimate.p90S()), estimate == null ? null : estimate.recordsUsed(),
+                timed == null ? null : seconds(timed.p10S()), timed == null ? null : seconds(timed.p50S()),
+                timed == null ? null : seconds(timed.p90S()), estimate == null ? null : estimate.recordsUsed(),
                 actualS, pace.startedAtMs(), pace.clearedAtMs(), PqPaceJson.spans(pace),
                 PqPaceJson.members(pace, run.memberIds, companions), PqPaceJson.drawn(pace), nowMs);
     }
