@@ -2487,10 +2487,10 @@ tuning:
     # Purpose: Prior time a human leader needs to collect the stage-1 passes, hand them to Cloto and step through the portal, learned per leader from his runs.
     # Technical: AgentKpqPaceProfile seeds the leader-side s1.handin term; recorded runs refit it per leader from the last pass existing to the STAGE_2 phase entry.
     server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_STAGE1_HANDIN_MS: '25000'
-    # Values: 0-600000 milliseconds. Recommended: 15000; assumed quick human, never measured (the scripted driver took 90-156 s).
-    # Purpose: Prior time from entering a KPQ puzzle stage to Cloto's first judged check, shared by stages 2, 3 and 4 and learned per leader.
-    # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.entry term used by s2.entry, s3.entry and s4.entry; the estimate adds (checks - 1) x per-check time after it, since the first judged check ends this span.
-    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_PUZZLE_ENTRY_MS: '15000'
+    # Values: 0-600000 milliseconds. Recommended: 24000; assumed quick human, never measured: 15000 to form up plus one HUMAN_PUZZLE_CHECK_MS (9000) for the first judged check, which this span includes (the scripted driver took 90-156 s).
+    # Purpose: Prior time from entering a KPQ puzzle stage to Cloto's first judged check, that check included, shared by stages 2, 3 and 4 and learned per leader.
+    # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.entry term used by s2.entry, s3.entry and s4.entry; the estimate adds (checks - 1) x per-check time after it, since the first judged check ends this span, so a quick human's stage is 15000 + checks x HUMAN_PUZZLE_CHECK_MS as the clear-time model has it.
+    server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.HUMAN_PUZZLE_ENTRY_MS: '24000'
     # Values: 0-120000 milliseconds. Recommended: 9000; assumed quick human, never measured (the scripted driver checked every 19-20 s; companions re-form in 1.6-2.0 s plus 1-6 s of travel).
     # Purpose: Prior time between two of the leader's judged Cloto checks in a puzzle stage, which with Cloto's random answer sets most of stages 2-4.
     # Technical: AgentKpqPaceProfile seeds the leader-side puzzle.check term; recorded runs refit it per leader as (accept - first judged check) / (checks - 1), less the leader's move share of HUMAN_PUZZLE_MOVE_MS.

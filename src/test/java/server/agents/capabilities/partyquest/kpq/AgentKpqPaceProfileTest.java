@@ -1,7 +1,10 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceSegment;
 import server.agents.capabilities.partyquest.pace.Pmf;
 
@@ -66,6 +69,29 @@ class AgentKpqPaceProfileTest {
         AgentPqPaceSegment.Parallel race = (AgentPqPaceSegment.Parallel) segment(4, "s5.race");
         assertEquals(List.of(new AgentPqPaceSegment.Fixed("s5.climb", AgentPqPaceSegment.Side.LEADER)),
                 race.branches().get(1));
+    }
+
+    @Test
+    void aQuickHumansPuzzleStageIsFifteenSecondsToFormUpPlusNineAJudgedCheck() {
+        // The entry span ends at the first judged check, so its prior includes that check: 15 s + 9 s.
+        assertEquals(24_000.0d, PROFILE.priors().get(AgentKpqPaceProfile.PUZZLE_ENTRY_TERM), 1e-12);
+        assertEquals(9_000.0d, PROFILE.priors().get(AgentKpqPaceProfile.PUZZLE_CHECK_TERM), 1e-12);
+        List<AgentPqMemberPower> four = new ArrayList<>();
+        for (int id = 1; id <= 4; id++) {
+            four.add(new AgentPqMemberPower(id, "m" + id, id == 1, id == 1, 25, 0,
+                    Map.of(9_300_001, 200.0d, 9_300_000, 200.0d, 9_300_002, 200.0d, 9_300_003, 200.0d),
+                    Map.of(9_300_001, 1.0d, 9_300_000, 1.0d, 9_300_002, 1.0d, 9_300_003, 1.0d), Map.of(),
+                    Double.MAX_VALUE));
+        }
+
+        AgentPqPaceEstimate estimate = AgentPqPaceEstimator.estimate(PROFILE, four, AgentPqPaceCalibration.prior(PROFILE));
+
+        double[] meanChecks = {2.5d, 5.5d, 10.5d};
+        for (int stage = 2; stage <= 4; stage++) {
+            double stageS = estimate.segmentMeanS().get(AgentKpqPaceProfile.entryKey(stage))
+                    + estimate.segmentMeanS().get(AgentKpqPaceProfile.checksKey(stage));
+            assertEquals(15.0d + meanChecks[stage - 2] * 9.0d, stageS, 1e-9, "stage " + stage);
+        }
     }
 
     @Test
