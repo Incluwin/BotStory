@@ -16,6 +16,7 @@ import static server.agents.capabilities.partyquest.pace.PaceStubProfile.MOB_A;
 import static server.agents.capabilities.partyquest.pace.PaceStubProfile.MOB_B;
 import static server.agents.capabilities.partyquest.pace.PaceStubProfile.MOB_C;
 import static server.agents.capabilities.partyquest.pace.PaceStubProfile.companion;
+import static server.agents.capabilities.partyquest.pace.PaceStubProfile.human;
 import static server.agents.capabilities.partyquest.pace.PaceStubProfile.humanLeader;
 
 /**
@@ -169,6 +170,58 @@ class AgentPqPaceEstimatorTest {
         assertFalse(estimate.clearable());
         assertTrue(estimate.weaknesses().contains(
                 new AgentPqPaceEstimate.Weakness(0, MOB_A, "grind", AgentPqPaceEstimate.Kind.UNHITTABLE)));
+    }
+
+    @Test
+    void aHumanBesideTheLeaderHuntsAndFightsLikeACompanion() {
+        AgentPqPaceCalibration calibration = calibration(0.25d, Map.of());
+        AgentPqPaceEstimate companions = estimate(PaceStubProfile.standard(), PARTY, calibration);
+        AgentPqPaceEstimate withBen = estimate(PaceStubProfile.standard(), List.of(humanLeader(1),
+                companion(2, 100, 50, 200, 80), human(3, 50, 100, 50, 40)), calibration);
+
+        // Ben collects his own coupons (no leader's credit) and is not parked by Cloto: nothing changes.
+        for (String key : List.of("grind", "normals", "boss", "race")) {
+            assertEquals(companions.segmentMeanS().get(key), withBen.segmentMeanS().get(key), 1e-9, key);
+        }
+        assertEquals(companions.p50S(), withBen.p50S(), 1e-9);
+    }
+
+    @Test
+    void onlyTheHumanLeaderIsCreditedInPartAndParkedOutOfTheClears() {
+        AgentPqMemberPower fightingLeader = new AgentPqMemberPower(1, "leader", true, true, 26, 0,
+                Map.of(MOB_A, 50.0d, MOB_B, 100.0d, MOB_C, 50.0d, BOSS, 40.0d), Map.of(), Map.of(), 10.0d);
+        AgentPqPaceCalibration calibration = calibration(0.0d, Map.of());
+
+        AgentPqPaceEstimate estimate = estimate(PaceStubProfile.standard(), List.of(fightingLeader,
+                companion(2, 100, 50, 200, 80)), calibration);
+
+        // 40 kills at 1/30 a second from member 2, plus half of the leader's 1/50.
+        assertEquals(40.0d / (1.0d / 30.0d + 0.5d / 50.0d), estimate.segmentMeanS().get("grind"), 1e-6);
+        // The clears are member 2's alone: B then C at 50 and 200, the boss at 80.
+        assertEquals((1_000.0d / 50.0d + 1_000.0d / 200.0d) / 0.2d, estimate.segmentMeanS().get("normals"), 1e-9);
+        assertEquals(4_000.0d / 80.0d / 0.25d, estimate.segmentMeanS().get("boss"), 1e-9);
+    }
+
+    @Test
+    void aSecondHumanWhoHitsTheBossMakesTheClearFiniteAndFaster() {
+        List<AgentPqMemberPower> noBossDamage = List.of(humanLeader(1), companion(2, 100, 50, 200, 0),
+                companion(3, 50, 100, 50, 0));
+        AgentPqPaceCalibration calibration = calibration(0.0d, Map.of());
+        assertFalse(estimate(PaceStubProfile.standard(), noBossDamage, calibration).clearable());
+
+        List<AgentPqMemberPower> withBen = new java.util.ArrayList<>(noBossDamage);
+        withBen.add(human(4, 50, 50, 50, 120));
+        AgentPqPaceEstimate estimate = estimate(PaceStubProfile.standard(), withBen, calibration);
+
+        assertTrue(estimate.clearable());
+        assertTrue(estimate.weaknesses().stream().noneMatch(
+                weakness -> weakness.kind() == AgentPqPaceEstimate.Kind.UNHITTABLE), estimate.weaknesses().toString());
+        assertEquals(4_000.0d / 120.0d / 0.25d, estimate.segmentMeanS().get("boss"), 1e-9);
+
+        List<AgentPqMemberPower> partyAndBen = new java.util.ArrayList<>(PARTY);
+        partyAndBen.add(human(4, 50, 50, 50, 120));
+        assertTrue(estimate(PaceStubProfile.standard(), partyAndBen, calibration).p50S()
+                < estimate(PaceStubProfile.standard(), PARTY, calibration).p50S());
     }
 
     @Test

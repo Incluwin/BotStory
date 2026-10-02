@@ -14,7 +14,8 @@ final class AgentPqPaceModel {
 
     /**
      * Kills per second of a quota's mob: each member with damage on it kills one every
-     * {@code seek + mobHp / (combat x dps)} seconds, a human at the quota's credit. 0 when nobody can hurt it.
+     * {@code seek + mobHp / (combat x dps)} seconds, the human leader at the quota's credit and everyone else (a human
+     * beside him too) in full. 0 when nobody can hurt it.
      */
     static double killsPerSecond(AgentPqPaceSegment.Quota quota, List<AgentPqMemberPower> members, double seekMs,
                                  double combat) {
@@ -25,14 +26,15 @@ final class AgentPqPaceModel {
             double dps = member.dps(quota.mobId());
             if (!(dps > 0.0d)) continue;
             double secondsPerKill = seekSeconds + quota.mobHp() / (combat * dps);
-            rate += (member.human() ? quota.humanCredit() : 1.0d) / secondsPerKill;
+            rate += (member.humanLeader() ? quota.leaderCredit() : 1.0d) / secondsPerKill;
         }
         return rate;
     }
 
     /**
-     * The water-fill of a clear: each fighter works the live type the assigner gives it until a type dies, then they
-     * choose again. {@code seconds} is infinite when a live type has no damage from any fighter; those types are named.
+     * The water-fill of a clear: each fighter (every member but a human leader the clear parks) works the live type the
+     * assigner gives it until a type dies, then they choose again. {@code seconds} is infinite when a live type has no
+     * damage from any fighter; those types are named.
      */
     record Fill(double seconds, int lastMobId, List<Integer> unhittable) {
         boolean clearable() {
@@ -41,8 +43,8 @@ final class AgentPqPaceModel {
     }
 
     static Fill waterFill(AgentPqPaceSegment.Clear clear, List<AgentPqMemberPower> members) {
-        List<AgentPqMemberPower> fighters = members.stream().filter(member -> clear.humansFight() || !member.human())
-                .toList();
+        List<AgentPqMemberPower> fighters = members.stream()
+                .filter(member -> clear.leaderFights() || !member.humanLeader()).toList();
         Map<Integer, Double> hp = new TreeMap<>();
         clear.counts().forEach((mobId, count) -> hp.put(mobId, (double) count * clear.hp().get(mobId)));
         List<Integer> ids = memberIds(fighters);

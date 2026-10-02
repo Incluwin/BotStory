@@ -22,7 +22,7 @@ import java.util.function.ToDoubleFunction;
  * {@code picked}: the companions the leader chose (null: her own choice), so a Yes or "Are they here yet?" plans it
  * again the same way: her choice takes whoever fits best by then, the leader's pick stays theirs.
  * {@code clearTime}: how long the lineup should take, as she weighs and words it; null without an estimate (the quest's
- * pace data is cold, the estimate failed, or living_world.COMPANION_PQ_CLEAR_TIME is off).
+ * pace data is cold, the estimate failed, living_world.COMPANION_PQ_CLEAR_TIME is off, or no companion goes in).
  */
 public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Seat> extras, List<Seat> onTheWay,
                          List<Waiting> waiting, String blocker, boolean benchUseful, Set<Integer> picked,
@@ -330,8 +330,14 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             return new Weighed(List.copyOf(shown), best.estimate(), best.objectiveS(), best.timeS());
         }
 
-        /** The lineup of {@code chosen} beside the humans: its estimate and objective; null without an estimate. */
+        /**
+         * The lineup of {@code chosen} beside the humans: its estimate and objective; null without an estimate, and
+         * when no companion is chosen (the clear time is the companions' to weigh: a party of humans alone gets none).
+         */
         Weighed weigh(List<Candidate> chosen) {
+            if (chosen.isEmpty()) {
+                return null;
+            }
             List<AgentPqMemberPower> members = new ArrayList<>();
             double waitS = 0.0d;
             for (Candidate member : humans) {

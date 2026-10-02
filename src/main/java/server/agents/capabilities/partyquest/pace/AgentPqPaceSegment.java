@@ -33,13 +33,14 @@ public sealed interface AgentPqPaceSegment {
 
     /**
      * Kill {@code kills} of one respawning mob type (KPQ stage 1: one coupon per Ligator). A member kills at
-     * {@code 1 / (seek + mobHp / (combat x dps))} a second; a human counts {@code humanCredit} of that, since his kills
-     * only help when he leaves or hands over what they drop.
+     * {@code 1 / (seek + mobHp / (combat x dps))} a second; the human leader counts {@code leaderCredit} of that, since
+     * the kills are asked of the others and his only help when he hands over what they drop. Every other member counts
+     * in full, a human beside the leader included: he collects his own share.
      */
-    record Quota(String key, int mobId, int mobHp, Pmf kills, double humanCredit) implements AgentPqPaceSegment {
+    record Quota(String key, int mobId, int mobHp, Pmf kills, double leaderCredit) implements AgentPqPaceSegment {
         public Quota {
             requireKey(key);
-            if (mobId <= 0 || mobHp <= 0 || kills == null || !(humanCredit >= 0.0d)) {
+            if (mobId <= 0 || mobHp <= 0 || kills == null || !(leaderCredit >= 0.0d)) {
                 throw new IllegalArgumentException("a quota needs a mob, its HP, a kill distribution and a credit >= 0");
             }
         }
@@ -55,11 +56,12 @@ public sealed interface AgentPqPaceSegment {
 
     /**
      * Kill every mob of a fixed census once (KPQ stage 5's normals, then King Slime). The theory time is a water-fill:
-     * each fighter works the type {@code assigner} gives it until a type dies, then they choose again. Its calibration
-     * term is the efficiency under {@link #key()}.
+     * each fighter works the type {@code assigner} gives it until a type dies, then they choose again. Every member
+     * fights but the human leader, who fights only when {@code leaderFights} (KPQ parks him by Cloto); a human beside
+     * him fights like a companion. Its calibration term is the efficiency under {@link #key()}.
      */
     record Clear(String key, Map<Integer, Integer> counts, Map<Integer, Integer> hp, Assigner assigner,
-                 boolean humansFight) implements AgentPqPaceSegment {
+                 boolean leaderFights) implements AgentPqPaceSegment {
         public Clear {
             requireKey(key);
             if (counts == null || counts.isEmpty() || hp == null || assigner == null) {

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimator;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -31,6 +32,7 @@ import static server.living.roster.LifecycleHarness.ANN;
 class LineupPlanPaceTest {
     private static final long TIMER_MS = 1_800_000L;
     private static final int BEN = 20;
+    private static final int CAT = 30;
 
     /** The member sets the estimate was asked about, in order. */
     private final List<Set<Integer>> asked = new ArrayList<>();
@@ -217,6 +219,51 @@ class LineupPlanPaceTest {
         assertNotNull(plan.estimate());
     }
 
+    @Test
+    void aLineupWithoutACompanionHasNoClearTime() {
+        // three players and a companion that waits outside: the players go in on their own, and she says no time
+        List<LineupPlan.Candidate> party = List.of(human(ANN, "Ann", Job.CLERIC), human(BEN, "Ben", Job.PAGE),
+                human(CAT, "Cat", Job.HUNTER), new LineupPlan.Candidate(seat(901, "Mira", 25, Job.BANDIT, ANN),
+                        LineupPlan.Fit.WAITS, "bags full", false, 0.0d, power(901, false)));
+
+        LineupPlan plan = LineupPlan.build("kpq", ANN, 25, party, null, pace(members -> 1000.0d));
+
+        assertEquals(List.of("Ann", "Ben", "Cat"), names(plan.lineup()));
+        assertNull(plan.clearTime());
+        assertEquals(List.of(), LakelisLines.clearTime(plan));
+        assertEquals(List.of(), asked, "a lineup of players alone is never estimated");
+        assertEquals(LineupPlan.build("kpq", ANN, 25, party, null), plan, "exactly as without an estimate");
+
+        LineupPlan pickedNobody = LineupPlan.build("kpq", ANN, 25, party, Set.of(), pace(members -> 1000.0d));
+        assertNull(pickedNobody.clearTime());
+        assertEquals(List.of(), asked);
+    }
+
+    @Test
+    void playersBesideTheLeaderCountInTheEstimateLikeCompanions() {
+        // A real estimate of the short quest (PaceTestProfile): Ann leads and waits; Ben and Cat hit the Ligators
+        // and King Slime for 500 a second; Mira, the one companion, never touches King Slime.
+        AgentPqPaceCalibration prior = AgentPqPaceCalibration.prior(PaceTestProfile.warm());
+        AgentPqPaceCalibration exact = new AgentPqPaceCalibration(prior.questKey(), prior.epoch(), prior.companion(),
+                prior.leader(), 0.0d, 0, AgentPqPaceCalibration.Source.PRIOR, Map.of()); // no spread: the theory
+        LineupPlan.Pace real = new LineupPlan.Pace(members -> remember(members,
+                AgentPqPaceEstimator.estimate(PaceTestProfile.warm(), members, exact)), TIMER_MS, companions -> 0.0d);
+        List<LineupPlan.Candidate> party = List.of(human(ANN, "Ann", Job.CLERIC),
+                player(BEN, "Ben", Job.PAGE, 500.0d, 500.0d), player(CAT, "Cat", Job.HUNTER, 500.0d, 500.0d),
+                new LineupPlan.Candidate(seat(901, "Mira", 25, Job.BANDIT, ANN), LineupPlan.Fit.READY, null, false,
+                        0.0d, power(901, false, 500.0d, 0.0d)));
+
+        LineupPlan plan = LineupPlan.build("kpq", ANN, 25, party, null, real);
+
+        assertTrue(plan.estimate().clearable(), plan.estimate().toString());
+        // a minute's opening, 100 Ligators at half a kill a second from each of the three, King Slime's 5000 HP at 1000
+        assertEquals(60.0d + 100.0d / 1.5d + 5.0d, plan.estimate().meanS(), 1e-6);
+        for (String line : LakelisLines.clearTime(plan)) {
+            assertFalse(line.contains("King Slime") || line.contains("doors close") || line.contains("Mind the clock"),
+                    line);
+        }
+    }
+
     // ---- helpers ---------------------------------------------------------------------------
 
     /** The estimate of a member set: a 2 min range around {@code p50S(ids)}, never over the timer. */
@@ -307,6 +354,19 @@ class LineupPlanPaceTest {
     private static AgentPqMemberPower power(int id, boolean human) {
         return new AgentPqMemberPower(id, "m" + id, human, id == ANN, 25, 0, Map.of(), Map.of(), Map.of(),
                 Double.MAX_VALUE);
+    }
+
+    /** A member hitting PaceTestProfile's Ligators and King Slime for these, every hit landing. */
+    private static AgentPqMemberPower power(int id, boolean human, double ligator, double kingSlime) {
+        return new AgentPqMemberPower(id, "m" + id, human, id == ANN, 25, 0,
+                Map.of(PaceTestProfile.LIGATOR, ligator, PaceTestProfile.KING_SLIME, kingSlime),
+                Map.of(PaceTestProfile.LIGATOR, 1.0d, PaceTestProfile.KING_SLIME, 1.0d), Map.of(), Double.MAX_VALUE);
+    }
+
+    /** A player beside the leader, hitting for these. */
+    private static LineupPlan.Candidate player(int id, String name, Job job, double ligator, double kingSlime) {
+        return new LineupPlan.Candidate(new LineupPlan.Seat(id, name, 25, job.getId(), "", true, 0, null, 103_000_000,
+                true, 0L, 0, 0), LineupPlan.Fit.READY, null, false, 0.0d, power(id, true, ligator, kingSlime));
     }
 
     private static List<String> names(List<LineupPlan.Seat> seats) {

@@ -45,7 +45,7 @@ class AgentKpqPaceProfileTest {
         assertEquals(85, four.quantile(0.9d));
         assertEquals(9_300_001, quota(3).mobId());
         assertEquals(1_000, quota(3).mobHp());
-        assertEquals(0.5d, quota(3).humanCredit(), 1e-12);
+        assertEquals(0.5d, quota(3).leaderCredit(), 1e-12);
     }
 
     @Test
@@ -76,8 +76,8 @@ class AgentKpqPaceProfileTest {
         assertEquals(Map.of(9_300_000, 6, 9_300_002, 3), normals.counts());
         assertEquals(Map.of(9_300_003, 1), boss.counts());
         assertEquals(Map.of(9_300_000, 320, 9_300_002, 2_000, 9_300_003, 8_000), normals.hp());
-        assertFalse(normals.humansFight());
-        assertFalse(boss.humansFight());
+        assertFalse(normals.leaderFights());
+        assertFalse(boss.leaderFights());
         assertEquals(List.of(9_300_001, 9_300_000, 9_300_002, 9_300_003), PROFILE.mobIds());
         assertEquals(9_300_003, PROFILE.dangerMobId());
         assertEquals(1_800_000L, PROFILE.timerMs());

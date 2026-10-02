@@ -105,6 +105,13 @@ final class PaceStubProfile implements AgentPqPaceProfile {
                 Map.of(MOB_A, 800.0d, MOB_B, 800.0d, MOB_C, 800.0d, BOSS, 800.0d), 10.0d);
     }
 
+    /** A player beside the leader with these damage rates (mob A, B, C, boss), otherwise as a companion. */
+    static AgentPqMemberPower human(int id, double a, double b, double c, double boss) {
+        AgentPqMemberPower like = companion(id, a, b, c, boss);
+        return new AgentPqMemberPower(id, "h" + id, true, false, like.level(), like.jobId(), like.dpsByMob(),
+                like.hitByMob(), like.attackMsByMob(), like.touchesToDown());
+    }
+
     static AgentPqMemberPower humanLeader(int id) {
         return new AgentPqMemberPower(id, "leader", true, true, 26, 0, Map.of(), Map.of(), Map.of(), 10.0d);
     }

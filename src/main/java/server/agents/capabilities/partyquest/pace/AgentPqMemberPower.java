@@ -39,6 +39,14 @@ public record AgentPqMemberPower(int characterId, String name, boolean human, bo
                 : Math.min(touchesToDown, Double.MAX_VALUE);
     }
 
+    /**
+     * The human who leads: he does the leader's talks and hand-ins, so a quota credits only part of his kills and a
+     * clear may park him. A human beside him, or an Agent that leads an Agent party, fights like any member.
+     */
+    public boolean humanLeader() {
+        return human && leader;
+    }
+
     public double dps(int mobId) {
         return dpsByMob.getOrDefault(mobId, 0.0d);
     }

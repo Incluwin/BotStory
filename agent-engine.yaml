@@ -2452,8 +2452,8 @@ tuning:
     # Technical: AgentKpqPaceProfile seeds the s1.grind.seek term; the clear-time estimate adds it to every member's fighting time per kill, so stronger damage shortens stage 1 by less than half when it doubles.
     server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_SEEK_MS: '15800'
     # Values: 0.0-1.0 fraction. Recommended: 0.5; assumed quick human, never measured (a leader who fights helps only when he drops his coupons for a collector).
-    # Purpose: How much of a human member's own stage-1 kill rate counts toward the coupons Cloto asked the companions for in the clear-time estimate.
-    # Technical: AgentKpqPaceProfile passes it as the stage-1 Quota humanCredit; a human's 1 / (seek + HP / (combat x dps)) kills per second are multiplied by it, and 0 leaves humans out of stage 1 entirely.
+    # Purpose: How much of the human leader's own stage-1 kill rate counts toward the coupons Cloto asked the other members for in the clear-time estimate; another human in the party collects his own coupons and counts in full.
+    # Technical: AgentKpqPaceProfile passes it as the stage-1 Quota leaderCredit; the human leader's 1 / (seek + HP / (combat x dps)) kills per second are multiplied by it, and 0 leaves him out of stage 1 entirely; every other member, human or Agent, counts at 1.
     server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile.STAGE1_HUMAN_CREDIT: '0.5'
     # Values: 0.03-1.0 fraction. Recommended: 0.19, the prior from session kpq-8353c615: 11.6 s of water-fill theory against the 90.8 - 30 s the companions took (measured while they were mostly throttled).
     # Purpose: Prior share of the theoretical water-fill time the companions reach on stage 5's Jr. Neckis and Curse Eyes, before any recorded run refits it.

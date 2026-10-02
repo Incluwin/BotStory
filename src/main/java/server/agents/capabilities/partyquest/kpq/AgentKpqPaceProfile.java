@@ -26,12 +26,14 @@ import java.util.TreeMap;
  *   + s2.entry + s2.checks + s2.accept + s3.entry + s3.checks + s3.accept + s4.entry + s4.checks
  *   + max(s5.move + s5.descent + s5.normals + s5.boss + s5.loot + s5.carry, s5.climb) + s5.talks
  * </pre>
- * Stage 1's kills are the sum of the non-leaders' Cloto answers (one coupon per Ligator); a puzzle's checks are
- * uniform over its combinations, tried in {@link AgentKpqCombinationOrder}'s order; stage 4 has no accept of its own,
- * its exit being the leader's climb in stage 5. In a party of three the leader holds a puzzle spot, and his share of
- * the formation changes is replayed from the combination order and {@link AgentKpqPuzzleParticipantOrder}'s rank
- * ratios. Stage 5's normals and King Slime are the Map.wz census of 103000804, read when the profile warms, fought by
- * the companions alone (the leader waits by Cloto) and assigned as {@link AgentKpqStageFiveTargetPolicy} assigns them.
+ * Stage 1's kills are the sum of the non-leaders' Cloto answers (one coupon per Ligator), hunted by every member, the
+ * human leader at STAGE1_HUMAN_CREDIT of his rate; a puzzle's checks are uniform over its combinations, tried in
+ * {@link AgentKpqCombinationOrder}'s order; stage 4 has no accept of its own, its exit being the leader's climb in
+ * stage 5. In a party of three the leader holds a puzzle spot, and his share of the formation changes is replayed from
+ * the combination order and {@link AgentKpqPuzzleParticipantOrder}'s rank ratios. Stage 5's normals and King Slime are
+ * the Map.wz census of 103000804, read when the profile warms, fought by every member but the human leader (he waits
+ * by Cloto; another human fights beside the companions) and assigned as {@link AgentKpqStageFiveTargetPolicy} assigns
+ * them.
  *
  * <p>The companion priors are the 2026-10-01 timed run (session kpq-8353c615); every leader prior is an assumed quick
  * human, never measured. Content facts are not tunables: mob counts and HP come from the game data, answers and
