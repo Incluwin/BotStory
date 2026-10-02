@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -182,6 +183,31 @@ class CompanionPartyQuestServicePaceTest {
         String world = Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"));
         assertTrue(world.contains("world.executor.submit(\"pq.pace\", world.partyQuests::warmPace);"));
         assertFalse(world.contains("warmKpqMobs"));
+    }
+
+    @Test
+    void recordsFittedUnderAnotherPaceEpochAreNeverUsedForTheEstimate() {
+        PqPaceLedger ledger = mock(PqPaceLedger.class);
+        AgentPqPaceProfile profile = PaceTestProfile.warm();
+        AgentPqPaceCalibration prior = AgentPqPaceCalibration.prior(profile);
+        Map<String, Double> quicker = new java.util.TreeMap<>(prior.companion());
+        quicker.put("s1.open", 30_000.0d);
+        AgentPqPaceCalibration learned = new AgentPqPaceCalibration("kpq", profile.epoch(), quicker, prior.leader(),
+                0.2d, 5, AgentPqPaceCalibration.Source.RECORDS, Map.of());
+        AgentPqPaceCalibration stale = new AgentPqPaceCalibration("kpq", profile.epoch() + 1, quicker,
+                prior.leader(), 0.2d, 5, AgentPqPaceCalibration.Source.RECORDS, Map.of());
+        CompanionPartyQuestService.PaceSource live = CompanionPartyQuestService.PaceSource.live(ledger);
+
+        when(ledger.calibration("kpq", ANN)).thenReturn(learned);
+        assertSame(learned, live.calibration(profile, ANN));
+
+        when(ledger.calibration("kpq", ANN)).thenReturn(stale);
+        AgentPqPaceCalibration used = live.calibration(profile, ANN);
+        assertEquals(prior, used, "another epoch's records: the priors");
+        assertEquals(0, used.records(), "so she hedges: she has not seen this crew at work");
+
+        when(ledger.calibration("kpq", ANN)).thenReturn(null);
+        assertEquals(prior, live.calibration(profile, ANN), "none read yet: the priors");
     }
 
     @Test
