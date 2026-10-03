@@ -61,6 +61,12 @@ public final class LivingWorld {
     private final QuestMarkers markers;
     private final ContractService contracts;
     private final CompanionExecutor executor;
+    /** Kill credit (LivingWorldHooks.mobKilled): store reads and writes kept off the thread that lands the kill. */
+    private final java.util.concurrent.ExecutorService killLane = java.util.concurrent.Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "living-kills");
+        thread.setDaemon(true);
+        return thread;
+    });
     private final Commitments commitments;
     private final CompanionSlots slots;
     private final CompanionPartySync partySync;
@@ -311,6 +317,7 @@ public final class LivingWorld {
         world.executor.submit("combat_learning.save", world.benchCombatLearning::save); // what bench grinders learned
         world.residents.standbyAll("server shutdown");
         world.executor.shutdown();
+        world.killLane.shutdown();
         log.info("Living world stopped.");
     }
 
@@ -429,6 +436,10 @@ public final class LivingWorld {
     /** The companion-ops thread every companion mutation runs on. */
     public CompanionExecutor executor() {
         return executor;
+    }
+
+    public java.util.concurrent.ExecutorService killLane() {
+        return killLane;
     }
 
     /** Companions tied to an event instance or expedition: frozen for the roster and the party sync meanwhile. */

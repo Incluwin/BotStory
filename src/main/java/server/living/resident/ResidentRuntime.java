@@ -139,6 +139,11 @@ public final class ResidentRuntime {
         return personaOfCharacterId(character.getId());
     }
 
+    /** True when the runtime already knows this character as a persona's (no store read: safe on any thread). */
+    public boolean isPersonaCharacter(int characterId) {
+        return personaByCharacter.containsKey(characterId);
+    }
+
     public Persona personaOfCharacterId(int characterId) {
         String personaId = personaByCharacter.get(characterId);
         if (personaId != null) {

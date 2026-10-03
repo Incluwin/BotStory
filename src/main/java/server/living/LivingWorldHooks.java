@@ -8,6 +8,7 @@ import server.knowledge.PersonalKnowledge;
 import server.life.Monster;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.roster.CompanionPartyRouter;
 import server.maps.MapleMap;
 
@@ -24,15 +25,24 @@ public final class LivingWorldHooks {
     private LivingWorldHooks() {
     }
 
-    /** A monster died; {@code attackerIds} are every character that damaged it (players and agents). */
+    /**
+     * A monster died; {@code attackerIds} are every character that damaged it (players and agents). This runs on the
+     * thread that landed the kill (a player's IO thread or the central Agent tick) inside the monster's monitor, so it
+     * stays in memory and takes no map or living lock: kill credit (quest kill steps, contract proofs, quest-only drops),
+     * which looks characters up and reads the store, goes to the living-kills lane, and only when a player or a Resident
+     * took part.
+     */
     public static void mobKilled(Monster monster, Set<Integer> attackerIds, MapleMap map) {
         LivingWorld world = LivingWorld.get();
         if (world == null || monster == null || map == null || attackerIds == null || attackerIds.isEmpty()) {
             return;
         }
         try {
-            world.quests().onMobKilled(monster.getId(), attackerIds, map);
-            world.contracts().onMobKilled(monster.getId(), attackerIds, map);
+            int mobId = monster.getId();
+            if (creditable(world, attackerIds)) {
+                Set<Integer> attackers = Set.copyOf(attackerIds);
+                world.killLane().execute(() -> credit(world, mobId, attackers, map));
+            }
             if (monster.isBoss()) {
                 java.util.Set<Integer> attackers = new java.util.HashSet<>(attackerIds);
                 world.executor().submit("friendship.boss " + monster.getId(),
@@ -42,14 +52,33 @@ public final class LivingWorldHooks {
             PersonalKnowledge personal = PersonalKnowledge.shared();
             if (personal.on()) {
                 for (int attackerId : attackerIds) { // every bot that fought it lived it (plan 7.4)
-                    Character attacker = map.getCharacterById(attackerId);
-                    if (attacker != null && AgentPresence.isAgent(attacker)) {
-                        personal.killed(attackerId, monster.getId(), map.getId());
+                    if (AgentRuntimeRegistry.findByAgentCharacterId(attackerId) != null) {
+                        personal.killed(attackerId, mobId, map.getId());
                     }
                 }
             }
         } catch (RuntimeException failure) {
             log.warn("living world mobKilled hook failed", failure);
+        }
+    }
+
+    /** A player (no Agent runtime) or a Resident (its character known to the runtime, e.g. a companion) took part. */
+    static boolean creditable(LivingWorld world, Set<Integer> attackerIds) {
+        for (int attackerId : attackerIds) {
+            if (AgentRuntimeRegistry.findByAgentCharacterId(attackerId) == null
+                    || world.residents().isPersonaCharacter(attackerId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void credit(LivingWorld world, int mobId, Set<Integer> attackers, MapleMap map) {
+        try {
+            world.quests().onMobKilled(mobId, attackers, map);
+            world.contracts().onMobKilled(mobId, attackers, map);
+        } catch (RuntimeException failure) {
+            log.warn("living world kill credit for mob {} failed", mobId, failure);
         }
     }
 
