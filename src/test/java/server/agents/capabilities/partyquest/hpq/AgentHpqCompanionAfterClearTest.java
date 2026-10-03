@@ -160,6 +160,36 @@ class AgentHpqCompanionAfterClearTest {
     }
 
     @Test
+    void aCompanionThatCannotTakeItsRewardGivesItUpAndTheOthersGoOn() {
+        AgentHpqSession session = cleared(AgentHpqSession.Phase.CLAIMING_REWARD);
+        run.onMap(ben, AgentHpqDefinition.REWARD_EXIT_MAP);
+        // Tory pays Mira and sends her out; Tobi's bag is full, so she cancels his claim each time (1012112.js).
+        when(run.hpq.runNpc(mira, AgentHpqDefinition.ENTRY_NPC)).thenAnswer(call -> {
+            session.beginRewardClaim(mira.getId());
+            session.completeRewardClaim(mira.getId());
+            run.outside(mira, AgentHpqDefinition.RECRUIT_MAP);
+            return true;
+        });
+        when(run.hpq.runNpc(tobi, AgentHpqDefinition.ENTRY_NPC)).thenAnswer(call -> {
+            session.beginRewardClaim(tobi.getId());
+            session.cancelRewardClaim(tobi.getId());
+            return true;
+        });
+
+        for (long now = 2_000L; now <= 4_400L; now += 1_200L) AgentHpqCoordinator.tick(session, now);
+        verify(run.hpq, org.mockito.Mockito.times(3)).runNpc(tobi, AgentHpqDefinition.ENTRY_NPC);
+        verify(run.event, never()).exitPlayer(tobi);
+
+        AgentHpqCoordinator.tick(session, 5_600L);
+
+        verify(run.hpq, org.mockito.Mockito.times(3)).runNpc(tobi, AgentHpqDefinition.ENTRY_NPC);
+        verify(run.event).exitPlayer(tobi);
+        assertEquals(AgentHpqMemberState.RewardState.FORFEITED, session.member(tobi.getId()).rewardState());
+        assertEquals(AgentHpqSession.Phase.EXITING, session.phase());
+        run.saidNothing();
+    }
+
+    @Test
     void theRunWaitsForACompanionStillInTheEvent() {
         AgentHpqSession session = cleared(AgentHpqSession.Phase.EXITING);
         run.outside(mira, AgentHpqDefinition.RECRUIT_MAP);

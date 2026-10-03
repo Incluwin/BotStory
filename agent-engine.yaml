@@ -870,6 +870,10 @@ tuning:
     # Purpose: Lets a companion run that the event ended under say it ran out of time when that was the script's ten-minute timer, and not a generic ending.
     # Technical: AgentHpqParting.eventEnded picks TIMEOUT when the run has stood in the event at least the catalog's hpq eventTimerMs (600000) minus this slack, counted from the leader's first sighting inside; a lost Moon Bunny is BUNNY first. Companion runs only; it changes only the parting line.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.TIMEOUT_SLACK_MS: '2000'
+    # Values: 1-10 turned-down claims. Recommended: 3.
+    # Purpose: Keeps one companion whose bag is full from holding the whole party up at Tory after the clear.
+    # Technical: Counted per member when 1012112.js cancels its reward claim (giveEventReward failed); at this many AgentHpqCoordinator.companionClaim forfeits that companion's reward, logs 'HPQ claim failed', and takes it out through the event's exit, so EXITING is not held up until PHASE_TIMEOUT_MS. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_CLAIM_FAILURE_LIMIT: '3'
     # Values: 500-5000 milliseconds. Recommended: 2000.
     # Purpose: Gives an HPQ Agent leader a natural pause after a nearby eligible player asks to join its party.
     # Technical: Overrides only HPQ's shared-lobby invitation delay; KPQ, LPQ, and other lobby profiles retain their own or the shared defaults.

@@ -116,6 +116,8 @@ final class AgentHpqCoordinator {
             "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS");
     private static final long TIMEOUT_SLACK_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.TIMEOUT_SLACK_MS");
+    private static final int COMPANION_CLAIM_FAILURE_LIMIT = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_CLAIM_FAILURE_LIMIT");
 
     private AgentHpqCoordinator() {
     }
@@ -1453,7 +1455,9 @@ final class AgentHpqCoordinator {
 
     /**
      * The companions claim at Tory (which takes them out to Henesys) once they may (see companionsMayClaim); one in
-     * Pig Town after he left it goes out through Tommy first. Humans are never waited for and get no system text.
+     * Pig Town after he left it goes out through Tommy first. One Tory turned down COMPANION_CLAIM_FAILURE_LIMIT times
+     * (a full inventory) gives its reward up and leaves through the event's exit, so it holds nobody up. Humans are
+     * never waited for and get no system text.
      */
     private static void companionClaim(AgentHpqSession session, Character leader, long nowMs) {
         session.freezeRewardEligibility();
@@ -1464,6 +1468,10 @@ final class AgentHpqCoordinator {
             if (member.memberType() != AgentHpqMemberState.MemberType.AGENT || member.rewardResolved()) continue;
             Character agent = character(member.characterId());
             if (agent == null || !inRun(session, agent)) continue;
+            if (member.claimFailures() >= COMPANION_CLAIM_FAILURE_LIMIT) {
+                giveUpClaim(session, member, agent);
+                continue;
+            }
             pending = true;
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (!mayClaim || entry == null || agent.getHp() <= 0) continue;
@@ -1487,6 +1495,15 @@ final class AgentHpqCoordinator {
             }
         }
         if (!pending) transition(session, AgentHpqSession.Phase.EXITING, nowMs);
+    }
+
+    /** Its reward forfeited, a companion Tory keeps turning down leaves through the event's exit (910010300). */
+    private static void giveUpClaim(AgentHpqSession session, AgentHpqMemberState member, Character agent) {
+        session.forfeitReward(member.characterId());
+        log.warn("HPQ claim failed: session={} member={} reason=inventory failures={}", session.sessionId(),
+                member.characterId(), member.claimFailures());
+        EventInstanceManager event = session.eventInstance();
+        if (event != null && hpq().event(agent) == event) event.exitPlayer(agent);
     }
 
     /** Done once every companion is up and out of the event; no line and no walk, they follow their owner. */

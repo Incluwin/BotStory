@@ -12,6 +12,7 @@ public final class AgentHpqMemberState {
     private int assignedSeedItemId;
     private long nextActionAtMs;
     private RewardState rewardState = RewardState.PENDING;
+    private int claimFailures;
     private boolean fullRateHeld;
     private boolean fullRateWasRequired;
     private boolean retiredFromCakes;
@@ -55,8 +56,14 @@ public final class AgentHpqMemberState {
     }
 
     void cancelRewardClaim() {
-        if (rewardState == RewardState.CLAIMING) rewardState = RewardState.PENDING;
+        if (rewardState == RewardState.CLAIMING) {
+            rewardState = RewardState.PENDING;
+            claimFailures++;
+        }
     }
+
+    /** Claims Tory turned down (1012112.js cancels one when giveEventReward fails: a full inventory). */
+    int claimFailures() { return claimFailures; }
 
     void forfeitReward() {
         if (rewardState == RewardState.PENDING) rewardState = RewardState.FORFEITED;
