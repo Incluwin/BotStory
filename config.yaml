@@ -739,7 +739,7 @@ living_world:
     RESIDENT_BUBBLE_MAX_CHARS: 70
     # true once MapleEdit has shipped the living-world Quest.wz entries (tools\living-world-questlog.bat, then
     # MapleEdit/app/living_world_quests.py + deploy); otherwise the client would list nameless quests
-    QUEST_LOG_MIRROR: false
+    QUEST_LOG_MIRROR: true
     # quest icons replayed over Residents, only for the player they concern: something to take / something to hand in.
     # The Custom.wz paths are head-height copies of the NPC icons (MapleEdit/app/living_world_markers.py).
     QUEST_MARKER_AVAILABLE: "Custom/UI/UIWindow.img/QuestMarker/available"
