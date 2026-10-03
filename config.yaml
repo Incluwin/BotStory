@@ -906,7 +906,7 @@ population:
     ENABLED: true
     CONTENT_DIR: scripts/config/population
     SEED: 20260921
-    TARGET_CITIZENS: 600
+    TARGET_CITIZENS: 717
     ONLINE_MAX: 240
     CHANNELS: "1"
     SWEEP_MS: 60000
