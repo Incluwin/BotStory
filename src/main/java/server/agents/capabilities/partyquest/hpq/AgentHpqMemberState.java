@@ -12,6 +12,9 @@ public final class AgentHpqMemberState {
     private int assignedSeedItemId;
     private long nextActionAtMs;
     private RewardState rewardState = RewardState.PENDING;
+    private boolean fullRateHeld;
+    private boolean fullRateWasRequired;
+    private boolean cakesLeftBehind;
 
     public AgentHpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -64,4 +67,23 @@ public final class AgentHpqMemberState {
     public void deferUntil(long nextActionAtMs) {
         this.nextActionAtMs = Math.max(0L, nextActionAtMs);
     }
+
+    /** A companion run's full-rate simulation hold on this member (AgentHpqFullRateSimulation). */
+    boolean fullRateHeld() { return fullRateHeld; }
+    boolean fullRateWasRequired() { return fullRateWasRequired; }
+
+    void holdFullRate(boolean alreadyRequired) {
+        fullRateHeld = true;
+        fullRateWasRequired = alreadyRequired;
+    }
+
+    void releaseFullRate() {
+        fullRateHeld = false;
+        fullRateWasRequired = false;
+    }
+
+    /** A companion run's cake collector that dropped its stack before going down; it collects no more. */
+    boolean cakesLeftBehind() { return cakesLeftBehind; }
+
+    void markCakesLeftBehind() { cakesLeftBehind = true; }
 }

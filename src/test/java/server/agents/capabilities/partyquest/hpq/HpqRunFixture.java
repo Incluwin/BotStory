@@ -25,6 +25,7 @@ import server.agents.runtime.simulation.AgentSimulationState;
 import server.life.Monster;
 import server.maps.MapItem;
 import server.maps.MapleMap;
+import server.maps.Reactor;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -35,16 +36,19 @@ import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 /**
  * One live HPQ run at session level on Primrose Hill (910010000): mocked members standing in the bound event, and the
  * gateways and runtimes the coordinator reaches through. Companions are loaded Agents; humans are only online (or
  * not). The primitive gateway ({@link #actions}) and the party-quest gateway ({@link #hpq}) are mocks the coordinator
- * resolves per call.
+ * resolves per call; companion lines are captured through {@link #dialogue}.
  */
 final class HpqRunFixture implements AutoCloseable {
     static final int STAGE_MOBS = 9_300_062;
@@ -57,6 +61,7 @@ final class HpqRunFixture implements AutoCloseable {
     final PrimitiveCapabilityGateway actions = mock(PrimitiveCapabilityGateway.class);
     final PartyQuestGateway hpq = mock(PartyQuestGateway.class);
     final PacketGateway packets = mock(PacketGateway.class);
+    final MockedStatic<AgentHpqDialogue> dialogue;
     final MockedStatic<AgentPartyQuestLifecycleRuntime> lifecycle;
     final MockedStatic<AgentGrindLootStateRuntime> loot;
     final MockedStatic<AgentInventoryStateRuntime> inventory;
@@ -65,6 +70,7 @@ final class HpqRunFixture implements AutoCloseable {
     private final List<MockedStatic<?>> statics = new ArrayList<>();
     private final List<Monster> monsters = new ArrayList<>();
     private final List<MapItem> drops = new ArrayList<>();
+    private final List<Reactor> reactors = new ArrayList<>();
     private final List<AgentHpqSession> sessions = new ArrayList<>();
     private final MockedStatic<AgentRuntimeRegistry> registry;
     private final MockedStatic<AgentRuntimeIdentityRuntime> identity;
@@ -79,20 +85,26 @@ final class HpqRunFixture implements AutoCloseable {
         open(AgentPartyQuestGatewayRuntime.class).when(AgentPartyQuestGatewayRuntime::partyQuest).thenReturn(hpq);
         open(AgentPacketGatewayRuntime.class).when(AgentPacketGatewayRuntime::packets).thenReturn(packets);
         open(AgentMapPerception.class).when(() -> AgentMapPerception.monsters(map)).thenAnswer(call -> List.copyOf(monsters));
+        dialogue = open(AgentHpqDialogue.class);
         lifecycle = open(AgentPartyQuestLifecycleRuntime.class);
         loot = open(AgentGrindLootStateRuntime.class);
         inventory = open(AgentInventoryStateRuntime.class);
         items = open(AgentScriptItemActionService.class);
         when(map.getDroppedItems()).thenAnswer(call -> List.copyOf(drops));
+        when(actions.reactors(any())).thenAnswer(call -> List.copyOf(reactors));
         when(actions.configuredMonsterSpawnIds(any())).thenReturn(Set.of(STAGE_MOBS, AgentHpqDefinition.MOON_BUNNY));
         // Ground is wherever a point is asked about; a drop lands where it is dropped.
-        when(actions.groundPoint(any(), any())).thenAnswer(call -> new Point(call.<Point>getArgument(1)));
-        when(actions.predictDropLanding(any(), any())).thenAnswer(call -> new Point(call.<Point>getArgument(1)));
+        when(actions.groundPoint(any(), any())).thenAnswer(call -> copy(call.getArgument(1)));
+        when(actions.predictDropLanding(any(), any())).thenAnswer(call -> copy(call.getArgument(1)));
         when(actions.footing(any())).thenReturn(PrimitiveCapabilityGateway.Footing.GROUND);
         when(actions.canReach(any(), any(), any())).thenReturn(true);
         when(actions.hpPotionCount(any())).thenReturn(40);
         when(actions.npcPosition(any(), eq(AgentHpqDefinition.GROWLIE_NPC))).thenReturn(new Point(429, 83));
         when(hpq.property(any(), eq("stage"))).thenReturn("6");
+    }
+
+    private static Point copy(Point point) {
+        return point == null ? null : new Point(point);
     }
 
     /** An online human party member standing in the bound event at {@code position}. */
@@ -187,10 +199,35 @@ final class HpqRunFixture implements AutoCloseable {
         drops.remove(drop);
     }
 
-    /** Drops succeed: the holder's stack leaves its bag. */
+    /** Drops succeed. */
     void dropsSucceed() {
-        items.when(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), any(Short.class)))
-                .thenReturn(true);
+        items.when(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort())).thenReturn(true);
+    }
+
+    /** A reactor on Primrose Hill: a moonflower pad (9108000-5) or a primrose seed source (9102002-7). */
+    Reactor reactor(int reactorId, String name, Point position, boolean active) {
+        Reactor reactor = mock(Reactor.class);
+        when(reactor.getId()).thenReturn(reactorId);
+        when(reactor.getName()).thenReturn(name);
+        when(reactor.isAlive()).thenReturn(true);
+        when(reactor.isActive()).thenReturn(active);
+        when(reactor.getPosition()).thenReturn(new Point(position));
+        when(reactor.getObjectId()).thenReturn(20_000 + reactors.size());
+        reactors.add(reactor);
+        return reactor;
+    }
+
+    /** This line was said, by this speaker, under this key. */
+    void said(AgentHpqSession session, String key, Character speaker, String text) {
+        dialogue.verify(() -> AgentHpqDialogue.sayMapNow(session.sessionId(), key, speaker, text));
+    }
+
+    void neverSaid(String key) {
+        dialogue.verify(() -> AgentHpqDialogue.sayMapNow(anyString(), eq(key), any(), anyString()), never());
+    }
+
+    void saidNothing() {
+        dialogue.verify(() -> AgentHpqDialogue.sayMapNow(anyString(), anyString(), any(), anyString()), never());
     }
 
     /**
