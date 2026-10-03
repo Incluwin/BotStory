@@ -71,6 +71,8 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     private int recollectHeldBefore;
     private boolean leaderToldGrowlie;
     private String potionsAtEntry = "";
+    private long enteredEventAtMs;
+    private boolean leaderReleased;
 
     public AgentHpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < 3 || requestedPartySize > 6
@@ -322,6 +324,19 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     /** A hand-over line already told the leader to take the cakes to Growlie. */
     synchronized boolean leaderToldGrowlie() { return leaderToldGrowlie; }
     synchronized void markLeaderToldGrowlie() { leaderToldGrowlie = true; }
+
+    /** When the leader was first seen standing in the event (the script's timer starts as he enters); 0 before. */
+    synchronized long enteredEventAtMs() { return enteredEventAtMs; }
+    synchronized void markEnteredEvent(long nowMs) {
+        if (enteredEventAtMs == 0L) enteredEventAtMs = Math.max(1L, nowMs);
+    }
+
+    /**
+     * After the clear the leader logged off, went down or is no longer the party's leader: the companions stop waiting
+     * on him, claim and go. It is never a failure.
+     */
+    synchronized boolean leaderReleased() { return leaderReleased; }
+    synchronized void markLeaderReleased() { leaderReleased = true; }
 
     /** The companions' potions as the run entered the stage, for the release log line. */
     synchronized String potionsAtEntry() { return potionsAtEntry; }

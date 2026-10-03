@@ -122,9 +122,11 @@ class AgentHpqCompanionSeedsTest {
 
     @Test
     void aDownedCompanionsSeedIsFetchedAgain() {
+        // Four, so the death is waited out (at three it would end the run WENT_DOWN).
+        Character ann = run.human(5, "Ann", new Point(0, 83));
         run.holds(mira, RED, 1);
         when(mira.getHp()).thenReturn(0);
-        AgentHpqSession session = collecting();
+        AgentHpqSession session = run.session(true, AgentHpqSession.Phase.COLLECTING_SEEDS, ben, mira, tobi, ann);
 
         AgentHpqCoordinator.tick(session, 2_000L);
 

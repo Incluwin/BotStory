@@ -50,8 +50,9 @@ final class AgentHpqWatchdogRuntime {
                 })
                 .findFirst().orElse(null);
         if (candidateEntry == null) {
-            AgentHpqTerminationService.fail(
-                    session, "No live Agent execution participant remains", nowMs);
+            // A companion run waits for its downed companions' respawn (their host taps them out); a stock run ends.
+            if (session.companionAdopted() && AgentHpqCoordinator.awaitingRespawn(session, nowMs)) return;
+            AgentHpqCoordinator.failWithoutLiveAgent(session, nowMs);
             return;
         }
         Character candidate = AgentRuntimeIdentityRuntime.bot(candidateEntry);

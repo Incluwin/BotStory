@@ -37,6 +37,16 @@ final class AgentHpqTerminationService {
     }
 
     /**
+     * Ends a companion run after its clear (a stall): its companions leave through the event's own exit, and the event
+     * and the players still in it stay as they are. Nothing is disposed.
+     */
+    static void failAfterClear(AgentHpqSession session, String reason, long nowMs) {
+        if (session == null || session.terminationStarted()) return;
+        exitAgentsOnly(session);
+        release(session, reason, nowMs, false, false);
+    }
+
+    /**
      * Takes a companion run's Agents out of its event, through the event's own exit (the exit map, from which the
      * host's handback has them follow their owner), and leaves the event and its humans as they are: a failure after the
      * clear must not take a player's reward from him.

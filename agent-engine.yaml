@@ -862,6 +862,14 @@ tuning:
     # Purpose: Bounds how long the companions wait on the clear map for the leader to choose Tommy or Tory before they claim and go.
     # Technical: Counted from the clear in AgentHpqSession; after it the companions say C12 and claim at Tory even while he is still on the clear map or in Pig Town. Before it they claim only once he is off both or out of the event. Companion runs only.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_CLEAR_WAIT_MS: '300000'
+    # Values: 10000-120000 milliseconds. Recommended: 45000, KPQ's LOCAL_RECOVERY_TIMEOUT_MS, which covers an Agent's death pop-up and respawn.
+    # Purpose: Bounds how long a companion run waits for a downed member: the respawn carries it out of the event, where its owner taps a companion out or a player is left behind.
+    # Technical: AgentHpqCoordinator.membersAlive fails the run DEFEATED for a member down this long (and GONE for a companion missing this long) inside COLLECTING_SEEDS..DELIVERING_CAKES; AgentHpqWatchdogRuntime waits this long for a respawn while no companion stands, unless fewer than three stand (WENT_DOWN). Companion runs only; the stage is never paused.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
+    # Values: 0-10000 milliseconds. Recommended: 2000.
+    # Purpose: Lets a companion run that the event ended under say it ran out of time when that was the script's ten-minute timer, and not a generic ending.
+    # Technical: AgentHpqParting.eventEnded picks TIMEOUT when the run has stood in the event at least the catalog's hpq eventTimerMs (600000) minus this slack, counted from the leader's first sighting inside; a lost Moon Bunny is BUNNY first. Companion runs only; it changes only the parting line.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.TIMEOUT_SLACK_MS: '2000'
     # Values: 500-5000 milliseconds. Recommended: 2000.
     # Purpose: Gives an HPQ Agent leader a natural pause after a nearby eligible player asks to join its party.
     # Technical: Overrides only HPQ's shared-lobby invitation delay; KPQ, LPQ, and other lobby profiles retain their own or the shared defaults.

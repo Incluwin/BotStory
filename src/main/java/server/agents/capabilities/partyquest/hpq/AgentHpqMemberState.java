@@ -15,6 +15,12 @@ public final class AgentHpqMemberState {
     private boolean fullRateHeld;
     private boolean fullRateWasRequired;
     private boolean cakesLeftBehind;
+    // A companion run's deaths and tap-outs (AgentHpqCoordinator.membersAlive), under the session's lock.
+    private long downSinceMs;
+    private boolean tapOutRequested;
+    private long revivedSeenAtMs;
+    private int cakesWhenDown;
+    private long missingSinceMs;
 
     public AgentHpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -86,4 +92,48 @@ public final class AgentHpqMemberState {
     boolean cakesLeftBehind() { return cakesLeftBehind; }
 
     void markCakesLeftBehind() { cakesLeftBehind = true; }
+
+    /**
+     * Marks this member down from its first sighting, with the rice cakes it held then (the stock respawn's unregister
+     * takes them from it, so the count is kept for the ejection's log); a down sighting also breaks any revive streak.
+     */
+    void markDown(long nowMs, int cakesHeld) {
+        if (downSinceMs == 0L) {
+            downSinceMs = Math.max(1L, nowMs);
+            cakesWhenDown = Math.max(0, cakesHeld);
+        }
+        revivedSeenAtMs = 0L;
+    }
+
+    void clearDown() {
+        downSinceMs = 0L;
+        tapOutRequested = false;
+        revivedSeenAtMs = 0L;
+        cakesWhenDown = 0;
+    }
+
+    long downSinceMs() { return downSinceMs; }
+    boolean down() { return downSinceMs > 0L; }
+    boolean tapOutRequested() { return tapOutRequested; }
+    void markTapOutRequested() { tapOutRequested = true; }
+    /** The rice cakes it held as it went down; 0 when it is not down. */
+    int cakesWhenDown() { return cakesWhenDown; }
+
+    /**
+     * True from the second tick in a row that sees this downed member standing in the event again. The respawn
+     * restores HP before it changes map, so a single sighting can be a companion on its way out.
+     */
+    boolean confirmRevived(long nowMs) {
+        if (revivedSeenAtMs > 0L) return true;
+        revivedSeenAtMs = Math.max(1L, nowMs);
+        return false;
+    }
+
+    /** Since when this member has been missing (offline or unloaded), from its first sighting so. */
+    long observeMissing(long nowMs) {
+        if (missingSinceMs == 0L) missingSinceMs = Math.max(1L, nowMs);
+        return missingSinceMs;
+    }
+
+    void clearMissing() { missingSinceMs = 0L; }
 }

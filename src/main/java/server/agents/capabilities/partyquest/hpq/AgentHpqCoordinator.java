@@ -8,10 +8,15 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.inventory.AgentInventoryStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
+import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.AgentPartyMemberSnapshot;
+import server.agents.integration.AgentPartySnapshot;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
@@ -104,6 +109,10 @@ final class AgentHpqCoordinator {
             "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.BUNNY_HURT_LINE_MAX");
     private static final long COMPANION_CLEAR_WAIT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_CLEAR_WAIT_MS");
+    private static final long MEMBER_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS");
+    private static final long TIMEOUT_SLACK_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.TIMEOUT_SLACK_MS");
 
     private AgentHpqCoordinator() {
     }
@@ -111,29 +120,27 @@ final class AgentHpqCoordinator {
     static void tick(AgentHpqSession session, long nowMs) {
         synchronized (session) {
             if (session.terminal()) return;
+            if (session.companionAdopted()) {
+                companionRunTick(session, nowMs);
+                return;
+            }
             if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
                 AgentHpqTerminationService.fail(session, "No HPQ progress before the phase timeout", nowMs);
                 return;
             }
             holdFullRateSimulation(session);
             Character leader = character(session.eventLeaderId());
-            // After the clear a companion run's leader may log off or go down: the companions claim and leave.
-            boolean leaderOptional = session.companionAdopted() && afterClear(session.phase());
-            if (!leaderOptional && (leader == null || leader.getHp() <= 0)) {
+            if (leader == null || leader.getHp() <= 0) {
                 AgentHpqTerminationService.fail(session, "The HPQ event leader is unavailable", nowMs);
                 return;
             }
-            if (leader != null && session.eventInstance() == null && hpq().event(leader) != null) {
+            if (session.eventInstance() == null && hpq().event(leader) != null) {
                 session.bindEventInstance(hpq().event(leader));
             }
             if (insideEvent(session.phase()) && session.eventInstance() != null
                     && hpq().event(leader) != session.eventInstance()) {
                 AgentHpqTerminationService.fail(
                         session, "The HPQ event ended or the leader left its instance", nowMs);
-                return;
-            }
-            if (session.companionAdopted()) {
-                companionTick(session, leader, nowMs);
                 return;
             }
             switch (session.phase()) {
@@ -662,6 +669,53 @@ final class AgentHpqCoordinator {
      * they play beside him and talk like players, and nothing they say is a status line. Stock, background and
      * GM-observed runs never come here.
      */
+    private static void companionRunTick(AgentHpqSession session, long nowMs) {
+        if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
+            fail(session, "No HPQ progress before the phase timeout",
+                    AgentHpqParting.of(AgentHpqParting.Kind.TOO_LONG), nowMs);
+            return;
+        }
+        holdFullRateSimulation(session);
+        Character leader = character(session.eventLeaderId());
+        if (pastTheClear(session)) {
+            // After Growlie's clear nothing about the leader ends the run: once he is let go they claim and go.
+            releaseLeaderAfterClear(session, leader);
+            Character playing = session.leaderReleased() ? null : leader;
+            if (playing == null && insideEvent(session.phase())) {
+                companionCleared(session, nowMs);
+            } else {
+                companionTick(session, playing, nowMs);
+            }
+            return;
+        }
+        if (leader == null) {
+            fail(session, "The HPQ event leader went offline", new AgentHpqParting(AgentHpqParting.Kind.GONE,
+                    session.eventLeaderId(), memberName(session, session.eventLeaderId())), nowMs);
+            return;
+        }
+        if (leader.getHp() <= 0) {
+            fail(session, "The HPQ event leader was defeated",
+                    AgentHpqParting.of(AgentHpqParting.Kind.DEFEATED, leader), nowMs);
+            return;
+        }
+        if (session.eventInstance() == null && hpq().event(leader) != null) {
+            session.bindEventInstance(hpq().event(leader));
+        }
+        if (insideEvent(session.phase()) && session.eventInstance() != null
+                && hpq().event(leader) != session.eventInstance()) {
+            fail(session, "The HPQ event ended or the leader left its instance",
+                    AgentHpqParting.of(endedCause(session, nowMs)), nowMs);
+            return;
+        }
+        // Departures and deaths come before the stage logic; a downed member pauses nothing (the Bunny's clock runs).
+        if (insideEvent(session.phase())
+                && (!reconcileLiveParty(session, nowMs) || !membersAlive(session, leader, nowMs))) {
+            return;
+        }
+        companionTick(session, leader, nowMs);
+    }
+
+    /** A companion run's phase switch, once the run-level checks let it go on; a null leader has been let go. */
     private static void companionTick(AgentHpqSession session, Character leader, long nowMs) {
         switch (session.phase()) {
             case PREPARING -> companionPrepare(session, leader, nowMs);
@@ -684,12 +738,13 @@ final class AgentHpqCoordinator {
      */
     private static void companionPrepare(AgentHpqSession session, Character leader, long nowMs) {
         if (leader.getMapId() == AgentHpqDefinition.STAGE_MAP && hpq().event(leader) != null) {
+            session.markEnteredEvent(nowMs);
             transition(session, AgentHpqSession.Phase.ENTERING, nowMs);
             return;
         }
         if (nowMs - session.phaseEnteredAtMs() >= COMPANION_ENTRY_WAIT_MS) {
-            AgentHpqTerminationService.fail(session,
-                    "The companion run's leader did not take the party into HPQ within the entry wait", nowMs);
+            fail(session, "The companion run's leader did not take the party into HPQ within the entry wait",
+                    AgentHpqParting.SILENT, nowMs);
         }
     }
 
@@ -703,8 +758,8 @@ final class AgentHpqCoordinator {
         EventInstanceManager event = hpq().event(leader);
         if (leader.getMapId() != AgentHpqDefinition.STAGE_MAP || event == null) {
             if (waitedMs >= COMPANION_ENTRY_WAIT_MS) {
-                AgentHpqTerminationService.fail(session,
-                        "The companion run's leader left before the party was inside HPQ", nowMs);
+                fail(session, "The companion run's leader left before the party was inside HPQ",
+                        AgentHpqParting.SILENT, nowMs);
             }
             return;
         }
@@ -723,10 +778,10 @@ final class AgentHpqCoordinator {
             case ENTERED -> companionEnterSeeds(session, nowMs);
             case EJECT_ABSENT -> {
                 for (AgentHpqMemberState member : absent) departMember(session, member, "did not enter", nowMs);
-                if (carriesOn(session, nowMs)) companionEnterSeeds(session, nowMs);
+                if (carriesOn(session, AgentHpqParting.SILENT, nowMs)) companionEnterSeeds(session, nowMs);
             }
-            case GIVE_UP -> AgentHpqTerminationService.fail(session,
-                    "Fewer than three of the companion run entered HPQ within the entry wait", nowMs);
+            case GIVE_UP -> fail(session, "Fewer than three of the companion run entered HPQ within the entry wait",
+                    AgentHpqParting.SILENT, nowMs);
             default -> { }
         }
     }
@@ -749,8 +804,10 @@ final class AgentHpqCoordinator {
         EventInstanceManager event = session.eventInstance();
         if (character != null && event != null && hpq().event(character) == event) event.exitPlayer(character);
         AgentHpqFullRateSimulation.apply(member, AgentRuntimeRegistry.findByAgentCharacterId(id), false);
+        // A companion killed outright still held its cakes as it went down; the respawn's unregister took them.
+        int held = character == null ? -1 : character.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false);
         log.info("HPQ cakes lost with member: session={} member={} cakes={}", session.sessionId(), id,
-                character == null ? -1 : character.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false));
+                member.cakesWhenDown() > 0 ? Math.max(held, member.cakesWhenDown()) : held);
         log.warn("HPQ member left the run and was ejected: session={} member={} type={} phase={} reason={} "
                         + "remainingBefore={}", session.sessionId(), id, member.memberType(), session.phase(), reason,
                 session.memberCount());
@@ -765,9 +822,9 @@ final class AgentHpqCoordinator {
     }
 
     /** False when the departures ended the run: fewer than three left, or no companion (the humans carry on). */
-    private static boolean carriesOn(AgentHpqSession session, long nowMs) {
+    private static boolean carriesOn(AgentHpqSession session, AgentHpqParting belowThree, long nowMs) {
         if (session.memberCount() < AgentHpqDefinition.MINIMUM_PARTY_SIZE) {
-            AgentHpqTerminationService.fail(session, "The companion run fell below three members", nowMs);
+            fail(session, "The companion run fell below three members", belowThree, nowMs);
             return false;
         }
         if (session.members().stream()
@@ -819,7 +876,7 @@ final class AgentHpqCoordinator {
             boolean onStage = character != null && character.getMapId() == AgentHpqDefinition.STAGE_MAP;
             if (member.memberType() == AgentHpqMemberState.MemberType.AGENT) {
                 // A downed companion plants nothing: its colour is fetched again.
-                int carried = onStage && character.getHp() > 0 ? AgentHpqCompanionPlay.carriedSeed(
+                int carried = onStage && character.getHp() > 0 && !member.down() ? AgentHpqCompanionPlay.carriedSeed(
                         seed -> character.getItemQuantity(seed, false) > 0, needed) : 0;
                 if (carried > 0) carriedByAgents.add(carried);
                 continue;
@@ -939,7 +996,7 @@ final class AgentHpqCoordinator {
             }
             case BUNNY_LOST -> {
                 session.markBunnyLost();
-                AgentHpqTerminationService.fail(session, "The Moon Bunny was defeated", nowMs);
+                fail(session, "The Moon Bunny was defeated", AgentHpqParting.of(AgentHpqParting.Kind.BUNNY), nowMs);
                 return;
             }
             case DELIVER -> {
@@ -1358,6 +1415,289 @@ final class AgentHpqCoordinator {
         AgentHpqTerminationService.complete(session, nowMs);
     }
 
+    // ---- companion runs: departures, deaths and the run's end ----
+
+    /** Growlie took the cakes: the phase is past the clear, or the event's own clear is in. */
+    private static boolean pastTheClear(AgentHpqSession session) {
+        EventInstanceManager event = session.eventInstance();
+        return AgentHpqMemberVerdicts.clearedPhase(session.phase()) || (event != null && event.isEventCleared());
+    }
+
+    /** After the clear the leader is let go once he logs off, goes down, or is no longer the party's leader. */
+    private static void releaseLeaderAfterClear(AgentHpqSession session, Character leader) {
+        if (session.leaderReleased()) return;
+        String why = leader == null ? "offline"
+                : leader.getHp() <= 0 ? "down"
+                : leadPassed(session) ? "lead passed" : null;
+        if (why == null) return;
+        session.markLeaderReleased();
+        log.info("HPQ leader let go after the clear: session={} leader={} why={} phase={}",
+                session.sessionId(), session.eventLeaderId(), why, session.phase());
+    }
+
+    /** The live party is gone, or someone else leads it. */
+    private static boolean leadPassed(AgentHpqSession session) {
+        AgentPartySnapshot party = liveParty(session);
+        return party == null || party.members().stream().noneMatch(member -> member != null && member.leader()
+                && member.id() == session.eventLeaderId());
+    }
+
+    /** The live party, as the first online member of the run sees it; null when none has one. */
+    private static AgentPartySnapshot liveParty(AgentHpqSession session) {
+        for (AgentHpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            AgentPartySnapshot party = character == null ? null : AgentPartyGatewayRuntime.party().snapshot(character);
+            if (party != null) return party;
+        }
+        return null;
+    }
+
+    /** A member's name: from the live party, which keeps offline members, else from the online character; or null. */
+    private static String memberName(AgentHpqSession session, int characterId) {
+        AgentPartySnapshot party = liveParty(session);
+        String name = party == null ? null : party.members().stream()
+                .filter(member -> member != null && member.id() == characterId)
+                .map(AgentPartyMemberSnapshot::name)
+                .findFirst().orElse(null);
+        if (name != null) return name;
+        Character character = character(characterId);
+        return character == null ? null : character.getName();
+    }
+
+    /** Why the event ended under the run: the Bunny lost, its timer (counted from the leader's entry), or neither. */
+    private static AgentHpqParting.Kind endedCause(AgentHpqSession session, long nowMs) {
+        long enteredAtMs = session.enteredEventAtMs() > 0L ? session.enteredEventAtMs() : session.startedAtMs();
+        return AgentHpqParting.eventEnded(session.bunnyLost(), nowMs - enteredAtMs,
+                AgentPartyQuestCatalog.require(QUEST_KEY).eventTimerMs(), TIMEOUT_SLACK_MS);
+    }
+
+    /**
+     * The departed-member pass, read from the live party as KPQ's reconcileLiveParty: a member no longer in it (a
+     * tapped-out companion its host took out, a player who left) is ejected; fewer than three end the run LEFT, and
+     * with no companion left the humans carry on. A lead passed inside the event ends the run (HPQ does not pass the lead).
+     * False when the run ended.
+     */
+    private static boolean reconcileLiveParty(AgentHpqSession session, long nowMs) {
+        if (session.eventInstance() == null) return true;
+        AgentPartySnapshot party = liveParty(session);
+        if (party == null) {
+            fail(session, "The HPQ party was disbanded", AgentHpqParting.GENERIC, nowMs);
+            return false;
+        }
+        Set<Integer> live = party.members().stream().filter(java.util.Objects::nonNull)
+                .map(AgentPartyMemberSnapshot::id).collect(Collectors.toSet());
+        List<AgentHpqMemberState> departed = session.members().stream()
+                .filter(member -> member.characterId() != session.eventLeaderId())
+                .filter(member -> !live.contains(member.characterId()))
+                .toList();
+        AgentHpqParting left = AgentHpqParting.of(AgentHpqParting.Kind.LEFT);
+        for (AgentHpqMemberState member : departed) {
+            Character character = character(member.characterId());
+            if (left.subject() == null && character != null) {
+                left = AgentHpqParting.of(AgentHpqParting.Kind.LEFT, character);
+            }
+            departMember(session, member, "left the party", nowMs);
+        }
+        if (!departed.isEmpty() && !carriesOn(session, left, nowMs)) return false;
+        int liveLeaderId = party.members().stream().filter(java.util.Objects::nonNull)
+                .filter(AgentPartyMemberSnapshot::leader)
+                .mapToInt(AgentPartyMemberSnapshot::id).findFirst().orElse(0);
+        if (liveLeaderId != session.eventLeaderId()) {
+            fail(session, "The live HPQ party is no longer led by the run's leader", AgentHpqParting.GENERIC, nowMs);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Every non-leader member by AgentHpqMemberVerdicts (the leader was handled before). A downed one is marked down
+     * and left out of the stage loops, which keep running; a companion up outside the event is tapped out by its host
+     * (a refusal ends the run DEFEATED); a human who dropped is ejected. False when the run ended.
+     */
+    private static boolean membersAlive(AgentHpqSession session, Character leader, long nowMs) {
+        EventInstanceManager event = session.eventInstance();
+        boolean leaderInBoundEvent = event != null && hpq().event(leader) == event;
+        boolean cleared = event != null && event.isEventCleared();
+        // Counted as the loop marks members, so two companions downed in one tick cannot both wait.
+        int down = (int) session.members().stream().filter(AgentHpqMemberState::down).count();
+        for (AgentHpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (id == session.eventLeaderId()) continue;
+            Character character = character(id);
+            AgentHpqMemberVerdicts.Verdict verdict = AgentHpqMemberVerdicts.verdict(new AgentHpqMemberVerdicts.Facts(
+                    true, session.phase(), member.memberType(), false, character != null,
+                    character == null ? 0 : character.getHp(), character != null && hpq().event(character) == event,
+                    leaderInBoundEvent, cleared, member.downSinceMs(), member.tapOutRequested(),
+                    session.memberCount() - 1 - (down - (member.down() ? 1 : 0)), nowMs, MEMBER_RECOVERY_TIMEOUT_MS));
+            switch (verdict) {
+                case MISSING -> {
+                    if (nowMs - member.observeMissing(nowMs) >= MEMBER_RECOVERY_TIMEOUT_MS) {
+                        fail(session, "Party member " + id + " disconnected or left the channel",
+                                new AgentHpqParting(AgentHpqParting.Kind.GONE, id, memberName(session, id)), nowMs);
+                        return false;
+                    }
+                }
+                case OK -> member.clearMissing();
+                case DEFEATED -> {
+                    fail(session, character.getName() + " was defeated during HPQ",
+                            AgentHpqParting.of(AgentHpqParting.Kind.DEFEATED, character), nowMs);
+                    return false;
+                }
+                case SHORT_HANDED -> {
+                    fail(session, character.getName() + " went down, and HPQ needs three",
+                            AgentHpqParting.of(AgentHpqParting.Kind.WENT_DOWN, character), nowMs);
+                    return false;
+                }
+                case DROP_HUMAN -> {
+                    if (!dropHuman(session, member, character, nowMs)) return false;
+                }
+                case DOWN_WAIT -> {
+                    if (!member.down()) down++;
+                    markDown(session, member, character, nowMs);
+                }
+                case REQUEST_TAP_OUT -> {
+                    // The stock respawn carried it out of the event; its host takes it out of the party, and the
+                    // departed-member pass ejects it on a later tick.
+                    if (AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
+                            QUEST_KEY, session.sessionId(), id, character.getMapId(), nowMs))) {
+                        member.markTapOutRequested();
+                        log.info("HPQ companion tapped out: session={} member={} map={}",
+                                session.sessionId(), id, character.getMapId());
+                    } else if (!cleared) {
+                        fail(session, character.getName() + " was defeated during HPQ and its host kept it",
+                                AgentHpqParting.of(AgentHpqParting.Kind.DEFEATED, character), nowMs);
+                        return false;
+                    }
+                    // Else Growlie cleared the run on his own thread since this tick read the clear: after the clear
+                    // nothing is asked of a downed member.
+                }
+                case REVIVED -> {
+                    if (member.confirmRevived(nowMs)) {
+                        member.clearDown();
+                        down--;
+                    }
+                }
+                case IGNORE -> {
+                }
+            }
+        }
+        return true;
+    }
+
+    /** Marks a member down at its first sighting, with the rice cakes it holds (logged once). */
+    private static void markDown(AgentHpqSession session, AgentHpqMemberState member, Character character,
+                                 long nowMs) {
+        boolean first = !member.down();
+        int cakes = character == null ? 0
+                : Math.max(0, character.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false));
+        member.markDown(nowMs, cakes);
+        if (first) {
+            log.info("HPQ member down: session={} member={} type={} phase={} cakes={}",
+                    session.sessionId(), member.characterId(), member.memberType(), session.phase(), cakes);
+        }
+    }
+
+    /**
+     * A non-leader human who went offline or is up outside the event is left behind: the run carries on with C13, or
+     * ends LEFT below three. False when the run ended.
+     */
+    private static boolean dropHuman(AgentHpqSession session, AgentHpqMemberState member, Character character,
+                                     long nowMs) {
+        int id = member.characterId();
+        String name = memberName(session, id);
+        departMember(session, member, character == null ? "offline" : "up outside the event", nowMs);
+        if (session.memberCount() < AgentHpqDefinition.MINIMUM_PARTY_SIZE) {
+            fail(session, "A human member dropped, and HPQ needs three",
+                    new AgentHpqParting(AgentHpqParting.Kind.LEFT, id, name), nowMs);
+            return false;
+        }
+        coordinate(session, narrator(session), "drop-" + id,
+                AgentHpqCompanionPlay.carryOnLine(name == null ? "someone" : name, session.memberCount()));
+        return true;
+    }
+
+    /**
+     * A companion run's end. The first standing companion (else the first companion, even down) puts it in its own
+     * words, SILENT before the run got going; the raw reason goes only to the log. Before the clear the event is
+     * disposed, as a stock failure does; after it only the companions leave, through the event's exit, and the event
+     * and its players stay. A stock run fails as it always did.
+     */
+    private static void fail(AgentHpqSession session, String reason, AgentHpqParting parting, long nowMs) {
+        if (!session.companionAdopted()) {
+            AgentHpqTerminationService.fail(session, reason, nowMs);
+            return;
+        }
+        if (session.terminal() || session.terminationStarted()) return;
+        boolean pastTheClear = pastTheClear(session);
+        AgentHpqParting said = beforeEntry(session.phase()) ? AgentHpqParting.SILENT : parting;
+        Character speaker = narrator(session);
+        log.warn("HPQ session failure: session={} phase={} parting={} pastTheClear={} reason={} members={}",
+                session.sessionId(), session.phase(), said.kind(), pastTheClear, reason, session.memberCount());
+        if (speaker != null) narrate(session, speaker, "failed", said.line(speaker.getId(), pastTheClear));
+        if (pastTheClear) {
+            AgentHpqTerminationService.failAfterClear(session, reason, nowMs);
+        } else {
+            AgentHpqTerminationService.fail(session, reason, nowMs);
+        }
+    }
+
+    /** Before the party was inside: the desk already answered the leader, so the run ends without a word. */
+    private static boolean beforeEntry(AgentHpqSession.Phase phase) {
+        return phase == AgentHpqSession.Phase.PREPARING || phase == AgentHpqSession.Phase.ENTERING;
+    }
+
+    /**
+     * True when the watchdog, finding no standing companion to run a companion run, should wait: one has been down less
+     * than MEMBER_RECOVERY_TIMEOUT_MS and the stock respawn will carry it out, where its host taps it out. Short-handed
+     * the run ends WENT_DOWN now (the respawn would end the event anyway), said by the downed companion.
+     */
+    static boolean awaitingRespawn(AgentHpqSession session, long nowMs) {
+        synchronized (session) {
+            if (session.terminal() || session.terminationStarted()) return true;
+            // Before entry a respawn stays in Henesys, so there is nothing to wait for.
+            if (beforeEntry(session.phase())) return false;
+            Character downed = null;
+            for (AgentHpqMemberState member : session.members()) {
+                if (member.memberType() != AgentHpqMemberState.MemberType.AGENT) continue;
+                Character agent = character(member.characterId());
+                if (agent == null) continue;
+                if (agent.getHp() <= 0) markDown(session, member, agent, nowMs);
+                if (downed == null && member.down() && nowMs - member.downSinceMs() < MEMBER_RECOVERY_TIMEOUT_MS) {
+                    downed = agent;
+                }
+            }
+            if (downed == null) return false;
+            if (shortHanded(session)) {
+                fail(session, downed.getName() + " went down, and HPQ needs three",
+                        AgentHpqParting.of(AgentHpqParting.Kind.WENT_DOWN, downed), nowMs);
+            }
+            return true;
+        }
+    }
+
+    /** The watchdog found no live Agent to run the session: a companion run hears it end, a stock run ends as ever. */
+    static void failWithoutLiveAgent(AgentHpqSession session, long nowMs) {
+        String reason = "No live Agent execution participant remains";
+        if (!session.companionAdopted()) {
+            AgentHpqTerminationService.fail(session, reason, nowMs);
+            return;
+        }
+        synchronized (session) {
+            fail(session, reason, AgentHpqParting.GENERIC, nowMs);
+        }
+    }
+
+    /** Inside an uncleared stage, fewer than three members still stand in the event (up, not marked down, inside). */
+    private static boolean shortHanded(AgentHpqSession session) {
+        EventInstanceManager event = session.eventInstance();
+        if (!insideEvent(session.phase()) || event == null || event.isEventCleared()) return false;
+        return session.members().stream()
+                .filter(member -> !member.down())
+                .map(member -> character(member.characterId()))
+                .filter(character -> character != null && character.getHp() > 0 && hpq().event(character) == event)
+                .count() < AgentHpqDefinition.MINIMUM_PARTY_SIZE;
+    }
+
     /**
      * A companion run's companions standing in its instance after the clear, their reward still to claim, run at full
      * rate; nobody else's are held.
@@ -1383,21 +1723,25 @@ final class AgentHpqCoordinator {
         return character != null && event != null && hpq().event(character) == event;
     }
 
-    /** A loaded companion of the run that is online and standing; null otherwise. */
+    /** A loaded companion of the run that is online, standing and not marked down; null otherwise. */
     private static Character standingAgent(AgentHpqMemberState member) {
-        if (member.memberType() != AgentHpqMemberState.MemberType.AGENT) return null;
+        if (member.memberType() != AgentHpqMemberState.MemberType.AGENT || member.down()) return null;
         Character agent = character(member.characterId());
         return agent != null && agent.getHp() > 0 ? agent : null;
     }
 
-    /** The first standing companion, else the first one online: who says the run's lines. */
+    /**
+     * Who says the run's lines: the first companion standing in the run (up, not marked down, and in its event once
+     * it has one), else the first companion online even when it is down; null when none is.
+     */
     private static Character narrator(AgentHpqSession session) {
+        EventInstanceManager event = session.eventInstance();
         Character online = null;
         for (AgentHpqMemberState member : session.members()) {
             if (member.memberType() != AgentHpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
             if (agent == null) continue;
-            if (agent.getHp() > 0) return agent;
+            if (standingAgent(member) != null && (event == null || hpq().event(agent) == event)) return agent;
             if (online == null) online = agent;
         }
         return online;
@@ -1407,14 +1751,6 @@ final class AgentHpqCoordinator {
         MapleMap map = character.getMap();
         Collection<MapItem> drops = map == null ? null : map.getDroppedItems();
         return drops == null ? List.of() : List.copyOf(drops);
-    }
-
-    /** After the clear, where a companion run's leader may be gone without failing it. */
-    private static boolean afterClear(AgentHpqSession.Phase phase) {
-        return switch (phase) {
-            case BONUS_DECISION, BONUS_FARMING, CLAIMING_REWARD, EXITING -> true;
-            default -> false;
-        };
     }
 
     /**
@@ -1487,11 +1823,7 @@ final class AgentHpqCoordinator {
     }
 
     private static boolean insideEvent(AgentHpqSession.Phase phase) {
-        return switch (phase) {
-            case COLLECTING_SEEDS, PLANTING_SEEDS, DEFENDING_BUNNY,
-                    DELIVERING_CAKES -> true;
-            default -> false;
-        };
+        return AgentHpqMemberVerdicts.insideEvent(phase);
     }
 
     /**

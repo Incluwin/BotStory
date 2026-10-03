@@ -9,6 +9,8 @@ import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.AgentPartyMemberSnapshot;
+import server.agents.integration.AgentPartySnapshot;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
@@ -72,6 +74,8 @@ final class HpqRunFixture implements AutoCloseable {
     private final List<MapItem> drops = new ArrayList<>();
     private final List<Reactor> reactors = new ArrayList<>();
     private final List<AgentHpqSession> sessions = new ArrayList<>();
+    private final List<Character> partyMembers = new ArrayList<>();
+    private int partyLeaderId;
     private final MockedStatic<AgentRuntimeRegistry> registry;
     private final MockedStatic<AgentRuntimeIdentityRuntime> identity;
 
@@ -143,6 +147,41 @@ final class HpqRunFixture implements AutoCloseable {
         when(hpq.event(member)).thenReturn(event);
         when(hpq.sameEvent(any(), eq(member))).thenReturn(true);
         return member;
+    }
+
+    /**
+     * The live party: these members, the first leading. Asked about a character outside it, the party gateway has no
+     * party for him. {@link #session} sets it to the session's members.
+     */
+    void party(Character... members) {
+        partyMembers.clear();
+        partyMembers.addAll(List.of(members));
+        partyLeaderId = members.length == 0 ? 0 : members[0].getId();
+        when(party.snapshot(any())).thenAnswer(call -> snapshotFor(call.getArgument(0)));
+    }
+
+    /** The member left the live party (or its host took a tapped-out companion out of it). */
+    void leaveParty(Character member) {
+        partyMembers.remove(member);
+    }
+
+    /** The live party's lead passes to this member. */
+    void passLead(Character member) {
+        partyLeaderId = member.getId();
+    }
+
+    /** The member logged off: no runtime and not online (the live party keeps him, as the game's party does). */
+    void offline(Character member) {
+        registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(member.getId())).thenReturn(null);
+        when(characters.findOnlineCharacterById(member.getId())).thenReturn(null);
+    }
+
+    private AgentPartySnapshot snapshotFor(Character asking) {
+        if (asking == null || !partyMembers.contains(asking)) return null;
+        return new AgentPartySnapshot(1, partyMembers.stream()
+                .map(member -> new AgentPartyMemberSnapshot(member.getId(), member.getName(),
+                        member.getId() == partyLeaderId, member.getMapId()))
+                .toList());
     }
 
     /** Moves a member to this map, still in the bound event. */
@@ -231,8 +270,8 @@ final class HpqRunFixture implements AutoCloseable {
     }
 
     /**
-     * A registered PRODUCTION session in {@code phase}, bound to the event: the first member leads, and the first
-     * companion holds the execution lease.
+     * A registered PRODUCTION session in {@code phase}, bound to the event: the first member leads, the first companion
+     * holds the execution lease, and the members make up the live party.
      */
     AgentHpqSession session(boolean companionAdopted, AgentHpqSession.Phase phase, Character... members) {
         AgentHpqSession session = new AgentHpqSession(
@@ -250,6 +289,7 @@ final class HpqRunFixture implements AutoCloseable {
         session.setCompanionAdopted(companionAdopted);
         session.setMemberCoordinationChatEnabled(companionAdopted);
         session.bindEventInstance(event);
+        party(members);
         session.transition(phase, 1_000L);
         AgentHpqSessionRegistry.registerComplete(session);
         sessions.add(session);
