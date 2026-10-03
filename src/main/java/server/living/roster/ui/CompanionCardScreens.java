@@ -20,6 +20,7 @@ import server.living.config.Content;
 import server.living.config.Content.BondStage;
 import server.living.config.Content.Persona;
 import server.living.config.Content.StepType;
+import server.living.config.LivingContent;
 import server.living.population.FieldCatalog;
 import server.living.population.Population;
 import server.living.population.PopulationContent.Field;
@@ -851,6 +852,10 @@ final class CompanionCardScreens {
             options.add(stamp.option("Here's some coin for supplies...", () -> coinBox(owner, persona)));
         } else {
             options.add(Option.heading("(you have no meso to give)"));
+        }
+        if (!LivingContent.isHire(persona.id())) { // a hired citizen keeps no friendship
+            options.add(stamp.option("I brought you something...",
+                    () -> world.dialogue().giftMenu(owner, persona, () -> supplies(owner, persona, ""))));
         }
         LivingTalk.open(owner, portrait(persona)).menu(note(note) + carries(owner, persona, entry), options)
                 .back(() -> reopen(owner, persona, "")).show();

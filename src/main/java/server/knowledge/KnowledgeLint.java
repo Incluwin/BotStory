@@ -322,6 +322,55 @@ public final class KnowledgeLint {
         }
     }
 
+    /**
+     * A friendship gear pool (living-world rewards.gear): every id an equipment piece that is not cash; a WARN naming
+     * the jobs no piece is made for, since those players are never offered the quest.
+     */
+    public void friendGear(String where, List<Integer> pool, List<String> out) {
+        int covered = 0;
+        for (int itemId : pool) {
+            if (!require(EntityKind.ITEM, itemId, where, out)) {
+                continue;
+            }
+            ItemFact item = knowledge.item(itemId).orElseThrow();
+            if (!item.equip()) {
+                out.add("ERROR " + where + ": " + label(EntityKind.ITEM, itemId) + " is not equipment");
+            } else if (item.cash()) {
+                out.add("ERROR " + where + ": " + label(EntityKind.ITEM, itemId) + " is a cash item (it takes no scrolls)");
+            } else {
+                covered |= item.reqJob() == 0 ? 0x1F : item.reqJob();
+            }
+        }
+        List<String> missing = new ArrayList<>();
+        String[] jobs = {"warriors", "magicians", "bowmen", "thieves", "pirates"};
+        for (int bit = 0; bit < jobs.length; bit++) {
+            if ((covered & (1 << bit)) == 0) {
+                missing.add(jobs[bit]);
+            }
+        }
+        if (!missing.isEmpty() && missing.size() < jobs.length) {
+            out.add("WARN " + where + ": nothing for " + String.join(", ", missing) + "; they are never offered the quest");
+        }
+    }
+
+    /**
+     * A giver's own friendship piece (living-world rewards.gear with scrolls): non-cash equipment, and a WARN when it is
+     * not made for the giver's class ({@code giverJobMask}, a reqJob bit; -1 unknown, 0 a beginner).
+     */
+    public void giversGear(String where, int itemId, String giver, int giverJobMask, List<String> out) {
+        if (!require(EntityKind.ITEM, itemId, where, out)) {
+            return;
+        }
+        ItemFact item = knowledge.item(itemId).orElseThrow();
+        if (!item.equip()) {
+            out.add("ERROR " + where + ": " + label(EntityKind.ITEM, itemId) + " is not equipment");
+        } else if (item.cash()) {
+            out.add("ERROR " + where + ": " + label(EntityKind.ITEM, itemId) + " is a cash item (it takes no scrolls)");
+        } else if (giverJobMask >= 0 && item.reqJob() != 0 && (item.reqJob() & giverJobMask) == 0) {
+            out.add("WARN " + where + ": " + label(EntityKind.ITEM, itemId) + " is not made for " + giver + "'s class");
+        }
+    }
+
     private int reqLevel(int itemId) {
         return knowledge.item(itemId).map(ItemFact::reqLevel).orElse(0);
     }

@@ -1336,6 +1336,42 @@ public final class LivingStore {
         }
     }
 
+    /** The details of every {@code kind} event logged for this persona (with or without a character); null when the read fails. */
+    public List<String> personaEventDetails(String personaId, String kind) {
+        List<String> out = new ArrayList<>();
+        String sql = "SELECT detail FROM living_event_log WHERE persona_id = ? AND kind = ? ORDER BY id";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, personaId);
+            ps.setString(2, kind);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(rs.getString(1));
+                }
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log scan failed for {} {}", personaId, kind, failure);
+            return null;
+        }
+        return out;
+    }
+
+    /** How many {@code kind} events the character has with this persona since {@code sinceMs}; 0 when the read fails. */
+    public int countEvents(int characterId, String personaId, String kind, long sinceMs) {
+        String sql = SqlTime.utc("SELECT COUNT(*) FROM living_event_log WHERE character_id = ? AND persona_id = ? AND kind = ? AND at >= ?");
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, characterId);
+            ps.setString(2, personaId);
+            ps.setString(3, kind);
+            SqlTime.set(ps, 4, sinceMs);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException failure) {
+            log.warn("living_event_log count failed for {}/{}", characterId, personaId, failure);
+            return 0;
+        }
+    }
+
     /**
      * The persona ids of the character's {@code kind} events with this {@code detail} since their last {@code toldKind}
      * event, oldest first: what they have not been told yet (the Residents and hires let go while they were away).

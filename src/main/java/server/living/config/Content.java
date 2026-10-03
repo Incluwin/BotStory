@@ -85,8 +85,14 @@ public final class Content {
         public static final Look NONE = new Look(null, -1, 0, 0);
     }
 
+    /** {@code minFriendship}: friendship level 0-10 with the giver (server.living.bond.Friendship); 0 = none. */
     public record Requirements(int minLevel, int maxLevel, BondStage minBondStage, List<String> flags,
-                               List<String> notFlags, List<String> questsCompleted) { }
+                               List<String> notFlags, List<String> questsCompleted, int minFriendship) {
+        public Requirements(int minLevel, int maxLevel, BondStage minBondStage, List<String> flags,
+                            List<String> notFlags, List<String> questsCompleted) {
+            this(minLevel, maxLevel, minBondStage, flags, notFlags, questsCompleted, 0);
+        }
+    }
 
     public record DropRule(List<Integer> mobIds, double chance) { }
 
@@ -108,8 +114,31 @@ public final class Content {
                        ItemStack take,
                        String label) { }
 
+    /** {@code gear}: equipment the giver scrolls for the player, scaled by friendship (server.living.quest.FriendForge). */
     public record Reward(int meso, int exp, List<ItemStack> items, int bondPoints, List<String> flags,
-                         int fame, List<String> worldFlags) { }
+                         int fame, List<String> worldFlags, List<GearReward> gear) {
+        public Reward(int meso, int exp, List<ItemStack> items, int bondPoints, List<String> flags,
+                      int fame, List<String> worldFlags) {
+            this(meso, exp, items, bondPoints, flags, fame, worldFlags, List.of());
+        }
+    }
+
+    /**
+     * One forged item. Which piece: with {@code owned} the giver's own ({@code itemId} in YAML, the only pool entry),
+     * given whatever the player's class; otherwise the first entry of {@code pool} made for the player's job (a weapon
+     * of the type they wield first), so one entry can hold a piece for every class. How it is scrolled: to
+     * {@code scrolls} with every scroll taking, or, with no recipe, by friendship.
+     */
+    public record GearReward(List<Integer> pool, boolean owned, List<ScrollRecipe> scrolls) {
+        public GearReward(List<Integer> pool) {
+            this(pool, false, List.of());
+        }
+    }
+
+    /** {@code count} scrolls of the {@code success}% grade (10, 60 or 100); {@link #REST} fills every slot left. */
+    public record ScrollRecipe(int success, int count) {
+        public static final int REST = -1;
+    }
 
     public record ArcAdvance(String arc, String to) { }
 

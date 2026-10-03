@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 /**
  * Dresses a Resident from its loadout's {@code outfit} pools, so Residents sharing a loadout still
@@ -28,7 +29,8 @@ import java.util.Random;
  * Cash items go into the cosmetic cash slots over the real gear; 0 means nothing in that slot
  * (bare head, no gloves, no cape); an overall as the top leaves the bottom empty. A weapon from the
  * pool replaces the Resident's other weapons: the Agent gear optimizer would re-equip whichever hits
- * harder (the starter sword over a mop). Idempotent: a Resident already wearing its picks is left alone.
+ * harder (the starter sword over a mop). Idempotent: a Resident already wearing its picks is left alone. A slot its own
+ * quest gear takes (ResidentKit) keeps that piece: only a cash item still goes over it.
  */
 final class ResidentWardrobe {
     private static final Logger log = LoggerFactory.getLogger(ResidentWardrobe.class);
@@ -50,6 +52,14 @@ final class ResidentWardrobe {
 
     /** Returns true when anything was changed (the character is then saved); a hired citizen keeps its own gear. */
     static boolean dress(Character agent, Persona persona, Loadout loadout) {
+        return dress(agent, persona, loadout, Set.of(), Set.of());
+    }
+
+    /**
+     * As {@link #dress(Character, Persona, Loadout)}, leaving the regular items of the {@code kitSlots} to ResidentKit and
+     * never sweeping away the {@code kept} items (what its contract lets it keep).
+     */
+    static boolean dress(Character agent, Persona persona, Loadout loadout, Set<Short> kitSlots, Set<Integer> kept) {
         if (agent == null || loadout == null || loadout.outfit().isEmpty() || LivingContent.isHire(persona.id())) {
             return false;
         }
@@ -66,12 +76,12 @@ final class ResidentWardrobe {
                 continue;
             }
             int pick = pick(agent, persona, slot.getKey(), pool);
-            if (pick < 0) {
-                continue;
+            if (pick < 0 || kitSlots.contains(position) && (pick == 0 || !ItemInformationProvider.getInstance().isCash(pick))) {
+                continue; // its own quest gear is worn there; a cash piece may still cover it
             }
             changed |= wear(agent, position, pick);
             if (slot.getKey().equals("weapon") && pick > 0 && isWorn(agent, position, pick)) {
-                changed |= dropOtherWeapons(agent, pick);
+                changed |= dropOtherWeapons(agent, pick, pool, kept);
             }
             if (slot.getKey().equals("top")) {
                 overall = pick > 0 && ItemConstants.isOverall(pick);
@@ -96,7 +106,7 @@ final class ResidentWardrobe {
         return -1;
     }
 
-    private static boolean wearable(Character agent, int itemId, short position) {
+    static boolean wearable(Character agent, int itemId, short position) {
         int gender = (itemId / 1000) % 10; // 0 male only, 1 female only, anything else both
         if ((gender == 0 || gender == 1) && gender != agent.getGender()) {
             return false;
@@ -135,10 +145,19 @@ final class ResidentWardrobe {
         return worn != null && worn.getItemId() == itemId;
     }
 
-    private static boolean dropOtherWeapons(Character agent, int keep) {
+    /**
+     * Its other weapons from the same pool leave its bag (the Agent gear optimizer would switch back to whichever hits
+     * harder). A piece with an owner tag (its own quest gear, someone's gift), an untradeable or scrolled piece (pool
+     * weapons are made plain), a weapon from outside the pool (a gift, loot) and what its contract lets it keep all stay.
+     */
+    private static boolean dropOtherWeapons(Character agent, int keep, List<Integer> pool, Set<Integer> kept) {
         boolean changed = false;
         for (Item item : new ArrayList<>(agent.getInventory(InventoryType.EQUIP).list())) {
-            if (ItemConstants.isWeapon(item.getItemId()) && item.getItemId() != keep) {
+            int id = item.getItemId();
+            boolean tagged = item.getOwner() != null && !item.getOwner().isEmpty();
+            boolean untradeable = (item.getFlag() & ItemConstants.UNTRADEABLE) != 0;
+            if (ItemConstants.isWeapon(id) && id != keep && pool.contains(id) && !kept.contains(id) && !tagged && !untradeable
+                    && ResidentKit.scrolls(item) == 0) {
                 InventoryManipulator.removeFromSlot(agent.getClient(), InventoryType.EQUIP, item.getPosition(), item.getQuantity(), false);
                 changed = true;
             }

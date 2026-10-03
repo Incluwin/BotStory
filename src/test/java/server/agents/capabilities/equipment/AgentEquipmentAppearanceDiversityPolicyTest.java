@@ -34,6 +34,18 @@ class AgentEquipmentAppearanceDiversityPolicyTest {
         assertSame(candidates, selected);
     }
 
+    @Test
+    void keepsAPieceMadeForThisCharacterEvenWhenSomeoneElseWearsItsLook() {
+        Equip ownQuestHelm = equip(1_002_004);
+        when(ownQuestHelm.getOwner()).thenReturn("Garrick");
+        Equip plainHelm = equip(1_002_025);
+
+        List<Equip> selected = AgentEquipmentAppearanceDiversityPolicy.preferUnusedCandidates(
+                List.of(ownQuestHelm, plainHelm), Set.of(ownQuestHelm.getItemId()), "Garrick");
+
+        assertEquals(List.of(ownQuestHelm, plainHelm), selected);
+    }
+
     private static Equip equip(int itemId) {
         Equip equip = mock(Equip.class);
         when(equip.getItemId()).thenReturn(itemId);

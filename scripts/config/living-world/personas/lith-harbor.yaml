@@ -56,13 +56,14 @@
       - { from: 0, to: 5, materialize: false }
   recruitable: true
   contract: brannock-day-wage
-  questLines: [brannock-crates, brannock-mushroom-run]
+  questLines: [brannock-crates, brannock-mushroom-run, brannock-a-proper-grip, brannock-the-old-mace, brannock-the-big-snail, brannock-one-more-story]
   rumors: [lith-dock-confession]
   benchToleranceDays: 7
   paceGap: 2
   relationships:
     - { persona: tobin, kind: PROTECTS }
     - { persona: hadrik, kind: ADMIRES }
+  giftItemIds: [2020004, 2020005]
   dialogue:
     greetFirst: ["oh hey. you new? everyone's new here.", "hey! don't mind the smell, that's the fish. or me."]
     greet: ["hey hey.", "you again! good.", "what's the word?"]
@@ -91,6 +92,26 @@
     about.tobin: ["the kid? he's fine. he's fine. don't ask him about the money."]
     about.hadrik: ["Hadrik was a real sailor. ask him about the cutlass, but not before he's had a drink."]
     aboutUnknown: ["no clue, honestly."]
+    questOffer.brannock-a-proper-grip: ["look at your hands. rope burns everywhere. the glover on the pier owes me one, but she needs leather. twenty pieces. the pigs on the beach have plenty."]
+    questAccept.brannock-a-proper-grip: ["great! i'll tell her you're coming!"]
+    questWaiting.brannock-a-proper-grip: ["leather. twenty. the pigs won't mind. probably."]
+    questComplete.brannock-a-proper-grip: ["she stitched them overnight and i did the scrolls myself! well. i asked how first. they're yours!"]
+    questOffer.brannock-the-big-snail: ["you know what i've never seen? Mano. the big snail. everyone laughs about it. it's not funny when it's that big. come with me? i want to see it go down. and i... have something for you. for after."]
+    questAccept.brannock-the-big-snail: ["yes! okay! i'm ready! i'm mostly ready!"]
+    questComplete.brannock-the-big-snail: ["we did it. WE did it! here. my war hammer. i saved a whole season for seven sixties, and every single one took. i was keeping it for the boat. you have it."]
+    friend.close: ["you know you're my best mate on this whole dock, right? don't tell Tobin."]
+    friend.best: ["when i finally get on a boat, you're coming. that's not a question."]
+    famed: ["for me?! nobody ever... thanks!"]
+    defamed: ["...oh. okay. sorry, i guess."]
+    gift: ["for me? thanks! i'll keep it with my good stuff."]
+    gift.favorite: ["FOOD. real food! you're the best. the BEST."]
+    gift.again: ["you already gave me something today! save it!"]
+    questOffer.brannock-the-old-mace: ["i've hauled with this iron mace since the day i got off the boat. i bought a new one, so this one's yours. help me finish the shift first? thirty orange mushrooms keep knocking crates off the road."]
+    questAccept.brannock-the-old-mace: ["thanks! i'll be on the pier!"]
+    questComplete.brannock-the-old-mace: ["here. i put seven of the safe scrolls in it, back when i had no money. all seven took. it's done more work than me."]
+    questOffer.brannock-one-more-story: ["i'm getting on a boat. for real this time. but i want one more story first. Stumpy, the big stump past Perion. you and me. and after... there's something i want you to have."]
+    questAccept.brannock-one-more-story: ["okay. okay! i'm scared. that's fine. let's go."]
+    questComplete.brannock-one-more-story: ["this is Jacker. it's the best thing i've ever owned. two tens and five sixties, and every one took. i spent everything i had on it. i'm not taking it on the boat. it stays with my best friend."]
 
 - id: mirel
   name: Mirel
@@ -305,3 +326,141 @@
     questOffer.yara-road-watch: ["stumps and red snails on the east road. twenty and ten. same job as always."]
     questComplete.yara-road-watch: ["the road's clear for a day. that's all i ever ask."]
     aboutUnknown: ["not my post."]
+
+- id: ingrid
+  name: Ingrid
+  look: { gender: female }
+  title: "Harbor Halberdier"
+  job: SPEARMAN
+  level: { min: 30, max: 33 }
+  strength: SEASONED
+  loadout: lith-polearm-l30
+  personality: efficient-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 5, to: 12, spot: "venue:ship-upper-deck", activity: LINGER }
+      - { from: 12, to: 19, spot: "venue:world-tour-platform", activity: LINGER }
+      - { from: 19, to: 22, spot: "venue:upper-town-overlook", activity: REST }
+      - { from: 22, to: 5, materialize: false }
+  recruitable: true
+  contract: ingrid-shore-leave
+  questLines: [ingrid-hold-the-line, ingrid-the-pier-arm, ingrid-the-crossing, ingrid-the-nine-dragons, ingrid-salt-and-leather]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: hadrik, kind: ADMIRES }
+    - { persona: yara, kind: RIVAL }
+    - { persona: olwen, kind: TRUSTS }
+  giftItemIds: [4011002, 2020015]
+  dialogue:
+    greetFirst: ["papers? no? fine. keep left on the pier.", "you're in the gangway. step aside, then talk."]
+    greet: ["you. good. stand there, out of the way.", "pier's in order. mostly. what do you need?"]
+    idle: ["(raps her haft on the planks, counting crates under her breath)", "(watches a ship until it's past the point, then straightens up as if she wasn't)"]
+    noWork: ["nothing for you today. the pier's in order. i'd like it to stay that way."]
+    nothingDue: ["we're square. i keep it that way."]
+    who: ["Ingrid. i hold the harbor pier. every gangway, every rope, every boat in and out. in order."]
+    bye: ["keep left. mind the ropes."]
+    thanks: ["good work. that's in order."]
+    smallTalk: ["the morning boat was four minutes late. i'll be having words.", "i know the name of every ship that's tied up here. that's the job. ...it's mostly the job."]
+    speakPlainly: ["short version, please. i'm on watch."]
+    offer: ["thirty thousand meso. that pays a relief guard for my pier while i'm gone. eight hours, then i'm back on the planks."]
+    join: ["relief's on the pier. lead on. i'll hold the line."]
+    bench: ["i'll be on the pier. two days, then i assume you sailed without me."]
+    leave: ["shift's over. back to the planks. ...that was a good one."]
+    refuse.bond: ["i don't leave my pier for strangers. stand a watch with me first."]
+    refuse.flags: ["you haven't held the line yet. boars first."]
+    refuseOwnErrand: ["that one's yours. i don't count my own crates."]
+    questOffer.ingrid-hold-the-line: ["strangers don't stand my pier. i learned the spear on Perion's wild boars. thirty of them, and ten teeth so i know you counted."]
+    questAccept.ingrid-hold-the-line: ["the Land of Wild Boar, past Perion. plant your feet. a boar hits like a loose crate."]
+    questWaiting.ingrid-hold-the-line: ["ten boar teeth. i count everything. you'll get used to it."]
+    questComplete.ingrid-hold-the-line: ["ten. clean. you held the line. stand on my pier any time. left side, out of the gangway."]
+    questOffer.ingrid-the-pier-arm: ["this pole arm has stood every watch i've had. it should see more than planks. fifteen ligator skins for a new grip, and it's yours."]
+    questAccept.ingrid-the-pier-arm: ["Swamp of Despair, past Kerning. ligator skin doesn't rot in salt. nothing else lasts a month on this pier."]
+    questWaiting.ingrid-the-pier-arm: ["fifteen ligator skins. the pier doesn't wait, and neither do i."]
+    questComplete.ingrid-the-pier-arm: ["rewrapped. seven safe scrolls, seven for seven. i counted twice. it stood every watch with me. now it goes where i haven't."]
+    questOffer.ingrid-the-crossing: ["i've seen a hundred boats off to Florina Beach. never been on one. you go. give Olwen my name for the ledger, then clear forty lorangs."]
+    questAccept.ingrid-the-crossing: ["the boat leaves from my pier. i'll be on it. the pier, i mean. watching."]
+    questComplete.ingrid-the-crossing: ["don't tell me how it looked. the Crescent. a year's wages, seven sixties, seven for seven. it never left the pier. now it can."]
+    questOffer.ingrid-the-nine-dragons: ["the Nine Dragons. i bought it to sign on with the Merrow. Hadrik sent me back to the pier. tell him it's yours. then tortie shells. fifteen."]
+    questAccept.ingrid-the-nine-dragons: ["Hadrik's usually up on the deck. so am i, mornings. we don't talk about it. the torties are on the Hot Sand."]
+    questWaiting.ingrid-the-nine-dragons: ["fifteen tortie shells. for the pier gate. officially."]
+    questComplete.ingrid-the-nine-dragons: ["two tens, five sixties, seven for seven. never told anyone what it cost. it was meant to go to sea with me. you're close enough."]
+    questOffer.ingrid-salt-and-leather: ["salt eats a grip in a week. fifteen leather from the pigs on the beach, and the pier's hafts stay honest."]
+    questAccept.ingrid-salt-and-leather: ["fifteen. i'll count them twice."]
+    questWaiting.ingrid-salt-and-leather: ["fifteen leather. salt doesn't wait."]
+    questComplete.ingrid-salt-and-leather: ["fifteen. rewrapped by sundown. same again next week, if you're around. ...for the hafts."]
+    friend.close: ["i don't say this often. i'd trust you with the pier. the pier is most of what i have."]
+    friend.best: ["if a ship ever wants a guard and a friend on the same crossing, i know who i'm bringing. i'd go. for you, i'd go."]
+    famed: ["in front of the whole dock? ...fine. thank you. move along before i smile."]
+    defamed: ["fair or not, i'll stand a better watch. we'll see which of us was wrong."]
+    gift: ["for me? that's not on any list i keep. ...thank you."]
+    gift.favorite: ["how did you know? ...don't answer that. thank you. really."]
+    gift.again: ["one a day. orderly pier, orderly pockets."]
+    about.hadrik: ["Hadrik. first mate of the Merrow. i asked to sign on once. he sent me back to the pier. some days i'm grateful."]
+    about.yara: ["Yara thinks the east road matters more than my pier. wrong. we've had that argument for six years. i'm winning."]
+    aboutUnknown: ["never came off a boat on my watch."]
+
+- id: hob
+  name: Hob
+  look: { gender: male }
+  title: "Sailmaker"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: lith-harbor
+    routine:
+      - { from: 7, to: 13, spot: "venue:ship-upper-deck", activity: LINGER }
+      - { from: 13, to: 19, spot: "venue:central-benches", activity: LINGER }
+      - { from: 19, to: 21, spot: "venue:general-store", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  questLines: [hob-drawstrings, hob-sailcloth-trousers, hob-ghost-linen, hob-storm-canvas, hob-shell-buttons]
+  relationships:
+    - { persona: mirel, kind: OWES }
+    - { persona: brannock, kind: SCOLDS }
+  giftItemIds: [2022002, 4000021]
+  dialogue:
+    greetFirst: ["mind the canvas. no, the other canvas. mind all of it.", "here about a sail? wait. here about trousers? wait longer."]
+    greet: ["you again. sit. don't touch anything.", "tide's out, canvas is dry. what is it?"]
+    idle: ["(shoves a sail needle through canvas with the heel of his palm, grunting each stitch)", "(squints at a seam, sighs, rips it out, starts again)"]
+    noWork: ["nothing. four sails and a pair of knees to patch. not your knees."]
+    nothingDue: ["you don't owe me. sailors settle up before the tide, and i'm still a sailor."]
+    who: ["Hob. sailmaker. forty years of canvas. what's left of a sail becomes trousers. nothing goes to waste here."]
+    bye: ["go on. and don't sit on wet rope in those."]
+    thanks: ["it's canvas and thread. don't make a fuss."]
+    smallTalk: ["sails tear. trousers tear. people tear. i only fix two of those.", "nobody sews anymore. they buy it off a shelf in Henesys. a shelf."]
+    speakPlainly: ["plain words. i sew, i don't riddle."]
+    questOffer.hob-drawstrings: ["you want something. everyone does. ten ribbons off the ribbon pigs on the beach. i'm out of drawstrings and too old to chase pigs."]
+    questAccept.hob-drawstrings: ["ribbons. not string. not rope. ribbons."]
+    questWaiting.hob-drawstrings: ["ten ribbons. the pigs won't hand them over."]
+    questComplete.hob-drawstrings: ["...ten. clean ones, too. here's your meso. and i took up your cuffs while you stood there. you didn't notice. nobody does."]
+    questOffer.hob-sailcloth-trousers: ["your trousers are a disgrace. i've seen better on a mop. fifteen jr. necki skins for the knees. i'll do the rest."]
+    questAccept.hob-sailcloth-trousers: ["the swamp past Kerning. necki skin keeps the wet out. that's all a knee needs."]
+    questWaiting.hob-sailcloth-trousers: ["fifteen skins. i don't patch knees with good intentions."]
+    questComplete.hob-sailcloth-trousers: ["took you long enough. old sailcloth, necki on the knees, double-stitched. safe scrolls in every slot, every one took. don't thank me."]
+    questOffer.hob-ghost-linen: ["old sailors sew a charm in the waistband. zombie mushrooms in the Ant Tunnel carry them. fifteen. and tell Mirel her apron's next."]
+    questAccept.hob-ghost-linen: ["fifteen. one of them won't be cursed. probably. i'll know which."]
+    questWaiting.hob-ghost-linen: ["fifteen charms. i'm not sewing a cursed one into your waistband."]
+    questComplete.hob-ghost-linen: ["charm's in the waistband. the one that wasn't cursed. sixties in every slot, every one took. trousers or robe, you won't drown in it."]
+    questOffer.hob-storm-canvas: ["my last bolt of storm canvas. it's yours. it snaps steel needles, so fifteen lorang claws from Florina for fids. and tell Brannock."]
+    questAccept.hob-storm-canvas: ["Florina's across the water. bring the claws whole. a cracked fid splits canvas."]
+    questWaiting.hob-storm-canvas: ["fifteen claws. storm canvas won't take a steel needle. i've tried. twice."]
+    questComplete.hob-storm-canvas: ["storm canvas. two tens and the rest sixties, every one took. forty years at a bench, never seen that. it was my last good bolt. wear it out."]
+    questOffer.hob-shell-buttons: ["buttons. twenty red snail shells. they don't crack in the cold like bone does."]
+    questAccept.hob-shell-buttons: ["red ones. twenty. i'll know if you sneak a blue one in."]
+    questWaiting.hob-shell-buttons: ["twenty red shells. buttons don't grow on trees."]
+    questComplete.hob-shell-buttons: ["twenty. that's a coat's worth. here. and i fixed your sleeve. you're welcome."]
+    friend.close: ["you're alright. don't let it go to your head. you get the good bench now. that's a thing."]
+    friend.best: ["somebody should know where the good canvas is when i'm gone. under the bench, left side. now you know. that's all. go on."]
+    famed: ["what's that for. ...well. thank you. now go away."]
+    defamed: ["deserved, probably. i'll patch it like everything else."]
+    gift: ["what's this. ...it'll do. it'll do."]
+    gift.favorite: ["...who told you about that? sit. not on the canvas."]
+    gift.again: ["you gave me something already. i'm old, not a magpie."]
+    about.mirel: ["Mirel feeds me whether i'm hungry or not. i owe her an apron. i've owed her that apron eleven years."]
+    about.brannock: ["the deckhand. tears a knee every week and grins about it. i patch it. he grins more."]
+    aboutUnknown: ["never sewn for them."]

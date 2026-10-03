@@ -520,8 +520,26 @@ public final class BenchLedger {
         return report.take(ownerId, personaId, levelNow, placeNames, itemNames);
     }
 
-    /** Banked EXP is granted when the companion materializes so level-ups run through the real path. */
+    /**
+     * Banked EXP is granted when the companion materializes so level-ups run through the real path; then it puts on the
+     * quest gear its level allows (ResidentKit, on its own mailbox).
+     */
     public void applyAccrued(RosterEntry entry, Character agent) {
+        grantAccrued(entry, agent);
+        if (agent == null || world.content() == null || world.residents() == null) {
+            return;
+        }
+        try { // never in the way of the load itself
+            server.living.config.Content.Persona persona = world.content().persona(entry.personaId());
+            if (persona != null) {
+                world.residents().refreshKit(agent, persona, true);
+            }
+        } catch (RuntimeException failure) {
+            log.warn("quest gear for {} failed", entry.personaId(), failure);
+        }
+    }
+
+    private void grantAccrued(RosterEntry entry, Character agent) {
         if (entry.accruedExp() <= 0 || agent == null) {
             return;
         }

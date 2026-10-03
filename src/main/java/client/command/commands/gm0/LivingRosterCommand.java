@@ -39,6 +39,7 @@ public class LivingRosterCommand extends Command {
         }
         player.dropMessage(6, persona.name() + ": " + bond.stage().name().toLowerCase() + " (" + bond.points() + " points), contract "
                 + bond.contractState().name().toLowerCase() + (bond.flags().isEmpty() ? "" : ", knows: " + String.join(", ", bond.flags())));
+        player.dropMessage(6, "Friendship " + world.friendship().describe(bond.points()));
         for (String line : world.roster().haulSummary(player, persona)) {
             if (!line.endsWith("is not in your roster.")) {
                 player.dropMessage(6, line);

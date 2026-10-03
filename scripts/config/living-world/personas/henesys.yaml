@@ -16,12 +16,13 @@
       - { from: 22, to: 5, materialize: false }
   recruitable: true
   contract: fenna-proof-of-aim
-  questLines: [fenna-pig-problem, fenna-boar-teeth]
+  questLines: [fenna-pig-problem, fenna-boar-teeth, fenna-boots-for-the-road, fenna-the-first-bow, fenna-the-long-shot, fenna-marrows-bow]
   benchToleranceDays: 5
   paceGap: 2
   relationships:
     - { persona: dorran, kind: RIVALS }
     - { persona: marrow, kind: RESPECTS }
+  giftItemIds: [4003004, 2060000]
   dialogue:
     greetFirst: ["you hold that weapon like it owes you money.", "hunter? no? you will be."]
     greet: ["back from the road?", "aim's steady today. yours?"]
@@ -48,6 +49,27 @@
     about.dorran: ["Dorran was guild. was. don't bring it up around him unless you want the speech."]
     about.marrow: ["Marrow taught half this town to shoot. the other half didn't listen."]
     aboutUnknown: ["never hunted with them."]
+    questOffer.fenna-boots-for-the-road: ["your boots are done. the road ate them. the cobbler trades for stiff feathers. twenty."]
+    questAccept.fenna-boots-for-the-road: ["boars drop them. so do the birds."]
+    questWaiting.fenna-boots-for-the-road: ["twenty stiff feathers. count them twice."]
+    questComplete.fenna-boots-for-the-road: ["here. i scrolled them myself. Marrow taught me that too."]
+    questOffer.fenna-the-long-shot: ["there's a place Marrow showed me. the deep forest. forty curse eyes, and twenty of their tails for my fletching glue. then my Red Viper is yours."]
+    questAccept.fenna-the-long-shot: ["breathe out before you loose. every time."]
+    questWaiting.fenna-the-long-shot: ["twenty tails. the glue won't set without them."]
+    questComplete.fenna-the-long-shot: ["Red Viper. seven sixties, every one took. i've never given anyone one of my bows. this one's yours."]
+    friend.close: ["you can walk the boar road with me any time. i don't say that."]
+    friend.best: ["if i ever leave the road, it goes to you."]
+    famed: ["...thanks. good eye."]
+    defamed: ["noted. so is your aim."]
+    gift: ["useful. thanks."]
+    gift.favorite: ["good fletching stock. you pay attention. thank you."]
+    gift.again: ["one's plenty. keep the rest."]
+    questOffer.fenna-the-first-bow: ["the battle bow i carried my first year. i don't need it now. the boars on the road, though. thirty. then it's yours."]
+    questAccept.fenna-the-first-bow: ["land of wild boar. don't chase them, let them come."]
+    questComplete.fenna-the-first-bow: ["seven of the sure scrolls. every one took. it shot straight for a year. it'll shoot straight for you."]
+    questOffer.fenna-marrows-bow: ["Marrow gave me the Olympus when i could finally hit what i aimed at. go tell him you're getting it. then forty drakes, so i know you can."]
+    questAccept.fenna-marrows-bow: ["he'll say something wise. let him."]
+    questComplete.fenna-marrows-bow: ["Olympus. two tens and five sixties, every one took. Marrow did the tens, i did the rest. it's the most valuable thing i own. take it before i change my mind."]
 
 - id: dorran
   name: Dorran
@@ -367,3 +389,216 @@
     questComplete.aldous-ledger-of-the-lost: ["six. the entry is finished. thank you. genuinely."]
     about.dorran: ["Dorran is the only name left in the active column."]
     aboutUnknown: ["not in the ledger."]
+
+- id: gunnar
+  name: Gunnar
+  look: { gender: male }
+  title: "Logger of the East Forest"
+  job: FIGHTER
+  level: { min: 32, max: 35 }
+  strength: SEASONED
+  loadout: henesys-2h-axe-l32
+  personality: relaxed-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 5, to: 12, spot: "venue:east-town-benches", activity: SHOW_OFF }
+      - { from: 12, to: 20, spot: "venue:upper-east-benches", activity: REST }
+      - { from: 20, to: 5, materialize: false }
+  recruitable: true
+  contract: gunnar-a-days-felling
+  questLines: [gunnar-the-walking-stumps, gunnar-the-working-axe, gunnar-the-burnt-land, gunnar-the-rising, gunnar-handle-wraps]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: marrow, kind: RESPECTS }
+    - { persona: rurik, kind: SUPPLIES }
+    - { persona: sorrel, kind: SUPPLIES }
+  giftItemIds: [4003001, 2022002]
+  dialogue:
+    greetFirst: ["well now. you've the look of someone who's never sat under a big oak. sit a while.", "morning. or whatever it is. i stopped counting hours. i count seasons."]
+    greet: ["back again. good. the bench was getting lonely.", "you've put on a ring or two since i saw you."]
+    idle: ["(runs a thumb along an axe edge, slow)", "(counts the rings on a stump nobody else noticed)", "(whittles a peg, then puts it in his pocket)"]
+    noWork: ["nothing needs felling today. that's a good day, mostly."]
+    nothingDue: ["we're square. like a clean cut."]
+    who: ["Gunnar. i logged the East Forest thirty seasons. it's still standing, so i must have done it right."]
+    bye: ["mind the roots.", "go steady."]
+    thanks: ["no need. a tree doesn't thank the rain."]
+    smallTalk: ["an oak takes a hundred years and a good axe takes an afternoon. that's why you think before you swing.", "the stumps on the East Rocky Mountain were trees i knew once. now they walk. i try not to take it personal."]
+    speakPlainly: ["slow down. say it like you're telling a tree. trees are patient."]
+    offer: ["thirty-three thousand meso and i walk with you eight hours. a fair day's felling. i swing where you point."]
+    join: ["right. you lead, i'll clear.", "eight hours. a short season. let's not waste it."]
+    bench: ["i'll be on the east benches. two days, mind. after that the forest wants me back."]
+    leave: ["good day's work. you know where the east benches are."]
+    refuse.bond: ["i don't know your grain yet. give it a season."]
+    refuse.flags: ["help me with the stumps first. i like to see how a person works before i work beside them."]
+    refuseOwnErrand: ["that one's your felling. i'll hold your coat."]
+    questOffer.gunnar-the-walking-stumps: ["i felled up the East Rocky Mountain when i was young. those trees walk now, some with my axes in them. twenty stumps, ten axes."]
+    questAccept.gunnar-the-walking-stumps: ["the dark axe stumps, up by Perion. don't feel bad for them. they stopped being trees a long time ago."]
+    questWaiting.gunnar-the-walking-stumps: ["ten axes. you'll know mine. the handles are worn on the left."]
+    questComplete.gunnar-the-walking-stumps: ["...that one's mine. that notch. thirty seasons i wondered where it went. thank you, friend."]
+    questOffer.gunnar-the-working-axe: ["the Deep Forest is going soft at the roots. zombie mushrooms, rot with legs. thirty of them, and the Blue Axe on my back is yours."]
+    questAccept.gunnar-the-working-axe: ["low and clean. like you're felling, not fighting."]
+    questComplete.gunnar-the-working-axe: ["here. seven of the sure scrolls on it, every one took. i've carried it ten seasons. it knows the work. so do you, now."]
+    questOffer.gunnar-the-burnt-land: ["the Burnt Land grew the best timber on the island. iron hogs root up every sapling now. forty hogs, and fifteen of their hooves."]
+    questAccept.gunnar-the-burnt-land: ["the hooves go over my shed door. old woodsman's habit. there's something in that shed for you, after."]
+    questWaiting.gunnar-the-burnt-land: ["fifteen hooves. iron ones. the hogs won't miss them."]
+    questComplete.gunnar-the-burnt-land: ["the Sabretooth. four seasons i saved for it. seven sixties, every one took, and it never felled a tree. it was waiting for you."]
+    questOffer.gunnar-the-rising: ["the Rising. i felled the yew for Marrow's bow with it. go tell him it's yours now. then the Forest of Evil: thirty maladies, and Faust."]
+    questAccept.gunnar-the-rising: ["Faust tears the old trees in there for sport. one clean swing. that's all he's owed."]
+    questComplete.gunnar-the-rising: ["two tens and five sixties on it, every one took, the winter i turned forty. i'll miss the weight of it. it's yours, friend."]
+    questOffer.gunnar-handle-wraps: ["every axe in Henesys has a handle i wrapped. i set the wraps with slime, boiled down. fifteen squishy liquids, if you've the time."]
+    questAccept.gunnar-handle-wraps: ["the slimes in the forest south of Ellinia. they've plenty. they won't miss it."]
+    questWaiting.gunnar-handle-wraps: ["fifteen squishy liquids. a wrap that slips is worse than none."]
+    questComplete.gunnar-handle-wraps: ["that's a season of handles. here, for your trouble."]
+    friend.close: ["you're good company. like an old tree at your back."]
+    friend.best: ["if i ever plant another stand, the first tree's named for you. don't laugh. i mean it."]
+    famed: ["well now. that's kind. i'll go red as a maple."]
+    defamed: ["hm. thick bark. i'll live."]
+    gift: ["kind of you. that'll see me through a season."]
+    gift.favorite: ["now that's a proper gift. you've been listening. thank you, friend."]
+    gift.again: ["one's plenty. a tree only needs so much rain."]
+    about.marrow: ["Marrow. i felled the yew for the bow he still draws. he nods at me like i'm a tree he respects."]
+    about.rurik: ["every post on Rurik's fence came off my saw. the boars still get through. that's not the posts' fault."]
+    about.sorrel: ["Sorrel buys my oak offcuts for her stocks. she talks about springs the way i talk about trees."]
+    aboutUnknown: ["never shared a fire with them."]
+
+- id: sorrel
+  name: Sorrel
+  look: { gender: female }
+  title: "Bolt-Maker"
+  job: CROSSBOWMAN
+  level: { min: 31, max: 34 }
+  strength: SEASONED
+  loadout: henesys-crossbow-l31
+  personality: relaxed-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 8, to: 14, spot: "venue:henesys-market", activity: SHOW_OFF }
+      - { from: 14, to: 22, spot: "venue:park-overlook", activity: LINGER }
+      - { from: 22, to: 8, materialize: false }
+  recruitable: true
+  contract: sorrel-field-test
+  questLines: [sorrel-springy-horns, sorrel-the-mountain-crossbow, sorrel-the-heckler, sorrel-the-rower, sorrel-fletching-for-bolts]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: senna, kind: RIVAL }
+    - { persona: fenna, kind: TEASES }
+    - { persona: gunnar, kind: FRIEND }
+  giftItemIds: [4003000, 2061000]
+  dialogue:
+    greetFirst: ["oh, hello. hold this. no, the other end. careful, it's under tension.", "hi. nice draw-arm. ever thought about a crossbow? everyone should think about a crossbow."]
+    greet: ["hey, you. listen. (click) isn't that a lovely click?", "back! good. i need a second pair of hands."]
+    idle: ["(winds a spring, lets it go, listens to it)", "(oils a trigger, grinning at nothing)", "(dry-fires a crossbow at a cloud)"]
+    noWork: ["nothing's broken today. i might go break something so i can fix it."]
+    nothingDue: ["we're even. like a well-set trigger. nothing loose."]
+    who: ["Sorrel. i make crossbows and bolts. mostly bolts. bolts don't come back, which is great for business."]
+    bye: ["keep your string dry.", "bye! listen for the click."]
+    thanks: ["ha. anytime. it clicked, didn't it?"]
+    smallTalk: ["the whole trick is the spring. too stiff and it fights you, too soft and it sulks.", "bows are pretty. crossbows are clever. don't tell Fenna i said she isn't clever."]
+    speakPlainly: ["slower. i'm only wound for one thing at a time."]
+    offer: ["thirty-two thousand meso and i'm yours for eight hours. bolts included. i'm not a monster."]
+    join: ["ooh, a field test. lead on.", "loaded and wound. where are we going?"]
+    bench: ["i'll be at the market taking something apart. two days, then i'm back to my own projects."]
+    leave: ["that was fun. my crossbow needs oiling now. find me at the market."]
+    refuse.bond: ["i don't take anyone into the field i haven't tinkered with first. figuratively."]
+    refuse.flags: ["help me with the mushroom horns first. i want to see how you handle springy things."]
+    refuseOwnErrand: ["that one's your errand. i'm just the clever one standing behind you."]
+    questOffer.sorrel-springy-horns: ["horny mushroom horns are springy. i think they'd make a perfect trigger return. twenty-five mushrooms and ten caps, horns on."]
+    questAccept.sorrel-springy-horns: ["Pig Park II or the Blue Mushroom Forest. they hop. aim low."]
+    questWaiting.sorrel-springy-horns: ["ten caps, with horns. a cap without a horn is just a hat."]
+    questComplete.sorrel-springy-horns: ["oh, these are springy. listen. (boing) that's a trigger return if i ever heard one. thank you!"]
+    questOffer.sorrel-the-mountain-crossbow: ["you've been such a help. so: my Mountain Crossbow, the one i carry. thirty wild boars on the East Rocky Mountain, ten teeth."]
+    questAccept.sorrel-the-mountain-crossbow: ["the teeth are for the trigger. boar teeth don't rust. that's the whole secret. well, half of it."]
+    questWaiting.sorrel-the-mountain-crossbow: ["ten teeth. wild boar ones. fire boar teeth crack."]
+    questComplete.sorrel-the-mountain-crossbow: ["i rebuilt the trigger three times, then seven of the sure scrolls. every one took, click click click. my everyday bow. now it's yours."]
+    questOffer.sorrel-the-heckler: ["the Heckler. a year's bolt money is in its springs. lupins argue with its click. forty lupins in the Monkey Forest, fifteen bananas."]
+    questAccept.sorrel-the-heckler: ["they throw the bananas. shoot the banana, then the lupin. that's how i tested it."]
+    questWaiting.sorrel-the-heckler: ["fifteen bananas. i'm calibrating. also i'm hungry."]
+    questComplete.sorrel-the-heckler: ["the Heckler. seven sixties, and every one took. i nearly fainted at the fourth. a year's bolt money, and i'd spend it again on you."]
+    questOffer.sorrel-the-rower: ["the Rower. a Florina fisherman's, traded for a summer of repairs. tell Senna it's leaving me. then forty clangs on the Hot Sand, ten claws."]
+    questAccept.sorrel-the-rower: ["clang claws have a tiny perfect hinge. the sea made the best spring on the island and hid it in a crab."]
+    questWaiting.sorrel-the-rower: ["ten claws. i'm taking one apart tonight. don't tell anyone."]
+    questComplete.sorrel-the-rower: ["two tens and five sixties, every one took. four years i've tried to build its equal and couldn't. it's yours. listen to it click."]
+    questOffer.sorrel-fletching-for-bolts: ["bolts need fletching and i'm always out. fifteen stiff feathers? the ribbon pigs at the farm shed them."]
+    questAccept.sorrel-fletching-for-bolts: ["the Henesys Pig Farm. don't ask why pigs have feathers. i stopped asking."]
+    questWaiting.sorrel-fletching-for-bolts: ["fifteen stiff feathers. stiff ones. floppy ones make bolts sulk."]
+    questComplete.sorrel-fletching-for-bolts: ["fifteen. that's a whole crate of bolts. here, for the feathers."]
+    friend.close: ["you're my favourite person to build things around. that sounded strange. i meant it nicely."]
+    friend.best: ["if i ever build something better than the Rower, you fire it first. that's a promise, wound tight."]
+    famed: ["oh! thank you. i'm going to tell my springs."]
+    defamed: ["ouch. okay. i'll tighten something up."]
+    gift: ["for me? this is going straight into a project. thank you."]
+    gift.favorite: ["oh, you know me. exactly the right size. thank you!"]
+    gift.again: ["you're too kind. one's plenty, i'm out of drawer space."]
+    about.senna: ["Senna and i argue arrows versus bolts every market day. she's wrong, but she's wrong beautifully."]
+    about.fenna: ["Fenna says crossbows are cheating. i say a bow is a crossbow that gave up halfway."]
+    about.gunnar: ["Gunnar saves me his oak offcuts. best stocks i've ever made. he talks about them like old friends."]
+    aboutUnknown: ["never fixed anything for them. yet."]
+
+- id: posy
+  name: Posy
+  look: { gender: female }
+  title: "Milliner"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: henesys
+    routine:
+      - { from: 9, to: 15, spot: "venue:central-square", activity: SOCIALIZE }
+      - { from: 15, to: 21, spot: "venue:west-park-benches", activity: LINGER }
+      - { from: 21, to: 9, materialize: false }
+  recruitable: false
+  questLines: [posy-a-study-of-caps, posy-a-hat-for-you, posy-a-hat-that-floats, posy-the-finest-hat, posy-ribbons-for-hatbands]
+  relationships:
+    - { persona: dorran, kind: PESTERS }
+    - { persona: brisa, kind: FRIEND }
+    - { persona: sorrel, kind: FRIEND }
+  giftItemIds: [4003004, 4021004]
+  dialogue:
+    greetFirst: ["oh. your head. it's bare. no, no, it's a lovely head. it just deserves better.", "hello, hello. i'm Posy. i'm looking at your hat. sorry. i can't help it."]
+    greet: ["there you are. still wearing that? it's growing on me. like moss.", "hello again! i dreamed about brims last night. yours, actually."]
+    idle: ["(turns a hat brim in her hands, dreamy)", "(pins a feather, unpins it, pins it again)", "(squints at a passer-by's hat and makes a small kind note)"]
+    noWork: ["no orders today. i'll sit and imagine hats on clouds."]
+    nothingDue: ["you owe me nothing. well, maybe a nicer hat. but that's for you, really."]
+    who: ["Posy. i make hats. a hat tells you everything about a person. you, for instance, are brave and a little underdressed."]
+    bye: ["keep your head warm.", "mind the wind, it steals brims."]
+    thanks: ["oh, it's nothing. it's hats. hats are everything."]
+    smallTalk: ["a mushroom wears its cap better than most people wear theirs. it's the confidence.", "a feather should look like it's about to leave. that's the whole secret of a feather."]
+    speakPlainly: ["oh, sorry, i drift. say it again and i'll hold my hat still."]
+    questOffer.posy-a-study-of-caps: ["mushrooms wear their caps like they mean it. i want to study the brims. twenty orange mushrooms in the forest east of town, and ten caps."]
+    questAccept.posy-a-study-of-caps: ["the orange ones. Brisa says they squeak. i only care how the brim rolls."]
+    questWaiting.posy-a-study-of-caps: ["ten caps, please. orange ones. bouncy brims."]
+    questComplete.posy-a-study-of-caps: ["oh, look at this curl. see how it rolls at the edge? that's confidence, that is. thank you!"]
+    questOffer.posy-a-hat-for-you: ["i've been thinking about your head. i'm making you a hat. blue caps make the softest felt. twenty-five blue mushrooms and fifteen caps."]
+    questAccept.posy-a-hat-for-you: ["the Blue Mushroom Forest, or Pig Park. don't squash the caps, please."]
+    questWaiting.posy-a-hat-for-you: ["fifteen blue caps. unsquashed, if you can."]
+    questComplete.posy-a-hat-for-you: ["here. shaped for how you fight, seven of the sure scrolls, every one took. the first hat i made with you in mind. i knew it'd suit you."]
+    questOffer.posy-a-hat-that-floats: ["a good hat looks like it might float away. fairy tentacles hold a curl. thirty fairies by Golem's Temple, and fifteen tentacles."]
+    questAccept.posy-a-hat-that-floats: ["they flutter. the hat will too. that's the idea."]
+    questWaiting.posy-a-hat-that-floats: ["fifteen tentacles. curly ones, please. i'll know."]
+    questComplete.posy-a-hat-that-floats: ["seven sixties, and every one took. i held my breath through all seven. it's better than your first one. it floats a little. you'll see."]
+    questOffer.posy-the-finest-hat: ["the finest hats are croco leather. i've never had enough for one. thirty crocos past Kerning City, fifteen skins. and tell Dorran first."]
+    questAccept.posy-the-finest-hat: ["he should see what a new hat means. the crocos are in the swamp past Kerning City. come back, please. a hat needs a head."]
+    questWaiting.posy-the-finest-hat: ["fifteen croco skins. i've cleared the whole table for them."]
+    questComplete.posy-the-finest-hat: ["two tens and five sixties, every one took. my hands shook. it's the finest thing i've ever made, and it's yours. wear it somewhere lovely."]
+    questOffer.posy-ribbons-for-hatbands: ["hatbands. i'm always out of ribbon. fifteen pig's ribbons? the farm pigs wear them so proudly."]
+    questAccept.posy-ribbons-for-hatbands: ["the ribbon pigs at the Henesys Pig Farm. tell them it's for a good cause. fashion."]
+    questWaiting.posy-ribbons-for-hatbands: ["fifteen ribbons. any colour. well. pink."]
+    questComplete.posy-ribbons-for-hatbands: ["fifteen. that's fifteen hatbands. here, a little something."]
+    friend.close: ["i'd make you a hat for every day of the week. i might already be doing it."]
+    friend.best: ["i keep a hat block shaped like your head. is that strange? it's the best compliment i have."]
+    famed: ["oh! oh my. i'm blushing to the brim."]
+    defamed: ["oh. well. i'll pretend that was the wind."]
+    gift: ["for me? oh, i'll find a brim for this."]
+    gift.favorite: ["oh, this is perfect for a hat. you knew. thank you!"]
+    gift.again: ["you're sweet. one's enough, really. i'll run out of hats to put them on."]
+    about.dorran: ["Dorran polishes that old guild crest every day. i keep offering to set it on a proper hat. he says no. i hear maybe."]
+    about.brisa: ["Brisa finds the best caps in Henesys. we disagree about what they're for."]
+    about.sorrel: ["Sorrel would put a spring in a hat if i let her. i don't let her."]
+    aboutUnknown: ["haven't seen their hat yet, so i couldn't say."]

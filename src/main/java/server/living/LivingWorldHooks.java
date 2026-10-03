@@ -6,6 +6,8 @@ import org.slf4j.LoggerFactory;
 import server.integration.AgentPresence;
 import server.knowledge.PersonalKnowledge;
 import server.life.Monster;
+import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
 import server.living.roster.CompanionPartyRouter;
 import server.maps.MapleMap;
 
@@ -31,6 +33,11 @@ public final class LivingWorldHooks {
         try {
             world.quests().onMobKilled(monster.getId(), attackerIds, map);
             world.contracts().onMobKilled(monster.getId(), attackerIds, map);
+            if (monster.isBoss()) {
+                java.util.Set<Integer> attackers = new java.util.HashSet<>(attackerIds);
+                world.executor().submit("friendship.boss " + monster.getId(),
+                        () -> world.friendship().onBossKilled(monster.getId(), attackers, map));
+            }
             server.living.population.PopulationHooks.mobKilled(monster, attackerIds, map);
             PersonalKnowledge personal = PersonalKnowledge.shared();
             if (personal.on()) {
@@ -54,6 +61,13 @@ public final class LivingWorldHooks {
         }
         world.markers().forget(chr);
         server.living.population.PopulationHooks.levelUp(chr);
+        if (AgentPresence.isAgent(chr) && !server.living.resident.ResidentShaper.shaping()) {
+            Persona persona = world.residents().personaOf(chr);
+            if (persona != null && !LivingContent.isHire(persona.id())) {
+                // the quest gear its new level allows, on companion-ops (inventory work off the game thread)
+                world.executor().submit("resident.kit " + persona.id(), () -> world.residents().refreshKit(chr, persona));
+            }
+        }
     }
 
     /** Any character advanced a job. */
@@ -253,8 +267,41 @@ public final class LivingWorldHooks {
                     world.quests().onPartyQuestCleared(chr, eventName == null ? "" : eventName);
                 }
             }
+            java.util.List<Character> cleared = new java.util.ArrayList<>(players);
+            world.executor().submit("friendship.pq " + eventName, () -> world.friendship().onPartyQuestCleared(cleared));
         } catch (RuntimeException failure) {
             log.warn("living world partyQuestCleared hook failed", failure);
+        }
+    }
+
+    /** {@code giver} famed ({@code delta} 1) or defamed (-1) {@code target}; a Resident remembers it (friendship). */
+    public static void famed(Character giver, Character target, int delta) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || giver == null || target == null) {
+            return;
+        }
+        try {
+            world.friendship().onFame(giver, target, delta);
+        } catch (RuntimeException failure) {
+            log.warn("living world famed hook failed", failure);
+        }
+    }
+
+    /** The player forfeited quest {@code questId} in the client's quest window: a mirrored living quest is abandoned. */
+    public static void questForfeited(Character chr, int questId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || chr == null || questId < 30000) {
+            return;
+        }
+        try {
+            for (var entry : world.content().questLogIds().entrySet()) {
+                if (entry.getValue() == questId) {
+                    world.quests().abandon(chr, entry.getKey());
+                    return;
+                }
+            }
+        } catch (RuntimeException failure) {
+            log.warn("living world quest-forfeit hook failed", failure);
         }
     }
 

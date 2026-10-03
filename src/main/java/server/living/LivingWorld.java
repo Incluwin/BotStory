@@ -54,6 +54,7 @@ public final class LivingWorld {
     private volatile LivingContent content;
     private final LivingStore store;
     private final BondService bonds;
+    private final server.living.bond.Friendship friendship;
     private final ArcService arcs;
     private final QuestLedger quests;
     private final QuestLog questLog;
@@ -93,6 +94,7 @@ public final class LivingWorld {
         this.content = content;
         this.store = new LivingStore();
         this.bonds = new BondService(this);
+        this.friendship = new server.living.bond.Friendship(this);
         this.arcs = new ArcService(this);
         this.quests = new QuestLedger(this);
         this.questLog = new QuestLog(this);
@@ -342,6 +344,18 @@ public final class LivingWorld {
         }
     }
 
+    /** Epoch ms of today's midnight in the routine zone: where the friendship daily counts start. */
+    public long routineDayStartMs() {
+        String zone = config.ROUTINE_ZONE;
+        java.time.ZoneId zoneId;
+        try {
+            zoneId = zone == null || zone.isBlank() ? java.time.ZoneId.systemDefault() : java.time.ZoneId.of(zone);
+        } catch (java.time.DateTimeException invalid) {
+            zoneId = java.time.ZoneId.systemDefault();
+        }
+        return java.time.LocalDate.now(zoneId).atStartOfDay(zoneId).toInstant().toEpochMilli();
+    }
+
     public LivingContent content() {
         return content;
     }
@@ -352,6 +366,10 @@ public final class LivingWorld {
 
     public BondService bonds() {
         return bonds;
+    }
+
+    public server.living.bond.Friendship friendship() {
+        return friendship;
     }
 
     public ArcService arcs() {

@@ -34,8 +34,8 @@ chat with their name anywhere in the line, or stand next to one and speak, or wh
 | `tell me about Tobin` | persona-specific gossip, sets an `asked.<persona>` bond flag |
 | `bye`, `thanks`, `who are you` | in character |
 | `@quests` | your active resident quests and current step |
-| `@roster` / `@bond <name>` | companions; relationship and haul with one persona |
-| `Olwen talk` / `menu` | opens the persona's NPC window: work, quests in progress, travel, who are you |
+| `@roster` / `@bond <name>` | companions; relationship, friendship level and haul with one persona |
+| `Olwen talk` / `menu` | opens the persona's NPC window: work, quests in progress, travel, a gift, who are you |
 | double-click the Resident | the same NPC window (instead of character info); companions keep character info |
 
 Residents carry the NPC quest icons over their heads, per player: the lightbulb when that player
@@ -49,6 +49,106 @@ the REWARD/MESO/EXP icons. Progress messages
 appear as pink system text; long chat replies arrive as whispers from the persona.
 Anything the regexes miss goes to the `resident-intent` Jev judge (budgeted per player per day)
 which either acts, hints (`looking for work? say 'quest'`) or lets the Resident shrug.
+
+### Friendship
+
+Every Resident keeps a friendship meter with each player, Lv 1-10 over the same bond points the
+stages use (`FRIENDSHIP_LEVEL_POINTS`, default 1/25/50/75/110/150/200/260/330/400: Lv 2 is
+ACQUAINTED, Lv 4 TRUSTED, Lv 6 SWORN, Lv 7 Close friend, Lv 10 Best friend). The NPC window shows
+it under the greeting and `@bond <name>` prints it. Points come from:
+
+| Source | Points | Limit |
+|---|---|---|
+| Quests | the quest's `bondPoints` | each quest's own rules |
+| Fame / defame (the stock Fame button on the Resident) | +8 / -8 | the game's once a month per target |
+| A gift: "I brought you something." in the Resident's window, or "Supplies & loot..." on a companion's card | +2, or +6 for one of its `giftItemIds` | 1 a day per Resident; later ones it turns down |
+| A party quest cleared with the Resident in your party | +10 | 3 a day per Resident |
+| A boss killed with the Resident in your party on the map (you hit it) | +15 | 3 a day per Resident |
+
+Gifts are one of anything tradeable from use, etc, setup or equip (never cash, quest or untradeable
+items); the counts use `living_event_log` (`friend.gift`, `friend.pq`, `friend.boss`) and reset at
+midnight in `ROUTINE_ZONE`. Hired citizens are not Residents and keep no friendship. Level changes
+show as pink text, and reaching Close friend and Best friend plays the persona's `friend.close` /
+`friend.best` line.
+
+**Friendship quests** (`quests/friendship.yaml`): Brannock, Fenna, Casse, Vex, Garrick, Kettle and
+Thane each offer four, one after another (`server.living.quest.FriendForge` does the scrolling):
+
+| Friendship | Reward | Scrolls |
+|---|---|---|
+| Lv 4 | a piece of armour for **your** class (gloves, shoes, earrings, a helmet or a cape) | scaled by friendship, below |
+| Lv 5 (lower) | the Resident's **own** weapon, of its class | 7 x 100%, every one taken |
+| Lv 7 (mid) | a better weapon of its own | 7 x 60%, every one taken |
+| Lv 10 (final) | its prized weapon | 2 x 10% + 5 x 60%, every one taken |
+
+The weapons are the Resident's, whatever your class: Brannock's blunt weapons (Iron Mace, War
+Hammer, Jacker), Fenna's bows (Battle Bow, Red Viper, Olympus), Casse's wands (Ice Wand, Wizard
+Wand, Cromi), Vex's daggers (Cass, Bazlud, Sai), Garrick's swords (Traus, Jeweled Katar, Neocora),
+Kettle's knuckles (Neozard, Fury Claw, Psycho Claw) and Thane's axes (Buck, Hawkhead, Mikhail).
+Each is scrolled with its own class's attack scrolls (magic attack for a wand): +7 att, then +14
+att and +7 of its main stat, then +20 att, +11 of its main stat and +2 defence.
+
+Eighteen more Residents exist for friendship alone, so every weapon type and every armour slot has
+someone who gives it. Each has an intro quest (no gate), a repeatable quest tied to their craft
+(+10 points each time) and the three tiers at Lv 5, 7 and 10:
+
+| Weapon (their own, recruitable) | Resident | Town | Armour (made for your class) | Resident | Town |
+|---|---|---|---|---|---|
+| staff | Isolde, Cleric | Ellinia | overall (a top where your class wears no robe) | Mirabel | Ellinia |
+| 2H sword | Brunhild, Fighter | Perion | gloves | Hilde | Perion |
+| 2H axe | Gunnar, Fighter | Henesys | hat | Posy | Henesys |
+| 2H blunt | Magna, Page | Sleepywood | cape | Wendell | Sleepywood |
+| spear | Corvin, Spearman | Perion | shield (warriors; magicians and thieves while one exists) | Brom | Perion |
+| polearm | Ingrid, Spearman | Lith Harbor | bottom (an overall for pirates) | Hob | Lith Harbor |
+| crossbow | Sorrel, Crossbowman | Henesys | top (an overall where your class has no top) | Silas | Kerning City |
+| claw | Kestrel, Assassin | Kerning City | earrings | Opal | Kerning City |
+| gun | Flint, Gunslinger | Nautilus | shoes | Tilda | Nautilus |
+
+The armourers' tiers use the same recipes on every slot the piece has: all 100%, all 60%, then two
+10% and the rest 60% (five-slot gloves: 2 x 10% + 3 x 60%; a ten-slot overall: 2 x 10% + 8 x 60%),
+every scroll taking, chosen for your class. Pieces come from the class pools in v83: no thief or
+bowman shield exists past Lv 22 and no magician shield past Lv 33, so Brom's later tiers are not
+offered to those classes. The weapon Residents are recruitable (a contract once you are acquainted
+and have done their intro quest), so party quests and bosses with them count toward friendship;
+the armourers are townsfolk, befriended through their quests, gifts and fame.
+
+The armour piece:
+
+- **Which piece:** the pool's first piece made for your job (one per job; a piece with no job
+  requirement fits everyone). A pool with nothing for your job (a beginner) keeps the quest from
+  being offered at all.
+- **Which scrolls:** of the standard 100%, 60% and 10% scrolls for that piece, the one that does
+  most for your job (attack or magic attack, then your main stat). Event scrolls that give 10%
+  stats at 100% never count, for the weapons either.
+- **How many take:** every slot is scrolled and none is left open. Your friendship level when you
+  hand the quest in fixes the result, with no dice: 100% scrolls always take, and 60% and 10%
+  scrolls take `FRIENDSHIP_SCROLL_TAKES_60` / `_10` percent of the slots at each level (60% from
+  Lv 4, 10% from Lv 7). The Resident uses whichever grade makes the better piece, so a higher
+  level never gives a worse one. Five-slot gloves: Lv 4 four 60% (+8 att), Lv 10 five 10%
+  (+15 att). Failed slots are spent; nothing is ever destroyed.
+
+The offer window shows the piece and what it gets (for armour, at your current level). The final
+hand-in waits until you have a free equip slot.
+
+**Residents wear their own quest gear** (`server.living.resident.ResidentKit`): per equip slot, the
+highest-level piece from their friendship quests that the game lets them wear (the bot class rule,
+level and stats; a pool piece also their gender), scrolled the way the quest scrolls it (a recipe in
+full; a friendship-scaled armour piece as at that quest's friendship level). Isolde carries the
+Circle-Winded Staff she gives at Lv 5 from the start, and once she reaches Lv 40 as your companion
+she switches to the Hall Staff. The Resident's copies are its own: each carries its name as the
+owner tag and is untradeable, so no Agent trade, drop or sale takes it, and each piece is made at
+most once per Resident (`kit.issued` in `living_event_log`). The kit only replaces what is the
+Resident's own (an empty slot, its plain loadout and outfit pieces, its earlier quest pieces); a gift,
+loot, a scrolled piece or a contract's kept piece that it chose to wear stays, and so does everything
+it carries. The only thing the kit deletes is its own superseded quest piece for that slot, so the Agent
+gear optimizer cannot switch back; the wardrobe's sweep of spare outfit weapons skips anything tagged,
+untradeable, scrolled or kept by its contract, and a bench harvest or stall never moves its own copy
+into the haul. The wardrobe leaves the regular piece of a quest slot alone (a cash item still goes
+over it). This happens when the Resident appears, on `!world reload`, after every level it
+gains and whenever the roster or bench loads it as a companion (on the Agent's own mailbox), which is
+how a companion grows into its next tier. Hired citizens and townsfolk citizens keep
+their own gear; the armourers are beginners, so only pieces with no class requirement fit them (Opal
+wears her earrings).
 
 ### Companions (roster)
 
@@ -99,20 +199,29 @@ the bench (24 h haul provenance is checked at turn-in).
 
 ### The in-game quest log
 
-Living quests can appear in the client's quest log (in progress / completed tabs, grouped under
-the persona's name). It takes one WZ patch:
+Living quests can appear in the client's quest log next to the stock quests (In Progress and
+Complete tabs), in their own "Residents" group. Checked in a v83 client (2026-10-03): the list
+groups quests by `area` under a header named in Etc.wz `QuestCategory.img` (31 = "Residents", an
+unused slot), labels each entry with `parent` as plain text (colour codes print literally, so the
+label is the plain title), and titles the detail pane with `name`, where `#b` renders blue; the
+header shows "Over Level N" from `lvmin` and the giver's own portrait (`npc`, from
+`portrait-npc-ids.yaml`) when it has one. It takes one WZ patch:
 
 1. `tools\living-world-questlog.bat` - assigns every quest a stable client id (30000-32767) in
    `quest-log-ids.yaml` and exports name/description text to `target/living-quest-log.json`.
    New quests get the next free id; ids are never renumbered (they live in players' save data).
-2. `cd MapleEditpp && python living_world_quests.py` - writes QuestInfo/Check/Act entries into
-   `out/Quest.wz` (stacking with other edits) and stages the server XML; deploy Quest.wz from the
-   MapleEdit dashboard so the patch server ships it to every client.
+2. `cd MapleEdit\app && python living_world_quests.py` - writes QuestInfo/Check/Act entries into
+   `out/Quest.wz` and names the Residents group in `out/Etc.wz` (both stacking with other edits)
+   and stages the server XML; deploy Quest.wz and Etc.wz from the MapleEdit dashboard so the patch
+   server ships them to every client.
 3. `living_world.QUEST_LOG_MIRROR: true` - the server then sets the matching quest STARTED on
    accept and COMPLETED on completion (`QuestLog`), and reconciles older ledger state at login.
 
-Leave the flag off until the WZ is shipped, or clients list nameless quests. The entries carry
-`lvmin 200` so the client never shows them as "available" - Residents offer them in person.
+Leave the flag off until the WZ is shipped, or clients list nameless quests. The entries carry an
+event `end` date long past, so the client never shows them as "available" - Residents offer them
+in person. Forfeit in the quest window abandons the quest (`QuestLedger.abandon`): progress is
+lost and collected items stay, a first take can be offered again, a repeat goes back to completed,
+and an escort it started heads home.
 
 ### Quest markers
 
@@ -191,7 +300,28 @@ Persona dialogue intents the runtime looks up (chapter overrides first, then the
 `speakPlainly`, `declined`, `offer`, `join`, `bench`, `leave`, `refuse`, `refuse.<blocker>`
 (`bond`, `flags`, `arc`, `taken`, `cooldown`, `roster-full`, `not-recruitable`),
 `refuseOwnErrand`, `delegate`, `onMyWay`, `leaveDeaths`, `questOffer.<quest>`, `questAccept.<quest>`, `questWaiting.<quest>`,
-`questComplete.<quest>`, `about.<persona>`, `aboutUnknown`, `bond.<stage>`, `chapterEnter`.
+`questComplete.<quest>`, `questRoom.<quest>` (no equip slot free for its gear), `about.<persona>`, `aboutUnknown`, `bond.<stage>`,
+`chapterEnter`, `friend.close`, `friend.best`, `famed`, `defamed`, `gift`, `gift.favorite`, `gift.again`, `gift.gone`, `gift.none`.
+
+Friendship quests: `requires: { friendship: 4 }` gates on the giver's friendship level (0-10). A
+`rewards.gear` entry is one scrolled piece (see Friendship above), in one of two forms:
+
+- `{ pool: [<equip ids>] }`: a piece for the player's class, scrolled by friendship. Put one piece
+  per job in the pool (warrior, magician, bowman, thief, pirate) or one with no job requirement.
+- `{ itemId: <equip id>, scrolls: [{ success: 10, count: 2 }, { success: 60, count: 5 }] }`: the
+  giver's own piece, given to any class and scrolled to that recipe with every scroll taking. A
+  weapon gets the scrolls for its own class.
+- `{ pool: [<equip ids>], scrolls: [...] }`: a piece for the player's class, scrolled to the recipe
+  (every scroll taking, chosen for the player's class).
+
+A recipe line without `count` fills every slot left (`[{ success: 10, count: 2 }, { success: 60 }]`
+is two 10% and the rest 60% on any piece).
+
+A quest with gear must end in a `TALK` or a `DELIVER` to its giver, because that hand-in checks
+for a free equip slot. The lint errors on a level outside 0-10, on a gear id that is not non-cash
+equipment, on a recipe line that is not 10, 60 or 100 percent or has a count under 1, and on a
+gear quest that ends any other way. It warns about jobs a pool has nothing for, and about a giver's
+own piece that is not made for the giver's class.
 
 Quest steps: `TALK`, `KILL_MOBS`, `COLLECT_ITEM` (optional `dropFrom` custom drop and `label`),
 `DELIVER` (`to` persona, optional `take`), `VISIT_MAP`, `TALK_TO`, `HEAR_RUMOR`, `ESCORT`,
@@ -236,6 +366,8 @@ wired yet. The longest explanation wins, then the more specific alias.
 | residents: provisioning, shaping, presence, spots, dialogue, Jev judge | `server.living.resident.*` |
 | quest ledger | `server.living.quest.QuestLedger` |
 | bonds and contracts | `server.living.bond.*` |
+| friendship meter, fame/gift/PQ/boss points | `server.living.bond.Friendship` (hooks: `GiveFameHandler`, `LivingWorldHooks.partyQuestCleared`/`mobKilled`) |
+| friendship gear (piece, scrolls, takes) | `server.living.quest.FriendForge`, `QuestLedger.complete` |
 | roster, bench ledger, haul | `server.living.roster.*` |
 | arcs and rumors (deterministic rumor director: waiting listener, unheard, least performed) | `server.living.arc.*` |
 | MapleEdit page | `MapleEdit/app/routes_living.py`, `templates/living.html`, `static/js/living.js`; server side `AdminControlPort` `/runtime/living`, `/actions/living-reload` |

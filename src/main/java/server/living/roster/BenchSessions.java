@@ -3,6 +3,7 @@ package server.living.roster;
 import client.Character;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
+import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.inventory.ItemConstants;
 import server.agents.runtime.AgentInteractionRuntime;
@@ -13,6 +14,7 @@ import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -128,10 +130,12 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
             if (world.bench().haulStacks(entry) >= world.config().HAUL_MAX_STACKS && world.bench().haulCount(entry, itemId) == 0) {
                 continue; // bag is full; the companion keeps it
             }
-            InventoryManipulator.removeById(agent.getClient(), ItemConstants.getInventoryType(itemId), itemId, taken.getValue(),
-                    false, false);
-            world.store().addHaul(entry.characterId(), entry.personaId(), itemId, taken.getValue());
-            world.bench().reportHaul(entry.characterId(), entry.personaId(), slice.mapId(), 0L, itemId, taken.getValue());
+            int moved = takeFromBag(agent, itemId, taken.getValue());
+            if (moved <= 0) {
+                continue;
+            }
+            world.store().addHaul(entry.characterId(), entry.personaId(), itemId, moved);
+            world.bench().reportHaul(entry.characterId(), entry.personaId(), slice.mapId(), 0L, itemId, moved);
             gainedStacks++;
         }
         if (gainedMeso <= 0 && gainedStacks == 0) {
@@ -149,6 +153,31 @@ public final class BenchSessions implements BenchDutyDispatcher.Form {
     }
 
     /** How many of the item the companion holds in its bags (not what it wears, and nothing from the cash tab). */
+    /**
+     * Takes up to {@code count} of the item out of its bag, and how many it took. An equip goes copy by copy, never one
+     * with its own name as the owner tag (a Resident's own quest gear, ResidentKit), even when loot shares its id.
+     */
+    static int takeFromBag(Character agent, int itemId, int count) {
+        InventoryType type = ItemConstants.getInventoryType(itemId);
+        List<Item> copies = type == InventoryType.EQUIP ? agent.getInventory(type).listById(itemId) : List.of();
+        if (copies.stream().noneMatch(item -> ownedBy(agent, item))) {
+            InventoryManipulator.removeById(agent.getClient(), type, itemId, count, false, false);
+            return count;
+        }
+        int taken = 0;
+        for (Item item : copies) {
+            if (taken < count && !ownedBy(agent, item)) {
+                InventoryManipulator.removeFromSlot(agent.getClient(), type, item.getPosition(), item.getQuantity(), false);
+                taken++;
+            }
+        }
+        return taken;
+    }
+
+    private static boolean ownedBy(Character agent, Item item) {
+        return agent.getName() != null && agent.getName().equals(item.getOwner());
+    }
+
     private static int held(Character agent, int itemId) {
         InventoryType type = ItemConstants.getInventoryType(itemId);
         Inventory bag = HARVESTED.contains(type) ? agent.getInventory(type) : null;

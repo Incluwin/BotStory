@@ -145,6 +145,29 @@ public final class ContentLint {
                     }
                 }
             }
+            int friendship = quest.requires().minFriendship();
+            if (friendship < 0 || friendship > server.living.bond.Friendship.MAX_LEVEL) {
+                out.add("ERROR " + where + ": requires.friendship " + friendship + " is not a level 0-"
+                        + server.living.bond.Friendship.MAX_LEVEL);
+            }
+            if (!quest.rewards().gear().isEmpty()) {
+                Step last = quest.steps().isEmpty() ? null : quest.steps().get(quest.steps().size() - 1);
+                boolean handedOver = last != null && (last.type() == StepType.TALK
+                        || last.type() == StepType.DELIVER && quest.persona().equals(last.to()));
+                if (!handedOver) {
+                    out.add("ERROR " + where + ": a quest with gear must end in a TALK or a DELIVER to its giver"
+                            + " (the turn-in checks the player has room for it)");
+                }
+                for (Content.GearReward gear : quest.rewards().gear()) {
+                    for (Content.ScrollRecipe line : gear.scrolls()) {
+                        boolean count = line.count() >= 1 || line.count() == Content.ScrollRecipe.REST;
+                        if (!count || line.success() != 10 && line.success() != 60 && line.success() != 100) {
+                            out.add("ERROR " + where + ": gear scrolls need a success of 10, 60 or 100 and a count of at"
+                                    + " least 1, or none for the rest (got " + line.success() + "% x" + line.count() + ")");
+                        }
+                    }
+                }
+            }
             if (quest.onComplete() != null) {
                 Arc arc = content.arc(quest.onComplete().arc());
                 if (arc == null) {
@@ -383,6 +406,15 @@ public final class ContentLint {
             for (Content.ItemStack reward : quest.rewards().items()) {
                 knowledge.require(EntityKind.ITEM, reward.itemId(), where + " rewards", out);
             }
+            for (Content.GearReward gear : quest.rewards().gear()) {
+                if (gear.owned()) {
+                    Persona giver = content.persona(quest.persona());
+                    knowledge.giversGear(where + " rewards gear", gear.pool().get(0), giver == null ? null : giver.id(),
+                            giver == null ? -1 : jobMask(giver.job()), out);
+                } else {
+                    knowledge.friendGear(where + " rewards gear", gear.pool(), out);
+                }
+            }
         }
         for (Contract contract : content.contracts().values()) {
             String where = contract.file() + " contract " + contract.id();
@@ -434,6 +466,15 @@ public final class ContentLint {
      */
     private static Persona authored(LivingContent content, String id) {
         return id == null || LivingContent.isHire(id) ? null : content.personas().get(id);
+    }
+
+    /** The reqJob bit of a persona's job branch (FriendForge.jobMask), -1 for a job name the game does not have. */
+    private static int jobMask(String job) {
+        try {
+            return server.living.quest.FriendForge.jobMask(client.Job.valueOf(job).getId());
+        } catch (IllegalArgumentException | NullPointerException unknown) {
+            return -1;
+        }
     }
 
     /** Outfit slot -> item id prefixes (id / 10000) that belong in it; 0 in a pool means nothing. */

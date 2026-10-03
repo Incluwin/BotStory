@@ -1,6 +1,7 @@
 package server.living.resident;
 
 import client.Character;
+import client.inventory.Item;
 import config.YamlConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -489,13 +490,45 @@ public final class ResidentDialogue {
             options.add(new LivingTalk.Option("Would you travel with me?", () ->
                     world.residents().reply(persona, speaker, world.contracts().askToJoin(speaker, persona))));
         }
+        if (!LivingContent.isHire(persona.id())) { // a hired citizen keeps no friendship
+            options.add(new LivingTalk.Option("I brought you something.", () -> giftMenu(speaker, persona, null)));
+        }
         options.add(new LivingTalk.Option("Who are you?", () -> sayLine(speaker, persona, "who",
                 persona.name() + (persona.title().isEmpty() ? "" : ", " + persona.title()) + ".")));
         options.add(new LivingTalk.Option("Never mind.", () -> sayLine(speaker, persona, "bye", "later.")));
         List<String> greet = world.arcs().lines(persona, "greet");
         LivingTalk.open(speaker, portraitOf(persona))
-                .menu((greet.isEmpty() ? "yes?" : pick(greet, speaker)) + "\r\n", options)
+                .menu((greet.isEmpty() ? "yes?" : pick(greet, speaker)) + "\r\n" + friendshipLine(speaker, persona), options)
                 .show();
+    }
+
+    /** "#dFriendship Lv 4 Friend (35 points to Lv 5)#k" under a menu's greeting; empty before the first point. */
+    public String friendshipLine(Character speaker, Persona persona) {
+        var bond = world.bonds().peek(speaker.getId(), persona.id());
+        return bond == null || bond.points() <= 0 ? "" : "#dFriendship " + world.friendship().describe(bond.points()) + "#k\r\n";
+    }
+
+    /**
+     * What the player could give the persona (Friendship.giftable), one option per item; picking one hands it over.
+     * {@code back} re-opens the window this came from (a companion's card), or null.
+     */
+    public void giftMenu(Character speaker, Persona persona, Runnable back) {
+        List<LivingTalk.Option> options = new ArrayList<>();
+        for (Item item : world.friendship().giftable(speaker)) {
+            int itemId = item.getItemId();
+            options.add(new LivingTalk.Option("#v" + itemId + "# #t" + itemId + "#",
+                    () -> world.friendship().gift(speaker, persona, item)));
+        }
+        if (options.isEmpty()) {
+            sayLine(speaker, persona, "gift.none", "you've got nothing to give. it's fine.");
+            return;
+        }
+        LivingTalk talk = LivingTalk.open(speaker, portraitOf(persona))
+                .menu("for me? what is it?\r\n" + friendshipLine(speaker, persona), options);
+        if (back != null) {
+            talk.back(back);
+        }
+        talk.show();
     }
 
     private void greet(Character speaker, Persona persona) {

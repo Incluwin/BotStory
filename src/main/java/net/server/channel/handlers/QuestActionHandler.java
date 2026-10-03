@@ -105,7 +105,9 @@ public final class QuestActionHandler extends AbstractPacketHandler {
             break;
         }
         case 3: // forfeit quest
-            quest.forfeit(player);
+            if (quest.forfeit(player)) {
+                server.living.LivingWorldHooks.questForfeited(player, questid);
+            }
             break;
         case 4: { // scripted start quest
             int npc = p.readInt();

@@ -11,6 +11,7 @@ import server.living.config.Content.ChapterGate;
 import server.living.config.Content.Contract;
 import server.living.config.Content.ContractItem;
 import server.living.config.Content.DropRule;
+import server.living.config.Content.GearReward;
 import server.living.config.Content.ItemStack;
 import server.living.config.Content.KillProof;
 import server.living.config.Content.LeaveRule;
@@ -28,6 +29,7 @@ import server.living.config.Content.Relationship;
 import server.living.config.Content.Requirements;
 import server.living.config.Content.Reward;
 import server.living.config.Content.RoutineSlot;
+import server.living.config.Content.ScrollRecipe;
 import server.living.config.Content.Rumor;
 import server.living.config.Content.RumorLine;
 import server.living.config.Content.Step;
@@ -288,7 +290,8 @@ public final class ContentLoader {
                 BondStage.valueOf(node.get("bondStage").get("min").enumName("NONE")),
                 node.get("flags").strings(),
                 node.get("notFlags").strings(),
-                node.get("questsCompleted").strings());
+                node.get("questsCompleted").strings(),
+                node.get("friendship").integer(0));
     }
 
     static Step step(Node node) {
@@ -376,6 +379,19 @@ public final class ContentLoader {
         for (Node item : node.get("items").items()) {
             items.add(new ItemStack(item.get("itemId").integer(), item.get("count").integer(1)));
         }
+        List<GearReward> gear = new ArrayList<>();
+        for (Node piece : node.get("gear").items()) {
+            List<ScrollRecipe> scrolls = new ArrayList<>();
+            for (Node scroll : piece.get("scrolls").items()) {
+                scrolls.add(new ScrollRecipe(scroll.get("success").integer(0), scroll.get("count").integer(ScrollRecipe.REST)));
+            }
+            int itemId = piece.get("itemId").integer(0);
+            List<Integer> pool = itemId > 0 ? List.of(itemId) : piece.get("pool").integers();
+            if (pool.isEmpty()) {
+                throw new ContentException(piece.path() + ": gear needs an itemId or a pool of equipment ids");
+            }
+            gear.add(new GearReward(pool, itemId > 0, scrolls));
+        }
         return new Reward(
                 node.get("meso").integer(0),
                 node.get("exp").integer(0),
@@ -383,7 +399,8 @@ public final class ContentLoader {
                 node.get("bondPoints").integer(0),
                 node.get("flags").strings(),
                 node.get("fame").integer(0),
-                node.get("worldFlags").strings());
+                node.get("worldFlags").strings(),
+                gear);
     }
 
     // ---- contracts -----------------------------------------------------------------------

@@ -16,7 +16,7 @@
   recruitable: true
   knows: [ant tunnel, sleepywood]
   contract: thane-guides-fee
-  questLines: [thane-the-first-descent, thane-walk-me-down]
+  questLines: [thane-the-first-descent, thane-walk-me-down, thane-a-guides-cloak, thane-the-spare-axe, thane-at-my-left, thane-the-deepest-door]
   arc: thane-last-descent
   rumors: [sleepywood-toll-of-the-tunnel]
   benchToleranceDays: 4
@@ -24,6 +24,7 @@
   relationships:
     - { persona: orrin, kind: SAVED }
     - { persona: wilhelmina, kind: LODGES_WITH }
+  giftItemIds: [2000004, 4011002]
   dialogue:
     greetFirst: ["the dungeon takes a toll. i collect it up front, in caution.", "you're going down there. everyone who comes here is. sit first."]
     greet: ["still above ground. good.", "traveler."]
@@ -49,7 +50,29 @@
     questComplete.thane-walk-me-down: ["you led. i followed. i can work with that."]
     about.orrin: ["Orrin i carried out of the fourth tunnel. he went back the next week. miners."]
     about.wilhelmina: ["she keeps my room. i keep her guests alive. fair trade."]
+    about.wendell: ["Wendell makes the cloaks i go down in. he made his brother's too. i brought that one back. not his brother."]
     aboutUnknown: ["never guided them."]
+    questOffer.thane-a-guides-cloak: ["the deep tunnels are cold, and the drakes are colder. thirty of them. come back and i'll give you my spare cloak. i only own two."]
+    questAccept.thane-a-guides-cloak: ["the drake grounds are past the dungeon. go slow."]
+    questComplete.thane-a-guides-cloak: ["the cloak. i had it scrolled the way i'd want mine. it's yours now."]
+    questOffer.thane-at-my-left: ["i don't take people past the drakes. i'm asking you to come anyway. the kargos at the meal table, thirty, and fifteen of their eyes so the hotel believes i still go that deep."]
+    questAccept.thane-at-my-left: ["stay on my left. you know why."]
+    questWaiting.thane-at-my-left: ["fifteen eyes. the kargos don't give them up easily."]
+    questComplete.thane-at-my-left: ["you came back. most don't. Hawkhead. seven sixties, every one took. i scrolled it for whoever i'd trust at my left. that's you."]
+    friend.close: ["i'd walk you into any tunnel. and out of it. that's the part that counts."]
+    friend.best: ["i've lost count of the people i've carried out. i'll never lose count of you."]
+    famed: ["...thank you. i don't hear that often."]
+    defamed: ["the dungeon's taught me worse."]
+    gift: ["thank you. i'll carry it down."]
+    gift.favorite: ["that will keep someone alive down there. thank you."]
+    gift.again: ["you've given enough today."]
+    questOffer.thane-the-spare-axe: ["i carry a spare axe into the deep. the Buck. take it, but earn it: thirty stone golems in the sleepy dungeon."]
+    questAccept.thane-the-spare-axe: ["the golems are slow. you won't be, if you're smart."]
+    questComplete.thane-the-spare-axe: ["seven safe scrolls, every one took. the spare's the one that comes back. now it's yours."]
+    questOffer.thane-the-deepest-door: ["Mikhail. the axe i carried Orrin out with. two tens, five sixties. walk the sanctuary with me one last time: thirty tauromacis and fifteen horns for the hotel wall. ask Orrin what it means."]
+    questAccept.thane-the-deepest-door: ["the sanctuary entrance is past the kargos. we go together or not at all."]
+    questWaiting.thane-the-deepest-door: ["fifteen horns. the wall is waiting."]
+    questComplete.thane-the-deepest-door: ["every scroll on it took. so did every person i carried out with it. it's yours now. i'm done counting."]
 
 - id: orrin
   name: Orrin
@@ -188,3 +211,139 @@
     questOffer.jory-the-way-back: ["i dropped my pack in the deep forest on the way in. slimes have it. thirty slime bubbles and i'll consider it replaced."]
     questComplete.jory-the-way-back: ["thirty bubbles! that's a pack's worth. of bubbles. i'll take it."]
     aboutUnknown: ["haven't met them. or i have and got lost after."]
+
+- id: magna
+  name: Magna
+  look: { gender: female }
+  title: "Tunnel Breaker"
+  job: PAGE
+  level: { min: 40, max: 43 }
+  strength: VETERAN
+  loadout: sleepywood-2h-blunt-l40
+  personality: efficient-v1
+  home:
+    town: sleepywood
+    routine:
+      - { from: 4, to: 11, spot: "venue:west-camp", activity: LINGER }
+      - { from: 11, to: 17, spot: "venue:central-camp", activity: SHOW_OFF }
+      - { from: 17, to: 22, spot: "venue:east-camp", activity: REST }
+      - { from: 22, to: 4, materialize: false }
+  recruitable: true
+  contract: magna-day-rate
+  questLines: [magna-wasted-swings, magna-the-hammer-i-carry, magna-lamp-niches, magna-the-blessing, magna-prop-timber]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: thane, kind: WORKS_FOR }
+    - { persona: orrin, kind: RIVAL }
+  giftItemIds: [4011001, 2020004]
+  dialogue:
+    greetFirst: ["you're standing where i swing. move left.", "new face. the dungeon turns those into old faces fast."]
+    greet: ["back. no new dents. good.", "you. hold this. no. don't."]
+    idle: ["(checks a hammer head for hairline cracks)", "(takes one practice swing, frowns, doesn't take a second)"]
+    noWork: ["nothing to break today. the rock wins by default."]
+    nothingDue: ["nothing owed. if there were, i'd say it once. i don't repeat myself."]
+    who: ["Magna. i break rock so the guides have somewhere to walk. one swing, one crack. two swings is a waste."]
+    bye: ["mind the ceiling. it doesn't mind you."]
+    thanks: ["noted. that's as warm as i get."]
+    smallTalk: ["every road down there is somebody's swing. most of the good ones are mine.", "the ant tunnel was dug by ants. you can tell. no plan, all enthusiasm."]
+    speakPlainly: ["fine. shorter words. fewer swings."]
+    offer: ["forty thousand meso and i swing beside you for a shift. eight hours. no overtime. i get it right the first time."]
+    join: ["fine. you point, i break. don't stand behind me on the backswing."]
+    bench: ["i'll be at the west camp. two days. then i'm back on the rock."]
+    leave: ["shift's over. good work. some of it was even yours."]
+    refuse.bond: ["i don't swing next to strangers. strangers walk into the backswing."]
+    refuse.flags: ["clear my cut in tunnel three first. then we talk rates."]
+    refuseOwnErrand: ["my errand, your swings. that's the deal. i'll watch your form."]
+    questOffer.magna-wasted-swings: ["the guides want a new cut in ant tunnel three. zombie mushrooms keep walking into my swing. thirty gone, then check my props in tunnel four."]
+    questAccept.magna-wasted-swings: ["props are the timber in the ceiling. if one's leaning, come back faster. the humming wall is Orrin's problem. leave it."]
+    questComplete.magna-wasted-swings: ["thirty, and the props held. you didn't waste the trip. i notice that."]
+    questOffer.magna-the-hammer-i-carry: ["the guides want the Deep Forest path wide enough for two. curse eyes nest in the roots i'm cutting. thirty out, and ten tails."]
+    questAccept.magna-the-hammer-i-carry: ["the tails are for Hesper. every root i cut, he sulks. tails quiet his roots. cheaper than arguing."]
+    questWaiting.magna-the-hammer-i-carry: ["ten tails. the hermit counts them. so do i."]
+    questComplete.magna-the-hammer-i-carry: ["road's wide, hermit's quiet. here. the Sledgehammer i swing every day. seven safe scrolls, all took. you get the broken-in one."]
+    questOffer.magna-lamp-niches: ["the guides want the Tunnel That Lost Light lit. i'm cutting lamp niches. drakes sleep in them. thirty out, fifteen skulls for the turns."]
+    questAccept.magna-lamp-niches: ["go slow at the turns. that's where the drakes wait. i'm not cutting a niche with your name on it."]
+    questWaiting.magna-lamp-niches: ["fifteen skulls. one per turn. i counted the turns."]
+    questComplete.magna-lamp-niches: ["lamps lit. the Golden Mole: two years of wages. seven sixties, every one took. i held my breath seven times. don't waste it."]
+    questOffer.magna-the-blessing: ["the guides gave me the Blessing after tunnel three came down. ask Orrin. he hates that story. then thirty mixed golems, fifteen blocks."]
+    questAccept.magna-the-blessing: ["the Forest of Golem. the mixed ones are walking quarry. hit where the colours meet. that's the seam."]
+    questWaiting.magna-the-blessing: ["fifteen blocks. hardest rock there is. they go over the mouth of tunnel three."]
+    questComplete.magna-the-blessing: ["the Blessing. two tens, five sixties, all took. i didn't breathe for the tens. it held up my wall for years. now it holds you up."]
+    questOffer.magna-prop-timber: ["every cut needs props. the dark axe stumps grow good timber. they call it firewood. fifteen lengths."]
+    questAccept.magna-prop-timber: ["the stumps up the rocky mountains by Perion. they swing back. wood shouldn't. it does."]
+    questWaiting.magna-prop-timber: ["fifteen. a prop short is a ceiling short."]
+    questComplete.magna-prop-timber: ["fifteen props. three ceilings that stay ceilings."]
+    friend.close: ["you don't waste swings. i'd cut a road for you. i'd cut it first."]
+    friend.best: ["i've broken a lot of rock to keep people walking. you're the one i'd break it for."]
+    famed: ["...hm. didn't swing for that one. i'll keep it anyway."]
+    defamed: ["noted. i'll swing harder. usually fixes things."]
+    gift: ["useful. thanks."]
+    gift.favorite: ["that goes straight into the work. one way or the other."]
+    gift.again: ["one's enough. i've got pockets, not a vault."]
+    about.thane: ["Thane walks every road i cut. never says they're good. never falls through one either. that's the review."]
+    about.orrin: ["Orrin digs for ore. i dig for roads. his holes go nowhere and he's happy in them. i don't get it."]
+    aboutUnknown: ["never cut a road for them."]
+
+- id: wendell
+  name: Wendell
+  look: { gender: male }
+  title: "Cloakmaker"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: sleepywood
+    routine:
+      - { from: 8, to: 14, spot: "venue:central-camp", activity: LINGER }
+      - { from: 14, to: 21, spot: "venue:hotel-approach", activity: REST }
+      - { from: 21, to: 8, materialize: false }
+  recruitable: false
+  questLines: [wendell-cold-collars, wendell-a-cloak-for-the-road, wendell-the-blue-that-holds, wendell-the-unfinished-cape, wendell-leather-for-the-next-ones]
+  relationships:
+    - { persona: thane, kind: OUTFITS }
+    - { persona: wilhelmina, kind: FRIEND }
+  giftItemIds: [4000021, 2022001]
+  dialogue:
+    greetFirst: ["going down? let me see your shoulders. the cold gets in at the shoulders.", "you came in by the road, not up from the tunnel. i can tell. you're still warm."]
+    greet: ["you came back. i always notice.", "no frost on your hem. you didn't go deep today."]
+    idle: ["(threads a needle by the camp fire)", "(holds a cloak up to the light, looks at the hem, says nothing)"]
+    noWork: ["nothing to sew today. nobody went down. i'll take it."]
+    nothingDue: ["you owe me nothing. bring the cloak back. that's all i ever ask."]
+    who: ["Wendell. i make cloaks for the parties that go below. i know who came back by who brings one in to mend."]
+    bye: ["keep your collar up down there."]
+    thanks: ["mm. thank you. wear it well."]
+    smallTalk: ["the cold below isn't weather. it doesn't pass. it waits in the stone.", "i keep a list of every cloak i've made. some names have a line through them. i don't read those."]
+    speakPlainly: ["simply, then. it's cold down there. i make it less cold."]
+    questOffer.wendell-cold-collars: ["cold eye tails hold warmth like nothing else. i sew them into collars. twenty cold eyes in the Sleepy Dungeon, and twelve tails?"]
+    questAccept.wendell-cold-collars: ["the third stretch of the Sleepy Dungeon. it gets colder as you go. that's how you'll know you're close."]
+    questWaiting.wendell-cold-collars: ["twelve tails. two parties' worth of collars."]
+    questComplete.wendell-cold-collars: ["twelve. two parties in warm collars. maybe they'll all come back this time. i say that every time."]
+    questOffer.wendell-a-cloak-for-the-road: ["you've gone below again and again, and never in one of my cloaks. let me fix that. thirty drakes, and ten dragon skins."]
+    questAccept.wendell-a-cloak-for-the-road: ["the Drake Hunting Ground. dragon skin sheds the cold and the claws both. the soft ones from under the wing, if you can."]
+    questWaiting.wendell-a-cloak-for-the-road: ["ten skins. i've already cut the pattern. i cut it the day we met."]
+    questComplete.wendell-a-cloak-for-the-road: ["here. a Green Napoleon, cut to your shoulders. five safe scrolls, every one took. i made it to come back in. so come back."]
+    questOffer.wendell-the-blue-that-holds: ["you came back in the green one. you always come back. i'm making you a second. thirty ice drakes in the Cold Cradle, twelve backbones."]
+    questAccept.wendell-the-blue-that-holds: ["ground fine, ice backbone makes the blue hold in the cold. get my measuring cord from Wilhelmina on your way down."]
+    questWaiting.wendell-the-blue-that-holds: ["twelve backbones. the dye's waiting. so am i."]
+    questComplete.wendell-the-blue-that-holds: ["the Blue Magic Cape. five sixties, every one took. i sat with each like a sick friend. i don't make seconds. i made you one."]
+    questOffer.wendell-the-unfinished-cape: ["a Green Seraph i started years ago and never finished. the clasp wants dark drake horn. thirty dark drakes, ten horns. ask Thane why."]
+    questAccept.wendell-the-unfinished-cape: ["Drake's Blue Cave, past the Nest. the coldest place i know. come back up. please."]
+    questWaiting.wendell-the-unfinished-cape: ["ten horns. one clasp. i've waited years. i can wait for you."]
+    questComplete.wendell-the-unfinished-cape: ["the Green Seraph. two tens, three sixties, every one took. i started it for my brother. he didn't come up. you do."]
+    questOffer.wendell-leather-for-the-next-ones: ["every party that goes down needs cloaks, and the tunnels drip. fifteen stiff feathers and i'll sew hems that shed the wet."]
+    questAccept.wendell-leather-for-the-next-ones: ["the lupins in the Monkey Forest. they throw bananas. the bananas aren't the problem."]
+    questWaiting.wendell-leather-for-the-next-ones: ["fifteen feathers. the next party leaves at dawn."]
+    questComplete.wendell-leather-for-the-next-ones: ["fifteen. three dry hems. three people a little warmer below. thank you for them."]
+    friend.close: ["i've stopped watching the tunnel mouth for you. i know you'll come up. that's new for me."]
+    friend.best: ["every name on my list, i worry over. yours is the one i read when the others get hard."]
+    famed: ["oh. thank you. people usually thank the cloak."]
+    defamed: ["oh. all right. i'll mend it, whatever it was."]
+    gift: ["thank you. i'll keep it by the needles."]
+    gift.favorite: ["oh, the good kind. you noticed. i'll be warm and busy tonight."]
+    gift.again: ["that's plenty for today. keep the rest for the climb."]
+    about.thane: ["every cloak Thane's worn, i made. he brought one of mine back once without the man inside it. i don't blame him. i've tried."]
+    about.wilhelmina: ["Wilhelmina lets me sew by her lamp. she says the hotel's warmer with someone mending in it. she's right."]
+    aboutUnknown: ["never made them a cloak. so i don't know if they came back."]

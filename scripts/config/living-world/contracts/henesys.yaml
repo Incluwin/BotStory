@@ -44,3 +44,33 @@
     leavesOn: [DISMISS, LEADER_OFFLINE_20M]
     cooldownHoursAfterLeave: 1
     rejoinPrice: { meso: 0 }
+
+- id: gunnar-a-days-felling
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [gunnar.intro.done]
+  price:
+    meso: 33000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 13000 }
+
+- id: sorrel-field-test
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [sorrel.intro.done]
+  price:
+    meso: 32000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 13000 }

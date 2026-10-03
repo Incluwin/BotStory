@@ -131,7 +131,8 @@ class CharacterClickRoutingTest {
 
         ArgumentCaptor<Packet> sent = ArgumentCaptor.forClass(Packet.class);
         verify(client).sendPacket(sent.capture());
-        assertEquals(java.util.List.of("Who are you?", "Never mind."), NpcTalks.read(sent.getValue()).labels());
+        assertEquals(java.util.List.of("I brought you something.", "Who are you?", "Never mind."),
+                NpcTalks.read(sent.getValue()).labels());
         assertTrue(menus.constructed().isEmpty());
     }
 

@@ -18,7 +18,9 @@ import java.util.Set;
 /**
  * Prefers distinct visible clothing for active Agents in the same job family.
  * Combat strength remains the optimizer's concern; this policy only removes an
- * already-used appearance item when the Agent owns another legal candidate.
+ * already-used appearance item when the Agent owns another legal candidate. A piece
+ * made for this character (its name as the owner tag: a living-world Resident's own
+ * quest gear) is its look and is never removed.
  */
 final class AgentEquipmentAppearanceDiversityPolicy {
     static final short HAT_SLOT = -1;
@@ -42,18 +44,23 @@ final class AgentEquipmentAppearanceDiversityPolicy {
                 continue;
             }
             candidatesBySlot.put(slot, preferUnusedCandidates(
-                    candidates, usedBySlot.getOrDefault(slot, Set.of())));
+                    candidates, usedBySlot.getOrDefault(slot, Set.of()), agent.getName()));
         }
     }
 
     static List<Equip> preferUnusedCandidates(List<Equip> candidates, Set<Integer> usedItemIds) {
+        return preferUnusedCandidates(candidates, usedItemIds, null);
+    }
+
+    static List<Equip> preferUnusedCandidates(List<Equip> candidates, Set<Integer> usedItemIds, String agentName) {
         if (candidates == null || candidates.isEmpty() || usedItemIds == null
                 || usedItemIds.isEmpty()) {
             return candidates;
         }
         List<Equip> unused = candidates.stream()
                 .filter(candidate -> candidate != null
-                        && !usedItemIds.contains(candidate.getItemId()))
+                        && (!usedItemIds.contains(candidate.getItemId())
+                                || agentName != null && agentName.equals(candidate.getOwner())))
                 .toList();
         return unused.isEmpty() ? candidates : new ArrayList<>(unused);
     }

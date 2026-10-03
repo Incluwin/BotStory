@@ -77,12 +77,24 @@ public final class BondService {
         if (delta != 0) {
             world.store().event(chr.getId(), persona.id(), "bond.points", delta + " (" + reason + ") -> " + points);
         }
+        Friendship friendship = world.friendship();
+        int level = friendship.levelFor(points);
+        int was = friendship.levelFor(bond.points());
+        if (level > was && level > 1) {
+            chr.dropMessage(5, "Friendship with " + persona.name() + ": Lv " + level + " " + Friendship.label(level) + ".");
+        } else if (level < was) {
+            chr.dropMessage(5, "Friendship with " + persona.name() + " fell to Lv " + level + " " + Friendship.label(level) + ".");
+        }
+        List<String> lines = List.of();
         if (stage != bond.stage() && stage.atLeast(BondStage.ACQUAINTED)) {
-            chr.dropMessage(5, persona.name() + " now considers you " + stage.name().toLowerCase() + ".");
-            List<String> lines = world.arcs().lines(persona, "bond." + stage.name().toLowerCase());
-            if (!lines.isEmpty()) {
-                world.residents().reply(persona, chr, lines.get(Math.floorMod(points, lines.size())));
-            }
+            lines = world.arcs().lines(persona, "bond." + stage.name().toLowerCase());
+        } else if (level > was && level >= Friendship.CLOSE_FRIEND && was < Friendship.CLOSE_FRIEND) {
+            lines = world.arcs().lines(persona, "friend.close");
+        } else if (level > was && level >= Friendship.MAX_LEVEL) {
+            lines = world.arcs().lines(persona, "friend.best");
+        }
+        if (!lines.isEmpty()) {
+            world.residents().reply(persona, chr, lines.get(Math.floorMod(points, lines.size())));
         }
         return updated;
     }

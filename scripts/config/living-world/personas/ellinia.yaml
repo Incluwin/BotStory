@@ -111,11 +111,11 @@
       - { from: 23, to: 6, materialize: false }
   recruitable: true
   contract: casse-cold-study
-  questLines: [casse-frost-notes, casse-a-cold-shelf]
+  questLines: [casse-frost-notes, casse-a-cold-shelf, casse-frozen-earrings, casse-my-first-wand, casse-the-coldest-thing, casse-what-ice-remembers]
   arc: casse-cold-study
   benchToleranceDays: 10
   paceGap: 1
-  giftItemIds: [2012002]
+  giftItemIds: [2012002, 4000023]
   relationships:
     - { persona: wren, kind: STUDIES_UNDER }
     - { persona: lioren, kind: ADMIRES }
@@ -144,6 +144,28 @@
     about.wren: ["she's strict but she leaves tea out. don't tell her i know."]
     about.lioren: ["he's not scary. he's just sad and on fire a little."]
     aboutUnknown: ["haven't met them! do they like ice?"]
+    questOffer.casse-frozen-earrings: ["okay don't laugh. i froze a pair of earrings and they came out PRETTY. but the frost needs something cold and dead to hold onto. charms of the undead, from zombie mushrooms. fifteen!"]
+    questAccept.casse-frozen-earrings: ["yay! don't let them touch you, they're gross."]
+    questWaiting.casse-frozen-earrings: ["fifteen charms! the frost is getting impatient. so am i."]
+    questComplete.casse-frozen-earrings: ["earrings! scrolled! by me! okay, Wren helped with the scrolls. a little. a lot."]
+    questOffer.casse-the-coldest-thing: ["i figured out the coldest thing in Victoria. it's a cursed doll. don't ask how i know. ten of them, from the zombie lupins. thirty lupins should do it. then my wizard wand is yours. my REAL one."]
+    questAccept.casse-the-coldest-thing: ["stay warm! ironic, i know."]
+    questWaiting.casse-the-coldest-thing: ["ten cursed dolls! they're cold, you'll know them."]
+    questComplete.casse-the-coldest-thing: ["my Wizard Wand. seven sixties, every one took. i did them in the cold room. ice remembers. so will you, every time you use it."]
+    friend.close: ["you're my favorite person who isn't a book. Wren doesn't count, she IS a book."]
+    friend.best: ["i'm naming my first real spell after you. it's going to be cold. that's a compliment."]
+    famed: ["for ME? oh my gosh. okay. okay! thank you!"]
+    defamed: ["oh. ...that's cold. and not the good kind."]
+    gift: ["aw, you got me something!"]
+    gift.favorite: ["you remembered what i like! how did you even remember?!"]
+    gift.again: ["you already gave me something today! i'm still happy about that one!"]
+    questOffer.casse-my-first-wand: ["my first wand was an ice wand. obviously. i got a new one, so this one's YOURS. but the horny mushrooms keep eating my notes. thirty of them, please?"]
+    questAccept.casse-my-first-wand: ["they're everywhere around the tree. you can't miss them. they can't miss you either."]
+    questComplete.casse-my-first-wand: ["seven of the safe scrolls and all seven worked, which NEVER happens to me. it's yours!"]
+    questOffer.casse-what-ice-remembers: ["this is Cromi. i've never let anyone hold it. one last study first: forty cold eyes and twenty of their tails. then it's yours. ask Lioren, he knows what it means."]
+    questAccept.casse-what-ice-remembers: ["the cold eyes are down in the sleepy dungeon. dress warm. ha."]
+    questWaiting.casse-what-ice-remembers: ["twenty cold eye tails! the study isn't done without them."]
+    questComplete.casse-what-ice-remembers: ["Cromi. two tens, five sixties, and every single one took. i don't know what i'll study without it. you, maybe. that's a joke. mostly."]
 
 - id: bram
   name: Bram
@@ -295,3 +317,140 @@
     questWaiting.thessaly-a-fallen-wing: ["one fairy wing. just one. they don't grow back fast."]
     questComplete.thessaly-a-fallen-wing: ["look... see the light in it? that's a memory. this one's of falling. here, a small thing for your trouble."]
     aboutUnknown: ["the fairies haven't mentioned them."]
+
+- id: isolde
+  name: Isolde
+  look: { gender: female }
+  title: "Healer of the Upper Tree"
+  job: CLERIC
+  level: { min: 33, max: 36 }
+  strength: SEASONED
+  loadout: ellinia-cleric-staff-l33
+  personality: relaxed-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 6, to: 10, spot: "venue:lower-village", activity: LINGER }
+      - { from: 10, to: 20, spot: "venue:upper-tree", activity: SOCIALIZE }
+      - { from: 20, to: 23, spot: "venue:middle-tree", activity: REST }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  contract: isolde-house-calls
+  questLines: [isolde-pells-ankle, isolde-the-walking-staff, isolde-the-staff-in-the-cupboard, isolde-what-faust-leaves, isolde-clean-water]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: pell, kind: TENDS }
+    - { persona: bram, kind: TEASES }
+    - { persona: mirabel, kind: FRIEND }
+  giftItemIds: [2022000, 2022002]
+  dialogue:
+    greetFirst: ["hold still. no, you're fine. i look at everyone like that.", "new face. no bandages yet. give it a week."]
+    greet: ["back, and in one piece. i'm almost disappointed.", "let me see your hands. ...fine. hello."]
+    idle: ["(rolls a bandage, unrolls it, rolls it tighter)", "(watches a stranger climb the ladder and quietly gets the splint out)"]
+    noWork: ["nobody's bleeding. enjoy it. i'm going to."]
+    nothingDue: ["you don't owe me a thing. i bill the forest."]
+    who: ["Isolde. i heal people at the top of the tree. mostly people who swore they'd be careful."]
+    bye: ["try to come back with the same number of fingers."]
+    thanks: ["thank me by needing me less."]
+    smallTalk: ["half my work is evil eye scratches. the other half is people who said it was just an evil eye.", "Bram says the tree talks back. i put my ear to the bark once. nothing. i didn't have the heart to say so.", "Mirabel mends the knees of my robes and never says a word about it. she'd blush to hear she's my best friend."]
+    speakPlainly: ["slower. i've heard every kind of panic. this isn't even a good one."]
+    refuse.bond: ["i patch strangers for free. i don't follow them into the forest."]
+    refuse.flags: ["help me with Pell's ankle first. i want to see how you treat a patient."]
+    offer: ["thirty-five thousand meso and i'll walk behind you anywhere that bleeds. cheaper than dying. i've done the sums."]
+    join: ["go on, lead. i'll be right behind you with the bandages.", "you fight, i fix. that's the arrangement."]
+    bench: ["i'll be up the tree. come find me before you need me, for once."]
+    leave: ["that's my shift. you held up. mostly. i'm proud of the mostly."]
+    refuseOwnErrand: ["that's my errand. you're meant to be the one getting hurt, not me."]
+    questOffer.isolde-pells-ankle: ["Pell stepped in a snare again. Pell's own snare. go say well done from me, then bring fifteen green mushroom caps for the paste."]
+    questAccept.isolde-pells-ankle: ["Pell's in the lower village most of the day. the green mushrooms are south of town. they hit softer than Pell's snares."]
+    questWaiting.isolde-pells-ankle: ["fifteen green caps. Pell's ankle is waiting, and so am i."]
+    questComplete.isolde-pells-ankle: ["fifteen. and Pell said fine? Pell always says fine. you're good with patients. i might keep you."]
+    questOffer.isolde-the-walking-staff: ["i've walked every forest around the tree with this staff. it's tired of me. thirty evil eyes in the north tree dungeon. then it's yours."]
+    questAccept.isolde-the-walking-staff: ["they scratch. you'll live. i'll make sure of it, and i'll mention it often."]
+    questComplete.isolde-the-walking-staff: ["thirty, and hardly a scratch. seven safe scrolls went into it and every one took. lean on it. i did, for years."]
+    questOffer.isolde-the-staff-in-the-cupboard: ["i saved two seasons of fees for a staff, then stayed to heal. it's sat in a cupboard since. thirty curse eyes, fifteen tails, and it's yours."]
+    questAccept.isolde-the-staff-in-the-cupboard: ["the deep end of the north tree dungeon. curse eyes hit harder than they look. so do i, with a needle."]
+    questWaiting.isolde-the-staff-in-the-cupboard: ["fifteen curse eye tails. steeped, they take the sting out of a curse. don't ask how i found out."]
+    questComplete.isolde-the-staff-in-the-cupboard: ["the Hall Staff. seven sixties, every one took. i did them by lamplight, sure i'd use it one day. i was wrong about who."]
+    questOffer.isolde-what-faust-leaves: ["my teacher took this cane into the Forest of Evil to drag people out from under Faust. beat Faust and it's yours. tell Bram first."]
+    questAccept.isolde-what-faust-leaves: ["the Forest of Evil is deep in the woods south of town. i've only ever patched the ones who lost. don't be one."]
+    questComplete.isolde-what-faust-leaves: ["you won. you actually won. she scrolled it: two tens, five sixties, every one took. it's never left the tree. now it leaves with you."]
+    questOffer.isolde-clean-water: ["the salve pot's low again. it always is. fifteen bubbling bubbles. cleanest water in Ellinia, if you don't think about it."]
+    questAccept.isolde-clean-water: ["the bubblings are down in the south forest dungeon. they're harmless. mostly. so are you."]
+    questWaiting.isolde-clean-water: ["fifteen bubbles. whole ones. a popped bubble is just a wet pocket."]
+    questComplete.isolde-clean-water: ["full pot. that's another week of people never knowing how close they came. thank you."]
+    friend.close: ["i'd let you hold the needle. that's the most i trust anyone."]
+    friend.best: ["if you ever fall somewhere nobody else will go, i'll come and get you. that's not a healer's promise. it's mine."]
+    famed: ["for me? careful. i'll start thinking i'm good at this."]
+    defamed: ["noted. i'll still patch you up. i'll just use the cold water."]
+    gift: ["something for the healer that isn't a wound. thank you."]
+    gift.favorite: ["you noticed. most people only notice me when they're bleeding."]
+    gift.again: ["one's plenty. save the rest. you'll need it more than i will."]
+    about.pell: ["Pell sets snares for lupins and mostly catches Pell. i've stopped charging. it felt like a tax."]
+    about.bram: ["Bram would sooner splint a branch than an arm. i've splinted both for Bram. the branch complained less."]
+    aboutUnknown: ["never patched them. lucky them."]
+
+- id: mirabel
+  name: Mirabel
+  look: { gender: female }
+  title: "Robe Weaver"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: ellinia
+    routine:
+      - { from: 7, to: 9, spot: "venue:upper-tree", activity: STROLL }
+      - { from: 9, to: 18, spot: "venue:middle-tree", activity: LINGER }
+      - { from: 18, to: 21, spot: "venue:shop-approach", activity: SOCIALIZE }
+      - { from: 21, to: 7, materialize: false }
+  recruitable: false
+  questLines: [mirabel-a-robe-for-casse, mirabel-measured-for-you, mirabel-the-lining, mirabel-thread-that-holds, mirabel-leaves-for-the-vat]
+  relationships:
+    - { persona: isolde, kind: MENDS_FOR }
+    - { persona: wren, kind: SUPPLIES }
+  giftItemIds: [2010005, 2020015]
+  dialogue:
+    greetFirst: ["oh. hello. sorry, i was counting threads.", "you can come in. mind the loom. it's older than i am."]
+    greet: ["you came back. i... good. hello.", "hello again. sit, if you like. i'll keep working."]
+    idle: ["(passes the shuttle through the loom, slowly, evenly)", "(holds a thread up to the light and frowns at it)"]
+    noWork: ["nothing needs doing. i'll weave anyway. it's quieter with the loom going."]
+    nothingDue: ["you don't owe me anything. it's nice that you asked."]
+    who: ["Mirabel. i weave the robes half this tree wears. you've walked past a dozen of mine. most people do."]
+    bye: ["come by again. if you're passing. you don't have to."]
+    thanks: ["oh. you're welcome. really."]
+    smallTalk: ["a robe is a few thousand small decisions. nobody sees any of them. that's how you know they were right.", "the wizards here go through sleeves like paper. i don't mind. it means they come back."]
+    speakPlainly: ["slower, please. one thread at a time."]
+    questOffer.mirabel-a-robe-for-casse: ["Casse's new robe is done. i'd take it to her myself, but... would you? then fifteen octopus legs. their ink makes a blue that stays."]
+    questAccept.mirabel-a-robe-for-casse: ["she's up top in the mornings, on the middle tree after. the octopuses are in the north tree dungeon. thank you."]
+    questWaiting.mirabel-a-robe-for-casse: ["fifteen octopus legs. i'll wait. i'm good at waiting."]
+    questComplete.mirabel-a-robe-for-casse: ["she liked it? she said that? ...thank you for taking it. and for coming back. people usually don't."]
+    questOffer.mirabel-measured-for-you: ["i've been measuring you since you first walked in. sorry. habit. let me make you something. fifteen fairy tentacles. don't tell Thessaly."]
+    questAccept.mirabel-measured-for-you: ["the fairies float in the north tree dungeon. their tentacles unravel into thread finer than anything i can buy."]
+    questWaiting.mirabel-measured-for-you: ["fifteen tentacles. i've set the loom for you already. it's waiting too."]
+    questComplete.mirabel-measured-for-you: ["here. cut for you, for how you move. the safe scrolls, all of them, and every one took. i checked each seam twice. three times."]
+    questOffer.mirabel-the-lining: ["this one needs a lining. jr. wraiths in the Kerning subway carry tablecloths, finer than any linen here. twenty-five wraiths, twenty cloths."]
+    questAccept.mirabel-the-lining: ["lines one and two of the subway. wash your hands after. i'll wash the cloth."]
+    questWaiting.mirabel-the-lining: ["twenty tablecloths. i won't ask what they were doing with them."]
+    questComplete.mirabel-the-lining: ["lined with what the wraiths carried. i'm not thinking about it. sixties, every scroll, and every one took. i sat up all night with it."]
+    questOffer.mirabel-thread-that-holds: ["the last one should outlast us both. thirty copper drakes, fifteen dragon skins. tell Isolde first. she always asks what i'm making."]
+    questAccept.mirabel-thread-that-holds: ["the drakes nest in the hunting ground past Sleepywood. Isolde will tell you to be careful. listen to her."]
+    questWaiting.mirabel-thread-that-holds: ["fifteen dragon skins. the loom's been quiet without you. i didn't expect to notice that."]
+    questComplete.mirabel-thread-that-holds: ["two tens and sixties for the rest, and every one took. i held my breath for each. it was always going to be yours."]
+    questOffer.mirabel-leaves-for-the-vat: ["the dye vat's low. twenty leaves from the dark stumps around the tree. theirs is the only green that doesn't fade."]
+    questAccept.mirabel-leaves-for-the-vat: ["the dark stumps are in the forests north and south of town. they don't like being picked."]
+    questWaiting.mirabel-leaves-for-the-vat: ["twenty leaves. the vat's going pale while it waits."]
+    questComplete.mirabel-leaves-for-the-vat: ["twenty. the vat will hold another week. ...you could stay while it steeps. if you want."]
+    friend.close: ["i've started saving the good thread for you. i didn't decide to. i just noticed i was doing it."]
+    friend.best: ["i used to weave with the door shut. now i leave it open, in case it's you."]
+    famed: ["for me? ...i don't know where to put my hands. thank you."]
+    defamed: ["oh. all right. i'll unpick whatever i did."]
+    gift: ["for me? you didn't have to. i'm glad you did."]
+    gift.favorite: ["you remembered. i'll be thinking about this all evening."]
+    gift.again: ["you already brought me something today. i'm still holding it."]
+    about.isolde: ["Isolde wears out her robes kneeling beside people. i mend the knees and don't say anything. she knows."]
+    about.wren: ["i thread Wren's bindings. she says they're adequate. from Wren, that's a love letter."]
+    aboutUnknown: ["i haven't measured them. i don't think we've met."]

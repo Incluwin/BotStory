@@ -517,9 +517,9 @@ public final class BenchStallForm implements BenchDutyDispatcher.Form {
         Map<Integer, Integer> taken = new LinkedHashMap<>();
         units.forEach((itemId, want) -> {
             int take = Math.min(want, held(agent, itemId));
-            if (take > 0) {
-                InventoryManipulator.removeById(agent.getClient(), ItemConstants.getInventoryType(itemId), itemId, take, false, false);
-                taken.put(itemId, take);
+            int moved = take > 0 ? BenchSessions.takeFromBag(agent, itemId, take) : 0;
+            if (moved > 0) {
+                taken.put(itemId, moved);
             }
         });
         if (taken.isEmpty()) {

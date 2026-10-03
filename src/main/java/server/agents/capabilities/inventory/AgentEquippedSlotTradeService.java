@@ -6,6 +6,8 @@ import client.Character;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
+import constants.inventory.ItemConstants;
+import server.ItemRestrictionPolicy;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.InventoryGateway;
@@ -44,11 +46,22 @@ public final class AgentEquippedSlotTradeService {
         int total = 0;
         for (short slot : slots) {
             Item item = equipped.getItem(slot);
-            if (item != null && !inventory.isCashItem(item.getItemId())) {
+            if (tradeable(agent, item, inventory)) {
                 total++;
             }
         }
         return total;
+    }
+
+    /**
+     * A worn piece that may go into a trade: not a cash item, and not flagged untradeable unless the world allows that item
+     * (as the bag paths' AgentInventoryItemPolicy.isSafeToDrop do), so a Resident's own quest gear stays on it.
+     */
+    private static boolean tradeable(Character agent, Item item, InventoryGateway inventory) {
+        if (item == null || inventory.isCashItem(item.getItemId())) {
+            return false;
+        }
+        return (item.getFlag() & ItemConstants.UNTRADEABLE) == 0 || ItemRestrictionPolicy.allowsUntradeable(agent, item.getItemId());
     }
 
     public static PreparedTradeItems prepareEquippedSlotTradeItems(String fragment,
@@ -67,7 +80,7 @@ public final class AgentEquippedSlotTradeService {
         List<Short> occupiedSlots = new ArrayList<>();
         for (short slot : slots) {
             Item item = equipped.getItem(slot);
-            if (item != null && !inventory.isCashItem(item.getItemId())) {
+            if (tradeable(agent, item, inventory)) {
                 occupiedSlots.add(slot);
             }
         }

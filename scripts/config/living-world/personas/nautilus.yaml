@@ -15,7 +15,7 @@
       - { from: 22, to: 6, materialize: false }
   recruitable: true
   contract: kettle-a-captains-token
-  questLines: [kettle-deck-drill, kettle-what-the-tide-took]
+  questLines: [kettle-deck-drill, kettle-what-the-tide-took, kettle-deck-boots, kettle-the-deckhands-knuckles, kettle-the-king-of-the-beach, kettle-the-captains-hands]
   arc: kettle-new-captain
   rumors: [nautilus-empty-cabin]
   benchToleranceDays: 6
@@ -23,6 +23,7 @@
   relationships:
     - { persona: mae, kind: TRUSTS }
     - { persona: pike, kind: SCOLDS }
+  giftItemIds: [2022003, 2022002]
   dialogue:
     greetFirst: ["you're on my deck. state your rank.", "no rank? then swab."]
     greet: ["sailor.", "deck's clean. for now."]
@@ -49,6 +50,27 @@
     about.mae: ["Mae keeps the guns. she'd have been captain if she wanted it. she doesn't."]
     about.pike: ["the cabin boy. good hands, bad ideas."]
     aboutUnknown: ["not crew."]
+    questOffer.kettle-deck-boots: ["you slide on a wet deck like a landsman. Tilda at the dock makes grip soles from lorang claws. twenty."]
+    questAccept.kettle-deck-boots: ["the lorangs are down the beach. they pinch."]
+    questWaiting.kettle-deck-boots: ["twenty claws, sailor."]
+    questComplete.kettle-deck-boots: ["deck boots. i scrolled them on the night watch. now you're a sailor. mostly."]
+    questOffer.kettle-the-king-of-the-beach: ["King Clang. the big one on the beach. the old captain took it down every season to show the crew it could be done. nobody has since. you and me, aye?"]
+    questAccept.kettle-the-king-of-the-beach: ["aye. bring potions. bring more."]
+    questComplete.kettle-the-king-of-the-beach: ["the crew saw. they'll talk about it for a year. my own Fury Claw: seven sixties, every one took. the captain's way was to arm whoever stood beside him. i'm keeping his way."]
+    friend.close: ["you've got a berth on this ship as long as i keep the deck."]
+    friend.best: ["if this ship ever gets a captain again, i know who i'd want."]
+    famed: ["aye. thank you."]
+    defamed: ["a storm passes. so will you."]
+    gift: ["aye, thanks."]
+    gift.favorite: ["proper galley food. you've been talking to Barnaby."]
+    gift.again: ["one a day, sailor. the hold's only so big."]
+    questOffer.kettle-the-deckhands-knuckles: ["these were my knuckles when i was a deckhand. Neozard. thirty lorangs down the beach and they're yours."]
+    questAccept.kettle-the-deckhands-knuckles: ["aye. mind the pincers."]
+    questComplete.kettle-the-deckhands-knuckles: ["seven of the safe scrolls, every one took. a deckhand's knuckles. keep them dry."]
+    questOffer.kettle-the-captains-hands: ["the captain's own knuckles. Psycho Claw. two tens and the rest sixties, a year's pay. ask Mae. then forty clangs, and twenty claws for the crew's memorial."]
+    questAccept.kettle-the-captains-hands: ["the clangs are past the lorangs. they hit harder."]
+    questWaiting.kettle-the-captains-hands: ["twenty claws, sailor. for the memorial."]
+    questComplete.kettle-the-captains-hands: ["every scroll took for him, and they'll hit for you. the ship has a captain again, as far as i'm concerned."]
 
 - id: mae
   name: Mae
@@ -197,3 +219,138 @@
     questComplete.gull-a-shell-for-a-story: ["...he walked to Ellinia. on foot. left the ship to Kettle and never said. now you know. don't tell Kettle. he knows."]
     about.kettle: ["captain. he just won't say it."]
     aboutUnknown: ["never sailed with them. probably."]
+
+- id: flint
+  name: Flint
+  look: { gender: male }
+  title: "Powder Keeper"
+  job: GUNSLINGER
+  level: { min: 33, max: 36 }
+  strength: SEASONED
+  loadout: nautilus-gun-l33
+  personality: relaxed-v1
+  home:
+    town: nautilus
+    routine:
+      - { from: 6, to: 12, spot: "venue:east-deck", activity: LINGER }
+      - { from: 12, to: 19, spot: "venue:ship-square", activity: SHOW_OFF }
+      - { from: 19, to: 23, spot: "venue:harbor-entry", activity: SOCIALIZE }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: true
+  contract: flint-powder-wages
+  questLines: [flint-dry-powder, flint-cold-mind, flint-black-powder, flint-mr-rasfelt, flint-quill-primers]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: mae, kind: SUPPLIES }
+    - { persona: barnaby, kind: WARY }
+  giftItemIds: [4003004, 2020005]
+  dialogue:
+    greetFirst: ["ahoy. no open flames past this plank, if you please.", "new face. dry hands? good. we can shake."]
+    greet: ["ahoy again. you don't smell of lamp oil. good start.", "powder's dry, if you were wondering. nobody ever wonders."]
+    idle: ["(sniffs a powder keg, nods at it)", "(moves a lantern three steps further from the barrels)"]
+    noWork: ["nothing needs a bang today. a quiet day's a dry day."]
+    nothingDue: ["we're square. squarer than a powder crate."]
+    who: ["Flint. powder keeper of the Nautilus. i keep it dry, i keep it cool, and i keep it far from Barnaby's stove."]
+    bye: ["fair winds. no smoking by the hatch."]
+    thanks: ["much obliged. a dry thank you, the best kind."]
+    smallTalk: ["a wet keg is just a very sad barrel.", "people ask if Flint's my real name. i tell them it's a spark of genius. they stop asking."]
+    speakPlainly: ["plain talk, then. no puns. ...for a minute."]
+    offer: ["thirty-four thousand meso and i'm your gunner for eight hours. powder included. that's a bargain with a bang."]
+    join: ["aye. i've got your back. just mind the muzzle."]
+    bench: ["i'll be on deck keeping things dry. two days, then i figure you shipped out without me."]
+    leave: ["fair winds, matey. back to my barrels. they missed me."]
+    refuse.bond: ["i don't load a gun for strangers. buy a sailor a hot dog first."]
+    refuse.flags: ["help me get the damp out of the magazine first. then we'll talk wages."]
+    refuseOwnErrand: ["that's my own errand, matey. i can't hire myself. tried once. the paperwork got wet."]
+    questOffer.flint-dry-powder: ["the magazine's damp, and i blame two things. Barnaby's stove, and the bubblings that soaked our last crate in Kerning's subway."]
+    questAccept.flint-dry-powder: ["ask Barnaby at the harbor entry to shift that stove. you'll be fed first, so eat. then twenty-five bubblings off Line 1."]
+    questComplete.flint-dry-powder: ["stove's a plank further, Line 1's clear, and the powder's dry for the first time in a month. you've got a feel for this, matey."]
+    questOffer.flint-cold-mind: ["fire boars. pigs that are on fire. a powder keeper's nightmare. keep a cold head among thirty of them and you can have my Cold Mind."]
+    questAccept.flint-cold-mind: ["they roam Perion's burnt land. keep your powder well away from their backs. trust me on that one."]
+    questComplete.flint-cold-mind: ["Cold Mind. the gun i carry every day. seven safe scrolls, every one took. keep a cold head and a dry barrel and it won't let you down."]
+    questOffer.flint-black-powder: ["a year's wages went into my Lunar Shooter. it's yours if you fetch its powder. thirty zombie lupins, ten pinches of the black stuff."]
+    questAccept.flint-black-powder: ["they lurk in the Monkey Forest south of Ellinia. bring a nose plug. bring two."]
+    questWaiting.flint-black-powder: ["ten pinches of black magic powder. i just call it black powder. and keep it off the lanterns."]
+    questComplete.flint-black-powder: ["my Lunar Shooter, first load from your powder. seven sixties, scrolled by moonlight, every one took. it's yours. it'll like you."]
+    questOffer.flint-mr-rasfelt: ["Mr. Rasfelt. my best gun. he insists on the mister. he's yours, with a powder flask the sea can't get into. tortie shell's the stuff."]
+    questAccept.flint-mr-rasfelt: ["tell Mae first, on the ship square. she was never let near him. then forty torties on Hot Sand, and fifteen shells."]
+    questWaiting.flint-mr-rasfelt: ["fifteen tortie shells, matey. the flask won't carve itself."]
+    questComplete.flint-mr-rasfelt: ["two tens on Mr. Rasfelt, held my breath for both. both took, every sixty after. he's yours, flask and all. i'm not crying. powder smoke."]
+    questOffer.flint-quill-primers: ["stiff feathers. fill a quill with fine powder, push it in the touch-hole, and the gun fires clean. fifteen primes us for a week."]
+    questAccept.flint-quill-primers: ["ribbon pigs at the Henesys pig farm shed them, and so do stirges. don't ask me why a pig has feathers. nobody will tell me."]
+    questWaiting.flint-quill-primers: ["fifteen stiff feathers. limp ones make limp shots."]
+    questComplete.flint-quill-primers: ["fifteen quills. that's a week of clean shots. ta, matey."]
+    friend.close: ["you're the only one i'd let into the magazine. no lantern, mind. in my trade that's practically family."]
+    friend.best: ["if the Nautilus ever fires a salute, i'm loading the first shot for you."]
+    famed: ["fame for the powder keeper? that's explosive. sorry. not sorry."]
+    defamed: ["ouch. well. sparks happen."]
+    gift: ["for me? much obliged."]
+    gift.favorite: ["you've been listening. i relish that. ...yes, that one was on purpose."]
+    gift.again: ["one's plenty. any more and i'll need a second dry crate."]
+    about.mae: ["Mae aims, i keep the powder dry. she gets the credit and i get the quiet. fair trade."]
+    about.barnaby: ["Barnaby's a fine cook with a terrible stove. i've asked eleven times for it to move. that stove has opinions."]
+    aboutUnknown: ["never shared a deck with them."]
+
+- id: tilda
+  name: Tilda
+  look: { gender: female }
+  title: "Ship's Cobbler"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: nautilus
+    routine:
+      - { from: 5, to: 13, spot: "venue:harbor-entry", activity: LINGER }
+      - { from: 13, to: 20, spot: "venue:east-deck", activity: SOCIALIZE }
+      - { from: 20, to: 5, materialize: false }
+  recruitable: false
+  questLines: [tilda-a-last-for-your-feet, tilda-swamp-soles, tilda-heel-irons, tilda-the-captains-pair, tilda-sole-leather]
+  relationships:
+    - { persona: pike, kind: MOTHERS }
+    - { persona: kettle, kind: SUPPLIES }
+  giftItemIds: [4000021, 2022001]
+  dialogue:
+    greetFirst: ["oh, look at those boots. sit. no, sit. let me see.", "salt's eaten your soles, love. you've been walking on hope."]
+    greet: ["there you are. feet dry?", "back again. let's see those heels. hm. could be worse."]
+    idle: ["(taps a heel onto a boot with three quick knocks)", "(scrubs a deck plank nobody asked her to scrub)"]
+    noWork: ["nothing on the last today. go and put your feet up. i mean it."]
+    nothingDue: ["you owe me nothing but dry socks."]
+    who: ["Tilda. ship's cobbler. i keep this crew's feet whole and this deck from killing them."]
+    bye: ["mind the wet planks. and change your socks."]
+    thanks: ["oh, go on."]
+    smallTalk: ["a sailor's only as good as their feet. Kettle won't say it, but he's thought it.", "half this crew goes barefoot on a wet deck. the other half listens to me."]
+    speakPlainly: ["plainly, then. your boots are a disgrace and i'm going to fix them."]
+    questOffer.tilda-a-last-for-your-feet: ["every pair i make starts on a last, a wooden foot shaped like yours. wooden masks carry good board. ten boards, love."]
+    questAccept.tilda-a-last-for-your-feet: ["they haunt the excavation site near Perion. twenty masks should shake ten boards loose. mind your ankles on the rocks."]
+    questWaiting.tilda-a-last-for-your-feet: ["ten wooden boards. not slate. that's the rocky masks, and nobody carves slate."]
+    questComplete.tilda-a-last-for-your-feet: ["ten good boards. sit down, shoes off. ...there. that's your foot, in wood. everything i make you starts here now."]
+    questOffer.tilda-swamp-soles: ["now i've got your last, you need proper boots. ligator skin never drinks water. fifteen skins and i'll make you a pair."]
+    questAccept.tilda-swamp-soles: ["ligators sit in the Swamp of Despair past Kerning. lovely name. wear your old boots, you'll ruin them anyway."]
+    questWaiting.tilda-swamp-soles: ["fifteen ligator skins, love. your boots are waiting on you."]
+    questComplete.tilda-swamp-soles: ["there. made on your last, every slot scrolled with the safe ones, every one took. dry them by the stove, not on it."]
+    questOffer.tilda-heel-irons: ["your heels wear down crooked. i can tell from here. iron hog hooves make good heel irons. fifteen, and a better pair for you."]
+    questAccept.tilda-heel-irons: ["the hogs are in Perion's burnt land. thirty should do it. they're heavy, so mind your toes."]
+    questWaiting.tilda-heel-irons: ["fifteen metal hooves, love. heel irons don't grow on trees. they grow on hogs."]
+    questComplete.tilda-heel-irons: ["iron heels and a sole that'll outlast the ship. every scroll a sixty, every one took. i sat up all night biting my nails. worth it."]
+    questOffer.tilda-the-captains-pair: ["i've made one pair of dragon skin boots in my life. for the captain. the second pair is yours. fifteen dragon skins."]
+    questAccept.tilda-the-captains-pair: ["tell Kettle first, on the east deck. he'll pretend not to care. then thirty red drakes, down past Sleepywood."]
+    questWaiting.tilda-the-captains-pair: ["fifteen dragon skins, love. red drakes. and did you tell Kettle?"]
+    questComplete.tilda-the-captains-pair: ["two tens. i couldn't watch, so Barnaby did. both took, and every sixty after. the captain's pair walked away from us. these walk with you."]
+    questOffer.tilda-sole-leather: ["this crew wears through soles faster than Barnaby goes through onions. fifteen pieces of leather, love?"]
+    questAccept.tilda-sole-leather: ["the pigs on the road to Henesys have plenty. bring it back dry."]
+    questWaiting.tilda-sole-leather: ["fifteen pieces of leather. the crew's walking on socks."]
+    questComplete.tilda-sole-leather: ["fifteen. that's a week of soles. sit down, have some porridge."]
+    friend.close: ["i've got your measure now, heel to toe. i don't keep a last for just anyone."]
+    friend.best: ["you're crew, love. i don't care whose ship you sail. you're crew."]
+    famed: ["oh, stop. ...no, don't stop."]
+    defamed: ["well. someone got out of the wrong side of the hammock."]
+    gift: ["for me? you shouldn't have. you should've bought socks."]
+    gift.favorite: ["oh, you remembered what i like. nobody on this ship remembers what i like."]
+    gift.again: ["one's plenty. save your meso for boots."]
+    about.kettle: ["Kettle sends me everyone who slips on his deck. he slipped first, mind. i was there."]
+    about.pike: ["that boy has two pairs of shoes and holes in both. i patch them, he makes new holes. it's a system."]
+    aboutUnknown: ["never measured their feet."]

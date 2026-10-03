@@ -44,3 +44,18 @@
     leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
     cooldownHoursAfterLeave: 4
     rejoinPrice: { meso: 6000 }
+
+- id: kestrel-rooftop-rate
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [kestrel.intro.done]
+  price:
+    meso: 38000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 15000 }

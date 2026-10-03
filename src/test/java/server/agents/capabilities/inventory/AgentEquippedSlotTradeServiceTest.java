@@ -51,6 +51,25 @@ class AgentEquippedSlotTradeServiceTest {
     }
 
     @Test
+    void countsEquippedSlotItemsIgnoringUntradeableItems() {
+        Character agent = mock(Character.class);
+        Inventory equipped = mock(Inventory.class);
+        Item questWeapon = item(1302009);
+        when(questWeapon.getFlag()).thenReturn(constants.inventory.ItemConstants.UNTRADEABLE);
+        Item glove = item(1082009);
+
+        when(agent.getInventory(InventoryType.EQUIPPED)).thenReturn(equipped);
+        when(equipped.getItem((short) -11)).thenReturn(questWeapon);
+        when(equipped.getItem((short) -8)).thenReturn(glove);
+
+        assertEquals(1, AgentEquippedSlotTradeService.countEquippedSlotItems(
+                agent,
+                "weapon",
+                ignored -> new short[]{-11, -8},
+                inventoryGateway()));
+    }
+
+    @Test
     void prepareEquippedSlotTradeItemsMovesSlotsAndRecordsRestoreSlots() {
         Character agent = mock(Character.class);
         Inventory equipped = mock(Inventory.class);

@@ -761,6 +761,22 @@ living_world:
     BOND_ACQUAINTED_POINTS: 25
     BOND_TRUSTED_POINTS: 75
     BOND_SWORN_POINTS: 150
+    # Friendship: a 1-10 meter over the same bond points (Lv 7 Close friend, Lv 10 Best friend). Fame, gifts, party
+    # quests and bosses cleared with a Resident in the party add points beside quests; the last three count this many
+    # times a day per Resident (ROUTINE_ZONE days). Friendship armour (`gear` pools) is scrolled by the giver: per level
+    # 1-10, the percent of slots its 60% and 10% scrolls take (0 = that grade not used yet; 100% scrolls always take).
+    # A giver's own weapon follows its authored recipe instead, every scroll taking.
+    FRIENDSHIP_LEVEL_POINTS: "1,25,50,75,110,150,200,260,330,400"
+    FRIENDSHIP_FAME_POINTS: 8
+    FRIENDSHIP_GIFT_POINTS: 2
+    FRIENDSHIP_GIFT_FAVORITE_POINTS: 6
+    FRIENDSHIP_GIFTS_PER_DAY: 1
+    FRIENDSHIP_PQ_POINTS: 10
+    FRIENDSHIP_PQ_PER_DAY: 3
+    FRIENDSHIP_BOSS_POINTS: 15
+    FRIENDSHIP_BOSS_PER_DAY: 3
+    FRIENDSHIP_SCROLL_TAKES_60: "0,0,0,70,80,95,100,100,100,100"
+    FRIENDSHIP_SCROLL_TAKES_10: "0,0,0,0,0,0,45,60,75,90"
     CONTRACT_OFFER_MINUTES: 10
     LEADER_OFFLINE_BENCH_MS: 1200000
     # Decision 3: AUTHORED (the contract hours, outlevelled, three leader deaths and bench tolerance end a

@@ -2,6 +2,7 @@ package server.living.quest;
 
 import client.Character;
 import client.inventory.InventoryType;
+import client.inventory.Item;
 import client.inventory.manipulator.InventoryManipulator;
 import constants.inventory.ItemConstants;
 import net.server.world.Party;
@@ -11,6 +12,7 @@ import server.ItemInformationProvider;
 import server.integration.AgentPresence;
 import server.knowledge.ContentChat;
 import server.living.LivingWorld;
+import server.living.config.Content.GearReward;
 import server.living.config.Content.ItemStack;
 import server.living.config.Content.Persona;
 import server.living.config.Content.Quest;
@@ -94,6 +96,14 @@ public final class QuestLedger {
                 && requires.minBondStage() != server.living.config.Content.BondStage.NONE) {
             return false;
         }
+        if (requires.minFriendship() > 0 && world.friendship().level(chr.getId(), persona.id()) < requires.minFriendship()) {
+            return false;
+        }
+        for (GearReward gear : quest.rewards().gear()) {
+            if (gearFor(chr, gear) == 0) {
+                return false; // nothing in the pool for this player's job yet (a beginner): offered once there is
+            }
+        }
         for (String flag : requires.flags()) {
             if (!world.bonds().hasFlag(chr.getId(), persona.id(), flag, worldFlags)) {
                 return false;
@@ -160,7 +170,14 @@ public final class QuestLedger {
                 break;
             }
         }
-        details.append("\r\n\r\n").append(rewardSummary(quest.rewards()));
+        List<String> gear = new ArrayList<>();
+        for (GearReward piece : quest.rewards().gear()) {
+            int itemId = gearFor(chr, piece);
+            if (itemId != 0) {
+                gear.add(gearLine(persona, piece, forgePlan(chr, quest, piece, itemId)));
+            }
+        }
+        details.append("\r\n\r\n").append(rewardSummary(quest.rewards(), gear));
         LivingTalk.open(chr, ResidentDialogue.portraitOf(persona))
                 .say(pitch)
                 .acceptDecline(details.toString(), () -> accept(chr, persona), () -> {
@@ -173,8 +190,11 @@ public final class QuestLedger {
     }
 
     /** The reward block in the client's own quest-window style (Quest scripts use the same icons). */
-    private String rewardSummary(Reward reward) {
+    private String rewardSummary(Reward reward, List<String> gear) {
         StringBuilder out = new StringBuilder("#fUI/UIWindow.img/QuestIcon/4/0#\r\n");
+        for (String piece : gear) {
+            out.append("\r\n").append(piece);
+        }
         for (ItemStack stack : reward.items()) {
             out.append("\r\n#v").append(stack.itemId()).append("# ").append(stack.count()).append(" #t").append(stack.itemId()).append('#');
         }
@@ -187,7 +207,7 @@ public final class QuestLedger {
         if (reward.fame() != 0) {
             out.append("\r\n#fUI/UIWindow.img/QuestIcon/6/0# ").append(reward.fame()).append(" fame");
         }
-        if (reward.items().isEmpty() && reward.meso() <= 0 && reward.exp() <= 0 && reward.fame() == 0) {
+        if (gear.isEmpty() && reward.items().isEmpty() && reward.meso() <= 0 && reward.exp() <= 0 && reward.fame() == 0) {
             out.append("\r\ntheir gratitude");
         }
         return out.toString();
@@ -242,6 +262,12 @@ public final class QuestLedger {
             Quest quest = world.content().quest(state.questId());
             Step step = quest.step(state.stepIndex());
             if (step == null) {
+                continue;
+            }
+            if (state.stepIndex() == quest.steps().size() - 1 && !roomForGear(chr, quest)) {
+                List<String> lines = world.arcs().lines(persona, "questRoom." + quest.id());
+                world.residents().reply(persona, chr, lines.isEmpty() ? "make some room in your equip bag first." : pick(lines, chr));
+                any = true;
                 continue;
             }
             switch (step.type()) {
@@ -502,6 +528,45 @@ public final class QuestLedger {
         }
     }
 
+    /**
+     * The player forfeited the quest in the client's quest window ({@code QUEST_LOG_MIRROR}): progress is lost and
+     * collected items stay, as for a stock quest. A first take is dropped from the ledger, so its giver offers it again;
+     * a repeat goes back to COMPLETED (its count and cooldown stay) and the log shows it completed again. An escort the
+     * quest started (an ESCORT step up to the current one, that persona still AWAY in the player's roster) heads home.
+     */
+    public boolean abandon(Character chr, String questId) {
+        QuestState state = world.store().questState(chr.getId(), questId);
+        Quest quest = world.content().quest(questId);
+        if (state == null || quest == null || state.status() != QuestStatus.ACTIVE) {
+            return false;
+        }
+        Step step = quest.step(state.stepIndex());
+        if (state.repeats() > 0) {
+            world.store().saveQuestState(new QuestState(chr.getId(), questId, state.stepIndex(), 0, QuestStatus.COMPLETED,
+                    state.startedAtMs(), state.startedAtMs(), state.repeats()));
+            world.questLog().completed(chr, quest);
+        } else {
+            world.store().deleteQuestState(chr.getId(), questId);
+        }
+        world.markers().forget(chr);
+        world.store().event(chr.getId(), quest.persona(), "quest.abandon", questId + " at " + (step == null ? "?" : step.id()));
+        for (int i = 0; i <= state.stepIndex() && i < quest.steps().size(); i++) {
+            Step earlier = quest.step(i);
+            if (earlier.type() != StepType.ESCORT || earlier.persona() == null) {
+                continue;
+            }
+            Persona escort = world.content().persona(earlier.persona());
+            LivingStore.RosterEntry row = escort == null ? null : world.store().rosterEntry(chr.getId(), escort.id());
+            if (row != null && row.state() == LivingStore.RosterState.AWAY) {
+                world.executor().submit("roster.escort-abandoned",
+                        () -> world.roster().release(chr.getId(), escort, "quest-abandoned"));
+            }
+        }
+        Persona giver = world.content().persona(quest.persona());
+        chr.dropMessage(5, "You gave up " + quest.title() + "." + (giver == null ? "" : " " + giver.name() + " may ask again."));
+        return true;
+    }
+
     // ---- progression ---------------------------------------------------------------------
 
     private void progress(Character chr, Persona giver, Quest quest, QuestState state, int delta) {
@@ -557,6 +622,24 @@ public final class QuestLedger {
         if (reward.exp() > 0) {
             chr.gainExp(reward.exp(), true, true);
         }
+        List<String> gear = new ArrayList<>();
+        for (GearReward piece : reward.gear()) {
+            int itemId = gearFor(chr, piece);
+            if (itemId == 0) {
+                continue;
+            }
+            FriendForge.Plan plan = forgePlan(chr, quest, piece, itemId);
+            if (InventoryManipulator.addFromDrop(chr.getClient(), FriendForge.forge(plan), true)) {
+                gear.add(gearLine(giver, piece, plan));
+                StringBuilder detail = new StringBuilder(itemId + " slots " + plan.slots());
+                for (FriendForge.Use use : plan.uses()) {
+                    detail.append(", scroll ").append(use.scroll().id()).append(' ').append(use.takes()).append('/').append(use.count());
+                }
+                world.store().event(chr.getId(), quest.persona(), "friend.forge", detail.toString());
+            } else {
+                chr.dropMessage(5, "Your inventory is full; " + itemName(itemId) + " could not be given.");
+            }
+        }
         for (ItemStack stack : reward.items()) {
             if (InventoryManipulator.checkSpace(chr.getClient(), stack.itemId(), stack.count(), "")) {
                 InventoryManipulator.addById(chr.getClient(), stack.itemId(), (short) stack.count());
@@ -590,9 +673,88 @@ public final class QuestLedger {
             String closing = lines.isEmpty() ? "that settles it." : pick(lines, chr);
             LivingTalk.open(chr, ResidentDialogue.portraitOf(giver))
                     .say(closing)
-                    .ok("#e" + quest.title() + "#n complete.\r\n\r\n" + rewardSummary(reward))
+                    .ok("#e" + quest.title() + "#n complete.\r\n\r\n" + rewardSummary(reward, gear))
                     .show();
         }
+    }
+
+    // ---- friendship gear ------------------------------------------------------------------
+
+    /** The giver's own piece, or the pool's piece for this player (FriendForge.pick), 0 when none fits their job. */
+    private static int gearFor(Character chr, GearReward gear) {
+        if (gear.owned()) {
+            return gear.pool().get(0);
+        }
+        Item weapon = chr.getInventory(InventoryType.EQUIPPED).getItem((short) -11);
+        return FriendForge.pick(gear.pool(), chr.getJob().getId(), chr.getGender(), weapon == null ? 0 : weapon.getItemId(),
+                FriendForge.wz());
+    }
+
+    /**
+     * The piece to its recipe, every scroll taking (a weapon gets its own class's scrolls, armour the player's); or,
+     * with no recipe, scrolled at the friendship the player has with the giver now.
+     */
+    private FriendForge.Plan forgePlan(Character chr, Quest quest, GearReward gear, int itemId) {
+        if (!gear.scrolls().isEmpty()) {
+            return FriendForge.recipe(itemId, gear.scrolls(), FriendForge.classOf(itemId, chr.getJob().getId()), FriendForge.wz());
+        }
+        return FriendForge.plan(itemId, chr.getJob().getId(), world.friendship().level(chr.getId(), quest.persona()),
+                world.config().friendshipScrollTakes60(), world.config().friendshipScrollTakes10(), FriendForge.wz());
+    }
+
+    /**
+     * "#v1082149# #t1082149#, scrolled by Fenna: 5 of 7 slots took (+10 att)"; for the giver's own piece
+     * "Garrick's own, 2x 10% + 5x 60%, every one took (+20 att, +11 STR, +2 def)"; for a piece made to a recipe for
+     * the player "made by Wynne, 2x 10% + 3x 60%, every one took (+12 att)".
+     */
+    private static String gearLine(Persona giver, GearReward gear, FriendForge.Plan plan) {
+        String line = "#v" + plan.itemId() + "# #t" + plan.itemId() + "#";
+        if (plan.uses().isEmpty() || giver == null) {
+            return line;
+        }
+        Map<String, Integer> totals = new java.util.LinkedHashMap<>();
+        List<String> recipe = new ArrayList<>();
+        int took = 0;
+        int tried = 0;
+        for (FriendForge.Use use : plan.uses()) {
+            recipe.add(use.count() + "x " + use.scroll().success() + "%");
+            took += use.takes();
+            tried += use.count();
+            for (Map.Entry<String, Integer> stat : use.scroll().stats().entrySet()) {
+                totals.merge(stat.getKey(), stat.getValue() * use.takes(), Integer::sum);
+            }
+        }
+        StringBuilder gains = new StringBuilder();
+        for (Map.Entry<String, Integer> stat : totals.entrySet()) {
+            if (stat.getValue() > 0) {
+                gains.append(gains.isEmpty() ? "" : ", ").append('+').append(stat.getValue()).append(' ').append(statName(stat.getKey()));
+            }
+        }
+        String took1 = took == tried ? "every one took" : took + " of " + tried + " took";
+        String scrolled = gear.owned() ? giver.name() + "'s own, " + String.join(" + ", recipe) + ", " + took1
+                : !gear.scrolls().isEmpty() ? "made by " + giver.name() + ", " + String.join(" + ", recipe) + ", " + took1
+                : "scrolled by " + giver.name() + ": " + took + " of " + plan.slots() + " slots took";
+        return line + "\r\n   " + scrolled + (gains.isEmpty() ? "" : " (" + gains + ")");
+    }
+
+    private static String statName(String stat) {
+        return switch (stat) {
+            case "PAD" -> "att";
+            case "MAD" -> "magic att";
+            case "PDD" -> "def";
+            case "MDD" -> "magic def";
+            case "ACC" -> "accuracy";
+            case "EVA" -> "avoid";
+            case "MHP" -> "HP";
+            case "MMP" -> "MP";
+            case "Speed", "Jump" -> stat.toLowerCase(java.util.Locale.ROOT);
+            default -> stat;
+        };
+    }
+
+    private static boolean roomForGear(Character chr, Quest quest) {
+        int pieces = quest.rewards().gear().size();
+        return pieces == 0 || chr.getInventory(InventoryType.EQUIP).getNumFreeSlot() >= pieces;
     }
 
     /** The player's quest log as one NPC window. */

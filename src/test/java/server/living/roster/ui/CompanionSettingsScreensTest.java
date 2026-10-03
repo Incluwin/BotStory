@@ -328,7 +328,7 @@ class CompanionSettingsScreensTest {
         assertTrue(page.text().contains("#l\r\n\r\n#eWhat I pick up:#n\r\n#L"), page.text());
         assertEquals(List.of("Drink an HP potion below 70%...", "Drink an MP potion below 50%...", "Everything - now",
                 "Only what I hit", "Meso and your quest items", "Nothing", "Leave boss drops to you outside boss runs: on",
-                "Here's some coin for supplies...", "Back"), page.labels());
+                "Here's some coin for supplies...", "I brought you something...", "Back"), page.labels());
         pick("Back");
         assertTrue(lastTalk().text().startsWith("#eHadrik#n"), "Back is the card again");
     }

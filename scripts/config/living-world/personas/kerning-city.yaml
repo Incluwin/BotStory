@@ -15,12 +15,13 @@
       - { from: 0, to: 8, materialize: false }
   recruitable: true
   contract: vex-courier-fee
-  questLines: [vex-the-package, vex-line-one]
+  questLines: [vex-the-package, vex-line-one, vex-a-couriers-grip, vex-the-spare, vex-the-last-delivery, vex-no-fee]
   benchToleranceDays: 5
   paceGap: 2
   relationships:
     - { persona: lorca, kind: WORKS_FOR }
     - { persona: nico, kind: MENTORS }
+  giftItemIds: [2020014, 2002000]
   dialogue:
     greetFirst: ["you look like you need something moved. i move things.", "new in town? keep your hand on your purse. not because of me. mostly."]
     greet: ["hey, you.", "got a job or just saying hi? both's fine."]
@@ -46,6 +47,26 @@
     about.lorca: ["Lorca? i deliver for her. i don't ask what. that's the arrangement."]
     about.nico: ["the kid's fast. too fast. he'll be me in five years if he's lucky."]
     aboutUnknown: ["haven't carried for them."]
+    questOffer.vex-a-couriers-grip: ["you drop things. couriers don't drop things. the jr. wraiths on the line keep grabbing parcels. clear twenty-five and i'll fix your grip."]
+    questAccept.vex-a-couriers-grip: ["lines one and two. mind the gap."]
+    questComplete.vex-a-couriers-grip: ["gloves. scrolled. don't ask where the scrolls came from. that's the arrangement."]
+    questOffer.vex-the-last-delivery: ["one last delivery and i'm square with Lorca. she wants ligator skins, twenty, from the swamp. show your face at her place first so she knows it's us. then bring them to me."]
+    questAccept.vex-the-last-delivery: ["the swamp's past the city. bring boots you don't love."]
+    questWaiting.vex-the-last-delivery: ["twenty skins, and Lorca has to see you first. that's how she works."]
+    questComplete.vex-the-last-delivery: ["done. i'm out from under her. ...that was for you, by the way. Bazlud. seven sixties, every one took. scrolled it on the train."]
+    friend.close: ["you're the only one i'd let carry my bag. that's a big deal. don't make it weird."]
+    friend.best: ["anything you need moved, anywhere. no fee. ever."]
+    famed: ["huh. that's worth more than the fee."]
+    defamed: ["fair. i've been called worse by better."]
+    gift: ["no fee? ...thanks."]
+    gift.favorite: ["how'd you know? nobody knows what i like. that's on purpose."]
+    gift.again: ["one a day. i've got a reputation."]
+    questOffer.vex-the-spare: ["couriers carry a spare. i've got a better spare now, so this one's yours. after you clear the stirges off the subway. thirty."]
+    questAccept.vex-the-spare: ["ticketing booth and down. mind the gap."]
+    questComplete.vex-the-spare: ["Cass. seven safe scrolls, all took. it's not pretty. it works."]
+    questOffer.vex-no-fee: ["the Sai. bought it with my first real fee, scrolled it with my second. the wraiths on line one and two are bad for business. forty. then it's yours. no fee."]
+    questAccept.vex-no-fee: ["they come out of the walls. don't take it personally."]
+    questComplete.vex-no-fee: ["two tens, five sixties. every one took, and i paid for every one. now it's yours. don't tell anyone i'm sentimental."]
 
 - id: lorca
   name: Lorca
@@ -323,3 +344,198 @@
     about.lorca: ["the fence. she knows i'm watching. she waves."]
     about.jinx: ["there's no such person. that's what makes her interesting."]
     aboutUnknown: ["not a suspect. yet."]
+
+- id: kestrel
+  name: Kestrel
+  look: { gender: male }
+  title: "Rooftop Runner"
+  job: ASSASSIN
+  level: { min: 36, max: 39 }
+  strength: VETERAN
+  loadout: kerning-claw-l36
+  personality: efficient-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 9, to: 15, spot: "venue:pq-plaza", activity: SHOW_OFF }
+      - { from: 15, to: 21, spot: "venue:central-street", activity: STROLL }
+      - { from: 21, to: 1, spot: "venue:east-street", activity: SOCIALIZE }
+      - { from: 1, to: 9, materialize: false }
+  recruitable: true
+  contract: kestrel-rooftop-rate
+  questLines: [kestrel-top-of-the-site, kestrel-the-guards, kestrel-the-avarice, kestrel-the-slain, kestrel-whistling-stars]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: vex, kind: RIVAL }
+    - { persona: jinx, kind: ADMIRES }
+  giftItemIds: [2070000, 2020005]
+  dialogue:
+    greetFirst: ["hey. up here. no, down. no, up. ha. got you.", "you're new. you walk on the ground like it's the only option."]
+    greet: ["there you are. saw you three roofs ago.", "back already? course you are. everyone comes back."]
+    idle: ["(flicks a star into a post, strolls over, pulls it out, does it again)", "(balances on a railing that was not built for it)"]
+    noWork: ["nothing today. i'm resting. this is what resting looks like on me."]
+    nothingDue: ["all paid up. otherwise i'd have chased you across three roofs by now."]
+    who: ["Kestrel. i run the roofs. ask anyone. well, anyone who looks up."]
+    bye: ["see you up top.", "don't take the stairs. stairs are for people with time."]
+    thanks: ["obviously. i'm great.", "you're welcome. say it louder next time, people should hear."]
+    smallTalk: ["you can cross half of Kerning without touching the street. the other half i'm working on.", "Vex says the subway's faster. Vex has never been on a roof."]
+    speakPlainly: ["fine. slower. this is slower. this is me being slow."]
+    offer: ["thirty-eight thousand meso and i'm on your roof. sounds like a lot. it isn't. it's me."]
+    join: ["let's go. i'll go first. i always go first.", "finally. somewhere with no ceiling."]
+    bench: ["two days. i'll be up top somewhere. after that i'm a rumour."]
+    leave: ["that's time. you were almost fast. almost.", "contract's up. i'd say i'll miss you, but i'd be lying. a little."]
+    refuse.bond: ["i don't run with strangers. strangers fall off things."]
+    refuse.flags: ["you haven't been up the construction site yet. no climb, no contract."]
+    refuseOwnErrand: ["that's the job i gave you. if i do it, what was the point of you?"]
+    questOffer.kestrel-top-of-the-site: ["want to know this city? go up. top of the construction site, north of town. stand there, then knock twenty bubblings off it."]
+    questAccept.kestrel-top-of-the-site: ["it's tall. don't look down. actually, do. that's the whole point."]
+    questComplete.kestrel-top-of-the-site: ["up and back, still in one piece. not bad for someone who uses stairs. here. that's for the climb."]
+    questOffer.kestrel-the-guards: ["the guards i throw with. i'm about to outgrow them, and a claw on a shelf is sad. earn them in the swamp. thirty ligators."]
+    questAccept.kestrel-the-guards: ["the swamp's the one part of Kerning with no roofs. i hate it. that's why you're going."]
+    questComplete.kestrel-the-guards: ["Steel Guards. seven safe scrolls, all seven took. these have been up every roof in this city. now they're yours. don't fall off anything."]
+    questOffer.kestrel-the-avarice: ["the Avarice. bought it years ago, still can't throw it. Rook wrote a song about it. go listen, then thirty jr. boogies in the depot."]
+    questAccept.kestrel-the-avarice: ["Rook's on the subway sidewalk. the boogies are in the depot, B2 and B3. tell me the song's good. no, be honest. no, don't."]
+    questComplete.kestrel-the-avarice: ["Steel Avarice. seven sixties, one a week, alone on a roof, and every one took. i was saving it for me. turns out it was for you."]
+    questOffer.kestrel-the-slain: ["the Slain. i bet it against Vex once, roofs against the subway. never had to hand it over. it's yours. go tell him, then run his line."]
+    questAccept.kestrel-the-slain: ["Vex works central street. watch his face, i want details. then line one, far end, thirty-five big wraiths."]
+    questComplete.kestrel-the-slain: ["the Slain. two tens, five sixties, every one took. scrolled it in front of Vex to watch his face. it was my proof i won. now you are."]
+    questOffer.kestrel-whistling-stars: ["stirge wings. i glue them on my stars so they whistle. people look up. that's the point. fifteen, from the subway."]
+    questAccept.kestrel-whistling-stars: ["the stirges are on line one. they'll come to you. they always do."]
+    questWaiting.kestrel-whistling-stars: ["fifteen wings. the whistle's half the trick."]
+    questComplete.kestrel-whistling-stars: ["hear that? that's style. come back when i run out. i always run out."]
+    friend.close: ["i slowed down for you once. on purpose. first time in my life. don't make it a thing."]
+    friend.best: ["wherever you end up, look up. i'll be on the roof above it. free. forever. tell everyone."]
+    famed: ["see? everybody knows. now it's official."]
+    defamed: ["ouch. fine. i'll win them back. i always win them back."]
+    gift: ["for me? obviously for me. thanks."]
+    gift.favorite: ["now that's a gift. i'm showing this to everyone. starting now."]
+    gift.again: ["my pockets are full. come back tomorrow, i'll have thrown something."]
+    about.vex: ["Vex? we raced once, roofs against the subway. my Slain against a year of his fees. i won. he says he won. we talk about it constantly."]
+    about.jinx: ["Jinx? only one who ever beat me across the roofs. at night. didn't even hear her pass. i'm still mad."]
+    aboutUnknown: ["never seen them from up top."]
+
+- id: silas
+  name: Silas
+  look: { gender: male }
+  title: "Back-Street Tailor"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 7, to: 13, spot: "venue:west-shop-front", activity: LINGER }
+      - { from: 13, to: 19, spot: "venue:central-shop-front", activity: LINGER }
+      - { from: 19, to: 7, materialize: false }
+  recruitable: false
+  questLines: [silas-the-courier-coat, silas-first-fitting, silas-good-linen, silas-the-pattern, silas-starch]
+  relationships:
+    - { persona: lorca, kind: SUPPLIES }
+    - { persona: vex, kind: DRESSES }
+  giftItemIds: [4000021, 4011004]
+  dialogue:
+    greetFirst: ["that coat's doing you no favours. i tell everyone that. most of them come back.", "you stand like your shirt itches. it does. i can see it from here."]
+    greet: ["you again. still wearing that. brave.", "back. good. stand still, i'm measuring."]
+    idle: ["(bites off a thread and squints at the hem)", "(holds a sleeve up to the light and sighs at it)"]
+    noWork: ["nothing on the table. the city's dressed. for today."]
+    nothingDue: ["you owe me nothing. if you did, you'd have had the bill."]
+    who: ["Silas. i dress Kerning. the honest half and the other half. same price."]
+    bye: ["mind the hem.", "don't snag it on anything i'll have to fix."]
+    thanks: ["don't. just stop slouching in it."]
+    smallTalk: ["half this city does things in my coats i'll never hear about. i don't ask. that's the service.", "a good pocket is one nobody knows is there. i've made a lot of good pockets."]
+    speakPlainly: ["plainly: it doesn't fit. i'll fix it."]
+    questOffer.silas-the-courier-coat: ["Vex wants a coat. couriers ruin coats. ten pieces of leather from the pigs outside town, then go measure him. i won't ask what it's for."]
+    questAccept.silas-the-courier-coat: ["L Forest, just outside town. the pigs don't mind giving it up. much."]
+    questWaiting.silas-the-courier-coat: ["ten pieces of leather. and Vex's measurements, which he won't bring me himself."]
+    questComplete.silas-the-courier-coat: ["good leather. pockets inside the pockets. of course. here, for the legwork."]
+    questOffer.silas-first-fitting: ["you've run around in that long enough. i'll make you a top. a proper one. fifteen jr. necki skins. Lorca pays fair for them. i pay fairer."]
+    questAccept.silas-first-fitting: ["the neckis are on line two and out in the swamp. they bite. wear something you hate."]
+    questWaiting.silas-first-fitting: ["fifteen skins. i don't cut until i have enough. half a top is a vest."]
+    questComplete.silas-first-fitting: ["cut for you, not a hanger. safe scrolls in every slot, every one took. it's a start. the next one will be better."]
+    questOffer.silas-good-linen: ["jr. wraiths on line one and two drag tablecloths around. best linen in the city. i don't ask where from. twenty, and i'll line you a top."]
+    questAccept.silas-good-linen: ["don't let them wrap you in one. it's a bad look."]
+    questWaiting.silas-good-linen: ["twenty tablecloths. i'm lining a top, not a napkin."]
+    questComplete.silas-good-linen: ["sixties in every slot. i held my breath on each one, and every one took. i don't do that for customers. you stopped being one a while ago."]
+    questOffer.silas-the-pattern: ["one pattern i've never sold. Lorca's tried for years. i'm cutting it for you. twenty croco skins, and go tell Lorca. she should hear it."]
+    questAccept.silas-the-pattern: ["the crocos are past the ligators, deep in the swamp. Dangerous Croko. the name isn't a joke."]
+    questWaiting.silas-the-pattern: ["twenty skins. and Lorca hears it from you, not from me. that part isn't optional."]
+    questComplete.silas-the-pattern: ["two tens, sixties in the rest, and every one took. never seen that in my life. i made this pattern for no one. turns out it was for you."]
+    questOffer.silas-starch: ["slime goo makes the best starch. collars stand up on their own. fifteen squishy liquids and the whole city looks sharper for a week."]
+    questAccept.silas-starch: ["slimes, just outside town. they don't fight much. neither do collars."]
+    questWaiting.silas-starch: ["fifteen. a collar with no starch is just a sad neck."]
+    questComplete.silas-starch: ["good. Kerning looks respectable for a week. nobody will thank you. i will."]
+    friend.close: ["i'd make you anything. i don't say that. i say 'that'll cost you'."]
+    friend.best: ["you never pay for a stitch again. keep it quiet. i have a reputation for being expensive."]
+    famed: ["hm. fame suits you better than that coat ever did."]
+    defamed: ["hm. returned with a complaint. happens. usually the customer's fault."]
+    gift: ["for the tailor? nobody brings the tailor anything. thanks."]
+    gift.favorite: ["now that i can cut. you've been watching my hands."]
+    gift.again: ["one's plenty. i'd only cut it up."]
+    about.lorca: ["Lorca sells my coats to people i'd never sell them to. i don't ask. she doesn't tell. best partnership in the city."]
+    about.jinx: ["made her a coat once. no label, nothing that shines, sleeves that don't whisper. didn't ask why. i never do."]
+    aboutUnknown: ["never had them on my table."]
+
+- id: opal
+  name: Opal
+  look: { gender: female }
+  title: "Jeweler"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: kerning-city
+    routine:
+      - { from: 10, to: 16, spot: "venue:central-street", activity: SHOW_OFF }
+      - { from: 16, to: 23, spot: "venue:central-shop-front", activity: SOCIALIZE }
+      - { from: 23, to: 10, materialize: false }
+  recruitable: false
+  questLines: [opal-whose-earrings, opal-shiny-things, opal-real-sapphire, opal-the-skull-pair, opal-line-one-pearls]
+  relationships:
+    - { persona: mags, kind: FRIEND }
+    - { persona: lorca, kind: RIVAL }
+  giftItemIds: [4021004, 4021007]
+  dialogue:
+    greetFirst: ["oh. bare ears. darling, we can fix that.", "new face. by tomorrow i'll know your name from your earrings."]
+    greet: ["you again. lovely. turn your head. hm.", "there you are. i've heard things. come closer."]
+    idle: ["(holds an earring up to the light and gasps at it, quietly)", "(whispers something to nobody and laughs)"]
+    noWork: ["nothing to set today. plenty to say, though."]
+    nothingDue: ["we're even, darling. i keep better books than Lorca."]
+    who: ["Opal. i make jewelry. i know everyone in Kerning by what's in their ears. and what isn't."]
+    bye: ["don't lose an earring. people will talk. i will.", "bye, darling. come back with gossip."]
+    thanks: ["oh, stop. no, go on."]
+    smallTalk: ["you can tell the thieves in this city by their earrings. the good ones wear none.", "Sadie bans earrings on the site. safety, she says. i've lost half my customers to a hard hat."]
+    speakPlainly: ["plainly? fine. no sparkle. it physically hurts me."]
+    questOffer.opal-whose-earrings: ["Mags has a new pair and i didn't make them. go ask her who did. charmingly. then ten slime bubbles, so i can make her a better pair."]
+    questAccept.opal-whose-earrings: ["be subtle. she'll know anyway. the slimes are just outside town."]
+    questWaiting.opal-whose-earrings: ["ten slime bubbles. and what Mags said, word for word, darling."]
+    questComplete.opal-whose-earrings: ["a gift, and she won't say who? then it's someone. oh, that's better than a name. i'll make her a better pair and find out."]
+    questOffer.opal-shiny-things: ["stirges steal anything that sparkles. half my stock is in their nests on line one. thin out twenty-five and i'll make your first real pair."]
+    questAccept.opal-shiny-things: ["the transfer area and line one. if one of them is glittering, it's mine."]
+    questComplete.opal-shiny-things: ["Weighted Earrings, made for your ears and nobody else's. five safe scrolls, all five took. now people will talk about you. nicely."]
+    questOffer.opal-real-sapphire: ["i'm setting a real sapphire. for you. i polish with ground boogie horn, every jeweler does. fifteen horns, from the subway depot."]
+    questAccept.opal-real-sapphire: ["the depot under line three, B2 and B3. the boogies are small and rude. like Lorca's prices."]
+    questWaiting.opal-real-sapphire: ["fifteen horns. a sapphire's only as good as its polish. so is a rumour."]
+    questComplete.opal-real-sapphire: ["a real sapphire. five sixties, i didn't breathe once, and every one took. half of Kerning wears my fakes. you wear the truth."]
+    questOffer.opal-the-skull-pair: ["skulls. one pair, sketched, never made. too much for anyone but you. twenty drakes, fifteen of their skulls. and let Dario write you down."]
+    questAccept.opal-the-skull-pair: ["the drakes are past Sleepywood. the copper ones are friendlier. not by much. Dario's on east street, pretending not to be."]
+    questWaiting.opal-the-skull-pair: ["fifteen skulls. and Dario writes you down. i want it on record."]
+    questComplete.opal-the-skull-pair: ["two tens, three sixties, every one took. i cried. don't tell anyone. i'll tell everyone. the only pair i'll ever make. yours."]
+    questOffer.opal-line-one-pearls: ["bubbling bubbles. i set them like pearls. tourists can't tell. Lorca can. she buys them anyway. fifteen, darling."]
+    questAccept.opal-line-one-pearls: ["line one, by the ticket gate. they bounce. you'll manage."]
+    questWaiting.opal-line-one-pearls: ["fifteen bubbles. pop one and it doesn't count."]
+    questComplete.opal-line-one-pearls: ["lovely. that's a week of pearls. don't tell the tourists."]
+    friend.close: ["i've never gossiped about you. not once. do you know what that costs me?"]
+    friend.best: ["anything in my case is yours. and every secret in Kerning, you hear first."]
+    famed: ["oh, people will talk. good. i'll start."]
+    defamed: ["rude. accurate. but rude."]
+    gift: ["for me? darling. thank you."]
+    gift.favorite: ["oh. oh, look at it. you know exactly what i like. careful, i'll start liking you."]
+    gift.again: ["twice in a day, darling? that's not a gift, that's a bribe. ...come back tuesday."]
+    about.mags: ["Mags hears everything and says nothing. i hear everything and say everything. we're a matched pair."]
+    about.lorca: ["Lorca sells my earrings back to me. i've bought the same sapphire three times. she calls it a coincidence."]
+    aboutUnknown: ["never seen their ears. tragic."]

@@ -89,6 +89,17 @@ class ContentLoaderTest {
     }
 
     @Test
+    void questLogEntriesAreResidentsQuestsWithABlueTitle() {
+        LivingContent content = ContentLoader.load(ROOT);
+        java.util.Map<String, Object> wren = QuestLogExportMain.entry(content, content.quest("wren-shelf-of-spores"), 30000);
+        assertEquals(QuestLogExportMain.AREA_RESIDENTS, wren.get("area"));
+        assertEquals("#bInk from Spores#k", wren.get("name"), "the detail pane renders #b; the list does not");
+        assertEquals("Ink from Spores", wren.get("parent"), "the list label stays plain");
+        assertEquals(10, wren.get("lvmin"));
+        assertEquals(content.portraitNpcId("wren"), wren.get("npc"));
+    }
+
+    @Test
     void lintCatchesDanglingReferences() {
         LivingContent content = ContentLoader.load(ROOT);
         Persona broken = new Persona("ghost", "Ghost", "", "BEGINNER", new Content.LevelBand(1, 1), Content.Strength.ROOKIE,

@@ -88,6 +88,28 @@ public final class ResidentRuntime {
     private final Map<Integer, Long> lastPlayerSeenMs = new ConcurrentHashMap<>();
     private final Map<String, Long> retryAfterMs = new ConcurrentHashMap<>();
     private final Map<String, Boolean> forcedAwake = new ConcurrentHashMap<>();
+    /** Per persona, the quest-gear pieces already made for it (ResidentKit.ISSUED events), loaded on first use. */
+    private final Map<String, java.util.Set<Integer>> kitIssued = new ConcurrentHashMap<>();
+    private final ResidentKit.Ledger kitLedger = new ResidentKit.Ledger() {
+        @Override
+        public boolean claim(String personaId, int itemId) {
+            java.util.Set<Integer> issued = issuedFor(personaId);
+            return issued != null && issued.add(itemId); // unreadable ledger: nothing is made this time
+        }
+
+        @Override
+        public void record(String personaId, int itemId) {
+            world.store().event(0, personaId, ResidentKit.ISSUED, String.valueOf(itemId));
+        }
+
+        @Override
+        public void release(String personaId, int itemId) {
+            java.util.Set<Integer> issued = kitIssued.get(personaId);
+            if (issued != null) {
+                issued.remove(itemId);
+            }
+        }
+    };
 
     public ResidentRuntime(LivingWorld world) {
         this.world = world;
@@ -397,10 +419,93 @@ public final class ResidentRuntime {
 
     private void dress(Persona persona, Character agent) {
         try {
-            ResidentWardrobe.dress(agent, persona, world.content().loadout(currentLoadoutId(persona)));
+            Loadout loadout = world.content().loadout(currentLoadoutId(persona));
+            // its own quest gear first; the wardrobe then dresses every slot the kit does not actually hold
+            ResidentKit.apply(agent, persona, world.content(), world.config(), loadout, kitLedger);
+            var held = ResidentKit.slotsHeld(agent, ResidentKit.picks(agent, persona, world.content(), world.config()));
+            ResidentWardrobe.dress(agent, persona, loadout, held, keptByContract(persona));
         } catch (RuntimeException failure) {
             log.warn("Resident {}: dressing failed", persona.id(), failure);
         }
+    }
+
+    /**
+     * The quest gear a Resident's level now allows (ResidentKit), after a level gained or when the roster or bench loads
+     * it as a companion: the same character is the companion, so what it wears goes with it. Runs on the Agent's own
+     * mailbox, as its loot and trades do; a character not live now is dressed when it next appears.
+     */
+    public void refreshKit(Character agent, Persona persona) {
+        refreshKit(agent, persona, false);
+    }
+
+    /**
+     * As {@link #refreshKit(Character, Persona)}; with {@code loading} a character the roster or bench has just loaded and
+     * not yet registered (nothing ticks it yet) is dressed right here, on the loading thread.
+     */
+    public void refreshKit(Character agent, Persona persona, boolean loading) {
+        if (agent == null || persona == null || LivingContent.isHire(persona.id())) {
+            return;
+        }
+        AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(agent.getId());
+        if (runtime == null) {
+            if (loading && agent.getClient() != null) {
+                try {
+                    ResidentKit.apply(agent, persona, world.content(), world.config(),
+                            world.content().loadout(currentLoadoutId(persona)), kitLedger);
+                } catch (RuntimeException failure) {
+                    log.warn("Resident {}: quest gear failed", persona.id(), failure);
+                }
+            }
+            return;
+        }
+        server.agents.runtime.AgentMailboxRuntime.dispatch(runtime, entry -> {
+            Character live = entry.bot();
+            if (live != null && live.getId() == agent.getId() && live.getClient() != null) {
+                try {
+                    ResidentKit.apply(live, persona, world.content(), world.config(),
+                            world.content().loadout(currentLoadoutId(persona)), kitLedger);
+                } catch (RuntimeException failure) {
+                    log.warn("Resident {}: quest gear failed", persona.id(), failure);
+                }
+            }
+            return null;
+        });
+    }
+
+    /** The pieces made for the persona so far, or null while the ledger cannot be read (nothing is cached then). */
+    private java.util.Set<Integer> issuedFor(String personaId) {
+        java.util.Set<Integer> known = kitIssued.get(personaId);
+        if (known != null) {
+            return known;
+        }
+        List<String> details = world.store().personaEventDetails(personaId, ResidentKit.ISSUED);
+        if (details == null) {
+            return null;
+        }
+        java.util.Set<Integer> ids = ConcurrentHashMap.newKeySet();
+        for (String detail : details) {
+            try {
+                ids.add(Integer.parseInt(detail.trim()));
+            } catch (NumberFormatException | NullPointerException ignored) {
+                // not one of ours
+            }
+        }
+        java.util.Set<Integer> raced = kitIssued.putIfAbsent(personaId, ids);
+        return raced != null ? raced : ids;
+    }
+
+    /** The items the persona's contract lets it keep (a hire's price), which the wardrobe never sweeps away. */
+    private java.util.Set<Integer> keptByContract(Persona persona) {
+        java.util.Set<Integer> kept = new java.util.HashSet<>();
+        var contract = persona.contract() == null ? null : world.content().contract(persona.contract());
+        if (contract != null) {
+            for (var item : contract.price().items()) {
+                if (item.keep()) {
+                    kept.add(item.itemId());
+                }
+            }
+        }
+        return kept;
     }
 
     private void maintain(Session session, MapleMap map, RoutineSlot slot, long now) {

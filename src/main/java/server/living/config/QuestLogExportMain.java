@@ -27,10 +27,15 @@ import java.util.Set;
  * {@code living_world_quests.py} writes the entries into Quest.wz (QuestInfo/Check/Act) and the
  * server XML; the runtime then mirrors ledger state into the client quest log when
  * {@code living_world.QUEST_LOG_MIRROR} is on.
+ *
+ * <p>How the client shows them (checked in a v83 client): the list groups quests by {@code area}
+ * under a header named in Etc.wz {@code QuestCategory.img}, and labels each entry with
+ * {@code parent} (else {@code name}) as plain text, colour codes printed literally; the detail pane
+ * titles it with {@code name}, where {@code #b} renders blue.
  */
 public final class QuestLogExportMain {
-    /** Victoria Island in the client's quest-log area grouping. */
-    private static final int AREA_VICTORIA = 20;
+    /** The "Residents" group of the client's quest list: an unused QuestCategory.img slot MapleEdit names. */
+    static final int AREA_RESIDENTS = 31;
 
     private QuestLogExportMain() {
     }
@@ -97,16 +102,18 @@ public final class QuestLogExportMain {
         Files.writeString(file, yaml.toString(), StandardCharsets.US_ASCII);
     }
 
-    private static Map<String, Object> entry(LivingContent content, Quest quest, int logId) {
+    static Map<String, Object> entry(LivingContent content, Quest quest, int logId) {
         Persona giver = content.persona(quest.persona());
         String giverName = giver == null ? quest.persona() : giver.name();
         String town = giver == null ? "" : giver.homeTown().replace('-', ' ');
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("logId", logId);
         out.put("questId", quest.id());
-        out.put("name", quest.title());
-        out.put("parent", giverName);
-        out.put("area", AREA_VICTORIA);
+        out.put("name", "#b" + quest.title() + "#k"); // the detail pane's title, in blue
+        out.put("parent", quest.title()); // the list label (plain text there)
+        out.put("area", AREA_RESIDENTS);
+        out.put("lvmin", Math.max(1, quest.requires().minLevel())); // shown as "Over Level N" in the detail pane
+        out.put("npc", content.portraitNpcId(quest.persona())); // the giver's own portrait in the detail pane; 0 = none
         out.put("available", firstLine(giver, "questOffer." + quest.id(),
                 "Ask " + giverName + " in " + capitalize(town) + " about it."));
         out.put("inProgress", giverName + " (" + capitalize(town) + "): " + steps(content, quest));

@@ -1,0 +1,1939 @@
+# Friendship quests (docs/LIVING_WORLD_GUIDE.md "Friendship"). One Resident per town offers four:
+#   Lv 4  a piece of armour for the player's class (`pool`: one piece per job), scrolled by friendship
+#         (living_world.FRIENDSHIP_SCROLL_TAKES_60/_10 at the moment it is handed over);
+#   Lv 5  the lower tier of the Resident's own weapon: 7 x 100% scrolls, every one taken;
+#   Lv 7  the mid tier: 7 x 60%, every one taken;
+#   Lv 10 the final tier: 2 x 10% and 5 x 60%, every one taken.
+# A weapon is `{ itemId, scrolls }`: the giver's own piece, made for its class, given whatever the player's class.
+#
+# Ids: pig 1210100 (leather 4000021), stiff feather 4003004, curse eye 3230100 (tail 4000013), zombie mushroom 2230101
+# (charm of the undead 4000008), zombie lupin 4230101 (cursed doll 4000031), jr. wraith 3230101, wraith 4230102,
+# ligator 3110100 (skin 4000032), drake skull 4000014, copper drake 4130100, drake 5130100, stone golem 5130101,
+# dark stone golem 5130102 (rubble 4000025), lorang 3230102 (claw 4000043), clang 4230104 (claw 4000044),
+# wild kargo 6230100 (eye 4000027), cold eye 4230100 (tail 4000023), tauromacis 7130100 (horn 4000028),
+# orange mushroom 1210102, horny mushroom 2110200, wild boar 2230102, stirge 2300100, mano 2220000, stumpy 3220000,
+# king clang 5220000.
+# Maps: land of wild boar 101040001, excavation 101030101-3, deep forest hunting grounds 105040100/105040200, line 1/2
+# 103000103/103000104/103000200, kerning subway 103000100/103000101/103000900, drake's meal table 105090300 / wild
+# cargo's area 105090301, sanctuary entrance 105090500-105090800.
+#
+# Armour pools: gloves L15 (warrior, magician, bowman, thief, pirate), shoes L25, gloves L30, helmets L35, shoes L35,
+# Gold Earrings L25, Red Napoleon L50.
+# Weapons (lower / mid / final): Brannock 1h blunt Iron Mace L20 / War Hammer L30 / Jacker L40; Fenna bow Battle Bow
+# L25 / Red Viper L35 / Olympus L50; Casse wand Ice Wand L23 / Wizard Wand L33 / Cromi L48; Vex dagger Cass L30 /
+# Bazlud L40 / Sai L50; Garrick 1h sword Traus L40 / Jeweled Katar L50 / Neocora L60; Kettle knuckle Neozard L40 /
+# Fury Claw L50 / Psycho Claw L60; Thane 1h axe Buck L50 / Hawkhead L60 / Mikhail L70.
+
+# ---- Lith Harbor: Brannock -------------------------------------------------------------------------------------
+
+- id: brannock-a-proper-grip
+  persona: brannock
+  title: "A Proper Grip"
+  length: SHORT
+  requires: { level: { min: 15 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leather, type: COLLECT_ITEM, itemId: 4000021, count: 20, dropFrom: { mobIds: [1210100, 1210101], chance: 0.4 } }
+    - { id: glover, type: DELIVER, to: brannock, take: { itemId: 4000021, count: 20 } }
+  rewards:
+    meso: 3000
+    exp: 2500
+    bondPoints: 30
+    gear:
+      - { pool: [1082000, 1082019, 1082012, 1082029, 1082180] }
+
+- id: brannock-the-old-mace
+  persona: brannock
+  title: "The Old Mace"
+  length: SHORT
+  requires: { level: { min: 20 }, friendship: 5, questsCompleted: [brannock-a-proper-grip] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [1210102], count: 30 }
+    - { id: shift, type: DELIVER, to: brannock }
+  rewards:
+    meso: 6000
+    exp: 6000
+    bondPoints: 35
+    gear:
+      - { itemId: 1322002, scrolls: [{ success: 100, count: 7 }] }
+
+- id: brannock-the-big-snail
+  persona: brannock
+  title: "The Big Snail"
+  length: MEDIUM
+  requires: { level: { min: 28 }, friendship: 7, questsCompleted: [brannock-the-old-mace] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mano, type: KILL_BOSS, mobIds: [2220000], count: 1 }
+    - { id: report, type: DELIVER, to: brannock }
+  rewards:
+    meso: 20000
+    exp: 15000
+    bondPoints: 50
+    gear:
+      - { itemId: 1322014, scrolls: [{ success: 60, count: 7 }] }
+
+- id: brannock-one-more-story
+  persona: brannock
+  title: "One More Story"
+  length: LONG
+  requires: { level: { min: 38 }, friendship: 10, questsCompleted: [brannock-the-big-snail] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumpy, type: KILL_BOSS, mobIds: [3220000], count: 1 }
+    - { id: report, type: DELIVER, to: brannock }
+  rewards:
+    meso: 40000
+    exp: 30000
+    bondPoints: 60
+    gear:
+      - { itemId: 1322016, scrolls: [{ success: 10, count: 2 }, { success: 60, count: 5 }] }
+
+# ---- Henesys: Fenna --------------------------------------------------------------------------------------------
+
+- id: fenna-boots-for-the-road
+  persona: fenna
+  title: "Boots for the Road"
+  length: SHORT
+  requires: { level: { min: 25 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003004, count: 20 }
+    - { id: cobbler, type: DELIVER, to: fenna, take: { itemId: 4003004, count: 20 } }
+  rewards:
+    meso: 5000
+    exp: 4000
+    bondPoints: 30
+    gear:
+      - { pool: [1072011, 1072072, 1072027, 1072085, 1072291] }
+
+- id: fenna-the-first-bow
+  persona: fenna
+  title: "The First Bow"
+  length: SHORT
+  requires: { level: { min: 25 }, friendship: 5, questsCompleted: [fenna-boots-for-the-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [2230102], count: 30, mapIds: [101040001] }
+    - { id: report, type: DELIVER, to: fenna }
+  rewards:
+    meso: 8000
+    exp: 8000
+    bondPoints: 35
+    gear:
+      - { itemId: 1452000, scrolls: [{ success: 100, count: 7 }] }
+
+- id: fenna-the-long-shot
+  persona: fenna
+  title: "The Long Shot"
+  length: MEDIUM
+  requires: { level: { min: 33 }, friendship: 7, questsCompleted: [fenna-the-first-bow] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [3230100], count: 40, mapIds: [105040100, 105040200] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000013, count: 20 }
+    - { id: glue, type: DELIVER, to: fenna, take: { itemId: 4000013, count: 20 } }
+  rewards:
+    meso: 25000
+    exp: 18000
+    bondPoints: 50
+    gear:
+      - { itemId: 1452006, scrolls: [{ success: 60, count: 7 }] }
+
+- id: fenna-marrows-bow
+  persona: fenna
+  title: "Marrow's Bow"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [fenna-the-long-shot] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: marrow, type: TALK_TO, persona: marrow, say: ["she's giving you the Olympus? ...then she's decided. good. breathe out before you loose. she'll have told you that."] }
+    - { id: drakes, type: KILL_MOBS, mobIds: [5130100], count: 40 }
+    - { id: report, type: DELIVER, to: fenna }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1452008, scrolls: [{ success: 10, count: 2 }, { success: 60, count: 5 }] }
+
+# ---- Ellinia: Casse --------------------------------------------------------------------------------------------
+
+- id: casse-frozen-earrings
+  persona: casse
+  title: "Frozen Earrings"
+  length: SHORT
+  requires: { level: { min: 23 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: charms, type: COLLECT_ITEM, itemId: 4000008, count: 15 }
+    - { id: frost, type: DELIVER, to: casse, take: { itemId: 4000008, count: 15 } }
+  rewards:
+    meso: 4000
+    exp: 4000
+    bondPoints: 30
+    gear:
+      - { pool: [1032004] }
+
+- id: casse-my-first-wand
+  persona: casse
+  title: "My First Wand"
+  length: SHORT
+  requires: { level: { min: 23 }, friendship: 5, questsCompleted: [casse-frozen-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [2110200], count: 30 }
+    - { id: report, type: DELIVER, to: casse }
+  rewards:
+    meso: 7000
+    exp: 7000
+    bondPoints: 35
+    gear:
+      - { itemId: 1372004, scrolls: [{ success: 100, count: 7 }] }
+
+- id: casse-the-coldest-thing
+  persona: casse
+  title: "The Coldest Thing"
+  length: MEDIUM
+  requires: { level: { min: 33 }, friendship: 7, questsCompleted: [casse-my-first-wand] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [4230101], count: 30 }
+    - { id: dolls, type: COLLECT_ITEM, itemId: 4000031, count: 10 }
+    - { id: cold, type: DELIVER, to: casse, take: { itemId: 4000031, count: 10 } }
+  rewards:
+    meso: 25000
+    exp: 18000
+    bondPoints: 50
+    gear:
+      - { itemId: 1372001, scrolls: [{ success: 60, count: 7 }] }
+
+- id: casse-what-ice-remembers
+  persona: casse
+  title: "What Ice Remembers"
+  length: LONG
+  requires: { level: { min: 46 }, friendship: 10, questsCompleted: [casse-the-coldest-thing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lioren, type: TALK_TO, persona: lioren, say: ["she's giving you Cromi? she cried when she scrolled it. ...that's the right choice. i'd have made it too."] }
+    - { id: eyes, type: KILL_MOBS, mobIds: [4230100], count: 40 }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000023, count: 20 }
+    - { id: study, type: DELIVER, to: casse, take: { itemId: 4000023, count: 20 } }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1372007, scrolls: [{ success: 10, count: 2 }, { success: 60, count: 5 }] }
+
+# ---- Kerning City: Vex -----------------------------------------------------------------------------------------
+
+- id: vex-a-couriers-grip
+  persona: vex
+  title: "A Courier's Grip"
+  length: SHORT
+  requires: { level: { min: 30 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [3230101], count: 25, mapIds: [103000103, 103000104, 103000200] }
+    - { id: report, type: DELIVER, to: vex }
+  rewards:
+    meso: 8000
+    exp: 7000
+    bondPoints: 30
+    gear:
+      - { pool: [1082005, 1082051, 1082048, 1082042, 1082189] }
+
+- id: vex-the-spare
+  persona: vex
+  title: "The Spare"
+  length: SHORT
+  requires: { level: { min: 30 }, friendship: 5, questsCompleted: [vex-a-couriers-grip] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stirges, type: KILL_MOBS, mobIds: [2300100], count: 30, mapIds: [103000101, 103000100, 103000900] }
+    - { id: report, type: DELIVER, to: vex }
+  rewards:
+    meso: 10000
+    exp: 10000
+    bondPoints: 35
+    gear:
+      - { itemId: 1332009, scrolls: [{ success: 100, count: 7 }] }
+
+- id: vex-the-last-delivery
+  persona: vex
+  title: "The Last Delivery"
+  length: LONG
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [vex-the-spare] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000032, count: 20 }
+    - { id: lorca, type: TALK_TO, persona: lorca, say: ["for Vex? ...tell him that's the last one. tell him i said thank you. no. don't tell him that."] }
+    - { id: back, type: DELIVER, to: vex, take: { itemId: 4000032, count: 20 } }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 50
+    gear:
+      - { itemId: 1332011, scrolls: [{ success: 60, count: 7 }] }
+
+- id: vex-no-fee
+  persona: vex
+  title: "No Fee"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [vex-the-last-delivery] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [4230102], count: 40 }
+    - { id: report, type: DELIVER, to: vex }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1332016, scrolls: [{ success: 10, count: 2 }, { success: 60, count: 5 }] }
+
+# ---- Perion: Garrick -------------------------------------------------------------------------------------------
+
+- id: garrick-a-guards-helm
+  persona: garrick
+  title: "A Guard's Helm"
+  length: SHORT
+  requires: { level: { min: 35 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skulls, type: COLLECT_ITEM, itemId: 4000014, count: 10 }
+    - { id: smith, type: TALK_TO, persona: yona, say: ["a helm, for you, and he's asking? ...he's never asked me for anything. leave the skulls with him. i'll climb up tonight."] }
+    - { id: back, type: DELIVER, to: garrick, take: { itemId: 4000014, count: 10 } }
+  rewards:
+    meso: 10000
+    exp: 9000
+    bondPoints: 30
+    gear:
+      - { pool: [1002004, 1002141, 1002135, 1002176, 1002625] }
+
+- id: garrick-the-practice-blade
+  persona: garrick
+  title: "The Practice Blade"
+  length: SHORT
+  requires: { level: { min: 38 }, friendship: 5, questsCompleted: [garrick-a-guards-helm] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drakes, type: KILL_MOBS, mobIds: [4130100], count: 30, mapIds: [101030101, 101030102, 101030103] }
+    - { id: report, type: DELIVER, to: garrick }
+  rewards:
+    meso: 15000
+    exp: 15000
+    bondPoints: 35
+    gear:
+      - { itemId: 1302009, scrolls: [{ success: 100, count: 7 }] }
+
+- id: garrick-the-second-sword
+  persona: garrick
+  title: "The Second Sword"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 7, questsCompleted: [garrick-the-practice-blade] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rubble, type: COLLECT_ITEM, itemId: 4000025, count: 15 }
+    - { id: smith, type: TALK_TO, persona: yona, say: ["a second sword. so he told you about the first. take the stone up to him. i'll bring my hammer."] }
+    - { id: back, type: DELIVER, to: garrick, take: { itemId: 4000025, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 40000
+    bondPoints: 50
+    gear:
+      - { itemId: 1302010, scrolls: [{ success: 60, count: 7 }] }
+
+- id: garrick-the-blade-i-ran-with
+  persona: garrick
+  title: "The Blade I Ran With"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 10, questsCompleted: [garrick-the-second-sword] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tamsin, type: TALK_TO, persona: tamsin, say: ["...that's his guard blade. he ran with it. if he's giving it to you, he's finally put it down. good. tell him i said so. no. i'll tell him."] }
+    - { id: golems, type: KILL_MOBS, mobIds: [5130102], count: 30 }
+    - { id: report, type: DELIVER, to: garrick }
+  rewards:
+    meso: 80000
+    exp: 70000
+    bondPoints: 60
+    gear:
+      - { itemId: 1302011, scrolls: [{ success: 10, count: 2 }, { success: 60, count: 5 }] }
+
+# ---- Nautilus: Kettle ------------------------------------------------------------------------------------------
+
+- id: kettle-deck-boots
+  persona: kettle
+  title: "Deck Boots"
+  length: SHORT
+  requires: { level: { min: 35 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000043, count: 20 }
+    - { id: cobbler, type: DELIVER, to: kettle, take: { itemId: 4000043, count: 20 } }
+  rewards:
+    meso: 10000
+    exp: 9000
+    bondPoints: 30
+    gear:
+      - { pool: [1072002, 1072089, 1072101, 1072104, 1072297] }
+
+- id: kettle-the-deckhands-knuckles
+  persona: kettle
+  title: "The Deckhand's Knuckles"
+  length: SHORT
+  requires: { level: { min: 38 }, friendship: 5, questsCompleted: [kettle-deck-boots] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 30 }
+    - { id: report, type: DELIVER, to: kettle }
+  rewards:
+    meso: 15000
+    exp: 15000
+    bondPoints: 35
+    gear:
+      - { itemId: 1482006, scrolls: [{ success: 100, count: 7 }] }
+
+- id: kettle-the-king-of-the-beach
+  persona: kettle
+  title: "The King of the Beach"
+  length: MEDIUM
+  requires: { level: { min: 48 }, friendship: 7, questsCompleted: [kettle-the-deckhands-knuckles] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: king, type: KILL_BOSS, mobIds: [5220000], count: 1 }
+    - { id: report, type: DELIVER, to: kettle }
+  rewards:
+    meso: 50000
+    exp: 40000
+    bondPoints: 50
+    gear:
+      - { itemId: 1482007, scrolls: [{ success: 60, count: 7 }] }
+
+- id: kettle-the-captains-hands
+  persona: kettle
+  title: "The Captain's Hands"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 10, questsCompleted: [kettle-the-king-of-the-beach] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mae, type: TALK_TO, persona: mae, say: ["the captain's knuckles? ...then he's sure about you. so am i. go on."] }
+    - { id: clangs, type: KILL_MOBS, mobIds: [4230104], count: 40 }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000044, count: 20 }
+    - { id: memorial, type: DELIVER, to: kettle, take: { itemId: 4000044, count: 20 } }
+  rewards:
+    meso: 80000
+    exp: 70000
+    bondPoints: 60
+    gear:
+      - { itemId: 1482008, scrolls: [{ success: 10, count: 2 }, { success: 60, count: 5 }] }
+
+# ---- Sleepywood: Thane -----------------------------------------------------------------------------------------
+
+- id: thane-a-guides-cloak
+  persona: thane
+  title: "A Guide's Cloak"
+  length: SHORT
+  requires: { level: { min: 48 }, friendship: 4 }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drakes, type: KILL_MOBS, mobIds: [5130100], count: 30 }
+    - { id: report, type: DELIVER, to: thane }
+  rewards:
+    meso: 20000
+    exp: 20000
+    bondPoints: 30
+    gear:
+      - { pool: [1102002] }
+
+- id: thane-the-spare-axe
+  persona: thane
+  title: "The Spare Axe"
+  length: SHORT
+  requires: { level: { min: 48 }, friendship: 5, questsCompleted: [thane-a-guides-cloak] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: golems, type: KILL_MOBS, mobIds: [5130101], count: 30 }
+    - { id: report, type: DELIVER, to: thane }
+  rewards:
+    meso: 25000
+    exp: 25000
+    bondPoints: 35
+    gear:
+      - { itemId: 1312008, scrolls: [{ success: 100, count: 7 }] }
+
+- id: thane-at-my-left
+  persona: thane
+  title: "At My Left"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 7, questsCompleted: [thane-the-spare-axe] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kargos, type: KILL_MOBS, mobIds: [6230100], count: 30, mapIds: [105090300, 105090301] }
+    - { id: eyes, type: COLLECT_ITEM, itemId: 4000027, count: 15 }
+    - { id: back, type: DELIVER, to: thane, take: { itemId: 4000027, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 70000
+    bondPoints: 50
+    gear:
+      - { itemId: 1312009, scrolls: [{ success: 60, count: 7 }] }
+
+- id: thane-the-deepest-door
+  persona: thane
+  title: "The Deepest Door"
+  length: LONG
+  requires: { level: { min: 68 }, friendship: 10, questsCompleted: [thane-at-my-left] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: orrin, type: TALK_TO, persona: orrin, say: ["the Mikhail? he carried me out of the fourth tunnel with that axe on his back. ...take care of it. it took care of me."] }
+    - { id: bulls, type: KILL_MOBS, mobIds: [7130100], count: 30, mapIds: [105090500, 105090600, 105090700, 105090800] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000028, count: 15 }
+    - { id: wall, type: DELIVER, to: thane, take: { itemId: 4000028, count: 15 } }
+  rewards:
+    meso: 120000
+    exp: 100000
+    bondPoints: 60
+    gear:
+      - { itemId: 1312010, scrolls: [{ success: 10, count: 2 }, { success: 60, count: 5 }] }
+
+# ==== New friendship Residents: one per weapon type (their own weapon in three tiers) and one per armour slot
+# (a piece made for the player's class in three tiers). Each has an intro, a repeatable craft quest and the
+# Lv 5 / 7 / 10 tiers: lower all 100% scrolls, mid all 60%, final two 10% and the rest 60%, every one taking.
+
+- id: isolde-pells-ankle
+  persona: isolde
+  title: "Pell's Ankle"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pell, type: TALK_TO, persona: pell, say: ["she sent you? tell her the ankle's fine. mostly still an ankle. ...and ask for more green paste. for a friend. the friend is me."] }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000012, count: 15 }
+    - { id: paste, type: DELIVER, to: isolde, take: { itemId: 4000012, count: 15 } }
+  rewards:
+    meso: 5000
+    exp: 3500
+    bondPoints: 30
+    flags: [isolde.intro.done]
+
+- id: isolde-the-walking-staff
+  persona: isolde
+  title: "The Walking Staff"
+  length: SHORT
+  requires: { level: { min: 28 }, friendship: 5, questsCompleted: [isolde-pells-ankle] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [2230100], count: 30, mapIds: [101020009] }
+    - { id: report, type: DELIVER, to: isolde }
+  rewards:
+    meso: 9000
+    exp: 9000
+    bondPoints: 35
+    gear:
+      - { itemId: 1382017, scrolls: [{ success: 100 }] }
+
+- id: isolde-the-staff-in-the-cupboard
+  persona: isolde
+  title: "The Staff in the Cupboard"
+  length: MEDIUM
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [isolde-the-walking-staff] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [3230100], count: 30, mapIds: [101020010] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000013, count: 15 }
+    - { id: steep, type: DELIVER, to: isolde, take: { itemId: 4000013, count: 15 } }
+  rewards:
+    meso: 28000
+    exp: 22000
+    bondPoints: 50
+    gear:
+      - { itemId: 1382019, scrolls: [{ success: 60 }] }
+
+- id: isolde-what-faust-leaves
+  persona: isolde
+  title: "What Faust Leaves"
+  length: LONG
+  requires: { level: { min: 49 }, friendship: 10, questsCompleted: [isolde-the-staff-in-the-cupboard] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bram, type: TALK_TO, persona: bram, say: ["the cane. she taps the bark with it every morning. the tree knows that sound. it'll learn yours. step lightly."] }
+    - { id: faust, type: KILL_BOSS, mobIds: [5220002], count: 1 }
+    - { id: report, type: DELIVER, to: isolde }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1382011, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: isolde-clean-water
+  persona: isolde
+  title: "Clean Water for the Salve"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 18 }, questsCompleted: [isolde-pells-ankle] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bubbles, type: COLLECT_ITEM, itemId: 4000037, count: 15 }
+    - { id: salve, type: DELIVER, to: isolde, take: { itemId: 4000037, count: 15 } }
+  rewards:
+    meso: 3000
+    exp: 2000
+    bondPoints: 10
+
+- id: brunhild-stand-your-ground
+  persona: brunhild
+  title: "Stand Your Ground"
+  length: SHORT
+  requires: { level: { min: 23 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [2130100], count: 30, mapIds: [101030403, 101030404, 101030405] }
+    - { id: edge, type: VISIT_MAP, mapIds: [106000101] }
+    - { id: report, type: DELIVER, to: brunhild }
+  rewards:
+    meso: 5000
+    exp: 3000
+    bondPoints: 30
+    flags: [brunhild.intro.done]
+
+- id: brunhild-the-first-duel
+  persona: brunhild
+  title: "The First Duel"
+  length: MEDIUM
+  requires: { level: { min: 33 }, friendship: 5, questsCompleted: [brunhild-stand-your-ground] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumpy, type: KILL_BOSS, mobIds: [3220000], count: 1 }
+    - { id: report, type: DELIVER, to: brunhild }
+  rewards:
+    meso: 13000
+    exp: 11000
+    bondPoints: 35
+    gear:
+      - { itemId: 1402006, scrolls: [{ success: 100 }] }
+
+- id: brunhild-a-seasons-purses
+  persona: brunhild
+  title: "A Season's Purses"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 7, questsCompleted: [brunhild-the-first-duel] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [4230400], count: 40, mapIds: [106000120, 106000130, 106000140] }
+    - { id: plates, type: COLLECT_ITEM, itemId: 4000178, count: 15 }
+    - { id: proof, type: DELIVER, to: brunhild, take: { itemId: 4000178, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 40000
+    bondPoints: 50
+    gear:
+      - { itemId: 1402003, scrolls: [{ success: 60 }] }
+
+- id: brunhild-the-champions-sword
+  persona: brunhild
+  title: "The Champion's Sword"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 10, questsCompleted: [brunhild-a-seasons-purses] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: garrick, type: TALK_TO, persona: garrick, say: ["Sparta. she won it the day she put me on my back in the square. ...and she's giving it to you. hm. don't run with it. i did."] }
+    - { id: drakes, type: KILL_MOBS, mobIds: [6130100], count: 40, mapIds: [105090100, 105090300] }
+    - { id: report, type: DELIVER, to: brunhild }
+  rewards:
+    meso: 80000
+    exp: 70000
+    bondPoints: 60
+    gear:
+      - { itemId: 1402011, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: brunhild-teeth-for-the-wall
+  persona: brunhild
+  title: "Teeth for the Wall"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 23 }, questsCompleted: [brunhild-stand-your-ground] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000024, count: 15 }
+    - { id: wall, type: DELIVER, to: brunhild, take: { itemId: 4000024, count: 15 } }
+  rewards:
+    meso: 5000
+    exp: 2500
+    bondPoints: 10
+
+- id: gunnar-the-walking-stumps
+  persona: gunnar
+  title: "The Walking Stumps"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [2130100], count: 20, mapIds: [101030403, 101030404, 101030405] }
+    - { id: axes, type: COLLECT_ITEM, itemId: 4000215, count: 10, label: "Gunnar's old felling axe" }
+    - { id: return, type: DELIVER, to: gunnar, take: { itemId: 4000215, count: 10 } }
+  rewards: { meso: 6000, exp: 3000, bondPoints: 30, flags: [gunnar.intro.done] }
+
+- id: gunnar-the-working-axe
+  persona: gunnar
+  title: "The Working Axe"
+  length: SHORT
+  requires: { level: { min: 28 }, friendship: 5, questsCompleted: [gunnar-the-walking-stumps] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: rot, type: KILL_MOBS, mobIds: [2230101], count: 30, mapIds: [105030000, 102020300] }
+    - { id: report, type: DELIVER, to: gunnar }
+  rewards:
+    meso: 10000
+    exp: 9000
+    bondPoints: 35
+    gear:
+      - { itemId: 1412006, scrolls: [{ success: 100 }] }
+
+- id: gunnar-the-burnt-land
+  persona: gunnar
+  title: "The Burnt Land"
+  length: MEDIUM
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [gunnar-the-working-axe] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hogs, type: KILL_MOBS, mobIds: [4230103], count: 40, mapIds: [106000120, 106000130] }
+    - { id: hooves, type: COLLECT_ITEM, itemId: 4000039, count: 15 }
+    - { id: shed, type: DELIVER, to: gunnar, take: { itemId: 4000039, count: 15 } }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 50
+    gear:
+      - { itemId: 1412005, scrolls: [{ success: 60 }] }
+
+- id: gunnar-the-rising
+  persona: gunnar
+  title: "The Rising"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [gunnar-the-burnt-land] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: marrow, type: TALK_TO, persona: marrow, say: ["the Rising. he felled the yew for my bow with it, then sat by the stump an hour. he doesn't give lightly. hold it like it matters."] }
+    - { id: maladies, type: KILL_MOBS, mobIds: [5300100], count: 30, mapIds: [100040105, 100040106] }
+    - { id: faust, type: KILL_BOSS, mobIds: [5220002], count: 1 }
+    - { id: report, type: DELIVER, to: gunnar }
+  rewards:
+    meso: 55000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1412003, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: gunnar-handle-wraps
+  persona: gunnar
+  title: "Handle Wraps"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 18 }, questsCompleted: [gunnar-the-walking-stumps] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: glue, type: COLLECT_ITEM, itemId: 4000004, count: 15 }
+    - { id: return, type: DELIVER, to: gunnar, take: { itemId: 4000004, count: 15 } }
+  rewards: { meso: 3000, exp: 1500, bondPoints: 10 }
+
+- id: magna-wasted-swings
+  persona: magna
+  title: "Wasted Swings"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shroom, type: KILL_MOBS, mobIds: [2230101, 2230131], count: 30, mapIds: [105050100, 105050200] }
+    - { id: props, type: VISIT_MAP, mapIds: [105050300] }
+    - { id: report, type: DELIVER, to: magna }
+  rewards: { meso: 5000, exp: 3500, bondPoints: 30, flags: [magna.intro.done] }
+
+- id: magna-the-hammer-i-carry
+  persona: magna
+  title: "The Hammer I Carry"
+  length: MEDIUM
+  requires: { level: { min: 33 }, friendship: 5, questsCompleted: [magna-wasted-swings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [3230100], count: 30, mapIds: [105040100, 105040200] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000013, count: 10 }
+    - { id: hermit, type: DELIVER, to: magna, take: { itemId: 4000013, count: 10 } }
+  rewards:
+    meso: 12000
+    exp: 10000
+    bondPoints: 35
+    gear:
+      - { itemId: 1422008, scrolls: [{ success: 100 }] }
+
+- id: magna-lamp-niches
+  persona: magna
+  title: "Lamp Niches"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 7, questsCompleted: [magna-the-hammer-i-carry] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drakes, type: KILL_MOBS, mobIds: [5130100], count: 30, mapIds: [105090000, 105090100] }
+    - { id: skulls, type: COLLECT_ITEM, itemId: 4000014, count: 15 }
+    - { id: markers, type: DELIVER, to: magna, take: { itemId: 4000014, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 40000
+    bondPoints: 50
+    gear:
+      - { itemId: 1422005, scrolls: [{ success: 60 }] }
+
+- id: magna-the-blessing
+  persona: magna
+  title: "The Blessing"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 10, questsCompleted: [magna-lamp-niches] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: orrin, type: TALK_TO, persona: orrin, say: ["the Blessing? eleven walked out of tunnel three under her props. i asked to hold it. she said no. once. ...you? huh. hold it right."] }
+    - { id: golems, type: KILL_MOBS, mobIds: [5150000], count: 30, mapIds: [105040306, 105040320, 105040321, 105040322] }
+    - { id: blocks, type: COLLECT_ITEM, itemId: 4000177, count: 15 }
+    - { id: lintel, type: DELIVER, to: magna, take: { itemId: 4000177, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 70000
+    bondPoints: 60
+    gear:
+      - { itemId: 1422009, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: magna-prop-timber
+  persona: magna
+  title: "Prop Timber"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 24 }, questsCompleted: [magna-wasted-swings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: timber, type: COLLECT_ITEM, itemId: 4000018, count: 15 }
+    - { id: props, type: DELIVER, to: magna, take: { itemId: 4000018, count: 15 } }
+  rewards: { meso: 4000, exp: 2500, bondPoints: 10 }
+
+- id: corvin-the-night-log
+  persona: corvin
+  title: "The Night Log"
+  length: SHORT
+  requires: { level: { min: 24 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [2230101], count: 30, mapIds: [102020300] }
+    - { id: charms, type: COLLECT_ITEM, itemId: 4000008, count: 10 }
+    - { id: log, type: DELIVER, to: corvin, take: { itemId: 4000008, count: 10 } }
+  rewards:
+    meso: 5500
+    exp: 3500
+    bondPoints: 30
+    flags: [corvin.intro.done]
+
+- id: corvin-the-duty-spear
+  persona: corvin
+  title: "The Duty Spear"
+  length: SHORT
+  requires: { level: { min: 33 }, friendship: 5, questsCompleted: [corvin-the-night-log] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boogies, type: KILL_MOBS, mobIds: [3230300, 3230301], count: 30, mapIds: [101040001] }
+    - { id: report, type: DELIVER, to: corvin }
+  rewards:
+    meso: 12000
+    exp: 10000
+    bondPoints: 35
+    gear:
+      - { itemId: 1432003, scrolls: [{ success: 100 }] }
+
+- id: corvin-three-years-pay
+  persona: corvin
+  title: "Three Years' Pay"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 7, questsCompleted: [corvin-the-duty-spear] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: halvard, type: TALK_TO, persona: halvard, say: ["he's giving it to you? three years i've asked him! ...fine. it's a good spear. don't tell him i said so, he'll write it down."] }
+    - { id: dogs, type: KILL_MOBS, mobIds: [4230126], count: 40, mapIds: [101030105, 101030106, 101030107] }
+    - { id: bandages, type: COLLECT_ITEM, itemId: 4000205, count: 15 }
+    - { id: report, type: DELIVER, to: corvin, take: { itemId: 4000205, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 40000
+    bondPoints: 50
+    gear:
+      - { itemId: 1432004, scrolls: [{ success: 60 }] }
+
+- id: corvin-the-morning-after
+  persona: corvin
+  title: "The Morning After"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 10, questsCompleted: [corvin-three-years-pay] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: captain, type: TALK_TO, persona: tamsin, say: ["the Holy Spear. i gave it to him the morning Garrick's post was empty. he never carried it. you will. and you stay."] }
+    - { id: skeletons, type: KILL_MOBS, mobIds: [5150001], count: 40, mapIds: [101030106, 101030107, 101030110, 101030111] }
+    - { id: report, type: DELIVER, to: corvin }
+  rewards:
+    meso: 80000
+    exp: 70000
+    bondPoints: 60
+    gear:
+      - { itemId: 1432006, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: corvin-mend-the-post
+  persona: corvin
+  title: "Mend the Post"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 24 }, questsCompleted: [corvin-the-night-log] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: slates, type: COLLECT_ITEM, itemId: 4000197, count: 15 }
+    - { id: post, type: DELIVER, to: corvin, take: { itemId: 4000197, count: 15 } }
+  rewards:
+    meso: 4500
+    exp: 2500
+    bondPoints: 10
+
+- id: ingrid-hold-the-line
+  persona: ingrid
+  title: "Hold the Line"
+  length: SHORT
+  requires: { level: { min: 20 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [2230102], count: 30, mapIds: [101040001, 101030001] }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000020, count: 10 }
+    - { id: report, type: DELIVER, to: ingrid, take: { itemId: 4000020, count: 10 } }
+  rewards:
+    meso: 4500
+    exp: 3500
+    bondPoints: 30
+    flags: [ingrid.intro.done]
+
+- id: ingrid-the-pier-arm
+  persona: ingrid
+  title: "The Pier Arm"
+  length: SHORT
+  requires: { level: { min: 28 }, friendship: 5, questsCompleted: [ingrid-hold-the-line] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ligators, type: KILL_MOBS, mobIds: [3110100], count: 30, mapIds: [107000000, 107000100, 107000200] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000032, count: 15 }
+    - { id: grip, type: DELIVER, to: ingrid, take: { itemId: 4000032, count: 15 } }
+  rewards:
+    meso: 10000
+    exp: 9000
+    bondPoints: 35
+    gear:
+      - { itemId: 1442001, scrolls: [{ success: 100 }] }
+
+- id: ingrid-the-crossing
+  persona: ingrid
+  title: "The Crossing"
+  length: MEDIUM
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [ingrid-the-pier-arm] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ledger, type: TALK_TO, persona: olwen, say: ["a crossing to Florina, in Ingrid's name. she's cleared a hundred crossings in this ledger. never one for herself. ...noted. go."] }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 40, mapIds: [110010000, 110020000, 110020001] }
+    - { id: report, type: DELIVER, to: ingrid, say: ["you're back. the boat's back. good. that's all i ask of either of you."] }
+  rewards:
+    meso: 25000
+    exp: 20000
+    bondPoints: 50
+    gear:
+      - { itemId: 1442009, scrolls: [{ success: 60 }] }
+
+- id: ingrid-the-nine-dragons
+  persona: ingrid
+  title: "The Nine Dragons"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [ingrid-the-crossing] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hadrik, type: TALK_TO, persona: hadrik, say: ["the Nine Dragons. she brought that to the Merrow once. i sent her back. the Merrow went down. ...hm. take it to sea. it's owed one."] }
+    - { id: torties, type: KILL_MOBS, mobIds: [4130101], count: 30, mapIds: [110030001, 110040000] }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000045, count: 15 }
+    - { id: gate, type: DELIVER, to: ingrid, take: { itemId: 4000045, count: 15 }, say: ["fifteen. they go along the pier gate. shells from a beach i've never stood on."] }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1442005, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: ingrid-salt-and-leather
+  persona: ingrid
+  title: "Salt and Leather"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 20 }, questsCompleted: [ingrid-hold-the-line] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leather, type: COLLECT_ITEM, itemId: 4000021, count: 15, dropFrom: { mobIds: [1210100, 1210101, 2230102], chance: 0.35 } }
+    - { id: hafts, type: DELIVER, to: ingrid, take: { itemId: 4000021, count: 15 } }
+  rewards:
+    meso: 3000
+    exp: 1500
+    bondPoints: 10
+
+- id: sorrel-springy-horns
+  persona: sorrel
+  title: "Springy Horns"
+  length: SHORT
+  requires: { level: { min: 16 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [2110200], count: 25, mapIds: [100000004, 100030001] }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000015, count: 10 }
+    - { id: return, type: DELIVER, to: sorrel, take: { itemId: 4000015, count: 10 } }
+  rewards: { meso: 5000, exp: 2500, bondPoints: 30, flags: [sorrel.intro.done] }
+
+- id: sorrel-the-mountain-crossbow
+  persona: sorrel
+  title: "The Mountain Crossbow"
+  length: SHORT
+  requires: { level: { min: 26 }, friendship: 5, questsCompleted: [sorrel-springy-horns] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [2230102], count: 30, mapIds: [101030405, 101030406] }
+    - { id: teeth, type: COLLECT_ITEM, itemId: 4000020, count: 10 }
+    - { id: sears, type: DELIVER, to: sorrel, take: { itemId: 4000020, count: 10 } }
+  rewards:
+    meso: 9000
+    exp: 8000
+    bondPoints: 35
+    gear:
+      - { itemId: 1462000, scrolls: [{ success: 100 }] }
+
+- id: sorrel-the-heckler
+  persona: sorrel
+  title: "The Heckler"
+  length: MEDIUM
+  requires: { level: { min: 36 }, friendship: 7, questsCompleted: [sorrel-the-mountain-crossbow] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [3210800], count: 40, mapIds: [100040101, 100040103] }
+    - { id: bananas, type: COLLECT_ITEM, itemId: 4000029, count: 15 }
+    - { id: calibrate, type: DELIVER, to: sorrel, take: { itemId: 4000029, count: 15 } }
+  rewards:
+    meso: 28000
+    exp: 22000
+    bondPoints: 50
+    gear:
+      - { itemId: 1462005, scrolls: [{ success: 60 }] }
+
+- id: sorrel-the-rower
+  persona: sorrel
+  title: "The Rower"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [sorrel-the-heckler] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: senna, type: TALK_TO, persona: senna, say: ["the Rower. she's tried to copy it four years. won't say so. if she's giving it to you, she means it. you'll want arrows. buy them here."] }
+    - { id: clangs, type: KILL_MOBS, mobIds: [4230104], count: 40, mapIds: [110030000, 110030001, 110040000] }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000044, count: 10 }
+    - { id: hinges, type: DELIVER, to: sorrel, take: { itemId: 4000044, count: 10 } }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1462007, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: sorrel-fletching-for-bolts
+  persona: sorrel
+  title: "Fletching for Bolts"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 16 }, questsCompleted: [sorrel-springy-horns] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003004, count: 15 }
+    - { id: return, type: DELIVER, to: sorrel, take: { itemId: 4003004, count: 15 } }
+  rewards: { meso: 2500, exp: 1200, bondPoints: 10 }
+
+- id: kestrel-top-of-the-site
+  persona: kestrel
+  title: "Top of the Site"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: climb, type: VISIT_MAP, mapIds: [102040001] }
+    - { id: bubblings, type: KILL_MOBS, mobIds: [1210103], count: 20, mapIds: [102040001] }
+    - { id: report, type: DELIVER, to: kestrel }
+  rewards:
+    meso: 4000
+    exp: 2500
+    bondPoints: 30
+    flags: [kestrel.intro.done]
+
+- id: kestrel-the-guards
+  persona: kestrel
+  title: "The Guards I Throw With"
+  length: SHORT
+  requires: { level: { min: 28 }, friendship: 5, questsCompleted: [kestrel-top-of-the-site] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ligators, type: KILL_MOBS, mobIds: [3110100], count: 30, mapIds: [107000000, 107000100, 107000200] }
+    - { id: report, type: DELIVER, to: kestrel }
+  rewards:
+    meso: 10000
+    exp: 9000
+    bondPoints: 35
+    gear:
+      - { itemId: 1472008, scrolls: [{ success: 100 }] }
+
+- id: kestrel-the-avarice
+  persona: kestrel
+  title: "The Avarice"
+  length: MEDIUM
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [kestrel-the-guards] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: song, type: TALK_TO, persona: rook, say: ["the Kestrel song? he paid me to change the last verse. it was about a claw. now it's about someone who keeps up. that's you. tips!"] }
+    - { id: boogies, type: KILL_MOBS, mobIds: [3230300, 3230301], count: 30, mapIds: [103000905, 103000909] }
+    - { id: report, type: DELIVER, to: kestrel }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 50
+    gear:
+      - { itemId: 1472014, scrolls: [{ success: 60 }] }
+
+- id: kestrel-the-slain
+  persona: kestrel
+  title: "The Slain"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [kestrel-the-avarice] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: vex, type: TALK_TO, persona: vex, say: ["the Slain? that was his stake. i still say i won. ...and he's giving it to you. huh. tell him the subway's still faster."] }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [4230102], count: 35, mapIds: [103000104, 103000105] }
+    - { id: report, type: DELIVER, to: kestrel }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1472018, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: kestrel-whistling-stars
+  persona: kestrel
+  title: "Whistling Stars"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 18 }, questsCompleted: [kestrel-top-of-the-site] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wings, type: COLLECT_ITEM, itemId: 4000042, count: 15 }
+    - { id: return, type: DELIVER, to: kestrel, take: { itemId: 4000042, count: 15 } }
+  rewards:
+    meso: 3000
+    exp: 1500
+    bondPoints: 10
+
+- id: flint-dry-powder
+  persona: flint
+  title: "Dry Powder"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stove, type: TALK_TO, persona: barnaby, say: ["Flint sent you about the stove? the stove was here first. ...fine. one plank. now sit, you look hungry."] }
+    - { id: bubblings, type: KILL_MOBS, mobIds: [1210103], count: 25 }
+    - { id: report, type: DELIVER, to: flint }
+  rewards:
+    meso: 4000
+    exp: 3000
+    bondPoints: 30
+    flags: [flint.intro.done]
+
+- id: flint-cold-mind
+  persona: flint
+  title: "A Cold Mind"
+  length: SHORT
+  requires: { level: { min: 28 }, friendship: 5, questsCompleted: [flint-dry-powder] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [3210100], count: 30 }
+    - { id: report, type: DELIVER, to: flint }
+  rewards:
+    meso: 10000
+    exp: 9000
+    bondPoints: 35
+    gear:
+      - { itemId: 1492004, scrolls: [{ success: 100 }] }
+
+- id: flint-black-powder
+  persona: flint
+  title: "Black Powder"
+  length: MEDIUM
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [flint-cold-mind] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lupins, type: KILL_MOBS, mobIds: [4230101], count: 30 }
+    - { id: powder, type: COLLECT_ITEM, itemId: 4007007, count: 10, dropFrom: { mobIds: [4230101], chance: 0.35 } }
+    - { id: magazine, type: DELIVER, to: flint, take: { itemId: 4007007, count: 10 } }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 50
+    gear:
+      - { itemId: 1492006, scrolls: [{ success: 60 }] }
+
+- id: flint-mr-rasfelt
+  persona: flint
+  title: "Mr. Rasfelt"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [flint-black-powder] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mae, type: TALK_TO, persona: mae, say: ["Mr. Rasfelt? he never lets me touch that one. me. ...so he trusts you. don't make him wrong."] }
+    - { id: torties, type: KILL_MOBS, mobIds: [4130101], count: 40 }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000045, count: 15 }
+    - { id: flask, type: DELIVER, to: flint, take: { itemId: 4000045, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 45000
+    bondPoints: 60
+    gear:
+      - { itemId: 1492007, scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: flint-quill-primers
+  persona: flint
+  title: "Quill Primers"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 18 }, questsCompleted: [flint-dry-powder] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003004, count: 15 }
+    - { id: return, type: DELIVER, to: flint, take: { itemId: 4003004, count: 15 } }
+  rewards: { meso: 3000, exp: 1500, bondPoints: 10 }
+
+- id: posy-a-study-of-caps
+  persona: posy
+  title: "A Study of Caps"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [1210102], count: 20, mapIds: [100030000, 100020000] }
+    - { id: caps, type: COLLECT_ITEM, itemId: 4000001, count: 10 }
+    - { id: return, type: DELIVER, to: posy, take: { itemId: 4000001, count: 10 } }
+  rewards: { meso: 3000, exp: 1200, bondPoints: 30 }
+
+- id: posy-a-hat-for-you
+  persona: posy
+  title: "A Hat for You"
+  length: SHORT
+  requires: { level: { min: 18 }, friendship: 5, questsCompleted: [posy-a-study-of-caps] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mushrooms, type: KILL_MOBS, mobIds: [2220100], count: 25, mapIds: [100030001, 100000003, 100000004] }
+    - { id: felt, type: COLLECT_ITEM, itemId: 4000009, count: 15 }
+    - { id: fitting, type: DELIVER, to: posy, take: { itemId: 4000009, count: 15 } }
+  rewards:
+    meso: 6000
+    exp: 3000
+    bondPoints: 35
+    gear:
+      - { pool: [1002055, 1002016, 1002117, 1002127, 1002616], scrolls: [{ success: 100 }] }
+
+- id: posy-a-hat-that-floats
+  persona: posy
+  title: "A Hat That Floats"
+  length: MEDIUM
+  requires: { level: { min: 33 }, friendship: 7, questsCompleted: [posy-a-hat-for-you] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: fairies, type: KILL_MOBS, mobIds: [3000004], count: 30, mapIds: [106010102, 106010103, 106010104] }
+    - { id: tentacles, type: COLLECT_ITEM, itemId: 4000068, count: 15 }
+    - { id: fitting, type: DELIVER, to: posy, take: { itemId: 4000068, count: 15 } }
+  rewards:
+    meso: 25000
+    exp: 18000
+    bondPoints: 50
+    gear:
+      - { pool: [1002004, 1002141, 1002135, 1002176, 1002625], scrolls: [{ success: 60 }] }
+
+- id: posy-the-finest-hat
+  persona: posy
+  title: "The Finest Hat"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [posy-a-hat-that-floats] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: dorran, type: TALK_TO, persona: dorran, say: ["her finest, hm. a year she's wanted to put the crest on a new hat for me. i said no. ...that one'll sit right on you. don't tell her."] }
+    - { id: crocos, type: KILL_MOBS, mobIds: [5130103], count: 30, mapIds: [107000300, 107000400] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000033, count: 15 }
+    - { id: fitting, type: DELIVER, to: posy, take: { itemId: 4000033, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 42000
+    bondPoints: 60
+    gear:
+      - { pool: [1002028, 1002215, 1002211, 1002207, 1002631], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: posy-ribbons-for-hatbands
+  persona: posy
+  title: "Ribbons for Hatbands"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 10 }, questsCompleted: [posy-a-study-of-caps] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ribbons, type: COLLECT_ITEM, itemId: 4000002, count: 15 }
+    - { id: return, type: DELIVER, to: posy, take: { itemId: 4000002, count: 15 } }
+  rewards: { meso: 1500, exp: 800, bondPoints: 10 }
+
+- id: mirabel-a-robe-for-casse
+  persona: mirabel
+  title: "A Robe for Casse"
+  length: SHORT
+  requires: { level: { min: 15 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: casse, type: TALK_TO, persona: casse, say: ["my new robe! the sleeves are PERFECT. tell Mirabel the sleeves are perfect! ...wait, why didn't she bring it up herself? is she okay?"] }
+    - { id: legs, type: COLLECT_ITEM, itemId: 4000006, count: 15 }
+    - { id: ink, type: DELIVER, to: mirabel, take: { itemId: 4000006, count: 15 } }
+  rewards:
+    meso: 3500
+    exp: 2500
+    bondPoints: 30
+
+- id: mirabel-measured-for-you
+  persona: mirabel
+  title: "Measured for You"
+  length: SHORT
+  requires: { level: { min: 26 }, friendship: 5, questsCompleted: [mirabel-a-robe-for-casse] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tentacles, type: COLLECT_ITEM, itemId: 4000068, count: 15 }
+    - { id: thread, type: DELIVER, to: mirabel, take: { itemId: 4000068, count: 15 } }
+  rewards:
+    meso: 8000
+    exp: 7000
+    bondPoints: 35
+    gear:
+      - { pool: [1050011, 1051010, 1050003, 1051003, 1040022, 1041032, 1040048, 1041057, 1052104], scrolls: [{ success: 100 }] }
+
+- id: mirabel-the-lining
+  persona: mirabel
+  title: "The Lining"
+  length: MEDIUM
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [mirabel-measured-for-you] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: wraiths, type: KILL_MOBS, mobIds: [3230101], count: 25, mapIds: [103000103, 103000104, 103000200] }
+    - { id: linen, type: COLLECT_ITEM, itemId: 4000035, count: 20 }
+    - { id: lining, type: DELIVER, to: mirabel, take: { itemId: 4000035, count: 20 } }
+  rewards:
+    meso: 28000
+    exp: 22000
+    bondPoints: 50
+    gear:
+      - { pool: [1050000, 1051001, 1050035, 1051023, 1040079, 1041081, 1040082, 1051006, 1052113], scrolls: [{ success: 60 }] }
+
+- id: mirabel-thread-that-holds
+  persona: mirabel
+  title: "Thread That Holds"
+  length: LONG
+  requires: { level: { min: 46 }, friendship: 10, questsCompleted: [mirabel-the-lining] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: isolde, type: TALK_TO, persona: isolde, say: ["she's weaving for you? she's mended my robes for years and never let me pay. careful with the drakes. tear it and i stitch you first."] }
+    - { id: drakes, type: KILL_MOBS, mobIds: [4130100], count: 30, mapIds: [105080000, 105090000] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000030, count: 15, dropFrom: { mobIds: [4130100], chance: 0.4 } }
+    - { id: weave, type: DELIVER, to: mirabel, take: { itemId: 4000030, count: 15 } }
+  rewards:
+    meso: 45000
+    exp: 40000
+    bondPoints: 60
+    gear:
+      - { pool: [1040087, 1041087, 1050045, 1051030, 1050051, 1051037, 1040094, 1041077, 1052116], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: mirabel-leaves-for-the-vat
+  persona: mirabel
+  title: "Leaves for the Vat"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 15 }, questsCompleted: [mirabel-a-robe-for-casse] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leaves, type: COLLECT_ITEM, itemId: 4000005, count: 20 }
+    - { id: vat, type: DELIVER, to: mirabel, take: { itemId: 4000005, count: 20 } }
+  rewards:
+    meso: 2500
+    exp: 1500
+    bondPoints: 10
+
+- id: silas-the-courier-coat
+  persona: silas
+  title: "The Courier's Coat"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leather, type: COLLECT_ITEM, itemId: 4000021, count: 10, dropFrom: { mobIds: [1210100, 1210101], chance: 0.4 } }
+    - { id: measure, type: TALK_TO, persona: vex, say: ["a coat? pockets. inside ones. lots. he won't ask what for. that's why i go to him."] }
+    - { id: back, type: DELIVER, to: silas, take: { itemId: 4000021, count: 10 } }
+  rewards:
+    meso: 2000
+    exp: 800
+    bondPoints: 30
+
+- id: silas-first-fitting
+  persona: silas
+  title: "First Fitting"
+  length: SHORT
+  requires: { level: { min: 18 }, friendship: 5, questsCompleted: [silas-the-courier-coat] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000034, count: 15 }
+    - { id: back, type: DELIVER, to: silas, take: { itemId: 4000034, count: 15 } }
+  rewards:
+    meso: 5000
+    exp: 3000
+    bondPoints: 35
+    gear:
+      - { pool: [1040012, 1041019, 1040018, 1041029, 1040003, 1041013, 1040042, 1041003, 1052101], scrolls: [{ success: 100 }] }
+
+- id: silas-good-linen
+  persona: silas
+  title: "Good Linen"
+  length: MEDIUM
+  requires: { level: { min: 30 }, friendship: 7, questsCompleted: [silas-first-fitting] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: tablecloths, type: COLLECT_ITEM, itemId: 4000035, count: 20 }
+    - { id: back, type: DELIVER, to: silas, take: { itemId: 4000035, count: 20 } }
+  rewards:
+    meso: 12000
+    exp: 10000
+    bondPoints: 50
+    gear:
+      - { pool: [1040028, 1041022, 1050002, 1041041, 1040067, 1041054, 1040057, 1041047, 1052107], scrolls: [{ success: 60 }] }
+
+- id: silas-the-pattern
+  persona: silas
+  title: "The Pattern Nobody Bought"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 10, questsCompleted: [silas-good-linen] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000033, count: 20 }
+    - { id: lorca, type: TALK_TO, persona: lorca, say: ["his pattern? i've offered him a fortune for it. 'not for sale.' everything's for sale. ...apparently not to me. don't sell it back. i'd pay."] }
+    - { id: back, type: DELIVER, to: silas, take: { itemId: 4000033, count: 20 } }
+  rewards:
+    meso: 80000
+    exp: 65000
+    bondPoints: 60
+    gear:
+      - { pool: [1040090, 1041091, 1050053, 1051044, 1050058, 1051041, 1040098, 1041094, 1052119], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: silas-starch
+  persona: silas
+  title: "Starch for the City"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 10 }, questsCompleted: [silas-the-courier-coat] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: goo, type: COLLECT_ITEM, itemId: 4000004, count: 15 }
+    - { id: return, type: DELIVER, to: silas, take: { itemId: 4000004, count: 15 } }
+  rewards:
+    meso: 1500
+    exp: 600
+    bondPoints: 10
+
+- id: hob-drawstrings
+  persona: hob
+  title: "Drawstrings"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: pigs, type: KILL_MOBS, mobIds: [1210101], count: 20 }
+    - { id: ribbons, type: COLLECT_ITEM, itemId: 4000002, count: 10 }
+    - { id: back, type: DELIVER, to: hob, take: { itemId: 4000002, count: 10 } }
+  rewards:
+    meso: 2500
+    exp: 1000
+    bondPoints: 30
+
+- id: hob-sailcloth-trousers
+  persona: hob
+  title: "Sailcloth Trousers"
+  length: SHORT
+  requires: { level: { min: 18 }, friendship: 5, questsCompleted: [hob-drawstrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: neckis, type: KILL_MOBS, mobIds: [2130103], count: 25, mapIds: [107000000, 107000001] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000034, count: 15 }
+    - { id: patches, type: DELIVER, to: hob, take: { itemId: 4000034, count: 15 } }
+  rewards:
+    meso: 5000
+    exp: 4500
+    bondPoints: 35
+    gear:
+      - { pool: [1060010, 1061016, 1060014, 1061027, 1062002, 1061024, 1060031, 1061003, 1052101], scrolls: [{ success: 100 }] }
+
+- id: hob-ghost-linen
+  persona: hob
+  title: "A Sailor's Charm"
+  length: MEDIUM
+  requires: { level: { min: 28 }, friendship: 7, questsCompleted: [hob-sailcloth-trousers] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: zombies, type: KILL_MOBS, mobIds: [2230101], count: 30, mapIds: [105050000, 105050100] }
+    - { id: charms, type: COLLECT_ITEM, itemId: 4000008, count: 15 }
+    - { id: cook, type: TALK_TO, persona: mirel, say: ["my apron's next, is it? he's said that for eleven years, love. ...he's sewing for you, though. that's new. now eat something."] }
+    - { id: waistband, type: DELIVER, to: hob, take: { itemId: 4000008, count: 15 } }
+  rewards:
+    meso: 14000
+    exp: 11000
+    bondPoints: 50
+    gear:
+      - { pool: [1060016, 1061015, 1050003, 1061034, 1060056, 1061050, 1060043, 1061043, 1052107], scrolls: [{ success: 60 }] }
+
+- id: hob-storm-canvas
+  persona: hob
+  title: "Storm Canvas"
+  length: LONG
+  requires: { level: { min: 38 }, friendship: 10, questsCompleted: [hob-ghost-linen] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: lorangs, type: KILL_MOBS, mobIds: [3230102], count: 30, mapIds: [110010000, 110020000, 110020001] }
+    - { id: claws, type: COLLECT_ITEM, itemId: 4000043, count: 15 }
+    - { id: deckhand, type: TALK_TO, persona: brannock, say: ["he's giving YOU the storm canvas? i've asked for three years! ...no. no, that's right. he picked right. it'll look great on you."] }
+    - { id: seams, type: DELIVER, to: hob, take: { itemId: 4000043, count: 15 } }
+  rewards:
+    meso: 30000
+    exp: 25000
+    bondPoints: 60
+    gear:
+      - { pool: [1060000, 1061083, 1050035, 1061047, 1060068, 1061080, 1060071, 1061069, 1052113], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: hob-shell-buttons
+  persona: hob
+  title: "Shell Buttons"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 10 }, questsCompleted: [hob-drawstrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: shells, type: COLLECT_ITEM, itemId: 4000016, count: 20 }
+    - { id: buttons, type: DELIVER, to: hob, take: { itemId: 4000016, count: 20 } }
+  rewards:
+    meso: 1500
+    exp: 600
+    bondPoints: 10
+
+- id: tilda-a-last-for-your-feet
+  persona: tilda
+  title: "A Last for Your Feet"
+  length: SHORT
+  requires: { level: { min: 18 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: masks, type: KILL_MOBS, mobIds: [2230110], count: 20 }
+    - { id: boards, type: COLLECT_ITEM, itemId: 4000196, count: 10 }
+    - { id: last, type: DELIVER, to: tilda, take: { itemId: 4000196, count: 10 } }
+  rewards:
+    meso: 4000
+    exp: 3000
+    bondPoints: 30
+
+- id: tilda-swamp-soles
+  persona: tilda
+  title: "Swamp Soles"
+  length: SHORT
+  requires: { level: { min: 28 }, friendship: 5, questsCompleted: [tilda-a-last-for-your-feet] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: ligators, type: KILL_MOBS, mobIds: [3110100], count: 25 }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000032, count: 15 }
+    - { id: boots, type: DELIVER, to: tilda, take: { itemId: 4000032, count: 15 } }
+  rewards:
+    meso: 10000
+    exp: 9000
+    bondPoints: 35
+    gear:
+      - { pool: [1072003, 1072075, 1072079, 1072032, 1072294], scrolls: [{ success: 100 }] }
+
+- id: tilda-heel-irons
+  persona: tilda
+  title: "Heel Irons"
+  length: MEDIUM
+  requires: { level: { min: 43 }, friendship: 7, questsCompleted: [tilda-swamp-soles] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hogs, type: KILL_MOBS, mobIds: [4230103], count: 30 }
+    - { id: hooves, type: COLLECT_ITEM, itemId: 4000039, count: 15 }
+    - { id: irons, type: DELIVER, to: tilda, take: { itemId: 4000039, count: 15 } }
+  rewards:
+    meso: 40000
+    exp: 35000
+    bondPoints: 50
+    gear:
+      - { pool: [1072000, 1072114, 1072118, 1072107, 1072300], scrolls: [{ success: 60 }] }
+
+- id: tilda-the-captains-pair
+  persona: tilda
+  title: "The Captain's Pair"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 10, questsCompleted: [tilda-heel-irons] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: kettle, type: TALK_TO, persona: kettle, say: ["dragon skin. she made the captain a pair like that. he walked off this ship in them. ...don't you walk off, sailor. aye?"] }
+    - { id: drakes, type: KILL_MOBS, mobIds: [6130100], count: 30 }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000030, count: 15, dropFrom: { mobIds: [6130100], chance: 0.4 } }
+    - { id: pair, type: DELIVER, to: tilda, take: { itemId: 4000030, count: 15 } }
+  rewards:
+    meso: 80000
+    exp: 70000
+    bondPoints: 60
+    gear:
+      - { pool: [1072147, 1072136, 1072144, 1072150, 1072306], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: tilda-sole-leather
+  persona: tilda
+  title: "Sole Leather"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 18 }, questsCompleted: [tilda-a-last-for-your-feet] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: leather, type: COLLECT_ITEM, itemId: 4000021, count: 15, dropFrom: { mobIds: [1210100, 1210101, 2230102], chance: 0.35 } }
+    - { id: return, type: DELIVER, to: tilda, take: { itemId: 4000021, count: 15 } }
+  rewards: { meso: 3000, exp: 1500, bondPoints: 10 }
+
+- id: hilde-leaves-for-the-pit
+  persona: hilde
+  title: "Leaves for the Pit"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stumps, type: KILL_MOBS, mobIds: [1110101], count: 20 }
+    - { id: leaves, type: COLLECT_ITEM, itemId: 4000005, count: 15 }
+    - { id: pit, type: DELIVER, to: hilde, take: { itemId: 4000005, count: 15 } }
+  rewards:
+    meso: 2000
+    exp: 1500
+    bondPoints: 30
+
+- id: hilde-your-measure
+  persona: hilde
+  title: "Your Measure"
+  length: SHORT
+  requires: { level: { min: 18 }, friendship: 5, questsCompleted: [hilde-leaves-for-the-pit] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [2230102], count: 30, mapIds: [101040001, 101030001] }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000021, count: 20, dropFrom: { mobIds: [2230102], chance: 0.5 } }
+    - { id: cut, type: DELIVER, to: hilde, take: { itemId: 4000021, count: 20 } }
+  rewards:
+    meso: 5000
+    exp: 5000
+    bondPoints: 35
+    gear:
+      - { pool: [1082004, 1082020, 1082012, 1082032, 1082183], scrolls: [{ success: 100 }] }
+
+- id: hilde-studs-from-the-burnt-land
+  persona: hilde
+  title: "Studs from the Burnt Land"
+  length: MEDIUM
+  requires: { level: { min: 38 }, friendship: 7, questsCompleted: [hilde-your-measure] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hogs, type: KILL_MOBS, mobIds: [4230103], count: 30, mapIds: [106000120, 106000130] }
+    - { id: hooves, type: COLLECT_ITEM, itemId: 4000039, count: 15 }
+    - { id: smith, type: TALK_TO, persona: yona, say: ["iron hog hooves. good iron, for a pig. studs by dark. ...and tell Hilde i'm still waiting on my forge gloves."] }
+    - { id: back, type: DELIVER, to: hilde, take: { itemId: 4000039, count: 15 } }
+  rewards:
+    meso: 25000
+    exp: 22000
+    bondPoints: 50
+    gear:
+      - { pool: [1082023, 1082062, 1082071, 1082074, 1082195], scrolls: [{ success: 60 }] }
+
+- id: hilde-the-guards-pattern
+  persona: hilde
+  title: "The Guard's Pattern"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [hilde-studs-from-the-burnt-land] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: captain, type: TALK_TO, persona: tamsin, say: ["the guard pattern. she cut it for my twelve, and stopped when they stopped coming home. wear them at the front. that's an order."] }
+    - { id: crocos, type: KILL_MOBS, mobIds: [5130103], count: 40, mapIds: [107000300, 107000400] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000033, count: 20 }
+    - { id: pattern, type: DELIVER, to: hilde, take: { itemId: 4000033, count: 20 } }
+  rewards:
+    meso: 50000
+    exp: 40000
+    bondPoints: 60
+    gear:
+      - { pool: [1082009, 1082080, 1082083, 1082065, 1082198], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: hilde-hides-for-the-rack
+  persona: hilde
+  title: "Hides for the Rack"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 10 }, questsCompleted: [hilde-leaves-for-the-pit] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000021, count: 15, dropFrom: { mobIds: [1210100, 1210101], chance: 0.35 } }
+    - { id: rack, type: DELIVER, to: hilde, take: { itemId: 4000021, count: 15 } }
+  rewards:
+    meso: 2500
+    exp: 1200
+    bondPoints: 10
+
+- id: wendell-cold-collars
+  persona: wendell
+  title: "Cold Collars"
+  length: SHORT
+  requires: { level: { min: 38 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: eyes, type: KILL_MOBS, mobIds: [4230100], count: 20, mapIds: [105040303] }
+    - { id: tails, type: COLLECT_ITEM, itemId: 4000023, count: 12 }
+    - { id: collars, type: DELIVER, to: wendell, take: { itemId: 4000023, count: 12 } }
+  rewards: { meso: 10000, exp: 9000, bondPoints: 30 }
+
+- id: wendell-a-cloak-for-the-road
+  persona: wendell
+  title: "A Cloak for the Road"
+  length: MEDIUM
+  requires: { level: { min: 48 }, friendship: 5, questsCompleted: [wendell-cold-collars] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drakes, type: KILL_MOBS, mobIds: [5130100, 4130100], count: 30, mapIds: [105080000] }
+    - { id: skins, type: COLLECT_ITEM, itemId: 4000030, count: 10, dropFrom: { mobIds: [5130100, 4130100], chance: 0.35 } }
+    - { id: fitting, type: DELIVER, to: wendell, take: { itemId: 4000030, count: 10 } }
+  rewards:
+    meso: 40000
+    exp: 35000
+    bondPoints: 35
+    gear:
+      - { pool: [1102000], scrolls: [{ success: 100 }] }
+
+- id: wendell-the-blue-that-holds
+  persona: wendell
+  title: "The Blue That Holds"
+  length: LONG
+  requires: { level: { min: 58 }, friendship: 7, questsCompleted: [wendell-a-cloak-for-the-road] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: cord, type: TALK_TO, persona: wilhelmina, say: ["his measuring cord. he leaves it here so the camp doesn't eat it. he's never made anyone a second. boots off next time."] }
+    - { id: drakes, type: KILL_MOBS, mobIds: [6230600], count: 30, mapIds: [105090311, 105090312] }
+    - { id: spines, type: COLLECT_ITEM, itemId: 4000185, count: 12 }
+    - { id: dye, type: DELIVER, to: wendell, take: { itemId: 4000185, count: 12 } }
+  rewards:
+    meso: 80000
+    exp: 70000
+    bondPoints: 50
+    gear:
+      - { pool: [1102015], scrolls: [{ success: 60 }] }
+
+- id: wendell-the-unfinished-cape
+  persona: wendell
+  title: "The Unfinished Cape"
+  length: LONG
+  requires: { level: { min: 73 }, friendship: 10, questsCompleted: [wendell-the-blue-that-holds] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: thane, type: TALK_TO, persona: thane, say: ["he started that cape for his brother. i guided that descent. one didn't come up. ...he finished it for you. come back up. i'll count you."] }
+    - { id: drakes, type: KILL_MOBS, mobIds: [6230601], count: 30, mapIds: [105090311, 105090312, 105090320] }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000186, count: 10 }
+    - { id: clasp, type: DELIVER, to: wendell, take: { itemId: 4000186, count: 10 } }
+  rewards:
+    meso: 140000
+    exp: 120000
+    bondPoints: 60
+    gear:
+      - { pool: [1102026], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: wendell-leather-for-the-next-ones
+  persona: wendell
+  title: "Hems for the Next Ones"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 38 }, questsCompleted: [wendell-cold-collars] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: feathers, type: COLLECT_ITEM, itemId: 4003004, count: 15 }
+    - { id: hems, type: DELIVER, to: wendell, take: { itemId: 4003004, count: 15 } }
+  rewards: { meso: 7000, exp: 5000, bondPoints: 10 }
+
+- id: opal-whose-earrings
+  persona: opal
+  title: "Whose Earrings?"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: mags, type: TALK_TO, persona: mags, say: ["Opal sent you? tell her they were a gift. who from costs more than you're drinking. ...she'll guess anyway. she always does."] }
+    - { id: bubbles, type: COLLECT_ITEM, itemId: 4000010, count: 10 }
+    - { id: back, type: DELIVER, to: opal, take: { itemId: 4000010, count: 10 } }
+  rewards:
+    meso: 2000
+    exp: 800
+    bondPoints: 30
+
+- id: opal-shiny-things
+  persona: opal
+  title: "Shiny Things"
+  length: SHORT
+  requires: { level: { min: 18 }, friendship: 5, questsCompleted: [opal-whose-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: stirges, type: KILL_MOBS, mobIds: [2300100], count: 25, mapIds: [103000102, 103000103, 103000104] }
+    - { id: report, type: DELIVER, to: opal }
+  rewards:
+    meso: 5000
+    exp: 3000
+    bondPoints: 35
+    gear:
+      - { pool: [1032000], scrolls: [{ success: 100 }] }
+
+- id: opal-real-sapphire
+  persona: opal
+  title: "A Real Sapphire"
+  length: MEDIUM
+  requires: { level: { min: 33 }, friendship: 7, questsCompleted: [opal-shiny-things] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: horns, type: COLLECT_ITEM, itemId: 4000067, count: 15 }
+    - { id: back, type: DELIVER, to: opal, take: { itemId: 4000067, count: 15 } }
+  rewards:
+    meso: 18000
+    exp: 15000
+    bondPoints: 50
+    gear:
+      - { pool: [1032002], scrolls: [{ success: 60 }] }
+
+- id: opal-the-skull-pair
+  persona: opal
+  title: "The Only Pair"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [opal-real-sapphire] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: drakes, type: KILL_MOBS, mobIds: [4130100, 5130100], count: 20 }
+    - { id: skulls, type: COLLECT_ITEM, itemId: 4000014, count: 15 }
+    - { id: dario, type: TALK_TO, persona: dario, say: ["skull earrings, by Opal, given and not sold. writing that down. ...first thing in this notebook that isn't a crime."] }
+    - { id: back, type: DELIVER, to: opal, take: { itemId: 4000014, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 42000
+    bondPoints: 60
+    gear:
+      - { pool: [1032012], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: opal-line-one-pearls
+  persona: opal
+  title: "Line One Pearls"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 10 }, questsCompleted: [opal-whose-earrings] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: bubbles, type: COLLECT_ITEM, itemId: 4000037, count: 15 }
+    - { id: return, type: DELIVER, to: opal, take: { itemId: 4000037, count: 15 } }
+  rewards:
+    meso: 1500
+    exp: 600
+    bondPoints: 10
+
+- id: brom-boards-for-the-diggers
+  persona: brom
+  title: "Dry Wood for the Diggers"
+  length: SHORT
+  requires: { level: { min: 10 } }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: firewood, type: COLLECT_ITEM, itemId: 4000018, count: 12 }
+    - { id: foreman, type: TALK_TO, persona: ossa, say: ["shields from Brom? he never quotes a price. tell him yes. the diggers will say they're heavy. diggers say everything's heavy."] }
+    - { id: back, type: DELIVER, to: brom, take: { itemId: 4000018, count: 12 } }
+  rewards:
+    meso: 2000
+    exp: 1500
+    bondPoints: 30
+
+- id: brom-a-promise-in-wood
+  persona: brom
+  title: "A Promise in Wood"
+  length: SHORT
+  requires: { level: { min: 18 }, friendship: 5, questsCompleted: [brom-boards-for-the-diggers] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: masks, type: KILL_MOBS, mobIds: [2230110], count: 30, mapIds: [101030101, 101030102, 101030103] }
+    - { id: boards, type: COLLECT_ITEM, itemId: 4000196, count: 15 }
+    - { id: back, type: DELIVER, to: brom, take: { itemId: 4000196, count: 15 } }
+  rewards:
+    meso: 5000
+    exp: 5000
+    bondPoints: 35
+    gear:
+      - { pool: [1092006, 1092021, 1092018], scrolls: [{ success: 100 }] }
+
+- id: brom-hide-that-took-the-fire
+  persona: brom
+  title: "Hide That Took the Fire"
+  length: MEDIUM
+  requires: { level: { min: 33 }, friendship: 7, questsCompleted: [brom-a-promise-in-wood] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: boars, type: KILL_MOBS, mobIds: [3210100], count: 30, mapIds: [106000101, 106000110] }
+    - { id: hides, type: COLLECT_ITEM, itemId: 4000021, count: 20, dropFrom: { mobIds: [3210100], chance: 0.5 } }
+    - { id: back, type: DELIVER, to: brom, take: { itemId: 4000021, count: 20 } }
+  rewards:
+    meso: 20000
+    exp: 16000
+    bondPoints: 50
+    gear:
+      - { pool: [1092007, 1092029], scrolls: [{ success: 60 }] }
+
+- id: brom-the-skull-shield
+  persona: brom
+  title: "The Skull Shield"
+  length: LONG
+  requires: { level: { min: 48 }, friendship: 10, questsCompleted: [brom-hide-that-took-the-fire] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: strap, type: TALK_TO, persona: hilde, say: ["the skull shield. half-made on his wall for years. ...so it's you. i'll cut the strap tonight. don't tell him i smiled."] }
+    - { id: drakes, type: KILL_MOBS, mobIds: [5130100], count: 40 }
+    - { id: skulls, type: COLLECT_ITEM, itemId: 4000014, count: 15 }
+    - { id: back, type: DELIVER, to: brom, take: { itemId: 4000014, count: 15 } }
+  rewards:
+    meso: 50000
+    exp: 40000
+    bondPoints: 60
+    gear:
+      - { pool: [1092004], scrolls: [{ success: 10, count: 2 }, { success: 60 }] }
+
+- id: brom-green-branches
+  persona: brom
+  title: "Green Branches"
+  length: SHORT
+  repeatable: true
+  requires: { level: { min: 10 }, questsCompleted: [brom-boards-for-the-diggers] }
+  steps:
+    - { id: talk, type: TALK }
+    - { id: branches, type: COLLECT_ITEM, itemId: 4000003, count: 20 }
+    - { id: back, type: DELIVER, to: brom, take: { itemId: 4000003, count: 20 } }
+  rewards:
+    meso: 2500
+    exp: 1200
+    bondPoints: 10

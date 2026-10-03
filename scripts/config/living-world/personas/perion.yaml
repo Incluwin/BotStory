@@ -17,7 +17,7 @@
       - { from: 0, to: 6, materialize: false }
   recruitable: true
   contract: garrick-blood-debt
-  questLines: [garrick-lost-badge, garrick-boar-cull]
+  questLines: [garrick-lost-badge, garrick-boar-cull, garrick-a-guards-helm, garrick-the-practice-blade, garrick-the-second-sword, garrick-the-blade-i-ran-with]
   arc: garrick-redemption
   rumors: [perion-campfire-confession]
   benchToleranceDays: 2
@@ -26,6 +26,7 @@
   relationships:
     - { persona: yona, kind: OWES }
     - { persona: tamsin, kind: DESERTED }
+  giftItemIds: [4011001, 4010001]
   dialogue:
     greetFirst: ["what.", "make it quick."]
     greet: ["you again.", "still here."]
@@ -54,6 +55,27 @@
     about.yona: ["Yona. i owe her a sword and an apology. she'll take the sword."]
     about.tamsin: ["the captain. she knows why i left. she won't say. neither will i."]
     aboutUnknown: ["never served with them."]
+    questOffer.garrick-a-guards-helm: ["your head's bare. that's how guards die. Yona will make you a helm if the bone is right. ten drake skulls. tell her it's for me. she'll understand or she won't."]
+    questAccept.garrick-a-guards-helm: ["the drakes nest past the excavation and down in the tunnels."]
+    questWaiting.garrick-a-guards-helm: ["ten skulls. and you go see Yona."]
+    questComplete.garrick-a-guards-helm: ["Yona made it. i scrolled it. we both owe you. don't make it a thing."]
+    questOffer.garrick-the-second-sword: ["i owe Yona a sword. she made me one once and i ran with it. she says she'll make two if the stone is right. dark golem rubble, fifteen. one of them's yours."]
+    questAccept.garrick-the-second-sword: ["the dark golems are in the sleepy dungeon. don't let them corner you."]
+    questWaiting.garrick-the-second-sword: ["fifteen. and you go see Yona first."]
+    questComplete.garrick-the-second-sword: ["she made it. seven sixties, i put them in myself, and every one took. Perion guard gave these to the ones they trusted. i'm not guard anymore. you get it anyway."]
+    friend.close: ["i trust you. haven't said that since Perion."]
+    friend.best: ["if they ever call me back to the guard, i'm bringing you. they won't. but i would."]
+    famed: ["...hm. don't do that in front of people."]
+    defamed: ["fair."]
+    gift: ["hm. thanks."]
+    gift.favorite: ["good steel. you know what matters."]
+    gift.again: ["one's enough."]
+    questOffer.garrick-the-practice-blade: ["i trained with this before the guard. Traus. it's yours if you clear thirty copper drakes from the excavation. i want to see your form."]
+    questAccept.garrick-the-practice-blade: ["don't swing wide. drakes punish wide."]
+    questComplete.garrick-the-practice-blade: ["seven scrolls, the safe kind. all took. a practice blade. don't practice on me."]
+    questOffer.garrick-the-blade-i-ran-with: ["Neocora. Perion gave it to me the day i made guard, and i ran with it. go tell Tamsin it's yours now. she should hear it from someone. then thirty dark golems. i want it to have one clean fight before it leaves me."]
+    questAccept.garrick-the-blade-i-ran-with: ["she'll be at the gate. she always is."]
+    questComplete.garrick-the-blade-i-ran-with: ["two tens and five sixties, every one took, years ago. i never earned it. you did. take it out of Perion."]
 
 - id: yona
   name: Yona
@@ -280,3 +302,275 @@
     questOffer.dust-rubble-run: ["twelve golem rubble for the collection? the ordinary grey. i'll pay in meso, not rocks. i keep the rocks."]
     questComplete.dust-rubble-run: ["twelve! this one has a stripe. look. LOOK."]
     aboutUnknown: ["not a rock. not interested."]
+
+- id: brunhild
+  name: Brunhild
+  look: { gender: female }
+  title: "Champion of the Burnt Land"
+  job: FIGHTER
+  level: { min: 38, max: 41 }
+  strength: VETERAN
+  loadout: perion-2h-sword-l38
+  personality: efficient-v1
+  home:
+    town: perion
+    routine:
+      - { from: 8, to: 14, spot: "venue:lower-square", activity: SHOW_OFF }
+      - { from: 14, to: 20, spot: "venue:market-approach", activity: SOCIALIZE }
+      - { from: 20, to: 24, spot: "rest:2", activity: REST }
+      - { from: 0, to: 8, materialize: false }
+  recruitable: true
+  contract: brunhild-champions-purse
+  questLines: [brunhild-stand-your-ground, brunhild-the-first-duel, brunhild-a-seasons-purses, brunhild-the-champions-sword, brunhild-teeth-for-the-wall]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: garrick, kind: RIVAL }
+    - { persona: corvin, kind: TEASES }
+  giftItemIds: [2010001, 2002004]
+  dialogue:
+    greetFirst: ["ha. a new face. can you swing, or do you just carry things?", "stand up straight. you're talking to the champion of the Burnt Land."]
+    greet: ["there you are. still standing? good.", "back for another story? i have hundreds. most of them are true."]
+    idle: ["(swings a sword as long as she is, slowly, so everyone can watch)", "(laughs at a joke she told an hour ago)"]
+    noWork: ["nothing for you today. go pick a fight with a boar and come tell me about it."]
+    nothingDue: ["you owe me nothing. a good story, maybe. later."]
+    who: ["Brunhild. champion of the Burnt Land. i've duelled every iron boar out there and i'm still here. they aren't."]
+    bye: ["walk tall.", "go on. come back with a scar worth showing me."]
+    thanks: ["don't mention it. no, mention it. to everyone."]
+    smallTalk: ["two hands on the hilt. one for the sword, one for the nerve.", "the boars in the Burnt Land charge anyone who stands still. i stand still on purpose."]
+    speakPlainly: ["plain? fine. hit hard, stand still, don't run. that's the whole lesson."]
+    offer: ["you want me at your side? forty thousand meso for eight hours of the best sword in Perion. a bargain. ha."]
+    join: ["finally. point me at something big.", "behind me, beside me, i don't care. just don't run."]
+    bench: ["i'll wait two days. then i'm back in the Burnt Land, telling the boars about you."]
+    leave: ["good fight. i'll tell it better than it happened. you'll like my version."]
+    refuse.bond: ["i don't swing beside strangers. show me you can stand your ground first."]
+    refuse.flags: ["the stumps first. everybody starts with the stumps. even me."]
+    refuseOwnErrand: ["that's your fight, not mine. i'll watch. i'll even cheer."]
+    questOffer.brunhild-stand-your-ground: ["everybody starts with the stumps. thirty dark axe stumps on East Rocky Mountain. then go stand at the edge of the Burnt Land."]
+    questAccept.brunhild-stand-your-ground: ["the stumps hit back. good. so should you. and at the Burnt Land, just stand. don't run."]
+    questComplete.brunhild-stand-your-ground: ["you stood at the edge of the Burnt Land and walked back. ha. that's how my story started. you'll do."]
+    questOffer.brunhild-the-first-duel: ["you've cut the little stumps. now the big one. Stumpy, on East Rocky Mountain V. beat him and the Lionheart on my back is yours."]
+    questAccept.brunhild-the-first-duel: ["he was my first real duel. slow and mean. plant your feet and swing on the breath out."]
+    questComplete.brunhild-the-first-duel: ["Stumpy's down. this Lionheart has been on my back since my first purse. seven sure scrolls, every one took. don't you dare sell it."]
+    questOffer.brunhild-a-seasons-purses: ["the Lion's Fang cost me a whole season of duel purses. forty iron boars in the deep Burnt Land, fifteen plates for proof. then it's yours."]
+    questAccept.brunhild-a-seasons-purses: ["past the fire boars, deeper in. iron boars charge in pairs. let them come."]
+    questWaiting.brunhild-a-seasons-purses: ["fifteen iron boar plates. i want proof, not a story. i tell the stories."]
+    questComplete.brunhild-a-seasons-purses: ["fifteen plates. ha. i bought the Fang for the day i'd grow into it. seven sixties, every one took. you grew first. it's yours."]
+    questOffer.brunhild-the-champions-sword: ["Sparta. the prize that came with my title, on my wall ever since. tell Garrick it's leaving. then forty red drakes under Sleepywood."]
+    questAccept.brunhild-the-champions-sword: ["Garrick sits up on the ledge like a gargoyle. then the tunnels. red drakes breathe fire. so do i."]
+    questComplete.brunhild-the-champions-sword: ["you came out of the fire. ...no joke this time. two tens, five sixties, every one took. i was saving its first swing. it's yours."]
+    questOffer.brunhild-teeth-for-the-wall: ["anyone who stands their ground against me gets a fire boar tooth on my wall, name scratched under it. i'm out of teeth. fifteen."]
+    questAccept.brunhild-teeth-for-the-wall: ["fire boars, the Burnt Land. they bite. bite back."]
+    questWaiting.brunhild-teeth-for-the-wall: ["fifteen fire boar teeth. i count them out loud. everyone hears."]
+    questComplete.brunhild-teeth-for-the-wall: ["fifteen. that's fifteen more names on the wall. yours is at the top. i moved it."]
+    friend.close: ["you've stood your ground every single time. i've told the whole square. twice."]
+    friend.best: ["if anyone asks who the champion of the Burnt Land is, i'll say both of us. i've never shared a title. i'm sharing this one."]
+    famed: ["ha. fame, for me? i'll take it. i'll take it loudly."]
+    defamed: ["bold. i like bold. say it again in the Burnt Land, with a sword in your hands."]
+    gift: ["for me? i'm telling everyone."]
+    gift.favorite: ["now that's a fighter's gift. sit down, we'll split it. i insist."]
+    gift.again: ["another one? i'm generous, not greedy. tomorrow."]
+    about.garrick: ["Garrick. best sword-arm the guard ever had. i put him on his back once. then he quit the guard and climbed a ledge. i'm still waiting."]
+    about.corvin: ["Corvin logs every duel i fight in the square. i've read them. 'loud. won.' best reviews in Perion."]
+    aboutUnknown: ["never crossed swords with them. tell them i'm looking."]
+
+- id: corvin
+  name: Corvin
+  look: { gender: male }
+  title: "Watch Spearman of the West Gate"
+  job: SPEARMAN
+  level: { min: 35, max: 38 }
+  strength: SEASONED
+  loadout: perion-spear-l35
+  personality: efficient-v1
+  home:
+    town: perion
+    routine:
+      - { from: 5, to: 13, spot: "venue:west-gate", activity: LINGER }
+      - { from: 13, to: 17, spot: "venue:lower-square", activity: STROLL }
+      - { from: 17, to: 21, spot: "rest:0", activity: REST }
+      - { from: 21, to: 5, materialize: false }
+  recruitable: true
+  contract: corvin-leave-of-duty
+  questLines: [corvin-the-night-log, corvin-the-duty-spear, corvin-three-years-pay, corvin-the-morning-after, corvin-mend-the-post]
+  benchToleranceDays: 2
+  paceGap: 3
+  relationships:
+    - { persona: tamsin, kind: REPORTS_TO }
+    - { persona: garrick, kind: SERVED_WITH }
+  giftItemIds: [2020014, 2022001]
+  dialogue:
+    greetFirst: ["halt. name and business. ...noted. proceed into Perion.", "entry: one traveller, unknown. ...welcome to Perion. i will need you to spell your name."]
+    greet: ["report: you have returned. good.", "the watch notes your arrival. so do i."]
+    idle: ["(writes one short line in a worn log book)", "(stands at attention for nobody in particular)"]
+    noWork: ["report: no tasks outstanding. the log is up to date. i checked it twice."]
+    nothingDue: ["your account with the watch is clear. nothing owed in either direction."]
+    who: ["Corvin. watch spearman, west gate, Perion guard. one of four. the captain counts us every morning."]
+    bye: ["dismissed. ...i mean, safe roads."]
+    thanks: ["acknowledged. thank you."]
+    smallTalk: ["six years on this gate. every day is in the log. some days the whole entry is 'wind'.", "the west road brings dust, spores and travellers. the log has a column for each.", "the champion duels in the lower square most mornings. i log it. the entry is always 'loud. won.'"]
+    speakPlainly: ["plainly, then. it is not my habit. i will try."]
+    offer: ["escort request considered. thirty-six thousand meso for eight hours of my spear. the captain will be informed. she always is."]
+    join: ["leave of duty granted. falling in at your flank.", "on your lead. i hold the line behind you."]
+    bench: ["i will return to the gate and wait two days. after that the gate needs me more than you do."]
+    leave: ["contract concluded. it was an honour. i will log it as one."]
+    refuse.bond: ["negative. i do not leave the gate with someone the watch has no record of."]
+    refuse.flags: ["the night log first. the watch trusts what is written, then who wrote it."]
+    refuseOwnErrand: ["that task is assigned to you. i cannot do it and also report it done."]
+    questOffer.corvin-the-night-log: ["report: zombie mushrooms on West Rocky Mountain IV, drifting at the gate after dark. clear thirty. ten charms of the undead as evidence."]
+    questAccept.corvin-the-night-log: ["the fourth rise of the west road. they are slow. do not let slow make you careless."]
+    questWaiting.corvin-the-night-log: ["ten charms of the undead. the entry cannot be signed without them."]
+    questComplete.corvin-the-night-log: ["thirty cleared, ten charms received. good work. ...very good work. i wrote your name in the margin. that is a compliment."]
+    questOffer.corvin-the-duty-spear: ["report: jr. boogies in the Land of Wild Boar, driving the herds onto the road. clear thirty, and my duty spear is yours. paperwork is done."]
+    questAccept.corvin-the-duty-spear: ["they rise out of nothing. keep your back to a rock and your point low."]
+    questComplete.corvin-the-duty-spear: ["thirty, confirmed. this Nakamaki stood every watch with me for four years. seven certain scrolls, all seven took. look after it."]
+    questOffer.corvin-three-years-pay: ["the Serpent's Tongue cost me three years of watch pay. inform Halvard he can stop asking. then forty mummydogs, fifteen bandages."]
+    questAccept.corvin-three-years-pay: ["Halvard keeps the lower square by day. then the Remains, past the excavation. mummydogs do not tire. pace yourself."]
+    questWaiting.corvin-three-years-pay: ["fifteen dirty bandages, and Halvard informed. he has asked to buy it every month for three years."]
+    questComplete.corvin-three-years-pay: ["seven sixties, one each dawn, every one took. i was saving it for the day i made sergeant. there is no sergeant. there is you."]
+    questOffer.corvin-the-morning-after: ["the Holy Spear. the captain's gift, the morning after the gate held. tell her where it goes. then forty skeleton soldiers. one last watch."]
+    questAccept.corvin-the-morning-after: ["the captain holds the west gate from dawn to dawn. report to her there first. the skeletons hold the Remains."]
+    questComplete.corvin-the-morning-after: ["no report this time. two tens, five sixties, every one took. i never carried it. afraid to dull it. you carry it. i stand beside you."]
+    questOffer.corvin-mend-the-post: ["report: the west watch post leaks. rain gets on the log. the rocky masks at the excavation drop good slate. fifteen, for the roof."]
+    questAccept.corvin-mend-the-post: ["Excavation Site, the deeper digs. the rocky masks. collect what breaks off."]
+    questWaiting.corvin-mend-the-post: ["fifteen slates. until then the log stays under my coat."]
+    questComplete.corvin-mend-the-post: ["fifteen slates. the roof holds. logged: repaired, with help. i put your name in. i always put your name in now."]
+    friend.close: ["report: i consider you a friend. that is not in the log. it is not the log's business."]
+    friend.best: ["if the gate ever falls, i hold it for you first. that is not a report. it is a promise."]
+    famed: ["...recorded. with gratitude. i do not know what to do with my hands."]
+    defamed: ["noted. i will review my conduct tonight. thoroughly."]
+    gift: ["a gift. for the watch? for me. ...thank you."]
+    gift.favorite: ["this is what gets me through the dawn watch. you noticed. nobody notices the dawn watch."]
+    gift.again: ["one is kind. two is a bribe. the watch accepts no bribes. tomorrow."]
+    about.tamsin: ["the captain. she counts us every morning. four. she says it like it is still twelve."]
+    about.garrick: ["i stood beside Garrick the night the gate held. in the morning his post was empty. i logged both. the log does not ask why. i do."]
+    aboutUnknown: ["no record of them at the gate."]
+
+- id: hilde
+  name: Hilde
+  look: { gender: female }
+  title: "Leatherworker"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: perion
+    routine:
+      - { from: 7, to: 13, spot: "venue:market-approach", activity: LINGER }
+      - { from: 13, to: 19, spot: "venue:lower-square", activity: LINGER }
+      - { from: 19, to: 22, spot: "rest:2", activity: REST }
+      - { from: 22, to: 7, materialize: false }
+  recruitable: false
+  questLines: [hilde-leaves-for-the-pit, hilde-your-measure, hilde-studs-from-the-burnt-land, hilde-the-guards-pattern, hilde-hides-for-the-rack]
+  relationships:
+    - { persona: brom, kind: FRIEND }
+    - { persona: tamsin, kind: SUPPLIES }
+    - { persona: yona, kind: RESPECTS }
+  giftItemIds: [4000021, 2010001]
+  dialogue:
+    greetFirst: ["show me your hands. ...soft. figures.", "you want gloves, you work for them. that's the price."]
+    greet: ["you. hands still whole? good.", "back. sit if you're staying. don't touch the hides."]
+    idle: ["(pulls a stitch tight with her teeth)", "(works oil into a hide with both thumbs)"]
+    noWork: ["nothing for you. the hides are curing."]
+    nothingDue: ["we're even. i like even."]
+    who: ["Hilde. leather. gloves, mostly. honest ones."]
+    bye: ["keep your hands dry."]
+    thanks: ["don't thank me. wear them."]
+    smallTalk: ["a glove that slips gets you killed. mine don't slip.", "boar hide's tough. fire boar's tougher. people are the softest thing in Perion."]
+    speakPlainly: ["plain is all i've got."]
+    questOffer.hilde-leaves-for-the-pit: ["want my gloves? then i watch your hands work first. the tanning pit needs leaves. twenty dark stumps down, fifteen leaves back."]
+    questAccept.hilde-leaves-for-the-pit: ["dark stumps walk the woods round Ellinia. whole leaves. torn ones tan wrong."]
+    questWaiting.hilde-leaves-for-the-pit: ["fifteen leaves. whole ones."]
+    questComplete.hilde-leaves-for-the-pit: ["good leaves. you didn't cut corners. come back when your hands are harder."]
+    questOffer.hilde-your-measure: ["i've watched you work. i know your measure now. a first pair wants boar hide. thirty wild boars, twenty hides back."]
+    questAccept.hilde-your-measure: ["the Land of Wild Boar, past Perion Street Corner. skin them clean."]
+    questWaiting.hilde-your-measure: ["twenty hides. then you sit, and i cut."]
+    questComplete.hilde-your-measure: ["your first pair. five scrolls, no risk in any of them. all took. ...i don't cut for strangers. you're not one."]
+    questOffer.hilde-studs-from-the-burnt-land: ["your gloves are good. good won't do where you're going. fifteen iron hog hooves from the Burnt Land. Yona makes the studs."]
+    questAccept.hilde-studs-from-the-burnt-land: ["thirty hogs should give you fifteen hooves. show Yona before you come back."]
+    questWaiting.hilde-studs-from-the-burnt-land: ["fifteen hooves. and Yona's word on the studs."]
+    questComplete.hilde-studs-from-the-burnt-land: ["five sixties. every one took. i counted the stitches after each one. twice. ...best pair i've cut in years."]
+    questOffer.hilde-the-guards-pattern: ["there's a pattern i only cut for the guard. i stopped. i'll cut it once more, for you. twenty croco skins. tell Tamsin first."]
+    questAccept.hilde-the-guards-pattern: ["crocos lie past the Swamp of Despair, out from Kerning City. they bite. so do i, when the stitching's wrong."]
+    questWaiting.hilde-the-guards-pattern: ["twenty croco skins. and Tamsin hears it from you. then i cut."]
+    questComplete.hilde-the-guards-pattern: ["two tens, three sixties. every one took. my hands shook on the tens. they never shake. ...the guard's pattern. it's yours now."]
+    questOffer.hilde-hides-for-the-rack: ["the rack's empty. fifteen hides. any honest beast."]
+    questAccept.hilde-hides-for-the-rack: ["pigs, boars, lupins. leather's leather."]
+    questWaiting.hilde-hides-for-the-rack: ["fifteen hides. the rack's waiting."]
+    questComplete.hilde-hides-for-the-rack: ["good. rack's full. that's a week of gloves."]
+    friend.close: ["i don't let people watch me cut. you can watch."]
+    friend.best: ["i measured your hands once. i don't need to anymore. i know them."]
+    famed: ["fame doesn't stitch anything. ...thank you, though."]
+    defamed: ["earned or not. my gloves still fit."]
+    gift: ["i'll use that. thank you."]
+    gift.favorite: ["that's honest stuff. you pay attention."]
+    gift.again: ["you gave already. any more and we're not even."]
+    about.brom: ["Brom. big hands, slow mouth, best shields on the island. i cut his straps. he won't let anyone else."]
+    about.tamsin: ["the captain. i made gloves for her twelve. she buys four pairs now."]
+    aboutUnknown: ["never fitted them."]
+
+- id: brom
+  name: Brom
+  look: { gender: male }
+  title: "Shieldwright"
+  job: BEGINNER
+  level: { min: 30, max: 30 }
+  strength: ROOKIE
+  loadout: beginner-townsfolk
+  personality: relaxed-v1
+  home:
+    town: perion
+    routine:
+      - { from: 6, to: 12, spot: "venue:lower-square", activity: LINGER }
+      - { from: 12, to: 20, spot: "venue:market-approach", activity: SOCIALIZE }
+      - { from: 20, to: 23, spot: "rest:0", activity: REST }
+      - { from: 23, to: 6, materialize: false }
+  recruitable: false
+  questLines: [brom-boards-for-the-diggers, brom-a-promise-in-wood, brom-hide-that-took-the-fire, brom-the-skull-shield, brom-green-branches]
+  relationships:
+    - { persona: hilde, kind: FRIEND }
+    - { persona: ossa, kind: SUPPLIES }
+  giftItemIds: [4003001, 2020002]
+  dialogue:
+    greetFirst: ["oh. hello. ...take your time. i do.", "you came all the way up here. sit, if you like. the bench holds. i made it."]
+    greet: ["oh. there you are. ...good. that's good.", "hello again. ...no rush. there's never a rush."]
+    idle: ["(runs a big thumb along a shield rim, feeling for splinters)", "(hums something slow and low)"]
+    noWork: ["nothing today. every shield's spoken for. ...that's a good day."]
+    nothingDue: ["you don't owe me. nobody owes a shieldwright. that's the point."]
+    who: ["Brom. i make shields. ...a shield is a promise to whoever stands behind you. so i make promises."]
+    bye: ["mind your back. ...or let someone mind it for you."]
+    thanks: ["oh. ...you're welcome. very welcome."]
+    smallTalk: ["not every hand carries a shield. bows want both hands. that's all right. i still like archers.", "Hilde says i talk too slow. i say she talks too little. we meet in the middle. at lunch."]
+    speakPlainly: ["plain. yes. i can do plain. it's fast i can't do."]
+    questOffer.brom-boards-for-the-diggers: ["Ossa's diggers need shields. ...i need dry wood. the axe stumps on East Rocky Mountain carry it. twelve. tell Ossa they're coming."]
+    questAccept.brom-boards-for-the-diggers: ["thank you. ...take your time. wood that's rushed splits."]
+    questWaiting.brom-boards-for-the-diggers: ["twelve pieces of firewood. ...and did Ossa hear it from you?"]
+    questComplete.brom-boards-for-the-diggers: ["twelve. dry and straight. ...the diggers will have shields by the week's end. that's a promise. part of it's yours now."]
+    questOffer.brom-a-promise-in-wood: ["you've a good back. ...it wants something in front of it. the masks at the excavation are old boards. fifteen, and i'll make you a shield."]
+    questAccept.brom-a-promise-in-wood: ["the Excavation Site. the wooden masks. ...they don't need those boards anymore. i asked."]
+    questWaiting.brom-a-promise-in-wood: ["fifteen wooden boards. ...the old kind, off the masks."]
+    questComplete.brom-a-promise-in-wood: ["here. seven scrolls, the gentle kind that never fail. all seven took. ...it's a promise, from me to you. keep it in front."]
+    questOffer.brom-hide-that-took-the-fire: ["a shield should be braver than its holder. ...fire boar hide has been through fire. it won't flinch. thirty fire boars, twenty hides."]
+    questAccept.brom-hide-that-took-the-fire: ["the fire boars run the Burnt Land. it's hot out there. ...bring water. i mean it."]
+    questWaiting.brom-hide-that-took-the-fire: ["twenty hides. ...the fire boars' are the brave ones."]
+    questComplete.brom-hide-that-took-the-fire: ["seven sixties. ...every one took. i held my breath seven times. i'm a big man. that's a lot of breath. it's yours."]
+    questOffer.brom-the-skull-shield: ["the skull shield. it's sat half-made on my wall for years, waiting for someone worth standing behind. ...you. fifteen drake skulls."]
+    questAccept.brom-the-skull-shield: ["drakes nest in the tunnels under Sleepywood. see Hilde first. she cuts the strap. ...and come back whole. that's the only price."]
+    questWaiting.brom-the-skull-shield: ["fifteen drake skulls. ...and Hilde knows? good."]
+    questComplete.brom-the-skull-shield: ["two tens, five sixties. every one took. i didn't sleep. ...it waited years for someone worth standing behind. it's yours."]
+    questOffer.brom-green-branches: ["rims want green branches. they bend before they dry. twenty, from the stumps round Perion?"]
+    questAccept.brom-green-branches: ["the stumps in the East Domain. ...green ones. brown ones snap."]
+    questWaiting.brom-green-branches: ["twenty branches. ...no hurry. well. a little hurry. they dry."]
+    questComplete.brom-green-branches: ["twenty. new rims for every shield at the gate. ...all four of them. thank you, friend."]
+    friend.close: ["i'd stand in front of you. ...i don't carry a shield myself. i'd stand there anyway."]
+    friend.best: ["every shield i make now, i ask: would this hold for my friend. ...that's you. that's the test."]
+    famed: ["oh. ...for me? that's... thank you. i'm going to go sit down."]
+    defamed: ["that's all right. i've been hit harder. by shields. mine."]
+    gift: ["for me? ...you didn't have to. thank you."]
+    gift.favorite: ["oh... that's exactly the thing. you listen. people don't, mostly."]
+    gift.again: ["you already gave me one. ...keep this for yourself, friend. please."]
+    about.hilde: ["Hilde cuts my straps. ...she doesn't smile much. she smiles at good stitching. i've seen it twice."]
+    about.ossa: ["Ossa's diggers carry my shields. plain wood. ...the drakes don't care how pretty."]
+    aboutUnknown: ["i haven't made them a shield. ...yet."]

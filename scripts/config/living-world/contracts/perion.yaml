@@ -32,3 +32,33 @@
     leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
     cooldownHoursAfterLeave: 2
     rejoinPrice: { meso: 10000 }
+
+- id: brunhild-champions-purse
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [brunhild.intro.done]
+  price:
+    meso: 40000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 16000 }
+
+- id: corvin-leave-of-duty
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [corvin.intro.done]
+  price:
+    meso: 36000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 14000 }

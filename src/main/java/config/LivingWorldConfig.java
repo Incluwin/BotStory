@@ -62,6 +62,31 @@ public class LivingWorldConfig {
     public int BOND_ACQUAINTED_POINTS = 25;
     public int BOND_TRUSTED_POINTS = 75;
     public int BOND_SWORN_POINTS = 150;
+
+    // Friendship: a 1-10 meter over the same bond points (server.living.bond.Friendship)
+    /** Bond points at which friendship levels 1..10 begin (7 = Close friend, 10 = Best friend). */
+    public String FRIENDSHIP_LEVEL_POINTS = "1,25,50,75,110,150,200,260,330,400";
+    /** Points for famed (and minus for defamed) by a player; the game allows it once a month per target. */
+    public int FRIENDSHIP_FAME_POINTS = 8;
+    /** Points for a gift from the Resident's menu, and for one of its favourites ({@code giftItemIds}). */
+    public int FRIENDSHIP_GIFT_POINTS = 2;
+    public int FRIENDSHIP_GIFT_FAVORITE_POINTS = 6;
+    /** Gifts a Resident takes from one player per day (in ROUTINE_ZONE); later ones it turns down. */
+    public int FRIENDSHIP_GIFTS_PER_DAY = 1;
+    /** Points for a party quest cleared with the Resident in the party, counted this many times a day. */
+    public int FRIENDSHIP_PQ_POINTS = 10;
+    public int FRIENDSHIP_PQ_PER_DAY = 3;
+    /** Points for a boss killed with the Resident in the party on its map, counted this many times a day. */
+    public int FRIENDSHIP_BOSS_POINTS = 15;
+    public int FRIENDSHIP_BOSS_PER_DAY = 3;
+    /**
+     * Per friendship level 1..10, the percent of a reward armour piece's slots a friend's 60% and 10% scrolls take
+     * (0 = the friend does not use that grade yet). 100% scrolls always take. The friend scrolls with whichever grade
+     * gives the better item for the player's job, so the result never gets worse as the level rises. A giver's own
+     * weapon follows its authored recipe instead.
+     */
+    public String FRIENDSHIP_SCROLL_TAKES_60 = "0,0,0,70,80,95,100,100,100,100";
+    public String FRIENDSHIP_SCROLL_TAKES_10 = "0,0,0,0,0,0,45,60,75,90";
     /** Minutes a contract offer stays open once stated. */
     public int CONTRACT_OFFER_MINUTES = 10;
     /** Owner offline this long -> active companions are benched. */
@@ -254,6 +279,35 @@ public class LivingWorldConfig {
         return java.util.Collections.unmodifiableSet(ids);
     }
 
+    /** {@link #FRIENDSHIP_LEVEL_POINTS}: index 0 is level 1. */
+    public int[] friendshipLevelPoints() {
+        return tenInts("FRIENDSHIP_LEVEL_POINTS", FRIENDSHIP_LEVEL_POINTS);
+    }
+
+    public int[] friendshipScrollTakes60() {
+        return tenInts("FRIENDSHIP_SCROLL_TAKES_60", FRIENDSHIP_SCROLL_TAKES_60);
+    }
+
+    public int[] friendshipScrollTakes10() {
+        return tenInts("FRIENDSHIP_SCROLL_TAKES_10", FRIENDSHIP_SCROLL_TAKES_10);
+    }
+
+    private static int[] tenInts(String key, String value) {
+        String[] parts = value == null ? new String[0] : value.split(",");
+        if (parts.length != 10) {
+            throw new IllegalArgumentException("living_world." + key + " needs 10 comma-separated numbers (levels 1-10)");
+        }
+        int[] out = new int[10];
+        for (int i = 0; i < 10; i++) {
+            try {
+                out[i] = Integer.parseInt(parts[i].trim());
+            } catch (NumberFormatException bad) {
+                throw new IllegalArgumentException("living_world." + key + ": '" + parts[i].trim() + "' is not a number");
+            }
+        }
+        return out;
+    }
+
     public void validate() {
         if (WORLD < 0 || CHANNEL < 1) {
             throw new IllegalArgumentException("living_world.WORLD must be >= 0 and CHANNEL >= 1");
@@ -276,6 +330,19 @@ public class LivingWorldConfig {
         }
         if (BOND_ACQUAINTED_POINTS >= BOND_TRUSTED_POINTS || BOND_TRUSTED_POINTS >= BOND_SWORN_POINTS) {
             throw new IllegalArgumentException("living_world bond thresholds must increase");
+        }
+        int[] levelPoints = friendshipLevelPoints();
+        for (int level = 1; level < levelPoints.length; level++) {
+            if (levelPoints[level] <= levelPoints[level - 1]) {
+                throw new IllegalArgumentException("living_world.FRIENDSHIP_LEVEL_POINTS must increase");
+            }
+        }
+        for (int[] takes : new int[][] {friendshipScrollTakes60(), friendshipScrollTakes10()}) {
+            for (int percent : takes) {
+                if (percent < 0 || percent > 100) {
+                    throw new IllegalArgumentException("living_world.FRIENDSHIP_SCROLL_TAKES_* must be percents 0..100");
+                }
+            }
         }
         if (COMPANION_PER_HUMAN < 0 || COMPANION_PER_HUMAN > 5) {
             throw new IllegalArgumentException("living_world.COMPANION_PER_HUMAN must be within 0..5");

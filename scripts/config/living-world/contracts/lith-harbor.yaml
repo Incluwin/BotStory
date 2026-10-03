@@ -30,3 +30,18 @@
     leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
     cooldownHoursAfterLeave: 12
     rejoinPrice: { meso: 12000 }
+
+- id: ingrid-shore-leave
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [ingrid.intro.done]
+  price:
+    meso: 30000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 12000 }

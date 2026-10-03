@@ -30,3 +30,18 @@
     leavesOn: [DISMISS, LEADER_OFFLINE_20M]
     cooldownHoursAfterLeave: 3
     rejoinPrice: { meso: 5000 }
+
+- id: magna-day-rate
+  offerWhen:
+    bondStage: ACQUAINTED
+    flags: [magna.intro.done]
+  price:
+    meso: 40000
+  terms:
+    durationHours: 8
+    maxLevelGap: 15
+    lootShare: OWN_DROPS
+    ownDropsPercent: 10
+    leavesOn: [DISMISS, LEADER_OFFLINE_20M, CONTRACT_END]
+    cooldownHoursAfterLeave: 12
+    rejoinPrice: { meso: 16000 }

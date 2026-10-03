@@ -55,6 +55,7 @@ public final class GiveFameHandler extends AbstractPacketHandler {
                 if (!player.isGM()) {
                     player.hasGivenFame(target);
                 }
+                server.living.LivingWorldHooks.famed(player, target, famechange);
             } else {
                 player.message("Could not process the request, since this character currently has the minimum/maximum level of fame.");
             }
