@@ -7,6 +7,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
+import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.util.List;
@@ -54,8 +55,9 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
 
     /**
      * On the Agent's tick, from memory: the spot the owner's companion waits at while the owner stands at an entry NPC
-     * kept clear of followers (PqEntrance.waitingSpot), one spot per companion in the order they came out; null on
-     * every other map (the fast path), for anyone else's follower, and while her desk does not serve the park.
+     * kept clear of followers (PqEntrance.keptClearAt), the extras' spots (PqEntrance.beside), one per companion in the
+     * order they came out; null on every other map (the fast path), while the owner is anywhere else on hers (the next
+     * fastest: her spot is known once found), for anyone else's follower, and while her desk does not serve the park.
      */
     @Override
     public Point waitsAt(int agentCharacterId, Character anchor) {
@@ -67,13 +69,17 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
         if (!roster.hasCompanions(anchor)) {
             return null;
         }
+        MapleMap map = anchor.getMap();
+        Point at = entrance.keptClearAt(map, anchor.getPosition());
+        if (at == null) {
+            return null;
+        }
         Persona persona = world.residents().personaOfCharacterId(agentCharacterId);
         if (persona == null || roster.cachedOwnerOf(persona.id()) != anchor.getId()
                 || !world.config().companionPqEnabled(entrance.key()) || entrance.backgroundRuns()) {
             return null;
         }
-        return entrance.waitingSpot(anchor.getMap(), anchor.getPosition(),
-                standingOrder(anchor.getId(), agentCharacterId));
+        return entrance.beside(map, at, standingOrder(anchor.getId(), agentCharacterId));
     }
 
     /** The companion's place among the owner's loaded Agents, in the order they came out (0 when it is not found). */

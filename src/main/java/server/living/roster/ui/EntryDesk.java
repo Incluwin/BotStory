@@ -138,7 +138,7 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
             }
         }
         if (plan.blocker() != null) {
-            lines.add("#rBefore I can let you in:#k " + plan.blocker());
+            lines.add("#r" + voice.blockerHeader() + "#k " + plan.blocker());
         }
         return String.join("\r\n", lines) + "\r\n";
     }

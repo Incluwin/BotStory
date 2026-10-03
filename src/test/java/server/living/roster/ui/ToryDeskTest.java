@@ -192,7 +192,7 @@ class ToryDeskTest {
         Talk two = lastTalk();
         assertTrue(two.text().startsWith(TITLE + "\r\nHere's who is with you:\r\n#bBen#k (leader)\r\n"
                 + "#bAnn#k, Lv14 Archer\r\n"), two.text());
-        assertTrue(two.text().contains("#rBefore I can let you in:#k " + TOO_FEW + "\r\n"), two.text());
+        assertTrue(two.text().contains("#rBefore I can send you up:#k " + TOO_FEW + "\r\n"), two.text());
         assertFalse(two.labels().contains("Yes, send us in."), two.labels().toString());
     }
 

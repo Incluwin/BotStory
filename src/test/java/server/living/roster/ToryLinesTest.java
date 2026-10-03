@@ -36,7 +36,7 @@ class ToryLinesTest {
     private static final String LEADER_ONLY = "Only your party leader can sign you up.";
     private static final String THIS_CHANNEL = "Everyone needs to be on this channel.";
     private static final String SIX_AT_MOST = "I can only send three to six of you up the hill.";
-    private static final String GENERIC = "Something went wrong at the door. Try again in a moment.";
+    private static final String GENERIC = "Something went wrong. Try again in a moment.";
 
     // ---- admission ---------------------------------------------------------------------------
 
@@ -113,6 +113,8 @@ class ToryLinesTest {
         assertEquals("I need at least three of you, all level 10 or higher.", tory.tooFew());
         assertEquals("here! ready for tory when you are.", tory.arrivalLine());
         assertNull(tory.backAfterReroll(), "the KPQ re-roll never reaches Tory");
+        assertEquals("Before I can send you up:", tory.blockerHeader());
+        assertEquals(GENERIC, tory.generic(), "no door in the park");
     }
 
     // ---- how long the hill should take -----------------------------------------------------
@@ -216,7 +218,8 @@ class ToryLinesTest {
             said.add(tory.lineupHeader(size));
         }
         said.addAll(List.of(tory.npcName(), tory.title(), tory.whoGoesIn(), tory.atMost(), tory.benchPrompt(),
-                tory.arrivalLine(), tory.notAtEntrance(), tory.sizeRule(), tory.tooFew()));
+                tory.arrivalLine(), tory.notAtEntrance(), tory.sizeRule(), tory.tooFew(), tory.blockerHeader(),
+                tory.generic()));
         for (PqEntryPort.Start start : PqEntryPort.Start.values()) {
             said.add(tory.forStart(start));
         }

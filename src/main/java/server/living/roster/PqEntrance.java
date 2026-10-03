@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntFunction;
@@ -78,6 +79,11 @@ public final class PqEntrance {
     private final BooleanSupplier backgroundRuns;
     private final Beside beside;
     private final KeepClear keepClear;
+    /**
+     * Where the entry NPC kept clear of followers stands, by the map instance she was found on: looked for once per map
+     * (MapleMap.getNPCById copies every object on it under its lock, and she never moves), not on every follow tick.
+     */
+    private final Map<MapleMap, Point> keptClearSpots = Collections.synchronizedMap(new WeakHashMap<>());
 
     /** Where the {@code index}th extra waits from the entry NPC: {@code dx + step * index} along, grounded or not. */
     private record Beside(int dx, int step, boolean grounded) { }
@@ -264,22 +270,39 @@ public final class PqEntrance {
     }
 
     /**
-     * Where the {@code index}th of an owner's companions waits while the owner stands at {@code standing} on
-     * {@code map}: at an entry NPC kept clear of followers (Tory, the owner on her ledge), the {@code index}th
-     * extra's spot ({@link #beside}), so they never crowd her or hide her name. Null anywhere else, at an entrance that
-     * keeps none (Lakelis's: beside the owner, as before), or when she is not on that map.
+     * Where the entry NPC kept clear of followers (Tory) stands on {@code map} while an owner standing at
+     * {@code standing} is at her (on her ledge); null anywhere else on it, at an entrance that keeps none (Lakelis's:
+     * her companions follow beside the owner, as before), or when she is not on that map. Meanwhile the owner's
+     * companions wait at the extras' spots ({@link #beside(MapleMap, Point, int)}), so they never crowd her or hide her
+     * name. The map is searched for her once (again only while she is not found there): an owner anywhere else on it
+     * costs a lookup and a comparison, and the spot is read-only.
      */
-    public Point waitingSpot(MapleMap map, Point standing, int index) {
-        NPC npc = keepClear == null || map == null || standing == null ? null : map.getNPCById(entryNpcId);
-        Point at = npc == null ? null : npc.getPosition();
+    Point keptClearAt(MapleMap map, Point standing) {
+        Point at = keepClear == null || map == null || standing == null ? null : keptClearSpot(map);
         if (at == null || Math.abs(standing.x - at.x) > keepClear.dx() || standing.y < at.y - keepClear.above()
                 || standing.y > at.y + keepClear.below()) {
             return null;
         }
-        return beside(map, at, index);
+        return at;
     }
 
-    private Point beside(MapleMap map, Point npcAt, int index) {
+    private Point keptClearSpot(MapleMap map) {
+        Point known = keptClearSpots.get(map);
+        if (known != null) {
+            return known;
+        }
+        NPC npc = map.getNPCById(entryNpcId);
+        Point at = npc == null ? null : npc.getPosition();
+        if (at == null) {
+            return null;
+        }
+        known = new Point(at);
+        keptClearSpots.put(map, known);
+        return known;
+    }
+
+    /** Where the {@code index}th extra waits from the entry NPC standing at {@code npcAt} on {@code map}. */
+    Point beside(MapleMap map, Point npcAt, int index) {
         Point point = new Point(npcAt.x + beside.dx() + beside.step() * index, npcAt.y);
         Point ground = beside.grounded() ? map.getPointBelow(point) : null;
         return ground != null ? new Point(ground) : point;

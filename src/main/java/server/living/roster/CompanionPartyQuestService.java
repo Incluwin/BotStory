@@ -238,6 +238,20 @@ public final class CompanionPartyQuestService {
     /** A companion {@code pqKey}'s desk sent for from its owner's bench, at {@code atMs}. */
     private record Called(String pqKey, long atMs) { }
 
+    /**
+     * What a companion sent for from {@code pqKey}'s bench tells the party as it arrives: {@code text}, her desk's
+     * arrival line.
+     */
+    record ArrivalLine(String pqKey, String text) {
+        /**
+         * Once {@code speaker} said it in party chat: logged at info the way the quest's companion-run lines are
+         * ('HPQ line: session= key= speaker= text='), with no session yet and the key 'arrival'.
+         */
+        void said(String speaker) {
+            log.info("{} line: session=- key=arrival speaker={} text={}", label(pqKey), speaker, text);
+        }
+    }
+
     public CompanionPartyQuestService(LivingWorld world) {
         this(world, new PqPaceLedger(world));
     }
@@ -870,12 +884,12 @@ public final class CompanionPartyQuestService {
 
     /**
      * RosterService.arrive: once, when the companion arriving now was sent for from an entry NPC's bench, what it says
-     * to the party (her voice's arrival line); else null.
+     * to the party (her voice's arrival line, {@link ArrivalLine#said} once said); else null.
      */
-    String takeArrivalLine(int ownerId, String personaId, long nowMs) {
+    ArrivalLine takeArrivalLine(int ownerId, String personaId, long nowMs) {
         Called called = calledForDesk.remove(ownerId + " " + personaId);
         return called != null && nowMs - called.atMs() <= ARRIVAL_NOTE_MS
-                ? PqEntrance.of(called.pqKey()).voice().arrivalLine() : null;
+                ? new ArrivalLine(called.pqKey(), PqEntrance.of(called.pqKey()).voice().arrivalLine()) : null;
     }
 
     /** True, once, when the companion arriving now was sent for from an entry NPC's bench. */
@@ -1015,7 +1029,7 @@ public final class CompanionPartyQuestService {
         } catch (RuntimeException failure) {
             entering.remove(leader.getId()); // first: the next Yes goes through even if the rejoin throws too
             rejoin(touched);
-            answerOnIo(leader, fresh.pqKey(), DeskLines.GENERIC, clickedAt);
+            answerOnIo(leader, fresh.pqKey(), PqEntrance.of(fresh.pqKey()).voice().generic(), clickedAt);
             throw failure;
         }
     }
@@ -1097,7 +1111,7 @@ public final class CompanionPartyQuestService {
         } catch (RuntimeException failure) {
             stopAdmitted(fresh, admitted, "start failed");
             rejoin(owners);
-            answerOnIo(leader, fresh.pqKey(), DeskLines.GENERIC, clickedAt);
+            answerOnIo(leader, fresh.pqKey(), PqEntrance.of(fresh.pqKey()).voice().generic(), clickedAt);
             throw failure;
         } finally {
             if (!handedOn) {
@@ -1152,7 +1166,7 @@ public final class CompanionPartyQuestService {
         }
         if (!port.holds(run.pqKey, firstAgent, run.sessionId)) {
             endRun(run); // released meanwhile
-            desk.outcome(leader, DeskLines.GENERIC, clickedAt);
+            desk.outcome(leader, voice.generic(), clickedAt);
             return;
         }
         PqEntryPort.Start started = startInstance(leader, run.pqKey);

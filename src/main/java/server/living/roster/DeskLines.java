@@ -19,7 +19,6 @@ public final class DeskLines {
     static final String THIS_CHANNEL = "Everyone needs to be on this channel.";
     static final String EVERYONE_HERE = "Everyone in your party needs to be here and awake.";
     static final String LEADER_ONLY = "Only your party leader can sign you up.";
-    static final String GENERIC = "Something went wrong at the door. Try again in a moment.";
     static final String NOT_HERE = "<name> isn't here yet.";
     static final String NOT_UP = "<name> isn't up yet.";
     static final String NOT_IN_CREW = "<name> isn't part of your crew. Ask them to leave your party first.";
@@ -63,9 +62,9 @@ public final class DeskLines {
     /**
      * Her line for an admission refusal by {@code rules} (in order: the first whose text the refusal holds answers
      * it), to the leader named {@code leaderName}: one about the leader is said to them ("You need to be..."), never
-     * about them in the third person; one she has no line for is the generic one.
+     * about them in the third person; one she has no line for is {@code generic}, her own (DeskVoice.generic).
      */
-    static String forAdmit(List<Rule> rules, String message, String leaderName) {
+    static String forAdmit(List<Rule> rules, String message, String leaderName, String generic) {
         if (message != null) {
             for (Rule rule : rules) {
                 int at = message.indexOf(rule.text());
@@ -76,7 +75,7 @@ public final class DeskLines {
                 }
             }
         }
-        return GENERIC;
+        return generic;
     }
 
     /**

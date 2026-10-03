@@ -41,6 +41,12 @@ public interface DeskVoice {
     /** The blocker when too few can go. */
     String tooFew();
 
+    /** Her words over what keeps a lineup out (the lineup window shows them in red, the blocker after them). */
+    String blockerHeader();
+
+    /** Her line when something went wrong she has no other words for. */
+    String generic();
+
     /** Her line for an admission refusal, said to the leader named {@code leaderName} when it is his. */
     String forAdmit(String message, String leaderName);
 

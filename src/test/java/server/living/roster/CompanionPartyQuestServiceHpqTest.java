@@ -12,8 +12,10 @@ import scripting.event.EventManager;
 import scripting.npc.NPCConversationManager;
 import server.agents.capabilities.combat.data.AgentAttackDataProvider;
 import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.capabilities.partyquest.hpq.AgentHpqSessionRegistry;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
+import server.agents.integration.AgentDialogueTransportRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.life.LifeFactory;
@@ -30,11 +32,13 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -46,7 +50,10 @@ import static server.living.roster.LifecycleHarness.ANN;
  * Lakelis serves Tory by HPQ's entrance. The kill switch lists hpq apart; each key answers at its own desk (her pink
  * text names her); HPQ's admission runs on companion-ops, never on Ann's I/O thread, and the start is HenesysPQ's,
  * back on it; the extras wait on the park floor, off Tory's ledge; a companion off the park on its restock trip is on
- * its way; and a Tory click never spends the greeting Lakelis keeps for a leader back from a KPQ re-roll.
+ * its way; and a Tory click never spends the greeting Lakelis keeps for a leader back from a KPQ re-roll. After the
+ * off-I/O admission, every way the Yes ends (a run, a refusal, a hand-back that throws) lets Ann's next Yes through,
+ * an admitted session that cannot start is stopped and its extras called back, and whatever Tory answers is hers: her
+ * refusals, 1012112.js's start texts, the lineup again for a companion still finishing something, her generic line.
  */
 class CompanionPartyQuestServiceHpqTest {
     private static final int HENESYS_SHOP = 100_000_102;
@@ -153,6 +160,142 @@ class CompanionPartyQuestServiceHpqTest {
         assertFalse(game.calls.contains("start hpq"));
         assertNull(fx.service.runForSession(fx.doors.hpqSession.sessionId()), "no run of it");
         assertEquals(RosterState.ACTIVE, game.row(casse).state(), "Casse is called back");
+    }
+
+    // ---- after HPQ's admission: Ann's next Yes, a hand-back that throws, Tory's own refusals ---------------
+
+    @Test
+    void afterAnHpqRunEndsAnnsNextYesAtToryGoesThrough() {
+        fx.ready();
+        installTory();
+        assertTrue(fx.yes().started);
+
+        fx.sessionEnds(true);
+        CompanionRun next = fx.yes();
+
+        assertFalse(tory.contains("outcome " + DeskLines.HOLD_ON), "the first Yes is over: " + tory);
+        assertEquals(2, admits(), game.calls.toString());
+        assertTrue(next != null && next.started, "the second run went up the hill");
+    }
+
+    @Test
+    void aRefusedHpqAdmissionLetsAnnsNextYesThrough() {
+        fx.ready();
+        installTory();
+        List<Runnable> ops = fx.holdCompanionOps();
+        fx.doors.refusal = "Every HPQ member must be on the same world and channel";
+        fx.service.start(game.ann, fx.service.plan(game.ann, "hpq"));
+        CompanionPqFixture.drain(ops);
+        assertEquals(List.of("outcome " + DeskLines.THIS_CHANNEL), tory);
+
+        fx.doors.refusal = null;
+        fx.service.start(game.ann, fx.service.plan(game.ann, "hpq"));
+        CompanionPqFixture.drain(ops);
+
+        assertEquals(List.of("outcome " + DeskLines.THIS_CHANNEL), tory, "no 'Hold on' for the second Yes");
+        assertEquals(2, admits(), game.calls.toString());
+        assertTrue(game.calls.contains("start hpq"));
+    }
+
+    @Test
+    void aHandBackThatThrowsStopsTheAdmittedSessionCallsTheExtraBackAndToryAnswers() {
+        Persona casse = fx.companion("casse", "Casse", 903, 12, Job.BANDIT); // waits outside
+        fx.ready();
+        installTory();
+        fx.doors.onStop = () -> AgentHpqSessionRegistry.remove(fx.doors.hpqSession); // the Agent layer's stop
+        List<Runnable> ops = fx.holdCompanionOps();
+        fx.service.start(game.ann, fx.service.plan(game.ann, "hpq"));
+        ops.removeFirst().run(); // Casse steps out; Ann's I/O thread hands HPQ's admission to companion-ops
+        assertEquals(RosterState.HOLD, game.row(casse).state());
+        Client client = game.ann.getClient();
+        doThrow(new IllegalStateException("Ann's channel is closing")).doAnswer(inv -> {
+            ((Runnable) inv.getArgument(0)).run();
+            return null;
+        }).when(client).runOnIoThread(any()); // the hand-back throws once; her answer still gets through
+
+        assertThrows(IllegalStateException.class, () -> CompanionPqFixture.drain(ops)); // companion-ops logs it
+        CompanionPqFixture.drain(ops);
+
+        assertTrue(game.calls.contains("stop 901: companion HPQ start failed"), game.calls.toString());
+        assertFalse(game.calls.contains("start hpq"));
+        assertNull(fx.service.runForSession(fx.doors.hpqSession.sessionId()), "no run of it");
+        assertEquals(RosterState.ACTIVE, game.row(casse).state(), "Casse is called back");
+        assertEquals(List.of("outcome Something went wrong. Try again in a moment."), tory, "Tory's own words");
+
+        fx.service.start(game.ann, fx.service.plan(game.ann, "hpq"));
+        CompanionPqFixture.drain(ops);
+        assertFalse(tory.contains("outcome " + DeskLines.HOLD_ON), "the Yes that threw is over: " + tory);
+        assertEquals(2, admits(), game.calls.toString());
+    }
+
+    @Test
+    void aHoldThatThrowsAtToryIsAnsweredInHerWords() {
+        Persona casse = fx.companion("casse", "Casse", 903, 12, Job.BANDIT); // waits outside
+        fx.ready();
+        installTory();
+        List<Runnable> ops = fx.holdCompanionOps();
+        fx.dialogue.when(() -> AgentDialogueTransportRuntime.sayMapNow(eq(game.bot(casse)), anyString()))
+                .thenThrow(new IllegalStateException("map chat is down"));
+        fx.service.start(game.ann, fx.service.plan(game.ann, "hpq"));
+
+        assertThrows(IllegalStateException.class, () -> CompanionPqFixture.drain(ops)); // companion-ops logs it
+
+        assertEquals(List.of("outcome Something went wrong. Try again in a moment."), tory);
+        assertEquals(0, admits());
+    }
+
+    @Test
+    void aSessionReleasedBeforeHerStartIsAnsweredInHerWords() {
+        fx.ready();
+        installTory();
+        fx.io = new ArrayList<>();
+        fx.service.start(game.ann, fx.service.plan(game.ann, "hpq"));
+        fx.io.removeFirst().run(); // the lineup checked on Ann's I/O thread; admitted on companion-ops (inline here)
+        assertEquals(1, admits());
+
+        AgentHpqSessionRegistry.remove(fx.doors.hpqSession); // released before the hand-back reached her I/O thread
+        CompanionPqFixture.drain(fx.io);
+
+        assertEquals(List.of("outcome Something went wrong. Try again in a moment."), tory);
+        assertFalse(game.calls.contains("start hpq"));
+        assertNull(fx.service.runForSession(fx.doors.hpqSession.sessionId()), "no run of it");
+    }
+
+    @Test
+    void anHpqRefusalOffAnnsIoThreadIsSaidInToryWords() {
+        fx.ready();
+        installTory();
+        fx.doors.refusal = "The current Henesys event accepts three to six members";
+
+        fx.yes();
+
+        assertEquals(List.of("outcome I can only send three to six of you up the hill."), tory);
+        assertFalse(game.calls.contains("start hpq"));
+    }
+
+    @Test
+    void aCompanionStillFinishingSomethingAtToryHasHerShowTheLineupAgain() {
+        fx.ready();
+        installTory();
+        fx.doors.refusal = "Mira could not leave its current activity";
+
+        fx.yes();
+
+        assertEquals(List.of("still finishing hpq: Give Mira a sec, they're finishing something."), tory);
+        assertFalse(game.calls.contains("start hpq"));
+    }
+
+    @Test
+    void aFailedHenesysPqStartIsStoppedAndSaidInHerScriptsWords() {
+        fx.ready();
+        installTory();
+        fx.doors.start = PqEntryPort.Start.NO_LOBBY;
+
+        fx.yes();
+
+        assertEquals(List.of("outcome " + ToryLines.NO_LOBBY), tory);
+        assertTrue(game.calls.contains("stop 901: companion HPQ start failed"), game.calls.toString());
+        assertNull(fx.service.runForSession(fx.doors.hpqSession.sessionId()), "no run of it");
     }
 
     @Test
@@ -273,7 +416,17 @@ class CompanionPartyQuestServiceHpqTest {
             public void outcome(Character leader, String line, long clickedAtMs) {
                 tory.add("outcome " + line);
             }
+
+            @Override
+            public void stillFinishing(Character leader, LineupPlan plan, String line, long clickedAtMs) {
+                tory.add("still finishing " + plan.pqKey() + ": " + line);
+            }
         });
+    }
+
+    /** How many times HPQ's admission was asked to admit a lineup. */
+    private long admits() {
+        return game.calls.stream().filter(call -> call.startsWith("admit")).count();
     }
 
     /** The entry NPCs of {@code keys} answer Ann's click with the lineup (her party's companions are hers). */

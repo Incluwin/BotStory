@@ -20,8 +20,11 @@ import java.awt.Point;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -140,6 +143,23 @@ class ToryStandOffTest {
         when(ben.getPosition()).thenReturn(new Point(1400, 120));
 
         assertNull(guard.waitsAt(CASSE, ben));
+    }
+
+    @Test
+    void herParkIsSearchedForHerOnceNotOnEveryFollowTick() {
+        when(ben.getPosition()).thenReturn(new Point(200, 574)); // across the park, far from her
+        for (int tick = 0; tick < 20; tick++) {
+            assertNull(guard.waitsAt(CASSE, ben));
+            assertNull(guard.waitsAt(MIRA, ben));
+        }
+        when(ben.getPosition()).thenReturn(new Point(ON_HER_LEDGE));
+        for (int tick = 0; tick < 20; tick++) {
+            assertEquals(new Point(1554, 574), guard.waitsAt(CASSE, ben));
+            assertEquals(new Point(1584, 574), guard.waitsAt(MIRA, ben));
+        }
+
+        // MapleMap.getNPCById copies every object on the map under its lock; she never moves
+        verify(park, atMost(1)).getNPCById(anyInt());
     }
 
     @Test

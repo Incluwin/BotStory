@@ -23,6 +23,10 @@ public final class ToryLines {
     static final String BENCH_PROMPT = "Who should I call over? They'll meet you here in the park.";
     static final String SIZE_RULE = "I can only send three to six of you up the hill.";
     static final String TOO_FEW = "I need at least three of you, all level 10 or higher.";
+    /** Over what keeps a lineup out: she sends parties up the hill. */
+    static final String BEFORE_I_SEND_YOU_UP = "Before I can send you up:";
+    /** When something went wrong she has no other words for (there is no door in the park). */
+    static final String GENERIC = "Something went wrong. Try again in a moment.";
     /** Not at the entrance (another map of Henesys, the shop...). */
     static final String NOT_IN_THE_PARK = "not in the park";
     /** What a companion she sent for from its bench tells the party as it arrives (lower-case, as they talk). */
@@ -142,8 +146,18 @@ public final class ToryLines {
         }
 
         @Override
+        public String blockerHeader() {
+            return BEFORE_I_SEND_YOU_UP;
+        }
+
+        @Override
+        public String generic() {
+            return GENERIC;
+        }
+
+        @Override
         public String forAdmit(String message, String leaderName) {
-            return DeskLines.forAdmit(ADMIT_RULES, message, leaderName);
+            return DeskLines.forAdmit(ADMIT_RULES, message, leaderName, GENERIC);
         }
 
         @Override

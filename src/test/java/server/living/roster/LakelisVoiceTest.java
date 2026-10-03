@@ -41,6 +41,9 @@ class LakelisVoiceTest {
         assertEquals("Lv32, too seasoned for this", LAKELIS.reason("Mira must be level 21-30 for KPQ", 32));
         assertEquals("bags full", LAKELIS.reason("Mira needs free Use and ETC capacity for KPQ items and rewards", 25));
         assertEquals("not in Kerning", LAKELIS.reason("Mira is not at the Kerning KPQ entrance", 25));
+        assertEquals("Before I can let you in:", LAKELIS.blockerHeader());
+        assertEquals("Something went wrong at the door. Try again in a moment.", LAKELIS.generic());
+        assertEquals(LakelisLines.GENERIC, LAKELIS.forAdmit("unknown", "Ben"));
     }
 
     @Test

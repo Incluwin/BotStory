@@ -26,7 +26,8 @@ import static server.living.roster.LifecycleHarness.LITH;
 /**
  * A companion Lakelis sent for from its owner's bench (P6, W4) says "here! ready for Lakelis when you are." in party
  * chat as it arrives, instead of its usual word to the owner: once, only for that owner's call, only within ten
- * minutes of it, and the usual word when the party line cannot be said. Every other arrival is unchanged.
+ * minutes of it, and the usual word when the party line cannot be said. Every other arrival is unchanged. A line said
+ * is in the log the way the quest's companion-run lines are ("HPQ line: session=- key=arrival ..."; P6b HPQ L4).
  */
 class ArrivalNoteTest {
     private final LifecycleHarness game = new LifecycleHarness();
@@ -64,11 +65,32 @@ class ArrivalNoteTest {
         game.roster().call(game.ann, olwen);
         service.noteCalledForDesk(ANN, "olwen", "hpq");
 
-        game.runTimers();
+        try (LivingLogLines log = new LivingLogLines(CompanionPartyQuestService.class)) {
+            game.runTimers();
 
+            assertEquals(List.of("HPQ line: session=- key=arrival speaker=Olwen "
+                    + "text=here! ready for tory when you are."),
+                    log.startingWith("HPQ line:"), "in the log as the run's own lines are");
+        }
         assertEquals(List.of("Olwen: here! ready for tory when you are."), game.partyChat);
         verify(game.residents, never()).reply(any(), any(), anyString());
         assertNull(service.takeArrivalLine(ANN, "olwen", System.currentTimeMillis()), "said once");
+    }
+
+    @Test
+    void lakelisArrivalLineIsLoggedUnderKpqWithItsWordsUnchanged() {
+        game.roster().call(game.ann, olwen);
+        service.noteCalledForLakelis(ANN, "olwen");
+
+        try (LivingLogLines log = new LivingLogLines(CompanionPartyQuestService.class)) {
+            game.runTimers();
+
+            assertEquals(List.of("KPQ line: session=- key=arrival speaker=Olwen "
+                    + "text=here! ready for Lakelis when you are."),
+                    log.startingWith("KPQ line:"));
+            assertEquals(List.of(), log.startingWith("HPQ line:"));
+        }
+        assertEquals(List.of("Olwen: here! ready for Lakelis when you are."), game.partyChat);
     }
 
     @Test
@@ -99,6 +121,21 @@ class ArrivalNoteTest {
 
         game.runTimers();
 
+        verify(game.residents).reply(olwen, game.ann, "here.");
+    }
+
+    @Test
+    void toryArrivalLineThatCannotBeSaidIsNotLogged() {
+        PartyGateway party = AgentPartyGatewayRuntime.party();
+        doReturn(false).when(party).sendPartyChat(any(), anyString());
+        game.roster().call(game.ann, olwen);
+        service.noteCalledForDesk(ANN, "olwen", "hpq");
+
+        try (LivingLogLines log = new LivingLogLines(CompanionPartyQuestService.class)) {
+            game.runTimers();
+
+            assertEquals(List.of(), log.startingWith("HPQ line:"), "a line nobody heard is not logged as said");
+        }
         verify(game.residents).reply(olwen, game.ann, "here.");
     }
 }

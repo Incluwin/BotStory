@@ -28,7 +28,9 @@ public final class LakelisLines {
     static final String THIS_CHANNEL = DeskLines.THIS_CHANNEL;
     static final String EVERYONE_HERE = DeskLines.EVERYONE_HERE;
     static final String LEADER_ONLY = DeskLines.LEADER_ONLY;
-    static final String GENERIC = DeskLines.GENERIC;
+    static final String GENERIC = "Something went wrong at the door. Try again in a moment.";
+    /** Over what keeps a lineup out. */
+    static final String BEFORE_I_LET_YOU_IN = "Before I can let you in:";
     static final String NOT_HERE = DeskLines.NOT_HERE;
     static final String NOT_UP = DeskLines.NOT_UP;
     static final String NOT_IN_CREW = DeskLines.NOT_IN_CREW;
@@ -161,6 +163,16 @@ public final class LakelisLines {
         }
 
         @Override
+        public String blockerHeader() {
+            return BEFORE_I_LET_YOU_IN;
+        }
+
+        @Override
+        public String generic() {
+            return GENERIC;
+        }
+
+        @Override
         public String forAdmit(String message, String leaderName) {
             return LakelisLines.forAdmit(message, leaderName);
         }
@@ -194,7 +206,7 @@ public final class LakelisLines {
      * ("You need to be..."), never about them in the third person; one she has no line for is the generic one.
      */
     static String forAdmit(String message, String leaderName) {
-        return DeskLines.forAdmit(ADMIT_RULES, message, leaderName);
+        return DeskLines.forAdmit(ADMIT_RULES, message, leaderName, GENERIC);
     }
 
     /**
