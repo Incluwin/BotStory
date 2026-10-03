@@ -64,7 +64,7 @@ import java.util.function.ToIntFunction;
  * leader's I/O thread; HPQ's admission runs on companion-ops and its start comes back to that thread. The run is kept
  * here, in memory, until its session ends (CompanionRunLifecycle); its companions and extras are committed to it
  * meanwhile. Each quest's rules are its entrance's (PqEntrance); the lineup windows are each entrance's desk's
- * (roster.ui LakelisDesk for KPQ, which LivingWorld installs).
+ * (roster.ui EntryDesk, one per entrance, which LivingWorld installs).
  */
 public final class CompanionPartyQuestService {
     private static final Logger log = LoggerFactory.getLogger(CompanionPartyQuestService.class);
@@ -93,8 +93,8 @@ public final class CompanionPartyQuestService {
     static final long ARRIVAL_NOTE_MS = 600_000L;
 
     /**
-     * Lakelis's windows about a lineup, each the answer to the leader's own click: the lineup itself, the lineup again
-     * when a Yes found things changed, and how a start that did not go through ended.
+     * An entry NPC's windows about a lineup (Lakelis's, Tory's), each the answer to the leader's own click: the lineup,
+     * the lineup again when a Yes found things changed, and how a start that did not go through ended.
      */
     public interface Desk {
         void proposal(Character leader, LineupPlan plan, String topLine);

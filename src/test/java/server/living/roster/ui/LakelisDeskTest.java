@@ -22,6 +22,7 @@ import server.living.roster.DirectExecutor;
 import server.living.roster.LineupPlan;
 import server.living.roster.LineupPlan.Seat;
 import server.living.roster.LineupPlan.Waiting;
+import server.living.roster.PqEntrance;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
@@ -97,7 +98,7 @@ class LakelisDeskTest {
     private final Character ben = mock(Character.class);
     private final Client client = mock(Client.class);
     private final List<RosterEntry> rows = new ArrayList<>();
-    private LakelisDesk desk;
+    private EntryDesk desk;
 
     @BeforeEach
     void benLeadsAtLakelis() {
@@ -122,7 +123,7 @@ class LakelisDeskTest {
         when(roster.describeAssignment(any())).thenReturn("train");
         when(service.plan(ben, "kpq")).thenAnswer(inv -> choice(null));
         when(service.plan(eq(ben), eq("kpq"), any())).thenAnswer(inv -> choice(inv.getArgument(2)));
-        desk = new LakelisDesk(world, service, new CompanionMenus(world, mapId -> "Ant Tunnel"));
+        desk = new EntryDesk(world, service, new CompanionMenus(world, mapId -> "Ant Tunnel"), PqEntrance.of("kpq"));
     }
 
     @AfterEach
@@ -621,7 +622,7 @@ class LakelisDeskTest {
         String start = source.substring(source.indexOf("public static synchronized void start()"),
                 source.indexOf("public static synchronized void stop()"));
 
-        int installed = start.indexOf("world.partyQuests.installDesk(new server.living.roster.ui.LakelisDesk(world, "
+        int installed = start.indexOf("world.partyQuests.installDesk(key, new server.living.roster.ui.EntryDesk(world, "
                 + "world.partyQuests,");
         assertTrue(installed >= 0 && installed < start.indexOf("instance = world;"), "before the hook can reach it");
     }

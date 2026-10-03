@@ -68,7 +68,7 @@ public final class LakelisLines {
 
     /** What a companion she sent for from its owner's bench tells the party as it arrives. */
     static final String ARRIVAL_LINE = "here! ready for Lakelis when you are.";
-    /** Her desk's window texts (roster.ui LakelisDesk). */
+    /** Her desk's window texts (roster.ui EntryDesk, in her voice). */
     static final String TITLE = "#e#b<Party Quest: 1st Accompaniment>#k#n";
     static final String FOUR_OF_YOU = "Four of you, then? Here's who I'd send in:";
     static final String THREE_OF_YOU = "Three of you, then? Here's who I'd send in:";

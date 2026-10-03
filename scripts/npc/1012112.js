@@ -112,6 +112,10 @@ function action(mode, type, selection) {
                         cm.sendOk("If you'd like to enter here, the leader of your party will have to talk to me. Talk to your party leader about this.");
                         cm.dispose();
                     } else {
+                        // companions in the party: the living world answers the click (living_world.COMPANION_PQ_ENABLED_KEYS)
+                        if (Java.type('server.living.LivingWorldHooks').partyQuestEntry(cm, "hpq")) {
+                            return;
+                        }
                         var eli = em.getEligibleParty(cm.getParty());
                         if (eli.size() > 0) {
                             if (!em.startInstance(cm.getParty(), cm.getPlayer().getMap(), 1)) {

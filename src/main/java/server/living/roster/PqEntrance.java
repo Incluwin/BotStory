@@ -50,10 +50,18 @@ public final class PqEntrance {
      * never crowd her or hide her name (P6b HPQ step 0).
      */
     private static final Beside BELOW_TORY = new Beside(120, 30, true);
+    /**
+     * An owner stands at Tory while on her ledge: within 100 px of her (the ledge runs from 77 px left of her to 89 px
+     * right), from 100 px above her (a jump on it) to 40 px below (its floor; the step below it is 132 px down). Their
+     * companions wait at the extras' spots meanwhile (P6b HPQ step 0: followers crowding her ledge hid her).
+     */
+    private static final KeepClear ON_TORYS_LEDGE = new KeepClear(100, 100, 40);
 
     private static final Map<String, PqEntrance> ENTRANCES = Collections.unmodifiableMap(entrances());
     /** Every entrance's key, KPQ's first. */
     private static final List<String> KEYS = List.copyOf(ENTRANCES.keySet());
+    /** The entrances that keep their entry NPC clear of followers, by the map she stands on. */
+    private static final Map<Integer, PqEntrance> KEEPING_CLEAR = Collections.unmodifiableMap(keepingClear());
 
     private final String key;
     private final AgentPartyQuestDefinition definition;
@@ -69,16 +77,20 @@ public final class PqEntrance {
     private final boolean admitsOnIo;
     private final BooleanSupplier backgroundRuns;
     private final Beside beside;
+    private final KeepClear keepClear;
 
     /** Where the {@code index}th extra waits from the entry NPC: {@code dx + step * index} along, grounded or not. */
     private record Beside(int dx, int step, boolean grounded) { }
+
+    /** Where an owner stands at the entry NPC: within {@code dx} of her, from {@code above} over her to {@code below}. */
+    private record KeepClear(int dx, int above, int below) { }
 
     private PqEntrance(String key, int entryNpcId, SeatRules seats, int[] dpsMobIds, DeskVoice voice,
                        BiFunction<Character, Boolean, String> memberProblem,
                        BiFunction<Integer, Collection<Integer>, String> registrationBlocker,
                        Supplier<? extends AgentPqPaceProfile> paceLoader, IntFunction<LiveSession> sessionOfOperator,
                        IntFunction<String> sessionIdOfMember, boolean admitsOnIo, BooleanSupplier backgroundRuns,
-                       Beside beside) {
+                       Beside beside, KeepClear keepClear) {
         this.key = key;
         this.definition = AgentPartyQuestCatalog.require(key);
         this.entryNpcId = entryNpcId;
@@ -93,6 +105,7 @@ public final class PqEntrance {
         this.admitsOnIo = admitsOnIo;
         this.backgroundRuns = backgroundRuns;
         this.beside = beside;
+        this.keepClear = keepClear;
     }
 
     private static Map<String, PqEntrance> entrances() {
@@ -103,7 +116,7 @@ public final class PqEntrance {
                 AgentKpqAdmissionService::memberProblem, AgentKpqSessionRegistry::registrationBlocker,
                 AgentKpqPaceProfile::load, operatorId -> live(AgentKpqSessionRegistry.forOperator(operatorId)),
                 memberId -> sessionId(AgentKpqSessionRegistry.forMember(memberId)), true, () -> false,
-                BESIDE_LAKELIS));
+                BESIDE_LAKELIS, null));
         // HPQ: the hill's three monsters' stat proxies; its admission runs on companion-ops, never on an I/O thread
         entrances.put("hpq", new PqEntrance("hpq", 1_012_112, new SeatRules(3, 6, 4),
                 new int[] {9_300_062, 9_300_063, 9_300_064}, ToryLines.VOICE,
@@ -111,8 +124,18 @@ public final class PqEntrance {
                 AgentHpqSessionRegistry::registrationBlocker, AgentHpqPaceProfile::load,
                 operatorId -> live(AgentHpqSessionRegistry.forOperator(operatorId)),
                 memberId -> sessionId(AgentHpqSessionRegistry.forMember(memberId)), false,
-                AgentHpqPopulationRuntime::backgroundEnabled, BELOW_TORY));
+                AgentHpqPopulationRuntime::backgroundEnabled, BELOW_TORY, ON_TORYS_LEDGE));
         return entrances;
+    }
+
+    private static Map<Integer, PqEntrance> keepingClear() {
+        Map<Integer, PqEntrance> keeping = new LinkedHashMap<>();
+        for (PqEntrance entrance : ENTRANCES.values()) {
+            if (entrance.keepClear != null) {
+                keeping.put(entrance.definition.recruitMapId(), entrance);
+            }
+        }
+        return keeping;
     }
 
     private static LiveSession live(AgentKpqSession session) {
@@ -148,6 +171,11 @@ public final class PqEntrance {
     /** Every entrance's key, KPQ's first. */
     public static List<String> keys() {
         return KEYS;
+    }
+
+    /** The entrance whose entry NPC on {@code mapId} is kept clear of followers (Tory's, in Henesys Park); else null. */
+    static PqEntrance keepingClearOn(int mapId) {
+        return KEEPING_CLEAR.get(mapId);
     }
 
     /** The seats of {@code key}'s lineups; throws when it has no entrance. */
@@ -232,10 +260,27 @@ public final class PqEntrance {
      */
     public Point beside(MapleMap map, int index) {
         NPC npc = map == null ? null : map.getNPCById(entryNpcId);
-        if (npc == null || npc.getPosition() == null) {
+        return npc == null || npc.getPosition() == null ? null : beside(map, npc.getPosition(), index);
+    }
+
+    /**
+     * Where the {@code index}th of an owner's companions waits while the owner stands at {@code standing} on
+     * {@code map}: at an entry NPC kept clear of followers (Tory, the owner on her ledge), the {@code index}th
+     * extra's spot ({@link #beside}), so they never crowd her or hide her name. Null anywhere else, at an entrance that
+     * keeps none (Lakelis's: beside the owner, as before), or when she is not on that map.
+     */
+    public Point waitingSpot(MapleMap map, Point standing, int index) {
+        NPC npc = keepClear == null || map == null || standing == null ? null : map.getNPCById(entryNpcId);
+        Point at = npc == null ? null : npc.getPosition();
+        if (at == null || Math.abs(standing.x - at.x) > keepClear.dx() || standing.y < at.y - keepClear.above()
+                || standing.y > at.y + keepClear.below()) {
             return null;
         }
-        Point point = new Point(npc.getPosition().x + beside.dx() + beside.step() * index, npc.getPosition().y);
+        return beside(map, at, index);
+    }
+
+    private Point beside(MapleMap map, Point npcAt, int index) {
+        Point point = new Point(npcAt.x + beside.dx() + beside.step() * index, npcAt.y);
         Point ground = beside.grounded() ? map.getPointBelow(point) : null;
         return ground != null ? new Point(ground) : point;
     }

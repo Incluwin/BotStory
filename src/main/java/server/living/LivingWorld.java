@@ -183,9 +183,13 @@ public final class LivingWorld {
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(world.partyQuestRuns);
         // and a companion whose owner logs off inside its run sees it through for the friend still in it (decision 8b)
         world.roster.installInstanceDelegation(world.partyQuestRuns);
-        // Lakelis offers a party with companions its lineup (living_world.COMPANION_PQ_ENABLED_KEYS)
-        world.partyQuests.installDesk(new server.living.roster.ui.LakelisDesk(world, world.partyQuests,
-                new server.living.roster.ui.CompanionMenus(world)));
+        // each entry NPC offers a party with companions its lineup (living_world.COMPANION_PQ_ENABLED_KEYS): one desk
+        // per entrance, Lakelis's for KPQ and Tory's for HPQ
+        server.living.roster.ui.CompanionMenus deskMenus = new server.living.roster.ui.CompanionMenus(world);
+        for (String key : server.living.roster.PqEntrance.keys()) {
+            world.partyQuests.installDesk(key, new server.living.roster.ui.EntryDesk(world, world.partyQuests,
+                    deskMenus, server.living.roster.PqEntrance.of(key)));
+        }
         // inside a run, a companion asks its leader in a window of its own whether to re-roll a heavy stage 1
         world.partyQuestRuns.installRerollWindow(new server.living.roster.ui.RerollQuestion());
         // a companion out with its owner drinks and loots by its own settings (P3b)
