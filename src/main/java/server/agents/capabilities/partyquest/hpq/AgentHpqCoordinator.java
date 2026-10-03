@@ -1014,9 +1014,10 @@ final class AgentHpqCoordinator {
 
     /**
      * Defense, from the Moon Bunny's appearance to Growlie's clear (it keeps running while the leader takes the cakes
-     * to Growlie). The clear is checked first, then the Bunny lost, then the leader holding every cake. The guards stand
-     * on posts around the live Bunny; the companion on the centre post collects its cakes and hands them over in
-     * batches at the leader's feet.
+     * to Growlie). The clear is checked first, then the Bunny lost, then the leader holding every cake; a leader back
+     * below ten while delivering (he dropped or traded one) sends the run back to collecting. The guards stand on posts
+     * around the live Bunny; the companion on the centre post collects its cakes and hands them over in batches at the
+     * leader's feet.
      */
     private static void companionDefend(AgentHpqSession session, Character leader, long nowMs, boolean delivering) {
         EventInstanceManager event = session.eventInstance();
@@ -1044,7 +1045,12 @@ final class AgentHpqCoordinator {
                 if (!delivering) transition(session, AgentHpqSession.Phase.DELIVERING_CAKES, nowMs);
                 deliveringNow = true;
             }
-            default -> { }
+            default -> {
+                if (delivering) {
+                    transition(session, AgentHpqSession.Phase.DEFENDING_BUNNY, nowMs);
+                    deliveringNow = false;
+                }
+            }
         }
         observeBunny(session, bunny, nowMs);
         MapleMap map = leader.getMap();

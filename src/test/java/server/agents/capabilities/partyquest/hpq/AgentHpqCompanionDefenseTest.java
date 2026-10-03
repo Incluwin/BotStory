@@ -437,6 +437,25 @@ class AgentHpqCompanionDefenseTest {
     }
 
     @Test
+    void aLeaderBackBelowTenSendsTheRunBackToCollecting() {
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(-183, -188));
+        run.holds(ben, CAKE, 10);
+        MapItem natural = run.drop(CAKE, new Point(-170, -188), false, 0, 1_500L);
+        AgentHpqSession session = defending();
+        AgentHpqCoordinator.tick(session, 2_000L);
+        assertEquals(AgentHpqSession.Phase.DELIVERING_CAKES, session.phase());
+        run.loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(any(), eq(natural)), never());
+
+        run.holds(ben, CAKE, 8);
+        AgentHpqCoordinator.tick(session, 3_000L);
+
+        assertEquals(AgentHpqSession.Phase.DEFENDING_BUNNY, session.phase());
+        run.loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(run.entry(mira), natural));
+        assertTrue(AgentHpqSessionRegistry.canLootRiceCake(mira, natural));
+    }
+
+    @Test
     void theBunnyLostEndsTheRunAndIsRemembered() {
         Monster bunny = run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
         AgentHpqSession session = defending();
