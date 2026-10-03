@@ -95,21 +95,42 @@ with what they looted (up to `MARKET_STALLS_MAX` stalls); browsing citizens buy 
 ## Ops
 
 `!citizens` (GM 5): `status`, `online`, `cohorts`, `who <name>` (card, targets, journal),
-`birth [cohort] [backdateDays]`, `retire <name>`, `purge confirm` (retire everyone, reseed),
+`birth [cohort] [backdateDays]`, `seed [regionId count]` (below), `retire <name>`, `purge confirm` (retire everyone, reseed),
 `force <n>` (keep n loaded regardless of the hour - load tests), `sweep`, `reload`, `guilds`,
 `market`, `conversation`.
 
 AdminControlPort: `GET /runtime/citizens` (census, online, cohorts, recent chatter, counters),
-`POST /actions/citizens` `{"force": n, "sweep": true, "reload": true}`. MapleEdit's Living World
+`POST /actions/citizens` `{"force": n, "sweep": true, "reload": true, "seed": "regionId", "count": n}`. MapleEdit's Living World
 page shows all of it under "Citizens right now" and edits the population files (saving runs
 `tools\population-lint.bat` semantics on a temp copy).
+
+**Targeted seeding.** A citizen's home region is picked once, at birth, from the regions whose band fits its level, so
+after the first seeding almost every newcomer is a level-1 Victoria citizen. To fill one region, queue seeds for it:
+`!citizens seed <regionId> <count>` (1-200 a call; `!citizens seed` alone lists region ids with their bands and the
+queue) or `POST /actions/citizens {"seed": "orbis", "count": "12"}` (replies with `queued`, `band` and `seedQueue`; the
+seed is checked after a `reload` in the same request and before `force`/`sweep` are applied; `sweep: true` births the
+first batch on the HTTP thread). `GET /runtime/citizens` shows `seedQueue` and `seedSkipped`. Each sweep (`SWEEP_MS`)
+births up to 12 queued seeds in request order before the usual churn, and fast seeding only gets what is left of those
+12. A seed's home region is forced; its career, pace and backdate (at most `SEED_BACKDATE_DAYS`) are drawn the way fast
+seeding draws them until its level lands in the band, so seeds look like the citizens who settled there on their own
+(orbis lv40-70: median 54; leafre: median 74). Its life is drawn from lives at least 30 days longer than its age rather
+than clamped to that, so a batch retires gradually over the following months (leafre seeds: about 140 days on average).
+`TARGET_CITIZENS` does not limit queued seeds, but they count toward it: below target they take the place of fast-seed
+births; at or above it they are extra until retirements bring the registry back under target, and ordinary births
+(mostly level-1 newcomers) pause meanwhile. Seeds only reach what a career gets to in `SEED_BACKDATE_DAYS`: with the
+shipped careers (caps 70-85), `LIFE_PACE` 0.8 and 180 days that is lv86, so leafre (lv70-120) gets lv70-86 and the
+listings say "seeds reach lv86". Higher seeds need higher-cap careers in `careers.yaml`. A band no career lands in is
+refused when queued; a seed that still cannot be born (content reloaded meanwhile, creation failed) is skipped, logged
+and counted in `seedSkipped`. The queue is in memory only: a restart drops whatever is still pending.
 
 Tools: `tools\population-lint.bat` validates content (map and item ids against the server knowledge: an
 unknown id is an error; PQ lobbies away from their NPC, training fields players cannot walk into, unfarmable
 basket goods and career gear above its band are warnings); `tools\population-fields.bat` regenerates
-`fields.yaml` from `wz/` (730 open-world maps: name, region, mob count, average mob level,
-capacity; Neo City is skipped). Logs: `citizen born`, `citizen X online/offline`, `bot guild`,
-`circle formed`, `opened a stall`; `[chatter]` lines at debug on `server.living.population.ChatterEngine`.
+`fields.yaml` from `wz/` (894 open-world maps whose id prefix `FieldCatalogMain.region` maps to a regions.yaml
+id: name, region, mob count, average mob level, capacity; Neo City is skipped; a map already listed keeps its
+capacity, so the estimate and the Victoria capacity catalog only seed new maps). Logs: `citizen born`,
+`citizen X online/offline`, `bot guild`, `circle formed`, `opened a stall`; `[chatter]` lines at debug on
+`server.living.population.ChatterEngine`.
 
 ## Authoring
 
@@ -121,7 +142,7 @@ capacity; Neo City is skipped). Logs: `citizen born`, `citizen X online/offline`
 | `voices.yaml` | how a citizen types: style id, lowercase/typo/abbreviation/emoticon rates, pet phrases, typing speed, ignore rate |
 | `guild-names.yaml` | guild name patterns, mottos, emblem palette |
 | `regions.yaml` | level bands, main town maps (+ optional `townWeights`, one per town, so hubs like Henesys/Kerning draw most town life), PQ lobbies, FM entrance per region |
-| `fields.yaml` | generated map catalog; prune or add maps freely |
+| `fields.yaml` | generated map catalog; edit capacities freely (0 = nobody trains there), other edits are regenerated; every region id must be a `regions.yaml` id and every region town a `town: true` entry of that region |
 | `market.yaml` | permit item and the market basket with seed prices |
 | `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega), `weight`, `cooldownMs`, `lines`, optional per-style `styles` |
 

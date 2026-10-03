@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 2,
+  "profileId": "crimsonwood-keep",
+  "mapId": 610030000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 27,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 100,
+    "middleMaxY": 160,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 30,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "out00", "weight": 30 },
+    { "name": "in00", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -822, "y": 171, "seatId": -1 },
+    { "x": 268, "y": 171, "seatId": -1 },
+    { "x": 693, "y": 171, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -567, "y": 171 },
+    { "x": -57, "y": 171 },
+    { "x": 863, "y": 171 },
+    { "x": 948, "y": 171 },
+    { "x": 1033, "y": 171 },
+    { "x": 1118, "y": 171 }
+  ],
+  "npcSpots": [
+    { "npcId": 9201107, "offsetX": 107 },
+    { "npcId": 9201108, "offsetX": -110 },
+    { "npcId": 9201109, "offsetX": 120 },
+    { "npcId": 9201110, "offsetX": -107 },
+    { "npcId": 9201111, "offsetX": 107 }
+  ],
+  "trafficZones": [
+    { "id": "portal-out00", "type": "PORTAL", "minX": -1077, "minY": 99, "maxX": -937, "maxY": 224, "excludesOccupancy": true },
+    { "id": "portal-in00", "type": "PORTAL", "minX": 1120, "minY": -140, "maxX": 1260, "maxY": -15, "excludesOccupancy": true },
+    { "id": "npc-9201107", "type": "NPC_LANE", "minX": -802, "minY": 81, "maxX": -628, "maxY": 211, "excludesOccupancy": true },
+    { "id": "npc-9201109", "type": "NPC_LANE", "minX": -560, "minY": 81, "maxX": -360, "maxY": 211, "excludesOccupancy": true },
+    { "id": "npc-9201108", "type": "NPC_LANE", "minX": -269, "minY": 81, "maxX": -89, "maxY": 211, "excludesOccupancy": true },
+    { "id": "npc-9201110", "type": "NPC_LANE", "minX": 9, "minY": 81, "maxX": 183, "maxY": 211, "excludesOccupancy": true },
+    { "id": "npc-9201111", "type": "NPC_LANE", "minX": 277, "minY": 81, "maxX": 451, "maxY": 211, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-master-warrior", "label": "By Master Warrior", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -907, "y": 171, "seatId": -1 }, { "x": -822, "y": 171, "seatId": -1 }] },
+    { "id": "by-master-pirate", "label": "By Master Pirate", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 198, "y": 171, "seatId": -1 }, { "x": 268, "y": 171, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 523, "y": 171, "seatId": -1 }, { "x": 608, "y": 171, "seatId": -1 }, { "x": 693, "y": 171, "seatId": -1 }, { "x": 778, "y": 171, "seatId": -1 }] },
+    { "id": "upper-east-street", "label": "Upper east street", "district": "UPPER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 898, "y": -67, "seatId": -1 }, { "x": 983, "y": -69, "seatId": -1 }, { "x": 1068, "y": -69, "seatId": -1 }] }
+  ],
+  "facilities": [],
+  "hotspots": [
+    { "id": "lower-east-street-crowd", "venueId": "lower-east-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

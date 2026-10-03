@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "profileId": "showa-town",
+  "mapId": 801000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 84,
+    "middleMaxY": 144,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 0,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 110,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -1130, "y": 155, "seatId": -1 },
+    { "x": -535, "y": 155, "seatId": -1 },
+    { "x": 463, "y": 154, "seatId": 2 },
+    { "x": 485, "y": 154, "seatId": 1 },
+    { "x": 508, "y": 154, "seatId": 0 },
+    { "x": 825, "y": 155, "seatId": -1 },
+    { "x": 1675, "y": 155, "seatId": -1 },
+    { "x": 2085, "y": 155, "seatId": -1 },
+    { "x": 2370, "y": 155, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -1725, "y": 155 },
+    { "x": -1470, "y": 155 },
+    { "x": -875, "y": 155 },
+    { "x": -280, "y": 155 },
+    { "x": 315, "y": 155 },
+    { "x": 1250, "y": 155 },
+    { "x": 1845, "y": 155 },
+    { "x": 1930, "y": 155 }
+  ],
+  "npcSpots": [
+    { "npcId": 9120009, "offsetX": 85 },
+    { "npcId": 9120014, "offsetX": -85 },
+    { "npcId": 9120017, "offsetX": -85 },
+    { "npcId": 9120011, "offsetX": 85 },
+    { "npcId": 9120013, "offsetX": 85 },
+    { "npcId": 9120003, "offsetX": -85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-h00-0", "type": "PORTAL", "minX": 1932, "minY": 92, "maxX": 2002, "maxY": 192, "excludesOccupancy": true },
+    { "id": "portal-h00-1", "type": "PORTAL", "minX": -1093, "minY": 92, "maxX": -1023, "maxY": 192, "excludesOccupancy": true },
+    { "id": "portal-h00-2", "type": "PORTAL", "minX": 369, "minY": 95, "maxX": 439, "maxY": 195, "excludesOccupancy": true },
+    { "id": "portal-h00-3", "type": "PORTAL", "minX": 2512, "minY": 2, "maxX": 2582, "maxY": 102, "excludesOccupancy": true },
+    { "id": "portal-west00", "type": "PORTAL", "minX": -1874, "minY": 82, "maxX": -1734, "maxY": 207, "excludesOccupancy": true },
+    { "id": "door-center00", "type": "DOOR", "minX": -53, "minY": 88, "maxX": 67, "maxY": 203, "excludesOccupancy": true },
+    { "id": "door-in01", "type": "DOOR", "minX": -401, "minY": 88, "maxX": -281, "maxY": 203, "excludesOccupancy": true },
+    { "id": "door-in02", "type": "DOOR", "minX": -852, "minY": 87, "maxX": -732, "maxY": 202, "excludesOccupancy": true },
+    { "id": "npc-9270013", "type": "NPC_LANE", "minX": -1711, "minY": 65, "maxX": -1471, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9120014", "type": "NPC_LANE", "minX": -1361, "minY": 65, "maxX": -1231, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9120011", "type": "NPC_LANE", "minX": -1104, "minY": 65, "maxX": -974, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9120012", "type": "NPC_LANE", "minX": -249, "minY": -46, "maxX": -26, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9120018", "type": "NPC_LANE", "minX": 136, "minY": 65, "maxX": 266, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9120003", "type": "NPC_LANE", "minX": 604, "minY": 65, "maxX": 734, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-2041017", "type": "NPC_LANE", "minX": 930, "minY": 65, "maxX": 1080, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9000017", "type": "NPC_LANE", "minX": 1091, "minY": 65, "maxX": 1221, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9120017", "type": "NPC_LANE", "minX": 1338, "minY": 65, "maxX": 1468, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9120013", "type": "NPC_LANE", "minX": 2093, "minY": 65, "maxX": 2223, "maxY": 195, "excludesOccupancy": true },
+    { "id": "npc-9010000", "type": "NPC_LANE", "minX": 2364, "minY": -25, "maxX": 2494, "maxY": 105, "excludesOccupancy": true },
+    { "id": "npc-9120009", "type": "NPC_LANE", "minX": 2564, "minY": 65, "maxX": 2694, "maxY": 195, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-popo", "label": "By Popo", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -1215, "y": 155, "seatId": -1 }, { "x": -1130, "y": 155, "seatId": -1 }] },
+    { "id": "plastic-surgery-door", "label": "Plastic Surgery door", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -620, "y": 155, "seatId": -1 }, { "x": -535, "y": 155, "seatId": -1 }] },
+    { "id": "by-hikari", "label": "By Hikari", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER"],
+      "spots": [{ "x": 463, "y": 154, "seatId": 2 }, { "x": 485, "y": 154, "seatId": 1 }, { "x": 508, "y": 154, "seatId": 0 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 740, "y": 155, "seatId": -1 }, { "x": 825, "y": 155, "seatId": -1 }, { "x": 910, "y": 155, "seatId": -1 }] },
+    { "id": "by-poni-chai", "label": "By Poni Chai", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1505, "y": 155, "seatId": -1 }, { "x": 1590, "y": 155, "seatId": -1 }, { "x": 1675, "y": 155, "seatId": -1 }, { "x": 1760, "y": 155, "seatId": -1 }] },
+    { "id": "by-boss-kitty", "label": "By Boss Kitty", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2015, "y": 155, "seatId": -1 }, { "x": 2085, "y": 155, "seatId": -1 }] },
+    { "id": "by-yuse", "label": "By Yuse", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 2285, "y": 155, "seatId": -1 }, { "x": 2370, "y": 155, "seatId": -1 }, { "x": 2455, "y": 155, "seatId": -1 }] },
+    { "id": "beside-yuse", "label": "Beside Yuse", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 2544, "y": 155, "seatId": -1 }] },
+    { "id": "showa-street-market-entrance", "label": "Showa Street Market entrance", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 107, "y": 155, "seatId": -1 }] },
+    { "id": "plastic-surgery-entrance", "label": "Plastic Surgery entrance", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -692, "y": 155, "seatId": -1 }] },
+    { "id": "hair-salon-entrance", "label": "Hair Salon entrance", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -441, "y": 155, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "showa-town-yuse", "type": "STORAGE", "npcId": 9120009, "destinationMapId": 0,
+      "approachPoints": [{ "x": 2544, "y": 155 }],
+      "services": ["storage"] },
+    { "id": "showa-town-showa-street-market", "type": "GENERAL_SHOP", "npcId": 0, "destinationMapId": 801000300,
+      "approachPoints": [{ "x": 107, "y": 155 }],
+      "services": ["browse", "buy", "sell"] },
+    { "id": "showa-town-plastic-surgery", "type": "OTHER", "npcId": 0, "destinationMapId": 801000002,
+      "approachPoints": [{ "x": -692, "y": 155 }],
+      "services": ["enter"] },
+    { "id": "showa-town-hair-salon", "type": "OTHER", "npcId": 0, "destinationMapId": 801000001,
+      "approachPoints": [{ "x": -441, "y": 155 }],
+      "services": ["enter"] }
+  ],
+  "hotspots": [
+    { "id": "by-yuse-crowd", "venueId": "by-yuse", "attractionWeight": 150, "softCapacity": 2, "hardCapacity": 3 },
+    { "id": "by-hikari-crowd", "venueId": "by-hikari", "attractionWeight": 110, "softCapacity": 2, "hardCapacity": 3 }
+  ]
+}

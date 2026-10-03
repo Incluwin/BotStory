@@ -6,9 +6,10 @@
 regions:
   - id: victoria
     levels: { min: 1, max: 45 }
-    towns: [100000000, 101000000, 102000000, 103000000, 104000000, 105040300, 120000000]
+    # Florina Beach (Pason's boat from Lith Harbor) counts as Victoria.
+    towns: [100000000, 101000000, 102000000, 103000000, 104000000, 105040300, 120000000, 110000000]
     # Hubs draw the crowd: Henesys and Kerning City carry most of Victoria's town life, like a real server.
-    townWeights: [40, 10, 8, 30, 4, 4, 4]
+    townWeights: [40, 10, 8, 30, 4, 4, 4, 3]
     lobbies:
       - { id: kpq, mapId: 103000000, levels: { min: 21, max: 30 }, name: "KPQ" }
     fm: 910000000
@@ -21,8 +22,10 @@ regions:
     fm: 910000000
     weight: 10
   - id: ludibrium
-    levels: { min: 35, max: 65 }
-    towns: [220000000]
+    # Omega Sector (on foot past Eos Tower) and Korean Folk Town (Helios Tower elevator); Eos Tower lowers the floor.
+    levels: { min: 25, max: 65 }
+    towns: [220000000, 221000000, 222000000]
+    townWeights: [70, 20, 10]
     lobbies:
       - { id: lpq, mapId: 221024500, levels: { min: 35, max: 50 }, name: "LPQ" }
     fm: 910000000
@@ -40,14 +43,18 @@ regions:
     fm: 910000000
     weight: 4
   - id: ariant
-    levels: { min: 35, max: 60 }
-    towns: [260000000]
+    # Magatia (on foot through Sahel, or the camel cab); its fields reach the 70s.
+    levels: { min: 35, max: 85 }
+    towns: [260000000, 261000000]
+    townWeights: [50, 50]
     lobbies: []
     fm: 910000000
     weight: 3
   - id: mu-lung
-    levels: { min: 55, max: 90 }
-    towns: [250000000]
+    # Herb Town (on foot, or the crane from Mu Lung).
+    levels: { min: 45, max: 90 }
+    towns: [250000000, 251000000]
+    townWeights: [70, 30]
     lobbies: []
     fm: 910000000
     weight: 3
@@ -57,3 +64,71 @@ regions:
     lobbies: []
     fm: 910000000
     weight: 2
+  - id: new-leaf-city
+    # The subway from Kerning City.
+    levels: { min: 20, max: 55 }
+    towns: [600000000]
+    lobbies: []
+    fm: 910000000
+    weight: 4
+  - id: crimsonwood
+    # NLC taxi to the Haunted House, then on foot through Phantom Forest.
+    levels: { min: 70, max: 110 }
+    towns: [610030000]
+    lobbies: []
+    fm: 910000000
+    weight: 1
+  - id: zipangu
+    # Spinel's world tour from Henesys or Lith Harbor; Showa Town is on foot from the Shrine.
+    levels: { min: 25, max: 60 }
+    towns: [800000000, 801000000]
+    townWeights: [55, 45]
+    lobbies: []
+    fm: 910000000
+    weight: 4
+  - id: singapore
+    # The plane from Kerning City; Boat Quay Town is on foot from CBD.
+    levels: { min: 25, max: 70 }
+    towns: [540000000, 541000000]
+    townWeights: [60, 40]
+    lobbies: []
+    fm: 910000000
+    weight: 3
+  - id: malaysia
+    # Audrey's flight from CBD or Spinel from Boat Quay; Kampung Village is on foot from Kuala Lumpur.
+    levels: { min: 45, max: 95 }
+    towns: [550000000, 551000000]
+    townWeights: [55, 45]
+    lobbies: []
+    fm: 910000000
+    weight: 2
+  - id: amoria
+    # Thomas Swift in Henesys.
+    levels: { min: 30, max: 70 }
+    towns: [680000000]
+    lobbies: []
+    fm: 910000000
+    weight: 2
+  - id: ellin-forest
+    # The Time Control Room portal above Helios Tower's 100th floor (Ludibrium).
+    levels: { min: 40, max: 60 }
+    towns: [300000000]
+    lobbies: []
+    fm: 910000000
+    weight: 1
+  - id: ereve
+    # The sky ferry from Ellinia or Orbis.
+    # Min 2 keeps level-1 newborns in Victoria; fill it with !citizens seed ereve <count>.
+    levels: { min: 2, max: 15 }
+    towns: [130000000]
+    lobbies: []
+    fm: 910000000
+    weight: 1
+  - id: rien
+    # Puro's boat from Lith Harbor.
+    # Min 2 keeps level-1 newborns in Victoria; fill it with !citizens seed rien <count>.
+    levels: { min: 2, max: 15 }
+    towns: [140000000]
+    lobbies: []
+    fm: 910000000
+    weight: 1

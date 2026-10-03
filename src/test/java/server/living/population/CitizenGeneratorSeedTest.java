@@ -1,0 +1,175 @@
+package server.living.population;
+
+import client.Character;
+import client.Client;
+import client.creator.BotCreator;
+import config.LivingWorldConfig;
+import config.PopulationConfig;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.integration.AgentAccountResolution;
+import server.agents.integration.AgentBackingAccountSecurityRuntime;
+import server.agents.integration.AgentClientGateway;
+import server.agents.integration.AgentClientGatewayRuntime;
+import server.agents.integration.AgentIdentityGateway;
+import server.agents.integration.AgentIdentityGatewayRuntime;
+import server.agents.integration.AgentPersistenceGateway;
+import server.agents.integration.AgentPersistenceGatewayRuntime;
+import server.living.LivingWorld;
+import server.living.config.ContentLoader;
+import server.living.population.PopulationContent.Region;
+import server.living.resident.ResidentRuntime;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
+
+/**
+ * {@link CitizenGenerator#seed} end to end through birth, with account and character creation stubbed (no database): the
+ * saved citizen is homed in the requested region at a life-curve level inside its band and a batch does not retire on
+ * one day; an unknown region creates nothing; untargeted births draw exactly what they drew before seeding existed.
+ */
+class CitizenGeneratorSeedTest {
+    private static final PopulationContent CONTENT = PopulationLoader.load(Path.of("scripts/config/population"),
+            ContentLoader.load(Path.of("scripts/config/living-world")));
+
+    private final PopulationConfig config = new PopulationConfig();
+    private final Population population = mock(Population.class);
+    private final List<Citizen> saved = new ArrayList<>();
+    private final AtomicInteger characters = new AtomicInteger(5000);
+    private final List<MockedStatic<?>> statics = new ArrayList<>();
+
+    @BeforeEach
+    void wire() throws Exception {
+        config.LIFE_PACE = 0.8d;
+        config.SEED_BACKDATE_DAYS = 180;
+        when(population.config()).thenReturn(config);
+        when(population.content()).thenReturn(CONTENT);
+        when(population.names()).thenReturn(new NameGenerator(CONTENT.names().patterns(), CONTENT.names().lists(),
+                CONTENT.names().start(), CONTENT.names().middle(), CONTENT.names().end()));
+        when(population.store()).thenReturn(mock(CitizenStore.class));
+        when(population.channels()).thenReturn(List.of(1, 2, 3));
+        LivingWorld world = mock(LivingWorld.class);
+        when(world.config()).thenReturn(new LivingWorldConfig());
+        when(world.residents()).thenReturn(mock(ResidentRuntime.class)); // no map: shaping is skipped
+        when(population.world()).thenReturn(world);
+        doAnswer(inv -> saved.add(inv.getArgument(0))).when(population).save(any());
+        AgentPersistenceGateway persistence = mock(AgentPersistenceGateway.class);
+        when(persistence.resolveOrCreateAgentAccount(anyString())).thenAnswer(inv -> AgentAccountResolution.created(characters.get()));
+        AgentClientGateway clients = mock(AgentClientGateway.class);
+        when(clients.createHeadlessClient(anyInt(), anyInt())).thenAnswer(inv -> mock(Client.class));
+        MockedStatic<AgentPersistenceGatewayRuntime> persistenceRuntime = track(mockStatic(AgentPersistenceGatewayRuntime.class));
+        persistenceRuntime.when(AgentPersistenceGatewayRuntime::persistence).thenReturn(persistence);
+        MockedStatic<AgentBackingAccountSecurityRuntime> security = track(mockStatic(AgentBackingAccountSecurityRuntime.class));
+        security.when(() -> AgentBackingAccountSecurityRuntime.lockInteractiveLogin(anyInt())).thenReturn(true);
+        MockedStatic<AgentClientGatewayRuntime> clientRuntime = track(mockStatic(AgentClientGatewayRuntime.class));
+        clientRuntime.when(AgentClientGatewayRuntime::clients).thenReturn(clients);
+        MockedStatic<AgentIdentityGatewayRuntime> identities = track(mockStatic(AgentIdentityGatewayRuntime.class));
+        identities.when(AgentIdentityGatewayRuntime::identities).thenReturn(mock(AgentIdentityGateway.class));
+        MockedStatic<Character> names = track(mockStatic(Character.class));
+        names.when(() -> Character.canCreateChar(anyString())).thenReturn(true);
+        MockedStatic<BotCreator> creator = track(mockStatic(BotCreator.class));
+        creator.when(() -> BotCreator.createCharacter(any(), anyString(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(), anyInt(),
+                anyInt(), anyInt())).thenAnswer(inv -> characters.incrementAndGet());
+    }
+
+    @AfterEach
+    void close() {
+        statics.forEach(MockedStatic::close);
+    }
+
+    @Test
+    void aSeedIsHomedInTheRequestedRegionAtALevelInsideItsBand() {
+        CitizenGenerator generator = new CitizenGenerator(population);
+        for (Region region : CONTENT.regions().values()) {
+            if (!CitizenGenerator.reachable(region, CONTENT.careers().values(), config.SEED_BACKDATE_DAYS, config.LIFE_PACE)) {
+                continue;
+            }
+            for (int i = 0; i < 10; i++) {
+                Citizen citizen = generator.seed(region.id());
+                assertNotNull(citizen, region.id());
+                assertEquals(region.id(), citizen.homeRegion());
+                assertEquals(citizen, saved.get(saved.size() - 1));
+                int level = LifeCurve.levelTarget(citizen.ageDays(System.currentTimeMillis()), citizen.pace(),
+                        CONTENT.career(citizen.career()).levelCap(), config.LIFE_PACE);
+                assertTrue(region.fits(level), region.id() + " got lv" + level);
+                assertTrue(citizen.retiresAtMs() > System.currentTimeMillis(), "a seed is not born retired");
+            }
+        }
+        assertEquals("victoria", generator.birth(null, 0).homeRegion(), "an untargeted newcomer still picks its region by level");
+    }
+
+    @Test
+    void aBatchOfSeedsRetiresGraduallyNotAllAMonthFromNow() {
+        CitizenGenerator generator = new CitizenGenerator(population);
+        List<Citizen> seeds = new ArrayList<>();
+        for (int i = 0; i < 60; i++) {
+            seeds.add(generator.seed("leafre"));
+        }
+        long now = System.currentTimeMillis();
+        int lastMonth = 0;
+        for (Citizen seed : seeds) {
+            long remaining = (seed.retiresAtMs() - seed.joinedAtMs()) / 86_400_000L - seed.ageDays(now);
+            assertTrue(remaining >= 30 && remaining <= config.LIFE_DAYS_MAX, "remaining life " + remaining + " days");
+            lastMonth += remaining == 30 ? 1 : 0;
+        }
+        assertTrue(lastMonth <= 3, lastMonth + " of 60 leafre seeds retire exactly 30 days from now"); // clamped: about 20
+    }
+
+    /** Draws captured from the generator before seeding (251fada32), regions as f2cb3bcc9's regions.yaml assigns them; an edit to the shipped population content changes these too. */
+    @Test
+    void untargetedBirthsDrawWhatTheyDrewBeforeSeeding() {
+        CitizenGenerator generator = new CitizenGenerator(population);
+        List<String> births = new ArrayList<>();
+        for (int backdate : new int[] {0, 0, 7, 30, 45, 90, 120, 150, 180, 2, 60, 175}) {
+            Citizen c = generator.birth(null, backdate);
+            births.add(String.format(Locale.ROOT, "%s %s %s %s %s %s %.12f %d %d %s life%d", c.name(), c.cohort(), c.homeRegion(),
+                    c.career(), c.personality(), c.voice(), c.pace(), c.offsetMinutes(), c.channel(), c.flags(),
+                    (c.retiresAtMs() - c.joinedAtMs()) / 86_400_000L));
+        }
+        Citizen c = generator.birth("nightowl", 100);
+        births.add(c.name() + " " + c.cohort() + " " + c.career() + " " + c.homeRegion());
+        assertEquals(List.of(
+                "Angel266 evening-na victoria magician-cleric explorer-v1 proper-friendly 0.747257965099 14 2 [merchant] life214",
+                "CrazySword afk-townie victoria magician-fire relaxed-v1 casual-typos 0.602931311366 59 2 [] life250",
+                "BunnySin student-afternoon victoria magician-fire explorer-v1 proper-friendly 0.946713645082 -58 3 [pq-regular] life199",
+                "RedOcean evening-na ludibrium warrior-fighter explorer-v1 proper-friendly 0.995720030007 -20 2 [recruiter] life141",
+                "iKillKnight student-afternoon victoria warrior-spearman efficient-v1 terse-grinder 0.790507063009 -50 1 [] life215",
+                "MushroomMage weekend-eu ariant warrior-page explorer-v1 proper-friendly 1.095557303940 -52 3 [] life120",
+                "SilentWolf evening-na orbis warrior-fighter explorer-v1 proper-friendly 1.303065241400 51 2 [pq-regular] life188",
+                "RedBunny evening-na malaysia bowman-hunter restless-v1 playful-caps 1.435022807511 -44 3 [] life368",
+                "Rookun student-afternoon ludibrium magician-ice explorer-v1 proper-friendly 0.674953233423 49 1 [recruiter] life210",
+                "SwiftRanger nightowl victoria pirate-gunslinger explorer-v1 proper-friendly 1.027130607235 9 3 [merchant] life106",
+                "GrumpyCat evening-na orbis warrior-fighter restless-v1 playful-caps 1.400174025793 -58 2 [] life342",
+                "xKeisx student-afternoon aquarium magician-fire explorer-v1 proper-friendly 0.661406023888 45 2 [recruiter] life390",
+                "LittleAngel nightowl warrior-page orbis"), births);
+    }
+
+    @Test
+    void anUnknownRegionCreatesNothing() {
+        assertNull(new CitizenGenerator(population).seed("atlantis"));
+        assertEquals(5000, characters.get());
+        assertTrue(saved.isEmpty());
+    }
+
+    private <T> MockedStatic<T> track(MockedStatic<T> mocked) {
+        statics.add(mocked);
+        return mocked;
+    }
+}

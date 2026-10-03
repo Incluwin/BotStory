@@ -1,0 +1,137 @@
+{
+  "schemaVersion": 2,
+  "profileId": "kampung-village",
+  "mapId": 551000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": 315,
+    "middleMaxY": 716,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "west00", "weight": 30 },
+    { "name": "east00", "weight": 28 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -832, "y": 519, "seatId": -1 },
+    { "x": -448, "y": 885, "seatId": -1 },
+    { "x": -261, "y": 593, "seatId": -1 },
+    { "x": -23, "y": 885, "seatId": -1 },
+    { "x": 428, "y": 497, "seatId": -1 },
+    { "x": 717, "y": 825, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -1158, "y": 825 },
+    { "x": -1018, "y": 623 },
+    { "x": -848, "y": 623 },
+    { "x": -573, "y": 675 },
+    { "x": -278, "y": 885 },
+    { "x": 7, "y": 675 },
+    { "x": 292, "y": 825 },
+    { "x": 545, "y": 447 }
+  ],
+  "npcSpots": [
+    { "npcId": 9270065, "offsetX": 178 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -1302, "minY": 753, "maxX": -1162, "maxY": 878, "excludesOccupancy": true },
+    { "id": "portal-east00", "type": "PORTAL", "minX": 764, "minY": 753, "maxX": 904, "maxY": 878, "excludesOccupancy": true },
+    { "id": "portal-market00", "type": "PORTAL", "minX": -288, "minY": 72, "maxX": -178, "maxY": 182, "excludesOccupancy": true },
+    { "id": "portal-hide01", "type": "PORTAL", "minX": -838, "minY": 768, "maxX": -768, "maxY": 868, "excludesOccupancy": true },
+    { "id": "portal-hide02", "type": "PORTAL", "minX": -493, "minY": 194, "maxX": -423, "maxY": 294, "excludesOccupancy": true },
+    { "id": "portal-hide03", "type": "PORTAL", "minX": 339, "minY": 769, "maxX": 409, "maxY": 869, "excludesOccupancy": true },
+    { "id": "portal-hide04", "type": "PORTAL", "minX": -34, "minY": 195, "maxX": 36, "maxY": 295, "excludesOccupancy": true },
+    { "id": "portal-hide05", "type": "PORTAL", "minX": -242, "minY": 615, "maxX": -172, "maxY": 715, "excludesOccupancy": true },
+    { "id": "portal-hide06", "type": "PORTAL", "minX": -264, "minY": 245, "maxX": -194, "maxY": 345, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": -675, "minY": 257, "maxX": -585, "maxY": 745, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": -1329, "minY": 257, "maxX": -1239, "maxY": 727, "excludesOccupancy": true },
+    { "id": "ladder-3", "type": "LADDER", "minX": 742, "minY": 257, "maxX": 832, "maxY": 586, "excludesOccupancy": true },
+    { "id": "ladder-4", "type": "LADDER", "minX": -451, "minY": 77, "maxX": -361, "maxY": 361, "excludesOccupancy": true },
+    { "id": "ladder-5", "type": "LADDER", "minX": -101, "minY": 77, "maxX": -11, "maxY": 290, "excludesOccupancy": true },
+    { "id": "ladder-6", "type": "LADDER", "minX": 155, "minY": 257, "maxX": 245, "maxY": 758, "excludesOccupancy": true },
+    { "id": "npc-9270065", "type": "NPC_LANE", "minX": -1046, "minY": 734, "maxX": -810, "maxY": 864, "excludesOccupancy": true },
+    { "id": "npc-9000021", "type": "NPC_LANE", "minX": 133, "minY": 224, "maxX": 263, "maxY": 354, "excludesOccupancy": true },
+    { "id": "npc-9201135", "type": "NPC_LANE", "minX": 156, "minY": 734, "maxX": 286, "maxY": 864, "excludesOccupancy": true },
+    { "id": "npc-9000001", "type": "NPC_LANE", "minX": 273, "minY": 224, "maxX": 403, "maxY": 354, "excludesOccupancy": true },
+    { "id": "npc-9270062", "type": "NPC_LANE", "minX": 501, "minY": 704, "maxX": 631, "maxY": 834, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "upper-west-street", "label": "Upper west street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -1213, "y": 315, "seatId": -1 }, { "x": -1128, "y": 315, "seatId": -1 }, { "x": -1043, "y": 315, "seatId": -1 }, { "x": -958, "y": 315, "seatId": -1 }] },
+    { "id": "middle-west-street", "label": "Middle west street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -917, "y": 525, "seatId": -1 }, { "x": -832, "y": 519, "seatId": -1 }, { "x": -747, "y": 513, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -618, "y": 825, "seatId": -1 }, { "x": -533, "y": 829, "seatId": -1 }, { "x": -448, "y": 885, "seatId": -1 }, { "x": -363, "y": 885, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -431, "y": 593, "seatId": -1 }, { "x": -346, "y": 593, "seatId": -1 }, { "x": -261, "y": 593, "seatId": -1 }, { "x": -176, "y": 593, "seatId": -1 }] },
+    { "id": "by-audrey", "label": "By Audrey", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -193, "y": 885, "seatId": -1 }, { "x": -108, "y": 885, "seatId": -1 }, { "x": -23, "y": 885, "seatId": -1 }, { "x": 92, "y": 825, "seatId": -1 }] },
+    { "id": "upper-central-street", "label": "Upper central street", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 47, "y": 256, "seatId": -1 }, { "x": 132, "y": 313, "seatId": -1 }] },
+    { "id": "middle-east-street", "label": "Middle east street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 258, "y": 545, "seatId": -1 }, { "x": 343, "y": 499, "seatId": -1 }, { "x": 428, "y": 497, "seatId": -1 }, { "x": 513, "y": 494, "seatId": -1 }] },
+    { "id": "by-lam", "label": "By Lam", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 632, "y": 825, "seatId": -1 }, { "x": 717, "y": 825, "seatId": -1 }] },
+    { "id": "free-market-entrance", "label": "Free Market entrance", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "BROWSE"],
+      "spots": [{ "x": -333, "y": 135, "seatId": -1 }, { "x": -133, "y": 135, "seatId": -1 }] },
+    { "id": "beside-audrey", "label": "Beside Audrey", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 136, "y": 825, "seatId": -1 }] },
+    { "id": "beside-ali", "label": "Beside Ali", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -1066, "y": 825, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "kampung-village-free-market", "type": "FREE_MARKET", "npcId": 0, "destinationMapId": 910000000,
+      "approachPoints": [{ "x": -133, "y": 135 }],
+      "services": ["free-market"] },
+    { "id": "kampung-village-audrey", "type": "TAXI", "npcId": 9201135, "destinationMapId": 0,
+      "approachPoints": [{ "x": 136, "y": 825 }],
+      "services": ["travel"] },
+    { "id": "kampung-village-ali", "type": "GENERAL_SHOP", "npcId": 9270065, "destinationMapId": 0,
+      "approachPoints": [{ "x": -1066, "y": 825 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "by-audrey-crowd", "venueId": "by-audrey", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "middle-west-street-crowd", "venueId": "middle-west-street", "attractionWeight": 110, "softCapacity": 2, "hardCapacity": 3 }
+  ]
+}

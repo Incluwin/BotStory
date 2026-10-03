@@ -27,6 +27,7 @@ import server.maps.MapleMap;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
@@ -50,6 +51,10 @@ public final class CitizenGenerator {
     private static final int[] SHOES = {1072001, 1072005, 1072037, 1072038};
     private static final int[] WEAPONS = {1302000, 1312004, 1322005, 1372005, 1452002, 1332007};
     private static final int NAME_ATTEMPTS = 40;
+    private static final double PACE_MIN = 0.6d;
+    private static final double PACE_SPAN = 0.9d;
+    /** Fast-seeding draws a seed plan tries before it solves for a band those draws almost never hit. */
+    private static final int SEED_TRIES = 4096;
 
     private final Population population;
     private final Random random;
@@ -69,6 +74,30 @@ public final class CitizenGenerator {
             log.warn("cannot birth a citizen: cohorts={} careers={}", content.cohorts().size(), content.careers().size());
             return null;
         }
+        return birth(cohort, career, backdateDays, null);
+    }
+
+    /**
+     * A seeded citizen homed in {@code regionId} at a level inside its band; null when no career lands in the band or creation
+     * failed. Seeds draw from the same Random as births, so births after one differ from a run that never seeded.
+     */
+    public Citizen seed(String regionId) {
+        PopulationContent content = population.content();
+        Region region = content.region(regionId);
+        Cohort cohort = region == null ? null : pickCohort();
+        SeedPlan plan = cohort == null ? null : planSeed(region, content.careers().values(),
+                population.config().SEED_BACKDATE_DAYS, population.config().LIFE_PACE, random);
+        if (plan == null) {
+            log.warn("seed for {} skipped: {}", regionId, region == null ? "no such region" : cohort == null ? "no cohorts"
+                    : "no career lands in lv" + region.levelMin() + "-" + region.levelMax() + " within "
+                    + population.config().SEED_BACKDATE_DAYS + " backdate days");
+            return null;
+        }
+        return birth(cohort, plan.career(), plan.backdateDays(), plan);
+    }
+
+    /** {@code plan} null draws the pace and picks the region by level; otherwise both come from the plan. */
+    private Citizen birth(Cohort cohort, Career career, int backdateDays, SeedPlan plan) {
         String name = pickName();
         if (name == null) {
             return null;
@@ -79,22 +108,32 @@ public final class CitizenGenerator {
         }
         long now = System.currentTimeMillis();
         long joined = now - backdateDays * 86_400_000L;
-        int lifeDays = population.config().LIFE_DAYS_MIN
+        int lifeDays = plan != null ? seedLifeDays(backdateDays) : population.config().LIFE_DAYS_MIN
                 + random.nextInt(Math.max(1, population.config().LIFE_DAYS_MAX - population.config().LIFE_DAYS_MIN + 1));
         lifeDays = Math.max(lifeDays, backdateDays + 30);
         String personality = AgentPersonalityProfileRepository.defaultRepository().deterministicFor(characterId).profileId();
         String style = DialogueStyleProfileRepository.defaultRepository().resolve(personality).styleId();
-        double pace = 0.6d + random.nextDouble() * 0.9d;
+        double pace = plan == null ? PACE_MIN + random.nextDouble() * PACE_SPAN : plan.pace();
         Citizen citizen = new Citizen(characterId, name, cohort.id(), 0, 0, "victoria", career.id(), personality,
                 pickVoice(style), pace, random.nextInt(120) - 60, pickChannel(), flags(cohort), State.ACTIVE, joined,
                 joined + lifeDays * 86_400_000L, 0L, now, 0L, 0, "");
         int level = LifeCurve.levelTarget(citizen.ageDays(now), pace, career.levelCap(), population.config().LIFE_PACE);
-        citizen = citizen.withRegion(regionFor(level, citizen.characterId()));
+        citizen = citizen.withRegion(plan == null ? regionFor(level, citizen.characterId()) : plan.region());
         population.save(citizen);
         shape(citizen, career, level);
         births++;
         log.info("citizen born: {} ({}) cohort {} career {} level {} voice {}", name, characterId, cohort.id(), career.id(), level, citizen.voice());
         return citizen;
+    }
+
+    /**
+     * A seed has already lived {@code backdateDays}: its life is drawn among lives at least 30 days longer rather than
+     * clamped to backdate + 30, so a queued batch does not all retire in the same hour a month later.
+     */
+    private int seedLifeDays(int backdateDays) {
+        int shortest = Math.max(population.config().LIFE_DAYS_MIN, backdateDays + 30);
+        int longest = Math.max(population.config().LIFE_DAYS_MAX, shortest + 60);
+        return shortest + random.nextInt(longest - shortest + 1);
     }
 
     public int births() {
@@ -122,6 +161,136 @@ public final class CitizenGenerator {
             }
         }
         return fitting.get(0).id();
+    }
+
+    /** Career, pace and backdate that put a seeded citizen of {@code region} at {@code level}, inside its band. */
+    record SeedPlan(String region, Career career, double pace, int backdateDays, int level) { }
+
+    /**
+     * Plans a seed homed in {@code region}: careers, paces and backdates drawn the way fast seeding draws them until the
+     * level lands in the band, so seeds look like the citizens who settled there on their own. A band those draws almost
+     * never hit falls back to a career that lands in it, a pace fast enough and a backdate inside it. Null when no career
+     * lands in the band within {@code maxBackdate} days.
+     */
+    static SeedPlan planSeed(Region region, Collection<Career> careers, int maxBackdate, double lifePace, Random random) {
+        List<Career> able = new ArrayList<>();
+        for (Career career : careers) {
+            if (lands(career, region, maxBackdate, lifePace)) {
+                able.add(career);
+            }
+        }
+        if (able.isEmpty()) {
+            return null;
+        }
+        List<Career> all = new ArrayList<>(careers);
+        for (int i = 0; i < SEED_TRIES; i++) {
+            Career career = byPopularity(all, random);
+            double pace = PACE_MIN + random.nextDouble() * PACE_SPAN;
+            double skew = random.nextDouble(); // squared like Churn's fast seeding
+            int backdate = (int) Math.round(skew * skew * maxBackdate);
+            int level = LifeCurve.levelTarget(backdate, pace, career.levelCap(), lifePace);
+            if (region.fits(level)) {
+                return new SeedPlan(region.id(), career, pace, backdate, level);
+            }
+        }
+        Career career = byPopularity(able, random);
+        double floor = slowestPace(career, region.levelMin(), maxBackdate, lifePace);
+        double pace = floor + random.nextDouble() * (PACE_MIN + PACE_SPAN - floor);
+        int[] window = window(career, region, pace, maxBackdate, lifePace);
+        if (window == null) { // a band narrower than a day's levels at this pace; lands() found it at the slowest
+            pace = floor;
+            window = window(career, region, pace, maxBackdate, lifePace);
+        }
+        int backdate = window[0] + random.nextInt(window[1] - window[0] + 1);
+        return new SeedPlan(region.id(), career, pace, backdate, LifeCurve.levelTarget(backdate, pace, career.levelCap(), lifePace));
+    }
+
+    /** True when some career lands in the region's band within {@code maxBackdate} days, so its seeds can be planned. */
+    static boolean reachable(Region region, Collection<Career> careers, int maxBackdate, double lifePace) {
+        for (Career career : careers) {
+            if (lands(career, region, maxBackdate, lifePace)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Highest level any career reaches within {@code maxBackdate} days at the fastest pace: the top of what seeding fills. */
+    static int seedCeiling(Collection<Career> careers, int maxBackdate, double lifePace) {
+        int ceiling = 1;
+        for (Career career : careers) {
+            ceiling = Math.max(ceiling, LifeCurve.levelTarget(maxBackdate, PACE_MIN + PACE_SPAN, career.levelCap(), lifePace));
+        }
+        return ceiling;
+    }
+
+    /** True when this career, at the slowest pace that reaches the band's bottom, has a backdate whose level is in the band. */
+    private static boolean lands(Career career, Region region, int maxBackdate, double lifePace) {
+        return reaches(career, region.levelMin(), maxBackdate, PACE_MIN + PACE_SPAN, lifePace)
+                && window(career, region, slowestPace(career, region.levelMin(), maxBackdate, lifePace), maxBackdate, lifePace) != null;
+    }
+
+    private static boolean reaches(Career career, int level, int days, double pace, double lifePace) {
+        return LifeCurve.levelTarget(days, pace, career.levelCap(), lifePace) >= level;
+    }
+
+    /** First and last backdate whose level at this pace lies in the band, or null. */
+    private static int[] window(Career career, Region region, double pace, int maxBackdate, double lifePace) {
+        int first = firstDay(career, region.levelMin(), pace, maxBackdate, lifePace);
+        int above = firstDay(career, region.levelMax() + 1, pace, maxBackdate, lifePace);
+        int last = above < 0 ? maxBackdate : above - 1;
+        return first < 0 || last < first ? null : new int[] {first, last};
+    }
+
+    /** First day in 0..maxDays on which this career reaches {@code level}, or -1; bisected, since levels never fall as days pass. */
+    private static int firstDay(Career career, int level, double pace, int maxDays, double lifePace) {
+        if (!reaches(career, level, maxDays, pace, lifePace)) {
+            return -1;
+        }
+        int low = 0;
+        int high = maxDays;
+        while (low < high) {
+            int mid = low + (high - low) / 2;
+            if (reaches(career, level, mid, pace, lifePace)) {
+                high = mid;
+            } else {
+                low = mid + 1;
+            }
+        }
+        return low;
+    }
+
+    private static Career byPopularity(List<Career> careers, Random random) {
+        int total = 0;
+        for (Career career : careers) {
+            total += Math.max(0, career.popularity());
+        }
+        int roll = total > 0 ? random.nextInt(total) : 0;
+        for (Career career : careers) {
+            roll -= Math.max(0, career.popularity());
+            if (roll < 0) {
+                return career;
+            }
+        }
+        return careers.get(0);
+    }
+
+    /** Slowest pace, never under PACE_MIN, at which this career reaches {@code level} within {@code days} (bisected). */
+    private static double slowestPace(Career career, int level, int days, double lifePace) {
+        double low = PACE_MIN;
+        double high = PACE_MIN + PACE_SPAN;
+        if (reaches(career, level, days, low, lifePace)) {
+            return low;
+        }
+        for (int i = 0; i < 40; i++) {
+            double mid = (low + high) / 2;
+            if (reaches(career, level, days, mid, lifePace)) {
+                high = mid;
+            } else {
+                low = mid;
+            }
+        }
+        return high;
     }
 
     private void shape(Citizen citizen, Career career, int level) {
