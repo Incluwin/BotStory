@@ -5,21 +5,24 @@ import client.Client;
 import client.command.Command;
 import server.living.population.Citizen;
 import server.living.population.CitizenSession;
+import server.living.population.Churn;
 import server.living.population.Population;
 import server.living.population.PopulationContent.Cohort;
+import server.living.population.PopulationContent.Region;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * {@code !citizens} operates the populated server: census, who is online, births and
- * retirements, content reload, forced online counts for load tests, one citizen's card.
+ * {@code !citizens} operates the populated server: census, who is online, births, region-targeted
+ * seeding and retirements, content reload, forced online counts for load tests, one citizen's card.
  */
 public class CitizensCommand extends Command {
     {
         setDescription("Population ops. Usage: !citizens status|online|cohorts|who <name>|birth [cohort] [backdateDays]|"
-                + "retire <name>|purge confirm|force <n>|sweep|reload|guilds|market|conversation");
+                + "seed [regionId count]|retire <name>|purge confirm|force <n>|sweep|reload|guilds|market|conversation");
     }
 
     @Override
@@ -40,7 +43,9 @@ public class CitizensCommand extends Command {
                             + (population.presence().forcedOnline() > 0 ? ", forced " + population.presence().forcedOnline() : "") + ")");
                     gm.yellowMessage("Content: " + population.content().census() + "; guilds " + population.social().guildCount()
                             + "; chatter lines " + population.chatter().linesSpoken() + "; last sweep " + population.presence().lastSweepDurationMs()
-                            + " ms" + (population.churn().seeding() ? "; seeding" : ""));
+                            + " ms" + (population.churn().seeding() ? "; seeding" : "")
+                            + (population.churn().seedQueue().isEmpty() ? "" : "; seed queue " + population.churn().seedQueue()
+                            + " (in memory, lost on restart)"));
                     gm.yellowMessage(population.conversation().report());
                     gm.yellowMessage(population.market().report());
                 }
@@ -102,6 +107,24 @@ public class CitizensCommand extends Command {
                     int backdate = params.length > 2 ? Integer.parseInt(params[2]) : 0;
                     Citizen born = population.generator().birth(cohort, backdate);
                     gm.yellowMessage(born == null ? "Birth failed (see log)." : "Born: " + born.name() + " (" + born.cohort() + ", " + born.career() + ")");
+                }
+                case "seed" -> {
+                    if (params.length < 2) {
+                        List<String> bands = new ArrayList<>();
+                        for (Region region : population.content().regions().values()) {
+                            bands.add(population.churn().describe(region));
+                        }
+                        gm.yellowMessage("Regions: " + String.join(", ", bands));
+                        gm.yellowMessage("Seed queue: " + population.churn().seedQueue() + " (in memory, lost on restart). Usage: "
+                                + "!citizens seed <regionId> <count 1-" + Churn.SEED_REQUEST_MAX + ">");
+                        return;
+                    }
+                    int count = params.length > 2 ? Integer.parseInt(params[2]) : 0;
+                    Region region = population.churn().requestSeeds(params[1], count);
+                    gm.yellowMessage("Queued " + count + " citizens for " + population.churn().describe(region) + ", up to "
+                            + Churn.SEED_BATCH + " a sweep. The " + population.config().TARGET_CITIZENS + " target does not limit them but they"
+                            + " count toward it: below it they replace ordinary births, at or above it ordinary births pause.");
+                    gm.yellowMessage("Seed queue: " + population.churn().seedQueue() + " (in memory, lost on restart).");
                 }
                 case "retire" -> {
                     if (params.length < 2) {

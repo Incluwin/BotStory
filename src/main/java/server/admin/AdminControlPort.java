@@ -600,6 +600,8 @@ public final class AdminControlPort {
                 .num("chatterLines", population.chatter().linesSpoken())
                 .num("sweepMs", population.presence().lastSweepDurationMs())
                 .bool("seeding", population.churn().seeding())
+                .raw("seedQueue", seedQueue(population))
+                .num("seedSkipped", population.churn().seedsSkipped())
                 .str("census", population.content().census())
                 .str("conversation", population.conversation().report())
                 .str("market", population.market().report())
@@ -609,7 +611,11 @@ public final class AdminControlPort {
                 .finished();
     }
 
-    /** Population ops for the dashboard: {"force": n} keeps n citizens loaded, {"sweep": true} runs a sweep, {"reload": true} re-reads content. */
+    /**
+     * Population ops for the dashboard: {"force": n} keeps n citizens loaded, {"sweep": true} runs a sweep (on this thread),
+     * {"reload": true} re-reads content, {"seed": regionId, "count": n} queues n citizens homed in that region (in memory,
+     * 1..200 a call; checked after a reload in the same request, before force and sweep are applied).
+     */
     private static String aCitizens(String body) {
         Population population = Population.get();
         if (population == null) {
@@ -617,12 +623,18 @@ public final class AdminControlPort {
         }
         Map<String, String> req = AdminJson.parseFlat(body);
         try {
-            if (req.containsKey("force")) {
-                population.presence().forceOnline(Integer.parseInt(req.get("force")));
-            }
+            Integer force = req.containsKey("force") ? Integer.valueOf(req.get("force")) : null;
+            int queued = req.containsKey("seed") ? Integer.parseInt(req.getOrDefault("count", "0")) : 0;
             java.util.List<String> findings = java.util.List.of();
             if ("true".equalsIgnoreCase(req.getOrDefault("reload", "false"))) {
                 findings = population.reload();
+            }
+            String band = "";
+            if (req.containsKey("seed")) {
+                band = population.churn().describe(population.churn().requestSeeds(req.get("seed"), queued));
+            }
+            if (force != null) {
+                population.presence().forceOnline(force);
             }
             if ("true".equalsIgnoreCase(req.getOrDefault("sweep", "false"))) {
                 population.presence().sweep();
@@ -633,10 +645,17 @@ public final class AdminControlPort {
             }
             return new AdminJson.Obj().bool("ok", true).num("loaded", population.presence().loadedCount())
                     .num("virtual", population.presence().virtualCount()).num("forced", population.presence().forcedOnline())
-                    .num("sweepMs", population.presence().lastSweepDurationMs()).raw("findings", arr.toString()).finished();
+                    .num("sweepMs", population.presence().lastSweepDurationMs()).raw("findings", arr.toString())
+                    .num("queued", queued).str("band", band).raw("seedQueue", seedQueue(population)).finished();
         } catch (RuntimeException failure) {
             return "{\"ok\":false,\"error\":" + AdminJson.str(String.valueOf(failure.getMessage())) + "}";
         }
+    }
+
+    private static String seedQueue(Population population) {
+        AdminJson.Obj queue = new AdminJson.Obj();
+        population.churn().seedQueue().forEach(queue::num);
+        return queue.finished();
     }
 
     /** Re-reads living-world content from disk (same as {@code !world reload}); reports lint findings. */
