@@ -83,6 +83,59 @@ class AgentHpqAdoptRollbackTest {
     }
 
     @Test
+    void aCompanionStillHeldByAnOlderEngagementRollsTheAdmissionBack() {
+        // Tobi's last KPQ is still recovering him, so indexing him in the new engagement throws.
+        AgentPartyQuestEngagement older = new AgentPartyQuestEngagement(
+                "kpq", AgentPartyQuestEngagement.Mode.PRODUCTION, 1L, 741_299, 3, 500L);
+        older.addMember(TOBI, AgentPartyQuestEngagement.MemberType.AGENT, 500L);
+        AgentPartyQuestEngagementRegistry.register(older);
+        older.beginRecovery("KPQ ended", 600L);
+        try {
+            AgentHpqAdmissionService.AdmissionResult admitted = fixture.keep(AgentHpqAdmissionService.admit(
+                    fixture.ben, fixture.ben, fixture.party(), 7L, 1_000L));
+
+            assertFalse(admitted.success());
+            assertEquals("party-quest member already belongs to another engagement", admitted.message());
+            assertNull(admitted.session());
+            AgentPartyQuestEngagement engagement = admitted.engagement();
+            assertEquals(AgentPartyQuestEngagement.State.CLOSED, engagement.state(), "recovered");
+            assertNull(AgentPartyQuestEngagementRegistry.byId(engagement.engagementId()));
+            assertNull(AgentPartyQuestEngagementRegistry.forOperator(BEN));
+            assertNull(AgentPartyQuestEngagementRegistry.forMember(MIRA));
+            assertSame(older, AgentPartyQuestEngagementRegistry.forMember(TOBI), "the older engagement keeps Tobi");
+            for (int id : List.of(BEN, MIRA, TOBI)) {
+                assertNull(AgentPartyQuestLobbyRegistry.forMember(id), "lobby of " + id);
+                if (id != BEN) assertNull(AgentHpqSessionRegistry.forMember(id), "session of " + id);
+            }
+            // Mira had already been taken from her activity: she is handed back to Ben.
+            fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.miraEntry, fixture.ben));
+        } finally {
+            AgentPartyQuestEngagementRegistry.remove(older);
+        }
+    }
+
+    @Test
+    void aFailureOnceTheLobbyIsOpenUnregistersItAndRecovers() {
+        // Any exception after the lobby is registered: here the party service fails during the handoff.
+        when(fixture.party.snapshot(any())).thenAnswer(invocation -> {
+            if (AgentPartyQuestLobbyRegistry.forMember(BEN) != null) {
+                throw new IllegalStateException("party service unavailable");
+            }
+            return HpqAdmitFixture.benLeadsMiraAndTobi();
+        });
+
+        AgentHpqAdmissionService.AdmissionResult admitted = fixture.keep(AgentHpqAdmissionService.admit(
+                fixture.ben, fixture.ben, fixture.party(), 7L, 1_000L));
+
+        assertFalse(admitted.success());
+        assertEquals("party service unavailable", admitted.message());
+        assertNull(admitted.session());
+        assertNothingKept(admitted.engagement());
+        fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.miraEntry, fixture.ben));
+        fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.tobiEntry, fixture.ben));
+    }
+
+    @Test
     void anInvalidPartyRegistersNothing() {
         when(fixture.tobi.getMapId()).thenReturn(AgentHpqDefinition.STAGE_MAP);
 

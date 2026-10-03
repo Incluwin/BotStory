@@ -503,8 +503,13 @@ public final class AgentHpqTestService {
         }
         Run run = RUNS.get(operator.getId());
         if (run == null || run.session == null) return List.of("No active HPQ event session.");
+        String target = params[1].toLowerCase();
+        // An adopted party's Agents are its owners' companions: a fault never logs one out (only a fixture's).
+        if (run.flow == Flow.ADOPTED && (target.equals("coordinator") || target.equals("leader"))) {
+            return List.of("Disconnecting an Agent is for fixture runs only; use fail bunny or timeout on a companion run.");
+        }
         Character leader = onlineCharacter(run.session.eventLeaderId());
-        return switch (params[1].toLowerCase()) {
+        return switch (target) {
             case "coordinator" -> {
                 Character coordinator = character(run.session.executionAgentId());
                 if (coordinator == null) yield List.of("The execution coordinator is not a live Agent.");

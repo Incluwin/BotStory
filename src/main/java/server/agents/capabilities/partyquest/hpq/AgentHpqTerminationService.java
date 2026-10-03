@@ -40,7 +40,7 @@ final class AgentHpqTerminationService {
         if (disposeEvent && event != null) {
             tryCleanup(session, "dispose-event", () -> closeEvent(event));
         }
-        if (!keepPartyAfterRelease(session.mode(), completed)) {
+        if (!keepPartyAfterRelease(session.mode(), completed, session.companionAdopted())) {
             tryCleanup(session, "cleanup-party", () -> session.members().stream()
                         .filter(member -> session.partyOwnership() == AgentHpqSession.PartyOwnership.HPQ_OWNED
                                 || member.memberType() == AgentHpqMemberState.MemberType.AGENT)
@@ -59,7 +59,12 @@ final class AgentHpqTerminationService {
                 session.sessionId(), completed ? "completed" : reason, session.memberCount());
     }
 
-    static boolean keepPartyAfterRelease(AgentHpqSession.Mode mode, boolean completed) {
+    /**
+     * A companion run's party is its owner's own: his companions stay in it whatever the outcome, as KPQ keeps a party
+     * it did not form. Every other run keeps it only after a completed observation run.
+     */
+    static boolean keepPartyAfterRelease(AgentHpqSession.Mode mode, boolean completed, boolean companionRun) {
+        if (companionRun) return true;
         return completed && mode == AgentHpqSession.Mode.TEST_OBSERVATION;
     }
 

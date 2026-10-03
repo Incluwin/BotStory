@@ -58,6 +58,9 @@ final class HpqAdmitFixture implements AutoCloseable {
     final AgentRuntimeEntry miraEntry = mock(AgentRuntimeEntry.class, RETURNS_DEEP_STUBS);
     final AgentRuntimeEntry tobiEntry = mock(AgentRuntimeEntry.class, RETURNS_DEEP_STUBS);
     final AgentActivityAdmissionCoordinator admission = mock(AgentActivityAdmissionCoordinator.class);
+    final PartyGateway party = mock(PartyGateway.class);
+    final AgentClientGateway clients = mock(AgentClientGateway.class);
+    final CharacterGateway characters = mock(CharacterGateway.class);
     final MockedStatic<AgentTownLifeRuntime> townLife;
     final MockedStatic<AgentMovementCommandRuntime> movement;
     final MockedStatic<AgentMapGatewayRuntime> maps;
@@ -74,17 +77,11 @@ final class HpqAdmitFixture implements AutoCloseable {
             registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(id)).thenReturn(BEN);
             identity.when(() -> AgentRuntimeIdentityRuntime.bot(entry)).thenReturn(agent[2]);
         }
-        PartyGateway party = mock(PartyGateway.class);
-        when(party.snapshot(any())).thenReturn(new AgentPartySnapshot(9, List.of(
-                new AgentPartyMemberSnapshot(BEN, "Ben", true, AgentHpqDefinition.RECRUIT_MAP),
-                new AgentPartyMemberSnapshot(MIRA, "Mira", false, AgentHpqDefinition.RECRUIT_MAP),
-                new AgentPartyMemberSnapshot(TOBI, "Tobi", false, AgentHpqDefinition.RECRUIT_MAP))));
+        when(party.snapshot(any())).thenReturn(benLeadsMiraAndTobi());
         open(AgentPartyGatewayRuntime.class).when(AgentPartyGatewayRuntime::party).thenReturn(party);
-        AgentClientGateway clients = mock(AgentClientGateway.class);
         open(AgentClientGatewayRuntime.class).when(AgentClientGatewayRuntime::clients).thenReturn(clients);
         when(admission.prepare(anyString(), any(), any(), anyString(), anyLong())).thenReturn(true);
         open(AgentActivityBootstrap.class).when(AgentActivityBootstrap::admission).thenReturn(admission);
-        CharacterGateway characters = mock(CharacterGateway.class);
         when(characters.findOnlineCharacterById(BEN)).thenReturn(ben);
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters).thenReturn(characters);
         PrimitiveCapabilityGateway primitives = mock(PrimitiveCapabilityGateway.class);
@@ -109,6 +106,14 @@ final class HpqAdmitFixture implements AutoCloseable {
 
     List<Character> party() {
         return List.of(ben, mira, tobi);
+    }
+
+    /** The authoritative party: Ben leads, Mira and Tobi follow, all at Tory. */
+    static AgentPartySnapshot benLeadsMiraAndTobi() {
+        return new AgentPartySnapshot(9, List.of(
+                new AgentPartyMemberSnapshot(BEN, "Ben", true, AgentHpqDefinition.RECRUIT_MAP),
+                new AgentPartyMemberSnapshot(MIRA, "Mira", false, AgentHpqDefinition.RECRUIT_MAP),
+                new AgentPartyMemberSnapshot(TOBI, "Tobi", false, AgentHpqDefinition.RECRUIT_MAP)));
     }
 
     @Override

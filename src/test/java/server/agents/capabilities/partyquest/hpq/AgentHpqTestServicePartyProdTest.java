@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -51,11 +52,14 @@ class AgentHpqTestServicePartyProdTest {
     private final Character casse = member(CASSE, "Casse");
     private final Character wolf = member(WOLF, "HappyWolf");
     private final PartyGateway party = mock(PartyGateway.class);
+    private final CharacterGateway characters = mock(CharacterGateway.class);
+    private final AgentRuntimeEntry casseEntry = mock(AgentRuntimeEntry.class);
     private final List<MockedStatic<?>> statics = new ArrayList<>();
     private MockedStatic<AgentHpqAdmissionService> admission;
     private MockedStatic<AgentInteractionRuntime> interaction;
     private MockedStatic<AgentSchedulerRuntime> scheduler;
     private MockedStatic<AgentRuntimeCleanupService> cleanup;
+    private MockedStatic<AgentRuntimeIdentityRuntime> identity;
     private AgentHpqSession session;
     private AgentPartyQuestEngagement engagement;
 
@@ -66,11 +70,11 @@ class AgentHpqTestServicePartyProdTest {
         partyLedBy(CREW);
         when(party.onlineMembers(crew)).thenReturn(List.of(crew, casse, wolf));
         open(AgentCharacterGatewayRuntime.class).when(AgentCharacterGatewayRuntime::characters)
-                .thenReturn(mock(CharacterGateway.class));
+                .thenReturn(characters);
         MockedStatic<AgentRuntimeRegistry> registry = open(AgentRuntimeRegistry.class);
-        registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(CASSE)).thenReturn(mock(AgentRuntimeEntry.class));
+        registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(CASSE)).thenReturn(casseEntry);
         registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(WOLF)).thenReturn(mock(AgentRuntimeEntry.class));
-        open(AgentRuntimeIdentityRuntime.class); // status finds no live companion body: names fall back to ids
+        identity = open(AgentRuntimeIdentityRuntime.class); // status finds no live companion body: names fall back to ids
         interaction = open(AgentInteractionRuntime.class);
         scheduler = open(AgentSchedulerRuntime.class);
         cleanup = open(AgentRuntimeCleanupService.class);
@@ -186,6 +190,21 @@ class AgentHpqTestServicePartyProdTest {
         admission.verify(() -> AgentHpqAdmissionService.admit(eq(crew), eq(crew), anyList(), anyLong(), anyLong()),
                 times(2));
         cleanup.verify(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(anyInt()), never());
+    }
+
+    @Test
+    void aFaultNeverLogsOutAnAdoptedCompanion() {
+        identity.when(() -> AgentRuntimeIdentityRuntime.bot(casseEntry)).thenReturn(casse); // Casse coordinates, live
+        assertEquals(List.of(ADOPTED), AgentHpqTestService.execute(crew, new String[]{"party", "prod", "7"}, 2_000L));
+        String refused = "Disconnecting an Agent is for fixture runs only; use fail bunny or timeout on a companion run.";
+
+        assertEquals(List.of(refused), AgentHpqTestService.execute(crew, new String[]{"fail", "coordinator"}, 3_000L));
+        assertEquals(List.of(refused), AgentHpqTestService.execute(crew, new String[]{"fail", "leader"}, 3_100L));
+
+        cleanup.verify(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(anyInt()), never());
+        org.mockito.Mockito.verify(characters, never()).disconnect(any(), anyBoolean(), anyBoolean());
+        assertTrue(AgentHpqTestService.execute(crew, new String[]{"status"}, 4_000L).stream()
+                .anyMatch(line -> line.startsWith("Session " + session.sessionId())), "the run stays up");
     }
 
     private void verifyNoPartyChange() {

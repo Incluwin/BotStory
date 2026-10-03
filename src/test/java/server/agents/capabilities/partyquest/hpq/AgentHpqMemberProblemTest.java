@@ -62,6 +62,21 @@ class AgentHpqMemberProblemTest {
         assertEquals("Mira needs free ETC capacity for HPQ items", validation.message());
     }
 
+    @Test
+    void admissionChecksTheChannelBeforeTheBagAsStockAdmissionDid() {
+        fixture = new HpqAdmitFixture();
+        Inventory full = mock(Inventory.class);
+        when(full.getNextFreeSlot()).thenReturn((short) -1);
+        when(fixture.mira.getInventory(InventoryType.ETC)).thenReturn(full);
+        when(fixture.clients.channel(fixture.mira)).thenReturn(2); // Ben stands on channel 0
+
+        AgentHpqAdmissionService.Validation validation = AgentHpqAdmissionService.validate(
+                fixture.ben, fixture.ben, fixture.party());
+
+        assertFalse(validation.success());
+        assertEquals("Every HPQ member must be on the same world and channel", validation.message());
+    }
+
     private static Character member(String name, int mapId, int level, int nextFreeEtcSlot) {
         Character member = mock(Character.class);
         when(member.getName()).thenReturn(name);

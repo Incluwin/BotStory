@@ -45,11 +45,18 @@ class AgentHpqCoordinatorPolicyTest {
     @Test
     void completedObservationKeepsItsPartyTogether() {
         assertTrue(AgentHpqTerminationService.keepPartyAfterRelease(
-                AgentHpqSession.Mode.TEST_OBSERVATION, true));
+                AgentHpqSession.Mode.TEST_OBSERVATION, true, false));
         assertFalse(AgentHpqTerminationService.keepPartyAfterRelease(
-                AgentHpqSession.Mode.TEST_OBSERVATION, false));
+                AgentHpqSession.Mode.TEST_OBSERVATION, false, false));
         assertFalse(AgentHpqTerminationService.keepPartyAfterRelease(
-                AgentHpqSession.Mode.PRODUCTION, true));
+                AgentHpqSession.Mode.PRODUCTION, true, false));
+        assertFalse(AgentHpqTerminationService.keepPartyAfterRelease(
+                AgentHpqSession.Mode.PRODUCTION, false, false));
+        // A companion run's party is its owner's: kept whatever the outcome.
+        assertTrue(AgentHpqTerminationService.keepPartyAfterRelease(
+                AgentHpqSession.Mode.PRODUCTION, true, true));
+        assertTrue(AgentHpqTerminationService.keepPartyAfterRelease(
+                AgentHpqSession.Mode.PRODUCTION, false, true));
     }
 
     @Test

@@ -30,6 +30,10 @@ public final class AgentHpqAdmissionService {
      * A host's entry of its own party: a human leader with his companions at Tory, admitted as a PRODUCTION companion
      * run (AgentHpqSession.companionAdopted). It builds the engagement and lobby the background director would, then
      * hands off at once; on any failure the engagement is recovered and nothing is left registered.
+     *
+     * <p>It runs the activity admission and every registry and lobby change on the calling thread. The GM command
+     * '!hpqtest party prod' calls it there, as '!kpqtest party prod' calls KPQ's admit; a host on an IO thread (the
+     * Tory desk and hook) must not call it directly but submit it to companion-ops or the Agent tick.
      */
     public static AdmissionResult admit(
             Character operator, Character eventLeader, List<Character> members, long seed, long nowMs) {
@@ -223,12 +227,15 @@ public final class AgentHpqAdmissionService {
             if (memberParty == null || memberParty.id() != party.id()) {
                 return Validation.failure("Every HPQ member must be in the event leader's party");
             }
-            String problem = memberProblem(member);
+            // Stock order: entrance and level, then world and channel, then the bag.
+            String problem = placementProblem(member);
             if (!problem.isEmpty()) return Validation.failure(problem);
             if (AgentClientGatewayRuntime.clients().world(member) != world
                     || AgentClientGatewayRuntime.clients().channel(member) != channel) {
                 return Validation.failure("Every HPQ member must be on the same world and channel");
             }
+            problem = capacityProblem(member);
+            if (!problem.isEmpty()) return Validation.failure(problem);
         }
         return new Validation(true, "", List.copyOf(unique), agents, party);
     }
@@ -238,12 +245,21 @@ public final class AgentHpqAdmissionService {
      * its lineup with it before admitting it.
      */
     public static String memberProblem(Character member) {
+        String problem = placementProblem(member);
+        return problem.isEmpty() ? capacityProblem(member) : problem;
+    }
+
+    private static String placementProblem(Character member) {
         if (member.getMapId() != AgentHpqDefinition.RECRUIT_MAP) {
             return member.getName() + " is not at the Henesys PQ entrance";
         }
         if (member.getLevel() < 10 || member.getLevel() > 255) {
             return member.getName() + " must be level 10-255 for HPQ";
         }
+        return "";
+    }
+
+    private static String capacityProblem(Character member) {
         if (member.getInventory(InventoryType.ETC).getNextFreeSlot() < 0) {
             return member.getName() + " needs free ETC capacity for HPQ items";
         }
