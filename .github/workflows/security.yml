@@ -52,8 +52,10 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           # Code scanning cannot be enabled on this private repository, so the
-          # results are kept as a run artifact instead of uploaded as alerts.
+          # results are kept as a run artifact instead of uploaded as alerts,
+          # and the database upload (which would fail and retry) is skipped.
           upload: never
+          upload-database: false
           output: sarif-results
       - name: Upload SARIF
         uses: actions/upload-artifact@v7
