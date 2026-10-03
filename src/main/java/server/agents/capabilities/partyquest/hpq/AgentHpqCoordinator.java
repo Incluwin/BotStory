@@ -30,9 +30,6 @@ import java.util.Set;
 
 /** HPQ-only stage coordinator using ordinary NPC, combat, loot, and reactor paths. */
 final class AgentHpqCoordinator {
-    private static final PrimitiveCapabilityGateway ACTIONS =
-            AgentPrimitiveCapabilityGatewayRuntime.gateway();
-    private static final PartyQuestGateway HPQ = AgentPartyQuestGatewayRuntime.partyQuest();
     private static final long PHASE_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.PHASE_TIMEOUT_MS");
     private static final long INTERACTION_RETRY_MS = config.AgentTuning.longValue(
@@ -69,11 +66,11 @@ final class AgentHpqCoordinator {
                 AgentHpqTerminationService.fail(session, "The HPQ event leader is unavailable", nowMs);
                 return;
             }
-            if (session.eventInstance() == null && HPQ.event(leader) != null) {
-                session.bindEventInstance(HPQ.event(leader));
+            if (session.eventInstance() == null && hpq().event(leader) != null) {
+                session.bindEventInstance(hpq().event(leader));
             }
             if (insideEvent(session.phase()) && session.eventInstance() != null
-                    && HPQ.event(leader) != session.eventInstance()) {
+                    && hpq().event(leader) != session.eventInstance()) {
                 AgentHpqTerminationService.fail(
                         session, "The HPQ event ended or the leader left its instance", nowMs);
                 return;
@@ -94,12 +91,12 @@ final class AgentHpqCoordinator {
     }
 
     private static void prepare(AgentHpqSession session, Character leader, long nowMs) {
-        if (leader.getMapId() == AgentHpqDefinition.STAGE_MAP && HPQ.event(leader) != null) {
+        if (leader.getMapId() == AgentHpqDefinition.STAGE_MAP && hpq().event(leader) != null) {
             session.transition(AgentHpqSession.Phase.ENTERING, nowMs);
             return;
         }
         if (leader.getMapId() != AgentHpqDefinition.RECRUIT_MAP) return;
-        Point npc = ACTIONS.npcPosition(leader, AgentHpqDefinition.ENTRY_NPC);
+        Point npc = actions().npcPosition(leader, AgentHpqDefinition.ENTRY_NPC);
         if (npc == null) return;
         boolean allGathered = true;
         for (AgentHpqMemberState member : session.members()) {
@@ -115,7 +112,7 @@ final class AgentHpqCoordinator {
             }
             Point target = lobbyApproachPoint(session, member, participant, npc);
             if (!near(participant.getPosition(), target, NPC_APPROACH_PX)) {
-                ACTIONS.navigate(entry, target, true);
+                actions().navigate(entry, target, true);
                 allGathered = false;
             }
         }
@@ -132,24 +129,24 @@ final class AgentHpqCoordinator {
         if (leader.getMapId() == AgentHpqDefinition.RECRUIT_MAP) {
             AgentRuntimeEntry leaderEntry = AgentRuntimeRegistry.findByAgentCharacterId(leader.getId());
             if (leaderEntry == null) return;
-            Point npc = ACTIONS.npcPosition(leader, AgentHpqDefinition.ENTRY_NPC);
+            Point npc = actions().npcPosition(leader, AgentHpqDefinition.ENTRY_NPC);
             if (npc != null && !near(leader.getPosition(), npc, NPC_APPROACH_PX)) {
-                ACTIONS.navigate(leaderEntry, npc, true);
+                actions().navigate(leaderEntry, npc, true);
                 return;
             }
-            if (HPQ.runNpc(leader, AgentHpqDefinition.ENTRY_NPC, 0)) {
+            if (hpq().runNpc(leader, AgentHpqDefinition.ENTRY_NPC, 0)) {
                 session.markProgress(nowMs);
             }
             return;
         }
-        if (leader.getMapId() != AgentHpqDefinition.STAGE_MAP || HPQ.event(leader) == null) return;
+        if (leader.getMapId() != AgentHpqDefinition.STAGE_MAP || hpq().event(leader) == null) return;
         boolean together = session.members().stream().allMatch(member -> {
             Character character = character(member.characterId());
             return character != null && character.getMapId() == AgentHpqDefinition.STAGE_MAP
-                    && HPQ.sameEvent(leader, character);
+                    && hpq().sameEvent(leader, character);
         });
         if (!together) return;
-        session.bindEventInstance(HPQ.event(leader));
+        session.bindEventInstance(hpq().event(leader));
         session.transition(AgentHpqSession.Phase.COLLECTING_SEEDS, nowMs);
     }
 
@@ -164,7 +161,7 @@ final class AgentHpqCoordinator {
         long mixed = session.seed() + member.characterId() * 131L;
         int offset = 24 + Math.floorMod(mixed, Math.max(1, NPC_APPROACH_PX));
         Point target = new Point(npc.x - offset, npc.y);
-        Point grounded = ACTIONS.groundPoint(character.getMap(), target);
+        Point grounded = actions().groundPoint(character.getMap(), target);
         return grounded == null ? target : grounded;
     }
 
@@ -235,7 +232,7 @@ final class AgentHpqCoordinator {
                                     int collectorCount, long nowMs) {
         if (nowMs < member.nextActionAtMs()) return;
         List<Reactor> sources = new ArrayList<>();
-        for (Reactor reactor : ACTIONS.reactors(agent)) {
+        for (Reactor reactor : actions().reactors(agent)) {
             if (reactor != null && reactor.isAlive() && reactor.isActive()
                     && AgentHpqDefinition.SEED_SOURCE_REACTORS.contains(reactor.getId())) {
                 sources.add(reactor);
@@ -247,11 +244,11 @@ final class AgentHpqCoordinator {
         Reactor target = sources.get(distributedSourceIndex(
                 collectorIndex, collectorCount, sources.size()));
         if (!near(agent.getPosition(), target.getPosition(), REACTOR_DROP_RADIUS_PX)) {
-            ACTIONS.navigate(entry, target.getPosition(), true);
+            actions().navigate(entry, target.getPosition(), true);
             return;
         }
-        ACTIONS.stop(entry);
-        if (ACTIONS.hitReactor(agent, target.getObjectId())) {
+        actions().stop(entry);
+        if (actions().hitReactor(agent, target.getObjectId())) {
             member.deferUntil(nowMs + Math.max(500L, INTERACTION_RETRY_MS));
         }
     }
@@ -269,7 +266,7 @@ final class AgentHpqCoordinator {
                               AgentHpqMemberState member, int seedItemId, long nowMs) {
         if (nowMs < member.nextActionAtMs()) return;
         AgentHpqDefinition.SeedBed bed = AgentHpqDefinition.seedBed(seedItemId);
-        Point reactor = ACTIONS.reactors(agent).stream()
+        Point reactor = actions().reactors(agent).stream()
                 .filter(Reactor::isAlive)
                 .filter(candidate -> candidate.getId() == bed.reactorId())
                 .filter(candidate -> bed.reactorName().equalsIgnoreCase(candidate.getName()))
@@ -281,10 +278,10 @@ final class AgentHpqCoordinator {
         // Reactor.wz item bounds are x [-19,20], y [-42,16]; stay just inside them.
         if (!near(agent.getPosition(), reactor,
                 AgentHpqDefinition.FLOWER_DROP_X_PX, AgentHpqDefinition.FLOWER_DROP_Y_PX)) {
-            ACTIONS.navigate(entry, reactor, true);
+            actions().navigate(entry, reactor, true);
             return;
         }
-        ACTIONS.stop(entry);
+        actions().stop(entry);
         if (AgentScriptItemActionService.dropItem(
                 entry, InventoryType.ETC, seedItemId, (short) 1)) {
             inhibitSeedPickupDuringFlowerActivation(session);
@@ -315,7 +312,7 @@ final class AgentHpqCoordinator {
     }
 
     private static void pursueLoot(AgentRuntimeEntry entry, MapItem drop) {
-        ACTIONS.grind(entry, Set.of());
+        actions().grind(entry, Set.of());
         AgentGrindLootStateRuntime.setObjectiveLootTarget(entry, drop);
     }
 
@@ -348,6 +345,20 @@ final class AgentHpqCoordinator {
     }
 
     private static void defend(AgentHpqSession session, Character leader, long nowMs) {
+        guardBunny(session, leader, nowMs, false);
+        if (leader.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false)
+                >= AgentHpqDefinition.REQUIRED_RICE_CAKES) {
+            session.transition(AgentHpqSession.Phase.DELIVERING_CAKES, nowMs);
+        }
+    }
+
+    /**
+     * Every Agent guards the Moon Bunny from its post. While the cakes are delivered the loop keeps running for every
+     * Agent but the event leader, who takes them to Growlie (an Agent leader is the only one that loots cakes): live
+     * (2026-10-03) the guards stopped once the leader held ten, wandered to the upper floors, and bats killed the Moon
+     * Bunny while he stood at Growlie with all ten, which exiled the whole party.
+     */
+    private static void guardBunny(AgentHpqSession session, Character leader, long nowMs, boolean delivering) {
         Set<Integer> monsters = stageMonsters(leader);
         List<Monster> liveHostiles = AgentMapPerception.monsters(leader.getMap()).stream()
                 .filter(java.util.Objects::nonNull)
@@ -380,34 +391,31 @@ final class AgentHpqCoordinator {
             Point authoredPost = eventLeader
                     ? AgentHpqDefinition.defenseGuardPoints().get(2)
                     : defenseGuardPoint(ordinaryOrdinal++, ordinaryCount, centerReserved);
-            Point guardPost = ACTIONS.groundPoint(agent.getMap(), authoredPost);
+            if (delivering && eventLeader) continue;
+            Point guardPost = actions().groundPoint(agent.getMap(), authoredPost);
             if (guardPost == null) guardPost = authoredPost;
             boolean hostileClose = hostileNear(agent, liveHostiles, DEFENSE_WAKE_RADIUS_PX);
             if (!near(agent.getPosition(), guardPost, DEFENSE_GUARD_ARRIVAL_PX)
                     && !hostileClose) {
                 AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry);
-                ACTIONS.navigate(entry, guardPost, true);
+                actions().navigate(entry, guardPost, true);
                 continue;
             }
             if (hostilesPresent && nowMs < member.nextActionAtMs() && !hostileClose) {
-                ACTIONS.stop(entry);
+                actions().stop(entry);
                 continue;
             }
 
             MapItem cake = member.characterId() == session.eventLeaderId()
                     ? nearestUnassignedDrop(agent, cakes, Set.of()) : null;
             if (hostilesPresent || cake != null) {
-                ACTIONS.grind(entry, hostilesPresent ? monsters : Set.of());
+                actions().grind(entry, hostilesPresent ? monsters : Set.of());
                 if (cake != null) AgentGrindLootStateRuntime.setObjectiveLootTarget(entry, cake);
                 else AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry);
             } else {
                 AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry);
-                ACTIONS.stop(entry);
+                actions().stop(entry);
             }
-        }
-        if (leader.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false)
-                >= AgentHpqDefinition.REQUIRED_RICE_CAKES) {
-            session.transition(AgentHpqSession.Phase.DELIVERING_CAKES, nowMs);
         }
     }
 
@@ -459,14 +467,15 @@ final class AgentHpqCoordinator {
             session.transition(AgentHpqSession.Phase.BONUS_DECISION, nowMs);
             return;
         }
+        guardBunny(session, leader, nowMs, true);
         AgentRuntimeEntry leaderEntry = AgentRuntimeRegistry.findByAgentCharacterId(leader.getId());
         if (leaderEntry == null) return;
-        Point growlie = ACTIONS.npcPosition(leader, AgentHpqDefinition.GROWLIE_NPC);
+        Point growlie = actions().npcPosition(leader, AgentHpqDefinition.GROWLIE_NPC);
         if (growlie != null && !near(leader.getPosition(), growlie, 80)) {
-            ACTIONS.navigate(leaderEntry, growlie, true);
+            actions().navigate(leaderEntry, growlie, true);
             return;
         }
-        HPQ.runNpc(leader, AgentHpqDefinition.GROWLIE_NPC, 1);
+        hpq().runNpc(leader, AgentHpqDefinition.GROWLIE_NPC, 1);
     }
 
     private static void bonusDecision(AgentHpqSession session, Character leader, long nowMs) {
@@ -483,12 +492,12 @@ final class AgentHpqCoordinator {
         }
         if (session.bonusMode() == AgentHpqSession.BonusMode.ENTER) {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(leader.getId());
-            Point tommy = ACTIONS.npcPosition(leader, AgentHpqDefinition.TOMMY_NPC);
+            Point tommy = actions().npcPosition(leader, AgentHpqDefinition.TOMMY_NPC);
             if (entry != null && tommy != null && !near(leader.getPosition(), tommy, 80)) {
-                ACTIONS.navigate(entry, tommy, true);
+                actions().navigate(entry, tommy, true);
                 return;
             }
-            HPQ.runNpc(leader, AgentHpqDefinition.TOMMY_NPC);
+            hpq().runNpc(leader, AgentHpqDefinition.TOMMY_NPC);
             return;
         }
         session.transition(AgentHpqSession.Phase.CLAIMING_REWARD, nowMs);
@@ -504,8 +513,8 @@ final class AgentHpqCoordinator {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (agent == null || entry == null || agent.getMapId() != AgentHpqDefinition.BONUS_MAP) continue;
             agentRemaining = true;
-            if (exit) HPQ.runNpc(agent, AgentHpqDefinition.TOMMY_NPC);
-            else ACTIONS.grind(entry, ACTIONS.configuredMonsterSpawnIds(agent));
+            if (exit) hpq().runNpc(agent, AgentHpqDefinition.TOMMY_NPC);
+            else actions().grind(entry, actions().configuredMonsterSpawnIds(agent));
         }
         if (!agentRemaining) session.transition(AgentHpqSession.Phase.CLAIMING_REWARD, nowMs);
     }
@@ -533,12 +542,12 @@ final class AgentHpqCoordinator {
                 }
                 AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(
                         member.characterId());
-                Point tory = ACTIONS.npcPosition(participant, AgentHpqDefinition.ENTRY_NPC);
+                Point tory = actions().npcPosition(participant, AgentHpqDefinition.ENTRY_NPC);
                 if (entry != null && tory != null
                         && !near(participant.getPosition(), tory, NPC_APPROACH_PX)) {
-                    ACTIONS.navigate(entry, tory, true);
+                    actions().navigate(entry, tory, true);
                 } else if (tory != null) {
-                    HPQ.runNpc(participant, AgentHpqDefinition.ENTRY_NPC);
+                    hpq().runNpc(participant, AgentHpqDefinition.ENTRY_NPC);
                 }
             }
         }
@@ -557,21 +566,21 @@ final class AgentHpqCoordinator {
                 continue;
             }
             if (narrator == null) narrator = agent;
-            Point tory = ACTIONS.npcPosition(agent, AgentHpqDefinition.ENTRY_NPC);
+            Point tory = actions().npcPosition(agent, AgentHpqDefinition.ENTRY_NPC);
             if (tory == null) {
                 allGathered = false;
                 continue;
             }
             Point target = lobbyApproachPoint(session, member, agent, tory);
             if (!near(agent.getPosition(), target, NPC_APPROACH_PX)) {
-                ACTIONS.navigate(entry, target, true);
+                actions().navigate(entry, target, true);
                 allGathered = false;
             }
         }
         if (!allGathered) return;
         for (AgentHpqMemberState member : session.members()) {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
-            if (entry != null) ACTIONS.stop(entry);
+            if (entry != null) actions().stop(entry);
         }
         if (narrator != null) {
             AgentPacketGatewayRuntime.packets().broadcastChatText(
@@ -581,7 +590,7 @@ final class AgentHpqCoordinator {
     }
 
     private static int eventStage(Character character) {
-        String value = HPQ.property(character, "stage");
+        String value = hpq().property(character, "stage");
         try {
             return value == null ? 0 : Integer.parseInt(value);
         } catch (NumberFormatException ignored) {
@@ -590,7 +599,7 @@ final class AgentHpqCoordinator {
     }
 
     private static Set<Integer> stageMonsters(Character character) {
-        Set<Integer> monsters = new LinkedHashSet<>(ACTIONS.configuredMonsterSpawnIds(character));
+        Set<Integer> monsters = new LinkedHashSet<>(actions().configuredMonsterSpawnIds(character));
         monsters.remove(AgentHpqDefinition.MOON_BUNNY);
         return Set.copyOf(monsters);
     }
@@ -611,6 +620,18 @@ final class AgentHpqCoordinator {
                     DELIVERING_CAKES -> true;
             default -> false;
         };
+    }
+
+    /**
+     * The gateways are resolved per call (each is one adapter singleton), so a test can stand in for them without a
+     * class loaded under its mock keeping that mock for every later test.
+     */
+    private static PrimitiveCapabilityGateway actions() {
+        return AgentPrimitiveCapabilityGatewayRuntime.gateway();
+    }
+
+    private static PartyQuestGateway hpq() {
+        return AgentPartyQuestGatewayRuntime.partyQuest();
     }
 
     private static Character character(int characterId) {
