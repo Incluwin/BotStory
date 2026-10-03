@@ -21,6 +21,8 @@ public final class AgentHpqDefinition {
     public static final int MOON_BUNNY = 9_300_061;
     public static final int RICE_CAKE = 4_001_101;
     public static final int REQUIRED_RICE_CAKES = 10;
+    /** MapleMap's timed drops give the Moon Bunny a cake every Mob.wz drop period over this, not every period. */
+    public static final int MOON_BUNNY_DROP_PERIOD_DIVISOR = 3;
     public static final int FLOWER_DROP_X_PX = 18;
     public static final int FLOWER_DROP_Y_PX = 40;
 
@@ -29,6 +31,37 @@ public final class AgentHpqDefinition {
             9_102_002, 9_102_003, 9_102_004, 9_102_005, 9_102_006, 9_102_007);
 
     public static final Point MOON_BUNNY_POSITION = new Point(-183, -433);
+    /** Growlie's spot on the spawn floor, where the rice cakes are handed in. */
+    public static final Point GROWLIE_POSITION = new Point(429, 83);
+    /** HenesysPQ.js minPlayers: an instance with fewer members ends. */
+    public static final int MINIMUM_PARTY_SIZE = 3;
+    /**
+     * The latest a stack left lying is picked back up under the shipped config.yaml (ITEM_EXPIRE_TIME 180000,
+     * ITEM_EXPIRE_CHECK 10000); only used when the server's configuration cannot be read. The live clamp is
+     * {@link #riceCakeRecollectLatestMs} of the running server's values.
+     */
+    public static final long RICE_CAKE_RECOLLECT_LATEST_MS = 170_000L;
+
+    /**
+     * The latest a stack left lying is picked back up: a dropped item lies ITEM_EXPIRE_TIME and goes on the next
+     * ITEM_EXPIRE_CHECK sweep after that, so one sweep's length before its expiry still leaves the walk to it time to
+     * end before it can vanish.
+     */
+    public static long riceCakeRecollectLatestMs(long itemExpireTimeMs, long itemExpireCheckMs) {
+        return Math.max(0L, itemExpireTimeMs - Math.max(0L, itemExpireCheckMs));
+    }
+
+    /**
+     * The six moonflower pads by where they lie, as a companion names them to a player: each reads on after "that
+     * seed goes on the pad".
+     */
+    private static final List<PadPosition> PAD_POSITIONS = List.of(
+            new PadPosition(new Point(-359, -692), "up top on the left"),
+            new PadPosition(new Point(4, -690), "up top in the middle"),
+            new PadPosition(new Point(182, -452), "up on the right"),
+            new PadPosition(new Point(-535, -449), "up on the left"),
+            new PadPosition(new Point(0, -210), "in the middle"),
+            new PadPosition(new Point(-358, -210), "left of the middle"));
 
     /** Reachable upper footholds used as sparse guard posts after the Moon Bunny appears. */
     private static final List<Point> DEFENSE_GUARD_POINTS = List.of(
@@ -77,6 +110,17 @@ public final class AgentHpqDefinition {
 
     public static List<Point> defenseGuardPoints() {
         return DEFENSE_GUARD_POINTS.stream().map(Point::new).toList();
+    }
+
+    /** The name of the pad nearest this point (a moonflower's live position); null for no point. */
+    public static String padPositionName(Point point) {
+        if (point == null) return null;
+        return PAD_POSITIONS.stream()
+                .min(java.util.Comparator.comparingDouble(pad -> pad.position().distanceSq(point)))
+                .map(PadPosition::name).orElse(null);
+    }
+
+    private record PadPosition(Point position, String name) {
     }
 
     public record SeedBed(int seedItemId, int reactorId, String reactorName) {

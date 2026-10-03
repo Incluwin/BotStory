@@ -790,6 +790,90 @@ tuning:
     # Purpose: Determines when an HPQ defender has reached its separate upper guard foothold after the Moon Bunny appears.
     # Technical: Applies only to the authored HPQ defense posts; shared navigation arrival tolerances and every other combat activity are unchanged.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.DEFENSE_GUARD_ARRIVAL_PX: '70'
+    # Values: 5000-120000 milliseconds. Recommended: 30000, the 30 seconds '!hpqtest party prod' and the Tory desk promise.
+    # Purpose: Bounds how long a companion run waits for its leader to click Tory, and then for every member to arrive on Primrose Hill.
+    # Technical: AgentHpqCoordinator compares it with the PREPARING and ENTERING phase entry times of companion runs only; after it, at least three inside go on without the absent (ejected and handed back), fewer end the run without a line. Stock, background and GM-observed runs never read it.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_ENTRY_WAIT_MS: '30000'
+    # Values: 40-250 map pixels. Recommended: 110 so five guards cover the Moon Bunny's floor without standing on each other.
+    # Purpose: Spaces a companion run's guard posts around the live Moon Bunny: the centre, then one and two spreads to either side.
+    # Technical: AgentHpqCompanionPlay.guardPosts places posts at the anchor's x plus 0, -s, +s, -2s and +2s and grounds each with the map's foothold search; companion runs only, the stock run keeps its authored upper posts.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_GUARD_SPREAD_PX: '110'
+    # Values: 20-200 map pixels. Recommended: 60, under a platform step, so a post never lands on another floor.
+    # Purpose: Keeps every companion guard post on the Moon Bunny's own floor instead of a platform above or the ground far below it.
+    # Technical: A post whose grounded y differs from the anchor's (the live 9300061 position) by more than this collapses onto the anchor itself; AgentHpqCompanionPlay.guardPosts applies it in companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.GUARD_POST_MAX_DY_PX: '60'
+    # Values: 100-500 map pixels. Recommended: 260, a little past the wake radius, so attackers are met before they reach the Bunny.
+    # Purpose: Decides when a monster threatens the Moon Bunny: every companion guard wakes for it and the cake collector stops looting.
+    # Technical: Euclidean distance from a live stage monster to the live 9300061 position; woken guards farm from their own post (grindFromAnchor, leashed) preferring the threatening mob ids. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_BUNNY_THREAT_RADIUS_PX: '260'
+    # Values: 0-120000 milliseconds. Recommended: 30000 so a player told which pad gets time to walk there.
+    # Purpose: Leaves a needed seed the leader carries to him for a while after he was told where it goes, before the companions fetch that colour too.
+    # Technical: The leader's needed seed counts as covered while he has carried it for less than SEED_HOLD_HINT_MS plus this; the age is kept per colour in AgentHpqSession and reset when he no longer carries it. Another player's seed is not covered (no C3 told him where it goes). Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.HUMAN_SEED_GRACE_MS: '30000'
+    # Values: 5000-60000 milliseconds. Recommended: 20000 so a player planting on his own is not talked over.
+    # Purpose: Waits this long after the leader picks up a needed seed before a companion tells him which pad it goes on.
+    # Technical: AgentHpqCoordinator says the C3 line once per colour when the leader has carried that needed seed this long; the pad is named from the live moonflower position (up top on the left, up top in the middle, up on the right, up on the left, in the middle, left of the middle). Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.SEED_HOLD_HINT_MS: '20000'
+    # Values: 1-10 rice cakes. Recommended: 3, so the leader gets cakes in a few trips without the collector leaving its post for every one.
+    # Purpose: Sets how many Moon Bunny cakes the companion collector gathers before it walks them to a nearby leader.
+    # Technical: AgentHpqCompanionPlay.handOverDue starts a hand-over when the collector holds this many and the leader is within CAKE_HANDOVER_NEAR_PX, or when its and the leader's cakes make ten, or when the Bunny has made ten, none lies on the floor and its, the leader's and the companions' stacks still lying for him make ten (so after a loss no single cake is walked over on its own).
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_HANDOVER_BATCH: '3'
+    # Values: 100-1500 map pixels. Recommended: 400, about the Bunny's floor, so a batch never drags the collector across the map.
+    # Purpose: Bounds how near the leader must be for a batch of cakes to be walked to him before all ten are made.
+    # Technical: Measured on each axis from the collector to the leader on the same map; a farther leader gets the cakes only once its and his cakes (with the stacks still lying for him, once the Bunny has made ten) make ten. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_HANDOVER_NEAR_PX: '400'
+    # Values: 20-120 map pixels. Recommended: 60, within a step of the leader so he can pick the stack up without walking.
+    # Purpose: Decides when the collector stands at the leader's feet (or Growlie's) and drops its whole stack there in one drop.
+    # Technical: Both on a foothold within this on each axis (as KPQ's at-feet rule); the drop's landing is previewed with the map's own placement (predictDropLanding): within this of his spot it is at his feet, on his floor but off it right next to him, over or under him the collector walks on.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_HANDOVER_REACH_PX: '60'
+    # Values: 5000-90000 milliseconds. Recommended: 30000; the Moon Bunny's floor to the spawn floor takes about 15 s.
+    # Purpose: Bounds the collector's walk to the leader before it leaves the stack by Growlie instead and says so.
+    # Technical: Counted from the hand-over's start in AgentHpqSession; a leader the collector's navigation graph proves unreachable (canReach false while it stands on a foothold) sends the stack to Growlie at once. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_HANDOVER_TIMEOUT_MS: '30000'
+    # Values: 500-10000 milliseconds. Recommended: 3000, long enough for the collector to walk off the stack.
+    # Purpose: Keeps every companion from picking anything up right after a hand-over, so the stack stays the leader's.
+    # Technical: Applied with AgentInventoryStateRuntime.setLootInhibitMs to each Agent of the run (never shortening a longer one); the loot rule already refuses a player-dropped cake to anyone whose re-collect is not due.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_HANDOVER_LOOT_INHIBIT_MS: '3000'
+    # Values: 10000-120000 milliseconds. Recommended: 40000.
+    # Purpose: Reminds the leader once about a cake stack a companion dropped for him that is still lying on the floor.
+    # Technical: The C7 line is said once per stack (keyed by its map object id) when a companion-dropped rice cake stack has lain this long since its drop time. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_PICKUP_NUDGE_MS: '40000'
+    # Values: 60000-170000 milliseconds with the shipped item expiry; a value past config.yaml ITEM_EXPIRE_TIME minus ITEM_EXPIRE_CHECK is read as that, with one WARN. Recommended: 150000.
+    # Purpose: Has the collector pick back up a stack the leader left lying before the map removes it, and drop it for him again.
+    # Technical: A dropped item lies config.yaml ITEM_EXPIRE_TIME (180000) and goes on the next ITEM_EXPIRE_CHECK (10000) sweep; AgentHpqCoordinator reads both from the server's config at class load and caps this at their difference (170000 shipped; AgentHpqDefinition.RICE_CAKE_RECOLLECT_LATEST_MS only when the server config cannot be read). From then the loot rule lets the collector take that player-dropped stack back.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_RECOLLECT_MS: '150000'
+    # Values: 0-5 re-collects per run. Recommended: 2; 0 never picks a stack back up.
+    # Purpose: Bounds how often a companion run's collector picks up and re-drops cakes the leader keeps leaving on the floor.
+    # Technical: Counted in AgentHpqSession when the collector actually picked a due stack back up; once reached, a stack left lying is only nudged about and may expire. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_RECOLLECT_MAX: '2'
+    # Values: 5-60 percent of max HP. Recommended: 25.
+    # Purpose: Has a cake collector about to go down drop its stack where it stands, so the cakes are not lost with it.
+    # Technical: At or below this share of its max HP with no HP potion left (KPQ's aboutToGoDown; an unknown count is not none), the collector drops its whole stack, says C14, and collects nothing until it is out of danger (above this share, or holding an HP potion); meanwhile the next standing companion takes the role, and with every standing companion in danger one keeps it and only guards.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_DYING_HP_PERCENT: '25'
+    # Values: 10000-120000 milliseconds. Recommended: 30000.
+    # Purpose: Spaces the companions' line that the Moon Bunny is being hit, so it reads as a reaction and not as spam.
+    # Technical: AgentHpqCoordinator compares the live 9300061 HP each tick; a drop says the C5 line only this long after the last one, up to BUNNY_HURT_LINE_MAX times a run. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.BUNNY_HURT_LINE_EVERY_MS: '30000'
+    # Values: 0-10 lines per run. Recommended: 3; 0 never says it.
+    # Purpose: Caps how often a companion run says the Moon Bunny is being hit during one defense.
+    # Technical: Counted in AgentHpqSession per run; each line uses its own narration key so the once-per-key rule does not silence the later ones. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.BUNNY_HURT_LINE_MAX: '3'
+    # Values: 30000-540000 milliseconds. Recommended: 300000, inside Pig Town's five-minute timer and the event's ten.
+    # Purpose: Bounds how long the companions wait on the clear map for the leader to choose Tommy or Tory before they claim and go.
+    # Technical: Counted from the clear in AgentHpqSession; after it the companions say C12 and claim at Tory even while he is still on the clear map or in Pig Town. Before it they claim only once he is off both or out of the event. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_CLEAR_WAIT_MS: '300000'
+    # Values: 10000-120000 milliseconds. Recommended: 45000, KPQ's LOCAL_RECOVERY_TIMEOUT_MS, which covers an Agent's death pop-up and respawn.
+    # Purpose: Bounds how long a companion run waits for a downed member: the respawn carries it out of the event, where its owner taps a companion out or a player is left behind.
+    # Technical: AgentHpqCoordinator.membersAlive fails the run DEFEATED for a companion down this long (a downed non-leader player is never timed out; HenesysPQ.js ends nothing for a dead player) and GONE for a member missing this long inside COLLECTING_SEEDS..DELIVERING_CAKES; AgentHpqWatchdogRuntime waits this long for a respawn while no companion stands, unless fewer than three stand (WENT_DOWN). Companion runs only; the stage is never paused.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
+    # Values: 0-10000 milliseconds. Recommended: 2000.
+    # Purpose: Lets a companion run that the event ended under say it ran out of time when that was the script's ten-minute timer, and not a generic ending.
+    # Technical: AgentHpqParting.eventEnded picks TIMEOUT when the run has stood in the event at least the catalog's hpq eventTimerMs (600000) minus this slack, counted from the leader's first sighting inside; a lost Moon Bunny is BUNNY first. Companion runs only; it changes only the parting line.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.TIMEOUT_SLACK_MS: '2000'
+    # Values: 1-10 turned-down claims. Recommended: 3.
+    # Purpose: Keeps one companion whose bag is full from holding the whole party up at Tory after the clear.
+    # Technical: Counted per member when 1012112.js cancels its reward claim (giveEventReward failed); at this many AgentHpqCoordinator.companionClaim forfeits that companion's reward, logs 'HPQ claim failed', and takes it out through the event's exit, so EXITING is not held up until PHASE_TIMEOUT_MS. Companion runs only.
+    server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_CLAIM_FAILURE_LIMIT: '3'
     # Values: 500-5000 milliseconds. Recommended: 2000.
     # Purpose: Gives an HPQ Agent leader a natural pause after a nearby eligible player asks to join its party.
     # Technical: Overrides only HPQ's shared-lobby invitation delay; KPQ, LPQ, and other lobby profiles retain their own or the shared defaults.
@@ -2603,6 +2687,30 @@ tuning:
     # Purpose: How much of a kill segment the companions may spend simulated below the presentation rate before its pace span stops counting, so throttled fights never set the clear-time priors.
     # Technical: AgentKpqPaceReport marks the s1.grind, s5.normals and s5.boss spans incomplete when the member-milliseconds of the Agents standing in the run outside AgentSimulationMode.PRESENTATION, sampled each coordinator tick, are over this share of all of theirs; the KPQ pace span line prints the share as throttled=.
     server.agents.capabilities.partyquest.kpq.AgentKpqPaceReport.THROTTLED_SHARE_MAX: '0.10'
+    # Values: 0-60000 milliseconds. Recommended: 1000, KPQ's YES_TO_STAGE1_MS; the stock warp puts the party on Primrose Hill within a second of Tory's Yes.
+    # Purpose: Prior time from the leader's Yes at Tory until every member of a companion run stands in the HPQ event, the first segment of the clear-time estimate.
+    # Technical: AgentHpqPaceProfile seeds the companion-side yes term with it; the estimate adds it as a fixed time and recorded companion runs refit it from admission to the COLLECTING_SEEDS phase entry.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.YES_TO_STAGE_MS: '1000'
+    # Values: 30000-600000 milliseconds. Recommended: 150000; the 2026-10-03 smoke had all six moonflowers up and the Moon Bunny out about 155 s after entry with four Agents.
+    # Purpose: Prior time a companion run spends fetching and planting the six moonflower seeds before the Moon Bunny comes out.
+    # Technical: AgentHpqPaceProfile seeds the companion-side seeds term; the estimate adds it as a fixed time and recorded companion runs refit it from the COLLECTING_SEEDS to the DEFENDING_BUNNY phase entry.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.SEEDS_MS: '150000'
+    # Values: 0-600000 milliseconds. Recommended: 40000; assumed quick human, never measured (the smoke's hand-in used !itemvac).
+    # Purpose: Prior time a human leader needs from the Moon Bunny's tenth rice cake until Growlie takes the ten and clears the stage, learned per leader from his runs.
+    # Technical: AgentHpqPaceProfile seeds the leader-side handin term (leader-bounded); recorded companion runs refit it per leader from the event's bunnyCake count first reaching ten to the BONUS_DECISION phase entry, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.HANDIN_MS: '40000'
+    # Values: 1-50 touches. Recommended: 7, KPQ's FRAGILE_TOUCHES. Lower values flag only the very frail; higher values flag more of the party.
+    # Purpose: How few touches of a Goblin Fire, Primrose Hill's hardest-hitting attacker, a companion may take before Tory's estimate names it as fragile.
+    # Technical: AgentHpqPaceProfile passes it as Thresholds.fragileTouches; AgentPqPaceEstimator names a non-leader member FRAGILE when its effective HP over Goblin Fire's expected touch damage (9300064, the stat proxy of 9300083) is below it.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.0-1.0 hit chance. Recommended: 0.6, KPQ's WEAK_HIT_CHANCE.
+    # Purpose: Hit chance below which the estimate would name a companion as missing HPQ's mobs; kept beside FRAGILE_TOUCHES as KPQ keeps its pair.
+    # Technical: AgentHpqPaceProfile passes it as Thresholds.weakHitChance; AgentPqPaceEstimator weighs it only on quota and clear segments, and HPQ's four segments are all fixed times, so today it names nobody.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1 or more. Recommended: 1. Bump it when HPQ's pace segments or their boundaries change.
+    # Purpose: Version of HPQ's pace model; recorded runs of another epoch are not learned from, so a model change starts from the priors again.
+    # Technical: AgentHpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for hpq.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.PACE_EPOCH: '1'
     # Values: 0.5-20 pseudo-runs. Recommended: 3.0. Higher values trust the priors longer; lower values follow the first recorded runs closely.
     # Purpose: How many recorded runs' worth of weight the prior of each companion pace term carries when the calibration learns from recorded runs.
     # Technical: AgentPqPaceCalibration.fit shrinks every companion term toward its prior with this many pseudo-runs (in log space for times and efficiencies, linearly for seek) and uses it for the spread too.

@@ -149,6 +149,11 @@ public interface PrimitiveCapabilityGateway {
         return -1;
     }
 
+    /** How many MP potions this character carries in its USE bag; -1 when that cannot be told. */
+    default int mpPotionCount(Character character) {
+        return -1;
+    }
+
     /**
      * What one line of this Agent's usual attack is expected to deal to each of these mobs alive on its map: the hit
      * chance times the damage left after the mob's defense. A mob with none alive is left out.

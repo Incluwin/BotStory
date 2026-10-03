@@ -352,6 +352,11 @@ public enum CosmicPrimitiveCapabilityGateway implements PrimitiveCapabilityGatew
     }
 
     @Override
+    public int mpPotionCount(Character character) {
+        return character == null ? -1 : AgentSupplyInventorySnapshot.quantity(character, AgentResourceCategory.MP_POTION);
+    }
+
+    @Override
     public Map<Integer, Double> expectedLineDamage(AgentRuntimeEntry entry, Character agent, Set<Integer> mobIds) {
         if (entry == null || agent == null || agent.getMap() == null || mobIds == null) {
             return Map.of();

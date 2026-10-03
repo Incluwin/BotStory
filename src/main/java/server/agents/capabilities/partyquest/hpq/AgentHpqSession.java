@@ -4,7 +4,9 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
+import java.awt.Point;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -29,6 +31,7 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     private final int requestedPartySize;
     private final long startedAtMs;
     private final Map<Integer, AgentHpqMemberState> members = new LinkedHashMap<>();
+    private final Set<Integer> companionIds = new HashSet<>();
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -48,6 +51,30 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     private boolean companionAdopted;
     private boolean memberCoordinationChatEnabled;
     private final Set<Integer> recollectDue = new HashSet<>();
+    // A companion run's play (AgentHpqCoordinator); read and written under the session's lock.
+    private final Set<String> narrationKeys = new HashSet<>();
+    private final Map<Integer, Long> padPlantedAtMs = new HashMap<>();
+    private final Map<Integer, Map<Integer, Long>> humanSeedSinceMs = new HashMap<>();
+    private long clearedAtMs;
+    private boolean bunnySeen;
+    private boolean bunnyLost;
+    private Point bunnyAnchor;
+    private long bunnyLastHp = -1L;
+    private int bunnyHurtLines;
+    private long bunnyHurtLineAtMs;
+    private int cakeCollectorId;
+    private long handOverStartedAtMs;
+    private boolean handOverToGrowlie;
+    private boolean handOverRecollect;
+    private int handOvers;
+    private int recollects;
+    private int recollectStackObjectId;
+    private int recollectHeldBefore;
+    private boolean leaderToldGrowlie;
+    private String potionsAtEntry = "";
+    private long enteredEventAtMs;
+    private boolean leaderReleased;
+    private final AgentHpqPaceMarks pace = new AgentHpqPaceMarks();
 
     public AgentHpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < 3 || requestedPartySize > 6
@@ -67,8 +94,15 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
         if (members.size() >= requestedPartySize && !members.containsKey(characterId)) {
             throw new IllegalStateException("HPQ session is full");
         }
-        members.computeIfAbsent(characterId, id -> new AgentHpqMemberState(id, type));
+        AgentHpqMemberState member = members.computeIfAbsent(characterId, id -> new AgentHpqMemberState(id, type));
+        if (member.memberType() == AgentHpqMemberState.MemberType.AGENT) companionIds.add(characterId);
     }
+
+    /**
+     * A companion that has been a member of this run, also after it was taken out of it (removeMember): the cake
+     * stacks it dropped stay the run's to nudge about and pick back up.
+     */
+    public synchronized boolean companionOfRun(int characterId) { return companionIds.contains(characterId); }
 
     public synchronized void removeMember(int characterId) {
         members.remove(characterId);
@@ -125,6 +159,9 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
         terminating = true;
         return true;
     }
+
+    /** True once a release has begun (it lets go of the full-rate holds before the phase turns terminal). */
+    public synchronized boolean terminationStarted() { return terminating; }
 
     public synchronized void markProgress(long nowMs) {
         lastProgressAtMs = Math.max(lastProgressAtMs, nowMs);
@@ -211,6 +248,111 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
         if (due) recollectDue.add(characterId);
         else recollectDue.remove(characterId);
     }
+
+    /** True when the line was not said yet this run; each key is said once. */
+    synchronized boolean narrateOnce(String key) { return key != null && narrationKeys.add(key); }
+
+    /** When the run was cleared (the leader reached the clear map or the event cleared); 0 before. */
+    synchronized long clearedAtMs() { return clearedAtMs; }
+    synchronized void markCleared(long nowMs) { if (clearedAtMs == 0L) clearedAtMs = Math.max(1L, nowMs); }
+
+    /** When an Agent last dropped a seed on this moonflower (by reactor id); 0 when none did. */
+    synchronized long padPlantedAtMs(int reactorId) { return padPlantedAtMs.getOrDefault(reactorId, 0L); }
+    synchronized void markPadPlanted(int reactorId, long nowMs) { padPlantedAtMs.put(reactorId, nowMs); }
+
+    /** Since when this human member has carried this needed seed, as first seen now. */
+    synchronized long humanSeedHeldSinceMs(int characterId, int seedItemId, long nowMs) {
+        return humanSeedSinceMs.computeIfAbsent(characterId, id -> new HashMap<>())
+                .computeIfAbsent(seedItemId, seed -> nowMs);
+    }
+
+    /** Forgets every seed this human member no longer carries (or is no longer needed). */
+    synchronized void keepHumanSeeds(int characterId, Collection<Integer> carried) {
+        Map<Integer, Long> held = humanSeedSinceMs.get(characterId);
+        if (held != null) held.keySet().retainAll(carried);
+    }
+
+    synchronized boolean bunnySeen() { return bunnySeen; }
+    synchronized void markBunnySeen() { bunnySeen = true; }
+    /** The Moon Bunny was seen and is gone before the clear: the run's failure names it. */
+    synchronized boolean bunnyLost() { return bunnyLost; }
+    synchronized void markBunnyLost() { bunnyLost = true; }
+    synchronized Point bunnyAnchor() { return bunnyAnchor == null ? null : new Point(bunnyAnchor); }
+    synchronized void setBunnyAnchor(Point anchor) { bunnyAnchor = anchor == null ? null : new Point(anchor); }
+    synchronized long bunnyLastHp() { return bunnyLastHp; }
+    synchronized void setBunnyLastHp(long hp) { bunnyLastHp = hp; }
+    synchronized int bunnyHurtLines() { return bunnyHurtLines; }
+    synchronized long bunnyHurtLineAtMs() { return bunnyHurtLineAtMs; }
+    synchronized void noteBunnyHurtLine(long nowMs) {
+        bunnyHurtLines++;
+        bunnyHurtLineAtMs = nowMs;
+    }
+
+    /** The companion on the centre post that collects the Moon Bunny's cakes; 0 for none. */
+    synchronized int cakeCollectorId() { return cakeCollectorId; }
+    synchronized void setCakeCollectorId(int characterId) { cakeCollectorId = Math.max(0, characterId); }
+
+    /** When the collector set out with its stack for the leader (or Growlie); 0 while none is under way. */
+    synchronized long handOverStartedAtMs() { return handOverStartedAtMs; }
+    synchronized boolean handOverToGrowlie() { return handOverToGrowlie; }
+    /** This hand-over brings back a stack the leader left lying (a re-collect). */
+    synchronized boolean handOverRecollect() { return handOverRecollect; }
+    synchronized void startHandOver(long nowMs, boolean recollect) {
+        handOverStartedAtMs = Math.max(1L, nowMs);
+        handOverToGrowlie = false;
+        handOverRecollect = recollect;
+    }
+    synchronized void sendHandOverToGrowlie() { handOverToGrowlie = true; }
+    /** Ends the hand-over under way; a dropped one counts. */
+    synchronized void endHandOver(boolean dropped) {
+        if (dropped) handOvers++;
+        handOverStartedAtMs = 0L;
+        handOverToGrowlie = false;
+        handOverRecollect = false;
+    }
+    synchronized int handOvers() { return handOvers; }
+
+    /** Re-collects begun so far, and the stack (by object id) the collector is sent to pick back up; 0 for none. */
+    synchronized int recollects() { return recollects; }
+    synchronized int recollectStackObjectId() { return recollectStackObjectId; }
+    /** The cakes the collector held as it was sent back for the stack: more after it is gone means it picked it up. */
+    synchronized int recollectHeldBefore() { return recollectHeldBefore; }
+    synchronized void beginRecollect(int collectorId, int stackObjectId, int heldBefore) {
+        recollectStackObjectId = stackObjectId;
+        recollectHeldBefore = Math.max(0, heldBefore);
+        setRecollectDue(collectorId, true);
+    }
+    /** The re-collect ends: the collector picked the stack up ({@code pickedUp}) or it is gone. */
+    synchronized void endRecollect(boolean pickedUp) {
+        if (pickedUp) recollects++;
+        recollectStackObjectId = 0;
+        recollectHeldBefore = 0;
+        recollectDue.clear();
+    }
+
+    /** A hand-over line already told the leader to take the cakes to Growlie. */
+    synchronized boolean leaderToldGrowlie() { return leaderToldGrowlie; }
+    synchronized void markLeaderToldGrowlie() { leaderToldGrowlie = true; }
+
+    /** When the leader was first seen standing in the event (the script's timer starts as he enters); 0 before. */
+    synchronized long enteredEventAtMs() { return enteredEventAtMs; }
+    synchronized void markEnteredEvent(long nowMs) {
+        if (enteredEventAtMs == 0L) enteredEventAtMs = Math.max(1L, nowMs);
+    }
+
+    /**
+     * After the clear the leader logged off, went down or is no longer the party's leader: the companions stop waiting
+     * on him, claim and go. It is never a failure.
+     */
+    synchronized boolean leaderReleased() { return leaderReleased; }
+    synchronized void markLeaderReleased() { leaderReleased = true; }
+
+    /** The companion run's pace marks (AgentHpqCoordinator sets them; a stock run leaves them unseen). */
+    AgentHpqPaceMarks pace() { return pace; }
+
+    /** The companions' potions as the run entered the stage, for the release log line. */
+    synchronized String potionsAtEntry() { return potionsAtEntry; }
+    synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions == null ? "" : potions; }
 
     public synchronized void freezeRewardEligibility() { rewardEligibilityFrozen = true; }
     public synchronized boolean rewardEligibilityFrozen() { return rewardEligibilityFrozen; }
