@@ -11,6 +11,7 @@ import net.server.world.PartyEvents;
 import net.server.world.PartyOperation;
 import net.server.world.World;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import server.TimerManager;
@@ -18,13 +19,25 @@ import server.maps.MapleMap;
 import testutil.Packets;
 import tools.PacketCreator;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadInfo;
+import java.lang.management.ThreadMXBean;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
@@ -204,6 +217,55 @@ class LeaderSuccessionTest {
         assertEquals(0, PartyEvents.currentActor());
     }
 
+    /**
+     * Incident 2026-10-03: the owner's disconnect ran succession while companion-ops parked his companion off the
+     * same map. MapleMap.removePlayer holds the map's character write lock while it asks the party about the
+     * companion, so succession must not hold the party lock while it looks at that map.
+     */
+    @Test
+    @Timeout(30)
+    void aLeadersRealLogoutDoesNotDeadlockWithACompanionLeavingTheSameMap() throws Exception {
+        boolean families = YamlConfig.config.server.USE_FAMILY_SYSTEM;
+        YamlConfig.config.server.USE_FAMILY_SYSTEM = false;
+        try (MockedStatic<TimerManager> timers = mockStatic(TimerManager.class);
+             MockedStatic<Server> servers = mockStatic(Server.class)) {
+            timers.when(TimerManager::getInstance).thenReturn(mock(TimerManager.class));
+            servers.when(Server::getInstance).thenReturn(mock(Server.class));
+            World world = new World(0, 0, "", 1, 1, 1, 1, 1, 1, 1, 1f, 1);
+            MapleMap henesys = new MapleMap(100000000, 0, 1, 999999999, 1f);
+            CountDownLatch companionHoldsMapWriteLock = new CountDownLatch(1);
+            CountDownLatch ownerLooksAtMap = new CountDownLatch(1);
+            Client annClient = new Client(Client.Type.CHANNEL, -1, "test", null, 0, 1);
+            Character ann = player(LEAVER, "Ann", 30, annClient);
+            when(ann.getMap()).thenReturn(henesys);
+            Party party = world.createParty(new PartyCharacter(ann));
+            party.addMember(onlineCompanion(2, ownerLooksAtMap));
+            when(ann.getParty()).thenReturn(party);
+            annClient.setPlayer(ann);
+            Character companion = companionLeaving(2, henesys, party, companionHoldsMapWriteLock, ownerLooksAtMap);
+
+            // neither worker needs the thread-local Server or TimerManager mocks: LOG_ONOFF only updates the party
+            // and the world's (empty) player storage, and the companion's removal touches only the map
+            AtomicReference<Throwable> failure = new AtomicReference<>();
+            CountDownLatch finished = new CountDownLatch(2);
+            Thread companionOps = daemon("companion-ops", () -> henesys.removePlayer(companion), failure, finished);
+            Thread ownerDisconnect = daemon("cosmic-database", () -> annClient.removePartyPlayer(world), failure,
+                    finished);
+
+            companionOps.start();
+            assertTrue(companionHoldsMapWriteLock.await(5, TimeUnit.SECONDS), "the companion never left the map");
+            ownerDisconnect.start();
+
+            if (!finished.await(5, TimeUnit.SECONDS)) {
+                fail("the leader's logout deadlocked with MapleMap.removePlayer: " + deadlockedThreadNames());
+            }
+            assertNull(failure.get(), () -> "worker failed: " + failure.get());
+            assertEquals(LEAVER, party.getLeaderId(), "a human leader with only companions online keeps the lead");
+        } finally {
+            YamlConfig.config.server.USE_FAMILY_SYSTEM = families;
+        }
+    }
+
     // ---- op 6, change leader -------------------------------------------------------------
 
     @Test
@@ -329,6 +391,65 @@ class LeaderSuccessionTest {
         when(party.getLeaderId()).thenReturn(leaderId);
         when(party.getMemberById(member.getId())).thenReturn(member);
         return party;
+    }
+
+    /** An online companion's party entry; looking at whether it is online is the owner's last step before the map. */
+    private static PartyCharacter onlineCompanion(int id, CountDownLatch ownerLooksAtMap) {
+        PartyCharacter member = mock(PartyCharacter.class);
+        when(member.getId()).thenReturn(id);
+        when(member.getLevel()).thenReturn(120);
+        when(member.isBot()).thenReturn(true);
+        when(member.isOnline()).thenAnswer(inv -> {
+            ownerLooksAtMap.countDown();
+            return true;
+        });
+        return member;
+    }
+
+    /**
+     * A companion leaving {@code map}: inside removePlayer's write-locked section it waits for the owner to look at
+     * the map, then asks the party about itself (party.getMemberById(chr.getId())).
+     */
+    private static Character companionLeaving(int id, MapleMap map, Party party, CountDownLatch holdsMapWriteLock,
+                                              CountDownLatch ownerLooksAtMap) throws ReflectiveOperationException {
+        Field field = MapleMap.class.getDeclaredField("chrWLock");
+        field.setAccessible(true);
+        ReentrantReadWriteLock.WriteLock mapWriteLock = (ReentrantReadWriteLock.WriteLock) field.get(map);
+        Character companion = mock(Character.class);
+        when(companion.getClient()).thenReturn(mock(Client.class));
+        when(companion.getParty()).thenReturn(party);
+        AtomicBoolean armed = new AtomicBoolean();
+        when(companion.getId()).thenAnswer(inv -> {
+            if (mapWriteLock.isHeldByCurrentThread() && armed.compareAndSet(true, false)) {
+                holdsMapWriteLock.countDown();
+                ownerLooksAtMap.await(10, TimeUnit.SECONDS);
+            }
+            return id;
+        });
+        armed.set(true);
+        return companion;
+    }
+
+    private static Thread daemon(String name, Runnable body, AtomicReference<Throwable> failure,
+                                 CountDownLatch finished) {
+        Thread thread = new Thread(() -> {
+            try {
+                body.run();
+            } catch (Throwable e) {
+                failure.compareAndSet(null, e);
+            } finally {
+                finished.countDown();
+            }
+        }, name);
+        thread.setDaemon(true);
+        return thread;
+    }
+
+    private static String deadlockedThreadNames() {
+        ThreadMXBean threads = ManagementFactory.getThreadMXBean();
+        long[] ids = threads.findDeadlockedThreads();
+        return ids == null ? "no JVM-detected cycle (timed out)"
+                : Arrays.toString(Arrays.stream(threads.getThreadInfo(ids)).map(ThreadInfo::getThreadName).toArray());
     }
 
     private Character player(int id, String name, int level, Client client) {
