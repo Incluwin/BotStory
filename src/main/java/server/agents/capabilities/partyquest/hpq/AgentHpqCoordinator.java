@@ -875,8 +875,9 @@ final class AgentHpqCoordinator {
     /**
      * Seeds as a player party plays them: only the colours a pad still needs are fetched (a pad with a seed of its
      * colour dropped in its box within FLOWER_ACTIVATION_WAIT_MS is on its way), a colour a companion carries is
-     * planted by it, and one a human carries is his until SEED_HOLD_HINT_MS plus HUMAN_SEED_GRACE_MS have passed
-     * (C3 tells the leader which pad). Natural seeds of colours no pad needs are left on the floor.
+     * planted by it, and one the leader carries is his until SEED_HOLD_HINT_MS plus HUMAN_SEED_GRACE_MS have passed
+     * (C3 tells him which pad, once per colour). Another player's seed is fetched for at once, since no line told him
+     * where it goes. Natural seeds of colours no pad needs are left on the floor.
      */
     private static void companionSeeds(AgentHpqSession session, Character leader, long nowMs) {
         int beds = AgentHpqDefinition.seedBeds().size();
@@ -919,6 +920,8 @@ final class AgentHpqCoordinator {
                 if (carried > 0) carriedByAgents.add(carried);
                 continue;
             }
+            // Only the leader is told where a seed goes, so only his seeds are waited for.
+            if (member.characterId() != session.eventLeaderId()) continue;
             List<Integer> carries = !onStage ? List.of() : needed.stream()
                     .filter(seed -> character.getItemQuantity(seed, false) > 0).toList();
             session.keepHumanSeeds(member.characterId(), carries);
@@ -929,9 +932,8 @@ final class AgentHpqCoordinator {
                 }
                 Reactor pad = pads.get(seed);
                 String position = pad == null ? null : AgentHpqDefinition.padPositionName(pad.getPosition());
-                if (member.characterId() == session.eventLeaderId() && position != null
-                        && AgentHpqCompanionPlay.seedHintDue(sinceMs, nowMs, SEED_HOLD_HINT_MS)) {
-                    coordinate(session, narrator(session), "seed-hint",
+                if (position != null && AgentHpqCompanionPlay.seedHintDue(sinceMs, nowMs, SEED_HOLD_HINT_MS)) {
+                    coordinate(session, narrator(session), "seed-hint-" + seed,
                             AgentHpqCompanionPlay.seedPadLine(leader.getName(), position));
                 }
             }

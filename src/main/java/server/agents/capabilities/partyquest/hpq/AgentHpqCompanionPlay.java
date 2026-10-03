@@ -118,8 +118,9 @@ final class AgentHpqCompanionPlay {
     }
 
     /**
-     * A needed seed a human carries is his to plant until SEED_HOLD_HINT_MS (when C3 tells the leader which pad) plus
-     * HUMAN_SEED_GRACE_MS have passed; after that the companions fetch that colour themselves.
+     * A needed seed the leader carries is his to plant until SEED_HOLD_HINT_MS (when C3 tells him which pad, one line
+     * per colour) plus HUMAN_SEED_GRACE_MS have passed; after that the companions fetch that colour themselves. Another
+     * player's seed is not waited for: nobody told him where it goes.
      */
     static boolean humanSeedCovers(long heldSinceMs, long nowMs, long holdHintMs, long graceMs) {
         return nowMs - heldSinceMs < holdHintMs + graceMs;

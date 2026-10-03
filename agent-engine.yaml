@@ -807,12 +807,12 @@ tuning:
     # Technical: Euclidean distance from a live stage monster to the live 9300061 position; woken guards farm from their own post (grindFromAnchor, leashed) preferring the threatening mob ids. Companion runs only.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_BUNNY_THREAT_RADIUS_PX: '260'
     # Values: 0-120000 milliseconds. Recommended: 30000 so a player told which pad gets time to walk there.
-    # Purpose: Leaves a needed seed a player carries to him for a while after he was told where it goes, before the companions fetch that colour too.
-    # Technical: A human member's needed seed counts as covered while it has been carried for less than SEED_HOLD_HINT_MS plus this; the age is kept per member and colour in AgentHpqSession and reset when he no longer carries it. Companion runs only.
+    # Purpose: Leaves a needed seed the leader carries to him for a while after he was told where it goes, before the companions fetch that colour too.
+    # Technical: The leader's needed seed counts as covered while he has carried it for less than SEED_HOLD_HINT_MS plus this; the age is kept per colour in AgentHpqSession and reset when he no longer carries it. Another player's seed is not covered (no C3 told him where it goes). Companion runs only.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.HUMAN_SEED_GRACE_MS: '30000'
     # Values: 5000-60000 milliseconds. Recommended: 20000 so a player planting on his own is not talked over.
     # Purpose: Waits this long after the leader picks up a needed seed before a companion tells him which pad it goes on.
-    # Technical: AgentHpqCoordinator says the C3 line once a run when the leader has carried a needed seed this long; the pad is named from the live moonflower position (up top left, up top middle, upper right, upper left, middle, left of the middle). Companion runs only.
+    # Technical: AgentHpqCoordinator says the C3 line once per colour when the leader has carried that needed seed this long; the pad is named from the live moonflower position (up top on the left, up top in the middle, up on the right, up on the left, in the middle, left of the middle). Companion runs only.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.SEED_HOLD_HINT_MS: '20000'
     # Values: 1-10 rice cakes. Recommended: 3, so the leader gets cakes in a few trips without the collector leaving its post for every one.
     # Purpose: Sets how many Moon Bunny cakes the companion collector gathers before it walks them to a nearby leader.

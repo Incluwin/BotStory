@@ -141,14 +141,43 @@ class AgentHpqCompanionSeedsTest {
         AgentHpqCoordinator.tick(session, 2_000L);
         verify(run.actions, never()).navigate(any(), eq(RED_SOURCE), anyBoolean());
         verify(run.actions).navigate(run.entry(mira), GREEN_SOURCE, true);
-        run.neverSaid("seed-hint");
+        run.neverSaid("seed-hint-" + RED);
 
         AgentHpqCoordinator.tick(session, 22_000L);
-        run.said(session, "seed-hint", mira, "Ben, that seed goes on the pad up top left. drop just one.");
+        run.said(session, "seed-hint-" + RED, mira, "Ben, that seed goes on the pad up top on the left. drop just one.");
         verify(run.actions, never()).navigate(any(), eq(RED_SOURCE), anyBoolean());
 
         AgentHpqCoordinator.tick(session, 52_000L);
         verify(run.actions).navigate(run.entry(mira), RED_SOURCE, true);
+    }
+
+    @Test
+    void aSeedTheLeaderPicksUpLaterGetsItsOwnHint() {
+        run.holds(ben, RED, 1);
+        AgentHpqSession session = collecting();
+        AgentHpqCoordinator.tick(session, 2_000L);
+        AgentHpqCoordinator.tick(session, 22_000L);
+        run.said(session, "seed-hint-" + RED, mira, "Ben, that seed goes on the pad up top on the left. drop just one.");
+
+        run.holds(ben, GREEN, 1);
+        AgentHpqCoordinator.tick(session, 23_000L);
+        run.neverSaid("seed-hint-" + GREEN);
+        AgentHpqCoordinator.tick(session, 43_000L);
+
+        run.said(session, "seed-hint-" + GREEN, mira, "Ben, that seed goes on the pad in the middle. drop just one.");
+    }
+
+    @Test
+    void aSeedAnotherPlayerCarriesIsFetchedRightAwaySinceNobodyToldHimWhereItGoes() {
+        Character ann = run.human(5, "Ann", new Point(0, 83));
+        run.holds(ann, RED, 1);
+        AgentHpqSession session = run.session(true, AgentHpqSession.Phase.COLLECTING_SEEDS, ben, mira, tobi, ann);
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        verify(run.actions).navigate(run.entry(mira), RED_SOURCE, true);
+        verify(run.actions).navigate(run.entry(tobi), GREEN_SOURCE, true);
+        run.neverSaid("seed-hint-" + RED);
     }
 
     @Test

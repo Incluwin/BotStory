@@ -41,13 +41,16 @@ public final class AgentHpqDefinition {
      */
     public static final long RICE_CAKE_RECOLLECT_LATEST_MS = 170_000L;
 
-    /** The six moonflower pads by where they lie, as a companion names them to a player. */
+    /**
+     * The six moonflower pads by where they lie, as a companion names them to a player: each reads on after "that
+     * seed goes on the pad".
+     */
     private static final List<PadPosition> PAD_POSITIONS = List.of(
-            new PadPosition(new Point(-359, -692), "up top left"),
-            new PadPosition(new Point(4, -690), "up top middle"),
-            new PadPosition(new Point(182, -452), "upper right"),
-            new PadPosition(new Point(-535, -449), "upper left"),
-            new PadPosition(new Point(0, -210), "middle"),
+            new PadPosition(new Point(-359, -692), "up top on the left"),
+            new PadPosition(new Point(4, -690), "up top in the middle"),
+            new PadPosition(new Point(182, -452), "up on the right"),
+            new PadPosition(new Point(-535, -449), "up on the left"),
+            new PadPosition(new Point(0, -210), "in the middle"),
             new PadPosition(new Point(-358, -210), "left of the middle"));
 
     /** Reachable upper footholds used as sparse guard posts after the Moon Bunny appears. */

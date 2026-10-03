@@ -78,11 +78,11 @@ class AgentHpqCompanionPlayTest {
 
     @Test
     void theLeaderIsToldThePadByWhereItLies() {
-        assertEquals("up top left", AgentHpqDefinition.padPositionName(new Point(-359, -692)));
-        assertEquals("up top middle", AgentHpqDefinition.padPositionName(new Point(4, -690)));
-        assertEquals("upper right", AgentHpqDefinition.padPositionName(new Point(182, -452)));
-        assertEquals("upper left", AgentHpqDefinition.padPositionName(new Point(-535, -449)));
-        assertEquals("middle", AgentHpqDefinition.padPositionName(new Point(0, -210)));
+        assertEquals("up top on the left", AgentHpqDefinition.padPositionName(new Point(-359, -692)));
+        assertEquals("up top in the middle", AgentHpqDefinition.padPositionName(new Point(4, -690)));
+        assertEquals("up on the right", AgentHpqDefinition.padPositionName(new Point(182, -452)));
+        assertEquals("up on the left", AgentHpqDefinition.padPositionName(new Point(-535, -449)));
+        assertEquals("in the middle", AgentHpqDefinition.padPositionName(new Point(0, -210)));
         assertEquals("left of the middle", AgentHpqDefinition.padPositionName(new Point(-350, -205)));
     }
 
@@ -328,9 +328,8 @@ class AgentHpqCompanionPlayTest {
                 AgentHpqCompanionPlay.carryOnLine("HappyWolf", 3),
                 AgentHpqCompanionPlay.carryOnLine("HappyWolf", 4),
                 AgentHpqCompanionPlay.carryOnLine("HappyWolf", 5)));
-        for (String position : List.of("up top left", "up top middle", "upper right", "upper left", "middle",
-                "left of the middle")) {
-            lines.add(AgentHpqCompanionPlay.seedPadLine(leader, position));
+        for (Point pad : PADS) {
+            lines.add(AgentHpqCompanionPlay.seedPadLine(leader, AgentHpqDefinition.padPositionName(pad)));
         }
         for (String line : lines) {
             String withoutNames = line.replace(leader, "").replace("HappyWolf", "");
@@ -340,13 +339,31 @@ class AgentHpqCompanionPlayTest {
         }
     }
 
+    /** The six moonflower pads, as the stage lays them out. */
+    private static final List<Point> PADS = List.of(new Point(-359, -692), new Point(4, -690), new Point(182, -452),
+            new Point(-535, -449), new Point(0, -210), new Point(-358, -210));
+
+    @Test
+    void everyPadReadsNaturallyInTheSeedLine() {
+        List<String> said = PADS.stream()
+                .map(pad -> AgentHpqCompanionPlay.seedPadLine("Ben", AgentHpqDefinition.padPositionName(pad)))
+                .toList();
+        assertEquals(List.of(
+                "Ben, that seed goes on the pad up top on the left. drop just one.",
+                "Ben, that seed goes on the pad up top in the middle. drop just one.",
+                "Ben, that seed goes on the pad up on the right. drop just one.",
+                "Ben, that seed goes on the pad up on the left. drop just one.",
+                "Ben, that seed goes on the pad in the middle. drop just one.",
+                "Ben, that seed goes on the pad left of the middle. drop just one."), said);
+    }
+
     @Test
     void theLinesSayWhatThePlanSays() {
         assertEquals("we'll get the seeds. stay near the middle and keep the monsters off the bunny when it comes out.",
                 AgentHpqCompanionPlay.SEEDS_START);
         assertEquals("three flowers up, three to go.", AgentHpqCompanionPlay.HALF_THE_FLOWERS);
-        assertEquals("Crewfriend, that seed goes on the pad upper right. drop just one.",
-                AgentHpqCompanionPlay.seedPadLine("Crewfriend", "upper right"));
+        assertEquals("Crewfriend, that seed goes on the pad up on the right. drop just one.",
+                AgentHpqCompanionPlay.seedPadLine("Crewfriend", "up on the right"));
         assertEquals("the bunny's out! keep the monsters off it.", AgentHpqCompanionPlay.BUNNY_OUT);
         assertEquals("the bunny's getting hit, on it!", AgentHpqCompanionPlay.BUNNY_HIT);
         assertEquals("the rice cakes are at your feet, Crewfriend. pick them up and talk to growlie.",
