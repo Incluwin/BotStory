@@ -4611,13 +4611,15 @@ public class Character extends AbstractCharacterObject {
 
     public void cancelAllBuffs(boolean softcancel) {
         if (softcancel) {
+            // Outside effLock/chrLock: cancelEffect takes prtLock, and cancelEffect, registerEffect and
+            // updateLocalStats all take prtLock before effLock.
+            cancelEffectFromBuffStat(BuffStat.SUMMON);
+            cancelEffectFromBuffStat(BuffStat.PUPPET);
+            cancelEffectFromBuffStat(BuffStat.COMBO);
+
             effLock.lock();
             chrLock.lock();
             try {
-                cancelEffectFromBuffStat(BuffStat.SUMMON);
-                cancelEffectFromBuffStat(BuffStat.PUPPET);
-                cancelEffectFromBuffStat(BuffStat.COMBO);
-
                 effects.clear();
 
                 for (Integer srcid : new ArrayList<>(buffEffects.keySet())) {
