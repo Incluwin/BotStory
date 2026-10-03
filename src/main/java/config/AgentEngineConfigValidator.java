@@ -85,9 +85,9 @@ final class AgentEngineConfigValidator {
                 throw new IllegalStateException(
                         "Agent tuning key " + key + " must be finite and non-negative");
             }
-            if (key.contains("PERCENT") && numeric > 100.0d) {
+            if (key.contains("PERCENT") && numeric > maximumPercent(key)) {
                 throw new IllegalStateException(
-                        "Agent tuning percentage " + key + " must be between 0 and 100");
+                        "Agent tuning percentage " + key + " must be between 0 and " + (int) maximumPercent(key));
             }
         }
         for (Map.Entry<String, String> entry : tuning.entrySet()) {
@@ -103,6 +103,14 @@ final class AgentEngineConfigValidator {
                                 + " exceeds " + maxKey);
             }
         }
+    }
+
+    /**
+     * A percentage is a share of a whole (0-100), except a readiness buy-to percentage: a multiple of a potion
+     * standard, so a shop visit can buy past it (AgentSupplyReadiness.BUY_TO_PERCENT, up to five times).
+     */
+    private static double maximumPercent(String key) {
+        return key.endsWith("AgentSupplyReadiness.BUY_TO_PERCENT") ? 500.0d : 100.0d;
     }
 
     private static boolean validNonNumericTuning(String key, String value) {

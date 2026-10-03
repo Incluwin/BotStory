@@ -69,6 +69,18 @@ public final class AgentPotionPurchasePolicy {
         return (int) Math.min(raw, Math.min(carryRoom, visitRoom));
     }
 
+    /**
+     * Potions to buy toward a count ({@code targetCount}, a readiness standard's buy target) when {@code carried} are
+     * on hand: the difference, within the carry and per-visit limits (MAX_CARRIED_QUANTITY,
+     * MAX_PURCHASE_QUANTITY_PER_VISIT).
+     */
+    public static int floorQuantity(int targetCount, int carried, int alreadyBoughtThisVisit) {
+        int want = Math.max(0, targetCount - Math.max(0, carried));
+        int carryRoom = Math.max(0, MAX_CARRIED_QUANTITY - Math.max(0, carried));
+        int visitRoom = Math.max(0, MAX_PURCHASE_QUANTITY_PER_VISIT - Math.max(0, alreadyBoughtThisVisit));
+        return Math.min(want, Math.min(carryRoom, visitRoom));
+    }
+
     public static int normalSpendBudget(int spendableMesos, boolean anotherResourceNeedsNormalStock) {
         if (spendableMesos <= 0) {
             return 0;

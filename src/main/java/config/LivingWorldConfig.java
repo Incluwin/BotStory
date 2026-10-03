@@ -225,6 +225,21 @@ public class LivingWorldConfig {
      */
     public String COMPANION_PQ_PACE_EXCLUDED_LEADERS = "";
 
+    // Companions restock their own potions before a party quest or a boss (AgentSupplyReadiness, CompanionRestock)
+    /**
+     * A companion out with its owner (or waiting outside a run for them) keeps its potions at the party-quest
+     * standard by itself: short in a town near a shop, it walks there, buys, and comes back; the entry NPC shows it
+     * as gone to the store. false = the kill switch: no standing duty, and the desk and holds exactly as before.
+     */
+    public boolean COMPANION_RESTOCK_ENABLED = true;
+    /** A companion that cannot afford its potions says so on its own at most this often (the desk's ask is apart). */
+    public int COMPANION_RESTOCK_ASK_EVERY_MS = 1800000;
+    /**
+     * Party-boss gate maps, a comma list: an owner coming into one with a companion short of potions hears it say
+     * there is no shop out here (no supplier is reachable from them). Entry is never refused.
+     */
+    public String COMPANION_RESTOCK_BOSS_MAPS = "220080000,106021402";
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
@@ -236,6 +251,16 @@ public class LivingWorldConfig {
         }
         for (String entry : COMPANION_PQ_ENABLED_KEYS.split(",")) {
             if (!entry.isBlank() && entry.trim().equalsIgnoreCase(pqKey.trim())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when COMPANION_RESTOCK_BOSS_MAPS lists {@code mapId} (blank entries and spaces ignored). */
+    public boolean companionRestockBossMap(int mapId) {
+        for (String entry : COMPANION_RESTOCK_BOSS_MAPS == null ? new String[0] : COMPANION_RESTOCK_BOSS_MAPS.split(",")) {
+            if (!entry.isBlank() && entry.trim().equals(Integer.toString(mapId))) {
                 return true;
             }
         }
@@ -348,6 +373,15 @@ public class LivingWorldConfig {
             if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
                 throw new IllegalArgumentException(
                         "living_world.COMPANION_PQ_PACE_EXCLUDED_LEADERS must list character ids, not \"" + id.trim() + "\"");
+            }
+        }
+        if (COMPANION_RESTOCK_ASK_EVERY_MS < 0) {
+            throw new IllegalArgumentException("living_world.COMPANION_RESTOCK_ASK_EVERY_MS must be >= 0");
+        }
+        for (String id : COMPANION_RESTOCK_BOSS_MAPS == null ? new String[0] : COMPANION_RESTOCK_BOSS_MAPS.split(",")) {
+            if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
+                throw new IllegalArgumentException(
+                        "living_world.COMPANION_RESTOCK_BOSS_MAPS must list map ids, not \"" + id.trim() + "\"");
             }
         }
     }

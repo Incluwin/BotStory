@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import scripting.npc.NPCConversationManager;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.RosterState;
@@ -46,8 +47,8 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * refuses a companion still finishing something shows the lineup again at once, for a Yes that goes in; a Yes while it
  * is at it still, under half a minute later, is answered the same at once and steps nobody out. A lineup
  * of humans only takes the stock start. A second Yes while the first is carried out only hears "hold on"; one that
- * threw is over all the same. A Yes on her own choice is planned again by her own choice. A companion the lineup leaves
- * waiting for mana potions asks for some in party chat, once, as the lineup is shown.
+ * threw is over all the same. A Yes on her own choice is planned again by her own choice. With the restock switch off,
+ * a companion the lineup leaves waiting for mana potions asks for some in party chat, once, as the lineup is shown.
  */
 class CompanionPqEntryTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -86,6 +87,29 @@ class CompanionPqEntryTest {
                 steps, "beside Lakelis, then admitted, then started");
         fx.dialogue.verify(() -> AgentDialogueTransportRuntime.sayMapNow(game.bot(casse),
                 "i'll wait out here till you're done."));
+    }
+
+    @Test
+    void anExtraHeldOutsideTheRunningRunKeepsItsRestockDutyAndItsShopTarget() {
+        fx.ready();
+
+        CompanionRun run = fx.yes();
+
+        assertTrue(run.started);
+        assertTrue(game.commitments.isCommitted(903), "the run commits its extras until it ends");
+        game.roster().settings().bind(game.bot(casse), ANN, "casse");
+        game.roster().settings().bind(game.bots.get(900), ANN, "mira");
+        CompanionRestock restock = new CompanionRestock(game.world);
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(903),
+                "Casse waits outside with no HP potion: it restocks while Ann is inside");
+        assertNull(restock.standing(900), "Mira is in the run");
+        AgentSupplyReadiness.install(restock);
+        try {
+            assertEquals(40, AgentSupplyReadiness.buyTarget(game.bot(casse), true), "its visit buys to its target");
+            assertEquals(0, AgentSupplyReadiness.buyTarget(game.bots.get(900), true));
+        } finally {
+            AgentSupplyReadiness.install(null);
+        }
     }
 
     @Test
@@ -354,10 +378,11 @@ class CompanionPqEntryTest {
     }
 
     @Test
-    void aCompanionShortOfManaAsksForSomeOnceAsTheLineupIsShown() {
+    void withTheRestockSwitchOffACompanionShortOfManaAsksForSomeOnceAsTheLineupIsShown() {
         fx.manaPotions.put(901, 0); // Tobi, a Page: live, no MP_POTION supplier inside the run
         fx.ready();
         game.config.COMPANION_PQ_ENABLED_KEYS = "kpq";
+        game.config.COMPANION_RESTOCK_ENABLED = false; // the kill switch: exactly the ask from before restocking
         for (int id : List.of(900, 901, 902, 903, 904)) {
             when(game.world.directory().ownerOfCharacter(id)).thenReturn(ANN);
         }

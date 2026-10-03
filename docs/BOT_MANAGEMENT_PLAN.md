@@ -821,12 +821,26 @@ Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after
   - Video: the full run plus a 60 s highlight.
 - **Exit:** 3 consecutive clears with no GM intervention. Zero drift. No companion left in TownLife at Kerning. Run records written and reflected in the next proposal.
 
+**Companion restock (decided 2026-10-02; replaces 2026-10-01's "Lakelis checks potions and the companion asks its owner, no auto-buy")**
+- **Why:** live on 2026-10-02, after four back-to-back KPQ runs Fenna had 1 HP potion and 155 meso, SilentSin 14 HP / 21 MP potions (103k meso), Garrick 20 MP and Faro723 22 MP. A companion only resupplied below POT_STOP (10) while Lakelis wanted 20 HP and 25 MP, so she held three of them back and the run went in with three.
+- **The decision (user, verbatim):** "companions should restock potions themselves before any pq or boss." Asking the owner stays only for a companion that cannot afford its potions.
+- **One standard.** `AgentSupplyReadiness.standard(PARTY_QUEST)` = 20 HP potions, plus 25 MP potions for every job past a beginner's (agent-engine.yaml `AgentSupplyReadiness.PARTY_QUEST_*`). Lakelis and the Agent count it the same way (`AgentPotionService.countPotions`).
+- **One mechanism: a standing duty.** `CompanionRestock` (the living world's `AgentSupplyReadiness.Rule`) gives it to every companion its owner carries: ACTIVE, led by them and following them (one told to wait, sent somewhere or hunting on its own keeps its owner's order), or HOLD for them, also while the run it waits outside commits it as an extra. On a town map whose nearest Victoria potion shop is at most `STANDING_MAX_HOPS` (2) away, a companion below the standard walks there by itself, buys toward `BUY_TO_PERCENT` (200, so 40 HP / 50 MP) in one visit, and comes back: by follow warp, or on foot while held. That covers the Lakelis desk (1 hop), the HPQ desk (Henesys park, 2 hops), back-to-back runs and HOLD extras during a run. There are no one-off orders yet (they come with P7).
+- **It never goes when it cannot pay.** Before a readiness trip, its cost (the ammo top-up at that shop plus the potion shortfall at the shop's cheapest potion) must fit its purse less its wallet reserve (0 for a companion), and its Use tab must hold the new kinds of potion plus the one slot a party quest keeps free (potions that stack onto a carried stack need none). Otherwise there is no trip and no party ask: it says its broke line once (at most every 30 min) and waits until its purse grows by what it lacked (its owner's coin, say), a slot frees, or it lacks fewer potions (its owner handed some over).
+- **A critical trip (below POT_STOP) passes a lighter check** (review 2026-10-02: the full estimate left a poor companion dry in the field where it used to buy a few): the potions back to POT_STOP at the cheapest price, without ammo, and no slot check. When even that does not fit it never walks to a shop; in a town it does not ask its party either (its broke line covers it), out in the field it still asks once, since a share is all that helps there.
+- **The shop visit reaches the standard first.** A duty holder's visit buys each kind up to the standard (HP first, keeping back only what the mana potions it lacks of the standard cost), then the usual reserve bars, then tops up toward 40/50 with what is left; with at most one Use slot free it buys onto a stack it carries.
+- **The owner's order wins.** Any movement order from chat or the card (follow, wait, move here, hunt here, patrol) calls a companion back from its readiness trip: it ends the trip where it stands (follow: by following), and waits 5 min before the next one; two trips from one town cut short in a row end its tries there until it has been elsewhere. It does not set off while its owner is leaving the map.
+- **The desk shows it:** "Gone to the store: X (~N s)" with "Are they here yet?" and no Yes while it is away; "X (low on potions, out of mesos)" and one broke line per 5 min when it cannot afford them (also after a run or a walk from another map, while what held it back still holds). A click asks every short companion to look at once; one whose own restock decides on its next tick asks nothing, and the desk's and the companion's own broke line share one memory. `living_world.COMPANION_RESTOCK_ENABLED: false` restores everything as before (the ask for mana included).
+- **Bosses today:** the party-boss gates (Papulatus 220080000, King Pepe 106021402) reach no shop, so the pre-boss restock is the standing top-up in Victoria towns, and a short companion says a no-shop line once at the gate (`COMPANION_RESTOCK_BOSS_MAPS`). Entry is never refused. Real pre-boss restocking arrives with P7.
+
 **P6b: More PQs (generalization)**
 - **Goal:** The PQs friends can actually enter work with companions, starting with HPQ.
 - **Deliverables:**
   - A NEW public adopt seam per PQ: HPQ first, then the others (LPQ, LMPQ, OPQ, EPQ, PPQ) in decision 21 order.
   - Per-PQ composition rules in `plan`, following Agent admission (LPQ/OPQ/PPQ exactly 6, EPQ one per branch).
   - The NPC branches (1012112.js for HPQ first), with the bench-call option reused. Per-key kill switches.
+  - Companion restock is inherited (decided 2026-10-02, "Companion restock" above): every desk that goes through `CompanionPartyQuestService.offerAtDesk` gets the status mapping, the lines and the store errands. Each key's waiting reason uses `AgentSupplyReadiness.shortfall(PARTY_QUEST)`, and its own "not at the entrance" reason joins the gone-to-the-store mapping. HPQ (100000200, a town 2 hops from the Henesys shop) is fully covered.
+  - **Limitation:** the LPQ, LMPQ, OPQ, EPQ and PPQ desks are off the Victoria route graph, so their companions cannot walk to a shop from there: those desks show "low on potions" and the ask line only. They top up in the Victoria towns they pass through.
 - **Size:** S-M for HPQ, M per further PQ. **Depends on:** P6 and decision 21.
 - **Verification:** Unit: plan/adopt per PQ, including composition refusals as NPC lines. Live: one clear per enabled PQ, one of them with a bench call. Video per PQ.
 - **Exit:** Each enabled PQ has one live clear with zero drift. A PQ that fails stays switched off.
@@ -845,6 +859,7 @@ Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after
   - The quota fix: recruit-map filter, plus logging on late in-progress entry. Hooks.
   - **Easy Balrog server authority with companions**, evaluated live. If the human's view is wrong, the fallback pulls the Balrog-only `BossAttackMirror` into P7.
   - Loot NO_BOSS and loot credit. Post-clear return. The EXPEDITION budget pool. The Adobis and Balrog NPC options.
+  - Pre-boss restock (from the 2026-10-02 decision): Activity BOSS and one-off restock orders, posted at `Expedition.beginRegistration` by `CompanionExpeditionService.registerParty` / `callAllies`. Runner registration waits while a companion is RESTOCKING, bounded by the registration clock minus 60 s. Sleepywood 105040300 (a town, 6 hops to the Henesys shop) is the approach town. The boss standard is tuned from Easy Balrog evidence.
   - Open item from P3b: the "Leave boss drops to you" setting stands aside inside every event instance today (`AgentLootPolicy`), so a companion in a party boss run (Papulatus, King Pepe and the Yetis, Scarga, Pink Bean) still picks up the boss's drops; the card says "outside boss runs". Here NO_BOSS applies inside boss runs too, except where a PQ session or a reward claim (`AgentEasyBalrogRewardClaimRegistry`) assigns the drop, so bots still take the KPQ pass from King Slime.
 - **Size:** L. **Depends on:** P2b (commitments, travel), P4 (lv50+ supply; `!grantcompanion` for tests), and P6's instance death policy and run recorder.
 - **Verification:**
@@ -883,6 +898,7 @@ Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after
   - `AgentZakumScenario` and `BossTargetRules` (arms first).
   - If P7 fell back to the Balrog mirror, P8 extends that code.
   - `COMPANION_BOSS_ENABLED_TYPES` flips for zakum only after its live exit. Papulatus stays excluded until mirrored.
+  - Pre-Zakum restock: either add the El Nath potion shop and an Ossyria route to the supplier catalog, or rely on the Victoria top-up plus the gate line (the 2026-10-02 decision).
 - **Size:** XL. **Depends on:** P7.
 - **Verification:**
   - Unit: mirror geometry against WZ ranges; **HP loss plus `damagePlayer` broadcast** for a bot in range, and none out of range; dedup per action; the SERVER_STICKY skip; the Zakum phase classifier; a loot-credit test.

@@ -159,6 +159,21 @@ class CompanionSettingsApplierTest {
     }
 
     @Test
+    void aCompanionHeldOutsideARunStaysExemptAfterItLeftTheParty() {
+        // its readiness restock while its owner is inside spends its whole purse too: its runtime is still the owner's
+        hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, HENESYS_FIELD, null);
+        assertTrue(game.roster().call(game.ann, hadrik).ok());
+        assertEquals(RosterState.ACTIVE, game.row(hadrik).state());
+        assertTrue(applier().exempt(HADRIK));
+
+        assertTrue(game.roster().hold(game.ann, hadrik, HENESYS_FIELD, new Point(1450, 120)).ok());
+
+        assertEquals(RosterState.HOLD, game.row(hadrik).state());
+        assertTrue(game.calls.contains("leave Hadrik"), game.calls.toString());
+        assertTrue(applier().exempt(HADRIK), "held for its owner: no journey reserve");
+    }
+
+    @Test
     void aTravellerRunsOnItsSettingsFromItsLoadAndTheyAreReappliedWhenItArrives() {
         hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, LITH, CUSTOM);
 

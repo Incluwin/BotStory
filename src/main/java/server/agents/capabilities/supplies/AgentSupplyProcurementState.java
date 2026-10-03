@@ -33,6 +33,7 @@ public final class AgentSupplyProcurementState {
     private int shopFailures;
     private long shopRetryAtMs;
     private String abandonedReason = "";
+    private boolean recalled;
     private boolean resumeFollow;
     private boolean resumeGrind;
     private int supplierHopBudget = -1;
@@ -159,6 +160,29 @@ public final class AgentSupplyProcurementState {
         return resumeFollow;
     }
 
+    /**
+     * A host let the Agent follow again while this trip is under way: it ends by following instead of walking back to
+     * the map it left. False, and nothing changed, once the trip is over (its finish took the mode in the same lock).
+     */
+    public synchronized boolean resumeFollowIfActive() {
+        if (requestId.isBlank()) {
+            return false;
+        }
+        resumeFollow = true;
+        resumeGrind = false;
+        return true;
+    }
+
+    /** How the Agent moves again once the trip is over. */
+    public record ForegroundMode(boolean follow, boolean grind) { }
+
+    /** Clears the trip and hands back the mode it ends in, in one step ({@link #resumeFollowIfActive} races it). */
+    public synchronized ForegroundMode clearTakingForegroundMode() {
+        ForegroundMode mode = new ForegroundMode(resumeFollow, resumeGrind);
+        clear();
+        return mode;
+    }
+
     public synchronized boolean resumeGrind() {
         return resumeGrind;
     }
@@ -261,6 +285,7 @@ public final class AgentSupplyProcurementState {
         shopFailures = 0;
         shopRetryAtMs = 0L;
         abandonedReason = "";
+        recalled = false;
         resumeFollow = false;
         resumeGrind = false;
         supplierHopBudget = -1;
@@ -324,6 +349,20 @@ public final class AgentSupplyProcurementState {
         supplierHopBudget = -1;
     }
 
+    /**
+     * Its owner called it back mid-trip (an order of theirs took the foreground): the trip is given up where the
+     * Agent stands, without walking back to the map it left.
+     */
+    public synchronized void markRecalled(String reason) {
+        markAbandoned(reason);
+        recalled = true;
+    }
+
+    /** True once its owner called it back from this trip ({@link #markRecalled}). */
+    public synchronized boolean recalled() {
+        return recalled;
+    }
+
     /** Gives up on this procurement: travel back to the plan, then finish it as failed. */
     public synchronized void markAbandoned(String reason) {
         abandonedReason = reason == null || reason.isBlank() ? "resupply abandoned" : reason.trim();
@@ -352,6 +391,7 @@ public final class AgentSupplyProcurementState {
         shopFailures = 0;
         shopRetryAtMs = 0L;
         abandonedReason = "";
+        recalled = false;
         resumeFollow = false;
         resumeGrind = false;
         supplierHopBudget = -1;

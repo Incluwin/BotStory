@@ -60,7 +60,7 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
     private static final long QUEST_NEEDS_TTL_MS = 1_000L;
 
     /** Whose settings a loaded companion character runs on. */
-    private record Bound(int ownerId, String personaId) { }
+    record Bound(int ownerId, String personaId) { }
 
     /** What an owner's started quests need to complete: item id -> the most any one of them needs, read at a time. */
     private record Needs(long readAtMs, Map<Integer, Integer> items) { }
@@ -371,6 +371,11 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
     }
 
     // ---- the seams (any thread, memory only) --------------------------------------------------
+
+    /** Whose companion this loaded character is (bound at its load or seat), from memory; null when none. */
+    Bound boundTo(int agentCharacterId) {
+        return bound.get(agentCharacterId);
+    }
 
     @Override
     public AgentPotionThresholds.Thresholds thresholds(int agentCharacterId) {
