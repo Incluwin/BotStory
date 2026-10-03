@@ -655,3 +655,21 @@ A companion now leaves a camp that keeps killing it, even one its owner picked. 
 - The human leader does a lot (about 20 Cloto checks, the stage-4 climb, 10 stage-5 passes); the guidance lines help.
 - A clear takes 28-32 of the 30 minutes with three Lv24-29 companions and a scripted leader; stage 1 took 7.5-12 min. Warrior accuracy (filed) is the biggest lever.
 - Live tests used `!giveitem` for potions, `!level 30` resets (owner EXP share takes Lv30 to 31 in one run), and a scripted leader (session scratchpad `kpq_run.py`, reading the KPQ session through an attach probe because bot chat lines are not OCR-readable).
+
+# Companion restock (2026-10-02)
+
+The user's 2026-10-02 decision ("companions should restock potions themselves before any pq or boss", plan section "Companion restock") replaces the 2026-10-01 rule (Lakelis checks, the companion asks its owner, no auto-buy). Built on `r3/restock` from `feat/companion-manager` `d96681b5b`; not deployed yet.
+
+## What it adds
+- **Agent layer (owner-free):** `AgentSupplyReadiness` (the one standard, the rule seam, the host's status/checkSoon/resumeFollowAfterTrip), `AgentSupplyReadinessState` and `AgentSupplyReadinessRuntime` (the standing duty on the Agent tick, the affordability gate, outcomes and cooldowns), procurement integration (readiness first, a duty holder's critical potion trips gated too, the request's 4-min TTL, both potion kinds resolved when a readiness trip ends), the shop's count floor (`AgentShopPotionPolicy.selectForCount`) and `AgentShopService.plannedAmmoSpend`. Nine `AgentSupplyReadiness.*` keys in agent-engine.yaml.
+- **Living layer:** `CompanionRestock` (the rule: who has a duty, the go/back/broke/no-shop lines, a held companion's walk back), `CompanionRestockLines` (generic lines; Fenna, Garrick and Brannock have their own), the Lakelis desk's "Gone to the store" errand and "out of mesos" reason, holds and rejoins that let a trip finish, and the boss-gate line. Three `living_world.COMPANION_RESTOCK_*` keys.
+
+## Live checks
+| Check | Result |
+|---|---|
+| LIVE 1 standing restock in Kerning (SilentSin 14 HP / 21 MP, 103k meso) | **Not run yet** (deploy pending). Expect the go line within ~5 s, 'readiness:' started and RESTORED in cosmic-log, the back line, no 'asked its party'. |
+| LIVE 2 desk: "Gone to the store: X (~N s)", no Yes, "Are they here yet?", then a 4-strong start | **Not run yet.** Record click to Yes and start, shop done and rejoin times; retune TRIP_ETA_*. |
+| LIVE 3 broke companion (Fenna, 155 meso) | **Not run yet.** Expect "low on potions, out of mesos", one broke line, no trip and no 'no HP_POTION supplier' / 'suspended foreground work' lines for 10 min; coin of the missing amount sends her. |
+| LIVE 4 back-to-back KPQ runs, held extras restocking during a run | **Not run yet.** |
+| LIVE 5 boss gate 220080000 with a short companion | **Not run yet.** Expect one no-shop line; entry unaffected. |
+| LIVE 6 regressions (citizen/journey resupply rates, bench reserve, Lakelis latency, tick percentiles, companion-ops backlog, "follow me" mid-trip) | **Not run yet.** |

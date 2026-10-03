@@ -57,6 +57,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -84,6 +86,7 @@ class AgentSupplyReadinessRuntimeTest {
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
     private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
+    private final ShopGateway shops = mock(ShopGateway.class);
     private AgentRouteStatus route = AgentRouteStatus.MOVING;
     private int ammoSpend;
     private MockedStatic<AgentPotionService> potionService;
@@ -103,7 +106,6 @@ class AgentSupplyReadinessRuntimeTest {
         shopService.when(() -> AgentShopService.cheapestRecoveryPrice(any(), any(), eq(true))).thenReturn(RED);
         shopService.when(() -> AgentShopService.cheapestRecoveryPrice(any(), any(), eq(false))).thenReturn(BLUE);
         shopService.when(() -> AgentShopService.plannedAmmoSpend(any(), any())).thenAnswer(inv -> ammoSpend);
-        ShopGateway shops = mock(ShopGateway.class);
         when(shops.findForNpc(anyInt())).thenReturn(mock(Shop.class));
         shopGateway = mockStatic(AgentShopGatewayRuntime.class);
         shopGateway.when(AgentShopGatewayRuntime::shop).thenReturn(shops);
@@ -205,9 +207,11 @@ class AgentSupplyReadinessRuntimeTest {
         assertEquals(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, status.kind());
         assertEquals(missing, status.missingMesos());
 
+        verify(shops, times(1)).findForNpc(anyInt()); // the cooldown holds: no new assessment meanwhile
         purses.put(503, 155 + missing - 1); // her owner's coin, one meso short
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
         assertFalse(execution(entry).isActive());
+        verify(shops, times(1)).findForNpc(anyInt()); // still short of what she lacked: not even looked at again
 
         purses.put(503, 155 + missing);
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 21_000L));
@@ -320,6 +324,7 @@ class AgentSupplyReadinessRuntimeTest {
         purses.put(509, 101); // one looted meso
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 400_000L));
         assertFalse(execution(entry).isActive());
+        assertEquals("finished 509 SHORT_MESOS", calls.getLast(), "not assessed again: no new refusal");
 
         purses.put(509, 100 + 5 * RED);
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 405_000L));
