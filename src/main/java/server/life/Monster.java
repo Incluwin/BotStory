@@ -937,7 +937,6 @@ public class Monster extends AbstractLoadedLife {
 
     private void dispatchRaiseQuestMobCount() {
         Set<Integer> attackerChrids = takenDamage.keySet();
-        server.living.LivingWorldHooks.mobKilled(this, attackerChrids, getMap());
         if (!attackerChrids.isEmpty()) {
             Map<Integer, Character> mapChars = map.getMapPlayers();
             if (!mapChars.isEmpty()) {
@@ -970,6 +969,9 @@ public class Monster extends AbstractLoadedLife {
     }
 
     private synchronized void processMonsterKilled(boolean hasKiller) {
+        // the living world counts every death, with a killer or not (quest kill steps, contract proofs, journals); it
+        // used to be called from dispatchRaiseQuestMobCount, which only runs without a killer
+        server.living.LivingWorldHooks.mobKilled(this, new HashSet<>(takenDamage.keySet()), getMap());
         if (!hasKiller) {    // players won't gain EXP from a mob that has no killer, but a quest count they should
             dispatchRaiseQuestMobCount();
         }
