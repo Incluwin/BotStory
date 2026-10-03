@@ -2,8 +2,10 @@ package server.agents.capabilities.partyquest.hpq;
 
 /**
  * How one member's state bears on an HPQ run, by the same rule table as AgentKpqCoordinator.memberVerdict (kept as
- * HPQ's own copy until a third coordinator needs it). Inside the event is COLLECTING_SEEDS through DELIVERING_CAKES;
- * cleared is the bonus phases, CLAIMING_REWARD, EXITING, or the event's own clear.
+ * HPQ's own copy until a third coordinator needs it), with one difference: a downed non-leader player is never timed
+ * out, since HenesysPQ.js ends nothing for a dead player and the stage needs no one in particular. Inside the event is
+ * COLLECTING_SEEDS through DELIVERING_CAKES; cleared is the bonus phases, CLAIMING_REWARD, EXITING, or the event's own
+ * clear.
  */
 final class AgentHpqMemberVerdicts {
     enum Verdict { OK, MISSING, DROP_HUMAN, DOWN_WAIT, REQUEST_TAP_OUT, REVIVED, IGNORE, DEFEATED, SHORT_HANDED }
@@ -40,7 +42,9 @@ final class AgentHpqMemberVerdicts {
      * Outside a companion run, and for the event leader, any death fails it as before. In a companion run a downed
      * non-leader is waited out (the stage is not paused: the Moon Bunny's clock runs regardless) until the stock
      * respawn carries it out of the event: a companion is then tapped out by its host, and a human is dropped once it
-     * is up outside. Fewer than three still standing ends the run, since HenesysPQ ends the event at three anyway.
+     * is up outside. A companion still down after the recovery timeout ends the run; a player may lie there waiting
+     * for a Resurrection as long as he likes. Fewer than three still standing ends the run, since HenesysPQ ends the
+     * event at three anyway.
      */
     static Verdict verdict(Facts facts) {
         boolean human = facts.type() == AgentHpqMemberState.MemberType.HUMAN;
@@ -71,7 +75,7 @@ final class AgentHpqMemberVerdicts {
             // Up outside the event is a death no tick saw: the respawn already carried it out.
             return shortHanded ? Verdict.SHORT_HANDED : Verdict.DOWN_WAIT;
         }
-        if (facts.nowMs() - facts.downSinceMs() >= facts.timeoutMs()) return Verdict.DEFEATED;
+        if (!human && facts.nowMs() - facts.downSinceMs() >= facts.timeoutMs()) return Verdict.DEFEATED;
         if (standing) return Verdict.REVIVED;
         if (shortHanded) return Verdict.SHORT_HANDED;
         if (facts.hp() > 0 && human) return Verdict.DROP_HUMAN;

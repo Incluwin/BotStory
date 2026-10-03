@@ -864,7 +864,7 @@ tuning:
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.COMPANION_CLEAR_WAIT_MS: '300000'
     # Values: 10000-120000 milliseconds. Recommended: 45000, KPQ's LOCAL_RECOVERY_TIMEOUT_MS, which covers an Agent's death pop-up and respawn.
     # Purpose: Bounds how long a companion run waits for a downed member: the respawn carries it out of the event, where its owner taps a companion out or a player is left behind.
-    # Technical: AgentHpqCoordinator.membersAlive fails the run DEFEATED for a member down this long (and GONE for a companion missing this long) inside COLLECTING_SEEDS..DELIVERING_CAKES; AgentHpqWatchdogRuntime waits this long for a respawn while no companion stands, unless fewer than three stand (WENT_DOWN). Companion runs only; the stage is never paused.
+    # Technical: AgentHpqCoordinator.membersAlive fails the run DEFEATED for a companion down this long (a downed non-leader player is never timed out; HenesysPQ.js ends nothing for a dead player) and GONE for a member missing this long inside COLLECTING_SEEDS..DELIVERING_CAKES; AgentHpqWatchdogRuntime waits this long for a respawn while no companion stands, unless fewer than three stand (WENT_DOWN). Companion runs only; the stage is never paused.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
     # Values: 0-10000 milliseconds. Recommended: 2000.
     # Purpose: Lets a companion run that the event ended under say it ran out of time when that was the script's ten-minute timer, and not a generic ending.

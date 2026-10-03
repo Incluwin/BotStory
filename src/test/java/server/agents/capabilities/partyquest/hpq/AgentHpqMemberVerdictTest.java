@@ -136,6 +136,16 @@ class AgentHpqMemberVerdictTest {
                 false, NOW - 1_000L, true, 3), Verdict.DOWN_WAIT));
         rows.add(new Row("companion still down", inside(Phase.DEFENDING_BUNNY, AGENT, true, 0, true, NOW - 1_000L,
                 false, 3), Verdict.DOWN_WAIT));
+        // A downed player (waiting for a Resurrection, or away) holds nothing up: HenesysPQ.js ends nothing for a
+        // dead player, and his revive or disconnect is the event's own to handle.
+        rows.add(new Row("human down past the recovery timeout, three standing", inside(Phase.DEFENDING_BUNNY, HUMAN,
+                true, 0, true, NOW - TIMEOUT, false, 3), Verdict.DOWN_WAIT));
+        rows.add(new Row("human down past the recovery timeout, two standing", inside(Phase.DEFENDING_BUNNY, HUMAN,
+                true, 0, true, NOW - TIMEOUT, false, 2), Verdict.SHORT_HANDED));
+        rows.add(new Row("human respawned outside past the recovery timeout", inside(Phase.DEFENDING_BUNNY, HUMAN,
+                true, 500, false, NOW - TIMEOUT, false, 3), Verdict.DROP_HUMAN));
+        rows.add(new Row("human resurrected in the event past the recovery timeout", inside(Phase.DEFENDING_BUNNY,
+                HUMAN, true, 500, true, NOW - TIMEOUT, false, 3), Verdict.REVIVED));
 
         List<String> wrong = new ArrayList<>();
         for (Row row : rows) {
