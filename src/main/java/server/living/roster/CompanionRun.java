@@ -9,12 +9,15 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * One KPQ run a companion lineup went into from Lakelis (P6, flow 3), in memory only: nothing of it survives a restart
- * (boot reconciliation parks whoever it held). Its key is its KPQ session's, since the event instance's name ("Kerning"
- * and its lobby) repeats across runs; its lineup companions and its extras are committed under that key until it ends.
+ * One party-quest run a companion lineup went into from its entry NPC (P6, flow 3; Lakelis's KPQ, Tory's HPQ), in
+ * memory only: nothing of it survives a restart (boot reconciliation parks whoever it held). Its key is its quest's and
+ * its session's ("pq:kpq:..."), since the event instance's name (and its lobby) repeats across runs; its lineup
+ * companions and its extras are committed under that key until it ends.
  */
 final class CompanionRun {
     final String key;
+    /** Its quest ("kpq", "hpq"): its entrance, its records' activity, its session's registry. */
+    final String pqKey;
     final String sessionId;
     final int leaderId;
     /** The lineup, humans too: who went in. */
@@ -56,6 +59,7 @@ final class CompanionRun {
 
     CompanionRun(String sessionId, LineupPlan plan, long nowMs) {
         this.key = "pq:" + plan.pqKey() + ":" + sessionId;
+        this.pqKey = plan.pqKey();
         this.sessionId = sessionId;
         this.leaderId = plan.leaderId();
         this.memberIds = Set.copyOf(plan.memberIds());

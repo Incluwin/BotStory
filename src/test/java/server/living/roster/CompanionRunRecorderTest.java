@@ -185,6 +185,32 @@ class CompanionRunRecorderTest {
     }
 
     @Test
+    void eachQuestKeepsItsOwnRecordsAndAnHpqRunWritesHpqRows() {
+        game.store.performance.addAll(List.of(row(900, "cleared"), row("hpq", 900, "failed"),
+                row("hpq", 901, "cleared")));
+        records.load();
+
+        assertEquals(new CompanionRunStats(1, 1), records.stats("kpq", 900));
+        assertEquals(new CompanionRunStats(1, 1), records.stats(900), "the KPQ record, as before");
+        assertEquals(new CompanionRunStats(1, 0), records.stats("hpq", 900));
+        assertEquals(new CompanionRunStats(1, 1), records.stats("hpq", 901));
+        assertEquals(CompanionRunRecorder.NONE, records.stats("kpq", 901));
+
+        fx.atEntrance("hpq");
+        fx.yes();
+        fx.service.cleared(List.of(game.ann));
+        fx.sessionEnds(true);
+
+        List<CompanionRunRow> written = game.store.performance.subList(3, game.store.performance.size()).stream()
+                .sorted(Comparator.comparingInt(CompanionRunRow::companionCharacterId)).toList();
+        assertEquals(List.of("900 mira hpq cleared, deaths 0, party 4", "901 tobi hpq cleared, deaths 0, party 4",
+                "902 pip hpq cleared, deaths 0, party 4"),
+                written.stream().map(CompanionRunRecorderTest::line).toList());
+        assertEquals(new CompanionRunStats(2, 1), records.stats("hpq", 900));
+        assertEquals(new CompanionRunStats(1, 1), records.stats("kpq", 900), "KPQ's record is untouched");
+    }
+
+    @Test
     void aFailedReadLeavesTheRecordsEmpty() {
         game.store.performance.add(row(900, "cleared"));
         game.store.performanceUnreadable = true;
@@ -209,7 +235,11 @@ class CompanionRunRecorderTest {
     }
 
     private static CompanionRunRow row(int companionId, String outcome) {
-        return new CompanionRunRow(ANN, companionId, "p" + companionId, "kpq", outcome, 600, 0, 4);
+        return row("kpq", companionId, outcome);
+    }
+
+    private static CompanionRunRow row(String activity, int companionId, String outcome) {
+        return new CompanionRunRow(ANN, companionId, "p" + companionId, activity, outcome, 600, 0, 4);
     }
 
     private static String line(CompanionRunRow row) {

@@ -17,7 +17,8 @@ import java.util.function.ToDoubleFunction;
 /**
  * Who a party quest's entry NPC would send in (P6, flow 3): the party's humans, always, and the companions that fit best,
  * one seat per owner in turn (the leader's first: the leader's pick covers every companion in the party); the rest wait
- * outside as extras. It is startable when nothing blocks it, nobody chosen is still on the way, and it is three or four.
+ * outside as extras. It is startable when nothing blocks it, nobody chosen is still on the way, and its size is within
+ * its quest's seats (PqEntrance.SeatRules: KPQ three or four, HPQ three to six).
  * Built on the leader's I/O thread from memory ({@link CompanionPartyQuestService#plan}); it writes nothing.
  * {@code picked}: the companions the leader chose (null: her own choice), so a Yes or "Are they here yet?" plans it
  * again the same way: her choice takes whoever fits best by then, the leader's pick stays theirs.
@@ -27,6 +28,7 @@ import java.util.function.ToDoubleFunction;
 public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Seat> extras, List<Seat> onTheWay,
                          List<Waiting> waiting, String blocker, boolean benchUseful, Set<Integer> picked,
                          ClearTime clearTime) {
+    /** KPQ's seats (Lakelis's lines and windows count them); every quest's are its entrance's (PqEntrance.seats). */
     public static final int MIN_SIZE = 3;
     public static final int MAX_SIZE = 4;
     /** A companion's clear record is shown, and ranks it, from this many runs on. */
@@ -115,7 +117,8 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
     }
 
     public boolean startable() {
-        return blocker == null && onTheWay.isEmpty() && lineup.size() >= MIN_SIZE && lineup.size() <= MAX_SIZE;
+        PqEntrance.SeatRules seats = PqEntrance.seats(pqKey);
+        return blocker == null && onTheWay.isEmpty() && lineup.size() >= seats.min() && lineup.size() <= seats.max();
     }
 
     /** The character ids of the lineup, humans too: the party the run goes in with. */
@@ -138,11 +141,12 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
     }
 
     /**
-     * The lineup of {@code party} (in party order) for a leader at {@code leaderLevel}. Four go in when the humans and
-     * the companions that can go reach four, else three; {@code picked} (the companion ids the leader chose, null: the
-     * best) overrides the choice. Within an owner the best companion is the closest in level to the leader, 2 better
-     * for a job branch nobody in the lineup has yet, up to 3 better by its clear rate once it has 3 runs, and up to
-     * {@link #HITTING} better by what it hits for in KPQ.
+     * The lineup of {@code party} (in party order) for a leader at {@code leaderLevel}, seated by {@code pqKey}'s
+     * entrance: her own choice fills the quest's preferred size when the humans and the companions that can go reach
+     * it, else its minimum (KPQ: four, else three; HPQ: four, else three); {@code picked} (the companion ids the leader
+     * chose, null: the best) overrides the choice and may fill the quest's most (KPQ four, HPQ six). Within an owner
+     * the best companion is the closest in level to the leader, 2 better for a job branch nobody in the lineup has yet,
+     * up to 3 better by its clear rate once it has 3 runs, and up to {@link #HITTING} better by what it hits for.
      *
      * <p>With {@code pace} (null: none), her own choice weighs every lineup the owners' seats allow (each owner keeps
      * the seats the turns above give it) by its objective: the longest wait for one of it still on its way, plus the
@@ -153,6 +157,8 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
      */
     static LineupPlan build(String pqKey, int leaderId, int leaderLevel, List<Candidate> party, Set<Integer> picked,
                             Pace pace) {
+        PqEntrance entrance = PqEntrance.of(pqKey);
+        PqEntrance.SeatRules seats = entrance.seatRules();
         List<Candidate> humans = new ArrayList<>();
         List<Candidate> seatable = new ArrayList<>();
         List<Waiting> waiting = new ArrayList<>();
@@ -171,8 +177,9 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             }
         }
         List<Seat> humanSeats = humans.stream().map(Candidate::seat).toList();
-        int ownRoom = Math.max(0, (humans.size() + seatable.size() >= MAX_SIZE ? MAX_SIZE : MIN_SIZE) - humans.size());
-        int room = picked != null ? Math.max(0, MAX_SIZE - humans.size()) : ownRoom;
+        int ownRoom = Math.max(0, Math.clamp(humans.size() + seatable.size(), seats.min(), seats.preferred())
+                - humans.size());
+        int room = picked != null ? Math.max(0, seats.max() - humans.size()) : ownRoom;
         List<Candidate> pool = picked == null ? seatable
                 : seatable.stream().filter(member -> picked.contains(member.seat().characterId())).toList();
         List<Candidate> chosen = roundRobin(leaderId, leaderLevel, humanSeats, pool, room);
@@ -208,12 +215,12 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
                 extras.add(member.seat());
             }
         }
-        if (blocker == null && humans.size() > MAX_SIZE) {
-            blocker = LakelisLines.THREE_OR_FOUR;
-        } else if (blocker == null && lineup.size() < MIN_SIZE) {
-            blocker = tooFew(waiting);
+        if (blocker == null && humans.size() > seats.max()) {
+            blocker = entrance.voice().sizeRule();
+        } else if (blocker == null && lineup.size() < seats.min()) {
+            blocker = tooFew(waiting, entrance.voice());
         }
-        boolean benchUseful = lineup.size() < MAX_SIZE && party.size() < RosterService.PARTY_CAP;
+        boolean benchUseful = lineup.size() < seats.preferred() && party.size() < RosterService.PARTY_CAP;
         return new LineupPlan(pqKey, leaderId, List.copyOf(lineup), List.copyOf(extras), List.copyOf(onTheWay),
                 List.copyOf(waiting), blocker, benchUseful, picked == null ? null : Set.copyOf(picked), clearTime);
     }
@@ -274,24 +281,24 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
 
     /**
      * Too few can go in: a companion that waits for potions says so (it is never sent in without), and that it cannot
-     * afford them when its own restock cannot; else the rule.
+     * afford them when its own restock cannot; else the entrance's rule.
      */
-    private static String tooFew(List<Waiting> waiting) {
+    private static String tooFew(List<Waiting> waiting, DeskVoice voice) {
         for (Waiting member : waiting) {
-            if (LakelisLines.LOW_ON_POTIONS.equals(member.reason())) {
-                return LakelisLines.named(LakelisLines.LOW_ON_POTIONS_LINE, member.name());
+            if (DeskLines.LOW_ON_POTIONS.equals(member.reason())) {
+                return DeskLines.named(DeskLines.LOW_ON_POTIONS_LINE, member.name());
             }
-            if (LakelisLines.LOW_ON_MANA.equals(member.reason())) {
-                return LakelisLines.named(LakelisLines.LOW_ON_MANA_LINE, member.name());
+            if (DeskLines.LOW_ON_MANA.equals(member.reason())) {
+                return DeskLines.named(DeskLines.LOW_ON_MANA_LINE, member.name());
             }
-            if (LakelisLines.LOW_ON_POTIONS_BROKE.equals(member.reason())) {
-                return LakelisLines.named(LakelisLines.LOW_ON_POTIONS_BROKE_LINE, member.name());
+            if (DeskLines.LOW_ON_POTIONS_BROKE.equals(member.reason())) {
+                return DeskLines.named(DeskLines.LOW_ON_POTIONS_BROKE_LINE, member.name());
             }
-            if (LakelisLines.LOW_ON_MANA_BROKE.equals(member.reason())) {
-                return LakelisLines.named(LakelisLines.LOW_ON_MANA_BROKE_LINE, member.name());
+            if (DeskLines.LOW_ON_MANA_BROKE.equals(member.reason())) {
+                return DeskLines.named(DeskLines.LOW_ON_MANA_BROKE_LINE, member.name());
             }
         }
-        return LakelisLines.TOO_FEW;
+        return voice.tooFew();
     }
 
     /**

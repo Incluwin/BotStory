@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -56,6 +57,18 @@ class ArrivalNoteTest {
         assertEquals(List.of("Olwen: here! ready for Lakelis when you are."), game.partyChat);
         verify(game.residents, never()).reply(any(), any(), anyString());
         assertFalse(service.takeArrivalNote(ANN, "olwen", System.currentTimeMillis()), "said once");
+    }
+
+    @Test
+    void sentForFromToryItTellsThePartyItIsReadyForTory() {
+        game.roster().call(game.ann, olwen);
+        service.noteCalledForDesk(ANN, "olwen", "hpq");
+
+        game.runTimers();
+
+        assertEquals(List.of("Olwen: here! ready for tory when you are."), game.partyChat);
+        verify(game.residents, never()).reply(any(), any(), anyString());
+        assertNull(service.takeArrivalLine(ANN, "olwen", System.currentTimeMillis()), "said once");
     }
 
     @Test

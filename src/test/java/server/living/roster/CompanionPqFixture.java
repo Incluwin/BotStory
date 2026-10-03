@@ -7,7 +7,9 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
-import server.agents.capabilities.partyquest.kpq.AgentKpqAdmissionService;
+import server.agents.capabilities.partyquest.hpq.AgentHpqMemberState;
+import server.agents.capabilities.partyquest.hpq.AgentHpqSession;
+import server.agents.capabilities.partyquest.hpq.AgentHpqSessionRegistry;
 import server.agents.capabilities.partyquest.kpq.AgentKpqDefinition;
 import server.agents.capabilities.partyquest.kpq.AgentKpqMemberState;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
@@ -31,7 +33,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
-import static server.living.roster.LifecycleHarness.KERNING;
 import static server.living.roster.LifecycleHarness.LITH;
 
 /**
@@ -40,11 +41,15 @@ import static server.living.roster.LifecycleHarness.LITH;
  * are {@link Doors}, a fake that logs admission, the start and the stop into the harness's calls ("admit [..]",
  * "start", "stop 900: ...") and registers a real PRODUCTION session. Lakelis's answers are logged there too ("answer
  * ...", "things changed", "still finishing: ..."). Ann's I/O thread runs a task at once, or keeps it in {@link #io}
- * while a test sets that.
+ * while a test sets that. {@link #atEntrance} takes Ann and her companions to another entrance (Tory's, for HPQ):
+ * the Yes, the doors and the session's end are then that quest's ("start hpq", an HPQ session).
  */
 final class CompanionPqFixture implements AutoCloseable {
     static final int EXIT = AgentKpqDefinition.EXIT_MAP;
     static final Point LAKELIS_AT = new Point(1400, 120);
+    /** Tory on her ledge at Henesys Park (Map.wz 100000200: x 1434, foothold y 364; the park floor is at y 574). */
+    static final Point TORY_AT = new Point(1434, 364);
+    static final int PARK_FLOOR_Y = 574;
 
     final LifecycleHarness game = new LifecycleHarness();
     /** Character id -> the HP potions it carries (50 unless a test says otherwise). */
@@ -68,23 +73,55 @@ final class CompanionPqFixture implements AutoCloseable {
     String topLine;
     /** The map lines of Ann's own companions as they step out beside Lakelis. */
     final MockedStatic<AgentDialogueTransportRuntime> dialogue = mockStatic(AgentDialogueTransportRuntime.class);
+    /** The quest whose entrance Ann stands at ({@link #atEntrance}). */
+    String pqKey = "kpq";
+    /** True while a task runs on Ann's I/O thread (one run at once, {@link #io} null). */
+    boolean onIo;
+    /** Ann's companions out with her, in the order they joined. */
+    private final List<Persona> crew = new ArrayList<>();
 
     CompanionPqFixture() {
-        game.moveAnn(KERNING, 1500, 120);
         stand(game.ann, 25, Job.CLERIC);
         Client client = game.ann.getClient();
         doAnswer(inv -> {
             Runnable task = inv.getArgument(0);
             if (io == null) {
-                task.run();
+                boolean was = onIo;
+                onIo = true;
+                try {
+                    task.run();
+                } finally {
+                    onIo = was;
+                }
             } else {
                 io.add(task);
             }
             return null;
         }).when(client).runOnIoThread(any());
-        NPC lakelis = mock(NPC.class);
-        when(lakelis.getPosition()).thenReturn(LAKELIS_AT);
-        when(game.map(KERNING).getNPCById(CompanionPartyQuestService.LAKELIS)).thenReturn(lakelis);
+        atEntrance("kpq");
+    }
+
+    /**
+     * Ann, and the companions out with her, at {@code key}'s entrance (its recruit map), its entry NPC there: Lakelis
+     * at {@link #LAKELIS_AT}, Tory at {@link #TORY_AT} on a map whose ground below any point is the park floor.
+     */
+    void atEntrance(String key) {
+        pqKey = key;
+        PqEntrance entrance = PqEntrance.of(key);
+        int mapId = entrance.definition().recruitMapId();
+        game.moveAnn(mapId, 1500, 120);
+        for (Persona persona : crew) {
+            game.placeWithAnn(persona);
+        }
+        NPC npc = mock(NPC.class);
+        when(npc.getPosition()).thenReturn(key.equals("kpq") ? LAKELIS_AT : TORY_AT);
+        when(game.map(mapId).getNPCById(entrance.entryNpcId())).thenReturn(npc);
+        if (!key.equals("kpq")) {
+            doAnswer(inv -> {
+                Point at = inv.getArgument(0);
+                return new Point(at.x, PARK_FLOOR_Y);
+            }).when(game.map(mapId)).getPointBelow(any());
+        }
     }
 
     /** A companion of Ann's out with her beside Lakelis. */
@@ -97,6 +134,7 @@ final class CompanionPqFixture implements AutoCloseable {
         Persona persona = game.companionOf(ownerId, id, name, characterId, RosterState.ACTIVE, LITH);
         game.outWithAnn(persona);
         stand(game.bot(persona), level, job);
+        crew.add(persona);
         return persona;
     }
 
@@ -147,17 +185,24 @@ final class CompanionPqFixture implements AutoCloseable {
 
     /** Ann says Yes to her lineup as it stands now; the run it started, if any. */
     CompanionRun yes() {
-        service.start(game.ann, service.plan(game.ann, "kpq"));
-        return doors.session == null ? null : service.runForSession(doors.session.sessionId());
+        service.start(game.ann, service.plan(game.ann, pqKey));
+        String sessionId = doors.sessionId(pqKey);
+        return sessionId == null ? null : service.runForSession(sessionId);
     }
 
-    /** The run's KPQ session ends, as the Agent layer tells the host (childFinished, then runEnded). */
+    /** The run's session ends, as the Agent layer tells the host (childFinished, then runEnded). */
     void sessionEnds(boolean success) {
         sessionEnds(success, null);
     }
 
     /** {@link #sessionEnds(boolean)} with the pace the session reported (null: none). */
     void sessionEnds(boolean success, server.agents.capabilities.partyquest.pace.AgentPqPace pace) {
+        if (!pqKey.equals("kpq")) {
+            AgentHpqSessionRegistry.remove(doors.hpqSession);
+            lifecycle.runEnded(new AgentPartyQuestHandback.RunEnded(pqKey, doors.hpqSession.sessionId(), ANN, success,
+                    success ? "completed" : "HPQ stopped", 5_000L, pace));
+            return;
+        }
         AgentKpqSessionRegistry.remove(doors.session);
         lifecycle.runEnded(new AgentPartyQuestHandback.RunEnded("kpq", doors.session.sessionId(), ANN, success,
                 success ? "completed" : "KPQ stopped", 5_000L, pace));
@@ -190,6 +235,7 @@ final class CompanionPqFixture implements AutoCloseable {
     @Override
     public void close() {
         AgentKpqSessionRegistry.remove(doors.session);
+        AgentHpqSessionRegistry.remove(doors.hpqSession);
         dialogue.close();
         game.close();
     }
@@ -197,10 +243,13 @@ final class CompanionPqFixture implements AutoCloseable {
     /**
      * The doors into the quest: admission registers a real session with the lineup (or refuses with {@link #refusal}),
      * the start answers {@link #start} (or throws {@link #startThrows}), and the stop runs {@link #onStop}. Each logs
-     * itself. The companions in {@link #finishing} are still on another activity.
+     * itself; another quest's start logs its key ("start hpq"). The companions in {@link #finishing} are still on
+     * another activity.
      */
     final class Doors implements PqEntryPort {
         AgentKpqSession session;
+        /** The HPQ session admission registered (at Tory). */
+        AgentHpqSession hpqSession;
         String refusal;
         Start start = Start.STARTED;
         RuntimeException startThrows;
@@ -211,14 +260,37 @@ final class CompanionPqFixture implements AutoCloseable {
         /** The session's companion flag, and how many were committed, as the start saw them. */
         boolean adoptedAtStart;
         int committedAtStart;
+        /** Whether admission and the start ran on Ann's I/O thread. */
+        boolean admittedOnIo;
+        boolean startedOnIo;
+
+        /** The id of the session admission registered for {@code key}, or null. */
+        String sessionId(String key) {
+            if (key.equals("kpq")) {
+                return session == null ? null : session.sessionId();
+            }
+            return hpqSession == null ? null : hpqSession.sessionId();
+        }
 
         @Override
-        public AgentKpqAdmissionService.AdmissionResult admit(Character leader, List<Character> members, long seed,
-                                                              long nowMs) {
+        public Admitted admit(String key, Character leader, List<Character> members, long seed, long nowMs) {
             game.calls.add("admit " + members.stream().map(Character::getName).toList());
             partyAtAdmit = List.copyOf(game.members);
+            admittedOnIo = onIo;
             if (refusal != null) {
-                return new AgentKpqAdmissionService.AdmissionResult(false, refusal, null, null);
+                return new Admitted(false, refusal, null);
+            }
+            if (!key.equals("kpq")) {
+                hpqSession = new AgentHpqSession(AgentHpqSession.Mode.PRODUCTION, seed, leader.getId(), members.size(),
+                        nowMs);
+                for (Character member : members) {
+                    hpqSession.addMember(member.getId(), game.humans.contains(member.getId())
+                            ? AgentHpqMemberState.MemberType.HUMAN : AgentHpqMemberState.MemberType.AGENT);
+                }
+                members.stream().filter(member -> !game.humans.contains(member.getId())).findFirst().ifPresent(agent ->
+                        hpqSession.setLeadership(leader.getId(), agent.getId())); // as its admission leads it
+                AgentHpqSessionRegistry.registerComplete(hpqSession);
+                return new Admitted(true, "HPQ party admitted", hpqSession);
             }
             session = new AgentKpqSession(AgentKpqSession.Mode.PRODUCTION, seed, leader.getId(), members.size(), nowMs);
             for (Character member : members) {
@@ -226,15 +298,17 @@ final class CompanionPqFixture implements AutoCloseable {
                         ? AgentKpqMemberState.MemberType.HUMAN : AgentKpqMemberState.MemberType.AGENT);
             }
             AgentKpqSessionRegistry.registerComplete(session);
-            return new AgentKpqAdmissionService.AdmissionResult(true, "KPQ party admitted", session, null);
+            return new Admitted(true, "KPQ party admitted", session);
         }
 
         @Override
-        public Start startInstance(Character leader) {
-            game.calls.add("start");
-            if (session != null) {
-                adoptedAtStart = session.companionAdopted();
-                committedAtStart = game.commitments.members("pq:kpq:" + session.sessionId()).size();
+        public Start startInstance(String key, Character leader) {
+            game.calls.add(key.equals("kpq") ? "start" : "start " + key);
+            startedOnIo = onIo;
+            String sessionId = sessionId(key);
+            if (sessionId != null) {
+                adoptedAtStart = key.equals("kpq") ? session.companionAdopted() : hpqSession.companionAdopted();
+                committedAtStart = game.commitments.members("pq:" + key + ":" + sessionId).size();
             }
             if (startThrows != null) {
                 throw startThrows;
