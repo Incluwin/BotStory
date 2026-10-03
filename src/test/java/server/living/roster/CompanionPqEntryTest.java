@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import scripting.npc.NPCConversationManager;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentDialogueTransportRuntime;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.RosterState;
@@ -86,6 +87,29 @@ class CompanionPqEntryTest {
                 steps, "beside Lakelis, then admitted, then started");
         fx.dialogue.verify(() -> AgentDialogueTransportRuntime.sayMapNow(game.bot(casse),
                 "i'll wait out here till you're done."));
+    }
+
+    @Test
+    void anExtraHeldOutsideTheRunningRunKeepsItsRestockDutyAndItsShopTarget() {
+        fx.ready();
+
+        CompanionRun run = fx.yes();
+
+        assertTrue(run.started);
+        assertTrue(game.commitments.isCommitted(903), "the run commits its extras until it ends");
+        game.roster().settings().bind(game.bot(casse), ANN, "casse");
+        game.roster().settings().bind(game.bots.get(900), ANN, "mira");
+        CompanionRestock restock = new CompanionRestock(game.world);
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(903),
+                "Casse waits outside with no HP potion: it restocks while Ann is inside");
+        assertNull(restock.standing(900), "Mira is in the run");
+        AgentSupplyReadiness.install(restock);
+        try {
+            assertEquals(40, AgentSupplyReadiness.buyTarget(game.bot(casse), true), "its visit buys to its target");
+            assertEquals(0, AgentSupplyReadiness.buyTarget(game.bots.get(900), true));
+        } finally {
+            AgentSupplyReadiness.install(null);
+        }
     }
 
     @Test

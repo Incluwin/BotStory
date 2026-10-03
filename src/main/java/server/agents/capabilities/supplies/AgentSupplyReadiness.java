@@ -5,6 +5,7 @@ import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeEntry;
 
@@ -22,8 +23,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * trip, and says so through the rule instead of asking its party. With nothing installed, nothing here changes what an
  * Agent does.</p>
  *
- * <p>The host's reads ({@link #status}, {@link #checkSoon}, {@link #resumeFollowAfterTrip}) touch memory only and may run
- * on any thread; the rule's callbacks run on the Agent tick and must only touch memory and hand work over.</p>
+ * <p>The host's reads ({@link #status}, {@link #restockPending}, {@link #carriedBy}, {@link #checkSoon},
+ * {@link #resumeFollowAfterTrip}) touch memory only and may run on any thread; the rule's callbacks run on the Agent
+ * tick and must only touch memory and hand work over.</p>
  */
 public final class AgentSupplyReadiness {
     private static final Logger log = LoggerFactory.getLogger(AgentSupplyReadiness.class);
@@ -228,7 +230,9 @@ public final class AgentSupplyReadiness {
     /**
      * RESTOCKING while a potion trip is under way (a readiness trip's own estimate, at least a check interval; another
      * potion trip's from its hop budget); otherwise the last readiness verdict when it was found on the map the Agent
-     * stands on; otherwise NONE.
+     * stands on; otherwise, while it keeps a duty, the cooldown that still holds it back since it last looked
+     * (CANNOT_AFFORD with what it still lacks, or NO_SPACE: it was in a run meanwhile, or came over from another map);
+     * otherwise NONE.
      */
     public static Status status(AgentRuntimeEntry entry, long nowMs) {
         if (entry == null) {
@@ -252,15 +256,75 @@ public final class AgentSupplyReadiness {
         if (readiness == null || entry.bot() == null) {
             return Status.NONE;
         }
-        AgentSupplyReadinessState.Verdict verdict = readiness.verdictOn(entry.bot().getMapId());
+        Character agent = entry.bot();
+        AgentSupplyReadinessState.Verdict verdict = readiness.verdictOn(agent.getMapId());
         if (verdict == null) {
-            return Status.NONE;
+            return heldBack(readiness, agent, nowMs);
         }
         return switch (verdict) {
             case CANNOT_AFFORD -> new Status(StatusKind.CANNOT_AFFORD, 0L, readiness.verdictMissingMesos());
             case NO_SPACE -> new Status(StatusKind.NO_SPACE, 0L, 0);
             case NO_SUPPLIER -> new Status(StatusKind.NO_SUPPLIER, 0L, 0);
         };
+    }
+
+    /** What a cooldown set before still says about an Agent with a duty that has not looked on this map yet. */
+    private static Status heldBack(AgentSupplyReadinessState readiness, Character agent, long nowMs) {
+        Activity activity = standing(agent.getId());
+        if (activity == null) {
+            return Status.NONE;
+        }
+        int mesos = AgentSupplyReadinessRuntime.mesos(agent);
+        AgentSupplyReadinessState.Cooldown cooldown = readiness.cooldownShown(nowMs, mesos,
+                AgentSupplyReadinessRuntime.freeUseSlots(agent), shortfall(agent, activity), agent.getMapId());
+        if (cooldown == null) {
+            return Status.NONE;
+        }
+        return switch (cooldown) {
+            case CANNOT_AFFORD, SHORT_MESOS -> new Status(StatusKind.CANNOT_AFFORD, 0L,
+                    readiness.cooldownMissingMesos(mesos));
+            case NO_SPACE, SHORT_SPACE -> new Status(StatusKind.NO_SPACE, 0L, 0);
+            case INTERRUPTED, GAVE_UP -> Status.NONE;
+        };
+    }
+
+    /**
+     * True while the Agent's own restock decides on its next check: it keeps a duty, lacks potions, is free to go
+     * (AgentSupplyReadinessRuntime.free), and no supply trip, verdict on this map or cooldown stands in the way. A host
+     * leaves the asking to it meanwhile. Memory only, any thread.
+     */
+    public static boolean restockPending(AgentRuntimeEntry entry, long nowMs) {
+        Character agent = entry == null ? null : entry.bot();
+        Activity activity = agent == null ? null : standing(agent.getId());
+        if (activity == null || entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .map(AgentSupplyProcurementState::isActive).orElse(false)) {
+            return false;
+        }
+        Shortfall lacking = shortfall(agent, activity);
+        if (lacking.none() || !AgentSupplyReadinessRuntime.free(entry, agent)) {
+            return false;
+        }
+        AgentSupplyReadinessState readiness =
+                entry.capabilityStates().find(AgentSupplyReadinessState.STATE_KEY).orElse(null);
+        return readiness == null || readiness.verdictOn(agent.getMapId()) == null
+                && readiness.cooldownShown(nowMs, AgentSupplyReadinessRuntime.mesos(agent),
+                AgentSupplyReadinessRuntime.freeUseSlots(agent), lacking, agent.getMapId()) == null;
+    }
+
+    /**
+     * True while the Agent goes along with {@code leaderCharacterId}: it follows them (its follow target, or with none
+     * its interaction target, is them), or is on a supply trip that ends by following them again. An Agent told to
+     * wait, sent somewhere or hunting on its own is not. Memory only, any thread.
+     */
+    public static boolean carriedBy(AgentRuntimeEntry entry, int leaderCharacterId) {
+        if (entry == null) {
+            return false;
+        }
+        boolean goesAlong = AgentModeStateRuntime.following(entry)
+                || entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .map(trip -> trip.isActive() && trip.resumeFollow()).orElse(false);
+        Character anchor = goesAlong ? AgentSupplyReadinessRuntime.followAnchor(entry) : null;
+        return anchor != null && anchor.getId() == leaderCharacterId;
     }
 
     /** The Agent looks at its potions on its next tick instead of at its next check interval. */
@@ -272,15 +336,12 @@ public final class AgentSupplyReadiness {
 
     /**
      * A host let the Agent follow again while it is on a supply trip: once the trip is over, it rejoins by following
-     * (a follow warp) instead of walking back to the map it left. Nothing while no trip is under way.
+     * (a follow warp) instead of walking back to the map it left. False when no trip is under way any more (it ended
+     * meanwhile, in the same lock as this check): the host then lets it follow itself.
      */
-    public static void resumeFollowAfterTrip(AgentRuntimeEntry entry) {
-        if (entry == null) {
-            return;
-        }
-        entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
-                .filter(AgentSupplyProcurementState::isActive)
-                .ifPresent(execution -> execution.rememberForegroundMode(true, false));
+    public static boolean resumeFollowAfterTrip(AgentRuntimeEntry entry) {
+        return entry != null && entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .map(AgentSupplyProcurementState::resumeFollowIfActive).orElse(false);
     }
 
     // ---- tuning (agent-engine.yaml), read at call time ----------------------------------------

@@ -348,10 +348,14 @@ public final class CompanionPartyQuestService {
     /**
      * Before entry: a companion the lineup leaves waiting for potions asks for some in party chat, in the Agents'
      * own pot-share words (mana, or HP); one that cannot afford them says so in its own voice. At most once per
-     * {@link #MANA_ASK_EVERY_MS} per companion, said on companion-ops.
+     * {@link #MANA_ASK_EVERY_MS} per companion, said on companion-ops. One whose own restock decides on its next tick
+     * (AgentSupplyReadiness.restockPending: the click just asked it to look) asks nothing: it sets off, or says why
+     * not, itself. The broke line shares its memory with the companion's own (CompanionRestock.mayAsk), so it is never
+     * said twice within seconds.
      */
     private void askShort(LineupPlan plan) {
         long now = System.currentTimeMillis();
+        CompanionRestock restock = world.restock();
         for (LineupPlan.Waiting member : plan.waiting()) {
             String reason = member.reason();
             boolean broke = LakelisLines.LOW_ON_POTIONS_BROKE.equals(reason)
@@ -361,6 +365,9 @@ public final class CompanionPartyQuestService {
                 continue;
             }
             int id = member.characterId();
+            if (!broke && AgentSupplyReadiness.restockPending(AgentRuntimeRegistry.findByAgentCharacterId(id), now)) {
+                continue;
+            }
             boolean[] fresh = {false};
             askedForMana.compute(id, (key, at) -> {
                 if (at != null && now - at < MANA_ASK_EVERY_MS) {
@@ -369,7 +376,8 @@ public final class CompanionPartyQuestService {
                 fresh[0] = true;
                 return now;
             });
-            if (!fresh[0]) {
+            if (!fresh[0] || broke && restock != null
+                    && !restock.mayAsk(id, CompanionRestockLines.BROKE, MANA_ASK_EVERY_MS)) {
                 continue;
             }
             world.executor().submit("pq.ask_potions " + id, () -> {

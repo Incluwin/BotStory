@@ -9,7 +9,11 @@ import org.mockito.MockedStatic;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.contracts.AgentResourceCategory;
+import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
+import server.agents.integration.AgentRelationshipRuntime;
+import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
@@ -40,8 +44,9 @@ import static org.mockito.Mockito.when;
 
 /**
  * The living world's readiness rule (CompanionRestock): a standing duty for every companion its owner carries, out
- * with them or held outside a run for them, and none for one on its way, away, on a bench slice, in a run or with the
- * kill switch off. Its callbacks only hand lines to companion-ops: the go and back lines for an ACTIVE companion, a held
+ * with them and following them, or held outside a run for them (even while the run counts it as one of its extras),
+ * and none for one told to wait or sent somewhere, on its way, away, on a bench slice, in a run or with the kill switch
+ * off. Its callbacks only hand lines to companion-ops: the go and back lines for an ACTIVE companion, a held
  * one quiet (it walks back to the spot it waits at), and the broke line at most once per COMPANION_RESTOCK_ASK_EVERY_MS.
  * It never reads the store: the store here throws on any call.
  */
@@ -57,6 +62,8 @@ class CompanionRestockTest {
     private final Commitments commitments = new Commitments();
     private final CompanionSlots slots = new CompanionSlots(world);
     private final Character fenna = mock(Character.class);
+    private final Character ann = mock(Character.class);
+    private AgentRuntimeEntry entry;
     private final Persona persona = mock(Persona.class);
     /** Submitted companion-ops commands, by name, and the commands themselves until drained. */
     private final List<String> submitted = new ArrayList<>();
@@ -102,7 +109,11 @@ class CompanionRestockTest {
         when(roster.keepsOffFollow(anyString())).thenAnswer(inv -> offFollow.contains(inv.getArgument(0)));
         when(roster.sayInParty(any(), anyString())).thenAnswer(inv -> said.add(inv.getArgument(1)));
         leaders.put(FENNA, ANN);
-        AgentRuntimeEntry entry = new AgentRuntimeEntry(fenna, null, null);
+        when(ann.getId()).thenReturn(ANN);
+        entry = new AgentRuntimeEntry(fenna, null, null);
+        AgentRelationshipRuntime.setInteractionTarget(entry, ann);
+        AgentRelationshipRuntime.setFollowTarget(entry, ann);
+        AgentModeStateRuntime.setFollowing(entry, true); // out with Ann, following her
         registry = mockStatic(AgentRuntimeRegistry.class);
         registry.when(() -> AgentRuntimeRegistry.leaderIdForAgentCharacter(anyInt()))
                 .thenAnswer(inv -> leaders.getOrDefault((int) inv.getArgument(0), 0));
@@ -160,6 +171,54 @@ class CompanionRestockTest {
         assertNull(restock.standing(FENNA), "the kill switch");
         config.COMPANION_RESTOCK_ENABLED = true;
         assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA));
+    }
+
+    @Test
+    void aHeldExtraOfARunningRunKeepsItsDuty() {
+        hold();
+        commitments.commit("pq:kpq:1", ANN, FENNA); // the run commits its extras too, until it ends
+
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+                "waiting outside Ann's run, it restocks meanwhile");
+        engaged.add(FENNA);
+        assertNull(restock.standing(FENNA), "but not once a run engages it");
+    }
+
+    @Test
+    void anActiveCompanionItsOwnerToldToWaitOrSentSomewhereHasNoDuty() {
+        AgentModeStateRuntime.setFollowing(entry, false); // "Wait here", or sent to a spot
+        assertNull(restock.standing(FENNA), "its owner's order stands: it does not walk off to a shop");
+
+        Character stranger = mock(Character.class);
+        when(stranger.getId()).thenReturn(11);
+        AgentModeStateRuntime.setFollowing(entry, true);
+        AgentRelationshipRuntime.setFollowTarget(entry, stranger);
+        assertNull(restock.standing(FENNA), "following someone else");
+        AgentRelationshipRuntime.setFollowTarget(entry, ann);
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA));
+
+        AgentSupplyProcurementState trip = entry.capabilityStates().require(AgentSupplyProcurementState.STATE_KEY);
+        trip.start("readiness:HP_POTION:1", "maintenance:resupply:readiness:HP_POTION:1",
+                AgentResourceCategory.HP_POTION, 103_000_002, 1_051_002, KERNING,
+                AgentSupplyProcurementState.Phase.SHOPPING);
+        trip.rememberForegroundMode(true, false);
+        AgentModeStateRuntime.setFollowing(entry, false); // travel stopped its follow mode
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+                "on its trip, which ends by following Ann: the shop still buys to its target");
+    }
+
+    @Test
+    void theDeskAndTheCompanionShareOneMemoryOfItsBrokeLine() {
+        assertTrue(restock.mayAsk(FENNA, CompanionRestockLines.BROKE, 300_000L), "Lakelis's desk said it");
+
+        restock.refused(FENNA, AgentSupplyReadiness.Activity.PARTY_QUEST, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
+                new AgentSupplyReadiness.Shortfall(19, 0), 795);
+        drain();
+        assertEquals(List.of(), said, "a tick later its own refusal does not say it again");
+
+        now += 300_000L;
+        assertTrue(restock.mayAsk(FENNA, CompanionRestockLines.BROKE, 300_000L), "the desk's own interval");
+        assertTrue(!restock.mayAsk(FENNA, CompanionRestockLines.BROKE, 300_000L), "but not twice at once");
     }
 
     @Test

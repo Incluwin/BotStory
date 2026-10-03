@@ -664,6 +664,14 @@ The user's 2026-10-02 decision ("companions should restock potions themselves be
 - **Agent layer (owner-free):** `AgentSupplyReadiness` (the one standard, the rule seam, the host's status/checkSoon/resumeFollowAfterTrip), `AgentSupplyReadinessState` and `AgentSupplyReadinessRuntime` (the standing duty on the Agent tick, the affordability gate, outcomes and cooldowns), procurement integration (readiness first, a duty holder's critical potion trips gated too, the request's 4-min TTL, both potion kinds resolved when a readiness trip ends), the shop's count floor (`AgentShopPotionPolicy.selectForCount`) and `AgentShopService.plannedAmmoSpend`. Nine `AgentSupplyReadiness.*` keys in agent-engine.yaml.
 - **Living layer:** `CompanionRestock` (the rule: who has a duty, the go/back/broke/no-shop lines, a held companion's walk back), `CompanionRestockLines` (generic lines; Fenna, Garrick and Brannock have their own), the Lakelis desk's "Gone to the store" errand and "out of mesos" reason, holds and rejoins that let a trip finish, and the boss-gate line. Three `living_world.COMPANION_RESTOCK_*` keys.
 
+## Review fixes (two reviews, before deploy)
+- **Shop floor in two passes:** first each kind up to the standard (only the mana potions' standard gap held back), then the reserve bars, then the top-up to 40/50. Before, holding back the mana potions' whole target gap could spend a purse that covered the standard on mana alone (probe: 10/10 potions and 5000 meso ended at 10/35, then a false broke line).
+- **Who has a duty:** a held extra keeps it while the running run commits it (before, held extras never restocked during a run); an ACTIVE companion must be following its owner (before, one told "wait here" walked off to the shop).
+- **The owner's order wins:** follow, wait, move here, hunt here and patrol call a companion back from its readiness trip (5-min cooldown; two cut short in a row from one town end its tries there until it has been elsewhere); it does not set off while its owner is leaving the map.
+- **A critical trip's check is lighter:** the potions back to POT_STOP at the cheapest price, no ammo, no slot check; out in the field a companion that cannot afford even that still asks its party once. Before, a Hunter with 5 potions and 600 meso in the field neither shopped nor asked.
+- **Use slots:** potions that stack onto a carried stack need no slot; a readiness trip needing new slots keeps one free for the run.
+- **The desk:** "out of mesos" also after a run or a walk from another map while the cooldown holds; a cooldown lifts when the companion lacks fewer potions; a companion whose own restock decides next tick asks nothing at the click; the desk's and the companion's broke lines share one memory; the generic go lines no longer assume a run is starting; a rejoin whose trip ended at that moment falls back to the normal follow.
+
 ## Live checks
 | Check | Result |
 |---|---|
@@ -672,4 +680,5 @@ The user's 2026-10-02 decision ("companions should restock potions themselves be
 | LIVE 3 broke companion (Fenna, 155 meso) | **Not run yet.** Expect "low on potions, out of mesos", one broke line, no trip and no 'no HP_POTION supplier' / 'suspended foreground work' lines for 10 min; coin of the missing amount sends her. |
 | LIVE 4 back-to-back KPQ runs, held extras restocking during a run | **Not run yet.** |
 | LIVE 5 boss gate 220080000 with a short companion | **Not run yet.** Expect one no-shop line; entry unaffected. |
-| LIVE 6 regressions (citizen/journey resupply rates, bench reserve, Lakelis latency, tick percentiles, companion-ops backlog, "follow me" mid-trip) | **Not run yet.** |
+| LIVE 6 regressions (citizen/journey resupply rates, bench reserve, Lakelis latency, tick percentiles, companion-ops backlog, "follow me" mid-trip) | **Not run yet.** "follow me" mid-trip: expect 'was called back from its readiness trip' in cosmic-log, the companion following at once, and no new trip for 5 min. |
+| LIVE 7 a short companion told "wait here" in Kerning; a poor one out hunting below POT_STOP | **Not run yet.** Expect the first to stay put (no go line); the second to ask its party once, and to shop if it can pay for the potions back to POT_STOP. |

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.config.Content.Persona;
@@ -111,6 +112,27 @@ class RosterServiceTest {
                 || call.startsWith("stop")), "no follow now: it would cancel the shop visit " + game.calls);
         assertTrue(execution.isActive());
         assertTrue(execution.resumeFollow(), "the trip ends by following Ann");
+        assertFalse(game.roster().keepsOffFollow("silentsin"));
+    }
+
+    @Test
+    void aHeldCompanionWhoseTripEndsAsItRejoinsFollowsAsAnyHeldCompanionDoes() {
+        game.bot(sin).changeMap(game.map(KERNING_SHOP), new Point(-297, -79));
+        onTrip();
+        assertTrue(game.roster().hold(game.ann, sin, KERNING, BY_LAKELIS, HoldNote.whisper(null)).ok());
+        game.bot(sin).changeMap(game.map(KERNING), new Point(1440, 120)); // back beside Lakelis
+        game.calls.clear();
+
+        game.moveAnn(KERNING, 1200, 120);
+        try (org.mockito.MockedStatic<AgentSupplyReadiness> readiness = org.mockito.Mockito.mockStatic(
+                AgentSupplyReadiness.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            // the Agent tick finished the trip between the rejoin's look and its follow-after-the-trip
+            readiness.when(() -> AgentSupplyReadiness.resumeFollowAfterTrip(any())).thenReturn(false);
+            game.roster().ownerEnteredMap(game.ann, game.map(KERNING));
+        }
+
+        assertEquals(RosterState.ACTIVE, game.row(sin).state());
+        assertTrue(game.calls.contains("follow SilentSin"), "it follows Ann now, not never: " + game.calls);
         assertFalse(game.roster().keepsOffFollow("silentsin"));
     }
 

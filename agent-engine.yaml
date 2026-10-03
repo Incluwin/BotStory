@@ -4055,7 +4055,7 @@ tuning:
     server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_MP_POTIONS: '25'
     # Values: a percentage from 100 to 500. Recommended: 200 (40 HP / 50 MP potions), about one shop trip per two KPQ runs.
     # Purpose: How far past the readiness standard a shop visit buys while the Agent keeps a standing duty, so back-to-back runs do not send it to the shop every time.
-    # Technical: AgentSupplyReadiness.buyTarget rounds standard x this / 100 up; AgentShopService.buyPotionStock runs a first pass buying by count toward it (AgentShopPotionPolicy.selectForCount) before the reserve-bar passes, within MAX_CARRIED_QUANTITY and MAX_PURCHASE_QUANTITY_PER_VISIT.
+    # Technical: AgentSupplyReadiness.buyTarget rounds standard x this / 100 up; AgentShopService.buyPotionStock buys by count (AgentShopPotionPolicy.selectForCount) first up to the standard, then runs the reserve-bar passes, then tops up toward this target with what is left, within MAX_CARRIED_QUANTITY and MAX_PURCHASE_QUANTITY_PER_VISIT.
     server.agents.capabilities.supplies.AgentSupplyReadiness.BUY_TO_PERCENT: '200'
     # Values: portal hops from 0 to 6. Recommended: 2, which covers the Lakelis desk (Kerning, 1 hop) and the HPQ desk (Henesys park, 2 hops).
     # Purpose: How far the nearest potion supplier may be from a town map before a standing readiness duty walks there by itself.
@@ -4071,7 +4071,7 @@ tuning:
     server.agents.capabilities.supplies.AgentSupplyReadiness.REQUEST_TTL_MS: '240000'
     # Values: milliseconds from 60000 to 1800000. Recommended: 300000 so an owner who called a companion back mid-trip keeps it for five minutes.
     # Purpose: Quiet period after a readiness trip was cut short or could not begin, before the standing duty sets off again.
-    # Technical: AgentSupplyReadinessRuntime sets an INTERRUPTED cooldown until now plus this on a failed begin and an abandoned trip; SHORT_MESOS and SHORT_SPACE record it too but lift only when the purse grows by what was lacking or a Use slot frees.
+    # Technical: AgentSupplyReadinessRuntime sets an INTERRUPTED cooldown until now plus this on a failed begin, an abandoned trip and an owner's movement order mid-trip (AgentSupplyProcurementRuntime.ownerCalledBack); the second such trip in a row from one town gives that town up until the Agent has stood on another map. SHORT_MESOS and SHORT_SPACE record it too but lift only when the purse grows by what was lacking, a Use slot frees, or it lacks fewer potions.
     server.agents.capabilities.supplies.AgentSupplyReadiness.SHORT_TRIP_COOLDOWN_MS: '300000'
     # Values: milliseconds from 0 to 120000. Recommended: 25000, the walk to a shop on the same map plus the purchase steps; retune from live start to rejoin times.
     # Purpose: The fixed part of the time a host shows for a companion gone to the store ("Gone to the store: X (~N s)").

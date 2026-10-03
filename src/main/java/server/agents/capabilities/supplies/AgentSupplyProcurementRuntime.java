@@ -128,10 +128,16 @@ public final class AgentSupplyProcurementRuntime {
 
         if (!execution.isActive()) {
             boolean readinessTrip = AgentSupplyReadinessRuntime.readiness(request.requestId());
-            if (dutyHolder != null && potion(request.category())
-                    && !AgentSupplyReadinessRuntime.mayShopForCritical(entry, agent, dutyHolder, nowMs)) {
-                // It cannot pay for the trip (or carry what it buys): it neither walks to a shop
-                // nor asks its party; it says so once and waits until its purse grows.
+            AgentSupplyReadinessRuntime.CriticalGate gate = dutyHolder != null && potion(request.category())
+                    ? AgentSupplyReadinessRuntime.criticalGate(entry, agent, dutyHolder, request, nowMs)
+                    : AgentSupplyReadinessRuntime.CriticalGate.ALLOW;
+            if (gate != AgentSupplyReadinessRuntime.CriticalGate.ALLOW) {
+                // It cannot pay even for the potions back to POT_STOP: it never walks to a shop. Out in
+                // the field it still asks its party, once, as before; in a town it does not (it says it
+                // cannot afford them) and waits until its purse grows.
+                if (gate == AgentSupplyReadinessRuntime.CriticalGate.ASK_ONLY) {
+                    awaitingPartySupply(entry, agent, request, execution, nowMs);
+                }
                 return false;
             }
             if (awaitingPartySupply(entry, agent, request, execution, nowMs)) {
@@ -236,6 +242,26 @@ public final class AgentSupplyProcurementRuntime {
             return AgentSupplyReadinessRuntime.activeRequest(entry, execution.requestId(), nowMs);
         }
         return planning.procurement(execution.category());
+    }
+
+    /**
+     * Its owner gave it a movement order (follow, stop, move here, hunt here, patrol) while it was on a readiness trip:
+     * the order wins. The trip is given up where it stands, ending in the mode the order asks for ({@code follow}), and
+     * counts as interrupted (a short trip's cooldown, no party ask, no broke line). A critical trip is left alone.
+     * False when no readiness trip was under way. Thread-safe: it only marks the trip, the Agent tick ends it.
+     */
+    public static boolean ownerCalledBack(AgentRuntimeEntry entry, boolean follow) {
+        AgentSupplyProcurementState execution = entry == null ? null
+                : entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY).orElse(null);
+        if (execution == null || !execution.isActive() || execution.abandoned()
+                || !AgentSupplyReadinessRuntime.readiness(execution.requestId())) {
+            return false;
+        }
+        execution.markRecalled("its owner called it back");
+        execution.rememberForegroundMode(follow, false);
+        log.info("Agent '{}' was called back from its readiness trip {} by its owner", entry.bot() == null ? "?"
+                : entry.bot().getName(), execution.requestId());
+        return true;
     }
 
     private static boolean potion(AgentResourceCategory category) {
@@ -542,6 +568,10 @@ public final class AgentSupplyProcurementRuntime {
                                         AgentResourcePlanningState planning,
                                         AgentSupplyProcurementState execution,
                                         long nowMs) {
+        if (execution.abandoned() && execution.recalled()) {
+            // Its owner's order took over where it stands: no walk back to the map it left.
+            return finishAbandoned(entry, agent, planning, execution, nowMs);
+        }
         if (execution.resumeFollow() && followAnchor(entry) != null
                 && AgentModeService.mayStartFollow(entry)) {
             // A companion's plan location is its owner, and follow warps it back beside the
@@ -845,10 +875,11 @@ public final class AgentSupplyProcurementRuntime {
         String requestId = execution.requestId();
         String maintenanceObjectiveId = execution.objectiveId();
         var category = execution.category();
-        boolean resumeFollow = execution.resumeFollow();
-        boolean resumeGrind = execution.resumeGrind();
         boolean readinessTrip = AgentSupplyReadinessRuntime.readiness(requestId);
-        execution.clear();
+        // the mode it ends in, read in the same lock that clears the trip (a host's resumeFollowAfterTrip races it)
+        AgentSupplyProcurementState.ForegroundMode mode = execution.clearTakingForegroundMode();
+        boolean resumeFollow = mode.follow();
+        boolean resumeGrind = mode.grind();
         execution.forgetPartyAsk(category);
         AgentSupplyMaintenanceEvaluationState evaluations =
                 entry.capabilityStates().require(AgentSupplyMaintenanceEvaluationState.STATE_KEY);

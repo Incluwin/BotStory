@@ -1,12 +1,14 @@
 package server.agents.capabilities.supplies;
 
 import server.agents.capabilities.contracts.AgentProcurementRequest;
+import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.runtime.state.AgentCapabilityStateKey;
 
 /**
  * The standing readiness duty's memory (AgentSupplyReadinessRuntime): when the Agent next looks at its potions, the
- * readiness trip under way, the last time it could not go (on which map, and how many mesos it lacked), and the
- * cooldown that keeps it from trying again too soon. Written on the Agent tick; a host only asks for an early look
+ * readiness trip under way, the last time it could not go (on which map, and how many mesos it lacked), the cooldown
+ * that keeps it from trying again too soon, how many trips from one town in a row were cut short, and the last
+ * affordability check of a critical potion trip. Written on the Agent tick; a host only asks for an early look
  * ({@link #checkSoon}) and reads it.
  */
 public final class AgentSupplyReadinessState {
@@ -19,23 +21,33 @@ public final class AgentSupplyReadinessState {
 
     /** What keeps it from trying again, and what lifts it. */
     enum Cooldown {
-        /** Until its purse grows by what it lacked. */
+        /** Until its purse grows by what it lacked, or it lacks fewer potions. */
         CANNOT_AFFORD,
-        /** A trip ran out of mesos: until its purse grows by what it still lacks. */
+        /** A trip ran out of mesos: until its purse grows by what it still lacks, or it lacks fewer potions. */
         SHORT_MESOS,
-        /** Until a Use slot more is free. */
+        /** Until a Use slot more is free, or it lacks fewer potions. */
         NO_SPACE,
-        /** A trip ran out of Use slots: until a Use slot more is free. */
+        /** A trip ran out of Use slots: until a Use slot more is free, or it lacks fewer potions. */
         SHORT_SPACE,
         /** A trip was cut short: until its time is up. */
-        INTERRUPTED
+        INTERRUPTED,
+        /** Trips from this town were cut short again and again: until it has been on another map. */
+        GAVE_UP
     }
+
+    /**
+     * The last affordability check of a critical potion trip of {@code category}: allowed until {@code untilMs}, or
+     * refused while the purse stays under {@code mesosAt + missingMesos} and it carries no more than {@code countAt}.
+     */
+    record CriticalCheck(AgentResourceCategory category, boolean allowed, long untilMs, int mesosAt,
+                         int missingMesos, int countAt) { }
 
     private long nextCheckAtMs;
     private AgentProcurementRequest request;
     private AgentSupplyReadiness.Activity activity;
     private int hops;
     private long etaAtMs;
+    private int originMapId;
     private Verdict verdict;
     private int verdictMapId;
     private int verdictMissingMesos;
@@ -45,6 +57,12 @@ public final class AgentSupplyReadinessState {
     private int cooldownMesosAt;
     private int cooldownMissingMesos;
     private int cooldownFreeUseSlotsAt;
+    private int cooldownHpShortAt;
+    private int cooldownMpShortAt;
+    private int cooldownMapId;
+    private int interruptedInARow;
+    private int interruptedMapId;
+    private CriticalCheck criticalCheck;
 
     synchronized long nextCheckAtMs() {
         return nextCheckAtMs;
@@ -62,11 +80,12 @@ public final class AgentSupplyReadinessState {
     // ---- the readiness trip ----------------------------------------------------------------
 
     synchronized void offer(AgentProcurementRequest offered, AgentSupplyReadiness.Activity forActivity,
-                            int tripHops, long etaAt) {
+                            int tripHops, long etaAt, int fromMapId) {
         request = offered;
         activity = forActivity;
         hops = tripHops;
         etaAtMs = etaAt;
+        originMapId = fromMapId;
     }
 
     /** The readiness request under way (or offered to begin), null when none. */
@@ -82,6 +101,11 @@ public final class AgentSupplyReadinessState {
         return hops;
     }
 
+    /** The town map the readiness trip under way set off from; 0 when none. */
+    synchronized int originMapId() {
+        return originMapId;
+    }
+
     /** When the readiness trip {@code requestId} should be back; 0 when that is not the trip under way. */
     synchronized long etaAtMs(String requestId) {
         return request != null && request.requestId().equals(requestId) ? etaAtMs : 0L;
@@ -92,6 +116,7 @@ public final class AgentSupplyReadinessState {
         activity = null;
         hops = 0;
         etaAtMs = 0L;
+        originMapId = 0;
     }
 
     // ---- the last verdict ------------------------------------------------------------------
@@ -132,35 +157,105 @@ public final class AgentSupplyReadinessState {
 
     // ---- the cooldown ----------------------------------------------------------------------
 
-    synchronized void cooldown(Cooldown kind, long untilMs, int mesosAt, int missingMesos, int freeUseSlotsAt) {
+    /**
+     * Sets {@code kind}: {@code shortfallAt} is what it lacked then (fewer later lifts a meso or space cooldown),
+     * {@code mapId} the town a GAVE_UP cooldown holds for.
+     */
+    synchronized void cooldown(Cooldown kind, long untilMs, int mesosAt, int missingMesos, int freeUseSlotsAt,
+                               AgentSupplyReadiness.Shortfall shortfallAt, int mapId) {
         cooldown = kind;
         cooldownUntilMs = untilMs;
         cooldownMesosAt = Math.max(0, mesosAt);
         cooldownMissingMesos = Math.max(0, missingMesos);
         cooldownFreeUseSlotsAt = Math.max(0, freeUseSlotsAt);
+        cooldownHpShortAt = shortfallAt == null ? Integer.MAX_VALUE : shortfallAt.hp();
+        cooldownMpShortAt = shortfallAt == null ? Integer.MAX_VALUE : shortfallAt.mp();
+        cooldownMapId = mapId;
     }
 
     /**
      * The cooldown in force now, or null once lifted (and then forgotten): a meso cooldown lifts when the purse has
-     * grown by what it lacked, a space cooldown when more Use slots are free than when it was set, an interrupted
-     * trip's when its time is up.
+     * grown by what it lacked, a space cooldown when more Use slots are free than when it was set, either when it now
+     * lacks fewer potions of a kind (someone gave it some); an interrupted trip's when its time is up; a given-up one
+     * once it stands on another map.
      */
-    synchronized Cooldown cooldownInForce(long nowMs, int mesos, int freeUseSlots) {
-        if (cooldown == null) {
-            return null;
-        }
-        boolean lifted = switch (cooldown) {
-            case CANNOT_AFFORD, SHORT_MESOS -> (long) mesos >= (long) cooldownMesosAt + cooldownMissingMesos;
-            case NO_SPACE, SHORT_SPACE -> freeUseSlots > cooldownFreeUseSlotsAt;
-            case INTERRUPTED -> nowMs >= cooldownUntilMs;
-        };
-        if (lifted) {
+    synchronized Cooldown cooldownInForce(long nowMs, int mesos, int freeUseSlots,
+                                          AgentSupplyReadiness.Shortfall shortfall, int mapId) {
+        if (cooldown != null && lifted(nowMs, mesos, freeUseSlots, shortfall, mapId)) {
+            if (cooldown == Cooldown.GAVE_UP) {
+                interruptedInARow = 0;
+            }
             cooldown = null;
         }
         return cooldown;
     }
 
+    /** As {@link #cooldownInForce}, without forgetting a lifted one (a host's read). */
+    synchronized Cooldown cooldownShown(long nowMs, int mesos, int freeUseSlots,
+                                        AgentSupplyReadiness.Shortfall shortfall, int mapId) {
+        return cooldown == null || lifted(nowMs, mesos, freeUseSlots, shortfall, mapId) ? null : cooldown;
+    }
+
+    private boolean lifted(long nowMs, int mesos, int freeUseSlots, AgentSupplyReadiness.Shortfall shortfall,
+                           int mapId) {
+        boolean fewer = shortfall != null
+                && (shortfall.hp() < cooldownHpShortAt || shortfall.mp() < cooldownMpShortAt);
+        return switch (cooldown) {
+            case CANNOT_AFFORD, SHORT_MESOS -> (long) mesos >= (long) cooldownMesosAt + cooldownMissingMesos || fewer;
+            case NO_SPACE, SHORT_SPACE -> freeUseSlots > cooldownFreeUseSlotsAt || fewer;
+            case INTERRUPTED -> nowMs >= cooldownUntilMs;
+            case GAVE_UP -> mapId != cooldownMapId;
+        };
+    }
+
+    /** What a meso cooldown still lacks at {@code mesos}. */
+    synchronized int cooldownMissingMesos(int mesos) {
+        return (int) Math.max(0L, Math.min(Integer.MAX_VALUE,
+                (long) cooldownMesosAt + cooldownMissingMesos - Math.max(0, mesos)));
+    }
+
+    /** It has all its potions: what it could not pay for or carry no longer holds it back. */
+    synchronized void clearSpendCooldown() {
+        if (cooldown == Cooldown.CANNOT_AFFORD || cooldown == Cooldown.SHORT_MESOS
+                || cooldown == Cooldown.NO_SPACE || cooldown == Cooldown.SHORT_SPACE) {
+            cooldown = null;
+        }
+    }
+
+    /** A given-up town is behind it once it stands on another map (looked at on every check). */
+    synchronized void noteMap(int mapId) {
+        if (cooldown == Cooldown.GAVE_UP && mapId != cooldownMapId) {
+            cooldown = null;
+            interruptedInARow = 0;
+        }
+    }
+
     synchronized Cooldown cooldown() {
         return cooldown;
+    }
+
+    // ---- trips cut short in a row ---------------------------------------------------------------
+
+    /** One more trip from {@code mapId} was cut short: how many in a row from that town now. */
+    synchronized int interrupted(int mapId) {
+        interruptedInARow = mapId == interruptedMapId ? interruptedInARow + 1 : 1;
+        interruptedMapId = mapId;
+        return interruptedInARow;
+    }
+
+    /** A trip came back ready. */
+    synchronized void resetInterrupted() {
+        interruptedInARow = 0;
+        interruptedMapId = 0;
+    }
+
+    // ---- the critical path's affordability check -------------------------------------------------
+
+    synchronized CriticalCheck criticalCheck() {
+        return criticalCheck;
+    }
+
+    synchronized void criticalCheck(CriticalCheck check) {
+        criticalCheck = check;
     }
 }

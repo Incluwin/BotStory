@@ -74,6 +74,9 @@ class AgentSupplyReadinessRuntimeTest {
     private static final int KERNING = 103_000_000;
     private static final int KERNING_SHOP = 103_000_002;
     private static final int KPQ_EXIT = 103_000_890;
+    /** The Ant Tunnel park's neighbour: a hunting field, not a town. */
+    private static final int FIELD = 104_040_000;
+    private static final int OWNER = 77;
     private static final int RED = 50;
     private static final int BLUE = 200;
     private static final AgentSupplyReadiness.Activity PQ = AgentSupplyReadiness.Activity.PARTY_QUEST;
@@ -82,6 +85,8 @@ class AgentSupplyReadinessRuntimeTest {
     private final Map<Integer, int[]> potions = new HashMap<>();
     private final Map<Integer, Integer> purses = new HashMap<>();
     private final Map<Integer, Integer> freeSlots = new HashMap<>();
+    /** Character ids that carry a Red (HP) stack with room, onto which bought potions stack without a new slot. */
+    private final java.util.Set<Integer> redStack = new java.util.HashSet<>();
     /** The rule's callbacks and the party asks, in order. */
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
@@ -106,6 +111,8 @@ class AgentSupplyReadinessRuntimeTest {
         shopService.when(() -> AgentShopService.cheapestRecoveryPrice(any(), any(), eq(true))).thenReturn(RED);
         shopService.when(() -> AgentShopService.cheapestRecoveryPrice(any(), any(), eq(false))).thenReturn(BLUE);
         shopService.when(() -> AgentShopService.plannedAmmoSpend(any(), any())).thenAnswer(inv -> ammoSpend);
+        shopService.when(() -> AgentShopService.carriesStackWithRoom(any(), any(), eq(true)))
+                .thenAnswer(inv -> redStack.contains(((Character) inv.getArgument(0)).getId()));
         when(shops.findForNpc(anyInt())).thenReturn(mock(Shop.class));
         shopGateway = mockStatic(AgentShopGatewayRuntime.class);
         shopGateway.when(AgentShopGatewayRuntime::shop).thenReturn(shops);
@@ -202,21 +209,62 @@ class AgentSupplyReadinessRuntimeTest {
         }
 
         assertFalse(execution(entry).isActive());
-        assertEquals(List.of("refused 503 CANNOT_AFFORD " + missing), calls, "once, no party ask");
+        assertEquals(List.of("refused 503 CANNOT_AFFORD " + missing), calls,
+                "once, no party ask: in town she cannot even pay for the 9 potions back to POT_STOP");
         AgentSupplyReadiness.Status status = AgentSupplyReadiness.status(entry, 11_000L);
         assertEquals(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, status.kind());
         assertEquals(missing, status.missingMesos());
 
-        verify(shops, times(1)).findForNpc(anyInt()); // the cooldown holds: no new assessment meanwhile
-        purses.put(503, 155 + missing - 1); // her owner's coin, one meso short
+        // one look for her readiness trip and one for her critical one; both refusals hold meanwhile
+        verify(shops, times(2)).findForNpc(anyInt());
+        purses.put(503, 155 + 9 * RED - 156); // her owner's coin, one meso short of the critical potions
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 16_000L));
         assertFalse(execution(entry).isActive());
-        verify(shops, times(1)).findForNpc(anyInt()); // still short of what she lacked: not even looked at again
+        verify(shops, times(2)).findForNpc(anyInt()); // still short of what she lacked: not even looked at again
+
+        purses.put(503, 155 + missing - 1); // enough for the critical potions, one meso short of the standard
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 21_000L));
+        assertFalse(execution(entry).isActive(), "no readiness trip yet");
+        assertEquals("party ask 503", calls.getLast(), "her critical trip goes as before: the party first");
 
         purses.put(503, 155 + missing);
-        assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 21_000L));
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 26_000L));
         assertTrue(execution(entry).requestId().startsWith("readiness:HP_POTION:"));
         assertEquals("started 503 50000", calls.getLast());
+    }
+
+    // (c, the field)
+    @Test
+    void aDutyHolderOutHuntingThatCanPayForTheCriticalPotionsAsksItsPartyAndThenShopsAsBefore() {
+        Character archer = companion(522, "Archer", Job.HUNTER, 5, 30, 600);
+        stand(archer, FIELD, false);
+        AgentRuntimeEntry entry = following(archer);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 5);
+        ammoSpend = 2_000; // its arrow top-up and the 15 potions to the standard are past its purse
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, archer, 1_000L));
+        assertEquals(List.of("party ask 522"), calls, "5 potions back to POT_STOP cost 250: it asks, then shops");
+        assertFalse(execution(entry).isActive());
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, archer, 1_000L + partyWaitMs()));
+        assertTrue(execution(entry).isActive(), "nobody shared: it walks to the shop as before");
+        assertTrue(execution(entry).requestId().startsWith("supply:HP_POTION:"), execution(entry).requestId());
+    }
+
+    // (c, the field)
+    @Test
+    void aBrokeDutyHolderOutHuntingAsksItsPartyOnceButNeverWalksToAShop() {
+        Character fenna = companion(523, "Fenna", Job.HUNTER, 1, 30, 155);
+        stand(fenna, FIELD, false);
+        AgentRuntimeEntry entry = following(fenna);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 1);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L + partyWaitMs()));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 2_000L + partyWaitMs()));
+
+        assertFalse(execution(entry).isActive(), "155 mesos buy nothing worth the walk");
+        assertEquals(List.of("party ask 523"), calls, "a share is all that helps out here; no broke line");
     }
 
     // (d)
@@ -333,7 +381,7 @@ class AgentSupplyReadinessRuntimeTest {
 
     // (h)
     @Test
-    void aFullUseTabStaysPutUntilASlotFrees() {
+    void aFullUseTabStaysPutUntilASlotForThePotionsAndOneForTheRunAreFree() {
         Character halvard = companion(510, "Halvard", Job.SPEARMAN, 15, 30, 20_000);
         freeSlots.put(510, 0);
         AgentRuntimeEntry entry = following(halvard);
@@ -345,8 +393,39 @@ class AgentSupplyReadinessRuntimeTest {
         assertEquals(AgentSupplyReadiness.StatusKind.NO_SPACE, AgentSupplyReadiness.status(entry, 6_000L).kind());
 
         freeSlots.put(510, 1);
-        assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 11_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, halvard, 11_000L));
+        assertFalse(execution(entry).isActive(), "its last slot would go to the potions: the run needs one free");
+
+        freeSlots.put(510, 2);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 16_000L));
         assertTrue(execution(entry).isActive());
+    }
+
+    // (h)
+    @Test
+    void aFullUseTabWithAStackThePotionsGoOntoStillSetsOff() {
+        Character halvard = companion(524, "Halvard", Job.SPEARMAN, 15, 30, 20_000);
+        freeSlots.put(524, 0);
+        redStack.add(524);
+        AgentRuntimeEntry entry = following(halvard);
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
+        assertTrue(execution(entry).requestId().startsWith("readiness:HP_POTION:"));
+        assertEquals(List.of("started 524 50000"), calls);
+    }
+
+    // (h)
+    @Test
+    void aFullUseTabNeverHoldsBackACriticalTripOrItsPartyAsk() {
+        Character halvard = companion(525, "Halvard", Job.SPEARMAN, 5, 30, 20_000);
+        freeSlots.put(525, 0);
+        stand(halvard, FIELD, false);
+        AgentRuntimeEntry entry = following(halvard);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 5);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
+
+        assertEquals(List.of("party ask 525"), calls, "as before this duty: the shop finds out whether it fits");
     }
 
     // (i)
@@ -467,6 +546,237 @@ class AgentSupplyReadinessRuntimeTest {
         assertEquals(0, AgentSupplyReadiness.buyTarget(fenna, true));
     }
 
+    // ---- review round 1 (2026-10-02) ---------------------------------------------------------------
+
+    @Test
+    void aBrokeCompanionBackFromARunStillShowsOutOfMesosWhileItsCooldownHolds() {
+        Character fenna = companion(530, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertEquals(List.of("refused 530 CANNOT_AFFORD " + (19 * RED - 155)), calls);
+
+        duty.remove(530); // in the run: no duty, and its verdict is let go
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        assertEquals(AgentSupplyReadiness.Status.NONE, AgentSupplyReadiness.status(entry, 6_000L), "no duty, no status");
+        duty.add(530); // back at Lakelis, as broke as before
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 11_000L));
+
+        AgentSupplyReadiness.Status status = AgentSupplyReadiness.status(entry, 11_000L);
+        assertEquals(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, status.kind(), "its cooldown still holds it back");
+        assertEquals(19 * RED - 155, status.missingMesos());
+        assertEquals(1, calls.size(), "and it does not say so again");
+    }
+
+    @Test
+    void aTripThatRanOutOfMesosShowsOutOfMesosAtTheDesk() {
+        Character kettle = companion(531, "Kettle", Job.CLERIC, 15, 30, 1_000);
+        AgentRuntimeEntry entry = following(kettle);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, kettle, 1_000L));
+        purses.put(531, 100);
+        shopCompletes(entry, kettle, 15, 30);
+        AgentSupplyProcurementRuntime.tick(entry, kettle, 2_000L);
+        AgentSupplyProcurementRuntime.tick(entry, kettle, 2_100L);
+        assertEquals("finished 531 SHORT_MESOS", calls.getLast());
+
+        AgentSupplyReadiness.Status status = AgentSupplyReadiness.status(entry, 2_100L);
+        assertEquals(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, status.kind());
+        assertEquals(5 * RED - 100, status.missingMesos());
+    }
+
+    @Test
+    void aBrokeCompanionGivenPotionsInsteadOfCoinSetsOffForTheFewItStillLacks() {
+        Character fenna = companion(532, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertEquals(List.of("refused 532 CANNOT_AFFORD " + (19 * RED - 155)), calls);
+
+        potions.put(532, new int[]{18, 30}); // her owner handed her 17 potions: 2 short, 100 mesos
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 6_000L));
+        assertTrue(execution(entry).requestId().startsWith("readiness:HP_POTION:"));
+        assertEquals("started 532 50000", calls.getLast());
+    }
+
+    @Test
+    void anOwnersFollowMeMidTripBringsItAlongAndNoNewTripForFiveMinutes() {
+        Character wren = companion(533, "Wren", Job.ASSASSIN, 15, 30, 5_000);
+        AgentRuntimeEntry entry = following(wren);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, wren, 1_000L));
+        assertEquals(AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER, execution(entry).phase());
+
+        assertTrue(AgentSupplyProcurementRuntime.ownerCalledBack(entry, true));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, wren, 1_500L));
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("started 533 50000", "finished 533 INTERRUPTED"), calls, "no party ask, no broke line");
+        assertTrue(AgentModeStateRuntime.following(entry), "with its owner again");
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, wren, 1_500L + shortTripCooldownMs() - 1));
+        assertFalse(execution(entry).isActive(), "no new trip within five minutes");
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, wren, 1_500L + shortTripCooldownMs() + 5_000L));
+    }
+
+    @Test
+    void anOwnersWaitHereMidTripStopsItWhereItStandsWithoutAWalkBack() {
+        Character wren = companion(534, "Wren", Job.ASSASSIN, 15, 30, 5_000);
+        AgentRuntimeEntry entry = following(wren);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, wren, 1_000L));
+        stand(wren, KERNING_SHOP, false);
+        org.mockito.Mockito.clearInvocations(gateway);
+
+        assertTrue(AgentSupplyProcurementRuntime.ownerCalledBack(entry, false));
+        AgentModeStateRuntime.setFollowing(entry, false); // the order's own effect: it stops
+        purses.put(534, 0); // spent meanwhile: still no broke line, it was called back
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, wren, 1_500L));
+
+        assertFalse(execution(entry).isActive());
+        verify(gateway, org.mockito.Mockito.never()).travelTo(any(), any(), anyInt(), anyLong());
+        assertFalse(AgentModeStateRuntime.following(entry), "it waits where it was told");
+        assertEquals("finished 534 INTERRUPTED", calls.getLast());
+        assertFalse(AgentSupplyProcurementRuntime.ownerCalledBack(entry, true), "no trip under way any more");
+    }
+
+    @Test
+    void aCriticalTripIsNotCalledBack() {
+        Character mira = companion(535, "Mira", Job.HUNTER, 5, 30, 20_000);
+        AgentRuntimeEntry entry = following(mira);
+        startCriticalTrip(entry, "supply:HP_POTION:535", AgentResourceCategory.HP_POTION, 5);
+
+        assertFalse(AgentSupplyProcurementRuntime.ownerCalledBack(entry, true));
+        assertFalse(execution(entry).abandoned());
+    }
+
+    @Test
+    void aCompanionWhoseOwnerIsLeavingTownFollowsInsteadOfTurningBackToTheShop() {
+        Character wren = companion(536, "Wren", Job.ASSASSIN, 15, 30, 5_000);
+        AgentRuntimeEntry entry = following(wren);
+        Character owner = AgentRelationshipRuntime.followTarget(entry);
+        when(owner.getMapId()).thenReturn(FIELD); // its owner just went out to hunt
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, wren, 1_000L));
+        assertFalse(execution(entry).isActive());
+
+        when(owner.getMapId()).thenReturn(KERNING);
+        when(owner.isChangingMaps()).thenReturn(true); // on its way through a portal
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, wren, 6_000L));
+        assertFalse(execution(entry).isActive());
+
+        when(owner.isChangingMaps()).thenReturn(false);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, wren, 11_000L));
+        assertEquals(List.of("started 536 50000"), calls);
+    }
+
+    @Test
+    void twoTripsFromOneTownCutShortInARowEndItsTriesThereUntilItHasBeenElsewhere() {
+        Character pip = companion(537, "Pip", Job.FP_WIZARD, 15, 30, 20_000);
+        AgentRuntimeEntry entry = following(pip);
+        long now = 1_000L;
+        for (int trip = 0; trip < 2; trip++) {
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, pip, now), "trip " + trip);
+            assertTrue(AgentSupplyProcurementRuntime.ownerCalledBack(entry, true));
+            AgentSupplyProcurementRuntime.tick(entry, pip, now + 100L);
+            assertFalse(execution(entry).isActive());
+            now += shortTripCooldownMs() + 5_000L;
+        }
+        assertEquals(4, calls.size(), calls.toString());
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, pip, now));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, pip, now + shortTripCooldownMs() * 3));
+        assertFalse(execution(entry).isActive(), "no third trip, and no third go line, from Kerning");
+        assertEquals(4, calls.size(), calls.toString());
+
+        stand(pip, FIELD, false); // out with its owner, then back in town (in a run out there: no duty)
+        duty.remove(537);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, pip, now + shortTripCooldownMs() * 4));
+        duty.add(537);
+        stand(pip, KERNING, true);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, pip, now + shortTripCooldownMs() * 5));
+        assertEquals("started 537 50000", calls.getLast());
+    }
+
+    @Test
+    void aTripThatCameBackReadyClearsTheCountOfTripsCutShort() {
+        Character pip = companion(538, "Pip", Job.FP_WIZARD, 15, 30, 20_000);
+        AgentRuntimeEntry entry = following(pip);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, pip, 1_000L));
+        AgentSupplyProcurementRuntime.ownerCalledBack(entry, true);
+        AgentSupplyProcurementRuntime.tick(entry, pip, 1_100L);
+        long now = 1_100L + shortTripCooldownMs() + 5_000L;
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, pip, now));
+        shopCompletes(entry, pip, 40, 50);
+        AgentSupplyProcurementRuntime.tick(entry, pip, now + 100L);
+        AgentSupplyProcurementRuntime.tick(entry, pip, now + 200L);
+        AgentSupplyProcurementRuntime.tick(entry, pip, now + 300L);
+        assertEquals("finished 538 READY", calls.getLast());
+
+        potions.put(538, new int[]{15, 30}); // a run later, short again
+        now += 10_000L;
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, pip, now));
+        AgentSupplyProcurementRuntime.ownerCalledBack(entry, true);
+        AgentSupplyProcurementRuntime.tick(entry, pip, now + 100L);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, pip, now + 100L + shortTripCooldownMs() + 5_000L),
+                "the first trip cut short since it came back ready: it tries once more");
+    }
+
+    @Test
+    void anAgentIsCarriedByItsLeaderWhileItFollowsThemOrIsOnATripThatFollowsThemBack() {
+        Character wren = companion(539, "Wren", Job.ASSASSIN, 15, 30, 5_000);
+        AgentRuntimeEntry entry = following(wren);
+        assertTrue(AgentSupplyReadiness.carriedBy(entry, OWNER));
+        assertFalse(AgentSupplyReadiness.carriedBy(entry, OWNER + 1), "following someone else");
+
+        AgentModeStateRuntime.setFollowing(entry, false); // told to wait here
+        assertFalse(AgentSupplyReadiness.carriedBy(entry, OWNER));
+
+        execution(entry).start("readiness:HP_POTION:1", "maintenance:resupply:readiness:HP_POTION:1",
+                AgentResourceCategory.HP_POTION, KERNING_SHOP, 1_051_002, KERNING,
+                AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER);
+        execution(entry).rememberForegroundMode(true, false);
+        assertTrue(AgentSupplyReadiness.carriedBy(entry, OWNER), "on a trip that ends by following its owner");
+        execution(entry).rememberForegroundMode(false, true);
+        assertFalse(AgentSupplyReadiness.carriedBy(entry, OWNER), "on a trip back to its hunt");
+        assertFalse(AgentSupplyReadiness.carriedBy(null, OWNER));
+    }
+
+    @Test
+    void aHostsFollowAfterTheTripIsTakenOnlyWhileTheTripIsUnderWay() {
+        Character wren = companion(540, "Wren", Job.ASSASSIN, 15, 30, 5_000);
+        AgentRuntimeEntry entry = following(wren);
+        AgentSupplyProcurementState execution = execution(entry);
+        assertFalse(AgentSupplyReadiness.resumeFollowAfterTrip(entry), "no trip");
+        assertFalse(execution.resumeFollow());
+
+        execution.start("readiness:HP_POTION:1", "maintenance:resupply:readiness:HP_POTION:1",
+                AgentResourceCategory.HP_POTION, KERNING_SHOP, 1_051_002, KERNING,
+                AgentSupplyProcurementState.Phase.SHOPPING);
+        execution.rememberForegroundMode(false, true);
+        assertTrue(AgentSupplyReadiness.resumeFollowAfterTrip(entry));
+        AgentSupplyProcurementState.ForegroundMode mode = execution.clearTakingForegroundMode();
+
+        assertEquals(new AgentSupplyProcurementState.ForegroundMode(true, false), mode, "the trip ends following");
+        assertFalse(execution.isActive());
+        assertFalse(AgentSupplyReadiness.resumeFollowAfterTrip(entry), "taken with the clear: too late now");
+        assertFalse(execution.resumeFollow());
+    }
+
+    @Test
+    void aShortCompanionWhoseRestockWillLookIsPendingAndOneHeldBackIsNot() {
+        Character silent = companion(541, "SilentSin", Job.ASSASSIN, 14, 21, 103_000);
+        AgentRuntimeEntry entry = following(silent);
+        assertTrue(AgentSupplyReadiness.restockPending(entry, 500L), "short, free, nothing in the way");
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+        assertFalse(AgentSupplyReadiness.restockPending(entry, 1_000L), "gone: RESTOCKING instead");
+
+        Character fenna = companion(542, "Fenna", Job.HUNTER, 1, 30, 155);
+        AgentRuntimeEntry broke = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(broke, fenna, 1_000L));
+        assertFalse(AgentSupplyReadiness.restockPending(broke, 1_000L), "it cannot afford them: the desk asks");
+
+        Character ready = companion(543, "Ready", Job.ASSASSIN, 20, 25, 1_000);
+        assertFalse(AgentSupplyReadiness.restockPending(following(ready), 1_000L), "nothing lacking");
+        duty.remove(541);
+        assertFalse(AgentSupplyReadiness.restockPending(following(silent), 1_000L), "no duty");
+    }
+
     // ---- fixture ---------------------------------------------------------------------------
 
     /** A Lv25 companion of {@code job} in Kerning with these potions and mesos, under a standing duty. */
@@ -503,6 +813,8 @@ class AgentSupplyReadinessRuntimeTest {
         entry.capabilityStates().require(AgentCareerProgressionState.STATE_KEY).assign(
                 AgentCareerBuildBundleRepository.defaultRepository().find("thief-claw-standard-v1").orElseThrow());
         Character owner = mock(Character.class);
+        when(owner.getId()).thenReturn(OWNER);
+        when(owner.getMapId()).thenAnswer(inv -> agent.getMapId()); // its owner stands with it
         AgentRelationshipRuntime.setInteractionTarget(entry, owner);
         AgentRelationshipRuntime.setFollowTarget(entry, owner);
         AgentModeStateRuntime.setFollowing(entry, true);
@@ -561,6 +873,11 @@ class AgentSupplyReadinessRuntimeTest {
     private static long ttlMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.supplies.AgentSupplyReadiness.REQUEST_TTL_MS");
+    }
+
+    private static long partyWaitMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy.PARTY_SUPPLY_WAIT_MS");
     }
 
     private static long shortTripCooldownMs() {

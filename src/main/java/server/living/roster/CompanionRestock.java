@@ -19,9 +19,10 @@ import java.util.function.LongSupplier;
 /**
  * Companions restock their own potions (2026-10-02, docs/BOT_MANAGEMENT_PLAN.md "Companion restock"): the living
  * world's answer to the Agent layer's readiness seam (AgentSupplyReadiness.Rule). Every companion its owner carries
- * along, out with them (ACTIVE and led by them) or waiting outside a run for them (HOLD), keeps the party-quest
- * standard by itself; one on its way, away on an errand, on a live bench slice, tied to a run or with the kill switch
- * off has no duty. The Agent decides when and where it goes; this only says what it says about it: setting off and back
+ * along, out with them (ACTIVE, led by them and following them) or waiting outside a run for them (HOLD, even while the
+ * run counts it as one of its extras), keeps the party-quest standard by itself; one told to wait or sent somewhere,
+ * on its way, away on an errand, on a live bench slice, in a run or with the kill switch off has no duty. The Agent
+ * decides when and where it goes; this only says what it says about it: setting off and back
  * (an ACTIVE one; a held one goes and comes back quietly, back to the spot it waits at), and, at most once per
  * COMPANION_RESTOCK_ASK_EVERY_MS, that it cannot afford its potions or that a boss's gate has no shop.
  *
@@ -61,13 +62,20 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             return null;
         }
         CompanionSettingsApplier.Bound at = world.roster().settings().boundTo(agentCharacterId);
-        if (at == null || world.commitments().isCommitted(agentCharacterId)
-                || AgentPartyQuestEngagementRegistry.forMember(agentCharacterId) != null
+        if (at == null || AgentPartyQuestEngagementRegistry.forMember(agentCharacterId) != null
                 || AgentRuntimeRegistry.leaderIdForAgentCharacter(agentCharacterId) != at.ownerId()) {
             return null; // not a companion, in a run, or leading itself (a bench slice)
         }
-        if (world.roster().keepsOffFollow(at.personaId()) && !held(at)) {
-            return null; // on its way or away on an errand
+        if (held(at)) {
+            // waiting outside its owner's run: the run commits its extras too, and it restocks meanwhile
+            return AgentSupplyReadiness.Activity.PARTY_QUEST;
+        }
+        if (world.commitments().isCommitted(agentCharacterId) || world.roster().keepsOffFollow(at.personaId())) {
+            return null; // tied to a run, on its way, or away on an errand
+        }
+        if (!AgentSupplyReadiness.carriedBy(AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId),
+                at.ownerId())) {
+            return null; // told to wait, sent somewhere or hunting on its own: its owner's order stands
         }
         return AgentSupplyReadiness.Activity.PARTY_QUEST;
     }
@@ -85,7 +93,8 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     @Override
     public void refused(int agentCharacterId, AgentSupplyReadiness.Activity activity,
                         AgentSupplyReadiness.Refusal why, AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
-        if (why == AgentSupplyReadiness.Refusal.CANNOT_AFFORD && mayAsk(agentCharacterId, CompanionRestockLines.BROKE)) {
+        if (why == AgentSupplyReadiness.Refusal.CANNOT_AFFORD && mayAsk(agentCharacterId, CompanionRestockLines.BROKE,
+                world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             world.executor().submit("companion.restock.broke " + agentCharacterId,
                     () -> say(agentCharacterId, CompanionRestockLines.BROKE));
         }
@@ -106,7 +115,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             world.executor().submit("companion.restock.back " + agentCharacterId,
                     () -> say(agentCharacterId, CompanionRestockLines.BACK));
         } else if (outcome == AgentSupplyReadiness.Outcome.SHORT_MESOS
-                && mayAsk(agentCharacterId, CompanionRestockLines.BROKE)) {
+                && mayAsk(agentCharacterId, CompanionRestockLines.BROKE, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             world.executor().submit("companion.restock.broke " + agentCharacterId,
                     () -> say(agentCharacterId, CompanionRestockLines.BROKE));
         }
@@ -153,7 +162,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                 continue;
             }
             if (!AgentSupplyReadiness.shortfall(bot, AgentSupplyReadiness.Activity.PARTY_QUEST).none()
-                    && mayAsk(id, CompanionRestockLines.NO_SHOP)) {
+                    && mayAsk(id, CompanionRestockLines.NO_SHOP, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
                 CompanionRestockLines.say(world, bot, CompanionRestockLines.NO_SHOP);
             }
         }
@@ -167,10 +176,14 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         return seat != null && seat.kind() == CompanionSlots.Kind.HOLD && seat.ownerId() == at.ownerId();
     }
 
-    /** True, and remembered, when the companion has not said {@code intent} on its own within the ask interval. */
-    private boolean mayAsk(int agentCharacterId, String intent) {
+    /**
+     * True, and remembered, when the companion has not said {@code intent} within {@code everyMs}. One memory for each
+     * line, whoever says it: the Lakelis desk asks here too before its broke line (every MANA_ASK_EVERY_MS), so the
+     * desk and the companion's own refusal never both say it.
+     */
+    boolean mayAsk(int agentCharacterId, String intent, long everyMs) {
         long now = clock.getAsLong();
-        long every = world.config().COMPANION_RESTOCK_ASK_EVERY_MS;
+        long every = everyMs;
         boolean[] fresh = {false};
         askedAt.compute(agentCharacterId + " " + intent, (key, last) -> {
             if (last != null && now - last < every) {

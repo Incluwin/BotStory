@@ -22,11 +22,14 @@ final class CompanionRestockLines {
     static final String BROKE = "restock.broke";
     static final String NO_SHOP = "restock.noShop";
 
-    /** Every companion's lines for an intent its persona has none of its own for. */
+    /**
+     * Every companion's lines for an intent its persona has none of its own for. The go lines fit any town it restocks
+     * in, a party quest's entrance or not.
+     */
     static final Map<String, List<String>> GENERIC = Map.of(
             GO, List.of(
-                    "brb, grabbing potions before we go in.",
-                    "quick store run for potions, don't start without me.",
+                    "brb, grabbing potions.",
+                    "quick store run, back in a sec.",
                     "running low on potions, back in a sec."),
             BACK, List.of(
                     "back, all stocked up.",

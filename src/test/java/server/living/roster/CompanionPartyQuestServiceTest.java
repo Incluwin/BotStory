@@ -192,6 +192,54 @@ class CompanionPartyQuestServiceTest {
     }
 
     @Test
+    void aClickWithAShortCompanionWhoseOwnRestockDecidesAsksNothingForIt() {
+        fx.potions.put(902, 14); // SilentSin, 103k mesos: its own restock sets off on its next tick
+        fx.ready();
+        enableDesk();
+        List<Runnable> ops = fx.holdCompanionOps();
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                Mockito.CALLS_REAL_METHODS)) {
+            readiness.when(() -> AgentSupplyReadiness.restockPending(any(), anyLong()))
+                    .thenAnswer(inv -> inv.getArgument(0) == entries.get(902));
+            assertTrue(offer());
+        }
+        CompanionPqFixture.drain(ops);
+        assertEquals(List.of(), game.partyChat, "no 'anyone have HP pots?' before its own 'brb, grabbing potions'");
+
+        List<Runnable> later = fx.holdCompanionOps();
+        assertTrue(offer()); // nothing pending for it any more (its trip could not start, say): it asks
+        CompanionPqFixture.drain(later);
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertTrue(game.partyChat.getFirst().startsWith("SilentSin: "), game.partyChat.toString());
+    }
+
+    @Test
+    void theDeskSaysNoBrokeLineTheCompanionHasJustSaidItself() {
+        fx.companion("fenna", "Fenna", 903, 25, Job.HUNTER);
+        game.members.remove((Integer) 902);
+        fx.potions.put(903, 1);
+        fx.ready();
+        enableDesk();
+        CompanionRestock restock = new CompanionRestock(game.world);
+        when(game.world.restock()).thenReturn(restock);
+        assertTrue(restock.mayAsk(903, CompanionRestockLines.BROKE, game.config.COMPANION_RESTOCK_ASK_EVERY_MS),
+                "its own refusal said it a tick ago");
+        List<Runnable> ops = fx.holdCompanionOps();
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                Mockito.CALLS_REAL_METHODS)) {
+            readiness.when(() -> AgentSupplyReadiness.status(any(), anyLong())).thenAnswer(inv ->
+                    inv.getArgument(0) == entries.get(903)
+                            ? new AgentSupplyReadiness.Status(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, 0L, 795)
+                            : AgentSupplyReadiness.Status.NONE);
+            assertTrue(offer());
+            assertEquals(List.of(new LineupPlan.Waiting(903, "Fenna", LakelisLines.LOW_ON_POTIONS_BROKE)),
+                    fx.service.plan(game.ann, "kpq").waiting());
+        }
+        CompanionPqFixture.drain(ops);
+        assertEquals(List.of(), game.partyChat, "said once, by whoever said it first");
+    }
+
+    @Test
     void aClickNudgesEveryShortCompanionToLookAtItsPotionsAtOnce() {
         fx.potions.put(902, 14);
         fx.ready();

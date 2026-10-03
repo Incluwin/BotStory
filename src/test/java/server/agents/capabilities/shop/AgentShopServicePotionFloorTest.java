@@ -33,6 +33,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -43,9 +44,12 @@ import static org.mockito.Mockito.when;
 
 /**
  * The shop's readiness floor (AgentShopService.buyPotionStock under AgentSupplyReadiness): a companion whose reserve
- * bars are met by a few strong potions still buys by count toward its standing duty's target (40 HP / 50 MP), which
- * is what the KPQ desk counts; without a duty the same visit buys nothing. And plannedAmmoSpend, the readiness trip's
- * ammo estimate, is exactly what the visit's ammo steps spend.
+ * bars are met by a few strong potions still buys by count, first up to its standing duty's standard (20 HP / 25 MP,
+ * what the KPQ desk counts) and, with what is left after the reserve bars, toward its target (40 HP / 50 MP); without a
+ * duty the same visit buys nothing. A purse that covers the standard always reaches it (review 2026-10-02: holding
+ * back the mana potions' whole target gap left HP short and sent the companion home broke). With its Use tab nearly
+ * full it buys onto a stack it carries. And plannedAmmoSpend, the readiness trip's ammo estimate, is exactly what the
+ * visit's ammo steps spend.
  */
 class AgentShopServicePotionFloorTest {
     private static final int RED = 2_000_000;
@@ -60,6 +64,8 @@ class AgentShopServicePotionFloorTest {
     private final List<String> transactions = new ArrayList<>();
     private final Set<Short> recharged = new HashSet<>();
     private final ShopGateway gateway = mock(ShopGateway.class);
+    /** The visit's inventory gateway: a stack of potions holds 100. */
+    private final InventoryGateway slotMax = mock(InventoryGateway.class);
     private int purse = 50_000;
     private Character bot;
     private Inventory use;
@@ -115,6 +121,7 @@ class AgentShopServicePotionFloorTest {
             return Shop.TransactionResult.SUCCESS;
         });
         speech = mockStatic(AgentShopRuntime.class);
+        when(slotMax.getSlotMax(any(Character.class), anyInt())).thenReturn((short) 100);
     }
 
     @AfterEach
@@ -133,7 +140,8 @@ class AgentShopServicePotionFloorTest {
         visit(List.of(RED, WHITE, BLUE));
 
         assertArrayEquals(new int[]{40, 50}, AgentPotionService.countPotions(bot), transactions.toString());
-        assertEquals(List.of("25 x " + WHITE, "35 x " + BLUE), transactions, "what the reserve picks, by count");
+        assertEquals(List.of("5 x " + WHITE, "10 x " + BLUE, "20 x " + WHITE, "25 x " + BLUE), transactions,
+                "what the reserve picks, by count: to the standard, then to the target");
     }
 
     @Test
@@ -145,14 +153,103 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
-    void aSmallPurseBuysTheCheaperPotionTheBudgetCoversAndKeepsWhatTheManaCosts() {
+    void aPurseShortOfTheTargetReachesTheStandardFirstAndTopsUpWithWhatIsLeft() {
         AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
-        purse = 25 * 50 + 35 * 200; // White x 25 would leave nothing for the mana potions
+        purse = 25 * 50 + 35 * 200; // the standard costs 5 White + 10 Blue = 3600; the rest goes to the top-up
 
         visit(List.of(RED, WHITE, BLUE));
 
-        assertEquals(List.of("25 x " + RED, "35 x " + BLUE), transactions);
-        assertEquals(0, purse);
+        assertEquals(List.of("5 x " + WHITE, "10 x " + BLUE, "23 x " + BLUE), transactions,
+                "the HP top-up waits for the mana it still wants; mana takes what is left");
+        assertArrayEquals(new int[]{20, 48}, AgentPotionService.countPotions(bot));
+        assertEquals(50, purse);
+    }
+
+    @Test
+    void aPurseThatCoversTheStandardReachesIt() {
+        AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
+        carry(10, 10);
+        purse = 5_000; // the standard costs 10 x 50 + 15 x 200 = 3500
+
+        visit(List.of(RED, WHITE, BLUE));
+
+        int[] after = AgentPotionService.countPotions(bot);
+        assertTrue(after[0] >= 20 && after[1] >= 25, after[0] + "/" + after[1] + " " + transactions);
+        assertEquals("10 x " + RED, transactions.getFirst(), "White x 10 would eat the mana potions' money");
+    }
+
+    @Test
+    void onlyHpShortWithAModestPurseReachesTheHpStandard() {
+        AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
+        carry(10, 30); // mana already at the standard, short of the target
+        purse = 3_000;
+
+        visit(List.of(RED, WHITE, BLUE));
+
+        int[] after = AgentPotionService.countPotions(bot);
+        assertTrue(after[0] >= 20, after[0] + "/" + after[1] + " " + transactions);
+        assertEquals("10 x " + RED, transactions.getFirst());
+    }
+
+    @Test
+    void aDutyNeverLeavesACriticalHpTripWithFewerHpPotionsThanWithoutIt() {
+        carry(5, 30);
+        purse = 3_000;
+        visit(List.of(RED, WHITE, BLUE));
+        int withoutDuty = AgentPotionService.countPotions(bot)[0];
+
+        AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
+        transactions.clear();
+        carry(5, 30);
+        purse = 3_000;
+        visit(List.of(RED, WHITE, BLUE));
+
+        int withDuty = AgentPotionService.countPotions(bot)[0];
+        assertTrue(withDuty >= 20 && withDuty >= withoutDuty, withDuty + " vs " + withoutDuty + " " + transactions);
+    }
+
+    @Test
+    void fennaGivenExactlyWhatHerVerdictSaidSheLackedComesBackReady() {
+        AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
+        carry(1, 30);
+        purse = 155 + (19 * 50 - 155); // her 155 and her owner's coin
+
+        visit(List.of(RED, WHITE, BLUE));
+
+        assertEquals(List.of("19 x " + RED), transactions);
+        assertEquals(20, AgentPotionService.countPotions(bot)[0]);
+    }
+
+    @Test
+    void withItsUseTabNearlyFullItBuysOntoTheStackItCarries() {
+        AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
+        use = new Inventory(bot, InventoryType.USE, (byte) 5);
+        use.addItem(Items.itemWithQuantity(RED, 1));
+        use.addItem(Items.itemWithQuantity(BLUE, 30));
+        use.addItem(Items.itemWithQuantity(POWER_ELIXIR, 15)); // its reserve bars are met
+        use.addItem(Items.itemWithQuantity(ARROW, 1_000)); // one slot left, which a run keeps for its items
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+
+        visit(List.of(RED, WHITE, BLUE), slotMax);
+
+        // (this test's shop adds every purchase as a stack of its own; the live one fills the carried stack first)
+        assertEquals(List.of("4 x " + RED, "20 x " + RED, "5 x " + BLUE), transactions,
+                "no White: a new kind would take the last slot");
+        assertTrue(AgentPotionService.countPotions(bot)[0] >= 20, transactions.toString());
+    }
+
+    @Test
+    void itCarriesAStackWithRoomOnlyOfAPotionThisShopSells() {
+        carry(10, 0);
+        try (MockedStatic<server.agents.integration.AgentInventoryGatewayRuntime> inventories =
+                     mockStatic(server.agents.integration.AgentInventoryGatewayRuntime.class)) {
+            inventories.when(server.agents.integration.AgentInventoryGatewayRuntime::inventory).thenReturn(slotMax);
+            assertTrue(AgentShopService.carriesStackWithRoom(bot, shop(List.of(RED, BLUE)), true));
+            assertFalse(AgentShopService.carriesStackWithRoom(bot, shop(List.of(WHITE, BLUE)), true), "not sold here");
+            assertFalse(AgentShopService.carriesStackWithRoom(bot, shop(List.of(RED, BLUE)), false), "no mana stack");
+            carry(100, 0); // a full stack
+            assertFalse(AgentShopService.carriesStackWithRoom(bot, shop(List.of(RED, BLUE)), true));
+        }
     }
 
     @Test
@@ -206,9 +303,25 @@ class AgentShopServicePotionFloorTest {
     }
 
     private void visit(List<Integer> itemIds) {
+        visit(itemIds, mock(InventoryGateway.class));
+    }
+
+    private void visit(List<Integer> itemIds, InventoryGateway inventory) {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
-        AgentShopService.buyPotionStock(new AgentShopPurchaseSequence<>(entry, bot, mock(InventoryGateway.class),
+        AgentShopService.buyPotionStock(new AgentShopPurchaseSequence<>(entry, bot, inventory,
                 new Point(), List.of(), new ArrayList<>(), null), shop(itemIds), 0);
+    }
+
+    /** It carries {@code red} Red and {@code blue} Blue potions, nothing else. */
+    private void carry(int red, int blue) {
+        use = new Inventory(bot, InventoryType.USE, (byte) 24);
+        if (red > 0) {
+            use.addItem(Items.itemWithQuantity(RED, red));
+        }
+        if (blue > 0) {
+            use.addItem(Items.itemWithQuantity(BLUE, blue));
+        }
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
     }
 
     private Shop shop(List<Integer> itemIds) {

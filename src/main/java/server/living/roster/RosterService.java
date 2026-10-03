@@ -2935,9 +2935,11 @@ public final class RosterService {
             // still on a supply trip (it restocked while its owner was inside): the trip ends by following them,
             // a follow warp, instead of a walk back here; following now would cancel its shop visit
             offFollow.remove(persona.id());
-            AgentSupplyReadiness.resumeFollowAfterTrip(runtime);
-            write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()));
-            return new RosterResult.Ok(persona.name() + " rejoins your party.");
+            if (AgentSupplyReadiness.resumeFollowAfterTrip(runtime)) {
+                write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()));
+                return new RosterResult.Ok(persona.name() + " rejoins your party.");
+            }
+            // the trip ended in the meantime, before it could follow from it: it rejoins as any held companion does
         }
         if (bot.getMap() != owner.getMap()) {
             return onItsWay(owner, persona, entry, bot.getMapId(), recallEtaMs(bot.getMapId(), owner.getMapId()));

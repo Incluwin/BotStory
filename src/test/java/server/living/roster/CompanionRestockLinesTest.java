@@ -43,6 +43,15 @@ class CompanionRestockLinesTest {
     }
 
     @Test
+    void theGenericGoLinesFitAnyTownNotOnlyAPartyQuestsEntrance() {
+        for (String line : CompanionRestockLines.GENERIC.get(CompanionRestockLines.GO)) {
+            String lower = line.toLowerCase(Locale.ROOT);
+            assertFalse(lower.contains("go in") || lower.contains("start") || lower.contains("before we"),
+                    "it restocks in any town near a shop, a run coming or not: " + line);
+        }
+    }
+
+    @Test
     void fennaGarrickAndBrannockSpeakInTheirOwnVoiceAndAHireUsesTheGenericLines() throws Exception {
         LivingContent content = ContentLoader.load(Path.of("scripts/config/living-world"));
         LivingWorld world = mock(LivingWorld.class);
