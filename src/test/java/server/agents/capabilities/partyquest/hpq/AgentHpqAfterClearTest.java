@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -65,7 +66,7 @@ class AgentHpqAfterClearTest {
 
         assertEquals(AgentHpqSession.Phase.COMPLETED, session.phase());
         run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
-                session.sessionId(), true, "completed", 5_000L));
+                eq(session.sessionId()), eq(true), eq("completed"), eq(5_000L), notNull()));
         verify(run.event, never()).dispose();
         run.neverSaid("failed");
     }
@@ -125,7 +126,7 @@ class AgentHpqAfterClearTest {
         verify(run.event, never()).exitPlayer(ben);
         verify(run.event, never()).dispose();
         run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
-                eq(session.sessionId()), eq(false), anyString(), anyLong()));
+                eq(session.sessionId()), eq(false), anyString(), anyLong(), notNull()));
     }
 
     @Test

@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.pace.AgentPqPace;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
@@ -108,10 +109,25 @@ final class AgentHpqTerminationService {
         if (completed) session.complete(nowMs);
         else session.fail(reason, nowMs);
         AgentHpqSessionRegistry.remove(session);
-        AgentPartyQuestLifecycleRuntime.childFinished(
-                session.sessionId(), completed, reason, nowMs);
+        // A companion run's pace goes to the host's clear-time records; a stock run reports none.
+        AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
+                session.companionAdopted() ? pace(session, nowMs) : null);
         log.info("HPQ session released: session={} outcome={} members={}",
                 session.sessionId(), completed ? "completed" : reason, session.memberCount());
+    }
+
+    /**
+     * A companion run's pace for the host's records, its span lines logged; a report that fails leaves it null rather
+     * than the release unfinished.
+     */
+    private static AgentPqPace pace(AgentHpqSession session, long nowMs) {
+        AgentHpqPaceReport.logSpans(session, nowMs);
+        try {
+            return AgentHpqPaceReport.of(session, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("HPQ pace report failed: session={}", session.sessionId(), failure);
+            return null;
+        }
     }
 
     /**

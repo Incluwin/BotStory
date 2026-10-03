@@ -21,6 +21,8 @@ public final class AgentHpqDefinition {
     public static final int MOON_BUNNY = 9_300_061;
     public static final int RICE_CAKE = 4_001_101;
     public static final int REQUIRED_RICE_CAKES = 10;
+    /** MapleMap's timed drops give the Moon Bunny a cake every Mob.wz drop period over this, not every period. */
+    public static final int MOON_BUNNY_DROP_PERIOD_DIVISOR = 3;
     public static final int FLOWER_DROP_X_PX = 18;
     public static final int FLOWER_DROP_Y_PX = 40;
 

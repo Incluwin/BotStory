@@ -73,6 +73,7 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     private String potionsAtEntry = "";
     private long enteredEventAtMs;
     private boolean leaderReleased;
+    private final AgentHpqPaceMarks pace = new AgentHpqPaceMarks();
 
     public AgentHpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < 3 || requestedPartySize > 6
@@ -337,6 +338,9 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
      */
     synchronized boolean leaderReleased() { return leaderReleased; }
     synchronized void markLeaderReleased() { leaderReleased = true; }
+
+    /** The companion run's pace marks (AgentHpqCoordinator sets them; a stock run leaves them unseen). */
+    AgentHpqPaceMarks pace() { return pace; }
 
     /** The companions' potions as the run entered the stage, for the release log line. */
     synchronized String potionsAtEntry() { return potionsAtEntry; }

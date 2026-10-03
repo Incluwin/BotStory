@@ -12,6 +12,9 @@ import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -694,6 +697,7 @@ final class AgentHpqCoordinator {
             return;
         }
         if (leader.getHp() <= 0) {
+            session.pace().markDown(leader.getId());
             fail(session, "The HPQ event leader was defeated",
                     AgentHpqParting.of(AgentHpqParting.Kind.DEFEATED, leader), nowMs);
             return;
@@ -788,10 +792,41 @@ final class AgentHpqCoordinator {
 
     private static void companionEnterSeeds(AgentHpqSession session, long nowMs) {
         transition(session, AgentHpqSession.Phase.COLLECTING_SEEDS, nowMs);
+        beginPace(session, nowMs);
         String potions = AgentHpqTerminationService.potions(session);
         session.setPotionsAtEntry(potions);
         log.info("HPQ potions: session={} start={}", session.sessionId(), potions);
         coordinate(session, narrator(session), "seeds-start", AgentHpqCompanionPlay.SEEDS_START);
+    }
+
+    /**
+     * The party is inside: the run's pace record begins with who entered and each one's power against HPQ's mobs, read
+     * on this tick from the warmed pace profile (none while it is cold, or when any member cannot be read).
+     */
+    private static void beginPace(AgentHpqSession session, long nowMs) {
+        List<Integer> entrants = new ArrayList<>();
+        List<AgentPqMemberPower> power = new ArrayList<>();
+        AgentPqPaceProfile profile = AgentPqPaceProfiles.cached(QUEST_KEY);
+        boolean readable = profile != null;
+        for (AgentHpqMemberState member : session.members()) {
+            entrants.add(member.characterId());
+            if (!readable) continue;
+            Character character = character(member.characterId());
+            if (character == null) {
+                readable = false;
+                continue;
+            }
+            try {
+                power.add(AgentPqMemberPower.of(character, profile,
+                        member.memberType() == AgentHpqMemberState.MemberType.HUMAN,
+                        member.characterId() == session.eventLeaderId()));
+            } catch (RuntimeException | LinkageError failure) {
+                readable = false;
+                log.debug("HPQ pace power unreadable: session={} member={}", session.sessionId(),
+                        member.characterId(), failure);
+            }
+        }
+        session.pace().markEntered(readable ? power : List.of(), entrants, nowMs);
     }
 
     /**
@@ -847,6 +882,7 @@ final class AgentHpqCoordinator {
         if (stage >= beds) {
             assignDefenseRoles(session);
             transition(session, AgentHpqSession.Phase.DEFENDING_BUNNY, nowMs);
+            session.pace().markBunny(nowMs);
             return;
         }
         if (stage * 2 >= beds) {
@@ -986,6 +1022,7 @@ final class AgentHpqCoordinator {
                 .filter(java.util.Objects::nonNull).filter(Monster::isAlive).toList();
         Monster bunny = live.stream().filter(monster -> monster.getId() == AgentHpqDefinition.MOON_BUNNY)
                 .findFirst().orElse(null);
+        session.pace().observeBunnyCakes(intProperty(leader, "bunnyCake"), nowMs);
         boolean deliveringNow = delivering;
         switch (AgentHpqCompanionPlay.defenseStep(cleared, session.bunnySeen(), bunny != null,
                 leader.getMapId() == AgentHpqDefinition.STAGE_MAP,
@@ -1315,6 +1352,7 @@ final class AgentHpqCoordinator {
     private static void companionCleared(AgentHpqSession session, long nowMs) {
         session.freezeRewardEligibility();
         session.markCleared(nowMs);
+        session.pace().markCleared(nowMs);
         session.endHandOver(false);
         session.endRecollect(false);
         for (AgentHpqMemberState member : session.members()) {
@@ -1430,6 +1468,7 @@ final class AgentHpqCoordinator {
                 : leader.getHp() <= 0 ? "down"
                 : leadPassed(session) ? "lead passed" : null;
         if (why == null) return;
+        if (leader != null && leader.getHp() <= 0) session.pace().markDown(leader.getId());
         session.markLeaderReleased();
         log.info("HPQ leader let go after the clear: session={} leader={} why={} phase={}",
                 session.sessionId(), session.eventLeaderId(), why, session.phase());
@@ -1561,6 +1600,7 @@ final class AgentHpqCoordinator {
                     if (AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
                             QUEST_KEY, session.sessionId(), id, character.getMapId(), nowMs))) {
                         member.markTapOutRequested();
+                        session.pace().markTappedOut(id);
                         log.info("HPQ companion tapped out: session={} member={} map={}",
                                 session.sessionId(), id, character.getMapId());
                     } else if (!cleared) {
@@ -1592,6 +1632,7 @@ final class AgentHpqCoordinator {
                 : Math.max(0, character.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false));
         member.markDown(nowMs, cakes);
         if (first) {
+            session.pace().markDown(member.characterId());
             log.info("HPQ member down: session={} member={} type={} phase={} cakes={}",
                     session.sessionId(), member.characterId(), member.memberType(), session.phase(), cakes);
         }

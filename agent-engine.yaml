@@ -2683,6 +2683,30 @@ tuning:
     # Purpose: How much of a kill segment the companions may spend simulated below the presentation rate before its pace span stops counting, so throttled fights never set the clear-time priors.
     # Technical: AgentKpqPaceReport marks the s1.grind, s5.normals and s5.boss spans incomplete when the member-milliseconds of the Agents standing in the run outside AgentSimulationMode.PRESENTATION, sampled each coordinator tick, are over this share of all of theirs; the KPQ pace span line prints the share as throttled=.
     server.agents.capabilities.partyquest.kpq.AgentKpqPaceReport.THROTTLED_SHARE_MAX: '0.10'
+    # Values: 0-60000 milliseconds. Recommended: 1000, KPQ's YES_TO_STAGE1_MS; the stock warp puts the party on Primrose Hill within a second of Tory's Yes.
+    # Purpose: Prior time from the leader's Yes at Tory until every member of a companion run stands in the HPQ event, the first segment of the clear-time estimate.
+    # Technical: AgentHpqPaceProfile seeds the companion-side yes term with it; the estimate adds it as a fixed time and recorded companion runs refit it from admission to the COLLECTING_SEEDS phase entry.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.YES_TO_STAGE_MS: '1000'
+    # Values: 30000-600000 milliseconds. Recommended: 150000; the 2026-10-03 smoke had all six moonflowers up and the Moon Bunny out about 155 s after entry with four Agents.
+    # Purpose: Prior time a companion run spends fetching and planting the six moonflower seeds before the Moon Bunny comes out.
+    # Technical: AgentHpqPaceProfile seeds the companion-side seeds term; the estimate adds it as a fixed time and recorded companion runs refit it from the COLLECTING_SEEDS to the DEFENDING_BUNNY phase entry.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.SEEDS_MS: '150000'
+    # Values: 0-600000 milliseconds. Recommended: 40000; assumed quick human, never measured (the smoke's hand-in used !itemvac).
+    # Purpose: Prior time a human leader needs from the Moon Bunny's tenth rice cake until Growlie takes the ten and clears the stage, learned per leader from his runs.
+    # Technical: AgentHpqPaceProfile seeds the leader-side handin term (leader-bounded); recorded companion runs refit it per leader from the event's bunnyCake count first reaching ten to the BONUS_DECISION phase entry, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.HANDIN_MS: '40000'
+    # Values: 1-50 touches. Recommended: 7, KPQ's FRAGILE_TOUCHES. Lower values flag only the very frail; higher values flag more of the party.
+    # Purpose: How few touches of a Goblin Fire, Primrose Hill's hardest-hitting attacker, a companion may take before Tory's estimate names it as fragile.
+    # Technical: AgentHpqPaceProfile passes it as Thresholds.fragileTouches; AgentPqPaceEstimator names a non-leader member FRAGILE when its effective HP over Goblin Fire's expected touch damage (9300064, the stat proxy of 9300083) is below it.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.FRAGILE_TOUCHES: '7'
+    # Values: 0.0-1.0 hit chance. Recommended: 0.6, KPQ's WEAK_HIT_CHANCE.
+    # Purpose: Hit chance below which the estimate would name a companion as missing HPQ's mobs; kept beside FRAGILE_TOUCHES as KPQ keeps its pair.
+    # Technical: AgentHpqPaceProfile passes it as Thresholds.weakHitChance; AgentPqPaceEstimator weighs it only on quota and clear segments, and HPQ's four segments are all fixed times, so today it names nobody.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1 or more. Recommended: 1. Bump it when HPQ's pace segments or their boundaries change.
+    # Purpose: Version of HPQ's pace model; recorded runs of another epoch are not learned from, so a model change starts from the priors again.
+    # Technical: AgentHpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for hpq.
+    server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile.PACE_EPOCH: '1'
     # Values: 0.5-20 pseudo-runs. Recommended: 3.0. Higher values trust the priors longer; lower values follow the first recorded runs closely.
     # Purpose: How many recorded runs' worth of weight the prior of each companion pace term carries when the calibration learns from recorded runs.
     # Technical: AgentPqPaceCalibration.fit shrinks every companion term toward its prior with this many pseudo-runs (in log space for times and efficiencies, linearly for seek) and uses it for the spread too.
