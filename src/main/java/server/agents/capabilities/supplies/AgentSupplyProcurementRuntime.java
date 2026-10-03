@@ -16,6 +16,7 @@ import server.agents.capabilities.movement.AgentChairService;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.runtime.AgentModeService;
+import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
@@ -78,23 +79,35 @@ public final class AgentSupplyProcurementRuntime {
         }
         AgentSupplyThresholdChangedEvent signal = null;
         AgentProcurementRequest request;
+        // A duty holder's (AgentSupplyReadiness) critical potion requests pass its affordability check first.
+        AgentSupplyReadiness.Activity dutyHolder = null;
         if (execution.isActive()) {
-            if (!AgentSupplyRecoveryPolicy.requiresAutomaticReserve(
+            if (!AgentSupplyReadinessRuntime.readiness(execution.requestId())
+                    && !AgentSupplyRecoveryPolicy.requiresAutomaticReserve(
                     agent, execution.category())) {
-                finish(entry, planning, execution, AgentObjectiveStatus.CANCELLED,
+                finish(entry, agent, planning, execution, AgentObjectiveStatus.CANCELLED,
                         "beginner progression does not require a potion reserve", nowMs);
                 return false;
             }
-            request = planning.procurement(execution.category());
+            request = activeRequest(entry, planning, execution, nowMs);
         } else {
-            signal = evaluations.next();
-            request = signal == null
-                    ? null : selectRequest(planning, execution, agent, nowMs, signal.category());
-            if (signal != null && request == null) {
-                evaluations.resolve(signal.category());
-            }
+            // The standing readiness duty goes first: one visit fills HP and MP to the standard.
+            request = AgentSupplyReadinessRuntime.select(entry, agent, nowMs);
             if (request == null) {
-                request = selectRequest(planning, execution, agent, nowMs, null);
+                dutyHolder = hasPotionRequest(planning)
+                        ? AgentSupplyReadiness.standing(agent.getId()) : null;
+                if (dutyHolder != null) {
+                    dropRestoredPotionRequests(planning, evaluations, agent);
+                }
+                signal = evaluations.next();
+                request = signal == null
+                        ? null : selectRequest(planning, execution, agent, nowMs, signal.category());
+                if (signal != null && request == null) {
+                    evaluations.resolve(signal.category());
+                }
+                if (request == null) {
+                    request = selectRequest(planning, execution, agent, nowMs, null);
+                }
             }
         }
 
@@ -114,10 +127,21 @@ public final class AgentSupplyProcurementRuntime {
         }
 
         if (!execution.isActive()) {
+            boolean readinessTrip = AgentSupplyReadinessRuntime.readiness(request.requestId());
+            if (dutyHolder != null && potion(request.category())
+                    && !AgentSupplyReadinessRuntime.mayShopForCritical(entry, agent, dutyHolder, nowMs)) {
+                // It cannot pay for the trip (or carry what it buys): it neither walks to a shop
+                // nor asks its party; it says so once and waits until its purse grows.
+                return false;
+            }
             if (awaitingPartySupply(entry, agent, request, execution, nowMs)) {
                 return false;
             }
             if (!begin(entry, agent, request, execution, nowMs)) {
+                if (readinessTrip) {
+                    AgentSupplyReadinessRuntime.beginFailed(entry, agent, nowMs);
+                    return false;
+                }
                 // begin() scans the local shops first; retrying a refused start every tick
                 // repeats that scan for as long as the shortage lasts.
                 execution.suppress(request.category(),
@@ -128,6 +152,9 @@ public final class AgentSupplyProcurementRuntime {
                 return false;
             }
             evaluations.resolve(request.category());
+            if (readinessTrip) {
+                AgentSupplyReadinessRuntime.began(entry, agent, request, execution, nowMs);
+            }
         }
 
         return switch (execution.phase()) {
@@ -158,7 +185,9 @@ public final class AgentSupplyProcurementRuntime {
             AgentSupplyMaintenanceEvaluationState evaluations,
             long nowMs) {
         AgentObjectiveDefinition active = AgentObjectiveKernel.active(entry);
-        if (active == null || !"maintenance.resupply".equals(active.type())) {
+        if (active == null || !"maintenance.resupply".equals(active.type())
+                || active.objectiveId().contains(AgentSupplyReadinessRuntime.REQUEST_PREFIX)) {
+            // A readiness trip is the host's duty, not a beginner's reserve: it is never cancelled here.
             return false;
         }
         AgentResourceCategory category = java.util.Arrays.stream(
@@ -196,6 +225,46 @@ public final class AgentSupplyProcurementRuntime {
     }
 
     /**
+     * The request the trip under way serves: a readiness trip's own while its time is not up (null after: the trip
+     * stalls as expired), else the planning request of its category.
+     */
+    private static AgentProcurementRequest activeRequest(AgentRuntimeEntry entry,
+                                                         AgentResourcePlanningState planning,
+                                                         AgentSupplyProcurementState execution,
+                                                         long nowMs) {
+        if (AgentSupplyReadinessRuntime.readiness(execution.requestId())) {
+            return AgentSupplyReadinessRuntime.activeRequest(entry, execution.requestId(), nowMs);
+        }
+        return planning.procurement(execution.category());
+    }
+
+    private static boolean potion(AgentResourceCategory category) {
+        return category == AgentResourceCategory.HP_POTION || category == AgentResourceCategory.MP_POTION;
+    }
+
+    private static boolean hasPotionRequest(AgentResourcePlanningState planning) {
+        return planning.procurement(AgentResourceCategory.HP_POTION) != null
+                || planning.procurement(AgentResourceCategory.MP_POTION) != null;
+    }
+
+    /**
+     * A duty holder's potion request that its potions no longer bear out (a readiness visit or a share filled it
+     * past POT_STOP since it was planned) is resolved, so it never starts a trip or a party ask of its own.
+     */
+    private static void dropRestoredPotionRequests(AgentResourcePlanningState planning,
+                                                   AgentSupplyMaintenanceEvaluationState evaluations,
+                                                   Character agent) {
+        for (AgentResourceCategory category : new AgentResourceCategory[]{
+                AgentResourceCategory.HP_POTION, AgentResourceCategory.MP_POTION}) {
+            if (planning.procurement(category) != null
+                    && AgentSupplyInventorySnapshot.quantity(agent, category) >= AgentRuntimeConfig.cfg.POT_STOP) {
+                planning.resolve(category);
+                evaluations.resolve(category);
+            }
+        }
+    }
+
+    /**
      * A companion following its owner asks the owner and party for the supply first and stays
      * with them; it leaves for a shop only when nobody shared within the wait.
      */
@@ -205,6 +274,7 @@ public final class AgentSupplyProcurementRuntime {
                                                AgentSupplyProcurementState execution,
                                                long nowMs) {
         if (selfSustaining(entry)
+                || AgentSupplyReadinessRuntime.readiness(request.requestId())
                 || !AgentModeStateRuntime.following(entry)
                 || AgentRelationshipRuntime.followTarget(entry) == null) {
             return false;
@@ -242,7 +312,8 @@ public final class AgentSupplyProcurementRuntime {
                 // blocked portals: a trip toward a shop the router cannot reach only strands it.
                 log.info("Agent '{}' has no {} supplier the portal router can reach from map {}; asking the party instead",
                         agent.getName(), request.category(), agent.getMapId());
-                if (execution.partyAskedAtMs(request.category()) < 0L) {
+                if (execution.partyAskedAtMs(request.category()) < 0L
+                        && !AgentSupplyReadinessRuntime.readiness(request.requestId())) {
                     askPartyForSupply(entry, agent, request.category());
                 }
                 return false;
@@ -415,11 +486,11 @@ public final class AgentSupplyProcurementRuntime {
         }
         AgentShopWorkflowPhase phase = AgentShopStateRuntime.workflow(entry).phase();
         if (phase == AgentShopWorkflowPhase.COMPLETED) {
-            AgentProcurementRequest request = planning.procurement(execution.category());
+            AgentProcurementRequest request = activeRequest(entry, planning, execution, nowMs);
             int after = AgentSupplyInventorySnapshot.quantity(agent, execution.category());
             int target = request == null ? after : request.quantity() + execution.quantityBefore();
-            AgentSupplyProcurementOutcome outcome = reconcile(
-                    execution, agent, after, target, nowMs);
+            AgentSupplyProcurementOutcome outcome = AgentSupplyReadinessRuntime.judged(entry, agent, execution,
+                    reconcile(execution, agent, after, target, nowMs));
             execution.complete(outcome);
             journalOutcome(entry, agent, execution.requestId(), outcome);
             if (!outcome.restored()) {
@@ -444,7 +515,7 @@ public final class AgentSupplyProcurementRuntime {
             if (execution.shopFailures() < AgentSupplyRecoveryPolicy.shopRetryLimit()) {
                 execution.retryShopVisit(agent.getMapId() == execution.supplierMapId(),
                         nowMs + AgentSupplyRecoveryPolicy.shopRetryDelayMs());
-                AgentProcurementRequest request = planning.procurement(execution.category());
+                AgentProcurementRequest request = activeRequest(entry, planning, execution, nowMs);
                 if (request != null) {
                     journal(entry, agent, request, "shop-retry", reason,
                             Map.of("shopFailures", Integer.toString(execution.shopFailures()),
@@ -478,7 +549,7 @@ public final class AgentSupplyProcurementRuntime {
             if (execution.abandoned()) {
                 return finishAbandoned(entry, agent, planning, execution, nowMs);
             }
-            finish(entry, planning, execution, AgentObjectiveStatus.SUCCEEDED,
+            finish(entry, agent, planning, execution, AgentObjectiveStatus.SUCCEEDED,
                     "shop transaction completed; rejoining the owner", nowMs);
             return false;
         }
@@ -501,7 +572,7 @@ public final class AgentSupplyProcurementRuntime {
         if (execution.abandoned()) {
             return finishAbandoned(entry, agent, planning, execution, nowMs);
         }
-        finish(entry, planning, execution, AgentObjectiveStatus.SUCCEEDED,
+        finish(entry, agent, planning, execution, AgentObjectiveStatus.SUCCEEDED,
                 "shop transaction completed and plan location restored", nowMs);
         return false;
     }
@@ -517,7 +588,14 @@ public final class AgentSupplyProcurementRuntime {
                                            long nowMs) {
         AgentResourceCategory category = execution.category();
         String reason = "resupply abandoned: " + execution.abandonedReason();
-        finish(entry, planning, execution, AgentObjectiveStatus.FAILED, reason, nowMs);
+        if (AgentSupplyReadinessRuntime.readiness(execution.requestId())) {
+            // A readiness trip never asks the party: what it lacks waits for its own next trip.
+            AgentSupplyReadiness.Outcome outcome =
+                    AgentSupplyReadinessRuntime.abandonedOutcome(entry, agent, execution, nowMs);
+            finish(entry, agent, planning, execution, AgentObjectiveStatus.FAILED, reason, nowMs, outcome);
+            return false;
+        }
+        finish(entry, agent, planning, execution, AgentObjectiveStatus.FAILED, reason, nowMs);
         log.info("Agent '{}' resumed its plan without restocking {} and is asking the party instead",
                 agent.getName(), category);
         askPartyForSupply(entry, agent, category);
@@ -742,22 +820,45 @@ public final class AgentSupplyProcurementRuntime {
     }
 
     private static void finish(AgentRuntimeEntry entry,
+                               Character agent,
                                AgentResourcePlanningState planning,
                                AgentSupplyProcurementState execution,
                                AgentObjectiveStatus status,
                                String reason,
                                long nowMs) {
+        finish(entry, agent, planning, execution, status, reason, nowMs, null);
+    }
+
+    /** {@code readinessOutcome}: how an abandoned readiness trip ended (null: judged from {@code status}). */
+    private static void finish(AgentRuntimeEntry entry,
+                               Character agent,
+                               AgentResourcePlanningState planning,
+                               AgentSupplyProcurementState execution,
+                               AgentObjectiveStatus status,
+                               String reason,
+                               long nowMs,
+                               AgentSupplyReadiness.Outcome readinessOutcome) {
         String requestId = execution.requestId();
         String maintenanceObjectiveId = execution.objectiveId();
         var category = execution.category();
         boolean resumeFollow = execution.resumeFollow();
         boolean resumeGrind = execution.resumeGrind();
+        boolean readinessTrip = AgentSupplyReadinessRuntime.readiness(requestId);
         execution.clear();
         execution.forgetPartyAsk(category);
+        AgentSupplyMaintenanceEvaluationState evaluations =
+                entry.capabilityStates().require(AgentSupplyMaintenanceEvaluationState.STATE_KEY);
         if (category != null) {
             planning.resolve(category);
-            entry.capabilityStates().require(AgentSupplyMaintenanceEvaluationState.STATE_KEY)
-                    .resolve(category);
+            evaluations.resolve(category);
+        }
+        if (readinessTrip) {
+            // One visit filled both: a critical request of the other category planned before it is spent too.
+            for (AgentResourceCategory potion : new AgentResourceCategory[]{
+                    AgentResourceCategory.HP_POTION, AgentResourceCategory.MP_POTION}) {
+                planning.resolve(potion);
+                evaluations.resolve(potion);
+            }
         }
         String frameId = "resupply:" + requestId;
         if (entry.capabilityStates().require(AgentRemediationState.STATE_KEY).active() == null) {
@@ -770,6 +871,9 @@ public final class AgentSupplyProcurementRuntime {
         }
         AgentRemediationCoordinator.finish(entry, frameId, status, reason, nowMs);
         restoreForegroundMode(entry, resumeFollow, resumeGrind);
+        if (readinessTrip) {
+            AgentSupplyReadinessRuntime.finished(entry, agent, requestId, status, readinessOutcome);
+        }
     }
 
     /**

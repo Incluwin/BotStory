@@ -16,6 +16,7 @@ import server.agents.capabilities.supplies.AgentPotionRecoveryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSkillConsumablePolicy;
 import server.agents.capabilities.supplies.AgentSupplyConfig;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 
 import client.Character;
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ import server.agents.capabilities.inventory.demand.AgentQuestItemDispositionRunt
 import server.agents.capabilities.movement.AgentMovementStateResetService;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.integration.InventoryGateway;
 import server.agents.capabilities.shop.AgentShopRuntime;
@@ -43,6 +45,7 @@ import server.agents.capabilities.supplies.AgentCombatAmmoCheckRuntime;
 import server.agents.runtime.AgentRandom;
 import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.ItemInformationProvider;
 import server.Shop;
 import server.ShopItem;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
@@ -61,6 +64,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntToDoubleFunction;
 
 public final class AgentShopService {
     private static final Logger log = LoggerFactory.getLogger(AgentShopService.class);
@@ -812,13 +816,13 @@ public final class AgentShopService {
                 && (shop == null || findSeedRechargeAmmoItem(shop, wt) != null);
     }
 
-    private static AgentShopBuyReport buySeedRechargeAmmo(
+    static AgentShopBuyReport buySeedRechargeAmmo(
             Character bot, Shop shop, WeaponType wt, int minimumMesoReserve) {
         return buyFixedCostItem(bot, shop, findSeedRechargeAmmoItem(shop, wt),
                 1, 1, minimumMesoReserve);
     }
 
-    private static AgentShopBuyReport buyAmmo(
+    static AgentShopBuyReport buyAmmo(
             Character bot, Shop shop, WeaponType wt, int minimumMesoReserve) {
         ShopSlotItem ammo = findAmmoItem(shop, wt);
         if (ammo == null) {
@@ -835,7 +839,7 @@ public final class AgentShopService {
         return AgentShopAmmoPolicy.matchesRechargeWeapon(itemId, wt);
     }
 
-    private static AgentShopBuyReport doRecharge(
+    static AgentShopBuyReport doRecharge(
             Character bot,
             Shop shop,
             WeaponType wt,
@@ -844,19 +848,7 @@ public final class AgentShopService {
         // Only recharge ammo matching the equipped weapon (claw->stars, gun->bullets) and only
         // the best stacks by attack: recharging off-weapon or low-tier leftovers just wastes meso,
         // and an off-weapon failure must never short-circuit the real ammo refill.
-        List<Item> refillable = new ArrayList<>();
-        for (Item item : bot.getInventory(InventoryType.USE).list()) {
-            int id = item.getItemId();
-            if (!ItemConstants.isRechargeable(id) || !matchesRechargeWeapon(id, wt)) {
-                continue;
-            }
-            if (item.getQuantity() >= inventory.getSlotMax(bot, id)) {
-                continue;
-            }
-            refillable.add(item);
-        }
-        refillable.sort((a, b) -> Integer.compare(
-                inventory.getProjectileWeaponAttack(b.getItemId()), inventory.getProjectileWeaponAttack(a.getItemId())));
+        List<Item> refillable = refillableStacks(bot, wt, inventory);
 
         int recharged = 0;
         int attempted = 0;
@@ -885,6 +877,24 @@ public final class AgentShopService {
         return new AgentShopBuyReport(shortfallItemId, recharged, attempted, reason);
     }
 
+    /** The weapon's own partial stacks a recharge refills, best attack first. */
+    private static List<Item> refillableStacks(Character bot, WeaponType wt, InventoryGateway inventory) {
+        List<Item> refillable = new ArrayList<>();
+        for (Item item : bot.getInventory(InventoryType.USE).list()) {
+            int id = item.getItemId();
+            if (!ItemConstants.isRechargeable(id) || !matchesRechargeWeapon(id, wt)) {
+                continue;
+            }
+            if (item.getQuantity() >= inventory.getSlotMax(bot, id)) {
+                continue;
+            }
+            refillable.add(item);
+        }
+        refillable.sort((a, b) -> Integer.compare(
+                inventory.getProjectileWeaponAttack(b.getItemId()), inventory.getProjectileWeaponAttack(a.getItemId())));
+        return refillable;
+    }
+
     private static boolean needsPotionStock(Character bot, Shop shop, boolean forHp) {
         ShopSlotItem potion = findPotionItem(shop, bot, forHp);
         if (potion == null) {
@@ -896,13 +906,18 @@ public final class AgentShopService {
                 AgentPotionPurchasePolicy.triggerReserveBars(forHp));
     }
 
-    private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionStock(
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionStock(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
             Shop shop,
             int minimumMesoReserve) {
         Character bot = sequence.bot();
         ShopSlotItem hpPotion = findPotionItem(shop, bot, true);
         ShopSlotItem mpPotion = findPotionItem(shop, bot, false);
+        // A standing readiness duty first: potions by count toward the next activity's standard,
+        // even when the reserve bars below are already met.
+        int[] floorBought = {0, 0};
+        AgentShopPurchaseSequence<AgentRuntimeEntry> current = buyReadinessFloor(
+                sequence, shop, hpPotion, mpPotion, minimumMesoReserve, floorBought);
         boolean needsHp = needsPotionTarget(bot, hpPotion, true);
         boolean needsMp = needsPotionTarget(bot, mpPotion, false);
 
@@ -919,9 +934,8 @@ public final class AgentShopService {
             }
         }
 
-        int hpBought = 0;
-        int mpBought = 0;
-        AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
+        int hpBought = floorBought[0];
+        int mpBought = floorBought[1];
 
         AgentShopBuyReport report = buyPotionToReserve(
                 bot,
@@ -977,6 +991,120 @@ public final class AgentShopService {
                 minimumMesoReserve,
                 Integer.MAX_VALUE);
         return appendBuyReport(current, report, "MP pots");
+    }
+
+    /**
+     * The readiness floor (AgentSupplyReadiness.buyTarget): with a standing duty, HP then MP potions are bought by
+     * count toward the target, HP within the purse less what the MP potions it lacks cost at their cheapest
+     * (AgentShopPotionPolicy.selectForCount picks what the budget buys {@code want} of). Nothing without a duty.
+     */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyReadinessFloor(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Shop shop,
+            ShopSlotItem hpPick,
+            ShopSlotItem mpPick,
+            int minimumMesoReserve,
+            int[] bought) {
+        Character bot = sequence.bot();
+        int hpTarget = AgentSupplyReadiness.buyTarget(bot, true);
+        int mpTarget = AgentSupplyReadiness.buyTarget(bot, false);
+        if (hpTarget <= 0 && mpTarget <= 0) {
+            return sequence;
+        }
+        int[] carried = AgentPotionService.countPotions(bot);
+        int hpWant = AgentPotionPurchasePolicy.floorQuantity(hpTarget, carried[0], 0);
+        int mpWant = AgentPotionPurchasePolicy.floorQuantity(mpTarget, carried[1], 0);
+        AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
+        if (hpWant > 0) {
+            long mpCost = mpWant <= 0 ? 0L : (long) mpWant * Math.max(0, cheapestRecoveryPrice(bot, shop, false));
+            long budget = Math.max(0L, spendable(bot, minimumMesoReserve) - mpCost);
+            AgentShopBuyReport report = buyFixedCostItem(bot, shop,
+                    selectForCount(shop, bot, hpPick, true, hpWant, budget), hpWant, 100, minimumMesoReserve,
+                    (int) Math.min(Integer.MAX_VALUE, budget));
+            bought[0] += report.quantity();
+            current = appendBuyReport(current, report, "HP pots");
+        }
+        if (mpWant > 0) {
+            long budget = spendable(bot, minimumMesoReserve);
+            AgentShopBuyReport report = buyFixedCostItem(bot, shop,
+                    selectForCount(shop, bot, mpPick, false, mpWant, budget), mpWant, 100, minimumMesoReserve,
+                    (int) Math.min(Integer.MAX_VALUE, budget));
+            bought[1] += report.quantity();
+            current = appendBuyReport(current, report, "MP pots");
+        }
+        return current;
+    }
+
+    private static long spendable(Character bot, int minimumMesoReserve) {
+        return Math.max(0L, (long) bot.getMeso() - Math.max(0, minimumMesoReserve));
+    }
+
+    private static ShopSlotItem selectForCount(
+            Shop shop, Character bot, ShopSlotItem coveragePick, boolean forHp, int want, long budget) {
+        AgentShopPotionPolicy.PotionShopSlot selected = AgentShopPotionPolicy.selectForCount(
+                shop.getItems(),
+                coveragePick == null ? null : new AgentShopPotionPolicy.PotionShopSlot(
+                        coveragePick.slot, coveragePick.shopItem, coveragePick.recovery),
+                want,
+                budget,
+                bot.getCurrentMaxHp(),
+                bot.getCurrentMaxMp(),
+                forHp,
+                AgentUseItemClassificationPolicy::isRecoveryPotion,
+                AgentUseItemClassificationPolicy::itemEffect);
+        return selected == null ? null : new ShopSlotItem(selected.slot(), selected.shopItem(), selected.recovery());
+    }
+
+    /** The cheapest HP (or MP) recovery potion this shop sells, in mesos; -1 when it sells none. */
+    public static int cheapestRecoveryPrice(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null) {
+            return -1;
+        }
+        return AgentShopPotionPolicy.cheapestPrice(shop.getItems(), bot.getCurrentMaxHp(), bot.getCurrentMaxMp(),
+                forHp, AgentUseItemClassificationPolicy::isRecoveryPotion, AgentUseItemClassificationPolicy::itemEffect);
+    }
+
+    /**
+     * What a visit to {@code shop} would spend on ammo before any potion, as {@link #executePurchases} sizes it: a
+     * seed set of stars or bullets when it has none, the refills of its best partial stacks, and arrows up to the
+     * ammo target. 0 for a weapon without ammo.
+     */
+    public static int plannedAmmoSpend(Character bot, Shop shop) {
+        if (bot == null || shop == null) {
+            return 0;
+        }
+        long spend = plannedAmmoSpend(bot, shop, AgentAttackExecutionProvider.getEquippedWeaponType(bot),
+                AgentInventoryGatewayRuntime.inventory(),
+                itemId -> ItemInformationProvider.getInstance().getUnitPrice(itemId));
+        return (int) Math.min(Integer.MAX_VALUE, spend);
+    }
+
+    static long plannedAmmoSpend(Character bot, Shop shop, WeaponType wt, InventoryGateway inventory,
+                                 IntToDoubleFunction unitPrice) {
+        if (wt == null || bot.getInventory(InventoryType.USE) == null) {
+            return 0L;
+        }
+        long spend = 0L;
+        if (shouldBuySeedRechargeAmmoWhileShopping(bot, wt)) {
+            ShopSlotItem seed = findSeedRechargeAmmoItem(shop, wt);
+            spend += seed == null ? 0L : seed.shopItem.getPrice();
+        }
+        if (shouldRechargeWhileShopping(bot, wt, inventory)) {
+            int sets = 0;
+            for (Item item : refillableStacks(bot, wt, inventory)) {
+                if (sets++ >= RECHARGE_MAX_SETS) {
+                    break;
+                }
+                int missing = inventory.getSlotMax(bot, item.getItemId()) - item.getQuantity();
+                spend += (long) Math.ceil(unitPrice.applyAsDouble(item.getItemId()) * missing);
+            }
+        }
+        if (shouldBuyFixedAmmoWhileShopping(bot, wt)) {
+            ShopSlotItem ammo = findAmmoItem(shop, wt);
+            int missing = Math.max(0, ammoTargetThreshold() - AgentCombatAmmoCounter.countAmmo(bot, wt));
+            spend += ammo == null ? 0L : (long) ammo.shopItem.getPrice() * missing;
+        }
+        return spend;
     }
 
     private static AgentShopBuyReport buyPotionToReserve(
