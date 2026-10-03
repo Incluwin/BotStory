@@ -46,8 +46,8 @@ import static server.living.roster.LifecycleHarness.KERNING;
  * refuses a companion still finishing something shows the lineup again at once, for a Yes that goes in; a Yes while it
  * is at it still, under half a minute later, is answered the same at once and steps nobody out. A lineup
  * of humans only takes the stock start. A second Yes while the first is carried out only hears "hold on"; one that
- * threw is over all the same. A Yes on her own choice is planned again by her own choice. A companion the lineup leaves
- * waiting for mana potions asks for some in party chat, once, as the lineup is shown.
+ * threw is over all the same. A Yes on her own choice is planned again by her own choice. With the restock switch off,
+ * a companion the lineup leaves waiting for mana potions asks for some in party chat, once, as the lineup is shown.
  */
 class CompanionPqEntryTest {
     private final CompanionPqFixture fx = new CompanionPqFixture();
@@ -354,10 +354,11 @@ class CompanionPqEntryTest {
     }
 
     @Test
-    void aCompanionShortOfManaAsksForSomeOnceAsTheLineupIsShown() {
+    void withTheRestockSwitchOffACompanionShortOfManaAsksForSomeOnceAsTheLineupIsShown() {
         fx.manaPotions.put(901, 0); // Tobi, a Page: live, no MP_POTION supplier inside the run
         fx.ready();
         game.config.COMPANION_PQ_ENABLED_KEYS = "kpq";
+        game.config.COMPANION_RESTOCK_ENABLED = false; // the kill switch: exactly the ask from before restocking
         for (int id : List.of(900, 901, 902, 903, 904)) {
             when(game.world.directory().ownerOfCharacter(id)).thenReturn(ANN);
         }

@@ -111,7 +111,8 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
             List<String> away = new ArrayList<>(); // another map, another channel, or on the road
             for (Seat extra : plan.extras()) {
                 String reason = reasons.get(extra.characterId());
-                (extra.here() ? here : away).add(extra.name() + (reason == null ? "" : " (" + reason + ")"));
+                String why = reason != null ? reason : extra.errand(); // "(at the store)": gone for potions
+                (extra.here() ? here : away).add(extra.name() + (why == null ? "" : " (" + why + ")"));
             }
             if (!here.isEmpty()) {
                 lines.add("Waiting here with me: " + String.join(", ", here));
@@ -121,11 +122,17 @@ public final class LakelisDesk implements CompanionPartyQuestService.Desk {
             }
         }
         if (!plan.onTheWay().isEmpty()) {
-            List<String> coming = new ArrayList<>();
+            List<String> store = new ArrayList<>(); // gone for potions, their own restock
+            List<String> coming = new ArrayList<>(); // called over, from the bench
             for (Seat seat : plan.onTheWay()) {
-                coming.add(seat.name() + " (" + RecallTravel.describe(seat.etaMs()) + ")");
+                (seat.errand() != null ? store : coming).add(seat.name() + " (" + RecallTravel.describe(seat.etaMs()) + ")");
             }
-            lines.add("On the way: " + String.join(", ", coming));
+            if (!store.isEmpty()) {
+                lines.add("Gone to the store: " + String.join(", ", store));
+            }
+            if (!coming.isEmpty()) {
+                lines.add("On the way: " + String.join(", ", coming));
+            }
         }
         if (plan.blocker() != null) {
             lines.add("#rBefore I can let you in:#k " + plan.blocker());

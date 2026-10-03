@@ -870,6 +870,16 @@ living_world:
     COMPANION_PQ_GUIDANCE: true
     COMPANION_PQ_CLEAR_TIME: true
     COMPANION_PQ_PACE_EXCLUDED_LEADERS: "2,865"
+    # Companions restock their own potions (2026-10-02, replacing "the entry NPC checks and the owner hands them
+    # over"): RESTOCK_ENABLED gives every companion out with its owner, or waiting outside a run for them, a standing
+    # duty to carry the party-quest standard (agent-engine.yaml AgentSupplyReadiness: 20 HP, 25 MP potions); short in
+    # a town near a shop it walks there, buys, and comes back, and Lakelis shows it as gone to the store. false = the
+    # kill switch, everything as before. ASK_EVERY_MS: a companion that cannot afford its potions says so on its own
+    # at most this often. BOSS_MAPS: party-boss gates (Papulatus, King Pepe) reach no shop; a short companion says so
+    # once as its owner comes in, and entry is never refused.
+    COMPANION_RESTOCK_ENABLED: true
+    COMPANION_RESTOCK_ASK_EVERY_MS: 1800000
+    COMPANION_RESTOCK_BOSS_MAPS: "220080000,106021402"
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 

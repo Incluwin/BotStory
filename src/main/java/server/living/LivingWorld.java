@@ -86,6 +86,7 @@ public final class LivingWorld {
     private final server.living.roster.BenchCombatLearning benchCombatLearning;
     private final server.living.roster.CompanionPartyQuestService partyQuests;
     private final server.living.roster.CompanionRunLifecycle partyQuestRuns;
+    private final server.living.roster.CompanionRestock restock;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -132,6 +133,7 @@ public final class LivingWorld {
         this.benchCombatLearning = new server.living.roster.BenchCombatLearning(this); // decision 13 a
         this.partyQuests = new server.living.roster.CompanionPartyQuestService(this); // P6: party quests with companions
         this.partyQuestRuns = new server.living.roster.CompanionRunLifecycle(this, partyQuests);
+        this.restock = new server.living.roster.CompanionRestock(this); // companions restock their own potions
     }
 
     public static LivingWorld get() {
@@ -186,6 +188,8 @@ public final class LivingWorld {
         world.partyQuestRuns.installRerollWindow(new server.living.roster.ui.RerollQuestion());
         // a companion out with its owner drinks and loots by its own settings (P3b)
         world.roster.settings().install();
+        // and keeps the party-quest potion standard by itself, walking to a nearby shop when short (2026-10-02)
+        world.restock.install();
         // hire:<characterId> ids resolve to hired citizens, and a released hire goes back to the population (P4)
         world.hiredHands.install();
         // boot reconciliation (decision 8a) goes first on companion-ops, ahead of any login's restore
@@ -285,6 +289,7 @@ public final class LivingWorld {
         world.roster.installInstanceDelegation(null);
         server.living.roster.BenchCombatLearning.uninstall();
         server.living.roster.CompanionSettingsApplier.uninstall();
+        server.living.roster.CompanionRestock.uninstall();
         HiredHands.uninstall();
         server.living.population.Population.stop();
         server.knowledge.PersonalKnowledge.shared().stop(); // the citizens logged out: their worlds are written now, DB still up
@@ -469,6 +474,11 @@ public final class LivingWorld {
     }
 
     /** P6: party quests with companions, which start at the quest's entry NPC (Lakelis). */
+    /** Companions restocking their own potions: the Agent layer's readiness rule (CompanionRestock). */
+    public server.living.roster.CompanionRestock restock() {
+        return restock;
+    }
+
     public server.living.roster.CompanionPartyQuestService partyQuests() {
         return partyQuests;
     }
