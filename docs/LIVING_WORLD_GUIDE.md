@@ -223,6 +223,16 @@ in person. Forfeit in the quest window abandons the quest (`QuestLedger.abandon`
 lost and collected items stay, a first take can be offered again, a repeat goes back to completed,
 and an escort it started heads home.
 
+The Quest Helper tracks them too: `Check.img/<id>/1` lists each kill step's first monster and each
+collect step's item (`QuestLogTargets`; the WZ entry is static, so every step's targets show at
+once and a later step's read 0 until it is reached). The client counts items from the inventory;
+kills are the ledger's, sent as the quest's progress string (three digits per monster in that
+order) on every kill and step (`QuestLog.progressed`) and at login. The stock kill counter skips
+quest ids 30000-32767, and a Resident quest earns the quest point and the Growing Quest Ring's
+growth only on its first completion (a repeat, or a forfeited repeat put back to completed, does
+not). Names stay plain because the Helper prints colour codes literally; the giver's name in the
+detail text is blue, and Kaentake draws the list rows blue.
+
 ### Quest markers
 
 The server replays the icon over a Resident as a foreign avatar effect every

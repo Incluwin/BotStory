@@ -576,6 +576,7 @@ public final class QuestLedger {
         QuestState updated = new QuestState(chr.getId(), quest.id(), state.stepIndex(), Math.min(progress, target),
                 state.status(), state.startedAtMs(), state.completedAtMs(), state.repeats());
         world.store().saveQuestState(updated);
+        world.questLog().progressed(chr, quest, updated);
         chr.dropMessage(5, quest.title() + ": " + step.id().replace('-', ' ') + " " + updated.progress() + "/" + target);
         if (updated.progress() >= target) {
             advance(chr, giver, quest, updated);
@@ -596,6 +597,7 @@ public final class QuestLedger {
                     countEligible(chr, quest, step.itemId())), QuestStatus.ACTIVE, state.startedAtMs(), 0L, state.repeats());
         }
         world.store().saveQuestState(updated);
+        world.questLog().progressed(chr, quest, updated);
         world.markers().forget(chr);
         world.store().event(chr.getId(), quest.persona(), "quest.step", quest.id() + " -> " + step.id());
         describeStep(chr, quest, updated);

@@ -160,6 +160,7 @@ import server.maps.MapItem;
 import server.maps.MapManager;
 import server.maps.MapObject;
 import server.maps.MapObjectType;
+import server.living.quest.QuestLog;
 import server.maps.MapleMap;
 import server.maps.MiniGame;
 import server.maps.MiniGame.MiniGameResult;
@@ -8549,8 +8550,9 @@ public class Character extends AbstractCharacterObject {
             synchronized (quests) {
                 for (QuestStatus qs : getQuests()) {
                     lastQuestProcessed = qs.getQuest().getId();
-                    if (qs.getStatus() == QuestStatus.Status.COMPLETED || qs.getQuest().canComplete(this, null)) {
-                        continue;
+                    if (qs.getStatus() == QuestStatus.Status.COMPLETED || QuestLog.isMirrored(lastQuestProcessed)
+                            || qs.getQuest().canComplete(this, null)) {
+                        continue; // a living-world quest's kills are the ledger's to count
                     }
 
                     String previousProgressText = qs.getProgress(id);
@@ -11514,13 +11516,17 @@ public class Character extends AbstractCharacterObject {
         } else if (qs.getStatus().equals(QuestStatus.Status.COMPLETED)) {
             Quest mquest = qs.getQuest();
             short questid = mquest.getId();
-            if (!mquest.isSameDayRepeatable() && !Quest.isExploitableQuest(questid)) {
+            // a living-world quest (QuestLog mirror) earns these once: its repeats and a forfeited repeat put back to
+            // completed do not
+            boolean rewarded = !mquest.isSameDayRepeatable() && !Quest.isExploitableQuest(questid)
+                    && !(QuestLog.isMirrored(questid) && qs.getCompleted() > 0);
+            if (rewarded) {
                 awardQuestPoint(YamlConfig.config.server.QUEST_POINT_PER_QUEST_COMPLETE);
             }
             qs.setCompleted(qs.getCompleted() + 1);   // Jayd's idea - count quest completed
 
             // Growing Quest Ring: +1 to every stat on the equipped quest ring per completed quest.
-            if (!mquest.isSameDayRepeatable() && !Quest.isExploitableQuest(questid)) {
+            if (rewarded) {
                 applyQuestRingBoost(1);
             }
 

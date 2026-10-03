@@ -93,8 +93,9 @@ class ContentLoaderTest {
         LivingContent content = ContentLoader.load(ROOT);
         java.util.Map<String, Object> wren = QuestLogExportMain.entry(content, content.quest("wren-shelf-of-spores"), 30000);
         assertEquals(QuestLogExportMain.AREA_RESIDENTS, wren.get("area"));
-        assertEquals("#bInk from Spores#k", wren.get("name"), "the detail pane renders #b; the list does not");
+        assertEquals("Ink from Spores", wren.get("name"), "the Quest Helper prints colour codes literally");
         assertEquals("Ink from Spores", wren.get("parent"), "the list label stays plain");
+        assertTrue(((String) wren.get("inProgress")).startsWith("#bWren (Ellinia)#k: "), "the giver in blue in the detail text");
         assertEquals(10, wren.get("lvmin"));
         assertEquals(content.portraitNpcId("wren"), wren.get("npc"));
     }

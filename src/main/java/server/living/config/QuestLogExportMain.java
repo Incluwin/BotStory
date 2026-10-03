@@ -30,8 +30,9 @@ import java.util.Set;
  *
  * <p>How the client shows them (checked in a v83 client): the list groups quests by {@code area}
  * under a header named in Etc.wz {@code QuestCategory.img}, and labels each entry with
- * {@code parent} (else {@code name}) as plain text, colour codes printed literally; the detail pane
- * titles it with {@code name}, where {@code #b} renders blue.
+ * {@code parent} (else {@code name}) as plain text, colour codes printed literally (Kaentake draws
+ * the Resident rows blue); the detail pane and the Quest Helper title it with {@code name}, which stays
+ * plain because the Helper prints codes literally too; the detail text renders {@code #b} blue.
  */
 public final class QuestLogExportMain {
     /** The "Residents" group of the client's quest list: an unused QuestCategory.img slot MapleEdit names. */
@@ -109,15 +110,28 @@ public final class QuestLogExportMain {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("logId", logId);
         out.put("questId", quest.id());
-        out.put("name", "#b" + quest.title() + "#k"); // the detail pane's title, in blue
-        out.put("parent", quest.title()); // the list label (plain text there)
+        out.put("name", quest.title()); // the detail pane's and Quest Helper's title (the Helper prints codes literally)
+        out.put("parent", quest.title()); // the list label (Kaentake draws Resident rows blue)
         out.put("area", AREA_RESIDENTS);
         out.put("lvmin", Math.max(1, quest.requires().minLevel())); // shown as "Over Level N" in the detail pane
         out.put("npc", content.portraitNpcId(quest.persona())); // the giver's own portrait in the detail pane; 0 = none
+        out.put("mobs", targets(QuestLogTargets.mobs(quest))); // Check.img/1: what the Quest Helper and detail pane count
+        out.put("items", targets(QuestLogTargets.items(quest)));
         out.put("available", firstLine(giver, "questOffer." + quest.id(),
                 "Ask " + giverName + " in " + capitalize(town) + " about it."));
-        out.put("inProgress", giverName + " (" + capitalize(town) + "): " + steps(content, quest));
+        out.put("inProgress", "#b" + giverName + " (" + capitalize(town) + ")#k: " + steps(content, quest));
         out.put("completed", firstLine(giver, "questComplete." + quest.id(), "Done. " + giverName + " was grateful."));
+        return out;
+    }
+
+    private static List<Map<String, Object>> targets(List<QuestLogTargets.Target> targets) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (QuestLogTargets.Target target : targets) {
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("id", target.id());
+            entry.put("count", target.count());
+            out.add(entry);
+        }
         return out;
     }
 
