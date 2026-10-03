@@ -370,6 +370,26 @@ class LakelisDeskTest {
     }
 
     @Test
+    void aCompanionGoneToTheStoreIsShownApartFromABenchCallAndAnErrandExtraSaysWhere() {
+        Seat sin = new Seat(907, "SilentSin", 26, 410, "Assassin", false, BEN, "silentsin", 103_000_002, false,
+                45_000L, 0, 0, LakelisLines.AT_THE_STORE);
+        Seat rin = new Seat(RIN, "Rin", 25, 420, "Bandit", false, BEN, "rin", 104_000_000, false, 40_000L, 0, 0);
+        Seat garrick = new Seat(908, "Garrick", 28, 110, "Fighter", false, BEN, "garrick", 103_000_002, false,
+                45_000L, 0, 0, LakelisLines.AT_THE_STORE);
+        LineupPlan plan = new LineupPlan("kpq", BEN, List.of(BEN_SEAT, sin, rin, MIRA_SEAT), List.of(garrick),
+                List.of(sin, rin), List.of(), null, false, null);
+
+        desk.proposal(ben, plan, LakelisLines.RAN_TO_THE_STORE);
+
+        Talk lineup = lastTalk();
+        assertTrue(lineup.text().startsWith(TITLE + "\r\n" + LakelisLines.RAN_TO_THE_STORE + "\r\n"), lineup.text());
+        assertTrue(lineup.text().contains("Staying behind: Garrick (at the store)\r\n"), lineup.text());
+        assertTrue(lineup.text().contains("Gone to the store: SilentSin (~45 s)\r\nOn the way: Rin (~40 s)\r\n"),
+                lineup.text());
+        assertEquals(List.of("Are they here yet?", "Let me choose...", "Never mind."), lineup.labels(), "no Yes yet");
+    }
+
+    @Test
     void areTheyHereYetReplansAndShowsYesOnceArrived() {
         desk.proposal(ben, onTheWay(null), null);
         Seat arrived = companion(RIN, "Rin", 25, "Bandit", BEN, 0, 0);

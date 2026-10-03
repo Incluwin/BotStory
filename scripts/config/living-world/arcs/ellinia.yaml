@@ -55,6 +55,6 @@
     - id: chapter-3
       title: "Field Notes"
       enterWhen: { adventurerHoursTotal: 10 }
-      loadout: ellinia-mage-l30
+      loadout: ellinia-mage-l24
       dialogueOverrides:
         greet: ["i've got field notes now. real ones. with blood on them. mine, mostly."]

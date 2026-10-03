@@ -56,6 +56,70 @@ public final class AgentShopPotionPolicy {
         return best;
     }
 
+    /**
+     * The potion to buy {@code want} of for a count (a readiness standard), within {@code budget} mesos: the coverage
+     * pick ({@link #selectPotionItem}) when {@code want} of it fit the budget; else the strongest non-mixed potion of
+     * the category whose {@code want} fit; else the cheapest potion of the category, of which the budget buys what it
+     * can. Null when the shop sells no potion of the category.
+     */
+    public static PotionShopSlot selectForCount(List<ShopItem> items,
+                                                PotionShopSlot coveragePick,
+                                                int want,
+                                                long budget,
+                                                int maxHp,
+                                                int maxMp,
+                                                boolean forHp,
+                                                IntPredicate recoveryPotion,
+                                                IntFunction<StatEffect> effectLookup) {
+        if (coveragePick != null && (long) coveragePick.shopItem().getPrice() * want <= budget) {
+            return coveragePick;
+        }
+        PotionShopSlot strongest = null;
+        PotionShopSlot cheapest = coveragePick;
+        for (int i = 0; i < items.size(); i++) {
+            ShopItem item = items.get(i);
+            if (item.getPrice() <= 0 || !recoveryPotion.test(item.getItemId())) {
+                continue;
+            }
+            StatEffect effect = effectLookup.apply(item.getItemId());
+            Recovery recovery = effect == null ? null
+                    : AgentPotionRecoveryPolicy.recovery(effect, maxHp, maxMp, forHp);
+            if (recovery == null) {
+                continue;
+            }
+            PotionShopSlot candidate = new PotionShopSlot((short) i, item, recovery);
+            if (!recovery.mixed() && (long) item.getPrice() * want <= budget
+                    && (strongest == null || recovery.primary() > strongest.recovery().primary())) {
+                strongest = candidate;
+            }
+            if (cheapest == null || item.getPrice() < cheapest.shopItem().getPrice()) {
+                cheapest = candidate;
+            }
+        }
+        return strongest != null ? strongest : cheapest;
+    }
+
+    /** The cheapest price of a recovery potion of the category on sale, or -1 when the shop sells none. */
+    public static int cheapestPrice(List<ShopItem> items,
+                                    int maxHp,
+                                    int maxMp,
+                                    boolean forHp,
+                                    IntPredicate recoveryPotion,
+                                    IntFunction<StatEffect> effectLookup) {
+        int cheapest = -1;
+        for (ShopItem item : items) {
+            if (item.getPrice() <= 0 || !recoveryPotion.test(item.getItemId())) {
+                continue;
+            }
+            StatEffect effect = effectLookup.apply(item.getItemId());
+            if (effect != null && AgentPotionRecoveryPolicy.recovery(effect, maxHp, maxMp, forHp) != null
+                    && (cheapest < 0 || item.getPrice() < cheapest)) {
+                cheapest = item.getPrice();
+            }
+        }
+        return cheapest;
+    }
+
     private static boolean better(
             PotionShopSlot candidate, PotionShopSlot current, int targetDeficit) {
         if (current == null) {

@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import client.Character;
 import client.Job;
 import org.junit.jupiter.api.AfterEach;
@@ -60,7 +61,7 @@ class CompanionPartyQuestServicePaceTest {
         fx.companion("pip", "Pip", 902, 26, Job.FP_WIZARD);
         fx.companion("tobi", "Tobi", 903, 29, Job.BANDIT);
         fx.companion("casse", "Casse", 904, 25, Job.BANDIT);
-        fx.potions.put(904, CompanionPartyQuestService.KPQ_MIN_HP_POTIONS - 1);
+        fx.potions.put(904, standard().hp() - 1);
         for (int id : List.of(901, 902, 903)) {
             fx.dps.put(id, 500.0d);
         }
@@ -282,5 +283,10 @@ class CompanionPartyQuestServicePaceTest {
 
     private static List<String> names(List<LineupPlan.Seat> seats) {
         return seats.stream().map(LineupPlan.Seat::name).toList();
+    }
+
+    /** The Agents' party-quest potion standard, which the lineup counts against (AgentSupplyReadiness). */
+    private static AgentSupplyReadiness.Standard standard() {
+        return AgentSupplyReadiness.standard(AgentSupplyReadiness.Activity.PARTY_QUEST);
     }
 }

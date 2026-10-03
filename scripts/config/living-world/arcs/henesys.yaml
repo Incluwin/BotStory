@@ -22,7 +22,6 @@
     - id: chapter-4
       title: "The Banner Returns"
       enterWhen: { flags: [henesys.mushmom.fell] }
-      loadout: perion-spearman-l32
       dialogueOverrides:
         greet: ["the banner's up on the bench. eleven names under it. twelve, if you count yours."]
         chapterEnter: ["(unrolls a scorched banner and hangs it from the bench)"]

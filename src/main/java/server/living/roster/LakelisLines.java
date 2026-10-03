@@ -33,6 +33,10 @@ public final class LakelisLines {
     static final String NOT_IN_CREW = "<name> isn't part of your crew. Ask them to leave your party first.";
     static final String LOW_ON_POTIONS_LINE = "<name> is low on potions.";
     static final String LOW_ON_MANA_LINE = "<name> is low on mana potions.";
+    static final String LOW_ON_POTIONS_BROKE_LINE = "<name> is low on potions and can't afford any more.";
+    static final String LOW_ON_MANA_BROKE_LINE = "<name> is low on mana potions and can't afford any more.";
+    /** Above the lineup, when a companion in it (or waiting with it) ran to the store for potions. */
+    public static final String RAN_TO_THE_STORE = "Some of your crew ran to the store for potions. They won't be long.";
     static final String BUSY = "<name> is busy with something. Give them a moment.";
     /** Admission asked the companion to stop what it was doing, and it finishes its step first. */
     static final String FINISHING = "Give <name> a sec, they're finishing something.";
@@ -51,6 +55,13 @@ public final class LakelisLines {
     /** Why a companion waits outside, as the lineup lists it: "Casse (low on potions)". */
     static final String LOW_ON_POTIONS = "low on potions";
     static final String LOW_ON_MANA = "low on mana potions";
+    /** Short of potions and its own restock cannot afford them. */
+    static final String LOW_ON_POTIONS_BROKE = "low on potions, out of mesos";
+    static final String LOW_ON_MANA_BROKE = "low on mana potions, out of mesos";
+    /** Not at the entrance (another map of the town, the shop...). */
+    static final String NOT_IN_KERNING = "not in Kerning";
+    /** A companion's errand while it is on its way: gone to the store for potions (LineupPlan.Seat.errand). */
+    public static final String AT_THE_STORE = "at the store";
     static final String OTHER_CHANNEL = "on another channel";
     static final String KNOCKED_OUT = "knocked out";
 
@@ -136,7 +147,7 @@ public final class LakelisLines {
         if (problem.contains(" needs free Use and ETC capacity")) {
             return "bags full";
         }
-        return "not in Kerning";
+        return NOT_IN_KERNING;
     }
 
     static String named(String line, String name) {

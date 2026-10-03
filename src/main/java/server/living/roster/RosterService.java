@@ -28,6 +28,8 @@ import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentLifecycleService;
 import server.agents.runtime.AgentRuntimeCleanupService;
+import server.agents.capabilities.supplies.AgentSupplyProcurementState;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.integration.AgentPresence;
@@ -120,6 +122,11 @@ public final class RosterService {
     private final java.util.Set<String> offFollow = ConcurrentHashMap.newKeySet();
     /** Where each owner came into the map they are on: their companions follow them in there. */
     private final PortalFollow portalFollow = new PortalFollow();
+    /**
+     * Persona id -> where its HOLD waits (the map, and the spot when it was given one), from its {@link #hold}: a held
+     * companion whose potion trip ends walks back there (CompanionRestock.afterRestock). Dropped by any other write.
+     */
+    private final Map<String, HoldSpot> holdSpots = new ConcurrentHashMap<>();
     /** Owner id -> the own party their companions stayed in as offline members when they logged off (decision 8a). */
     private final Map<Integer, Integer> parkedParty = new ConcurrentHashMap<>();
     /** Owner id -> each row's banked EXP and haul meso when they logged off: the login whisper sums up the difference. */
@@ -2779,7 +2786,11 @@ public final class RosterService {
             return new RosterResult.Failed(persona.name() + " is not out with you right now.");
         }
         AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
-        if (runtime != null) {
+        // gone to the store for potions: it finishes the trip and walks back to the spot afterwards
+        // (CompanionRestock.afterRestock); stopping or moving it now would cut the trip short
+        boolean restocking = runtime != null && world.config().COMPANION_RESTOCK_ENABLED
+                && AgentSupplyReadiness.status(runtime, System.currentTimeMillis()).restocking();
+        if (runtime != null && !restocking) {
             AgentMovementCommandRuntime.stop(runtime); // no follow warps it after its owner meanwhile
         }
         world.slots().reserve(owner.getId(), persona.id(), CompanionSlots.Kind.HOLD, Long.MAX_VALUE);
@@ -2793,7 +2804,7 @@ public final class RosterService {
             said = note != null && note.voice() == HoldNote.Voice.PARTY && partyChat(bot, line);
             leaveParty(bot, entry);
         }
-        if (!elsewhere && bot.getMap() != map) {
+        if (!elsewhere && !restocking && bot.getMap() != map) {
             Spot spot = lastOpenMap.get(owner.getId());
             Point near = point != null ? point : spot != null && spot.mapId() == mapId ? spot.at() : null;
             Point portal = ArrivalPlacement.portalNear(map, near);
@@ -2804,10 +2815,11 @@ public final class RosterService {
                 bot.changeMap(map, map.getPortal(0));
             }
         }
-        if (runtime != null && point != null) {
+        if (runtime != null && point != null && !restocking) {
             AgentMovementCommandRuntime.moveTo(runtime, point, false);
         }
         write(current(entry).withHold(mapId, System.currentTimeMillis()));
+        holdSpots.put(persona.id(), new HoldSpot(mapId, point == null ? null : new Point(point)));
         if (!elsewhere && note != null && note.voice() == HoldNote.Voice.MAP
                 && AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED) { // off, sayMapNow says nothing
             AgentDialogueTransportRuntime.sayMapNow(bot, line); // a recruited companion has no Resident session to say it
@@ -2818,6 +2830,14 @@ public final class RosterService {
         }
         world.store().event(owner.getId(), persona.id(), "companion.hold", "map " + mapId);
         return new RosterResult.Ok(persona.name() + " waits at map " + mapId + ".");
+    }
+
+    /** Where a held companion waits: {@code mapId}, and {@code point} on it (null: where it stood). */
+    record HoldSpot(int mapId, Point point) { }
+
+    /** Where the companion's HOLD waits, from memory; null when it is not held (or was held before this boot). */
+    HoldSpot holdSpot(String personaId) {
+        return personaId == null ? null : holdSpots.get(personaId);
     }
 
     /** What a companion says as it waits outside a run: the note's line, else its arc's "hold" line, else the usual one. */
@@ -2909,6 +2929,18 @@ public final class RosterService {
         world.slots().release(persona.id()); // a member now
         settings.apply(owner, persona, bot);
         world.store().event(owner.getId(), persona.id(), "companion.rejoin", "from map " + bot.getMapId());
+        AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(bot.getId());
+        if (world.config().COMPANION_RESTOCK_ENABLED && runtime != null && runtime.capabilityStates()
+                .find(AgentSupplyProcurementState.STATE_KEY).map(AgentSupplyProcurementState::isActive).orElse(false)) {
+            // still on a supply trip (it restocked while its owner was inside): the trip ends by following them,
+            // a follow warp, instead of a walk back here; following now would cancel its shop visit
+            offFollow.remove(persona.id());
+            if (AgentSupplyReadiness.resumeFollowAfterTrip(runtime)) {
+                write(current(entry).with(RosterState.ACTIVE, System.currentTimeMillis()));
+                return new RosterResult.Ok(persona.name() + " rejoins your party.");
+            }
+            // the trip ended in the meantime, before it could follow from it: it rejoins as any held companion does
+        }
         if (bot.getMap() != owner.getMap()) {
             return onItsWay(owner, persona, entry, bot.getMapId(), recallEtaMs(bot.getMapId(), owner.getMapId()));
         }
@@ -2934,6 +2966,16 @@ public final class RosterService {
             return;
         }
         portalFollow.entered(owner.getId(), map.getId(), at);
+        if (world.config().COMPANION_RESTOCK_ENABLED && world.config().companionRestockBossMap(map.getId())) {
+            int ownerId = owner.getId();
+            int mapId = map.getId();
+            world.executor().submit("companion.restock.boss_gate " + ownerId, () -> {
+                CompanionRestock restock = world.restock();
+                if (restock != null) {
+                    restock.bossGate(ownerId, mapId); // a companion short of potions says there is no shop here
+                }
+            });
+        }
         if (map.getEventInstance() != null) {
             return;
         }
@@ -3087,6 +3129,9 @@ public final class RosterService {
             offFollow.add(next.personaId());
         } else {
             offFollow.remove(next.personaId());
+        }
+        if (next.state() != RosterState.HOLD) {
+            holdSpots.remove(next.personaId());
         }
         return true;
     }

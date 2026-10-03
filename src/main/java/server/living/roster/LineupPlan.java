@@ -56,10 +56,18 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
     /**
      * One party member as the lineup shows it; a human has no owner (0), no persona and no record. {@code here}: it
      * stands at the entrance on the leader's channel (an extra waits beside the NPC then, else where it is).
-     * {@code runs} and {@code clears}: a companion's KPQ record (CompanionRunRecorder).
+     * {@code runs} and {@code clears}: a companion's KPQ record (CompanionRunRecorder). {@code errand}: what a
+     * companion on its way is doing (LakelisLines.AT_THE_STORE: gone for potions); null for a bench call and the rest.
      */
     public record Seat(int characterId, String name, int level, int jobId, String jobName, boolean human, int ownerId,
-                       String personaId, int mapId, boolean here, long etaMs, int runs, int clears) {
+                       String personaId, int mapId, boolean here, long etaMs, int runs, int clears, String errand) {
+        /** A seat on no errand. */
+        public Seat(int characterId, String name, int level, int jobId, String jobName, boolean human, int ownerId,
+                    String personaId, int mapId, boolean here, long etaMs, int runs, int clears) {
+            this(characterId, name, level, jobId, jobName, human, ownerId, personaId, mapId, here, etaMs, runs, clears,
+                    null);
+        }
+
         /** "cleared 2 of 3" once the companion has three runs on record (RECORD_RUNS); null before. */
         public String clearRecord() {
             return runs >= RECORD_RUNS ? "cleared " + clears + " of " + runs : null;
@@ -264,7 +272,10 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
                 + (bestDps > 0.0d ? Math.round(HITTING * member.dps() / bestDps) : 0L);
     }
 
-    /** Too few can go in: a companion that waits for potions says so (it is never sent in without), else the rule. */
+    /**
+     * Too few can go in: a companion that waits for potions says so (it is never sent in without), and that it cannot
+     * afford them when its own restock cannot; else the rule.
+     */
     private static String tooFew(List<Waiting> waiting) {
         for (Waiting member : waiting) {
             if (LakelisLines.LOW_ON_POTIONS.equals(member.reason())) {
@@ -272,6 +283,12 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             }
             if (LakelisLines.LOW_ON_MANA.equals(member.reason())) {
                 return LakelisLines.named(LakelisLines.LOW_ON_MANA_LINE, member.name());
+            }
+            if (LakelisLines.LOW_ON_POTIONS_BROKE.equals(member.reason())) {
+                return LakelisLines.named(LakelisLines.LOW_ON_POTIONS_BROKE_LINE, member.name());
+            }
+            if (LakelisLines.LOW_ON_MANA_BROKE.equals(member.reason())) {
+                return LakelisLines.named(LakelisLines.LOW_ON_MANA_BROKE_LINE, member.name());
             }
         }
         return LakelisLines.TOO_FEW;

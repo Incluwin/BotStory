@@ -5,13 +5,18 @@ import client.Job;
 import client.Skill;
 import client.Character.SkillEntry;
 import client.inventory.InventoryType;
+import client.inventory.Item;
+import client.inventory.WeaponType;
+import constants.inventory.EquipSlot;
 import constants.inventory.ItemConstants;
 import client.inventory.manipulator.InventoryManipulator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.ItemInformationProvider;
 import server.agents.capabilities.build.AgentCharacterShaper;
 import server.agents.capabilities.build.profiles.AgentSpBuildProfileService;
 import server.agents.capabilities.equipment.AgentEquipmentService;
+import server.agents.capabilities.equipment.AgentWeaponCompatibilityPolicy;
 import server.living.config.Content.ItemStack;
 import server.living.config.Content.Loadout;
 import server.living.config.Content.Persona;
@@ -136,6 +141,135 @@ public final class ResidentShaper {
     }
 
     private static final int SKILL_CONSUMABLE_STOCK = 50;
+    private static final short SHIELD = -10;
+    private static final short WEAPON = -11;
+
+    /**
+     * The loadout step of shaping for a character shaped before its loadout's equips were edited (the shaped version
+     * follows the loadout id, so an edit never reshapes): each authored piece it does not wear goes on when it can wear
+     * it and the slot is empty, holds something it cannot use (another class's weapon) or holds a lower-level piece. A
+     * citizen wears the copy it carries before it is given one; a {@code dressed} Resident is only given what it lacks
+     * and its weapon is left to the outfit when the outfit has one, since the wardrobe dresses those slots after this.
+     * Never leaves a new carried copy (no junk, nothing new for a citizen's stall) and never touches level, job, AP or
+     * skills. True when it wore anything (the character is then saved).
+     */
+    public static boolean wearMissingEquips(Character agent, Loadout loadout, boolean dressed) {
+        return agent != null && loadout != null && wearMissingEquips(agent, loadout, dressed, new WzItemRules());
+    }
+
+    static boolean wearMissingEquips(Character agent, Loadout loadout, boolean dressed, ItemRules items) {
+        boolean wardrobeWeapon = dressed && !loadout.outfit().getOrDefault("weapon", List.of()).isEmpty();
+        boolean changed = false;
+        for (int equipId : loadout.equipIds()) {
+            boolean carried = agent.getInventory(InventoryType.EQUIP).countById(equipId) > 0;
+            if (agent.getInventory(InventoryType.EQUIPPED).countById(equipId) > 0 || carried && dressed) {
+                continue; // worn, or taken off by the wardrobe for the Resident's look
+            }
+            short slot = items.slot(equipId);
+            if (slot >= 0 || slot == WEAPON && wardrobeWeapon || !beats(agent, items, equipId, slot)) {
+                continue;
+            }
+            if (!carried && (agent.getInventory(InventoryType.EQUIP).isFull()
+                    || !InventoryManipulator.addById(agent.getClient(), equipId, (short) 1))) {
+                continue;
+            }
+            if (AgentEquipmentService.equipInSlot(agent, equipId, slot)) {
+                changed = true;
+                if (slot == WEAPON) {
+                    stockAmmo(agent, loadout); // a crossbow worn without its bolts could not attack at all
+                }
+            } else if (!carried) {
+                removeOne(agent, equipId);
+            }
+        }
+        if (changed) {
+            agent.saveCharToDB();
+        }
+        return changed;
+    }
+
+    /** It can use the piece in the slot, and the slot is empty, unusable to it or holds a lower-level piece. */
+    private static boolean beats(Character agent, ItemRules items, int itemId, short slot) {
+        if (!usable(agent, items, itemId, slot)) {
+            return false;
+        }
+        Item weapon = agent.getInventory(InventoryType.EQUIPPED).getItem(WEAPON);
+        if (slot == SHIELD && weapon != null && items.twoHanded(weapon.getItemId())) {
+            return false; // the shield would push the two-handed weapon off
+        }
+        Item worn = agent.getInventory(InventoryType.EQUIPPED).getItem(slot);
+        return worn == null || !usable(agent, items, worn.getItemId(), slot)
+                || items.reqLevel(worn.getItemId()) < items.reqLevel(itemId);
+    }
+
+    private static boolean usable(Character agent, ItemRules items, int itemId, short slot) {
+        return items.meetsRequirements(agent, itemId)
+                && (slot != WEAPON || AgentWeaponCompatibilityPolicy.isWeaponCompatible(agent, items.weaponType(itemId)));
+    }
+
+    /** The loadout's arrows, stars or bullets it holds none of; only with a newly worn weapon, so once per edit. */
+    private static void stockAmmo(Character agent, Loadout loadout) {
+        for (ItemStack stack : loadout.consumables()) {
+            int itemId = stack.itemId();
+            if ((ItemConstants.isArrow(itemId) || ItemConstants.isThrowingStar(itemId) || ItemConstants.isBullet(itemId))
+                    && agent.getInventory(InventoryType.USE).countById(itemId) == 0) {
+                InventoryManipulator.addById(agent.getClient(), itemId, (short) Math.min(stack.count(), Short.MAX_VALUE));
+            }
+        }
+    }
+
+    /** The item facts {@link #wearMissingEquips} reads; an interface because ItemInformationProvider needs the DB to load. */
+    interface ItemRules {
+        /** The equipped slot it goes in (-1 hat ... -11 weapon); 0 for none or a cash item. */
+        short slot(int itemId);
+
+        int reqLevel(int itemId);
+
+        /** The game's own read-only check: the job mask (bots), level and main stat. */
+        boolean meetsRequirements(Character agent, int itemId);
+
+        WeaponType weaponType(int itemId);
+
+        boolean twoHanded(int itemId);
+    }
+
+    private static final class WzItemRules implements ItemRules {
+        private final ItemInformationProvider ii = ItemInformationProvider.getInstance();
+
+        @Override
+        public short slot(int itemId) {
+            return ii.isCash(itemId) ? 0 : (short) EquipSlot.getFromTextSlot(ii.getEquipmentSlot(itemId)).getPrimarySlot();
+        }
+
+        @Override
+        public int reqLevel(int itemId) {
+            return ii.getEquipLevelReq(itemId);
+        }
+
+        @Override
+        public boolean meetsRequirements(Character agent, int itemId) {
+            return ii.meetsEquipRequirements(agent, itemId);
+        }
+
+        @Override
+        public WeaponType weaponType(int itemId) {
+            return ii.getWeaponType(itemId);
+        }
+
+        @Override
+        public boolean twoHanded(int itemId) {
+            return ii.isTwoHanded(itemId);
+        }
+    }
+
+    private static void removeOne(Character agent, int itemId) {
+        for (Item item : agent.getInventory(InventoryType.EQUIP).list()) {
+            if (item.getItemId() == itemId) {
+                InventoryManipulator.removeFromSlot(agent.getClient(), InventoryType.EQUIP, item.getPosition(), (short) 1, false);
+                return;
+            }
+        }
+    }
 
     /** BEGINNER -> first job -> ... -> the authored job; see AgentCharacterShaper. */
     public static List<Job> advancementChain(Job target) {

@@ -1,5 +1,6 @@
 package server.living.roster;
 
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import client.BuffStat;
 import client.Character;
 import client.Job;
@@ -105,7 +106,7 @@ class LineupPlanTest {
         fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
         fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);
         fx.companion("casse", "Casse", 903, 25, Job.BANDIT);
-        fx.potions.put(903, CompanionPartyQuestService.KPQ_MIN_HP_POTIONS - 1); // live: 586 meso and no HP potions
+        fx.potions.put(903, standard().hp() - 1); // live: 586 meso and no HP potions
 
         LineupPlan plan = fx.ready().plan(game.ann, "kpq");
 
@@ -126,7 +127,7 @@ class LineupPlanTest {
         fx.companion("b24", "Mira", 901, 24, Job.HUNTER);
         fx.companion("c26", "Pip", 902, 26, Job.FP_WIZARD);
         fx.companion("rurik", "Rurik", 903, 25, Job.FIGHTER);
-        fx.manaPotions.put(903, CompanionPartyQuestService.kpqMinMpPotions() - 1); // live: none sold inside the run
+        fx.manaPotions.put(903, standard().mp() - 1); // live: none sold inside the run
 
         LineupPlan plan = fx.ready().plan(game.ann, "kpq");
 
@@ -148,7 +149,7 @@ class LineupPlanTest {
 
         assertEquals(List.of(new LineupPlan.Waiting(903, "Rurik", "low on mana potions")), plan.waiting());
 
-        fx.manaPotions.put(903, AgentRuntimeConfig.cfg.POT_STOP + CompanionPartyQuestService.KPQ_MP_POTIONS_PER_RUN);
+        fx.manaPotions.put(903, standard().mp());
         assertEquals(List.of(), fx.service.plan(game.ann, "kpq").waiting(), "a run's worth above that goes in");
     }
 
@@ -506,5 +507,10 @@ class LineupPlanTest {
 
     private static LineupPlan.Candidate waits(LineupPlan.Seat seat) {
         return new LineupPlan.Candidate(seat, LineupPlan.Fit.WAITS, "bags full", false);
+    }
+
+    /** The Agents' party-quest potion standard, which the lineup counts against (AgentSupplyReadiness). */
+    private static AgentSupplyReadiness.Standard standard() {
+        return AgentSupplyReadiness.standard(AgentSupplyReadiness.Activity.PARTY_QUEST);
     }
 }

@@ -1,6 +1,7 @@
 package server.living.resident;
 
 import client.Character;
+import client.Job;
 import client.inventory.Equip;
 import client.inventory.InventoryType;
 import client.inventory.Item;
@@ -9,13 +10,18 @@ import constants.inventory.ItemConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.ItemInformationProvider;
+import server.agents.capabilities.build.AgentStarterItemGrant;
+import server.agents.capabilities.build.AgentStarterKitCatalog;
 import server.agents.capabilities.equipment.AgentEquipmentService;
+import server.agents.capabilities.equipment.AgentWeaponCompatibilityPolicy;
 import server.living.config.Content.Loadout;
 import server.living.config.Content.Persona;
 import server.living.config.LivingContent;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +34,12 @@ import java.util.Set;
  * id and wears the first entry it can: the right gender and the game's own job/level/stat check.
  * Cash items go into the cosmetic cash slots over the real gear; 0 means nothing in that slot
  * (bare head, no gloves, no cape); an overall as the top leaves the bottom empty. A weapon from the
- * pool replaces the Resident's other weapons: the Agent gear optimizer would re-equip whichever hits
- * harder (the starter sword over a mop). Idempotent: a Resident already wearing its picks is left alone. A slot its own
- * quest gear takes (ResidentKit) keeps that piece: only a cash item still goes over it.
+ * pool must also suit the Resident's branch (a Fighter never takes a mace), and it replaces the other
+ * weapons the living world handed out (loadouts, outfit pools, first-job starter kits): the Agent gear
+ * optimizer would re-equip whichever hits harder (the starter sword over a mop). A weapon the Resident
+ * earned as a companion is never removed, nor its own quest gear (ResidentKit), a scrolled, tagged or
+ * untradeable piece, or what its contract lets it keep. Idempotent: a Resident already wearing its picks
+ * is left alone. A slot its own quest gear takes keeps that piece: only a cash item still goes over it.
  */
 final class ResidentWardrobe {
     private static final Logger log = LoggerFactory.getLogger(ResidentWardrobe.class);
@@ -50,19 +59,23 @@ final class ResidentWardrobe {
     private ResidentWardrobe() {
     }
 
-    /** Returns true when anything was changed (the character is then saved); a hired citizen keeps its own gear. */
+    /** {@link #dress(Character, Persona, Loadout, Set, Set, Set)} with only this loadout's weapons and the starter kits as handed out. */
     static boolean dress(Character agent, Persona persona, Loadout loadout) {
-        return dress(agent, persona, loadout, Set.of(), Set.of());
+        return dress(agent, persona, loadout, Set.of(), Set.of(), null);
     }
 
     /**
-     * As {@link #dress(Character, Persona, Loadout)}, leaving the regular items of the {@code kitSlots} to ResidentKit and
-     * never sweeping away the {@code kept} items (what its contract lets it keep).
+     * Returns true when anything was changed (the character is then saved); a hired citizen keeps its own gear.
+     * {@code handedOut} ({@link #handedOut}) are the weapons an outfit weapon may replace; null means this loadout's.
+     * The regular items of the {@code kitSlots} are left to ResidentKit, and the {@code kept} items (what its contract
+     * lets it keep) are never swept away.
      */
-    static boolean dress(Character agent, Persona persona, Loadout loadout, Set<Short> kitSlots, Set<Integer> kept) {
+    static boolean dress(Character agent, Persona persona, Loadout loadout, Set<Short> kitSlots, Set<Integer> kept,
+                         Set<Integer> handedOut) {
         if (agent == null || loadout == null || loadout.outfit().isEmpty() || LivingContent.isHire(persona.id())) {
             return false;
         }
+        Set<Integer> replaceable = handedOut != null ? handedOut : handedOut(List.of(loadout));
         boolean changed = false;
         boolean overall = false;
         for (Map.Entry<String, Short> slot : SLOTS.entrySet()) {
@@ -81,7 +94,7 @@ final class ResidentWardrobe {
             }
             changed |= wear(agent, position, pick);
             if (slot.getKey().equals("weapon") && pick > 0 && isWorn(agent, position, pick)) {
-                changed |= dropOtherWeapons(agent, pick, pool, kept);
+                changed |= dropOtherWeapons(agent, pick, replaceable, kept);
             }
             if (slot.getKey().equals("top")) {
                 overall = pick > 0 && ItemConstants.isOverall(pick);
@@ -113,8 +126,32 @@ final class ResidentWardrobe {
         }
         ItemInformationProvider ii = ItemInformationProvider.getInstance();
         Item item = ii.getEquipById(itemId);
-        short target = ii.isCash(itemId) ? (short) (position - 100) : position;
-        return item instanceof Equip equip && ii.canWearEquipment(agent, equip, target);
+        boolean cash = ii.isCash(itemId);
+        short target = cash ? (short) (position - 100) : position;
+        return item instanceof Equip equip && ii.canWearEquipment(agent, equip, target)
+                && (position != SLOTS.get("weapon") || cash
+                    || AgentWeaponCompatibilityPolicy.isWeaponCompatible(agent, ii.getWeaponType(itemId)));
+    }
+
+    /** The weapons the living world hands out: every loadout's equips and outfit weapons, and the first-job starter kits. */
+    static Set<Integer> handedOut(Collection<Loadout> loadouts) {
+        Set<Integer> ids = new HashSet<>();
+        for (Loadout loadout : loadouts) {
+            ids.addAll(loadout.equipIds());
+            ids.addAll(loadout.outfit().getOrDefault("weapon", List.of()));
+        }
+        for (Job job : List.of(Job.WARRIOR, Job.MAGICIAN, Job.BOWMAN, Job.THIEF, Job.PIRATE)) {
+            for (AgentStarterItemGrant grant : AgentStarterKitCatalog.firstJobKitFor(job)) {
+                ids.add(grant.itemId());
+            }
+        }
+        ids.removeIf(id -> !ItemConstants.isWeapon(id));
+        return ids;
+    }
+
+    /** An outfit weapon replaces a handed-out weapon, never one the Resident earned (looted, bought, traded). */
+    static boolean replaces(int weaponId, int keep, Set<Integer> handedOut) {
+        return weaponId != keep && handedOut.contains(weaponId);
     }
 
     /** Puts the item (0 = nothing) in the slot; a regular item also clears a cash item that would cover it. */
@@ -146,17 +183,17 @@ final class ResidentWardrobe {
     }
 
     /**
-     * Its other weapons from the same pool leave its bag (the Agent gear optimizer would switch back to whichever hits
-     * harder). A piece with an owner tag (its own quest gear, someone's gift), an untradeable or scrolled piece (pool
-     * weapons are made plain), a weapon from outside the pool (a gift, loot) and what its contract lets it keep all stay.
+     * The other weapons the living world handed it leave its bag (the Agent gear optimizer would switch back to
+     * whichever hits harder). A weapon it earned (looted, bought, traded), a piece with an owner tag (its own quest
+     * gear, someone's gift), an untradeable or scrolled piece (handed-out weapons are plain) and what its contract lets
+     * it keep all stay.
      */
-    private static boolean dropOtherWeapons(Character agent, int keep, List<Integer> pool, Set<Integer> kept) {
+    private static boolean dropOtherWeapons(Character agent, int keep, Set<Integer> handedOut, Set<Integer> kept) {
         boolean changed = false;
         for (Item item : new ArrayList<>(agent.getInventory(InventoryType.EQUIP).list())) {
-            int id = item.getItemId();
             boolean tagged = item.getOwner() != null && !item.getOwner().isEmpty();
             boolean untradeable = (item.getFlag() & ItemConstants.UNTRADEABLE) != 0;
-            if (ItemConstants.isWeapon(id) && id != keep && pool.contains(id) && !kept.contains(id) && !tagged && !untradeable
+            if (replaces(item.getItemId(), keep, handedOut) && !kept.contains(item.getItemId()) && !tagged && !untradeable
                     && ResidentKit.scrolls(item) == 0) {
                 InventoryManipulator.removeFromSlot(agent.getClient(), InventoryType.EQUIP, item.getPosition(), item.getQuantity(), false);
                 changed = true;

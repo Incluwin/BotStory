@@ -25,15 +25,15 @@ careers:
     levelCap: 70
     loadouts:
       - { maxLevel: 9, loadout: beginner-townsfolk }
-      - { maxLevel: 29, loadout: sailor-cutlass }
-      - { maxLevel: 200, loadout: sleepywood-guide-l40 }
+      - { maxLevel: 29, loadout: dock-worker }
+      - { maxLevel: 200, loadout: perion-warrior-l30 }
   - id: magician-fire
     job: FP_WIZARD
     popularity: 10
     levelCap: 80
     loadouts:
       - { maxLevel: 7, loadout: beginner-townsfolk }
-      - { maxLevel: 29, loadout: ellinia-mage-l22 }
+      - { maxLevel: 29, loadout: ellinia-apprentice-l8 }
       - { maxLevel: 200, loadout: ellinia-mage-l30 }
   - id: magician-ice
     job: IL_WIZARD
@@ -41,7 +41,7 @@ careers:
     levelCap: 80
     loadouts:
       - { maxLevel: 7, loadout: beginner-townsfolk }
-      - { maxLevel: 29, loadout: ellinia-mage-l22 }
+      - { maxLevel: 29, loadout: ellinia-apprentice-l8 }
       - { maxLevel: 200, loadout: ellinia-mage-l30 }
   - id: magician-cleric
     job: CLERIC
@@ -49,7 +49,7 @@ careers:
     levelCap: 85
     loadouts:
       - { maxLevel: 7, loadout: beginner-townsfolk }
-      - { maxLevel: 29, loadout: ellinia-mage-l22 }
+      - { maxLevel: 29, loadout: ellinia-apprentice-l8 }
       - { maxLevel: 200, loadout: cleric-l32 }
   - id: bowman-hunter
     job: HUNTER
@@ -57,7 +57,7 @@ careers:
     levelCap: 75
     loadouts:
       - { maxLevel: 9, loadout: beginner-townsfolk }
-      - { maxLevel: 29, loadout: hunter-bowman-l25 }
+      - { maxLevel: 29, loadout: henesys-archer-l10 }
       - { maxLevel: 200, loadout: hunter-bowman-l35 }
   - id: bowman-crossbow
     job: CROSSBOWMAN
@@ -65,15 +65,15 @@ careers:
     levelCap: 70
     loadouts:
       - { maxLevel: 9, loadout: beginner-townsfolk }
-      - { maxLevel: 29, loadout: hunter-bowman-l25 }
-      - { maxLevel: 200, loadout: hunter-bowman-l35 }
+      - { maxLevel: 29, loadout: henesys-archer-l10 }
+      - { maxLevel: 200, loadout: henesys-crossbow-l30 }
   - id: thief-assassin
     job: ASSASSIN
     popularity: 12
     levelCap: 80
     loadouts:
       - { maxLevel: 9, loadout: beginner-townsfolk }
-      - { maxLevel: 29, loadout: kerning-thief-l28 }
+      - { maxLevel: 29, loadout: kerning-rogue-l10 }
       - { maxLevel: 200, loadout: kerning-thief-l35 }
   - id: thief-bandit
     job: BANDIT
@@ -81,14 +81,15 @@ careers:
     levelCap: 75
     loadouts:
       - { maxLevel: 9, loadout: beginner-townsfolk }
-      - { maxLevel: 29, loadout: kerning-thief-l28 }
-      - { maxLevel: 200, loadout: kerning-thief-l35 }
+      - { maxLevel: 29, loadout: kerning-rogue-l10 }
+      - { maxLevel: 200, loadout: kerning-bandit-l30 }
   - id: pirate-brawler
     job: BRAWLER
     popularity: 4
     levelCap: 70
     loadouts:
       - { maxLevel: 9, loadout: beginner-townsfolk }
+      - { maxLevel: 29, loadout: nautilus-deckhand-l10 }
       - { maxLevel: 200, loadout: nautilus-pirate-l30 }
   - id: pirate-gunslinger
     job: GUNSLINGER
@@ -96,4 +97,5 @@ careers:
     levelCap: 70
     loadouts:
       - { maxLevel: 9, loadout: beginner-townsfolk }
-      - { maxLevel: 200, loadout: nautilus-gunslinger-l28 }
+      - { maxLevel: 29, loadout: nautilus-deckhand-l10 }
+      - { maxLevel: 200, loadout: nautilus-gunslinger-l30 }

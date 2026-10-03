@@ -15,13 +15,15 @@ import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.capabilities.supplies.AgentPotionService;
+import server.agents.capabilities.supplies.AgentSupplyProcurementRuntime;
 
 import java.awt.Point;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Agent-owned movement chat facade. Live identity and reply delivery remain
- * explicit integration seams.
+ * explicit integration seams. An owner's movement order also calls an Agent back from a
+ * readiness restock trip under way (AgentSupplyProcurementRuntime.ownerCalledBack): the order wins.
  */
 public final class AgentMovementRuntime {
     private AgentMovementRuntime() {
@@ -45,6 +47,7 @@ public final class AgentMovementRuntime {
                 }
                 AgentSchedulerRuntime.afterRandomDelay(entry, 1000, 1500, () -> {
                     AgentMovementStatusRuntime.prepareMovementActiveMode(entry);
+                    AgentSupplyProcurementRuntime.ownerCalledBack(entry, false);
                     AgentMovementCommandRuntime.farmHere(entry, dest);
                     AgentDialogueTransportRuntime.replyNow(entry, AgentChatMovementFlow.moveHereReply());
                 });
@@ -60,6 +63,7 @@ public final class AgentMovementRuntime {
                 }
                 AgentSchedulerRuntime.afterRandomDelay(entry, 1000, 1500, () -> {
                     AgentMovementStatusRuntime.prepareMovementActiveMode(entry);
+                    AgentSupplyProcurementRuntime.ownerCalledBack(entry, false);
                     AgentMovementCommandRuntime.patrol(entry, ownerPos);
                     AgentDialogueTransportRuntime.replyNow(entry, AgentChatMovementFlow.moveHereReply());
                 });
@@ -74,6 +78,7 @@ public final class AgentMovementRuntime {
                     return false;
                 }
                 AgentSchedulerRuntime.afterRandomDelay(entry, 1000, 1500, () -> {
+                    AgentSupplyProcurementRuntime.ownerCalledBack(entry, false);
                     AgentMovementCommandRuntime.moveTo(entry, dest, true);
                     AgentDialogueTransportRuntime.replyNow(entry, AgentChatMovementFlow.moveHereReply());
                 });
@@ -89,8 +94,10 @@ public final class AgentMovementRuntime {
                             entry,
                             bot(entry),
                             AgentInventoryGatewayRuntime.inventory());
-                    AgentSchedulerRuntime.afterRandomDelay(entry, 250, 750,
-                            () -> AgentMovementCommandRuntime.followConfiguredTarget(entry));
+                    AgentSchedulerRuntime.afterRandomDelay(entry, 250, 750, () -> {
+                        AgentSupplyProcurementRuntime.ownerCalledBack(entry, true);
+                        AgentMovementCommandRuntime.followConfiguredTarget(entry);
+                    });
                 });
             }
 
@@ -100,6 +107,7 @@ public final class AgentMovementRuntime {
                     AgentMovementStatusRuntime.prepareMovementActiveMode(entry);
                     AgentDialogueTransportRuntime.replyNow(entry, AgentPotionService.grindStartMessage(bot(entry)));
                     AgentSchedulerRuntime.afterRandomDelay(entry, 250, 750, () -> {
+                        AgentSupplyProcurementRuntime.ownerCalledBack(entry, false);
                         AgentMovementCommandRuntime.grind(entry);
                         AgentMovementStatusRuntime.checkMovementStatus(entry, bot(entry));
                     });
@@ -109,6 +117,7 @@ public final class AgentMovementRuntime {
             @Override
             public void stop() {
                 AgentSchedulerRuntime.afterRandomDelay(entry, 900, 1100, () -> {
+                    AgentSupplyProcurementRuntime.ownerCalledBack(entry, false);
                     AgentMovementCommandRuntime.stop(entry);
                     AgentActiveModeRuntime.autoEquipAndSuggestGearToSiblings(entry);
                     AgentSchedulerRuntime.afterRandomDelay(entry, 1400, 1600, () ->

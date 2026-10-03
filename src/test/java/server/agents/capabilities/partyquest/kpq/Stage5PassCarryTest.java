@@ -952,9 +952,9 @@ class Stage5PassCarryTest {
                     log.startingWith("KPQ Stage 5 hand-over start: "));
             assertEquals(List.of(
                             "KPQ pass drop: session=" + id + " stage=5 agent=Mira reason=beside passes=6 dx=8 dy=0 "
-                                    + "sameFoothold=true leaderFooting=GROUND landed=none",
+                                    + "sameFoothold=true leaderFooting=GROUND spot=feet predicted=? landed=none",
                             "KPQ pass drop: session=" + id + " stage=5 agent=Pip reason=beside passes=4 dx=-8 dy=0 "
-                                    + "sameFoothold=true leaderFooting=GROUND landed=none"),
+                                    + "sameFoothold=true leaderFooting=GROUND spot=feet predicted=? landed=none"),
                     log.startingWith("KPQ pass drop: "));
             assertEquals(List.of("KPQ pass pickup: session=" + id + " stage=5 leader=Ben delta=10 held=10 "
                             + "sinceDropMs=1500"),
