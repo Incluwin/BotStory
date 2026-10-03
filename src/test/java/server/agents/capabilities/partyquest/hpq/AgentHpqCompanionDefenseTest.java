@@ -236,6 +236,26 @@ class AgentHpqCompanionDefenseTest {
     }
 
     @Test
+    void aStackLeftByACompanionSinceTakenOutOfTheRunIsStillNudgedAboutAndPickedBackUp() {
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(-183, -188));
+        // Pip left its cakes before it went down, revived outside, was tapped out and ejected.
+        MapItem stack = run.drop(CAKE, new Point(-150, -188), true, pip.getId(), 10_000L);
+        AgentHpqSession session = defending();
+        session.removeMember(pip.getId());
+        AgentHpqSessionRegistry.unindexMember(session, pip.getId());
+        run.leaveParty(pip);
+
+        AgentHpqCoordinator.tick(session, 50_000L);
+        run.said(session, "cakes-nudge-" + stack.getObjectId(), mira,
+                "Ben, the cakes are still lying there. growlie's down where we came in.");
+
+        AgentHpqCoordinator.tick(session, 160_000L);
+        run.loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(run.entry(mira), stack));
+        assertTrue(AgentHpqSessionRegistry.canLootRiceCake(mira, stack), "its re-collect is due");
+    }
+
+    @Test
     void aCollectorAboutToGoDownLeavesItsCakesAndTheNextCompanionCollects() {
         run.dropsSucceed();
         run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);

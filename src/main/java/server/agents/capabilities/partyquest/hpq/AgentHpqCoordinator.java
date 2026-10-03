@@ -1235,15 +1235,15 @@ final class AgentHpqCoordinator {
                 .toList();
     }
 
-    /** Stacks the run's companions dropped (hand-overs, or one left before going down) still lying on the floor. */
+    /**
+     * Stacks the run's companions dropped (hand-overs, or one left before going down) still lying on the floor,
+     * including those of a companion since taken out of the run (one that left its cakes, went down and was tapped out).
+     */
     private static List<MapItem> lyingStacks(AgentHpqSession session, Collection<MapItem> drops) {
         return drops.stream()
                 .filter(drop -> drop != null && drop.isPlayerDrop() && !drop.isPickedUp()
                         && drop.getItemId() == AgentHpqDefinition.RICE_CAKE)
-                .filter(drop -> {
-                    AgentHpqMemberState owner = session.member(drop.getOwnerId());
-                    return owner != null && owner.memberType() == AgentHpqMemberState.MemberType.AGENT;
-                })
+                .filter(drop -> session.companionOfRun(drop.getOwnerId()))
                 .toList();
     }
 

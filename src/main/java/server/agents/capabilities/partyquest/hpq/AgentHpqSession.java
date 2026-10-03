@@ -31,6 +31,7 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
     private final int requestedPartySize;
     private final long startedAtMs;
     private final Map<Integer, AgentHpqMemberState> members = new LinkedHashMap<>();
+    private final Set<Integer> companionIds = new HashSet<>();
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -93,8 +94,15 @@ public final class AgentHpqSession implements AgentCompanionRunSession {
         if (members.size() >= requestedPartySize && !members.containsKey(characterId)) {
             throw new IllegalStateException("HPQ session is full");
         }
-        members.computeIfAbsent(characterId, id -> new AgentHpqMemberState(id, type));
+        AgentHpqMemberState member = members.computeIfAbsent(characterId, id -> new AgentHpqMemberState(id, type));
+        if (member.memberType() == AgentHpqMemberState.MemberType.AGENT) companionIds.add(characterId);
     }
+
+    /**
+     * A companion that has been a member of this run, also after it was taken out of it (removeMember): the cake
+     * stacks it dropped stay the run's to nudge about and pick back up.
+     */
+    public synchronized boolean companionOfRun(int characterId) { return companionIds.contains(characterId); }
 
     public synchronized void removeMember(int characterId) {
         members.remove(characterId);
