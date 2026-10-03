@@ -14,6 +14,8 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.balrog.AgentBalrogDefinition;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogRewardGracePolicy;
 import server.agents.capabilities.expedition.balrog.AgentEasyBalrogRewardClaimRegistry;
+import server.agents.capabilities.partyquest.hpq.AgentHpqDefinition;
+import server.agents.capabilities.partyquest.hpq.AgentHpqSessionRegistry;
 
 import java.awt.*;
 import java.util.List;
@@ -228,6 +230,23 @@ class AgentLootEligibilityTest {
         doReturn(drop).when(map).getMapObject(1);
 
         assertFalse(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, System.currentTimeMillis()));
+    }
+
+    /** HPQ decides a rice cake by the drop itself, so a companion-run collector can leave a hand-over lying. */
+    @Test
+    void aRiceCakeIsDecidedByHpqWithTheDropInHand() {
+        Character bot = mock(Character.class);
+        when(bot.getId()).thenReturn(88);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, mock(Character.class), null);
+        MapItem cake = mockLoot(1, 77, true, System.currentTimeMillis() - 16_000L);
+        when(cake.getItemId()).thenReturn(AgentHpqDefinition.RICE_CAKE);
+        when(cake.getMeso()).thenReturn(0);
+        try (MockedStatic<AgentHpqSessionRegistry> hpq = mockStatic(AgentHpqSessionRegistry.class)) {
+            hpq.when(() -> AgentHpqSessionRegistry.canLootRiceCake(bot, cake)).thenReturn(false);
+
+            assertFalse(AgentLootEligibility.canBotReceiveAssignedLoot(entry, bot, cake));
+            hpq.verify(() -> AgentHpqSessionRegistry.canLootRiceCake(bot, cake));
+        }
     }
 
     private static MapItem mockLoot(int objectId, int ownerId, boolean playerDrop, long dropTime) {

@@ -25,6 +25,12 @@ class AgentPartyQuestCatalogTimerTest {
     }
 
     @Test
+    void hpqsTimerIsHenesysPqsEventTime() throws Exception {
+        assertEquals(scriptTimerMs("HenesysPQ"), AgentPartyQuestCatalog.require("hpq").eventTimerMs());
+        assertEquals(600_000L, AgentPartyQuestCatalog.require("hpq").eventTimerMs());
+    }
+
+    @Test
     void everyRecordedTimerMatchesItsScriptAndTheRestAreUnknown() throws Exception {
         for (AgentPartyQuestDefinition definition : AgentPartyQuestCatalog.definitions()) {
             if (definition.eventTimerMs() != 0L) {

@@ -91,7 +91,7 @@ public final class AgentLootEligibility {
             return false;
         }
         if (itemId == HPQ_RICE_CAKE
-                && !AgentHpqSessionRegistry.canLootRiceCake(bot)) {
+                && !AgentHpqSessionRegistry.canLootRiceCake(bot, drop)) {
             return false;
         }
         if ((itemId == AgentLpqDefinition.PASS || itemId == AgentLpqDefinition.BOSS_KEY)
