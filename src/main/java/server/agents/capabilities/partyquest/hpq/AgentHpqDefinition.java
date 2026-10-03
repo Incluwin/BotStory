@@ -36,10 +36,20 @@ public final class AgentHpqDefinition {
     /** HenesysPQ.js minPlayers: an instance with fewer members ends. */
     public static final int MINIMUM_PARTY_SIZE = 3;
     /**
-     * A dropped rice cake lies 180 s (config.yaml ITEM_EXPIRE_TIME) and goes on the next 10 s expiry sweep after that;
-     * a stack left lying is picked back up no later than this, so the walk to it still ends before it can vanish.
+     * The latest a stack left lying is picked back up under the shipped config.yaml (ITEM_EXPIRE_TIME 180000,
+     * ITEM_EXPIRE_CHECK 10000); only used when the server's configuration cannot be read. The live clamp is
+     * {@link #riceCakeRecollectLatestMs} of the running server's values.
      */
     public static final long RICE_CAKE_RECOLLECT_LATEST_MS = 170_000L;
+
+    /**
+     * The latest a stack left lying is picked back up: a dropped item lies ITEM_EXPIRE_TIME and goes on the next
+     * ITEM_EXPIRE_CHECK sweep after that, so one sweep's length before its expiry still leaves the walk to it time to
+     * end before it can vanish.
+     */
+    public static long riceCakeRecollectLatestMs(long itemExpireTimeMs, long itemExpireCheckMs) {
+        return Math.max(0L, itemExpireTimeMs - Math.max(0L, itemExpireCheckMs));
+    }
 
     /**
      * The six moonflower pads by where they lie, as a companion names them to a player: each reads on after "that

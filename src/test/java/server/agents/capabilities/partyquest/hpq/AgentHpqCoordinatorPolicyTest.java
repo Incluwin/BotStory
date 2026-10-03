@@ -26,6 +26,19 @@ import static org.mockito.Mockito.when;
 
 class AgentHpqCoordinatorPolicyTest {
     @Test
+    void theRecollectClampFollowsTheServersItemExpiry() {
+        config.ServerConfig shorter = new config.ServerConfig();
+        shorter.ITEM_EXPIRE_TIME = 120_000;
+        shorter.ITEM_EXPIRE_CHECK = 10_000;
+        assertEquals(110_000L, AgentHpqCoordinator.recollectLatestMs(shorter));
+        assertEquals(AgentHpqDefinition.RICE_CAKE_RECOLLECT_LATEST_MS, AgentHpqCoordinator.recollectLatestMs(null),
+                "no server config read: the shipped default");
+        assertEquals(AgentHpqDefinition.RICE_CAKE_RECOLLECT_LATEST_MS,
+                AgentHpqCoordinator.recollectLatestMs(config.YamlConfig.config.server),
+                "the default matches the shipped config.yaml");
+    }
+
+    @Test
     void hpqCoordinatorDoesNotUseTheFullMapPartyQuestLootVacuum() throws IOException {
         String source = Files.readString(Path.of("src", "main", "java", "server", "agents",
                 "capabilities", "partyquest", "hpq", "AgentHpqCoordinator.java"));

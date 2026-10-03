@@ -1253,7 +1253,8 @@ final class AgentHpqCoordinator {
 
     /**
      * Stacks the run's companions dropped (hand-overs, or one left before going down) still lying on the floor,
-     * including those of a companion since taken out of the run (one that left its cakes, went down and was tapped out).
+     * including those of a companion since taken out of the run (one that left its cakes, went down and was tapped
+     * out).
      */
     private static List<MapItem> lyingStacks(AgentHpqSession session, Collection<MapItem> drops) {
         return drops.stream()
@@ -1894,15 +1895,25 @@ final class AgentHpqCoordinator {
         session.transition(phase, nowMs);
     }
 
-    /** CAKE_RECOLLECT_MS, clamped (with one WARN) below the rice cakes' expiry margin. */
+    /** CAKE_RECOLLECT_MS, clamped (with one WARN) below the rice cakes' expiry margin on this server. */
     private static long recollectAfterMs(long configuredMs) {
-        long clamped = AgentHpqCompanionPlay.recollectAfterMs(
-                configuredMs, AgentHpqDefinition.RICE_CAKE_RECOLLECT_LATEST_MS);
+        config.ServerConfig server = config.YamlConfig.config == null ? null : config.YamlConfig.config.server;
+        long clamped = AgentHpqCompanionPlay.recollectAfterMs(configuredMs, recollectLatestMs(server));
         if (clamped != configuredMs) {
             log.warn("HPQ CAKE_RECOLLECT_MS {} would let a stack expire before it is picked back up; using {}",
                     configuredMs, clamped);
         }
         return clamped;
+    }
+
+    /**
+     * The latest re-collect from the server's own item expiry (config.yaml ITEM_EXPIRE_TIME and ITEM_EXPIRE_CHECK,
+     * which MapleMap uses), so an operator's shorter expiry still leaves the walk time; the shipped default without
+     * one.
+     */
+    static long recollectLatestMs(config.ServerConfig server) {
+        if (server == null || server.ITEM_EXPIRE_TIME <= 0) return AgentHpqDefinition.RICE_CAKE_RECOLLECT_LATEST_MS;
+        return AgentHpqDefinition.riceCakeRecollectLatestMs(server.ITEM_EXPIRE_TIME, server.ITEM_EXPIRE_CHECK);
     }
 
     private static int eventStage(Character character) {

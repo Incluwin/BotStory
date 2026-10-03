@@ -262,6 +262,9 @@ class AgentHpqCompanionPlayTest {
     @Test
     void theRecollectNeverWaitsPastTheCakesExpiryMargin() {
         assertEquals(170_000L, AgentHpqDefinition.RICE_CAKE_RECOLLECT_LATEST_MS);
+        assertEquals(170_000L, AgentHpqDefinition.riceCakeRecollectLatestMs(180_000L, 10_000L));
+        assertEquals(110_000L, AgentHpqDefinition.riceCakeRecollectLatestMs(120_000L, 10_000L), "a shorter expiry");
+        assertEquals(0L, AgentHpqDefinition.riceCakeRecollectLatestMs(5_000L, 10_000L));
         assertEquals(150_000L, AgentHpqCompanionPlay.recollectAfterMs(150_000L, 170_000L));
         assertEquals(170_000L, AgentHpqCompanionPlay.recollectAfterMs(175_000L, 170_000L));
     }

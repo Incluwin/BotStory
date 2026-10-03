@@ -838,9 +838,9 @@ tuning:
     # Purpose: Reminds the leader once about a cake stack a companion dropped for him that is still lying on the floor.
     # Technical: The C7 line is said once per stack (keyed by its map object id) when a companion-dropped rice cake stack has lain this long since its drop time. Companion runs only.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_PICKUP_NUDGE_MS: '40000'
-    # Values: 60000-170000 milliseconds; a higher value is read as 170000, with one WARN. Recommended: 150000.
+    # Values: 60000-170000 milliseconds with the shipped item expiry; a value past config.yaml ITEM_EXPIRE_TIME minus ITEM_EXPIRE_CHECK is read as that, with one WARN. Recommended: 150000.
     # Purpose: Has the collector pick back up a stack the leader left lying before the map removes it, and drop it for him again.
-    # Technical: A dropped item lies 180000 ms (ITEM_EXPIRE_TIME) plus up to one 10000 ms sweep; AgentHpqDefinition.RICE_CAKE_RECOLLECT_LATEST_MS caps this at 170000. From then the loot rule lets the collector take that player-dropped stack back.
+    # Technical: A dropped item lies config.yaml ITEM_EXPIRE_TIME (180000) and goes on the next ITEM_EXPIRE_CHECK (10000) sweep; AgentHpqCoordinator reads both from the server's config at class load and caps this at their difference (170000 shipped; AgentHpqDefinition.RICE_CAKE_RECOLLECT_LATEST_MS only when the server config cannot be read). From then the loot rule lets the collector take that player-dropped stack back.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_RECOLLECT_MS: '150000'
     # Values: 0-5 re-collects per run. Recommended: 2; 0 never picks a stack back up.
     # Purpose: Bounds how often a companion run's collector picks up and re-drops cakes the leader keeps leaving on the floor.
