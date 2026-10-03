@@ -176,12 +176,22 @@ class AgentHpqCompanionPlayTest {
     }
 
     @Test
-    void aCollectorIsDyingLowOnHpOrOutOfHpPotions() {
-        assertTrue(AgentHpqCompanionPlay.dying(250, 1_000, 12, 25));
-        assertFalse(AgentHpqCompanionPlay.dying(251, 1_000, 12, 25));
-        assertTrue(AgentHpqCompanionPlay.dying(900, 1_000, 0, 25), "no HP potion left");
-        assertFalse(AgentHpqCompanionPlay.dying(900, 1_000, -1, 25), "an unknown count is not none");
+    void withEveryStandingCompanionRetiredOneStillHoldsTheCollectorRole() {
+        assertEquals(11, AgentHpqCompanionPlay.collector(List.of(11, 12), 11, Set.of(11, 12)), "the current one");
+        assertEquals(11, AgentHpqCompanionPlay.collector(List.of(11, 12), 0, Set.of(11, 12)), "the centre one");
+        assertEquals(12, AgentHpqCompanionPlay.collector(List.of(12, 13), 11, Set.of(12, 13)), "11 went down");
+    }
+
+    @Test
+    void aCollectorIsAboutToGoDownOnlyLowOnHpWithNoHpPotionLeft() {
+        assertTrue(AgentHpqCompanionPlay.dying(250, 1_000, 0, 25));
+        assertFalse(AgentHpqCompanionPlay.dying(251, 1_000, 0, 25), "above the dying share");
+        assertFalse(AgentHpqCompanionPlay.dying(250, 1_000, 12, 25), "a potion left: it drinks");
+        assertFalse(AgentHpqCompanionPlay.dying(900, 1_000, 0, 25), "out of potions at full HP");
+        assertFalse(AgentHpqCompanionPlay.dying(250, 1_000, -1, 25), "an unknown count is not none");
         assertFalse(AgentHpqCompanionPlay.dying(0, 1_000, 0, 25), "already down");
+        assertTrue(AgentHpqCompanionPlay.lowOnHp(250, 1_000, 25));
+        assertFalse(AgentHpqCompanionPlay.lowOnHp(251, 1_000, 25));
     }
 
     @Test

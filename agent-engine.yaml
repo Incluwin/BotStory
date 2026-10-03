@@ -848,7 +848,7 @@ tuning:
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_RECOLLECT_MAX: '2'
     # Values: 5-60 percent of max HP. Recommended: 25.
     # Purpose: Has a cake collector about to go down drop its stack where it stands, so the cakes are not lost with it.
-    # Technical: At or below this share of its max HP, or with no HP potion left (an unknown count is not none), the collector drops its whole stack, says C14, and collects no more; the next standing companion takes the centre post.
+    # Technical: At or below this share of its max HP with no HP potion left (KPQ's aboutToGoDown; an unknown count is not none), the collector drops its whole stack, says C14, and collects nothing until it is out of danger (above this share, or holding an HP potion); meanwhile the next standing companion takes the role, and with every standing companion in danger one keeps it and only guards.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_DYING_HP_PERCENT: '25'
     # Values: 10000-120000 milliseconds. Recommended: 30000.
     # Purpose: Spaces the companions' line that the Moon Bunny is being hit, so it reads as a reaction and not as spam.

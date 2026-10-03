@@ -242,6 +242,7 @@ class AgentHpqCompanionDefenseTest {
         run.moveTo(mira, new Point(-183, -188));
         run.holds(mira, CAKE, 4);
         when(mira.getHp()).thenReturn(100);
+        when(run.actions.hpPotionCount(mira)).thenReturn(0);
         AgentHpqSession session = defending();
 
         AgentHpqCoordinator.tick(session, 2_000L);
@@ -255,6 +256,74 @@ class AgentHpqCompanionDefenseTest {
         assertEquals(tobi.getId(), session.cakeCollectorId());
         assertEquals(AgentHpqMemberState.Role.CAKE_COLLECTOR, session.member(tobi.getId()).role());
         assertEquals(AgentHpqMemberState.Role.BUNNY_GUARD, session.member(mira.getId()).role());
+    }
+
+    @Test
+    void aCollectorLowOnHpWithPotionsLeftKeepsItsCakes() {
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(-183, -188));
+        run.moveTo(ben, new Point(429, 83));
+        run.holds(mira, CAKE, 2);
+        when(mira.getHp()).thenReturn(100);
+        AgentHpqSession session = defending();
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        run.items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        run.neverSaid("cakes-left-" + mira.getId());
+        assertEquals(mira.getId(), session.cakeCollectorId());
+    }
+
+    @Test
+    void aCollectorOutOfPotionsAtFullHpKeepsItsCakes() {
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(-183, -188));
+        run.moveTo(ben, new Point(429, 83));
+        run.holds(mira, CAKE, 2);
+        when(run.actions.hpPotionCount(mira)).thenReturn(0);
+        AgentHpqSession session = defending();
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        run.items.verify(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort()), never());
+        run.neverSaid("cakes-left-" + mira.getId());
+        assertEquals(mira.getId(), session.cakeCollectorId());
+    }
+
+    @Test
+    void companionsThatEachLeftTheirCakesOnceCollectAgainOnceOutOfDanger() {
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(-183, -188));
+        MapItem natural = run.drop(CAKE, new Point(-170, -188), false, 0, 1_500L);
+        AgentHpqSession session = defending();
+        for (Character companion : new Character[] {mira, tobi, pip}) {
+            session.member(companion.getId()).retireFromCakes();
+        }
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(mira.getId(), session.cakeCollectorId());
+        assertFalse(session.member(mira.getId()).retiredFromCakes(), "back above the dying share, potions in hand");
+        run.loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(run.entry(mira), natural));
+        assertTrue(AgentHpqSessionRegistry.canLootRiceCake(mira, natural));
+    }
+
+    @Test
+    void withEveryCompanionAboutToGoDownOneHoldsTheRoleAndLootsNothing() {
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        MapItem natural = run.drop(CAKE, new Point(-170, -188), false, 0, 1_500L);
+        for (Character companion : new Character[] {mira, tobi, pip}) {
+            when(companion.getHp()).thenReturn(100);
+            when(run.actions.hpPotionCount(companion)).thenReturn(0);
+        }
+        AgentHpqSession session = defending();
+
+        // Each in turn takes the role, finds itself about to go down and retires; the last keeps it.
+        for (long now = 2_000L; now <= 6_000L; now += 1_000L) AgentHpqCoordinator.tick(session, now);
+
+        assertEquals(pip.getId(), session.cakeCollectorId(), "the run keeps a collector");
+        assertEquals(AgentHpqMemberState.Role.CAKE_COLLECTOR, session.member(pip.getId()).role());
+        run.loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(any(), eq(natural)), never());
     }
 
     @Test

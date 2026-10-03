@@ -14,7 +14,7 @@ public final class AgentHpqMemberState {
     private RewardState rewardState = RewardState.PENDING;
     private boolean fullRateHeld;
     private boolean fullRateWasRequired;
-    private boolean cakesLeftBehind;
+    private boolean retiredFromCakes;
     // A companion run's deaths and tap-outs (AgentHpqCoordinator.membersAlive), under the session's lock.
     private long downSinceMs;
     private boolean tapOutRequested;
@@ -88,10 +88,15 @@ public final class AgentHpqMemberState {
         fullRateWasRequired = false;
     }
 
-    /** A companion run's cake collector that dropped its stack before going down; it collects no more. */
-    boolean cakesLeftBehind() { return cakesLeftBehind; }
+    /**
+     * A companion run's companion that left its cakes (or had none) as it was about to go down: it collects nothing
+     * while it stays in danger, and is back in line for the collector's post once it is out of it.
+     */
+    boolean retiredFromCakes() { return retiredFromCakes; }
 
-    void markCakesLeftBehind() { cakesLeftBehind = true; }
+    void retireFromCakes() { retiredFromCakes = true; }
+
+    void returnToCakes() { retiredFromCakes = false; }
 
     /**
      * Marks this member down from its first sighting, with the rice cakes it held then (the stock respawn's unregister

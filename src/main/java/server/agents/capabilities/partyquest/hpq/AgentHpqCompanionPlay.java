@@ -35,7 +35,7 @@ final class AgentHpqCompanionPlay {
     static final String PIG_TOWN = "pig town! watch out for the iron hogs.";
     /** C12, when the leader has stayed on the clear map past COMPANION_CLEAR_WAIT_MS. */
     static final String WAIT_OUTSIDE = "we'll grab our rewards and wait for you outside.";
-    /** C14, the collector about to go down leaves its stack where it stands. */
+    /** C14, the collector about to go down (low on HP, no HP potion left) leaves its stack where it stands. */
     static final String LEAVING_CAKES = "almost out of pots, leaving the cakes here, grab them.";
 
     private static final List<String> COUNT_WORDS = List.of("none", "one", "two", "three", "four", "five", "six");
@@ -206,25 +206,32 @@ final class AgentHpqCompanionPlay {
     // ---- cakes ----
 
     /**
-     * The cake collector: the current one while it stands and has not left its cakes behind, else the first such
-     * companion standing (the one on the centre post); 0 when none is left.
+     * The cake collector: the current one while it stands and is not retired (about to go down), else the first such
+     * companion standing (the one on the centre post). With every standing companion retired one still holds the
+     * role (the current one, else the first), so the run never goes without a collector; 0 only when none stands.
      */
-    static int collector(List<Integer> standingCompanions, int currentCollectorId, Set<Integer> leftBehind) {
-        if (currentCollectorId > 0 && standingCompanions.contains(currentCollectorId)
-                && !leftBehind.contains(currentCollectorId)) {
-            return currentCollectorId;
-        }
+    static int collector(List<Integer> standingCompanions, int currentCollectorId, Set<Integer> retired) {
+        boolean currentStands = currentCollectorId > 0 && standingCompanions.contains(currentCollectorId);
+        if (currentStands && !retired.contains(currentCollectorId)) return currentCollectorId;
         for (int id : standingCompanions) {
-            if (!leftBehind.contains(id)) return id;
+            if (!retired.contains(id)) return id;
         }
-        return 0;
+        if (currentStands) return currentCollectorId;
+        return standingCompanions.isEmpty() ? 0 : standingCompanions.getFirst();
     }
 
-    /** Still standing, at or below the dying share of its HP or with no HP potion left (-1, unknown, is not none). */
-    static boolean dying(int hp, int maxHp, int hpPotions, int dyingPercent) {
-        if (hp <= 0 || maxHp <= 0) return false;
+    /** Still standing, at or below the dying share of its max HP. */
+    static boolean lowOnHp(int hp, int maxHp, int dyingPercent) {
         // As a percentage of its max HP: hp / maxHp <= dyingPercent / 100.
-        return (long) hp * 100L <= (long) maxHp * dyingPercent || hpPotions == 0;
+        return hp > 0 && maxHp > 0 && (long) hp * 100L <= (long) maxHp * dyingPercent;
+    }
+
+    /**
+     * About to go down (KPQ's aboutToGoDown): low on HP with no HP potion left to drink. One with a potion drinks it,
+     * and one out of potions at full HP is in no danger; a count that cannot be told (-1) is not none.
+     */
+    static boolean dying(int hp, int maxHp, int hpPotions, int dyingPercent) {
+        return lowOnHp(hp, maxHp, dyingPercent) && hpPotions == 0;
     }
 
     /**

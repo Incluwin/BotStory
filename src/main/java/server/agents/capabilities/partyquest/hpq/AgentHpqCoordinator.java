@@ -1065,6 +1065,13 @@ final class AgentHpqCoordinator {
                         && standingAgent(member).getMapId() == AgentHpqDefinition.STAGE_MAP
                         && AgentRuntimeRegistry.findByAgentCharacterId(member.characterId()) != null)
                 .toList();
+        for (AgentHpqMemberState member : standing) {
+            if (member.retiredFromCakes() && !aboutToGoDown(standingAgent(member))) {
+                member.returnToCakes();
+                log.info("HPQ cake collector out of danger: session={} member={}", session.sessionId(),
+                        member.characterId());
+            }
+        }
         int collectorId = assignCollector(session, standing);
         int ordinal = 1;
         for (AgentHpqMemberState member : standing) {
@@ -1101,10 +1108,10 @@ final class AgentHpqCoordinator {
     /** Keeps or moves the collector role (CAKE_COLLECTOR, which alone may loot cakes) to the next standing companion. */
     private static int assignCollector(AgentHpqSession session, List<AgentHpqMemberState> standing) {
         int current = session.cakeCollectorId();
-        Set<Integer> leftBehind = session.members().stream().filter(AgentHpqMemberState::cakesLeftBehind)
+        Set<Integer> retired = session.members().stream().filter(AgentHpqMemberState::retiredFromCakes)
                 .map(AgentHpqMemberState::characterId).collect(Collectors.toSet());
         int next = AgentHpqCompanionPlay.collector(
-                standing.stream().map(AgentHpqMemberState::characterId).toList(), current, leftBehind);
+                standing.stream().map(AgentHpqMemberState::characterId).toList(), current, retired);
         if (next == current) return current;
         AgentHpqMemberState previous = session.member(current);
         if (previous != null && previous.role() == AgentHpqMemberState.Role.CAKE_COLLECTOR) {
@@ -1137,18 +1144,26 @@ final class AgentHpqCoordinator {
     }
 
     /**
-     * The collector: drops its stack where it stands if it is about to go down; picks a stack the leader left lying
-     * back up once its re-collect is due; walks a due batch to the leader's feet (or to Growlie); loots the Bunny's
-     * natural cakes only while nothing threatens the Bunny; and otherwise guards the centre post. While the leader
-     * delivers it only guards.
+     * The collector: about to go down, it drops its stack where it stands (or, holding none, loots nothing) and
+     * retires until it is out of danger; picks a stack the leader left lying back up once its re-collect is due;
+     * walks a due batch to the leader's feet (or to Growlie); loots the Bunny's natural cakes only while nothing
+     * threatens the Bunny; and otherwise guards the centre post. While the leader delivers it only guards.
      */
     private static void collectCakes(AgentHpqSession session, AgentHpqMemberState member, Character agent,
                                      AgentRuntimeEntry entry, Defense defense, long nowMs) {
         Character leader = defense.leader();
         int held = agent.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false);
-        if (held > 0 && AgentHpqCompanionPlay.dying(agent.getHp(), agent.getCurrentMaxHp(),
-                actions().hpPotionCount(agent), CAKE_DYING_HP_PERCENT)) {
-            leaveCakes(session, member, agent, entry, held, nowMs);
+        if (aboutToGoDown(agent)) {
+            if (held > 0) {
+                leaveCakes(session, member, agent, entry, held, nowMs);
+                return;
+            }
+            if (!member.retiredFromCakes()) {
+                member.retireFromCakes();
+                log.info("HPQ cake collector about to go down: session={} member={} cakes=0", session.sessionId(),
+                        agent.getId());
+            }
+            guard(entry, agent, defense.posts().getFirst(), defense);
             return;
         }
         List<MapItem> drops = droppedItems(leader);
@@ -1303,7 +1318,10 @@ final class AgentHpqCoordinator {
         }
     }
 
-    /** A collector about to go down drops its stack where it stands, says so, and collects no more. */
+    /**
+     * A collector about to go down drops its stack where it stands, says so, and collects nothing until it is out of
+     * danger.
+     */
     private static void leaveCakes(AgentHpqSession session, AgentHpqMemberState member, Character agent,
                                    AgentRuntimeEntry entry, int held, long nowMs) {
         actions().stop(entry);
@@ -1311,12 +1329,23 @@ final class AgentHpqCoordinator {
                 entry, InventoryType.ETC, AgentHpqDefinition.RICE_CAKE, (short) held)) {
             return;
         }
-        member.markCakesLeftBehind();
+        member.retireFromCakes();
         session.endHandOver(false);
         session.markProgress(nowMs);
         log.info("HPQ cakes dropped: session={} member={} cakes={} place=dying at={}",
                 session.sessionId(), agent.getId(), held, agent.getPosition());
         coordinate(session, agent, "cakes-left-" + agent.getId(), AgentHpqCompanionPlay.LEAVING_CAKES);
+    }
+
+    /**
+     * About to go down: low on HP with no HP potion left. The HP is read first, since the potion count reads its bag.
+     */
+    private static boolean aboutToGoDown(Character agent) {
+        if (agent == null) return false;
+        int hp = agent.getHp();
+        int maxHp = agent.getCurrentMaxHp();
+        return AgentHpqCompanionPlay.lowOnHp(hp, maxHp, CAKE_DYING_HP_PERCENT)
+                && AgentHpqCompanionPlay.dying(hp, maxHp, actions().hpPotionCount(agent), CAKE_DYING_HP_PERCENT);
     }
 
     /** Nobody picks up for CAKE_HANDOVER_LOOT_INHIBIT_MS after a hand-over: the stack is the leader's. */
