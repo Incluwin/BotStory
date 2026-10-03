@@ -675,10 +675,43 @@ The user's 2026-10-02 decision ("companions should restock potions themselves be
 ## Live checks
 | Check | Result |
 |---|---|
-| LIVE 1 standing restock in Kerning (SilentSin 14 HP / 21 MP, 103k meso) | **Not run yet** (deploy pending). Expect the go line within ~5 s, 'readiness:' started and RESTORED in cosmic-log, the back line, no 'asked its party'. |
+| LIVE 1 standing restock in Kerning (SilentSin 14 HP / 21 MP, 103k meso) | **PASS 2026-10-03** (f7d960c18): walking ohboy's crew back into Kerning, SilentSin went to the shop on its own and was back stocked in 37 s (70 HP / 50 MP), Garrick in 44 s (82 HP / 50 MP); Lakelis then offered a full 4-member party. Earlier expectation: Expect the go line within ~5 s, 'readiness:' started and RESTORED in cosmic-log, the back line, no 'asked its party'. |
 | LIVE 2 desk: "Gone to the store: X (~N s)", no Yes, "Are they here yet?", then a 4-strong start | **Not run yet.** Record click to Yes and start, shop done and rejoin times; retune TRIP_ETA_*. |
-| LIVE 3 broke companion (Fenna, 155 meso) | **Not run yet.** Expect "low on potions, out of mesos", one broke line, no trip and no 'no HP_POTION supplier' / 'suspended foreground work' lines for 10 min; coin of the missing amount sends her. |
+| LIVE 3 broke companion (Fenna, 155 meso) | **PASS 2026-10-03:** Fenna (155 meso, 415 short) made no trip and took the out-of-mesos path. Earlier expectation: Expect "low on potions, out of mesos", one broke line, no trip and no 'no HP_POTION supplier' / 'suspended foreground work' lines for 10 min; coin of the missing amount sends her. |
 | LIVE 4 back-to-back KPQ runs, held extras restocking during a run | **Not run yet.** |
 | LIVE 5 boss gate 220080000 with a short companion | **Not run yet.** Expect one no-shop line; entry unaffected. |
 | LIVE 6 regressions (citizen/journey resupply rates, bench reserve, Lakelis latency, tick percentiles, companion-ops backlog, "follow me" mid-trip) | **Not run yet.** "follow me" mid-trip: expect 'was called back from its readiness trip' in cosmic-log, the companion following at once, and no new trip for 5 min. |
 | LIVE 7 a short companion told "wait here" in Kerning; a poor one out hunting below POT_STOP | **Not run yet.** Expect the first to stay put (no go line); the second to ask its party once, and to shop if it can pay for the potions back to POT_STOP. |
+
+
+# P6b results (HPQ with companions, 2026-10-03)
+
+Binding plan: design + adversarial check (scratchpad `p6b_hpq_revised_plan.md`), Steps 0-7. Branches `p6b/hpq` (Step 1), `p6b/hpq-agents` (Steps 2-4), `p6b/hpq-living` (Steps 5-6), each reviewed from two angles and fixed; full suite = baseline at every merge.
+
+## Deployed
+- Step 1 (behaviour-neutral seam: public `AgentHpqAdmissionService.admit`, `AgentCompanionRunSession`, registry `forOperator`, GM6 `!hpqtest party prod`): 4b0eeac9a, 07:37.
+- Steps 2-6 (companion play, death/tap-out/failure, pace, desk generalization, Tory's desk + the 1012112.js hook, companions off Tory's ledge): f24a065eb, 17:51 (server-knowledge.json regenerated for the hook).
+- Switch `living_world.COMPANION_PQ_ENABLED_KEYS` "kpq" -> "kpq,hpq": bd10dccc4, 18:17, after L1.
+
+## Step 0: base smoke (stock coordinator, never run live before)
+GO. Seeds/pads/Bunny/cakes work; defect found: DELIVERING_CAKES stopped the defense, bats killed the Moon Bunny, party exiled while the leader held 10 cakes at Growlie. Fixed in all modes (06599c372) and verified live in L1 and L6.
+
+## Live checks
+| Check | Result |
+|---|---|
+| L0 deploy, pace warm | **PASS**: hpq profile warmed silently (no 'did not warm'); 'PQ pace records of hpq read' once listed. |
+| L1 GM smoke (`!hpqtest party prod`, Crewfriend + HappyWolf/Yara/Casse/Rurik) | **PASS**: seeds 60.6 s, Bunny at 74 s, guards on the live Bunny (-180,-184), collector carried all 10 cakes to the leader's feet (place=FEET), guards held through 4.5 min of DELIVERING, clear, companions claimed 5 s after the leader left, party intact, outcome=completed. |
+| L2 kill switch | **PASS**: "kpq" -> stock Tory (companions crowd her ledge); "kpq,hpq" -> her window "<Party Quest: Primrose Hill> Four of you, then? Here's who I'd send up the hill:" with lineup, "With this crew, Growlie will have his rice cakes in under 7 minutes." and "Waiting here with me: Yara". Companions stand on the floor below her (stand-off). |
+| L6 desk run (Crewfriend + Casse/HappyWolf/Rurik, Yara held) | **PASS**: Yes -> ENTERING in 0.4 s; clear 418 s from Yes (Tory said under 7 min; shown 390 s); seeds 157 s, bunny 200 s, hand-in 61 s; 3 companion_performance rows activity=hpq cleared, 0 deaths; pq_run_pace hpq row (learned=records/1). |
+| L7 zero drift | **PASS**: all 5 back on 100000200 in one party, Yara rejoined, every companion ACTIVE with no hold map, no 'lost its session' / 'HPQ session failure' / 'remains in owned recovery', 0 ERROR lines. |
+| L3 Let me choose / 7th pick, L4 bench call at Tory, L5 restock at Tory, L8 six-member party, L9 Pig Town, L10 tap-out, L11 Bunny loss/timeout, L12 Lakelis unchanged live, L13 latency | **Not run yet** (unit-tested; Lakelis byte-identity pinned by LakelisDeskGoldenTest). |
+| L14 video | **Not filmed yet.** |
+
+## Driver notes (scratchpad `hpq_run.py`, `npcprobe/hpqprobe2`)
+Tory's name tag hides behind a crowd of companions when the switch lacks hpq; Growlie's hand-in option is clicked at a fixed spot when OCR misses it; NPC talk works from across the map; a cua session can end mid-run (restart the driver).
+
+## Open decisions for the user
+- Wording: every new Tory line and companion line (list in the P6b report).
+- DYING collector trigger is low HP AND no HP potions (KPQ's rule), not the plan's "or".
+- A downed non-leader human is never timed out in HPQ companion runs (KPQ keeps its 45 s rule).
+- All entrances warm and load at boot whatever the switch lists.

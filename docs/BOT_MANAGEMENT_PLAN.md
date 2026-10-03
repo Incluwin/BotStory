@@ -834,6 +834,7 @@ Order: P0 → P1 → P1.5 → P2a → (P2b ∥ P3) → P3b / P4 → P5; P6 after
 - **Bosses today:** the party-boss gates (Papulatus 220080000, King Pepe 106021402) reach no shop, so the pre-boss restock is the standing top-up in Victoria towns, and a short companion says a no-shop line once at the gate (`COMPANION_RESTOCK_BOSS_MAPS`). Entry is never refused. Real pre-boss restocking arrives with P7.
 
 **P6b: More PQs (generalization)**
+- **Status (2026-10-03):** HPQ done and live (bd10dccc4, switch "kpq,hpq"); L0-L2 and L6-L7 passed live, the rest unit-tested (results: BOT_MANAGEMENT_P0_RESULTS.md, "P6b results"). Next PQ in the decision-21 order needs the user's confirmation of that order (LPQ, EPQ, LMPQ+OPQ, PPQ vs LPQ, LMPQ, OPQ, EPQ, PPQ).
 - **Goal:** The PQs friends can actually enter work with companions, starting with HPQ.
 - **Deliverables:**
   - A NEW public adopt seam per PQ: HPQ first, then the others (LPQ, LMPQ, OPQ, EPQ, PPQ) in decision 21 order.

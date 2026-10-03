@@ -86,6 +86,12 @@ Human leaders always control the bonus choice. Agents wait on the clear map for 
 
 An HPQ-only watchdog runs independently of ordinary Agent ticks. It claims work only after the current execution lease expires, selects another living Agent deterministically, and fails an orphaned session when no live Agent executor remains. Termination remains idempotent and owns event disposal plus HPQ-owned party cleanup.
 
+## Companion runs (P6b, 2026-10-03)
+
+A party leader with companions talks to Tory on Henesys Park (100000200). With `living_world.COMPANION_PQ_ENABLED_KEYS` listing `hpq`, she shows her own lineup window (who goes up the hill, the clear time, who waits) instead of the stock menu; Yes adopts the party through `AgentHpqAdmissionService.admit` (off the IO thread) as a companion-adopted session. GM6 `!hpqtest party prod` adopts the same way without the desk.
+
+In a companion run the companions plant only needed colours, guard the live Moon Bunny (about (-183,-188)) from grounded posts with a leash, keep guarding through DELIVERING_CAKES, and one collector brings the cakes to the leader's feet (drop-landing preview, no re-loot); the leader hands them to Growlie. After the clear they claim once the leader has left (or after a wait), follow him into Pig Town, and go home with him. Every line is lower-case player chat logged as 'HPQ line:'; phases log as 'HPQ phase:' and pace spans as 'HPQ pace span:'. Deaths, tap-outs and failures follow KPQ's rules with HPQ's own lines.
+
 ## Production rollout
 
 The autonomous population director is present but initially disabled with:
