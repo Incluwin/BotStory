@@ -205,6 +205,60 @@ class CompanionRunDelegationTest {
         assertFalse(game.roster().finishingForFriend(900));
     }
 
+    // ---- in an HPQ run (P6b HPQ step 5) ----------------------------------------------------
+
+    /** {@code leader} says Yes at Tory, Ann and her companions with him at Henesys Park, and all are in the run. */
+    private void inTheHpqRun(Character leader) {
+        fx.atEntrance("hpq");
+        when(ben.getMap()).thenReturn(game.map(100_000_200));
+        when(ben.getMapId()).thenReturn(100_000_200);
+        int leaderId = leader.getId();
+        when(game.party.getLeaderId()).thenReturn(leaderId);
+        fx.ready();
+        game.roster().installInstanceDelegation(fx.lifecycle);
+        fx.service.start(leader, fx.service.plan(leader, "hpq"));
+        run = fx.service.runForSession(fx.doors.hpqSession.sessionId());
+        for (int id : run.memberIds) {
+            when(instance.getPlayerById(id)).thenReturn(id == ANN ? game.ann : id == BEN ? ben : game.bots.get(id));
+        }
+        when(instance.getLeaderId()).thenReturn(leaderId);
+    }
+
+    @Test
+    void inAFourMemberHpqRunAnOwnersCompanionsSeeItThroughForTheLeader() {
+        withTobi();
+        inTheHpqRun(ben);
+        assertEquals("hpq", run.pqKey);
+        assertEquals(Set.of(BEN, ANN, 900, 901), run.memberIds);
+
+        game.roster().onOwnerLogout(game.ann, instance);
+
+        assertEquals(List.of("Mira: i'll see this through with you, Ben."), game.partyChat);
+        assertTrue(game.roster().finishingForFriend(900) && game.roster().finishingForFriend(901));
+    }
+
+    @Test
+    void inAThreeMemberHpqRunNobodyStaysForAFriendBeforeTheClear() {
+        inTheHpqRun(ben); // Ben, Ann and Mira
+
+        game.roster().onOwnerLogout(game.ann, instance);
+
+        assertEquals(List.of(), game.store.events("companion.handoff"), "two would stay, and HPQ needs three");
+        assertFalse(game.roster().finishingForFriend(900));
+    }
+
+    @Test
+    void anHpqRunWhoseSessionPassedTheLeadToAnnEndsWithHer() {
+        withTobi();
+        inTheHpqRun(ben);
+        fx.doors.hpqSession.setLeadership(ANN, 900); // the run's session moved the lead; the instance not yet
+
+        game.roster().onOwnerLogout(game.ann, instance);
+
+        assertEquals(List.of(), game.store.events("companion.handoff"), "she leads the run now");
+        assertFalse(game.roster().finishingForFriend(900));
+    }
+
     @Test
     void handbackReleasesAFinishingCompanion() {
         withTobi();

@@ -1,6 +1,7 @@
 package server.agents.capabilities.movement;
 
 import server.agents.capabilities.follow.AgentFollowAnchorService;
+import server.agents.capabilities.follow.AgentFollowGuard;
 import server.agents.capabilities.follow.AgentFollowOpportunityTickService;
 
 import client.Character;
@@ -51,7 +52,10 @@ public final class AgentTargetSnapshotService {
         Point followBasePos = new Point(
                 rawFollowAnchorPos.x + AgentFormationStateRuntime.followOffsetX(entry),
                 rawFollowAnchorPos.y);
-        Point followTargetPos = followTargetResolver.resolve(
+        // a following Agent waits where the host keeps a spot clear (an entry NPC's ledge) while its anchor stands there
+        Point waitingPos = AgentModeStateRuntime.following(entry)
+                ? AgentFollowGuard.waitsAt(bot.getId(), followAnchor) : null;
+        Point followTargetPos = waitingPos != null ? new Point(waitingPos) : followTargetResolver.resolve(
                 followBasePos, followAnchor, rawFollowAnchorPos, formation.snapRange(), bot.getMap());
         Point rawShopTargetPos = AgentShopStateRuntime.shopVisitPending(entry)
                 ? AgentShopStateRuntime.activeShopTargetPosition(entry)

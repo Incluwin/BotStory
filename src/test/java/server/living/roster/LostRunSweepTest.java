@@ -5,6 +5,7 @@ import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.partyquest.hpq.AgentHpqSessionRegistry;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
 
 import java.util.List;
@@ -62,6 +63,29 @@ class LostRunSweepTest {
 
         assertFalse(game.commitments.isCommitted(900));
         assertNull(fx.service.runForSession(run.sessionId));
+    }
+
+    @Test
+    void anHpqRunIsKeptWhileItsHpqSessionLivesAndLetGoAMinuteAfterItVanished() {
+        fx.sessionEnds(true); // the KPQ run is over
+        fx.atEntrance("hpq"); // and Ann takes the same crew to Tory
+        CompanionRun hpq = fx.yes();
+        assertEquals("hpq", hpq.pqKey);
+
+        auditor.run();
+        now.addAndGet(2 * CompanionPartyQuestService.LOST_RUN_AFTER_MS);
+        auditor.run();
+
+        assertEquals(hpq, fx.service.runForSession(hpq.sessionId), "its HPQ session is registered");
+        assertTrue(game.commitments.isCommitted(900));
+
+        AgentHpqSessionRegistry.remove(fx.doors.hpqSession); // released, and no runEnded came
+        auditor.run();
+        now.addAndGet(CompanionPartyQuestService.LOST_RUN_AFTER_MS);
+        auditor.run();
+
+        assertNull(fx.service.runForSession(hpq.sessionId));
+        assertFalse(game.commitments.isCommitted(900));
     }
 
     @Test

@@ -1102,9 +1102,13 @@ public final class RosterService {
         settings.apply(owner, persona, bot); // her settings are re-applied (plan flow 1, step 5)
         world.store().event(ownerId, persona.id(), "roster.arrive", "map " + owner.getMapId());
         CompanionPartyQuestService partyQuests = world.partyQuests();
-        // sent for from Lakelis's bench (P6): it tells the party waiting there, instead of its usual word to the owner
-        if (partyQuests == null || !partyQuests.takeArrivalNote(ownerId, persona.id(), System.currentTimeMillis())
-                || !partyChat(bot, "here! ready for Lakelis when you are.")) {
+        // sent for from an entry NPC's bench (P6): it tells the party waiting there, instead of its usual word to the
+        // owner, in her desk's words ("here! ready for Lakelis when you are."), and the log keeps the line said
+        CompanionPartyQuestService.ArrivalLine readyLine = partyQuests == null ? null
+                : partyQuests.takeArrivalLine(ownerId, persona.id(), System.currentTimeMillis());
+        if (readyLine != null && partyChat(bot, readyLine.text())) {
+            readyLine.said(bot.getName());
+        } else {
             List<String> lines = world.arcs().lines(persona, "join");
             world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(ownerId, lines.size())));
         }

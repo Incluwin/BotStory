@@ -874,8 +874,9 @@ living_world:
     AUTO_ROTATE_TICK_MS: 30000
     AUTO_ROTATE_COOLDOWN_MS: 600000
     AUTO_ROTATE_LEVEL_GAP: 10
-    # Party quests with companions (P6): the entry NPC of each listed party quest (a comma list; only "kpq", Lakelis,
-    # so far) offers a party leader with companions in their party a lineup to take in; empty = off, the NPC is stock.
+    # Party quests with companions (P6): the entry NPC of each listed party quest (a comma list of "kpq", Lakelis, and
+    # "hpq", Tory, whose desk also has the owner's companions wait off her ledge) offers a party leader with companions
+    # in their party a lineup to take in; empty = off, the NPC is stock. "hpq" is listed once its live checks pass.
     # GUIDANCE: such a run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does.
     # CLEAR_TIME: the NPC says how long the lineup should take (a range, and who would struggle where) and picks the
     # quickest lineup within each owner's seats; false = the kill switch, her window and lineup exactly as before.

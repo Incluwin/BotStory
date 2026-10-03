@@ -3,7 +3,6 @@ package server.living.roster;
 import server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate.Kind;
-import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate.Weakness;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -15,33 +14,37 @@ import java.util.Set;
  * refusals (AgentKpqAdmissionService, the engagement and session registries) are written for logs ("KPQ admission is
  * already reserved: member-901"); {@link #forAdmit} turns each into her line, keeping the member's name, or saying it
  * to the leader she talks to when it is theirs. The stock start's own refusals are 9020000.js's texts, word for word.
+ * The lines every entrance shares are {@link DeskLines}' (kept here under their old names); {@link #VOICE} is her
+ * voice at the desk, with every text as it was.
  */
 public final class LakelisLines {
-    static final String HOLD_ON = "Hold on, they're lining up.";
+    static final String HOLD_ON = DeskLines.HOLD_ON;
     /** Above the lineup, to a leader back soon after he left stage 1 to run it again (the KPQ re-roll). */
     public static final String BACK_ALREADY = "Back already? Cloto must have been in a mood.";
-    static final String PARTY_CHANGED = "Your party changed while I was getting things ready. Talk to me again.";
-    static final String CATCHING_BREATH = "Your crew is still catching their breath. Give them a moment.";
+    static final String PARTY_CHANGED = DeskLines.PARTY_CHANGED;
+    static final String CATCHING_BREATH = DeskLines.CATCHING_BREATH;
     static final String TOO_FEW = "I need at least three of you, all between level 21 and 30.";
     static final String THREE_OR_FOUR = "I can only take three or four of you in.";
-    static final String THIS_CHANNEL = "Everyone needs to be on this channel.";
-    static final String EVERYONE_HERE = "Everyone in your party needs to be here and awake.";
-    static final String LEADER_ONLY = "Only your party leader can sign you up.";
+    static final String THIS_CHANNEL = DeskLines.THIS_CHANNEL;
+    static final String EVERYONE_HERE = DeskLines.EVERYONE_HERE;
+    static final String LEADER_ONLY = DeskLines.LEADER_ONLY;
     static final String GENERIC = "Something went wrong at the door. Try again in a moment.";
-    static final String NOT_HERE = "<name> isn't here yet.";
-    static final String NOT_UP = "<name> isn't up yet.";
-    static final String NOT_IN_CREW = "<name> isn't part of your crew. Ask them to leave your party first.";
-    static final String LOW_ON_POTIONS_LINE = "<name> is low on potions.";
-    static final String LOW_ON_MANA_LINE = "<name> is low on mana potions.";
-    static final String LOW_ON_POTIONS_BROKE_LINE = "<name> is low on potions and can't afford any more.";
-    static final String LOW_ON_MANA_BROKE_LINE = "<name> is low on mana potions and can't afford any more.";
+    /** Over what keeps a lineup out. */
+    static final String BEFORE_I_LET_YOU_IN = "Before I can let you in:";
+    static final String NOT_HERE = DeskLines.NOT_HERE;
+    static final String NOT_UP = DeskLines.NOT_UP;
+    static final String NOT_IN_CREW = DeskLines.NOT_IN_CREW;
+    static final String LOW_ON_POTIONS_LINE = DeskLines.LOW_ON_POTIONS_LINE;
+    static final String LOW_ON_MANA_LINE = DeskLines.LOW_ON_MANA_LINE;
+    static final String LOW_ON_POTIONS_BROKE_LINE = DeskLines.LOW_ON_POTIONS_BROKE_LINE;
+    static final String LOW_ON_MANA_BROKE_LINE = DeskLines.LOW_ON_MANA_BROKE_LINE;
     /** Above the lineup, when a companion in it (or waiting with it) ran to the store for potions. */
-    public static final String RAN_TO_THE_STORE = "Some of your crew ran to the store for potions. They won't be long.";
-    static final String BUSY = "<name> is busy with something. Give them a moment.";
+    public static final String RAN_TO_THE_STORE = DeskLines.RAN_TO_THE_STORE;
+    static final String BUSY = DeskLines.BUSY;
     /** Admission asked the companion to stop what it was doing, and it finishes its step first. */
-    static final String FINISHING = "Give <name> a sec, they're finishing something.";
+    static final String FINISHING = DeskLines.FINISHING;
     /** Admission's refusal of a companion still on another activity (AgentKpqAdmissionService.admit). */
-    private static final String LEAVING_ACTIVITY = " could not leave its current activity";
+    private static final String LEAVING_ACTIVITY = DeskLines.LEAVING_ACTIVITY;
     /** 9020000.js, when every lobby of the channel is taken. */
     static final String NO_LOBBY = "Another party has already entered the #rParty Quest#k in this channel. Please try "
             + "another channel, or wait for the current party to finish.";
@@ -53,51 +56,147 @@ public final class LakelisLines {
     static final String NO_EVENT = "The Kerning PQ has encountered an error.";
 
     /** Why a companion waits outside, as the lineup lists it: "Casse (low on potions)". */
-    static final String LOW_ON_POTIONS = "low on potions";
-    static final String LOW_ON_MANA = "low on mana potions";
+    static final String LOW_ON_POTIONS = DeskLines.LOW_ON_POTIONS;
+    static final String LOW_ON_MANA = DeskLines.LOW_ON_MANA;
     /** Short of potions and its own restock cannot afford them. */
-    static final String LOW_ON_POTIONS_BROKE = "low on potions, out of mesos";
-    static final String LOW_ON_MANA_BROKE = "low on mana potions, out of mesos";
+    static final String LOW_ON_POTIONS_BROKE = DeskLines.LOW_ON_POTIONS_BROKE;
+    static final String LOW_ON_MANA_BROKE = DeskLines.LOW_ON_MANA_BROKE;
     /** Not at the entrance (another map of the town, the shop...). */
     static final String NOT_IN_KERNING = "not in Kerning";
     /** A companion's errand while it is on its way: gone to the store for potions (LineupPlan.Seat.errand). */
-    public static final String AT_THE_STORE = "at the store";
-    static final String OTHER_CHANNEL = "on another channel";
-    static final String KNOCKED_OUT = "knocked out";
+    public static final String AT_THE_STORE = DeskLines.AT_THE_STORE;
+    static final String OTHER_CHANNEL = DeskLines.OTHER_CHANNEL;
+    static final String KNOCKED_OUT = DeskLines.KNOCKED_OUT;
 
-    /**
-     * A part of an admission refusal, and her line for it; a named one keeps the name the refusal starts with, and
-     * {@code you} (null: none) is that line said to the leader, when the name is theirs.
-     */
-    private record Rule(String text, boolean named, String line, String you) {
-        Rule(String text, boolean named, String line) {
-            this(text, named, line, null);
-        }
-    }
+    /** What a companion she sent for from its owner's bench tells the party as it arrives. */
+    static final String ARRIVAL_LINE = "here! ready for Lakelis when you are.";
+    /** Her desk's window texts (roster.ui EntryDesk, in her voice). */
+    static final String TITLE = "#e#b<Party Quest: 1st Accompaniment>#k#n";
+    static final String FOUR_OF_YOU = "Four of you, then? Here's who I'd send in:";
+    static final String THREE_OF_YOU = "Three of you, then? Here's who I'd send in:";
+    static final String WITH_YOU = "Here's who is with you:";
+    static final String WHO_GOES_IN = "Who goes in? You and two or three more.";
+    static final String FOUR_AT_MOST = "Four is the most I can take. Take someone out first.";
+    static final String BENCH_PROMPT = "Who should I send for? They'll meet you here in Kerning City.";
 
     /** In order: the first rule whose text the refusal holds answers it. */
-    private static final List<Rule> ADMIT_RULES = List.of(
-            new Rule(" is not at the Kerning KPQ entrance", true, NOT_HERE, "You need to be here at the entrance."),
-            new Rule(" must be level 21-30 for KPQ", true, "<name> needs to be between level 21 and 30 for this.",
+    private static final List<DeskLines.Rule> ADMIT_RULES = List.of(
+            new DeskLines.Rule(" is not at the Kerning KPQ entrance", true, NOT_HERE,
+                    "You need to be here at the entrance."),
+            new DeskLines.Rule(" must be level 21-30 for KPQ", true,
+                    "<name> needs to be between level 21 and 30 for this.",
                     "You need to be between level 21 and 30 for this."),
-            new Rule(" needs free Use and ETC capacity", true,
+            new DeskLines.Rule(" needs free Use and ETC capacity", true,
                     "<name>'s bags are full. Free a Use and an Etc slot first.",
                     "Your bags are full. Free a Use and an Etc slot first."),
-            new Rule(LEAVING_ACTIVITY, true, FINISHING), // a companion's, never the leader's
-            new Rule(" is not owned by this KPQ lobby", true, BUSY),
-            new Rule("already owns", false, CATCHING_BREATH),
-            new Rule("already belongs to another", false, CATCHING_BREATH),
-            new Rule("already reserved", false, CATCHING_BREATH),
-            new Rule("authoritative party changed", false, CATCHING_BREATH),
-            new Rule("registered matching lobby engagement", false, CATCHING_BREATH),
-            new Rule("must be included and online", false, EVERYONE_HERE),
-            new Rule("already be in the event leader's party", false, EVERYONE_HERE),
-            new Rule("at least one Agent", false, EVERYONE_HERE),
-            new Rule("party members are required", false, EVERYONE_HERE),
-            new Rule("three or four members", false, THREE_OR_FOUR),
-            new Rule("not the party leader", false, LEADER_ONLY),
-            new Rule("has no party", false, LEADER_ONLY),
-            new Rule("same world and channel", false, THIS_CHANNEL));
+            new DeskLines.Rule(LEAVING_ACTIVITY, true, FINISHING), // a companion's, never the leader's
+            new DeskLines.Rule(" is not owned by this KPQ lobby", true, BUSY),
+            new DeskLines.Rule("already owns", false, CATCHING_BREATH),
+            new DeskLines.Rule("already belongs to another", false, CATCHING_BREATH),
+            new DeskLines.Rule("already reserved", false, CATCHING_BREATH),
+            new DeskLines.Rule("authoritative party changed", false, CATCHING_BREATH),
+            new DeskLines.Rule("registered matching lobby engagement", false, CATCHING_BREATH),
+            new DeskLines.Rule("must be included and online", false, EVERYONE_HERE),
+            new DeskLines.Rule("already be in the event leader's party", false, EVERYONE_HERE),
+            new DeskLines.Rule("at least one Agent", false, EVERYONE_HERE),
+            new DeskLines.Rule("party members are required", false, EVERYONE_HERE),
+            new DeskLines.Rule("three or four members", false, THREE_OR_FOUR),
+            new DeskLines.Rule("not the party leader", false, LEADER_ONLY),
+            new DeskLines.Rule("has no party", false, LEADER_ONLY),
+            new DeskLines.Rule("same world and channel", false, THIS_CHANNEL));
+
+    /** Lakelis at the desk: every text as it was before the desk served other entrances. */
+    public static final DeskVoice VOICE = new DeskVoice() {
+        @Override
+        public String npcName() {
+            return "Lakelis";
+        }
+
+        @Override
+        public String title() {
+            return TITLE;
+        }
+
+        @Override
+        public String lineupHeader(int size) {
+            return size == LineupPlan.MAX_SIZE ? FOUR_OF_YOU : size == LineupPlan.MIN_SIZE ? THREE_OF_YOU : WITH_YOU;
+        }
+
+        @Override
+        public String whoGoesIn() {
+            return WHO_GOES_IN;
+        }
+
+        @Override
+        public String atMost() {
+            return FOUR_AT_MOST;
+        }
+
+        @Override
+        public String benchPrompt() {
+            return BENCH_PROMPT;
+        }
+
+        @Override
+        public String arrivalLine() {
+            return ARRIVAL_LINE;
+        }
+
+        @Override
+        public String backAfterReroll() {
+            return BACK_ALREADY;
+        }
+
+        @Override
+        public String notAtEntrance() {
+            return NOT_IN_KERNING;
+        }
+
+        @Override
+        public String sizeRule() {
+            return THREE_OR_FOUR;
+        }
+
+        @Override
+        public String tooFew() {
+            return TOO_FEW;
+        }
+
+        @Override
+        public String blockerHeader() {
+            return BEFORE_I_LET_YOU_IN;
+        }
+
+        @Override
+        public String generic() {
+            return GENERIC;
+        }
+
+        @Override
+        public String forAdmit(String message, String leaderName) {
+            return LakelisLines.forAdmit(message, leaderName);
+        }
+
+        @Override
+        public String forStart(PqEntryPort.Start start) {
+            return LakelisLines.forStart(start);
+        }
+
+        @Override
+        public String reason(String problem, int level) {
+            return LakelisLines.reason(problem, level);
+        }
+
+        @Override
+        public List<String> clearTime(LineupPlan plan) {
+            return LakelisLines.clearTime(plan);
+        }
+
+        @Override
+        public String chooseLine(LineupPlan plan) {
+            return LakelisLines.chooseLine(plan);
+        }
+    };
 
     private LakelisLines() {
     }
@@ -107,17 +206,7 @@ public final class LakelisLines {
      * ("You need to be..."), never about them in the third person; one she has no line for is the generic one.
      */
     static String forAdmit(String message, String leaderName) {
-        if (message != null) {
-            for (Rule rule : ADMIT_RULES) {
-                int at = message.indexOf(rule.text());
-                if (at >= 0) {
-                    String name = message.substring(0, at);
-                    return !rule.named() ? rule.line()
-                            : rule.you() != null && name.equals(leaderName) ? rule.you() : named(rule.line(), name);
-                }
-            }
-        }
-        return GENERIC;
+        return DeskLines.forAdmit(ADMIT_RULES, message, leaderName, GENERIC);
     }
 
     /**
@@ -126,8 +215,7 @@ public final class LakelisLines {
      * is done.
      */
     static String stillFinishing(String message) {
-        int at = message == null ? -1 : message.indexOf(LEAVING_ACTIVITY);
-        return at > 0 ? message.substring(0, at) : null;
+        return DeskLines.stillFinishing(message);
     }
 
     /** Her line for a stock start that did not go through. */
@@ -145,13 +233,13 @@ public final class LakelisLines {
             return "Lv" + level + (level > 30 ? ", too seasoned for this" : ", not ready for this yet");
         }
         if (problem.contains(" needs free Use and ETC capacity")) {
-            return "bags full";
+            return DeskLines.BAGS_FULL;
         }
         return NOT_IN_KERNING;
     }
 
     static String named(String line, String name) {
-        return line.replace("<name>", name);
+        return DeskLines.named(line, name);
     }
 
     // ---- how long a lineup should take ----------------------------------------------------------
@@ -337,40 +425,24 @@ public final class LakelisLines {
 
     /** Minutes as she says them: whole minutes under 20, to the nearest 5 from 20 up; at least 1. */
     static long minutes(double seconds) {
-        double minutes = Math.max(0.0d, seconds) / 60.0d;
-        long whole = Math.round(minutes);
-        return Math.max(1L, whole < 20L ? whole : 5L * Math.round(minutes / 5.0d));
+        return DeskLines.minutes(seconds);
     }
 
     private static String minutesPhrase(long minutes) {
-        return minutes == 1L ? "a minute" : minutes + " minutes";
+        return DeskLines.minutesPhrase(minutes);
     }
 
     /** The timer in her words: "half an hour" for KPQ's 30 minutes. */
     static String timerPhrase(long timerMs) {
-        long minutes = Math.round(timerMs / 60_000.0d);
-        return minutes == 15L ? "a quarter of an hour" : minutes == 30L ? "half an hour"
-                : minutes == 45L ? "three quarters of an hour" : minutes == 60L ? "an hour"
-                : minutesPhrase(minutes(timerMs / 1000.0d));
+        return DeskLines.timerPhrase(timerMs);
     }
 
-    /**
-     * Whether the estimate names {@code kind} for the character ({@code characterId} 0: the party), in segment
-     * {@code segmentKey} (null: any) on mob {@code mobId} (0: any).
-     */
     private static boolean has(AgentPqPaceEstimate estimate, int characterId, Kind kind, String segmentKey, int mobId) {
-        for (Weakness weakness : estimate.weaknesses()) {
-            if (weakness.characterId() == characterId && weakness.kind() == kind
-                    && (segmentKey == null || segmentKey.equals(weakness.segmentKey()))
-                    && (mobId == 0 || weakness.mobId() == mobId)) {
-                return true;
-            }
-        }
-        return false;
+        return DeskLines.has(estimate, characterId, kind, segmentKey, mobId);
     }
 
     /** The line with the window's color and style codes taken out, for pink text. */
     public static String plain(String line) {
-        return line.replaceAll("#[bdegknr]", "");
+        return DeskLines.plain(line);
     }
 }

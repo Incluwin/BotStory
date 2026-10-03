@@ -10,6 +10,10 @@ import org.mockito.MockedStatic;
 import scripting.npc.NPCConversationManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.hpq.AgentHpqMemberState;
+import server.agents.capabilities.partyquest.hpq.AgentHpqPopulationRuntime;
+import server.agents.capabilities.partyquest.hpq.AgentHpqSession;
+import server.agents.capabilities.partyquest.hpq.AgentHpqSessionRegistry;
 import server.agents.capabilities.partyquest.kpq.AgentKpqMemberState;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
 import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
@@ -28,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -186,6 +191,52 @@ class PartyQuestEntryStandsAsideTest {
 
         assertStandsAside();
         verify(game.world.directory(), never()).ownerOfCharacter(ANN); // a human: no persona lookup
+    }
+
+    // ---- at Tory (P6b HPQ step 5) ----------------------------------------------------------
+
+    @Test
+    void aKeyWithNoEntranceIsLeftToItsStockScript() {
+        game.config.COMPANION_PQ_ENABLED_KEYS = "kpq,lpq";
+
+        assertFalse(service.offerAtDesk(game.ann, "lpq"), "no entrance: the stock start, and nothing thrown");
+        assertFalse(LivingWorldHooks.partyQuestEntry(cm, "lpq"));
+        verify(service, never()).standsAside(any(), any());
+        assertUntouched();
+    }
+
+    @Test
+    void anHpqSessionHoldingThePartyLeavesToryStockAndLakelisReadsOnlyKpqs() {
+        game.config.COMPANION_PQ_ENABLED_KEYS = "kpq,hpq";
+        AgentHpqSession session = new AgentHpqSession(AgentHpqSession.Mode.PRODUCTION, 1L, ANN, 3, 1_000L);
+        session.addMember(ANN, AgentHpqMemberState.MemberType.HUMAN);
+        session.addMember(901, AgentHpqMemberState.MemberType.AGENT);
+        AgentHpqSessionRegistry.registerComplete(session);
+        try {
+            assertTrue(service.standsAside(game.ann, "hpq"));
+            assertFalse(LivingWorldHooks.partyQuestEntry(cm, "hpq"));
+            assertUntouched();
+            assertFalse(service.standsAside(game.ann, "kpq"), "no KPQ session holds them");
+        } finally {
+            AgentHpqSessionRegistry.remove(session);
+        }
+    }
+
+    @Test
+    void whileTheBackgroundPopulationRunsHpqToryIsStockAndSaysSoOnce() {
+        game.config.COMPANION_PQ_ENABLED_KEYS = "kpq,hpq";
+        try (MockedStatic<AgentHpqPopulationRuntime> population = mockStatic(AgentHpqPopulationRuntime.class);
+             LivingLogLines logs = new LivingLogLines(CompanionPartyQuestService.class)) {
+            population.when(AgentHpqPopulationRuntime::backgroundEnabled).thenReturn(true);
+
+            assertFalse(LivingWorldHooks.partyQuestEntry(cm, "hpq"));
+            assertFalse(LivingWorldHooks.partyQuestEntry(cm, "hpq"));
+
+            assertEquals(1, logs.startingWith("companion HPQ stands aside").size(), "one WARN");
+            verify(service, never()).standsAside(any(), eq("hpq"));
+            assertUntouched();
+            assertFalse(service.standsAside(game.ann, "kpq"), "Lakelis is not the background's");
+        }
     }
 
     private void assertStandsAside() {

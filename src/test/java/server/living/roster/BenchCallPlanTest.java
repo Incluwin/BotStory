@@ -10,7 +10,7 @@ import org.mockito.ArgumentCaptor;
 import server.living.config.Content.Persona;
 import server.living.resident.LivingTalk;
 import server.living.roster.ui.CompanionMenus;
-import server.living.roster.ui.LakelisDesk;
+import server.living.roster.ui.EntryDesk;
 import server.living.store.LivingStore.RosterState;
 import testutil.NpcTalks;
 import testutil.NpcTalks.Talk;
@@ -138,7 +138,7 @@ class BenchCallPlanTest {
     /** Ann asks Lakelis: her lineup, from the real desk. */
     private void lakelis() {
         fx.ready();
-        LakelisDesk desk = new LakelisDesk(game.world, fx.service, new CompanionMenus(game.world));
+        EntryDesk desk = new EntryDesk(game.world, fx.service, new CompanionMenus(game.world), PqEntrance.of("kpq"));
         fx.service.installDesk(desk);
         desk.proposal(game.ann, fx.service.plan(game.ann, "kpq"), null);
     }

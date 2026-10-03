@@ -21,6 +21,7 @@ import server.living.roster.DirectExecutor;
 import server.living.roster.LineupPlan;
 import server.living.roster.LineupPlan.Seat;
 import server.living.roster.LineupPlan.Waiting;
+import server.living.roster.PqEntrance;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
 import server.living.store.LivingStore.RosterEntry;
@@ -83,7 +84,7 @@ class LakelisDeskEstimateTest {
     private final Character ben = mock(Character.class);
     private final Client client = mock(Client.class);
     private final List<RosterEntry> rows = new ArrayList<>();
-    private LakelisDesk desk;
+    private EntryDesk desk;
 
     @BeforeEach
     void benLeadsAtLakelis() {
@@ -105,7 +106,7 @@ class LakelisDeskEstimateTest {
         CompanionExecutor ops = DirectExecutor.inline();
         when(world.executor()).thenReturn(ops);
         when(roster.roster(ben)).thenReturn(rows);
-        desk = new LakelisDesk(world, service, new CompanionMenus(world, mapId -> "Ant Tunnel"));
+        desk = new EntryDesk(world, service, new CompanionMenus(world, mapId -> "Ant Tunnel"), PqEntrance.of("kpq"));
     }
 
     @AfterEach

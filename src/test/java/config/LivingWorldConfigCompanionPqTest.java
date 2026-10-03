@@ -15,8 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * The P6 kill switch (docs/BOT_MANAGEMENT_PLAN.md P6): party quests with companions are off unless
- * living_world.COMPANION_PQ_ENABLED_KEYS lists the quest, and only kpq may be listed so far. config.yaml ships both keys
- * and stays LF and US-ASCII (yamlbeans is strict: a key without its field would not parse).
+ * living_world.COMPANION_PQ_ENABLED_KEYS lists the quest, and only kpq (Lakelis) and hpq (Tory, P6b HPQ step 6) may be
+ * listed. config.yaml ships both keys, still with kpq only until the HPQ live checks pass, and stays LF and US-ASCII
+ * (yamlbeans is strict: a key without its field would not parse).
  */
 class LivingWorldConfigCompanionPqTest {
 
@@ -42,12 +43,28 @@ class LivingWorldConfigCompanionPqTest {
     }
 
     @Test
+    void hpqMayBeListedWithKpqOrAlone() {
+        LivingWorldConfig config = new LivingWorldConfig();
+        config.COMPANION_PQ_ENABLED_KEYS = "kpq, HPQ";
+
+        assertDoesNotThrow(config::validate);
+        assertTrue(config.companionPqEnabled("kpq"));
+        assertTrue(config.companionPqEnabled("hpq"));
+
+        config.COMPANION_PQ_ENABLED_KEYS = "hpq";
+
+        assertDoesNotThrow(config::validate);
+        assertFalse(config.companionPqEnabled("kpq"));
+        assertTrue(config.companionPqEnabled("hpq"));
+    }
+
+    @Test
     void anyOtherQuestFailsValidation() {
         LivingWorldConfig config = new LivingWorldConfig();
-        config.COMPANION_PQ_ENABLED_KEYS = "kpq,hpq";
+        config.COMPANION_PQ_ENABLED_KEYS = "kpq,hpq,lpq";
 
         IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, config::validate);
-        assertEquals("living_world.COMPANION_PQ_ENABLED_KEYS must list only kpq", refused.getMessage());
+        assertEquals("living_world.COMPANION_PQ_ENABLED_KEYS must list only kpq or hpq", refused.getMessage());
     }
 
     @Test
@@ -55,6 +72,7 @@ class LivingWorldConfigCompanionPqTest {
         LivingWorldConfig living = YamlConfig.config.living_world;
         assertEquals("kpq", living.COMPANION_PQ_ENABLED_KEYS);
         assertTrue(living.companionPqEnabled("kpq"));
+        assertFalse(living.companionPqEnabled("hpq"), "Tory stays stock until the user switches her on");
         assertTrue(living.COMPANION_PQ_GUIDANCE);
 
         byte[] bytes = Files.readAllBytes(Path.of("config.yaml"));
