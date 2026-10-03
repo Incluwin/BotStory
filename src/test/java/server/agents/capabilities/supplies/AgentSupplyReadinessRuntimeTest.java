@@ -424,8 +424,10 @@ class AgentSupplyReadinessRuntimeTest {
         planCritical(entry, AgentResourceCategory.HP_POTION, 5);
 
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
-
         assertEquals(List.of("party ask 525"), calls, "as before this duty: the shop finds out whether it fits");
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L + partyWaitMs()));
+        assertTrue(execution(entry).requestId().startsWith("supply:HP_POTION:"), "nobody shared: it goes and tries");
     }
 
     // (i)
@@ -581,6 +583,23 @@ class AgentSupplyReadinessRuntimeTest {
         AgentSupplyReadiness.Status status = AgentSupplyReadiness.status(entry, 2_100L);
         assertEquals(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, status.kind());
         assertEquals(5 * RED - 100, status.missingMesos());
+    }
+
+    @Test
+    void aCompanionThatGotItsPotionsAndRanShortAgainIsAssessedAfresh() {
+        Character kettle = companion(544, "Kettle", Job.CLERIC, 15, 30, 100);
+        AgentRuntimeEntry entry = following(kettle);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 1_000L));
+        assertEquals(List.of("refused 544 CANNOT_AFFORD " + (5 * RED - 100)), calls);
+
+        potions.put(544, new int[]{20, 30}); // its owner handed it some
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 6_000L));
+        potions.put(544, new int[]{1, 30}); // a run later, far shorter, the purse as thin
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, kettle, 11_000L));
+
+        AgentSupplyReadiness.Status status = AgentSupplyReadiness.status(entry, 11_000L);
+        assertEquals(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, status.kind());
+        assertEquals(19 * RED - 100, status.missingMesos(), "what it lacks now, not the old 150");
     }
 
     @Test
