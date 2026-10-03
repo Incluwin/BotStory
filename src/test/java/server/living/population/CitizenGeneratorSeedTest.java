@@ -132,7 +132,7 @@ class CitizenGeneratorSeedTest {
         assertTrue(lastMonth <= 3, lastMonth + " of 60 leafre seeds retire exactly 30 days from now"); // clamped: about 20
     }
 
-    /** Captured from the generator at 251fada32, before seeding; an edit to the shipped population content changes these too. */
+    /** Draws captured from the generator before seeding (251fada32), regions as f2cb3bcc9's regions.yaml assigns them; an edit to the shipped population content changes these too. */
     @Test
     void untargetedBirthsDrawWhatTheyDrewBeforeSeeding() {
         CitizenGenerator generator = new CitizenGenerator(population);
@@ -149,15 +149,15 @@ class CitizenGeneratorSeedTest {
                 "Angel266 evening-na victoria magician-cleric explorer-v1 proper-friendly 0.747257965099 14 2 [merchant] life214",
                 "CrazySword afk-townie victoria magician-fire relaxed-v1 casual-typos 0.602931311366 59 2 [] life250",
                 "BunnySin student-afternoon victoria magician-fire explorer-v1 proper-friendly 0.946713645082 -58 3 [pq-regular] life199",
-                "RedOcean evening-na victoria warrior-fighter explorer-v1 proper-friendly 0.995720030007 -20 2 [recruiter] life141",
+                "RedOcean evening-na ludibrium warrior-fighter explorer-v1 proper-friendly 0.995720030007 -20 2 [recruiter] life141",
                 "iKillKnight student-afternoon victoria warrior-spearman efficient-v1 terse-grinder 0.790507063009 -50 1 [] life215",
-                "MushroomMage weekend-eu orbis warrior-page explorer-v1 proper-friendly 1.095557303940 -52 3 [] life120",
-                "SilentWolf evening-na mu-lung warrior-fighter explorer-v1 proper-friendly 1.303065241400 51 2 [pq-regular] life188",
-                "RedBunny evening-na el-nath bowman-hunter restless-v1 playful-caps 1.435022807511 -44 3 [] life368",
-                "Rookun student-afternoon orbis magician-ice explorer-v1 proper-friendly 0.674953233423 49 1 [recruiter] life210",
+                "MushroomMage weekend-eu ariant warrior-page explorer-v1 proper-friendly 1.095557303940 -52 3 [] life120",
+                "SilentWolf evening-na orbis warrior-fighter explorer-v1 proper-friendly 1.303065241400 51 2 [pq-regular] life188",
+                "RedBunny evening-na malaysia bowman-hunter restless-v1 playful-caps 1.435022807511 -44 3 [] life368",
+                "Rookun student-afternoon ludibrium magician-ice explorer-v1 proper-friendly 0.674953233423 49 1 [recruiter] life210",
                 "SwiftRanger nightowl victoria pirate-gunslinger explorer-v1 proper-friendly 1.027130607235 9 3 [merchant] life106",
                 "GrumpyCat evening-na orbis warrior-fighter restless-v1 playful-caps 1.400174025793 -58 2 [] life342",
-                "xKeisx student-afternoon ludibrium magician-fire explorer-v1 proper-friendly 0.661406023888 45 2 [recruiter] life390",
+                "xKeisx student-afternoon aquarium magician-fire explorer-v1 proper-friendly 0.661406023888 45 2 [recruiter] life390",
                 "LittleAngel nightowl warrior-page orbis"), births);
     }
 
