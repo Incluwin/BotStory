@@ -190,6 +190,14 @@ public final class AgentHpqPopulationRuntime {
         return (populationEnabled.getAsBoolean() || hostEnabled.getAsBoolean()) && featureEnabled();
     }
 
+    /**
+     * True when background HPQ may run: the HPQ population flag is on and a population source (the Agent population
+     * or the host's managed citizens) is enabled. A host's own HPQ entry stands aside while it is.
+     */
+    public static boolean backgroundEnabled() {
+        return enabled();
+    }
+
     private static boolean featureEnabled() {
         return config.AgentTuning.booleanValue(
                 "server.agents.capabilities.partyquest.hpq.AgentHpqPopulationRuntime.ENABLED");

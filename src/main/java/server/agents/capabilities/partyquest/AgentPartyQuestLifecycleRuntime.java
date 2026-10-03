@@ -194,14 +194,23 @@ public final class AgentPartyQuestLifecycleRuntime {
         return false;
     }
 
-    /** Rehomes one member removed from an active party without ending the remaining party quest. */
+    /** Rehomes one member removed from an active party without ending the remaining party quest (a KPQ member). */
     public static void recoverDetachedMember(int characterId, long nowMs) {
+        recoverDetachedMember(characterId, "kpq", nowMs);
+    }
+
+    /**
+     * Rehomes one member removed from an active party without ending the remaining party quest. {@code questKey} is
+     * the caller's quest, used when the member is no longer in its engagement's index; an indexed member is rehomed
+     * by its engagement's own quest.
+     */
+    public static void recoverDetachedMember(int characterId, String questKey, long nowMs) {
         AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
         Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
         if (entry == null || agent == null) return;
         AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forMember(characterId);
-        AgentPartyQuestHandback.Handback handback = AgentPartyQuestHandback.handback(
-                characterId, engagement == null ? "kpq" : engagement.questKey());
+        String quest = engagement == null ? questKey : engagement.questKey();
+        AgentPartyQuestHandback.Handback handback = AgentPartyQuestHandback.handback(characterId, quest);
         if (handback == AgentPartyQuestHandback.Handback.RELEASE) {
             AgentMovementCommandRuntime.stop(entry);
             return;
@@ -214,11 +223,9 @@ public final class AgentPartyQuestLifecycleRuntime {
             }
             return;
         }
-        AgentPartyQuestDefinition definition = engagement == null
-                ? null : AgentPartyQuestCatalog.find(engagement.questKey());
-        // A detached member may already have been removed from the engagement index.
-        // Preserve the legacy KPQ recovery destination for that compatibility path;
-        // new PQ systems should recover before unindexing or use their own definition.
+        AgentPartyQuestDefinition definition = AgentPartyQuestCatalog.find(quest);
+        // A detached member may already have been removed from the engagement index: it is rehomed by the
+        // caller's quest, and an unknown quest keeps the legacy KPQ recovery destination.
         int recoveryMapId = definition == null
                 ? AgentPartyQuestCatalog.require("kpq").recoveryMapId()
                 : definition.recoveryMapId();

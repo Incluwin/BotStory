@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.kpq;
 
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.awt.Point;
@@ -15,7 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Party-level KPQ state. All mutation is synchronized through this aggregate. */
-public final class AgentKpqSession {
+public final class AgentKpqSession implements AgentCompanionRunSession {
     private static final boolean DEFAULT_MEMBER_COORDINATION_CHAT_ENABLED =
             config.AgentTuning.booleanValue(
                     "server.agents.capabilities.partyquest.kpq.AgentKpqSession.MEMBER_COORDINATION_CHAT_ENABLED");

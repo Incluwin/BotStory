@@ -104,7 +104,7 @@ public final class AgentHpqLobbyAdmissionRuntime {
         engagement.lobbyReady(nowMs);
         AgentHpqAdmissionService.AdmissionResult result = AgentHpqAdmissionService.admitFromLobby(
                 engagement, lobby, operator, leader, members, engagement.seed(), nowMs,
-                AgentHpqSession.Mode.PRODUCTION);
+                AgentHpqSession.Mode.PRODUCTION, false);
         if (result.success()) {
             AgentPartyQuestReadyGate.release(lobby.lobbyId());
             DIRECTED.remove(engagement.engagementId(), directed);

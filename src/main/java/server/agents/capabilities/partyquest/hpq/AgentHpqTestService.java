@@ -74,6 +74,7 @@ public final class AgentHpqTestService {
                         seed(params, 2, nowMs), Flow.HUMAN_INVITES_AGENTS, nowMs);
                 case "agentleader" -> start(operator, partySize(params, 1, 3),
                         seed(params, 2, nowMs), Flow.AGENT_LEADS_HUMAN, nowMs);
+                case "party", "adopt" -> adoptCurrentParty(operator, adoptOptions(params, 1, nowMs), nowMs);
                 case "status" -> status(operator);
                 case "invite" -> invite(operator);
                 case "spectate", "attach" -> spectate(operator);
@@ -151,6 +152,62 @@ public final class AgentHpqTestService {
         }
         return List.of("Preparing an Agent-only HPQ party of " + partySize
                 + " (seed " + seed + "). Use !hpqtest status to inspect it.");
+    }
+
+    /**
+     * "party prod [seed]": the operator's own mixed party (his companions, any humans) at Tory becomes a companion run
+     * through the public admit, as a companion host would enter it. Nothing is spawned, loaded or invited, so a
+     * companion owner can run it with his own companions; the run is kept here only for status and stop.
+     */
+    private static List<String> adoptCurrentParty(Character operator, AdoptOptions options, long nowMs) {
+        if (!options.production()) {
+            return List.of("HPQ adopts a party only as a companion run: !hpqtest party prod [seed].");
+        }
+        if (operator.getMapId() != AgentHpqDefinition.RECRUIT_MAP) {
+            return List.of("Stand at the Henesys HPQ entrance (100000200) before adopting a party.");
+        }
+        // A finished companion run keeps its entry here; it has nothing left to clean up. A finished run that
+        // spawned its Agents still needs the stop that logs them out.
+        ArrayList<String> response = new ArrayList<>();
+        Run finished = RUNS.get(operator.getId());
+        if (finished != null && (finished.engagement.state() == AgentPartyQuestEngagement.State.FAILED
+                || finished.engagement.state() == AgentPartyQuestEngagement.State.CLOSED)) {
+            if (finished.flow != Flow.ADOPTED) response.addAll(stop(operator, "replaced by an adopted party", nowMs));
+            else RUNS.remove(operator.getId(), finished);
+        }
+        if (RUNS.containsKey(operator.getId())) {
+            return List.of("Stop the current HPQ test before adopting another party.");
+        }
+        AgentPartySnapshot snapshot = AgentPartyGatewayRuntime.party().snapshot(operator);
+        if (snapshot == null) return List.of("Create the desired party before using !hpqtest party prod.");
+        List<Character> online = AgentPartyGatewayRuntime.party().onlineMembers(operator).stream()
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        if (online.size() != snapshot.members().size()) {
+            return List.of("Every party member must be online on this channel before the companion run starts.");
+        }
+        boolean leads = snapshot.members().stream().anyMatch(member -> member != null
+                && member.id() == operator.getId() && member.leader());
+        if (!leads) {
+            return List.of("Lead the party yourself for a companion run: the public admit keys the run by its leader.");
+        }
+
+        AgentHpqAdmissionService.AdmissionResult result =
+                AgentHpqAdmissionService.admit(operator, operator, online, options.seed(), nowMs);
+        if (!result.success()) {
+            response.add("Could not adopt the party: " + result.message());
+            return response;
+        }
+        result.session().setMemberCoordinationChatEnabled(true);
+        Set<String> agentNames = online.stream()
+                .filter(member -> AgentRuntimeRegistry.findByAgentCharacterId(member.getId()) != null)
+                .map(Character::getName)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Run run = new Run(operator, result.engagement(), options.seed(), Flow.ADOPTED, agentNames);
+        run.session = result.session();
+        run.eventLeaderId = operator.getId();
+        RUNS.put(operator.getId(), run);
+        response.add("Adopted as a companion run. Talk to Tory within 30 seconds.");
+        return response;
     }
 
     private static void openLobby(Run run, long nowMs) {
@@ -300,7 +357,7 @@ public final class AgentHpqTestService {
             AgentHpqAdmissionService.AdmissionResult result =
                     AgentHpqAdmissionService.admitFromLobby(
                             run.engagement, lobby, run.operator, leader, members,
-                            run.seed, nowMs, AgentHpqSession.Mode.TEST_OBSERVATION);
+                            run.seed, nowMs, AgentHpqSession.Mode.TEST_OBSERVATION, false);
             if (!result.success()) return;
             run.eventLeaderId = leader.getId();
             run.session = result.session();
@@ -446,8 +503,13 @@ public final class AgentHpqTestService {
         }
         Run run = RUNS.get(operator.getId());
         if (run == null || run.session == null) return List.of("No active HPQ event session.");
+        String target = params[1].toLowerCase();
+        // An adopted party's Agents are its owners' companions: a fault never logs one out (only a fixture's).
+        if (run.flow == Flow.ADOPTED && (target.equals("coordinator") || target.equals("leader"))) {
+            return List.of("Disconnecting an Agent is for fixture runs only; use fail bunny or timeout on a companion run.");
+        }
         Character leader = onlineCharacter(run.session.eventLeaderId());
-        return switch (params[1].toLowerCase()) {
+        return switch (target) {
             case "coordinator" -> {
                 Character coordinator = character(run.session.executionAgentId());
                 if (coordinator == null) yield List.of("The execution coordinator is not a live Agent.");
@@ -577,7 +639,8 @@ public final class AgentHpqTestService {
         } else if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
             AgentPartyQuestLifecycleRuntime.closeTest(run.engagement, nowMs);
         }
-        run.engagement.agentIds().forEach(AgentHpqTestService::disconnect);
+        // An adopted party's Agents are its owners' companions: they are never logged out here.
+        if (run.flow != Flow.ADOPTED) run.engagement.agentIds().forEach(AgentHpqTestService::disconnect);
         return List.of("Stopped HPQ observation " + run.engagement.engagementId()
                 + ". Backing characters were retained.");
     }
@@ -653,18 +716,29 @@ public final class AgentHpqTestService {
         return params.length <= index ? fallback : Long.parseLong(params[index]);
     }
 
+    /** "party [prod] [seed]", read as KPQ's harness reads it: the prod token comes before the seed. */
+    static AdoptOptions adoptOptions(String[] params, int firstOptionIndex, long fallbackSeed) {
+        boolean production = params != null && params.length > firstOptionIndex
+                && "prod".equalsIgnoreCase(params[firstOptionIndex]);
+        return new AdoptOptions(production, seed(params, firstOptionIndex + (production ? 1 : 0), fallbackSeed));
+    }
+
     private static List<String> help() {
         return List.of(
                 "!hpqtest withme [3-6] [seed] (recommended visual observation)",
                 "!hpqtest start [3-6] [seed] (Agent-only run)",
                 "!hpqtest agentleader [3-6] [seed] | invite",
+                "!hpqtest party prod [seed] (adopt your own mixed party as a companion run; you lead)",
                 "!hpqtest spectate | return | bonus <skip|enter>",
                 "!hpqtest checkpoint <seeds|bunny|ninecakes>",
                 "!hpqtest fail <coordinator|leader|bunny|timeout>",
                 "!hpqtest complete | status | pause | resume | stop");
     }
 
-    private enum Flow { AGENTS_ONLY, HUMAN_INVITES_AGENTS, AGENT_LEADS_HUMAN }
+    private enum Flow { AGENTS_ONLY, HUMAN_INVITES_AGENTS, AGENT_LEADS_HUMAN, ADOPTED }
+
+    record AdoptOptions(boolean production, long seed) {
+    }
 
     private static final class Run {
         private final Object lock = new Object();

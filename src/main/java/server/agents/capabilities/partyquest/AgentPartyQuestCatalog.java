@@ -32,7 +32,7 @@ public final class AgentPartyQuestCatalog {
         Map<String, AgentPartyQuestDefinition> definitions = new LinkedHashMap<>();
         add(definitions, new AgentPartyQuestDefinition(
                 "hpq", "HenesysPQ", 100_000_200, 910_010_000, 910_010_100,
-                910_010_300, 100_000_200, 10, 255, 3, 6));
+                910_010_300, 100_000_200, 10, 255, 3, 6, 600_000L));
         add(definitions, new AgentPartyQuestDefinition(
                 "kpq", "KerningPQ", 103_000_000, 103_000_800, 103_000_805,
                 103_000_890, 103_000_000, 21, 30, 3, 4, 1_800_000L));

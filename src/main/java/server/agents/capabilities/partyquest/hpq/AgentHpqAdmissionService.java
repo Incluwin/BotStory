@@ -4,12 +4,16 @@ import client.Character;
 import client.inventory.InventoryType;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestCandidateScope;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbySession;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartySnapshot;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.agents.runtime.activity.AgentActivityBootstrap;
 import server.agents.runtime.simulation.AgentAbstractExecutionScope;
 
 import java.util.ArrayList;
@@ -22,6 +26,86 @@ public final class AgentHpqAdmissionService {
     private AgentHpqAdmissionService() {
     }
 
+    /**
+     * A host's entry of its own party: a human leader with his companions at Tory, admitted as a PRODUCTION companion
+     * run (AgentHpqSession.companionAdopted). It builds the engagement and lobby the background director would, then
+     * hands off at once; on any failure the engagement is recovered and nothing is left registered.
+     *
+     * <p>It runs the activity admission and every registry and lobby change on the calling thread. The GM command
+     * '!hpqtest party prod' calls it there, as '!kpqtest party prod' calls KPQ's admit; a host on an IO thread (the
+     * Tory desk and hook) must not call it directly but submit it to companion-ops or the Agent tick.
+     */
+    public static AdmissionResult admit(
+            Character operator, Character eventLeader, List<Character> members, long seed, long nowMs) {
+        Validation validation = validate(operator, eventLeader, members);
+        if (!validation.success()) return AdmissionResult.failure(validation.message());
+        AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
+                "hpq", AgentPartyQuestEngagement.Mode.PRODUCTION, seed, operator.getId(),
+                validation.members().size(), nowMs);
+        AgentPartyQuestLobbySession lobby = null;
+        try {
+            AgentPartyQuestEngagementRegistry.register(engagement);
+            for (Character agent : validation.agentMembers()) {
+                AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(agent.getId());
+                if (entry == null || !AgentActivityBootstrap.admission().prepare(
+                        AgentActivityBootstrap.PARTY_QUEST_CONTROLLER_ID, entry, agent,
+                        "admitted to autonomous HPQ lobby", nowMs)) {
+                    engagement.beginRecovery(agent.getName()
+                            + " could not leave its current activity", nowMs);
+                    AgentPartyQuestLifecycleRuntime.recover(engagement, nowMs);
+                    return new AdmissionResult(false, agent.getName()
+                            + " could not leave its current activity", null, engagement);
+                }
+                AgentPartyQuestEngagementRegistry.addAndIndexMember(
+                        engagement, agent.getId(), AgentPartyQuestEngagement.MemberType.AGENT, nowMs);
+            }
+            for (Character member : validation.members()) {
+                if (!isAgent(member)) {
+                    AgentPartyQuestEngagementRegistry.addAndIndexMember(
+                            engagement, member.getId(), AgentPartyQuestEngagement.MemberType.HUMAN, nowMs);
+                }
+            }
+            lobby = new AgentPartyQuestLobbySession(
+                    engagement.engagementId(), AgentHpqLobbyProfile.profile(), seed,
+                    operator.getId(), validation.members().size(),
+                    AgentPartyQuestCandidateScope.ANY_ELIGIBLE_HUMAN, nowMs);
+            for (Character member : validation.members()) {
+                lobby.addMember(member.getId(), isAgent(member)
+                                ? AgentPartyQuestLobbySession.MemberType.AGENT
+                                : AgentPartyQuestLobbySession.MemberType.HUMAN,
+                        member.getId() == eventLeader.getId() && isAgent(member)
+                                ? AgentPartyQuestLobbySession.MemberRole.RECRUITING_LEADER
+                                : AgentPartyQuestLobbySession.MemberRole.JOINED_MEMBER, nowMs);
+            }
+            lobby.setCoordinatorAgentId(validation.agentMembers().getFirst().getId());
+            Set<Integer> roster = validation.members().stream()
+                    .map(Character::getId).collect(java.util.stream.Collectors.toSet());
+            lobby.reconcileParty(validation.party().id(), eventLeader.getId(), roster, nowMs);
+            lobby.markReady(nowMs);
+            engagement.beginLobby(lobby.lobbyId(), nowMs);
+            engagement.lobbyReady(nowMs);
+            AgentPartyQuestLobbyRuntime.register(lobby, nowMs);
+            AdmissionResult result = admitFromLobby(
+                    engagement, lobby, operator, eventLeader, validation.members(),
+                    seed, nowMs, AgentHpqSession.Mode.PRODUCTION, true);
+            if (!result.success()) {
+                AgentPartyQuestLobbyRuntime.unregister(lobby.lobbyId(), nowMs);
+                engagement.beginRecovery(result.message(), nowMs);
+                AgentPartyQuestLifecycleRuntime.recover(engagement, nowMs);
+            }
+            return result;
+        } catch (RuntimeException failure) {
+            if (lobby != null) AgentPartyQuestLobbyRuntime.unregister(lobby.lobbyId(), nowMs);
+            engagement.beginRecovery(failure.getMessage(), nowMs);
+            AgentPartyQuestLifecycleRuntime.recover(engagement, nowMs);
+            return new AdmissionResult(false, failure.getMessage(), null, engagement);
+        }
+    }
+
+    /**
+     * Admits a formed lobby. {@code companionRun} is true only from {@link #admit}: the session is then flagged a
+     * companion run before it is published, so no tick or watchdog ever sees it as a stock run.
+     */
     static AdmissionResult admitFromLobby(
             AgentPartyQuestEngagement engagement,
             AgentPartyQuestLobbySession lobby,
@@ -30,7 +114,8 @@ public final class AgentHpqAdmissionService {
             List<Character> partyMembers,
             long seed,
             long nowMs,
-            AgentHpqSession.Mode mode) {
+            AgentHpqSession.Mode mode,
+            boolean companionRun) {
         Validation validation = validate(operator, eventLeader, partyMembers);
         if (!validation.success()) return restoreFailure(engagement, lobby, validation.message(), nowMs);
         if (engagement == null || lobby == null
@@ -66,6 +151,7 @@ public final class AgentHpqAdmissionService {
         }
         session.setLeadership(eventLeader.getId(), validation.agentMembers().getFirst().getId());
         assignInitialRoles(session);
+        if (companionRun) session.setCompanionAdopted(true);
 
         boolean published = false;
         try {
@@ -141,21 +227,43 @@ public final class AgentHpqAdmissionService {
             if (memberParty == null || memberParty.id() != party.id()) {
                 return Validation.failure("Every HPQ member must be in the event leader's party");
             }
-            if (member.getMapId() != AgentHpqDefinition.RECRUIT_MAP) {
-                return Validation.failure(member.getName() + " is not at the Henesys PQ entrance");
-            }
-            if (member.getLevel() < 10 || member.getLevel() > 255) {
-                return Validation.failure(member.getName() + " must be level 10-255 for HPQ");
-            }
+            // Stock order: entrance and level, then world and channel, then the bag.
+            String problem = placementProblem(member);
+            if (!problem.isEmpty()) return Validation.failure(problem);
             if (AgentClientGatewayRuntime.clients().world(member) != world
                     || AgentClientGatewayRuntime.clients().channel(member) != channel) {
                 return Validation.failure("Every HPQ member must be on the same world and channel");
             }
-            if (member.getInventory(InventoryType.ETC).getNextFreeSlot() < 0) {
-                return Validation.failure(member.getName() + " needs free ETC capacity for HPQ items");
-            }
+            problem = capacityProblem(member);
+            if (!problem.isEmpty()) return Validation.failure(problem);
         }
         return new Validation(true, "", List.copyOf(unique), agents, party);
+    }
+
+    /**
+     * Why this party member cannot enter HPQ from Tory, in admission's own words, or "" when it can. A host can check
+     * its lineup with it before admitting it.
+     */
+    public static String memberProblem(Character member) {
+        String problem = placementProblem(member);
+        return problem.isEmpty() ? capacityProblem(member) : problem;
+    }
+
+    private static String placementProblem(Character member) {
+        if (member.getMapId() != AgentHpqDefinition.RECRUIT_MAP) {
+            return member.getName() + " is not at the Henesys PQ entrance";
+        }
+        if (member.getLevel() < 10 || member.getLevel() > 255) {
+            return member.getName() + " must be level 10-255 for HPQ";
+        }
+        return "";
+    }
+
+    private static String capacityProblem(Character member) {
+        if (member.getInventory(InventoryType.ETC).getNextFreeSlot() < 0) {
+            return member.getName() + " needs free ETC capacity for HPQ items";
+        }
+        return "";
     }
 
     private static AdmissionResult restoreFailure(
@@ -187,9 +295,9 @@ public final class AgentHpqAdmissionService {
         }
     }
 
-    record AdmissionResult(boolean success, String message, AgentHpqSession session,
-                           AgentPartyQuestEngagement engagement) {
-        private static AdmissionResult failure(String message) {
+    public record AdmissionResult(boolean success, String message, AgentHpqSession session,
+                                  AgentPartyQuestEngagement engagement) {
+        static AdmissionResult failure(String message) {
             return new AdmissionResult(false, message, null, null);
         }
     }
