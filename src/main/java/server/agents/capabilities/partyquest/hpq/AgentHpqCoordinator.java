@@ -1193,7 +1193,7 @@ final class AgentHpqCoordinator {
         int lyingCakes = stacks.stream().mapToInt(AgentHpqCoordinator::stackSize).sum();
         if (session.handOverStartedAtMs() != 0L) {
             if (held > 0) {
-                handOverCakes(session, agent, entry, leader, held, lyingCakes, nowMs);
+                handOverCakes(session, agent, entry, leader, held, nowMs);
                 return;
             }
             session.endHandOver(false);
@@ -1224,7 +1224,7 @@ final class AgentHpqCoordinator {
                 lyingCakes, leaderNear, intProperty(leader, "bunnyCake"), !natural.isEmpty(), CAKE_HANDOVER_BATCH,
                 AgentHpqDefinition.REQUIRED_RICE_CAKES)) {
             session.startHandOver(nowMs, false);
-            handOverCakes(session, agent, entry, leader, held, lyingCakes, nowMs);
+            handOverCakes(session, agent, entry, leader, held, nowMs);
             return;
         }
         MapItem cake = defense.threats().isEmpty() ? nearestUnassignedDrop(agent, natural, Set.of()) : null;
@@ -1270,7 +1270,7 @@ final class AgentHpqCoordinator {
      * it take the stack to Growlie instead.
      */
     private static void handOverCakes(AgentHpqSession session, Character agent, AgentRuntimeEntry entry,
-                                      Character leader, int held, int lyingCakes, long nowMs) {
+                                      Character leader, int held, long nowMs) {
         boolean onGround = actions().footing(agent) == PrimitiveCapabilityGateway.Footing.GROUND;
         if (!session.handOverToGrowlie()) {
             Point spot = groundSpot(leader);
@@ -1289,11 +1289,11 @@ final class AgentHpqCoordinator {
                     return;
                 }
                 case DROP_AT_FEET -> {
-                    dropCakes(session, agent, entry, leader, held, CakePlace.FEET, lyingCakes, nowMs);
+                    dropCakes(session, agent, entry, leader, held, CakePlace.FEET, nowMs);
                     return;
                 }
                 case DROP_BESIDE -> {
-                    dropCakes(session, agent, entry, leader, held, CakePlace.BESIDE, lyingCakes, nowMs);
+                    dropCakes(session, agent, entry, leader, held, CakePlace.BESIDE, nowMs);
                     return;
                 }
                 default -> session.sendHandOverToGrowlie();
@@ -1301,7 +1301,7 @@ final class AgentHpqCoordinator {
         }
         Point growlie = growlieSpot(agent);
         if (AgentHpqCompanionPlay.atFeet(agent.getPosition(), growlie, onGround, true, CAKE_HANDOVER_REACH_PX)) {
-            dropCakes(session, agent, entry, leader, held, CakePlace.GROWLIE, lyingCakes, nowMs);
+            dropCakes(session, agent, entry, leader, held, CakePlace.GROWLIE, nowMs);
             return;
         }
         AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry);
@@ -1316,7 +1316,7 @@ final class AgentHpqCoordinator {
      * batch just lies there for him (C6a). A line that sent him to Growlie, or put the ten beside him, spares him C9.
      */
     private static void dropCakes(AgentHpqSession session, Character agent, AgentRuntimeEntry entry,
-                                  Character leader, int held, CakePlace place, int lyingCakes, long nowMs) {
+                                  Character leader, int held, CakePlace place, long nowMs) {
         actions().stop(entry);
         if (!AgentScriptItemActionService.dropItem(
                 entry, InventoryType.ETC, AgentHpqDefinition.RICE_CAKE, (short) held)) {
@@ -1329,7 +1329,7 @@ final class AgentHpqCoordinator {
         inhibitCakePickup(session);
         log.info("HPQ cakes dropped: session={} member={} cakes={} place={} recollect={} leader={} at={}",
                 session.sessionId(), agent.getId(), held, place, recollect, leader.getId(), agent.getPosition());
-        boolean theTen = AgentHpqCompanionPlay.makesTheTen(held, lyingCakes,
+        boolean theTen = AgentHpqCompanionPlay.makesTheTen(held,
                 leader.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false), AgentHpqDefinition.REQUIRED_RICE_CAKES);
         boolean atHisFeet = place == CakePlace.FEET;
         if (place == CakePlace.GROWLIE) {

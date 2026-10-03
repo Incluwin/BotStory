@@ -217,10 +217,11 @@ class AgentHpqCompanionPlayTest {
 
     @Test
     void onlyTheHandOverThatMakesTheTenSendsHimToGrowlie() {
-        // dropped, lying for him, he holds -> the ten
-        assertTrue(AgentHpqCompanionPlay.makesTheTen(3, 0, 7, 10));
-        assertTrue(AgentHpqCompanionPlay.makesTheTen(3, 2, 5, 10), "with a stack still lying for him");
-        assertFalse(AgentHpqCompanionPlay.makesTheTen(3, 0, 6, 10));
+        // dropped, he holds -> the ten
+        assertTrue(AgentHpqCompanionPlay.makesTheTen(3, 7, 10));
+        assertFalse(AgentHpqCompanionPlay.makesTheTen(3, 6, 10));
+        assertFalse(AgentHpqCompanionPlay.makesTheTen(3, 5, 10),
+                "two more lie somewhere else: C9 tells him once he holds ten");
     }
 
     @Test

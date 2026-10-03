@@ -260,11 +260,12 @@ final class AgentHpqCompanionPlay {
     }
 
     /**
-     * This hand-over makes the ten: the stack dropped, the companions' stacks still lying for him and what he holds.
-     * Only then does its line send him to Growlie (C6, or C6b by Growlie himself); an earlier batch gets C6a.
+     * This hand-over makes the ten: the stack dropped and what he holds. Only then does its line send him to Growlie
+     * (C6, or C6b by Growlie himself); an earlier batch gets C6a, and a stack lying elsewhere is not counted, since
+     * C9 tells him once he holds all ten.
      */
-    static boolean makesTheTen(int droppedCakes, int lyingCakes, int leaderCakes, int requiredCakes) {
-        return droppedCakes + Math.max(0, lyingCakes) + Math.max(0, leaderCakes) >= requiredCakes;
+    static boolean makesTheTen(int droppedCakes, int leaderCakes, int requiredCakes) {
+        return droppedCakes + Math.max(0, leaderCakes) >= requiredCakes;
     }
 
     /** What the collector does with its stack this tick. */

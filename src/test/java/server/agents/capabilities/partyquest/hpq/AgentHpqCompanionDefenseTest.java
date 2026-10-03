@@ -151,6 +151,26 @@ class AgentHpqCompanionDefenseTest {
     }
 
     @Test
+    void aFinalBatchShortOfTenInHisHandsDoesNotSendHimToGrowlie() {
+        run.dropsSucceed();
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(140, -188));
+        run.holds(mira, CAKE, 3);
+        run.holds(ben, CAKE, 5);
+        // Two more lie by the Bunny, where Tobi left them before it went down.
+        MapItem elsewhere = run.drop(CAKE, new Point(-183, -188), true, tobi.getId(), 1_500L);
+        client.inventory.Item two = org.mockito.Mockito.mock(client.inventory.Item.class);
+        when(two.getQuantity()).thenReturn((short) 2);
+        when(elsewhere.getItem()).thenReturn(two);
+        AgentHpqSession session = defending();
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        run.said(session, "cakes-dropped-1", mira, "the rice cakes are at your feet, Ben. pick them up.");
+        assertFalse(session.leaderToldGrowlie());
+    }
+
+    @Test
     void afterALossASingleCakeIsNotWalkedOverOnItsOwn() {
         run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
         when(run.hpq.property(any(), eq("bunnyCake"))).thenReturn("12");
