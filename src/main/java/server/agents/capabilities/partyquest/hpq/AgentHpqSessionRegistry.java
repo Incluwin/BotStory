@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.hpq;
 
 import client.Character;
+import server.maps.MapItem;
 
 import java.util.Collection;
 import java.util.Map;
@@ -45,6 +46,12 @@ public final class AgentHpqSessionRegistry {
         return sessionId == null ? null : SESSIONS.get(sessionId);
     }
 
+    /** The session this operator runs, or null. */
+    public static AgentHpqSession forOperator(int operatorId) {
+        String sessionId = SESSION_BY_OPERATOR.get(operatorId);
+        return sessionId == null ? null : SESSIONS.get(sessionId);
+    }
+
     public static Collection<AgentHpqSession> sessions() {
         return java.util.List.copyOf(SESSIONS.values());
     }
@@ -55,6 +62,11 @@ public final class AgentHpqSessionRegistry {
         SESSION_BY_OPERATOR.remove(session.operatorId(), session.sessionId());
         session.members().forEach(member ->
                 SESSION_BY_MEMBER.remove(member.characterId(), session.sessionId()));
+    }
+
+    /** Forgets one member's index only; the session and its other members stay as they are. */
+    public static synchronized void unindexMember(AgentHpqSession session, int characterId) {
+        if (session != null) SESSION_BY_MEMBER.remove(characterId, session.sessionId());
     }
 
     public static boolean active(int characterId) {
@@ -77,6 +89,17 @@ public final class AgentHpqSessionRegistry {
                 && character.getEventInstance() == session.eventInstance()
                 && character.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false)
                     < AgentHpqDefinition.REQUIRED_RICE_CAKES;
+    }
+
+    /**
+     * Today's rule for this cake, and in a companion run one more: a stack a player dropped (a companion's hand-over
+     * at the leader's feet) is the leader's to pick up, so a member takes it back only once its recollect is due.
+     */
+    public static boolean canLootRiceCake(Character character, MapItem drop) {
+        if (!canLootRiceCake(character)) return false;
+        AgentHpqSession session = forMember(character.getId());
+        return session == null || !session.companionAdopted() || drop == null || !drop.isPlayerDrop()
+                || session.recollectDue(character.getId());
     }
 
     public static boolean isManagedEvent(Character character) {

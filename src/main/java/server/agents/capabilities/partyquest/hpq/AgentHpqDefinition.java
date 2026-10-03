@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.hpq;
 
 import java.awt.Point;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -63,6 +64,15 @@ public final class AgentHpqDefinition {
 
     public static boolean isSeed(int itemId) {
         return BED_BY_SEED.containsKey(itemId);
+    }
+
+    /**
+     * The primrose whose break drops this seed: reactordrops pairs 9102002..9102007 with 4001095..4001100 in order,
+     * so the reactor is 9102002 + (seed - 4001095). A non-seed throws.
+     */
+    public static int sourceReactorFor(int seedItemId) {
+        seedBed(seedItemId);
+        return Collections.min(SEED_SOURCE_REACTORS) + (seedItemId - SEED_BEDS.getFirst().seedItemId());
     }
 
     public static List<Point> defenseGuardPoints() {

@@ -1,14 +1,18 @@
 package server.agents.capabilities.partyquest.hpq;
 
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /** Isolated party-level HPQ state machine aggregate. */
-public final class AgentHpqSession {
+public final class AgentHpqSession implements AgentCompanionRunSession {
     public enum Mode { PRODUCTION, BACKGROUND_POPULATION, TEST_OBSERVATION }
     public enum PartyOwnership { EXTERNAL, HPQ_OWNED }
     public enum BonusMode { SKIP, ENTER, HUMAN_CHOICE }
@@ -41,6 +45,9 @@ public final class AgentHpqSession {
     private PartyOwnership partyOwnership = PartyOwnership.EXTERNAL;
     private BonusMode bonusMode = BonusMode.SKIP;
     private boolean rewardEligibilityFrozen;
+    private boolean companionAdopted;
+    private boolean memberCoordinationChatEnabled;
+    private final Set<Integer> recollectDue = new HashSet<>();
 
     public AgentHpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < 3 || requestedPartySize > 6
@@ -61,6 +68,10 @@ public final class AgentHpqSession {
             throw new IllegalStateException("HPQ session is full");
         }
         members.computeIfAbsent(characterId, id -> new AgentHpqMemberState(id, type));
+    }
+
+    public synchronized void removeMember(int characterId) {
+        members.remove(characterId);
     }
 
     public synchronized void setLeadership(int eventLeaderId, int executionAgentId) {
@@ -123,6 +134,7 @@ public final class AgentHpqSession {
         return phase == Phase.COMPLETED || phase == Phase.FAILED;
     }
 
+    @Override
     public String sessionId() { return sessionId; }
     public Mode mode() { return mode; }
     public long seed() { return seed; }
@@ -166,6 +178,39 @@ public final class AgentHpqSession {
     public synchronized AgentHpqMemberState member(int characterId) { return members.get(characterId); }
     public synchronized Collection<AgentHpqMemberState> members() { return java.util.List.copyOf(members.values()); }
     public synchronized int memberCount() { return members.size(); }
+
+    /**
+     * A human-led run of owner-bound companions, admitted by AgentHpqAdmissionService.admit. Every companion-run
+     * behaviour is gated on it; stock, background and GM-observed runs leave it false.
+     */
+    @Override
+    public synchronized boolean companionAdopted() { return companionAdopted; }
+
+    /** Set only by the public admit, before the session is published. */
+    synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
+
+    public synchronized boolean memberCoordinationChatEnabled() { return memberCoordinationChatEnabled; }
+
+    @Override
+    public synchronized void setMemberCoordinationChatEnabled(boolean enabled) {
+        memberCoordinationChatEnabled = enabled;
+    }
+
+    /** HPQ paces nothing by a leader's calibration, so it keeps none. */
+    @Override
+    public synchronized void setPaceCalibration(AgentPqPaceCalibration calibration) {
+    }
+
+    /**
+     * True while this companion-run member may take back a rice-cake stack a player dropped (its own hand-over that
+     * the leader left lying until it would expire); otherwise such a stack is the leader's to pick up.
+     */
+    public synchronized boolean recollectDue(int characterId) { return recollectDue.contains(characterId); }
+
+    synchronized void setRecollectDue(int characterId, boolean due) {
+        if (due) recollectDue.add(characterId);
+        else recollectDue.remove(characterId);
+    }
 
     public synchronized void freezeRewardEligibility() { rewardEligibilityFrozen = true; }
     public synchronized boolean rewardEligibilityFrozen() { return rewardEligibilityFrozen; }

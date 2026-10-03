@@ -3152,22 +3152,22 @@ public class MapleMap {
 
     private void broadcastItemDropMessage(MapItem mdrop, Point dropperPos, Point dropPos, byte mod, short delay,
                                           double rangeSq, Point rangedFrom) {
+        // Packets are built after the snapshot: each one reads its recipient's party (Character.prtLock), and a
+        // thread holding a prtLock can be waiting for this lock (a logout buff cancel broadcasting removeSummon).
+        List<Character> recipients;
         chrRLock.lock();
         try {
-            for (Character chr : networkRecipients) {
-                Packet packet = PacketCreator.dropItemFromMapObject(chr, mdrop, dropperPos, dropPos, mod, delay);
-
-                // TODO: remove along with USE_MAXRANGE config
-                if (rangeSq < Double.POSITIVE_INFINITY) {
-                    if (rangedFrom.distanceSq(chr.getPosition()) <= rangeSq) {
-                        chr.sendPacket(packet);
-                    }
-                } else {
-                    chr.sendPacket(packet);
-                }
-            }
+            recipients = new ArrayList<>(networkRecipients);
         } finally {
             chrRLock.unlock();
+        }
+
+        for (Character chr : recipients) {
+            // TODO: remove along with USE_MAXRANGE config
+            if (rangeSq < Double.POSITIVE_INFINITY && rangedFrom.distanceSq(chr.getPosition()) > rangeSq) {
+                continue;
+            }
+            chr.sendPacket(PacketCreator.dropItemFromMapObject(chr, mdrop, dropperPos, dropPos, mod, delay));
         }
     }
 
