@@ -816,11 +816,11 @@ tuning:
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.SEED_HOLD_HINT_MS: '20000'
     # Values: 1-10 rice cakes. Recommended: 3, so the leader gets cakes in a few trips without the collector leaving its post for every one.
     # Purpose: Sets how many Moon Bunny cakes the companion collector gathers before it walks them to a nearby leader.
-    # Technical: AgentHpqCompanionPlay.handOverDue starts a hand-over when the collector holds this many and the leader is within CAKE_HANDOVER_NEAR_PX, or when its and the leader's cakes make ten, or when the Bunny has made ten and none lies on the floor.
+    # Technical: AgentHpqCompanionPlay.handOverDue starts a hand-over when the collector holds this many and the leader is within CAKE_HANDOVER_NEAR_PX, or when its and the leader's cakes make ten, or when the Bunny has made ten, none lies on the floor and its, the leader's and the companions' stacks still lying for him make ten (so after a loss no single cake is walked over on its own).
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_HANDOVER_BATCH: '3'
     # Values: 100-1500 map pixels. Recommended: 400, about the Bunny's floor, so a batch never drags the collector across the map.
     # Purpose: Bounds how near the leader must be for a batch of cakes to be walked to him before all ten are made.
-    # Technical: Measured on each axis from the collector to the leader on the same map; a farther leader gets the cakes only once its and his cakes make ten or the Bunny has made all ten. Companion runs only.
+    # Technical: Measured on each axis from the collector to the leader on the same map; a farther leader gets the cakes only once its and his cakes (with the stacks still lying for him, once the Bunny has made ten) make ten. Companion runs only.
     server.agents.capabilities.partyquest.hpq.AgentHpqCoordinator.CAKE_HANDOVER_NEAR_PX: '400'
     # Values: 20-120 map pixels. Recommended: 60, within a step of the leader so he can pick the stack up without walking.
     # Purpose: Decides when the collector stands at the leader's feet (or Growlie's) and drops its whole stack there in one drop.

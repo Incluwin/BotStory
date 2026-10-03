@@ -128,11 +128,60 @@ class AgentHpqCompanionDefenseTest {
 
         run.items.verify(() -> AgentScriptItemActionService.dropItem(run.entry(mira), InventoryType.ETC, CAKE,
                 (short) 3));
-        run.said(session, "cakes-dropped-1", mira,
-                "the rice cakes are at your feet, Ben. pick them up and talk to growlie.");
+        run.said(session, "cakes-dropped-1", mira, "the rice cakes are at your feet, Ben. pick them up.");
         run.inventory.verify(() -> AgentInventoryStateRuntime.setLootInhibitMs(run.entry(mira), 3_000));
         assertEquals(1, session.handOvers());
+        assertFalse(session.leaderToldGrowlie(), "three of ten: not yet growlie");
+    }
+
+    @Test
+    void theHandOverThatMakesTheTenSendsHimToGrowlie() {
+        run.dropsSucceed();
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(140, -188));
+        run.holds(mira, CAKE, 3);
+        run.holds(ben, CAKE, 7);
+        AgentHpqSession session = defending();
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        run.said(session, "cakes-dropped-1", mira,
+                "the rice cakes are at your feet, Ben. pick them up and talk to growlie.");
         assertTrue(session.leaderToldGrowlie());
+    }
+
+    @Test
+    void afterALossASingleCakeIsNotWalkedOverOnItsOwn() {
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        when(run.hpq.property(any(), eq("bunnyCake"))).thenReturn("12");
+        run.holds(mira, CAKE, 1);
+        run.holds(ben, CAKE, 5);
+        AgentHpqSession session = defending();
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        assertEquals(0L, session.handOverStartedAtMs());
+        verify(run.actions, never()).navigate(run.entry(mira), new Point(150, -188), true);
+        verify(run.actions).navigate(run.entry(mira), new Point(-183, -188), true);
+    }
+
+    @Test
+    void withTheBunnyDoneTheLastCakesGoOverWhenTheyAndTheStacksLyingForHimMakeTen() {
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        when(run.hpq.property(any(), eq("bunnyCake"))).thenReturn("12");
+        run.moveTo(ben, new Point(429, 83));
+        run.holds(mira, CAKE, 2);
+        run.holds(ben, CAKE, 5);
+        MapItem lying = run.drop(CAKE, new Point(420, 83), true, mira.getId(), 1_500L);
+        client.inventory.Item three = org.mockito.Mockito.mock(client.inventory.Item.class);
+        when(three.getQuantity()).thenReturn((short) 3);
+        when(lying.getItem()).thenReturn(three);
+        AgentHpqSession session = defending();
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+
+        verify(run.actions).navigate(run.entry(mira), new Point(429, 83), true);
+        assertTrue(session.handOverStartedAtMs() > 0L);
     }
 
     @Test
@@ -182,6 +231,47 @@ class AgentHpqCompanionDefenseTest {
                 (short) 3));
         run.said(session, "cakes-by-growlie-1", mira, "Ben, couldn't get to you, left the cakes by growlie.");
         assertFalse(session.leaderToldGrowlie());
+    }
+
+    @Test
+    void cakesByGrowlieThatMakeTheTenSpareHimTheGrowlieLine() {
+        run.dropsSucceed();
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(-183, -188));
+        run.holds(mira, CAKE, 3);
+        run.holds(ben, CAKE, 7);
+        when(run.actions.canReach(eq(run.entry(mira)), eq(mira), any())).thenReturn(false);
+        AgentHpqSession session = defending();
+
+        AgentHpqCoordinator.tick(session, 2_000L);
+        run.moveTo(mira, new Point(420, 83));
+        AgentHpqCoordinator.tick(session, 9_000L);
+
+        run.said(session, "cakes-by-growlie-1", mira, "Ben, couldn't get to you, left the cakes by growlie.");
+        assertTrue(session.leaderToldGrowlie(), "he picks them up beside growlie");
+    }
+
+    @Test
+    void aRecollectedStackTakenToGrowlieSaysWhereItIs() {
+        run.dropsSucceed();
+        run.monster(AgentHpqDefinition.MOON_BUNNY, HpqRunFixture.BUNNY_LANDING);
+        run.moveTo(mira, new Point(-183, -188));
+        MapItem stack = run.drop(CAKE, new Point(150, -188), true, mira.getId(), 10_000L);
+        AgentHpqSession session = defending();
+        AgentHpqCoordinator.tick(session, 160_000L);
+        run.loot.verify(() -> AgentGrindLootStateRuntime.setObjectiveLootTarget(run.entry(mira), stack));
+
+        run.pickUp(stack);
+        run.holds(mira, CAKE, 3);
+        when(run.actions.canReach(eq(run.entry(mira)), eq(mira), any())).thenReturn(false);
+        AgentHpqCoordinator.tick(session, 161_000L);
+        verify(run.actions).navigate(run.entry(mira), new Point(429, 83), true);
+
+        run.moveTo(mira, new Point(420, 83));
+        AgentHpqCoordinator.tick(session, 162_000L);
+
+        run.said(session, "cakes-by-growlie-1", mira, "Ben, couldn't get to you, left the cakes by growlie.");
+        run.neverSaid("cakes-recollected-1");
     }
 
     @Test

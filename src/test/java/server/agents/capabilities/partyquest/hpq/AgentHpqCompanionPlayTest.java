@@ -196,14 +196,31 @@ class AgentHpqCompanionPlayTest {
 
     @Test
     void theHandOverStartsForABatchNearTheLeaderOrWhenTheCakesAreAllMade() {
-        // collector, leader, leaderNear, bunnyCakes, naturalOnFloor -> due
-        assertTrue(AgentHpqCompanionPlay.handOverDue(3, 0, true, 3, false, 3, 10), "a batch, leader near");
-        assertFalse(AgentHpqCompanionPlay.handOverDue(3, 0, false, 3, false, 3, 10), "a batch, leader far");
-        assertFalse(AgentHpqCompanionPlay.handOverDue(2, 0, true, 2, false, 3, 10), "short of a batch");
-        assertTrue(AgentHpqCompanionPlay.handOverDue(4, 6, false, 10, true, 3, 10), "it and he make ten");
-        assertTrue(AgentHpqCompanionPlay.handOverDue(1, 3, false, 10, false, 3, 10), "all made, none to collect");
-        assertFalse(AgentHpqCompanionPlay.handOverDue(1, 3, false, 10, true, 3, 10), "one more lies there");
-        assertFalse(AgentHpqCompanionPlay.handOverDue(0, 9, true, 10, false, 3, 10), "nothing to bring");
+        // collector, leader, lying for him, leaderNear, bunnyCakes, naturalOnFloor -> due
+        assertTrue(AgentHpqCompanionPlay.handOverDue(3, 0, 0, true, 3, false, 3, 10), "a batch, leader near");
+        assertFalse(AgentHpqCompanionPlay.handOverDue(3, 0, 0, false, 3, false, 3, 10), "a batch, leader far");
+        assertFalse(AgentHpqCompanionPlay.handOverDue(2, 0, 0, true, 2, false, 3, 10), "short of a batch");
+        assertTrue(AgentHpqCompanionPlay.handOverDue(4, 6, 0, false, 10, true, 3, 10), "it and he make ten");
+        assertTrue(AgentHpqCompanionPlay.handOverDue(1, 3, 6, false, 10, false, 3, 10),
+                "all made, none to collect, the rest lies for him");
+        assertFalse(AgentHpqCompanionPlay.handOverDue(1, 3, 6, false, 10, true, 3, 10), "one more lies there");
+        assertFalse(AgentHpqCompanionPlay.handOverDue(0, 9, 0, true, 10, false, 3, 10), "nothing to bring");
+    }
+
+    @Test
+    void afterALossTheBunnysCountPastTenSendsNoCakeOverOnItsOwn() {
+        assertFalse(AgentHpqCompanionPlay.handOverDue(1, 3, 0, true, 12, false, 3, 10),
+                "two were lost: the batch rule holds");
+        assertFalse(AgentHpqCompanionPlay.handOverDue(2, 5, 1, true, 14, false, 3, 10), "short of a batch and of ten");
+        assertTrue(AgentHpqCompanionPlay.handOverDue(3, 5, 0, true, 14, false, 3, 10), "a batch, leader near");
+    }
+
+    @Test
+    void onlyTheHandOverThatMakesTheTenSendsHimToGrowlie() {
+        // dropped, lying for him, he holds -> the ten
+        assertTrue(AgentHpqCompanionPlay.makesTheTen(3, 0, 7, 10));
+        assertTrue(AgentHpqCompanionPlay.makesTheTen(3, 2, 5, 10), "with a stack still lying for him");
+        assertFalse(AgentHpqCompanionPlay.makesTheTen(3, 0, 6, 10));
     }
 
     @Test
@@ -304,6 +321,8 @@ class AgentHpqCompanionPlayTest {
                 AgentHpqCompanionPlay.WAIT_OUTSIDE, AgentHpqCompanionPlay.LEAVING_CAKES,
                 AgentHpqCompanionPlay.cakesDroppedLine(leader, true),
                 AgentHpqCompanionPlay.cakesDroppedLine(leader, false),
+                AgentHpqCompanionPlay.cakesBatchLine(leader, true),
+                AgentHpqCompanionPlay.cakesBatchLine(leader, false),
                 AgentHpqCompanionPlay.cakesByGrowlieLine(leader),
                 AgentHpqCompanionPlay.cakesStillLyingLine(leader),
                 AgentHpqCompanionPlay.carryOnLine("HappyWolf", 3),
@@ -334,6 +353,10 @@ class AgentHpqCompanionPlayTest {
                 AgentHpqCompanionPlay.cakesDroppedLine("Crewfriend", true));
         assertEquals("the rice cakes are right next to you, Crewfriend. pick them up and talk to growlie.",
                 AgentHpqCompanionPlay.cakesDroppedLine("Crewfriend", false));
+        assertEquals("the rice cakes are at your feet, Crewfriend. pick them up.",
+                AgentHpqCompanionPlay.cakesBatchLine("Crewfriend", true));
+        assertEquals("the rice cakes are right next to you, Crewfriend. pick them up.",
+                AgentHpqCompanionPlay.cakesBatchLine("Crewfriend", false));
         assertEquals("Crewfriend, couldn't get to you, left the cakes by growlie.",
                 AgentHpqCompanionPlay.cakesByGrowlieLine("Crewfriend"));
         assertEquals("Crewfriend, the cakes are still lying there. growlie's down where we came in.",

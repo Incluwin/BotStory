@@ -50,10 +50,19 @@ final class AgentHpqCompanionPlay {
         return leader + ", that seed goes on the pad " + padPosition + ". drop just one.";
     }
 
-    /** C6: the stack lies at the leader's feet, or (the map put it a step off his spot) right next to him. */
+    /**
+     * C6: the hand-over that makes the ten lies at the leader's feet, or (the map put it a step off his spot) right
+     * next to him.
+     */
     static String cakesDroppedLine(String leader, boolean atHisFeet) {
         return "the rice cakes are " + (atHisFeet ? "at your feet" : "right next to you") + ", " + leader
                 + ". pick them up and talk to growlie.";
+    }
+
+    /** C6a: a batch that does not make the ten yet lies at the leader's feet, or right next to him. */
+    static String cakesBatchLine(String leader, boolean atHisFeet) {
+        return "the rice cakes are " + (atHisFeet ? "at your feet" : "right next to you") + ", " + leader
+                + ". pick them up.";
     }
 
     /** C6b: the leader could not be reached (or the walk ran out of time), so the stack lies by Growlie. */
@@ -236,14 +245,25 @@ final class AgentHpqCompanionPlay {
 
     /**
      * The collector sets out with its stack: it holds a batch and the leader is near; or what it and the leader hold
-     * makes all the cakes; or the Bunny has made them all and none is left on the floor to collect.
+     * makes all the cakes; or the Bunny has made them all, none is left on the floor to collect, and its stack with
+     * the leader's and the companions' stacks still lying for him ({@code lyingCakes}) makes the ten. After a loss
+     * the Bunny's count passes ten short of that, and the batch rule holds: no single cake is walked over on its own.
      */
-    static boolean handOverDue(int collectorCakes, int leaderCakes, boolean leaderNear, int bunnyCakes,
-                               boolean naturalCakeOnFloor, int batch, int requiredCakes) {
+    static boolean handOverDue(int collectorCakes, int leaderCakes, int lyingCakes, boolean leaderNear,
+                               int bunnyCakes, boolean naturalCakeOnFloor, int batch, int requiredCakes) {
         if (collectorCakes <= 0) return false;
         return (collectorCakes >= batch && leaderNear)
                 || collectorCakes + leaderCakes >= requiredCakes
-                || (bunnyCakes >= requiredCakes && !naturalCakeOnFloor);
+                || (bunnyCakes >= requiredCakes && !naturalCakeOnFloor
+                    && collectorCakes + leaderCakes + Math.max(0, lyingCakes) >= requiredCakes);
+    }
+
+    /**
+     * This hand-over makes the ten: the stack dropped, the companions' stacks still lying for him and what he holds.
+     * Only then does its line send him to Growlie (C6, or C6b by Growlie himself); an earlier batch gets C6a.
+     */
+    static boolean makesTheTen(int droppedCakes, int lyingCakes, int leaderCakes, int requiredCakes) {
+        return droppedCakes + Math.max(0, lyingCakes) + Math.max(0, leaderCakes) >= requiredCakes;
     }
 
     /** What the collector does with its stack this tick. */

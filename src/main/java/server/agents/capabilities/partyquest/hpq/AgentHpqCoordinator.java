@@ -1179,14 +1179,15 @@ final class AgentHpqCoordinator {
             guard(entry, agent, defense.posts().getFirst(), defense);
             return;
         }
+        List<MapItem> stacks = lyingStacks(session, drops);
+        int lyingCakes = stacks.stream().mapToInt(AgentHpqCoordinator::stackSize).sum();
         if (session.handOverStartedAtMs() != 0L) {
             if (held > 0) {
-                handOverCakes(session, agent, entry, leader, held, nowMs);
+                handOverCakes(session, agent, entry, leader, held, lyingCakes, nowMs);
                 return;
             }
             session.endHandOver(false);
         }
-        List<MapItem> stacks = lyingStacks(session, drops);
         for (MapItem stack : stacks) {
             if (AgentHpqCompanionPlay.nudgeDue(stack.getDropTime(), nowMs, CAKE_PICKUP_NUDGE_MS)) {
                 coordinate(session, agent, "cakes-nudge-" + stack.getObjectId(),
@@ -1210,10 +1211,10 @@ final class AgentHpqCoordinator {
         boolean leaderNear = agent.getMap() == leader.getMap()
                 && near(agent.getPosition(), leader.getPosition(), CAKE_HANDOVER_NEAR_PX);
         if (AgentHpqCompanionPlay.handOverDue(held, leader.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false),
-                leaderNear, intProperty(leader, "bunnyCake"), !natural.isEmpty(), CAKE_HANDOVER_BATCH,
+                lyingCakes, leaderNear, intProperty(leader, "bunnyCake"), !natural.isEmpty(), CAKE_HANDOVER_BATCH,
                 AgentHpqDefinition.REQUIRED_RICE_CAKES)) {
             session.startHandOver(nowMs, false);
-            handOverCakes(session, agent, entry, leader, held, nowMs);
+            handOverCakes(session, agent, entry, leader, held, lyingCakes, nowMs);
             return;
         }
         MapItem cake = defense.threats().isEmpty() ? nearestUnassignedDrop(agent, natural, Set.of()) : null;
@@ -1222,6 +1223,11 @@ final class AgentHpqCoordinator {
             return;
         }
         guard(entry, agent, defense.posts().getFirst(), defense);
+    }
+
+    /** The cakes in one stack on the floor (KPQ's count: an unreadable stack is one). */
+    private static int stackSize(MapItem drop) {
+        return drop.getItem() == null ? 1 : Math.max(1, drop.getItem().getQuantity());
     }
 
     /** The Moon Bunny's own cakes on the floor: never a stack a player (a companion's hand-over) dropped. */
@@ -1253,7 +1259,7 @@ final class AgentHpqCoordinator {
      * it take the stack to Growlie instead.
      */
     private static void handOverCakes(AgentHpqSession session, Character agent, AgentRuntimeEntry entry,
-                                      Character leader, int held, long nowMs) {
+                                      Character leader, int held, int lyingCakes, long nowMs) {
         boolean onGround = actions().footing(agent) == PrimitiveCapabilityGateway.Footing.GROUND;
         if (!session.handOverToGrowlie()) {
             Point spot = groundSpot(leader);
@@ -1272,11 +1278,11 @@ final class AgentHpqCoordinator {
                     return;
                 }
                 case DROP_AT_FEET -> {
-                    dropCakes(session, agent, entry, leader, held, CakePlace.FEET, nowMs);
+                    dropCakes(session, agent, entry, leader, held, CakePlace.FEET, lyingCakes, nowMs);
                     return;
                 }
                 case DROP_BESIDE -> {
-                    dropCakes(session, agent, entry, leader, held, CakePlace.BESIDE, nowMs);
+                    dropCakes(session, agent, entry, leader, held, CakePlace.BESIDE, lyingCakes, nowMs);
                     return;
                 }
                 default -> session.sendHandOverToGrowlie();
@@ -1284,7 +1290,7 @@ final class AgentHpqCoordinator {
         }
         Point growlie = growlieSpot(agent);
         if (AgentHpqCompanionPlay.atFeet(agent.getPosition(), growlie, onGround, true, CAKE_HANDOVER_REACH_PX)) {
-            dropCakes(session, agent, entry, leader, held, CakePlace.GROWLIE, nowMs);
+            dropCakes(session, agent, entry, leader, held, CakePlace.GROWLIE, lyingCakes, nowMs);
             return;
         }
         AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry);
@@ -1293,8 +1299,13 @@ final class AgentHpqCoordinator {
 
     private enum CakePlace { FEET, BESIDE, GROWLIE }
 
+    /**
+     * Drops the whole stack in one drop and says where it lies: by Growlie (C6b), picked back up and dropped again at
+     * his feet (C8), or at his feet; there only the hand-over that makes the ten sends him to Growlie (C6), an earlier
+     * batch just lies there for him (C6a). A line that sent him to Growlie, or put the ten beside him, spares him C9.
+     */
     private static void dropCakes(AgentHpqSession session, Character agent, AgentRuntimeEntry entry,
-                                  Character leader, int held, CakePlace place, long nowMs) {
+                                  Character leader, int held, CakePlace place, int lyingCakes, long nowMs) {
         actions().stop(entry);
         if (!AgentScriptItemActionService.dropItem(
                 entry, InventoryType.ETC, AgentHpqDefinition.RICE_CAKE, (short) held)) {
@@ -1307,13 +1318,19 @@ final class AgentHpqCoordinator {
         inhibitCakePickup(session);
         log.info("HPQ cakes dropped: session={} member={} cakes={} place={} recollect={} leader={} at={}",
                 session.sessionId(), agent.getId(), held, place, recollect, leader.getId(), agent.getPosition());
-        if (recollect) {
+        boolean theTen = AgentHpqCompanionPlay.makesTheTen(held, lyingCakes,
+                leader.getItemQuantity(AgentHpqDefinition.RICE_CAKE, false), AgentHpqDefinition.REQUIRED_RICE_CAKES);
+        boolean atHisFeet = place == CakePlace.FEET;
+        if (place == CakePlace.GROWLIE) {
+            if (coordinate(session, agent, "cakes-by-growlie-" + handOver,
+                    AgentHpqCompanionPlay.cakesByGrowlieLine(leader.getName())) && theTen) {
+                session.markLeaderToldGrowlie();
+            }
+        } else if (recollect) {
             coordinate(session, agent, "cakes-recollected-" + handOver, AgentHpqCompanionPlay.CAKES_RECOLLECTED);
-        } else if (place == CakePlace.GROWLIE) {
-            coordinate(session, agent, "cakes-by-growlie-" + handOver,
-                    AgentHpqCompanionPlay.cakesByGrowlieLine(leader.getName()));
-        } else if (coordinate(session, agent, "cakes-dropped-" + handOver,
-                AgentHpqCompanionPlay.cakesDroppedLine(leader.getName(), place == CakePlace.FEET))) {
+        } else if (coordinate(session, agent, "cakes-dropped-" + handOver, theTen
+                ? AgentHpqCompanionPlay.cakesDroppedLine(leader.getName(), atHisFeet)
+                : AgentHpqCompanionPlay.cakesBatchLine(leader.getName(), atHisFeet)) && theTen) {
             session.markLeaderToldGrowlie();
         }
     }
