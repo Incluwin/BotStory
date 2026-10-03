@@ -58,6 +58,7 @@ public class Party {
 
     private final Map<Integer, Door> doors = new HashMap<>();
 
+    /** A leaf lock: never call into maps, characters, the world or listeners while holding it. */
     private final Lock lock = new ReentrantLock(true);
 
     /** Created below level 10 for the creator's own companions (decision 9 (a), docs/BOT_MANAGEMENT_PLAN.md). */
@@ -301,7 +302,8 @@ public class Party {
      * any human is a member. The highest-level online human leads, one on {@code map} first. With no other human
      * online, a human leader who {@code stays} a member (logs out) keeps the lead; otherwise the highest-level
      * offline human takes it. Only with no human left does a bot lead: the highest-level one on {@code map} when
-     * the leader stays (the stock logout rule), else any. Null keeps the current leader.
+     * the leader stays (the stock logout rule), else any. Null keeps the current leader. Map presence is read after
+     * the member snapshot, outside the party lock.
      */
     public PartyCharacter successor(int leaverId, MapleMap map, boolean stays) {
         boolean leaverIsBot = false;
@@ -311,27 +313,34 @@ public class Party {
         PartyCharacter botOnMap = null;
         PartyCharacter anyBot = null;
 
+        // Copy under the lock, look at the map after it: MapleMap.addPlayer/removePlayer hold the map's
+        // character lock while they take this one, so a map lock taken here would close a cycle.
+        List<PartyCharacter> others = new ArrayList<>();
         lock.lock();
         try {
             for (PartyCharacter mpc : members) {
                 if (mpc.getId() == leaverId) {
                     leaverIsBot = mpc.isBot();
-                    continue;
-                }
-                boolean onMap = mpc.isOnline() && map != null && map.getCharacterById(mpc.getId()) != null;
-                if (mpc.isBot()) {
-                    botOnMap = onMap && outranks(mpc, botOnMap) ? mpc : botOnMap;
-                    anyBot = outranks(mpc, anyBot) ? mpc : anyBot;
-                } else if (!mpc.isOnline()) {
-                    humanOffline = outranks(mpc, humanOffline) ? mpc : humanOffline;
-                } else if (onMap) {
-                    humanOnMap = outranks(mpc, humanOnMap) ? mpc : humanOnMap;
                 } else {
-                    humanOnline = outranks(mpc, humanOnline) ? mpc : humanOnline;
+                    others.add(mpc);
                 }
             }
         } finally {
             lock.unlock();
+        }
+
+        for (PartyCharacter mpc : others) {
+            boolean onMap = mpc.isOnline() && map != null && map.getCharacterById(mpc.getId()) != null;
+            if (mpc.isBot()) {
+                botOnMap = onMap && outranks(mpc, botOnMap) ? mpc : botOnMap;
+                anyBot = outranks(mpc, anyBot) ? mpc : anyBot;
+            } else if (!mpc.isOnline()) {
+                humanOffline = outranks(mpc, humanOffline) ? mpc : humanOffline;
+            } else if (onMap) {
+                humanOnMap = outranks(mpc, humanOnMap) ? mpc : humanOnMap;
+            } else {
+                humanOnline = outranks(mpc, humanOnline) ? mpc : humanOnline;
+            }
         }
 
         if (humanOnMap != null) {
