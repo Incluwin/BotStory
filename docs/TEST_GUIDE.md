@@ -37,8 +37,8 @@ Player-side chat commands are plain map chat (`hi Olwen`, `Olwen quest`, `accept
 | A-04 | Upstream boundary tests (baseline) | `-Dtest=AgentConfigurationBoundaryTest,AgentArchitectureBoundaryTest,AgentSystemOwnershipManifestTest` | exactly the upstream baseline: ConfigurationBoundary 2 failures (Balrog/PQ numeric constants, yaml guidance), ArchitectureBoundary 3 failures + 1 error (missing llm/gateway dir); identical on pristine `integration-refs/cosmic_agents` | yes (identical set) |
 | A-05 | Full suite minus heap hogs | `-Dtest="!BotManagerTest,!BotCombatManagerTest"` | same baseline failures as upstream master; nothing new under `server.living` | not this round |
 | A-06 | Living content lint | `tools\living-world-lint.bat` | `OK (38 warnings)` - warnings are flags set but never read | yes |
-| A-07 | Population content lint | `tools\population-lint.bat` | `OK (0 warnings)` or share warnings only | yes |
-| A-08 | Field catalog regen is stable | `tools\population-fields.bat wz /tmp/fields.yaml` then diff with `scripts/config/population/fields.yaml` | only Neo City/entity differences you already know about | yes |
+| A-07 | Population content lint | `tools\population-lint.bat` | `OK (4 warnings)`: the Ereve forests 130010010/020/110/120, entered by script portals the knowledge export misses | yes |
+| A-08 | Field catalog regen is stable | copy `scripts/config/population/fields.yaml` to `/tmp/fields.yaml` (the generator keeps the capacities it finds in the output file), `tools\population-fields.bat wz /tmp/fields.yaml`, then diff the two | identical unless `wz/` changed since the last regen | yes |
 | A-09 | Quest-log export | `tools\living-world-questlog.bat` | 79 quests, ids 30000-30078 unchanged in `quest-log-ids.yaml`, item and mob names resolved (no `item 4000011`) | yes |
 | A-10 | Quest.wz patch (no deploy) | `cd MapleEdit\app && python living_world_quests.py --dry-run` then without `--dry-run` | writes `out/Quest.wz`; `QuestInfo/Check/Act` gain 79 entries; server XML staged | yes |
 | A-11 | Secret hygiene | see section 9 | no `.env`, `sso-key.json`, `*.wz`, key/token values in tracked files or history | see 9 |

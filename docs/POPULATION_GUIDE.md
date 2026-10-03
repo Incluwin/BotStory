@@ -107,9 +107,11 @@ page shows all of it under "Citizens right now" and edits the population files (
 Tools: `tools\population-lint.bat` validates content (map and item ids against the server knowledge: an
 unknown id is an error; PQ lobbies away from their NPC, training fields players cannot walk into, unfarmable
 basket goods and career gear above its band are warnings); `tools\population-fields.bat` regenerates
-`fields.yaml` from `wz/` (730 open-world maps: name, region, mob count, average mob level,
-capacity; Neo City is skipped). Logs: `citizen born`, `citizen X online/offline`, `bot guild`,
-`circle formed`, `opened a stall`; `[chatter]` lines at debug on `server.living.population.ChatterEngine`.
+`fields.yaml` from `wz/` (894 open-world maps whose id prefix `FieldCatalogMain.region` maps to a regions.yaml
+id: name, region, mob count, average mob level, capacity; Neo City is skipped; a map already listed keeps its
+capacity, so the estimate and the Victoria capacity catalog only seed new maps). Logs: `citizen born`,
+`citizen X online/offline`, `bot guild`, `circle formed`, `opened a stall`; `[chatter]` lines at debug on
+`server.living.population.ChatterEngine`.
 
 ## Authoring
 
@@ -121,7 +123,7 @@ capacity; Neo City is skipped). Logs: `citizen born`, `citizen X online/offline`
 | `voices.yaml` | how a citizen types: style id, lowercase/typo/abbreviation/emoticon rates, pet phrases, typing speed, ignore rate |
 | `guild-names.yaml` | guild name patterns, mottos, emblem palette |
 | `regions.yaml` | level bands, main town maps (+ optional `townWeights`, one per town, so hubs like Henesys/Kerning draw most town life), PQ lobbies, FM entrance per region |
-| `fields.yaml` | generated map catalog; prune or add maps freely |
+| `fields.yaml` | generated map catalog; edit capacities freely (0 = nobody trains there), other edits are regenerated; every region id must be a `regions.yaml` id and every region town a `town: true` entry of that region |
 | `market.yaml` | permit item and the market basket with seed prices |
 | `chatter/*.yaml` | intents: `trigger` (enter, dwell, levelup.other/self, death.other/self, drop.rare(.self), boss, jobadvance.other, login, logout, login.buddy, smega, party.forming, party.invite, price, afk, back, lag), `where` (town, field, fm, lobby, any, or `mapIds`), `channel` (map, party, guild, buddy, smega), `weight`, `cooldownMs`, `lines`, optional per-style `styles` |
 
