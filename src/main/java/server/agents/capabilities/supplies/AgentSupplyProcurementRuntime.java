@@ -243,20 +243,24 @@ public final class AgentSupplyProcurementRuntime {
     }
 
     private static boolean hasPotionRequest(AgentResourcePlanningState planning) {
-        return planning.procurement(AgentResourceCategory.HP_POTION) != null
-                || planning.procurement(AgentResourceCategory.MP_POTION) != null;
+        return critical(planning.procurement(AgentResourceCategory.HP_POTION))
+                || critical(planning.procurement(AgentResourceCategory.MP_POTION));
+    }
+
+    private static boolean critical(AgentProcurementRequest request) {
+        return request != null && request.urgency().ordinal() >= AgentSupplyUrgency.CRITICAL.ordinal();
     }
 
     /**
-     * A duty holder's potion request that its potions no longer bear out (a readiness visit or a share filled it
-     * past POT_STOP since it was planned) is resolved, so it never starts a trip or a party ask of its own.
+     * A duty holder's critical potion request that its potions no longer bear out (a readiness visit or a share
+     * filled it past POT_STOP since it was planned) is resolved, so it never starts a trip or a party ask of its own.
      */
     private static void dropRestoredPotionRequests(AgentResourcePlanningState planning,
                                                    AgentSupplyMaintenanceEvaluationState evaluations,
                                                    Character agent) {
         for (AgentResourceCategory category : new AgentResourceCategory[]{
                 AgentResourceCategory.HP_POTION, AgentResourceCategory.MP_POTION}) {
-            if (planning.procurement(category) != null
+            if (critical(planning.procurement(category))
                     && AgentSupplyInventorySnapshot.quantity(agent, category) >= AgentRuntimeConfig.cfg.POT_STOP) {
                 planning.resolve(category);
                 evaluations.resolve(category);

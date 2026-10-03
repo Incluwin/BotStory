@@ -231,6 +231,18 @@ class CompanionRestockTest {
         assertEquals(2, said.size(), "half an hour later it asks again");
     }
 
+    @Test
+    void theLivingWorldInstallsTheRuleAtStartAndTakesItOutAtStop() throws java.io.IOException {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of("src/main/java/server/living/LivingWorld.java"));
+        String start = source.substring(source.indexOf("public static synchronized void start()"),
+                source.indexOf("public static synchronized void stop()"));
+        String stop = source.substring(source.indexOf("public static synchronized void stop()"));
+
+        int installed = start.indexOf("world.restock.install();");
+        assertTrue(installed >= 0 && installed < start.indexOf("instance = world;"), "before the world goes live");
+        assertTrue(stop.contains("server.living.roster.CompanionRestock.uninstall();"));
+    }
+
     /** Fenna waits outside Ann's run: off follow on her HOLD seat. */
     private void hold() {
         offFollow.add("fenna");

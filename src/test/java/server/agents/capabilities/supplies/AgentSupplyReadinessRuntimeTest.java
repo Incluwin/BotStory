@@ -429,6 +429,21 @@ class AgentSupplyReadinessRuntimeTest {
         assertTrue(AgentSupplyProcurementRuntime.tick(following, idle, 1_000L));
     }
 
+    // (a, second half)
+    @Test
+    void aDutyHoldersCriticalRequestThatItsPotionsNoLongerBearOutIsDropped() {
+        Character yara = companion(521, "Yara", Job.CLERIC, 15, 30, 5_000);
+        stand(yara, KPQ_EXIT, false); // not a town: no readiness trip either
+        AgentRuntimeEntry entry = following(yara);
+        AgentResourcePlanningState planning = planCritical(entry, AgentResourceCategory.HP_POTION, 5); // shared since
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, yara, 1_000L));
+
+        assertNull(planning.procurement(AgentResourceCategory.HP_POTION));
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of(), calls, "no party ask for potions it has");
+    }
+
     // (l)
     @Test
     void withNoRuleInstalledNothingChanges() {
