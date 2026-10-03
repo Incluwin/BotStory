@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 2,
+  "profileId": "ereve",
+  "mapId": 130000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -7,
+    "middleMaxY": 77,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 0,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "east00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -1500, "y": 88, "seatId": -1 },
+    { "x": -310, "y": 88, "seatId": -1 },
+    { "x": 200, "y": 88, "seatId": -1 },
+    { "x": 810, "y": 88, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -1175, "y": 88 },
+    { "x": -820, "y": 88 },
+    { "x": -735, "y": 88 },
+    { "x": -650, "y": 88 },
+    { "x": -565, "y": 88 },
+    { "x": -140, "y": 88 }
+  ],
+  "npcSpots": [
+    { "npcId": 1101005, "offsetX": -85 },
+    { "npcId": 1101003, "offsetX": -85 },
+    { "npcId": 1101004, "offsetX": 125 },
+    { "npcId": 1101002, "offsetX": 85 },
+    { "npcId": 1101001, "offsetX": -85 },
+    { "npcId": 1101000, "offsetX": 85 }
+  ],
+  "trafficZones": [
+    { "id": "portal-west00", "type": "PORTAL", "minX": -1699, "minY": 26, "maxX": -1589, "maxY": 136, "excludesOccupancy": true },
+    { "id": "portal-east00", "type": "PORTAL", "minX": 913, "minY": 17, "maxX": 1053, "maxY": 142, "excludesOccupancy": true },
+    { "id": "npc-1101005", "type": "NPC_LANE", "minX": -1365, "minY": -2, "maxX": -1235, "maxY": 128, "excludesOccupancy": true },
+    { "id": "npc-1101007", "type": "NPC_LANE", "minX": -1170, "minY": -65, "maxX": -928, "maxY": 128, "excludesOccupancy": true },
+    { "id": "npc-1101003", "type": "NPC_LANE", "minX": -1110, "minY": -201, "maxX": -980, "maxY": -71, "excludesOccupancy": true },
+    { "id": "npc-1101002", "type": "NPC_LANE", "minX": -80, "minY": -2, "maxX": 50, "maxY": 128, "excludesOccupancy": true },
+    { "id": "npc-1101001", "type": "NPC_LANE", "minX": 319, "minY": -2, "maxX": 574, "maxY": 128, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "by-irena", "label": "By Irena", "district": "LOWER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": [
+        "REST", "SOCIALIZE", "LINGER", "STROLL",
+        "SHOW_OFF"
+      ],
+      "spots": [{ "x": -1585, "y": 88, "seatId": -1 }, { "x": -1500, "y": 88, "seatId": -1 }, { "x": -1430, "y": 88, "seatId": -1 }] },
+    { "id": "by-mihile", "label": "By Mihile", "district": "UPPER", "platformKind": "MAIN", "capacity": 3,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": -1379, "y": -86, "seatId": -1 }, { "x": -1294, "y": -103, "seatId": -1 }, { "x": -1209, "y": -110, "seatId": -1 }] },
+    { "id": "by-neinheart", "label": "By Neinheart", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -480, "y": 88, "seatId": -1 }, { "x": -395, "y": 88, "seatId": -1 }, { "x": -310, "y": 88, "seatId": -1 }, { "x": -225, "y": 88, "seatId": -1 }] },
+    { "id": "by-shinsoo", "label": "By Shinsoo", "district": "LOWER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 115, "y": 88, "seatId": -1 }, { "x": 200, "y": 88, "seatId": -1 }] },
+    { "id": "by-cygnus", "label": "By Cygnus", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 640, "y": 88, "seatId": -1 }, { "x": 725, "y": 88, "seatId": -1 }, { "x": 810, "y": 88, "seatId": -1 }, { "x": 895, "y": 88, "seatId": -1 }] },
+    { "id": "beside-irena", "label": "Beside Irena", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -1215, "y": 88, "seatId": -1 }] },
+    { "id": "beside-mihile", "label": "Beside Mihile", "district": "UPPER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -960, "y": -107, "seatId": -1 }] },
+    { "id": "beside-oz", "label": "Beside Oz", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -908, "y": 88, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "ereve-irena", "type": "JOB_INSTRUCTOR", "npcId": 1101005, "destinationMapId": 0,
+      "approachPoints": [{ "x": -1215, "y": 88 }],
+      "services": ["job-services"] },
+    { "id": "ereve-mihile", "type": "JOB_INSTRUCTOR", "npcId": 1101003, "destinationMapId": 0,
+      "approachPoints": [{ "x": -960, "y": -107 }],
+      "services": ["job-services"] },
+    { "id": "ereve-oz", "type": "JOB_INSTRUCTOR", "npcId": 1101004, "destinationMapId": 0,
+      "approachPoints": [{ "x": -908, "y": 88 }],
+      "services": ["job-services"] }
+  ],
+  "hotspots": [
+    { "id": "by-neinheart-crowd", "venueId": "by-neinheart", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "by-mihile-crowd", "venueId": "by-mihile", "attractionWeight": 110, "softCapacity": 2, "hardCapacity": 3 }
+  ]
+}

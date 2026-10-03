@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 2,
+  "profileId": "florina-beach",
+  "mapId": 110000000,
+  "admission": {
+    "mode": "AMBIENT",
+    "maxAmbientAgents": 36,
+    "minVisitMs": 60000,
+    "maxVisitMs": 900000,
+    "revisitCooldownMs": 120000
+  },
+  "geometry": {
+    "upperMaxY": -113,
+    "middleMaxY": 161,
+    "miniPlatformMaxWidth": 260,
+    "minimumPlatformWidth": 48,
+    "edgeInsetPx": 30,
+    "slotSpacingPx": 80,
+    "maxSlotsPerPlatform": 8
+  },
+  "distribution": {
+    "upperWeight": 20,
+    "middleWeight": 35,
+    "lowerWeight": 35,
+    "anyWeight": 10,
+    "miniPlatformPercent": 0,
+    "crossDistrictEveryActivities": 5
+  },
+  "extensions": { "activityHandlers": [] },
+  "activityWeights": {
+    "REST": 90,
+    "SOCIALIZE": 100,
+    "LINGER": 115,
+    "STROLL": 95,
+    "BROWSE": 80,
+    "SHOW_OFF": 100
+  },
+  "arrivalPortals": [
+    { "name": "east00", "weight": 58 },
+    { "name": "sp", "weight": 42 }
+  ],
+  "restSpots": [
+    { "x": -747, "y": 151, "seatId": -1 },
+    { "x": -465, "y": 81, "seatId": -1 },
+    { "x": 18, "y": 145, "seatId": -1 },
+    { "x": 613, "y": 169, "seatId": -1 },
+    { "x": 1208, "y": 182, "seatId": -1 },
+    { "x": 1718, "y": 164, "seatId": -1 }
+  ],
+  "roamFallbackSpots": [
+    { "x": -1002, "y": 170 },
+    { "x": -577, "y": 181 },
+    { "x": -492, "y": 182 },
+    { "x": -422, "y": 182 },
+    { "x": 188, "y": 176 },
+    { "x": 273, "y": 182 },
+    { "x": 1378, "y": 172 },
+    { "x": 1463, "y": 163 }
+  ],
+  "npcSpots": [
+    { "npcId": 1081001, "offsetX": -85 },
+    { "npcId": 1081000, "offsetX": 125 },
+    { "npcId": 1081102, "offsetX": -125 }
+  ],
+  "trafficZones": [
+    { "id": "portal-east00", "type": "PORTAL", "minX": 1790, "minY": 109, "maxX": 1930, "maxY": 234, "excludesOccupancy": true },
+    { "id": "ladder-0", "type": "LADDER", "minX": 341, "minY": -171, "maxX": 431, "maxY": 192, "excludesOccupancy": true },
+    { "id": "ladder-1", "type": "LADDER", "minX": 929, "minY": -171, "maxX": 1019, "maxY": 190, "excludesOccupancy": true },
+    { "id": "npc-1081001", "type": "NPC_LANE", "minX": -350, "minY": 86, "maxX": -220, "maxY": 216, "excludesOccupancy": true },
+    { "id": "npc-1081102", "type": "NPC_LANE", "minX": 367, "minY": -233, "maxX": 727, "maxY": -73, "excludesOccupancy": true }
+  ],
+  "platformPolicies": [],
+  "venues": [
+    { "id": "middle-west-street", "label": "Middle west street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -917, "y": 161, "seatId": -1 }, { "x": -832, "y": 146, "seatId": -1 }, { "x": -747, "y": 151, "seatId": -1 }, { "x": -662, "y": 168, "seatId": -1 }] },
+    { "id": "by-pison", "label": "By Pison", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -635, "y": 94, "seatId": -1 }, { "x": -550, "y": 94, "seatId": -1 }, { "x": -465, "y": 81, "seatId": -1 }, { "x": -380, "y": 76, "seatId": -1 }] },
+    { "id": "middle-central-street", "label": "Middle central street", "district": "MIDDLE", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": -152, "y": 165, "seatId": -1 }, { "x": -67, "y": 152, "seatId": -1 }, { "x": 18, "y": 145, "seatId": -1 }, { "x": 103, "y": 161, "seatId": -1 }] },
+    { "id": "by-rael", "label": "By Rael", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 227, "y": -113, "seatId": -1 }, { "x": 312, "y": -113, "seatId": -1 }] },
+    { "id": "lower-central-street", "label": "Lower central street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 443, "y": 180, "seatId": -1 }, { "x": 528, "y": 175, "seatId": -1 }, { "x": 613, "y": 169, "seatId": -1 }, { "x": 698, "y": 159, "seatId": -1 }] },
+    { "id": "by-valen", "label": "By Valen", "district": "UPPER", "platformKind": "MAIN", "capacity": 2,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 837, "y": -113, "seatId": -1 }, { "x": 922, "y": -113, "seatId": -1 }] },
+    { "id": "lower-east-street", "label": "Lower east street", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1038, "y": 182, "seatId": -1 }, { "x": 1123, "y": 182, "seatId": -1 }, { "x": 1208, "y": 182, "seatId": -1 }, { "x": 1293, "y": 177, "seatId": -1 }] },
+    { "id": "upper-east-street", "label": "Upper east street", "district": "UPPER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["SOCIALIZE", "LINGER", "STROLL", "SHOW_OFF"],
+      "spots": [{ "x": 1307, "y": -173, "seatId": -1 }, { "x": 1392, "y": -173, "seatId": -1 }, { "x": 1477, "y": -173, "seatId": -1 }, { "x": 1562, "y": -173, "seatId": -1 }] },
+    { "id": "lower-east-street-2", "label": "Lower east street 2", "district": "LOWER", "platformKind": "MAIN", "capacity": 4,
+      "affordances": ["REST", "SOCIALIZE", "LINGER", "STROLL"],
+      "spots": [{ "x": 1548, "y": 149, "seatId": -1 }, { "x": 1633, "y": 147, "seatId": -1 }, { "x": 1718, "y": 164, "seatId": -1 }, { "x": 1788, "y": 176, "seatId": -1 }] },
+    { "id": "beside-pison", "label": "Beside Pison", "district": "LOWER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": -200, "y": 170, "seatId": -1 }] },
+    { "id": "beside-valen", "label": "Beside Valen", "district": "UPPER", "platformKind": "MAIN", "capacity": 1,
+      "affordances": ["LINGER", "BROWSE"],
+      "spots": [{ "x": 747, "y": -113, "seatId": -1 }] }
+  ],
+  "facilities": [
+    { "id": "florina-beach-pison", "type": "TAXI", "npcId": 1081001, "destinationMapId": 0,
+      "approachPoints": [{ "x": -200, "y": 170 }],
+      "services": ["travel"] },
+    { "id": "florina-beach-valen", "type": "POTION_SHOP", "npcId": 1081000, "destinationMapId": 0,
+      "approachPoints": [{ "x": 747, "y": -113 }],
+      "services": ["browse", "buy", "sell"] }
+  ],
+  "hotspots": [
+    { "id": "lower-central-street-crowd", "venueId": "lower-central-street", "attractionWeight": 150, "softCapacity": 3, "hardCapacity": 4 },
+    { "id": "by-pison-crowd", "venueId": "by-pison", "attractionWeight": 110, "softCapacity": 3, "hardCapacity": 4 }
+  ]
+}

@@ -114,11 +114,11 @@ class AgentTownLifeProfileRepositoryTest {
     }
 
     @Test
-    void baselineProfilesCoverAllSevenVictoriaTowns() {
+    void indexHoldsTheSevenVictoriaTownsAndTheGeneratedTowns() {
         AgentTownLifeProfileRepository repository =
                 AgentTownLifeProfileRepository.defaultRepository();
 
-        assertEquals(7, repository.profiles().size());
+        assertEquals(30, repository.profiles().size());
         for (int mapId : new int[]{104000000, 100000000, 103000000, 102000000,
                 101000000, 120000000, 105040300}) {
             AgentTownLifeProfile profile = repository.require(mapId);
