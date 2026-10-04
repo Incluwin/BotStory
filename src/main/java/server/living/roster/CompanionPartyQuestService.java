@@ -1321,6 +1321,11 @@ public final class CompanionPartyQuestService {
         return entering.contains(leaderId);
     }
 
+    /** True while the character is in a companion run, or is the leader whose Yes is being carried out (!setlevel). */
+    public boolean busyFor(int characterId) {
+        return runByCharacter.containsKey(characterId) || entering.contains(characterId);
+    }
+
     Collection<CompanionRun> runs() {
         return List.copyOf(runsBySession.values());
     }

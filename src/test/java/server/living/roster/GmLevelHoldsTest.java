@@ -1,10 +1,14 @@
 package server.living.roster;
 
+import client.Character;
 import client.Job;
 import client.LevelSetPlan;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import server.living.LivingWorld;
+import server.living.config.Content.Persona;
+import server.living.config.LivingContent;
+import server.living.resident.ResidentRuntime;
 import server.living.roster.GmLevelHolds.Decision;
 import server.living.roster.GmLevelHolds.Original;
 import server.living.roster.GmLevelHolds.Pending;
@@ -20,7 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,6 +41,7 @@ class GmLevelHoldsTest {
     /** "characterId personaId kind detail" per row written. */
     private final List<String> rows = new ArrayList<>();
     private boolean writesFail;
+    private long nowMs = 1_000L;
     private GmLevelHolds holds;
 
     @BeforeEach
@@ -48,7 +55,7 @@ class GmLevelHoldsTest {
                     + " " + invocation.getArgument(3));
             return !writesFail;
         });
-        holds = new GmLevelHolds(world);
+        holds = new GmLevelHolds(world, () -> nowMs);
     }
 
     /** One use: read the record, begin, apply, settle. */
@@ -65,7 +72,7 @@ class GmLevelHoldsTest {
         assertEquals(Decision.RECORD, use(CREWFRIEND_AT_37, false, 30, Job.BEGINNER));
         assertEquals(Decision.KEEP, use(new Original(30, Job.BEGINNER, null), false, 45, Job.BEGINNER));
         assertEquals(Optional.of(CREWFRIEND_AT_37), holds.record(CREWFRIEND, GmLevelHolds.SELF));
-        assertEquals(List.of("865 gm:self gm.level.hold lv=37 job=0 str=161 dex=36 int=4 luk=4 ap=0"), rows);
+        assertEquals(List.of("865 gm:self gm.level.hold lv=37 job=0 exp=0 str=161 dex=36 int=4 luk=4 ap=0"), rows);
     }
 
     @Test
@@ -149,13 +156,77 @@ class GmLevelHoldsTest {
 
     @Test
     void theDetailRoundTrips() {
-        assertEquals("lv=37 job=0 str=161 dex=36 int=4 luk=4 ap=0", CREWFRIEND_AT_37.detail());
+        assertEquals("lv=37 job=0 exp=0 str=161 dex=36 int=4 luk=4 ap=0", CREWFRIEND_AT_37.detail());
         assertEquals(CREWFRIEND_AT_37, Original.parse(CREWFRIEND_AT_37.detail()));
-        Original companion = new Original(40, Job.FIGHTER, null);
-        assertEquals("lv=40 job=110", companion.detail());
+        Original companion = new Original(40, Job.FIGHTER, 5120, null);
+        assertEquals("lv=40 job=110 exp=5120", companion.detail());
         assertEquals(companion, Original.parse(companion.detail()));
+        Original withExp = new Original(37, Job.BEGINNER, 1234, CREWFRIEND_AT_37.stats());
+        assertEquals("lv=37 job=0 exp=1234 str=161 dex=36 int=4 luk=4 ap=0", withExp.detail());
+        assertEquals(withExp, Original.parse(withExp.detail()));
         assertNull(Original.parse("restored"));
         assertNull(Original.parse("lv=40 job=123"));
+        assertNull(Original.parse("lv=40 job=110 exp=99999999999"));
+    }
+
+    @Test
+    void aRowWrittenBeforeExpWasKeptStillParsesWithNone() {
+        assertEquals(new Original(37, Job.BEGINNER, 0, CREWFRIEND_AT_37.stats()),
+                Original.parse("lv=37 job=0 str=161 dex=36 int=4 luk=4 ap=0"));
+        assertEquals(new Original(40, Job.FIGHTER, 0, null), Original.parse("lv=40 job=110"));
+    }
+
+    @Test
+    void aUseSettlesBeforeTheNextOneMayRelyOnTheRecord() {
+        Pending first = holds.begin(CREWFRIEND, "yara", Optional.empty(), new Original(30, Job.WARRIOR, null), false,
+                true, 40, Job.FIGHTER);
+        assertTrue(holds.settling(CREWFRIEND, "yara"));
+        assertFalse(holds.settling(CREWFRIEND, GmLevelHolds.SELF)); // per record
+        first.settle(true);
+        assertFalse(holds.settling(CREWFRIEND, "yara"));
+
+        Pending failed = holds.begin(CREWFRIEND, "yara", holds.record(CREWFRIEND, "yara"),
+                new Original(40, Job.FIGHTER, null), false, true, 45, Job.FIGHTER);
+        assertTrue(holds.settling(CREWFRIEND, "yara"));
+        failed.abandon();
+        assertFalse(holds.settling(CREWFRIEND, "yara"));
+        assertTrue(holds.held(CREWFRIEND, "yara")); // abandoning leaves the record alone
+    }
+
+    @Test
+    void aUseThatNeverSettlesIsNoLongerWaitedForAfterTwoMinutes() {
+        Pending stuck = holds.begin(CREWFRIEND, "yara", Optional.empty(), new Original(30, Job.WARRIOR, null), false,
+                true, 40, Job.FIGHTER);
+        nowMs += GmLevelHolds.SETTLING_STALE_MS - 1;
+        assertTrue(holds.settling(CREWFRIEND, "yara"));
+        nowMs += 1;
+        assertFalse(holds.settling(CREWFRIEND, "yara"));
+
+        // a newer use is not cleared by the stuck one settling late
+        holds.begin(CREWFRIEND, "yara", holds.record(CREWFRIEND, "yara"), new Original(40, Job.FIGHTER, null), false,
+                true, 45, Job.FIGHTER);
+        stuck.settle(true);
+        assertTrue(holds.settling(CREWFRIEND, "yara"));
+    }
+
+    @Test
+    void releasingACompanionsRecordRefreshesItsQuestGearAndAPlayersDoesNot() {
+        Persona yara = mock(Persona.class);
+        Character bot = mock(Character.class);
+        LivingContent content = mock(LivingContent.class);
+        RosterService roster = mock(RosterService.class);
+        ResidentRuntime residents = mock(ResidentRuntime.class);
+        when(content.persona("yara")).thenReturn(yara);
+        when(roster.loaded("yara")).thenReturn(bot);
+        when(world.content()).thenReturn(content);
+        when(world.roster()).thenReturn(roster);
+        when(world.residents()).thenReturn(residents);
+
+        holds.release(CREWFRIEND, GmLevelHolds.SELF, "keep");
+        verify(residents, never()).refreshKit(any(), any());
+
+        holds.release(901, "yara", "restored");
+        verify(residents).refreshKit(bot, yara);
     }
 
     @Test

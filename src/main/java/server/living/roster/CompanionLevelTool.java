@@ -29,12 +29,13 @@ import java.util.concurrent.TimeoutException;
  *
  * <p>Refused for anyone else's companion, a Resident, a citizen, a companion that is not ACTIVE or not loaded, one on
  * a live bench slice, in an event instance, in a party quest engagement or a companion run, or whose owner's Yes is
- * being carried out. With "Keep my crew fresh" on, a single set that leaves the companion AUTO_ROTATE_LEVEL_GAP or more
- * levels off its owner is refused (the rotation would swap it straight out).</p>
+ * being carried out; also while its record cannot be read or an earlier use of it is still settling. With "Keep my crew
+ * fresh" on, a single set that leaves the companion AUTO_ROTATE_LEVEL_GAP or more levels off its owner is refused (the
+ * rotation would swap it straight out).</p>
  *
- * <p>The record is written before the set goes to the mailbox and reconciled when the mailbox's own future completes,
- * however late; the reply waits at most {@link #ANSWER_TIMEOUT_MS} (a copy of the future times out, never the
- * original).</p>
+ * <p>The record (level, job, EXP) is written before the set goes to the mailbox and reconciled when the mailbox's own
+ * future completes, however late; the reply waits at most {@link #ANSWER_TIMEOUT_MS} (a copy of the future times out,
+ * never the original). A restore, or a set to exactly the recorded level and job, gives the recorded EXP back.</p>
  */
 public final class CompanionLevelTool {
     public static final long ANSWER_TIMEOUT_MS = 10_000L;
@@ -111,6 +112,23 @@ public final class CompanionLevelTool {
     private record Target(Character bot, String personaId, Persona persona) {
     }
 
+    /** What one use comes to, worked out before anything changes. */
+    private sealed interface Use permits Answer, Release, Dispatch {
+    }
+
+    /** Nothing to change: {@code line} is the reply; {@code refused} when the use could not be carried out. */
+    private record Answer(String line, boolean refused) implements Use {
+    }
+
+    /** Nothing to set: the companion's record is released ({@code why}) and {@code line} is the reply. */
+    private record Release(Target target, String why, String line) implements Use {
+    }
+
+    /** A set for the mailbox. */
+    private record Dispatch(Target target, LevelSetPlan.Request request, LevelSetPlan.Companion family,
+                            LevelSetPlan.Ok ok, Optional<Original> existing, boolean restore) implements Use {
+    }
+
     /**
      * One target's use, on companion-ops. {@code single}: the only target of the command (the Keep my crew fresh gap
      * applies). Completes with the line to reply once its record is reconciled, or at the answer timeout; never
@@ -125,68 +143,104 @@ public final class CompanionLevelTool {
         }
     }
 
+    /**
+     * The party form's check before anyone is set, on companion-ops: the line refusing this use, or null when it would
+     * go ahead (or has nothing to do). Nothing is written.
+     */
+    public String check(Character gm, String name, Ask ask) {
+        try {
+            return prepare(gm, name, ask, false) instanceof Answer answer && answer.refused() ? answer.line() : null;
+        } catch (RuntimeException failure) {
+            log.warn("gm setlevel: checking {} for {} failed", name, gm.getName(), failure);
+            return name + ": the check failed (" + failure.getMessage() + ").";
+        }
+    }
+
     private CompletableFuture<String> useChecked(Character gm, String name, Ask ask, boolean single) {
+        return switch (prepare(gm, name, ask, single)) {
+            case Answer answer -> done(answer.line());
+            case Release release -> world.gmLevelHolds().release(release.target().bot().getId(),
+                    release.target().personaId(), release.why()).thenApply(saved -> release.line() + note(saved));
+            case Dispatch dispatch -> dispatch(gm, dispatch);
+        };
+    }
+
+    /** Everything a use checks, with nothing changed yet. */
+    private Use prepare(Character gm, String name, Ask ask, boolean single) {
         Object found = target(gm, name);
         if (found instanceof String refusal) {
-            return CompletableFuture.completedFuture(refusal);
+            return new Answer(refusal, true);
         }
         Target target = (Target) found;
         Character bot = target.bot();
         GmLevelHolds holds = world.gmLevelHolds();
         boolean companion = target.personaId() != null;
+        if (companion && holds.settling(bot.getId(), target.personaId())) {
+            return new Answer(bot.getName() + "'s last set has not answered yet; try again once it has.", true);
+        }
         Optional<Original> existing = companion ? holds.record(bot.getId(), target.personaId()) : Optional.empty();
+        if (existing == null) {
+            return new Answer(bot.getName() + "'s record could not be read; try again.", true);
+        }
+        Original original = existing.orElse(null);
         if (ask.keep()) {
             if (!companion) {
-                return done(bot.getName() + " has no record to keep (a plain Agent has none).");
+                return new Answer(bot.getName() + " has no record to keep (a plain Agent has none).", false);
             }
-            if (existing == null || existing.isEmpty()) {
-                return done(existing == null ? bot.getName() + "'s record could not be read; try again."
-                        : bot.getName() + " has no record to keep.");
-            }
-            return holds.release(bot.getId(), target.personaId(), "keep")
-                    .thenApply(saved -> bot.getName() + " keeps level " + bot.getLevel() + " for good." + note(saved));
+            return original == null ? new Answer(bot.getName() + " has no record to keep.", false)
+                    : new Release(target, "keep", bot.getName() + " keeps level " + bot.getLevel() + " for good.");
         }
         LevelSetPlan.Request request;
         if (ask.restore()) {
-            if (existing == null) {
-                return done(bot.getName() + "'s record could not be read; try again.");
+            if (original == null) {
+                return new Answer(bot.getName() + " has no record to restore.", false);
             }
-            if (existing.isEmpty()) {
-                return done(bot.getName() + " has no record to restore.");
-            }
-            request = LevelSetPlan.Request.restoreTo(existing.get().level(), existing.get().job());
+            request = LevelSetPlan.Request.restoreTo(original.level(), original.job(), original.exp());
         } else {
             request = LevelSetPlan.Request.to(ask.level(), ask.job());
         }
         LevelSetPlan.Companion family = companion ? new LevelSetPlan.Companion(
-                existing == null ? null : existing.map(Original::job).orElse(null), personaJob(target.persona())) : null;
+                original == null ? null : original.job(), personaJob(target.persona())) : null;
         LevelSetPlan.Resolution resolution = LevelSetPlan.resolve(request, bot.getJob(), bot.getLevel(), bot.isGM(),
                 family);
         if (resolution instanceof LevelSetPlan.Refusal refusal) {
-            return done(bot.getName() + ": " + refusal.reason());
+            return new Answer(bot.getName() + ": " + refusal.reason(), true);
         }
         if (resolution instanceof LevelSetPlan.NoOp noOp) {
             if (noOp.restore() && companion) {
-                return holds.release(bot.getId(), target.personaId(), "restored")
-                        .thenApply(saved -> bot.getName() + " is at its original level already; record released."
-                                + note(saved));
+                return new Release(target, "restored", bot.getName() + " is at its original level already; record released.");
             }
-            return done(bot.getName() + " is level " + bot.getLevel() + " " + LevelSetPlan.jobName(bot.getJob())
-                    + " already.");
+            return new Answer(bot.getName() + " is level " + bot.getLevel() + " " + LevelSetPlan.jobName(bot.getJob())
+                    + " already.", false);
         }
         LevelSetPlan.Ok ok = (LevelSetPlan.Ok) resolution;
         if (companion && single && world.crewRotation() != null && world.crewRotation().keepsFresh(gm.getId())
                 && Math.abs(ok.level() - gm.getLevel()) >= world.config().AUTO_ROTATE_LEVEL_GAP) {
-            return done("Keep my crew fresh is on and " + bot.getName() + " would be " + Math.abs(ok.level() - gm.getLevel())
-                    + " levels off you, so it would be swapped straight out: turn it off in the Crew window, or set"
-                    + " everyone with '!setlevel party " + ok.level() + "'.");
+            return new Answer("Keep my crew fresh is on and " + bot.getName() + " would be "
+                    + Math.abs(ok.level() - gm.getLevel()) + " levels off you, so it would be swapped straight out: turn"
+                    + " it off in the Crew window, or set everyone with '!setlevel party " + ok.level() + "'.", true);
         }
-        GmLevelHolds.Pending pending = companion ? holds.begin(bot.getId(), target.personaId(), existing,
-                new Original(bot.getLevel(), bot.getJob(), null), ask.restore(), true, ok.level(), ok.job()) : null;
-        AgentRuntimeEntry runtime = agents.runtime(bot.getId());
-        CompletableFuture<AgentLevelSetService.Outcome> raw = runtime == null
-                ? CompletableFuture.failedFuture(new IllegalStateException("not running"))
-                : agents.dispatch(runtime, request, family, gm);
+        if (!request.restore() && original != null && original.level() == ok.level() && original.job() == ok.job()) {
+            request = LevelSetPlan.Request.restoreTo(ok.level(), ok.job(), original.exp()); // back to the record
+        }
+        return new Dispatch(target, request, family, ok, existing, ask.restore());
+    }
+
+    private CompletableFuture<String> dispatch(Character gm, Dispatch use) {
+        Target target = use.target();
+        Character bot = target.bot();
+        LevelSetPlan.Ok ok = use.ok();
+        GmLevelHolds.Pending pending = target.personaId() == null ? null : world.gmLevelHolds().begin(bot.getId(),
+                target.personaId(), use.existing(), new Original(bot.getLevel(), bot.getJob(), bot.getExp(), null),
+                use.restore(), true, ok.level(), ok.job());
+        CompletableFuture<AgentLevelSetService.Outcome> raw;
+        try {
+            AgentRuntimeEntry runtime = agents.runtime(bot.getId());
+            raw = runtime == null ? CompletableFuture.failedFuture(new IllegalStateException("not running"))
+                    : agents.dispatch(runtime, use.request(), use.family(), gm);
+        } catch (RuntimeException failure) {
+            raw = CompletableFuture.failedFuture(failure); // reconciled as not applied: the record settles
+        }
         CompletableFuture<String> line = new CompletableFuture<>();
         long startedMs = System.currentTimeMillis();
         raw.whenComplete((outcome, failure) -> world.executor().submit("gm.setlevel reconcile " + bot.getName(),

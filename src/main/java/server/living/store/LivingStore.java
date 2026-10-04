@@ -1349,7 +1349,9 @@ public final class LivingStore {
 
     /**
      * The character's latest GM level event with this persona ({@code gm.level.hold} or {@code gm.level.release}, the
-     * GmLevelHolds record): empty when there is none, null when the read fails. One indexed row.
+     * GmLevelHolds record): empty when there is none, null when the read fails. The table is indexed by character
+     * (idx_living_event_character), so this reads that character's audit rows and keeps the newest match; GmLevelHolds
+     * caches the answer, so it runs once per character and persona a boot.
      */
     public java.util.Optional<EventRow> latestGmLevel(int characterId, String personaId) {
         String sql = "SELECT kind, detail FROM living_event_log WHERE character_id = ? AND persona_id = ?"
