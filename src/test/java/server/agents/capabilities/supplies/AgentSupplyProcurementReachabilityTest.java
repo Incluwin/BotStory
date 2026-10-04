@@ -58,11 +58,12 @@ class AgentSupplyProcurementReachabilityTest {
     // Henesys hunting grounds: 3 and 4 portal hops from the Henesys shop.
     private static final int HENESYS_GATE = 106010000;
     private static final int SLEEPYWOOD_ROAD = 106010100;
-    private static final int EL_NATH_FIELD = 211040200;
+    // KPQ's first stage: no portal leads out of it, so no shop is reachable on foot.
+    private static final int KPQ_STAGE_ONE = 103000800;
 
     @Test
     void agentOffThePortalGraphDoesNotLeaveForAnUnreachableShop() {
-        Character agent = agent(301, "ElNathCitizen", EL_NATH_FIELD);
+        Character agent = agent(301, "StageOneCitizen", KPQ_STAGE_ONE);
         AgentRuntimeEntry entry = entryWithBundle(agent, "warrior-standard-v1");
         AgentObjectiveDefinition plan = new AgentObjectiveDefinition(
                 "citizen:plan:301", "citizen.routine", 80, Long.MAX_VALUE, 5,
@@ -73,7 +74,7 @@ class AgentSupplyProcurementReachabilityTest {
 
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, 20L));
 
-        // No trip toward a Victoria shop the router cannot reach: the plan keeps running.
+        // No trip toward a shop the router cannot reach: the plan keeps running.
         assertFalse(execution.isActive());
         assertEquals(plan, AgentObjectiveKernel.active(entry));
         assertTrue(execution.suppressed(AgentResourceCategory.HP_POTION, 21L));

@@ -14,6 +14,8 @@ import java.util.Set;
  */
 final class AgentVictoriaTrainingRouteCatalog {
     private static final Map<Integer, Set<Integer>> EDGES = edges();
+    /** Maps joined by portals in either direction share a landmass id; no route ever leaves its landmass. */
+    private static final Map<Integer, Integer> LANDMASS = landmasses(EDGES);
 
     private AgentVictoriaTrainingRouteCatalog() {
     }
@@ -25,6 +27,9 @@ final class AgentVictoriaTrainingRouteCatalog {
     static Integer nextHop(int source, int destination, Set<Long> excludedEdges) {
         if (source == destination) {
             return destination;
+        }
+        if (apart(source, destination)) {
+            return null;
         }
         ArrayDeque<Integer> queue = new ArrayDeque<>();
         Map<Integer, Integer> previous = new HashMap<>();
@@ -64,6 +69,9 @@ final class AgentVictoriaTrainingRouteCatalog {
         if (source == destination) {
             return 0;
         }
+        if (apart(source, destination)) {
+            return -1;
+        }
         ArrayDeque<Integer> queue = new ArrayDeque<>();
         Map<Integer, Integer> distances = new HashMap<>();
         queue.add(source);
@@ -85,6 +93,15 @@ final class AgentVictoriaTrainingRouteCatalog {
             }
         }
         return -1;
+    }
+
+    /**
+     * True when no portal path joins the two maps even ignoring direction (another continent, or a map the graphs
+     * do not know), so a search for the many unreachable suppliers of other continents costs nothing.
+     */
+    private static boolean apart(int source, int destination) {
+        Integer from = LANDMASS.get(source);
+        return from == null || !from.equals(LANDMASS.get(destination));
     }
 
     static long edgeKey(int source, int destination) {
@@ -133,6 +150,33 @@ final class AgentVictoriaTrainingRouteCatalog {
         mutable.forEach((mapId, adjacent) -> result.put(mapId,
                 Collections.unmodifiableSet(new java.util.LinkedHashSet<>(adjacent))));
         return Map.copyOf(result);
+    }
+
+    private static Map<Integer, Integer> landmasses(Map<Integer, Set<Integer>> edges) {
+        Map<Integer, Set<Integer>> undirected = new HashMap<>();
+        edges.forEach((from, targets) -> {
+            for (int to : targets) {
+                undirected.computeIfAbsent(from, ignored -> new java.util.HashSet<>()).add(to);
+                undirected.computeIfAbsent(to, ignored -> new java.util.HashSet<>()).add(from);
+            }
+        });
+        Map<Integer, Integer> landmass = new HashMap<>();
+        for (int start : undirected.keySet()) {
+            if (landmass.containsKey(start)) {
+                continue;
+            }
+            ArrayDeque<Integer> queue = new ArrayDeque<>();
+            queue.add(start);
+            landmass.put(start, start);
+            while (!queue.isEmpty()) {
+                for (int next : undirected.getOrDefault(queue.removeFirst(), Set.of())) {
+                    if (landmass.putIfAbsent(next, start) == null) {
+                        queue.addLast(next);
+                    }
+                }
+            }
+        }
+        return Map.copyOf(landmass);
     }
 
     private static AgentVictoriaLevel15Catalog catalog() {
