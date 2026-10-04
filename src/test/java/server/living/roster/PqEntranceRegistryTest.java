@@ -16,7 +16,6 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,8 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Each quest's entrance is built in its own file and registered in its own slot: KPQ's and HPQ's first, every key
  * once (a second registration of a key throws, in any case or spacing), and each entrance with its quest's own
- * admission and its own registry's operator and member lookups. Later quests add their keys after HPQ's, so this
- * pins no full list.
+ * admission (one without any is refused when it registers) and its own registry's operator and member lookups. Later
+ * quests add their keys after HPQ's, so this pins no full list.
  */
 class PqEntranceRegistryTest {
     private AgentKpqSession kpqSession;
@@ -43,6 +42,7 @@ class PqEntranceRegistryTest {
         List<String> keys = PqEntrance.keys();
 
         assertEquals(List.of("kpq", "hpq"), keys.subList(0, 2));
+        // states the rule only: keys() is a map's key set, so it cannot repeat; aKeyRegisteredTwiceThrows guards it
         assertEquals(keys.size(), new HashSet<>(keys).size(), "every key once: " + keys);
         for (String key : keys) {
             assertEquals(key, PqEntrance.of(key).key(), "registered under its own key");
@@ -71,10 +71,13 @@ class PqEntranceRegistryTest {
     }
 
     @Test
-    void everyEntranceHasItsQuestsOwnAdmission() {
-        for (String key : PqEntrance.keys()) {
-            assertNotNull(PqEntrance.of(key).admission(), key);
-        }
+    void anEntranceWithoutItsQuestsAdmissionIsRefused() {
+        Map<String, PqEntrance> entrances = new LinkedHashMap<>();
+
+        IllegalStateException refused = assertThrows(IllegalStateException.class,
+                () -> PqEntrance.register(entrances, entrance(" KPQ ", null)));
+        assertEquals("no admission for the companion party-quest entrance kpq", refused.getMessage());
+        assertTrue(entrances.isEmpty(), "nothing registered");
     }
 
     @Test
@@ -102,9 +105,13 @@ class PqEntranceRegistryTest {
         assertFalse(hpq.holds(50, hpqSession.sessionId()), "the operator is not one of its members");
     }
 
-    /** An entrance under {@code key} as written, with nothing of its own. */
+    /** An entrance under {@code key} as written, with an admission that admits no one and nothing else of its own. */
     private static PqEntrance entrance(String key) {
+        return entrance(key, (leader, members, seed, nowMs) -> new PqEntryPort.Admitted(false, "", null));
+    }
+
+    private static PqEntrance entrance(String key, PqEntrance.Admit admit) {
         return new PqEntrance(key, 9_020_000, new PqEntrance.SeatRules(3, 4, 4), new int[0], null, null, null, null,
-                null, null, false, null, null, null, null);
+                null, null, false, null, null, null, admit);
     }
 }

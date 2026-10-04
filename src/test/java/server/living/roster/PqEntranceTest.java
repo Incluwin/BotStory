@@ -51,6 +51,7 @@ class PqEntranceTest {
     void lakelisAndToryWithTheirQuestsRules() {
         List<String> keys = PqEntrance.keys();
         assertEquals(List.of("kpq", "hpq"), keys.subList(0, 2), "KPQ's first, then HPQ's");
+        // states the rule only: keys() is a map's key set, so it cannot repeat (PqEntranceRegistryTest guards register)
         assertEquals(keys.size(), new HashSet<>(keys).size(), "every key once: " + keys);
         assertEquals(CompanionPqKeys.KNOWN, keys, "the kill switch may list exactly the entrances");
 

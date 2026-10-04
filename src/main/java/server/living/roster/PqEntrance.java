@@ -121,9 +121,15 @@ public final class PqEntrance {
         return entrances;
     }
 
-    /** Adds {@code entrance} under its key, read as {@link #find} reads keys; a key registered twice throws. */
+    /**
+     * Adds {@code entrance} under its key, read as {@link #find} reads keys; a key registered twice, or an entrance
+     * without its quest's admission, throws.
+     */
     static void register(Map<String, PqEntrance> entrances, PqEntrance entrance) {
         String key = entrance.key.trim().toLowerCase(Locale.ROOT);
+        if (entrance.admit == null) {
+            throw new IllegalStateException("no admission for the companion party-quest entrance " + key);
+        }
         if (entrances.putIfAbsent(key, entrance) != null) {
             throw new IllegalStateException("two companion party-quest entrances for " + key);
         }
@@ -214,11 +220,6 @@ public final class PqEntrance {
     /** Admits the lineup by the quest's own Agent-layer admission, {@code leader} as operator and event leader. */
     PqEntryPort.Admitted admit(Character leader, List<Character> members, long seed, long nowMs) {
         return admit.admit(leader, members, seed, nowMs);
-    }
-
-    /** The quest's own Agent-layer admission of a lineup. */
-    Admit admission() {
-        return admit;
     }
 
     /** Builds the quest's pace profile (on companion-ops, at boot). */
