@@ -132,6 +132,19 @@ class AgentRideTravelRuntimeTest {
     }
 
     @Test
+    void aClosedGateIsNotAskedAgainBeforeTheRetryDelay() {
+        mapId = KERNING_SUBWAY;
+        items.put(SUBWAY_TICKET, 1);
+        when(gateway.runNpcScript(agent, 1052007, 2, 0)).thenReturn(true);
+
+        travel(NEW_LEAF_CITY, 1_000L);
+        travel(NEW_LEAF_CITY, 1_200L);
+        travel(NEW_LEAF_CITY, 3_000L);
+
+        verify(gateway, times(1)).runNpcScript(agent, 1052007, 2, 0);
+    }
+
+    @Test
     void anInstantRideThatKeepsRefusingIsBlockedAndTheRouterThenHasNoWay() {
         mapId = LUDIBRIUM_PLATFORM;
         items.put(ORBIS_TICKET, 1);

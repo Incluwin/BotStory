@@ -48,6 +48,17 @@ class AgentTravelLegRouteTest {
     }
 
     @Test
+    void aRideWeighedHeavierThanTheWalkLeavesMuLungToHerbTownOnFoot() {
+        int walk = AgentVictoriaTrainingRouteCatalog.distance(250000100, 251000000);
+        assertTrue(walk > RIDE_HOP_COST, "Hak's crane beats the walk at the usual weight");
+
+        assertEquals(List.of("mu-lung-to-herb-town"), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                250000100, 251000000, Set.of(), leg -> true, RIDE_HOP_COST)));
+        assertEquals(List.of(), legs(AgentVictoriaTrainingRouteCatalog.ridePath(
+                250000100, 251000000, Set.of(), leg -> true, walk + 1)));
+    }
+
+    @Test
     void aLegItCannotUseIsLeftOutAndWithoutItThereIsNoWay() {
         assertEquals(List.of(), AgentVictoriaTrainingRouteCatalog.ridePath(
                 200000000, 220000000, Set.of(), leg -> !leg.id().equals("orbis-to-ludibrium"), RIDE_HOP_COST));
