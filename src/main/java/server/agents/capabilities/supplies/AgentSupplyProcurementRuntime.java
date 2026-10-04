@@ -338,8 +338,9 @@ public final class AgentSupplyProcurementRuntime {
             AgentCareerShopCatalog.ShopStop stop = AgentCareerShopCatalog.forSupply(
                     bundle, request.category(), agent.getMapId(), routeHops(entry, nowMs));
             if (stop == null) {
-                // Off the Victoria portal graph (Ossyria, Ludus Lake, Mu Lung...) or cut off by
-                // blocked portals: a trip toward a shop the router cannot reach only strands it.
+                // Off every portal graph (a party quest's stages, Ereve), behind a one-way portal
+                // outside Victoria, or cut off by blocked portals: a trip toward a shop the router
+                // cannot reach (or cannot walk back from) only strands it.
                 log.info("Agent '{}' has no {} supplier the portal router can reach from map {}; asking the party instead",
                         agent.getName(), request.category(), agent.getMapId());
                 if (execution.partyAskedAtMs(request.category()) < 0L

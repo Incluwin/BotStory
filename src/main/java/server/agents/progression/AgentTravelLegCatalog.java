@@ -15,7 +15,8 @@ import java.util.Set;
 /**
  * Ships, trains, Hak's crane, the dolphin, the subway and the plane: NPC rides the walking graphs cannot see
  * (npc-travel-legs.json; every leg's dialogue, fare and ticket checked against its NPC script by
- * AgentTravelLegScriptTest). The router takes one only when no portal path reaches the destination.
+ * AgentTravelLegScriptTest). The router takes one only for a caller that lets it ride (AgentVictoriaRouteRuntime.RideBudget)
+ * and only when no portal path reaches the destination.
  */
 public final class AgentTravelLegCatalog {
     private static final String RESOURCE = "/agents/catalogs/npc-travel-legs.json";
@@ -24,6 +25,7 @@ public final class AgentTravelLegCatalog {
     private static final List<Leg> LEGS = load();
     private static final Map<Integer, List<Leg>> FROM = byOrigin(LEGS);
     private static final Set<Integer> RIDE_MAPS = rideMaps(LEGS);
+    private static final Set<Integer> STATIONS = stations(LEGS);
 
     /** A ticket bought from {@code sellerNpcId} on {@code sellerMapId} with these dialogue selections. */
     public record Ticket(int itemId, int sellerMapId, int sellerNpcId, List<Integer> selections, int price) {
@@ -80,6 +82,14 @@ public final class AgentTravelLegCatalog {
         return RIDE_MAPS.contains(mapId);
     }
 
+    /**
+     * True where a leg boards or lands or its ticket is sold (Orbis Station and its platforms, Ellinia Station,
+     * Kerning City...): a traveller standing there may board any moment.
+     */
+    public static boolean station(int mapId) {
+        return STATIONS.contains(mapId);
+    }
+
     private static List<Leg> load() {
         try (InputStream input = AgentTravelLegCatalog.class.getResourceAsStream(RESOURCE)) {
             if (input == null) {
@@ -109,6 +119,18 @@ public final class AgentTravelLegCatalog {
         Map<Integer, List<Leg>> result = new HashMap<>();
         from.forEach((mapId, list) -> result.put(mapId, List.copyOf(list)));
         return Map.copyOf(result);
+    }
+
+    private static Set<Integer> stations(List<Leg> legs) {
+        Set<Integer> maps = new HashSet<>();
+        for (Leg leg : legs) {
+            maps.add(leg.fromMapId());
+            maps.add(leg.toMapId());
+            if (leg.ticket() != null) {
+                maps.add(leg.ticket().sellerMapId());
+            }
+        }
+        return Set.copyOf(maps);
     }
 
     private static Set<Integer> rideMaps(List<Leg> legs) {

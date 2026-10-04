@@ -40,6 +40,7 @@ import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.integration.InventoryGateway;
+import server.agents.progression.AgentPotionSupplierCatalog;
 import server.agents.capabilities.shop.AgentShopRuntime;
 import server.agents.capabilities.supplies.AgentCombatAmmoCheckRuntime;
 import server.agents.runtime.AgentRandom;
@@ -305,13 +306,14 @@ public final class AgentShopService {
 
     private static boolean shopHasAnythingNeeded(Character bot, Shop shop, InventoryGateway inventory) {
         WeaponType wt = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
-        if (needsFixedAmmoForShop(bot, shop, wt, ammoTriggerThreshold())) {
+        boolean ammoHere = AgentPotionSupplierCatalog.ammoTopUpAllowedAt(bot.getMapId());
+        if (ammoHere && needsFixedAmmoForShop(bot, shop, wt, ammoTriggerThreshold())) {
             return true;
         }
-        if (needsRechargeForShop(bot, wt, ammoTriggerThreshold(), inventory)) {
+        if (ammoHere && needsRechargeForShop(bot, wt, ammoTriggerThreshold(), inventory)) {
             return true;
         }
-        if (needsSeedRechargeAmmoForShop(bot, shop, wt)) {
+        if (ammoHere && needsSeedRechargeAmmoForShop(bot, shop, wt)) {
             return true;
         }
         if (needsPotionStock(bot, shop, true)) {
@@ -421,13 +423,15 @@ public final class AgentShopService {
             });
         }
 
-        if (!itemOnlyVisit
+        // Projectiles only at Victoria shops, as before town shops elsewhere were known (AgentPotionSupplierCatalog).
+        boolean ammoHere = AgentPotionSupplierCatalog.ammoTopUpAllowedAt(bot.getMapId());
+        if (!itemOnlyVisit && ammoHere
                 && shouldBuySeedRechargeAmmoWhileShopping(bot, wt)) {
             actions.add((sequence, shop) -> appendBuyReport(
                     sequence, buySeedRechargeAmmo(bot, shop, wt, minimumMesoReserve),
                     wt == WeaponType.GUN ? "bullet set" : "throwing-star set"));
         }
-        if (!itemOnlyVisit
+        if (!itemOnlyVisit && ammoHere
                 && shouldRechargeWhileShopping(bot, wt, inventory)) {
             actions.add((sequence, shop) -> {
                 AgentShopBuyReport recharge = doRecharge(
@@ -441,7 +445,7 @@ public final class AgentShopService {
                 return sequence.withFirstShortfall(recharge);
             });
         }
-        if (!itemOnlyVisit && shouldBuyFixedAmmoWhileShopping(bot, wt)) {
+        if (!itemOnlyVisit && ammoHere && shouldBuyFixedAmmoWhileShopping(bot, wt)) {
             actions.add((sequence, shop) -> appendBuyReport(
                     sequence, buyAmmo(bot, shop, wt, minimumMesoReserve), "ammo"));
         }

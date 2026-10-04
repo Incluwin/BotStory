@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -28,6 +29,8 @@ class AgentRideTravelRuntimeTest {
     private static final int LUDIBRIUM = 220000000;
     private static final int LUDIBRIUM_PLATFORM = 220000110;
     private static final int TRAIN_PLATFORM_GATE = 200000121;
+    private static final int TRAIN_PLATFORM = 200000120;
+    private static final int LEAFRE_PLATFORM = 240000110;
     private static final int KERNING_SUBWAY = 103000100;
     private static final int NEW_LEAF_CITY = 600000000;
     private static final int HAK_TO_MU_LUNG = 200090300;
@@ -160,6 +163,62 @@ class AgentRideTravelRuntimeTest {
     }
 
     @Test
+    void ordinaryTravelOnlyWalksSoItNeverBoardsAnything() {
+        mapId = ELLINIA_STATION;
+        items.put(ORBIS_TICKET, 1);
+
+        AgentVictoriaRouteRuntime.TravelOutcome outcome =
+                AgentVictoriaRouteRuntime.travelStatus(entry, agent, ORBIS, gateway, 1_000L);
+
+        assertEquals(AgentVictoriaRouteRuntime.Status.NO_ROUTE, outcome.status());
+        verify(gateway, never()).runNpcScript(any(), anyInt(), any(int[].class));
+    }
+
+    @Test
+    void onAPlatformWithoutItsTicketItGoesOnToTheSellerInsteadOfBackToTheGate() {
+        mapId = TRAIN_PLATFORM;
+
+        AgentVictoriaRouteRuntime.TravelOutcome outcome = travel(LUDIBRIUM, 1_000L);
+
+        assertEquals(AgentVictoriaTrainingRouteCatalog.nextHop(TRAIN_PLATFORM, ORBIS_STATION), outcome.nextMapId());
+        verify(gateway, never()).runNpcScript(any(), anyInt(), any(int[].class));
+    }
+
+    @Test
+    void aJourneyItCannotPayForToTheEndIsNeverStarted() {
+        mapId = ELLINIA_STATION;
+        when(agent.getMeso()).thenReturn(6_000); // the boat ticket (5,000) but not the train's too (6,000)
+
+        assertEquals(AgentVictoriaRouteRuntime.Status.NO_ROUTE, travel(LUDIBRIUM, 1_000L).status());
+        verify(gateway, never()).runNpcScript(any(), anyInt(), any(int[].class));
+    }
+
+    @Test
+    void anErrandToTheSellerNeverBoardsARideWhoseTicketItLacks() {
+        mapId = LEAFRE_PLATFORM; // no walk leads off it: only the ride to Orbis, which needs a ticket
+
+        assertEquals(AgentVictoriaRouteRuntime.Status.NO_ROUTE, travel(ORBIS, 1_000L).status());
+        verify(gateway, never()).runNpcScript(any(), anyInt(), any(int[].class));
+    }
+
+    @Test
+    void aScheduledRideThatNeverOpensCountsAgainstItAfterItsBoardingPatience() {
+        mapId = KERNING_SUBWAY;
+        items.put(SUBWAY_TICKET, 1);
+        when(gateway.runNpcScript(agent, 1052007, 2, 0)).thenReturn(true); // the gate never opens
+        long start = 1_000L;
+        long late = start + boardingPatienceMs() + 1_000L;
+
+        assertEquals(AgentVictoriaRouteRuntime.Status.MOVING, travel(NEW_LEAF_CITY, start).status());
+        assertEquals(AgentVictoriaRouteRuntime.Status.PORTAL_UNAVAILABLE, travel(NEW_LEAF_CITY, late).status());
+        travel(NEW_LEAF_CITY, late + 10_000L);
+        AgentVictoriaRouteRuntime.TravelOutcome third = travel(NEW_LEAF_CITY, late + 20_000L);
+
+        assertTrue(third.edgeBlocked());
+        assertEquals(AgentVictoriaRouteRuntime.Status.NO_ROUTE, travel(NEW_LEAF_CITY, late + 30_000L).status());
+    }
+
+    @Test
     void withoutTheMesosForTheTicketThereIsNoRide() {
         mapId = ELLINIA_STATION;
         when(agent.getMeso()).thenReturn(4_999);
@@ -190,7 +249,14 @@ class AgentRideTravelRuntimeTest {
         verify(gateway, never()).itemCount(any(), anyInt());
     }
 
+    /** Travel that may ride, with the whole purse to spend on fares and tickets. */
     private AgentVictoriaRouteRuntime.TravelOutcome travel(int destinationMapId, long nowMs) {
-        return AgentVictoriaRouteRuntime.travelStatus(entry, agent, destinationMapId, gateway, nowMs);
+        return AgentVictoriaRouteRuntime.travelStatus(entry, agent, destinationMapId, gateway, nowMs,
+                new AgentVictoriaRouteRuntime.RideBudget(agent.getMeso()));
+    }
+
+    private static long boardingPatienceMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.progression.AgentVictoriaRouteRuntime.BOARDING_PATIENCE_MS");
     }
 }

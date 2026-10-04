@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -177,12 +178,13 @@ class CompanionRestockTest {
     }
 
     @Test
-    void atABossGateItHasNoDutySoItNeverWalksFromThereToAShop() {
+    void atABossGateItKeepsItsDutyButNeverSetsOffForAShopFromThere() {
         when(fenna.getMapId()).thenReturn(PAPULATUS_GATE); // Toly's shop is six hops back down the Path of Time
-        assertNull(restock.standing(FENNA), "a boss gate keeps its no-shop line: restocking before bosses is P7's");
-
-        when(fenna.getMapId()).thenReturn(KERNING);
-        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA));
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+                "the duty (and the critical trip's affordability check) stays");
+        assertFalse(restock.restocksFrom(FENNA, PAPULATUS_GATE),
+                "a boss gate keeps its no-shop line: restocking before bosses is P7's");
+        assertTrue(restock.restocksFrom(FENNA, KERNING));
     }
 
     @Test

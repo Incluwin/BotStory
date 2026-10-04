@@ -689,7 +689,7 @@ Built 2026-10-02 on top of step 6, uncommitted and not deployed. What was built,
 | Citizen gear by level | High. Every citizen above lv40 wears its lv30-40 band gear, up to its level cap of 70-85. | **Build**, citizens only, behind `CITIZEN_GEAR` (8.4) |
 | Population TRAIN map choice | Low-medium. FieldCatalog already uses the WZ-generated fields.yaml; the only job signal in the data is undead monsters for Heal. | **Build** the healer preference only (8.5) |
 | Travel ETAs off the Victoria roads | Low-medium. An Ossyria-to-Ossyria trip counts as off-island: a 180 s recall, and citizens stand still for 45 s. | **Build** a knowledge fallback for maps outside `ROADS` (8.6) |
-| Resupply supplier fallback | None. The agents' router is Victoria-only, and Victoria's five catalog grocers are the island's grocers. | **Skip** (8.7) |
+| Resupply supplier fallback | None. The agents' router was Victoria-only and its suppliers were the five first-job grocers; since 2026-10-03 the Agents have their own world graph and potion-supplier catalog (8.7). | **Skip** (8.7) |
 | Agent training outside Victoria 15-30 | None. The objective refuses levels outside 16-30 before the selector runs, and movement is Victoria-only. | **Skip** (8.7) |
 
 Scope:
@@ -866,6 +866,10 @@ unreachable.
   `AgentVictoriaRouteRuntime.routeHops`, and travel is Victoria-only, so a knowledge supplier off Victoria would never be
   chosen. Inside Victoria no other grocer is on the router graph. Revisit with a non-Victoria router: then
   `shopsSelling(potions)` by `distance`, through the same filter.
+  *Done another way (2026-10-03, feat/shops-beyond-victoria):* the Agent router walks every continent
+  (`world-portal-route-graph.json`) and, for a caller that opts in, rides the NPC travel legs (`npc-travel-legs.json`), and `forSupply` picks from
+  the Agents' own `potion-supplier-catalog.json` (31 town potion shops, checked against the shop SQL by a test), so
+  `server.agents` still reads no server knowledge.
 - **Agent training outside Victoria 15-30.** `start`/`reattach` refuse levels outside 16-30. The selector's maps need
   `TrainingMap` records and Victoria routes, and companions, citizens and residents never use this path.
 - Also left out: dropper targeting inside the live FARM_ITEM slice (it stays a free grinder at the camp); GATHER's

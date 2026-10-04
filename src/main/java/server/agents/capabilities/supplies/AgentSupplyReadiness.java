@@ -98,6 +98,14 @@ public final class AgentSupplyReadiness {
         /** Its readiness trip ended. On the Agent tick. */
         default void finished(int agentCharacterId, Activity activity, Outcome outcome) {
         }
+
+        /**
+         * Whether the Agent may set off for a shop from {@code mapId} at all; false keeps it there whatever it lacks
+         * (a boss's gate: its critical request only asks the party). Memory only, any thread.
+         */
+        default boolean restocksFrom(int agentCharacterId, int mapId) {
+            return true;
+        }
     }
 
     public static void install(Rule installed) {
@@ -115,6 +123,20 @@ public final class AgentSupplyReadiness {
         } catch (RuntimeException failure) {
             log.debug("readiness rule failed to answer for Agent {}", agentCharacterId, failure);
             return null;
+        }
+    }
+
+    /** The installed rule's answer to {@link Rule#restocksFrom}; true without a rule or if it failed. */
+    public static boolean restocksFrom(int agentCharacterId, int mapId) {
+        Rule current = rule;
+        if (current == null) {
+            return true;
+        }
+        try {
+            return current.restocksFrom(agentCharacterId, mapId);
+        } catch (RuntimeException failure) {
+            log.debug("readiness rule failed to answer for Agent {} on map {}", agentCharacterId, mapId, failure);
+            return true;
         }
     }
 
@@ -352,6 +374,10 @@ public final class AgentSupplyReadiness {
 
     static int standingMaxHops() {
         return tuningInt("STANDING_MAX_HOPS");
+    }
+
+    static int deskMaxHops() {
+        return tuningInt("DESK_MAX_HOPS");
     }
 
     /** How long a readiness request to a supplier {@code hops} away stays good: REQUEST_TTL_MS, longer for far ones. */

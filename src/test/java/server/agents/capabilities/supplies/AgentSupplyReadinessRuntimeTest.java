@@ -81,6 +81,10 @@ class AgentSupplyReadinessRuntimeTest {
     private static final int PPQ_DESK = 251_010_404;
     private static final int HERB_TOWN = 251_000_000;
     private static final int ZAKUM_DOOR = 211_042_300;
+    private static final int EOS_TOWER_100TH = 221_024_400;
+    private static final int SLEEPYWOOD = 105_040_300;
+    private static final int ORBIS_TRAIN_GATE = 200_000_121;
+    private static final int PAPULATUS_GATE = 220_080_000;
     private static final int OWNER = 77;
     private static final int RED = 50;
     private static final int BLUE = 200;
@@ -95,6 +99,8 @@ class AgentSupplyReadinessRuntimeTest {
     /** The rule's callbacks and the party asks, in order. */
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
+    /** Maps the rule keeps companions on (a boss's gate): no shop trip from there. */
+    private final java.util.Set<Integer> noShopMaps = new java.util.HashSet<>();
     private final PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
     private final ShopGateway shops = mock(ShopGateway.class);
     private AgentRouteStatus route = AgentRouteStatus.MOVING;
@@ -129,6 +135,11 @@ class AgentSupplyReadinessRuntimeTest {
             @Override
             public AgentSupplyReadiness.Activity standing(int id) {
                 return duty.contains(id) ? PQ : null;
+            }
+
+            @Override
+            public boolean restocksFrom(int id, int mapId) {
+                return !noShopMaps.contains(mapId);
             }
 
             @Override
@@ -239,6 +250,70 @@ class AgentSupplyReadinessRuntimeTest {
 
         assertFalse(execution(entry).isActive());
         assertEquals(List.of("refused 533 NO_SUPPLIER 0"), calls, "the host hears it; no trip, no party ask");
+    }
+
+    @Test
+    void aMonsterFreeMapThatIsNoPartyQuestDeskKeepsTheTwoHopRadius() {
+        Character faro = companion(535, "Faro723", Job.CLERIC, 14, 21, 103_000);
+        standWithoutSpawns(faro, EOS_TOWER_100TH, 0); // four hops above Ludibrium's pharmacy, but no desk
+        AgentRuntimeEntry entry = following(faro);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, faro, 1_000L));
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 535 NO_SUPPLIER 0"), calls);
+    }
+
+    @Test
+    void aTownFartherThanTwoHopsFromItsShopStartsNothing() {
+        Character fenna = companion(536, "Fenna", Job.HUNTER, 14, 21, 103_000);
+        stand(fenna, SLEEPYWOOD, true); // Henesys' store is six maps away
+        AgentRuntimeEntry entry = following(fenna);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 536 NO_SUPPLIER 0"), calls);
+    }
+
+    @Test
+    void aStationPlatformIsNoPlaceToSetOffFromItsOwnerMayBoardAnyMoment() {
+        Character garrick = companion(537, "Garrick", Job.FIGHTER, 14, 21, 103_000);
+        standWithoutSpawns(garrick, ORBIS_TRAIN_GATE, 0);
+        AgentRuntimeEntry entry = following(garrick);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, garrick, 1_000L));
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of(), calls);
+    }
+
+    @Test
+    void atABossGateItNeverSetsOffAndItsCriticalRequestOnlyAsksTheParty() {
+        Character silent = companion(538, "SilentSin", Job.ASSASSIN, 5, 30, 103_000);
+        standWithoutSpawns(silent, PAPULATUS_GATE, 0); // Toly's shop is six hops back down the Path of Time
+        noShopMaps.add(PAPULATUS_GATE);
+        AgentRuntimeEntry entry = following(silent);
+        planCritical(entry, AgentResourceCategory.HP_POTION, 5);
+
+        for (long now = 1_000L; now <= 1_000L + 3 * partyWaitMs(); now += 5_000L) {
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, now));
+        }
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("party ask 538"), calls, "it asks once and never walks off the gate");
+    }
+
+    @Test
+    void anArcherAtAnOssyriaDeskIsNotHeldBackByArrowsItWouldNotBuyThere() {
+        Character fenna = companion(539, "Fenna", Job.HUNTER, 14, 21, 20 * RED + 10 * BLUE);
+        standWithoutSpawns(fenna, LPQ_DESK, 0);
+        ammoSpend = 1_000_000; // what its arrows would cost at a Victoria store
+        AgentRuntimeEntry entry = following(fenna);
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+
+        assertEquals(LUDIBRIUM_PHARMACY, execution(entry).supplierMapId());
     }
 
     @Test

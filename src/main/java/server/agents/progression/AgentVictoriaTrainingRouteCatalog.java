@@ -19,6 +19,8 @@ final class AgentVictoriaTrainingRouteCatalog {
     private static final Map<Integer, Set<Integer>> EDGES = edges();
     /** Maps joined by portals in either direction share a landmass id; no route ever leaves its landmass. */
     private static final Map<Integer, Integer> LANDMASS = landmasses(EDGES);
+    /** Maps of the other continents' graph (world-portal-route-graph.json): none of them is on Victoria Island. */
+    private static final Set<Integer> OUTSIDE_VICTORIA = worldMaps();
 
     private AgentVictoriaTrainingRouteCatalog() {
     }
@@ -70,8 +72,8 @@ final class AgentVictoriaTrainingRouteCatalog {
      */
     static List<Step> ridePath(int source, int destination, Set<Long> excludedEdges,
                                Predicate<AgentTravelLegCatalog.Leg> usable, int rideHopCost) {
-        if (source == destination) {
-            return List.of();
+        if (source == destination || !LANDMASS.containsKey(destination)) {
+            return List.of(); // every leg lands on the graphs, so a map off them is never reached
         }
         int legCost = Math.max(1, rideHopCost);
         Map<Integer, Integer> cost = new HashMap<>();
@@ -177,6 +179,11 @@ final class AgentVictoriaTrainingRouteCatalog {
         return from == null || !from.equals(LANDMASS.get(destination));
     }
 
+    /** True for a map of the other continents' portal graph; false on Victoria Island or off both graphs. */
+    static boolean outsideVictoria(int mapId) {
+        return OUTSIDE_VICTORIA.contains(mapId);
+    }
+
     static long edgeKey(int source, int destination) {
         return ((long) source << 32) ^ (destination & 0xffffffffL);
     }
@@ -223,6 +230,16 @@ final class AgentVictoriaTrainingRouteCatalog {
         mutable.forEach((mapId, adjacent) -> result.put(mapId,
                 Collections.unmodifiableSet(new java.util.LinkedHashSet<>(adjacent))));
         return Map.copyOf(result);
+    }
+
+    private static Set<Integer> worldMaps() {
+        Set<Integer> maps = new java.util.HashSet<>();
+        for (AgentVictoriaPortalRouteGraph.Edge edge
+                : AgentVictoriaPortalRouteGraphRepository.worldRepository().graph().edges()) {
+            maps.add(edge.fromMapId());
+            maps.add(edge.toMapId());
+        }
+        return Set.copyOf(maps);
     }
 
     private static Map<Integer, Integer> landmasses(Map<Integer, Set<Integer>> edges) {

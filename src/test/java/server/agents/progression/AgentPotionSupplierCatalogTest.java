@@ -85,9 +85,18 @@ class AgentPotionSupplierCatalogTest {
                 nodes.add(edge.toMapId());
             }
         }
+        Set<Integer> entered = new HashSet<>();
+        for (AgentVictoriaPortalRouteGraphRepository repository : List.of(
+                AgentVictoriaPortalRouteGraphRepository.defaultRepository(),
+                AgentVictoriaPortalRouteGraphRepository.worldRepository())) {
+            for (AgentVictoriaPortalRouteGraph.Edge edge : repository.graph().edges()) {
+                entered.add(edge.toMapId());
+            }
+        }
         Set<String> seen = new HashSet<>();
         for (AgentPotionSupplierCatalog.Supplier supplier : AgentPotionSupplierCatalog.suppliers()) {
             assertTrue(nodes.contains(supplier.mapId()), () -> supplier + " is off the portal graph");
+            assertTrue(entered.contains(supplier.mapId()), () -> "no portal leads into " + supplier);
             assertTrue(seen.add(supplier.mapId() + ":" + supplier.npcId()), () -> "duplicate " + supplier);
             assertFalse(supplier.town().isBlank(), () -> supplier + " names no town");
         }

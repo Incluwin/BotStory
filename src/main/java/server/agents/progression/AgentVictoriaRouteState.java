@@ -28,6 +28,8 @@ final class AgentVictoriaRouteState {
     private long arrivalVisibleSettleDurationMs;
     private boolean arrivalAwaitingObserver;
     private long npcRetryAtMs;
+    private long boardingRefusedLeg;
+    private long boardingRefusedSinceMs = -1L;
 
     /** Until when the Agent holds still before talking to a travel NPC again (ticket seller, boarding NPC). */
     synchronized long npcRetryAtMs() {
@@ -36,6 +38,19 @@ final class AgentVictoriaRouteState {
 
     synchronized void npcRetryAt(long atMs) {
         npcRetryAtMs = atMs;
+    }
+
+    /** How long this leg's boarding gate has kept refusing it, counted from its first refusal on this map. */
+    synchronized long boardingRefusedFor(long legKey, long nowMs) {
+        if (boardingRefusedSinceMs < 0L || boardingRefusedLeg != legKey) {
+            boardingRefusedLeg = legKey;
+            boardingRefusedSinceMs = nowMs;
+        }
+        return nowMs - boardingRefusedSinceMs;
+    }
+
+    synchronized void clearBoardingRefusal() {
+        boardingRefusedSinceMs = -1L;
     }
 
     synchronized Set<Long> blockedEdges(long nowMs) {
@@ -47,6 +62,7 @@ final class AgentVictoriaRouteState {
         if (lastObservedMapId != mapId) {
             lastObservedMapId = mapId;
             lastMapProgressAtMs = nowMs;
+            boardingRefusedSinceMs = -1L;
             failingEdge = 0L;
             consecutiveFailures = 0;
             lastFailureAtMs = 0L;

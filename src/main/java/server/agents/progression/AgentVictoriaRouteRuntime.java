@@ -8,7 +8,9 @@ import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 
 import java.awt.Point;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -31,6 +33,8 @@ public final class AgentVictoriaRouteRuntime {
             "server.agents.progression.AgentVictoriaRouteRuntime.NPC_INTERACTION_DISTANCE_PX");
     private static final long NPC_RETRY_MS = config.AgentTuning.longValue(
             "server.agents.progression.AgentVictoriaRouteRuntime.NPC_RETRY_MS");
+    private static final long BOARDING_PATIENCE_MS = config.AgentTuning.longValue(
+            "server.agents.progression.AgentVictoriaRouteRuntime.BOARDING_PATIENCE_MS");
 
     public enum Status {
         ARRIVED,
@@ -41,6 +45,10 @@ public final class AgentVictoriaRouteRuntime {
 
     public record TravelOutcome(Status status, int sourceMapId, int nextMapId, int destinationMapId,
                                 boolean edgeBlocked) {
+    }
+
+    /** A traveller that may ride, and the mesos it may spend on fares and tickets. Null: it only walks. */
+    public record RideBudget(long spendableMesos) {
     }
 
     /** What a ride plan decided: an outcome to return now, or the next map to walk to through a portal. */
@@ -62,11 +70,25 @@ public final class AgentVictoriaRouteRuntime {
                 != Status.ARRIVED;
     }
 
+    /** Travel on foot only, through standard and authored scripted portals: what every caller does today. */
     public static TravelOutcome travelStatus(AgentRuntimeEntry entry,
                                              Character agent,
                                              int destinationMapId,
                                              PrimitiveCapabilityGateway gateway,
                                              long nowMs) {
+        return travelStatus(entry, agent, destinationMapId, gateway, nowMs, null);
+    }
+
+    /**
+     * Travel that walks wherever a portal path reaches and, with {@code rides} (a caller that opts in), otherwise
+     * rides the travel legs within its budget. Null {@code rides}: on foot only.
+     */
+    public static TravelOutcome travelStatus(AgentRuntimeEntry entry,
+                                             Character agent,
+                                             int destinationMapId,
+                                             PrimitiveCapabilityGateway gateway,
+                                             long nowMs,
+                                             RideBudget rides) {
         int sourceMapId = agent.getMapId();
         AgentVictoriaRouteState state = entry.capabilityStates().require(AgentVictoriaRouteState.STATE_KEY);
         state.observeMap(sourceMapId, nowMs);
@@ -78,15 +100,19 @@ public final class AgentVictoriaRouteRuntime {
             state.clearActiveTravel();
             return new TravelOutcome(Status.ARRIVED, sourceMapId, sourceMapId, destinationMapId, false);
         }
-        if (AgentTravelLegCatalog.rideMap(sourceMapId)) {
+        if (rides != null && AgentTravelLegCatalog.rideMap(sourceMapId)) {
             // In a waiting room, on a ship, on Hak's back: the server sets it down at the far end.
             state.clearActiveTravel();
             return new TravelOutcome(Status.MOVING, sourceMapId, sourceMapId, destinationMapId, false);
         }
         Set<Long> blockedEdges = state.blockedEdges(nowMs);
         Integer nextMap = AgentVictoriaTrainingRouteCatalog.nextHop(sourceMapId, destinationMapId, blockedEdges);
+        if (nextMap == null && rides == null) {
+            state.clearActiveTravel();
+            return new TravelOutcome(Status.NO_ROUTE, sourceMapId, -1, destinationMapId, false);
+        }
         if (nextMap == null) {
-            Ride ride = ride(entry, agent, destinationMapId, gateway, state, blockedEdges, nowMs);
+            Ride ride = ride(entry, agent, destinationMapId, gateway, state, blockedEdges, rides, nowMs);
             if (ride.outcome() != null) {
                 return ride.outcome();
             }
@@ -160,9 +186,10 @@ public final class AgentVictoriaRouteRuntime {
 
     /**
      * No portal path reaches the destination: plan with the travel legs it can pay for (the fare, and the ticket's
-     * price when it holds none) and that have not kept refusing it. The first ticket the path needs and it lacks is
-     * bought on the spot when its seller stands here; standing at that leg's boarding NPC instead, it first goes back
-     * to the seller.
+     * price when it holds none) and that have not kept refusing it, and go only when the whole way's unpaid fares and
+     * tickets fit its budget, so it is never stranded halfway. The first ticket the way needs and it lacks is bought on
+     * the spot when its seller stands here; when the way does not pass the seller before that leg, it goes to the
+     * seller first, by legs that need no ticket it lacks.
      */
     private static Ride ride(AgentRuntimeEntry entry,
                              Character agent,
@@ -170,24 +197,30 @@ public final class AgentVictoriaRouteRuntime {
                              PrimitiveCapabilityGateway gateway,
                              AgentVictoriaRouteState state,
                              Set<Long> blockedEdges,
+                             RideBudget rides,
                              long nowMs) {
         int sourceMapId = agent.getMapId();
-        long mesos = Math.max(0, agent.getMeso());
+        long budget = Math.max(0L, rides.spendableMesos());
         Predicate<AgentTravelLegCatalog.Leg> usable = leg -> !blockedEdges.contains(legKey(leg))
-                && leg.fare() + (holds(agent, leg.ticket(), gateway) ? 0L : leg.ticket().price()) <= mesos;
+                && leg.fare() + (holds(agent, leg.ticket(), gateway) ? 0L : leg.ticket().price()) <= budget;
         List<AgentVictoriaTrainingRouteCatalog.Step> path = AgentVictoriaTrainingRouteCatalog.ridePath(
                 sourceMapId, destinationMapId, blockedEdges, usable, RIDE_HOP_COST);
-        for (AgentVictoriaTrainingRouteCatalog.Step step : path) {
-            AgentTravelLegCatalog.Leg leg = step.leg();
+        if (path.isEmpty() || unpaid(agent, path, gateway) > budget) {
+            state.clearActiveTravel();
+            return new Ride(new TravelOutcome(Status.NO_ROUTE, sourceMapId, -1, destinationMapId, false), null);
+        }
+        for (int i = 0; i < path.size(); i++) {
+            AgentTravelLegCatalog.Leg leg = path.get(i).leg();
             if (leg == null || holds(agent, leg.ticket(), gateway)) {
                 continue;
             }
-            if (leg.ticket().sellerMapId() == sourceMapId) {
+            int sellerMapId = leg.ticket().sellerMapId();
+            if (sellerMapId == sourceMapId) {
                 return new Ride(buyTicket(entry, agent, leg, gateway, state, destinationMapId, nowMs), null);
             }
-            if (step.fromMapId() == sourceMapId) {
-                path = AgentVictoriaTrainingRouteCatalog.ridePath(
-                        sourceMapId, leg.ticket().sellerMapId(), blockedEdges, usable, RIDE_HOP_COST);
+            if (!passes(path, i, sellerMapId)) {
+                path = AgentVictoriaTrainingRouteCatalog.ridePath(sourceMapId, sellerMapId, blockedEdges,
+                        usable.and(errand -> holds(agent, errand.ticket(), gateway)), RIDE_HOP_COST);
             }
             break;
         }
@@ -200,6 +233,40 @@ public final class AgentVictoriaRouteRuntime {
             return new Ride(null, first.toMapId());
         }
         return new Ride(board(entry, agent, first.leg(), gateway, state, destinationMapId, nowMs), null);
+    }
+
+    /** True when one of the steps before {@code legIndex} lands on {@code mapId}. */
+    private static boolean passes(List<AgentVictoriaTrainingRouteCatalog.Step> path, int legIndex, int mapId) {
+        for (int i = 0; i < legIndex; i++) {
+            if (path.get(i).toMapId() == mapId) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The fares and the prices of the tickets it does not hold yet, over a whole path (a held ticket serves once). */
+    private static long unpaid(Character agent, List<AgentVictoriaTrainingRouteCatalog.Step> path,
+                               PrimitiveCapabilityGateway gateway) {
+        Map<Integer, Integer> held = new HashMap<>();
+        long total = 0L;
+        for (AgentVictoriaTrainingRouteCatalog.Step step : path) {
+            AgentTravelLegCatalog.Leg leg = step.leg();
+            if (leg == null) {
+                continue;
+            }
+            total += leg.fare();
+            AgentTravelLegCatalog.Ticket ticket = leg.ticket();
+            if (ticket != null) {
+                int left = held.computeIfAbsent(ticket.itemId(), item -> gateway.itemCount(agent, item));
+                if (left > 0) {
+                    held.put(ticket.itemId(), left - 1);
+                } else {
+                    total += ticket.price();
+                }
+            }
+        }
+        return total;
     }
 
     private static TravelOutcome buyTicket(AgentRuntimeEntry entry,
@@ -228,8 +295,8 @@ public final class AgentVictoriaRouteRuntime {
 
     /**
      * Boards the leg: lands on its destination (then pauses as after a portal) or on its ride. A scheduled ride whose
-     * gate is still closed is asked again after NPC_RETRY_MS without counting against it; any other refusal counts
-     * toward blocking the leg like a portal that keeps refusing entry.
+     * gate is still closed is asked again after NPC_RETRY_MS without counting against it for BOARDING_PATIENCE_MS; any
+     * other refusal (and a gate closed past that) counts toward blocking the leg like a portal that keeps refusing.
      */
     private static TravelOutcome board(AgentRuntimeEntry entry,
                                        Character agent,
@@ -249,18 +316,20 @@ public final class AgentVictoriaRouteRuntime {
         }
         int nowOnMapId = agent.getMapId();
         if (nowOnMapId == leg.toMapId()) {
+            state.clearBoardingRefusal();
             state.recordPortalSuccess(nowOnMapId, nowMs, PORTAL_ARRIVAL_SETTLE_MS);
             log.info("Agent '{}' rode {} from map {} to map {} on the way to map {}",
                     agent.getName(), leg.id(), sourceMapId, nowOnMapId, destinationMapId);
             return new TravelOutcome(Status.MOVING, sourceMapId, nowOnMapId, destinationMapId, false);
         }
         if (AgentTravelLegCatalog.rideMap(nowOnMapId) || agent.getEventInstance() != null) {
+            state.clearBoardingRefusal();
             state.clearActiveTravel();
             log.info("Agent '{}' boarded {} on map {} (now on map {}) on the way to map {}",
                     agent.getName(), leg.id(), sourceMapId, nowOnMapId, destinationMapId);
             return new TravelOutcome(Status.MOVING, sourceMapId, nowOnMapId, destinationMapId, false);
         }
-        if (!leg.rideMapIds().isEmpty()) {
+        if (!leg.rideMapIds().isEmpty() && state.boardingRefusedFor(legKey(leg), nowMs) < BOARDING_PATIENCE_MS) {
             state.markActiveTravel(sourceMapId, destinationMapId);
             return new TravelOutcome(Status.MOVING, sourceMapId, leg.toMapId(), destinationMapId, false);
         }

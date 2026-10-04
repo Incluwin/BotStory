@@ -36,6 +36,15 @@ public final class AgentPotionSupplierCatalog {
         return SUPPLIERS;
     }
 
+    /**
+     * Whether a shop visit on this map may also top up throwing stars, bullets and arrows. Projectiles keep the
+     * behaviour they had before potion shops outside Victoria Island were known (their own investigation decides
+     * more): only shops on Victoria, never the town shops of the other continents.
+     */
+    public static boolean ammoTopUpAllowedAt(int mapId) {
+        return !AgentVictoriaTrainingRouteCatalog.outsideVictoria(mapId);
+    }
+
     private static List<Supplier> load() {
         try (InputStream input = AgentPotionSupplierCatalog.class.getResourceAsStream(RESOURCE)) {
             if (input == null) {

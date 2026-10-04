@@ -44,6 +44,13 @@ public final class AgentCareerShopCatalog {
         int nearestDistance = Integer.MAX_VALUE;
         for (AgentPotionSupplierCatalog.Supplier candidate : AgentPotionSupplierCatalog.suppliers()) {
             int distance = routeHops.applyAsInt(currentMapId, candidate.mapId());
+            // Outside Victoria a shop behind a one-way portal (Sharp Cliff into Ice Valley II, Leafre's forests)
+            // would leave an Agent with no owner to warp back to standing by it for good. Victoria's one-way trips
+            // (Mushroom Castle) stay as they were.
+            if (distance >= 0 && AgentVictoriaTrainingRouteCatalog.outsideVictoria(candidate.mapId())
+                    && routeHops.applyAsInt(candidate.mapId(), currentMapId) < 0) {
+                continue;
+            }
             if (distance >= 0 && distance < nearestDistance) {
                 nearest = candidate;
                 nearestDistance = distance;

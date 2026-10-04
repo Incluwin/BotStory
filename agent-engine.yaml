@@ -4165,10 +4165,14 @@ tuning:
     # Purpose: How far past the readiness standard a shop visit buys while the Agent keeps a standing duty, so back-to-back runs do not send it to the shop every time.
     # Technical: AgentSupplyReadiness.buyTarget rounds standard x this / 100 up; AgentShopService.buyPotionStock buys by count (AgentShopPotionPolicy.selectForCount) first up to the standard, then runs the reserve-bar passes, then tops up toward this target with what is left, within MAX_CARRIED_QUANTITY and MAX_PURCHASE_QUANTITY_PER_VISIT.
     server.agents.capabilities.supplies.AgentSupplyReadiness.BUY_TO_PERCENT: '200'
-    # Values: portal hops from 0 to 10. Recommended: 7, which covers every party quest desk: Lakelis (Kerning, 1 hop), HPQ (Henesys park, 2), LMPQ (Ludibrium, 1), RJPQ (Magatia, 0), EPQ (Deep Fairy Forest, 2), OPQ (The Unknown Tower, 3), LPQ (Eos Tower 101st floor, 5) and PPQ (Over the Pirate Ship, 7).
-    # Purpose: How far the nearest potion supplier may be from a town or monster-free map before a standing readiness duty walks there by itself.
-    # Technical: AgentSupplyReadinessRuntime.select assesses only when AgentVictoriaRouteRuntime.routeHops from the current map to the AgentCareerShopCatalog.forSupply stop is at most this; farther records a NO_SUPPLIER verdict and starts nothing (the critical path's own reachability is unlimited as before). The trip's shown time and REQUEST_TTL_PER_HOP_MS grow with the hops.
-    server.agents.capabilities.supplies.AgentSupplyReadiness.STANDING_MAX_HOPS: '7'
+    # Values: portal hops from 0 to 6. Recommended: 2, which covers the Lakelis desk (Kerning, 1 hop), the HPQ desk (Henesys park, 2 hops) and town shops next door, so a companion never wanders off through fields from an ordinary town.
+    # Purpose: How far the nearest potion supplier may be from a town or monster-free map that is no party quest desk before a standing readiness duty walks there by itself.
+    # Technical: AgentSupplyReadinessRuntime.select assesses only when AgentVictoriaRouteRuntime.routeHops from the current map to the AgentCareerShopCatalog.forSupply stop is at most this (DESK_MAX_HOPS on a party quest's recruit map); farther records a NO_SUPPLIER verdict and starts nothing (the critical path's own reachability is unlimited as before).
+    server.agents.capabilities.supplies.AgentSupplyReadiness.STANDING_MAX_HOPS: '2'
+    # Values: portal hops from 0 to 10. Recommended: 7, which covers every party quest desk: LMPQ (Ludibrium, 1 hop), RJPQ (Magatia, 0), EPQ (Deep Fairy Forest, 2), OPQ (The Unknown Tower, 3), LPQ (Eos Tower 101st floor, 5) and PPQ (Over the Pirate Ship, 7).
+    # Purpose: How far the nearest potion supplier may be from a party quest desk before a standing readiness duty walks there by itself; the desks outside Victoria lie farther from their town's shop than an ordinary town.
+    # Technical: AgentSupplyReadinessRuntime.select uses this instead of STANDING_MAX_HOPS when the Agent stands on a recruit map of AgentPartyQuestCatalog; the trip's shown time (TRIP_ETA_PER_HOP_MS) and REQUEST_TTL_PER_HOP_MS grow with the hops.
+    server.agents.capabilities.supplies.AgentSupplyReadiness.DESK_MAX_HOPS: '7'
     # Values: milliseconds from 1000 to 60000. Recommended: 5000 so a short companion sets off within seconds of reaching a town.
     # Purpose: How often an Agent with a standing readiness duty looks at its potions while no supply trip is under way.
     # Technical: AgentSupplyReadinessRuntime.select returns at once until AgentSupplyReadinessState.nextCheckAtMs; a host's AgentSupplyReadiness.checkSoon resets it to 0 (the Lakelis desk does on a click), and the RESTOCKING estimate never shows less than this.
@@ -4251,6 +4255,10 @@ tuning:
     # Purpose: Spaces an Agent's conversations with a travel NPC, so a boarding gate that is still closed is asked again a little later instead of every tick, and a map change after boarding has landed before it plans again.
     # Technical: AgentVictoriaRouteState.npcRetryAtMs is set to now plus this after every travel-NPC conversation; AgentVictoriaRouteRuntime holds still until then. A scheduled ride that refuses boarding is retried this way without counting as a failure; an instant ride that refuses counts toward FAILED_EDGE_BLOCK_MS like a portal.
     server.agents.progression.AgentVictoriaRouteRuntime.NPC_RETRY_MS: '5000'
+    # Values: milliseconds from 60000 to 1800000. Recommended: 420000, longer than one departure cycle of the subway and the plane even at travel_rate 1 (5-6 minutes; 30-36 s at this server's travel_rate 10).
+    # Purpose: How long an Agent keeps asking at a scheduled ride's closed boarding gate before the refusals count against the ride, so a ride whose event is broken is given up instead of waited on forever.
+    # Technical: AgentVictoriaRouteState remembers when the current leg first refused boarding (reset on a map change or on boarding); past this, each refusal goes to recordFailure like a refused portal, and three block the leg for FAILED_EDGE_BLOCK_MS.
+    server.agents.progression.AgentVictoriaRouteRuntime.BOARDING_PATIENCE_MS: '420000'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 1000-4000 around the tested baseline 2000; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents remain in or wait for edge failure memory. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "victoria route state" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
