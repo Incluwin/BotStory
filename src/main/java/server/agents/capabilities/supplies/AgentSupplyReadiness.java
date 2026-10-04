@@ -276,7 +276,8 @@ public final class AgentSupplyReadiness {
         if (key == null || key.isEmpty()) {
             return null;
         }
-        String standards = config.AgentTuning.stringValue(TUNING_PREFIX + "PARTY_QUEST_STANDARDS");
+        String standards = config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS");
         for (String pair : standards == null ? new String[0] : standards.split(",")) {
             int equals = pair.indexOf('=');
             int slash = pair.indexOf('/', equals + 1);
