@@ -21,8 +21,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A GM level set of a running Agent (the {@code !setlevel} command), run on its own mailbox: the set itself
- * (Character.adminSetLevel), then the Agent's build caught up the way its own tick would have, in one go. Its SP
+ * A GM level set of a running Agent (the {@code !setlevel} command), run on its own mailbox: the gear the new level or
+ * job does not allow taken off first (the plan made sure there is room, and other pieces cannot take that room), the
+ * set itself (Character.adminSetLevel), then the Agent's build caught up the way its own tick would have, in one go. Its SP
  * through the catalog profiles of its whole advancement chain first, then (when the job changed) its career bundle
  * restored or re-picked for the new job, its AP reset to that profile, its SP through its own profile, its next
  * job-advancement prompt, its gear and a save.
@@ -55,6 +56,9 @@ public final class AgentLevelSetService {
         String busy(Character bot);
 
         LevelSetPlan.GearPlan gearPlan(Character bot, LevelSetPlan.Ok ok);
+
+        /** Takes these EQUIPPED slots off; the equipment service's answer ("unequipped ..." when they came off). */
+        String unequip(Character bot, List<Short> slots);
 
         LevelSetPlan.AdminLevelChange adminSetLevel(Character bot, LevelSetPlan.Ok ok);
 
@@ -102,6 +106,15 @@ public final class AgentLevelSetService {
         public LevelSetPlan.GearPlan gearPlan(Character bot, LevelSetPlan.Ok ok) {
             return LevelSetPlan.gearPlan(ok.job(), ok.level(), true, equipped(bot),
                     bot.getInventory(InventoryType.EQUIP).getNumFreeSlot());
+        }
+
+        @Override
+        public String unequip(Character bot, List<Short> slots) {
+            short[] off = new short[slots.size()];
+            for (int i = 0; i < off.length; i++) {
+                off[i] = slots.get(i);
+            }
+            return AgentEquipmentService.unequipSlot(bot, off);
         }
 
         @Override
@@ -202,6 +215,14 @@ public final class AgentLevelSetService {
         LevelSetPlan.GearPlan gear = steps.gearPlan(bot, ok);
         if (gear.refused()) {
             return new Refused(gear.refusal());
+        }
+        if (!gear.unequip().isEmpty()) {
+            // before unequipInfeasibleEquipped below: it takes off every piece or none, so pieces it finds short of
+            // stats could otherwise use up the room these need and leave over-level gear on
+            String off = steps.unequip(bot, gear.unequip());
+            if (off == null || !off.startsWith("unequipped")) {
+                return new Refused("the gear level " + ok.level() + " does not allow could not come off (" + off + ").");
+            }
         }
         LevelSetPlan.AdminLevelChange change = steps.adminSetLevel(bot, ok);
         // the catalog profiles of the whole chain first: the bundle step below selects the new job's own SP profile,

@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -46,6 +47,7 @@ class ResidentKitGateTest {
             List.of(), List.of(), Map.of(), -1, -1, -1, List.of(), 0, Look.NONE, "test");
 
     private final LivingWorld world = mock(LivingWorld.class);
+    private final LivingStore store = mock(LivingStore.class);
     private final GmLevelHolds holds = mock(GmLevelHolds.class);
     private final Character yara = mock(Character.class);
     private ResidentRuntime runtime;
@@ -58,7 +60,7 @@ class ResidentKitGateTest {
 
     @BeforeEach
     void wire() {
-        when(world.store()).thenReturn(mock(LivingStore.class));
+        when(world.store()).thenReturn(store);
         when(world.config()).thenReturn(new LivingWorldConfig());
         when(world.content()).thenReturn(mock(LivingContent.class));
         when(world.arcs()).thenReturn(mock(ArcService.class));
@@ -116,6 +118,22 @@ class ResidentKitGateTest {
         held(false);
         runtime.refreshKit(yara, YARA);
         verifyKitApplied(1);
+    }
+
+    @Test
+    void aHeldCompanionIsNotShapedAgainAsAResident() {
+        // shaped to an older recipe: shaping would level it to its persona's level
+        when(store.personaState("yara")).thenReturn(new LivingStore.PersonaState("yara", YARA_CHARACTER, null, 1, 0));
+        ResidentRuntime.Session session = new ResidentRuntime.Session(YARA, YARA_CHARACTER);
+        try (MockedStatic<ResidentShaper> shaper = mockStatic(ResidentShaper.class)) {
+            held(true);
+            runtime.shapeIfNeeded(session, yara);
+            shaper.verify(() -> ResidentShaper.shape(any(), any(), any(), anyInt()), never());
+
+            held(false);
+            runtime.shapeIfNeeded(session, yara);
+            shaper.verify(() -> ResidentShaper.shape(eq(yara), eq(YARA), any(), anyInt()), times(1));
+        }
     }
 
     @Test

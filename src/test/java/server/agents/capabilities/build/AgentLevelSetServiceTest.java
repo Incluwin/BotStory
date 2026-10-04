@@ -4,6 +4,10 @@ import client.Character;
 import client.Job;
 import client.LevelSetPlan;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.runtime.AgentRuntimeEntry;
 
 import java.util.ArrayList;
@@ -11,7 +15,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class AgentLevelSetServiceTest {
@@ -25,6 +31,7 @@ class AgentLevelSetServiceTest {
         String busy;
         LevelSetPlan.GearPlan gear = new LevelSetPlan.GearPlan(List.of(), null);
         boolean apProfile = true;
+        String unequipped = "unequipped a sword";
         long clock = 1_000L;
 
         @Override
@@ -36,6 +43,12 @@ class AgentLevelSetServiceTest {
         public LevelSetPlan.GearPlan gearPlan(Character bot, LevelSetPlan.Ok ok) {
             steps.add("gearPlan");
             return gear;
+        }
+
+        @Override
+        public String unequip(Character bot, List<Short> slots) {
+            steps.add("unequip " + slots);
+            return unequipped;
         }
 
         @Override
@@ -173,6 +186,55 @@ class AgentLevelSetServiceTest {
         assertEquals(new AgentLevelSetService.Refused("Yara is in a party quest."),
                 apply(busy, LevelSetPlan.Request.to(20, null)));
         assertEquals(List.of(), busy.steps);
+    }
+
+    @Test
+    void theGearTheLevelForbidsComesOffBeforeTheSetAndBeforeAnythingElseIsTakenOff() {
+        when(bot.getLevel()).thenReturn(40);
+        when(bot.getJob()).thenReturn(Job.FIGHTER);
+        Recording steps = new Recording();
+        steps.gear = new LevelSetPlan.GearPlan(List.of((short) -11, (short) -5), null);
+
+        apply(steps, LevelSetPlan.Request.to(20, null));
+
+        assertEquals(List.of("gearPlan", "unequip [-11, -5]", "adminSetLevel", "assignOffline", "restoreOrAssign",
+                "resetApToProfile", "autoAssignSp", "setJobPromptSent 10", "unequipInfeasibleEquipped", "autoEquip",
+                "heal", "checkBuildStatus", "save"), steps.steps);
+    }
+
+    @Test
+    void gearThatCouldNotComeOffRefusesTheSet() {
+        when(bot.getLevel()).thenReturn(40);
+        when(bot.getJob()).thenReturn(Job.FIGHTER);
+        Recording steps = new Recording();
+        steps.gear = new LevelSetPlan.GearPlan(List.of((short) -11), null);
+        steps.unequipped = "equip bag full";
+
+        AgentLevelSetService.Outcome outcome = apply(steps, LevelSetPlan.Request.to(20, null));
+
+        assertInstanceOf(AgentLevelSetService.Refused.class, outcome);
+        assertEquals(List.of("gearPlan", "unequip [-11]"), steps.steps);
+    }
+
+    @Test
+    void theLiveBusyCheckRefusesADownAgentOneInAnEventInstanceAndOneInAPartyQuest() {
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(901);
+        when(agent.getName()).thenReturn("Yara");
+        assertEquals("Yara is down.", AgentLevelSetService.LIVE.busy(agent));
+
+        when(agent.isAlive()).thenReturn(true);
+        when(agent.getEventInstance()).thenReturn(mock(EventInstanceManager.class));
+        assertEquals("Yara is in an event instance.", AgentLevelSetService.LIVE.busy(agent));
+
+        when(agent.getEventInstance()).thenReturn(null);
+        try (MockedStatic<AgentPartyQuestEngagementRegistry> engagements =
+                     mockStatic(AgentPartyQuestEngagementRegistry.class)) {
+            engagements.when(() -> AgentPartyQuestEngagementRegistry.forMember(901))
+                    .thenReturn(mock(AgentPartyQuestEngagement.class));
+            assertEquals("Yara is in a party quest.", AgentLevelSetService.LIVE.busy(agent));
+        }
+        assertNull(AgentLevelSetService.LIVE.busy(agent));
     }
 
     @Test
