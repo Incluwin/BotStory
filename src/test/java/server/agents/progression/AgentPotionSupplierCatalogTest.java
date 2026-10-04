@@ -103,6 +103,15 @@ class AgentPotionSupplierCatalogTest {
     }
 
     @Test
+    void shopsBotsCannotReachAreLeftOut() {
+        // live 2026-10-04: "visit timeout (never reached the shop NPC)" at the Eos Tower Gumball Machine
+        for (AgentPotionSupplierCatalog.Supplier supplier : AgentPotionSupplierCatalog.suppliers()) {
+            assertFalse(supplier.npcId() == 2040049, "the Gumball Machine on Eos Tower's 26th-40th floors");
+            assertFalse(supplier.npcId() == 1061002, "Sleepywood's sauna: no portal leads in");
+        }
+    }
+
+    @Test
     void firstJobShopsComeFirstSoVictoriaTiesBreakAsBefore() {
         List<AgentPotionSupplierCatalog.Supplier> suppliers = AgentPotionSupplierCatalog.suppliers();
         List<AgentVictoriaLevel15Catalog.Career> careers =

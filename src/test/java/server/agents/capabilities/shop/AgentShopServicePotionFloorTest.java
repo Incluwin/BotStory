@@ -145,6 +145,24 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
+    void aReadinessTripWhoseDutyCannotBeReadAtTheCounterStillBuysToItsStandard() {
+        // live 2026-10-04: travel had cleared the follow target the duty is read from, so the floor never ran and the
+        // trip came back "without increasing the required supply", three times in a row
+        // fifteen Power Elixirs meet every reserve bar: only the readiness floor buys anything
+        try (MockedStatic<AgentSupplyReadiness> readiness =
+                     mockStatic(AgentSupplyReadiness.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+            readiness.when(() -> AgentSupplyReadiness.standing(anyInt())).thenReturn(null);
+            readiness.when(() -> AgentSupplyReadiness.shoppingActivity(any(), any()))
+                    .thenReturn(AgentSupplyReadiness.Activity.PARTY_QUEST);
+
+            visit(List.of(RED, WHITE, BLUE));
+        }
+
+        int[] after = AgentPotionService.countPotions(bot);
+        assertTrue(after[0] >= 20 && after[1] >= 25, after[0] + "/" + after[1] + " " + transactions);
+    }
+
+    @Test
     void withoutADutyTheSameVisitBuysNothing() {
         visit(List.of(RED, WHITE, BLUE));
 

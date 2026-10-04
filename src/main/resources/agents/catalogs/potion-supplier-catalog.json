@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "catalogId": "town-potion-suppliers-v1",
   "source": "db/data/101-shops-data.sql + 102-shopitems-data.sql (NPC shops selling Red/Orange/White and Blue/Mana Elixir), NPC placement from wz/Map.wz life, maps on the standard portal graphs",
-  "note": "The five first-job shops come first, in the level-15 catalog's career order, so Victoria ties break as they did when only those five were known. Left out: Sleepywood's sauna (Mr. Sweatbottom, 105040401), which no portal leads into.",
+  "note": "The five first-job shops come first, in the level-15 catalog's career order, so Victoria ties break as they did when only those five were known. Left out: Sleepywood's sauna (Mr. Sweatbottom, 105040401), which no portal leads into, and the Gumball Machine on Eos Tower's 26th-40th floors (2040049, 221021600), whose counter bots never reached live (2026-10-04).",
   "suppliers": [
     { "mapId": 102000002, "npcId": 1021100, "town": "Perion" },
     { "mapId": 101000002, "npcId": 1031100, "town": "Ellinia" },
@@ -21,7 +21,6 @@
     { "mapId": 220000002, "npcId": 2041006, "town": "Ludibrium" },
     { "mapId": 220050300, "npcId": 2040051, "town": "Ludibrium" },
     { "mapId": 221000200, "npcId": 2051000, "town": "Omega Sector" },
-    { "mapId": 221021600, "npcId": 2040049, "town": "Omega Sector" },
     { "mapId": 222000000, "npcId": 2070001, "town": "Korean Folk Town" },
     { "mapId": 230000002, "npcId": 2060004, "town": "Aquarium" },
     { "mapId": 240000002, "npcId": 2080001, "town": "Leafre" },

@@ -60,6 +60,7 @@ public final class AgentSupplyReadinessState {
     private int cooldownHpShortAt;
     private int cooldownMpShortAt;
     private int cooldownMapId;
+    private int cooldownSupplierMapId = -1;
     private int interruptedInARow;
     private int interruptedMapId;
     private CriticalCheck criticalCheck;
@@ -171,6 +172,12 @@ public final class AgentSupplyReadinessState {
         cooldownHpShortAt = shortfallAt == null ? Integer.MAX_VALUE : shortfallAt.hp();
         cooldownMpShortAt = shortfallAt == null ? Integer.MAX_VALUE : shortfallAt.mp();
         cooldownMapId = mapId;
+        cooldownSupplierMapId = -1;
+    }
+
+    /** The store the trips it gave up on went to: standing there (before the follow warp lands) is not elsewhere. */
+    synchronized void cooldownSupplier(int supplierMapId) {
+        cooldownSupplierMapId = supplierMapId;
     }
 
     /**
@@ -204,7 +211,7 @@ public final class AgentSupplyReadinessState {
             case CANNOT_AFFORD, SHORT_MESOS -> (long) mesos >= (long) cooldownMesosAt + cooldownMissingMesos || fewer;
             case NO_SPACE, SHORT_SPACE -> freeUseSlots > cooldownFreeUseSlotsAt || fewer;
             case INTERRUPTED -> nowMs >= cooldownUntilMs;
-            case GAVE_UP -> mapId != cooldownMapId;
+            case GAVE_UP -> mapId != cooldownMapId && mapId != cooldownSupplierMapId;
         };
     }
 
@@ -224,7 +231,7 @@ public final class AgentSupplyReadinessState {
 
     /** A given-up town is behind it once it stands on another map (looked at on every check). */
     synchronized void noteMap(int mapId) {
-        if (cooldown == Cooldown.GAVE_UP && mapId != cooldownMapId) {
+        if (cooldown == Cooldown.GAVE_UP && mapId != cooldownMapId && mapId != cooldownSupplierMapId) {
             cooldown = null;
             interruptedInARow = 0;
         }

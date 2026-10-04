@@ -255,12 +255,35 @@ public final class AgentSupplyReadiness {
     }
 
     /**
+     * The activity a shop visit buys toward: the standing duty the host answers for this Agent, or, on a readiness trip
+     * under way, the activity that trip set off for. Travel clears the follow target a duty is read from (and a chat
+     * can move its interaction target), so at the counter the host may answer no duty for a companion it sent there.
+     * Null: neither.
+     */
+    public static Activity shoppingActivity(AgentRuntimeEntry entry, Character agent) {
+        Activity standing = agent == null ? null : standing(agent.getId());
+        if (standing != null || entry == null) {
+            return standing;
+        }
+        AgentSupplyReadinessState state = entry.capabilityStates().find(AgentSupplyReadinessState.STATE_KEY)
+                .orElse(null);
+        if (state == null || state.request() == null) {
+            return null;
+        }
+        return state.activity() == null ? Activity.PARTY_QUEST : state.activity();
+    }
+
+    /**
      * How many HP (or MP) potions a shop visit buys toward while the Agent keeps a standing duty: BUY_TO_PERCENT of
      * the standard, rounded up; 0 without a duty, and for MP when it fights without skills.
      */
     public static int buyTarget(Character agent, boolean forHp) {
-        Activity activity = agent == null ? null : standing(agent.getId());
-        if (activity == null || !forHp && !needsManaPotions(agent)) {
+        return buyTarget(agent == null ? null : standing(agent.getId()), agent, forHp);
+    }
+
+    /** As {@link #buyTarget(Character, boolean)}, for {@code activity} (0 when null). */
+    public static int buyTarget(Activity activity, Character agent, boolean forHp) {
+        if (activity == null || agent == null || !forHp && !needsManaPotions(agent)) {
             return 0;
         }
         Standard standard = standard(activity);

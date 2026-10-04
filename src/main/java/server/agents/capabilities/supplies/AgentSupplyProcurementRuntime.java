@@ -520,6 +520,12 @@ public final class AgentSupplyProcurementRuntime {
             AgentProcurementRequest request = activeRequest(entry, planning, execution, nowMs);
             int after = AgentSupplyInventorySnapshot.quantity(agent, execution.category());
             int target = request == null ? after : request.quantity() + execution.quantityBefore();
+            log.info("Agent '{}' finished shopping at NPC {} on map {}: {} {} -> {} (target {}), potions hp {} mp {},"
+                            + " mesos {} -> {}", agent.getName(), execution.supplierNpcId(), agent.getMapId(),
+                    execution.category(), execution.quantityBefore(), after, target,
+                    AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION),
+                    AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.MP_POTION),
+                    execution.mesosBefore(), Math.max(0, agent.getMeso()));
             AgentSupplyProcurementOutcome outcome = AgentSupplyReadinessRuntime.judged(entry, agent, execution,
                     reconcile(execution, agent, after, target, nowMs));
             execution.complete(outcome);

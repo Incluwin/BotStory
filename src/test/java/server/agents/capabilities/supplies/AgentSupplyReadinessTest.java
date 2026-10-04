@@ -134,6 +134,29 @@ class AgentSupplyReadinessTest {
         }
     }
 
+    @Test
+    void atTheCounterAReadinessTripBuysForTheActivityItSetOffForEvenIfTheDutyCannotBeReadThere() {
+        Character warrior = withJob(Job.WARRIOR);
+        when(warrior.getId()).thenReturn(436);
+        server.agents.runtime.AgentRuntimeEntry entry = new server.agents.runtime.AgentRuntimeEntry(warrior, null, null);
+        AgentSupplyReadiness.Activity ppq = AgentSupplyReadiness.Activity.partyQuest("ppq");
+        AgentSupplyReadiness.install(id -> null); // travel cleared the follow target its duty is read from
+
+        assertEquals(null, AgentSupplyReadiness.shoppingActivity(entry, warrior), "no duty, no trip: nothing");
+
+        entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY).offer(
+                new server.agents.capabilities.contracts.AgentProcurementRequest("readiness:HP_POTION:1",
+                        server.agents.capabilities.contracts.AgentResourceCategory.HP_POTION, 5, 0L,
+                        java.util.List.of(server.agents.capabilities.contracts.AgentProcurementMethod.NPC_SHOP),
+                        server.agents.capabilities.contracts.AgentSupplyUrgency.CRITICAL, "",
+                        Long.MAX_VALUE), ppq, 7, 200_000L, 251010404);
+        assertEquals(ppq, AgentSupplyReadiness.shoppingActivity(entry, warrior), "the trip's own activity");
+        assertEquals(60, AgentSupplyReadiness.buyTarget(ppq, warrior, true), "PPQ's 30 HP, bought to 200%");
+
+        AgentSupplyReadiness.install(id -> PQ);
+        assertEquals(PQ, AgentSupplyReadiness.shoppingActivity(entry, warrior), "a duty it can read wins");
+    }
+
     private static AgentSupplyReadiness.Standard standardFor(String key) {
         return AgentSupplyReadiness.standard(AgentSupplyReadiness.Activity.partyQuest(key));
     }
