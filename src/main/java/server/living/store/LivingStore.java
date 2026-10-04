@@ -1324,6 +1324,11 @@ public final class LivingStore {
     // ---- audit ---------------------------------------------------------------------------
 
     public void event(int characterId, String personaId, String kind, String detail) {
+        eventChecked(characterId, personaId, kind, detail);
+    }
+
+    /** As {@link #event}; false when the row could not be written. */
+    public boolean eventChecked(int characterId, String personaId, String kind, String detail) {
         String sql = "INSERT INTO living_event_log (character_id, persona_id, kind, detail) VALUES (?, ?, ?, ?)";
         try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
             setNullableInt(ps, 1, characterId);
@@ -1331,8 +1336,36 @@ public final class LivingStore {
             ps.setString(3, kind);
             ps.setString(4, detail == null ? null : detail.length() > 512 ? detail.substring(0, 512) : detail);
             ps.executeUpdate();
+            return true;
         } catch (SQLException failure) {
             log.warn("living_event_log write failed ({})", kind, failure);
+            return false;
+        }
+    }
+
+    /** One living_event_log row's kind and detail. */
+    public record EventRow(String kind, String detail) {
+    }
+
+    /**
+     * The character's latest GM level event with this persona ({@code gm.level.hold} or {@code gm.level.release}, the
+     * GmLevelHolds record): empty when there is none, null when the read fails. The table is indexed by character
+     * (idx_living_event_character), so this reads that character's audit rows and keeps the newest match; GmLevelHolds
+     * caches the answer, so it runs once per character and persona a boot.
+     */
+    public java.util.Optional<EventRow> latestGmLevel(int characterId, String personaId) {
+        String sql = "SELECT kind, detail FROM living_event_log WHERE character_id = ? AND persona_id = ?"
+                + " AND kind IN ('gm.level.hold', 'gm.level.release') ORDER BY id DESC LIMIT 1";
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, characterId);
+            ps.setString(2, personaId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? java.util.Optional.of(new EventRow(rs.getString(1), rs.getString(2)))
+                        : java.util.Optional.empty();
+            }
+        } catch (SQLException | RuntimeException failure) {
+            log.warn("living_event_log GM level read failed for {}/{}", characterId, personaId, failure);
+            return null;
         }
     }
 

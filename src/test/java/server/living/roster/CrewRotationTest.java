@@ -232,6 +232,21 @@ class CrewRotationTest {
     }
 
     @Test
+    void neverWhileAGmPartyLevelSetRunsForTheOwner() {
+        rotation.setKeepFresh(game.ann, true);
+        noPotions.add(901);
+        GmLevelHolds holds = new GmLevelHolds(game.world);
+        when(game.world.gmLevelHolds()).thenReturn(holds);
+
+        holds.busy(ANN, true);
+        assertNull(rotation.check(game.ann, now));
+        assertEquals(RosterState.ACTIVE, game.row(tobi).state());
+
+        holds.busy(ANN, false);
+        assertTrue(rotation.check(game.ann, now).ok());
+    }
+
+    @Test
     void noCompanionSwapsTwiceWithinTheCooldown() {
         // camps on Ann's map: whoever swaps in walks in at once and is out with her
         Persona hereMira = game.companion("mira", "Mira", 950, RosterState.BENCHED, HENESYS_FIELD);

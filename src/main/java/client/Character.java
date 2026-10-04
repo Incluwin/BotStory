@@ -1379,6 +1379,111 @@ public class Character extends AbstractCharacterObject {
         return changeJobInternal(newJob, false);
     }
 
+    /**
+     * GM level set ({@code !setlevel}): to {@code ok}'s level and job, up or down, in one step. The stats follow
+     * LevelSetPlan.apPlan (a legal {@code statOverride}, null for none, is given back as it was), the skills
+     * LevelSetPlan.skillPlan (Explorer skills off the new chain, or past the SP the level gives, are dropped; the rest of
+     * the SP is unspent; a fourth job keeps the master levels its advancement gives), and max HP/MP are the job's
+     * formula for the level, healed to full. Buffs are cancelled and EXP is 0, or for a restore the recorded EXP
+     * ({@code ok.exp()}, short of the next level). The party entry (PartyCharacter) is refreshed. No level-up hooks run
+     * (no effect, journal, chatter or rewards) and nothing is saved: the caller saves.
+     */
+    public synchronized LevelSetPlan.AdminLevelChange adminSetLevel(LevelSetPlan.Ok ok, LevelSetPlan.Stats statOverride) {
+        int fromLevel = level;
+        Job fromJob = job;
+        LevelSetPlan.Stats fromStats = new LevelSetPlan.Stats(getStr(), getDex(), getInt(), getLuk(), getRemainingAp());
+        LevelSetPlan.ApRules rules = new LevelSetPlan.ApRules(YamlConfig.config.server.USE_STARTING_AP_4,
+                YamlConfig.config.server.USE_AUTOASSIGN_STARTERS_AP, YamlConfig.config.server.MAX_AP);
+        LevelSetPlan.ApPlan ap = LevelSetPlan.apPlan(ok.job(), ok.level(), getHpMpApUsed(), rules, fromLevel, fromStats,
+                statOverride);
+        Map<Integer, Skill> learned = new LinkedHashMap<>();
+        List<LevelSetPlan.SkillHolding> holdings = new ArrayList<>();
+        for (Map.Entry<Skill, SkillEntry> held : getSkills().entrySet()) {
+            learned.put(held.getKey().getId(), held.getKey());
+            holdings.add(new LevelSetPlan.SkillHolding(held.getKey().getId(), held.getValue().skillevel,
+                    held.getValue().masterlevel));
+        }
+        LevelSetPlan.SkillPlan sp = LevelSetPlan.skillPlan(ok.job(), ok.level(), holdings);
+
+        cancelAllBuffs(false);
+        for (int skillId : sp.drop()) {
+            changeSkillLevel(learned.get(skillId), (byte) -1, 0, -1);
+        }
+
+        if (canRecvPartySearchInvite && getParty() == null) {
+            this.updatePartySearchAvailability(false);
+            this.level = ok.level();
+            this.job = ok.job();
+            this.updatePartySearchAvailability(true);
+        } else {
+            this.level = ok.level();
+            this.job = ok.job();
+        }
+        // a restore gives the recorded EXP back (short of the next level); any other set starts the level afresh
+        exp.set(ok.restore() ? Math.max(0, Math.min(ok.exp(), ExpTable.getExpNeededForLevel(level) - 1)) : 0);
+        markPersistenceDirty(PersistenceSection.STATS);
+
+        updateStrDexIntLuk(ap.str(), ap.dex(), ap.intel(), ap.luk(), ap.ap());
+        int[] sps = new int[remainingSp.length];
+        sps[GameConstants.getSkillBook(job.getId())] = sp.remainingSp();
+        setRemainingSp(sps);
+
+        HpMpGrowthPolicy.Growth pool = HpMpGrowthPolicy.baseForJobAtLevel(job, level)
+                .plus(totalRetroactivePassiveBonus(level));
+        effLock.lock();
+        statWlock.lock();
+        try {
+            setMaxHp(pool.hp());
+            setMaxMp(pool.mp());
+            recalcLocalStats();
+            changeHpMp(localmaxhp, localmaxmp, true); // after the recalc: the heal is to the new local maximum
+
+            List<Pair<Stat, Integer>> statup = new ArrayList<>(13);
+            statup.add(new Pair<>(Stat.AVAILABLEAP, remainingAp));
+            statup.add(new Pair<>(Stat.AVAILABLESP, remainingSp[GameConstants.getSkillBook(job.getId())]));
+            statup.add(new Pair<>(Stat.HP, hp));
+            statup.add(new Pair<>(Stat.MP, mp));
+            statup.add(new Pair<>(Stat.EXP, exp.get()));
+            statup.add(new Pair<>(Stat.LEVEL, level));
+            statup.add(new Pair<>(Stat.MAXHP, clientmaxhp));
+            statup.add(new Pair<>(Stat.MAXMP, clientmaxmp));
+            statup.add(new Pair<>(Stat.STR, str));
+            statup.add(new Pair<>(Stat.DEX, dex));
+            statup.add(new Pair<>(Stat.INT, int_));
+            statup.add(new Pair<>(Stat.LUK, luk));
+            statup.add(new Pair<>(Stat.JOB, job.getId()));
+            sendPacket(PacketCreator.updatePlayerStats(statup, true, this));
+        } finally {
+            statWlock.unlock();
+            effLock.unlock();
+        }
+
+        // a fourth job's advancement master levels: on a job change, and when its own tier was dropped (they went with it)
+        int newJobId = job.getId();
+        if (job != fromJob || sp.drop().stream().anyMatch(skillId -> skillId / 10000 == newJobId)) {
+            setMasteries(newJobId);
+        }
+        if (job != fromJob && map != null) {
+            broadcastChangeJob();
+        }
+        if (mgc != null) {
+            guildUpdate();
+        }
+        setMPC(new PartyCharacter(this));
+        silentPartyUpdate();
+
+        if (YamlConfig.config.server.USE_ADD_RATES_BY_LEVEL && fromLevel / 20 != level / 20) {
+            this.expRate /= GameConstants.getPlayerBonusExpRate(fromLevel / 20);
+            this.mesoRate /= GameConstants.getPlayerBonusMesoRate(fromLevel / 20);
+            this.dropRate /= GameConstants.getPlayerBonusDropRate(fromLevel / 20);
+            setPlayerRates();
+        }
+        markPersistenceDirty(PersistenceSection.STATS);
+        markPersistenceDirty(PersistenceSection.SKILLS);
+        return new LevelSetPlan.AdminLevelChange(fromLevel, fromJob, fromStats, level, job, remainingAp,
+                sp.remainingSp(), sp.keep().size(), sp.drop());
+    }
+
     private boolean changeJobInternal(Job newJob, boolean grantAdvancementRewards) {
         Job oldJob = this.job;
         if (canRecvPartySearchInvite && getParty() == null) {

@@ -16,8 +16,14 @@ public final class StatResetCalculator {
         int jobBranch = advancementCount(job);
         int advancementAp = 0;
         if (jobBranch > 0) {
-            advancementAp = useStartingAp4 ? 4 : 0;
-            advancementAp += (jobBranch - 1) * (GameConstants.isCygnus(job.getId()) ? 7 : 5);
+            if (GameConstants.isCygnus(job.getId())) {
+                advancementAp = (useStartingAp4 ? 4 : 0) + (jobBranch - 1) * 7;
+            } else if (useStartingAp4) {
+                advancementAp = 4 + (jobBranch - 1) * 5;
+            } else {
+                // Character.changeJobInternal awards an Explorer nothing at 1st or 2nd job and 5 at 3rd and 4th.
+                advancementAp = 5 * Math.max(0, jobBranch - 2);
+            }
         }
 
         int levelAp = Math.max(0, level - 1) * 5;

@@ -155,7 +155,7 @@ public final class CrewRotation {
     /** One look at the owner's crew: the swap it made (its result), or null when nobody was swapped. */
     RosterResult check(Character owner, long now) {
         if (!keepFresh.contains(owner.getId()) || owner.getMap() == null || inRun(owner)
-                || world.budget().loadDelayMs(owner, now) > 0L) {
+                || world.budget().loadDelayMs(owner, now) > 0L || gmLevelBusy(owner.getId())) {
             return null;
         }
         Long lookedAt = lookedAtMs.put(owner.getId(), now);
@@ -175,6 +175,12 @@ public final class CrewRotation {
         world.store().event(owner.getId(), swap.in().id(), "crew.fresh", swap.out().id() + " "
                 + swap.trigger().name().toLowerCase(Locale.ROOT) + (result.ok() ? "" : " refused"));
         return result;
+    }
+
+    /** A GM party level set ({@code !setlevel party}) is running for the owner: their crew is left alone meanwhile. */
+    private boolean gmLevelBusy(int ownerId) {
+        GmLevelHolds holds = world.gmLevelHolds();
+        return holds != null && holds.busy(ownerId);
     }
 
     /** Why this companion out with its owner should be swapped out, or null (a dead one in an instance stays). */

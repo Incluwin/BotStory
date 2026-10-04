@@ -94,6 +94,7 @@ public final class LivingWorld {
     private final server.living.roster.CompanionPartyQuestService partyQuests;
     private final server.living.roster.CompanionRunLifecycle partyQuestRuns;
     private final server.living.roster.CompanionRestock restock;
+    private final server.living.roster.GmLevelHolds gmLevelHolds;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -142,6 +143,7 @@ public final class LivingWorld {
         this.partyQuests = new server.living.roster.CompanionPartyQuestService(this); // P6: party quests with companions
         this.partyQuestRuns = new server.living.roster.CompanionRunLifecycle(this, partyQuests);
         this.restock = new server.living.roster.CompanionRestock(this); // companions restock their own potions
+        this.gmLevelHolds = new server.living.roster.GmLevelHolds(this); // !setlevel records; read lazily, no timer
     }
 
     public static LivingWorld get() {
@@ -510,6 +512,11 @@ public final class LivingWorld {
     /** Companions restocking their own potions: the Agent layer's readiness rule (CompanionRestock). */
     public server.living.roster.CompanionRestock restock() {
         return restock;
+    }
+
+    /** The !setlevel records (GmLevelHolds). */
+    public server.living.roster.GmLevelHolds gmLevelHolds() {
+        return gmLevelHolds;
     }
 
     public server.living.roster.CompanionPartyQuestService partyQuests() {

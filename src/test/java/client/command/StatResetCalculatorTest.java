@@ -13,8 +13,16 @@ class StatResetCalculatorTest {
         assertEquals(0, StatResetCalculator.availableAp(Job.BEGINNER, 1, 0, true));
         assertEquals(154, StatResetCalculator.availableAp(Job.WARRIOR, 30, 0, false));
         assertEquals(149, StatResetCalculator.availableAp(Job.WARRIOR, 30, 0, true));
-        assertEquals(359, StatResetCalculator.availableAp(Job.ASSASSIN, 70, 0, false));
-        assertEquals(349, StatResetCalculator.availableAp(Job.ASSASSIN, 70, 10, false));
+        assertEquals(354, StatResetCalculator.availableAp(Job.ASSASSIN, 70, 0, false));
+        assertEquals(344, StatResetCalculator.availableAp(Job.ASSASSIN, 70, 10, false));
+    }
+
+    @Test
+    void explorerAdvancementApMatchesWhatChangeJobAwards() {
+        // changeJob awards no AP at 1st or 2nd job and 5 at each of 3rd and 4th when USE_STARTING_AP_4 is off.
+        assertEquals(154, StatResetCalculator.availableAp(Job.FIGHTER, 30, 0, false));
+        assertEquals(359, StatResetCalculator.availableAp(Job.HERMIT, 70, 0, false));
+        assertEquals(614, StatResetCalculator.availableAp(Job.NIGHTLORD, 120, 0, false));
     }
 
     @Test
