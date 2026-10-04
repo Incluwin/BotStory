@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -221,26 +221,35 @@ class SetLevelCommandTest {
             when(companion.getName()).thenReturn("Yara");
             when(party.getMembers()).thenReturn(List.of(me, companion));
             when(gm.getParty()).thenReturn(party);
+            List<Boolean> busyDuringTheLeg = new ArrayList<>();
             // the companion's leg answers from its own later companion-ops task, as the mailbox reconcile does
             when(tool.use(gm, "Yara", Ask.to(50, null), false)).thenAnswer(invocation -> {
+                busyDuringTheLeg.add(world.gmLevelHolds().busy(CREWFRIEND));
                 CompletableFuture<String> line = new CompletableFuture<>();
                 ops.submit("reconcile", () -> line.complete("Yara is now level 50 Fighter (was 30 Warrior)."));
                 return line;
             });
             CountDownLatch replied = new CountDownLatch(1);
             List<String> replies = new ArrayList<>();
+            List<String> replyThreads = new ArrayList<>();
             doAnswer(invocation -> {
                 replies.add(invocation.getArgument(0));
+                replyThreads.add(Thread.currentThread().getName());
                 replied.countDown();
                 return null;
             }).when(gm).yellowMessage(startsWith("Party"));
 
-            assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
+            // on this thread (the static mocks are this thread's): a leg that waited on companion-ops would hang there
+            assertTimeout(Duration.ofSeconds(10), () -> {
                 run("party", "50");
-                assertTrue(replied.await(5, TimeUnit.SECONDS));
+                assertTrue(replied.await(5, TimeUnit.SECONDS), "the party reply never came");
             });
 
             verify(gm).adminSetLevel(new LevelSetPlan.Ok(Job.FIGHTER, 50, false), null);
+            verify(tool).use(gm, "Yara", Ask.to(50, null), false);
+            verify(yara, never()).adminSetLevel(any(), any());
+            assertEquals(List.of(true), busyDuringTheLeg);
+            assertEquals(List.of(CompanionExecutor.THREAD_NAME), replyThreads);
             assertTrue(replies.get(0).contains("Crewfriend is now level 50"), replies.get(0));
             assertTrue(replies.get(0).contains("Yara is now level 50"), replies.get(0));
             assertFalse(world.gmLevelHolds().busy(CREWFRIEND));
