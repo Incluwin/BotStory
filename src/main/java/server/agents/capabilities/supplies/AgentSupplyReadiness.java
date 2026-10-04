@@ -354,8 +354,9 @@ public final class AgentSupplyReadiness {
         return tuningInt("STANDING_MAX_HOPS");
     }
 
-    static long requestTtlMs() {
-        return tuningLong("REQUEST_TTL_MS");
+    /** How long a readiness request to a supplier {@code hops} away stays good: REQUEST_TTL_MS, longer for far ones. */
+    static long requestTtlMs(int hops) {
+        return Math.max(tuningLong("REQUEST_TTL_MS"), (long) Math.max(0, hops) * tuningLong("REQUEST_TTL_PER_HOP_MS"));
     }
 
     static long shortTripCooldownMs() {

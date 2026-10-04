@@ -37,6 +37,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.activity.AgentActivityBootstrap;
 import server.agents.runtime.activity.AgentActivityHostState;
 import server.agents.runtime.activity.session.AgentActivityKind;
+import server.life.SpawnPoint;
 import server.maps.MapleMap;
 
 import java.awt.Point;
@@ -73,9 +74,13 @@ import static org.mockito.Mockito.when;
 class AgentSupplyReadinessRuntimeTest {
     private static final int KERNING = 103_000_000;
     private static final int KERNING_SHOP = 103_000_002;
-    private static final int KPQ_EXIT = 103_000_890;
     /** The Ant Tunnel park's neighbour: a hunting field, not a town. */
     private static final int FIELD = 104_040_000;
+    private static final int LPQ_DESK = 221_024_500;
+    private static final int LUDIBRIUM_PHARMACY = 220_000_002;
+    private static final int PPQ_DESK = 251_010_404;
+    private static final int HERB_TOWN = 251_000_000;
+    private static final int ZAKUM_DOOR = 211_042_300;
     private static final int OWNER = 77;
     private static final int RED = 50;
     private static final int BLUE = 200;
@@ -180,10 +185,10 @@ class AgentSupplyReadinessRuntimeTest {
     @Test
     void outsideATownNothingStartsEvenWithTheCriticalPathSuppressedAndKerningStartsTheTrip() {
         Character casse = companion(502, "Casse", Job.BANDIT, 5, 30, 5_000);
-        stand(casse, KPQ_EXIT, false);
+        stand(casse, FIELD, false);
         AgentRuntimeEntry entry = following(casse);
         planCritical(entry, AgentResourceCategory.HP_POTION, 5);
-        execution(entry).suppress(AgentResourceCategory.HP_POTION, 1_000L + 300_000L); // its exit-map trip failed
+        execution(entry).suppress(AgentResourceCategory.HP_POTION, 1_000L + 300_000L); // its field trip failed
 
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
         assertFalse(execution(entry).isActive());
@@ -194,6 +199,58 @@ class AgentSupplyReadinessRuntimeTest {
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 6_000L));
         assertTrue(execution(entry).requestId().startsWith("readiness:"), "readiness ignores the suppression");
         assertEquals(List.of("started 502 50000"), calls);
+    }
+
+    @Test
+    void atTheLpqDeskItWalksTheFiveHopsToLudibriumsPharmacyAndHasTimeForTheWayBack() {
+        Character silent = companion(531, "SilentSin", Job.ASSASSIN, 14, 21, 103_000);
+        standWithoutSpawns(silent, LPQ_DESK, 0); // Eos Tower 101st floor: no town, no monsters
+        AgentRuntimeEntry entry = following(silent);
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+
+        AgentSupplyProcurementState execution = execution(entry);
+        assertTrue(execution.isActive());
+        assertEquals(LUDIBRIUM_PHARMACY, execution.supplierMapId());
+        assertEquals(List.of("started 531 150000"), calls, "five hops: 25 s + 5 x 25 s");
+        assertEquals(1_000L + Math.max(ttlMs(), 5 * ttlPerHopMs()), readinessRequest(entry).expiresAtMs());
+    }
+
+    @Test
+    void atThePpqDeskItWalksTheSevenHopsBackToHerbTown() {
+        Character garrick = companion(532, "Garrick", Job.FIGHTER, 14, 21, 103_000);
+        standWithoutSpawns(garrick, PPQ_DESK, 0); // Over the Pirate Ship
+        AgentRuntimeEntry entry = following(garrick);
+
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, garrick, 1_000L));
+
+        assertEquals(HERB_TOWN, execution(entry).supplierMapId());
+        assertEquals(List.of("started 532 200000"), calls, "seven hops: 25 s + 7 x 25 s");
+        assertEquals(1_000L + Math.max(ttlMs(), 7 * ttlPerHopMs()), readinessRequest(entry).expiresAtMs());
+    }
+
+    @Test
+    void aMonsterFreeMapFartherFromAnyShopThanItsHopsStartsNothing() {
+        Character faro = companion(533, "Faro723", Job.CLERIC, 14, 21, 103_000);
+        standWithoutSpawns(faro, ZAKUM_DOOR, 0); // 21 hops from Glibber's shop in Ice Valley II
+        AgentRuntimeEntry entry = following(faro);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, faro, 1_000L));
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 533 NO_SUPPLIER 0"), calls, "the host hears it; no trip, no party ask");
+    }
+
+    @Test
+    void aMapWithMonstersOnItIsNoPlaceToSetOffFromEvenWithoutSpawns() {
+        Character casse = companion(534, "Casse", Job.BANDIT, 14, 21, 103_000);
+        standWithoutSpawns(casse, LPQ_DESK, 2); // something spawned there by a script
+        AgentRuntimeEntry entry = following(casse);
+
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
+
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of(), calls);
     }
 
     // (c)
@@ -519,7 +576,7 @@ class AgentSupplyReadinessRuntimeTest {
     @Test
     void aDutyHoldersCriticalRequestThatItsPotionsNoLongerBearOutIsDropped() {
         Character yara = companion(521, "Yara", Job.CLERIC, 15, 30, 5_000);
-        stand(yara, KPQ_EXIT, false); // not a town: no readiness trip either
+        stand(yara, FIELD, false); // a field: no readiness trip either
         AgentRuntimeEntry entry = following(yara);
         AgentResourcePlanningState planning = planCritical(entry, AgentResourceCategory.HP_POTION, 5); // shared since
 
@@ -818,10 +875,23 @@ class AgentSupplyReadinessRuntimeTest {
         return agent;
     }
 
+    /** On a town map, or out on a field where monsters spawn. */
     private static void stand(Character agent, int mapId, boolean town) {
         MapleMap map = mock(MapleMap.class);
         when(map.getId()).thenReturn(mapId);
         when(map.isTown()).thenReturn(town);
+        when(map.getMonsterSpawn()).thenReturn(town ? List.of() : List.of(mock(SpawnPoint.class)));
+        when(agent.getMap()).thenReturn(map);
+        when(agent.getMapId()).thenReturn(mapId);
+    }
+
+    /** On a map that is no town but has no monsters: a party quest's entry, with {@code monsters} alive on it. */
+    private static void standWithoutSpawns(Character agent, int mapId, int monsters) {
+        MapleMap map = mock(MapleMap.class);
+        when(map.getId()).thenReturn(mapId);
+        when(map.isTown()).thenReturn(false);
+        when(map.getMonsterSpawn()).thenReturn(List.of());
+        when(map.countMonsters()).thenReturn(monsters);
         when(agent.getMap()).thenReturn(map);
         when(agent.getMapId()).thenReturn(mapId);
     }
@@ -892,6 +962,15 @@ class AgentSupplyReadinessRuntimeTest {
     private static long ttlMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.supplies.AgentSupplyReadiness.REQUEST_TTL_MS");
+    }
+
+    private static long ttlPerHopMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.REQUEST_TTL_PER_HOP_MS");
+    }
+
+    private static AgentProcurementRequest readinessRequest(AgentRuntimeEntry entry) {
+        return entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY).request();
     }
 
     private static long partyWaitMs() {

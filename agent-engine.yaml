@@ -4165,10 +4165,10 @@ tuning:
     # Purpose: How far past the readiness standard a shop visit buys while the Agent keeps a standing duty, so back-to-back runs do not send it to the shop every time.
     # Technical: AgentSupplyReadiness.buyTarget rounds standard x this / 100 up; AgentShopService.buyPotionStock buys by count (AgentShopPotionPolicy.selectForCount) first up to the standard, then runs the reserve-bar passes, then tops up toward this target with what is left, within MAX_CARRIED_QUANTITY and MAX_PURCHASE_QUANTITY_PER_VISIT.
     server.agents.capabilities.supplies.AgentSupplyReadiness.BUY_TO_PERCENT: '200'
-    # Values: portal hops from 0 to 6. Recommended: 2, which covers the Lakelis desk (Kerning, 1 hop) and the HPQ desk (Henesys park, 2 hops).
-    # Purpose: How far the nearest potion supplier may be from a town map before a standing readiness duty walks there by itself.
-    # Technical: AgentSupplyReadinessRuntime.select assesses only when AgentVictoriaRouteRuntime.routeHops from the current town map to the AgentCareerShopCatalog.forSupply stop is at most this; farther records a NO_SUPPLIER verdict and starts nothing (the critical path's own reachability is unlimited as before).
-    server.agents.capabilities.supplies.AgentSupplyReadiness.STANDING_MAX_HOPS: '2'
+    # Values: portal hops from 0 to 10. Recommended: 7, which covers every party quest desk: Lakelis (Kerning, 1 hop), HPQ (Henesys park, 2), LMPQ (Ludibrium, 1), RJPQ (Magatia, 0), EPQ (Deep Fairy Forest, 2), OPQ (The Unknown Tower, 3), LPQ (Eos Tower 101st floor, 5) and PPQ (Over the Pirate Ship, 7).
+    # Purpose: How far the nearest potion supplier may be from a town or monster-free map before a standing readiness duty walks there by itself.
+    # Technical: AgentSupplyReadinessRuntime.select assesses only when AgentVictoriaRouteRuntime.routeHops from the current map to the AgentCareerShopCatalog.forSupply stop is at most this; farther records a NO_SUPPLIER verdict and starts nothing (the critical path's own reachability is unlimited as before). The trip's shown time and REQUEST_TTL_PER_HOP_MS grow with the hops.
+    server.agents.capabilities.supplies.AgentSupplyReadiness.STANDING_MAX_HOPS: '7'
     # Values: milliseconds from 1000 to 60000. Recommended: 5000 so a short companion sets off within seconds of reaching a town.
     # Purpose: How often an Agent with a standing readiness duty looks at its potions while no supply trip is under way.
     # Technical: AgentSupplyReadinessRuntime.select returns at once until AgentSupplyReadinessState.nextCheckAtMs; a host's AgentSupplyReadiness.checkSoon resets it to 0 (the Lakelis desk does on a click), and the RESTOCKING estimate never shows less than this.
@@ -4177,6 +4177,10 @@ tuning:
     # Purpose: How long a readiness request stays good: a trip still going after this stops as interrupted instead of wandering on.
     # Technical: AgentSupplyReadinessRuntime.select sets the request's expiresAtMs to now plus this; AgentSupplyProcurementRuntime.activeRequest returns null after it, so the trip stalls as expired and finishAbandoned reports INTERRUPTED without asking the party.
     server.agents.capabilities.supplies.AgentSupplyReadiness.REQUEST_TTL_MS: '240000'
+    # Values: milliseconds from 0 to 300000. Recommended: 75000, three times TRIP_ETA_PER_HOP_MS, so a 5-7 hop walk from a party quest desk (LPQ, PPQ) and back has time while a 1-3 hop trip keeps REQUEST_TTL_MS.
+    # Purpose: Lets a readiness trip to a farther supplier last longer before it counts as stuck, without letting a short Victoria trip wander longer than before.
+    # Technical: AgentSupplyReadinessRuntime.select sets the request's expiresAtMs to now plus max(REQUEST_TTL_MS, the assessed routeHops x this); AgentSupplyProcurementRuntime.activeRequest returns null after it.
+    server.agents.capabilities.supplies.AgentSupplyReadiness.REQUEST_TTL_PER_HOP_MS: '75000'
     # Values: milliseconds from 60000 to 1800000. Recommended: 300000 so an owner who called a companion back mid-trip keeps it for five minutes.
     # Purpose: Quiet period after a readiness trip was cut short or could not begin, before the standing duty sets off again.
     # Technical: AgentSupplyReadinessRuntime sets an INTERRUPTED cooldown until now plus this on a failed begin, an abandoned trip and an owner's movement order mid-trip (AgentSupplyProcurementRuntime.ownerCalledBack); the second such trip in a row from one town gives that town up until the Agent has stood on another map. SHORT_MESOS and SHORT_SPACE record it too but lift only when the purse grows by what was lacking, a Use slot frees, or it lacks fewer potions.

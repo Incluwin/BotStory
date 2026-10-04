@@ -58,6 +58,19 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
 
     @Override
     public AgentSupplyReadiness.Activity standing(int agentCharacterId) {
+        AgentSupplyReadiness.Activity duty = duty(agentCharacterId);
+        if (duty == null) {
+            return null;
+        }
+        Character bot = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId));
+        if (bot != null && world.config().companionRestockBossMap(bot.getMapId())) {
+            return null; // a boss's gate (COMPANION_RESTOCK_BOSS_MAPS) keeps its no-shop line: no walk back to a shop
+        }
+        return duty;
+    }
+
+    /** The party-quest standard while the companion is carried along or held for its owner, else null. */
+    private AgentSupplyReadiness.Activity duty(int agentCharacterId) {
         if (!world.config().COMPANION_RESTOCK_ENABLED) {
             return null;
         }
@@ -157,7 +170,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
             AgentRuntimeEntry runtime = member.isBot() ? AgentRuntimeRegistry.findByAgentCharacterId(id) : null;
             Character bot = runtime == null ? null : AgentRuntimeIdentityRuntime.bot(runtime);
             CompanionSettingsApplier.Bound at = bot == null ? null : world.roster().settings().boundTo(id);
-            if (at == null || at.ownerId() != ownerId || held(at) || standing(id) == null
+            if (at == null || at.ownerId() != ownerId || held(at) || duty(id) == null
                     || bot.getMapId() != mapId && !AgentModeStateRuntime.following(runtime)) {
                 continue;
             }
