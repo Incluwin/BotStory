@@ -90,6 +90,12 @@ class LevelSetPlanTest {
     }
 
     @Test
+    void onlyARestoreCarriesTheRecordedExp() {
+        assertEquals(new Ok(Job.BEGINNER, 37, true, 1234), human(Request.restoreTo(37, Job.BEGINNER, 1234), Job.FIGHTER, 40));
+        assertEquals(new Ok(Job.FIGHTER, 45, false, 0), human(new Request(45, null, false, 1234), Job.FIGHTER, 40));
+    }
+
+    @Test
     void aCompanionStaysInItsClassUnlessItIsRestored() {
         Companion warriorRecord = new Companion(Job.WARRIOR, null);
         assertEquals(new Ok(Job.WARRIOR, 15, false),
@@ -170,6 +176,15 @@ class LevelSetPlanTest {
     }
 
     @Test
+    void recordedStatsFitOnlyWhenTheySpendExactlyTheTotal() {
+        assertTrue(LevelSetPlan.statsFit(new Stats(150, 47, 4, 4, 0), Job.BEGINNER, 37, 0, false));
+        assertTrue(LevelSetPlan.statsFit(new Stats(150, 40, 4, 4, 7), Job.BEGINNER, 37, 0, false));
+        assertFalse(LevelSetPlan.statsFit(new Stats(150, 47, 4, 4, 1), Job.BEGINNER, 37, 0, false));
+        assertFalse(LevelSetPlan.statsFit(new Stats(150, 47, 4, 4, 0), Job.BEGINNER, 37, 1, false)); // an HP wash
+        assertFalse(LevelSetPlan.statsFit(null, Job.BEGINNER, 37, 0, false));
+    }
+
+    @Test
     void aBeginnerRaisedSpendsEachGainedLevelAsItsLevelUpWould() {
         // level 10 on the curve (53/9) up to 37: back on the curve
         assertEquals(new ApPlan(ApKind.KEEP, 161, 36, 4, 4, 0),
@@ -234,6 +249,14 @@ class LevelSetPlanTest {
     }
 
     @Test
+    void keptLevelsExactlyAtTheTotalKeepEveryTier() {
+        SkillPlan plan = LevelSetPlan.skillPlan(Job.FIGHTER, 40, fighterForty()); // 92 kept, 92 the total
+        assertEquals(List.of(), plan.drop());
+        assertEquals(92, plan.keptPoints());
+        assertEquals(0, plan.remainingSp());
+    }
+
+    @Test
     void skillsOffTheChainGoAndSkillsOfNoExplorerJobStay() {
         SkillPlan cleric = LevelSetPlan.skillPlan(Job.CLERIC, 40, fighterForty());
         assertEquals(List.of(), cleric.keep());
@@ -260,6 +283,13 @@ class LevelSetPlanTest {
         assertEquals(List.of((short) -11), plan.unequip());
         assertFalse(plan.refused());
         assertNull(plan.refusal());
+    }
+
+    @Test
+    void gearOfExactlyTheNewLevelStaysOn() {
+        List<GearPiece> worn = List.of(new GearPiece((short) -11, 1302020, 30, 1, false));
+        assertEquals(List.of(), LevelSetPlan.gearPlan(Job.BEGINNER, 30, false, worn, 5).unequip());
+        assertEquals(List.of((short) -11), LevelSetPlan.gearPlan(Job.BEGINNER, 29, false, worn, 5).unequip());
     }
 
     @Test

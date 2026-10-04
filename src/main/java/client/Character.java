@@ -1383,8 +1383,10 @@ public class Character extends AbstractCharacterObject {
      * GM level set ({@code !setlevel}): to {@code ok}'s level and job, up or down, in one step. The stats follow
      * LevelSetPlan.apPlan (a legal {@code statOverride}, null for none, is given back as it was), the skills
      * LevelSetPlan.skillPlan (Explorer skills off the new chain, or past the SP the level gives, are dropped; the rest of
-     * the SP is unspent), and max HP/MP are the job's formula for the level, healed to full. Buffs are cancelled and EXP
-     * is 0. No level-up hooks run (no effect, journal, chatter or rewards) and nothing is saved: the caller saves.
+     * the SP is unspent; a fourth job keeps the master levels its advancement gives), and max HP/MP are the job's
+     * formula for the level, healed to full. Buffs are cancelled and EXP is 0, or for a restore the recorded EXP
+     * ({@code ok.exp()}, short of the next level). The party entry (PartyCharacter) is refreshed. No level-up hooks run
+     * (no effect, journal, chatter or rewards) and nothing is saved: the caller saves.
      */
     public synchronized LevelSetPlan.AdminLevelChange adminSetLevel(LevelSetPlan.Ok ok, LevelSetPlan.Stats statOverride) {
         int fromLevel = level;
@@ -1417,7 +1419,8 @@ public class Character extends AbstractCharacterObject {
             this.level = ok.level();
             this.job = ok.job();
         }
-        exp.set(0);
+        // a restore gives the recorded EXP back (short of the next level); any other set starts the level afresh
+        exp.set(ok.restore() ? Math.max(0, Math.min(ok.exp(), ExpTable.getExpNeededForLevel(level) - 1)) : 0);
         markPersistenceDirty(PersistenceSection.STATS);
 
         updateStrDexIntLuk(ap.str(), ap.dex(), ap.intel(), ap.luk(), ap.ap());
@@ -1455,11 +1458,13 @@ public class Character extends AbstractCharacterObject {
             effLock.unlock();
         }
 
-        if (job != fromJob) {
-            setMasteries(job.getId());
-            if (map != null) {
-                broadcastChangeJob();
-            }
+        // a fourth job's advancement master levels: on a job change, and when its own tier was dropped (they went with it)
+        int newJobId = job.getId();
+        if (job != fromJob || sp.drop().stream().anyMatch(skillId -> skillId / 10000 == newJobId)) {
+            setMasteries(newJobId);
+        }
+        if (job != fromJob && map != null) {
+            broadcastChangeJob();
         }
         if (mgc != null) {
             guildUpdate();

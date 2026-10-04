@@ -25,15 +25,27 @@ public final class LevelSetPlan {
     private LevelSetPlan() {
     }
 
-    /** One set: to {@code level}, as {@code job} (null: the current job, stepped down if the level is too low). */
-    public record Request(int level, Job job, boolean restore) {
+    /**
+     * One set: to {@code level}, as {@code job} (null: the current job, stepped down if the level is too low); a restore
+     * also carries the recorded EXP.
+     */
+    public record Request(int level, Job job, boolean restore, int exp) {
+        public Request(int level, Job job, boolean restore) {
+            this(level, job, restore, 0);
+        }
+
         public static Request to(int level, Job job) {
-            return new Request(level, job, false);
+            return new Request(level, job, false, 0);
         }
 
         /** Back to a recorded original level and job: the companion family rule does not apply. */
         public static Request restoreTo(int level, Job job) {
-            return new Request(level, job, true);
+            return restoreTo(level, job, 0);
+        }
+
+        /** As {@link #restoreTo(int, Job)}, with the EXP it had toward its next level. */
+        public static Request restoreTo(int level, Job job, int exp) {
+            return new Request(level, job, true, exp);
         }
     }
 
@@ -47,8 +59,11 @@ public final class LevelSetPlan {
     public sealed interface Resolution permits Ok, NoOp, Refusal {
     }
 
-    /** Set to {@code level} as {@code job}. */
-    public record Ok(Job job, int level, boolean restore) implements Resolution {
+    /** Set to {@code level} as {@code job}; a restore gives {@code exp} back (Character.adminSetLevel caps it). */
+    public record Ok(Job job, int level, boolean restore, int exp) implements Resolution {
+        public Ok(Job job, int level, boolean restore) {
+            this(job, level, restore, 0);
+        }
     }
 
     /** Already there; for a restore this only releases the record. */
@@ -182,7 +197,7 @@ public final class LevelSetPlan {
         if (level == currentLevel && target == currentJob) {
             return new NoOp(request.restore());
         }
-        return new Ok(target, level, request.restore());
+        return new Ok(target, level, request.restore(), request.restore() ? Math.max(0, request.exp()) : 0);
     }
 
     /** The job itself, or the nearest one down its chain that {@code level} allows (never below Beginner). */
@@ -250,6 +265,14 @@ public final class LevelSetPlan {
         }
         int floorsSpent = (floorStr - 4) + (floorDex - 4) + (floorInt - 4) + (floorLuk - 4);
         return new ApPlan(ApKind.RESET, floorStr, floorDex, floorInt, floorLuk, Math.max(0, total - floorsSpent));
+    }
+
+    /**
+     * True when {@code stats} spend exactly the natural AP total for {@code job} at {@code level}: what {@link #apPlan}
+     * gives back as an override.
+     */
+    public static boolean statsFit(Stats stats, Job job, int level, int hpMpApUsed, boolean useStartingAp4) {
+        return stats != null && legal(stats, StatResetCalculator.availableAp(job, level, hpMpApUsed, useStartingAp4));
     }
 
     private static boolean legal(Stats stats, int total) {
