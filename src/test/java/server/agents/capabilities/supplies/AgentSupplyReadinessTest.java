@@ -23,6 +23,8 @@ import static org.mockito.Mockito.when;
  */
 class AgentSupplyReadinessTest {
     private static final String MP_KEY = "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_MP_POTIONS";
+    private static final String STANDARDS_KEY =
+            "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS";
     private static final AgentSupplyReadiness.Activity PQ = AgentSupplyReadiness.Activity.PARTY_QUEST;
 
     @AfterEach
@@ -83,6 +85,57 @@ class AgentSupplyReadinessTest {
         } finally {
             AgentYamlConfig.config.tuning.put(MP_KEY, configured);
         }
+    }
+
+    @Test
+    void eachPartyQuestKeyHasItsOwnStandardAndTheRestKeepTheDefault() {
+        assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("kpq"));
+        assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("hpq"));
+        assertEquals(new AgentSupplyReadiness.Standard(30, 40), standardFor("lmpq"));
+        assertEquals(new AgentSupplyReadiness.Standard(30, 40), standardFor("ppq"));
+        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("lpq"));
+        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("opq"));
+        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("rjpq"));
+        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("EPQ "), "keys are trimmed, any case");
+        assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("cwkpq"), "an unlisted key: the default");
+    }
+
+    @Test
+    void aBlankKeyIsTheDefaultActivityAndKeysCompareByValue() {
+        assertEquals(PQ, AgentSupplyReadiness.Activity.partyQuest(" "));
+        assertEquals(PQ, AgentSupplyReadiness.Activity.partyQuest(null));
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("lpq"), AgentSupplyReadiness.Activity.partyQuest("LPQ"));
+        assertEquals("lpq", AgentSupplyReadiness.Activity.partyQuest(" Lpq").partyQuestKey());
+    }
+
+    @Test
+    void theShortfallAndTheBuyTargetFollowThePartyQuestsStandard() {
+        Character mage = withJob(Job.FP_WIZARD);
+        AgentSupplyReadiness.Activity lpq = AgentSupplyReadiness.Activity.partyQuest("lpq");
+        assertEquals(new AgentSupplyReadiness.Shortfall(20, 25), AgentSupplyReadiness.shortfall(20, 25, true, lpq));
+
+        when(mage.getId()).thenReturn(41);
+        AgentSupplyReadiness.install(id -> id == 41 ? lpq : null);
+        assertEquals(80, AgentSupplyReadiness.buyTarget(mage, true));
+        assertEquals(100, AgentSupplyReadiness.buyTarget(mage, false));
+    }
+
+    @Test
+    void aMalformedOverrideIsSkippedAndAManaOverrideAtPotStopIsClamped() {
+        int potStop = AgentRuntimeConfig.cfg.POT_STOP;
+        String configured = AgentYamlConfig.config.tuning.put(STANDARDS_KEY,
+                "lpq=40/" + potStop + ", junk, opq=x/9, epq=35/45");
+        try {
+            assertEquals(new AgentSupplyReadiness.Standard(40, potStop + 1), standardFor("lpq"));
+            assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("opq"));
+            assertEquals(new AgentSupplyReadiness.Standard(35, 45), standardFor("epq"));
+        } finally {
+            AgentYamlConfig.config.tuning.put(STANDARDS_KEY, configured);
+        }
+    }
+
+    private static AgentSupplyReadiness.Standard standardFor(String key) {
+        return AgentSupplyReadiness.standard(AgentSupplyReadiness.Activity.partyQuest(key));
     }
 
     private static Character withJob(Job job) {

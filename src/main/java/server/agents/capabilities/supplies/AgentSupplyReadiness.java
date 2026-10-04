@@ -37,7 +37,23 @@ public final class AgentSupplyReadiness {
     }
 
     /** What an Agent gets ready for. */
-    public enum Activity { PARTY_QUEST }
+    /**
+     * What an Agent keeps itself ready for: a party quest, by its key (kpq, lpq, ...). {@link #PARTY_QUEST} (no key)
+     * is the default standard, and a key without its own standard in PARTY_QUEST_STANDARDS uses it too.
+     */
+    public record Activity(String partyQuestKey) {
+        public static final Activity PARTY_QUEST = new Activity("");
+
+        public Activity {
+            partyQuestKey = partyQuestKey == null ? "" : partyQuestKey.trim().toLowerCase(java.util.Locale.ROOT);
+        }
+
+        /** The party quest {@code key}'s activity; blank or null is {@link #PARTY_QUEST}. */
+        public static Activity partyQuest(String key) {
+            Activity activity = new Activity(key);
+            return activity.partyQuestKey().isEmpty() ? PARTY_QUEST : activity;
+        }
+    }
 
     /** Recovery potions an Agent goes in with at least: HP potions, and MP potions when it fights with skills. */
     public record Standard(int hp, int mp) { }
@@ -98,6 +114,14 @@ public final class AgentSupplyReadiness {
         /** Its readiness trip ended. On the Agent tick. */
         default void finished(int agentCharacterId, Activity activity, Outcome outcome) {
         }
+
+        /**
+         * Whether the Agent may set off for a shop from {@code mapId} at all; false keeps it there whatever it lacks
+         * (a boss's gate: its critical request only asks the party). Memory only, any thread.
+         */
+        default boolean restocksFrom(int agentCharacterId, int mapId) {
+            return true;
+        }
     }
 
     public static void install(Rule installed) {
@@ -115,6 +139,20 @@ public final class AgentSupplyReadiness {
         } catch (RuntimeException failure) {
             log.debug("readiness rule failed to answer for Agent {}", agentCharacterId, failure);
             return null;
+        }
+    }
+
+    /** The installed rule's answer to {@link Rule#restocksFrom}; true without a rule or if it failed. */
+    public static boolean restocksFrom(int agentCharacterId, int mapId) {
+        Rule current = rule;
+        if (current == null) {
+            return true;
+        }
+        try {
+            return current.restocksFrom(agentCharacterId, mapId);
+        } catch (RuntimeException failure) {
+            log.debug("readiness rule failed to answer for Agent {} on map {}", agentCharacterId, mapId, failure);
+            return true;
         }
     }
 
@@ -164,6 +202,11 @@ public final class AgentSupplyReadiness {
     public static Standard standard(Activity activity) {
         int hp = Math.max(0, tuningInt("PARTY_QUEST_HP_POTIONS"));
         int mp = tuningInt("PARTY_QUEST_MP_POTIONS");
+        int[] own = activity == null ? null : partyQuestStandard(activity.partyQuestKey());
+        if (own != null) {
+            hp = own[0];
+            mp = own[1];
+        }
         int potStop = AgentRuntimeConfig.cfg.POT_STOP;
         try {
             validate(hp, mp, potStop);
@@ -223,6 +266,31 @@ public final class AgentSupplyReadiness {
         Standard standard = standard(activity);
         long count = forHp ? standard.hp() : standard.mp();
         return (int) Math.min(Integer.MAX_VALUE, (count * Math.max(0, tuningInt("BUY_TO_PERCENT")) + 99L) / 100L);
+    }
+
+    /**
+     * The {HP, MP} counts PARTY_QUEST_STANDARDS lists for {@code key} ("lpq=40/50,..."), or null: the key is blank or
+     * not listed, or its pair is malformed (skipped, the default applies).
+     */
+    private static int[] partyQuestStandard(String key) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+        String standards = config.AgentTuning.stringValue(TUNING_PREFIX + "PARTY_QUEST_STANDARDS");
+        for (String pair : standards == null ? new String[0] : standards.split(",")) {
+            int equals = pair.indexOf('=');
+            int slash = pair.indexOf('/', equals + 1);
+            if (equals < 0 || slash < 0 || !pair.substring(0, equals).trim().equalsIgnoreCase(key)) {
+                continue;
+            }
+            try {
+                return new int[]{Math.max(0, Integer.parseInt(pair.substring(equals + 1, slash).trim())),
+                        Integer.parseInt(pair.substring(slash + 1).trim())};
+            } catch (NumberFormatException malformed) {
+                return null;
+            }
+        }
+        return null;
     }
 
     // ---- what a host reads and nudges (memory only, any thread) ------------------------------
@@ -354,8 +422,13 @@ public final class AgentSupplyReadiness {
         return tuningInt("STANDING_MAX_HOPS");
     }
 
-    static long requestTtlMs() {
-        return tuningLong("REQUEST_TTL_MS");
+    static int deskMaxHops() {
+        return tuningInt("DESK_MAX_HOPS");
+    }
+
+    /** How long a readiness request to a supplier {@code hops} away stays good: REQUEST_TTL_MS, longer for far ones. */
+    static long requestTtlMs(int hops) {
+        return Math.max(tuningLong("REQUEST_TTL_MS"), (long) Math.max(0, hops) * tuningLong("REQUEST_TTL_PER_HOP_MS"));
     }
 
     static long shortTripCooldownMs() {

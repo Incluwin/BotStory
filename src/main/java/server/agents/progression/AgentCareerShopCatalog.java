@@ -4,7 +4,7 @@ import server.agents.capabilities.contracts.AgentResourceCategory;
 
 import java.util.function.IntBinaryOperator;
 
-/** WZ- and shop-data-verified first supply stop for each first job. */
+/** WZ- and shop-data-verified supply stops: each first job's career shop and the nearest town potion shop. */
 public final class AgentCareerShopCatalog {
     public record ShopStop(int mapId, int npcId) {
     }
@@ -26,9 +26,10 @@ public final class AgentCareerShopCatalog {
 
     /**
      * Nearest supplier the portal router can reach from currentMapId, measured by routeHops
-     * (portal hops, or a negative value when there is no route). Returns null when no
-     * supplier of this category is reachable, so callers never travel toward a shop the
-     * router cannot get to.
+     * (portal hops, or a negative value when there is no route). Potions come from any town
+     * potion shop (AgentPotionSupplierCatalog, every continent); everything else from the
+     * career shop. Returns null when no supplier of this category is reachable, so callers
+     * never travel toward a shop the router cannot get to.
      */
     public static ShopStop forSupply(AgentCareerBuildBundle bundle,
                                      AgentResourceCategory category,
@@ -39,16 +40,22 @@ public final class AgentCareerShopCatalog {
             ShopStop careerShop = forBundle(bundle);
             return routeHops.applyAsInt(currentMapId, careerShop.mapId()) >= 0 ? careerShop : null;
         }
-        AgentVictoriaLevel15Catalog.Career nearest = null;
+        AgentPotionSupplierCatalog.Supplier nearest = null;
         int nearestDistance = Integer.MAX_VALUE;
-        for (AgentVictoriaLevel15Catalog.Career candidate :
-                AgentVictoriaLevel15CatalogRepository.defaultRepository().catalog().careers()) {
-            int distance = routeHops.applyAsInt(currentMapId, candidate.shopMapId());
+        for (AgentPotionSupplierCatalog.Supplier candidate : AgentPotionSupplierCatalog.suppliers()) {
+            int distance = routeHops.applyAsInt(currentMapId, candidate.mapId());
+            // Outside Victoria a shop behind a one-way portal (Sharp Cliff into Ice Valley II, Leafre's forests)
+            // would leave an Agent with no owner to warp back to standing by it for good. Victoria's one-way trips
+            // (Mushroom Castle) stay as they were.
+            if (distance >= 0 && AgentVictoriaTrainingRouteCatalog.outsideVictoria(candidate.mapId())
+                    && routeHops.applyAsInt(candidate.mapId(), currentMapId) < 0) {
+                continue;
+            }
             if (distance >= 0 && distance < nearestDistance) {
                 nearest = candidate;
                 nearestDistance = distance;
             }
         }
-        return nearest == null ? null : new ShopStop(nearest.shopMapId(), nearest.shopNpcId());
+        return nearest == null ? null : new ShopStop(nearest.mapId(), nearest.npcId());
     }
 }

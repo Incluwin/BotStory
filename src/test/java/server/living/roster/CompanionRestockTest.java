@@ -2,6 +2,8 @@ package server.living.roster;
 
 import client.Character;
 import config.LivingWorldConfig;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,6 +57,7 @@ class CompanionRestockTest {
     private static final int ANN = 10;
     private static final int FENNA = 901;
     private static final int KERNING = 103_000_000;
+    private static final int PAPULATUS_GATE = 220_080_000;
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingWorldConfig config = new LivingWorldConfig();
@@ -171,6 +175,32 @@ class CompanionRestockTest {
         assertNull(restock.standing(FENNA), "the kill switch");
         config.COMPANION_RESTOCK_ENABLED = true;
         assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA));
+    }
+
+    @Test
+    void atABossGateItKeepsItsDutyButNeverSetsOffForAShopFromThere() {
+        when(fenna.getMapId()).thenReturn(PAPULATUS_GATE); // Toly's shop is six hops back down the Path of Time
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+                "the duty (and the critical trip's affordability check) stays");
+        assertFalse(restock.restocksFrom(FENNA, PAPULATUS_GATE),
+                "a boss gate keeps its no-shop line: restocking before bosses is P7's");
+        assertTrue(restock.restocksFrom(FENNA, KERNING));
+    }
+
+    @Test
+    void atABossGateACompanionShortOfPotionsStillSaysThereIsNoShop() {
+        when(fenna.getMapId()).thenReturn(PAPULATUS_GATE); // it carries no potions at all
+        PartyCharacter member = mock(PartyCharacter.class);
+        when(member.getId()).thenReturn(FENNA);
+        when(member.isBot()).thenReturn(true);
+        Party party = mock(Party.class);
+        when(party.getMembers()).thenReturn(List.of(member));
+        when(ann.getParty()).thenReturn(party);
+        when(roster.onlineCharacter(ANN)).thenReturn(ann);
+
+        restock.bossGate(ANN, PAPULATUS_GATE);
+
+        assertEquals(1, said.size(), "the no-shop line, once");
     }
 
     @Test

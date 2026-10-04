@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "catalogId": "npc-travel-legs-v1",
+  "source": "scripts/npc/<npcId>.js (selections, fares, tickets, warps), scripts/event/{Hak,Subway,AirPlane}.js and MapleMap ride timers, NPC placement from wz/Map.wz life",
+  "note": "Rides the walking graphs cannot see. A leg boards at fromMapId by talking to npcId with these dialogue selections; it lands on toMapId at once, or after waiting on one of rideMapIds (a waiting room or the ride itself) until the server moves the rider on. A ticket is bought from its seller first. The Ellinia-Orbis boat is taken with the boarding NPC's 'instantly' option. Left out: Ereve and Rien (their docks are not joined to their towns by plain portals, so a bot would be stranded), Florina's return (it goes to a saved location), taxis (shortcuts, not the way) and the Zipangu world tour.",
+  "legs": [
+    {
+      "id": "ellinia-to-orbis", "fromMapId": 101000300, "npcId": 1032008, "selections": [0], "toMapId": 200000100,
+      "fare": 0, "rideMapIds": [],
+      "ticket": { "itemId": 4031045, "sellerMapId": 101000300, "sellerNpcId": 1032007, "selections": [0], "price": 5000 }
+    },
+    {
+      "id": "orbis-to-ellinia", "fromMapId": 200000111, "npcId": 2012001, "selections": [0], "toMapId": 101000300,
+      "fare": 0, "rideMapIds": [],
+      "ticket": { "itemId": 4031047, "sellerMapId": 200000100, "sellerNpcId": 2012000, "selections": [0, 0], "price": 5000 }
+    },
+    { "id": "orbis-station-to-ellinia-platform", "fromMapId": 200000100, "npcId": 2012006, "selections": [0, 0], "toMapId": 200000110, "fare": 0, "rideMapIds": [] },
+    { "id": "orbis-station-to-ludibrium-platform", "fromMapId": 200000100, "npcId": 2012006, "selections": [1, 0], "toMapId": 200000120, "fare": 0, "rideMapIds": [] },
+    { "id": "orbis-station-to-leafre-platform", "fromMapId": 200000100, "npcId": 2012006, "selections": [2, 0], "toMapId": 200000130, "fare": 0, "rideMapIds": [] },
+    { "id": "orbis-station-to-mu-lung-platform", "fromMapId": 200000100, "npcId": 2012006, "selections": [3, 0], "toMapId": 200000140, "fare": 0, "rideMapIds": [] },
+    { "id": "orbis-station-to-ariant-platform", "fromMapId": 200000100, "npcId": 2012006, "selections": [4, 0], "toMapId": 200000150, "fare": 0, "rideMapIds": [] },
+    {
+      "id": "orbis-to-ludibrium", "fromMapId": 200000121, "npcId": 2012013, "selections": [0], "toMapId": 220000100,
+      "fare": 0, "rideMapIds": [],
+      "ticket": { "itemId": 4031074, "sellerMapId": 200000100, "sellerNpcId": 2012000, "selections": [1, 0], "price": 6000 }
+    },
+    {
+      "id": "ludibrium-to-orbis", "fromMapId": 220000110, "npcId": 2041000, "selections": [0], "toMapId": 200000100,
+      "fare": 0, "rideMapIds": [],
+      "ticket": { "itemId": 4031045, "sellerMapId": 220000100, "sellerNpcId": 2040000, "selections": [0], "price": 6000 }
+    },
+    {
+      "id": "orbis-to-leafre", "fromMapId": 200000131, "npcId": 2012021, "selections": [0], "toMapId": 240000100,
+      "fare": 0, "rideMapIds": [],
+      "ticket": { "itemId": 4031331, "sellerMapId": 200000100, "sellerNpcId": 2012000, "selections": [2, 0], "price": 30000 }
+    },
+    {
+      "id": "leafre-to-orbis", "fromMapId": 240000110, "npcId": 2082001, "selections": [0], "toMapId": 200000100,
+      "fare": 0, "rideMapIds": [],
+      "ticket": { "itemId": 4031045, "sellerMapId": 240000100, "sellerNpcId": 2082000, "selections": [0], "price": 30000 }
+    },
+    {
+      "id": "orbis-to-ariant", "fromMapId": 200000151, "npcId": 2012025, "selections": [0], "toMapId": 260000100,
+      "fare": 0, "rideMapIds": [],
+      "ticket": { "itemId": 4031576, "sellerMapId": 200000100, "sellerNpcId": 2012000, "selections": [3, 0], "price": 6000 }
+    },
+    {
+      "id": "ariant-to-orbis", "fromMapId": 260000100, "npcId": 2102000, "selections": [0], "toMapId": 200000100,
+      "fare": 0, "rideMapIds": [],
+      "ticket": { "itemId": 4031045, "sellerMapId": 260000100, "sellerNpcId": 2102002, "selections": [0], "price": 6000 }
+    },
+    { "id": "orbis-to-mu-lung", "fromMapId": 200000141, "npcId": 2090005, "selections": [0, 0], "toMapId": 250000100, "fare": 1500, "rideMapIds": [200090300] },
+    { "id": "mu-lung-to-orbis", "fromMapId": 250000100, "npcId": 2090005, "selections": [1, 0], "toMapId": 200000141, "fare": 1500, "rideMapIds": [200090310] },
+    { "id": "mu-lung-to-herb-town", "fromMapId": 250000100, "npcId": 2090005, "selections": [2, 0], "toMapId": 251000000, "fare": 500, "rideMapIds": [] },
+    { "id": "herb-town-to-mu-lung", "fromMapId": 251000000, "npcId": 2090005, "selections": [0], "toMapId": 250000100, "fare": 500, "rideMapIds": [] },
+    { "id": "aquarium-to-herb-town", "fromMapId": 230000000, "npcId": 2060009, "selections": [1], "toMapId": 251000100, "fare": 10000, "rideMapIds": [] },
+    { "id": "herb-town-to-aquarium", "fromMapId": 251000100, "npcId": 2060009, "selections": [1], "toMapId": 230000000, "fare": 10000, "rideMapIds": [] },
+    {
+      "id": "kerning-to-new-leaf-city", "fromMapId": 103000100, "npcId": 1052007, "selections": [2, 0], "toMapId": 600010001,
+      "fare": 0, "rideMapIds": [600010004, 600010005],
+      "ticket": { "itemId": 4031711, "sellerMapId": 103000100, "sellerNpcId": 9201057, "selections": [0], "price": 5000 }
+    },
+    {
+      "id": "new-leaf-city-to-kerning", "fromMapId": 600010001, "npcId": 9201068, "selections": [0, 0], "toMapId": 103000100,
+      "fare": 0, "rideMapIds": [600010002, 600010003],
+      "ticket": { "itemId": 4031713, "sellerMapId": 600010001, "sellerNpcId": 9201057, "selections": [0], "price": 5000 }
+    },
+    {
+      "id": "kerning-to-singapore", "fromMapId": 103000000, "npcId": 9270041, "selections": [1, 0], "toMapId": 540010000,
+      "fare": 0, "rideMapIds": [540010100, 540010101],
+      "ticket": { "itemId": 4031731, "sellerMapId": 103000000, "sellerNpcId": 9270041, "selections": [0, 0], "price": 5000 }
+    },
+    {
+      "id": "singapore-to-kerning", "fromMapId": 540010000, "npcId": 9270038, "selections": [1, 0], "toMapId": 103000000,
+      "fare": 0, "rideMapIds": [540010001, 540010002],
+      "ticket": { "itemId": 4031732, "sellerMapId": 540010000, "sellerNpcId": 9270038, "selections": [0, 0], "price": 5000 }
+    }
+  ]
+}

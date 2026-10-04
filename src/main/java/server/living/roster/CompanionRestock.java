@@ -80,6 +80,15 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         return AgentSupplyReadiness.Activity.PARTY_QUEST;
     }
 
+    /**
+     * Never from a boss's gate (COMPANION_RESTOCK_BOSS_MAPS): it keeps its no-shop line, and the companion stays put
+     * however short it is (a critical request only asks the party). Memory only.
+     */
+    @Override
+    public boolean restocksFrom(int agentCharacterId, int mapId) {
+        return !world.config().companionRestockBossMap(mapId);
+    }
+
     @Override
     public void started(int agentCharacterId, AgentSupplyReadiness.Activity activity, long etaMs) {
         CompanionSettingsApplier.Bound at = world.roster().settings().boundTo(agentCharacterId);

@@ -8,13 +8,19 @@ import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Set;
 
-/** Loads the generated standard-portal subset used by Victoria progression. */
+/**
+ * Loads the generated standard-portal graphs: Victoria Island's, used by Victoria progression, and the other
+ * continents' (Ossyria, Ellin, Ereve, Rien, Masteria, Singapore, Malaysia, Zipangu), which no portal joins to it.
+ */
 public final class AgentVictoriaPortalRouteGraphRepository {
     private static final String DEFAULT_RESOURCE =
             "/agents/catalogs/victoria-portal-route-graph.json";
+    private static final String WORLD_RESOURCE =
+            "/agents/catalogs/world-portal-route-graph.json";
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private static final AgentVictoriaPortalRouteGraphRepository DEFAULT = load(DEFAULT_RESOURCE);
+    private static final AgentVictoriaPortalRouteGraphRepository WORLD = load(WORLD_RESOURCE);
 
     private final AgentVictoriaPortalRouteGraph graph;
 
@@ -32,6 +38,11 @@ public final class AgentVictoriaPortalRouteGraphRepository {
 
     public static AgentVictoriaPortalRouteGraphRepository defaultRepository() {
         return DEFAULT;
+    }
+
+    /** The continents outside Victoria Island (Export-WorldPortalRouteGraph.ps1). */
+    public static AgentVictoriaPortalRouteGraphRepository worldRepository() {
+        return WORLD;
     }
 
     public AgentVictoriaPortalRouteGraph graph() {

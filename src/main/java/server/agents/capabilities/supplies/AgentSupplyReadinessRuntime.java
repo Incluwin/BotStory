@@ -10,6 +10,8 @@ import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
+import server.agents.capabilities.partyquest.AgentPartyQuestDefinition;
 import server.agents.capabilities.shop.AgentShopService;
 import server.agents.capabilities.shop.AgentShopStateRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
@@ -19,30 +21,36 @@ import server.agents.objectives.AgentObjectiveStatus;
 import server.agents.progression.AgentCareerBuildBundle;
 import server.agents.progression.AgentCareerProgressionState;
 import server.agents.progression.AgentCareerShopCatalog;
+import server.agents.progression.AgentPotionSupplierCatalog;
+import server.agents.progression.AgentTravelLegCatalog;
 import server.agents.progression.AgentVictoriaRouteRuntime;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.activity.AgentActivityHostState;
+import server.maps.MapleMap;
 
 import java.util.List;
 
 /**
  * The standing readiness duty on the Agent tick (AgentSupplyReadiness). An Agent the host gave a duty looks at its
- * potions every CHECK_INTERVAL_MS; short of the standard on a town map whose nearest potion supplier is at most
- * STANDING_MAX_HOPS away, and free (alive, outside an event, no objective, shop visit, trade, queued script task or
- * Activity Host controller of its own, and, while it follows, its anchor still on its map), it offers procurement a
- * readiness request, which one visit to the supplier fills for both HP and MP. It never goes when the trip cannot be
- * paid for (the ammo top-up plus the potions to the standard at the supplier's cheapest potion, against its purse less
- * its wallet reserve) or when its Use tab has no room for a new kind of potion; it tells the host once and waits until
- * its purse grows by what it lacked, a slot frees, or it lacks fewer potions. Trips from one town cut short twice in
- * a row (its owner called it back, the shop failed) end its tries there until it has been elsewhere.
+ * potions every CHECK_INTERVAL_MS; short of the standard on a town map, or a map without monsters that is no travel
+ * station (a party quest's entry, a lobby), whose nearest potion supplier is at most STANDING_MAX_HOPS away
+ * (DESK_MAX_HOPS on a party quest's recruit map), from a map the host lets it shop from (never a boss's gate), and free
+ * (alive, outside an event, no objective, shop visit, trade, queued script task or Activity Host controller of its own,
+ * and, while it follows, its anchor still on its map), it offers procurement a readiness request, which one visit to
+ * the supplier fills for both HP and MP. It never goes when the trip cannot be paid for (the ammo top-up at a Victoria
+ * supplier plus the potions to the standard at the supplier's cheapest potion, against its purse less its wallet
+ * reserve) or when its Use tab has no room for a new kind of potion; it tells the host once and waits until its purse
+ * grows by what it lacked, a slot frees, or it lacks fewer potions. Trips from one town cut short twice in a row (its
+ * owner called it back, the shop failed) end its tries there until it has been elsewhere.
  *
  * <p>A duty holder's critical resupply ({@link #criticalGate}) passes a lighter check: it needs only the critical
  * deficit (back to POT_STOP) at the supplier's cheapest potion, without the ammo top-up. When even that cannot be
- * paid for it never walks to a shop; in a town it does not ask its party either (the readiness duty says it cannot
- * afford them), out in the field it asks as before, since a share is all that helps out there. Readiness never reads
- * the critical path's suppression.</p>
+ * paid for it never walks to a shop; in a town or on a monster-free map it does not ask its party either (the readiness
+ * duty says it cannot afford them), out in the field it asks as before, since a share is all that helps out there. On
+ * a map the host keeps it on (a boss's gate) it only asks its party. Readiness never reads the critical path's
+ * suppression.</p>
  */
 public final class AgentSupplyReadinessRuntime {
     private static final Logger log = LoggerFactory.getLogger(AgentSupplyReadinessRuntime.class);
@@ -101,8 +109,13 @@ public final class AgentSupplyReadinessRuntime {
                 || !free(entry, agent)) {
             return null;
         }
-        Assessment assessment = assess(entry, agent, activity, shortfall, AgentSupplyReadiness.standingMaxHops(),
-                nowMs);
+        if (!AgentSupplyReadiness.restocksFrom(agent.getId(), agent.getMapId())) {
+            state.clearVerdict(); // a boss's gate: the host says its own no-shop line
+            return null;
+        }
+        int maxHops = partyQuestDesk(agent.getMapId())
+                ? AgentSupplyReadiness.deskMaxHops() : AgentSupplyReadiness.standingMaxHops();
+        Assessment assessment = assess(entry, agent, activity, shortfall, maxHops, nowMs);
         if (assessment.kind() != Assessed.GO) {
             record(agent, state, activity, shortfall, assessment, nowMs);
             return null;
@@ -114,7 +127,7 @@ public final class AgentSupplyReadinessRuntime {
                 REQUEST_PREFIX + category + ':' + nowMs, category,
                 shortfall.hp() > 0 ? shortfall.hp() : shortfall.mp(), Math.max(0, assessment.spendable()),
                 List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.CRITICAL, "",
-                nowMs + AgentSupplyReadiness.requestTtlMs());
+                nowMs + AgentSupplyReadiness.requestTtlMs(assessment.hops()));
         state.offer(request, activity, assessment.hops(), nowMs + AgentSupplyReadiness.tripEtaBaseMs()
                 + (long) assessment.hops() * AgentSupplyReadiness.tripEtaPerHopMs(), agent.getMapId());
         return request;
@@ -130,6 +143,9 @@ public final class AgentSupplyReadinessRuntime {
      */
     static CriticalGate criticalGate(AgentRuntimeEntry entry, Character agent, AgentSupplyReadiness.Activity activity,
                                      AgentProcurementRequest request, long nowMs) {
+        if (!AgentSupplyReadiness.restocksFrom(agent.getId(), agent.getMapId())) {
+            return CriticalGate.ASK_ONLY; // a boss's gate: never a shop trip from here, only the party ask
+        }
         AgentSupplyReadinessState state = entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY);
         AgentResourceCategory category = request.category();
         int count = AgentSupplyInventorySnapshot.quantity(agent, category);
@@ -152,7 +168,7 @@ public final class AgentSupplyReadinessRuntime {
                 log.info("Agent '{}' cannot pay for a critical {} trip (deficit {}, mesos {}, missing {}): no shop"
                         + " trip", agent.getName(), category, deficit, mesos, missing);
                 // in a town the desk shows it; a readiness verdict found here already (what the standard lacks) stays
-                if (town(agent) && state.verdictOn(agent.getMapId()) == null && state.verdict(
+                if (restockGround(agent) && state.verdictOn(agent.getMapId()) == null && state.verdict(
                         AgentSupplyReadinessState.Verdict.CANNOT_AFFORD, agent.getMapId(), missing, nowMs)) {
                     AgentSupplyReadiness.refused(agent.getId(), activity, AgentSupplyReadiness.Refusal.CANNOT_AFFORD,
                             AgentSupplyReadiness.shortfall(agent, activity), missing);
@@ -162,7 +178,7 @@ public final class AgentSupplyReadinessRuntime {
         if (allowed) {
             return CriticalGate.ALLOW;
         }
-        return town(agent) ? CriticalGate.REFUSE : CriticalGate.ASK_ONLY;
+        return restockGround(agent) ? CriticalGate.REFUSE : CriticalGate.ASK_ONLY;
     }
 
     /**
@@ -215,8 +231,9 @@ public final class AgentSupplyReadinessRuntime {
         if (shop == null || hpPrice < 0 || mpPrice < 0) {
             return Assessment.of(Assessed.NO_SUPPLIER);
         }
-        long spend = (long) AgentShopService.plannedAmmoSpend(agent, shop)
-                + (long) shortfall.hp() * hpPrice + (long) shortfall.mp() * mpPrice;
+        long ammo = AgentPotionSupplierCatalog.ammoTopUpAllowedAt(stop.mapId())
+                ? AgentShopService.plannedAmmoSpend(agent, shop) : 0L;
+        long spend = ammo + (long) shortfall.hp() * hpPrice + (long) shortfall.mp() * mpPrice;
         long spendable = (long) mesos(agent) - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
         if (spend > spendable) {
             return new Assessment(Assessed.CANNOT_AFFORD, stop, hops, (int) Math.max(0L, spendable),
@@ -237,7 +254,7 @@ public final class AgentSupplyReadinessRuntime {
                               AgentSupplyReadiness.Shortfall shortfall) {
         int fresh = (shortfall.hp() > 0 && !AgentShopService.carriesStackWithRoom(agent, shop, true) ? 1 : 0)
                 + (shortfall.mp() > 0 && !AgentShopService.carriesStackWithRoom(agent, shop, false) ? 1 : 0);
-        return fresh == 0 ? 0 : fresh + (activity == AgentSupplyReadiness.Activity.PARTY_QUEST ? 1 : 0);
+        return fresh == 0 ? 0 : fresh + (activity != null ? 1 : 0); // every activity is a party quest
     }
 
     /**
@@ -438,13 +455,13 @@ public final class AgentSupplyReadinessRuntime {
     }
 
     /**
-     * Free for a trip of its own: alive, outside an event instance, on a town map, with no objective, pending shop
+     * Free for a trip of its own: alive, outside an event instance, on a town or monster-free map, with no objective, pending shop
      * visit, open trade, queued script task, or Activity Host controller owning its foreground (an idle following
      * Agent has none); and while it follows, its anchor stands on its map and is not changing maps (an owner heading
      * out of town is followed, not left for the shop). Memory only.
      */
     static boolean free(AgentRuntimeEntry entry, Character agent) {
-        if (agent.getHp() <= 0 || agent.getEventInstance() != null || !town(agent)) {
+        if (agent.getHp() <= 0 || agent.getEventInstance() != null || !restockGround(agent)) {
             return false;
         }
         if (AgentObjectiveKernel.active(entry) != null || AgentShopStateRuntime.shopVisitPending(entry)
@@ -467,8 +484,25 @@ public final class AgentSupplyReadinessRuntime {
         return target != null ? target : AgentRelationshipRuntime.interactionTarget(entry);
     }
 
-    private static boolean town(Character agent) {
-        return agent.getMap() != null && agent.getMap().isTown();
+    /**
+     * Where a duty holder sets off from and the host's desk speaks for it: a town map, or a map with no monster spawns
+     * and no monsters on it (a party quest's entry map such as LPQ's Eos Tower 101st floor, a lobby) unless it is a
+     * station of a travel leg (an Orbis platform): its owner may board any moment.
+     */
+    private static boolean restockGround(Character agent) {
+        MapleMap map = agent.getMap();
+        return map != null && (map.isTown() || !AgentTravelLegCatalog.station(map.getId())
+                && map.getMonsterSpawn().isEmpty() && map.countMonsters() == 0);
+    }
+
+    /** A party quest's recruit map (AgentPartyQuestCatalog): its desk may send a companion DESK_MAX_HOPS away. */
+    private static boolean partyQuestDesk(int mapId) {
+        for (AgentPartyQuestDefinition definition : AgentPartyQuestCatalog.definitions()) {
+            if (definition.recruitMapId() == mapId) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static AgentSupplyReadiness.Activity activityOf(AgentRuntimeEntry entry) {
