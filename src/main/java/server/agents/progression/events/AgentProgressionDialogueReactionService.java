@@ -16,6 +16,8 @@ public final class AgentProgressionDialogueReactionService implements AgentEvent
     public static final String JOB_INTENT = "progression.job";
     public static final String QUEST_INTENT = "progression.quest-complete";
     private static final long LEVEL_COOLDOWN_MS = config.AgentTuning.longValue("server.agents.progression.events.AgentProgressionDialogueReactionService.LEVEL_COOLDOWN_MS");
+    /** The most levels one level event may climb and still be remarked on: a GM set or a lowering is not a level-up. */
+    private static final int LEVEL_REACTION_MAX_GAIN = config.AgentTuning.intValue("server.agents.progression.events.AgentProgressionDialogueReactionService.LEVEL_REACTION_MAX_GAIN");
     private static final long JOB_COOLDOWN_MS = config.AgentTuning.longValue("server.agents.progression.events.AgentProgressionDialogueReactionService.JOB_COOLDOWN_MS");
     private static final long QUEST_COOLDOWN_MS = config.AgentTuning.longValue("server.agents.progression.events.AgentProgressionDialogueReactionService.QUEST_COOLDOWN_MS");
 
@@ -28,7 +30,7 @@ public final class AgentProgressionDialogueReactionService implements AgentEvent
     @Override
     public void onAgentEvent(AgentEvent event) {
         AgentDialogueIntentEvent intent = switch (event) {
-            case AgentLevelChangedEvent level -> new AgentDialogueIntentEvent(
+            case AgentLevelChangedEvent level when remarkable(level) -> new AgentDialogueIntentEvent(
                     level.agentId(), level.occurredAtMs(), LEVEL_INTENT,
                     AgentDialogueAudience.NEARBY_REAL_PLAYER, "progression:level",
                     LEVEL_COOLDOWN_MS, Map.of("level", String.valueOf(level.level())));
@@ -48,5 +50,11 @@ public final class AgentProgressionDialogueReactionService implements AgentEvent
         if (intent != null) {
             bus.publish(intent, AgentEventPriority.AMBIENT);
         }
+    }
+
+    /** A gain of one to LEVEL_REACTION_MAX_GAIN levels; never a level lost. */
+    static boolean remarkable(AgentLevelChangedEvent level) {
+        int gain = level.level() - level.previousLevel();
+        return gain > 0 && gain <= LEVEL_REACTION_MAX_GAIN;
     }
 }

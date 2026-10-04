@@ -423,7 +423,7 @@ public final class AgentBuildService {
         };
     }
 
-    private static void autoAssignConfiguredAp(AgentRuntimeEntry entry, Character bot) {
+    static void autoAssignConfiguredAp(AgentRuntimeEntry entry, Character bot) {
         if (!AgentApBuildProfileService.autoAssign(entry, bot)) {
             autoAssignAp(entry, bot);
         }

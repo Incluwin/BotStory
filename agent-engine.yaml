@@ -4259,6 +4259,10 @@ tuning:
     # Purpose: Controls how long Agents must wait before repeating level. Higher values make repeats less frequent; lower values let them repeat sooner.
     # Technical: the "progression dialogue reaction service" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
     server.agents.progression.events.AgentProgressionDialogueReactionService.LEVEL_COOLDOWN_MS: '15000'
+    # Values: a positive integer; unit: levels. Recommended: 3 (1-5); 1 remarks only on single natural level-ups.
+    # Purpose: Keeps Agents from congratulating themselves on a jump that was not a level-up: a GM level set up or down, or a lowering, says nothing; one to a few levels gained at once still gets the usual remark.
+    # Technical: AgentProgressionDialogueReactionService publishes the progression.level dialogue intent only when 0 < level - previousLevel <= this value for an AgentLevelChangedEvent; the event itself (published by AgentBuildService.checkLevelUp) is unchanged.
+    server.agents.progression.events.AgentProgressionDialogueReactionService.LEVEL_REACTION_MAX_GAIN: '3'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 5000-20000 around the tested baseline 10000; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents must wait before repeating quest. Higher values make repeats less frequent; lower values let them repeat sooner.
     # Technical: the "progression dialogue reaction service" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
