@@ -45,8 +45,8 @@ import static server.living.roster.LifecycleHarness.LITH;
  * ...", "things changed", "still finishing: ..."). Ann's I/O thread runs a task at once, or keeps it in {@link #io}
  * while a test sets that. {@link #atEntrance} takes Ann and her companions to another entrance (Tory's, for HPQ):
  * the Yes, the doors and the session's end are then that quest's ("start hpq", an HPQ session). A quest past HPQ is
- * played through its {@link FixtureEntrance}, registered in its own slot of {@link #fixtureEntrances()}; a key with
- * none throws.
+ * played through its {@link FixtureEntrance}, registered in its own slot of {@link #fixtureEntrances()} (or added by a
+ * test, {@link #plays}); a key with none throws.
  */
 final class CompanionPqFixture implements AutoCloseable {
     static final int EXIT = AgentKpqDefinition.EXIT_MAP;
@@ -85,6 +85,8 @@ final class CompanionPqFixture implements AutoCloseable {
     boolean onIo;
     /** Ann's companions out with her, in the order they joined. */
     private final List<Persona> crew = new ArrayList<>();
+    /** The quests past HPQ this fixture plays: each registered fixture entrance, then any a test adds (plays). */
+    private final Map<String, FixtureEntrance> playing = new LinkedHashMap<>(FIXTURE_ENTRANCES);
 
     CompanionPqFixture() {
         stand(game.ann, 25, Job.CLERIC);
@@ -265,13 +267,24 @@ final class CompanionPqFixture implements AutoCloseable {
         return keys;
     }
 
-    /** The fixture entrance of {@code key}, a quest past HPQ; throws when none is registered. */
-    static FixtureEntrance fixtureEntrance(String key) {
-        FixtureEntrance entrance = FIXTURE_ENTRANCES.get(key);
+    /** The fixture entrance of {@code key}, a quest past HPQ; throws when the fixture plays none for it. */
+    FixtureEntrance fixtureEntrance(String key) {
+        FixtureEntrance entrance = playing.get(key);
         if (entrance == null) {
             throw new IllegalArgumentException("no fixture entrance for " + key);
         }
         return entrance;
+    }
+
+    /**
+     * Plays {@code key}, a quest past HPQ with no slot filled for it, through {@code entrance} too: its doors, its
+     * session's end and the close (FixtureEntranceDispatchTest). Its key stays out of {@link #keys()}, and
+     * {@link #atEntrance} still needs the quest's own PqEntrance. Throws for a quest the fixture already plays.
+     */
+    void plays(String key, FixtureEntrance entrance) {
+        if (key.equals("kpq") || key.equals("hpq") || playing.putIfAbsent(key, entrance) != null) {
+            throw new IllegalArgumentException("the fixture already plays " + key);
+        }
     }
 
     /** Each quest past HPQ, by its key, in the slots of PqEntrance's entrances(). */
