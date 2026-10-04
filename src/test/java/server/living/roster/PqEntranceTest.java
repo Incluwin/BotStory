@@ -3,6 +3,7 @@ package server.living.roster;
 import client.Character;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
+import config.CompanionPqKeys;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.partyquest.hpq.AgentHpqMemberState;
@@ -15,6 +16,7 @@ import server.life.NPC;
 import server.maps.MapleMap;
 
 import java.awt.Point;
+import java.util.HashSet;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -47,7 +49,10 @@ class PqEntranceTest {
 
     @Test
     void lakelisAndToryWithTheirQuestsRules() {
-        assertEquals(List.of("kpq", "hpq"), PqEntrance.keys());
+        List<String> keys = PqEntrance.keys();
+        assertEquals(List.of("kpq", "hpq"), keys.subList(0, 2), "KPQ's first, then HPQ's");
+        assertEquals(keys.size(), new HashSet<>(keys).size(), "every key once: " + keys);
+        assertEquals(CompanionPqKeys.KNOWN, keys, "the kill switch may list exactly the entrances");
 
         PqEntrance kpq = PqEntrance.of("kpq");
         assertEquals("kpq", kpq.key());
@@ -73,7 +78,7 @@ class PqEntranceTest {
 
     @Test
     void aKeyWithNoEntranceThrowsAndIsNeverGivenKpqsRules() {
-        for (String key : new String[] {"lpq", "opq", "nope", "", null}) {
+        for (String key : new String[] {"zzpq", "nope", "", null}) {
             assertThrows(IllegalArgumentException.class, () -> PqEntrance.of(key), String.valueOf(key));
             assertThrows(IllegalArgumentException.class, () -> PqEntrance.seats(key), String.valueOf(key));
             assertNull(PqEntrance.find(key), String.valueOf(key));
