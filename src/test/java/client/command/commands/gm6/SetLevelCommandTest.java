@@ -4,6 +4,7 @@ import client.Character;
 import client.Client;
 import client.Job;
 import client.LevelSetPlan;
+import client.command.CommandTargetPolicy;
 import client.command.commands.gm6.SetLevelCommand.Line;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
@@ -176,7 +177,12 @@ class SetLevelCommandTest {
     void anotherPlayerWearingWhatTheLevelForbidsIsRefused() {
         wearing.put("Reluctant", List.of(new LevelSetPlan.GearPiece((short) -11, 1302020, 30, 1, false)));
 
-        run("Reluctant", "20");
+        // The real policy asks the Cosmic adapter, whose first use installs the AgentPresence provider: under this
+        // test's AgentPresence mock that install would be swallowed for the rest of the JVM.
+        try (MockedStatic<CommandTargetPolicy> policy = mockStatic(CommandTargetPolicy.class)) {
+            policy.when(() -> CommandTargetPolicy.canAffect(gm, friend, false)).thenReturn(true);
+            run("Reluctant", "20");
+        }
 
         verify(friend, never()).adminSetLevel(any(), any());
         verify(gm).yellowMessage(contains("take them off first"));
