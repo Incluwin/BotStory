@@ -65,6 +65,11 @@ public final class LevelSetPlan {
         }
     }
 
+    /** What Character.adminSetLevel did: from where to where, the AP and SP left, the skills kept and dropped. */
+    public record AdminLevelChange(int fromLevel, Job fromJob, Stats fromStats, int toLevel, Job toJob, int apRemaining,
+                                   int spRemaining, int skillsKept, List<Integer> dropped) {
+    }
+
     /** The server rules the AP plan follows (config.yaml: USE_STARTING_AP_4, USE_AUTOASSIGN_STARTERS_AP, MAX_AP). */
     public record ApRules(boolean useStartingAp4, boolean autoAssignStarters, int maxAp) {
     }
