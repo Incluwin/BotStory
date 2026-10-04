@@ -94,18 +94,25 @@ public final class AgentLootEligibility {
                 && !AgentHpqSessionRegistry.canLootRiceCake(bot, drop)) {
             return false;
         }
+
         if ((itemId == AgentLpqDefinition.PASS || itemId == AgentLpqDefinition.BOSS_KEY)
                 && !AgentLpqSessionRegistry.canLootExclusive(bot, itemId)) {
             return false;
         }
+
         if (itemId == AgentLmpqDefinition.COUPON
                 && !AgentLmpqSessionRegistry.canLootCoupon(bot)) return false;
+
         if (AgentOpqDefinition.EXCLUSIVE_ITEMS.contains(itemId)
                 && !AgentOpqSessionRegistry.canLootExclusive(bot, itemId)) return false;
+
         if (AgentEpqDefinition.EXCLUSIVE_ITEMS.contains(itemId)
                 && !AgentEpqSessionRegistry.canLootExclusive(bot, itemId)) return false;
+
         if (AgentPpqDefinition.EXCLUSIVE_ITEMS.contains(itemId)
                 && !AgentPpqSessionRegistry.canLootExclusive(bot, itemId)) return false;
+
+        // slot: rjpq
         int kpqCouponTarget = AgentPqRuntime.kpqCouponTarget(entry);
         if (itemId == KPQ_COUPON && (AgentPartyQuestHooks.shouldSkipCouponLoot(entry)
                 || (kpqCouponTarget > 0 && bot.getItemQuantity(KPQ_COUPON, false) >= kpqCouponTarget))) {

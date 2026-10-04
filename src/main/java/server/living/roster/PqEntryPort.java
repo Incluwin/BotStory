@@ -4,8 +4,6 @@ import client.Character;
 import scripting.event.EventManager;
 import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.AgentPartyQuestRuntime;
-import server.agents.capabilities.partyquest.hpq.AgentHpqAdmissionService;
-import server.agents.capabilities.partyquest.kpq.AgentKpqAdmissionService;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -47,19 +45,7 @@ interface PqEntryPort {
     PqEntryPort STOCK = new PqEntryPort() {
         @Override
         public Admitted admit(String pqKey, Character leader, List<Character> members, long seed, long nowMs) {
-            return switch (PqEntrance.of(pqKey).key()) {
-                case "kpq" -> {
-                    AgentKpqAdmissionService.AdmissionResult admitted =
-                            AgentKpqAdmissionService.admit(leader, leader, members, seed, nowMs);
-                    yield new Admitted(admitted.success(), admitted.message(), admitted.session());
-                }
-                case "hpq" -> {
-                    AgentHpqAdmissionService.AdmissionResult admitted =
-                            AgentHpqAdmissionService.admit(leader, leader, members, seed, nowMs);
-                    yield new Admitted(admitted.success(), admitted.message(), admitted.session());
-                }
-                default -> throw new IllegalArgumentException("no companion admission for " + pqKey);
-            };
+            return PqEntrance.of(pqKey).admit(leader, members, seed, nowMs);
         }
 
         /** The quest's event (KerningPQ, HenesysPQ); waits up to 7777 ms for a free lobby, as the stock click does. */

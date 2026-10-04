@@ -9,6 +9,9 @@ import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 public interface AgentCompanionRunSession {
     String sessionId();
 
+    /** The run's event leader as the session has it now (the lead may pass inside the run). */
+    int eventLeaderId();
+
     /** True for a human-led run of owner-bound companions; its quest's companion play applies only then. */
     boolean companionAdopted();
 

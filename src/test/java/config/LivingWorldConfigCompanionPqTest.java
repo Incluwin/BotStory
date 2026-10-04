@@ -61,10 +61,10 @@ class LivingWorldConfigCompanionPqTest {
     @Test
     void anyOtherQuestFailsValidation() {
         LivingWorldConfig config = new LivingWorldConfig();
-        config.COMPANION_PQ_ENABLED_KEYS = "kpq,hpq,lpq";
+        config.COMPANION_PQ_ENABLED_KEYS = "kpq,hpq,zzpq";
 
         IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, config::validate);
-        assertEquals("living_world.COMPANION_PQ_ENABLED_KEYS must list only kpq or hpq", refused.getMessage());
+        assertEquals(CompanionPqKeys.message(), refused.getMessage());
     }
 
     @Test

@@ -197,10 +197,10 @@ class PartyQuestEntryStandsAsideTest {
 
     @Test
     void aKeyWithNoEntranceIsLeftToItsStockScript() {
-        game.config.COMPANION_PQ_ENABLED_KEYS = "kpq,lpq";
+        game.config.COMPANION_PQ_ENABLED_KEYS = "kpq,zzpq";
 
-        assertFalse(service.offerAtDesk(game.ann, "lpq"), "no entrance: the stock start, and nothing thrown");
-        assertFalse(LivingWorldHooks.partyQuestEntry(cm, "lpq"));
+        assertFalse(service.offerAtDesk(game.ann, "zzpq"), "no entrance: the stock start, and nothing thrown");
+        assertFalse(LivingWorldHooks.partyQuestEntry(cm, "zzpq"));
         verify(service, never()).standsAside(any(), any());
         assertUntouched();
     }

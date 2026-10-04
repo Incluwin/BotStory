@@ -6,6 +6,7 @@ import client.Job;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.hpq.AgentHpqMemberState;
 import server.agents.capabilities.partyquest.hpq.AgentHpqSession;
@@ -23,6 +24,7 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +44,9 @@ import static server.living.roster.LifecycleHarness.LITH;
  * "start", "stop 900: ...") and registers a real PRODUCTION session. Lakelis's answers are logged there too ("answer
  * ...", "things changed", "still finishing: ..."). Ann's I/O thread runs a task at once, or keeps it in {@link #io}
  * while a test sets that. {@link #atEntrance} takes Ann and her companions to another entrance (Tory's, for HPQ):
- * the Yes, the doors and the session's end are then that quest's ("start hpq", an HPQ session).
+ * the Yes, the doors and the session's end are then that quest's ("start hpq", an HPQ session). A quest past HPQ is
+ * played through its {@link FixtureEntrance}, registered in its own slot of {@link #fixtureEntrances()} (or added by a
+ * test, {@link #plays}); a key with none throws.
  */
 final class CompanionPqFixture implements AutoCloseable {
     static final int EXIT = AgentKpqDefinition.EXIT_MAP;
@@ -50,6 +54,8 @@ final class CompanionPqFixture implements AutoCloseable {
     /** Tory on her ledge at Henesys Park (Map.wz 100000200: x 1434, foothold y 364; the park floor is at y 574). */
     static final Point TORY_AT = new Point(1434, 364);
     static final int PARK_FLOOR_Y = 574;
+    /** Each quest past HPQ as the fixture plays it, by its key. */
+    private static final Map<String, FixtureEntrance> FIXTURE_ENTRANCES = fixtureEntrances();
 
     final LifecycleHarness game = new LifecycleHarness();
     /** Character id -> the HP potions it carries (50 unless a test says otherwise). */
@@ -79,6 +85,8 @@ final class CompanionPqFixture implements AutoCloseable {
     boolean onIo;
     /** Ann's companions out with her, in the order they joined. */
     private final List<Persona> crew = new ArrayList<>();
+    /** The quests past HPQ this fixture plays: each registered fixture entrance, then any a test adds (plays). */
+    private final Map<String, FixtureEntrance> playing = new LinkedHashMap<>(FIXTURE_ENTRANCES);
 
     CompanionPqFixture() {
         stand(game.ann, 25, Job.CLERIC);
@@ -114,13 +122,17 @@ final class CompanionPqFixture implements AutoCloseable {
             game.placeWithAnn(persona);
         }
         NPC npc = mock(NPC.class);
-        when(npc.getPosition()).thenReturn(key.equals("kpq") ? LAKELIS_AT : TORY_AT);
+        when(npc.getPosition()).thenReturn(key.equals("kpq") ? LAKELIS_AT
+                : key.equals("hpq") ? TORY_AT : fixtureEntrance(key).npcAt());
         when(game.map(mapId).getNPCById(entrance.entryNpcId())).thenReturn(npc);
-        if (!key.equals("kpq")) {
+        if (key.equals("hpq")) {
             doAnswer(inv -> {
                 Point at = inv.getArgument(0);
                 return new Point(at.x, PARK_FLOOR_Y);
             }).when(game.map(mapId)).getPointBelow(any());
+        } else if (!key.equals("kpq")) {
+            FixtureEntrance other = fixtureEntrance(key);
+            doAnswer(inv -> other.groundBelow(inv.getArgument(0))).when(game.map(mapId)).getPointBelow(any());
         }
     }
 
@@ -197,10 +209,17 @@ final class CompanionPqFixture implements AutoCloseable {
 
     /** {@link #sessionEnds(boolean)} with the pace the session reported (null: none). */
     void sessionEnds(boolean success, server.agents.capabilities.partyquest.pace.AgentPqPace pace) {
-        if (!pqKey.equals("kpq")) {
+        if (pqKey.equals("hpq")) {
             AgentHpqSessionRegistry.remove(doors.hpqSession);
             lifecycle.runEnded(new AgentPartyQuestHandback.RunEnded(pqKey, doors.hpqSession.sessionId(), ANN, success,
                     success ? "completed" : "HPQ stopped", 5_000L, pace));
+            return;
+        }
+        if (!pqKey.equals("kpq")) {
+            FixtureEntrance other = fixtureEntrance(pqKey);
+            AgentCompanionRunSession session = doors.others.get(pqKey);
+            other.remove(session);
+            lifecycle.runEnded(other.runEnded(session, success, pace));
             return;
         }
         AgentKpqSessionRegistry.remove(doors.session);
@@ -236,8 +255,75 @@ final class CompanionPqFixture implements AutoCloseable {
     public void close() {
         AgentKpqSessionRegistry.remove(doors.session);
         AgentHpqSessionRegistry.remove(doors.hpqSession);
+        doors.others.forEach((key, session) -> fixtureEntrance(key).remove(session));
         dialogue.close();
         game.close();
+    }
+
+    /** The quests the fixture plays: KPQ and HPQ with its own code, then each registered fixture entrance. */
+    static List<String> keys() {
+        List<String> keys = new ArrayList<>(List.of("kpq", "hpq"));
+        keys.addAll(FIXTURE_ENTRANCES.keySet());
+        return keys;
+    }
+
+    /** The fixture entrance of {@code key}, a quest past HPQ; throws when the fixture plays none for it. */
+    FixtureEntrance fixtureEntrance(String key) {
+        FixtureEntrance entrance = playing.get(key);
+        if (entrance == null) {
+            throw new IllegalArgumentException("no fixture entrance for " + key);
+        }
+        return entrance;
+    }
+
+    /**
+     * Plays {@code key}, a quest past HPQ with no slot filled for it, through {@code entrance} too: its doors, its
+     * session's end and the close (FixtureEntranceDispatchTest). Its key stays out of {@link #keys()}, and
+     * {@link #atEntrance} still needs the quest's own PqEntrance. Throws for a quest the fixture already plays.
+     */
+    void plays(String key, FixtureEntrance entrance) {
+        if (key.equals("kpq") || key.equals("hpq") || playing.putIfAbsent(key, entrance) != null) {
+            throw new IllegalArgumentException("the fixture already plays " + key);
+        }
+    }
+
+    /** Each quest past HPQ, by its key, in the slots of PqEntrance's entrances(). */
+    private static Map<String, FixtureEntrance> fixtureEntrances() {
+        Map<String, FixtureEntrance> entrances = new LinkedHashMap<>();
+        // slot: lpq
+
+        // slot: epq
+
+        // slot: lmpq
+
+        // slot: opq
+
+        // slot: ppq
+
+        // slot: rjpq
+        return entrances;
+    }
+
+    /**
+     * A quest past HPQ as the fixture plays it: where its entry NPC stands on its recruit map, the ground below a point
+     * there, its admission (a real session registered with the lineup, as the doors do for KPQ and HPQ), its registry's
+     * removal of a session, what the Agent layer tells the host when a session ends, and the map its run exits to.
+     */
+    interface FixtureEntrance {
+        Point npcAt();
+
+        /** The ground below {@code at} on its recruit map (null: none found, the point itself is used). */
+        Point groundBelow(Point at);
+
+        PqEntryPort.Admitted admit(CompanionPqFixture fixture, Character leader, List<Character> members, long seed,
+                                   long nowMs);
+
+        void remove(AgentCompanionRunSession session);
+
+        AgentPartyQuestHandback.RunEnded runEnded(AgentCompanionRunSession session, boolean success,
+                                                  server.agents.capabilities.partyquest.pace.AgentPqPace pace);
+
+        int exitMap();
     }
 
     /**
@@ -250,6 +336,8 @@ final class CompanionPqFixture implements AutoCloseable {
         AgentKpqSession session;
         /** The HPQ session admission registered (at Tory). */
         AgentHpqSession hpqSession;
+        /** The session admission registered for each quest past HPQ, by its key. */
+        final Map<String, AgentCompanionRunSession> others = new HashMap<>();
         String refusal;
         Start start = Start.STARTED;
         RuntimeException startThrows;
@@ -269,7 +357,12 @@ final class CompanionPqFixture implements AutoCloseable {
             if (key.equals("kpq")) {
                 return session == null ? null : session.sessionId();
             }
-            return hpqSession == null ? null : hpqSession.sessionId();
+            if (key.equals("hpq")) {
+                return hpqSession == null ? null : hpqSession.sessionId();
+            }
+            fixtureEntrance(key); // an unregistered key throws
+            AgentCompanionRunSession other = others.get(key);
+            return other == null ? null : other.sessionId();
         }
 
         @Override
@@ -280,7 +373,7 @@ final class CompanionPqFixture implements AutoCloseable {
             if (refusal != null) {
                 return new Admitted(false, refusal, null);
             }
-            if (!key.equals("kpq")) {
+            if (key.equals("hpq")) {
                 hpqSession = new AgentHpqSession(AgentHpqSession.Mode.PRODUCTION, seed, leader.getId(), members.size(),
                         nowMs);
                 for (Character member : members) {
@@ -291,6 +384,13 @@ final class CompanionPqFixture implements AutoCloseable {
                         hpqSession.setLeadership(leader.getId(), agent.getId())); // as its admission leads it
                 AgentHpqSessionRegistry.registerComplete(hpqSession);
                 return new Admitted(true, "HPQ party admitted", hpqSession);
+            }
+            if (!key.equals("kpq")) {
+                Admitted admitted = fixtureEntrance(key).admit(CompanionPqFixture.this, leader, members, seed, nowMs);
+                if (admitted.session() != null) {
+                    others.put(key, admitted.session());
+                }
+                return admitted;
             }
             session = new AgentKpqSession(AgentKpqSession.Mode.PRODUCTION, seed, leader.getId(), members.size(), nowMs);
             for (Character member : members) {
@@ -307,7 +407,8 @@ final class CompanionPqFixture implements AutoCloseable {
             startedOnIo = onIo;
             String sessionId = sessionId(key);
             if (sessionId != null) {
-                adoptedAtStart = key.equals("kpq") ? session.companionAdopted() : hpqSession.companionAdopted();
+                adoptedAtStart = key.equals("kpq") ? session.companionAdopted()
+                        : key.equals("hpq") ? hpqSession.companionAdopted() : others.get(key).companionAdopted();
                 committedAtStart = game.commitments.members("pq:" + key + ":" + sessionId).size();
             }
             if (startThrows != null) {
