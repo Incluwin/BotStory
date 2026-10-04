@@ -211,6 +211,11 @@ public final class PqEntrance {
         return registrationBlocker.apply(operatorId, characterIds);
     }
 
+    /** Admits the lineup by the quest's own Agent-layer admission, {@code leader} as operator and event leader. */
+    PqEntryPort.Admitted admit(Character leader, List<Character> members, long seed, long nowMs) {
+        return admit.admit(leader, members, seed, nowMs);
+    }
+
     /** The quest's own Agent-layer admission of a lineup. */
     Admit admission() {
         return admit;
