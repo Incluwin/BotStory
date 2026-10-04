@@ -100,8 +100,8 @@ class CompanionPqEntryTest {
         game.roster().settings().bind(game.bot(casse), ANN, "casse");
         game.roster().settings().bind(game.bots.get(900), ANN, "mira");
         CompanionRestock restock = new CompanionRestock(game.world);
-        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(903),
-                "Casse waits outside with no HP potion: it restocks while Ann is inside");
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("kpq"), restock.standing(903),
+                "Casse waits outside with no HP potion: it restocks (to KPQ's standard) while Ann is inside");
         assertNull(restock.standing(900), "Mira is in the run");
         AgentSupplyReadiness.install(restock);
         try {

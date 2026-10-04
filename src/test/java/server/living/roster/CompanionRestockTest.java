@@ -58,6 +58,10 @@ class CompanionRestockTest {
     private static final int FENNA = 901;
     private static final int KERNING = 103_000_000;
     private static final int PAPULATUS_GATE = 220_080_000;
+    private static final int HENESYS = 100_000_000;
+    private static final int HENESYS_PARK = 100_000_200;
+    /** Kerning City is KPQ's desk: a companion there keeps KPQ's standard. */
+    private static final AgentSupplyReadiness.Activity KPQ = AgentSupplyReadiness.Activity.partyQuest("kpq");
 
     private final LivingWorld world = mock(LivingWorld.class);
     private final LivingWorldConfig config = new LivingWorldConfig();
@@ -143,10 +147,10 @@ class CompanionRestockTest {
 
     @Test
     void aCompanionOutWithItsOwnerOrHeldForThemKeepsThePartyQuestStandard() {
-        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "ACTIVE, following Ann");
+        assertEquals(KPQ, restock.standing(FENNA), "ACTIVE, following Ann");
 
         hold();
-        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "waiting outside Ann's run");
+        assertEquals(KPQ, restock.standing(FENNA), "waiting outside Ann's run");
     }
 
     @Test
@@ -174,7 +178,7 @@ class CompanionRestockTest {
         config.COMPANION_RESTOCK_ENABLED = false;
         assertNull(restock.standing(FENNA), "the kill switch");
         config.COMPANION_RESTOCK_ENABLED = true;
-        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA));
+        assertEquals(KPQ, restock.standing(FENNA));
     }
 
     @Test
@@ -204,11 +208,27 @@ class CompanionRestockTest {
     }
 
     @Test
+    void theStandardItKeepsIsTheOneOfTheDeskItStandsAt() {
+        assertEquals(KPQ, restock.standing(FENNA), "Kerning City: Lakelis's desk");
+
+        when(fenna.getMapId()).thenReturn(HENESYS_PARK);
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("hpq"), restock.standing(FENNA), "Tory's desk");
+
+        when(fenna.getMapId()).thenReturn(HENESYS);
+        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA), "no desk: the default");
+
+        when(fenna.getMapId()).thenReturn(HENESYS_PARK);
+        hold();
+        assertEquals(AgentSupplyReadiness.Activity.partyQuest("hpq"), restock.standing(FENNA),
+                "held at the desk while its owner runs it");
+    }
+
+    @Test
     void aHeldExtraOfARunningRunKeepsItsDuty() {
         hold();
         commitments.commit("pq:kpq:1", ANN, FENNA); // the run commits its extras too, until it ends
 
-        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+        assertEquals(KPQ, restock.standing(FENNA),
                 "waiting outside Ann's run, it restocks meanwhile");
         engaged.add(FENNA);
         assertNull(restock.standing(FENNA), "but not once a run engages it");
@@ -225,7 +245,7 @@ class CompanionRestockTest {
         AgentRelationshipRuntime.setFollowTarget(entry, stranger);
         assertNull(restock.standing(FENNA), "following someone else");
         AgentRelationshipRuntime.setFollowTarget(entry, ann);
-        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA));
+        assertEquals(KPQ, restock.standing(FENNA));
 
         AgentSupplyProcurementState trip = entry.capabilityStates().require(AgentSupplyProcurementState.STATE_KEY);
         trip.start("readiness:HP_POTION:1", "maintenance:resupply:readiness:HP_POTION:1",
@@ -233,7 +253,7 @@ class CompanionRestockTest {
                 AgentSupplyProcurementState.Phase.SHOPPING);
         trip.rememberForegroundMode(true, false);
         AgentModeStateRuntime.setFollowing(entry, false); // travel stopped its follow mode
-        assertEquals(AgentSupplyReadiness.Activity.PARTY_QUEST, restock.standing(FENNA),
+        assertEquals(KPQ, restock.standing(FENNA),
                 "on its trip, which ends by following Ann: the shop still buys to its target");
     }
 

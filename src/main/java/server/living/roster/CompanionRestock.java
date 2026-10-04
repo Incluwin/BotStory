@@ -20,7 +20,7 @@ import java.util.function.LongSupplier;
  * Companions restock their own potions (2026-10-02, docs/BOT_MANAGEMENT_PLAN.md "Companion restock"): the living
  * world's answer to the Agent layer's readiness seam (AgentSupplyReadiness.Rule). Every companion its owner carries
  * along, out with them (ACTIVE, led by them and following them) or waiting outside a run for them (HOLD, even while the
- * run counts it as one of its extras), keeps the party-quest standard by itself; one told to wait or sent somewhere,
+ * run counts it as one of its extras), keeps the party-quest standard (that of the desk it stands at) by itself; one told to wait or sent somewhere,
  * on its way, away on an errand, on a live bench slice, in a run or with the kill switch off has no duty. The Agent
  * decides when and where it goes; this only says what it says about it: setting off and back
  * (an ACTIVE one; a held one goes and comes back quietly, back to the spot it waits at), and, at most once per
@@ -68,7 +68,7 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         }
         if (held(at)) {
             // waiting outside its owner's run: the run commits its extras too, and it restocks meanwhile
-            return AgentSupplyReadiness.Activity.PARTY_QUEST;
+            return deskActivity(agentCharacterId);
         }
         if (world.commitments().isCommitted(agentCharacterId) || world.roster().keepsOffFollow(at.personaId())) {
             return null; // tied to a run, on its way, or away on an errand
@@ -77,7 +77,18 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                 at.ownerId())) {
             return null; // told to wait, sent somewhere or hunting on its own: its owner's order stands
         }
-        return AgentSupplyReadiness.Activity.PARTY_QUEST;
+        return deskActivity(agentCharacterId);
+    }
+
+    /**
+     * The standard of the party quest whose desk the companion stands at (PqEntrance.keyAt: Lakelis's in Kerning
+     * City, Tory's in Henesys Park, ...), so the desk and the companion agree on what to carry in; the default
+     * anywhere else.
+     */
+    private static AgentSupplyReadiness.Activity deskActivity(int agentCharacterId) {
+        Character bot = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId));
+        return bot == null ? AgentSupplyReadiness.Activity.PARTY_QUEST
+                : AgentSupplyReadiness.Activity.partyQuest(PqEntrance.keyAt(bot.getMapId()));
     }
 
     /**
