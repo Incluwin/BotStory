@@ -1570,15 +1570,26 @@ public final class AgentShopService {
     }
 
 
-    private static NPC findNpcNear(Character bot, Point pos) {
+    /**
+     * The visit's shopkeeper: the shop NPC standing nearest {@code pos} within SHOP_NPC_SEARCH_DIST, not merely the
+     * first one in range (Herb Town's armor shop stands 538 px from Lan Ming); null when there is none.
+     */
+    static NPC findNpcNear(Character bot, Point pos) {
+        NPC nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
         for (MapObject obj : bot.getMap().getMapObjectsInRange(
                 pos, SHOP_NPC_SEARCH_DIST * SHOP_NPC_SEARCH_DIST,
                 Arrays.asList(MapObjectType.NPC))) {
             NPC npc = (NPC) obj;
-            if (npc.hasShop()) {
-                return npc;
+            if (!npc.hasShop()) {
+                continue;
+            }
+            double distance = npc.getPosition().distanceSq(pos);
+            if (distance < nearestDistance) {
+                nearest = npc;
+                nearestDistance = distance;
             }
         }
-        return null;
+        return nearest;
     }
 }
