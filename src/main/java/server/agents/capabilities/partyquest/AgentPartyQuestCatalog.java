@@ -51,6 +51,8 @@ public final class AgentPartyQuestCatalog {
         add(definitions, new AgentPartyQuestDefinition(
                 "ppq", "PiratePQ", 251_010_404, 925_100_000, 925_100_600,
                 925_100_700, 251_010_404, 55, 100, 3, 6));
+
+        // slot: rjpq
         return Collections.unmodifiableMap(definitions);
     }
 
