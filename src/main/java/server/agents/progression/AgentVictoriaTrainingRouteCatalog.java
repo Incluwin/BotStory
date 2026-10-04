@@ -8,7 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** WZ-verified standard Victoria graph plus scripted edges used by the level-15 slice. */
+/**
+ * WZ-verified standard portal graph (Victoria Island plus the continents outside it, which no portal joins to
+ * Victoria) and the scripted edges used by the level-15 slice.
+ */
 final class AgentVictoriaTrainingRouteCatalog {
     private static final Map<Integer, Set<Integer>> EDGES = edges();
 
@@ -108,10 +111,13 @@ final class AgentVictoriaTrainingRouteCatalog {
                 mutable.computeIfAbsent(right, ignored -> new java.util.LinkedHashSet<>()).add(left);
             }
         }
-        for (AgentVictoriaPortalRouteGraph.Edge edge :
-                AgentVictoriaPortalRouteGraphRepository.defaultRepository().graph().edges()) {
-            mutable.computeIfAbsent(edge.fromMapId(), ignored -> new java.util.LinkedHashSet<>())
-                    .add(edge.toMapId());
+        for (AgentVictoriaPortalRouteGraphRepository repository : List.of(
+                AgentVictoriaPortalRouteGraphRepository.defaultRepository(),
+                AgentVictoriaPortalRouteGraphRepository.worldRepository())) {
+            for (AgentVictoriaPortalRouteGraph.Edge edge : repository.graph().edges()) {
+                mutable.computeIfAbsent(edge.fromMapId(), ignored -> new java.util.LinkedHashSet<>())
+                        .add(edge.toMapId());
+            }
         }
         for (AgentVictoriaLevel15Catalog.Career career : catalog().careers()) {
             AgentVictoriaLevel15Catalog.TrainingGround trainingGround = career.trainingGround();
