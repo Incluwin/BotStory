@@ -254,7 +254,7 @@ public final class AgentSupplyReadinessRuntime {
                               AgentSupplyReadiness.Shortfall shortfall) {
         int fresh = (shortfall.hp() > 0 && !AgentShopService.carriesStackWithRoom(agent, shop, true) ? 1 : 0)
                 + (shortfall.mp() > 0 && !AgentShopService.carriesStackWithRoom(agent, shop, false) ? 1 : 0);
-        return fresh == 0 ? 0 : fresh + (activity == AgentSupplyReadiness.Activity.PARTY_QUEST ? 1 : 0);
+        return fresh == 0 ? 0 : fresh + (activity != null ? 1 : 0); // every activity is a party quest
     }
 
     /**
