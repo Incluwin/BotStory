@@ -223,6 +223,7 @@ import client.command.commands.gm6.KpqTestCommand;
 import client.command.commands.gm6.SkillProbeCommand;
 import client.command.commands.gm6.CompanionProbeCommand;
 import client.command.commands.gm6.GrantCompanionCommand;
+import client.command.commands.gm6.SetLevelCommand;
 import client.command.commands.gm6.CombatArenaCommand;
 import client.command.commands.gm6.HpqTestCommand;
 import client.command.commands.gm6.LpqTestCommand;
@@ -674,6 +675,7 @@ public class CommandsExecutor {
         addCommand("skillprobe", 6, SkillProbeCommand.class);
         addCommand("companionprobe", 6, CompanionProbeCommand.class);
         addCommand("grantcompanion", 6, GrantCompanionCommand.class);
+        addCommand("setlevel", 6, SetLevelCommand.class);
         addCommand("combatarena", 6, CombatArenaCommand.class);
         addCommand("hpqtest", 6, HpqTestCommand.class);
         addCommand("lpqtest", 6, LpqTestCommand.class);
