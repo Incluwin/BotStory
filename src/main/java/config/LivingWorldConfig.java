@@ -230,9 +230,9 @@ public class LivingWorldConfig {
 
     // Party quests with companions (P6, docs/BOT_MANAGEMENT_PLAN.md flow 3)
     /**
-     * Party quests whose entry NPC offers its party leader a lineup of the party and their companions, a comma list:
-     * "kpq" (Lakelis) and "hpq" (Tory, whose desk also has the owner's companions wait off her ledge). Empty = off:
-     * the NPC is stock.
+     * Party quests whose entry NPC offers its party leader a lineup of the party and their companions, a comma list of
+     * the keys {@link CompanionPqKeys#KNOWN} names (such as "kpq", Lakelis's, and "hpq", Tory's, whose desk also has
+     * the owner's companions wait off her ledge). Empty = off: the NPC is stock.
      */
     public String COMPANION_PQ_ENABLED_KEYS = "";
     /** A companion KPQ run narrates the roles in map chat and nudges a stalled human, as a !kpqtest run does. */
@@ -432,8 +432,8 @@ public class LivingWorldConfig {
                     + " and AUTO_ROTATE_LEVEL_GAP >= 1");
         }
         for (String key : COMPANION_PQ_ENABLED_KEYS == null ? new String[0] : COMPANION_PQ_ENABLED_KEYS.split(",")) {
-            if (!key.isBlank() && !key.trim().equalsIgnoreCase("kpq") && !key.trim().equalsIgnoreCase("hpq")) {
-                throw new IllegalArgumentException("living_world.COMPANION_PQ_ENABLED_KEYS must list only kpq or hpq");
+            if (!key.isBlank() && !CompanionPqKeys.known(key)) {
+                throw new IllegalArgumentException(CompanionPqKeys.message());
             }
         }
         for (String id : COMPANION_PQ_PACE_EXCLUDED_LEADERS == null ? new String[0]
