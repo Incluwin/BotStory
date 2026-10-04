@@ -1,17 +1,9 @@
 package server.living.roster;
 
 import client.Character;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.partyquest.AgentPartyQuestDefinition;
-import server.agents.capabilities.partyquest.hpq.AgentHpqAdmissionService;
-import server.agents.capabilities.partyquest.hpq.AgentHpqPaceProfile;
-import server.agents.capabilities.partyquest.hpq.AgentHpqPopulationRuntime;
-import server.agents.capabilities.partyquest.hpq.AgentHpqSession;
-import server.agents.capabilities.partyquest.hpq.AgentHpqSessionRegistry;
-import server.agents.capabilities.partyquest.kpq.AgentKpqAdmissionService;
-import server.agents.capabilities.partyquest.kpq.AgentKpqPaceProfile;
-import server.agents.capabilities.partyquest.kpq.AgentKpqSession;
-import server.agents.capabilities.partyquest.kpq.AgentKpqSessionRegistry;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
 import server.life.NPC;
 import server.maps.MapleMap;
@@ -44,19 +36,10 @@ public final class PqEntrance {
     /** A run's session while its quest's registry holds it: its id and the event leader it has now. */
     public record LiveSession(String sessionId, int eventLeaderId) { }
 
-    /** Extras wait beside Lakelis: 40 px on from her, 30 px apart, where she stands. */
-    private static final Beside BESIDE_LAKELIS = new Beside(40, 30, false);
-    /**
-     * Extras wait off Tory's ledge (Henesys Park: x 1357-1523 at y 364), on the park floor below past its end, so they
-     * never crowd her or hide her name (P6b HPQ step 0).
-     */
-    private static final Beside BELOW_TORY = new Beside(120, 30, true);
-    /**
-     * An owner stands at Tory while on her ledge: within 100 px of her (the ledge runs from 77 px left of her to 89 px
-     * right), from 100 px above her (a jump on it) to 40 px below (its floor; the step below it is 132 px down). Their
-     * companions wait at the extras' spots meanwhile (P6b HPQ step 0: followers crowding her ledge hid her).
-     */
-    private static final KeepClear ON_TORYS_LEDGE = new KeepClear(100, 100, 40);
+    /** The quest's own Agent-layer admission of a lineup, its leader as operator and event leader. */
+    interface Admit {
+        PqEntryPort.Admitted admit(Character leader, List<Character> members, long seed, long nowMs);
+    }
 
     private static final Map<String, PqEntrance> ENTRANCES = Collections.unmodifiableMap(entrances());
     /** Every entrance's key, KPQ's first. */
@@ -73,12 +56,13 @@ public final class PqEntrance {
     private final BiFunction<Character, Boolean, String> memberProblem;
     private final BiFunction<Integer, Collection<Integer>, String> registrationBlocker;
     private final Supplier<? extends AgentPqPaceProfile> paceLoader;
-    private final IntFunction<LiveSession> sessionOfOperator;
-    private final IntFunction<String> sessionIdOfMember;
+    private final IntFunction<? extends AgentCompanionRunSession> forOperator;
+    private final IntFunction<? extends AgentCompanionRunSession> forMember;
     private final boolean admitsOnIo;
     private final BooleanSupplier backgroundRuns;
     private final Beside beside;
     private final KeepClear keepClear;
+    private final Admit admit;
     /**
      * Where the entry NPC kept clear of followers stands, by the map instance she was found on: looked for once per map
      * (MapleMap.getNPCById copies every object on it under its lock, and she never moves), not on every follow tick.
@@ -86,17 +70,18 @@ public final class PqEntrance {
     private final Map<MapleMap, Point> keptClearSpots = Collections.synchronizedMap(new WeakHashMap<>());
 
     /** Where the {@code index}th extra waits from the entry NPC: {@code dx + step * index} along, grounded or not. */
-    private record Beside(int dx, int step, boolean grounded) { }
+    record Beside(int dx, int step, boolean grounded) { }
 
     /** Where an owner stands at the entry NPC: within {@code dx} of her, from {@code above} over her to {@code below}. */
-    private record KeepClear(int dx, int above, int below) { }
+    record KeepClear(int dx, int above, int below) { }
 
-    private PqEntrance(String key, int entryNpcId, SeatRules seats, int[] dpsMobIds, DeskVoice voice,
-                       BiFunction<Character, Boolean, String> memberProblem,
-                       BiFunction<Integer, Collection<Integer>, String> registrationBlocker,
-                       Supplier<? extends AgentPqPaceProfile> paceLoader, IntFunction<LiveSession> sessionOfOperator,
-                       IntFunction<String> sessionIdOfMember, boolean admitsOnIo, BooleanSupplier backgroundRuns,
-                       Beside beside, KeepClear keepClear) {
+    PqEntrance(String key, int entryNpcId, SeatRules seats, int[] dpsMobIds, DeskVoice voice,
+               BiFunction<Character, Boolean, String> memberProblem,
+               BiFunction<Integer, Collection<Integer>, String> registrationBlocker,
+               Supplier<? extends AgentPqPaceProfile> paceLoader,
+               IntFunction<? extends AgentCompanionRunSession> forOperator,
+               IntFunction<? extends AgentCompanionRunSession> forMember, boolean admitsOnIo,
+               BooleanSupplier backgroundRuns, Beside beside, KeepClear keepClear, Admit admit) {
         this.key = key;
         this.definition = AgentPartyQuestCatalog.require(key);
         this.entryNpcId = entryNpcId;
@@ -106,32 +91,42 @@ public final class PqEntrance {
         this.memberProblem = memberProblem;
         this.registrationBlocker = registrationBlocker;
         this.paceLoader = paceLoader;
-        this.sessionOfOperator = sessionOfOperator;
-        this.sessionIdOfMember = sessionIdOfMember;
+        this.forOperator = forOperator;
+        this.forMember = forMember;
         this.admitsOnIo = admitsOnIo;
         this.backgroundRuns = backgroundRuns;
         this.beside = beside;
         this.keepClear = keepClear;
+        this.admit = admit;
     }
 
+    /** Every entrance by its key, each quest's built in its own file (KpqEntrance, HpqEntrance) in its own slot. */
     private static Map<String, PqEntrance> entrances() {
         Map<String, PqEntrance> entrances = new LinkedHashMap<>();
-        // KPQ: stage 1's Ligator, stage 5's Jr. Necki and King Slime; admitted and started in one I/O step, as before
-        entrances.put("kpq", new PqEntrance("kpq", 9_020_000, new SeatRules(3, 4, 4),
-                new int[] {9_300_001, 9_300_000, 9_300_003}, LakelisLines.VOICE,
-                AgentKpqAdmissionService::memberProblem, AgentKpqSessionRegistry::registrationBlocker,
-                AgentKpqPaceProfile::load, operatorId -> live(AgentKpqSessionRegistry.forOperator(operatorId)),
-                memberId -> sessionId(AgentKpqSessionRegistry.forMember(memberId)), true, () -> false,
-                BESIDE_LAKELIS, null));
-        // HPQ: the hill's three monsters' stat proxies; its admission runs on companion-ops, never on an I/O thread
-        entrances.put("hpq", new PqEntrance("hpq", 1_012_112, new SeatRules(3, 6, 4),
-                new int[] {9_300_062, 9_300_063, 9_300_064}, ToryLines.VOICE,
-                (member, eventLeader) -> AgentHpqAdmissionService.memberProblem(member),
-                AgentHpqSessionRegistry::registrationBlocker, AgentHpqPaceProfile::load,
-                operatorId -> live(AgentHpqSessionRegistry.forOperator(operatorId)),
-                memberId -> sessionId(AgentHpqSessionRegistry.forMember(memberId)), false,
-                AgentHpqPopulationRuntime::backgroundEnabled, BELOW_TORY, ON_TORYS_LEDGE));
+        register(entrances, KpqEntrance.create());
+
+        register(entrances, HpqEntrance.create());
+
+        // slot: lpq
+
+        // slot: epq
+
+        // slot: lmpq
+
+        // slot: opq
+
+        // slot: ppq
+
+        // slot: rjpq
         return entrances;
+    }
+
+    /** Adds {@code entrance} under its key, read as {@link #find} reads keys; a key registered twice throws. */
+    static void register(Map<String, PqEntrance> entrances, PqEntrance entrance) {
+        String key = entrance.key.trim().toLowerCase(Locale.ROOT);
+        if (entrances.putIfAbsent(key, entrance) != null) {
+            throw new IllegalStateException("two companion party-quest entrances for " + key);
+        }
     }
 
     private static Map<Integer, PqEntrance> keepingClear() {
@@ -144,19 +139,11 @@ public final class PqEntrance {
         return keeping;
     }
 
-    private static LiveSession live(AgentKpqSession session) {
+    private static LiveSession live(AgentCompanionRunSession session) {
         return session == null ? null : new LiveSession(session.sessionId(), session.eventLeaderId());
     }
 
-    private static LiveSession live(AgentHpqSession session) {
-        return session == null ? null : new LiveSession(session.sessionId(), session.eventLeaderId());
-    }
-
-    private static String sessionId(AgentKpqSession session) {
-        return session == null ? null : session.sessionId();
-    }
-
-    private static String sessionId(AgentHpqSession session) {
+    private static String sessionId(AgentCompanionRunSession session) {
         return session == null ? null : session.sessionId();
     }
 
@@ -224,6 +211,11 @@ public final class PqEntrance {
         return registrationBlocker.apply(operatorId, characterIds);
     }
 
+    /** The quest's own Agent-layer admission of a lineup. */
+    Admit admission() {
+        return admit;
+    }
+
     /** Builds the quest's pace profile (on companion-ops, at boot). */
     public Supplier<? extends AgentPqPaceProfile> paceLoader() {
         return paceLoader;
@@ -234,13 +226,13 @@ public final class PqEntrance {
      * as {@code sessionId}; else null.
      */
     public LiveSession session(int operatorId, String sessionId) {
-        LiveSession session = sessionOfOperator.apply(operatorId);
+        LiveSession session = live(forOperator.apply(operatorId));
         return session != null && session.sessionId().equals(sessionId) ? session : null;
     }
 
     /** True while the quest's registry holds {@code agentId} in the session {@code sessionId}. */
     public boolean holds(int agentId, String sessionId) {
-        String held = sessionIdOfMember.apply(agentId);
+        String held = sessionId(forMember.apply(agentId));
         return held != null && held.equals(sessionId);
     }
 
