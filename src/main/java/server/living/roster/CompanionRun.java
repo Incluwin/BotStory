@@ -54,6 +54,11 @@ final class CompanionRun {
     final Map<Integer, Integer> deaths = new ConcurrentHashMap<>();
     /** Owners who logged off mid-run and whose companion said once that it sees the run through (decision 8b). */
     final Set<Integer> handoffLineSaid = ConcurrentHashMap.newKeySet();
+    /**
+     * Each lineup companion's HP and MP potions ({HP, MP}) as the run was let in, for the potion line logged as it
+     * ends (CompanionRunRecorder): the per-quest potion standard is retuned from these counts.
+     */
+    final Map<Integer, int[]> potionsAtYes = new ConcurrentHashMap<>();
     /** When the lost-run sweep first found its session gone (0: it has not); read and written on companion-ops only. */
     long goneSinceMs;
 

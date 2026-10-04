@@ -46,6 +46,8 @@ public final class PqEntrance {
     private static final List<String> KEYS = List.copyOf(ENTRANCES.keySet());
     /** The entrances that keep their entry NPC clear of followers, by the map she stands on. */
     private static final Map<Integer, PqEntrance> KEEPING_CLEAR = Collections.unmodifiableMap(keepingClear());
+    /** Each entrance's key, by the map its entry NPC stands on (its recruit map). */
+    private static final Map<Integer, String> KEY_BY_RECRUIT_MAP = Collections.unmodifiableMap(keysByRecruitMap());
 
     private final String key;
     private final AgentPartyQuestDefinition definition;
@@ -145,6 +147,14 @@ public final class PqEntrance {
         return keeping;
     }
 
+    private static Map<Integer, String> keysByRecruitMap() {
+        Map<Integer, String> keys = new LinkedHashMap<>();
+        for (PqEntrance entrance : ENTRANCES.values()) {
+            keys.putIfAbsent(entrance.definition.recruitMapId(), entrance.key);
+        }
+        return keys;
+    }
+
     private static LiveSession live(AgentCompanionRunSession session) {
         return session == null ? null : new LiveSession(session.sessionId(), session.eventLeaderId());
     }
@@ -170,6 +180,15 @@ public final class PqEntrance {
     /** Every entrance's key, KPQ's first. */
     public static List<String> keys() {
         return KEYS;
+    }
+
+    /**
+     * The key of the entrance whose entry NPC stands on {@code mapId} (its recruit map: kpq on Kerning City, hpq on
+     * Henesys Park, and each later entrance once registered), or null on any other map. Read-only, for the companion
+     * restock duty's per-quest potion standard: the desk and the companions at it agree on the quest.
+     */
+    public static String keyAt(int mapId) {
+        return KEY_BY_RECRUIT_MAP.get(mapId);
     }
 
     /** The entrance whose entry NPC on {@code mapId} is kept clear of followers (Tory's, in Henesys Park); else null. */

@@ -7,6 +7,8 @@ import server.living.store.LivingStore;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.CompanionRunStats;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,7 +58,11 @@ public final class CompanionRunRecorder {
      * re-roll itself is kept in the run's clear-time record (pq_run_pace, outcome rerolled).
      */
     void record(CompanionRun run, long nowMs) {
-        if (!run.started || run.rerolled) {
+        if (!run.started) {
+            return;
+        }
+        logPotions(run);
+        if (run.rerolled) {
             return;
         }
         int durationS = (int) Math.max(0L, (nowMs - run.startedAtMs) / 1000L);
@@ -71,6 +77,33 @@ public final class CompanionRunRecorder {
                         new CompanionRunStats(known.runs() + added.runs(), known.clears() + added.clears()));
             }
         }
+    }
+
+    /** One line for the run: each lineup companion's HP and MP potions as it was let in, and as it ends. */
+    private static void logPotions(CompanionRun run) {
+        List<String> companions = new ArrayList<>();
+        for (Map.Entry<Integer, String> companion : run.personaByCompanion.entrySet()) {
+            int id = companion.getKey();
+            companions.add(potionPart(companion.getValue() + "(" + id + ")", run.potionsAtYes.get(id),
+                    CompanionPartyQuestService.potionsOf(id)));
+        }
+        String outcome = run.rerolled ? "rerolled" : run.cleared ? "cleared" : "failed";
+        log.info(potionLine(run.sessionId, run.pqKey, outcome, companions));
+    }
+
+    /** 'PQ potions: session= pq= outcome= companions=[...]', the line the per-quest potion standard is tuned from. */
+    static String potionLine(String sessionId, String pqKey, String outcome, List<String> companions) {
+        return "PQ potions: session=" + sessionId + " pq=" + pqKey + " outcome=" + outcome
+                + " companions=" + companions;
+    }
+
+    /** '{@code who} hp=AT>END mp=AT>END', each count '?' when it was not read. */
+    static String potionPart(String who, int[] atYes, int[] atEnd) {
+        return who + " hp=" + count(atYes, 0) + ">" + count(atEnd, 0) + " mp=" + count(atYes, 1) + ">" + count(atEnd, 1);
+    }
+
+    private static String count(int[] potions, int index) {
+        return potions == null || potions.length <= index ? "?" : String.valueOf(potions[index]);
     }
 
     /** The companion's KPQ record ({@link #NONE} before its first run). */

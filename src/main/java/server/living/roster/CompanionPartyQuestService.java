@@ -864,6 +864,22 @@ public final class CompanionPartyQuestService {
         }
     }
 
+    /** Each lineup companion's HP and MP potions as the run is let in (one not online is left out). */
+    private static void notePotionsAtYes(CompanionRun run) {
+        for (int companionId : run.ownerByCompanion.keySet()) {
+            int[] potions = potionsOf(companionId);
+            if (potions != null) {
+                run.potionsAtYes.put(companionId, potions);
+            }
+        }
+    }
+
+    /** The companion's HP and MP potions ({HP, MP}) as it carries them now; null when it is not online. */
+    static int[] potionsOf(int companionId) {
+        Character bot = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(companionId));
+        return bot == null ? null : AgentPotionService.countPotions(bot);
+    }
+
     // ---- sent for from the bench ----------------------------------------------------------------
 
     /** {@link #noteCalledForDesk} at Lakelis's (KPQ's) desk. */
@@ -1159,6 +1175,7 @@ public final class CompanionPartyQuestService {
         }
         session.setMemberCoordinationChatEnabled(world.config().COMPANION_PQ_GUIDANCE);
         CompanionRun run = register(new CompanionRun(session.sessionId(), fresh, now));
+        notePotionsAtYes(run);
         int firstAgent = firstAgent(fresh);
         if (!commit(run)) {
             abort(leader, run, firstAgent, DeskLines.CATCHING_BREATH, clickedAt);
