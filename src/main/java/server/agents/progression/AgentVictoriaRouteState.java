@@ -27,6 +27,16 @@ final class AgentVictoriaRouteState {
     private long arrivalObserverGraceUntilMs;
     private long arrivalVisibleSettleDurationMs;
     private boolean arrivalAwaitingObserver;
+    private long npcRetryAtMs;
+
+    /** Until when the Agent holds still before talking to a travel NPC again (ticket seller, boarding NPC). */
+    synchronized long npcRetryAtMs() {
+        return npcRetryAtMs;
+    }
+
+    synchronized void npcRetryAt(long atMs) {
+        npcRetryAtMs = atMs;
+    }
 
     synchronized Set<Long> blockedEdges(long nowMs) {
         blockedEdgesUntilMs.entrySet().removeIf(entry -> entry.getValue() <= nowMs);

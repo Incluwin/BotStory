@@ -2,11 +2,14 @@ package server.agents.progression;
 
 import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * WZ-verified standard portal graph (Victoria Island plus the continents outside it, which no portal joins to
@@ -54,6 +57,76 @@ final class AgentVictoriaTrainingRouteCatalog {
             step = previous.get(step);
         }
         return step;
+    }
+
+    /** One step of a path: a portal walked from one map to the next ({@code leg} null), or a travel leg ridden. */
+    record Step(int fromMapId, int toMapId, AgentTravelLegCatalog.Leg leg) {
+    }
+
+    /**
+     * The cheapest path walking the portal graph (one a portal, {@code excludedEdges} left out as for nextHop) and
+     * riding the travel legs {@code usable} accepts ({@code rideHopCost} a leg). Empty when nothing reaches the
+     * destination, or the Agent already stands on it. Ties go to the path found first, so it is deterministic.
+     */
+    static List<Step> ridePath(int source, int destination, Set<Long> excludedEdges,
+                               Predicate<AgentTravelLegCatalog.Leg> usable, int rideHopCost) {
+        if (source == destination) {
+            return List.of();
+        }
+        int legCost = Math.max(1, rideHopCost);
+        Map<Integer, Integer> cost = new HashMap<>();
+        Map<Integer, Step> via = new HashMap<>();
+        // {cost, insertion order, map}: the order breaks ties first-come.
+        PriorityQueue<long[]> queue = new PriorityQueue<>(
+                Comparator.<long[]>comparingLong(entry -> entry[0]).thenComparingLong(entry -> entry[1]));
+        long order = 0L;
+        cost.put(source, 0);
+        queue.add(new long[]{0L, order++, source});
+        while (!queue.isEmpty()) {
+            long[] head = queue.poll();
+            int current = (int) head[2];
+            if (head[0] > cost.get(current)) {
+                continue;
+            }
+            if (current == destination) {
+                break;
+            }
+            int reached = (int) head[0];
+            for (int next : EDGES.getOrDefault(current, Set.of())) {
+                if (excludedEdges != null && excludedEdges.contains(edgeKey(current, next))) {
+                    continue;
+                }
+                if (relax(cost, via, new Step(current, next, null), reached + 1)) {
+                    queue.add(new long[]{reached + 1L, order++, next});
+                }
+            }
+            for (AgentTravelLegCatalog.Leg leg : AgentTravelLegCatalog.from(current)) {
+                if (usable != null && !usable.test(leg)) {
+                    continue;
+                }
+                if (relax(cost, via, new Step(current, leg.toMapId(), leg), reached + legCost)) {
+                    queue.add(new long[]{(long) reached + legCost, order++, leg.toMapId()});
+                }
+            }
+        }
+        if (!via.containsKey(destination)) {
+            return List.of();
+        }
+        ArrayDeque<Step> path = new ArrayDeque<>();
+        for (int at = destination; at != source; at = via.get(at).fromMapId()) {
+            path.addFirst(via.get(at));
+        }
+        return List.copyOf(path);
+    }
+
+    private static boolean relax(Map<Integer, Integer> cost, Map<Integer, Step> via, Step step, int reached) {
+        Integer known = cost.get(step.toMapId());
+        if (known != null && known <= reached) {
+            return false;
+        }
+        cost.put(step.toMapId(), reached);
+        via.put(step.toMapId(), step);
+        return true;
     }
 
     static boolean canRoute(int source, int destination) {

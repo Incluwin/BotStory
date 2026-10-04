@@ -4239,6 +4239,18 @@ tuning:
     # Purpose: When an Agent enters or leaves a scripted interior while nobody is watching, it waits at the real destination portal for this bounded time. If a player follows, they see the Agent arrive at the portal and then use the physical route instead of first seeing it halfway across the map.
     # Technical: Applies only to authored scripted-portal contracts, not ordinary outdoor map travel. The wait ends after the grace window even if no observer arrives, so background progression cannot remain blocked indefinitely.
     server.agents.progression.AgentVictoriaRouteRuntime.SCRIPTED_PORTAL_OBSERVER_GRACE_MS: '10000'
+    # Values: an integer from 1 to 50. Recommended: 10, as server knowledge weighs a ride against walking ten maps.
+    # Purpose: How much a ship, train, Hak's crane, the dolphin, the subway or the plane counts against walking when a destination no portal path reaches is planned; higher values make the router walk farther to a later ride.
+    # Technical: AgentVictoriaTrainingRouteCatalog.ridePath weighs each travel leg (npc-travel-legs.json) at this many portal hops; AgentVictoriaRouteRuntime.travelStatus plans with legs only when nextHop finds no walking route.
+    server.agents.progression.AgentVictoriaRouteRuntime.RIDE_HOP_COST: '10'
+    # Values: map pixels from 40 to 200. Recommended: 100, the distance the quest runtimes talk to NPCs from.
+    # Purpose: How close an Agent walks to a ticket seller or a boarding NPC (Joel, Agatha, Isa, Hak...) before it talks to them.
+    # Technical: AgentVictoriaRouteRuntime passes this to AgentNpcInteractionReachabilityService.canInteract before PrimitiveCapabilityGateway.runNpcScript for a travel leg; farther, it navigates toward the NPC first.
+    server.agents.progression.AgentVictoriaRouteRuntime.NPC_INTERACTION_DISTANCE_PX: '100'
+    # Values: milliseconds from 1000 to 60000. Recommended: 5000, under the subway's few seconds of open boarding gate on this server's travel rate.
+    # Purpose: Spaces an Agent's conversations with a travel NPC, so a boarding gate that is still closed is asked again a little later instead of every tick, and a map change after boarding has landed before it plans again.
+    # Technical: AgentVictoriaRouteState.npcRetryAtMs is set to now plus this after every travel-NPC conversation; AgentVictoriaRouteRuntime holds still until then. A scheduled ride that refuses boarding is retried this way without counting as a failure; an instant ride that refuses counts toward FAILED_EDGE_BLOCK_MS like a portal.
+    server.agents.progression.AgentVictoriaRouteRuntime.NPC_RETRY_MS: '5000'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 1000-4000 around the tested baseline 2000; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents remain in or wait for edge failure memory. Higher values make that pause or state last longer; lower values make them continue sooner.
     # Technical: the "victoria route state" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled.
