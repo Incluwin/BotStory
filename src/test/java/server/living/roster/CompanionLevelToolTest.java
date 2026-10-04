@@ -66,6 +66,8 @@ class CompanionLevelToolTest {
     /** The mailbox: every dispatch is kept, and answered when the test completes it. */
     private final class FakeAgents implements CompanionLevelTool.Agents {
         final List<LevelSetPlan.Request> dispatched = new ArrayList<>();
+        /** The event-log rows as they stood when the last set went to the mailbox. */
+        List<String> rowsAtDispatch = List.of();
         final Map<Integer, Integer> leaders = new HashMap<>();
         CompletableFuture<AgentLevelSetService.Outcome> answer = new CompletableFuture<>();
 
@@ -92,6 +94,7 @@ class CompanionLevelToolTest {
                                                                         LevelSetPlan.Companion companion,
                                                                         Character owner) {
             dispatched.add(request);
+            rowsAtDispatch = List.copyOf(rows);
             return answer;
         }
     }
@@ -185,7 +188,7 @@ class CompanionLevelToolTest {
     @Test
     void theRecordIsWrittenBeforeTheMailboxRunsAndALateAnswerStillReconciles() throws Exception {
         CompletableFuture<String> line = tool.use(gm, "Yara", Ask.to(40, Job.FIGHTER), true);
-        assertEquals(List.of("901 yara gm.level.hold lv=30 job=100"), rows); // before any answer
+        assertEquals(List.of("901 yara gm.level.hold lv=30 job=100"), agents.rowsAtDispatch); // before it went out
 
         assertTrue(line.get(5, TimeUnit.SECONDS).contains("did not answer"));
         agents.answer.complete(new AgentLevelSetService.Applied(yaraToFighterForty(), 3L));

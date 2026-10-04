@@ -93,6 +93,14 @@ class GmLevelHoldsTest {
     }
 
     @Test
+    void theOriginalLevelAsAnotherJobIsNoRelease() {
+        use(CREWFRIEND_AT_37, false, 40, Job.FIGHTER);
+        assertEquals(Decision.KEEP, use(new Original(40, Job.FIGHTER, null), false, 37, Job.WARRIOR));
+        assertEquals(Decision.KEEP, use(new Original(37, Job.WARRIOR, null), false, 38, Job.BEGINNER));
+        assertEquals(Optional.of(CREWFRIEND_AT_37), holds.record(CREWFRIEND, GmLevelHolds.SELF));
+    }
+
+    @Test
     void aSetThatWasNotAppliedReleasesTheRecordItMade() {
         Optional<Original> existing = holds.record(CREWFRIEND, GmLevelHolds.SELF);
         Pending pending = holds.begin(CREWFRIEND, GmLevelHolds.SELF, existing, CREWFRIEND_AT_37, false, true, 40,
