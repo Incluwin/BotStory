@@ -1093,6 +1093,7 @@ tuning:
     # Purpose: Spaces the six dedicated LPQ observation fixtures while leaving production population admission and ordinary player entry unaffected.
     # Technical: AgentLpqTestService reads this only when scheduling GM harness characters named LPQer01 through LPQer06 on the operator's channel.
     server.agents.capabilities.partyquest.lpq.AgentLpqTestService.SPAWN_STAGGER_MS: '500'
+
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.
     # Technical: Stored on the EPQ member's private next-action deadline; it never pauses another PQ or the shared lobby renderer.
@@ -1137,6 +1138,7 @@ tuning:
     # Purpose: Bounds abandoned mixed EPQ runs without imposing autonomous timing on the human participant.
     # Technical: Applies only to HUMAN_ASSISTED EPQ sessions and remains below the authored 30-minute event timeout.
     server.agents.capabilities.partyquest.epq.AgentEpqWatchdogRuntime.HUMAN_ASSISTED_IDLE_MS: '480000'
+
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.
     # Technical: Each Agent stores its own next-action deadline; this value never pauses the session coordinator or another member's room tick.
@@ -1165,9 +1167,15 @@ tuning:
     # Purpose: Spaces creation of the six dedicated OPQ observation fixtures.
     # Technical: The GM-only harness consumes this value before PQ entry; active OPQ travel and room ticks do not use it.
     server.agents.capabilities.partyquest.opq.AgentOpqTestService.SPAWN_STAGGER_MS: '500'
+
     # Purpose: Spaces GM-only LMPQ observation fixture launches to avoid simultaneous login and build pressure.
     # Technical: Production LMPQ admission and coordination never read this value.
     server.agents.capabilities.partyquest.lmpq.AgentLmpqTestService.SPAWN_STAGGER_MS: '500'
+
+    # ---- PPQ companion-run and pace keys go below (PPQ branch only) ----
+
+    # ---- RJPQ keys go below (RJPQ branch only) ----
+
     # Values: 35-50. Recommended: 45 to provide learned second-job utility skills and legal equipment without approaching the entry ceiling.
     # Purpose: Selects the legal test-fixture level for role-covered LPQ observation parties while production Agents retain their real progression state.
     # Technical: AgentLpqTestFixtureService applies this level through the existing second-job build pipeline and admission revalidates the authored LPQ range.
