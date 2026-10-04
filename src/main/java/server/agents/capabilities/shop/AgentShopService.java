@@ -1020,14 +1020,15 @@ public final class AgentShopService {
             int[] bought,
             boolean topUp) {
         Character bot = sequence.bot();
-        AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.standing(bot.getId());
+        // the trip's own activity when the duty cannot be read at the counter (travel cleared its follow target)
+        AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.shoppingActivity(sequence.entry(), bot);
         if (activity == null) {
             return sequence;
         }
         AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
-        int hpGoal = topUp ? AgentSupplyReadiness.buyTarget(bot, true) : standard.hp();
+        int hpGoal = topUp ? AgentSupplyReadiness.buyTarget(activity, bot, true) : standard.hp();
         int mpGoal = !AgentSupplyReadiness.needsManaPotions(bot) ? 0
-                : topUp ? AgentSupplyReadiness.buyTarget(bot, false) : standard.mp();
+                : topUp ? AgentSupplyReadiness.buyTarget(activity, bot, false) : standard.mp();
         int[] carried = AgentPotionService.countPotions(bot);
         int hpWant = AgentPotionPurchasePolicy.floorQuantity(hpGoal, carried[0], bought[0]);
         int mpWant = AgentPotionPurchasePolicy.floorQuantity(mpGoal, carried[1], bought[1]);

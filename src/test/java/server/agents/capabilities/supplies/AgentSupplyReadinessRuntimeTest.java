@@ -844,6 +844,31 @@ class AgentSupplyReadinessRuntimeTest {
     }
 
     @Test
+    void standingAtTheShopItGaveUpOnIsNotHavingBeenElsewhere() {
+        // live 2026-10-04: a 7-hop trip ended at the store; one check there, before the follow warp landed, lifted the
+        // give-up and the companion set off again 5 s later
+        Character pip = companion(541, "Pip", Job.FP_WIZARD, 15, 30, 20_000);
+        AgentRuntimeEntry entry = following(pip);
+        long now = 1_000L;
+        for (int trip = 0; trip < 2; trip++) {
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, pip, now), "trip " + trip);
+            assertTrue(AgentSupplyProcurementRuntime.ownerCalledBack(entry, true));
+            AgentSupplyProcurementRuntime.tick(entry, pip, now + 100L);
+            assertFalse(execution(entry).isActive());
+            now += shortTripCooldownMs() + 5_000L;
+        }
+        assertEquals(4, calls.size(), calls.toString());
+
+        stand(pip, KERNING_SHOP, true); // still at the store it gave up on
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, pip, now));
+        stand(pip, KERNING, true);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, pip, now + shortTripCooldownMs() * 3));
+
+        assertFalse(execution(entry).isActive(), "no third trip from Kerning");
+        assertEquals(4, calls.size(), calls.toString());
+    }
+
+    @Test
     void aTripThatCameBackReadyClearsTheCountOfTripsCutShort() {
         Character pip = companion(538, "Pip", Job.FP_WIZARD, 15, 30, 20_000);
         AgentRuntimeEntry entry = following(pip);

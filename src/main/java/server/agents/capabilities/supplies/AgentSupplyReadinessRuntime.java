@@ -312,7 +312,7 @@ public final class AgentSupplyReadinessRuntime {
         AgentSupplyReadinessState state = entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY);
         int origin = state.originMapId() > 0 ? state.originMapId() : agent.getMapId();
         state.clearRequest();
-        cutShort(agent, state, origin, nowMs);
+        cutShort(agent, state, origin, -1, nowMs);
         log.info("Agent '{}' could not set off to restock; trying again in {} ms", agent.getName(),
                 AgentSupplyReadiness.shortTripCooldownMs());
     }
@@ -363,7 +363,7 @@ public final class AgentSupplyReadinessRuntime {
         AgentSupplyReadinessState state = entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY);
         int origin = state.originMapId() > 0 ? state.originMapId() : execution.returnMapId();
         if (execution.recalled()) {
-            cutShort(agent, state, origin, nowMs);
+            cutShort(agent, state, origin, execution.supplierMapId(), nowMs);
             return AgentSupplyReadiness.Outcome.INTERRUPTED;
         }
         AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(agent, activityOf(entry));
@@ -389,18 +389,21 @@ public final class AgentSupplyReadinessRuntime {
                     agent.getMapId());
             return AgentSupplyReadiness.Outcome.SHORT_SPACE;
         }
-        cutShort(agent, state, origin, nowMs);
+        cutShort(agent, state, origin, execution.supplierMapId(), nowMs);
         return AgentSupplyReadiness.Outcome.INTERRUPTED;
     }
 
     /**
      * A readiness trip from {@code originMapId} was cut short (or could not begin): it waits a short trip's cooldown;
-     * the second in a row from that town, it gives the town up until it has been on another map.
+     * the second in a row from that town, it gives the town up until it has been on another map than that town and the
+     * store those trips went to ({@code supplierMapId}; -1 when none).
      */
-    private static void cutShort(Character agent, AgentSupplyReadinessState state, int originMapId, long nowMs) {
+    private static void cutShort(Character agent, AgentSupplyReadinessState state, int originMapId,
+                                 int supplierMapId, long nowMs) {
         if (state.interrupted(originMapId) >= 2) {
             state.cooldown(AgentSupplyReadinessState.Cooldown.GAVE_UP, Long.MAX_VALUE, mesos(agent), 0,
                     freeUseSlots(agent), null, originMapId);
+            state.cooldownSupplier(supplierMapId);
             log.info("Agent '{}' gives up restocking from map {} after trips cut short in a row, until it has been"
                     + " elsewhere", agent.getName(), originMapId);
             return;
@@ -448,7 +451,7 @@ public final class AgentSupplyReadinessRuntime {
                 ? AgentSupplyReadiness.Activity.PARTY_QUEST : state.activity();
         int origin = state.originMapId() > 0 ? state.originMapId() : agent.getMapId();
         state.clearRequest();
-        cutShort(agent, state, origin, nowMs);
+        cutShort(agent, state, origin, -1, nowMs);
         log.info("Agent '{}' readiness request {} lost its trip; counted as interrupted", agent.getName(),
                 orphan.requestId());
         AgentSupplyReadiness.finished(agent.getId(), activity, AgentSupplyReadiness.Outcome.INTERRUPTED);
