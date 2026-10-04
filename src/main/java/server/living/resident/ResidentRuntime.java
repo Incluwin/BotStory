@@ -440,7 +440,9 @@ public final class ResidentRuntime {
         try {
             Loadout loadout = world.content().loadout(currentLoadoutId(persona));
             // its own quest gear first; the wardrobe then dresses every slot the kit does not actually hold
-            ResidentKit.apply(agent, persona, world.content(), world.config(), loadout, kitLedger);
+            if (kitAllowed(agent, persona)) {
+                ResidentKit.apply(agent, persona, world.content(), world.config(), loadout, kitLedger);
+            }
             var held = ResidentKit.slotsHeld(agent, ResidentKit.picks(agent, persona, world.content(), world.config()));
             ResidentWardrobe.dress(agent, persona, loadout, held, keptByContract(persona),
                     ResidentWardrobe.handedOut(world.content().loadouts().values()));
@@ -468,7 +470,7 @@ public final class ResidentRuntime {
         }
         AgentRuntimeEntry runtime = AgentRuntimeRegistry.findByAgentCharacterId(agent.getId());
         if (runtime == null) {
-            if (loading && agent.getClient() != null) {
+            if (loading && agent.getClient() != null && kitAllowed(agent, persona)) {
                 try {
                     ResidentKit.apply(agent, persona, world.content(), world.config(),
                             world.content().loadout(currentLoadoutId(persona)), kitLedger);
@@ -480,7 +482,7 @@ public final class ResidentRuntime {
         }
         server.agents.runtime.AgentMailboxRuntime.dispatch(runtime, entry -> {
             Character live = entry.bot();
-            if (live != null && live.getId() == agent.getId() && live.getClient() != null) {
+            if (live != null && live.getId() == agent.getId() && live.getClient() != null && kitAllowed(live, persona)) {
                 try {
                     ResidentKit.apply(live, persona, world.content(), world.config(),
                             world.content().loadout(currentLoadoutId(persona)), kitLedger);
@@ -490,6 +492,15 @@ public final class ResidentRuntime {
             }
             return null;
         });
+    }
+
+    /**
+     * False while a GM level set holds the character (GmLevelHolds; a record that cannot be read counts as held): its
+     * quest gear is for the level it really has, so it waits until the set is restored or kept.
+     */
+    boolean kitAllowed(Character agent, Persona persona) {
+        server.living.roster.GmLevelHolds holds = world.gmLevelHolds();
+        return holds == null || agent == null || persona == null || !holds.held(agent.getId(), persona.id());
     }
 
     /** The pieces made for the persona so far, or null while the ledger cannot be read (nothing is cached then). */

@@ -1316,6 +1316,11 @@ public final class CompanionPartyQuestService {
         return runByCharacter.get(characterId);
     }
 
+    /** True while the leader's Yes is being carried out (their companions are on their way in). */
+    boolean entering(int leaderId) {
+        return entering.contains(leaderId);
+    }
+
     Collection<CompanionRun> runs() {
         return List.copyOf(runsBySession.values());
     }
