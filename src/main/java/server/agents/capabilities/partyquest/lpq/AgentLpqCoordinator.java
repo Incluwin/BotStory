@@ -3936,7 +3936,7 @@ final class AgentLpqCoordinator {
                             session.sessionId(), agent.getName(), agent.getId(),
                             agent.getPosition(), alishar.getPosition());
                 }
-                ACTIONS.grind(entry, Set.of(AgentLpqDefinition.ALISHAR));
+                ACTIONS.grind(entry, Set.of(AgentLpqDefinition.ALISHAR), AgentLpqDefinition.ALISHAR_SUMMONS);
                 continue;
             }
             if (triggerRatzAlive && AgentLpqRosterRequirementPolicy.rangedAttack(agent)) {

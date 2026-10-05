@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.lpq;
 
 import java.util.List;
+import java.util.Set;
 
 /** Authoritative local Ludibrium PQ content contract. */
 public final class AgentLpqDefinition {
@@ -18,6 +19,8 @@ public final class AgentLpqDefinition {
     public static final int MAX_PARTY_SIZE = 6;
     public static final int RECOMMENDED_PARTY_SIZE = 6;
     public static final int ALISHAR = 9_300_012;
+    /** What Alishar summons: MobSkill 200 at levels 29, 30 and 31 (five each, at 75/50/25 % HP). */
+    public static final Set<Integer> ALISHAR_SUMMONS = Set.of(9_300_015, 9_300_016, 9_300_017);
     public static final int BOSS_TRIGGER_RATZ = 9_300_006;
     public static final int ROMBARD = 9_300_010;
     public static final int STAGE_7_TRIGGER_REACTOR = 2_201_002;
