@@ -1,5 +1,6 @@
 package server.agents.capabilities.partyquest.epq;
 
+import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
@@ -19,6 +20,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -172,6 +174,42 @@ class AgentEpqTestServicePartyProdTest {
         gm.cleanup.verify(() -> AgentRuntimeCleanupService.removeAgentByCharacterId(anyInt()), never());
         verify(gm.characters, never()).disconnect(any(), anyBoolean(), anyBoolean());
         gm.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.closeTest(any(), anyLong()), never());
+    }
+
+    @Test
+    void stopBeforeTheClearTakesEveryoneOutAndDisposesTheChannelsOnlyInstance() {
+        // Step 0's abort is '!epqtest stop': EllinPQ has one lobby per channel, so a stop before the clear frees it.
+        AgentEpqSessionRegistry.registerComplete(gm.session);
+        assertEquals(List.of(ADOPTED), gm.epqtest(gm.crew, 2_000L, "party", "prod", "7"));
+        gm.inside(AgentEpqDefinition.STAGE_FOUR_MAP);
+        List<Character> everyone = List.of(gm.crew, gm.lioren, gm.casse, gm.pell, gm.kestrel);
+        when(gm.event.getPlayers()).thenReturn(everyone);
+
+        assertEquals(List.of("EPQ test stopped safely."), gm.epqtest(gm.crew, 3_000L, "stop"));
+
+        var order = inOrder(gm.event);
+        for (Character member : everyone) order.verify(gm.event).exitPlayer(member);
+        order.verify(gm.event).dispose();
+        assertNull(gm.session.eventInstance());
+        verifyNoPartyChange();
+    }
+
+    @Test
+    void stopAfterTheClearTakesOnlyTheCompanionsOutAndKeepsTheEvent() {
+        AgentEpqSessionRegistry.registerComplete(gm.session);
+        assertEquals(List.of(ADOPTED), gm.epqtest(gm.crew, 2_000L, "party", "prod", "7"));
+        gm.inside(AgentEpqDefinition.REWARD_MAP);
+        when(gm.event.getPlayers()).thenReturn(List.of(gm.crew, gm.lioren, gm.casse, gm.pell, gm.kestrel));
+        when(gm.event.isEventCleared()).thenReturn(true);
+
+        assertEquals(List.of("EPQ test stopped safely."), gm.epqtest(gm.crew, 3_000L, "stop"));
+
+        for (Character companion : List.of(gm.lioren, gm.casse, gm.pell, gm.kestrel)) {
+            verify(gm.event).exitPlayer(companion);
+        }
+        verify(gm.event, never()).exitPlayer(gm.crew);
+        verify(gm.event, never()).dispose();
+        verifyNoPartyChange();
     }
 
     @Test
