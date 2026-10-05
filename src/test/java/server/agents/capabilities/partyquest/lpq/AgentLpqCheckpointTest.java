@@ -126,7 +126,7 @@ class AgentLpqCheckpointTest {
 
     /** Adopted at the Red Sign, then the party is inside its instance on stage 3's map, the session in {@code phase}. */
     private void adoptAndEnter(AgentLpqSession.Phase phase) {
-        assertEquals(List.of("Adopted as a companion run. Talk to the Red Sign within 30 seconds."),
+        assertEquals(List.of(AgentLpqTestServicePartyProdTest.ADOPTED),
                 AgentLpqTestService.execute(crew, new String[]{"party", "prod", "7"}, 2_000L));
         for (Character member : everyone) {
             when(member.getMapId()).thenReturn(AgentLpqDefinition.stage(3).mapId());
@@ -277,7 +277,7 @@ class AgentLpqCheckpointTest {
 
     @Test
     void notBeforeThePartyIsInside() {
-        assertEquals(List.of("Adopted as a companion run. Talk to the Red Sign within 30 seconds."),
+        assertEquals(List.of(AgentLpqTestServicePartyProdTest.ADOPTED),
                 AgentLpqTestService.execute(crew, new String[]{"party", "prod", "7"}, 2_000L));
         assertEquals(List.of("The LPQ party has not entered yet."), checkpoint("5"));
         session.transition(AgentLpqSession.Phase.ENTERING, 3_000L);

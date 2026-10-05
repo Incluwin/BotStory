@@ -40,6 +40,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /** GM-only full LPQ and mixed-party observation harness. */
 public final class AgentLpqTestService {
@@ -220,8 +221,21 @@ public final class AgentLpqTestService {
         run.session = result.session();
         run.eventLeaderId = operator.getId();
         RUNS.put(operator.getId(), run);
-        response.add("Adopted as a companion run. Talk to the Red Sign within 30 seconds.");
+        response.add("Adopted as a companion run. Talk to the Red Sign now; the run waits up to " + preparingWait()
+                + " for you.");
         return response;
+    }
+
+    /**
+     * How long an adopted run waits at the Red Sign for its leader to talk to it. Step 1 has no entry wait of its own:
+     * a human-led PREPARING run makes no progress until it enters, so it ends at the coordinator's PHASE_TIMEOUT_MS.
+     */
+    private static String preparingWait() {
+        long waitMs = config.AgentTuning.longValue(
+                "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PHASE_TIMEOUT_MS");
+        long minutes = TimeUnit.MILLISECONDS.toMinutes(waitMs);
+        if (minutes > 0) return minutes + (minutes == 1 ? " minute" : " minutes");
+        return TimeUnit.MILLISECONDS.toSeconds(waitMs) + " seconds";
     }
 
     private static boolean finished(Run run) {
