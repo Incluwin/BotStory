@@ -17,6 +17,8 @@ import java.util.Set;
  * fights the summon first; melee members take the summons first and Alishar when none is up.
  */
 final class AgentLpqStageNineBossPolicy {
+    private static final int REACH_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.REACH_PX");
     private static final int STANDOFF_MIN_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.STANDOFF_MIN_PX");
     private static final int STANDOFF_MAX_PX = config.AgentTuning.intValue(
@@ -104,6 +106,9 @@ final class AgentLpqStageNineBossPolicy {
     static Band band() { return new Band(STANDOFF_MIN_PX, STANDOFF_MAX_PX); }
 
     static int floorEdgeMarginPx() { return FLOOR_EDGE_MARGIN_PX; }
+
+    /** How far Alishar reaches either side of him: the wider of his attack1 and his Seal and Darkness envelope. */
+    static int reachPx() { return REACH_PX; }
 
     static int addThreatPx() { return ADD_THREAT_PX; }
 
@@ -220,7 +225,7 @@ final class AgentLpqStageNineBossPolicy {
         boolean rest = resting(current.resting(), pass.hpPotions(), pass.potStop(), pass.hp(), pass.maxHp(),
                 REST_HP_FRACTION, RESUME_HP_FRACTION);
         if (rest) {
-            Point restPoint = restPoint(boss, position, current.restPoint(), band, floor);
+            Point restPoint = restPoint(boss, position, current.restPoint(), floor, REACH_PX);
             MemberState next = new MemberState(current.group(), current.homeSide(), current.side(),
                     current.station(), true, restPoint);
             // Within the anchored farm's own 8-px arrival it stands still; otherwise it walks there.
@@ -246,14 +251,17 @@ final class AgentLpqStageNineBossPolicy {
     }
 
     /**
-     * Where a resting member waits: the usable floor end on its side of Alishar while that end is at least the band's
-     * minimum from him, else the other end; a stored rest point is kept while it stays that far from him.
+     * Where a resting member waits: its stored rest point while that stays out of Alishar's reach (more than
+     * {@code reachPx} from him), so his steps around a threshold do not walk it to and fro; otherwise the usable floor
+     * end on its side of him while that end is out of his reach, else the other end. A resting member therefore
+     * crosses him only when its own side has no room outside his reach (one end always has: the usable floor is
+     * wider than twice his reach).
      */
-    static Point restPoint(Point boss, Point position, Point stored, Band band, Floor floor) {
-        if (stored != null && Math.abs(stored.x - boss.x) >= band.minPx()) return stored;
+    static Point restPoint(Point boss, Point position, Point stored, Floor floor, int reachPx) {
+        if (stored != null && Math.abs(stored.x - boss.x) > reachPx) return stored;
         Point left = new Point(floor.usableLeftX(), floor.y());
         Point right = new Point(floor.usableRightX(), floor.y());
         Point near = sideOf(position, boss) == Side.LEFT ? left : right;
-        return Math.abs(near.x - boss.x) >= band.minPx() ? near : (near == left ? right : left);
+        return Math.abs(near.x - boss.x) > reachPx ? near : (near == left ? right : left);
     }
 }

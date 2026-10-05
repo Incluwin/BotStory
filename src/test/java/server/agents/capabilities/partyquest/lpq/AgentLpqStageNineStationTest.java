@@ -57,7 +57,10 @@ class AgentLpqStageNineStationTest {
         }
         assertEquals(300, debuffHalfWidth);
 
-        assertTrue(BAND.minPx() > Math.max(attackReach, debuffHalfWidth), "a station is out of his reach");
+        assertEquals(Math.max(attackReach, debuffHalfWidth), AgentLpqStageNineBossPolicy.reachPx(), "his reach");
+        assertTrue(BAND.minPx() > AgentLpqStageNineBossPolicy.reachPx(), "a station is out of his reach");
+        assertTrue(FLOOR.usableRightX() - FLOOR.usableLeftX() > 2 * AgentLpqStageNineBossPolicy.reachPx(),
+                "one floor end is always out of his reach");
         assertTrue(BAND.minPx() < BAND.maxPx());
         assertTrue(BAND.maxPx() <= AgentProjectileHitbox.CLIENT_PROJECTILE_BASE_RANGE, "and inside a shot's range");
     }
