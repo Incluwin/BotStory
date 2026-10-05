@@ -2,7 +2,9 @@ package server.agents.capabilities.partyquest.lpq;
 
 import client.Character;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 
 /** Activity facade for the isolated LPQ aggregate. */
 public final class AgentLpqRuntime {
@@ -29,9 +31,19 @@ public final class AgentLpqRuntime {
                 session, entry, agent, nowMs)) {
             return true;
         }
-        if (!session.claimExecutionTick(agent.getId(), nowMs, LEASE_MS)) return true;
+        if (!session.claimExecutionTick(agent.getId(), nowMs, LEASE_MS, AgentLpqRuntime::holderAlive)) return true;
         AgentLpqCoordinator.tick(session, nowMs);
         return true;
+    }
+
+    /**
+     * Whether an LPQ coordinator lease holder can still drive the party: its Agent is loaded and has HP left (the
+     * watchdog's own live test). A dead or unloaded holder hands the lease over at once.
+     */
+    static boolean holderAlive(int characterId) {
+        AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(characterId);
+        Character holder = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
+        return holder != null && holder.getHp() > 0;
     }
 
     public static boolean requestStop(int id, String reason, long nowMs) {

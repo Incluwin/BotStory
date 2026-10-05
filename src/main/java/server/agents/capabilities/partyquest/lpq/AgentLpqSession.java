@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.IntPredicate;
 import java.util.function.Supplier;
 
 /** Isolated party-level LPQ state machine. */
@@ -133,18 +134,38 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     }
 
     public synchronized boolean claimExecutionTick(int characterId, long nowMs, long leaseMs) {
+        return claimExecutionTick(characterId, nowMs, leaseMs, holder -> true);
+    }
+
+    /**
+     * As {@link #claimExecutionTick(int, long, long)}, except that a holder for which {@code holderAlive} is false
+     * (dead, or no longer loaded) loses its lease at once: a dead Agent's tick never reaches the LPQ runtime, so its
+     * lease would otherwise freeze every coordinator pass until it ran out. A live holder keeps it until it expires.
+     */
+    public synchronized boolean claimExecutionTick(int characterId, long nowMs, long leaseMs,
+                                                   IntPredicate holderAlive) {
         AgentLpqMemberState member = members.get(characterId);
         if (member == null || member.memberType() != AgentLpqMemberState.MemberType.AGENT) return false;
-        if (executionAgentId != characterId && nowMs < executionLeaseUntilMs) return false;
+        if (executionAgentId != characterId && nowMs < executionLeaseUntilMs
+                && holderAlive.test(executionAgentId)) return false;
         executionAgentId = characterId;
         executionLeaseUntilMs = nowMs + Math.max(250L, leaseMs);
         return true;
     }
 
     public synchronized boolean claimExpiredExecutionTick(int characterId, long nowMs, long leaseMs) {
+        return claimExpiredExecutionTick(characterId, nowMs, leaseMs, holder -> true);
+    }
+
+    /**
+     * The watchdog's claim of an expired lease, with the same dead-holder rule as
+     * {@link #claimExecutionTick(int, long, long, IntPredicate)}.
+     */
+    public synchronized boolean claimExpiredExecutionTick(int characterId, long nowMs, long leaseMs,
+                                                          IntPredicate holderAlive) {
         AgentLpqMemberState member = members.get(characterId);
         if (member == null || member.memberType() != AgentLpqMemberState.MemberType.AGENT
-                || nowMs < executionLeaseUntilMs) return false;
+                || (nowMs < executionLeaseUntilMs && holderAlive.test(executionAgentId))) return false;
         executionAgentId = characterId;
         executionLeaseUntilMs = nowMs + Math.max(250L, leaseMs);
         return true;

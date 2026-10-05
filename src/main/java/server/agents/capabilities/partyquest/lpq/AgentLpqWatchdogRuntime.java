@@ -38,6 +38,8 @@ final class AgentLpqWatchdogRuntime {
         Character agent = AgentRuntimeIdentityRuntime.bot(entry);
         long lease = config.AgentTuning.longValue(
                 "server.agents.capabilities.partyquest.lpq.AgentLpqRuntime.COORDINATOR_LEASE_MS");
-        if (session.claimExpiredExecutionTick(agent.getId(), nowMs, lease)) AgentLpqCoordinator.tick(session, nowMs);
+        if (session.claimExpiredExecutionTick(agent.getId(), nowMs, lease, AgentLpqRuntime::holderAlive)) {
+            AgentLpqCoordinator.tick(session, nowMs);
+        }
     }
 }
