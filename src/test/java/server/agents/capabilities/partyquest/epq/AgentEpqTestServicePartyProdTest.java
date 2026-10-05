@@ -182,6 +182,52 @@ class AgentEpqTestServicePartyProdTest {
     }
 
     @Test
+    void hisOwnFixtureStartRefusesWhileHisCompanionRunIsLiveAndTheStopStillReachesIt() {
+        AgentEpqSessionRegistry.registerComplete(gm.session);
+        AgentPartyQuestEngagementRegistry.register(gm.engagement);
+        assertEquals(List.of(ADOPTED), gm.epqtest(gm.crew, 2_000L, "party", "prod", "7"));
+        when(gm.party.snapshot(gm.crew)).thenReturn(null); // he left his party; the run is still live
+
+        assertEquals(List.of("Stop the current EPQ test before starting another."),
+                gm.epqtest(gm.crew, System.currentTimeMillis(), "start", "11"));
+
+        assertEquals("EPQ phase: PREPARING", gm.epqtest(gm.crew, 3_000L, "status").getFirst());
+        assertEquals(List.of("EPQ test stopped safely."), gm.epqtest(gm.crew, 4_000L, "stop"));
+        assertTrue(gm.session.terminal(), "the stop reached his companion run");
+        assertNull(AgentEpqSessionRegistry.forOperator(CREW));
+        gm.interaction.verifyNoInteractions();
+        gm.scheduler.verifyNoInteractions();
+    }
+
+    @Test
+    void aFinishedCompanionRunMakesWayForHisOwnFixtureStart() {
+        assertEquals(List.of(ADOPTED), gm.epqtest(gm.crew, 2_000L, "party", "prod", "7"));
+        gm.session.fail("EPQ stalled in STAGE_ONE for 480 seconds", 3_000L);
+        when(gm.party.snapshot(gm.crew)).thenReturn(null);
+
+        List<String> started = gm.epqtest(gm.crew, System.currentTimeMillis(), "start", "11");
+
+        assertEquals("Five EPQ Agents are preparing: Warrior, Magician, Bowman, Thief, and Pirate.",
+                started.getFirst(), started::toString);
+        assertEquals(List.of("EPQ Agents prepared: 0/5", "flow: AGENTS_ONLY"),
+                gm.epqtest(gm.crew, 3_000L, "status"));
+    }
+
+    @Test
+    void aFixtureStartTheEngagementRegistryRefusesLeavesNoRunBehind() {
+        // His engagement is still held (a recovery deferred while a companion is down) with no run left here.
+        AgentPartyQuestEngagementRegistry.register(gm.engagement);
+        when(gm.party.snapshot(gm.crew)).thenReturn(null);
+
+        assertEquals(List.of("EPQ test command failed: operator already owns a party-quest engagement"),
+                gm.epqtest(gm.crew, System.currentTimeMillis(), "start", "11"));
+
+        assertEquals(List.of("No EPQ test is active."), gm.epqtest(gm.crew, 3_000L, "status"));
+        assertSame(gm.engagement, AgentPartyQuestEngagementRegistry.forOperator(CREW), "his engagement is untouched");
+        gm.scheduler.verifyNoInteractions();
+    }
+
+    @Test
     void helpListsTheTwoNewCommands() {
         List<String> help = gm.epqtest(gm.crew, 2_000L);
         assertTrue(help.contains("!epqtest party prod [seed] (adopt your own party as a companion run; you lead)"),

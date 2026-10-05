@@ -89,6 +89,13 @@ public final class AgentEpqTestService {
         if (operator.getMapId() != AgentEpqDefinition.RECRUIT_MAP) {
             return List.of("Stand at the Ellin Forest PQ entrance (300030100) first.");
         }
+        // His own companion run is never replaced, or '!epqtest stop' would lose it: a live one needs that stop first,
+        // a finished one makes way. The reset below leaves every operator's companion run alone.
+        Run own = RUNS.get(operator.getId());
+        if (own != null && own.flow == Flow.ADOPTED) {
+            if (!finished(own)) return List.of("Stop the current EPQ test before starting another.");
+            RUNS.remove(operator.getId(), own);
+        }
         if (AgentPartyGatewayRuntime.party().snapshot(operator) != null) {
             return List.of("Leave your current party before starting this EPQ test.");
         }
@@ -118,8 +125,15 @@ public final class AgentEpqTestService {
             run.eventLeaderId = operator.getId();
         }
         RUNS.put(operator.getId(), run);
-        AgentPartyQuestEngagementRegistry.register(engagement);
-        openLobby(run, nowMs);
+        try {
+            AgentPartyQuestEngagementRegistry.register(engagement);
+            openLobby(run, nowMs);
+        } catch (RuntimeException failure) {
+            // As HPQ's start: a run the registry refused is not kept, so status and stop never see a phantom.
+            RUNS.remove(operator.getId(), run);
+            AgentPartyQuestEngagementRegistry.remove(engagement);
+            throw failure;
+        }
         for (int index = 0; index < agentCount; index++) {
             String name = NAMES.get(index);
             String failure = PROVISIONING.ensureBackingCharacter(operator, name);
@@ -157,8 +171,7 @@ public final class AgentEpqTestService {
         }
         // A finished companion run keeps its entry here with nothing left to clean up; any other run needs a stop.
         Run existing = RUNS.get(operator.getId());
-        if (existing != null && existing.flow == Flow.ADOPTED
-                && (existing.session == null || existing.session.terminal())) {
+        if (existing != null && existing.flow == Flow.ADOPTED && finished(existing)) {
             RUNS.remove(operator.getId(), existing);
         }
         if (RUNS.containsKey(operator.getId())) {
@@ -185,6 +198,11 @@ public final class AgentEpqTestService {
         run.eventLeaderId = operator.getId();
         RUNS.put(operator.getId(), run);
         return List.of("Adopted as a companion run. Talk to Ellin within 30 seconds.");
+    }
+
+    /** A party prod companion run with nothing left for a stop to do: its session has ended. */
+    private static boolean finished(Run run) {
+        return run.session == null || run.session.terminal();
     }
 
     /**
