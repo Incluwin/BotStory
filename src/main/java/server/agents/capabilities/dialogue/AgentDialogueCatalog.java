@@ -555,13 +555,23 @@ public final class AgentDialogueCatalog {
         return SHOP_SELL_INTERRUPTED_REPLY;
     }
 
-    public static String shopSoldTrashReply(int soldCount) {
-        return "sold " + soldCount + " trash equip" + (soldCount != 1 ? "s" : "");
+    public static String shopSoldTrashReply(int equips, int etcStacks) {
+        return "sold " + trashSaleSummary(equips, etcStacks);
     }
 
-    public static String shopSellTrashFailureReply(int failedCount) {
-        String items = failedCount + " item" + (failedCount != 1 ? "s" : "");
-        return "unable to sell " + items + ", tell me to drop them if you want them gone";
+    public static String shopSellTrashFailureReply(int equips, int etcStacks) {
+        return "unable to sell " + trashSaleSummary(equips, etcStacks)
+                + ", tell me to drop them if you want them gone";
+    }
+
+    /** "3 trash equips", "2 stacks of etc", or both joined with "and"; a part with no count is left out. */
+    private static String trashSaleSummary(int equips, int etcStacks) {
+        String equipPart = equips + " trash equip" + (equips != 1 ? "s" : "");
+        String etcPart = etcStacks + " stack" + (etcStacks != 1 ? "s" : "") + " of etc";
+        if (etcStacks <= 0) {
+            return equipPart;
+        }
+        return equips <= 0 ? etcPart : equipPart + " and " + etcPart;
     }
 
     public static String shopKeeperGoneSellReply() {

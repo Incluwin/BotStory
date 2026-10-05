@@ -100,6 +100,26 @@ public final class AgentShopService {
             ShopItem shopItem,
             AgentPotionRecoveryPolicy.Recovery recovery) {}
 
+    /**
+     * What a sell-trash pass got rid of: trash equips one at a time, surplus ETC a stack (sale line) at a time.
+     * Kept apart so the Agent never reports ETC pieces as equips.
+     */
+    private record SaleTally(int equipsSold, int equipsFailed, int etcStacksSold, int etcStacksFailed) {
+        SaleTally withEtcSale(boolean sold) {
+            return sold
+                    ? new SaleTally(equipsSold, equipsFailed, etcStacksSold + 1, etcStacksFailed)
+                    : new SaleTally(equipsSold, equipsFailed, etcStacksSold, etcStacksFailed + 1);
+        }
+
+        boolean anySold() {
+            return equipsSold > 0 || etcStacksSold > 0;
+        }
+
+        boolean anyFailed() {
+            return equipsFailed > 0 || etcStacksFailed > 0;
+        }
+    }
+
     public static void onMapChange(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
         clearShopState(entry);
         if (bot == null || bot.getMap() == null) {
@@ -548,8 +568,8 @@ public final class AgentShopService {
         if (items.isEmpty()) {
             scheduleShopStep(sequence.entry(), SELL_TRASH_STEP_DELAY_MS,
                     () -> runEtcSaleStep(
-                             sequence.entry(), sequence.bot(), sequence.npcPos(), 0, 0, 0,
-                             etcPlan, sequence.bought(), sequence.firstShortfall(),
+                             sequence.entry(), sequence.bot(), sequence.npcPos(),
+                             new SaleTally(0, 0, 0, 0), 0, etcPlan, sequence.bought(), sequence.firstShortfall(),
                              sequence.inventory(), afterSale));
             return;
         }
@@ -574,7 +594,7 @@ public final class AgentShopService {
             AgentRuntimeEntry entry,
             Character bot,
             Point npcPos,
-            int soldCount,
+            int equipsSold,
             Set<Item> failedItems,
             List<Item> plan,
             List<AgentEtcSaleCandidate> etcPlan,
@@ -594,28 +614,27 @@ public final class AgentShopService {
                         entry, item, System.currentTimeMillis()))
                 .toList();
         if (items.isEmpty()) {
+            SaleTally tally = new SaleTally(equipsSold, failedItems.size(), 0, 0);
             if (!etcPlan.isEmpty()) {
                 scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                        () -> runEtcSaleStep(entry, bot, npcPos, soldCount,
-                                failedItems.size(), 0, etcPlan, bought, firstShortfall,
-                                inventory, afterSale));
+                        () -> runEtcSaleStep(entry, bot, npcPos, tally, 0, etcPlan, bought,
+                                firstShortfall, inventory, afterSale));
                 return;
             }
-            finishSellTrashSequence(entry, bot, inventory, npcPos, soldCount,
-                    failedItems.size(), bought, firstShortfall, afterSale);
+            finishSellTrashSequence(entry, bot, inventory, npcPos, tally, bought, firstShortfall, afterSale);
             return;
         }
 
         Item item = items.get(0);
         if (!AgentInventoryReservationRuntime.mayConsume(entry, item, System.currentTimeMillis())) {
             scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                    () -> runSellTrashStep(entry, bot, npcPos, soldCount, failedItems,
+                    () -> runSellTrashStep(entry, bot, npcPos, equipsSold, failedItems,
                             plan, etcPlan, bought, firstShortfall, inventory, afterSale));
             return;
         }
         if (!AgentInventoryItemPolicy.hasItem(bot, item)) {
             scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                    () -> runSellTrashStep(entry, bot, npcPos, soldCount, failedItems,
+                    () -> runSellTrashStep(entry, bot, npcPos, equipsSold, failedItems,
                             plan, etcPlan, bought, firstShortfall, inventory, afterSale));
             return;
         }
@@ -635,14 +654,14 @@ public final class AgentShopService {
         if (AgentInventoryItemPolicy.hasItem(bot, item)) {
             failedItems.add(item);
             scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                    () -> runSellTrashStep(entry, bot, npcPos, soldCount, failedItems,
+                    () -> runSellTrashStep(entry, bot, npcPos, equipsSold, failedItems,
                             plan, etcPlan, bought, firstShortfall, inventory, afterSale));
             return;
         }
 
-        int nextSoldCount = soldCount + 1;
+        int nextEquipsSold = equipsSold + 1;
         scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                () -> runSellTrashStep(entry, bot, npcPos, nextSoldCount, failedItems,
+                () -> runSellTrashStep(entry, bot, npcPos, nextEquipsSold, failedItems,
                         plan, etcPlan, bought, firstShortfall, inventory, afterSale));
     }
 
@@ -650,8 +669,7 @@ public final class AgentShopService {
             AgentRuntimeEntry entry,
             Character bot,
             Point npcPos,
-            int soldCount,
-            int failedCount,
+            SaleTally tally,
             int index,
             List<AgentEtcSaleCandidate> plan,
             List<String> bought,
@@ -663,8 +681,7 @@ public final class AgentShopService {
             return;
         }
         if (index >= plan.size()) {
-            finishSellTrashSequence(entry, bot, inventory, npcPos, soldCount,
-                    failedCount, bought, firstShortfall, afterSale);
+            finishSellTrashSequence(entry, bot, inventory, npcPos, tally, bought, firstShortfall, afterSale);
             return;
         }
 
@@ -678,7 +695,7 @@ public final class AgentShopService {
                 Math.min(item.getQuantity(), available));
         if (!AgentInventoryItemPolicy.hasItem(bot, item) || quantity <= 0) {
             scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                    () -> runEtcSaleStep(entry, bot, npcPos, soldCount, failedCount,
+                    () -> runEtcSaleStep(entry, bot, npcPos, tally,
                             index + 1, plan, bought, firstShortfall, inventory, afterSale));
             return;
         }
@@ -697,10 +714,10 @@ public final class AgentShopService {
         AgentShopGatewayRuntime.shop().sell(
                 bot, shop, InventoryType.ETC, item.getPosition(), (short) quantity);
         int after = bot.getInventory(InventoryType.ETC).countById(item.getItemId());
-        int sold = Math.max(0, before - after);
+        // One sale line is one stack in the Agent's telling, however many pieces it moved.
+        SaleTally next = tally.withEtcSale(after < before);
         scheduleShopStep(entry, SELL_TRASH_STEP_DELAY_MS,
-                 () -> runEtcSaleStep(entry, bot, npcPos, soldCount + sold,
-                         sold > 0 ? failedCount : failedCount + 1,
+                 () -> runEtcSaleStep(entry, bot, npcPos, next,
                          index + 1, plan, bought, firstShortfall, inventory, afterSale));
     }
 
@@ -709,19 +726,19 @@ public final class AgentShopService {
             Character bot,
             InventoryGateway inventory,
             Point npcPos,
-            int soldCount,
-            int failedCount,
+            SaleTally tally,
             List<String> bought,
             AgentShopBuyReport firstShortfall,
             Runnable afterSale) {
         AgentShopStateRuntime.setShopSellTrashPending(entry, false);
-        if (soldCount > 0) {
-            AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopSoldTrashReply(soldCount));
-        }
-        if (failedCount > 0) {
+        if (tally.anySold()) {
             AgentShopRuntime.sayMapNow(bot,
-                    AgentDialogueCatalog.shopSellTrashFailureReply(failedCount));
-        } else if (soldCount == 0) {
+                    AgentDialogueCatalog.shopSoldTrashReply(tally.equipsSold(), tally.etcStacksSold()));
+        }
+        if (tally.anyFailed()) {
+            AgentShopRuntime.sayMapNow(bot,
+                    AgentDialogueCatalog.shopSellTrashFailureReply(tally.equipsFailed(), tally.etcStacksFailed()));
+        } else if (!tally.anySold()) {
             AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopNoTrashEquipsReply());
         }
         afterSale.run();

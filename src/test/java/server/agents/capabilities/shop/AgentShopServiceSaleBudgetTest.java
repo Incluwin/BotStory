@@ -32,8 +32,10 @@ import testutil.Items;
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -54,6 +56,9 @@ import static org.mockito.Mockito.when;
  * of SHOP_SEQUENCE_TIMEOUT_MS selling and gave up mid-purchase ("took too long at the shop, giving up"), which the
  * supply trip counts as a failed shop visit. The visit is replayed on a virtual clock with every purchase step at
  * SHOP_STEP_DELAY_MAX_MS, ticking the visit before each scheduled step the way the procurement loop does.
+ *
+ * <p>The same visit checks what the Agent says about the sale: the ETC step once added the pieces it sold to the
+ * equip count, so 48 trash equips and twelve 100-piece stacks came out as "sold 1248 trash equips".
  */
 class AgentShopServiceSaleBudgetTest {
     private static final int NPC_ID = 2_020_001;
@@ -62,6 +67,7 @@ class AgentShopServiceSaleBudgetTest {
     private static final int RED_PRICE = 50;
     private static final int FIRST_ETC = 4_000_000;
     private static final int TRASH_SWORD = 1_302_000;
+    private static final int TRASH_SHIELD = 1_092_000;
     private static final int APPROACH_TICK_MS = 100;
 
     private record Step(long atMs, long order, Runnable action) {}
@@ -73,6 +79,8 @@ class AgentShopServiceSaleBudgetTest {
             Comparator.comparingLong(Step::atMs).thenComparingLong(Step::order));
     private final List<String> spoken = new ArrayList<>();
     private final List<String> bought = new ArrayList<>();
+    /** Item ids the shopkeeper refuses to buy back. */
+    private final Set<Integer> unsellable = new HashSet<>();
     private final StatEffect redEffect = mock(StatEffect.class);
     private long now;
     private long order;
@@ -127,6 +135,9 @@ class AgentShopServiceSaleBudgetTest {
             InventoryType type = inv.getArgument(2);
             short slot = inv.getArgument(3);
             short quantity = inv.getArgument(4);
+            if (unsellable.contains(bot.getInventory(type).getItem(slot).getItemId())) {
+                return Shop.TransactionResult.INVALID;
+            }
             bot.getInventory(type).removeItem(slot, quantity, false);
             return Shop.TransactionResult.SUCCESS;
         });
@@ -191,6 +202,40 @@ class AgentShopServiceSaleBudgetTest {
         assertFalse(bought.isEmpty(), "the purchase steps ran after the sale");
     }
 
+    @Test
+    void etcPiecesSoldAreNotCountedAsTrashEquips() {
+        carry(12, 48);
+
+        supplyTrip();
+
+        assertEquals(List.of("sold 48 trash equips and 12 stacks of etc"), saleLines());
+    }
+
+    @Test
+    void onlyEtcSoldIsToldAsStacksOfEtc() {
+        carry(3, 0);
+
+        supplyTrip();
+
+        assertEquals(List.of("sold 3 stacks of etc"), saleLines());
+    }
+
+    @Test
+    void unsoldEquipsAndEtcStacksAreCountedApart() {
+        carry(3, 4);
+        equips.addItem(Equip.restored(TRASH_SHIELD, (short) 0));
+        unsellable.add(TRASH_SHIELD);
+        unsellable.add(FIRST_ETC);
+        unsellable.add(FIRST_ETC + 1);
+
+        supplyTrip();
+
+        assertEquals(List.of(
+                "sold 4 trash equips and 1 stack of etc",
+                "unable to sell 1 trash equip and 2 stacks of etc, tell me to drop them if you want them gone"),
+                saleLines());
+    }
+
     /** {@code etcStacks} stacks of 100 sellable ETC and {@code trashEquips} trash equips. */
     private void carry(int etcStacks, int trashEquips) {
         for (int i = 0; i < etcStacks; i++) {
@@ -199,6 +244,13 @@ class AgentShopServiceSaleBudgetTest {
         for (int i = 0; i < trashEquips; i++) {
             equips.addItem(Equip.restored(TRASH_SWORD, (short) 0));
         }
+    }
+
+    /** What the Agent said about the sale itself. */
+    private List<String> saleLines() {
+        return spoken.stream()
+                .filter(line -> line.startsWith("sold ") || line.startsWith("unable to sell "))
+                .toList();
     }
 
     /**

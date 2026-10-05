@@ -72,10 +72,14 @@ class AgentDialogueCatalogTest {
         assertEquals("turned out I didn't need anything here", AgentDialogueCatalog.shopEmptyResupplyReply());
         assertEquals("bought 10 Arrow, 5 Potion", AgentDialogueCatalog.shopBoughtReply(java.util.List.of("10 Arrow", "5 Potion")));
         assertEquals("couldn't stay at the shop to sell, never mind", AgentDialogueCatalog.shopSellInterruptedReply());
-        assertEquals("sold 1 trash equip", AgentDialogueCatalog.shopSoldTrashReply(1));
-        assertEquals("sold 2 trash equips", AgentDialogueCatalog.shopSoldTrashReply(2));
-        assertEquals("unable to sell 2 items, tell me to drop them if you want them gone",
-                AgentDialogueCatalog.shopSellTrashFailureReply(2));
+        assertEquals("sold 1 trash equip", AgentDialogueCatalog.shopSoldTrashReply(1, 0));
+        assertEquals("sold 2 trash equips", AgentDialogueCatalog.shopSoldTrashReply(2, 0));
+        assertEquals("sold 1 stack of etc", AgentDialogueCatalog.shopSoldTrashReply(0, 1));
+        assertEquals("sold 48 trash equips and 12 stacks of etc", AgentDialogueCatalog.shopSoldTrashReply(48, 12));
+        assertEquals("unable to sell 2 trash equips, tell me to drop them if you want them gone",
+                AgentDialogueCatalog.shopSellTrashFailureReply(2, 0));
+        assertEquals("unable to sell 1 trash equip and 2 stacks of etc, tell me to drop them if you want them gone",
+                AgentDialogueCatalog.shopSellTrashFailureReply(1, 2));
         assertEquals("the shopkeeper's gone, can't sell", AgentDialogueCatalog.shopKeeperGoneSellReply());
         assertEquals("this shop's closed, can't sell", AgentDialogueCatalog.shopClosedSellReply());
         assertEquals("no room in my bag for Arrow", AgentDialogueCatalog.shopNoSpaceReply("Arrow", "0", "10", 0));
