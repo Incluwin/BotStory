@@ -14,7 +14,7 @@ final class AgentEpqWatchdogRuntime {
         long limit = session.mode() == AgentEpqSession.Mode.HUMAN_ASSISTED
                 ? HUMAN_ASSISTED_IDLE_MS : AUTONOMOUS_IDLE_MS;
         if (nowMs - session.lastProgressAtMs() >= limit) {
-            session.fail("EPQ stalled in " + session.phase() + " for "
+            AgentEpqCoordinator.fail(session, "EPQ stalled in " + session.phase() + " for "
                     + (limit / 1_000L) + " seconds", nowMs);
         }
     }

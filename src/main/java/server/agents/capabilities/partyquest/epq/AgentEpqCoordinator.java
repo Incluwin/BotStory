@@ -3,6 +3,8 @@ package server.agents.capabilities.partyquest.epq;
 import client.Character;
 import client.inventory.Item;
 import client.inventory.InventoryType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.capabilities.combat.AgentAttackPlan;
 import server.agents.capabilities.combat.AgentAttackTransactionResult;
@@ -35,6 +37,7 @@ import java.util.Set;
 
 /** EPQ stage coordinator. Every action follows the authored field interaction. */
 public final class AgentEpqCoordinator {
+    private static final Logger log = LoggerFactory.getLogger(AgentEpqCoordinator.class);
     private static final long ACTION_RETRY_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCoordinator.ACTION_RETRY_MS");
     private static final long EVENT_TIMEOUT_MS = config.AgentTuning.longValue(
@@ -63,7 +66,7 @@ public final class AgentEpqCoordinator {
 
     public static void tickSession(AgentEpqSession session, long nowMs) {
         if (nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS && !session.terminal()) {
-            session.fail("EPQ event timer expired", nowMs);
+            fail(session, "EPQ event timer expired", nowMs);
             return;
         }
         Character leader = character(session.eventLeaderId());
@@ -88,6 +91,16 @@ public final class AgentEpqCoordinator {
         }
     }
 
+    /**
+     * Fails the run as before, with one 'EPQ session failure:' line in every mode: the phase it was in, the reason, its
+     * size and whether it is a companion run.
+     */
+    static void fail(AgentEpqSession session, String reason, long nowMs) {
+        log.warn("EPQ session failure: session={} phase={} reason={} members={} companionRun={}",
+                session.sessionId(), session.phase(), reason, session.memberCount(), session.companionAdopted());
+        session.fail(reason, nowMs);
+    }
+
     public static void tickMember(
             AgentEpqSession session, AgentRuntimeEntry entry, Character agent, long nowMs) {
         AgentEpqMemberState member = session.member(agent.getId());
@@ -100,7 +113,7 @@ public final class AgentEpqCoordinator {
         }
         if (session.eventInstance() != null && AgentEpqDefinition.isEventMap(agent.getMapId())
                 && agent.getEventInstance() != session.eventInstance()) {
-            session.fail("EPQ member entered a different event instance", nowMs);
+            fail(session, "EPQ member entered a different event instance", nowMs);
             return;
         }
 
