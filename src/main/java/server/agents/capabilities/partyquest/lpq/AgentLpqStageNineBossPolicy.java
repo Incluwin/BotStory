@@ -14,7 +14,8 @@ import java.util.Set;
  * when its station no longer fits on the floor (inside FLOOR_EDGE_MARGIN_PX of a wall), and a member pushed off its
  * preferred side returns only once that side fits with a margin of the band's width, so Alishar stepping around a
  * threshold does not walk a group back and forth through him. A shooter with one of his summons within ADD_THREAT_PX
- * fights the summon first; melee members take the summons first and Alishar when none is up.
+ * fights the summon first; melee members take the summons first and Alishar when none is up; a resting member out of
+ * his reach fights only a summon that reaches it.
  */
 final class AgentLpqStageNineBossPolicy {
     private static final int REACH_PX = config.AgentTuning.intValue(
@@ -95,7 +96,9 @@ final class AgentLpqStageNineBossPolicy {
         /** A resting member walks to its rest point. */
         WALK_TO_REST,
         /** A resting member stands still at its rest point. */
-        REST
+        REST,
+        /** A resting member out of Alishar's reach fights a summon on it, from its rest point (the summons only). */
+        FIGHT_AT_REST
     }
 
     /** The member's state after this pass, its move, the point the move goes to (null for MELEE) and its targets. */
@@ -211,7 +214,7 @@ final class AgentLpqStageNineBossPolicy {
      * One living member's stage-9 order while Alishar lives (LPQ base fix 5 and 6), from its state and this pass.
      *
      * <p>A member out of potions rests (see {@link #resting}): it walks to its rest point and stands still there, and
-     * its group, side and station are kept for its return. A melee member fights the summons first and Alishar when
+     * its group, side and station are kept for its return; out of his reach, a summon on it is fought from there. A melee member fights the summons first and Alishar when
      * none is up. A shooter without a group joins one: by its rank while no member has a group yet, else group A; its
      * home side is the side of Alishar it stands on. It then takes the {@link #chosenSide} and the
      * {@link #nextStation} on it: it walks there while it stands on the other side of Alishar, and otherwise farms
@@ -228,6 +231,12 @@ final class AgentLpqStageNineBossPolicy {
             Point restPoint = restPoint(boss, position, current.restPoint(), floor, REACH_PX);
             MemberState next = new MemberState(current.group(), current.homeSide(), current.side(),
                     current.station(), true, restPoint);
+            // His summons walk onto a member and hit it with their bodies: one out of his reach fights back from
+            // its rest point instead of standing still under them, and leaves him alone.
+            if (Math.abs(position.x - boss.x) > REACH_PX && addThreat(position, pass.summons(), ADD_THREAT_PX)) {
+                return new Order(next, Move.FIGHT_AT_REST, restPoint,
+                        new Targets(AgentLpqDefinition.ALISHAR_SUMMONS, Set.of()));
+            }
             // Within the anchored farm's own 8-px arrival it stands still; otherwise it walks there.
             return new Order(next, near(position, restPoint, 8) ? Move.REST : Move.WALK_TO_REST, restPoint, null);
         }

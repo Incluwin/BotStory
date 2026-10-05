@@ -1110,7 +1110,7 @@ tuning:
     # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9, against the floor AgentLpqCoordinator.stageNineFloor builds from Map.wz 922010900 footholds 95-100 (x -310 to 1210, y 184); at 60 the usable x is -250 to 1150.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.FLOOR_EDGE_MARGIN_PX: '60'
     # Values: 60-200 pixels. Recommended: 100, about one summon's width, so a shooter turns on an add that has reached it rather than one still crossing the floor.
-    # Purpose: Lets an LPQ stage-9 shooter fight one of Alishar's summons first while one stands this close to it (horizontally and vertically), then go back to Alishar.
+    # Purpose: Lets an LPQ stage-9 shooter fight one of Alishar's summons first while one stands this close to it (horizontally and vertically), then go back to Alishar; a resting member out of his reach fights such a summon from its rest point.
     # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9; the summons are MobSkill 200 levels 29-31 (9300015, 9300016, 9300017). The HPQ guard's wake radius is the precedent; melee members always take the summons first.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.ADD_THREAT_PX: '100'
     # Values: 0.2-0.6 of maximum HP. Recommended: 0.4, the generic out-of-potions stop's own threshold, so both fire together.

@@ -79,11 +79,45 @@ class AgentLpqStageNineRestTest {
 
     /** One pass of a resting member out of potions (50 HP of 2000) standing at {@code x}, Alishar at {@code bossX}. */
     private static AgentLpqStageNineBossPolicy.Order restingPass(AgentLpqMemberState member, int x, int bossX) {
+        return restingPass(member, true, x, bossX);
+    }
+
+    private static AgentLpqStageNineBossPolicy.Order restingPass(AgentLpqMemberState member, boolean shooter, int x,
+                                                                 int bossX, Point... summons) {
         AgentLpqStageNineBossPolicy.Order order = AgentLpqStageNineBossPolicy.order(member.stageNineState(),
-                new AgentLpqStageNineBossPolicy.Pass(true, 0, true, new Point(x, 184), new Point(bossX, 184),
-                        java.util.List.of(), 0, POT_STOP, 50, MAX_HP), FLOOR);
+                new AgentLpqStageNineBossPolicy.Pass(shooter, shooter ? 0 : -1, true, new Point(x, 184),
+                        new Point(bossX, 184), java.util.List.of(summons), 0, POT_STOP, 50, MAX_HP), FLOOR);
         member.applyStageNine(order.state());
         return order;
+    }
+
+    @Test
+    void aRestingMemberFightsASummonThatReachesIt() {
+        AgentLpqStageNineBossPolicy.Targets summonsOnly =
+                new AgentLpqStageNineBossPolicy.Targets(AgentLpqDefinition.ALISHAR_SUMMONS, java.util.Set.of());
+        Point leftEnd = new Point(-250, 184);
+        for (boolean shooter : new boolean[]{true, false}) {
+            AgentLpqMemberState member = new AgentLpqMemberState(762_411, AgentLpqMemberState.MemberType.AGENT);
+            assertEquals(AgentLpqStageNineBossPolicy.Move.REST, restingPass(member, shooter, -250, 600).move());
+
+            AgentLpqStageNineBossPolicy.Order attacked = restingPass(member, shooter, -250, 600, new Point(-180, 184));
+            assertEquals(AgentLpqStageNineBossPolicy.Move.FIGHT_AT_REST, attacked.move(),
+                    "shooter " + shooter + ": an add 70 px away");
+            assertEquals(leftEnd, attacked.point(), "it fights from its rest point");
+            assertEquals(summonsOnly, attacked.targets(), "the summons only: Alishar is out of its range anyway");
+            assertTrue(member.stageNineState().resting(), "it is still resting");
+
+            assertEquals(AgentLpqStageNineBossPolicy.Move.REST,
+                    restingPass(member, shooter, -250, 600, new Point(-120, 184)).move(),
+                    "an add 130 px away is not on it yet");
+            assertEquals(AgentLpqStageNineBossPolicy.Move.REST, restingPass(member, shooter, -250, 600).move(),
+                    "the add is gone");
+        }
+
+        AgentLpqMemberState inReach = new AgentLpqMemberState(762_412, AgentLpqMemberState.MemberType.AGENT);
+        AgentLpqStageNineBossPolicy.Order walking = restingPass(inReach, true, 450, 600, new Point(480, 184));
+        assertEquals(AgentLpqStageNineBossPolicy.Move.WALK_TO_REST, walking.move(),
+                "inside his reach it gets out before it fights");
     }
 
     @Test
@@ -127,6 +161,7 @@ class AgentLpqStageNineRestTest {
         int rest = order.indexOf("if (rest) {");
         assertTrue(rest > 0 && order.indexOf("if (!pass.shooter())") > rest, "the rest check comes first");
         String restBlock = AgentLpqStageNineStationTest.block(order, rest);
-        assertFalse(restBlock.contains("targets("), "a resting member does not fight");
+        assertFalse(restBlock.contains("targets(") || restBlock.contains("ALISHAR)"),
+                "a resting member never fights Alishar");
     }
 }

@@ -186,8 +186,8 @@ class AgentLpqStageNineOrderTest {
         assertTrue(flat.contains("switch(order.move()){"
                 + "caseMELEE->ACTIONS.grind(entry,order.targets().preferred(),order.targets().fallback());"
                 + "caseWALK_TO_STATION,WALK_TO_REST->ACTIONS.navigate(entry,order.point(),true);"
-                + "caseFIGHT_FROM_STATION->ACTIONS.grindFromAnchor(entry,order.point(),order.targets().preferred(),"
-                + "order.targets().fallback());"
+                + "caseFIGHT_FROM_STATION,FIGHT_AT_REST->ACTIONS.grindFromAnchor(entry,order.point(),"
+                + "order.targets().preferred(),order.targets().fallback());"
                 + "caseREST->ACTIONS.stop(entry);}"), flat);
         assertEquals(5, fight.split("ACTIONS\\.", -1).length - 1, "the potion count and one action per move");
         assertEquals(1, fight.split("applyStageNine\\(", -1).length - 1);
@@ -195,6 +195,6 @@ class AgentLpqStageNineOrderTest {
             assertFalse(fight.contains(rescue), "no rescue: " + rescue);
         }
         assertEquals(Set.of(Move.values()), Set.of(Move.MELEE, Move.WALK_TO_STATION, Move.FIGHT_FROM_STATION,
-                Move.WALK_TO_REST, Move.REST), "every move is wired");
+                Move.WALK_TO_REST, Move.REST, Move.FIGHT_AT_REST), "every move is wired");
     }
 }

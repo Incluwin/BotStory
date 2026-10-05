@@ -4043,7 +4043,7 @@ final class AgentLpqCoordinator {
      * Stage-9 orders while Alishar lives (LPQ base fix 5 and 6), one living member per call, as
      * AgentLpqStageNineBossPolicy.order decides them. A member out of potions backs off out of his reach and rests
      * there, so a companion is no longer sent back to its owner at his feet; resting heals by regen, asks no one for
-     * potions, and the member stays registered. A shooter fights him from a station outside his reach: it walks
+     * potions, and the member stays registered; one out of his reach fights a summon that reaches it. A shooter fights him from a station outside his reach: it walks
      * across him only to change sides, and otherwise farms from its station, attacking what is in range and walking
      * back to the station between attacks; a summon that reaches it is fought first. Melee members take his summons
      * first and Alishar when none is up. Shooters are split into two groups at the first pass so that hits from both
@@ -4064,8 +4064,8 @@ final class AgentLpqCoordinator {
         switch (order.move()) {
             case MELEE -> ACTIONS.grind(entry, order.targets().preferred(), order.targets().fallback());
             case WALK_TO_STATION, WALK_TO_REST -> ACTIONS.navigate(entry, order.point(), true);
-            case FIGHT_FROM_STATION -> ACTIONS.grindFromAnchor(entry, order.point(), order.targets().preferred(),
-                    order.targets().fallback());
+            case FIGHT_FROM_STATION, FIGHT_AT_REST -> ACTIONS.grindFromAnchor(entry, order.point(),
+                    order.targets().preferred(), order.targets().fallback());
             case REST -> ACTIONS.stop(entry);
         }
     }
