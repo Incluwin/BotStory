@@ -360,7 +360,7 @@ public final class AgentLpqTestService {
                     run.engagement, run.lobby, run.operator, leader, members,
                     run.seed, now, AgentLpqSession.Mode.TEST_OBSERVATION,
                     run.flow == Flow.AGENTS_ONLY ? 0 : run.operator.getId(),
-                    run.humanRolePreference);
+                    run.humanRolePreference, false);
             if (!result.success()) return;
             run.eventLeaderId = leader.getId();
             run.session = result.session();

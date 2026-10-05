@@ -87,6 +87,7 @@ public final class AgentLpqSession {
     private int preferredHumanId;
     private HumanRolePreference humanRolePreference = HumanRolePreference.DEFAULT;
     private final Set<String> claimedFlavorChatKeys = new java.util.LinkedHashSet<>();
+    private boolean companionAdopted;
 
     public AgentLpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0
@@ -609,4 +610,13 @@ public final class AgentLpqSession {
         return rewardEligibilityFrozen && members.values().stream()
                 .allMatch(AgentLpqMemberState::rewardResolved);
     }
+
+    /**
+     * A human-led run of owner-bound companions, admitted by AgentLpqAdmissionService.admit. Every companion-run
+     * behaviour is gated on it; stock, background and GM-observed runs leave it false.
+     */
+    public synchronized boolean companionAdopted() { return companionAdopted; }
+
+    /** Set only by the public admit, before the session is published. */
+    synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
 }
