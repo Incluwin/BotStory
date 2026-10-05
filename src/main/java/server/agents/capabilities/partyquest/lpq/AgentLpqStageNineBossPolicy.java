@@ -214,11 +214,12 @@ final class AgentLpqStageNineBossPolicy {
      * One living member's stage-9 order while Alishar lives (LPQ base fix 5 and 6), from its state and this pass.
      *
      * <p>A member out of potions rests (see {@link #resting}): it walks to its rest point and stands still there, and
-     * its group, side and station are kept for its return; out of his reach, a summon on it is fought from there. A melee member fights the summons first and Alishar when
-     * none is up. A shooter without a group joins one: by its rank while no member has a group yet, else group A; its
-     * home side is the side of Alishar it stands on. It then takes the {@link #chosenSide} and the
-     * {@link #nextStation} on it: it walks there while it stands on the other side of Alishar or inside his reach
-     * (REACH_PX), and otherwise farms from the station, fighting a summon on it first ({@link #targets}).
+     * its group, side and station are kept for its return; out of his reach, a summon on it is fought from there. A
+     * melee member fights the summons first and Alishar when none is up. A shooter without a group joins one: by its
+     * rank while no member has a group yet, else group A; its home side is the side of Alishar it stands on. It then
+     * takes the {@link #chosenSide} and the {@link #nextStation} on it: it walks there while it stands on the other
+     * side of Alishar or inside his reach (REACH_PX), and otherwise farms from the station, fighting a summon on it
+     * first ({@link #targets}).
      */
     static Order order(MemberState state, Pass pass, Floor floor) {
         MemberState current = state == null ? MemberState.NONE : state;
