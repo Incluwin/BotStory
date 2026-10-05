@@ -72,6 +72,7 @@ final class AgentLpqCoordinator {
     private static final PrimitiveCapabilityGateway ACTIONS = AgentPrimitiveCapabilityGatewayRuntime.gateway();
     private static final PartyQuestGateway LPQ = AgentPartyQuestGatewayRuntime.partyQuest();
     private static final PartyGateway PARTY = AgentPartyGatewayRuntime.party();
+    private static final String EVENT_ENDED_OR_EXPIRED = "The LPQ event instance ended or expired";
     private static final long PHASE_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PHASE_TIMEOUT_MS");
     private static final long PREPARATION_DELAY_MS = config.AgentTuning.longValue(
@@ -199,6 +200,10 @@ final class AgentLpqCoordinator {
             synchronizePhase(session, leader, nowMs);
             String eventFailure = liveEventFailure(session, leader);
             if (!eventFailure.isEmpty()) {
+                if (EVENT_ENDED_OR_EXPIRED.equals(eventFailure)) {
+                    log.warn("LPQ event end detail: session={} {}", session.sessionId(),
+                            eventEndDetail(session, leader));
+                }
                 AgentLpqTerminationService.fail(session, eventFailure, nowMs);
                 return;
             }
@@ -267,6 +272,22 @@ final class AgentLpqCoordinator {
         return true;
     }
 
+    /**
+     * What the coordinator can still see when its event "ended or expired" (logged before the failure): the leader's
+     * map and HP, whether the bound event was disposed, and how many dead members the departure gate held. Never
+     * throws.
+     */
+    static String eventEndDetail(AgentLpqSession session, Character leader) {
+        try {
+            EventInstanceManager event = session.eventInstance();
+            return "leaderMap=" + leader.getMapId() + " leaderHp=" + leader.getHp()
+                    + " eventDisposed=" + (event == null ? "unbound" : String.valueOf(event.isEventDisposed()))
+                    + " heldDead=" + session.heldDeadCount();
+        } catch (RuntimeException e) {
+            return "detail unavailable";
+        }
+    }
+
     static String liveEventFailure(AgentLpqSession session, Character leader) {
         if (session == null || !requiresLiveEvent(session.phase())) return "";
         EventInstanceManager event = session.eventInstance();
@@ -276,7 +297,7 @@ final class AgentLpqCoordinator {
         }
         EventInstanceManager leaderEvent = LPQ.event(leader);
         if (event == null || leaderEvent == null) {
-            return "The LPQ event instance ended or expired";
+            return EVENT_ENDED_OR_EXPIRED;
         }
         if (event != leaderEvent || event.isEventDisposed()) {
             return "The LPQ event instance no longer matches the leader";

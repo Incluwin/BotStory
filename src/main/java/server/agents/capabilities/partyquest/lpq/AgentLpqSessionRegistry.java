@@ -2,6 +2,9 @@ package server.agents.capabilities.partyquest.lpq;
 
 import client.BuffStat;
 import client.Character;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.maps.MapItem;
 
 import java.util.Collection;
@@ -10,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** LPQ-only complete session and member indexes. */
 public final class AgentLpqSessionRegistry {
+    private static final Logger log = LoggerFactory.getLogger(AgentLpqSessionRegistry.class);
     private static final Map<String, AgentLpqSession> SESSIONS = new ConcurrentHashMap<>();
     private static final Map<Integer, String> BY_MEMBER = new ConcurrentHashMap<>();
     private static final Map<Integer, String> BY_OPERATOR = new ConcurrentHashMap<>();
@@ -137,6 +141,25 @@ public final class AgentLpqSessionRegistry {
         AgentLpqSession session = character == null ? null : forMember(character.getId());
         if (session != null && session.eventInstance() == character.getEventInstance()) {
             session.forfeitReward(character.getId());
+            logUnregister(session, character);
+        }
+    }
+
+    /**
+     * One 'LPQ unregister:' line per member LudiPQ.js unregisters: its playerUnregistered calls forfeitUnclaimedReward
+     * before the removal, so registeredBefore is the count the script's floor check saw. Never throws.
+     */
+    private static void logUnregister(AgentLpqSession session, Character character) {
+        try {
+            AgentLpqMemberState member = session.member(character.getId());
+            EventInstanceManager event = character.getEventInstance();
+            log.info("LPQ unregister: session={} member={}({}) type={} map={} hp={} registeredBefore={} cleared={} "
+                            + "phase={}", session.sessionId(), character.getName(), character.getId(),
+                    member == null ? "UNKNOWN" : member.memberType(), character.getMapId(), character.getHp(),
+                    event.getPlayerCount(), event.isEventCleared(), session.phase());
+        } catch (RuntimeException e) {
+            log.info("LPQ unregister: session={} member={} detail unavailable", session.sessionId(),
+                    character.getId());
         }
     }
 

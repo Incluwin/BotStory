@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /** Isolated party-level LPQ state machine. */
 public final class AgentLpqSession implements AgentCompanionRunSession {
@@ -95,6 +96,8 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private AgentPqPaceCalibration paceCalibration;
     private String potionsAtEntry;
     private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
+    private final Set<Integer> departuresInFlight = new java.util.LinkedHashSet<>();
+    private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
 
     public AgentLpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0
@@ -665,6 +668,46 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     synchronized String potionsAtEntry() { return potionsAtEntry; }
 
     synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions; }
+
+    /**
+     * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until
+     * {@link #endDeparture}) or stay down. heldMs is how long it was held before leaving, or -1 when it was not held;
+     * firstHold is true only for the first answer of a hold.
+     */
+    record Departure(boolean proceed, boolean firstHold, long heldMs, int registered, int othersInFlight) { }
+
+    /**
+     * A dead member may leave the event while more than {@code floor} registered members would stay, every departure
+     * still in flight counted as gone (LudiPQ.js ends the event when a member leaves at the floor). registeredIds is
+     * read here, under this monitor, so a departure that has just finished is seen as gone; the event's read lock
+     * nests inside this monitor, as when the coordinator reads the event's players.
+     */
+    synchronized Departure reserveDeparture(int id, Supplier<Set<Integer>> registeredIds, int floor, long nowMs) {
+        Set<Integer> registered = registeredIds.get();
+        int othersInFlight = (int) departuresInFlight.stream().filter(other -> other != id).count();
+        long staying = registered.stream().filter(member -> !departuresInFlight.contains(member)).count();
+        if (staying > floor) {
+            departuresInFlight.add(id);
+            Long since = heldSinceMs.remove(id);
+            return new Departure(true, false, since == null ? -1L : Math.max(0L, nowMs - since),
+                    registered.size(), othersInFlight);
+        }
+        Long since = heldSinceMs.putIfAbsent(id, nowMs);
+        return new Departure(false, since == null, since == null ? 0L : Math.max(0L, nowMs - since),
+                registered.size(), othersInFlight);
+    }
+
+    /** Ends a reserved departure (its respawn returned or threw). */
+    synchronized void endDeparture(int id) { departuresInFlight.remove(id); }
+
+    /** Forgets the hold of a member that leaves without the floor check: how long it was held, or -1 if it was not. */
+    synchronized long releaseHold(int id, long nowMs) {
+        Long since = heldSinceMs.remove(id);
+        return since == null ? -1L : Math.max(0L, nowMs - since);
+    }
+
+    /** Dead members the departure gate holds on the map now. */
+    synchronized int heldDeadCount() { return heldSinceMs.size(); }
 
     /** Takes a member out of the run (a companion that tapped out); the event leader is never taken out. */
     public synchronized void removeMember(int characterId) {
