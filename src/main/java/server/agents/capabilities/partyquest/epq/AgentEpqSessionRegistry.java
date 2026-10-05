@@ -28,6 +28,26 @@ public final class AgentEpqSessionRegistry {
         session.members().forEach(member -> BY_MEMBER.put(member.characterId(), session.sessionId()));
     }
 
+    /**
+     * What already holds this operator or one of these characters in an EPQ session, in HPQ's codes:
+     * "operator-session", else "member-" and the id of the first held member, else "". A host checks a party with it
+     * before an admit.
+     */
+    public static synchronized String registrationBlocker(int operatorId, Collection<Integer> characterIds) {
+        if (BY_OPERATOR.containsKey(operatorId)) return "operator-session";
+        if (characterIds != null) {
+            for (int characterId : characterIds) {
+                if (BY_MEMBER.containsKey(characterId)) return "member-" + characterId;
+            }
+        }
+        return "";
+    }
+
+    /** Forgets one member's index only; the session and its other members stay as they are. */
+    public static synchronized void unindexMember(AgentEpqSession session, int characterId) {
+        if (session != null) BY_MEMBER.remove(characterId, session.sessionId());
+    }
+
     public static AgentEpqSession forMember(int id) {
         String sessionId = BY_MEMBER.get(id);
         return sessionId == null ? null : SESSIONS.get(sessionId);
