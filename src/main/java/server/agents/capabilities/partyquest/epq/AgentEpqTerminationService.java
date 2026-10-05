@@ -27,6 +27,7 @@ final class AgentEpqTerminationService {
      * is disposed, and every member, humans included, leaves the party. A companion run keeps its owner's party
      * whatever the outcome, and once the event reports its clear only its companions leave the event, through the
      * event's own exit; the event and the players still in it stay, so a failure after the clear takes nobody's reward.
+     * A companion run that did not complete leaves the event so with or without {@code dispose}.
      */
     static void release(AgentEpqSession session, String reason, long nowMs, boolean dispose) {
         if (session == null || !session.beginTermination()) return;
@@ -42,7 +43,11 @@ final class AgentEpqTerminationService {
         boolean companionRun = session.companionAdopted();
         boolean pastTheClear = pastTheClear(event);
         if (companionRun) logPotions(session);
-        if (dispose && event != null) {
+        // A companion run keeps its party, so no party leave runs EllinPQ's own exit for it as it does for a stock run:
+        // one that did not complete leaves the event as the tick's failure release has it leave, whoever releases it
+        // (AgentEpqRuntime.requestStop passes no dispose, and can land between the fail and the tick's release).
+        boolean leaveEvent = dispose || (companionRun && phaseAtRelease != AgentEpqSession.Phase.COMPLETED);
+        if (leaveEvent && event != null) {
             if (companionRun && pastTheClear) {
                 exitAgentsOnly(session);
             } else {

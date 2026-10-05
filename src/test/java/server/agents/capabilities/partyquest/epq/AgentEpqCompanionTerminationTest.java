@@ -116,6 +116,59 @@ class AgentEpqCompanionTerminationTest {
     }
 
     @Test
+    void aFailedCompanionRunStoppedBeforeTheTickReleasesItLeavesTheEventAsTheTickWould() {
+        // AgentEpqRuntime.requestStop releases a terminal session without dispose. A companion run keeps its party, so
+        // no party leave runs EllinPQ's exit for it: it leaves as the tick's failure release has it leave.
+        when(run.event.getPlayers()).thenReturn(List.of(ben, mira, tobi, una));
+        AgentEpqSession early = companionRun(AgentEpqSession.Phase.STAGE_FOUR);
+        early.fail("EPQ event timer expired", 5_000L);
+        assertTrue(AgentEpqRuntime.requestStop(mira.getId(), "companion recalled", 5_000L));
+        var order = inOrder(run.event);
+        for (Character member : List.of(ben, mira, tobi, una)) order.verify(run.event).exitPlayer(member);
+        order.verify(run.event).dispose();
+
+        org.mockito.Mockito.clearInvocations(run.event);
+        when(run.event.isEventCleared()).thenReturn(true);
+        AgentEpqSession late = companionRun(AgentEpqSession.Phase.REWARD);
+        late.fail("EPQ stalled in REWARD for 480 seconds", 6_000L);
+        assertTrue(AgentEpqRuntime.requestStop(tobi.getId(), "companion recalled", 6_000L));
+        verify(run.event).exitPlayer(mira);
+        verify(run.event).exitPlayer(tobi);
+        verify(run.event).exitPlayer(una);
+        verify(run.event, never()).exitPlayer(ben);
+        verify(run.event, never()).dispose();
+        verify(run.party, never()).leaveCurrentParty(any());
+        assertNull(AgentEpqSessionRegistry.forMember(mira.getId()));
+    }
+
+    @Test
+    void aCompletedCompanionRunReleasedWithoutDisposeLeavesTheEventAlone() {
+        when(run.event.getPlayers()).thenReturn(List.of(ben));
+        AgentEpqSession cleared = companionRun(AgentEpqSession.Phase.EXITING);
+        cleared.complete(5_000L);
+
+        assertTrue(AgentEpqRuntime.requestStop(una.getId(), "companion recalled", 5_000L));
+
+        verify(run.event, never()).exitPlayer(any());
+        verify(run.event, never()).dispose();
+        assertEquals(AgentEpqSession.Phase.COMPLETED, cleared.phase());
+    }
+
+    @Test
+    void aFailedStockRunStoppedBeforeTheTickReleasesItStillLeavesByTheParty() {
+        when(run.event.getPlayers()).thenReturn(List.of(ben, mira, tobi, una));
+        AgentEpqSession stock = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
+                AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
+        stock.fail("EPQ event timer expired", 5_000L);
+
+        assertTrue(AgentEpqRuntime.requestStop(mira.getId(), "recalled", 5_000L));
+
+        verify(run.event, never()).exitPlayer(any());
+        verify(run.event, never()).dispose();
+        for (Character member : List.of(ben, mira, tobi, una)) verify(run.party).leaveCurrentParty(member);
+    }
+
+    @Test
     void aStockFailureAfterTheClearStillDisposes() {
         when(run.event.isEventCleared()).thenReturn(true);
         when(run.event.getPlayers()).thenReturn(List.of(ben, mira, tobi, una));
