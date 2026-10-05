@@ -215,6 +215,10 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private void logPhaseEnd(Phase next, long nowMs) {
         log.info("LPQ phase timing: session={} phase={} durationMs={} next={}",
                 sessionId, phase, Math.max(0L, nowMs - phaseEnteredAtMs), next);
+        // The phase line every PQ logs (HPQ/KPQ shape), for stock and companion runs alike.
+        log.info("LPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}",
+                sessionId, phase, next, Math.max(0L, nowMs - phaseEnteredAtMs), Math.max(0L, nowMs - startedAtMs),
+                companionAdopted);
     }
     public synchronized boolean beginTermination() { if (terminating) return false; terminating = true; return true; }
 
