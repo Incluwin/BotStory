@@ -184,6 +184,8 @@ final class AgentLpqCoordinator {
     static void tick(AgentLpqSession session, long nowMs) {
         synchronized (session) {
             if (session.terminal()) return;
+            // A companion run whose release has begun (its companions on their way out) gets no coordinator pass.
+            if (session.companionAdopted() && session.terminationStarted()) return;
             if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
                 AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", nowMs);
                 return;
@@ -436,13 +438,31 @@ final class AgentLpqCoordinator {
             if (participant != null && LPQ.sameEvent(leader, participant)) continue;
             allEntered = false;
             if (participant != null && member.memberType() == AgentLpqMemberState.MemberType.AGENT) {
-                restoreEventMember(session, participant, AgentLpqDefinition.stage(1).mapId(), nowMs);
+                restoreEventMember(session, "entering-not-in-event", participant, AgentLpqDefinition.stage(1).mapId(), nowMs);
             } else if (participant != null && nowMs >= member.nextActionAtMs()) {
                 participant.dropMessage(6, "Enter LPQ through the Red Sign to join your party instance.");
                 member.deferUntil(nowMs + 5_000L);
             }
         }
-        if (allEntered) session.transition(AgentLpqSession.Phase.STAGE_1, nowMs);
+        if (allEntered) beginStageOne(session, nowMs);
+    }
+
+    /**
+     * The party is inside: stage 1 begins. A companion run first logs its companions' potions
+     * ('LPQ potions: session= start=') and keeps them for the release's end line; a failure to read them is logged
+     * and never keeps stage 1 from beginning.
+     */
+    static void beginStageOne(AgentLpqSession session, long nowMs) {
+        if (session.companionAdopted()) {
+            try {
+                String potions = AgentLpqTerminationService.potions(session);
+                session.setPotionsAtEntry(potions);
+                log.info("LPQ potions: session={} start={}", session.sessionId(), potions);
+            } catch (RuntimeException failure) {
+                log.warn("LPQ potions failed: session={}", session.sessionId(), failure);
+            }
+        }
+        session.transition(AgentLpqSession.Phase.STAGE_1, nowMs);
     }
 
     private static void collectionStage(AgentLpqSession session, Character leader, long nowMs) {
@@ -596,7 +616,7 @@ final class AgentLpqCoordinator {
                     session, contract.number(), contract.mapId(), npc,
                     regroupElapsedMs, isAgent(leader), nowMs);
             if (balloonRallyForceTransferDue(contract.number(), regroupElapsedMs)) {
-                forcePassTransferToLeader(session, leader, contract, regroupElapsedMs, nowMs);
+                forcePassTransferToLeader(session, "final-rally", leader, contract, regroupElapsedMs, nowMs);
             }
             return;
         }
@@ -622,7 +642,7 @@ final class AgentLpqCoordinator {
         if (regroupElapsedMs >= recovery(contract.number()).missingPassMs()
                 && leader.getItemQuantity(AgentLpqDefinition.PASS, false)
                 < contract.submissionCount()) {
-            int vacuumed = vacuumPassDrops(leader, Set.of(leader.getMap()));
+            int vacuumed = vacuumPassDrops(session, "coupon-regroup", leader, Set.of(leader.getMap()));
             if (vacuumed > 0) {
                 session.markProgress(nowMs);
                 log.warn("LPQ Stage {} coupon-regroup recovery vacuumed {} real pass drops: "
@@ -678,7 +698,7 @@ final class AgentLpqCoordinator {
             AgentRuntimeEntry entry = entry(member.characterId());
             if (agent == null || entry == null) continue;
             if (agent.getMapId() == AgentLpqDefinition.EXIT_MAP
-                    && restoreEventMember(session, agent, destination, nowMs)) {
+                    && restoreEventMember(session, "dead-agent-reentry", agent, destination, nowMs)) {
                 if (stage == 5) {
                     restoreStageFiveEarnedPasses(session, member, agent, nowMs);
                     prepareStageFiveMainMapDarkSight(member, entry, agent, nowMs);
@@ -689,7 +709,7 @@ final class AgentLpqCoordinator {
             if (currentStage <= 0 || currentStage >= stage) continue;
             if (absoluteRecoveryDue) {
                 int sourceMapId = agent.getMapId();
-                if (moveWithinEvent(session, agent, destination, nowMs)) {
+                if (moveWithinEvent(session, "catch-up-absolute", agent, destination, nowMs)) {
                     member.clearTraversalProgress();
                     log.warn("LPQ lagging-member absolute transition recovery: session={} "
                                     + "member={}({}) source={} stage={} destination={} "
@@ -700,7 +720,7 @@ final class AgentLpqCoordinator {
                 continue;
             }
             if (currentStage == 2 && agent.getMapId() == 922_010_201) {
-                recoverStageTwoTrap(session, agent, nowMs);
+                recoverStageTwoTrap(session, "catch-up-trap", agent, nowMs);
                 continue;
             }
             if (currentStage == 6 && agent.getMapId() == AgentLpqDefinition.stage(6).mapId()) {
@@ -717,7 +737,7 @@ final class AgentLpqCoordinator {
                                 + "source={} stage={} destination={} inactiveForMs={}",
                         session.sessionId(), agent.getName(), agent.getId(), agent.getMapId(),
                         stage, destination, inactiveForMs);
-                moveWithinEvent(session, agent, destination, nowMs);
+                moveWithinEvent(session, "catch-up-traversal", agent, destination, nowMs);
                 member.clearTraversalProgress();
             }
         }
@@ -853,7 +873,7 @@ final class AgentLpqCoordinator {
         }
         if (after > 0 && inactiveForMs >= recovery(stage).missingPassMs()) {
             Character leader = character(session.eventLeaderId());
-            int vacuumed = leader == null ? 0 : vacuumPassDrops(leader, maps);
+            int vacuumed = leader == null ? 0 : vacuumPassDrops(session, "loose-passes", leader, maps);
             int remaining = maps.stream()
                     .mapToInt(map -> unpickedPassDropCount(map.getDroppedItems())).sum();
             if (vacuumed > 0) {
@@ -1086,7 +1106,7 @@ final class AgentLpqCoordinator {
             Point source = participant.getPosition() == null
                     ? null : new Point(participant.getPosition());
             ACTIONS.stop(participantEntry);
-            ACTIONS.stagePosition(participantEntry, participant, target);
+            rescueTeleport(session, "balloon-rally", participantEntry, participant, target);
             member.markBalloonRallyRecovered(stage);
             recoveredMembers.add(participant.getName() + "(" + participant.getId() + ")"
                     + " role=" + member.role()
@@ -1110,12 +1130,12 @@ final class AgentLpqCoordinator {
      * performs the normal authored NPC submission and stage transition.
      */
     private static void forcePassTransferToLeader(
-            AgentLpqSession session, Character leader, AgentLpqDefinition.Stage contract,
+            AgentLpqSession session, String site, Character leader, AgentLpqDefinition.Stage contract,
             long rallyElapsedMs, long nowMs) {
         int required = contract.submissionCount();
         int leaderPasses = leader.getItemQuantity(AgentLpqDefinition.PASS, false);
         if (leaderPasses < required) {
-            vacuumPassDrops(leader, collectionMaps(session, contract.number()));
+            vacuumPassDrops(session, site, leader, collectionMaps(session, contract.number()));
             leaderPasses = leader.getItemQuantity(AgentLpqDefinition.PASS, false);
         }
 
@@ -1129,6 +1149,10 @@ final class AgentLpqCoordinator {
             if (quantity <= 0) continue;
             if (!AgentInventoryGatewayRuntime.inventory().addItem(
                     leader, AgentLpqDefinition.PASS, (short) quantity)) {
+                if (transferred > 0) {
+                    AgentLpqRescue.note(session, AgentLpqRescue.Kind.FORCE_TRANSFER, site, leader,
+                            "passes=" + transferred + " stage=" + contract.number());
+                }
                 AgentLpqTerminationService.fail(session,
                         "LPQ leader has no ETC space for forced pass transfer", nowMs);
                 return;
@@ -1139,6 +1163,10 @@ final class AgentLpqCoordinator {
             if (contract.number() == 5) member.handOffStageFivePasses(quantity);
             transferred += quantity;
             leaderPasses += quantity;
+        }
+        if (transferred > 0) {
+            AgentLpqRescue.note(session, AgentLpqRescue.Kind.FORCE_TRANSFER, site, leader,
+                    "passes=" + transferred + " stage=" + contract.number());
         }
         if (transferred <= 0 && leaderPasses < required) return;
         session.markProgress(nowMs);
@@ -1536,7 +1564,7 @@ final class AgentLpqCoordinator {
         }
         if (session.stage7ForceLootAttempted() || !sweepComplete
                 || combatClearedForMs < STAGE_7_FORCE_LOOT_DELAY_MS) return;
-        int vacuumed = vacuumPassDrops(leader, Set.of(leader.getMap()));
+        int vacuumed = vacuumPassDrops(session, "stage7-leader-sweep", leader, Set.of(leader.getMap()));
         session.markStage7ForceLootAttempted(nowMs);
         log.info("LPQ Stage 7 verified leader sweep: session={} leader={}({}) "
                         + "sweepComplete={} clearForMs={} vacuumedPasses={}",
@@ -1908,8 +1936,8 @@ final class AgentLpqCoordinator {
                 int markerItem = AgentLpqDefinition.ROOM_MARKER_ITEMS.stream()
                         .filter(itemId -> ACTIONS.itemCount(agent, itemId) > 0)
                         .findFirst().orElse(0);
-                if (markerItem == 0 && AgentInventoryGatewayRuntime.inventory()
-                        .addItem(agent, AgentLpqDefinition.RED_POTION, (short) 1)) {
+                if (markerItem == 0 && grantItem(session, AgentLpqRescue.Kind.MARKER_GRANT, "room-marker-potion",
+                        agent, AgentLpqDefinition.RED_POTION, (short) 1)) {
                     markerItem = AgentLpqDefinition.RED_POTION;
                 }
                 markerDropped = markerItem != 0 && AgentScriptItemActionService.dropItem(
@@ -2274,7 +2302,7 @@ final class AgentLpqCoordinator {
                 }
                 if (stageFiveFinalLoosePassRecoveryDue(
                         roomPasses, passQuota, settledForMs)) {
-                    int vacuumed = vacuumPassDrops(agent, Set.of(agent.getMap()));
+                    int vacuumed = vacuumPassDrops(session, "stage5-terminal-room", agent, Set.of(agent.getMap()));
                     if (vacuumed > 0) {
                         session.markProgress(nowMs);
                         roomPasses = member.roomPassesCollectedFor(
@@ -2297,7 +2325,7 @@ final class AgentLpqCoordinator {
 
             if (stageFiveMissingRoomPassRecoveryDue(
                     5, 0, false, roomPasses, passQuota, settledForMs)
-                    && AgentInventoryGatewayRuntime.inventory().addItem(
+                    && grantItem(session, AgentLpqRescue.Kind.PASS_AWARD, "stage5-missing-room-pass",
                     agent, AgentLpqDefinition.PASS, (short) 1)) {
                 roomPasses++;
                 member.clearReactorWork();
@@ -2394,8 +2422,8 @@ final class AgentLpqCoordinator {
             ACTIONS.stop(entry);
             AgentGrindTargetStateRuntime.clear(entry);
             List<Integer> mobIds = liveTargets.stream().map(Monster::getId).distinct().toList();
-            for (int mobId : mobIds) agent.getMap().killMonsterWithDrops(mobId);
-            int vacuumed = vacuumPassDrops(agent, Set.of(agent.getMap()));
+            killWithDrops(session, "stage4-hard-recovery", agent.getMap(), mobIds);
+            int vacuumed = vacuumPassDrops(session, "stage4-hard-recovery", agent, Set.of(agent.getMap()));
             member.markRoomRecoveryHardApplied(roomMapId);
             member.clearRoomCombatProgress();
             session.markProgress(nowMs);
@@ -2423,7 +2451,7 @@ final class AgentLpqCoordinator {
         }
 
         if (liveTargets.isEmpty() && roomElapsedMs >= STAGE_4_ROOM_ASSIST_MS) {
-            int vacuumed = vacuumPassDrops(agent, Set.of(agent.getMap()));
+            int vacuumed = vacuumPassDrops(session, "stage4-pass-loot", agent, Set.of(agent.getMap()));
             int passesAfter = member.roomPassesCollectedFor(roomMapId,
                     agent.getItemQuantity(AgentLpqDefinition.PASS, false));
             if (stageFourRoomReadyToExit(true, passesAfter, passQuota)) {
@@ -2446,7 +2474,7 @@ final class AgentLpqCoordinator {
         if (grounded == null) return false;
         ACTIONS.stop(entry);
         AgentGrindTargetStateRuntime.clear(entry);
-        ACTIONS.stagePosition(entry, agent, grounded);
+        rescueTeleport(session, "stage4-attack-assist", entry, agent, grounded);
         member.markRoomRecoveryAssistApplied(roomMapId);
         member.clearRoomCombatProgress();
         member.clearTraversalProgress();
@@ -2675,7 +2703,7 @@ final class AgentLpqCoordinator {
             for (MapleMap map : maps) {
                 List<Integer> mobIds = map.getAllMonsters().stream()
                         .map(mob -> mob.getId()).distinct().toList();
-                for (int mobId : mobIds) map.killMonsterWithDrops(mobId);
+                killWithDrops(session, "missing-pass-mob-sweep", map, mobIds);
             }
             session.markPassRecoveryMobSweep(nowMs);
             log.warn("LPQ Stage {} missing-pass recovery killed {} stalled mobs with drops: "
@@ -2687,7 +2715,7 @@ final class AgentLpqCoordinator {
         }
         int missing = Math.max(0, required - partyPasses);
         if (missing == 0 || session.passRecoveryPassesAwarded()) return;
-        if (!AgentInventoryGatewayRuntime.inventory().addItem(
+        if (!grantItem(session, AgentLpqRescue.Kind.PASS_AWARD, "missing-pass-award",
                 leader, AgentLpqDefinition.PASS, (short) missing)) {
             AgentLpqTerminationService.fail(
                     session, "LPQ passes disappeared and the leader has no ETC space for recovery", nowMs);
@@ -2760,19 +2788,8 @@ final class AgentLpqCoordinator {
         if (firstAttempt) member.markStageFiveCeilingRecoveryApplied(roomMapId);
 
         List<Reactor> unresolved = activeReactors(agent);
-        int reactorHits = 0;
-        for (Reactor reactor : unresolved) {
-            // LPQ boxes use a small authored hit-state chain. Keep advancing the
-            // same live object until its normal script destroys it and emits its pass.
-            for (int attempt = 0; attempt < 16
-                    && reactor.isAlive() && reactor.isActive()
-                    && activeReactors(agent).stream().anyMatch(candidate ->
-                    candidate.getObjectId() == reactor.getObjectId()); attempt++) {
-                if (!ACTIONS.hitReactor(agent, reactor.getObjectId())) break;
-                reactorHits++;
-            }
-        }
-        int vacuumed = vacuumPassDrops(agent, Set.of(agent.getMap()));
+        int reactorHits = remoteBoxHits(session, "stage5-room-ceiling", agent, unresolved);
+        int vacuumed = vacuumPassDrops(session, "stage5-room-ceiling", agent, Set.of(agent.getMap()));
         member.clearReactorWork();
 
         int passQuota = AgentLpqDefinition.roomPassQuota(roomMapId);
@@ -2800,7 +2817,7 @@ final class AgentLpqCoordinator {
             Point recoveryPosition = groundedExit == null ? exitPortal : groundedExit;
             if (recoveryPosition != null) {
                 ACTIONS.stop(entry);
-                ACTIONS.stagePosition(entry, agent, recoveryPosition);
+                rescueTeleport(session, "stage5-room-ceiling", entry, agent, recoveryPosition);
             }
         }
 
@@ -2964,7 +2981,7 @@ final class AgentLpqCoordinator {
             }
             if (exitAction == PassHandoffExitAction.MOVE_TO_STAGE) {
                 int sourceMapId = participant.getMapId();
-                if (moveWithinEvent(session, participant, mainMapId, nowMs)) {
+                if (moveWithinEvent(session, "pass-handoff-stage-map", participant, mainMapId, nowMs)) {
                     member.assign(AgentLpqMemberState.Role.GENERAL, 0);
                     member.clearTraversalProgress();
                     log.warn("LPQ hard current-stage handoff recovery: session={} stage={} "
@@ -3013,7 +3030,7 @@ final class AgentLpqCoordinator {
         Point portal = portalId == null ? null : ACTIONS.portalPosition(agent, portalId);
         if (portalId == null || portal == null) return false;
         ACTIONS.stop(entry);
-        ACTIONS.stagePosition(entry, agent, portal);
+        rescueTeleport(session, "room-exit-portal", entry, agent, portal);
         boolean exited = LPQ.enterPortal(agent, portalId);
         if (!exited) return false;
         session.rooms().release(sourceMapId);
@@ -3026,20 +3043,21 @@ final class AgentLpqCoordinator {
         return true;
     }
 
-    private static int vacuumPassDrops(Character recipient, Set<MapleMap> maps) {
-        return vacuumItemDrops(recipient, maps, AgentLpqDefinition.PASS);
+    private static int vacuumPassDrops(AgentLpqSession session, String site,
+                                       Character recipient, Set<MapleMap> maps) {
+        return vacuumItemDrops(session, site, recipient, maps, AgentLpqDefinition.PASS);
     }
 
     private static int recoverPassDrops(AgentLpqSession session, Character leader,
                                         int stage, Set<MapleMap> maps) {
-        if (stage != 4 && stage != 5) return vacuumPassDrops(leader, maps);
+        if (stage != 4 && stage != 5) return vacuumPassDrops(session, "missing-pass-drops", leader, maps);
         int vacuumed = 0;
         int mainMapId = AgentLpqDefinition.stage(stage).mapId();
         for (MapleMap map : maps) {
             Character recipient = map.getId() == mainMapId
                     ? leader : splitRoomPassRecipient(session, map.getId());
             if (recipient == null) continue;
-            vacuumed += vacuumPassDrops(recipient, Set.of(map));
+            vacuumed += vacuumPassDrops(session, "missing-pass-room-drops", recipient, Set.of(map));
         }
         return vacuumed;
     }
@@ -3056,7 +3074,12 @@ final class AgentLpqCoordinator {
         return null;
     }
 
-    private static int vacuumItemDrops(Character recipient, Set<MapleMap> maps, int itemId) {
+    /**
+     * A rescue: takes every live drop of {@code itemId} lying in {@code maps} into the recipient's bag, wherever he
+     * stands (no walk, no loot range). One 'LPQ rescue:' line with the total, when it took any.
+     */
+    static int vacuumItemDrops(AgentLpqSession session, String site,
+                               Character recipient, Set<MapleMap> maps, int itemId) {
         int vacuumed = 0;
         for (MapleMap map : maps) {
             for (MapItem drop : map.getDroppedItems()) {
@@ -3075,7 +3098,68 @@ final class AgentLpqCoordinator {
                 }
             }
         }
+        if (vacuumed > 0) {
+            AgentLpqRescue.note(session, AgentLpqRescue.Kind.VACUUM, site, recipient,
+                    "item=" + itemId + " quantity=" + vacuumed);
+        }
         return vacuumed;
+    }
+
+    /**
+     * A rescue: places the member at {@code target} at once (a pose teleport), however far it is or whatever lies
+     * between. A site without its session passes null; the note finds it by the member.
+     */
+    private static void rescueTeleport(AgentLpqSession session, String site, AgentRuntimeEntry entry,
+                                       Character agent, Point target) {
+        ACTIONS.stagePosition(entry, agent, target);
+        AgentLpqRescue.note(session, AgentLpqRescue.Kind.TELEPORT, site, agent,
+                "map=" + agent.getMapId() + " to=" + (target == null ? "-" : target.x + "," + target.y));
+    }
+
+    /**
+     * A rescue: hits each live box of the member's room from wherever it stands, up to 16 times a box, until its
+     * script destroys it. Returns the hits; one 'LPQ rescue:' line when there were any.
+     */
+    private static int remoteBoxHits(AgentLpqSession session, String site, Character agent, List<Reactor> reactors) {
+        int reactorHits = 0;
+        for (Reactor reactor : reactors) {
+            // LPQ boxes use a small authored hit-state chain. Keep advancing the
+            // same live object until its normal script destroys it and emits its pass.
+            for (int attempt = 0; attempt < 16
+                    && reactor.isAlive() && reactor.isActive()
+                    && activeReactors(agent).stream().anyMatch(candidate ->
+                    candidate.getObjectId() == reactor.getObjectId()); attempt++) {
+                if (!ACTIONS.hitReactor(agent, reactor.getObjectId())) break;
+                reactorHits++;
+            }
+        }
+        if (reactorHits > 0) {
+            AgentLpqRescue.note(session, AgentLpqRescue.Kind.REMOTE_REACTOR, site, agent,
+                    "map=" + agent.getMapId() + " boxes=" + reactors.size() + " hits=" + reactorHits);
+        }
+        return reactorHits;
+    }
+
+    /**
+     * A rescue: puts items in a member's bag that no drop or player gave him (a pass, the boss key, a door-marker
+     * potion). Returns whether the bag took them; one 'LPQ rescue:' line only when it did.
+     */
+    static boolean grantItem(AgentLpqSession session, AgentLpqRescue.Kind kind, String site,
+                             Character character, int itemId, short quantity) {
+        boolean granted = AgentInventoryGatewayRuntime.inventory().addItem(character, itemId, quantity);
+        if (granted) {
+            AgentLpqRescue.note(session, kind, site, character, "item=" + itemId + " quantity=" + quantity);
+        }
+        return granted;
+    }
+
+    /** A rescue: kills these mobs of the map outright, with their drops. One 'LPQ rescue:' line when there were any. */
+    private static void killWithDrops(AgentLpqSession session, String site, MapleMap map, List<Integer> mobIds) {
+        for (int mobId : mobIds) map.killMonsterWithDrops(mobId);
+        if (!mobIds.isEmpty()) {
+            AgentLpqRescue.note(session, AgentLpqRescue.Kind.KILL_WITH_DROPS, site, null,
+                    "map=" + map.getId() + " mobs=" + mobIds.size());
+        }
     }
 
     private static int partyPassCount(AgentLpqSession session) {
@@ -3105,7 +3189,8 @@ final class AgentLpqCoordinator {
         return maps;
     }
 
-    private static boolean recoverStageTwoTrap(AgentLpqSession session, Character agent, long nowMs) {
+    private static boolean recoverStageTwoTrap(AgentLpqSession session, String site, Character agent,
+                                               long nowMs) {
         var event = session.eventInstance();
         MapleMap destination = event == null ? null
                 : event.getMapInstance(AgentLpqDefinition.stage(2).mapId());
@@ -3113,8 +3198,11 @@ final class AgentLpqCoordinator {
         if (destination == null || spawn == null) return false;
         log.warn("LPQ Stage 2 trap portal recovery: session={} member={}({}) sourceMap={} destination={}",
                 session.sessionId(), agent.getName(), agent.getId(), agent.getMapId(), destination.getId());
+        int sourceMapId = agent.getMapId();
         AgentMapGatewayRuntime.map().changeMapNear(agent, destination, spawn.getPosition());
         session.markProgress(nowMs);
+        AgentLpqRescue.note(session, AgentLpqRescue.Kind.TRAP_RETURN, site, agent,
+                "from=" + sourceMapId + " to=" + destination.getId());
         return true;
     }
 
@@ -3128,12 +3216,12 @@ final class AgentLpqCoordinator {
         boolean stalled = inactiveForMs >= recovery(2).portalMs();
         if (portalId != null && !stalled) return enterPortalTo(entry, agent, destinationMapId);
         ACTIONS.stop(entry);
-        boolean recovered = recoverStageTwoTrap(session, agent, nowMs);
+        boolean recovered = recoverStageTwoTrap(session, "trap-exit-stalled", agent, nowMs);
         if (recovered && member != null) member.clearTraversalProgress();
         return recovered;
     }
 
-    private static boolean restoreEventMember(AgentLpqSession session, Character agent,
+    private static boolean restoreEventMember(AgentLpqSession session, String site, Character agent,
                                                int destinationMapId, long nowMs) {
         var event = session.eventInstance();
         MapleMap destination = event == null ? null : event.getMapInstance(destinationMapId);
@@ -3144,6 +3232,8 @@ final class AgentLpqCoordinator {
         session.markProgress(nowMs);
         log.warn("LPQ event-member recovery: session={} member={}({}) destination={}",
                 session.sessionId(), agent.getName(), agent.getId(), destinationMapId);
+        AgentLpqRescue.note(session, AgentLpqRescue.Kind.EVENT_REREGISTER, site, agent,
+                "destination=" + destinationMapId);
         return true;
     }
 
@@ -3154,7 +3244,7 @@ final class AgentLpqCoordinator {
         int held = agent.getItemQuantity(AgentLpqDefinition.PASS, false);
         int missing = stageFivePassRestoreCount(earned, held);
         if (missing == 0) return;
-        if (!AgentInventoryGatewayRuntime.inventory().addItem(
+        if (!grantItem(session, AgentLpqRescue.Kind.PASS_RESTORE, "stage5-earned-passes",
                 agent, AgentLpqDefinition.PASS, (short) missing)) {
             AgentLpqTerminationService.fail(session,
                     "LPQ Stage 5 earned passes could not be restored after member revival", nowMs);
@@ -3170,14 +3260,17 @@ final class AgentLpqCoordinator {
         return Math.max(0, earned - held);
     }
 
-    private static boolean moveWithinEvent(AgentLpqSession session, Character agent,
+    private static boolean moveWithinEvent(AgentLpqSession session, String site, Character agent,
                                            int destinationMapId, long nowMs) {
         var event = session.eventInstance();
         MapleMap destination = event == null ? null : event.getMapInstance(destinationMapId);
         Portal spawn = destination == null ? null : destination.getRandomPlayerSpawnpoint();
         if (destination == null || spawn == null) return false;
+        int sourceMapId = agent.getMapId();
         AgentMapGatewayRuntime.map().changeMapNear(agent, destination, spawn.getPosition());
         session.markProgress(nowMs);
+        AgentLpqRescue.note(session, AgentLpqRescue.Kind.MAP_MOVE, site, agent,
+                "from=" + sourceMapId + " to=" + destinationMapId);
         return true;
     }
 
@@ -3188,7 +3281,7 @@ final class AgentLpqCoordinator {
             return;
         }
         if (LPQ.event(leader) != session.eventInstance()) {
-            restoreEventMember(session, leader, stage.mapId(), nowMs);
+            restoreEventMember(session, "agent-leader-reentry", leader, stage.mapId(), nowMs);
             return;
         }
         AgentRuntimeEntry entry = entry(leader.getId());
@@ -3204,6 +3297,9 @@ final class AgentLpqCoordinator {
         ACTIONS.stop(entry);
         String clearBefore = LPQ.property(leader, stage.number() + "stageclear");
         if (LPQ.runNpc(leader, stage.npcId(), 1)) {
+            // Noted only once the run started: one that did not start is retried next tick, with no line.
+            if (!nearNpc) AgentLpqRescue.note(session, AgentLpqRescue.Kind.REMOTE_NPC, "remote-submit", leader,
+                    "readyForMs=" + readyForMs);
             if (leaderState != null) leaderState.deferUntil(nowMs + INTERACTION_RETRY_MS);
             String clearAfter = LPQ.property(leader, stage.number() + "stageclear");
             if (clearBefore == null && clearAfter != null) {
@@ -3246,7 +3342,7 @@ final class AgentLpqCoordinator {
                 allReady = false;
                 if (recoveryDue
                         && member.memberType() == AgentLpqMemberState.MemberType.AGENT
-                        && moveWithinEvent(session, participant, destination, nowMs)) {
+                        && moveWithinEvent(session, "next-stage-lagging", participant, destination, nowMs)) {
                     cancelStageFiveDarkSightAtTransition(stage, member, participant);
                     member.clearTraversalProgress();
                     recovered++;
@@ -3261,14 +3357,14 @@ final class AgentLpqCoordinator {
                     AgentRuntimeEntry entry = entry(member.characterId());
                     if (entry != null && recoveryDue) {
                         if (portal == null) {
-                            if (moveWithinEvent(session, participant, destination, nowMs)) {
+                            if (moveWithinEvent(session, "next-stage-no-portal", participant, destination, nowMs)) {
                                 cancelStageFiveDarkSightAtTransition(stage, member, participant);
                                 member.clearTraversalProgress();
                                 recovered++;
                             }
                         } else {
                             ACTIONS.stop(entry);
-                            ACTIONS.stagePosition(entry, participant, portal);
+                            rescueTeleport(session, "next-stage-portal", entry, participant, portal);
                             member.clearTraversalProgress();
                             recovered++;
                         }
@@ -3390,7 +3486,7 @@ final class AgentLpqCoordinator {
         if (agent.getMapId() == destinationMapId || sourceStage < 1 || sourceStage > 9
                 || !postClearTransitionRecoveryDue(sourceStage, inactiveForMs)) return;
         int sourceMapId = agent.getMapId();
-        if (!moveWithinEvent(session, agent, destinationMapId, nowMs)) return;
+        if (!moveWithinEvent(session, "stage-portal-traversal", agent, destinationMapId, nowMs)) return;
         if (member != null) member.clearTraversalProgress();
         log.warn("LPQ {} traversal recovery: session={} member={}({}) source={} "
                         + "destination={} inactiveForMs={}", context, session.sessionId(),
@@ -3561,7 +3657,7 @@ final class AgentLpqCoordinator {
                 agent.getMapId(), portal.getId(), agent.getPosition(), distanceSq, nowMs);
         if (inactiveForMs >= recovery(6).traversalMs()) {
             ACTIONS.stop(entry);
-            ACTIONS.stagePosition(entry, agent, target);
+            rescueTeleport(session, "stage6-portal-approach", entry, agent, target);
             member.clearTraversalProgress();
             session.markProgress(nowMs);
             log.warn("LPQ Stage 6 authored portal approach recovery: session={} "
@@ -3753,7 +3849,7 @@ final class AgentLpqCoordinator {
             return false;
         }
         ACTIONS.stop(entry);
-        ACTIONS.stagePosition(entry, agent, target);
+        rescueTeleport(session, "stage8-platform", entry, agent, target);
         member.clearTraversalProgress();
         session.markProgress(nowMs);
         log.warn("LPQ Stage 8 platform containment recovery: session={} member={}({}) "
@@ -4035,7 +4131,7 @@ final class AgentLpqCoordinator {
             ready = false;
             if (recoveryDue) {
                 ACTIONS.stop(entry);
-                ACTIONS.stagePosition(entry, agent, target);
+                rescueTeleport(session, "stage9-formation", entry, agent, target);
                 recovered++;
             } else {
                 ACTIONS.navigate(entry, target, true);
@@ -4149,7 +4245,7 @@ final class AgentLpqCoordinator {
                 < recovery(9).missingPassMs()) return;
 
         int vacuumed = vacuumItemDrops(
-                leader, Set.of(leader.getMap()), AgentLpqDefinition.BOSS_KEY);
+                session, "boss-key", leader, Set.of(leader.getMap()), AgentLpqDefinition.BOSS_KEY);
         if (vacuumed > 0) {
             session.markPassRecoveryConsolidation(nowMs);
             log.warn("LPQ boss-key recovery vacuumed {} unreachable key drops: session={} leader={}({})",
@@ -4172,7 +4268,7 @@ final class AgentLpqCoordinator {
             AgentRuntimeEntry holderEntry = entry(member.characterId());
             if (holderEntry == null) continue;
             ACTIONS.stop(holderEntry);
-            ACTIONS.stagePosition(holderEntry, holder, leader.getPosition());
+            rescueTeleport(session, "boss-key-holder", holderEntry, holder, leader.getPosition());
             repositionedHolder = true;
         }
         if (repositionedHolder) {
@@ -4184,7 +4280,7 @@ final class AgentLpqCoordinator {
         }
         if (partyKeys > 0 || !bossMapCleared
                 || session.passRecoveryPassesAwarded()) return;
-        if (!AgentInventoryGatewayRuntime.inventory().addItem(
+        if (!grantItem(session, AgentLpqRescue.Kind.KEY_AWARD, "boss-key-award",
                 leader, AgentLpqDefinition.BOSS_KEY, (short) 1)) {
             AgentLpqTerminationService.fail(
                     session, "Alishar's key disappeared and the leader has no ETC space", nowMs);
@@ -4328,7 +4424,7 @@ final class AgentLpqCoordinator {
                 9, agent.getMapId(), agent.getPosition(), distanceSq, nowMs);
         if (inactiveForMs >= recovery(9).rallyRecoveryMs()) {
             ACTIONS.stop(entry);
-            ACTIONS.stagePosition(entry, agent, target);
+            rescueTeleport(session, "reward-npc-approach", entry, agent, target);
             member.clearDestinationApproachProgress();
             session.markProgress(nowMs);
             log.warn("LPQ {} approach recovery: session={} member={}({}) map={} "
@@ -4494,7 +4590,7 @@ final class AgentLpqCoordinator {
                 ACTIONS.stop(entry);
                 Point grounded = ACTIONS.groundPoint(agent.getMap(), reactor.getPosition());
                 Point recoveryTarget = grounded == null ? reactor.getPosition() : grounded;
-                ACTIONS.stagePosition(entry, agent, recoveryTarget);
+                rescueTeleport(null, "reactor-approach", entry, agent, recoveryTarget);
                 member.deferUntil(nowMs + INTERACTION_RETRY_MS);
                 log.warn("LPQ reactor approach recovery placed member beside committed reactor: "
                                 + "member={}({}) map={} reactor={} committedForMs={}",
@@ -4548,7 +4644,7 @@ final class AgentLpqCoordinator {
         Point target = reactorApproachTarget(agent, reactor);
         if (target == null) return false;
         ACTIONS.stop(entry);
-        ACTIONS.stagePosition(entry, agent, target);
+        rescueTeleport(null, "stage5-unobserved-box", entry, agent, target);
         member.markStageFiveAssistApplied();
         member.clearTraversalProgress();
         log.info("LPQ Stage 5 unobserved ordinary-room box assist: member={}({}) "
@@ -4573,7 +4669,7 @@ final class AgentLpqCoordinator {
         Point portal = portalId == null ? null : ACTIONS.portalPosition(agent, portalId);
         if (portal == null) return false;
         ACTIONS.stop(entry);
-        ACTIONS.stagePosition(entry, agent, portal);
+        rescueTeleport(session, "stage5-unobserved-exit", entry, agent, portal);
         member.markStageFiveAssistApplied();
         member.clearTraversalProgress();
         session.markProgress(nowMs);
@@ -4815,7 +4911,7 @@ final class AgentLpqCoordinator {
             return false;
         }
         ACTIONS.stop(entry);
-        ACTIONS.stagePosition(entry, agent, target);
+        rescueTeleport(session, "approach", entry, agent, target);
         member.clearTraversalProgress();
         session.markProgress(nowMs);
         log.warn("LPQ {} position recovery: session={} member={}({}) map={} "

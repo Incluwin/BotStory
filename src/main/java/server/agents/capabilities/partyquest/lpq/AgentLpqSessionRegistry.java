@@ -46,6 +46,12 @@ public final class AgentLpqSessionRegistry {
     public static Collection<AgentLpqSession> sessions() { return java.util.List.copyOf(SESSIONS.values()); }
     public static boolean active(int id) { return forMember(id) != null; }
 
+    /** Drops one member's index entry for this session (a member taken out of the run), and nothing else. */
+    public static synchronized void unindexMember(AgentLpqSession session, int characterId) {
+        if (session == null) return;
+        BY_MEMBER.remove(characterId, session.sessionId());
+    }
+
     public static synchronized void remove(AgentLpqSession session) {
         if (session == null) return;
         if (!SESSIONS.remove(session.sessionId(), session)) return;
