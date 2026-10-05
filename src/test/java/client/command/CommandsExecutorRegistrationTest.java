@@ -21,7 +21,7 @@ class CommandsExecutorRegistrationTest {
         assertRanks(commands, 4, "givemeso", "giveitem", "hpmp", "maxhpmp");
         assertRanks(commands, 5, "reloadevents", "monitor", "mobcapture", "serverhealth");
         assertRanks(commands, 6, "spawnbot", "deleteagent", "healagent", "kpqtest",
-                "lmpqtest", "ppqtest", "agentpop", "companionprobe", "grantcompanion", "setlevel");
+                "lmpqtest", "ppqtest", "agentpop", "companionprobe", "grantcompanion", "setlevel", "stepto");
 
         assertEquals(commands.get("help").getClass(), commands.get("commands").getClass());
         assertEquals(commands.get("warphere").getClass(), commands.get("summon").getClass());
