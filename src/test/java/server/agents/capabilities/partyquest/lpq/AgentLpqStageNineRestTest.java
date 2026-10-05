@@ -146,9 +146,9 @@ class AgentLpqStageNineRestTest {
                 "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java"))
                 .replace("\r\n", "\n");
         String boss = AgentLpqStageNineStationTest.method(source, "    private static void boss(");
-        String branch = AgentLpqStageNineStationTest.block(boss, boss.indexOf("if (alisharAlive) {"));
-        int hp = branch.indexOf("if (agent.getHp() <= 0) continue;");
-        assertTrue(hp > 0 && branch.indexOf("fightAlishar(") > hp, "only a living member rests or fights");
+        int hp = boss.indexOf("if (agent.getHp() <= 0) continue;");
+        assertTrue(hp > 0 && boss.indexOf("if (alisharAlive) {") > hp && boss.indexOf("fightAlishar(") > hp,
+                "only a living member rests or fights (AgentLpqStageNineHeldCorpseTest)");
 
         // The order checks rest first, for melee members and shooters alike, with the yaml thresholds in their order.
         String policy = Files.readString(Path.of(

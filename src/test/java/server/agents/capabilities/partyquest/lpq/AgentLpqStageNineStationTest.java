@@ -236,9 +236,9 @@ class AgentLpqStageNineStationTest {
         String source = source();
         String boss = method(source, "    private static void boss(");
         String branch = block(boss, boss.indexOf("if (alisharAlive) {"));
-        int hp = branch.indexOf("if (agent.getHp() <= 0) continue;");
-        assertTrue(hp > 0, "a held corpse gets no order");
-        assertTrue(branch.indexOf("ACTIONS.") > hp, "nothing is ordered before the HP check");
+        int hp = boss.indexOf("if (agent.getHp() <= 0) continue;");
+        assertTrue(hp > 0 && boss.indexOf("if (alisharAlive) {") > hp,
+                "a held corpse gets no order (AgentLpqStageNineHeldCorpseTest)");
         assertTrue(branch.contains("fightAlishar("), branch);
         assertFalse(branch.contains("ACTIONS.grind("), "the shared boss grind is gone");
 

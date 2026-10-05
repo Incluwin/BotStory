@@ -3942,6 +3942,7 @@ final class AgentLpqCoordinator {
                 .map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .filter(agent -> agent.getMapId() == AgentLpqDefinition.stage(9).mapId())
+                .filter(agent -> agent.getHp() > 0)
                 .filter(AgentLpqRosterRequirementPolicy::rangedAttack)
                 .anyMatch(agent -> stageNineRatzFiringReady(
                         agent.getPosition(), ACTIONS.grounded(agent),
@@ -3961,6 +3962,9 @@ final class AgentLpqCoordinator {
             AgentRuntimeEntry entry = entry(member.characterId());
             if (agent == null || entry == null
                     || agent.getMapId() != AgentLpqDefinition.stage(9).mapId()) continue;
+            // A dead member held on the map (LPQ base fix 1) gets no order, group, station or loot claim in any
+            // phase: a corpse must not reserve a cleanup drop the living then skip, nor count as firing at the Ratz.
+            if (agent.getHp() <= 0) continue;
             if (member.characterId() == leader.getId()
                     && collectNearestDrop(entry, agent,
                             Set.of(AgentLpqDefinition.BOSS_KEY), lootClaims)) continue;
@@ -3969,8 +3973,6 @@ final class AgentLpqCoordinator {
                     itemId -> stageNineAgentMayCollectItem(
                             member.characterId(), leader.getId(), itemId))) continue;
             if (alisharAlive) {
-                // A dead member held on the map (LPQ base fix 1) gets no group, side, station or order.
-                if (agent.getHp() <= 0) continue;
                 boolean joiningBossCombat = member.claimIntentAnnouncement(
                         "stage9:alishar-combat");
                 member.assign(AgentLpqMemberState.Role.BOSS_ATTACKER,
