@@ -3296,9 +3296,10 @@ final class AgentLpqCoordinator {
         }
         ACTIONS.stop(entry);
         String clearBefore = LPQ.property(leader, stage.number() + "stageclear");
-        if (!nearNpc) AgentLpqRescue.note(session, AgentLpqRescue.Kind.REMOTE_NPC, "remote-submit", leader,
-                "readyForMs=" + readyForMs);
         if (LPQ.runNpc(leader, stage.npcId(), 1)) {
+            // Noted only once the run started: one that did not start is retried next tick, with no line.
+            if (!nearNpc) AgentLpqRescue.note(session, AgentLpqRescue.Kind.REMOTE_NPC, "remote-submit", leader,
+                    "readyForMs=" + readyForMs);
             if (leaderState != null) leaderState.deferUntil(nowMs + INTERACTION_RETRY_MS);
             String clearAfter = LPQ.property(leader, stage.number() + "stageclear");
             if (clearBefore == null && clearAfter != null) {

@@ -29,7 +29,8 @@ import static org.junit.jupiter.api.Assertions.fail;
  *     primitive, and LPQ.runNpc only where an NPC is run after an approach (or remotely, in submit);</li>
  *     <li>each rescue primitive calls AgentLpqRescue.note;</li>
  *     <li>the (calling method, site label, kind) of every rescue is the reviewed inventory, each once;</li>
- *     <li>submit notes its remote NPC run right before it, in the path where the leader is not near the NPC.</li>
+ *     <li>submit notes its remote NPC run, when the leader is not near the NPC, only once LPQ.runNpc has started
+ *     it (a run that did not start is retried next tick, so a note before it would repeat every tick).</li>
  * </ol>
  */
 class AgentLpqRescueSiteTest {
@@ -280,14 +281,18 @@ class AgentLpqRescueSiteTest {
     }
 
     @Test
-    void submitNotesItsRemoteNpcRunRightBeforeItWhenTheLeaderIsNotNearTheNpc() {
+    void submitNotesItsRemoteNpcRunOnlyOnceTheRunHasStarted() {
         Method submit = method("submit");
         String body = code.substring(submit.bodyStart(), submit.bodyEnd());
-        Matcher placed = Pattern.compile("if\\s*\\(\\s*!\\s*nearNpc\\s*\\)\\s*AgentLpqRescue\\s*\\.\\s*note\\s*\\("
-                + "\\s*session\\s*,\\s*AgentLpqRescue\\s*\\.\\s*Kind\\s*\\.\\s*REMOTE_NPC\\s*,[^;]*;"
-                + "\\s*if\\s*\\(\\s*LPQ\\s*\\.\\s*runNpc\\s*\\(\\s*leader\\s*,\\s*stage\\s*\\.\\s*npcId\\s*\\(\\s*\\)"
-                + "\\s*,\\s*1\\s*\\)\\s*\\)").matcher(body);
-        assertTrue(placed.find(), "submit: if (!nearNpc) note REMOTE_NPC; then if (LPQ.runNpc(leader, ...))");
+        // runNpc returns false when the NPC is not on the leader's map or its script does not start; nothing defers
+        // the leader then, so submit runs again next tick. Only a run that started is a rescue applied.
+        Matcher placed = Pattern.compile("if\\s*\\(\\s*LPQ\\s*\\.\\s*runNpc\\s*\\(\\s*leader\\s*,\\s*stage\\s*\\.\\s*npcId"
+                + "\\s*\\(\\s*\\)\\s*,\\s*1\\s*\\)\\s*\\)\\s*\\{"
+                + "\\s*if\\s*\\(\\s*!\\s*nearNpc\\s*\\)\\s*AgentLpqRescue\\s*\\.\\s*note\\s*\\("
+                + "\\s*session\\s*,\\s*AgentLpqRescue\\s*\\.\\s*Kind\\s*\\.\\s*REMOTE_NPC\\s*,[^;]*;").matcher(body);
+        assertTrue(placed.find(), "submit: if (LPQ.runNpc(leader, ...)) { if (!nearNpc) note REMOTE_NPC; ...");
+        assertEquals(1, Pattern.compile("Kind\\s*\\.\\s*REMOTE_NPC").matcher(body).results().count(),
+                "submit notes REMOTE_NPC once, inside the run's success branch");
     }
 
     /** The top-level arguments of the call whose '(' is at {@code open}, as written (string literals intact). */
