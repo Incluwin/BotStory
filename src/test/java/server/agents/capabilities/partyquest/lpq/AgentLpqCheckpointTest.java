@@ -39,6 +39,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -164,17 +165,18 @@ class AgentLpqCheckpointTest {
     /**
      * The checks run before the run's lock is taken, so a release can land in between: the tick's own failure, or
      * one begun by the watchdog, a force stop or a stop, which fail a run without its lock. Here it lands while the
-     * stage map is looked up. Whatever it is, nothing is written and no one is moved into the instance.
+     * stage map is looked up. Whatever it is, nothing is written and no one is moved into the instance. (Each change
+     * is stubbed with doAnswer: re-stubbing through when() would call, and so run, the change stubbed before it.)
      */
     @Test
     void aRunReleasedBeforeTheCheckpointTakesHoldMovesNoOne() {
         adoptAndEnter(AgentLpqSession.Phase.STAGE_3);
-        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+        doAnswer(call -> {
             session.beginTermination();
             session.clearEventInstance();
             session.fail("The LPQ event timer expired", 3_900L);
             return stageEight;
-        });
+        }).when(event).getMapInstance(AgentLpqDefinition.stage(8).mapId());
         assertEquals(List.of("The LPQ run ended before the checkpoint."), checkpoint("8"));
         assertEquals(AgentLpqSession.Phase.FAILED, session.phase());
         assertNothingMoved();
@@ -185,16 +187,16 @@ class AgentLpqCheckpointTest {
         adoptAndEnter(AgentLpqSession.Phase.STAGE_3);
         AtomicBoolean disposed = new AtomicBoolean();
         when(event.isEventDisposed()).thenAnswer(call -> disposed.get());
-        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+        doAnswer(call -> {
             disposed.set(true);
             return stageEight;
-        });
+        }).when(event).getMapInstance(AgentLpqDefinition.stage(8).mapId());
         assertEquals(List.of("The LPQ run ended before the checkpoint."), checkpoint("8"));
         disposed.set(false);
-        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+        doAnswer(call -> {
             session.beginTermination(); // the watchdog's release has begun; the session is not FAILED yet
             return stageEight;
-        });
+        }).when(event).getMapInstance(AgentLpqDefinition.stage(8).mapId());
         assertEquals(List.of("The LPQ run ended before the checkpoint."), checkpoint("8"));
         assertEquals(AgentLpqSession.Phase.STAGE_3, session.phase());
         assertNothingMoved();
@@ -204,19 +206,19 @@ class AgentLpqCheckpointTest {
     void aPartyThatMovedMeanwhileIsNotMoved() {
         adoptAndEnter(AgentLpqSession.Phase.STAGE_3);
         Character kestrel = everyone.get(2);
-        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+        doAnswer(call -> {
             session.transition(AgentLpqSession.Phase.STAGE_4, 3_900L);
             return stageEight;
-        });
+        }).when(event).getMapInstance(AgentLpqDefinition.stage(8).mapId());
         assertEquals(List.of("The LPQ party moved on; try the checkpoint again."), checkpoint("8"));
         assertEquals(AgentLpqSession.Phase.STAGE_4, session.phase());
         AtomicBoolean kestrelLeft = new AtomicBoolean();
         when(kestrel.getMapId()).thenAnswer(call -> kestrelLeft.get()
                 ? AgentLpqDefinition.EXIT_MAP : AgentLpqDefinition.stage(3).mapId());
-        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+        doAnswer(call -> {
             kestrelLeft.set(true);
             return stageEight;
-        });
+        }).when(event).getMapInstance(AgentLpqDefinition.stage(8).mapId());
         assertEquals(List.of("Every member must be inside the LPQ instance first."), checkpoint("8"));
         assertEquals(AgentLpqSession.Phase.STAGE_4, session.phase());
         assertNothingMoved();
