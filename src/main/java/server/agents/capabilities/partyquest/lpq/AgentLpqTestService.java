@@ -261,21 +261,25 @@ public final class AgentLpqTestService {
                 ? Integer.parseInt(from.name().substring("STAGE_".length()))
                 : AgentLpqDefinition.stageNumber(AgentLpqDefinition.CLEAR_MAP);
         if (stage <= current) return List.of("The party is already at or past stage " + stage + ".");
-        List<Character> members = new ArrayList<>();
-        for (AgentLpqMemberState state : session.members()) {
-            Character member = online(state.characterId());
-            if (member == null || member.getEventInstance() != event
-                    || !AgentLpqDefinition.isEventMap(member.getMapId())) {
-                return List.of("Every member must be inside the LPQ instance first.");
-            }
-            members.add(member);
-        }
+        List<Character> members = membersInside(session, event);
+        if (members == null) return List.of("Every member must be inside the LPQ instance first.");
         MapleMap map = event.getMapInstance(AgentLpqDefinition.stage(stage).mapId());
         if (map == null) throw new IllegalStateException("LPQ stage " + stage + " map is unavailable");
         var portal = map.getPortal(0);
         Point spawn = portal == null ? new Point(0, 0) : portal.getPosition();
         AgentLpqSession.Phase to = AgentLpqSession.Phase.valueOf("STAGE_" + stage);
         synchronized (session) {
+            // Checked again under the run's lock, before any write. A release between the checks above and here (the
+            // tick's own failure, or one begun by the watchdog, a force stop or a stop, which take no lock) leaves
+            // nothing to move; a party that moved meanwhile is not moved.
+            if (session.terminal() || session.terminationStarted() || session.eventInstance() != event
+                    || event.isEventDisposed()) {
+                return List.of("The LPQ run ended before the checkpoint.");
+            }
+            if (session.phase() != from) return List.of("The LPQ party moved on; try the checkpoint again.");
+            if (!members.equals(membersInside(session, event))) {
+                return List.of("Every member must be inside the LPQ instance first.");
+            }
             // As the boss shortcut: the earlier stages' flags make the event consistent with the stage-n portal.
             for (int cleared = 1; cleared < stage; cleared++) event.setProperty(cleared + "stageclear", "true");
             for (Character member : members) {
@@ -287,6 +291,20 @@ public final class AgentLpqTestService {
         log.info("LPQ checkpoint: session={} from={} to={} members={}", session.sessionId(), from, to,
                 members.stream().map(Character::getId).toList());
         return List.of("LPQ checkpoint: everyone is on stage " + stage + ".");
+    }
+
+    /** The run's members, each online and inside {@code event} on one of its maps; null when any one is not. */
+    private static List<Character> membersInside(AgentLpqSession session, EventInstanceManager event) {
+        List<Character> members = new ArrayList<>();
+        for (AgentLpqMemberState state : session.members()) {
+            Character member = online(state.characterId());
+            if (member == null || member.getEventInstance() != event
+                    || !AgentLpqDefinition.isEventMap(member.getMapId())) {
+                return null;
+            }
+            members.add(member);
+        }
+        return members;
     }
 
     private static void openLobby(Run run, long nowMs) {

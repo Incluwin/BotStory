@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -158,6 +159,72 @@ class AgentLpqCheckpointTest {
                             + "members=[743300, 743301, 743302, 743303, 743304, 743305]"),
                     log.startingWith("LPQ checkpoint: "));
         }
+    }
+
+    /**
+     * The checks run before the run's lock is taken, so a release can land in between: the tick's own failure, or
+     * one begun by the watchdog, a force stop or a stop, which fail a run without its lock. Here it lands while the
+     * stage map is looked up. Whatever it is, nothing is written and no one is moved into the instance.
+     */
+    @Test
+    void aRunReleasedBeforeTheCheckpointTakesHoldMovesNoOne() {
+        adoptAndEnter(AgentLpqSession.Phase.STAGE_3);
+        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+            session.beginTermination();
+            session.clearEventInstance();
+            session.fail("The LPQ event timer expired", 3_900L);
+            return stageEight;
+        });
+        assertEquals(List.of("The LPQ run ended before the checkpoint."), checkpoint("8"));
+        assertEquals(AgentLpqSession.Phase.FAILED, session.phase());
+        assertNothingMoved();
+    }
+
+    @Test
+    void aReleaseUnderWayOrADisposedEventTakesNoCheckpoint() {
+        adoptAndEnter(AgentLpqSession.Phase.STAGE_3);
+        AtomicBoolean disposed = new AtomicBoolean();
+        when(event.isEventDisposed()).thenAnswer(call -> disposed.get());
+        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+            disposed.set(true);
+            return stageEight;
+        });
+        assertEquals(List.of("The LPQ run ended before the checkpoint."), checkpoint("8"));
+        disposed.set(false);
+        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+            session.beginTermination(); // the watchdog's release has begun; the session is not FAILED yet
+            return stageEight;
+        });
+        assertEquals(List.of("The LPQ run ended before the checkpoint."), checkpoint("8"));
+        assertEquals(AgentLpqSession.Phase.STAGE_3, session.phase());
+        assertNothingMoved();
+    }
+
+    @Test
+    void aPartyThatMovedMeanwhileIsNotMoved() {
+        adoptAndEnter(AgentLpqSession.Phase.STAGE_3);
+        Character kestrel = everyone.get(2);
+        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+            session.transition(AgentLpqSession.Phase.STAGE_4, 3_900L);
+            return stageEight;
+        });
+        assertEquals(List.of("The LPQ party moved on; try the checkpoint again."), checkpoint("8"));
+        assertEquals(AgentLpqSession.Phase.STAGE_4, session.phase());
+        AtomicBoolean kestrelLeft = new AtomicBoolean();
+        when(kestrel.getMapId()).thenAnswer(call -> kestrelLeft.get()
+                ? AgentLpqDefinition.EXIT_MAP : AgentLpqDefinition.stage(3).mapId());
+        when(event.getMapInstance(AgentLpqDefinition.stage(8).mapId())).thenAnswer(call -> {
+            kestrelLeft.set(true);
+            return stageEight;
+        });
+        assertEquals(List.of("Every member must be inside the LPQ instance first."), checkpoint("8"));
+        assertEquals(AgentLpqSession.Phase.STAGE_4, session.phase());
+        assertNothingMoved();
+    }
+
+    private void assertNothingMoved() {
+        verify(event, never()).setProperty(anyString(), anyString());
+        verify(maps, never()).changeMapNear(any(), any(), any());
     }
 
     @Test
