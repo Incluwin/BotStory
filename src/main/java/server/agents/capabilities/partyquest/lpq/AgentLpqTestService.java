@@ -84,6 +84,8 @@ public final class AgentLpqTestService {
                 case "resume" -> pause(operator, false);
                 case "bonus" -> bonus(operator, params);
                 case "stage8chat", "boxchat" -> stage8Chat(operator, params);
+                case "party", "adopt" -> adoptCurrentParty(operator, adoptOptions(params, 1, nowMs), nowMs);
+                case "checkpoint" -> checkpoint(operator, params, nowMs);
                 case "run" -> runAgain(operator, nowMs);
                 case "stop" -> stop(operator, "stopped by operator", nowMs);
                 default -> help();
@@ -97,6 +99,10 @@ public final class AgentLpqTestService {
     private static synchronized List<String> start(
             Character operator, long seed, Flow flow, StartStage startStage,
             AgentLpqSession.HumanRolePreference humanRolePreference, long nowMs) throws Exception {
+        Run adopted = RUNS.get(operator.getId());
+        if (adopted != null && adopted.flow == Flow.ADOPTED && !finished(adopted)) {
+            return List.of("Stop the current LPQ companion run first.");
+        }
         if (operator.getMapId() != AgentLpqDefinition.RECRUIT_MAP) {
             return List.of("Stand at the Ludibrium PQ entrance (221024500) first.");
         }
@@ -136,6 +142,7 @@ public final class AgentLpqTestService {
                     + humanRolePreference + ".");
             case AGENT_LEADER -> List.of("Five LPQ Agents are forming a party and recruiting one. Chat 'looking for LPQ' or 'invite me LPQ', accept the invitation, and gather for the five-second start. Human role: "
                     + humanRolePreference + ". !lpqtest invite remains a manual resend.");
+            case ADOPTED -> throw new IllegalArgumentException("an adopted party is never a fixture start");
         };
     }
 
@@ -146,6 +153,8 @@ public final class AgentLpqTestService {
      */
     private static void resetReservedTestAgents(Character operator, long nowMs) {
         for (Run active : List.copyOf(RUNS.values())) {
+            // An adopted run's Agents are its owner's companions, not LPQer fixtures: never reclaimed here.
+            if (active.flow == Flow.ADOPTED) continue;
             String reason = active.operator.getId() == operator.getId()
                     ? "replaced by a new LPQ test"
                     : "replaced by LPQ test operator " + operator.getName();
@@ -157,6 +166,127 @@ public final class AgentLpqTestService {
                 disconnect(AgentRuntimeIdentityRuntime.botId(stale));
             }
         }
+    }
+
+    /**
+     * "party prod [seed]": the operator's own party (his companions, any humans) at the Red Sign becomes a companion
+     * run through the public admit, as a companion host would enter it. Nothing is spawned, loaded or invited, so a
+     * companion owner can run it with his own companions; the run is kept here only for status, checkpoint and stop.
+     */
+    private static List<String> adoptCurrentParty(Character operator, AdoptOptions options, long nowMs) {
+        if (!options.production()) {
+            return List.of("LPQ adopts a party only as a companion run: !lpqtest party prod [seed].");
+        }
+        if (operator.getMapId() != AgentLpqDefinition.RECRUIT_MAP) {
+            return List.of("Stand at the Ludibrium PQ entrance (221024500) before adopting a party.");
+        }
+        // A finished companion run keeps its entry here; it has nothing left to clean up. A finished run that
+        // spawned its Agents still needs the stop that logs them out.
+        ArrayList<String> response = new ArrayList<>();
+        Run previous = RUNS.get(operator.getId());
+        if (previous != null && finished(previous)) {
+            if (previous.flow != Flow.ADOPTED) response.addAll(stop(operator, "replaced by an adopted party", nowMs));
+            else RUNS.remove(operator.getId(), previous);
+        }
+        if (RUNS.containsKey(operator.getId())) {
+            return List.of("Stop the current LPQ test before adopting another party.");
+        }
+        AgentPartySnapshot snapshot = AgentPartyGatewayRuntime.party().snapshot(operator);
+        if (snapshot == null) return List.of("Create the desired party before using !lpqtest party prod.");
+        List<Character> online = AgentPartyGatewayRuntime.party().onlineMembers(operator).stream()
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        if (online.size() != snapshot.members().size()) {
+            return List.of("Every party member must be online on this channel before the companion run starts.");
+        }
+        boolean leads = snapshot.members().stream().anyMatch(member -> member != null
+                && member.id() == operator.getId() && member.leader());
+        if (!leads) {
+            return List.of("Lead the party yourself for a companion run: the public admit keys the run by its leader.");
+        }
+
+        AgentLpqAdmissionService.AdmissionResult result =
+                AgentLpqAdmissionService.admit(operator, operator, online, options.seed(), nowMs);
+        if (!result.success()) {
+            response.add("Could not adopt the party: " + result.message());
+            return response;
+        }
+        result.session().setMemberCoordinationChatEnabled(true);
+        Set<String> agentNames = online.stream()
+                .filter(member -> AgentRuntimeRegistry.findByAgentCharacterId(member.getId()) != null)
+                .map(Character::getName)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Run run = new Run(operator, result.engagement(), options.seed(), Flow.ADOPTED, StartStage.FULL_RUN,
+                AgentLpqSession.HumanRolePreference.DEFAULT, agentNames);
+        run.session = result.session();
+        run.eventLeaderId = operator.getId();
+        RUNS.put(operator.getId(), run);
+        response.add("Adopted as a companion run. Talk to the Red Sign within 30 seconds.");
+        return response;
+    }
+
+    private static boolean finished(Run run) {
+        return run.engagement.state() == AgentPartyQuestEngagement.State.FAILED
+                || run.engagement.state() == AgentPartyQuestEngagement.State.CLOSED;
+    }
+
+    /**
+     * "checkpoint &lt;n&gt;": GM setup for re-running a stage of a companion run (a gm-1 leader cannot !warp, and an
+     * in-instance !warp skips the stage flags). Every member, the leader included, moves to stage n's map inside the
+     * party's own instance, and stages 1..n-1 are marked clear. Nothing else changes (no stage status, combo, mob,
+     * box or item), so stage n plays from its start. Stages 1-2 are replayed only by a fresh run.
+     */
+    private static List<String> checkpoint(Character operator, String[] params, long nowMs) {
+        Run run = RUNS.get(operator.getId());
+        AgentLpqSession session = run == null ? null : run.session;
+        if (run == null || run.flow != Flow.ADOPTED || session == null || session.terminal()) {
+            return List.of("Checkpoints are for a companion run: !lpqtest party prod first.");
+        }
+        AgentLpqSession.Phase from = session.phase();
+        EventInstanceManager event = session.eventInstance();
+        if (from == AgentLpqSession.Phase.PREPARING || from == AgentLpqSession.Phase.ENTERING || event == null) {
+            return List.of("The LPQ party has not entered yet.");
+        }
+        int target;
+        try {
+            target = params.length < 2 ? 0 : Integer.parseInt(params[1]);
+        } catch (NumberFormatException notAStage) {
+            target = 0;
+        }
+        int stage = target;
+        if (stage <= AgentLpqDefinition.stageNumber(AgentLpqDefinition.STAGE_2_TRAP_MAP)
+                || AgentLpqDefinition.stages().stream().noneMatch(candidate -> candidate.number() == stage)) {
+            return List.of("Syntax: !lpqtest checkpoint <3-9>");
+        }
+        int current = from.name().startsWith("STAGE_")
+                ? Integer.parseInt(from.name().substring("STAGE_".length()))
+                : AgentLpqDefinition.stageNumber(AgentLpqDefinition.CLEAR_MAP);
+        if (stage <= current) return List.of("The party is already at or past stage " + stage + ".");
+        List<Character> members = new ArrayList<>();
+        for (AgentLpqMemberState state : session.members()) {
+            Character member = online(state.characterId());
+            if (member == null || member.getEventInstance() != event
+                    || !AgentLpqDefinition.isEventMap(member.getMapId())) {
+                return List.of("Every member must be inside the LPQ instance first.");
+            }
+            members.add(member);
+        }
+        MapleMap map = event.getMapInstance(AgentLpqDefinition.stage(stage).mapId());
+        if (map == null) throw new IllegalStateException("LPQ stage " + stage + " map is unavailable");
+        var portal = map.getPortal(0);
+        Point spawn = portal == null ? new Point(0, 0) : portal.getPosition();
+        AgentLpqSession.Phase to = AgentLpqSession.Phase.valueOf("STAGE_" + stage);
+        synchronized (session) {
+            // As the boss shortcut: the earlier stages' flags make the event consistent with the stage-n portal.
+            for (int cleared = 1; cleared < stage; cleared++) event.setProperty(cleared + "stageclear", "true");
+            for (Character member : members) {
+                AgentMapGatewayRuntime.map().changeMapNear(member, map, spawn);
+            }
+            session.bindEventInstance(event);
+            session.transition(to, nowMs);
+        }
+        log.info("LPQ checkpoint: session={} from={} to={} members={}", session.sessionId(), from, to,
+                members.stream().map(Character::getId).toList());
+        return List.of("LPQ checkpoint: everyone is on stage " + stage + ".");
     }
 
     private static void openLobby(Run run, long nowMs) {
@@ -662,13 +792,15 @@ public final class AgentLpqTestService {
         } else if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
             AgentPartyQuestLifecycleRuntime.closeTest(run.engagement, nowMs);
         }
-        run.engagement.agentIds().forEach(AgentLpqTestService::disconnect);
+        // An adopted party's Agents are its owners' companions: they are never logged out here.
+        if (run.flow != Flow.ADOPTED) run.engagement.agentIds().forEach(AgentLpqTestService::disconnect);
         return List.of("Stopped LPQ test; backing characters were retained.");
     }
 
     private static List<String> runAgain(Character operator, long nowMs) {
         Run run = RUNS.get(operator.getId());
         if (run == null) return List.of("No LPQ test is active.");
+        if (run.flow == Flow.ADOPTED) return List.of("A companion run starts again with !lpqtest party prod.");
         if (run.engagement.state() != AgentPartyQuestEngagement.State.POST_RUN_HOLD) {
             return List.of("A new LPQ can start only while the Agents are waiting in the entrance lobby.");
         }
@@ -748,6 +880,13 @@ public final class AgentLpqTestService {
     private static long seed(String[] params, int index, long fallback) {
         return params.length <= index ? fallback : Long.parseLong(params[index]);
     }
+
+    /** "party [prod] [seed]", read as HPQ's harness reads it: the prod token comes before the seed. */
+    static AdoptOptions adoptOptions(String[] params, int firstOptionIndex, long fallbackSeed) {
+        boolean production = params != null && params.length > firstOptionIndex
+                && "prod".equalsIgnoreCase(params[firstOptionIndex]);
+        return new AdoptOptions(production, seed(params, firstOptionIndex + (production ? 1 : 0), fallbackSeed));
+    }
     private static long mixedSeed(String[] params, int index, long fallback) {
         if (params.length <= index) return fallback;
         String value = params[index];
@@ -785,6 +924,8 @@ public final class AgentLpqTestService {
                 "!lpqtest boss [seed] (six Agents enter the real event directly at Stage 9)",
                 "!lpqtest humanleader [teleport|darksight|ranged] [seed] (you lead five Agents)",
                 "!lpqtest agentleader [teleport|darksight|ranged] [seed] (a five-Agent party recruits you)",
+                "!lpqtest party prod [seed] (adopt your own party as a companion run; you lead)",
+                "!lpqtest checkpoint <3-9> (companion run only: the whole party moves to that stage inside its instance)",
                 "!lpqtest invite (manual Agent-leader invitation resend)",
                 "!lpqtest spectate | follow <leader|AgentName> | stay | return",
                 "!warplpq <1-6|leader|scout [1-2]|teleport|darksight|magic|physical|top|bottom|platform|boss|room 501-506>",
@@ -792,7 +933,10 @@ public final class AgentLpqTestService {
                 "!lpqtest status | pause | resume | bonus <skip|enter> | run | stop");
     }
 
-    private enum Flow { AGENTS_ONLY, HUMAN_LEADER, AGENT_LEADER }
+    private enum Flow { AGENTS_ONLY, HUMAN_LEADER, AGENT_LEADER, ADOPTED }
+
+    record AdoptOptions(boolean production, long seed) {
+    }
     private enum StartStage { FULL_RUN, BOSS }
     private static final class Run {
         final Object lock = new Object();
