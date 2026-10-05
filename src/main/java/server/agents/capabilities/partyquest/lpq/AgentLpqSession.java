@@ -45,6 +45,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private int mainMapRallyMapId;
     private long mainMapRallyStartedAtMs;
     private long bossEdgeRegroupStartedAtMs;
+    private long stageNineBossHp = -1L;
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -185,6 +186,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
         resetPostClearTransition();
         resetMainMapRally();
         bossEdgeRegroupStartedAtMs = 0L;
+        stageNineBossHp = -1L;
         members.values().forEach(member -> {
             member.resetForStage(member.characterId() == eventLeaderId
                     ? AgentLpqMemberState.Role.EVENT_LEADER
@@ -255,6 +257,16 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
         return at == null ? 0L : at;
     }
     public synchronized void markProgress(long nowMs) { lastProgressAtMs = Math.max(lastProgressAtMs, nowMs); }
+
+    /**
+     * Records Alishar's HP as the coordinator sees it; true when it fell since the previous observation. The first
+     * observation and a rise only set the baseline; a phase transition starts a new one.
+     */
+    synchronized boolean observeStageNineBossHp(long hp) {
+        boolean fell = stageNineBossHp >= 0L && hp < stageNineBossHp;
+        stageNineBossHp = hp;
+        return fell;
+    }
 
     public synchronized long readyAtMs() { return readyAtMs; }
 

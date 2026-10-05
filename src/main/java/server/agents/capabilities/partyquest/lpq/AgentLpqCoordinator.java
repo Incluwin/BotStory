@@ -3892,6 +3892,7 @@ final class AgentLpqCoordinator {
                 .filter(monster -> monster.getId() == AgentLpqDefinition.ALISHAR)
                 .findFirst().orElse(null);
         boolean alisharAlive = alishar != null;
+        observeStageNineBossDamage(session, alishar, nowMs);
         Reactor alisharReactor = activeReactors(leader).stream().findFirst().orElse(null);
         boolean rangedTriggerEngaged = triggerRatzAlive
                 && session.members().stream()
@@ -3976,6 +3977,16 @@ final class AgentLpqCoordinator {
         recoverBossKey(session, leader, nowMs);
         if (leader.getItemQuantity(AgentLpqDefinition.BOSS_KEY, false) > 0) {
             if (isAgent(leader)) submit(session, leader, AgentLpqDefinition.stage(9), nowMs);
+        }
+    }
+
+    /**
+     * Damage to Alishar is stage-9 progress (LPQ base fix 3): once the Black Ratz is dead nothing else marks progress
+     * while he lives, so a fight that is still dealing damage must not reach the phase timeout.
+     */
+    static void observeStageNineBossDamage(AgentLpqSession session, Monster alishar, long nowMs) {
+        if (alishar != null && session.observeStageNineBossHp(alishar.getHp())) {
+            session.markProgress(nowMs);
         }
     }
 
