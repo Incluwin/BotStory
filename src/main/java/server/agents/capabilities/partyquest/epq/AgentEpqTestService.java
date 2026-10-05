@@ -200,9 +200,17 @@ public final class AgentEpqTestService {
         return List.of("Adopted as a companion run. Talk to Ellin within 30 seconds.");
     }
 
-    /** A party prod companion run with nothing left for a stop to do: its session has ended. */
+    /**
+     * A party prod companion run with nothing left for a stop to do: its session has ended and its engagement is gone,
+     * failed or closed, as HPQ judges it. An engagement still held (a handback deferred while a companion is in the
+     * event or down, or a TownLife hold) keeps the run, so '!epqtest stop' can still recover it.
+     */
     private static boolean finished(Run run) {
-        return run.session == null || run.session.terminal();
+        if (run.session != null && !run.session.terminal()) return false;
+        AgentPartyQuestEngagement engagement = run.engagement;
+        if (AgentPartyQuestEngagementRegistry.byId(engagement.engagementId()) != engagement) return true;
+        AgentPartyQuestEngagement.State state = engagement.state();
+        return state == AgentPartyQuestEngagement.State.FAILED || state == AgentPartyQuestEngagement.State.CLOSED;
     }
 
     /**

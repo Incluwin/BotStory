@@ -126,6 +126,38 @@ class AgentEpqTestServicePartyProdTest {
     }
 
     @Test
+    void aFinishedRunWhoseEngagementStillRecoversIsKeptForTheStopThatRecoversIt() {
+        AgentPartyQuestEngagementRegistry.register(gm.engagement);
+        assertEquals(List.of(ADOPTED), gm.epqtest(gm.crew, 2_000L, "party", "prod", "7"));
+        // Released, but the handback is deferred: a companion is still in the event or down.
+        gm.session.fail("EPQ stalled in STAGE_TWO for 480 seconds", 3_000L);
+        gm.engagement.beginRecovery("EPQ stalled in STAGE_TWO for 480 seconds", 3_000L);
+
+        assertEquals(List.of("Stop the current EPQ test before adopting another party."),
+                gm.epqtest(gm.crew, 4_000L, "party", "prod", "7"));
+        assertEquals(List.of("Stop the current EPQ test before starting another."),
+                gm.epqtest(gm.crew, System.currentTimeMillis(), "start", "11"));
+        assertEquals(List.of("EPQ test stopped safely."), gm.epqtest(gm.crew, 5_000L, "stop"));
+
+        gm.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.recover(gm.engagement, 5_000L));
+        gm.admission.verify(() -> AgentEpqAdmissionService.admit(eq(gm.crew), eq(gm.crew), anyList(), anyLong(),
+                anyLong()), times(1));
+        gm.scheduler.verifyNoInteractions();
+    }
+
+    @Test
+    void aFinishedRunWhoseEngagementClosedMakesWay() {
+        AgentPartyQuestEngagementRegistry.register(gm.engagement);
+        assertEquals(List.of(ADOPTED), gm.epqtest(gm.crew, 2_000L, "party", "prod", "7"));
+        gm.session.fail("EPQ stalled in STAGE_TWO for 480 seconds", 3_000L);
+        gm.engagement.close(3_500L);
+
+        assertEquals(List.of(ADOPTED), gm.epqtest(gm.crew, 4_000L, "party", "prod", "7"));
+        gm.admission.verify(() -> AgentEpqAdmissionService.admit(eq(gm.crew), eq(gm.crew), anyList(), anyLong(),
+                anyLong()), times(2));
+    }
+
+    @Test
     void stopReleasesTheLiveSessionAsACompanionRunAndKeepsTheParty() {
         when(gm.party.hasParty(any())).thenReturn(true);
         AgentEpqSessionRegistry.registerComplete(gm.session);
