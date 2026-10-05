@@ -139,7 +139,7 @@ public final class AgentEpqCoordinator {
         long chatAt = lobbyChatAt(session, agent.getId());
         if (nowMs >= chatAt && member.claimAnnouncement("lobby-entry")) {
             boolean agentLeader = agent.getId() == session.eventLeaderId();
-            sendVisiblePartyChat(agent, agentLeader
+            sendVisiblePartyChat(session, "lobby-entry", agent, agentLeader
                     ? "Party ready. We're entering EPQ in 5 seconds."
                     : lobbyReadyMessage(session, agent.getId()));
             if (agentLeader) member.deferUntil(nowMs + LOBBY_ENTRY_DELAY_MS);
@@ -177,14 +177,15 @@ public final class AgentEpqCoordinator {
         if (coordinator && spine != null && spine.getState() > 0
                 && spine.getState() < STAGE_TWO_BOTTLES_REQUIRED
                 && session.claimAnnouncement("stage2-progress-" + spine.getState())) {
-            sendVisiblePartyChat(agent, "Filled bottles applied: " + spine.getState()
+            sendVisiblePartyChat(session, "stage2-progress-" + spine.getState(), agent,
+                    "Filled bottles applied: " + spine.getState()
                     + "/" + STAGE_TWO_BOTTLES_REQUIRED + ".");
         }
         if (spine != null && spine.getState() >= STAGE_TWO_BOTTLES_REQUIRED) {
             if (coordinator && session.claimAnnouncement(
                     "stage2-progress-" + STAGE_TWO_BOTTLES_REQUIRED)) {
-                sendVisiblePartyChat(agent, "Filled bottles applied: "
-                        + STAGE_TWO_BOTTLES_REQUIRED + "/" + STAGE_TWO_BOTTLES_REQUIRED
+                sendVisiblePartyChat(session, "stage2-progress-" + STAGE_TWO_BOTTLES_REQUIRED, agent,
+                        "Filled bottles applied: " + STAGE_TWO_BOTTLES_REQUIRED + "/" + STAGE_TWO_BOTTLES_REQUIRED
                         + ". The thorns are open.");
             }
             enterPortal(entry, agent, 3, member, nowMs);
@@ -202,11 +203,11 @@ public final class AgentEpqCoordinator {
                     AgentEpqDefinition.PURIFIED_POISON, spine.getPosition(), member, nowMs)) {
                 if (session.stageTwoBottlesSecured()) {
                     member.finishStageTwoTreeReturn();
-                    sendVisiblePartyChat(agent,
+                    sendVisiblePartyChat(session, "stage2-bottle-dropped", agent,
                             "Filled bottle dropped at the thorns. Heading to the exit.");
                 } else {
                     member.beginStageTwoTreeReturn();
-                    sendVisiblePartyChat(agent,
+                    sendVisiblePartyChat(session, "stage2-bottle-dropped", agent,
                             "Filled bottle dropped at the thorns. Returning to the tree.");
                 }
             }
@@ -215,7 +216,7 @@ public final class AgentEpqCoordinator {
         if (session.stageTwoBottlesSecured()) {
             member.finishStageTwoTreeReturn();
             if (coordinator && session.claimAnnouncement("stage2-bottles-secured")) {
-                sendVisiblePartyChat(agent,
+                sendVisiblePartyChat(session, "stage2-bottles-secured", agent,
                         "Four filled bottles secured. Everyone head to the right-side exit.");
             }
             Point exit = actions().portalPosition(agent, 3);
@@ -274,7 +275,7 @@ public final class AgentEpqCoordinator {
         int bottlesBefore = actions().itemCount(agent, AgentEpqDefinition.PURIFIED_POISON);
         if (collectNearest(entry, agent, Set.of(AgentEpqDefinition.PURIFIED_POISON))) {
             if (actions().itemCount(agent, AgentEpqDefinition.PURIFIED_POISON) > bottlesBefore) {
-                sendVisiblePartyChat(agent,
+                sendVisiblePartyChat(session, "stage2-collected", agent,
                         "Filled bottle collected. Taking it to the thorns.");
             }
             return;
@@ -332,7 +333,7 @@ public final class AgentEpqCoordinator {
         if (agent.getId() == workAgentId(session)) {
             int milestone = Math.min(20, total / 5 * 5);
             if (milestone > 0 && session.claimAnnouncement("stage4-progress-" + milestone)) {
-                AgentPartyGatewayRuntime.party().sendPartyChat(agent,
+                partyChat(session, "stage4-progress-" + milestone, agent,
                         "Monster Marbles collected: " + total + "/20.");
             }
         }
@@ -353,7 +354,7 @@ public final class AgentEpqCoordinator {
                 dropStackNearNpc(entry, agent, AgentEpqDefinition.MONSTER_MARBLE,
                         AgentEpqDefinition.STAGE_NPC, member, nowMs);
                 if (actions().itemCount(agent, AgentEpqDefinition.MONSTER_MARBLE) == 0) {
-                    announce(member, agent, "stage4-handoff",
+                    announce(session, member, agent, "stage4-handoff",
                             "I left my Monster Marbles beside Ellin for our leader.");
                 }
             } else {
@@ -405,7 +406,7 @@ public final class AgentEpqCoordinator {
         int magicStones = actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE);
         if (magicStones > 0) {
             if (session.claimAnnouncement("stage5-stone-found")) {
-                AgentPartyGatewayRuntime.party().sendPartyChat(agent,
+                partyChat(session, "stage5-stone-found", agent,
                         "Purple Stone of Magic found. Bringing it to Yuris.");
             }
             if (agent.getId() == session.eventLeaderId()) {
@@ -419,7 +420,7 @@ public final class AgentEpqCoordinator {
                 if (stonesBefore > 0
                         && actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE) == 0) {
                     session.markStageFiveStoneHandedOff(nowMs);
-                    announce(member, agent, "stage5-human-handoff",
+                    announce(session, member, agent, "stage5-human-handoff",
                             "I dropped the Magic Stone beside Yuris. Leader, please pick it up and continue.");
                 }
             }
@@ -443,7 +444,7 @@ public final class AgentEpqCoordinator {
                              AgentEpqMemberState member, long nowMs) {
         if (agent.getId() == workAgentId(session)
                 && session.claimAnnouncement("boss-combat")) {
-            AgentPartyGatewayRuntime.party().sendPartyChat(agent,
+            partyChat(session, "boss-combat", agent,
                     "Poison Golem ahead. Everyone resume combat!");
         }
         if (actions().liveMonsterCount(agent, AgentEpqDefinition.BOSS_MOBS) > 0) {
@@ -472,7 +473,7 @@ public final class AgentEpqCoordinator {
         if (agent.getId() == workAgentId(session)
                 && session.members().stream().anyMatch(state ->
                 state.memberType() == AgentEpqMemberState.MemberType.HUMAN)) {
-            announce(member, agent, "boss-human-fragment",
+            announce(session, member, agent, "boss-human-fragment",
                     "The Altair Fragment is reserved for our human party member; loot it before exiting.");
         }
         enterPortal(entry, agent, 1, member, nowMs);
@@ -654,9 +655,17 @@ public final class AgentEpqCoordinator {
         };
     }
 
-    private static void sendVisiblePartyChat(Character speaker, String message) {
+    /** One of the coordinator's lines in party and map chat, logged first as 'EPQ line:' under its key. */
+    private static void sendVisiblePartyChat(AgentEpqSession session, String key, Character speaker, String message) {
+        AgentEpqDialogue.logLine(session.sessionId(), key, speaker, message);
         AgentPartyGatewayRuntime.party().sendPartyChat(speaker, message);
         AgentPacketGatewayRuntime.packets().broadcastChatText(speaker, message, false, 0);
+    }
+
+    /** One of the coordinator's lines in party chat, logged first as 'EPQ line:' under its key. */
+    private static void partyChat(AgentEpqSession session, String key, Character speaker, String message) {
+        AgentEpqDialogue.logLine(session.sessionId(), key, speaker, message);
+        AgentPartyGatewayRuntime.party().sendPartyChat(speaker, message);
     }
 
     private static int fragmentCollectorId(AgentEpqSession session) {
@@ -884,10 +893,10 @@ public final class AgentEpqCoordinator {
         return first != null && second != null && first.distanceSq(second) <= (long) radius * radius;
     }
 
-    private static void announce(AgentEpqMemberState member, Character agent,
+    private static void announce(AgentEpqSession session, AgentEpqMemberState member, Character agent,
                                  String key, String message) {
         if (member.claimAnnouncement(key)) {
-            AgentPartyGatewayRuntime.party().sendPartyChat(agent, message);
+            partyChat(session, key, agent, message);
         }
     }
 
