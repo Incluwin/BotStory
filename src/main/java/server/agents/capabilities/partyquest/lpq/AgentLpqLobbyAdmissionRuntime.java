@@ -17,7 +17,7 @@ public final class AgentLpqLobbyAdmissionRuntime {
                                 AgentLpqAdmissionService.admitFromLobby(
                                         engagement, lobby, operator, leader, members, seed, nowMs,
                                         AgentLpqSession.Mode.PRODUCTION, 0,
-                                        AgentLpqSession.HumanRolePreference.DEFAULT, false);
+                                        AgentLpqSession.HumanRolePreference.DEFAULT);
                         return new AgentPartyQuestDirectedAdmissionRuntime.Result(
                                 result.success(), result.message());
                     });

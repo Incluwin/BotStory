@@ -17,6 +17,8 @@ import server.agents.runtime.activity.AgentActivityBootstrap;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -112,12 +114,28 @@ class AgentLpqAdoptSeamTest {
     }
 
     @Test
+    void onlyThePublicAdmitCanFlagACompanionRun() throws NoSuchMethodException {
+        // As HPQ and EPQ: the public admitFromLobby admits a stock run; the flagged form is package-private, so a
+        // companion run is published only through admit(), with its activity preparation and rollback.
+        Class<?>[] stock = {AgentPartyQuestEngagement.class, AgentPartyQuestLobbySession.class, Character.class,
+                Character.class, List.class, long.class, long.class, AgentLpqSession.Mode.class, int.class,
+                AgentLpqSession.HumanRolePreference.class};
+        Class<?>[] flagged = java.util.Arrays.copyOf(stock, stock.length + 1);
+        flagged[stock.length] = boolean.class;
+        assertTrue(Modifier.isPublic(
+                AgentLpqAdmissionService.class.getDeclaredMethod("admitFromLobby", stock).getModifiers()));
+        int modifiers = AgentLpqAdmissionService.class.getDeclaredMethod("admitFromLobby", flagged).getModifiers();
+        assertFalse(Modifier.isPublic(modifiers) || Modifier.isProtected(modifiers) || Modifier.isPrivate(modifiers),
+                "the companion flag is package-private");
+    }
+
+    @Test
     void aDirectorLobbyAdmissionStaysAStockRun() {
         DirectorLobby director = directorLobby();
 
         AgentLpqAdmissionService.AdmissionResult admitted = AgentLpqAdmissionService.admitFromLobby(
                 director.engagement(), director.lobby(), fixture.ben, fixture.ben, fixture.party(), 7L, 1_000L,
-                AgentLpqSession.Mode.PRODUCTION, 0, AgentLpqSession.HumanRolePreference.DEFAULT, false);
+                AgentLpqSession.Mode.PRODUCTION, 0, AgentLpqSession.HumanRolePreference.DEFAULT);
 
         assertTrue(admitted.success(), admitted.message());
         assertFalse(admitted.session().companionAdopted());

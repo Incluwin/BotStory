@@ -102,11 +102,22 @@ public final class AgentLpqAdmissionService {
         }
     }
 
+    /** Admits a formed lobby as a stock run: a director's lobby, or an '!lpqtest' fixture's. */
+    public static AdmissionResult admitFromLobby(
+            AgentPartyQuestEngagement engagement, AgentPartyQuestLobbySession lobby,
+            Character operator, Character eventLeader, List<Character> partyMembers,
+            long seed, long nowMs, AgentLpqSession.Mode mode, int preferredHumanId,
+            AgentLpqSession.HumanRolePreference humanRolePreference) {
+        return admitFromLobby(engagement, lobby, operator, eventLeader, partyMembers, seed, nowMs, mode,
+                preferredHumanId, humanRolePreference, false);
+    }
+
     /**
      * Admits a formed lobby. {@code companionRun} is true only from {@link #admit}: the session is then flagged a
-     * companion run before it is published, so no tick or watchdog ever sees it as a stock run.
+     * companion run before it is published, so no tick or watchdog ever sees it as a stock run. Package-private, as
+     * HPQ's and EPQ's, so a companion run is published only through admit, with its preparation and rollback.
      */
-    public static AdmissionResult admitFromLobby(
+    static AdmissionResult admitFromLobby(
             AgentPartyQuestEngagement engagement, AgentPartyQuestLobbySession lobby,
             Character operator, Character eventLeader, List<Character> partyMembers,
             long seed, long nowMs, AgentLpqSession.Mode mode, int preferredHumanId,
