@@ -89,7 +89,14 @@ final class LpqRunFixture implements AutoCloseable {
      * companion executes. A companion leader makes the party LPQ-owned, as admission does.
      */
     AgentLpqSession session(AgentLpqSession.Mode mode, AgentLpqSession.Phase phase, Character... members) {
+        return session(mode, false, phase, members);
+    }
+
+    /** As above; {@code companionRun} flags it adopted, as the public admit does before publishing it. */
+    AgentLpqSession session(AgentLpqSession.Mode mode, boolean companionRun, AgentLpqSession.Phase phase,
+                            Character... members) {
         AgentLpqSession session = new AgentLpqSession(mode, 7L, members[0].getId(), members.length, 1_000L);
+        if (companionRun) session.setCompanionAdopted(true);
         Integer execution = null;
         for (Character member : members) {
             boolean agent = entries.containsKey(member.getId());

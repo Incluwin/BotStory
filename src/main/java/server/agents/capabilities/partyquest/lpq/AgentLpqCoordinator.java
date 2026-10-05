@@ -442,7 +442,25 @@ final class AgentLpqCoordinator {
                 member.deferUntil(nowMs + 5_000L);
             }
         }
-        if (allEntered) session.transition(AgentLpqSession.Phase.STAGE_1, nowMs);
+        if (allEntered) beginStageOne(session, nowMs);
+    }
+
+    /**
+     * The party is inside: stage 1 begins. A companion run first logs its companions' potions
+     * ('LPQ potions: session= start=') and keeps them for the release's end line; a failure to read them is logged
+     * and never keeps stage 1 from beginning.
+     */
+    static void beginStageOne(AgentLpqSession session, long nowMs) {
+        if (session.companionAdopted()) {
+            try {
+                String potions = AgentLpqTerminationService.potions(session);
+                session.setPotionsAtEntry(potions);
+                log.info("LPQ potions: session={} start={}", session.sessionId(), potions);
+            } catch (RuntimeException failure) {
+                log.warn("LPQ potions failed: session={}", session.sessionId(), failure);
+            }
+        }
+        session.transition(AgentLpqSession.Phase.STAGE_1, nowMs);
     }
 
     private static void collectionStage(AgentLpqSession session, Character leader, long nowMs) {
