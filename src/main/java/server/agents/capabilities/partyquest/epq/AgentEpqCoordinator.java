@@ -80,7 +80,7 @@ public final class AgentEpqCoordinator {
             session.markProgress(nowMs);
         }
         AgentEpqSession.Phase observed = phaseForMap(leader.getMapId());
-        if (observed != null) session.transition(observed, nowMs);
+        if (observed != null) transition(session, observed, nowMs);
         session.observeProgressSignature(progressSignature(session, leader), nowMs);
         AgentEpqWatchdogRuntime.tick(session, nowMs);
         if (session.phase() == AgentEpqSession.Phase.EXITING
@@ -149,7 +149,7 @@ public final class AgentEpqCoordinator {
         if (agent.getId() != session.eventLeaderId()) { actions().stop(entry); return; }
         if (runNearbyNpc(entry, agent, AgentEpqDefinition.ENTRY_NPC, 0)) {
             member.deferUntil(nowMs + ACTION_RETRY_MS);
-            session.transition(AgentEpqSession.Phase.ENTERING, nowMs);
+            transition(session, AgentEpqSession.Phase.ENTERING, nowMs);
         }
     }
 
@@ -490,7 +490,24 @@ public final class AgentEpqCoordinator {
         }
         if (!session.rewardHit()) { actions().stop(entry); return; }
         if (enterPortal(entry, agent, 1, member, nowMs)) {
-            session.transition(AgentEpqSession.Phase.EXITING, nowMs);
+            transition(session, AgentEpqSession.Phase.EXITING, nowMs);
+        }
+    }
+
+    /**
+     * Moves the run forward, with one 'EPQ phase:' line per change in every mode (the time spent in the phase it left
+     * and in the run), so a run's pace reads straight from the log. A companion run leaving the entrance also logs its
+     * companions' potions, which its release compares.
+     */
+    private static void transition(AgentEpqSession session, AgentEpqSession.Phase next, long nowMs) {
+        AgentEpqSession.Change change = session.advance(next, nowMs);
+        if (change == null) return;
+        log.info("EPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", session.sessionId(),
+                change.from(), change.to(), change.phaseMs(), change.runMs(), session.companionAdopted());
+        if (change.from() == AgentEpqSession.Phase.PREPARING && session.companionAdopted()) {
+            String potions = AgentEpqTerminationService.potions(session);
+            session.setPotionsAtEntry(potions);
+            log.info("EPQ potions: session={} start={}", session.sessionId(), potions);
         }
     }
 
