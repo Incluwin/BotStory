@@ -1,0 +1,137 @@
+package server.agents.capabilities.partyquest.lpq;
+
+import java.awt.Point;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Where an LPQ stage-9 Agent fights Alishar from (LPQ base fix 5), as pure geometry on the 922010900 floor.
+ *
+ * <p>Ranged players stand out of Alishar's reach and shoot: his magic attack1 reaches 320 px in front of him and his
+ * Seal and Darkness (MobSkill 120/121 level 1) 300 px either side, so a shooter keeps a standoff of STANDOFF_MIN_PX to
+ * STANDOFF_MAX_PX (below the 400-px projectile range) on one side of him. Alishar walks onto his latest Agent hitter,
+ * so shooters are split into two groups that prefer opposite sides and keep him between them. A side is changed only
+ * when its station no longer fits on the floor (inside FLOOR_EDGE_MARGIN_PX of a wall), and a member pushed off its
+ * preferred side returns only once that side fits with a margin of the band's width, so Alishar stepping around a
+ * threshold does not walk a group back and forth through him. A shooter with one of his summons within ADD_THREAT_PX
+ * fights the summon first; melee members take the summons first and Alishar when none is up.
+ */
+final class AgentLpqStageNineBossPolicy {
+    private static final int STANDOFF_MIN_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.STANDOFF_MIN_PX");
+    private static final int STANDOFF_MAX_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.STANDOFF_MAX_PX");
+    private static final int FLOOR_EDGE_MARGIN_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.FLOOR_EDGE_MARGIN_PX");
+    private static final int ADD_THREAT_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.ADD_THREAT_PX");
+
+    enum Side {
+        LEFT, RIGHT;
+
+        Side opposite() { return this == LEFT ? RIGHT : LEFT; }
+    }
+
+    enum Group { A, B }
+
+    /** The standoff band, in px from Alishar along the floor; a station stands at its middle. */
+    record Band(int minPx, int maxPx) {
+        int targetPx() { return (minPx + maxPx) / 2; }
+    }
+
+    /** The boss floor (walls and height) and how far from either wall a station or rest point must stay. */
+    record Floor(int leftX, int rightX, int y, int edgeMarginPx) {
+        int usableLeftX() { return leftX + edgeMarginPx; }
+
+        int usableRightX() { return rightX - edgeMarginPx; }
+    }
+
+    /** The mob ids an order prefers, and those it falls back to. */
+    record Targets(Set<Integer> preferred, Set<Integer> fallback) { }
+
+    private AgentLpqStageNineBossPolicy() { }
+
+    static Band band() { return new Band(STANDOFF_MIN_PX, STANDOFF_MAX_PX); }
+
+    static int floorEdgeMarginPx() { return FLOOR_EDGE_MARGIN_PX; }
+
+    static int addThreatPx() { return ADD_THREAT_PX; }
+
+    /** A magic attacker or a bow, crossbow, claw or gun user; a Lucky Seven rogue holding a dagger is melee. */
+    static boolean shooter(boolean magicAttacker, boolean rangedWeapon) {
+        return magicAttacker || rangedWeapon;
+    }
+
+    /** The group of the shooter at this rank (by character id) among the shooters on the map: A, B, A, B, ... */
+    static Group group(int rank) {
+        return rank % 2 == 0 ? Group.A : Group.B;
+    }
+
+    /** Group A holds the side it started on; group B goes round to the other side. */
+    static Side preferredSide(Group group, Side home) {
+        return group == Group.A ? home : home.opposite();
+    }
+
+    static Side sideOf(Point position, Point boss) {
+        return position.x < boss.x ? Side.LEFT : Side.RIGHT;
+    }
+
+    static int stationX(Side side, Point boss, Band band) {
+        return side == Side.LEFT ? boss.x - band.targetPx() : boss.x + band.targetPx();
+    }
+
+    /** Whether the station on {@code side} stands at least {@code slackPx} inside the usable floor. */
+    static boolean fits(Side side, Point boss, int slackPx, Band band, Floor floor) {
+        int x = stationX(side, boss, band);
+        return x >= floor.usableLeftX() + slackPx && x <= floor.usableRightX() - slackPx;
+    }
+
+    /**
+     * The side a shooter fights from. With none yet: the preferred side if it fits, else the other. On the preferred
+     * side: keep it while it fits. Off it: go back once the preferred side fits by the band's width, else keep the
+     * current side while it fits, else the preferred side (one side always fits: the floor is wider than two
+     * standoffs).
+     */
+    static Side chosenSide(Side current, Side preferred, Point boss, Band band, Floor floor) {
+        if (current == null) return fits(preferred, boss, 0, band, floor) ? preferred : preferred.opposite();
+        if (current == preferred) return fits(current, boss, 0, band, floor) ? current : current.opposite();
+        if (fits(preferred, boss, band.maxPx() - band.minPx(), band, floor)) return preferred;
+        return fits(current, boss, 0, band, floor) ? current : preferred;
+    }
+
+    /**
+     * The station: the stored one while it stays inside the band on the chosen side (and inside the usable floor), so
+     * a shooter does not step with every step Alishar takes; otherwise the band's middle on the chosen side.
+     */
+    static Point nextStation(Point boss, Point current, Side chosen, Band band, Floor floor) {
+        if (current != null && current.y == floor.y() && sideOf(current, boss) == chosen
+                && current.x >= floor.usableLeftX() && current.x <= floor.usableRightX()) {
+            int dx = Math.abs(current.x - boss.x);
+            if (dx >= band.minPx() && dx <= band.maxPx()) return current;
+        }
+        return new Point(stationX(chosen, boss, band), floor.y());
+    }
+
+    /** Whether one of Alishar's summons stands within {@code threatPx} of this position, both ways. */
+    static boolean addThreat(Point position, List<Point> summons, int threatPx) {
+        if (position == null || summons == null) return false;
+        for (Point summon : summons) {
+            if (summon != null && Math.abs(summon.x - position.x) <= threatPx
+                    && Math.abs(summon.y - position.y) <= threatPx) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * A shooter fights Alishar and falls back to his summons; a shooter with a summon on it, and every melee member,
+     * fights the summons first and Alishar when none is up.
+     */
+    static Targets targets(boolean shooter, boolean threat) {
+        Set<Integer> alishar = Set.of(AgentLpqDefinition.ALISHAR);
+        return shooter && !threat
+                ? new Targets(alishar, AgentLpqDefinition.ALISHAR_SUMMONS)
+                : new Targets(AgentLpqDefinition.ALISHAR_SUMMONS, alishar);
+    }
+}

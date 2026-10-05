@@ -76,6 +76,11 @@ public final class AgentLpqMemberState {
     private boolean stageFiveDarkSightRunner;
     private int stageFiveUnhandedPasses;
     private RewardState rewardState = RewardState.PENDING;
+    private AgentLpqStageNineBossPolicy.Group stageNineGroup;
+    private AgentLpqStageNineBossPolicy.Side stageNineHomeSide;
+    private AgentLpqStageNineBossPolicy.Side stageNineSide;
+    private Point stageNineStation;
+    private boolean stageNineGroupLogged;
 
     public AgentLpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -180,6 +185,38 @@ public final class AgentLpqMemberState {
         stageTwoRallyBranch = 0;
         stageFiveDarkSightRunner = false;
         stageFiveUnhandedPasses = 0;
+        stageNineGroup = null;
+        stageNineHomeSide = null;
+        stageNineSide = null;
+        stageNineStation = null;
+        stageNineGroupLogged = false;
+    }
+
+    /** The stage-9 shooter group (null for a melee member or before Alishar's fight) and the side it started on. */
+    AgentLpqStageNineBossPolicy.Group stageNineGroup() { return stageNineGroup; }
+
+    AgentLpqStageNineBossPolicy.Side stageNineHomeSide() { return stageNineHomeSide; }
+
+    void joinStageNineGroup(AgentLpqStageNineBossPolicy.Group group, AgentLpqStageNineBossPolicy.Side home) {
+        stageNineGroup = group;
+        stageNineHomeSide = home;
+    }
+
+    /** The side of Alishar and the station this shooter fights from now; null before its first station. */
+    AgentLpqStageNineBossPolicy.Side stageNineSide() { return stageNineSide; }
+
+    Point stageNineStation() { return stageNineStation == null ? null : new Point(stageNineStation); }
+
+    void standAtStageNine(AgentLpqStageNineBossPolicy.Side side, Point station) {
+        stageNineSide = side;
+        stageNineStation = station == null ? null : new Point(station);
+    }
+
+    /** True once per stage-9 fight: the member's 'LPQ stage9 group:' line is due. */
+    boolean claimStageNineGroupLine() {
+        if (stageNineGroupLogged) return false;
+        stageNineGroupLogged = true;
+        return true;
     }
 
     public void recordStageFiveEarnedPasses(int count) {

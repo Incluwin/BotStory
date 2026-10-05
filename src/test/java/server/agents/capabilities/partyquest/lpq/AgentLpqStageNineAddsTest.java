@@ -44,17 +44,25 @@ class AgentLpqStageNineAddsTest {
     }
 
     @Test
-    void theBossGrindAllowsTheSummons() throws Exception {
+    void theBossOrdersAllowTheSummons() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqCoordinator.java"))
                 .replace("\r\n", "\n");
         int start = source.indexOf("    private static void boss(");
-        String boss = source.substring(start, source.indexOf("\n    }\n", start)).replaceAll("\\s+", " ");
+        String bossFlow = source.substring(start, source.indexOf("    private static void assignStageNineRoles", start))
+                .replaceAll("\\s+", " ");
 
-        assertFalse(boss.contains("ACTIONS.grind(entry, Set.of(AgentLpqDefinition.ALISHAR));"),
+        assertFalse(bossFlow.contains("ACTIONS.grind(entry, Set.of(AgentLpqDefinition.ALISHAR));"),
                 "no grind on Alishar alone remains");
-        assertTrue(List.of(boss.split("ACTIONS\\.grind")).stream().skip(1)
-                .anyMatch(call -> call.startsWith("(entry, Set.of(AgentLpqDefinition.ALISHAR), "
-                        + "AgentLpqDefinition.ALISHAR_SUMMONS)")), "Alishar preferred, his summons allowed");
+        // Since LPQ base fix 5 every Alishar order takes its mobs from the stage-9 tiers, each allowing the summons.
+        assertTrue(bossFlow.contains("AgentLpqStageNineBossPolicy.targets(false, false)")
+                && bossFlow.contains("AgentLpqStageNineBossPolicy.targets(true, "));
+        for (boolean shooter : new boolean[]{true, false}) {
+            for (boolean threat : new boolean[]{true, false}) {
+                AgentLpqStageNineBossPolicy.Targets targets = AgentLpqStageNineBossPolicy.targets(shooter, threat);
+                assertTrue(targets.preferred().containsAll(AgentLpqDefinition.ALISHAR_SUMMONS)
+                        || targets.fallback().containsAll(AgentLpqDefinition.ALISHAR_SUMMONS));
+            }
+        }
     }
 }

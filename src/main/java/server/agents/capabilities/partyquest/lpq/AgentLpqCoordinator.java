@@ -3905,10 +3905,14 @@ final class AgentLpqCoordinator {
                         agent.getPosition(), ACTIONS.grounded(agent),
                         stageNineRatzFiringAnchor(agent.getId())));
         boolean cleanupPhase = !alisharAlive && !triggerRatzAlive && alisharReactor == null;
-        // Once Alishar appears, preserve each Agent's current foothold and let the
-        // ordinary combat runtime approach from there. The former formation gate
-        // could eventually stage-position ranged members across the map.
+        // Once Alishar appears, shooters fight him from stations outside his reach and melee members
+        // take his summons first (fightAlishar, LPQ base fix 5); the former formation gate stays unused.
         if (!alisharAlive) session.observeBossEdgeRegroup(false, nowMs);
+        List<Integer> stageNineShooters = alisharAlive ? stageNineShooterIds(session) : List.of();
+        boolean stageNineGroupsUnset = alisharAlive && session.members().stream()
+                .allMatch(member -> member.stageNineGroup() == null);
+        List<Point> stageNineSummons = alisharAlive
+                ? ACTIONS.liveMonsterPositions(leader, AgentLpqDefinition.ALISHAR_SUMMONS) : List.of();
         for (AgentLpqMemberState member : session.members()) {
             if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
@@ -3923,6 +3927,8 @@ final class AgentLpqCoordinator {
                     itemId -> stageNineAgentMayCollectItem(
                             member.characterId(), leader.getId(), itemId))) continue;
             if (alisharAlive) {
+                // A dead member held on the map (LPQ base fix 1) gets no group, side, station or order.
+                if (agent.getHp() <= 0) continue;
                 boolean joiningBossCombat = member.claimIntentAnnouncement(
                         "stage9:alishar-combat");
                 member.assign(AgentLpqMemberState.Role.BOSS_ATTACKER,
@@ -3936,7 +3942,8 @@ final class AgentLpqCoordinator {
                             session.sessionId(), agent.getName(), agent.getId(),
                             agent.getPosition(), alishar.getPosition());
                 }
-                ACTIONS.grind(entry, Set.of(AgentLpqDefinition.ALISHAR), AgentLpqDefinition.ALISHAR_SUMMONS);
+                fightAlishar(session, member, entry, agent, alishar.getPosition(), stageNineShooters,
+                        stageNineGroupsUnset, stageNineSummons);
                 continue;
             }
             if (triggerRatzAlive && AgentLpqRosterRequirementPolicy.rangedAttack(agent)) {
@@ -3988,6 +3995,81 @@ final class AgentLpqCoordinator {
         if (alishar != null && session.observeStageNineBossHp(alishar.getHp())) {
             session.markProgress(nowMs);
         }
+    }
+
+    /**
+     * Stage-9 orders while Alishar lives (LPQ base fix 5). A shooter fights him from a station outside his reach
+     * (AgentLpqStageNineBossPolicy): it walks across him only to change sides, and otherwise farms from its station,
+     * attacking what is in range and walking back to the station between attacks; a summon that reaches it is fought
+     * first. Melee members take his summons first and Alishar when none is up. Shooters are split into two groups at
+     * the first pass so that hits from both sides keep him between them; a shooter that joins later is group A.
+     */
+    private static void fightAlishar(AgentLpqSession session, AgentLpqMemberState member, AgentRuntimeEntry entry,
+                                     Character agent, Point boss, List<Integer> shooterIds, boolean groupsUnset,
+                                     List<Point> summons) {
+        if (!stageNineShooter(agent)) {
+            if (member.claimStageNineGroupLine()) {
+                log.info("LPQ stage9 group: session={} member={}({}) group=MELEE home=NONE",
+                        session.sessionId(), agent.getName(), agent.getId());
+            }
+            AgentLpqStageNineBossPolicy.Targets melee = AgentLpqStageNineBossPolicy.targets(false, false);
+            ACTIONS.grind(entry, melee.preferred(), melee.fallback());
+            return;
+        }
+        Point position = agent.getPosition();
+        if (member.stageNineGroup() == null) {
+            int rank = shooterIds.indexOf(agent.getId());
+            member.joinStageNineGroup(groupsUnset && rank >= 0
+                            ? AgentLpqStageNineBossPolicy.group(rank) : AgentLpqStageNineBossPolicy.Group.A,
+                    AgentLpqStageNineBossPolicy.sideOf(position, boss));
+            if (member.claimStageNineGroupLine()) {
+                log.info("LPQ stage9 group: session={} member={}({}) group={} home={}", session.sessionId(),
+                        agent.getName(), agent.getId(), member.stageNineGroup(), member.stageNineHomeSide());
+            }
+        }
+        AgentLpqStageNineBossPolicy.Band band = AgentLpqStageNineBossPolicy.band();
+        AgentLpqStageNineBossPolicy.Floor floor = stageNineFloor();
+        AgentLpqStageNineBossPolicy.Side previous = member.stageNineSide();
+        AgentLpqStageNineBossPolicy.Side chosen = AgentLpqStageNineBossPolicy.chosenSide(previous,
+                AgentLpqStageNineBossPolicy.preferredSide(member.stageNineGroup(), member.stageNineHomeSide()),
+                boss, band, floor);
+        Point station = AgentLpqStageNineBossPolicy.nextStation(boss, member.stageNineStation(), chosen, band, floor);
+        member.standAtStageNine(chosen, station);
+        if (chosen != previous) {
+            log.info("LPQ stage9 side: session={} member={}({}) from={} to={} boss={} station={}",
+                    session.sessionId(), agent.getName(), agent.getId(), previous == null ? "NONE" : previous,
+                    chosen, boss, station);
+        }
+        if (AgentLpqStageNineBossPolicy.sideOf(position, boss) != chosen) {
+            ACTIONS.navigate(entry, station, true);
+            return;
+        }
+        AgentLpqStageNineBossPolicy.Targets targets = AgentLpqStageNineBossPolicy.targets(true,
+                AgentLpqStageNineBossPolicy.addThreat(position, summons, AgentLpqStageNineBossPolicy.addThreatPx()));
+        ACTIONS.grindFromAnchor(entry, station, targets.preferred(), targets.fallback());
+    }
+
+    /** A magic attacker or a bow, crossbow, claw or gun user; a Lucky Seven rogue holding a dagger fights in melee. */
+    private static boolean stageNineShooter(Character agent) {
+        return AgentLpqStageNineBossPolicy.shooter(
+                AgentLpqRosterRequirementPolicy.magicAttack(agent), ACTIONS.rangedWeapon(agent));
+    }
+
+    /** The living shooters on the boss map, by character id (their rank sets their group at the first pass). */
+    private static List<Integer> stageNineShooterIds(AgentLpqSession session) {
+        return session.members().stream()
+                .filter(member -> member.memberType() == AgentLpqMemberState.MemberType.AGENT)
+                .map(member -> character(member.characterId()))
+                .filter(java.util.Objects::nonNull)
+                .filter(agent -> agent.getMapId() == AgentLpqDefinition.stage(9).mapId() && agent.getHp() > 0)
+                .filter(AgentLpqCoordinator::stageNineShooter)
+                .map(Character::getId).sorted().toList();
+    }
+
+    /** The 922010900 boss floor (footholds 95-100) with the stage-9 edge margin. */
+    static AgentLpqStageNineBossPolicy.Floor stageNineFloor() {
+        return new AgentLpqStageNineBossPolicy.Floor(STAGE_9_FLOOR_LEFT_X, STAGE_9_FLOOR_RIGHT_X, STAGE_9_FLOOR_Y,
+                AgentLpqStageNineBossPolicy.floorEdgeMarginPx());
     }
 
     private static void assignStageNineRoles(AgentLpqSession session) {

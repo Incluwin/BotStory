@@ -227,8 +227,8 @@ class AgentLpqAuthoredFlowPreflightTest {
         assertFalse(bossFlow.contains("hitReactor("));
         assertFalse(bossFlow.contains("assignStageNineRoles(session)"));
         assertFalse(bossFlow.contains("prepareStageNineBossFormation("));
-        assertTrue(bossFlow.contains("ACTIONS.grind(entry, Set.of(AgentLpqDefinition.ALISHAR), "
-                + "AgentLpqDefinition.ALISHAR_SUMMONS)"));
+        assertTrue(bossFlow.contains("AgentLpqStageNineBossPolicy.nextStation(")
+                && bossFlow.contains("ACTIONS.grindFromAnchor(entry, station, "));
     }
 
     @Test

@@ -1093,6 +1093,22 @@ tuning:
     # Purpose: Spaces the six dedicated LPQ observation fixtures while leaving production population admission and ordinary player entry unaffected.
     # Technical: AgentLpqTestService reads this only when scheduling GM harness characters named LPQer01 through LPQer06 on the operator's channel.
     server.agents.capabilities.partyquest.lpq.AgentLpqTestService.SPAWN_STAGGER_MS: '500'
+    # Values: 330-399 pixels, below STANDOFF_MAX_PX. Recommended: 345, just outside Alishar's 320-px attack1 reach and his 300-px Seal and Darkness envelope.
+    # Purpose: Sets how close an LPQ stage-9 shooter (a magic attacker or a bow, crossbow, claw or gun user) may stand to Alishar before it takes a new station further out.
+    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9 (map 922010900). WZ sources: Mob.wz 9300012 attack1 range lt.x -320 and MobSkill.img 120/121 level 1 lt/rb x -300/300; AgentLpqStageNineStationTest pins it above both.
+    server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.STANDOFF_MIN_PX: '345'
+    # Values: 346-400 pixels, above STANDOFF_MIN_PX. Recommended: 390, under the 400-px client projectile range that wand and staff bolts without a WZ range also use.
+    # Purpose: Sets how far an LPQ stage-9 shooter may drift from Alishar before it takes a new station closer in; a new station stands midway between the two values.
+    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9; it must not exceed AgentProjectileHitbox.CLIENT_PROJECTILE_BASE_RANGE (400). The band's width (this minus STANDOFF_MIN_PX) is also the margin a shooter pushed off its preferred side waits for before it walks back.
+    server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.STANDOFF_MAX_PX: '390'
+    # Values: 30-150 pixels. Recommended: 60 to keep stations off the 922010900 walls and the right-wall shaft where knockback drops a member below the floor.
+    # Purpose: Keeps LPQ stage-9 shooter stations this far inside the boss floor's walls, so a shooter crowded against a wall changes sides instead.
+    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9, against the floor AgentLpqCoordinator.stageNineFloor builds from Map.wz 922010900 footholds 95-100 (x -310 to 1210, y 184); at 60 the usable x is -250 to 1150.
+    server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.FLOOR_EDGE_MARGIN_PX: '60'
+    # Values: 60-200 pixels. Recommended: 100, about one summon's width, so a shooter turns on an add that has reached it rather than one still crossing the floor.
+    # Purpose: Lets an LPQ stage-9 shooter fight one of Alishar's summons first while one stands this close to it (horizontally and vertically), then go back to Alishar.
+    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9; the summons are MobSkill 200 levels 29-31 (9300015, 9300016, 9300017). The HPQ guard's wake radius is the precedent; melee members always take the summons first.
+    server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.ADD_THREAT_PX: '100'
 
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.
