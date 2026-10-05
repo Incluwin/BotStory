@@ -45,6 +45,26 @@ class AgentEpqPhaseLogTest {
     }
 
     @Test
+    void anAgentLeaderTalkingToEllinLogsTheEntryAsOnePhaseLine() {
+        // An Agent event leader (stock AUTONOMOUS and fixture runs) enters through Ellin on the recruit map.
+        Character pia = run.companion(5, "Pia", AgentEpqDefinition.RECRUIT_MAP);
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.TEST_OBSERVATION, false,
+                AgentEpqSession.Phase.PREPARING, mira, tobi, una, pia);
+        run.onMap(mira, AgentEpqDefinition.RECRUIT_MAP);
+        session.member(mira.getId()).claimAnnouncement("lobby-entry"); // its "Party ready" line is already said
+        when(run.actions.npcPosition(mira, AgentEpqDefinition.ENTRY_NPC)).thenReturn(new Point(48, 0));
+        when(run.epq.runNpc(mira, AgentEpqDefinition.ENTRY_NPC, 0)).thenReturn(true);
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            AgentEpqCoordinator.tickMember(session, run.entry(mira), mira, 4_000L);
+
+            assertEquals(List.of("EPQ phase: session=" + session.sessionId()
+                            + " PREPARING->ENTERING phaseMs=3000 runMs=3000 companionRun=false"),
+                    lines.startingWith("EPQ phase:"));
+        }
+        assertEquals(AgentEpqSession.Phase.ENTERING, session.phase());
+    }
+
+    @Test
     void aCompanionRunLogsItsCompanionsPotionsAsItLeavesTheEntrance() {
         when(run.actions.hpPotionCount(mira)).thenReturn(40);
         when(run.actions.mpPotionCount(mira)).thenReturn(50);
