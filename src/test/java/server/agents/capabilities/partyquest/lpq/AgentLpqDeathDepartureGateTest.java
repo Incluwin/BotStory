@@ -195,6 +195,17 @@ class AgentLpqDeathDepartureGateTest {
         }
     }
 
+    @Test
+    void aFailedRunNeverHoldsBeforeItsReleaseBegins() {
+        try (LpqRunFixture run = new LpqRunFixture()) {
+            AgentLpqSession failed = session(run);
+            failed.fail("test", 11_000L);
+            assertTrue(failed.terminal());
+            assertFalse(failed.terminationStarted(), "the run has failed, but no release has begun yet");
+            assertRespawnsAtTheFloor(failed, event -> { }, A);
+        }
+    }
+
     private static void assertRespawnsAtTheFloor(AgentLpqSession session,
                                                  java.util.function.Consumer<FakeEvent> setUp, int id) {
         FakeEvent event = new FakeEvent(LEADER, A, B, 762_103, 762_104);

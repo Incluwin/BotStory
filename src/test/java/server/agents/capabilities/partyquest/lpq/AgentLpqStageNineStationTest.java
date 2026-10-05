@@ -239,15 +239,8 @@ class AgentLpqStageNineStationTest {
         assertTrue(branch.contains("fightAlishar("), branch);
         assertFalse(branch.contains("ACTIONS.grind("), "the shared boss grind is gone");
 
+        // fightAlishar applies AgentLpqStageNineBossPolicy.order as is: AgentLpqStageNineOrderTest pins both.
         String fight = method(source, "    private static void fightAlishar(");
-        assertTrue(fight.contains("AgentLpqStageNineBossPolicy.nextStation("));
-        assertTrue(fight.contains("ACTIONS.grindFromAnchor(entry, station, targets.preferred(), targets.fallback());"));
-        int crossing = fight.indexOf("if (AgentLpqStageNineBossPolicy.sideOf(position, boss) != chosen) {");
-        assertTrue(crossing > 0);
-        String crossingBlock = block(fight, crossing);
-        assertTrue(crossingBlock.contains("ACTIONS.navigate(entry, station, true);"));
-        assertEquals(1, fight.split("ACTIONS\\.navigate\\(", -1).length - 1, "navigate only to cross Alishar");
-        assertTrue(fight.contains("AgentLpqStageNineBossPolicy.addThreat(position, summons, "));
 
         String shooter = method(source, "    private static boolean stageNineShooter(");
         assertTrue(shooter.replaceAll("\\s+", "").contains("AgentLpqStageNineBossPolicy.shooter("

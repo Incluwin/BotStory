@@ -55,8 +55,11 @@ class AgentLpqStageNineAddsTest {
         assertFalse(bossFlow.contains("ACTIONS.grind(entry, Set.of(AgentLpqDefinition.ALISHAR));"),
                 "no grind on Alishar alone remains");
         // Since LPQ base fix 5 every Alishar order takes its mobs from the stage-9 tiers, each allowing the summons.
-        assertTrue(bossFlow.contains("AgentLpqStageNineBossPolicy.targets(false, false)")
-                && bossFlow.contains("AgentLpqStageNineBossPolicy.targets(true, "));
+        assertTrue(bossFlow.contains("order.targets().preferred(), order.targets().fallback()"));
+        String order = AgentLpqStageNineStationTest.method(Files.readString(Path.of(
+                "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqStageNineBossPolicy.java"))
+                .replace("\r\n", "\n"), "    static Order order(").replaceAll("\\s+", " ");
+        assertTrue(order.contains("targets(false, false)") && order.contains("targets(true, "), order);
         for (boolean shooter : new boolean[]{true, false}) {
             for (boolean threat : new boolean[]{true, false}) {
                 AgentLpqStageNineBossPolicy.Targets targets = AgentLpqStageNineBossPolicy.targets(shooter, threat);

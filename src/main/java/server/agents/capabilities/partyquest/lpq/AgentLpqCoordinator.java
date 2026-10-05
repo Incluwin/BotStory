@@ -3984,7 +3984,6 @@ final class AgentLpqCoordinator {
                             session.sessionId(), agent.getName(), agent.getId(),
                             agent.getPosition(), alishar.getPosition());
                 }
-                if (restAtStageNine(session, member, entry, agent, alishar.getPosition())) continue;
                 fightAlishar(session, member, entry, agent, alishar.getPosition(), stageNineShooters,
                         stageNineGroupsUnset, stageNineSummons);
                 continue;
@@ -4041,83 +4040,63 @@ final class AgentLpqCoordinator {
     }
 
     /**
-     * Stage-9 orders while Alishar lives (LPQ base fix 5). A shooter fights him from a station outside his reach
-     * (AgentLpqStageNineBossPolicy): it walks across him only to change sides, and otherwise farms from its station,
-     * attacking what is in range and walking back to the station between attacks; a summon that reaches it is fought
-     * first. Melee members take his summons first and Alishar when none is up. Shooters are split into two groups at
-     * the first pass so that hits from both sides keep him between them; a shooter that joins later is group A.
+     * Stage-9 orders while Alishar lives (LPQ base fix 5 and 6), one living member per call, as
+     * AgentLpqStageNineBossPolicy.order decides them. A member out of potions backs off out of his reach and rests
+     * there, so a companion is no longer sent back to its owner at his feet; resting heals by regen, asks no one for
+     * potions, and the member stays registered. A shooter fights him from a station outside his reach: it walks
+     * across him only to change sides, and otherwise farms from its station, attacking what is in range and walking
+     * back to the station between attacks; a summon that reaches it is fought first. Melee members take his summons
+     * first and Alishar when none is up. Shooters are split into two groups at the first pass so that hits from both
+     * sides keep him between them; a shooter that joins later is group A.
      */
     private static void fightAlishar(AgentLpqSession session, AgentLpqMemberState member, AgentRuntimeEntry entry,
                                      Character agent, Point boss, List<Integer> shooterIds, boolean groupsUnset,
                                      List<Point> summons) {
-        if (!stageNineShooter(agent)) {
+        AgentLpqStageNineBossPolicy.MemberState before = member.stageNineState();
+        int potions = ACTIONS.hpPotionCount(agent);
+        AgentLpqStageNineBossPolicy.Order order = AgentLpqStageNineBossPolicy.order(before,
+                new AgentLpqStageNineBossPolicy.Pass(stageNineShooter(agent), shooterIds.indexOf(agent.getId()),
+                        groupsUnset, agent.getPosition(), boss, summons, potions,
+                        server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP, agent.getHp(), agent.getMaxHp()),
+                stageNineFloor());
+        member.applyStageNine(order.state());
+        logStageNineOrder(session, member, agent, boss, potions, before, order);
+        switch (order.move()) {
+            case MELEE -> ACTIONS.grind(entry, order.targets().preferred(), order.targets().fallback());
+            case WALK_TO_STATION, WALK_TO_REST -> ACTIONS.navigate(entry, order.point(), true);
+            case FIGHT_FROM_STATION -> ACTIONS.grindFromAnchor(entry, order.point(), order.targets().preferred(),
+                    order.targets().fallback());
+            case REST -> ACTIONS.stop(entry);
+        }
+    }
+
+    /** The 'LPQ stage9 rest:', 'LPQ stage9 group:' and 'LPQ stage9 side:' lines for one member's stage-9 order. */
+    private static void logStageNineOrder(AgentLpqSession session, AgentLpqMemberState member, Character agent,
+                                          Point boss, int potions, AgentLpqStageNineBossPolicy.MemberState before,
+                                          AgentLpqStageNineBossPolicy.Order order) {
+        AgentLpqStageNineBossPolicy.MemberState after = order.state();
+        if (after.resting() != before.resting()) {
+            log.info("LPQ stage9 rest: session={} member={}({}) state={} hp={} hpPotions={} restPoint={}",
+                    session.sessionId(), agent.getName(), agent.getId(), after.resting() ? "START" : "END",
+                    agent.getHp(), potions, after.resting() ? after.restPoint() : before.restPoint());
+        }
+        if (order.move() == AgentLpqStageNineBossPolicy.Move.MELEE) {
             if (member.claimStageNineGroupLine()) {
                 log.info("LPQ stage9 group: session={} member={}({}) group=MELEE home=NONE",
                         session.sessionId(), agent.getName(), agent.getId());
             }
-            AgentLpqStageNineBossPolicy.Targets melee = AgentLpqStageNineBossPolicy.targets(false, false);
-            ACTIONS.grind(entry, melee.preferred(), melee.fallback());
             return;
         }
-        Point position = agent.getPosition();
-        if (member.stageNineGroup() == null) {
-            int rank = shooterIds.indexOf(agent.getId());
-            member.joinStageNineGroup(groupsUnset && rank >= 0
-                            ? AgentLpqStageNineBossPolicy.group(rank) : AgentLpqStageNineBossPolicy.Group.A,
-                    AgentLpqStageNineBossPolicy.sideOf(position, boss));
-            if (member.claimStageNineGroupLine()) {
-                log.info("LPQ stage9 group: session={} member={}({}) group={} home={}", session.sessionId(),
-                        agent.getName(), agent.getId(), member.stageNineGroup(), member.stageNineHomeSide());
-            }
+        if (after.resting()) return;
+        if (before.group() == null && member.claimStageNineGroupLine()) {
+            log.info("LPQ stage9 group: session={} member={}({}) group={} home={}", session.sessionId(),
+                    agent.getName(), agent.getId(), after.group(), after.homeSide());
         }
-        AgentLpqStageNineBossPolicy.Band band = AgentLpqStageNineBossPolicy.band();
-        AgentLpqStageNineBossPolicy.Floor floor = stageNineFloor();
-        AgentLpqStageNineBossPolicy.Side previous = member.stageNineSide();
-        AgentLpqStageNineBossPolicy.Side chosen = AgentLpqStageNineBossPolicy.chosenSide(previous,
-                AgentLpqStageNineBossPolicy.preferredSide(member.stageNineGroup(), member.stageNineHomeSide()),
-                boss, band, floor);
-        Point station = AgentLpqStageNineBossPolicy.nextStation(boss, member.stageNineStation(), chosen, band, floor);
-        member.standAtStageNine(chosen, station);
-        if (chosen != previous) {
+        if (after.side() != before.side()) {
             log.info("LPQ stage9 side: session={} member={}({}) from={} to={} boss={} station={}",
-                    session.sessionId(), agent.getName(), agent.getId(), previous == null ? "NONE" : previous,
-                    chosen, boss, station);
+                    session.sessionId(), agent.getName(), agent.getId(),
+                    before.side() == null ? "NONE" : before.side(), after.side(), boss, after.station());
         }
-        if (AgentLpqStageNineBossPolicy.sideOf(position, boss) != chosen) {
-            ACTIONS.navigate(entry, station, true);
-            return;
-        }
-        AgentLpqStageNineBossPolicy.Targets targets = AgentLpqStageNineBossPolicy.targets(true,
-                AgentLpqStageNineBossPolicy.addThreat(position, summons, AgentLpqStageNineBossPolicy.addThreatPx()));
-        ACTIONS.grindFromAnchor(entry, station, targets.preferred(), targets.fallback());
-    }
-
-    /**
-     * A living stage-9 member out of potions backs off out of Alishar's reach and stands still (LPQ base fix 6), with
-     * the generic out-of-potions stop's own thresholds, so a companion is no longer sent back to its owner at
-     * Alishar's feet. Resting is a bench: it heals by regen and asks no one for potions, and the member stays
-     * registered.
-     */
-    private static boolean restAtStageNine(AgentLpqSession session, AgentLpqMemberState member,
-                                           AgentRuntimeEntry entry, Character agent, Point boss) {
-        int potions = ACTIONS.hpPotionCount(agent);
-        boolean wasResting = member.stageNineResting();
-        boolean resting = AgentLpqStageNineBossPolicy.resting(wasResting, potions,
-                server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP, agent.getHp(), agent.getMaxHp(),
-                AgentLpqStageNineBossPolicy.restHpFraction(), AgentLpqStageNineBossPolicy.resumeHpFraction());
-        Point restPoint = resting ? AgentLpqStageNineBossPolicy.restPoint(boss, agent.getPosition(),
-                member.stageNineRestPoint(), AgentLpqStageNineBossPolicy.band(), stageNineFloor()) : null;
-        if (resting != wasResting) {
-            log.info("LPQ stage9 rest: session={} member={}({}) state={} hp={} hpPotions={} restPoint={}",
-                    session.sessionId(), agent.getName(), agent.getId(), resting ? "START" : "END",
-                    agent.getHp(), potions, resting ? restPoint : member.stageNineRestPoint());
-        }
-        member.restAtStageNine(resting, restPoint);
-        if (!resting) return false;
-        // Within the anchored farm's own 8-px arrival it stands still; otherwise it walks there.
-        if (near(agent.getPosition(), restPoint, 8)) ACTIONS.stop(entry);
-        else ACTIONS.navigate(entry, restPoint, true);
-        return true;
     }
 
     /** A magic attacker or a bow, crossbow, claw or gun user; a Lucky Seven rogue holding a dagger fights in melee. */

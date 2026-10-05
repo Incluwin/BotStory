@@ -53,6 +53,52 @@ final class AgentLpqStageNineBossPolicy {
     /** The mob ids an order prefers, and those it falls back to. */
     record Targets(Set<Integer> preferred, Set<Integer> fallback) { }
 
+    /**
+     * A member's stage-9 fight state: its shooter group and the side it started on (null for a melee member and
+     * before its first fighting pass), the side and station it fights from, and whether and where it rests.
+     */
+    record MemberState(Group group, Side homeSide, Side side, Point station, boolean resting, Point restPoint) {
+        static final MemberState NONE = new MemberState(null, null, null, null, false, null);
+
+        MemberState {
+            station = station == null ? null : new Point(station);
+            restPoint = restPoint == null ? null : new Point(restPoint);
+        }
+
+        @Override
+        public Point station() { return station == null ? null : new Point(station); }
+
+        @Override
+        public Point restPoint() { return restPoint == null ? null : new Point(restPoint); }
+
+        MemberState withoutRest() { return new MemberState(group, homeSide, side, station, false, null); }
+    }
+
+    /**
+     * What one pass sees of a living member and the fight: whether it is a shooter, its rank among the living
+     * shooters on the map (-1 when it is not one of them), whether no member has a group yet, where it and Alishar
+     * stand, where his summons stand, and its HP potions (-1 unknown), POT_STOP, HP and maximum HP.
+     */
+    record Pass(boolean shooter, int rank, boolean groupsUnset, Point position, Point boss, List<Point> summons,
+                int hpPotions, int potStop, int hp, int maxHp) { }
+
+    /** A member's move for one pass. */
+    enum Move {
+        /** A melee member grinds the order's targets (his summons first). */
+        MELEE,
+        /** A shooter walks to its station without attacking (to cross Alishar). */
+        WALK_TO_STATION,
+        /** A shooter farms from its station: it attacks the targets in range and walks back between attacks. */
+        FIGHT_FROM_STATION,
+        /** A resting member walks to its rest point. */
+        WALK_TO_REST,
+        /** A resting member stands still at its rest point. */
+        REST
+    }
+
+    /** The member's state after this pass, its move, the point the move goes to (null for MELEE) and its targets. */
+    record Order(MemberState state, Move move, Point point, Targets targets) { }
+
     private AgentLpqStageNineBossPolicy() { }
 
     static Band band() { return new Band(STANDOFF_MIN_PX, STANDOFF_MAX_PX); }
@@ -154,6 +200,49 @@ final class AgentLpqStageNineBossPolicy {
         if (hpPotions < 0) return false;
         if (wasResting) return hpPotions < potStop && hp < maxHp * resume;
         return hpPotions < potStop && hp < maxHp * rest;
+    }
+
+    /**
+     * One living member's stage-9 order while Alishar lives (LPQ base fix 5 and 6), from its state and this pass.
+     *
+     * <p>A member out of potions rests (see {@link #resting}): it walks to its rest point and stands still there, and
+     * its group, side and station are kept for its return. A melee member fights the summons first and Alishar when
+     * none is up. A shooter without a group joins one: by its rank while no member has a group yet, else group A; its
+     * home side is the side of Alishar it stands on. It then takes the {@link #chosenSide} and the
+     * {@link #nextStation} on it: it walks there while it stands on the other side of Alishar, and otherwise farms
+     * from the station, fighting a summon on it first ({@link #targets}).
+     */
+    static Order order(MemberState state, Pass pass, Floor floor) {
+        MemberState current = state == null ? MemberState.NONE : state;
+        Band band = band();
+        Point position = pass.position();
+        Point boss = pass.boss();
+        boolean rest = resting(current.resting(), pass.hpPotions(), pass.potStop(), pass.hp(), pass.maxHp(),
+                REST_HP_FRACTION, RESUME_HP_FRACTION);
+        if (rest) {
+            Point restPoint = restPoint(boss, position, current.restPoint(), band, floor);
+            MemberState next = new MemberState(current.group(), current.homeSide(), current.side(),
+                    current.station(), true, restPoint);
+            // Within the anchored farm's own 8-px arrival it stands still; otherwise it walks there.
+            return new Order(next, near(position, restPoint, 8) ? Move.REST : Move.WALK_TO_REST, restPoint, null);
+        }
+        if (!pass.shooter()) return new Order(current.withoutRest(), Move.MELEE, null, targets(false, false));
+        Group group = current.group();
+        Side home = current.homeSide();
+        if (group == null) {
+            group = pass.groupsUnset() && pass.rank() >= 0 ? group(pass.rank()) : Group.A;
+            home = sideOf(position, boss);
+        }
+        Side chosen = chosenSide(current.side(), preferredSide(group, home), boss, band, floor);
+        Point station = nextStation(boss, current.station(), chosen, band, floor);
+        MemberState next = new MemberState(group, home, chosen, station, false, null);
+        if (sideOf(position, boss) != chosen) return new Order(next, Move.WALK_TO_STATION, station, null);
+        return new Order(next, Move.FIGHT_FROM_STATION, station,
+                targets(true, addThreat(position, pass.summons(), ADD_THREAT_PX)));
+    }
+
+    private static boolean near(Point a, Point b, int radius) {
+        return a != null && b != null && Math.abs(a.x - b.x) <= radius && Math.abs(a.y - b.y) <= radius;
     }
 
     /**

@@ -76,13 +76,8 @@ public final class AgentLpqMemberState {
     private boolean stageFiveDarkSightRunner;
     private int stageFiveUnhandedPasses;
     private RewardState rewardState = RewardState.PENDING;
-    private AgentLpqStageNineBossPolicy.Group stageNineGroup;
-    private AgentLpqStageNineBossPolicy.Side stageNineHomeSide;
-    private AgentLpqStageNineBossPolicy.Side stageNineSide;
-    private Point stageNineStation;
+    private AgentLpqStageNineBossPolicy.MemberState stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
     private boolean stageNineGroupLogged;
-    private boolean stageNineResting;
-    private Point stageNineRestPoint;
 
     public AgentLpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -187,44 +182,22 @@ public final class AgentLpqMemberState {
         stageTwoRallyBranch = 0;
         stageFiveDarkSightRunner = false;
         stageFiveUnhandedPasses = 0;
-        stageNineGroup = null;
-        stageNineHomeSide = null;
-        stageNineSide = null;
-        stageNineStation = null;
+        stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
         stageNineGroupLogged = false;
-        stageNineResting = false;
-        stageNineRestPoint = null;
     }
 
-    /** Whether this stage-9 member is resting out of Alishar's reach, and where. */
-    boolean stageNineResting() { return stageNineResting; }
+    /**
+     * This member's stage-9 fight state (group, home side, side, station, rest flag and rest point); NONE before
+     * Alishar's fight. The coordinator stores each pass's {@link AgentLpqStageNineBossPolicy#order} state here.
+     */
+    AgentLpqStageNineBossPolicy.MemberState stageNineState() { return stageNine; }
 
-    Point stageNineRestPoint() { return stageNineRestPoint == null ? null : new Point(stageNineRestPoint); }
-
-    void restAtStageNine(boolean resting, Point restPoint) {
-        stageNineResting = resting;
-        stageNineRestPoint = resting && restPoint != null ? new Point(restPoint) : null;
+    void applyStageNine(AgentLpqStageNineBossPolicy.MemberState state) {
+        stageNine = state == null ? AgentLpqStageNineBossPolicy.MemberState.NONE : state;
     }
 
-    /** The stage-9 shooter group (null for a melee member or before Alishar's fight) and the side it started on. */
-    AgentLpqStageNineBossPolicy.Group stageNineGroup() { return stageNineGroup; }
-
-    AgentLpqStageNineBossPolicy.Side stageNineHomeSide() { return stageNineHomeSide; }
-
-    void joinStageNineGroup(AgentLpqStageNineBossPolicy.Group group, AgentLpqStageNineBossPolicy.Side home) {
-        stageNineGroup = group;
-        stageNineHomeSide = home;
-    }
-
-    /** The side of Alishar and the station this shooter fights from now; null before its first station. */
-    AgentLpqStageNineBossPolicy.Side stageNineSide() { return stageNineSide; }
-
-    Point stageNineStation() { return stageNineStation == null ? null : new Point(stageNineStation); }
-
-    void standAtStageNine(AgentLpqStageNineBossPolicy.Side side, Point station) {
-        stageNineSide = side;
-        stageNineStation = station == null ? null : new Point(station);
-    }
+    /** The stage-9 shooter group: null for a melee member or before Alishar's fight. */
+    AgentLpqStageNineBossPolicy.Group stageNineGroup() { return stageNine.group(); }
 
     /** True once per stage-9 fight: the member's 'LPQ stage9 group:' line is due. */
     boolean claimStageNineGroupLine() {

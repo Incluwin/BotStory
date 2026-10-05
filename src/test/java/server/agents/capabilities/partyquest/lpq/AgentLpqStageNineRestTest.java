@@ -83,18 +83,19 @@ class AgentLpqStageNineRestTest {
         String boss = AgentLpqStageNineStationTest.method(source, "    private static void boss(");
         String branch = AgentLpqStageNineStationTest.block(boss, boss.indexOf("if (alisharAlive) {"));
         int hp = branch.indexOf("if (agent.getHp() <= 0) continue;");
-        int rest = branch.indexOf("if (restAtStageNine(session, member, entry, agent, alishar.getPosition())) continue;");
-        int fight = branch.indexOf("fightAlishar(");
-        assertTrue(hp > 0 && rest > hp && fight > rest, "HP check, then the rest check, then the fight");
+        assertTrue(hp > 0 && branch.indexOf("fightAlishar(") > hp, "only a living member rests or fights");
 
-        String body = AgentLpqStageNineStationTest.method(source, "    private static boolean restAtStageNine(");
-        String flat = body.replaceAll("\\s+", "");
-        assertTrue(flat.contains("AgentLpqStageNineBossPolicy.resting(wasResting,potions,"
-                + "server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP,agent.getHp(),agent.getMaxHp(),"));
-        assertTrue(flat.contains("intpotions=ACTIONS.hpPotionCount(agent);"));
-        assertFalse(body.contains("ACTIONS.grind"), "a resting member does not fight");
-        for (String rescue : AgentLpqStageNineStationTest.RESCUE_CALLS) {
-            assertFalse(body.contains(rescue), "no rescue: " + rescue);
-        }
+        // The order checks rest first, for melee members and shooters alike, with the yaml thresholds in their order.
+        String policy = Files.readString(Path.of(
+                "src/main/java/server/agents/capabilities/partyquest/lpq/AgentLpqStageNineBossPolicy.java"))
+                .replace("\r\n", "\n");
+        String order = AgentLpqStageNineStationTest.method(policy, "    static Order order(");
+        String flat = order.replaceAll("\\s+", "");
+        assertTrue(flat.contains("booleanrest=resting(current.resting(),pass.hpPotions(),pass.potStop(),pass.hp(),"
+                + "pass.maxHp(),REST_HP_FRACTION,RESUME_HP_FRACTION);"), flat);
+        int rest = order.indexOf("if (rest) {");
+        assertTrue(rest > 0 && order.indexOf("if (!pass.shooter())") > rest, "the rest check comes first");
+        String restBlock = AgentLpqStageNineStationTest.block(order, rest);
+        assertFalse(restBlock.contains("targets("), "a resting member does not fight");
     }
 }
