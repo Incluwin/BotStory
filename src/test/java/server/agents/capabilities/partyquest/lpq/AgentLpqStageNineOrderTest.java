@@ -77,6 +77,27 @@ class AgentLpqStageNineOrderTest {
     }
 
     @Test
+    void aShooterWalksOutOfAlisharsReachBeforeItShoots() {
+        AgentLpqMemberState member = agent(762_351);
+        Order crossing = pass(member, shooter(1, true, 300, 600, 50, MAX_HP));
+        assertEquals(Move.WALK_TO_STATION, crossing.move(), "group B crosses to the right");
+        assertEquals(at(967), crossing.point());
+        for (int x : new int[]{601, 700, 800, 920}) {
+            Order next = pass(member, shooter(1, false, x, 600, 50, MAX_HP));
+            assertEquals(Move.WALK_TO_STATION, next.move(), (x - 600) + " px past him: still inside his 320-px reach");
+            assertEquals(at(967), next.point());
+            assertNull(next.targets(), "it does not stop to attack at his side");
+        }
+        Order clear = pass(member, shooter(1, false, 921, 600, 50, MAX_HP));
+        assertEquals(Move.FIGHT_FROM_STATION, clear.move(), "321 px: out of his reach, it fights");
+        assertEquals(at(967), clear.point());
+
+        Order lunge = pass(member, shooter(1, false, 921, 700, 50, MAX_HP));
+        assertEquals(Move.WALK_TO_STATION, lunge.move(), "Alishar steps to 221 px of it: it steps back out first");
+        assertEquals(at(1_067), lunge.point());
+    }
+
+    @Test
     void aStoredStationSurvivesAlisharsSmallSteps() {
         AgentLpqMemberState member = agent(762_311);
         Order first = pass(member, shooter(0, true, 233, 600, 50, MAX_HP));

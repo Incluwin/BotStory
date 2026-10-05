@@ -9,13 +9,13 @@ import java.util.Set;
  *
  * <p>Ranged players stand out of Alishar's reach and shoot: his magic attack1 reaches 320 px in front of him and his
  * Seal and Darkness (MobSkill 120/121 level 1) 300 px either side, so a shooter keeps a standoff of STANDOFF_MIN_PX to
- * STANDOFF_MAX_PX (below the 400-px projectile range) on one side of him. Alishar walks onto his latest Agent hitter,
- * so shooters are split into two groups that prefer opposite sides and keep him between them. A side is changed only
- * when its station no longer fits on the floor (inside FLOOR_EDGE_MARGIN_PX of a wall), and a member pushed off its
- * preferred side returns only once that side fits with a margin of the band's width, so Alishar stepping around a
- * threshold does not walk a group back and forth through him. A shooter with one of his summons within ADD_THREAT_PX
- * fights the summon first; melee members take the summons first and Alishar when none is up; a resting member out of
- * his reach fights only a summon that reaches it.
+ * STANDOFF_MAX_PX (below the 400-px projectile range) on one side of him, and inside his reach (REACH_PX) it walks
+ * before it shoots. Alishar walks onto his latest Agent hitter, so shooters are split into two groups that prefer
+ * opposite sides and keep him between them. A side is changed only when its station no longer fits on the floor (inside
+ * FLOOR_EDGE_MARGIN_PX of a wall), and a member pushed off its preferred side returns only once that side fits with a
+ * margin of the band's width, so Alishar stepping around a threshold does not walk a group back and forth through him.
+ * A shooter with one of his summons within ADD_THREAT_PX fights the summon first; melee members take the summons first
+ * and Alishar when none is up; a resting member out of his reach fights only a summon that reaches it.
  */
 final class AgentLpqStageNineBossPolicy {
     private static final int REACH_PX = config.AgentTuning.intValue(
@@ -89,7 +89,7 @@ final class AgentLpqStageNineBossPolicy {
     enum Move {
         /** A melee member grinds the order's targets (his summons first). */
         MELEE,
-        /** A shooter walks to its station without attacking (to cross Alishar). */
+        /** A shooter walks to its station without attacking: across Alishar, or out of his reach. */
         WALK_TO_STATION,
         /** A shooter farms from its station: it attacks the targets in range and walks back between attacks. */
         FIGHT_FROM_STATION,
@@ -217,8 +217,8 @@ final class AgentLpqStageNineBossPolicy {
      * its group, side and station are kept for its return; out of his reach, a summon on it is fought from there. A melee member fights the summons first and Alishar when
      * none is up. A shooter without a group joins one: by its rank while no member has a group yet, else group A; its
      * home side is the side of Alishar it stands on. It then takes the {@link #chosenSide} and the
-     * {@link #nextStation} on it: it walks there while it stands on the other side of Alishar, and otherwise farms
-     * from the station, fighting a summon on it first ({@link #targets}).
+     * {@link #nextStation} on it: it walks there while it stands on the other side of Alishar or inside his reach
+     * (REACH_PX), and otherwise farms from the station, fighting a summon on it first ({@link #targets}).
      */
     static Order order(MemberState state, Pass pass, Floor floor) {
         MemberState current = state == null ? MemberState.NONE : state;
@@ -250,7 +250,11 @@ final class AgentLpqStageNineBossPolicy {
         Side chosen = chosenSide(current.side(), preferredSide(group, home), boss, band, floor);
         Point station = nextStation(boss, current.station(), chosen, band, floor);
         MemberState next = new MemberState(group, home, chosen, station, false, null);
-        if (sideOf(position, boss) != chosen) return new Order(next, Move.WALK_TO_STATION, station, null);
+        // Across him, or still inside his reach (just after crossing, or when he steps onto it), it walks first: the
+        // anchored farm attacks before it walks, so it would shoot from his side, inside his attack and debuffs.
+        if (sideOf(position, boss) != chosen || Math.abs(position.x - boss.x) <= REACH_PX) {
+            return new Order(next, Move.WALK_TO_STATION, station, null);
+        }
         return new Order(next, Move.FIGHT_FROM_STATION, station,
                 targets(true, addThreat(position, pass.summons(), ADD_THREAT_PX)));
     }

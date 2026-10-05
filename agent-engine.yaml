@@ -1094,7 +1094,7 @@ tuning:
     # Technical: AgentLpqTestService reads this only when scheduling GM harness characters named LPQer01 through LPQer06 on the operator's channel.
     server.agents.capabilities.partyquest.lpq.AgentLpqTestService.SPAWN_STAGGER_MS: '500'
     # Values: 300-344 pixels, below STANDOFF_MIN_PX. Recommended: 320, Alishar's own reach: the wider of his 320-px attack1 and his 300-px Seal and Darkness envelope.
-    # Purpose: Sets how close to Alishar an LPQ stage-9 member counts as inside his reach: a resting member keeps its rest point while it stays farther than this from him, and crosses to the other floor end only once he is this close.
+    # Purpose: Sets how close to Alishar an LPQ stage-9 member counts as inside his reach: a shooter this close walks out to its station before it attacks, and a resting member keeps its rest point while it stays farther than this from him and crosses to the other floor end only once he is this close.
     # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9 (map 922010900). WZ sources: Mob.wz 9300012 attack1 range lt.x -320 and MobSkill.img 120/121 level 1 lt/rb x -300/300; AgentLpqStageNineStationTest pins it to the wider of the two and below STANDOFF_MIN_PX.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.REACH_PX: '320'
     # Values: 330-399 pixels, below STANDOFF_MAX_PX. Recommended: 345, just outside Alishar's 320-px attack1 reach and his 300-px Seal and Darkness envelope.
