@@ -4,6 +4,7 @@ import client.Character;
 import client.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.auth.AgentAuthorityService;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
@@ -66,6 +67,8 @@ public final class AgentEpqTestService {
                         operator, seed(params, 1, nowMs), Flow.HUMAN_LEADER, nowMs);
                 case "agentleader" -> start(
                         operator, seed(params, 1, nowMs), Flow.AGENT_LEADER, nowMs);
+                case "party", "adopt" -> adoptCurrentParty(operator, adoptOptions(params, 1, nowMs), nowMs);
+                case "checkpoint" -> checkpoint(operator, params, nowMs);
                 case "invite" -> invite(operator);
                 case "spectate", "attach" -> spectate(operator);
                 case "return", "detach" -> returnFromSpectating(operator);
@@ -135,7 +138,99 @@ public final class AgentEpqTestService {
             case AGENT_LEADER -> List.of(
                     "Four missing-class Agents are assembling an EPQ party.",
                     "Accept their invitation when it arrives; use !epqtest invite to resend it.");
+            case ADOPTED -> throw new IllegalStateException("start never runs an adopted party");
         };
+    }
+
+    /**
+     * "party prod [seed]": the operator's own party at Ellin (his companions, any humans) becomes a companion run
+     * through the public admit, as a companion host would enter it. Nothing is spawned, loaded, invited or joined, so a
+     * companion owner can run it with his own companions; the run is kept here only for status, checkpoint and stop.
+     * It runs on the GM command thread, as '!hpqtest party prod' does.
+     */
+    private static synchronized List<String> adoptCurrentParty(Character operator, AdoptOptions options, long nowMs) {
+        if (!options.production()) {
+            return List.of("EPQ adopts a party only as a companion run: !epqtest party prod [seed].");
+        }
+        if (operator.getMapId() != AgentEpqDefinition.RECRUIT_MAP) {
+            return List.of("Stand at the Ellin Forest PQ entrance (300030100) before adopting a party.");
+        }
+        // A finished companion run keeps its entry here with nothing left to clean up; any other run needs a stop.
+        Run existing = RUNS.get(operator.getId());
+        if (existing != null && existing.flow == Flow.ADOPTED
+                && (existing.session == null || existing.session.terminal())) {
+            RUNS.remove(operator.getId(), existing);
+        }
+        if (RUNS.containsKey(operator.getId())) {
+            return List.of("Stop the current EPQ test before adopting another party.");
+        }
+        AgentPartySnapshot snapshot = AgentPartyGatewayRuntime.party().snapshot(operator);
+        if (snapshot == null) return List.of("Create the desired party before using !epqtest party prod.");
+        List<Character> online = AgentPartyGatewayRuntime.party().onlineMembers(operator).stream()
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        if (online.size() != snapshot.members().size()) {
+            return List.of("Every party member must be online on this channel before the companion run starts.");
+        }
+        boolean leads = snapshot.members().stream().anyMatch(member -> member != null
+                && member.id() == operator.getId() && member.leader());
+        if (!leads) {
+            return List.of("Lead the party yourself for a companion run: the public admit keys the run by its leader.");
+        }
+        AgentEpqAdmissionService.AdmissionResult result =
+                AgentEpqAdmissionService.admit(operator, operator, online, options.seed(), nowMs);
+        if (!result.success()) return List.of("Could not adopt the party: " + result.message());
+        result.session().setMemberCoordinationChatEnabled(true);
+        Run run = new Run(operator, result.engagement(), options.seed(), Flow.ADOPTED, List.of());
+        run.session = result.session();
+        run.eventLeaderId = operator.getId();
+        RUNS.put(operator.getId(), run);
+        return List.of("Adopted as a companion run. Talk to Ellin within 30 seconds.");
+    }
+
+    /**
+     * "checkpoint <maze|flowers|climb|boss>": a party prod companion run already inside EPQ goes forward to that stage
+     * by the event's own team warp, for a live check of a later stage; nothing else (items, reactors, properties) is
+     * set, and the skip is logged as 'EPQ checkpoint:'. It runs on the GM command thread.
+     */
+    private static List<String> checkpoint(Character operator, String[] params, long nowMs) {
+        String target = params.length < 2 ? "" : params[1].toLowerCase();
+        int targetMap = switch (target) {
+            case "maze" -> AgentEpqDefinition.STAGE_THREE_MAP;
+            case "flowers" -> AgentEpqDefinition.STAGE_FOUR_MAP;
+            case "climb" -> AgentEpqDefinition.STAGE_FIVE_MAP;
+            case "boss" -> AgentEpqDefinition.BOSS_MAP;
+            default -> 0;
+        };
+        if (targetMap == 0) return List.of("Syntax: !epqtest checkpoint <maze|flowers|climb|boss>");
+        Run run = RUNS.get(operator.getId());
+        if (run == null || run.flow != Flow.ADOPTED) {
+            return List.of("Checkpoints apply only to a party prod companion run.");
+        }
+        AgentEpqSession session = run.session;
+        EventInstanceManager event = session == null ? null : session.eventInstance();
+        if (event == null || session.terminal() || operator.getEventInstance() != event) {
+            return List.of("Enter EPQ through Ellin before applying a checkpoint.");
+        }
+        int fromMap = operator.getMapId();
+        if (AgentEpqDefinition.stageForMap(fromMap) >= AgentEpqDefinition.stageForMap(targetMap)) {
+            return List.of("The team is already at or past that stage.");
+        }
+        event.warpEventTeam(targetMap);
+        session.markProgress(nowMs);
+        log.info("EPQ checkpoint: session={} operator={} from={} to={}",
+                session.sessionId(), operator.getId(), fromMap, targetMap);
+        String stage = switch (target) {
+            case "maze" -> "maze";
+            case "flowers" -> "the flower field";
+            case "climb" -> "the climb";
+            default -> "the golem's altar";
+        };
+        List<String> reply = new ArrayList<>();
+        reply.add("EPQ checkpoint: the team is on " + stage + ". Earlier stages are skipped for this run only.");
+        if (targetMap == AgentEpqDefinition.BOSS_MAP) {
+            reply.add("Give yourself the stone with !item " + AgentEpqDefinition.MAGIC_STONE + " 1 before the altar.");
+        }
+        return List.copyOf(reply);
     }
 
     private static void openLobby(Run run, long nowMs) {
@@ -473,8 +568,24 @@ public final class AgentEpqTestService {
     private static synchronized List<String> stop(Character operator, String reason, long nowMs) {
         Run run = RUNS.remove(operator.getId());
         if (run == null) return List.of("No EPQ test is active.");
-        close(run, reason, nowMs);
+        if (run.flow == Flow.ADOPTED) stopAdopted(run, reason, nowMs);
+        else close(run, reason, nowMs);
         return List.of("EPQ test stopped safely.");
+    }
+
+    /**
+     * Stops a party prod companion run. A live session is released as the companion run it is (the party kept; after
+     * the clear the event is left to the humans); without one, an engagement still registered is recovered, its
+     * companions handed back to their owner (closing it would drop them with no handback). Nobody is logged out.
+     */
+    private static void stopAdopted(Run run, String reason, long nowMs) {
+        AgentEpqSession session = run.session;
+        if (session != null && AgentEpqSessionRegistry.forOperator(run.operator.getId()) == session) {
+            AgentEpqTerminationService.release(session, reason, nowMs, true);
+        } else if (AgentPartyQuestEngagementRegistry.byId(run.engagement.engagementId()) != null) {
+            run.engagement.beginRecovery(reason, nowMs);
+            AgentPartyQuestLifecycleRuntime.recover(run.engagement, nowMs);
+        }
     }
 
     private static void fail(Run run, String reason) {
@@ -495,8 +606,13 @@ public final class AgentEpqTestService {
         run.agents.forEach(AgentEpqTestService::disconnect);
     }
 
-    private static void resetReservedAgents(long nowMs) {
+    /**
+     * Clears the fixture runs and any stale EPQer before a fixture start. A party prod companion run is skipped: it
+     * holds no EPQer, and closing it would end another operator's live run with his own companions.
+     */
+    static void resetReservedAgents(long nowMs) {
         for (Run active : List.copyOf(RUNS.values())) {
+            if (active.flow == Flow.ADOPTED) continue;
             RUNS.remove(active.operator.getId(), active);
             close(active, "replaced by another EPQ test", nowMs);
         }
@@ -522,16 +638,27 @@ public final class AgentEpqTestService {
         return params.length > index ? Long.parseLong(params[index]) : fallback;
     }
 
+    /** "party [prod] [seed]", read as KPQ's and HPQ's harnesses read it: the prod token comes before the seed. */
+    static AdoptOptions adoptOptions(String[] params, int firstOptionIndex, long fallbackSeed) {
+        boolean production = params != null && params.length > firstOptionIndex
+                && "prod".equalsIgnoreCase(params[firstOptionIndex]);
+        return new AdoptOptions(production, seed(params, firstOptionIndex + (production ? 1 : 0), fallbackSeed));
+    }
+
     private static List<String> help() {
         return List.of(
                 "!epqtest start [seed] (five Agents, one per Explorer class)",
                 "!epqtest humanleader [seed] (you lead four missing-class Agents)",
                 "!epqtest agentleader [seed] (an Agent leads; accept the invitation)",
+                "!epqtest party prod [seed] (adopt your own party as a companion run; you lead)",
+                "!epqtest checkpoint <maze|flowers|climb|boss> (party prod runs only)",
                 "!epqtest spectate | return (five-Agent run only)",
                 "!epqtest invite | status | pause | resume | stop");
     }
 
-    private enum Flow { AGENTS_ONLY, HUMAN_LEADER, AGENT_LEADER }
+    private enum Flow { AGENTS_ONLY, HUMAN_LEADER, AGENT_LEADER, ADOPTED }
+
+    record AdoptOptions(boolean production, long seed) { }
 
     private static final class Run {
         final Object lock = new Object();
