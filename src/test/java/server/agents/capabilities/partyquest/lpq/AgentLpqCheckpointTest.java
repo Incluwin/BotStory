@@ -25,8 +25,12 @@ import server.maps.MapleMap;
 import server.maps.Portal;
 
 import java.awt.Point;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -160,6 +164,48 @@ class AgentLpqCheckpointTest {
     void onlyAnAdoptedRunTakesACheckpoint() {
         assertEquals(List.of("Checkpoints are for a companion run: !lpqtest party prod first."), checkpoint("5"));
         verify(maps, never()).changeMapNear(any(), any(), any());
+    }
+
+    @Test
+    void aFixtureRunTakesNoCheckpoint() throws ReflectiveOperationException {
+        // A fixture run (here a human-led observation run) with a live session inside its instance.
+        Class<?> flow = Class.forName(AgentLpqTestService.class.getName() + "$Flow");
+        Class<?> startStage = Class.forName(AgentLpqTestService.class.getName() + "$StartStage");
+        Class<?> runType = Class.forName(AgentLpqTestService.class.getName() + "$Run");
+        Constructor<?> constructor = runType.getDeclaredConstructor(Character.class, AgentPartyQuestEngagement.class,
+                long.class, flow, startStage, AgentLpqSession.HumanRolePreference.class, Set.class);
+        constructor.setAccessible(true);
+        Object fixture = constructor.newInstance(crew, new AgentPartyQuestEngagement("lpq",
+                        AgentPartyQuestEngagement.Mode.TEST_OBSERVATION, 7L, CREW, 6, 1_000L), 7L,
+                enumConstant(flow, "HUMAN_LEADER"), enumConstant(startStage, "FULL_RUN"),
+                AgentLpqSession.HumanRolePreference.DEFAULT, Set.of());
+        Field sessionField = runType.getDeclaredField("session");
+        sessionField.setAccessible(true);
+        sessionField.set(fixture, session);
+        Field runs = AgentLpqTestService.class.getDeclaredField("RUNS");
+        runs.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Map<Integer, Object> byOperator = (Map<Integer, Object>) runs.get(null);
+        for (Character member : everyone) {
+            when(member.getMapId()).thenReturn(AgentLpqDefinition.stage(3).mapId());
+        }
+        session.bindEventInstance(event);
+        session.transition(AgentLpqSession.Phase.STAGE_3, 3_000L);
+        byOperator.put(CREW, fixture);
+        try {
+            assertEquals(List.of("Checkpoints are for a companion run: !lpqtest party prod first."), checkpoint("8"));
+            verify(maps, never()).changeMapNear(any(), any(), any());
+            assertEquals(AgentLpqSession.Phase.STAGE_3, session.phase());
+        } finally {
+            byOperator.remove(CREW, fixture);
+        }
+    }
+
+    private static Object enumConstant(Class<?> type, String name) {
+        for (Object constant : type.getEnumConstants()) {
+            if (((Enum<?>) constant).name().equals(name)) return constant;
+        }
+        throw new AssertionError(type + " has no " + name);
     }
 
     @Test
