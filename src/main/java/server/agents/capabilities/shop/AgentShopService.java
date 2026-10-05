@@ -83,6 +83,8 @@ public final class AgentShopService {
     private static final int SELL_TRASH_STEP_DELAY_MS = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SELL_TRASH_STEP_DELAY_MS");
     private static final long SHOP_VISIT_TIMEOUT_MS = config.AgentTuning.longValue("server.agents.capabilities.shop.AgentShopService.SHOP_VISIT_TIMEOUT_MS");
     private static final long SHOP_SEQUENCE_TIMEOUT_MS = config.AgentTuning.longValue("server.agents.capabilities.shop.AgentShopService.SHOP_SEQUENCE_TIMEOUT_MS");
+    private static final long SHOP_SEQUENCE_SALE_ALLOWANCE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.shop.AgentShopService.SHOP_SEQUENCE_SALE_ALLOWANCE_MS");
     private static final long SHOP_STUCK_FALLBACK_MS = config.AgentTuning.longValue("server.agents.capabilities.shop.AgentShopService.SHOP_STUCK_FALLBACK_MS");
     private static final int SHOP_STUCK_MOVE_TOLERANCE_PX = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.SHOP_STUCK_MOVE_TOLERANCE_PX");
     private static final int AMMO_TRIGGER_THRESHOLD = config.AgentTuning.intValue("server.agents.capabilities.shop.AgentShopService.AMMO_TRIGGER_THRESHOLD");
@@ -212,6 +214,10 @@ public final class AgentShopService {
     }
 
     public static boolean tickShopVisit(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
+        return tickShopVisit(entry, bot, inventory, System.currentTimeMillis());
+    }
+
+    static boolean tickShopVisit(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory, long now) {
         if (!AgentShopStateRuntime.shopVisitPending(entry)) {
             return false;
         }
@@ -219,7 +225,6 @@ public final class AgentShopService {
             abortShop(entry, bot, AgentDialogueCatalog.shopLostReply());
             return false;
         }
-        long now = System.currentTimeMillis();
         if (AgentShopStateRuntime.visitTimedOut(entry, now, SHOP_VISIT_TIMEOUT_MS)) {
             AgentShopRuntime.sayMapNow(bot, AgentDialogueCatalog.shopReachTimeoutReply());
             logShopFailure(entry, bot, "visit timeout (never reached the shop NPC)");
@@ -245,7 +250,7 @@ public final class AgentShopService {
                 && isStuckNearNpc(entry, botPos, now);
         if (reachedApproach || stuckAtNpc) {
             if (!AgentShopStateRuntime.shopSequenceActive(entry)) {
-                AgentShopStateRuntime.markShopSequenceActive(entry, System.currentTimeMillis());
+                AgentShopStateRuntime.markShopSequenceActive(entry, now);
                 // Close enough to trade: drop any committed navigation step so the Agent
                 // stands still for the transaction instead of chasing the exact approach point.
                 AgentMovementStateResetService.clearNavigationState(entry);
@@ -535,6 +540,10 @@ public final class AgentShopService {
             afterSale.run();
             return;
         }
+        // The sequence timeout budgets the purchases; each planned sale is one more step ahead of them,
+        // so a full bag of trash must not eat the time the restock needs.
+        AgentShopStateRuntime.extendShopSequence(sequence.entry(),
+                (long) (items.size() + etcPlan.size()) * SHOP_SEQUENCE_SALE_ALLOWANCE_MS);
 
         if (items.isEmpty()) {
             scheduleShopStep(sequence.entry(), SELL_TRASH_STEP_DELAY_MS,
@@ -1474,7 +1483,7 @@ public final class AgentShopService {
         long now = System.currentTimeMillis();
         log.warn("Agent '{}' shop visit failed: reason=\"{}\" phase={} map={} npc={} npcPos={} approachPos={} botPos={}"
                         + " distToNpc={} distToApproach={} visitPending={} sequenceActive={} visitAgeMs={} sequenceAgeMs={}"
-                        + " sellTrashPending={} mesos={}",
+                        + " sequenceAllowanceMs={} sellTrashPending={} mesos={}",
                 bot == null ? "?" : bot.getName(),
                 reason,
                 state.workflow().phase(),
@@ -1489,6 +1498,7 @@ public final class AgentShopService {
                 state.sequenceActive(),
                 state.visitStartedAtMs() > 0 ? now - state.visitStartedAtMs() : -1,
                 state.sequenceStartedAtMs() > 0 ? now - state.sequenceStartedAtMs() : -1,
+                state.sequenceAllowanceMs(),
                 state.sellTrashPending(),
                 bot == null ? -1 : bot.getMeso());
     }

@@ -55,6 +55,27 @@ class AgentShopStateTest {
     }
 
     @Test
+    void plannedSalesExtendOnlyTheOpenTransaction() {
+        AgentShopState state = new AgentShopState();
+        state.startVisit(new Point(10, 20), new Point(30, 40), 0, 1_000L);
+        state.extendSequence(60_000L); // nothing to extend before the shopkeeper's window opens
+
+        state.markSequenceActive(2_000L);
+        assertTrue(state.sequenceTimedOut(47_001L, 45_000L));
+
+        state.extendSequence(60_000L);
+        assertEquals(60_000L, state.sequenceAllowanceMs());
+        assertFalse(state.sequenceTimedOut(107_000L, 45_000L));
+        assertTrue(state.sequenceTimedOut(107_001L, 45_000L), "a stalled sale still times out");
+
+        state.clear();
+        state.startVisit(new Point(10, 20), new Point(30, 40), 0, 200_000L);
+        state.markSequenceActive(201_000L);
+        assertEquals(0L, state.sequenceAllowanceMs());
+        assertTrue(state.sequenceTimedOut(246_001L, 45_000L));
+    }
+
+    @Test
     void returnsDefensivePointCopiesAndFallsBackToNpcTarget() {
         AgentShopState state = new AgentShopState();
 

@@ -79,6 +79,10 @@ public final class AgentShopStateRuntime {
         return entry.shopState().sequenceTimedOut(nowMs, timeoutMs);
     }
 
+    public static void extendShopSequence(AgentRuntimeEntry entry, long extraMs) {
+        entry.shopState().extendSequence(extraMs);
+    }
+
     public static void startShopVisit(AgentRuntimeEntry entry, Point npcPosition, Point targetPosition, int approachDelayMs,
                                       long startedAtMs) {
         entry.shopState().startVisit(npcPosition, targetPosition, approachDelayMs, startedAtMs);

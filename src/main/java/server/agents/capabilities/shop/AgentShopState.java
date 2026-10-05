@@ -14,6 +14,7 @@ public final class AgentShopState {
     private boolean sequenceActive = false;
     private long visitStartedAtMs = 0L;
     private long sequenceStartedAtMs = 0L;
+    private long sequenceAllowanceMs = 0L;
     private boolean sellTrashPending = false;
     private int minimumMesoReserve = 0;
     private int requiredItemId = 0;
@@ -68,6 +69,17 @@ public final class AgentShopState {
         return sequenceStartedAtMs;
     }
 
+    /** Time the open transaction was granted on top of the sequence timeout for steps planned after it opened. */
+    public long sequenceAllowanceMs() {
+        return sequenceAllowanceMs;
+    }
+
+    public void extendSequence(long extraMs) {
+        if (sequenceActive) {
+            sequenceAllowanceMs += Math.max(0L, extraMs);
+        }
+    }
+
     public boolean sellTrashPending() {
         return sellTrashPending;
     }
@@ -101,7 +113,8 @@ public final class AgentShopState {
     }
 
     public boolean sequenceTimedOut(long nowMs, long timeoutMs) {
-        return sequenceActive && sequenceStartedAtMs > 0 && nowMs - sequenceStartedAtMs > timeoutMs;
+        return sequenceActive && sequenceStartedAtMs > 0
+                && nowMs - sequenceStartedAtMs > timeoutMs + sequenceAllowanceMs;
     }
 
     public void startVisit(Point npcPosition, Point targetPosition, int approachDelayMs, long startedAtMs) {
@@ -138,12 +151,14 @@ public final class AgentShopState {
         lastRequiredItemCount = 0;
         visitStartedAtMs = startedAtMs;
         sequenceStartedAtMs = 0L;
+        sequenceAllowanceMs = 0L;
     }
 
     public void markSequenceActive(long startedAtMs) {
         workflow.transition(AgentShopWorkflowPhase.TRANSACTING, "shop transaction opened", startedAtMs);
         sequenceActive = true;
         sequenceStartedAtMs = startedAtMs;
+        sequenceAllowanceMs = 0L;
     }
 
     public boolean stuckNearNpc(Point botPosition, long nowMs, long fallbackMs, int moveTolerancePx,
@@ -190,6 +205,7 @@ public final class AgentShopState {
         sequenceActive = false;
         visitStartedAtMs = 0L;
         sequenceStartedAtMs = 0L;
+        sequenceAllowanceMs = 0L;
         sellTrashPending = false;
         minimumMesoReserve = 0;
         requiredItemId = 0;

@@ -2935,9 +2935,13 @@ tuning:
     # Purpose: Controls the positional leeway for shop NPC search dist. Higher values tolerate more separation before Agents correct course; lower values make them align sooner.
     # Technical: the "shop service" component consumes this as an integer. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
     server.agents.capabilities.shop.AgentShopService.SHOP_NPC_SEARCH_DIST: '601'
+    # Values: a finite non-negative integer; unit: milliseconds. Recommended: 750-2000 around the tested baseline 1000; keep it greater than or equal to server.agents.capabilities.shop.AgentShopService.SELL_TRASH_STEP_DELAY_MS.
+    # Purpose: Extra shop-transaction time granted per planned sale (trash equip or surplus ETC stack), so an Agent that sells a full bag before restocking still finishes its purchases instead of giving up mid-visit.
+    # Technical: when AgentShopService draws the visit's sale plan it adds (planned sales x this value) to server.agents.capabilities.shop.AgentShopService.SHOP_SEQUENCE_TIMEOUT_MS for that transaction only; each sale is one step SELL_TRASH_STEP_DELAY_MS apart plus scheduler latency (about 540 ms per sale live), and the base timeout keeps budgeting the purchase steps. Unit: milliseconds; 0 restores the fixed timeout.
+    server.agents.capabilities.shop.AgentShopService.SHOP_SEQUENCE_SALE_ALLOWANCE_MS: '1000'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 22500-90000 around the tested baseline 45000; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls how long Agents may remain in shop sequence timeout before recovery begins. Higher values wait longer; lower values retry, recover, or abandon it sooner.
-    # Technical: the "shop service" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled. It participates in bounded failure handling and should remain long enough for the normal operation to complete.
+    # Technical: the "shop service" component consumes this as an integer. Unit: milliseconds; use 0 only where the owning policy explicitly treats it as immediate or disabled. It participates in bounded failure handling and should remain long enough for the normal operation to complete. A visit that sells first gets SHOP_SEQUENCE_SALE_ALLOWANCE_MS more per planned sale.
     server.agents.capabilities.shop.AgentShopService.SHOP_SEQUENCE_TIMEOUT_MS: '45000'
     # Values: a finite non-negative integer; unit: milliseconds. Recommended: 2000-8002 around the tested baseline 4001; benchmark or observe behavior before moving outside this band. Keep it greater than or equal to server.agents.capabilities.shop.AgentShopService.SHOP_STEP_DELAY_MIN_MS.
     # Purpose: Sets the longest shop step delay time an Agent may receive. Higher values allow longer occurrences; lower values end them sooner.
