@@ -83,6 +83,8 @@ public final class AgentEpqCoordinator {
         if (observed != null) transition(session, observed, nowMs);
         session.observeProgressSignature(progressSignature(session, leader), nowMs);
         AgentEpqWatchdogRuntime.tick(session, nowMs);
+        logMembersDown(session);
+        logBossProgress(session, leader, nowMs);
         if (session.phase() == AgentEpqSession.Phase.EXITING
                 && session.members().stream().map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
@@ -290,6 +292,7 @@ public final class AgentEpqCoordinator {
             member.clearStageTwoTag();
             actions().stop(entry);
             agent.getMap().instanceMapForceRespawn();
+            rescue(session, "respawn-bugs", agent);
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -375,6 +378,7 @@ public final class AgentEpqCoordinator {
         if (target == null) {
             actions().stop(entry);
             agent.getMap().instanceMapForceRespawn();
+            rescue(session, "respawn-flowers", agent);
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -465,8 +469,10 @@ public final class AgentEpqCoordinator {
         AgentMapPerception.monsters(agent.getMap()).stream()
                 .filter(Monster::isAlive)
                 .filter(monster -> monster.getId() == AgentEpqDefinition.POST_DEATH_DUMMY)
-                .findFirst().ifPresent(dummy ->
-                        agent.getMap().killMonster(dummy, null, false, (short) 0));
+                .findFirst().ifPresent(dummy -> {
+                    agent.getMap().killMonster(dummy, null, false, (short) 0);
+                    rescue(session, "kill-dummy", agent);
+                });
         if (agent.getId() == fragmentCollectorId(session)
                 && collectNearest(entry, agent, Set.of(AgentEpqDefinition.ALTAIRE_FRAGMENT))) return;
         if (nowMs - session.observeBossCleared(nowMs) < BOSS_LOOT_SETTLE_MS) { actions().stop(entry); return; }
@@ -509,6 +515,52 @@ public final class AgentEpqCoordinator {
             String potions = AgentEpqTerminationService.potions(session);
             session.setPotionsAtEntry(potions);
             log.info("EPQ potions: session={} start={}", session.sessionId(), potions);
+        }
+    }
+
+    /** 'EPQ member down:' once per death, for every member online; nothing decides by it. */
+    private static void logMembersDown(AgentEpqSession session) {
+        for (AgentEpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            if (character == null) continue;
+            if (character.getHp() > 0) {
+                session.clearMemberDown(member.characterId());
+            } else if (session.markMemberDown(member.characterId())) {
+                log.info("EPQ member down: session={} member={} type={} map={} phase={}", session.sessionId(),
+                        member.characterId(), member.memberType(), character.getMapId(), session.phase());
+            }
+        }
+    }
+
+    /**
+     * 'EPQ boss:' the first time each golem is alive on the boss map while the leader is there, and the first time the
+     * bound event reports its clear, wherever the leader is; nothing decides by it.
+     */
+    private static void logBossProgress(AgentEpqSession session, Character leader, long nowMs) {
+        if (leader.getMapId() == AgentEpqDefinition.BOSS_MAP && leader.getMap() != null) {
+            List<Monster> alive = AgentMapPerception.monsters(leader.getMap()).stream()
+                    .filter(Monster::isAlive).toList();
+            for (int golem : AgentEpqDefinition.BOSS_MOBS.stream().sorted().toList()) {
+                if (alive.stream().anyMatch(monster -> monster.getId() == golem)
+                        && session.claimLogMark("golem-" + golem)) {
+                    log.info("EPQ boss: session={} golem={} runMs={}", session.sessionId(), golem,
+                            nowMs - session.startedAtMs());
+                }
+            }
+        }
+        if (AgentEpqTerminationService.pastTheClear(session.eventInstance()) && session.claimLogMark("cleared")) {
+            log.info("EPQ boss: session={} cleared runMs={}", session.sessionId(), nowMs - session.startedAtMs());
+        }
+    }
+
+    /**
+     * Counts one of the coordinator's assists for the run's released line and logs the first of each kind as 'EPQ
+     * rescue:' (a respawn can repeat every retry); nothing decides by it.
+     */
+    private static void rescue(AgentEpqSession session, String kind, Character agent) {
+        if (session.countRescue(kind) == 1) {
+            log.info("EPQ rescue: session={} kind={} agent={} map={} first=true", session.sessionId(), kind,
+                    agent.getName(), agent.getMapId());
         }
     }
 
