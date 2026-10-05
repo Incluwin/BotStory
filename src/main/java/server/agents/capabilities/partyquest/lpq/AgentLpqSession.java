@@ -3,8 +3,11 @@ package server.agents.capabilities.partyquest.lpq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +15,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /** Isolated party-level LPQ state machine. */
-public final class AgentLpqSession {
+public final class AgentLpqSession implements AgentCompanionRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentLpqSession.class);
 
     public enum Mode { PRODUCTION, BACKGROUND_POPULATION, TEST_OBSERVATION }
@@ -88,6 +91,10 @@ public final class AgentLpqSession {
     private HumanRolePreference humanRolePreference = HumanRolePreference.DEFAULT;
     private final Set<String> claimedFlavorChatKeys = new java.util.LinkedHashSet<>();
     private boolean companionAdopted;
+    private boolean memberCoordinationChatEnabled;
+    private AgentPqPaceCalibration paceCalibration;
+    private String potionsAtEntry;
+    private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
 
     public AgentLpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0
@@ -142,6 +149,7 @@ public final class AgentLpqSession {
 
     public synchronized void transition(Phase next, long nowMs) {
         if (next == null || terminal() || next == phase) return;
+        firstEntries.putIfAbsent(next, nowMs);
         logPhaseEnd(next, nowMs);
         phase = next;
         phaseEnteredAtMs = nowMs;
@@ -189,6 +197,7 @@ public final class AgentLpqSession {
 
     public synchronized void fail(String reason, long nowMs) {
         failure = reason == null ? "" : reason.trim();
+        firstEntries.putIfAbsent(Phase.FAILED, nowMs);
         logPhaseEnd(Phase.FAILED, nowMs);
         phase = Phase.FAILED;
         phaseEnteredAtMs = nowMs;
@@ -196,6 +205,7 @@ public final class AgentLpqSession {
     }
 
     public synchronized void complete(long nowMs) {
+        firstEntries.putIfAbsent(Phase.COMPLETED, nowMs);
         logPhaseEnd(Phase.COMPLETED, nowMs);
         phase = Phase.COMPLETED;
         phaseEnteredAtMs = nowMs;
@@ -207,6 +217,15 @@ public final class AgentLpqSession {
                 sessionId, phase, Math.max(0L, nowMs - phaseEnteredAtMs), next);
     }
     public synchronized boolean beginTermination() { if (terminating) return false; terminating = true; return true; }
+
+    /** True once a release has begun (failAfterClear reads it so a run is released once). */
+    public synchronized boolean terminationStarted() { return terminating; }
+
+    /** When the run first entered {@code phase} (a re-entry keeps the first), or 0 when it never did. */
+    synchronized long firstEnteredAtMs(Phase phase) {
+        Long at = phase == null ? null : firstEntries.get(phase);
+        return at == null ? 0L : at;
+    }
     public synchronized void markProgress(long nowMs) { lastProgressAtMs = Math.max(lastProgressAtMs, nowMs); }
 
     public synchronized long readyAtMs() { return readyAtMs; }
@@ -561,6 +580,7 @@ public final class AgentLpqSession {
         return Map.copyOf(stage8PlatformByMember);
     }
 
+    @Override
     public String sessionId() { return sessionId; }
     public Mode mode() { return mode; }
     public long seed() { return seed; }
@@ -568,6 +588,7 @@ public final class AgentLpqSession {
     public int requestedPartySize() { return requestedPartySize; }
     public long startedAtMs() { return startedAtMs; }
     public synchronized Phase phase() { return phase; }
+    @Override
     public synchronized int eventLeaderId() { return eventLeaderId; }
     public synchronized int executionAgentId() { return executionAgentId; }
     public synchronized long lastProgressAtMs() { return lastProgressAtMs; }
@@ -615,8 +636,37 @@ public final class AgentLpqSession {
      * A human-led run of owner-bound companions, admitted by AgentLpqAdmissionService.admit. Every companion-run
      * behaviour is gated on it; stock, background and GM-observed runs leave it false.
      */
+    @Override
     public synchronized boolean companionAdopted() { return companionAdopted; }
 
     /** Set only by the public admit, before the session is published. */
     synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
+
+    synchronized boolean memberCoordinationChatEnabled() { return memberCoordinationChatEnabled; }
+
+    @Override
+    public synchronized void setMemberCoordinationChatEnabled(boolean enabled) {
+        memberCoordinationChatEnabled = enabled;
+    }
+
+    /** The leader's clear-time calibration, kept for the run's pace; null until a host hands one. */
+    synchronized AgentPqPaceCalibration paceCalibration() { return paceCalibration; }
+
+    @Override
+    public synchronized void setPaceCalibration(AgentPqPaceCalibration calibration) {
+        paceCalibration = calibration;
+    }
+
+    /** The companions' potions as 'LPQ potions:' logged them at stage 1; null when that line was never logged. */
+    synchronized String potionsAtEntry() { return potionsAtEntry; }
+
+    synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions; }
+
+    /** Takes a member out of the run (a companion that tapped out); the event leader is never taken out. */
+    public synchronized void removeMember(int characterId) {
+        if (characterId == eventLeaderId) {
+            throw new IllegalArgumentException("the LPQ event leader cannot be removed from his run");
+        }
+        members.remove(characterId);
+    }
 }
