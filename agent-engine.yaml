@@ -1109,6 +1109,14 @@ tuning:
     # Purpose: Lets an LPQ stage-9 shooter fight one of Alishar's summons first while one stands this close to it (horizontally and vertically), then go back to Alishar.
     # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9; the summons are MobSkill 200 levels 29-31 (9300015, 9300016, 9300017). The HPQ guard's wake radius is the precedent; melee members always take the summons first.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.ADD_THREAT_PX: '100'
+    # Values: 0.2-0.6 of maximum HP. Recommended: 0.4, the generic out-of-potions stop's own threshold, so both fire together.
+    # Purpose: Sets the HP fraction under which an LPQ stage-9 member holding fewer than POT_STOP HP potions stops fighting Alishar, backs off out of his reach and rests.
+    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9 while Alishar lives; POT_STOP is server.agents.runtime.AgentRuntimeConfig.POT_STOP and the count is the HP-potion count 'LPQ potions' logs. A dead member is never evaluated.
+    server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.REST_HP_FRACTION: '0.4'
+    # Values: 0.5-0.95 of maximum HP, above REST_HP_FRACTION. Recommended: 0.7 so a rested member rejoins with room for one of Alishar's hits.
+    # Purpose: Sets the HP fraction at which a resting LPQ stage-9 member rejoins the fight; it also rejoins once it holds POT_STOP HP potions again.
+    # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9. Resting heals by passive regen only (BASE_HP_RECOVERY 10 HP per 10 s, plus a warrior's Improved HP Recovery while it stands still), and a stopped member does not ask anyone for potions.
+    server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.RESUME_HP_FRACTION: '0.7'
 
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.

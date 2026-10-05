@@ -3942,6 +3942,7 @@ final class AgentLpqCoordinator {
                             session.sessionId(), agent.getName(), agent.getId(),
                             agent.getPosition(), alishar.getPosition());
                 }
+                if (restAtStageNine(session, member, entry, agent, alishar.getPosition())) continue;
                 fightAlishar(session, member, entry, agent, alishar.getPosition(), stageNineShooters,
                         stageNineGroupsUnset, stageNineSummons);
                 continue;
@@ -4047,6 +4048,34 @@ final class AgentLpqCoordinator {
         AgentLpqStageNineBossPolicy.Targets targets = AgentLpqStageNineBossPolicy.targets(true,
                 AgentLpqStageNineBossPolicy.addThreat(position, summons, AgentLpqStageNineBossPolicy.addThreatPx()));
         ACTIONS.grindFromAnchor(entry, station, targets.preferred(), targets.fallback());
+    }
+
+    /**
+     * A living stage-9 member out of potions backs off out of Alishar's reach and stands still (LPQ base fix 6), with
+     * the generic out-of-potions stop's own thresholds, so a companion is no longer sent back to its owner at
+     * Alishar's feet. Resting is a bench: it heals by regen and asks no one for potions, and the member stays
+     * registered.
+     */
+    private static boolean restAtStageNine(AgentLpqSession session, AgentLpqMemberState member,
+                                           AgentRuntimeEntry entry, Character agent, Point boss) {
+        int potions = ACTIONS.hpPotionCount(agent);
+        boolean wasResting = member.stageNineResting();
+        boolean resting = AgentLpqStageNineBossPolicy.resting(wasResting, potions,
+                server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP, agent.getHp(), agent.getMaxHp(),
+                AgentLpqStageNineBossPolicy.restHpFraction(), AgentLpqStageNineBossPolicy.resumeHpFraction());
+        Point restPoint = resting ? AgentLpqStageNineBossPolicy.restPoint(boss, agent.getPosition(),
+                member.stageNineRestPoint(), AgentLpqStageNineBossPolicy.band(), stageNineFloor()) : null;
+        if (resting != wasResting) {
+            log.info("LPQ stage9 rest: session={} member={}({}) state={} hp={} hpPotions={} restPoint={}",
+                    session.sessionId(), agent.getName(), agent.getId(), resting ? "START" : "END",
+                    agent.getHp(), potions, resting ? restPoint : member.stageNineRestPoint());
+        }
+        member.restAtStageNine(resting, restPoint);
+        if (!resting) return false;
+        // Within the anchored farm's own 8-px arrival it stands still; otherwise it walks there.
+        if (near(agent.getPosition(), restPoint, 8)) ACTIONS.stop(entry);
+        else ACTIONS.navigate(entry, restPoint, true);
+        return true;
     }
 
     /** A magic attacker or a bow, crossbow, claw or gun user; a Lucky Seven rogue holding a dagger fights in melee. */

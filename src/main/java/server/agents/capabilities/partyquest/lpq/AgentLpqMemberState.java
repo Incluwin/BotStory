@@ -81,6 +81,8 @@ public final class AgentLpqMemberState {
     private AgentLpqStageNineBossPolicy.Side stageNineSide;
     private Point stageNineStation;
     private boolean stageNineGroupLogged;
+    private boolean stageNineResting;
+    private Point stageNineRestPoint;
 
     public AgentLpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -190,6 +192,18 @@ public final class AgentLpqMemberState {
         stageNineSide = null;
         stageNineStation = null;
         stageNineGroupLogged = false;
+        stageNineResting = false;
+        stageNineRestPoint = null;
+    }
+
+    /** Whether this stage-9 member is resting out of Alishar's reach, and where. */
+    boolean stageNineResting() { return stageNineResting; }
+
+    Point stageNineRestPoint() { return stageNineRestPoint == null ? null : new Point(stageNineRestPoint); }
+
+    void restAtStageNine(boolean resting, Point restPoint) {
+        stageNineResting = resting;
+        stageNineRestPoint = resting && restPoint != null ? new Point(restPoint) : null;
     }
 
     /** The stage-9 shooter group (null for a melee member or before Alishar's fight) and the side it started on. */

@@ -25,6 +25,10 @@ final class AgentLpqStageNineBossPolicy {
             "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.FLOOR_EDGE_MARGIN_PX");
     private static final int ADD_THREAT_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.ADD_THREAT_PX");
+    private static final double REST_HP_FRACTION = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.REST_HP_FRACTION");
+    private static final double RESUME_HP_FRACTION = config.AgentTuning.doubleValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.RESUME_HP_FRACTION");
 
     enum Side {
         LEFT, RIGHT;
@@ -56,6 +60,10 @@ final class AgentLpqStageNineBossPolicy {
     static int floorEdgeMarginPx() { return FLOOR_EDGE_MARGIN_PX; }
 
     static int addThreatPx() { return ADD_THREAT_PX; }
+
+    static double restHpFraction() { return REST_HP_FRACTION; }
+
+    static double resumeHpFraction() { return RESUME_HP_FRACTION; }
 
     /** A magic attacker or a bow, crossbow, claw or gun user; a Lucky Seven rogue holding a dagger is melee. */
     static boolean shooter(boolean magicAttacker, boolean rangedWeapon) {
@@ -133,5 +141,30 @@ final class AgentLpqStageNineBossPolicy {
         return shooter && !threat
                 ? new Targets(alishar, AgentLpqDefinition.ALISHAR_SUMMONS)
                 : new Targets(AgentLpqDefinition.ALISHAR_SUMMONS, alishar);
+    }
+
+    /**
+     * Whether a living stage-9 member out of potions rests (LPQ base fix 6): it starts with fewer than
+     * {@code potStop} HP potions and HP under {@code rest} of its maximum (the generic out-of-potions stop's own
+     * thresholds) and keeps resting until its HP reaches {@code resume} of its maximum or it holds {@code potStop}
+     * potions again. An unknown count (-1) never rests.
+     */
+    static boolean resting(boolean wasResting, int hpPotions, int potStop, int hp, int maxHp,
+                           double rest, double resume) {
+        if (hpPotions < 0) return false;
+        if (wasResting) return hpPotions < potStop && hp < maxHp * resume;
+        return hpPotions < potStop && hp < maxHp * rest;
+    }
+
+    /**
+     * Where a resting member waits: the usable floor end on its side of Alishar while that end is at least the band's
+     * minimum from him, else the other end; a stored rest point is kept while it stays that far from him.
+     */
+    static Point restPoint(Point boss, Point position, Point stored, Band band, Floor floor) {
+        if (stored != null && Math.abs(stored.x - boss.x) >= band.minPx()) return stored;
+        Point left = new Point(floor.usableLeftX(), floor.y());
+        Point right = new Point(floor.usableRightX(), floor.y());
+        Point near = sideOf(position, boss) == Side.LEFT ? left : right;
+        return Math.abs(near.x - boss.x) >= band.minPx() ? near : (near == left ? right : left);
     }
 }
