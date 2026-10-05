@@ -7,6 +7,7 @@ import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRegistry;
+import server.agents.capabilities.partyquest.lobby.AgentPartyQuestLobbyRuntime;
 import server.agents.capabilities.townlife.AgentTownLifeRuntime;
 
 import java.util.List;
@@ -133,6 +134,58 @@ class AgentEpqAdoptRollbackTest {
 
         assertFalse(admitted.success());
         assertEquals("EPQ member already reserved", admitted.message());
+        assertNull(admitted.session());
+        assertNothingKept(admitted.engagement());
+        fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.miraEntry, fixture.ben));
+        fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.tobiEntry, fixture.ben));
+        fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.unaEntry, fixture.ben));
+    }
+
+    @Test
+    void aHumanHeldByAnotherEngagementThrowsAfterTheCompanionsWereTakenAndTheCatchHandsThemBack() {
+        // Ben is still a member of another run: his HUMAN index throws once Mira, Tobi and Una left their activities.
+        AgentPartyQuestEngagement other = fixture.keep(new AgentPartyQuestEngagement(
+                "kpq", AgentPartyQuestEngagement.Mode.PRODUCTION, 1L, 751_290, 4, 500L));
+        other.addMember(BEN, AgentPartyQuestEngagement.MemberType.HUMAN, 500L);
+        AgentPartyQuestEngagementRegistry.register(other);
+
+        AgentEpqAdmissionService.AdmissionResult admitted = fixture.keep(AgentEpqAdmissionService.admit(
+                fixture.ben, fixture.ben, fixture.party(), 7L, 1_000L));
+
+        assertFalse(admitted.success());
+        assertEquals("party-quest member already belongs to another engagement", admitted.message());
+        assertNull(admitted.session());
+        AgentPartyQuestEngagement engagement = admitted.engagement();
+        assertEquals(AgentPartyQuestEngagement.State.CLOSED, engagement.state(), "recovered");
+        assertNull(AgentPartyQuestEngagementRegistry.byId(engagement.engagementId()));
+        assertNull(AgentPartyQuestEngagementRegistry.forOperator(BEN));
+        for (int id : List.of(MIRA, TOBI, UNA)) {
+            assertNull(AgentPartyQuestEngagementRegistry.forMember(id), "engagement of " + id);
+            assertNull(AgentEpqSessionRegistry.forMember(id), "session of " + id);
+        }
+        assertSame(other, AgentPartyQuestEngagementRegistry.forMember(BEN), "the other run keeps Ben");
+        assertNull(AgentPartyQuestLobbyRegistry.forMember(BEN), "no lobby was opened");
+        fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.miraEntry, fixture.ben));
+        fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.tobiEntry, fixture.ben));
+        fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.unaEntry, fixture.ben));
+    }
+
+    @Test
+    void aLobbyRegistrationThatThrowsOnceTheLobbyIsInIsUnregisteredAndRecoveredByTheCatch() {
+        AgentEpqAdmissionService.AdmissionResult admitted;
+        try (MockedStatic<AgentPartyQuestLobbyRuntime> lobbies =
+                     mockStatic(AgentPartyQuestLobbyRuntime.class, CALLS_REAL_METHODS)) {
+            lobbies.when(() -> AgentPartyQuestLobbyRuntime.register(any(), anyLong())).thenAnswer(call -> {
+                call.callRealMethod();
+                assertNotNull(AgentPartyQuestLobbyRegistry.forMember(BEN), "the lobby is in");
+                throw new IllegalStateException("lobby presentation unavailable");
+            });
+            admitted = fixture.keep(AgentEpqAdmissionService.admit(
+                    fixture.ben, fixture.ben, fixture.party(), 7L, 1_000L));
+        }
+
+        assertFalse(admitted.success());
+        assertEquals("lobby presentation unavailable", admitted.message());
         assertNull(admitted.session());
         assertNothingKept(admitted.engagement());
         fixture.movement.verify(() -> AgentMovementCommandRuntime.follow(fixture.miraEntry, fixture.ben));
