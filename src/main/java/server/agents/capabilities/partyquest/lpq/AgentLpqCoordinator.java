@@ -1714,16 +1714,21 @@ final class AgentLpqCoordinator {
             }
             int assigned = member.assignedMapId();
             if (agent.getMapId() == mainMap && assigned != 0) {
-                if (session.rooms().completed(assigned)) {
-                    member.assign(AgentLpqMemberState.Role.GENERAL, 0);
-                    member.clearTraversalProgress();
-                    if (npc != null) rallyMemberAtNpc(member, agent, entry, npc);
-                    continue;
-                }
-                if (!java.util.Objects.equals(session.rooms().owner(assigned), agent.getId())) {
-                    member.assign(AgentLpqMemberState.Role.GENERAL, 0);
-                    if (npc != null) rallyMemberAtNpc(member, agent, entry, npc);
-                    continue;
+                boolean completed = session.rooms().completed(assigned);
+                switch (mainMapRoomStep(completed, session.rooms().owner(assigned), agent.getId(),
+                        !completed && isStageFourMagicHelper(session, stage, member, agent, assigned))) {
+                    case RELEASE_COMPLETED -> {
+                        member.assign(AgentLpqMemberState.Role.GENERAL, 0);
+                        member.clearTraversalProgress();
+                        if (npc != null) rallyMemberAtNpc(member, agent, entry, npc);
+                        continue;
+                    }
+                    case RELEASE_NOT_OWNER -> {
+                        member.assign(AgentLpqMemberState.Role.GENERAL, 0);
+                        if (npc != null) rallyMemberAtNpc(member, agent, entry, npc);
+                        continue;
+                    }
+                    case ENTER -> { }
                 }
                 if (member.observeRoomApproachProgress(assigned, agent.getPosition())) {
                     session.rooms().markProgress(assigned, nowMs);
@@ -1927,7 +1932,8 @@ final class AgentLpqCoordinator {
     private static boolean markRoomAndEnter(AgentLpqSession session, AgentLpqMemberState member,
                                             AgentRuntimeEntry entry, Character agent,
                                             int roomMapId, long nowMs) {
-        if (!java.util.Objects.equals(session.rooms().owner(roomMapId), agent.getId())) return false;
+        boolean magicHelper = isStageFourMagicHelper(session, stage(session.phase()), member, agent, roomMapId);
+        if (!mayEnterRoom(session.rooms().owner(roomMapId), agent.getId(), magicHelper)) return false;
         Integer portalId = AgentLpqExitRoutePolicy.portalId(agent.getMapId(), roomMapId);
         if (portalId == null) portalId = ACTIONS.directPortalIdTo(agent, roomMapId);
         Point portal = portalId == null ? null : ACTIONS.portalPosition(agent, portalId);
@@ -1949,7 +1955,8 @@ final class AgentLpqCoordinator {
             return true;
         }
         ACTIONS.stop(entry);
-        if (!member.roomMarkerDroppedFor(roomMapId)) {
+        // The owner marked the door already; a magic helper never drops a second marker.
+        if (!magicHelper && !member.roomMarkerDroppedFor(roomMapId)) {
             if (nowMs < member.nextActionAtMs()) return true;
             boolean markerDropped = AgentScriptItemActionService.dropMesos(
                     entry, AgentLpqDefinition.ROOM_MARKER_MESOS);
@@ -1982,6 +1989,41 @@ final class AgentLpqCoordinator {
         boolean entered = LPQ.enterPortal(agent, portalId);
         if (entered) session.rooms().markProgress(roomMapId, nowMs);
         return entered;
+    }
+
+    /** What a member assigned a split room does on the main map: walk in, or let the room go. */
+    enum MainMapRoomStep { ENTER, RELEASE_COMPLETED, RELEASE_NOT_OWNER }
+
+    /**
+     * Exactly the case assignStageFourMagicHelper creates (LPQ base fix 7): a magic attacker sent to a stage-4 magic
+     * room that a non-magic member owns. It may walk in; on entry the in-room takeover gives the room to it.
+     */
+    static boolean stageFourMagicHelper(int stage, int roomMapId, int assignedMapId, boolean agentMagic,
+                                        Integer ownerId, int agentId, boolean ownerMagic) {
+        return stage == 4 && AgentLpqDefinition.STAGE_4_MAGIC_ROOMS.contains(roomMapId)
+                && assignedMapId == roomMapId && agentMagic && ownerId != null && ownerId != agentId && !ownerMagic;
+    }
+
+    /** A completed room is let go first; the owner, or a stage-4 magic helper, walks in; anyone else lets go. */
+    static MainMapRoomStep mainMapRoomStep(boolean completed, Integer ownerId, int agentId, boolean magicHelper) {
+        if (completed) return MainMapRoomStep.RELEASE_COMPLETED;
+        return mayEnterRoom(ownerId, agentId, magicHelper)
+                ? MainMapRoomStep.ENTER : MainMapRoomStep.RELEASE_NOT_OWNER;
+    }
+
+    static boolean mayEnterRoom(Integer ownerId, int agentId, boolean magicHelper) {
+        return java.util.Objects.equals(ownerId, agentId) || magicHelper;
+    }
+
+    private static boolean isStageFourMagicHelper(AgentLpqSession session, int stage, AgentLpqMemberState member,
+                                                  Character agent, int roomMapId) {
+        if (stage != 4 || !AgentLpqDefinition.STAGE_4_MAGIC_ROOMS.contains(roomMapId)) return false;
+        Integer ownerId = session.rooms().owner(roomMapId);
+        if (ownerId == null || ownerId == agent.getId()) return false;
+        Character owner = character(ownerId);
+        return stageFourMagicHelper(stage, roomMapId, member.assignedMapId(),
+                AgentLpqRosterRequirementPolicy.magicAttack(agent), ownerId, agent.getId(),
+                owner != null && AgentLpqRosterRequirementPolicy.magicAttack(owner));
     }
 
     static boolean atDoorMarkerPosition(Point characterPosition, Point portalPosition) {
