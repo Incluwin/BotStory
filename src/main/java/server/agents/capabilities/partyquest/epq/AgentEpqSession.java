@@ -1,8 +1,11 @@
 package server.agents.capabilities.partyquest.epq;
 
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +14,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /** EPQ aggregate root; no state is shared with another party quest. */
-public final class AgentEpqSession {
+public final class AgentEpqSession implements AgentCompanionRunSession {
     public enum Mode { TEST_OBSERVATION, AUTONOMOUS, HUMAN_ASSISTED }
     public enum Phase {
         PREPARING, ENTERING, STAGE_ONE, STAGE_TWO, STAGE_THREE, STAGE_FOUR,
@@ -25,6 +28,9 @@ public final class AgentEpqSession {
     private final long startedAtMs;
     private final Map<Integer, AgentEpqMemberState> members = new LinkedHashMap<>();
     private final Set<String> announcements = new HashSet<>();
+    private final Set<String> logMarks = new HashSet<>();
+    private final Set<Integer> membersDown = new HashSet<>();
+    private final Map<String, Integer> rescues = new LinkedHashMap<>();
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -40,6 +46,9 @@ public final class AgentEpqSession {
     private long progressSignature = Long.MIN_VALUE;
     private String failure = "";
     private EventInstanceManager eventInstance;
+    private boolean companionAdopted;
+    private boolean memberCoordinationChatEnabled;
+    private String potionsAtEntry = "";
 
     public AgentEpqSession(Mode mode, long seed, int operatorId, long nowMs) {
         if (mode == null || operatorId <= 0 || nowMs < 0L) throw new IllegalArgumentException("valid EPQ session required");
@@ -71,12 +80,20 @@ public final class AgentEpqSession {
         return true;
     }
     public synchronized void transition(Phase next, long nowMs) {
-        if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;
-        if (next != phase) {
-            phase = next;
-            phaseEnteredAtMs = nowMs;
-            markProgress(nowMs);
-        }
+        advance(next, nowMs);
+    }
+
+    /**
+     * Moves the run forward to {@code next} and says what changed, or null when nothing did: no phase, a terminal run,
+     * or the same or an earlier phase (the run only goes forward).
+     */
+    synchronized Change advance(Phase next, long nowMs) {
+        if (next == null || terminal() || next.ordinal() <= phase.ordinal()) return null;
+        Change change = new Change(phase, next, nowMs - phaseEnteredAtMs, nowMs - startedAtMs);
+        phase = next;
+        phaseEnteredAtMs = nowMs;
+        markProgress(nowMs);
+        return change;
     }
     public synchronized void markProgress(long nowMs) { lastProgressAtMs = Math.max(lastProgressAtMs, nowMs); }
     public synchronized void observeProgressSignature(long signature, long nowMs) {
@@ -141,4 +158,57 @@ public final class AgentEpqSession {
     public synchronized boolean claimAnnouncement(String key) {
         return key != null && !key.isBlank() && announcements.add(key);
     }
+
+    /**
+     * A human-led run of owner-bound companions, admitted by AgentEpqAdmissionService.admit. Every companion-run
+     * behaviour is gated on it; stock and GM-observed runs leave it false.
+     */
+    @Override
+    public synchronized boolean companionAdopted() { return companionAdopted; }
+
+    /** Set only by the public admit, before the session is published. */
+    synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
+
+    synchronized boolean memberCoordinationChatEnabled() { return memberCoordinationChatEnabled; }
+
+    @Override
+    public synchronized void setMemberCoordinationChatEnabled(boolean enabled) {
+        memberCoordinationChatEnabled = enabled;
+    }
+
+    /** EPQ paces nothing by a leader's calibration, so it keeps none. */
+    @Override
+    public synchronized void setPaceCalibration(AgentPqPaceCalibration calibration) {
+    }
+
+    /** The companions' potions as the party left the entrance ('EPQ potions:'), or "". */
+    synchronized String potionsAtEntry() { return potionsAtEntry; }
+
+    synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions == null ? "" : potions; }
+
+    /** Takes a member out of the run; true when it was one. */
+    public synchronized boolean removeMember(int id) { return members.remove(id) != null; }
+
+    // What the run's log lines have said so far; nothing decides by it.
+
+    /** True only the first time this member is seen down since it was last seen up. */
+    synchronized boolean markMemberDown(int id) { return membersDown.add(id); }
+
+    synchronized void clearMemberDown(int id) { membersDown.remove(id); }
+
+    /** A once-only mark for a log line, apart from the chat announcements. */
+    synchronized boolean claimLogMark(String key) {
+        return key != null && !key.isBlank() && logMarks.add(key);
+    }
+
+    /** Counts one of the coordinator's assists of this kind and returns how many there have been. */
+    synchronized int countRescue(String kind) { return rescues.merge(kind, 1, Integer::sum); }
+
+    /** The assists so far, by kind, in the order each kind first happened. */
+    synchronized Map<String, Integer> rescueCounts() {
+        return Collections.unmodifiableMap(new LinkedHashMap<>(rescues));
+    }
+
+    /** A phase change: the phase left and the one entered, the time spent in the one left, and the run's time. */
+    record Change(Phase from, Phase to, long phaseMs, long runMs) { }
 }

@@ -16,9 +16,26 @@ public final class AgentEpqLobbyProfile {
             requirements(),
             List.of("Looking for an EPQ party.", "Ellin Forest party forming."),
             900L, 2_400L);
+    private static final AgentPartyQuestLobbyProfile COMPANION_PROFILE = companion(PROFILE);
 
     private AgentEpqLobbyProfile() { }
     public static AgentPartyQuestLobbyProfile profile() { return PROFILE; }
+
+    /**
+     * A companion run's lobby (AgentEpqAdmissionService.admit): the stock event's party rule, up to six adventurers
+     * with no per-branch seats; everything else is {@link #profile()}'s.
+     */
+    public static AgentPartyQuestLobbyProfile companionProfile() { return COMPANION_PROFILE; }
+
+    private static AgentPartyQuestLobbyProfile companion(AgentPartyQuestLobbyProfile stock) {
+        return new AgentPartyQuestLobbyProfile(
+                stock.questKey(), stock.mapId(), stock.entryNpcId(),
+                stock.minimumLevel(), stock.maximumLevel(),
+                AgentEpqDefinition.MAX_PARTY_SIZE, stock.minimumXOffset(), stock.maximumXOffset(), stock.phrases(),
+                List.of(),
+                stock.waiterMessages(),
+                stock.inviteResponseMinimumMs(), stock.inviteResponseMaximumMs());
+    }
 
     private static List<AgentPartyQuestLobbyProfile.MemberRequirement> requirements() {
         return List.of(

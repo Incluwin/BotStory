@@ -47,7 +47,7 @@ public final class AgentPartyQuestCatalog {
                 920_011_200, 200_080_101, 51, 70, 5, 6));
         add(definitions, new AgentPartyQuestDefinition(
                 "epq", "EllinPQ", 300_030_100, 930_000_000, 930_000_800,
-                930_000_800, 300_030_100, 44, 55, 4, 6));
+                930_000_800, 300_030_100, 44, 55, 4, 6, 1_800_000L));
         add(definitions, new AgentPartyQuestDefinition(
                 "ppq", "PiratePQ", 251_010_404, 925_100_000, 925_100_600,
                 925_100_700, 251_010_404, 55, 100, 3, 6));
