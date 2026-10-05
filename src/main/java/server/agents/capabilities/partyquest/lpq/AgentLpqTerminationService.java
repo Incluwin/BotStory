@@ -32,10 +32,12 @@ final class AgentLpqTerminationService {
             failAfterClear(session, reason, nowMs);
             return;
         }
-        release(session, reason, nowMs, true, false);
+        release(session, reason, nowMs, true, false, false);
     }
 
-    static void complete(AgentLpqSession session, long nowMs) { release(session, "completed", nowMs, false, true); }
+    static void complete(AgentLpqSession session, long nowMs) {
+        release(session, "completed", nowMs, false, true, false);
+    }
 
     /** The run is past its clear: the reward map's eligibility is frozen, or the event says it is cleared. */
     static boolean pastTheClear(AgentLpqSession session) {
@@ -45,12 +47,14 @@ final class AgentLpqTerminationService {
 
     /**
      * Ends a companion run after its clear: its companions leave through the event's own exit, and the event and the
-     * players still in it stay as they are. Nothing is disposed.
+     * players still in it stay as they are. Nothing is disposed. The release is claimed before anyone leaves, so a
+     * second failure (the watchdog, a force stop or '!lpqtest stop', which fail a run without its lock) takes no one
+     * out twice, and the tick leaves the run alone while its companions go.
      */
     static void failAfterClear(AgentLpqSession session, String reason, long nowMs) {
-        if (session == null || session.terminationStarted()) return;
+        if (session == null || !session.beginTermination()) return;
         exitAgentsOnly(session);
-        release(session, reason, nowMs, false, false);
+        release(session, reason, nowMs, false, false, true);
     }
 
     /**
@@ -93,8 +97,10 @@ final class AgentLpqTerminationService {
         return companionRun || (completed && mode == AgentLpqSession.Mode.TEST_OBSERVATION);
     }
 
-    private static void release(AgentLpqSession session, String reason, long nowMs, boolean dispose, boolean completed) {
-        if (session == null || !session.beginTermination()) return;
+    /** {@code claimed}: the caller already began the termination (failAfterClear); every other release claims it. */
+    private static void release(AgentLpqSession session, String reason, long nowMs, boolean dispose, boolean completed,
+                                boolean claimed) {
+        if (session == null || !claimed && !session.beginTermination()) return;
         if (!completed) {
             quietly(session, "log-failure", () -> log.warn(
                     "LPQ session failure: session={} phase={} reason={} pastTheClear={} companionRun={} members={}",

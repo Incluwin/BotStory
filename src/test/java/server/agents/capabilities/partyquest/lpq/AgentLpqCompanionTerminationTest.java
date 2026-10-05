@@ -8,15 +8,26 @@ import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.capabilities.partyquest.pace.AgentPqPace;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -75,6 +86,59 @@ class AgentLpqCompanionTerminationTest {
         verify(run.event, never()).exitPlayer(ben);
         verify(run.event, never()).dispose();
         verify(run.party, never()).leaveCurrentParty(any());
+    }
+
+    @Test
+    void aSecondFailureWhileTheCompanionsLeaveTakesNoOneOutTwice() {
+        // The watchdog, a force stop and '!lpqtest stop' fail a run without its lock, so one of them can arrive while
+        // another failure is taking the companions out. Here it arrives during the first companion's exit.
+        AgentLpqSession session = companionRun(AgentLpqSession.Phase.BONUS);
+        session.freezeRewardEligibility();
+        AtomicBoolean claimedBeforeTheFirstExit = new AtomicBoolean();
+        AtomicInteger miraExits = new AtomicInteger();
+        doAnswer(call -> {
+            if (miraExits.getAndIncrement() == 0) {
+                claimedBeforeTheFirstExit.set(session.terminationStarted());
+                AgentLpqTerminationService.fail(session, "No live Agent remains", 5_100L);
+            }
+            return null;
+        }).when(run.event).exitPlayer(mira);
+        try (LpqLogLines log = new LpqLogLines(AgentLpqTerminationService.class)) {
+            AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", 5_000L);
+
+            assertTrue(claimedBeforeTheFirstExit.get(), "the release is claimed before any companion leaves");
+            for (Character companion : new Character[]{mira, kes, pel, hal, cas}) {
+                verify(run.event, times(1)).exitPlayer(companion);
+            }
+            verify(run.event, never()).exitPlayer(ben);
+            verify(run.event, never()).dispose();
+            assertEquals(AgentLpqSession.Phase.FAILED, session.phase());
+            assertEquals("No LPQ progress before phase timeout", session.failure());
+            run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
+                    anyString(), anyBoolean(), anyString(), anyLong(), any()), times(1));
+            assertEquals(1, log.startingWith("LPQ session failure: ").size());
+            assertEquals(1, log.startingWith("LPQ session released: ").size());
+        }
+    }
+
+    @Test
+    void aCompanionRunWhoseReleaseHasBegunIsNotTickedAndAStockRunIsAsToday() {
+        // A companion run's release that has begun (its companions on their way out) gets no coordinator pass; the
+        // leader is not even looked up. A stock run's tick goes on as it always has (here it finds its leader down).
+        when(ben.getHp()).thenReturn(0);
+        AgentLpqSession companion = companionRun(AgentLpqSession.Phase.BONUS);
+        assertTrue(companion.beginTermination());
+        clearInvocations(run.characters);
+        AgentLpqCoordinator.tick(companion, 6_000L);
+        verify(run.characters, never()).findOnlineCharacterById(anyInt());
+        AgentLpqSessionRegistry.remove(companion);
+
+        AgentLpqSession stock = stockRun(AgentLpqSession.Phase.BONUS);
+        assertTrue(stock.beginTermination());
+        clearInvocations(run.characters);
+        AgentLpqCoordinator.tick(stock, 6_000L);
+        verify(run.characters, atLeastOnce()).findOnlineCharacterById(ben.getId());
+        assertEquals(AgentLpqSession.Phase.BONUS, stock.phase(), "a release that has begun is not run again");
     }
 
     @Test

@@ -184,6 +184,8 @@ final class AgentLpqCoordinator {
     static void tick(AgentLpqSession session, long nowMs) {
         synchronized (session) {
             if (session.terminal()) return;
+            // A companion run whose release has begun (its companions on their way out) gets no coordinator pass.
+            if (session.companionAdopted() && session.terminationStarted()) return;
             if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
                 AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", nowMs);
                 return;

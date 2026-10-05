@@ -222,7 +222,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     }
     public synchronized boolean beginTermination() { if (terminating) return false; terminating = true; return true; }
 
-    /** True once a release has begun (failAfterClear reads it so a run is released once). */
+    /** True once a release has begun (a companion run's tick reads it: a run on its way out is not ticked). */
     public synchronized boolean terminationStarted() { return terminating; }
 
     /** When the run first entered {@code phase} (a re-entry keeps the first), or 0 when it never did. */
