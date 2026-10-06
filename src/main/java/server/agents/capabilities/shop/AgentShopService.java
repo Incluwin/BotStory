@@ -181,6 +181,16 @@ public final class AgentShopService {
         return true;
     }
 
+    /** The shopkeeper the pending visit trades with (the one its purchase steps find), or 0 when there is none. */
+    public static int pendingVisitNpcId(AgentRuntimeEntry entry, Character bot) {
+        Point npcPos = AgentShopStateRuntime.shopNpcPosition(entry);
+        if (npcPos == null || bot == null || bot.getMap() == null) {
+            return 0;
+        }
+        NPC npc = findNpcNear(bot, npcPos);
+        return npc == null ? 0 : npc.getId();
+    }
+
     public static void requestSellTrashVisit(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
         if (entry == null || bot == null || bot.getMap() == null) {
             return;

@@ -3,11 +3,15 @@ package server.agents.capabilities.supplies;
 import client.Character;
 import client.Job;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.Shop;
+import server.ShopFactory;
 import server.agents.capabilities.contracts.AgentProcurementMethod;
 import server.agents.capabilities.contracts.AgentProcurementRequest;
 import server.agents.capabilities.contracts.AgentResourceCategory;
 import server.agents.capabilities.contracts.AgentSupplyNeed;
 import server.agents.capabilities.contracts.AgentSupplyUrgency;
+import server.agents.capabilities.shop.AgentShopService;
 import server.agents.capabilities.shop.AgentShopStateRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.runtime.AgentModeStateRuntime;
@@ -18,6 +22,8 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.progression.AgentCareerBuildBundle;
 import server.agents.progression.AgentCareerBuildBundleRepository;
 import server.agents.progression.AgentCareerProgressionState;
+import server.life.NPC;
+import server.maps.MapleMap;
 
 import java.awt.Point;
 import java.util.List;
@@ -26,7 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class AgentSupplyProcurementRuntimeTest {
@@ -249,6 +259,74 @@ class AgentSupplyProcurementRuntimeTest {
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, agent, retryAt + 2));
         assertFalse(execution.isActive());
         assertEquals(follow, AgentObjectiveKernel.active(entry));
+    }
+
+    /**
+     * Arriving on a shop map, onMapChange opens a visit at the shopkeeper and begin() adopts it. Live (2026-09-21 to
+     * 2026-10-06) the adopted trip carried supplier NPC 0, so after the visit ended CANCELLED or BLOCKED the retry
+     * asked for NPC 0 and 109 trips gave up with "selected supplier NPC is unavailable".
+     */
+    @Test
+    void adoptedShopVisitThatEndsBlockedIsRetriedAtItsShopkeeper() {
+        int shopMap = 100000102;
+        int shopkeeper = 1011100;
+        NPC npc = mock(NPC.class);
+        when(npc.getId()).thenReturn(shopkeeper);
+        when(npc.getPosition()).thenReturn(new Point(-297, -79));
+        when(npc.hasShop()).thenReturn(true);
+        MapleMap map = mock(MapleMap.class);
+        when(map.getMapObjectsInRange(any(Point.class), anyDouble(), any())).thenReturn(List.of(npc));
+        Character agent = mock(Character.class);
+        when(agent.getId()).thenReturn(96);
+        when(agent.getName()).thenReturn("Shopper");
+        when(agent.getMapId()).thenReturn(shopMap);
+        when(agent.getMap()).thenReturn(map);
+        when(agent.getChair()).thenReturn(-1);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentObjectiveDefinition training = new AgentObjectiveDefinition(
+                "victoria:training:96:30", "progression.victoria-training", 80,
+                Long.MAX_VALUE, 5, AgentObjectiveSource.PROGRESSION_POLICY,
+                "victoria-v1", "96:level-30");
+        AgentObjectiveKernel.start(entry, training, 10L);
+        AgentResourcePlanningState planning = entry.capabilityStates().require(
+                AgentResourcePlanningState.STATE_KEY);
+        AgentProcurementRequest request = new AgentProcurementRequest(
+                "supply:HP_POTION:96", AgentResourceCategory.HP_POTION, 20, Long.MAX_VALUE,
+                List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.EMPTY,
+                training.objectiveId(), Long.MAX_VALUE);
+        planning.update(new AgentSupplyNeed(AgentResourceCategory.HP_POTION,
+                0, 20, AgentSupplyUrgency.EMPTY, training.objectiveId(), 15L), request);
+        AgentSupplyProcurementState execution = entry.capabilityStates().require(
+                AgentSupplyProcurementState.STATE_KEY);
+
+        try (MockedStatic<AgentShopService> shops = mockStatic(AgentShopService.class, CALLS_REAL_METHODS);
+             MockedStatic<ShopFactory> shopData = mockStatic(ShopFactory.class)) {
+            ShopFactory factory = mock(ShopFactory.class);
+            shopData.when(ShopFactory::getInstance).thenReturn(factory);
+            when(factory.getShopForNPC(shopkeeper)).thenReturn(mock(Shop.class));
+            // The opportunistic visit onMapChange opens at the shopkeeper it needs; the walk to the counter is not
+            // under test.
+            shops.when(() -> AgentShopService.onMapChange(any(), any(), any()))
+                    .thenAnswer(call -> AgentShopService.requestVisitAtNpc(entry, agent, shopkeeper));
+            shops.when(() -> AgentShopService.tickShopVisit(any(), any(), any())).thenReturn(true);
+
+            assertTrue(AgentSupplyProcurementRuntime.begin(entry, agent, request, execution, 20L));
+            assertTrue(execution.shopRequested());
+            assertEquals(shopkeeper, execution.supplierNpcId());
+
+            // The adopted visit ends BLOCKED and its visit state clears.
+            AgentShopStateRuntime.blockWorkflow(entry, "couldn't get to the shopkeeper", 150L);
+            AgentShopStateRuntime.clearShopState(entry);
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, 200L));
+            assertEquals(1, execution.shopFailures());
+
+            // The retry asks the same shopkeeper again instead of giving the trip up.
+            long retryAt = 200L + AgentSupplyRecoveryPolicy.shopRetryDelayMs();
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, agent, retryAt));
+            assertFalse(execution.abandoned(), execution.abandonedReason());
+            assertTrue(execution.shopRequested());
+            assertTrue(AgentShopStateRuntime.shopVisitPending(entry));
+        }
     }
 
     @Test

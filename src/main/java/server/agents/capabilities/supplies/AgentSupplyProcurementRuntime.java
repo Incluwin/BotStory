@@ -357,6 +357,10 @@ public final class AgentSupplyProcurementRuntime {
             phase = supplierMapId == agent.getMapId()
                     ? AgentSupplyProcurementState.Phase.SHOPPING
                     : AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER;
+        } else {
+            // The trip adopts the visit onMapChange opened, and its shopkeeper: a retry after that visit ends
+            // BLOCKED or CANCELLED asks the same shopkeeper (live, NPC 0 gave the trip up as "unavailable").
+            supplierNpcId = AgentShopService.pendingVisitNpcId(entry, agent);
         }
 
         String maintenanceId = OBJECTIVE_PREFIX + request.requestId();
