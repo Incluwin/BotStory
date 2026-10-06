@@ -780,7 +780,7 @@ public final class AgentEpqCoordinator {
      * member's HP and potions as the phase begins). A companion run leaving the entrance also logs its companions'
      * potions, which its release compares.
      */
-    private static void transition(AgentEpqSession session, AgentEpqSession.Phase next, long nowMs) {
+    static void transition(AgentEpqSession session, AgentEpqSession.Phase next, long nowMs) {
         AgentEpqSession.Change change = session.advance(next, nowMs);
         if (change == null) return;
         log.info("EPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", session.sessionId(),
@@ -830,7 +830,7 @@ public final class AgentEpqCoordinator {
     }
 
     /** A point as the evidence lines write it: (x,y), or none. */
-    private static String xy(Point point) {
+    static String xy(Point point) {
         return point == null ? "none" : "(" + point.x + "," + point.y + ")";
     }
 
@@ -913,7 +913,7 @@ public final class AgentEpqCoordinator {
         };
     }
 
-    private static List<Monster> flowers(Character agent) {
+    static List<Monster> flowers(Character agent) {
         return AgentMapPerception.monsters(agent.getMap()).stream()
                 .filter(Monster::isAlive).filter(mob -> mob.getId() == AgentEpqDefinition.POISON_FLOWER).toList();
     }
@@ -1014,7 +1014,7 @@ public final class AgentEpqCoordinator {
                 .toList();
     }
 
-    private static int workAgentId(AgentEpqSession session) {
+    static int workAgentId(AgentEpqSession session) {
         return session.workAgentId();
     }
 
@@ -1104,7 +1104,7 @@ public final class AgentEpqCoordinator {
                 .orElse(null);
     }
 
-    private static boolean collectNearest(AgentRuntimeEntry entry, Character agent,
+    static boolean collectNearest(AgentRuntimeEntry entry, Character agent,
                                           Set<Integer> itemIds) {
         MapItem item = AgentMapPerception.items(agent.getMap()).stream()
                 .filter(drop -> !drop.isPickedUp() && itemIds.contains(drop.getItemId()))
@@ -1123,7 +1123,7 @@ public final class AgentEpqCoordinator {
         return true;
     }
 
-    private static int stageItemTotal(AgentEpqSession session, Character observer, int itemId) {
+    static int stageItemTotal(AgentEpqSession session, Character observer, int itemId) {
         int total = 0;
         for (AgentEpqMemberState member : session.members()) {
             Character character = character(member.characterId());
@@ -1175,7 +1175,7 @@ public final class AgentEpqCoordinator {
         return total;
     }
 
-    private static boolean hitReactor(AgentRuntimeEntry entry, Character agent, Reactor reactor,
+    static boolean hitReactor(AgentRuntimeEntry entry, Character agent, Reactor reactor,
                                       AgentEpqMemberState member, long nowMs) {
         if (!near(agent.getPosition(), reactor.getPosition(), REACTOR_RADIUS) || !actions().grounded(agent)) {
             Point target = actions().groundPoint(agent.getMap(), reactor.getPosition());
@@ -1188,7 +1188,7 @@ public final class AgentEpqCoordinator {
         return true;
     }
 
-    private static boolean enterPortal(AgentRuntimeEntry entry, Character agent, int portalId,
+    static boolean enterPortal(AgentRuntimeEntry entry, Character agent, int portalId,
                                        AgentEpqMemberState member, long nowMs) {
         Point portal = actions().portalPosition(agent, portalId);
         if (!near(agent.getPosition(), portal, PORTAL_RADIUS) || !actions().grounded(agent)) {
@@ -1201,7 +1201,7 @@ public final class AgentEpqCoordinator {
         return true;
     }
 
-    private static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId, int... selections) {
+    static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId, int... selections) {
         Point npc = npcApproachPoint(agent, npcId);
         if (!near(agent.getPosition(), npc, NPC_RADIUS)) {
             if (npc != null) actions().navigate(entry, npc, true);
@@ -1211,7 +1211,7 @@ public final class AgentEpqCoordinator {
         return epq().runNpc(agent, npcId, selections);
     }
 
-    private static boolean dropAt(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+    static boolean dropAt(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                   InventoryType type, int itemId,
                                   Point target, AgentEpqMemberState member, long nowMs, String logKey) {
         Point position = agent.getPosition();
@@ -1252,7 +1252,7 @@ public final class AgentEpqCoordinator {
         }
     }
 
-    private static Point npcApproachPoint(Character agent, int npcId) {
+    static Point npcApproachPoint(Character agent, int npcId) {
         Point npc = actions().npcPosition(agent, npcId);
         if (npc == null || agent == null || agent.getMap() == null) return npc;
         if (agent.getMapId() == AgentEpqDefinition.RECRUIT_MAP) {
@@ -1269,7 +1269,7 @@ public final class AgentEpqCoordinator {
         return grounded == null ? besideNpc : grounded;
     }
 
-    private static boolean dropItem(
+    static boolean dropItem(
             AgentRuntimeEntry entry, Character agent, InventoryType type, int itemId, short quantity) {
         var inventory = agent == null ? null : agent.getInventory(type);
         Item item = inventory == null ? null : inventory.findById(itemId);
@@ -1295,7 +1295,7 @@ public final class AgentEpqCoordinator {
         return true;
     }
 
-    private static boolean near(Point first, Point second, int radius) {
+    static boolean near(Point first, Point second, int radius) {
         return first != null && second != null && first.distanceSq(second) <= (long) radius * radius;
     }
 
@@ -1310,11 +1310,11 @@ public final class AgentEpqCoordinator {
      * The gateways are resolved per call (each is one adapter singleton), so a test can stand in for them without a
      * class loaded under its mock keeping that mock for every later test.
      */
-    private static PrimitiveCapabilityGateway actions() {
+    static PrimitiveCapabilityGateway actions() {
         return AgentPrimitiveCapabilityGatewayRuntime.gateway();
     }
 
-    private static PartyQuestGateway epq() {
+    static PartyQuestGateway epq() {
         return AgentPartyQuestGatewayRuntime.partyQuest();
     }
 
