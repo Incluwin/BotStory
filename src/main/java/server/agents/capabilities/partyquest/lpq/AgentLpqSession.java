@@ -101,6 +101,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private final Set<Integer> departuresInFlight = new java.util.LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
     private final Set<String> narratedKeys = new java.util.LinkedHashSet<>();
+    private final Set<String> withheldNotes = new java.util.LinkedHashSet<>();
     private final Set<Integer> companionsOfRun = new java.util.LinkedHashSet<>();
     private long enteredEventAtMs;
 
@@ -704,6 +705,9 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     synchronized String potionsAtEntry() { return potionsAtEntry; }
 
     synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions; }
+
+    /** True the first time a withheld rescue (kind, site, member, phase) is noted in this run. */
+    synchronized boolean claimWithheldNote(String key) { return key != null && withheldNotes.add(key); }
 
     /** True the first time a companion-run line key is used; each key is said once a run. */
     synchronized boolean narrateOnce(String key) { return key != null && narratedKeys.add(key); }

@@ -1159,9 +1159,11 @@ final class AgentLpqCoordinator {
      * owned by this session (including its ground drops) onto the leader. The caller then
      * performs the normal authored NPC submission and stage transition.
      */
-    private static void forcePassTransferToLeader(
+    static void forcePassTransferToLeader(
             AgentLpqSession session, String site, Character leader, AgentLpqDefinition.Stage contract,
             long rallyElapsedMs, long nowMs) {
+        if (AgentLpqRescue.withhold(session, AgentLpqRescue.Kind.FORCE_TRANSFER, site, leader,
+                "stage=" + contract.number())) return;
         int required = contract.submissionCount();
         int leaderPasses = leader.getItemQuantity(AgentLpqDefinition.PASS, false);
         if (leaderPasses < required) {
@@ -3154,6 +3156,7 @@ final class AgentLpqCoordinator {
      */
     static int vacuumItemDrops(AgentLpqSession session, String site,
                                Character recipient, Set<MapleMap> maps, int itemId) {
+        if (AgentLpqRescue.withhold(session, AgentLpqRescue.Kind.VACUUM, site, recipient, "item=" + itemId)) return 0;
         int vacuumed = 0;
         for (MapleMap map : maps) {
             for (MapItem drop : map.getDroppedItems()) {
@@ -3183,18 +3186,23 @@ final class AgentLpqCoordinator {
      * A rescue: places the member at {@code target} at once (a pose teleport), however far it is or whatever lies
      * between. A site without its session passes null; the note finds it by the member.
      */
-    private static void rescueTeleport(AgentLpqSession session, String site, AgentRuntimeEntry entry,
-                                       Character agent, Point target) {
+    static boolean rescueTeleport(AgentLpqSession session, String site, AgentRuntimeEntry entry,
+                                  Character agent, Point target) {
+        if (AgentLpqRescue.withhold(session, AgentLpqRescue.Kind.TELEPORT, site, agent,
+                "map=" + agent.getMapId() + " to=" + (target == null ? "-" : target.x + "," + target.y))) return false;
         ACTIONS.stagePosition(entry, agent, target);
         AgentLpqRescue.note(session, AgentLpqRescue.Kind.TELEPORT, site, agent,
                 "map=" + agent.getMapId() + " to=" + (target == null ? "-" : target.x + "," + target.y));
+        return true;
     }
 
     /**
      * A rescue: hits each live box of the member's room from wherever it stands, up to 16 times a box, until its
      * script destroys it. Returns the hits; one 'LPQ rescue:' line when there were any.
      */
-    private static int remoteBoxHits(AgentLpqSession session, String site, Character agent, List<Reactor> reactors) {
+    static int remoteBoxHits(AgentLpqSession session, String site, Character agent, List<Reactor> reactors) {
+        if (AgentLpqRescue.withhold(session, AgentLpqRescue.Kind.REMOTE_REACTOR, site, agent,
+                "map=" + agent.getMapId() + " boxes=" + reactors.size())) return 0;
         int reactorHits = 0;
         for (Reactor reactor : reactors) {
             // LPQ boxes use a small authored hit-state chain. Keep advancing the
@@ -3220,6 +3228,9 @@ final class AgentLpqCoordinator {
      */
     static boolean grantItem(AgentLpqSession session, AgentLpqRescue.Kind kind, String site,
                              Character character, int itemId, short quantity) {
+        if (AgentLpqRescue.withhold(session, kind, site, character, "item=" + itemId + " quantity=" + quantity)) {
+            return false;
+        }
         boolean granted = AgentInventoryGatewayRuntime.inventory().addItem(character, itemId, quantity);
         if (granted) {
             AgentLpqRescue.note(session, kind, site, character, "item=" + itemId + " quantity=" + quantity);
@@ -3228,7 +3239,9 @@ final class AgentLpqCoordinator {
     }
 
     /** A rescue: kills these mobs of the map outright, with their drops. One 'LPQ rescue:' line when there were any. */
-    private static void killWithDrops(AgentLpqSession session, String site, MapleMap map, List<Integer> mobIds) {
+    static void killWithDrops(AgentLpqSession session, String site, MapleMap map, List<Integer> mobIds) {
+        if (AgentLpqRescue.withhold(session, AgentLpqRescue.Kind.KILL_WITH_DROPS, site, null,
+                "map=" + map.getId() + " mobs=" + mobIds.size())) return;
         for (int mobId : mobIds) map.killMonsterWithDrops(mobId);
         if (!mobIds.isEmpty()) {
             AgentLpqRescue.note(session, AgentLpqRescue.Kind.KILL_WITH_DROPS, site, null,
@@ -3263,8 +3276,10 @@ final class AgentLpqCoordinator {
         return maps;
     }
 
-    private static boolean recoverStageTwoTrap(AgentLpqSession session, String site, Character agent,
-                                               long nowMs) {
+    static boolean recoverStageTwoTrap(AgentLpqSession session, String site, Character agent,
+                                       long nowMs) {
+        if (AgentLpqRescue.withhold(session, AgentLpqRescue.Kind.TRAP_RETURN, site, agent,
+                "from=" + agent.getMapId())) return false;
         var event = session.eventInstance();
         MapleMap destination = event == null ? null
                 : event.getMapInstance(AgentLpqDefinition.stage(2).mapId());
@@ -3295,8 +3310,10 @@ final class AgentLpqCoordinator {
         return recovered;
     }
 
-    private static boolean restoreEventMember(AgentLpqSession session, String site, Character agent,
-                                               int destinationMapId, long nowMs) {
+    static boolean restoreEventMember(AgentLpqSession session, String site, Character agent,
+                                      int destinationMapId, long nowMs) {
+        if (AgentLpqRescue.withhold(session, AgentLpqRescue.Kind.EVENT_REREGISTER, site, agent,
+                "destination=" + destinationMapId)) return false;
         var event = session.eventInstance();
         MapleMap destination = event == null ? null : event.getMapInstance(destinationMapId);
         Portal spawn = destination == null ? null : destination.getRandomPlayerSpawnpoint();
@@ -3334,8 +3351,10 @@ final class AgentLpqCoordinator {
         return Math.max(0, earned - held);
     }
 
-    private static boolean moveWithinEvent(AgentLpqSession session, String site, Character agent,
-                                           int destinationMapId, long nowMs) {
+    static boolean moveWithinEvent(AgentLpqSession session, String site, Character agent,
+                                   int destinationMapId, long nowMs) {
+        if (AgentLpqRescue.withhold(session, AgentLpqRescue.Kind.MAP_MOVE, site, agent,
+                "from=" + agent.getMapId() + " to=" + destinationMapId)) return false;
         var event = session.eventInstance();
         MapleMap destination = event == null ? null : event.getMapInstance(destinationMapId);
         Portal spawn = destination == null ? null : destination.getRandomPlayerSpawnpoint();

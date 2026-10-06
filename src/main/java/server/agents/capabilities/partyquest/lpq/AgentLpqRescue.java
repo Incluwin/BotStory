@@ -22,6 +22,40 @@ final class AgentLpqRescue {
     }
 
     /**
+     * True when a companion run withholds this rescue (D-a: LPQ's built-in rescues are off in companion runs): the
+     * primitive then does nothing and returns "not applied". The first withheld (kind, site, member, phase) of a run
+     * logs one WARN 'LPQ rescue: ... applied=false companionRun=true'. A stock run, or a member in no run, gets false
+     * and nothing is logged, so the primitive goes on exactly as before. The run's flag is read before the logging,
+     * so a logging failure never lets a rescue through. It never throws.
+     */
+    static boolean withhold(AgentLpqSession session, Kind kind, String site, Character member, String detail) {
+        AgentLpqSession run;
+        try {
+            run = session != null ? session
+                    : member == null ? null : AgentLpqSessionRegistry.forMember(member.getId());
+        } catch (RuntimeException failure) {
+            return false;
+        }
+        if (run == null || !run.companionAdopted()) return false;
+        try {
+            String key = kind + "|" + site + "|" + (member == null ? 0 : member.getId()) + "|" + run.phase();
+            if (run.claimWithheldNote(key)) {
+                log.warn("LPQ rescue: session={} kind={} site={} phase={} member={}({}) applied={} companionRun={} "
+                                + "detail={}", run.sessionId(), kind, site, run.phase(),
+                        member == null ? "-" : member.getName(), member == null ? "-" : member.getId(), false, true,
+                        detail == null || detail.isEmpty() ? "-" : detail);
+            }
+        } catch (RuntimeException failure) {
+            try {
+                log.warn("LPQ rescue note failed: kind={} site={}", kind, site, failure);
+            } catch (RuntimeException ignored) {
+                // The rescue stays withheld whatever the logging does.
+            }
+        }
+        return true;
+    }
+
+    /**
      * Logs a rescue that was applied, after its world calls returned. A site without its session (null) finds it by
      * the member. It never throws.
      */
