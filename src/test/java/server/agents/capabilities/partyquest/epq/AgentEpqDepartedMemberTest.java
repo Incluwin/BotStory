@@ -201,6 +201,32 @@ class AgentEpqDepartedMemberTest {
         }
     }
 
+    /**
+     * A departed Agent is online and alive (about 50 HP, idling on the normal 930000800), so only its departure keeps
+     * it from one of the two lurer slots; holding one, it would leave one side's Stone Bugs unlured.
+     */
+    @Test
+    void aDepartedAgentTakesNoStageTwoLurerSlot() {
+        for (Character member : List.of(ben, mira, tobi, una, pia, cleo)) {
+            run.onMap(member, AgentEpqDefinition.STAGE_TWO_MAP);
+        }
+        AgentEpqSession session = session(AgentEpqSession.Phase.STAGE_TWO);
+        Reactor spine = reactor(new Point(-400, 0), (byte) 0);
+        Reactor pond = reactor(new Point(400, 0), (byte) 0);
+        when(run.map.getReactorById(AgentEpqDefinition.SPINE_REACTOR)).thenReturn(spine);
+        when(run.map.getReactorById(AgentEpqDefinition.POND_REACTOR)).thenReturn(pond);
+        leaves(tobi); // the weakest non-carrier Agent by today's order: the first lurer
+        registered(ben, mira, una, pia, cleo);
+        AgentEpqCoordinator.tickSession(session, 2_000L);
+        assertTrue(session.departed(tobi.getId()));
+        assertTrue(tobi.getHp() > 0, "a departed Agent is alive");
+
+        AgentEpqCoordinator.tickMember(session, run.entry(pia), pia, 3_000L);
+
+        verify(run.map).instanceMapForceRespawn(); // Pia lures in Tobi's place: no bugs up, so she calls them
+        verify(run.actions, never()).navigate(eq(run.entry(pia)), any(), anyBoolean());
+    }
+
     @Test
     void anEndedEventOnlyStopsTheAgent() {
         AgentEpqSession session = session(AgentEpqSession.Phase.BOSS);
