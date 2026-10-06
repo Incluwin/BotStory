@@ -69,9 +69,13 @@ final class AgentLpqCoordinator {
     enum PassHandoffExitAction { NAVIGATE, PLACE_AT_PORTAL, MOVE_TO_STAGE }
     enum DarkSightRoomAction { NONE, CAST_FOR_TRAVERSAL, CANCEL_FOR_ATTACK }
     private static final Logger log = LoggerFactory.getLogger(AgentLpqCoordinator.class);
-    private static final PrimitiveCapabilityGateway ACTIONS = AgentPrimitiveCapabilityGatewayRuntime.gateway();
-    private static final PartyQuestGateway LPQ = AgentPartyQuestGatewayRuntime.partyQuest();
-    private static final PartyGateway PARTY = AgentPartyGatewayRuntime.party();
+    // Resolved per call (AgentLpqGateways): each is one adapter singleton, and a test can stand in for it.
+    private static final PrimitiveCapabilityGateway ACTIONS = AgentLpqGateways.perCall(
+            PrimitiveCapabilityGateway.class, AgentPrimitiveCapabilityGatewayRuntime::gateway);
+    private static final PartyQuestGateway LPQ = AgentLpqGateways.perCall(
+            PartyQuestGateway.class, AgentPartyQuestGatewayRuntime::partyQuest);
+    private static final PartyGateway PARTY = AgentLpqGateways.perCall(
+            PartyGateway.class, AgentPartyGatewayRuntime::party);
     private static final String EVENT_ENDED_OR_EXPIRED = "The LPQ event instance ended or expired";
     private static final long PHASE_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PHASE_TIMEOUT_MS");
