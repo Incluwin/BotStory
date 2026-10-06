@@ -36,6 +36,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<Integer> departed = new LinkedHashSet<>();
     private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private final Set<Integer> capturesInFlight = new HashSet<>();
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -290,4 +291,14 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** Dead members the departure gate holds on the map now. */
     synchronized int heldDeadCount() { return heldSinceMs.size(); }
+
+    /**
+     * Claims a stage-4 flower (by its object id) for one Agent's catch; false while another Agent's catch of it is in
+     * flight. The stock catch checks, kills and hands out the marble with no lock, so two throws at once would both
+     * spend a purifier and both get a marble. The catch runs outside this monitor; {@link #endCapture} ends the claim.
+     */
+    synchronized boolean beginCapture(int objectId) { return capturesInFlight.add(objectId); }
+
+    /** Ends a flower claim (its catch returned or threw). */
+    synchronized void endCapture(int objectId) { capturesInFlight.remove(objectId); }
 }

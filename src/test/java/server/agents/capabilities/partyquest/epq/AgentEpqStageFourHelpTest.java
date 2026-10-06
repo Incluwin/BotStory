@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+import server.life.EpqPoisonFlowerCaptureService;
 import server.life.Monster;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -13,9 +14,16 @@ import java.awt.Point;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -55,6 +63,60 @@ class AgentEpqStageFourHelpTest {
         assertEquals(d, AgentEpqParticipationPolicy.captureTarget(List.of(b, d), Flower::owner, 2,
                 f -> (double) f.x() * f.x()));
         assertNull(AgentEpqParticipationPolicy.captureTarget(List.<Flower>of(), Flower::owner, 2, f -> 0.0));
+    }
+
+    /**
+     * Helpers go for the nearest live flower of any owner, so an owner and a helper on two tick threads can throw at
+     * the same ready flower. The stock catch checks, then kills and then hands out the marble with no lock, so both
+     * would spend a purifier and both get a Monster Marble. One Agent throws at a given flower at a time; the claim
+     * ends with the throw (also when it fails or throws), and the next throw finds the flower gone.
+     */
+    @Test
+    void twoAgentsNeverCatchOneFlowerAtOnce() throws Exception {
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+                AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
+        Monster flower = flower(100);
+        when(run.map.getMonsterByOid(flower.getObjectId())).thenReturn(flower);
+        AtomicInteger throwsMade = new AtomicInteger();
+        CountDownLatch inside = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        BiFunction<Character, Monster, EpqPoisonFlowerCaptureService.Result> slowCatch = (agent, mob) -> {
+            throwsMade.incrementAndGet();
+            inside.countDown();
+            try {
+                assertTrue(release.await(10, TimeUnit.SECONDS));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return EpqPoisonFlowerCaptureService.Result.CAPTURED;
+        };
+        BiFunction<Character, Monster, EpqPoisonFlowerCaptureService.Result> quickCatch = (agent, mob) -> {
+            throwsMade.incrementAndGet();
+            return EpqPoisonFlowerCaptureService.Result.CAPTURED;
+        };
+
+        AtomicBoolean ownerCaught = new AtomicBoolean();
+        Thread owner = new Thread(() -> ownerCaught.set(AgentEpqCaptureRuntime.capture(mira, flower, slowCatch)));
+        owner.start();
+        assertTrue(inside.await(10, TimeUnit.SECONDS));
+        AtomicBoolean helperCaught = new AtomicBoolean(true);
+        Thread helper = new Thread(() -> helperCaught.set(AgentEpqCaptureRuntime.capture(tobi, flower, quickCatch)));
+        helper.start();
+        helper.join(10_000L);
+        release.countDown();
+        owner.join(10_000L);
+
+        assertTrue(ownerCaught.get());
+        assertFalse(helperCaught.get(), "the helper does not throw while the owner's throw is on the flower");
+        assertEquals(1, throwsMade.get());
+
+        assertTrue(AgentEpqCaptureRuntime.capture(tobi, flower, quickCatch), "the claim ended with the throw");
+        assertEquals(2, throwsMade.get());
+        assertThrows(IllegalStateException.class, () -> AgentEpqCaptureRuntime.capture(una, flower, (agent, mob) -> {
+            throw new IllegalStateException("inventory unloading");
+        }));
+        assertTrue(AgentEpqCaptureRuntime.capture(una, flower, quickCatch), "a throw that threw ends its claim too");
+        assertTrue(session.lastProgressAtMs() > 1_000L);
     }
 
     private Monster flower(int x) {
