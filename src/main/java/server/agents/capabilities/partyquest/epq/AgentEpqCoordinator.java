@@ -85,9 +85,11 @@ public final class AgentEpqCoordinator {
         }
         // EPQ base fix 2: before the clear, a bound event that was disposed, or that no longer holds the leader (the
         // stock event ends when its leader leaves it, or at its floor), ends the run at once; after the clear the
-        // leader leaves through the exit and this check is inert.
+        // leader leaves through the exit and this check is inert. So is it while the run is being released: the
+        // release exits every player and disposes the event itself, and fails the run with its own reason.
         EventInstanceManager bound = session.eventInstance();
-        if (bound != null && !session.terminal() && !AgentEpqTerminationService.pastTheClear(bound)
+        if (bound != null && !session.terminal() && !session.terminationStarted()
+                && !AgentEpqTerminationService.pastTheClear(bound)
                 && (bound.isEventDisposed() || leader.getEventInstance() != bound)) {
             log.warn("EPQ event end detail: session={} {}", session.sessionId(), eventEndDetail(session, leader));
             fail(session, EVENT_ENDED_OR_EXPIRED, nowMs);
@@ -134,12 +136,13 @@ public final class AgentEpqCoordinator {
     /**
      * EPQ base fix 3: marks a member the live bound event no longer holds as departed, once ('EPQ departed:'), and
      * reopens the stage-2 bottles it may have carried; a departed member seen back in the bound event is a member
-     * again ('EPQ returned:'). Humans and Agents alike; never throws.
+     * again ('EPQ returned:'). Humans and Agents alike; never throws. Nothing is marked while the run is being
+     * released: the release itself takes every player out of the event.
      */
     private static void observeDeparture(AgentEpqSession session, Character member, Character leader) {
         try {
             EventInstanceManager bound = session.eventInstance();
-            if (bound == null) return;
+            if (bound == null || session.terminationStarted()) return;
             if (member.getEventInstance() == bound) {
                 if (session.clearDeparted(member.getId())) {
                     log.info("EPQ returned: session={} member={}({}) map={} phase={}", session.sessionId(),

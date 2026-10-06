@@ -211,6 +211,34 @@ class AgentEpqEventEndTest {
         assertTrue(session.rewardHit());
     }
 
+    /**
+     * A release (a GM's '!epqtest stop' on another thread) marks the run terminating, exits every player, disposes the
+     * event and fails the run only at its end; a lease holder's pass in that window sees no event end and no departure.
+     */
+    @Test
+    void aRunBeingReleasedLogsNoEventEndAndNoDeparture() {
+        AgentEpqSession session = boss();
+        assertTrue(session.beginTermination());
+        run.onMap(tobi, AgentEpqDefinition.REWARD_MAP); // exited before the leader: the normal 930000800
+        when(tobi.getEventInstance()).thenReturn(null);
+        when(run.event.getPlayers()).thenReturn(List.of(ben, mira, una));
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            AgentEpqCoordinator.tickSession(session, 2_000L);
+            AgentEpqCoordinator.tickMember(session, run.entry(tobi), tobi, 2_000L);
+
+            run.onMap(ben, AgentEpqDefinition.REWARD_MAP); // then the leader, and the event is disposed
+            when(ben.getEventInstance()).thenReturn(null);
+            when(run.event.isEventDisposed()).thenReturn(true);
+            AgentEpqCoordinator.tickSession(session, 3_000L);
+
+            assertEquals(List.of(), lines.startingWith("EPQ departed:"));
+            assertEquals(List.of(), lines.startingWith("EPQ event end detail:"));
+            assertEquals(List.of(), lines.startingWith("EPQ session failure:"));
+        }
+        assertFalse(session.departed(tobi.getId()));
+        assertEquals(AgentEpqSession.Phase.BOSS, session.phase(), "the release fails the run itself, with its reason");
+    }
+
     @Test
     void theDetailNeverThrows() {
         AgentEpqSession session = boss();
