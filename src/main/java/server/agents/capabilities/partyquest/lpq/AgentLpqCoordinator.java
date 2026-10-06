@@ -116,6 +116,8 @@ final class AgentLpqCoordinator {
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_4_ROOM_HARD_RECOVERY_MS");
     private static final long ROOM_PROGRESS_LOG_INTERVAL_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.ROOM_PROGRESS_LOG_INTERVAL_MS");
+    private static final long COMPANION_ENTRY_WAIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_ENTRY_WAIT_MS");
     private static final int DARK_SIGHT_SAFE_PORTAL_ID = 0;
     private static final Point STAGE_7_BOTTOM = new Point(1, -211);
     private static final int STAGE_7_FIRING_ANCHOR_RADIUS = config.AgentTuning.intValue(
@@ -191,6 +193,7 @@ final class AgentLpqCoordinator {
             if (session.terminal()) return;
             // A companion run whose release has begun (its companions on their way out) gets no coordinator pass.
             if (session.companionAdopted() && session.terminationStarted()) return;
+            if (session.companionAdopted()) { companionRunTick(session, nowMs); return; }
             if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
                 AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", nowMs);
                 return;
@@ -433,9 +436,10 @@ final class AgentLpqCoordinator {
                     .map(member -> character(member.characterId()))
                     .filter(java.util.Objects::nonNull)
                     .findFirst().orElse(null);
-            if (speaker != null) {
+            String startingLine = voice(session, null, STARTING_CHAT);
+            if (speaker != null && startingLine != null) {
                 AgentPacketGatewayRuntime.packets().broadcastChatText(
-                        speaker, STARTING_CHAT, false, 0);
+                        speaker, startingLine, false, 0);
             }
             return;
         }
@@ -465,7 +469,8 @@ final class AgentLpqCoordinator {
             if (participant != null && member.memberType() == AgentLpqMemberState.MemberType.AGENT) {
                 restoreEventMember(session, "entering-not-in-event", participant, AgentLpqDefinition.stage(1).mapId(), nowMs);
             } else if (participant != null && nowMs >= member.nextActionAtMs()) {
-                participant.dropMessage(6, "Enter LPQ through the Red Sign to join your party instance.");
+                String enterLine = voice(session, null, "Enter LPQ through the Red Sign to join your party instance.");
+                if (enterLine != null) participant.dropMessage(6, enterLine);
                 member.deferUntil(nowMs + 5_000L);
             }
         }
@@ -1235,8 +1240,8 @@ final class AgentLpqCoordinator {
         if (member.memberType() != AgentLpqMemberState.MemberType.AGENT
                 || !stageOneMelee(agent)
                 || !member.claimIntentAnnouncement("stage1:upper-melee")) return;
-        sendPartyAndAllChat(agent, "Stage 1: I'm climbing to clear every reachable upper mob as a "
-                + jobLabel(agent) + ".");
+        sendPartyAndAllChat(agent, voice(session, null, "Stage 1: I'm climbing to clear every reachable upper mob as a "
+                + jobLabel(agent) + "."));
     }
 
     static boolean stageOneMelee(Character agent) {
@@ -1264,8 +1269,8 @@ final class AgentLpqCoordinator {
         } else {
             purpose = "regular room ";
         }
-        sendPartyAndAllChat(agent, "Stage " + stage + ": I'm going to " + purpose + room
-                + " as a " + jobLabel(agent) + ".");
+        sendPartyAndAllChat(agent, voice(session, null, "Stage " + stage + ": I'm going to " + purpose + room
+                + " as a " + jobLabel(agent) + "."));
     }
 
     private static void announceStageSevenIntent(
@@ -1274,11 +1279,11 @@ final class AgentLpqCoordinator {
         if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) return;
         String key = topIndex >= 0 ? "stage7:top:" + topIndex : "stage7:bottom";
         if (!member.claimIntentAnnouncement(key)) return;
-        sendPartyAndAllChat(participant, topIndex >= 0
+        sendPartyAndAllChat(participant, voice(session, null, topIndex >= 0
                 ? "Stage 7: I'm going up to kill trigger Ratz " + (topIndex + 1)
                 + " as a " + jobLabel(participant) + "."
                 : "Stage 7: I'm holding the bottom to kill Rombards as a "
-                + jobLabel(participant) + ".");
+                + jobLabel(participant) + "."));
     }
 
     private static void announcePassProgress(
@@ -1340,9 +1345,10 @@ final class AgentLpqCoordinator {
             announceStageSevenIntent(session, member, participant, topIndex);
             if (member.memberType() == AgentLpqMemberState.MemberType.HUMAN) {
                 if (nowMs >= member.nextActionAtMs()) {
-                    participant.dropMessage(6, topIndex >= 0
+                    String humanLine = voice(session, null, topIndex >= 0
                             ? "LPQ Stage 7: take the upper platforms and kill trigger " + (topIndex + 1) + "."
                             : "LPQ Stage 7: hold the bottom and kill the summoned Rombards.");
+                    if (humanLine != null) participant.dropMessage(6, humanLine);
                     member.deferUntil(nowMs + 5_000L);
                 }
                 continue;
@@ -2137,7 +2143,8 @@ final class AgentLpqCoordinator {
     private static void announceHumanRoomIntent(
             AgentLpqSession session, Character human, int roomMapId,
             AgentLpqMemberState.Role role) {
-        if (human == null) return;
+        // A companion run says no system text to its human (voice: no companion line here).
+        if (human == null || voice(session, null, "room intent") == null) return;
         String skill = role == AgentLpqMemberState.Role.TELEPORT_RUNNER
                 ? "Teleport" : "Dark Sight";
         human.dropMessage(6, "LPQ Stage 5: you own room " + (roomMapId % 1_000)
@@ -3478,7 +3485,15 @@ final class AgentLpqCoordinator {
 
         Character speaker = scoutIds.stream().map(AgentLpqCoordinator::character)
                 .filter(java.util.Objects::nonNull).findFirst().orElse(null);
-        if (!session.stage2ScoutPlanAnnounced()
+        if (!session.stage2ScoutPlanAnnounced() && session.companionAdopted()) {
+            // A companion run: one player-like line on the leader's map, never party plus map chat.
+            Character leader = character(session.eventLeaderId());
+            if (leader == null || coordinate(session, narrator(session, leader), "s2-scouts",
+                    AgentLpqCompanionPlay.SCOUTS_GO_FIRST) || !session.memberCoordinationChatEnabled()) {
+                session.markStage2ScoutPlanAnnounced(nowMs);
+            }
+        }
+        if (!session.stage2ScoutPlanAnnounced() && !session.companionAdopted()
                 && sendPartyAndAllChat(speaker, STAGE_2_SCOUT_CHAT)) {
             session.markStage2ScoutPlanAnnounced(nowMs);
         }
@@ -3520,6 +3535,12 @@ final class AgentLpqCoordinator {
             return;
         }
 
+        if (!session.stage2TrapClearAnnounced() && session.companionAdopted()) {
+            // The party goes in on the clear whether or not anyone could say it.
+            Character leader = character(session.eventLeaderId());
+            coordinate(session, narrator(session, leader), "s2-clear", AgentLpqCompanionPlay.TRAP_CLEAR);
+            session.markStage2TrapClearAnnounced(nowMs);
+        }
         if (!session.stage2TrapClearAnnounced()
                 && sendPartyAndAllChat(speaker, STAGE_2_TRAP_CLEAR_CHAT)) {
             session.markStage2TrapClearAnnounced(nowMs);
@@ -3536,7 +3557,8 @@ final class AgentLpqCoordinator {
                         session, member, participantEntry, participant, stageTwoMap,
                         nowMs, "Stage 2 party entry");
             } else if (nowMs >= member.nextActionAtMs()) {
-                participant.dropMessage(6, STAGE_2_TRAP_CLEAR_CHAT);
+                String clearLine = voice(session, null, STAGE_2_TRAP_CLEAR_CHAT);
+                if (clearLine != null) participant.dropMessage(6, clearLine);
                 member.deferUntil(nowMs + 5_000L);
             }
         }
@@ -3663,6 +3685,14 @@ final class AgentLpqCoordinator {
 
     private static void announceStageSixSequence(AgentLpqSession session, Character leader, long nowMs) {
         if (!session.stage6SequenceChatReady(nowMs)) return;
+        if (session.companionAdopted()) {
+            // A companion run: the code as a player says it, at the bottom where everyone starts.
+            if (coordinate(session, narrator(session, leader), "s6-start", AgentLpqCompanionPlay.MAZE_CODE)
+                    || !session.memberCoordinationChatEnabled()) {
+                session.markStage6SequenceAnnounced(nowMs);
+            }
+            return;
+        }
         int speakerId = stageSixAnnouncementSpeakerId(session.members(), session.eventLeaderId());
         Character speaker = speakerId == leader.getId() ? leader : character(speakerId);
         if (speaker != null && sendPartyAndAllChat(speaker, STAGE_6_SEQUENCE_CHAT.getFirst())) {
@@ -3830,7 +3860,7 @@ final class AgentLpqCoordinator {
                     .filter(member -> member.memberType() == AgentLpqMemberState.MemberType.AGENT)
                     .map(member -> character(member.characterId()))
                     .filter(java.util.Objects::nonNull).findFirst().orElse(null);
-            String assignmentChat = stageEightAssignmentChat(assignments);
+            String assignmentChat = voice(session, null, stageEightAssignmentChat(assignments));
             if (sendPartyAndAllChat(speaker, assignmentChat)) {
                 session.markStage8AssignmentAnnounced(nowMs);
             }
@@ -4139,7 +4169,9 @@ final class AgentLpqCoordinator {
                         && AgentLpqRosterRequirementPolicy.rangedAttack(participant)) {
                     member.assign(AgentLpqMemberState.Role.RANGED_TRIGGER,
                             AgentLpqDefinition.stage(9).mapId());
-                    participant.dropMessage(6, "LPQ boss: stand on the balloon platform and attack Black Ratz from range.");
+                    String bossLine = voice(session, null,
+                            "LPQ boss: stand on the balloon platform and attack Black Ratz from range.");
+                    if (bossLine != null) participant.dropMessage(6, bossLine);
                 }
                 continue;
             }
@@ -4431,7 +4463,8 @@ final class AgentLpqCoordinator {
                     || holder.getItemQuantity(AgentLpqDefinition.BOSS_KEY, false) <= 0) continue;
             if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) {
                 if (nowMs >= member.nextActionAtMs()) {
-                    holder.dropMessage(6, "Drop Alishar's key beside the party leader.");
+                    String keyLine = voice(session, null, "Drop Alishar's key beside the party leader.");
+                    if (keyLine != null) holder.dropMessage(6, keyLine);
                     member.deferUntil(nowMs + 5_000L);
                 }
                 continue;
@@ -5132,6 +5165,149 @@ final class AgentLpqCoordinator {
         }
         ACTIONS.stop(entry);
         return LPQ.enterPortal(agent, portalId);
+    }
+
+    // ---- companion runs (P6g LPQ) ----
+
+    /**
+     * A companion run (a player leading his own companions, adopted through AgentLpqAdmissionService.admit): he plays,
+     * they play beside him and talk like players. Stock, background and '!lpqtest' fixture runs never come here.
+     * Called under the session monitor, from tick.
+     */
+    private static void companionRunTick(AgentLpqSession session, long nowMs) {
+        if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
+            AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", nowMs);
+            return;
+        }
+        Character leader = character(session.eventLeaderId());
+        if (leader == null || leader.getHp() <= 0) {
+            AgentLpqTerminationService.fail(session, "The LPQ event leader is unavailable", nowMs);
+            return;
+        }
+        if (session.phase() == AgentLpqSession.Phase.PREPARING) {
+            companionPrepare(session, leader, nowMs);
+            return;
+        }
+        if (session.eventInstance() == null && LPQ.event(leader) != null) session.bindEventInstance(LPQ.event(leader));
+        synchronizePhase(session, leader, nowMs);
+        String eventFailure = liveEventFailure(session, leader);
+        if (!eventFailure.isEmpty()) {
+            if (EVENT_ENDED_OR_EXPIRED.equals(eventFailure)) {
+                log.warn("LPQ event end detail: session={} {}", session.sessionId(),
+                        eventEndDetail(session, leader));
+            }
+            AgentLpqTerminationService.fail(session, eventFailure, nowMs);
+            return;
+        }
+        recalculateStageAssignments(session, nowMs);
+        companionStageLine(session, leader);
+        switch (session.phase()) {
+            case ENTERING -> companionEnter(session, leader, nowMs);
+            case STAGE_1, STAGE_2, STAGE_3, STAGE_4, STAGE_5,
+                    STAGE_7 -> collectionStage(session, leader, nowMs);
+            case STAGE_6 -> portalMaze(session, leader, nowMs);
+            case STAGE_8 -> platformPuzzle(session, leader, nowMs);
+            case STAGE_9 -> boss(session, leader, nowMs);
+            case BONUS -> bonus(session, nowMs);
+            case CLAIMING_REWARD -> claim(session, nowMs);
+            case EXITING -> exitAfterRewardWarpSettles(session, nowMs);
+            default -> { }
+        }
+    }
+
+    /**
+     * He clicks the Red Sign himself: nobody walks anywhere and nobody announces anything. The run goes on once he
+     * stands in the event on stage 1, and ends without a word if he has not after COMPANION_ENTRY_WAIT_MS.
+     */
+    private static void companionPrepare(AgentLpqSession session, Character leader, long nowMs) {
+        if (leader.getMapId() == AgentLpqDefinition.stage(1).mapId() && LPQ.event(leader) != null) {
+            session.markEnteredEvent(nowMs);
+            session.transition(AgentLpqSession.Phase.ENTERING, nowMs);
+            return;
+        }
+        if (nowMs - session.phaseEnteredAtMs() >= COMPANION_ENTRY_WAIT_MS) {
+            AgentLpqTerminationService.fail(session,
+                    "The companion run's leader did not take the party into LPQ within the entry wait", nowMs);
+        }
+    }
+
+    /**
+     * Waits for every member on stage 1 in his event; nobody is re-registered or moved. After COMPANION_ENTRY_WAIT_MS
+     * the run ends while fewer than all are inside.
+     */
+    private static void companionEnter(AgentLpqSession session, Character leader, long nowMs) {
+        long waitedMs = nowMs - session.phaseEnteredAtMs();
+        int stageOne = AgentLpqDefinition.stage(1).mapId();
+        EventInstanceManager event = LPQ.event(leader);
+        if (leader.getMapId() != stageOne || event == null) {
+            if (waitedMs >= COMPANION_ENTRY_WAIT_MS) {
+                AgentLpqTerminationService.fail(session,
+                        "The companion run's leader left before the party was inside LPQ", nowMs);
+            }
+            return;
+        }
+        session.bindEventInstance(event);
+        List<AgentLpqMemberState> absent = new ArrayList<>();
+        for (AgentLpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            if (character == null || character.getMapId() != stageOne || !LPQ.sameEvent(leader, character)) {
+                absent.add(member);
+            }
+        }
+        int members = session.memberCount();
+        switch (AgentLpqCompanionPlay.entering(members - absent.size(), members, waitedMs,
+                COMPANION_ENTRY_WAIT_MS, AgentLpqDefinition.MIN_PARTY_SIZE)) {
+            case ENTERED -> {
+                beginStageOne(session, nowMs);
+                companionStageLine(session, leader);
+            }
+            case EJECT_ABSENT, GIVE_UP -> AgentLpqTerminationService.fail(session,
+                    "Fewer than five of the companion run entered LPQ within the entry wait", nowMs);
+            default -> { }
+        }
+    }
+
+    /** A stage's own start line (S1, S3), once, said on the leader's map. */
+    private static void companionStageLine(AgentLpqSession session, Character leader) {
+        int stage = stageNumberOrZero(session.phase());
+        if (stage == 0 || leader.getMapId() != AgentLpqDefinition.stage(stage).mapId()) return;
+        coordinate(session, narrator(session, leader), "s" + stage + "-start",
+                AgentLpqCompanionPlay.stageStartLine(stage, leader.getName()));
+    }
+
+    /**
+     * A companion run hears its companions talk like players (a null companion line says nothing), never a status
+     * line; a stock or test run keeps the plain lines it always had.
+     */
+    static String voice(AgentLpqSession session, String companionLine, String stockLine) {
+        return session != null && session.companionAdopted() ? companionLine : stockLine;
+    }
+
+    /** True when the line was said now; each key is said once a run, and a line nobody can say keeps its key. */
+    private static boolean narrate(AgentLpqSession session, Character speaker, String key, String line) {
+        if (speaker == null || line == null || !session.narrateOnce(key)) return false;
+        AgentLpqDialogue.sayMapNow(session.sessionId(), key, speaker, line);
+        return true;
+    }
+
+    /** A companion run's coordination line, while its host has the members' coordination chat on. */
+    private static boolean coordinate(AgentLpqSession session, Character speaker, String key, String line) {
+        if (!session.companionAdopted() || !session.memberCoordinationChatEnabled()) return false;
+        return narrate(session, speaker, key, line);
+    }
+
+    /**
+     * Who says a line the leader must hear: the first companion of the run standing on his own map instance; null
+     * when none is (the line then waits, so he always hears it).
+     */
+    private static Character narrator(AgentLpqSession session, Character leader) {
+        if (leader == null || leader.getMap() == null) return null;
+        for (AgentLpqMemberState member : session.members()) {
+            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
+            Character agent = character(member.characterId());
+            if (agent != null && agent.getHp() > 0 && agent.getMap() == leader.getMap()) return agent;
+        }
+        return null;
     }
 
     private static int stage(AgentLpqSession.Phase phase) {

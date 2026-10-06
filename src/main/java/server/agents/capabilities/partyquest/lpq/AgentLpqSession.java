@@ -100,6 +100,9 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
     private final Set<Integer> departuresInFlight = new java.util.LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private final Set<String> narratedKeys = new java.util.LinkedHashSet<>();
+    private final Set<Integer> companionsOfRun = new java.util.LinkedHashSet<>();
+    private long enteredEventAtMs;
 
     public AgentLpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0
@@ -701,6 +704,19 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     synchronized String potionsAtEntry() { return potionsAtEntry; }
 
     synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions; }
+
+    /** True the first time a companion-run line key is used; each key is said once a run. */
+    synchronized boolean narrateOnce(String key) { return key != null && narratedKeys.add(key); }
+
+    /** When the companion run's leader first stood inside on stage 1 (0 before). */
+    synchronized long enteredEventAtMs() { return enteredEventAtMs; }
+
+    synchronized void markEnteredEvent(long nowMs) { if (enteredEventAtMs == 0L) enteredEventAtMs = nowMs; }
+
+    /** Every companion ever admitted to this run (a departed one stays: its drops are still the run's). */
+    synchronized boolean companionOfRun(int characterId) { return companionsOfRun.contains(characterId); }
+
+    synchronized void addCompanionOfRun(int characterId) { companionsOfRun.add(characterId); }
 
     /**
      * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until

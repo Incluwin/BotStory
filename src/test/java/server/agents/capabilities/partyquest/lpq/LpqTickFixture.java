@@ -55,6 +55,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 /**
@@ -77,6 +78,7 @@ final class LpqTickFixture implements AutoCloseable {
     final MockedStatic<AgentScriptItemActionService> items;
     final MockedStatic<AgentGrindLootStateRuntime> loot;
     final MockedStatic<AgentInventoryStateRuntime> lootInhibit;
+    final MockedStatic<AgentLpqDialogue> dialogue;
     final Map<Integer, AgentRuntimeEntry> entries = new HashMap<>();
     private final List<MockedStatic<?>> statics = new ArrayList<>();
     private final MockedStatic<AgentRuntimeRegistry> registry;
@@ -122,6 +124,7 @@ final class LpqTickFixture implements AutoCloseable {
         items = open(AgentScriptItemActionService.class);
         loot = open(AgentGrindLootStateRuntime.class);
         lootInhibit = open(AgentInventoryStateRuntime.class);
+        dialogue = open(AgentLpqDialogue.class);
         when(event.getName()).thenReturn("LudiPQ_test");
         when(event.getMapInstance(anyInt())).thenAnswer(call -> map(call.getArgument(0)));
         when(event.isTimerStarted()).thenReturn(true);
@@ -177,6 +180,9 @@ final class LpqTickFixture implements AutoCloseable {
             when(map.getAllMonsters()).thenAnswer(call -> List.copyOf(monsters.getOrDefault(id, List.of())));
             when(map.getFootholds()).thenReturn(mock(FootholdTree.class));
             when(map.getAreas()).thenAnswer(call -> List.copyOf(areas.getOrDefault(id, List.of())));
+            Portal spawn = mock(Portal.class);
+            when(spawn.getPosition()).thenReturn(new Point(0, 0));
+            when(map.getRandomPlayerSpawnpoint()).thenReturn(spawn);
             when(map.getPortal(anyInt())).thenAnswer(call -> {
                 int portalId = call.getArgument(0);
                 Point at = portalPositions.get(id + "#" + portalId);
@@ -207,6 +213,20 @@ final class LpqTickFixture implements AutoCloseable {
         when(characters.findOnlineCharacterById(id)).thenReturn(companion);
         entries.put(id, entry);
         return companion;
+    }
+
+    /**
+     * The usual crew: Crewfriend (a human, leading; id 1) and the companions Mira, Kes, Pel, Hal and Cas (ids 2-6),
+     * all on {@code mapId}, 5 px apart from {@code at}.
+     */
+    List<Character> crew(int mapId, Point at) {
+        List<Character> crew = new ArrayList<>();
+        crew.add(human(1, "Crewfriend", mapId, at));
+        String[] names = {"Mira", "Kes", "Pel", "Hal", "Cas"};
+        for (int i = 0; i < names.length; i++) {
+            crew.add(companion(2 + i, names[i], mapId, new Point(at.x + 5 * (i + 1), at.y)));
+        }
+        return crew;
     }
 
     AgentRuntimeEntry entry(Character companion) {
@@ -360,6 +380,7 @@ final class LpqTickFixture implements AutoCloseable {
             session.addMember(member.getId(), agent
                     ? AgentLpqMemberState.MemberType.AGENT : AgentLpqMemberState.MemberType.HUMAN);
             if (agent && execution == null) execution = member.getId();
+            if (agent && companionRun) session.addCompanionOfRun(member.getId());
         }
         session.setLeadership(runMembers[0].getId(), execution);
         boolean agentLeader = entries.containsKey(runMembers[0].getId());
@@ -376,6 +397,19 @@ final class LpqTickFixture implements AutoCloseable {
         when(leader.isPartyLeader()).thenReturn(true);
         party(runMembers);
         return session;
+    }
+
+    /** This companion line was said (map chat through AgentLpqDialogue), by this speaker, under this key. */
+    void said(AgentLpqSession session, String key, Character speaker, String text) {
+        dialogue.verify(() -> AgentLpqDialogue.sayMapNow(session.sessionId(), key, speaker, text));
+    }
+
+    void neverSaid(String key) {
+        dialogue.verify(() -> AgentLpqDialogue.sayMapNow(anyString(), eq(key), any(), anyString()), never());
+    }
+
+    void saidNothing() {
+        dialogue.verify(() -> AgentLpqDialogue.sayMapNow(anyString(), anyString(), any(), anyString()), never());
     }
 
     void tick(AgentLpqSession session, long nowMs) {

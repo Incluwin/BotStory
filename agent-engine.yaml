@@ -1121,6 +1121,10 @@ tuning:
     # Purpose: Sets the HP fraction at which a resting LPQ stage-9 member rejoins the fight; it also rejoins once it holds POT_STOP HP potions again.
     # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9. Resting heals by passive regen only (BASE_HP_RECOVERY 10 HP per 10 s, plus a warrior's Improved HP Recovery while it stands still), and a stopped member does not ask anyone for potions.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.RESUME_HP_FRACTION: '0.7'
+    # Values: 5000-120000 milliseconds. Recommended: 30000, the 30 seconds '!lpqtest party prod' gives the leader to talk to the Red Sign.
+    # Purpose: How long a companion run waits for its human leader to take the party into LPQ, and then for every member to stand in his instance on stage 1, before it ends quietly or goes on without the absent ones while five are inside.
+    # Technical: Read only by AgentLpqCoordinator's companion-run PREPARING and ENTERING (AgentLpqSession.companionAdopted); stock, background and '!lpqtest' fixture runs keep PHASE_TIMEOUT_MS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_ENTRY_WAIT_MS: '30000'
 
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.

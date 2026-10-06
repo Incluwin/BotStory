@@ -154,6 +154,7 @@ public final class AgentLpqAdmissionService {
         }
         session.setLeadership(eventLeader.getId(), validation.agentMembers().getFirst().getId());
         if (companionRun) session.setCompanionAdopted(true);
+        if (companionRun) validation.agentMembers().forEach(agent -> session.addCompanionOfRun(agent.getId()));
         boolean published = false;
         try {
             lobby.reserve(nowMs);
