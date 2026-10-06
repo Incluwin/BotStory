@@ -16,7 +16,7 @@ class AgentNavigationRouteOverlayPolicyTest {
     void nautilusExitUsesAuthoredUpperRopeRoute() {
         AgentNavigationGraph graph = new AgentNavigationGraph(
                 120000000,
-                59,
+                60,
                 AgentMovementProfile.base(),
                 List.of(),
                 Map.of(),
@@ -40,8 +40,8 @@ class AgentNavigationRouteOverlayPolicyTest {
 
     @Test
     void nautilusOverlayDoesNotAffectOtherDestinationsOrGraphVersions() {
-        AgentNavigationGraph currentGraph = graph(59);
-        AgentNavigationGraph otherVersion = graph(58);
+        AgentNavigationGraph currentGraph = graph(60);
+        AgentNavigationGraph otherVersion = graph(59);
 
         assertFalse(AgentNavigationRouteOverlayPolicy.applies(currentGraph, 200));
         assertTrue(AgentNavigationRouteOverlayPolicy.allows(currentGraph, 200, edge(213, 214)));
@@ -53,7 +53,7 @@ class AgentNavigationRouteOverlayPolicyTest {
     void forestEastUpperLeftHabitatAvoidsIrrelevantDropFrontiers() {
         AgentNavigationGraph graph = new AgentNavigationGraph(
                 100030000,
-                59,
+                60,
                 AgentMovementProfile.base(),
                 List.of(),
                 Map.of(),
@@ -71,7 +71,7 @@ class AgentNavigationRouteOverlayPolicyTest {
     void forestSouthExitUsesCentralLadderInsteadOfUnreliableJump() {
         AgentNavigationGraph graph = new AgentNavigationGraph(
                 100040000,
-                59,
+                60,
                 AgentMovementProfile.base(),
                 List.of(),
                 Map.of(),

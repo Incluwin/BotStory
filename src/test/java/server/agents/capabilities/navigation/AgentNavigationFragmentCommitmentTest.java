@@ -39,7 +39,7 @@ class AgentNavigationFragmentCommitmentTest {
         Point start = new Point(2387, -204);
         Point roof = new Point(-1027, -342);
         AgentTravelVariationRuntime.RouteVariation variation =
-                new AgentTravelVariationRuntime.RouteVariation(0L, 1.30d);
+                new AgentTravelVariationRuntime.RouteVariation(1L, 1.30d);
         assertEquals(104, graph.findRegionId(map, start));
         assertEquals(75, graph.findRegionId(map, roof));
 
@@ -54,7 +54,7 @@ class AgentNavigationFragmentCommitmentTest {
         Point start = new Point(271, -97);
         Point roof = new Point(-2238, -337);
         AgentTravelVariationRuntime.RouteVariation variation =
-                new AgentTravelVariationRuntime.RouteVariation(39L, 1.30d);
+                new AgentTravelVariationRuntime.RouteVariation(2L, 1.30d);
         assertEquals(117, graph.findRegionId(map, start));
         assertEquals(80, graph.findRegionId(map, roof));
 
