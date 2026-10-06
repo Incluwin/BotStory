@@ -250,7 +250,10 @@ public final class AgentPotionService {
             return;
         }
         startedAt = AgentPerformanceMonitor.start();
-        if (pots[0] < AgentRuntimeConfig.cfg.POT_STOP && bot.getHp() < bot.getMaxHp() * 0.4f) {
+        // Low on HP potions by the standard an ordinary trip uses: a full reserve in a few strong potions fights on.
+        if (pots[0] < AgentRuntimeConfig.cfg.POT_STOP && bot.getHp() < bot.getMaxHp() * 0.4f
+                && AgentPotionReserve.tripNeeded(bot, AgentResourceCategory.HP_POTION,
+                AgentSupplyReadiness.standing(bot.getId()) != null)) {
             if (AgentRelationshipRuntime.followTarget(entry) != null) {
                 AgentMovementCommandRuntime.followConfiguredTarget(entry);
             } else {

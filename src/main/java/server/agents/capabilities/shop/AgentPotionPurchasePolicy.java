@@ -43,6 +43,21 @@ public final class AgentPotionPurchasePolicy {
         return recoveryCapacity < targetCapacity(maxStat, reserveBars);
     }
 
+    /** The recovery an ordinary restock buys up to: {@code maxStat} times the target reserve bars. */
+    public static long targetReserve(int maxStat, boolean forHp) {
+        return targetCapacity(maxStat, targetReserveBars(forHp));
+    }
+
+    /** Whether {@code carriedQuantity} potions of one kind fill MAX_CARRIED_QUANTITY, so a restock buys no more. */
+    public static boolean carryLimitReached(int carriedQuantity) {
+        return carriedQuantity >= MAX_CARRIED_QUANTITY;
+    }
+
+    /** Whether one visit bought its whole MAX_PURCHASE_QUANTITY_PER_VISIT allowance of one kind. */
+    public static boolean visitLimitReached(int boughtThisVisit) {
+        return boughtThisVisit >= MAX_PURCHASE_QUANTITY_PER_VISIT;
+    }
+
     public static int quantityToTarget(
             long recoveryCapacity,
             int carriedQuantity,
