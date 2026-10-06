@@ -6,6 +6,7 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
+import config.AgentYamlConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.supplies.AgentPotionInventoryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
+import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.integration.InventoryGateway;
 import server.agents.integration.ShopGateway;
@@ -38,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -58,6 +61,9 @@ class AgentShopServicePotionFloorTest {
     private static final int POWER_ELIXIR = 2_000_005;
     private static final int ARROW = 2_060_000;
     private static final int SUBI = 2_070_000;
+    private static final String STANDARDS_KEY =
+            "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS";
+    private static final AgentSupplyReadiness.Activity EPQ = AgentSupplyReadiness.Activity.partyQuest("epq");
 
     private final Map<Integer, StatEffect> effects = new HashMap<>();
     private final Map<Integer, Integer> prices = new HashMap<>();
@@ -267,6 +273,64 @@ class AgentShopServicePotionFloorTest {
             assertFalse(AgentShopService.carriesStackWithRoom(bot, shop(List.of(RED, BLUE)), false), "no mana stack");
             carry(100, 0); // a full stack
             assertFalse(AgentShopService.carriesStackWithRoom(bot, shop(List.of(RED, BLUE)), true));
+        }
+    }
+
+    @Test
+    void anEpqDutyBuysItsWholeStandardInOneVisitAndNoMore() {
+        // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion
+        AgentSupplyReadiness.install(id -> EPQ);
+        purse = 200_000;
+        String configured = AgentYamlConfig.config.tuning.put(STANDARDS_KEY, "epq=250/350");
+        try {
+            visit(List.of(RED, WHITE, BLUE));
+        } finally {
+            AgentYamlConfig.config.tuning.put(STANDARDS_KEY, configured);
+        }
+
+        assertEquals(List.of("100 x " + WHITE, "100 x " + WHITE, "35 x " + WHITE,
+                        "100 x " + BLUE, "100 x " + BLUE, "100 x " + BLUE, "35 x " + BLUE), transactions,
+                "the whole standard in one visit, and no top-up past it");
+        assertArrayEquals(new int[]{250, 350}, AgentPotionService.countPotions(bot));
+        assertEquals(200_000 - 235 * 320 - 335 * 200, purse);
+    }
+
+    @Test
+    void aPurseThatCoversTheEpqStandardAtItsCheapestReachesItAndKeepsTheManaMoney() {
+        AgentSupplyReadiness.install(id -> EPQ);
+        carry(0, 0);
+        purse = 250 * 50 + 350 * 200; // this shop sells no food: Red and Blue are its cheapest
+        String configured = AgentYamlConfig.config.tuning.put(STANDARDS_KEY, "epq=250/350");
+        try {
+            visit(List.of(RED, WHITE, BLUE));
+        } finally {
+            AgentYamlConfig.config.tuning.put(STANDARDS_KEY, configured);
+        }
+
+        assertEquals(List.of("100 x " + RED, "100 x " + RED, "50 x " + RED,
+                        "100 x " + BLUE, "100 x " + BLUE, "100 x " + BLUE, "50 x " + BLUE), transactions,
+                "White would eat the mana potions' money");
+        assertArrayEquals(new int[]{250, 350}, AgentPotionService.countPotions(bot));
+        assertEquals(0, purse);
+    }
+
+    @Test
+    void thePotionStackIsTheSmallestSlotMaxOfThePotionsOfTheKindThisShopSells() {
+        InventoryGateway stacks = mock(InventoryGateway.class);
+        when(stacks.getSlotMax(any(Character.class), anyInt())).thenReturn((short) 100);
+        when(stacks.getSlotMax(any(Character.class), eq(ARROW))).thenReturn((short) 1);
+        try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(stacks);
+            assertEquals(100, AgentShopService.potionStackSize(bot, shop(List.of(ARROW, RED, WHITE, BLUE)), true),
+                    "arrows are no potion");
+            assertEquals(100, AgentShopService.potionStackSize(bot, shop(List.of(RED, WHITE, BLUE)), false));
+
+            when(stacks.getSlotMax(any(Character.class), eq(WHITE))).thenReturn((short) 150);
+            assertEquals(100, AgentShopService.potionStackSize(bot, shop(List.of(RED, WHITE, BLUE)), true),
+                    "Red's 100, not White's 150: the floor may buy either");
+            assertEquals(150, AgentShopService.potionStackSize(bot, shop(List.of(WHITE, BLUE)), true));
+            assertEquals(0, AgentShopService.potionStackSize(bot, shop(List.of(RED, WHITE)), false),
+                    "no mana potion on sale");
         }
     }
 

@@ -4,6 +4,7 @@ import client.Character;
 import client.Job;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
+import config.AgentYamlConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -89,6 +91,9 @@ class AgentSupplyReadinessRuntimeTest {
     private static final int RED = 50;
     private static final int BLUE = 200;
     private static final AgentSupplyReadiness.Activity PQ = AgentSupplyReadiness.Activity.PARTY_QUEST;
+    private static final AgentSupplyReadiness.Activity EPQ = AgentSupplyReadiness.Activity.partyQuest("epq");
+    private static final String STANDARDS_KEY =
+            "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS";
 
     /** Character id -> {HP potions, MP potions}. */
     private final Map<Integer, int[]> potions = new HashMap<>();
@@ -96,6 +101,12 @@ class AgentSupplyReadinessRuntimeTest {
     private final Map<Integer, Integer> freeSlots = new HashMap<>();
     /** Character ids that carry a Red (HP) stack with room, onto which bought potions stack without a new slot. */
     private final java.util.Set<Integer> redStack = new java.util.HashSet<>();
+    /** Character ids that carry a Blue (MP) stack with room. */
+    private final java.util.Set<Integer> blueStack = new java.util.HashSet<>();
+    /** Character id -> the activity its duty keeps it ready for (PQ when not listed). */
+    private final Map<Integer, AgentSupplyReadiness.Activity> activities = new HashMap<>();
+    /** What AgentShopService.potionStackSize answers; 0 (the stacks are not known) keeps the one-slot rule. */
+    private int stackSize;
     /** The rule's callbacks and the party asks, in order. */
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
@@ -124,6 +135,10 @@ class AgentSupplyReadinessRuntimeTest {
         shopService.when(() -> AgentShopService.plannedAmmoSpend(any(), any())).thenAnswer(inv -> ammoSpend);
         shopService.when(() -> AgentShopService.carriesStackWithRoom(any(), any(), eq(true)))
                 .thenAnswer(inv -> redStack.contains(((Character) inv.getArgument(0)).getId()));
+        shopService.when(() -> AgentShopService.carriesStackWithRoom(any(), any(), eq(false)))
+                .thenAnswer(inv -> blueStack.contains(((Character) inv.getArgument(0)).getId()));
+        shopService.when(() -> AgentShopService.potionStackSize(any(), any(), anyBoolean()))
+                .thenAnswer(inv -> stackSize);
         when(shops.findForNpc(anyInt())).thenReturn(mock(Shop.class));
         shopGateway = mockStatic(AgentShopGatewayRuntime.class);
         shopGateway.when(AgentShopGatewayRuntime::shop).thenReturn(shops);
@@ -134,7 +149,7 @@ class AgentSupplyReadinessRuntimeTest {
         AgentSupplyReadiness.install(new AgentSupplyReadiness.Rule() {
             @Override
             public AgentSupplyReadiness.Activity standing(int id) {
-                return duty.contains(id) ? PQ : null;
+                return duty.contains(id) ? activities.getOrDefault(id, PQ) : null;
             }
 
             @Override
@@ -544,6 +559,71 @@ class AgentSupplyReadinessRuntimeTest {
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
         assertTrue(execution(entry).requestId().startsWith("readiness:HP_POTION:"));
         assertEquals(List.of("started 524 50000"), calls);
+    }
+
+    @Test
+    void slotsForCountsEveryStackOnceTheStandardIsMoreThanOne() {
+        assertEquals(3, AgentSupplyReadinessRuntime.slotsFor(250, false, 100, 250));
+        assertEquals(3, AgentSupplyReadinessRuntime.slotsFor(250, true, 100, 250),
+                "the room of a carried stack is not counted on");
+        assertEquals(4, AgentSupplyReadinessRuntime.slotsFor(350, false, 100, 350));
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(100, true, 100, 250),
+                "one stack's worth onto a stack with one free place still needs a slot");
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(30, true, 100, 250));
+        assertEquals(2, AgentSupplyReadinessRuntime.slotsFor(101, false, 100, 250));
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(25, true, 100, 25), "one stack: today's rule");
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(25, false, 100, 25));
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(40, true, 100, 40));
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(250, false, 0, 250), "stacks not known: today's rule");
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(0, false, 100, 250));
+    }
+
+    @Test
+    void anEpqCompanionNeedsAFreeUseSlotForEveryStackAndOneForTheRun() {
+        stackSize = 100;
+        String configured = AgentYamlConfig.config.tuning.put(STANDARDS_KEY, "epq=250/350");
+        try {
+            // from 0/0: 3 stacks of HP potions, 4 of MP potions, and the slot the run keeps free
+            Character casse = companion(540, "Casse", Job.MAGICIAN, 0, 0, 200_000);
+            activities.put(540, EPQ);
+            freeSlots.put(540, 7);
+            AgentRuntimeEntry entry = following(casse);
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 6_000L));
+            assertFalse(execution(entry).isActive());
+            assertEquals(List.of("refused 540 NO_SPACE 0"), calls, "it says so once");
+            freeSlots.put(540, 8);
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 11_000L));
+            assertTrue(execution(entry).isActive());
+
+            // back from a run with 150/200 on stacks with room, short 100/150: 1 + 2 + the run's
+            calls.clear();
+            Character halvard = companion(541, "Halvard", Job.SPEARMAN, 150, 200, 200_000);
+            activities.put(541, EPQ);
+            redStack.add(541);
+            blueStack.add(541);
+            freeSlots.put(541, 3);
+            entry = following(halvard);
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
+            assertEquals(List.of("refused 541 NO_SPACE 0"), calls);
+            freeSlots.put(541, 4);
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 6_000L));
+            assertTrue(execution(entry).isActive());
+            shopService.verify(() -> AgentShopService.carriesStackWithRoom(eq(halvard), any(), anyBoolean()), never());
+
+            // a KPQ companion short 5 HP potions keeps today's rule: its standard is under one stack
+            calls.clear();
+            Character silent = companion(542, "SilentSin", Job.ASSASSIN, 15, 30, 20_000);
+            freeSlots.put(542, 1);
+            entry = following(silent);
+            assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+            assertEquals(List.of("refused 542 NO_SPACE 0"), calls);
+            freeSlots.put(542, 2);
+            assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 6_000L));
+            assertTrue(execution(entry).isActive());
+        } finally {
+            AgentYamlConfig.config.tuning.put(STANDARDS_KEY, configured);
+        }
     }
 
     // (h)

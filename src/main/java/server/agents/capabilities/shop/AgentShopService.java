@@ -1035,7 +1035,8 @@ public final class AgentShopService {
      * standard always reaches it. Last ({@code topUp} true), with what is left, toward the buy target
      * (AgentSupplyReadiness.buyTarget), again holding back what the other kind still wants, buying only what the
      * budget pays for. {@link #floorItem} picks the potion. Nothing without a duty; {@code bought} counts this visit's
-     * purchases per kind (HP, MP) against the per-visit limit.
+     * purchases per kind (HP, MP) against the per-visit limit. A standard above the carry or per-visit limit raises
+     * that limit to itself (AgentPotionPurchasePolicy.floorQuantity), so one visit reaches it.
      */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyReadinessFloor(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
@@ -1056,8 +1057,8 @@ public final class AgentShopService {
         int mpGoal = !AgentSupplyReadiness.needsManaPotions(bot) ? 0
                 : topUp ? AgentSupplyReadiness.buyTarget(activity, bot, false) : standard.mp();
         int[] carried = AgentPotionService.countPotions(bot);
-        int hpWant = AgentPotionPurchasePolicy.floorQuantity(hpGoal, carried[0], bought[0]);
-        int mpWant = AgentPotionPurchasePolicy.floorQuantity(mpGoal, carried[1], bought[1]);
+        int hpWant = AgentPotionPurchasePolicy.floorQuantity(hpGoal, carried[0], bought[0], standard.hp());
+        int mpWant = AgentPotionPurchasePolicy.floorQuantity(mpGoal, carried[1], bought[1], standard.mp());
         AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
         if (hpWant > 0) {
             long heldForMana = mpWant <= 0 ? 0L
@@ -1128,6 +1129,33 @@ public final class AgentShopService {
     public static boolean carriesStackWithRoom(Character bot, Shop shop, boolean forHp) {
         return bot != null && shop != null
                 && carriedStack(shop, bot, forHp, AgentInventoryGatewayRuntime.inventory()) != null;
+    }
+
+    /**
+     * How many HP (or MP) potions one Use slot holds at this shop: the smallest stack of the recovery potions of the
+     * kind it sells, since a floor pass may buy another one than the coverage pick; 0 when it sells none.
+     */
+    public static int potionStackSize(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null) {
+            return 0;
+        }
+        InventoryGateway inventory = AgentInventoryGatewayRuntime.inventory();
+        int smallest = 0;
+        for (ShopItem item : shop.getItems()) {
+            if (item.getPrice() <= 0 || !AgentUseItemClassificationPolicy.isRecoveryPotion(item.getItemId())) {
+                continue;
+            }
+            StatEffect effect = AgentUseItemClassificationPolicy.itemEffect(item.getItemId());
+            if (effect == null || AgentPotionRecoveryPolicy.recovery(
+                    effect, bot.getCurrentMaxHp(), bot.getCurrentMaxMp(), forHp) == null) {
+                continue;
+            }
+            int stack = inventory.getSlotMax(bot, item.getItemId());
+            if (stack > 0 && (smallest == 0 || stack < smallest)) {
+                smallest = stack;
+            }
+        }
+        return smallest;
     }
 
     /** The strongest HP (or MP) recovery potion this shop sells of which the bot carries a stack with room; or null. */
