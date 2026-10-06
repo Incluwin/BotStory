@@ -6,7 +6,6 @@ import client.inventory.Inventory;
 import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
-import config.AgentYamlConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,8 +60,6 @@ class AgentShopServicePotionFloorTest {
     private static final int POWER_ELIXIR = 2_000_005;
     private static final int ARROW = 2_060_000;
     private static final int SUBI = 2_070_000;
-    private static final String STANDARDS_KEY =
-            "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS";
     private static final AgentSupplyReadiness.Activity EPQ = AgentSupplyReadiness.Activity.partyQuest("epq");
 
     private final Map<Integer, StatEffect> effects = new HashMap<>();
@@ -281,12 +278,7 @@ class AgentShopServicePotionFloorTest {
         // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion
         AgentSupplyReadiness.install(id -> EPQ);
         purse = 200_000;
-        String configured = AgentYamlConfig.config.tuning.put(STANDARDS_KEY, "epq=250/350");
-        try {
-            visit(List.of(RED, WHITE, BLUE));
-        } finally {
-            AgentYamlConfig.config.tuning.put(STANDARDS_KEY, configured);
-        }
+        visit(List.of(RED, WHITE, BLUE));
 
         assertEquals(List.of("100 x " + WHITE, "100 x " + WHITE, "35 x " + WHITE,
                         "100 x " + BLUE, "100 x " + BLUE, "100 x " + BLUE, "35 x " + BLUE), transactions,
@@ -300,12 +292,7 @@ class AgentShopServicePotionFloorTest {
         AgentSupplyReadiness.install(id -> EPQ);
         carry(0, 0);
         purse = 250 * 50 + 350 * 200; // this shop sells no food: Red and Blue are its cheapest
-        String configured = AgentYamlConfig.config.tuning.put(STANDARDS_KEY, "epq=250/350");
-        try {
-            visit(List.of(RED, WHITE, BLUE));
-        } finally {
-            AgentYamlConfig.config.tuning.put(STANDARDS_KEY, configured);
-        }
+        visit(List.of(RED, WHITE, BLUE));
 
         assertEquals(List.of("100 x " + RED, "100 x " + RED, "50 x " + RED,
                         "100 x " + BLUE, "100 x " + BLUE, "100 x " + BLUE, "50 x " + BLUE), transactions,

@@ -4,7 +4,6 @@ import client.Character;
 import client.Job;
 import client.inventory.Inventory;
 import client.inventory.InventoryType;
-import config.AgentYamlConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -92,8 +91,6 @@ class AgentSupplyReadinessRuntimeTest {
     private static final int BLUE = 200;
     private static final AgentSupplyReadiness.Activity PQ = AgentSupplyReadiness.Activity.PARTY_QUEST;
     private static final AgentSupplyReadiness.Activity EPQ = AgentSupplyReadiness.Activity.partyQuest("epq");
-    private static final String STANDARDS_KEY =
-            "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS";
 
     /** Character id -> {HP potions, MP potions}. */
     private final Map<Integer, int[]> potions = new HashMap<>();
@@ -581,49 +578,44 @@ class AgentSupplyReadinessRuntimeTest {
     @Test
     void anEpqCompanionNeedsAFreeUseSlotForEveryStackAndOneForTheRun() {
         stackSize = 100;
-        String configured = AgentYamlConfig.config.tuning.put(STANDARDS_KEY, "epq=250/350");
-        try {
-            // from 0/0: 3 stacks of HP potions, 4 of MP potions, and the slot the run keeps free
-            Character casse = companion(540, "Casse", Job.MAGICIAN, 0, 0, 200_000);
-            activities.put(540, EPQ);
-            freeSlots.put(540, 7);
-            AgentRuntimeEntry entry = following(casse);
-            assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
-            assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 6_000L));
-            assertFalse(execution(entry).isActive());
-            assertEquals(List.of("refused 540 NO_SPACE 0"), calls, "it says so once");
-            freeSlots.put(540, 8);
-            assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 11_000L));
-            assertTrue(execution(entry).isActive());
+        // from 0/0: 3 stacks of HP potions, 4 of MP potions, and the slot the run keeps free
+        Character casse = companion(540, "Casse", Job.MAGICIAN, 0, 0, 200_000);
+        activities.put(540, EPQ);
+        freeSlots.put(540, 7);
+        AgentRuntimeEntry entry = following(casse);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 6_000L));
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 540 NO_SPACE 0"), calls, "it says so once");
+        freeSlots.put(540, 8);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 11_000L));
+        assertTrue(execution(entry).isActive());
 
-            // back from a run with 150/200 on stacks with room, short 100/150: 1 + 2 + the run's
-            calls.clear();
-            Character halvard = companion(541, "Halvard", Job.SPEARMAN, 150, 200, 200_000);
-            activities.put(541, EPQ);
-            redStack.add(541);
-            blueStack.add(541);
-            freeSlots.put(541, 3);
-            entry = following(halvard);
-            assertFalse(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
-            assertEquals(List.of("refused 541 NO_SPACE 0"), calls);
-            freeSlots.put(541, 4);
-            assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 6_000L));
-            assertTrue(execution(entry).isActive());
-            shopService.verify(() -> AgentShopService.carriesStackWithRoom(eq(halvard), any(), anyBoolean()), never());
+        // back from a run with 150/200 on stacks with room, short 100/150: 1 + 2 + the run's
+        calls.clear();
+        Character halvard = companion(541, "Halvard", Job.SPEARMAN, 150, 200, 200_000);
+        activities.put(541, EPQ);
+        redStack.add(541);
+        blueStack.add(541);
+        freeSlots.put(541, 3);
+        entry = following(halvard);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
+        assertEquals(List.of("refused 541 NO_SPACE 0"), calls);
+        freeSlots.put(541, 4);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 6_000L));
+        assertTrue(execution(entry).isActive());
+        shopService.verify(() -> AgentShopService.carriesStackWithRoom(eq(halvard), any(), anyBoolean()), never());
 
-            // a KPQ companion short 5 HP potions keeps today's rule: its standard is under one stack
-            calls.clear();
-            Character silent = companion(542, "SilentSin", Job.ASSASSIN, 15, 30, 20_000);
-            freeSlots.put(542, 1);
-            entry = following(silent);
-            assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
-            assertEquals(List.of("refused 542 NO_SPACE 0"), calls);
-            freeSlots.put(542, 2);
-            assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 6_000L));
-            assertTrue(execution(entry).isActive());
-        } finally {
-            AgentYamlConfig.config.tuning.put(STANDARDS_KEY, configured);
-        }
+        // a KPQ companion short 5 HP potions keeps today's rule: its standard is under one stack
+        calls.clear();
+        Character silent = companion(542, "SilentSin", Job.ASSASSIN, 15, 30, 20_000);
+        freeSlots.put(542, 1);
+        entry = following(silent);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+        assertEquals(List.of("refused 542 NO_SPACE 0"), calls);
+        freeSlots.put(542, 2);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 6_000L));
+        assertTrue(execution(entry).isActive());
     }
 
     // (h)
