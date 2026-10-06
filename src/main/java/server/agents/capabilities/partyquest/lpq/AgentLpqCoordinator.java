@@ -717,10 +717,11 @@ final class AgentLpqCoordinator {
      * leader, so keep advancing Agents that are still standing in an earlier authored stage instead of
      * abandoning them when the session phase changes.
      */
-    private static void catchUpLaggingMembers(AgentLpqSession session, int stage,
+    static void catchUpLaggingMembers(AgentLpqSession session, int stage,
                                               int destination, long nowMs) {
         long phaseElapsedMs = Math.max(0L, nowMs - session.phaseEnteredAtMs());
-        boolean absoluteRecoveryDue = stageTransitionCatchUpRecoveryDue(
+        // A companion run's laggards walk the authored traversal (no absolute move; P6g LPQ C2.4).
+        boolean absoluteRecoveryDue = !session.companionAdopted() && stageTransitionCatchUpRecoveryDue(
                 stage, phaseElapsedMs);
         for (AgentLpqMemberState member : session.members()) {
             if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
@@ -749,6 +750,10 @@ final class AgentLpqCoordinator {
                 }
                 continue;
             }
+            if (currentStage == 2 && agent.getMapId() == 922_010_201 && session.companionAdopted()) {
+                useStageTwoTrapExit(session, entry, agent, nowMs);
+                continue;
+            }
             if (currentStage == 2 && agent.getMapId() == 922_010_201) {
                 recoverStageTwoTrap(session, "catch-up-trap", agent, nowMs);
                 continue;
@@ -761,6 +766,14 @@ final class AgentLpqCoordinator {
             long inactiveForMs = nextMapId == 0 ? 0L
                     : traversalInactivity(member, agent, nextMapId, nowMs);
             if (nextMapId != 0) enterPortalTo(entry, agent, nextMapId);
+            if (session.companionAdopted()) {
+                // A stalled walk is re-planned once per traversal window, never moved.
+                if (agent.getMapId() != destination && inactiveForMs >= recovery(stage).traversalMs()) {
+                    ACTIONS.refreshNavigation(entry, agent);
+                    member.clearTraversalProgress();
+                }
+                continue;
+            }
             if (agent.getMapId() != destination
                     && inactiveForMs >= recovery(stage).traversalMs()) {
                 log.warn("LPQ lagging-member traversal recovery: session={} member={}({}) "
@@ -1771,7 +1784,7 @@ final class AgentLpqCoordinator {
                         >= recovery(stage).roomExitPlacementMs()
                         && exitElapsedMs >= recovery(stage).roomExitPlacementMs();
                 if (stage == 5 && stageFiveOrdinaryRoom(roomMapId)) {
-                    applyStageFiveUnobservedExitAssist(
+                    if (!session.companionAdopted()) applyStageFiveUnobservedExitAssist(
                             session, member, entry, agent, mainMap, nowMs);
                     int naturalExitSourceMapId = agent.getMapId();
                     Point naturalExitSourcePosition = agent.getPosition() == null
@@ -1982,6 +1995,14 @@ final class AgentLpqCoordinator {
                 }
                 markerDropped = markerItem != 0 && AgentScriptItemActionService.dropItem(
                         entry, InventoryType.USE, markerItem, (short) 1);
+            }
+            if (!markerDropped && session.companionAdopted()) {
+                member.markRoomMarkerDropped(roomMapId);
+                log.info("LPQ room marker skipped: session={} member={}({}) room={}",
+                        session.sessionId(), agent.getName(), agent.getId(), roomMapId);
+                boolean enteredUnmarked = LPQ.enterPortal(agent, portalId);
+                if (enteredUnmarked) session.rooms().markProgress(roomMapId, nowMs);
+                return enteredUnmarked;
             }
             if (!markerDropped) {
                 log.warn("LPQ room marker unavailable; retrying before room entry: "
@@ -2469,7 +2490,7 @@ final class AgentLpqCoordinator {
         return true;
     }
 
-    private static boolean applyStageFourRoomRecovery(
+    static boolean applyStageFourRoomRecovery(
             AgentLpqSession session, AgentLpqMemberState member,
             AgentRuntimeEntry entry, Character agent, int roomPasses, long nowMs) {
         int roomMapId = agent.getMapId();
@@ -2492,6 +2513,8 @@ final class AgentLpqCoordinator {
                     session, member, entry, agent, roomMapId, roomElapsedMs,
                     roomPasses, passQuota, 0, nowMs, "objective-complete");
         }
+        // A companion run's owner fights its room to the end: no hard recovery, no pass vacuum, no assist.
+        if (session.companionAdopted()) return false;
 
         if (stageFourRoomHardRecoveryDue(
                 roomElapsedMs, member.roomRecoveryHardAppliedFor(roomMapId))) {
@@ -3098,13 +3121,16 @@ final class AgentLpqCoordinator {
                 AgentLpqDefinition.PASS, false) >= contract.submissionCount();
     }
 
-    private static boolean forceRoomExitThroughPortal(
+    static boolean forceRoomExitThroughPortal(
             AgentLpqSession session, AgentLpqMemberState member,
             AgentRuntimeEntry entry, Character agent, int destinationMapId, long nowMs) {
         int sourceMapId = agent.getMapId();
         Integer portalId = portalIdTo(agent, destinationMapId);
         Point portal = portalId == null ? null : ACTIONS.portalPosition(agent, portalId);
         if (portalId == null || portal == null) return false;
+        if (session.companionAdopted()) {
+            return walkRoomExit(session, member, entry, agent, portalId, portal, destinationMapId, nowMs);
+        }
         ACTIONS.stop(entry);
         rescueTeleport(session, "room-exit-portal", entry, agent, portal);
         boolean exited = LPQ.enterPortal(agent, portalId);
@@ -3295,7 +3321,7 @@ final class AgentLpqCoordinator {
         return true;
     }
 
-    private static boolean useStageTwoTrapExit(AgentLpqSession session, AgentRuntimeEntry entry,
+    static boolean useStageTwoTrapExit(AgentLpqSession session, AgentRuntimeEntry entry,
                                                Character agent, long nowMs) {
         int destinationMapId = AgentLpqDefinition.stage(2).mapId();
         AgentLpqMemberState member = session.member(agent.getId());
@@ -3304,6 +3330,12 @@ final class AgentLpqCoordinator {
         Integer portalId = portalIdTo(agent, destinationMapId);
         boolean stalled = inactiveForMs >= recovery(2).portalMs();
         if (portalId != null && !stalled) return enterPortalTo(entry, agent, destinationMapId);
+        if (session.companionAdopted()) {
+            // A player in the trap room walks back to its exit portal; a stalled route is re-planned.
+            ACTIONS.refreshNavigation(entry, agent);
+            if (member != null) member.clearTraversalProgress();
+            return portalId != null && enterPortalTo(entry, agent, destinationMapId);
+        }
         ACTIONS.stop(entry);
         boolean recovered = recoverStageTwoTrap(session, "trap-exit-stalled", agent, nowMs);
         if (recovered && member != null) member.clearTraversalProgress();
@@ -3415,13 +3447,13 @@ final class AgentLpqCoordinator {
         movePartyToNextStageTogether(session, stage, nowMs);
     }
 
-    private static void movePartyToNextStageTogether(
+    static void movePartyToNextStageTogether(
             AgentLpqSession session, int stage, long nowMs) {
         int source = AgentLpqDefinition.stage(stage).mapId();
         int destination = stage == 9
                 ? AgentLpqDefinition.CLEAR_MAP : AgentLpqDefinition.stage(stage + 1).mapId();
         long transitionElapsedMs = session.beginOrObservePostClearTransition(nowMs);
-        boolean recoveryDue = postClearTransitionRecoveryDue(stage, transitionElapsedMs);
+        boolean recoveryDue = !session.companionAdopted() && postClearTransitionRecoveryDue(stage, transitionElapsedMs);
         boolean allReady = true;
         int recovered = 0;
         for (AgentLpqMemberState member : session.members()) {
@@ -3583,7 +3615,7 @@ final class AgentLpqCoordinator {
         }
     }
 
-    private static void enterStagePortalWithRecovery(
+    static void enterStagePortalWithRecovery(
             AgentLpqSession session, AgentLpqMemberState member,
             AgentRuntimeEntry entry, Character agent, int destinationMapId,
             long nowMs, String context) {
@@ -3593,6 +3625,11 @@ final class AgentLpqCoordinator {
         int sourceStage = AgentLpqDefinition.stageNumber(agent.getMapId());
         if (agent.getMapId() == destinationMapId || sourceStage < 1 || sourceStage > 9
                 || !postClearTransitionRecoveryDue(sourceStage, inactiveForMs)) return;
+        if (session.companionAdopted()) {
+            ACTIONS.refreshNavigation(entry, agent);
+            if (member != null) member.clearTraversalProgress();
+            return;
+        }
         int sourceMapId = agent.getMapId();
         if (!moveWithinEvent(session, "stage-portal-traversal", agent, destinationMapId, nowMs)) return;
         if (member != null) member.clearTraversalProgress();
@@ -3755,7 +3792,7 @@ final class AgentLpqCoordinator {
         enterMazePortal(session, member, agent, portalId, nowMs, row);
     }
 
-    private static boolean approachStageSixPortal(
+    static boolean approachStageSixPortal(
             AgentLpqSession session, AgentLpqMemberState member,
             AgentRuntimeEntry entry, Character agent, Portal portal,
             int row, long nowMs) {
@@ -3773,7 +3810,13 @@ final class AgentLpqCoordinator {
                 agent.getMapId(), portal.getId(), agent.getPosition(), distanceSq, nowMs);
         if (inactiveForMs >= recovery(6).traversalMs()) {
             ACTIONS.stop(entry);
-            rescueTeleport(session, "stage6-portal-approach", entry, agent, target);
+            if (!rescueTeleport(session, "stage6-portal-approach", entry, agent, target)) {
+                // Withheld (a companion run): the row's portal is never entered from afar; re-plan and walk.
+                ACTIONS.refreshNavigation(entry, agent);
+                member.clearTraversalProgress();
+                ACTIONS.navigate(entry, target, true);
+                return false;
+            }
             member.clearTraversalProgress();
             session.markProgress(nowMs);
             log.warn("LPQ Stage 6 authored portal approach recovery: session={} "
@@ -3947,7 +3990,7 @@ final class AgentLpqCoordinator {
         return "Stage 8: " + mapping;
     }
 
-    private static boolean occupyStageEightPlatformWithRecovery(
+    static boolean occupyStageEightPlatformWithRecovery(
             AgentLpqSession session, AgentLpqMemberState member,
             AgentRuntimeEntry entry, Character agent, Rectangle area,
             int platform, long nowMs) {
@@ -3965,7 +4008,12 @@ final class AgentLpqCoordinator {
             return false;
         }
         ACTIONS.stop(entry);
-        rescueTeleport(session, "stage8-platform", entry, agent, target);
+        if (!rescueTeleport(session, "stage8-platform", entry, agent, target)) {
+            ACTIONS.refreshNavigation(entry, agent);
+            member.clearTraversalProgress();
+            ACTIONS.navigate(entry, target, true);
+            return false;
+        }
         member.clearTraversalProgress();
         session.markProgress(nowMs);
         log.warn("LPQ Stage 8 platform containment recovery: session={} member={}({}) "
@@ -4629,7 +4677,7 @@ final class AgentLpqCoordinator {
         if (session.allRewardsResolved()) session.transition(AgentLpqSession.Phase.EXITING, nowMs);
     }
 
-    private static boolean approachRewardNpc(
+    static boolean approachRewardNpc(
             AgentLpqSession session, AgentLpqMemberState member, AgentRuntimeEntry entry,
             Character agent, int npcId, String context, long nowMs) {
         Point npc = ACTIONS.npcPosition(agent, npcId);
@@ -4647,7 +4695,12 @@ final class AgentLpqCoordinator {
                 9, agent.getMapId(), agent.getPosition(), distanceSq, nowMs);
         if (inactiveForMs >= recovery(9).rallyRecoveryMs()) {
             ACTIONS.stop(entry);
-            rescueTeleport(session, "reward-npc-approach", entry, agent, target);
+            if (!rescueTeleport(session, "reward-npc-approach", entry, agent, target)) {
+                ACTIONS.refreshNavigation(entry, agent);
+                member.clearDestinationApproachProgress();
+                ACTIONS.navigate(entry, target, true);
+                return false;
+            }
             member.clearDestinationApproachProgress();
             session.markProgress(nowMs);
             log.warn("LPQ {} approach recovery: session={} member={}({}) map={} "
@@ -4719,7 +4772,7 @@ final class AgentLpqCoordinator {
                 entry, agent, nowMs, member, false, Set.of(), trapReactors, true);
     }
 
-    private static boolean hitReactorFromCandidates(AgentRuntimeEntry entry, Character agent,
+    static boolean hitReactorFromCandidates(AgentRuntimeEntry entry, Character agent,
                                                      long nowMs, AgentLpqMemberState member,
                                                      boolean waitForSpawnCleanup,
                                                      Set<Integer> claimedByParty,
@@ -4747,7 +4800,7 @@ final class AgentLpqCoordinator {
             }
             return false;
         }
-        if (stageFiveOrdinaryRoom(agent.getMapId())
+        if (stageFiveOrdinaryRoom(agent.getMapId()) && !inCompanionRun(agent)
                 && applyStageFiveUnobservedBoxAssist(
                 member, entry, agent, reactor, nowMs)) {
             return true;
@@ -4813,7 +4866,13 @@ final class AgentLpqCoordinator {
                 ACTIONS.stop(entry);
                 Point grounded = ACTIONS.groundPoint(agent.getMap(), reactor.getPosition());
                 Point recoveryTarget = grounded == null ? reactor.getPosition() : grounded;
-                rescueTeleport(null, "reactor-approach", entry, agent, recoveryTarget);
+                if (!rescueTeleport(null, "reactor-approach", entry, agent, recoveryTarget)) {
+                    // Withheld (a companion run): re-plan, re-commit the box and walk on.
+                    ACTIONS.refreshNavigation(entry, agent);
+                    member.clearReactorWork();
+                    ACTIONS.navigate(entry, approachTarget, true);
+                    return true;
+                }
                 member.deferUntil(nowMs + INTERACTION_RETRY_MS);
                 log.warn("LPQ reactor approach recovery placed member beside committed reactor: "
                                 + "member={}({}) map={} reactor={} committedForMs={}",
@@ -5115,7 +5174,7 @@ final class AgentLpqCoordinator {
                 target, INTERACTION_RADIUS, context, nowMs);
     }
 
-    private static boolean approachWithRecovery(
+    static boolean approachWithRecovery(
             AgentLpqSession session, AgentLpqMemberState member,
             AgentRuntimeEntry entry, Character agent, int destinationMapId,
             Point target, int arrivalRadius, String context, long nowMs) {
@@ -5134,7 +5193,12 @@ final class AgentLpqCoordinator {
             return false;
         }
         ACTIONS.stop(entry);
-        rescueTeleport(session, "approach", entry, agent, target);
+        if (!rescueTeleport(session, "approach", entry, agent, target)) {
+            ACTIONS.refreshNavigation(entry, agent);
+            member.clearTraversalProgress();
+            ACTIONS.navigate(entry, target, true);
+            return false;
+        }
         member.clearTraversalProgress();
         session.markProgress(nowMs);
         log.warn("LPQ {} position recovery: session={} member={}({}) map={} "
@@ -5305,6 +5369,42 @@ final class AgentLpqCoordinator {
                     && LPQ.event(agent) == event && (inside || claiming && !member.rewardResolved());
             AgentLpqFullRateSimulation.apply(member, entry(member.characterId()), wanted);
         }
+    }
+
+    /**
+     * A companion run's room exit, as a player leaves a room: within reach of the exit portal it presses up there
+     * (with the stock success bookkeeping); farther it walks the authored route, re-planned once per traversal
+     * window when it stalls. Never a teleport. True once it stands on the destination.
+     */
+    private static boolean walkRoomExit(AgentLpqSession session, AgentLpqMemberState member,
+                                        AgentRuntimeEntry entry, Character agent, int portalId, Point portal,
+                                        int destinationMapId, long nowMs) {
+        int sourceMapId = agent.getMapId();
+        if (near(agent.getPosition(), portal, INTERACTION_RADIUS)) {
+            ACTIONS.stop(entry);
+            if (!LPQ.enterPortal(agent, portalId)) return false;
+            session.rooms().release(sourceMapId);
+            member.assign(AgentLpqMemberState.Role.GENERAL, 0);
+            member.clearTraversalProgress();
+            session.markProgress(nowMs);
+            log.info("LPQ room exit walked: session={} member={}({}) source={} destination={}",
+                    session.sessionId(), agent.getName(), agent.getId(), sourceMapId, destinationMapId);
+            return true;
+        }
+        long inactiveForMs = traversalInactivity(member, agent, destinationMapId, nowMs);
+        enterPortalTo(entry, agent, destinationMapId);
+        int stage = AgentLpqDefinition.stageNumber(sourceMapId);
+        if (stage >= 1 && stage <= 9 && inactiveForMs >= recovery(stage).traversalMs()) {
+            ACTIONS.refreshNavigation(entry, agent);
+            member.clearTraversalProgress();
+        }
+        return agent.getMapId() == destinationMapId;
+    }
+
+    /** The member stands in a companion run (sites that have no session in hand). */
+    private static boolean inCompanionRun(Character agent) {
+        AgentLpqSession run = agent == null ? null : AgentLpqSessionRegistry.forMember(agent.getId());
+        return run != null && run.companionAdopted();
     }
 
     /** A stage's own start line (S1, S3), once, said on the leader's map. */
