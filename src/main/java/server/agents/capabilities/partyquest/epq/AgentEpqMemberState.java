@@ -20,6 +20,8 @@ public final class AgentEpqMemberState {
     private int lastTopUpHp = -1;
     private int topUpDrinks;
     private int topUpSpentMapId;
+    private boolean bossResting;
+    private java.awt.Point bossRestPoint;
     private final Set<String> announcements = new HashSet<>();
 
     AgentEpqMemberState(int characterId, MemberType memberType) {
@@ -111,4 +113,24 @@ public final class AgentEpqMemberState {
 
     /** Whether an episode on this map was spent. */
     boolean topUpSpentOn(int mapId) { return topUpSpentMapId != 0 && topUpSpentMapId == mapId; }
+
+    // The golem-fight rest (EPQ base fix 7), owned by this member's own tick.
+
+    /** Whether this member rests out of the golem's reach. */
+    public boolean bossResting() { return bossResting; }
+
+    /** Where it rests, or null. */
+    public java.awt.Point bossRestPoint() { return bossRestPoint == null ? null : new java.awt.Point(bossRestPoint); }
+
+    /** Rests at this point. */
+    void restAt(java.awt.Point point) {
+        bossResting = true;
+        bossRestPoint = point == null ? null : new java.awt.Point(point);
+    }
+
+    /** Back in the fight, or no golem lives. */
+    void clearBossRest() {
+        bossResting = false;
+        bossRestPoint = null;
+    }
 }

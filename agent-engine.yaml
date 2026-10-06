@@ -1174,6 +1174,30 @@ tuning:
     # Purpose: Spaces one EPQ Agent's HP top-up drinks on the entrance map and before the golem fight.
     # Technical: Stored on the member's own EPQ state; one AgentPotionService-selected HP potion per interval through the primitive gateway's useItem.
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.TOP_UP_INTERVAL_MS: '600'
+    # Values: 460-650 map pixels: at least 9300182 attack1's 500-px reach, above MobSkill 120 level 3's 450, and, with FLOOR_EDGE_MARGIN_PX at most 150, below half the usable boss floor so a rest point always exists. Recommended: 500.
+    # Purpose: Sets how far from a golem a resting EPQ member must stand, the golem's reach.
+    # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600 (floor AgentEpqDefinition.BOSS_FLOOR, Map.wz footholds 1-18, x -540 to 1080, y 150). WZ sources: Mob.wz 9300180 attack1 lt.x -420, 9300181 attack1/attack2 -420/-440, 9300182 attack1/attack2 -500/-460, MobSkill.img 120 level 3 lt/rb x -450/450; AgentEpqBossRestTest pins it. 9300182's attack3 rain (type 3, about 1150 px either side) still reaches every point of the floor.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.REACH_PX: '500'
+    # Values: 30-150 map pixels. Recommended: 60 so a rest point stays clear of the boss floor's walls.
+    # Purpose: Keeps an EPQ member's golem rest point this far inside each end of the boss floor.
+    # Technical: Only AgentEpqRecoveryPolicy reads this, against AgentEpqDefinition.BOSS_FLOOR; at 60 the usable x is -480 to 1020 (1500 px, more than twice REACH_PX).
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.FLOOR_EDGE_MARGIN_PX: '60'
+    # Values: 8-60 map pixels. Recommended: 20 so a resting member stops walking once it stands at its rest point.
+    # Purpose: Sets how close to its rest point a resting EPQ member counts as arrived.
+    # Technical: Compared along both axes by AgentEpqCoordinator on map 930000600 only; an airborne member keeps walking.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.REST_ARRIVAL_PX: '20'
+    # Values: 60-200 map pixels. Recommended: 100 so a resting member fights back only against an add that is on it.
+    # Purpose: Sets how near a golem add (9300177, 9300178, 9300179) must be before a resting EPQ member fights it from its rest point.
+    # Technical: Compared along both axes; the resting member fights only the adds (never the golem) through the gateway's anchored grind, and only while it stands out of the golem's reach.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.ADD_THREAT_PX: '100'
+    # Values: 0.2-0.6 of maximum HP. Recommended: 0.4, the generic out-of-potions stop's own threshold.
+    # Purpose: Sets the HP fraction under which an EPQ golem-fight member with fewer than POT_STOP HP potions backs off to rest.
+    # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600 while a golem lives; an unknown potion count never rests, and members with POT_STOP or more potions keep the autopot and fight.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.REST_HP_FRACTION: '0.4'
+    # Values: 0.5-0.95 of maximum HP, above REST_HP_FRACTION. Recommended: 0.7 so a rested member rejoins with room for a golem hit.
+    # Purpose: Sets the HP fraction at which a resting EPQ golem-fight member rejoins the fight; it also rejoins once it holds POT_STOP HP potions again.
+    # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600. Resting heals by passive regen only, and the rest ends when no golem lives.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.RESUME_HP_FRACTION: '0.7'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

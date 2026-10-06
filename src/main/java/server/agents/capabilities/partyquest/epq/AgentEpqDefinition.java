@@ -46,6 +46,12 @@ public final class AgentEpqDefinition {
     public static final int ALTAR_REACTOR = 3_001_000;
     public static final int REWARD_REACTOR = 3_008_000;
 
+    /** The golems' walkable floor on 930000600: its left and right ends and its height. */
+    public record BossFloor(int leftX, int rightX, int y) { }
+
+    /** Map.wz 930000600 footholds 1-18 (the Ellin ledge, footholds 19-24, has no rope up). */
+    public static final BossFloor BOSS_FLOOR = new BossFloor(-540, 1_080, 150);
+
     private AgentEpqDefinition() { }
 
     public static boolean isEventMap(int mapId) {
