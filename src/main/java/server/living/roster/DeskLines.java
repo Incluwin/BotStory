@@ -26,6 +26,7 @@ public final class DeskLines {
     static final String LOW_ON_MANA_LINE = "<name> is low on mana potions.";
     static final String LOW_ON_POTIONS_BROKE_LINE = "<name> is low on potions and can't afford any more.";
     static final String LOW_ON_MANA_BROKE_LINE = "<name> is low on mana potions and can't afford any more.";
+    static final String LOW_ON_AMMO_LINE = "<name> is low on ammo.";
     /** Above the lineup, when a companion in it (or waiting with it) ran to the store for potions. */
     public static final String RAN_TO_THE_STORE = "Some of your crew ran to the store for potions. They won't be long.";
     static final String BUSY = "<name> is busy with something. Give them a moment.";
@@ -37,6 +38,8 @@ public final class DeskLines {
     /** Why a companion waits outside, as the lineup lists it: "Casse (low on potions)". */
     static final String LOW_ON_POTIONS = "low on potions";
     static final String LOW_ON_MANA = "low on mana potions";
+    /** A ranged companion short of the party quest's ammo (no trip: its owner or party hands some over). */
+    static final String LOW_ON_AMMO = "low on ammo";
     /** Short of potions and its own restock cannot afford them. */
     static final String LOW_ON_POTIONS_BROKE = "low on potions, out of mesos";
     static final String LOW_ON_MANA_BROKE = "low on mana potions, out of mesos";

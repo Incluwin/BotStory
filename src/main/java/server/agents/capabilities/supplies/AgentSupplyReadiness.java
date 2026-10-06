@@ -244,6 +244,32 @@ public final class AgentSupplyReadiness {
                 skillUser ? Math.max(0, standard.mp() - Math.max(0, mpPotions)) : 0);
     }
 
+    /**
+     * Projectiles a fighter carrying {@code carriedAmmo} for its weapon lacks for {@code activity}'s PARTY_QUEST_AMMO;
+     * 0 without an activity, or for one that shoots none ({@code Integer.MAX_VALUE}). Pure. Only a host's desk reads
+     * it: no restock trip buys ammo (projectiles keep their own rules).
+     */
+    public static int ammoShortfall(int carriedAmmo, Activity activity) {
+        if (activity == null) {
+            return 0;
+        }
+        long standard = Math.max(0, tuningInt("PARTY_QUEST_AMMO"));
+        return (int) Math.max(0L, standard - Math.max(0, carriedAmmo));
+    }
+
+    /** What the Agent's projectiles for its equipped weapon ({@link #carriedAmmo}) lack for {@code activity}. */
+    public static int ammoShortfall(Character agent, Activity activity) {
+        return agent == null ? 0 : ammoShortfall(carriedAmmo(agent), activity);
+    }
+
+    /**
+     * The projectiles the Agent carries for its equipped weapon; {@code Integer.MAX_VALUE} when it shoots none, or
+     * with Soul Arrow or Shadow Claw up.
+     */
+    public static int carriedAmmo(Character agent) {
+        return AgentAmmoService.carriedAmmo(agent);
+    }
+
     /** What the Agent's own potions ({@link AgentPotionService#countPotions}) lack for {@code activity}. */
     public static Shortfall shortfall(Character agent, Activity activity) {
         if (agent == null) {

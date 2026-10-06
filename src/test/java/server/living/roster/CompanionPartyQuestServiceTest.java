@@ -15,6 +15,7 @@ import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
 import server.agents.capabilities.supplies.AgentSupplyProcurementState;
+import server.agents.capabilities.dialogue.AgentDialogueCatalog;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -109,6 +110,43 @@ class CompanionPartyQuestServiceTest {
         } finally {
             AgentYamlConfig.config.tuning.put(HP_KEY, hp);
             AgentYamlConfig.config.tuning.put(MP_KEY, mp);
+        }
+    }
+
+    // ---- ammo: the desk counts it, nothing buys it (user 2026-10-05) ------------------------
+
+    @Test
+    void aRangedCompanionShortOfAmmoWaitsLowOnAmmoAndAsksItsPartyForSome() {
+        fx.ammo.put(902, 0); // SilentSin, an assassin with no throwing stars (live: Kestrel walked into LPQ so)
+        fx.ready();
+        enableDesk();
+        List<Runnable> ops = fx.holdCompanionOps();
+
+        LineupPlan plan = fx.service.plan(game.ann, "kpq");
+        assertEquals(List.of(new LineupPlan.Waiting(902, "SilentSin", DeskLines.LOW_ON_AMMO)), plan.waiting());
+        assertEquals("SilentSin is low on ammo.", plan.blocker());
+        assertTrue(offer());
+
+        CompanionPqFixture.drain(ops);
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        String said = game.partyChat.getFirst();
+        assertTrue(said.startsWith("SilentSin: ") && AgentDialogueCatalog.combatAmmoLowReplies()
+                .contains(said.substring("SilentSin: ".length())), said);
+
+        fx.ammo.put(902, ammoStandard());
+        assertEquals(List.of(), waiting());
+    }
+
+    @Test
+    void ammoNeverSendsACompanionToTheStore() {
+        fx.ammo.put(902, 0);
+        fx.ready();
+        enableDesk();
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                Mockito.CALLS_REAL_METHODS)) {
+            assertTrue(offer());
+            readiness.verify(() -> AgentSupplyReadiness.checkSoon(any()), Mockito.never());
+            readiness.verify(() -> AgentSupplyReadiness.status(any(), anyLong()), Mockito.never());
         }
     }
 
@@ -273,6 +311,11 @@ class CompanionPartyQuestServiceTest {
     }
 
     // ---- fixture ---------------------------------------------------------------------------
+
+    private static int ammoStandard() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO");
+    }
 
     private List<LineupPlan.Waiting> waiting() {
         return fx.service.plan(game.ann, "kpq").waiting();

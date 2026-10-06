@@ -205,6 +205,8 @@ public final class CompanionPartyQuestService {
     private final PqEntryPort port;
     private final ToIntFunction<Character> hpPotions;
     private final ToIntFunction<Character> mpPotions;
+    /** The projectiles a loaded companion carries for its weapon (Integer.MAX_VALUE: it shoots none). */
+    private volatile ToIntFunction<Character> ammo = AgentSupplyReadiness::carriedAmmo;
     /** What a loaded companion hits for at an entrance (the lineup's choice without a clear time). */
     private final ToDoubleBiFunction<Character, PqEntrance> dps;
     private final PaceSource pace;
@@ -250,6 +252,11 @@ public final class CompanionPartyQuestService {
         void said(String speaker) {
             log.info("{} line: session=- key=arrival speaker={} text={}", label(pqKey), speaker, text);
         }
+    }
+
+    /** Tests count a companion's projectiles themselves. */
+    void ammoCounter(ToIntFunction<Character> counter) {
+        ammo = counter;
     }
 
     public CompanionPartyQuestService(LivingWorld world) {
@@ -422,11 +429,13 @@ public final class CompanionPartyQuestService {
             boolean broke = DeskLines.LOW_ON_POTIONS_BROKE.equals(reason)
                     || DeskLines.LOW_ON_MANA_BROKE.equals(reason);
             boolean mana = DeskLines.LOW_ON_MANA.equals(reason);
-            if (!broke && !mana && !DeskLines.LOW_ON_POTIONS.equals(reason)) {
+            boolean shotless = DeskLines.LOW_ON_AMMO.equals(reason); // nothing restocks ammo: it only asks
+            if (!broke && !mana && !shotless && !DeskLines.LOW_ON_POTIONS.equals(reason)) {
                 continue;
             }
             int id = member.characterId();
-            if (!broke && AgentSupplyReadiness.restockPending(AgentRuntimeRegistry.findByAgentCharacterId(id), now)) {
+            if (!broke && !shotless
+                    && AgentSupplyReadiness.restockPending(AgentRuntimeRegistry.findByAgentCharacterId(id), now)) {
                 continue;
             }
             boolean[] fresh = {false};
@@ -449,7 +458,8 @@ public final class CompanionPartyQuestService {
                 if (broke) {
                     CompanionRestockLines.say(world, bot, CompanionRestockLines.BROKE);
                 } else {
-                    world.roster().sayInParty(bot, AgentDialogueSelector.randomReply(mana
+                    world.roster().sayInParty(bot, AgentDialogueSelector.randomReply(shotless
+                            ? AgentDialogueCatalog.combatAmmoLowReplies() : mana
                             ? AgentDialogueCatalog.potRequestMpReplies() : AgentDialogueCatalog.potRequestHpReplies()));
                 }
             });
@@ -729,7 +739,8 @@ public final class CompanionPartyQuestService {
      * Why the quest's admission would refuse the companion (its entrance's words for it), or why it would go in
      * unready: short of the Agents' one readiness standard (AgentSupplyReadiness.shortfall(PARTY_QUEST), the one its
      * own restock fills, at every entrance) on HP potions, or on mana potions when it fights with skills (every job
-     * past a beginner's); null: it can go.
+     * past a beginner's), or short of PARTY_QUEST_AMMO projectiles for a claw, bow, crossbow or gun (only ever asked
+     * for: nothing restocks ammo); null: it can go.
      */
     private String waitingReason(Character bot, PqEntrance entrance) {
         String problem = entrance.memberProblem(bot, false);
@@ -740,7 +751,9 @@ public final class CompanionPartyQuestService {
                 mpPotions.applyAsInt(bot), AgentSupplyReadiness.needsManaPotions(bot),
                 AgentSupplyReadiness.Activity.PARTY_QUEST);
         return shortfall.hp() > 0 ? DeskLines.LOW_ON_POTIONS
-                : shortfall.mp() > 0 ? DeskLines.LOW_ON_MANA : null;
+                : shortfall.mp() > 0 ? DeskLines.LOW_ON_MANA
+                : AgentSupplyReadiness.ammoShortfall(ammo.applyAsInt(bot), AgentSupplyReadiness.Activity.PARTY_QUEST) > 0
+                ? DeskLines.LOW_ON_AMMO : null;
     }
 
     /** A wait its own restock may be behind: short of potions, or off the entrance (at the shop). */

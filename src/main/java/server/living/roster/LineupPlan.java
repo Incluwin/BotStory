@@ -280,8 +280,8 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
     }
 
     /**
-     * Too few can go in: a companion that waits for potions says so (it is never sent in without), and that it cannot
-     * afford them when its own restock cannot; else the entrance's rule.
+     * Too few can go in: a companion that waits for potions (or ammo) says so (it is never sent in without), and that
+     * it cannot afford them when its own restock cannot; else the entrance's rule.
      */
     private static String tooFew(List<Waiting> waiting, DeskVoice voice) {
         for (Waiting member : waiting) {
@@ -296,6 +296,9 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             }
             if (DeskLines.LOW_ON_MANA_BROKE.equals(member.reason())) {
                 return DeskLines.named(DeskLines.LOW_ON_MANA_BROKE_LINE, member.name());
+            }
+            if (DeskLines.LOW_ON_AMMO.equals(member.reason())) {
+                return DeskLines.named(DeskLines.LOW_ON_AMMO_LINE, member.name());
             }
         }
         return voice.tooFew();

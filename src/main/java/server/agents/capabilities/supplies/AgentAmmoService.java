@@ -6,6 +6,7 @@ import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentCombatAmmoCounter;
 
 import client.Character;
+import client.inventory.InventoryType;
 import client.inventory.Item;
 import client.inventory.WeaponType;
 import server.agents.capabilities.dialogue.AgentDialogueCatalog;
@@ -43,6 +44,15 @@ public final class AgentAmmoService {
 
     public static void tickAmmoShareCheck(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
         requestLowAmmoShare(entry, bot, false, inventory);
+    }
+
+    /** The projectiles {@code bot} carries for its equipped weapon; Integer.MAX_VALUE when it shoots none. */
+    public static int carriedAmmo(Character bot) {
+        WeaponType weaponType = bot == null ? null : AgentAttackExecutionProvider.getEquippedWeaponType(bot);
+        if (weaponType == null || bot.getInventory(InventoryType.USE) == null) {
+            return Integer.MAX_VALUE;
+        }
+        return AgentCombatAmmoCounter.countAmmo(bot, weaponType);
     }
 
     public static boolean requestLowAmmoShare(AgentRuntimeEntry entry, Character bot, boolean bypassShareLimits, InventoryGateway inventory) {
