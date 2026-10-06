@@ -43,6 +43,10 @@ public final class AgentShopStateRuntime {
         entry.shopState().setApproachDelayMs(delayMs);
     }
 
+    public static boolean shopApproachDelayPending(AgentRuntimeEntry entry, long nowMs) {
+        return entry.shopState().approachDelayPending(nowMs);
+    }
+
     public static boolean shopSellTrashPending(AgentRuntimeEntry entry) {
         return entry.shopState().sellTrashPending();
     }

@@ -1,7 +1,5 @@
 package server.agents.capabilities.shop;
 
-import server.agents.capabilities.movement.AgentMovementTimers;
-
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatAmmoCounter;
@@ -256,10 +254,13 @@ public final class AgentShopService {
             return false;
         }
         if (AgentShopStateRuntime.shopApproachDelayMs(entry) > 0) {
-            AgentShopStateRuntime.setShopApproachDelayMs(
-                    entry,
-                    AgentMovementTimers.tickDown(AgentShopStateRuntime.shopApproachDelayMs(entry)));
-            return false;
+            // Wall-clock, like the visit timeout. Counted one movement tick per call, it lasted five times
+            // longer for an Agent no player watches (it ticks every background period), and the Agent
+            // stood still until the visit timed out (Glibber, El Nath Ice Valley II 211040200).
+            if (AgentShopStateRuntime.shopApproachDelayPending(entry, now)) {
+                return false;
+            }
+            AgentShopStateRuntime.setShopApproachDelayMs(entry, 0);
         }
 
         Point botPos = bot.getPosition();

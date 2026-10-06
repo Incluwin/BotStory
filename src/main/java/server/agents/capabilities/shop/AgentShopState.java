@@ -61,6 +61,11 @@ public final class AgentShopState {
         approachDelayMs = Math.max(0, delayMs);
     }
 
+    /** True until the approach delay has passed in wall-clock time since the visit started, like the visit timeout. */
+    public boolean approachDelayPending(long nowMs) {
+        return approachDelayMs > 0 && nowMs - visitStartedAtMs < approachDelayMs;
+    }
+
     public long visitStartedAtMs() {
         return visitStartedAtMs;
     }
