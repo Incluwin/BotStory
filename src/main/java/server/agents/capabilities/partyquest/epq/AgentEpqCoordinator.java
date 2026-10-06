@@ -295,6 +295,11 @@ public final class AgentEpqCoordinator {
         }
         Reactor pond = agent.getMap().getReactorById(AgentEpqDefinition.POND_REACTOR);
         if (pond == null) { actions().stop(entry); return; }
+        if (session.stageTwoBottlesSecured() && corpseHoldsBottle(session, agent)) {
+            // EPQ base fix 4: a bottle holder lying dead here keeps its bottle but cannot drop it; count again and
+            // secure the bottles only while four are still reachable.
+            session.reopenStageTwoBottles();
+        }
         int securedBottles = stageTwoSecuredBottleCount(session, agent, spine);
         if (securedBottles >= STAGE_TWO_BOTTLES_REQUIRED) {
             session.secureStageTwoBottles(nowMs);
@@ -807,6 +812,7 @@ public final class AgentEpqCoordinator {
                 .filter(characterId -> !session.departed(characterId))
                 .map(AgentEpqCoordinator::character)
                 .filter(java.util.Objects::nonNull)
+                .filter(candidate -> candidate.getHp() > 0)
                 .sorted(Comparator.comparingInt(candidate ->
                         candidate.calculateMaxBaseDamage(candidate.getTotalWatk())))
                 .limit(2)
@@ -829,13 +835,14 @@ public final class AgentEpqCoordinator {
         return sideTarget;
     }
 
+    /** The living Agents on this map, by id: a corpse owns no flower, rally slot or stage-5 box (EPQ base fix 4). */
     private static List<Integer> agentIds(AgentEpqSession session, MapleMap map) {
         return session.members().stream()
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
                 .map(AgentEpqMemberState::characterId)
                 .filter(id -> {
                     Character candidate = character(id);
-                    return candidate != null && candidate.getMap() == map;
+                    return candidate != null && candidate.getMap() == map && candidate.getHp() > 0;
                 })
                 .sorted()
                 .toList();
@@ -954,7 +961,8 @@ public final class AgentEpqCoordinator {
         int total = 0;
         for (AgentEpqMemberState member : session.members()) {
             Character character = character(member.characterId());
-            if (character != null && character.getMap() == observer.getMap()) {
+            // A corpse cannot drop what it holds (EPQ base fix 4).
+            if (character != null && character.getMap() == observer.getMap() && character.getHp() > 0) {
                 total += actions().itemCount(character, itemId);
             }
         }
@@ -966,12 +974,24 @@ public final class AgentEpqCoordinator {
         return total;
     }
 
+    /** Whether a member lying dead on this observer's map holds a filled bottle. */
+    private static boolean corpseHoldsBottle(AgentEpqSession session, Character observer) {
+        for (AgentEpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            if (character != null && character.getMap() == observer.getMap() && character.getHp() <= 0
+                    && actions().itemCount(character, AgentEpqDefinition.PURIFIED_POISON) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static int stageTwoSecuredBottleCount(
             AgentEpqSession session, Character observer, Reactor spine) {
         int total = spine == null ? 0 : spine.getState();
         for (AgentEpqMemberState member : session.members()) {
             Character character = character(member.characterId());
-            if (character != null && character.getMap() == observer.getMap()) {
+            if (character != null && character.getMap() == observer.getMap() && character.getHp() > 0) {
                 total += actions().itemCount(character, AgentEpqDefinition.PURIFIED_POISON);
             }
         }

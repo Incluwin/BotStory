@@ -139,8 +139,9 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     }
     /**
      * The Agent that carries the run's shared work (the stage-2 bottles, the stage-5 stone, the coordination lines): an
-     * Agent event leader, else the lowest-id Agent that has not left the event (EPQ base fix 3); with every Agent gone,
-     * the lowest-id Agent as before, else the execution Agent.
+     * Agent event leader, else the lowest-id Agent that has not left the event (EPQ base fix 3) and is not down (EPQ
+     * base fix 4: a corpse cannot carry anything); with every Agent gone or down, the lowest-id Agent as before, else
+     * the execution Agent.
      */
     public synchronized int workAgentId() {
         AgentEpqMemberState leader = members.get(eventLeaderId);
@@ -150,7 +151,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
         return members.values().stream()
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
                 .mapToInt(AgentEpqMemberState::characterId)
-                .filter(id -> !departed.contains(id))
+                .filter(id -> !departed.contains(id) && !membersDown.contains(id))
                 .min()
                 .orElseGet(() -> members.values().stream()
                         .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
@@ -219,7 +220,8 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }
 
-    // What the run's log lines have said so far; nothing decides by it.
+    // What the run's log lines have said so far. Only the members seen down are also read, by workAgentId (kept
+    // current by the coordinator's logMembersDown every pass); nothing else decides by it.
 
     /** True only the first time this member is seen down since it was last seen up. */
     synchronized boolean markMemberDown(int id) { return membersDown.add(id); }
