@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /** EPQ aggregate root; no state is shared with another party quest. */
 public final class AgentEpqSession implements AgentCompanionRunSession {
@@ -33,6 +34,8 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
     private final Set<Integer> departed = new LinkedHashSet<>();
+    private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
+    private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -108,6 +111,9 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     public synchronized void fail(String reason, long nowMs) { failure = reason == null ? "EPQ failed" : reason; phase = Phase.FAILED; markProgress(nowMs); }
     public synchronized void complete(long nowMs) { phase = Phase.COMPLETED; markProgress(nowMs); }
     public synchronized boolean terminal() { return phase == Phase.COMPLETED || phase == Phase.FAILED; }
+
+    /** Whether the run's release has begun (it can begin before the run is terminal). */
+    public synchronized boolean terminationStarted() { return terminating; }
 
     public String sessionId() { return sessionId; }
     public Mode mode() { return mode; }
@@ -243,4 +249,45 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** A phase change: the phase left and the one entered, the time spent in the one left, and the run's time. */
     record Change(Phase from, Phase to, long phaseMs, long runMs) { }
+
+    /**
+     * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until
+     * {@link #endDeparture}) or stay down. heldMs is how long it was held before leaving, or -1 when it was not held;
+     * firstHold is true only for the first answer of a hold.
+     */
+    record Departure(boolean proceed, boolean firstHold, long heldMs, int registered, int othersInFlight) { }
+
+    /**
+     * A dead member may leave the event while more than {@code floor} registered members would stay, every departure
+     * still in flight counted as gone (EllinPQ.js ends the event when a member leaves at the floor). registeredIds is
+     * read here, under this monitor, so a departure that has just finished is seen as gone; the event's read lock
+     * nests inside this monitor, as when the coordinator reads the event's players, and nothing takes them the other
+     * way round (the event calls no Agent code under its locks).
+     */
+    synchronized Departure reserveDeparture(int id, Supplier<Set<Integer>> registeredIds, int floor, long nowMs) {
+        Set<Integer> registered = registeredIds.get();
+        int othersInFlight = (int) departuresInFlight.stream().filter(other -> other != id).count();
+        long staying = registered.stream().filter(member -> !departuresInFlight.contains(member)).count();
+        if (staying > floor) {
+            departuresInFlight.add(id);
+            Long since = heldSinceMs.remove(id);
+            return new Departure(true, false, since == null ? -1L : Math.max(0L, nowMs - since),
+                    registered.size(), othersInFlight);
+        }
+        Long since = heldSinceMs.putIfAbsent(id, nowMs);
+        return new Departure(false, since == null, since == null ? 0L : Math.max(0L, nowMs - since),
+                registered.size(), othersInFlight);
+    }
+
+    /** Ends a reserved departure (its respawn returned or threw). */
+    synchronized void endDeparture(int id) { departuresInFlight.remove(id); }
+
+    /** Forgets the hold of a member that leaves without the floor check: how long it was held, or -1 if it was not. */
+    synchronized long releaseHold(int id, long nowMs) {
+        Long since = heldSinceMs.remove(id);
+        return since == null ? -1L : Math.max(0L, nowMs - since);
+    }
+
+    /** Dead members the departure gate holds on the map now. */
+    synchronized int heldDeadCount() { return heldSinceMs.size(); }
 }

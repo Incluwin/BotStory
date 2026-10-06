@@ -1,6 +1,7 @@
 package server.agents.capabilities.combat;
 
 import client.Character;
+import server.agents.capabilities.partyquest.epq.AgentEpqDeathDepartureGate;
 import server.agents.capabilities.partyquest.lpq.AgentLpqDeathDepartureGate;
 import server.agents.capabilities.recovery.AgentRespawnCoordinator;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -31,14 +32,17 @@ public final class AgentDeathTickCoordinator {
                 () -> AgentDeathStateRuntime.shouldEnterDeadState(entry, agent.getHp()),
                 (deadEntry, deadAgent) -> AgentCombatDeathRuntime.enterDeadState(
                         deadEntry, deadAgent, false),
-                gatedRespawn(agent, () -> AgentRespawnCoordinator.respawnAtNearestTown(entry, agent),
+                gatedRespawn(agent, () -> AgentEpqDeathDepartureGate.respawnOrHold(agent,
+                                () -> AgentRespawnCoordinator.respawnAtNearestTown(entry, agent),
+                                System.currentTimeMillis()),
                         System::currentTimeMillis, AgentLpqDeathDepartureGate::respawnOrHold),
                 System::currentTimeMillis);
     }
 
     /**
      * The respawn a due dead tick runs: the gate runs {@code respawn} at once, or holds the Agent dead until a later
-     * tick (an LPQ member whose departure would end its event). An Agent without an LPQ session respawns as before.
+     * tick (an LPQ member, or an EPQ member, whose departure would end its event). An Agent without an LPQ session
+     * respawns as before.
      */
     static Runnable gatedRespawn(Character agent, Runnable respawn, LongSupplier nowMs, RespawnGate gate) {
         return () -> gate.respawnOrHold(agent, respawn, nowMs.getAsLong());

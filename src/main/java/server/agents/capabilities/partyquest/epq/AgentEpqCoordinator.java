@@ -163,7 +163,7 @@ public final class AgentEpqCoordinator {
     /**
      * What the coordinator can still see when its event "ended or expired" (logged before the failure): the leader's
      * map and HP, whether the leader is in the bound event, in none or in another, whether the bound event was
-     * disposed, and how many players it still holds. Never throws.
+     * disposed, how many players it still holds and how many dead members the departure gate holds. Never throws.
      */
     static String eventEndDetail(AgentEpqSession session, Character leader) {
         try {
@@ -172,7 +172,8 @@ public final class AgentEpqCoordinator {
             String where = leaderEvent == null ? "none" : leaderEvent == bound ? "bound" : "other";
             return "leaderMap=" + leader.getMapId() + " leaderHp=" + leader.getHp() + " leaderEvent=" + where
                     + " eventDisposed=" + (bound == null ? "unbound" : String.valueOf(bound.isEventDisposed()))
-                    + " registered=" + (bound == null ? 0 : bound.getPlayers().size());
+                    + " registered=" + (bound == null ? 0 : bound.getPlayers().size())
+                    + " heldDead=" + session.heldDeadCount();
         } catch (RuntimeException e) {
             return "detail unavailable";
         }
