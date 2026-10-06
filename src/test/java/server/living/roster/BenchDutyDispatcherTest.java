@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -70,6 +71,27 @@ class BenchDutyDispatcherTest {
         // the population and PQ sweeps never take one: its lease refuses every other load
         assertFalse(game.leases.tryAcquire(901, CompanionLeases.Kind.POPULATION, 0));
         assertFalse(game.leases.tryAcquire(906, CompanionLeases.Kind.PQ_BACKGROUND, 0));
+    }
+
+    @Test
+    void aFormAheadOfTheDutyTakesTheRowFirstAndAFailingOneLeavesEveryRowToItsDuty() {
+        game.companion(ANN, "fenn", "Fenn", 906, Assignment.REST);
+        BenchHarness.FakeForm town = game.new FakeForm(CompanionBudget.Kind.BENCH_TOWN, TOWN);
+        BenchHarness.FakeForm errand = game.new FakeForm(CompanionBudget.Kind.BENCH_TOWN, TOWN);
+        game.duty.register(Assignment.REST, town);
+        RosterEntry row = game.row(ANN, "fenn");
+
+        game.duty.first(entry -> entry.personaId().equals("fenn") ? errand : null);
+        assertSame(errand, game.duty.formOf(row), "a companion going for its next job (JobErrands)");
+        game.duty.first(null);
+        assertSame(town, game.duty.formOf(row));
+
+        game.duty.first(entry -> {
+            throw new IllegalStateException("broken chooser");
+        });
+        assertSame(town, game.duty.formOf(row));
+        game.duty.tick();
+        assertTrue(game.duty.live("fenn"), "one row's errand never stops the turns");
     }
 
     @Test

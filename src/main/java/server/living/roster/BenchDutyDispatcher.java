@@ -287,9 +287,18 @@ public final class BenchDutyDispatcher {
         first = chooser == null ? entry -> null : chooser;
     }
 
-    /** The form a row's next slice takes: the one {@link #first} answers for it, else its duty's. */
+    /**
+     * The form a row's next slice takes: the one {@link #first} answers for it, else its duty's (also when the chooser
+     * fails: one row's errand never stops every other row's turn).
+     */
     Form formOf(RosterEntry entry) {
-        Form ahead = first.apply(entry);
+        Form ahead;
+        try {
+            ahead = first.apply(entry);
+        } catch (RuntimeException failure) {
+            log.warn("the form ahead of {}'s duty failed; it keeps its duty", entry.personaId(), failure);
+            ahead = null;
+        }
         return ahead != null ? ahead : form(entry.assignment());
     }
 
