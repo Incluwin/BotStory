@@ -606,7 +606,7 @@ public final class AgentEpqCoordinator {
                     rescue(session, "kill-dummy", agent);
                 });
         if (agent.getId() == fragmentCollectorId(session)
-                && collectNearest(entry, agent, Set.of(AgentEpqDefinition.ALTAIRE_FRAGMENT))) return;
+                && collectNearest(entry, agent, Set.of(AgentEpqDefinition.GOLEMS_MARBLE))) return;
         if (nowMs - session.observeBossCleared(nowMs) < BOSS_LOOT_SETTLE_MS) { actions().stop(entry); return; }
         if (agent.getId() == workAgentId(session)
                 && session.members().stream().anyMatch(state ->

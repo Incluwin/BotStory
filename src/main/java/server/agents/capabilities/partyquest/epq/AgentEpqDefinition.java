@@ -26,7 +26,10 @@ public final class AgentEpqDefinition {
     public static final int PURIFICATION_MARBLE = 2_270_004;
     public static final int MONSTER_MARBLE = 4_001_169;
     public static final int MAGIC_STONE = 4_001_163;
-    public static final int ALTAIRE_FRAGMENT = 4_001_164;
+    /** Golem's Marble (String.wz Etc 4001164): the Super-Charged Poison Golem's drop, put in the fountain on 930000800. */
+    public static final int GOLEMS_MARBLE = 4_001_164;
+    /** Altaire Fragment (String.wz Etc 4001198): east00 gives one to each leaver once the fountain has fired. */
+    public static final int ALTAIRE_FRAGMENT = 4_001_198;
     public static final Set<Integer> EXCLUSIVE_ITEMS = Set.of(
             PURIFIED_POISON, MAGIC_STONE, MONSTER_MARBLE, PURIFICATION_MARBLE);
 
@@ -52,7 +55,22 @@ public final class AgentEpqDefinition {
     /** Map.wz 930000600 footholds 1-18 (the Ellin ledge, footholds 19-24, has no rope up). */
     public static final BossFloor BOSS_FLOOR = new BossFloor(-540, 1_080, 150);
 
+    /**
+     * The latest a companion picks a stack left lying back up with the shipped item expiry (config.yaml ITEM_EXPIRE_TIME
+     * 180000 and ITEM_EXPIRE_CHECK 10000); a running server reads {@link #objectiveRecollectLatestMs} of its own values.
+     */
+    public static final long OBJECTIVE_RECOLLECT_LATEST_MS = 170_000L;
+
     private AgentEpqDefinition() { }
+
+    /**
+     * The latest a stack left lying is picked back up: a dropped item lies ITEM_EXPIRE_TIME and goes on the next
+     * ITEM_EXPIRE_CHECK sweep after that, so one sweep's length before its expiry still leaves the walk to it time to
+     * end before it can vanish (HPQ's riceCakeRecollectLatestMs).
+     */
+    public static long objectiveRecollectLatestMs(long itemExpireTimeMs, long itemExpireCheckMs) {
+        return Math.max(0L, itemExpireTimeMs - Math.max(0L, itemExpireCheckMs));
+    }
 
     public static boolean isEventMap(int mapId) {
         return mapId >= ENTRANCE_MAP && mapId <= REWARD_MAP;
