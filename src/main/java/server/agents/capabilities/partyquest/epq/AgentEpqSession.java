@@ -30,6 +30,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final long startedAtMs;
     private final Map<Integer, AgentEpqMemberState> members = new LinkedHashMap<>();
     private final Set<String> announcements = new HashSet<>();
+    private final Set<String> narrations = new HashSet<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -195,6 +196,11 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     }
     public synchronized boolean claimAnnouncement(String key) {
         return key != null && !key.isBlank() && announcements.add(key);
+    }
+
+    /** A companion run's line key, apart from the stock announcements: true only the first time it is claimed. */
+    synchronized boolean narrateOnce(String key) {
+        return key != null && !key.isBlank() && narrations.add(key);
     }
 
     /**
