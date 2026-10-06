@@ -43,6 +43,10 @@ public final class AgentShopStateRuntime {
         entry.shopState().setApproachDelayMs(delayMs);
     }
 
+    public static boolean shopApproachDelayPending(AgentRuntimeEntry entry, long nowMs) {
+        return entry.shopState().approachDelayPending(nowMs);
+    }
+
     public static boolean shopSellTrashPending(AgentRuntimeEntry entry) {
         return entry.shopState().sellTrashPending();
     }
@@ -77,6 +81,10 @@ public final class AgentShopStateRuntime {
 
     public static boolean sequenceTimedOut(AgentRuntimeEntry entry, long nowMs, long timeoutMs) {
         return entry.shopState().sequenceTimedOut(nowMs, timeoutMs);
+    }
+
+    public static void extendShopVisit(AgentRuntimeEntry entry, long extraMs) {
+        entry.shopState().extendVisit(extraMs);
     }
 
     public static void extendShopSequence(AgentRuntimeEntry entry, long extraMs) {

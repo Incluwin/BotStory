@@ -1,7 +1,5 @@
 package server.agents.capabilities.shop;
 
-import server.agents.capabilities.movement.AgentMovementTimers;
-
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.capabilities.combat.AgentBuffStateRuntime;
 import server.agents.capabilities.combat.AgentCombatAmmoCounter;
@@ -57,11 +55,13 @@ import server.agents.capabilities.navigation.AgentNavigationRegionService;
 import server.life.NPC;
 import server.maps.MapObject;
 import server.maps.MapObjectType;
+import server.maps.MapleMap;
 
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -232,15 +232,32 @@ public final class AgentShopService {
             int minimumMesoReserve,
             int requiredItemId,
             int requiredItemCount) {
+        startShopVisit(entry, bot, match.npcPos, (int) AgentRandom.randMs(0, SHOP_APPROACH_DELAY_MAX_MS),
+                minimumMesoReserve, requiredItemId, requiredItemCount, System.currentTimeMillis());
+    }
+
+    static void startShopVisit(
+            AgentRuntimeEntry entry,
+            Character bot,
+            Point npcPos,
+            int approachDelayMs,
+            int minimumMesoReserve,
+            int requiredItemId,
+            int requiredItemCount,
+            long now) {
+        ShopApproach approach = pickShopApproach(npcPos, entry, bot);
         AgentShopStateRuntime.startShopVisit(
                 entry,
-                match.npcPos,
-                pickShopApproachPoint(match.npcPos, entry, bot),
-                (int) AgentRandom.randMs(0, SHOP_APPROACH_DELAY_MAX_MS),
+                npcPos,
+                approach.point(),
+                approachDelayMs,
                 minimumMesoReserve,
                 requiredItemId,
                 requiredItemCount,
-                System.currentTimeMillis());
+                now);
+        // SHOP_VISIT_TIMEOUT_MS counts on top of the walk: one flat 30 s from the visit start was shorter than the
+        // route to some shops (Mushroom Shrine 800000000 about 30 s, Ant Tunnel Park 105070001 about 38 s).
+        AgentShopStateRuntime.extendShopVisit(entry, approach.routeMs());
     }
 
     public static boolean tickShopVisit(AgentRuntimeEntry entry, Character bot, InventoryGateway inventory) {
@@ -266,10 +283,13 @@ public final class AgentShopService {
             return false;
         }
         if (AgentShopStateRuntime.shopApproachDelayMs(entry) > 0) {
-            AgentShopStateRuntime.setShopApproachDelayMs(
-                    entry,
-                    AgentMovementTimers.tickDown(AgentShopStateRuntime.shopApproachDelayMs(entry)));
-            return false;
+            // Wall-clock, like the visit timeout. Counted one movement tick per call, it lasted five times
+            // longer for an Agent no player watches (it ticks every background period), and the Agent
+            // stood still until the visit timed out (Glibber, El Nath Ice Valley II 211040200).
+            if (AgentShopStateRuntime.shopApproachDelayPending(entry, now)) {
+                return false;
+            }
+            AgentShopStateRuntime.setShopApproachDelayMs(entry, 0);
         }
 
         Point botPos = bot.getPosition();
@@ -1509,7 +1529,8 @@ public final class AgentShopService {
         NPC npc = bot != null && bot.getMap() != null && npcPos != null ? findNpcNear(bot, npcPos) : null;
         long now = System.currentTimeMillis();
         log.warn("Agent '{}' shop visit failed: reason=\"{}\" phase={} map={} npc={} npcPos={} approachPos={} botPos={}"
-                        + " distToNpc={} distToApproach={} visitPending={} sequenceActive={} visitAgeMs={} sequenceAgeMs={}"
+                        + " distToNpc={} distToApproach={} visitPending={} sequenceActive={} visitAgeMs={}"
+                        + " visitAllowanceMs={} sequenceAgeMs={}"
                         + " sequenceAllowanceMs={} sellTrashPending={} mesos={}",
                 bot == null ? "?" : bot.getName(),
                 reason,
@@ -1524,6 +1545,7 @@ public final class AgentShopService {
                 state.visitPending(),
                 state.sequenceActive(),
                 state.visitStartedAtMs() > 0 ? now - state.visitStartedAtMs() : -1,
+                state.visitAllowanceMs(),
                 state.sequenceStartedAtMs() > 0 ? now - state.sequenceStartedAtMs() : -1,
                 state.sequenceAllowanceMs(),
                 state.sellTrashPending(),
@@ -1565,31 +1587,39 @@ public final class AgentShopService {
         });
     }
 
-    private static Point pickShopApproachPoint(Point npcPos, AgentRuntimeEntry entry, Character bot) {
+    /** Where a shop visit walks to, and the nav route's travel time there in ms (0 when no route was found). */
+    private record ShopApproach(Point point, long routeMs) {}
+
+    private static ShopApproach pickShopApproach(Point npcPos, AgentRuntimeEntry entry, Character bot) {
         var footholds = bot.getMap().getFootholds();
         if (footholds == null) {
-            return npcPos;
+            return new ShopApproach(npcPos, 0L);
         }
         List<Point> candidates = AgentShopApproachPolicy.footholdCandidatesNear(
                 npcPos, footholds.getAllFootholds(), SHOP_MANHATTAN_RADIUS);
         if (candidates.isEmpty()) {
-            return npcPos;
+            return new ShopApproach(npcPos, 0L);
         }
+        Map<Point, Long> routeMs = new HashMap<>();
         AgentMovementProfile profile = AgentMovementStateRuntime.movementProfileOrCharacter(entry, bot);
         AgentNavigationGraph graph = AgentNavigationGraphService.peekBestGraph(bot.getMap(), profile);
         if (graph != null) {
             Point botPos = bot.getPosition();
-            int startRegionId = AgentNavigationRegionService.resolveCurrentRegionId(graph, entry, bot.getMap(), botPos);
+            int startRegionId = approachStartRegionId(graph, entry, bot.getMap(), botPos);
             if (startRegionId >= 0) {
                 List<Point> reachable = new ArrayList<>();
                 for (Point candidate : candidates) {
                     int targetRegionId = AgentNavigationRegionService.resolveTargetRegionId(
                             graph, entry, bot.getMap(), candidate);
                     if (targetRegionId < 0) continue;
-                    if (startRegionId == targetRegionId
-                            || !AgentNavigationPathService.findPathForApproachProbe(graph, bot.getMap(), botPos,
-                                    startRegionId, targetRegionId, candidate).isEmpty()) {
+                    long candidateRouteMs = startRegionId == targetRegionId
+                            ? AgentNavigationPathService.intraRegionTravelCost(graph, startRegionId, botPos, candidate)
+                            : AgentNavigationPathService.completeRouteCost(
+                                    AgentNavigationPathService.findRouteForApproachProbe(graph, bot.getMap(), botPos,
+                                            startRegionId, targetRegionId, candidate), -1L);
+                    if (candidateRouteMs >= 0L) {
                         reachable.add(candidate);
+                        routeMs.put(candidate, candidateRouteMs);
                     }
                 }
                 if (!reachable.isEmpty()) {
@@ -1603,7 +1633,17 @@ public final class AgentShopService {
                 .thenComparingInt(candidate -> manhattan(candidate, npcPos))
                 .thenComparingInt(candidate -> manhattan(candidate, botPosition))
                 .thenComparingInt(candidate -> candidate.x));
-        return candidates.get(0);
+        Point approach = candidates.get(0);
+        return new ShopApproach(approach, routeMs.getOrDefault(approach, 0L));
+    }
+
+    // A visit opened on arrival starts while the spawn fall is still under way, and an Agent in the air has no
+    // current region. Skipping the reachability check then sent Agents at Mushroom Shrine (800000000) to a platform
+    // beside the potion seller that no route reaches. The fall lands on the ground below.
+    private static int approachStartRegionId(AgentNavigationGraph graph, AgentRuntimeEntry entry, MapleMap map,
+                                             Point botPos) {
+        int regionId = AgentNavigationRegionService.resolveCurrentRegionId(graph, entry, map, botPos);
+        return regionId >= 0 || !AgentMovementStateRuntime.inAir(entry) ? regionId : graph.findRegionId(map, botPos);
     }
 
 

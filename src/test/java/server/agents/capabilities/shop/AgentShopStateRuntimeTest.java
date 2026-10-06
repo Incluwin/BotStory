@@ -73,7 +73,9 @@ class AgentShopStateRuntimeTest {
         assertEquals(new Point(10, 20), AgentShopStateRuntime.shopNpcPosition(entry));
         assertEquals(new Point(30, 40), AgentShopStateRuntime.shopTargetPosition(entry));
         assertEquals(350, AgentShopStateRuntime.shopApproachDelayMs(entry));
-        assertTrue(AgentShopStateRuntime.visitTimedOut(entry, 31_001L, 30_000L));
+        // The 350 ms approach delay does not count against the visit timeout.
+        assertFalse(AgentShopStateRuntime.visitTimedOut(entry, 31_001L, 30_000L));
+        assertTrue(AgentShopStateRuntime.visitTimedOut(entry, 31_351L, 30_000L));
 
         AgentShopStateRuntime.markShopSequenceActive(entry, 2_000L);
 
