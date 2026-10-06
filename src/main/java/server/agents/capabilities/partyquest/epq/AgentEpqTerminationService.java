@@ -43,6 +43,7 @@ final class AgentEpqTerminationService {
         boolean companionRun = session.companionAdopted();
         boolean pastTheClear = pastTheClear(event);
         if (companionRun) logPotions(session);
+        log.info("EPQ vitals: session={} phase={} members={}", session.sessionId(), phaseAtRelease, vitals(session));
         // A companion run keeps its party, so no party leave runs EllinPQ's own exit for it as it does for a stock run:
         // one that did not complete leaves the event as the tick's failure release has it leave, whoever releases it
         // (AgentEpqRuntime.requestStop passes no dispose, and can land between the fail and the tick's release).
@@ -117,6 +118,25 @@ final class AgentEpqTerminationService {
                 .filter(java.util.Objects::nonNull)
                 .map(agent -> agent.getName() + ":" + gateway.hpPotionCount(agent) + "/" + gateway.mpPotionCount(agent))
                 .collect(Collectors.joining(", ", "{", "}"));
+    }
+
+    /**
+     * Every online member's HP and potions, in session order and humans included, as 'EPQ vitals:' logs them:
+     * {Ben:480/500 hpPots=3 mpPots=2, Mira:50/4400 hpPots=113 mpPots=40} (HP over the current maximum, as the autopot
+     * reads it); "vitals unavailable" when a member cannot be read. Never throws.
+     */
+    static String vitals(AgentEpqSession session) {
+        try {
+            var gateway = AgentPrimitiveCapabilityGatewayRuntime.gateway();
+            return session.members().stream()
+                    .map(member -> AgentEpqCoordinator.character(member.characterId()))
+                    .filter(java.util.Objects::nonNull)
+                    .map(member -> member.getName() + ":" + member.getHp() + "/" + member.getCurrentMaxHp()
+                            + " hpPots=" + gateway.hpPotionCount(member) + " mpPots=" + gateway.mpPotionCount(member))
+                    .collect(Collectors.joining(", ", "{", "}"));
+        } catch (RuntimeException failure) {
+            return "vitals unavailable";
+        }
     }
 
     /**

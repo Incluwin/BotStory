@@ -5,6 +5,7 @@ import client.inventory.Item;
 import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.capabilities.combat.AgentAttackPlan;
 import server.agents.capabilities.combat.AgentAttackTransactionResult;
@@ -12,6 +13,7 @@ import server.agents.capabilities.combat.AgentCombatAttackRuntime;
 import server.agents.capabilities.combat.AgentCombatConfig;
 import server.agents.capabilities.combat.AgentCombatPlanRuntime;
 import server.agents.capabilities.combat.AgentCombatSkillConstraintState;
+import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
@@ -62,6 +64,8 @@ public final class AgentEpqCoordinator {
     private static final int REACTOR_RADIUS = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCoordinator.REACTOR_RADIUS");
 
+    private static final String EVENT_ENDED_OR_EXPIRED = "The EPQ event instance ended or expired";
+
     private AgentEpqCoordinator() { }
 
     public static void tickSession(AgentEpqSession session, long nowMs) {
@@ -79,17 +83,103 @@ public final class AgentEpqCoordinator {
             session.bindEventInstance(leader.getEventInstance());
             session.markProgress(nowMs);
         }
-        AgentEpqSession.Phase observed = phaseForMap(leader.getMapId());
+        // EPQ base fix 2: before the clear, a bound event that was disposed, or that no longer holds the leader (the
+        // stock event ends when its leader leaves it, or at its floor), ends the run at once; after the clear the
+        // leader leaves through the exit and this check is inert. So is it while the run is being released: the
+        // release exits every player and disposes the event itself, and fails the run with its own reason.
+        EventInstanceManager bound = session.eventInstance();
+        if (bound != null && !session.terminal() && !session.terminationStarted()
+                && !AgentEpqTerminationService.pastTheClear(bound)
+                && (bound.isEventDisposed() || leader.getEventInstance() != bound)) {
+            log.warn("EPQ event end detail: session={} {}", session.sessionId(), eventEndDetail(session, leader));
+            fail(session, EVENT_ENDED_OR_EXPIRED, nowMs);
+            return;
+        }
+        for (AgentEpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            if (character != null) observeDeparture(session, character, leader);
+        }
+        boolean rewardReady = AgentEpqTerminationService.pastTheClear(bound) && leader.getEventInstance() == bound;
+        AgentEpqSession.Phase observed = phaseForMap(leader.getMapId(), rewardReady);
         if (observed != null) transition(session, observed, nowMs);
         session.observeProgressSignature(progressSignature(session, leader), nowMs);
         AgentEpqWatchdogRuntime.tick(session, nowMs);
         logMembersDown(session);
         logBossProgress(session, leader, nowMs);
+        // A member is out once it is off the EPQ maps or no longer in the bound event (a leaver stands on the normal
+        // 930000800, observed or not).
         if (session.phase() == AgentEpqSession.Phase.EXITING
                 && session.members().stream().map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
-                .noneMatch(member -> AgentEpqDefinition.isEventMap(member.getMapId()))) {
+                .noneMatch(member -> AgentEpqDefinition.isEventMap(member.getMapId())
+                        && member.getEventInstance() == bound)) {
             session.complete(nowMs);
+        }
+    }
+
+    /** The bound event still runs and still holds the run's leader. */
+    private static boolean eventLive(AgentEpqSession session, Character leader) {
+        EventInstanceManager bound = session.eventInstance();
+        return bound != null && !bound.isEventDisposed() && leader != null && leader.getEventInstance() == bound;
+    }
+
+    /**
+     * The leaver's signature: the run is bound, and the member stands on an EPQ map with no event instance. The stock
+     * exit sends every leaver to the normal 930000800 (every EPQ map's return map); a member the event never
+     * registered still stands on the recruit map and is not a leaver.
+     */
+    private static boolean leftEvent(AgentEpqSession session, Character member) {
+        return session.eventInstance() != null && member.getEventInstance() == null
+                && AgentEpqDefinition.isEventMap(member.getMapId());
+    }
+
+    /**
+     * EPQ base fix 3: marks a member the live bound event no longer holds as departed, once ('EPQ departed:'), and
+     * reopens the stage-2 bottles it may have carried; a departed member seen back in the bound event is a member
+     * again ('EPQ returned:'). Humans and Agents alike; never throws. Nothing is marked while the run is being
+     * released: the release itself takes every player out of the event.
+     */
+    private static void observeDeparture(AgentEpqSession session, Character member, Character leader) {
+        try {
+            EventInstanceManager bound = session.eventInstance();
+            if (bound == null || session.terminationStarted()) return;
+            if (member.getEventInstance() == bound) {
+                if (session.clearDeparted(member.getId())) {
+                    log.info("EPQ returned: session={} member={}({}) map={} phase={}", session.sessionId(),
+                            member.getName(), member.getId(), member.getMapId(), session.phase());
+                }
+                return;
+            }
+            if (!eventLive(session, leader) || !leftEvent(session, member) || !session.markDeparted(member.getId())) {
+                return;
+            }
+            AgentEpqMemberState state = session.member(member.getId());
+            log.info("EPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}",
+                    session.sessionId(), member.getName(), member.getId(),
+                    state == null ? "UNKNOWN" : state.memberType(), member.getMapId(), session.phase(),
+                    bound.getPlayers().size(), session.companionAdopted());
+            if (session.phase() == AgentEpqSession.Phase.STAGE_TWO) session.reopenStageTwoBottles();
+        } catch (RuntimeException e) {
+            log.warn("EPQ departure check failed: session={} member={}", session.sessionId(), member.getId(), e);
+        }
+    }
+
+    /**
+     * What the coordinator can still see when its event "ended or expired" (logged before the failure): the leader's
+     * map and HP, whether the leader is in the bound event, in none or in another, whether the bound event was
+     * disposed, how many players it still holds and how many dead members the departure gate holds. Never throws.
+     */
+    static String eventEndDetail(AgentEpqSession session, Character leader) {
+        try {
+            EventInstanceManager bound = session.eventInstance();
+            EventInstanceManager leaderEvent = leader.getEventInstance();
+            String where = leaderEvent == null ? "none" : leaderEvent == bound ? "bound" : "other";
+            return "leaderMap=" + leader.getMapId() + " leaderHp=" + leader.getHp() + " leaderEvent=" + where
+                    + " eventDisposed=" + (bound == null ? "unbound" : String.valueOf(bound.isEventDisposed()))
+                    + " registered=" + (bound == null ? 0 : bound.getPlayers().size())
+                    + " heldDead=" + session.heldDeadCount();
+        } catch (RuntimeException e) {
+            return "detail unavailable";
         }
     }
 
@@ -113,22 +203,45 @@ public final class AgentEpqCoordinator {
         if (agent.getMapId() != AgentEpqDefinition.STAGE_FOUR_MAP) {
             actions().clearHorizontalBoundary(entry);
         }
+        if (member.bossResting() && agent.getMapId() != AgentEpqDefinition.BOSS_MAP) {
+            endBossRest(session, agent, member, null); // EPQ base fix 7: the rest belongs to the golem's map
+        }
+        if (leftEvent(session, agent)) {
+            // EPQ base fix 3: the event no longer holds this Agent (its respawn walked it out, or it pressed OK). It
+            // has left the run and idles until the release; it does not fail it.
+            actions().stop(entry);
+            observeDeparture(session, agent, character(session.eventLeaderId()));
+            return;
+        }
         if (session.eventInstance() != null && AgentEpqDefinition.isEventMap(agent.getMapId())
-                && agent.getEventInstance() != session.eventInstance()) {
+                && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
             fail(session, "EPQ member entered a different event instance", nowMs);
             return;
         }
 
         switch (agent.getMapId()) {
             case AgentEpqDefinition.RECRUIT_MAP -> enterEvent(session, entry, agent, member, nowMs);
-            case AgentEpqDefinition.ENTRANCE_MAP -> enterPortal(entry, agent, 4, member, nowMs);
+            case AgentEpqDefinition.ENTRANCE_MAP -> {
+                if (!topUp(session, entry, agent, member, nowMs)) enterPortal(entry, agent, 4, member, nowMs);
+            }
             case AgentEpqDefinition.STAGE_ONE_MAP -> stageOne(entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_TWO_MAP -> stageTwo(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_THREE_MAP -> stageThree(entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_FOUR_MAP -> stageFour(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_FIVE_MAP -> stageFive(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.BOSS_MAP -> boss(session, entry, agent, member, nowMs);
-            case AgentEpqDefinition.REWARD_MAP -> reward(session, entry, agent, member, nowMs);
+            case AgentEpqDefinition.REWARD_MAP -> {
+                // 930000800 is every stage's return map: only the reward phase hits its reactor (whose hit gives
+                // everyone on the map its EXP) and takes its exit. An Agent the cleared event still holds here is at
+                // the reward too (out00's warp), even when no coordinator pass saw the leader here before east00.
+                if (session.phase().ordinal() >= AgentEpqSession.Phase.REWARD.ordinal()
+                        || (AgentEpqTerminationService.pastTheClear(session.eventInstance())
+                        && agent.getEventInstance() == session.eventInstance())) {
+                    reward(session, entry, agent, member, nowMs);
+                } else {
+                    actions().stop(entry);
+                }
+            }
             default -> {
                 actions().stop(entry);
                 if (session.phase() == AgentEpqSession.Phase.EXITING) session.markProgress(nowMs);
@@ -196,13 +309,20 @@ public final class AgentEpqCoordinator {
         Reactor pond = agent.getMap().getReactorById(AgentEpqDefinition.POND_REACTOR);
         if (pond == null) { actions().stop(entry); return; }
         int securedBottles = stageTwoSecuredBottleCount(session, agent, spine);
+        if (session.stageTwoBottlesSecured() && securedBottles < STAGE_TWO_BOTTLES_REQUIRED
+                && corpseHoldsBottle(session, agent)) {
+            // EPQ base fix 4: a bottle holder lying dead here keeps its bottle but cannot drop it; the bottles are
+            // secured only while four are still reachable without it. Reopened only when they are short, so a
+            // secured mark is never reopened and re-secured (each counted as progress) on every pass.
+            session.reopenStageTwoBottles();
+        }
         if (securedBottles >= STAGE_TWO_BOTTLES_REQUIRED) {
             session.secureStageTwoBottles(nowMs);
         }
         if (actions().itemCount(agent, AgentEpqDefinition.PURIFIED_POISON) > 0
                 && spine != null) {
             if (dropAt(session, entry, agent, InventoryType.ETC,
-                    AgentEpqDefinition.PURIFIED_POISON, spine.getPosition(), member, nowMs)) {
+                    AgentEpqDefinition.PURIFIED_POISON, spine.getPosition(), member, nowMs, "stage2-bottle-dropped")) {
                 if (session.stageTwoBottlesSecured()) {
                     member.finishStageTwoTreeReturn();
                     sendVisiblePartyChat(session, "stage2-bottle-dropped", agent,
@@ -354,8 +474,8 @@ public final class AgentEpqCoordinator {
                     }
                 }
             } else if (monsterMarbles > 0) {
-                dropStackNearNpc(entry, agent, AgentEpqDefinition.MONSTER_MARBLE,
-                        AgentEpqDefinition.STAGE_NPC, member, nowMs);
+                dropStackNearNpc(session, entry, agent, AgentEpqDefinition.MONSTER_MARBLE,
+                        AgentEpqDefinition.STAGE_NPC, member, nowMs, "stage4-handoff");
                 if (actions().itemCount(agent, AgentEpqDefinition.MONSTER_MARBLE) == 0) {
                     announce(session, member, agent, "stage4-handoff",
                             "I left my Monster Marbles beside Ellin for our leader.");
@@ -371,10 +491,11 @@ public final class AgentEpqCoordinator {
             if (runNearbyNpc(entry, agent, AgentEpqDefinition.STAGE_NPC)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
-        Monster target = flowers(agent).stream()
-                .filter(flower -> captureAgentId(session, flower) == agent.getId())
-                .min(Comparator.comparingDouble(mob -> mob.getPosition().distanceSq(agent.getPosition())))
-                .orElse(null);
+        // EPQ base fix 8: an Agent whose own flowers are caught helps with another's; only with no live flower at all
+        // does the assist below run (930000400's flowers are one-shot, so its respawn call spawns nothing).
+        Monster target = AgentEpqParticipationPolicy.captureTarget(flowers(agent),
+                flower -> captureAgentId(session, flower), agent.getId(),
+                mob -> mob.getPosition().distanceSq(agent.getPosition()));
         if (target == null) {
             actions().stop(entry);
             agent.getMap().instanceMapForceRespawn();
@@ -388,7 +509,9 @@ public final class AgentEpqCoordinator {
         }
         actions().stop(entry);
         if (AgentEpqCaptureRuntime.ready(target)) {
+            boolean own = captureAgentId(session, target) == agent.getId();
             if (AgentEpqCaptureRuntime.capture(agent, target)) {
+                logCapture(session, agent, target, own);
                 member.deferUntil(nowMs + ACTION_RETRY_MS);
             }
             return;
@@ -419,8 +542,8 @@ public final class AgentEpqCoordinator {
                 }
             } else {
                 int stonesBefore = magicStones;
-                dropStackNearNpc(entry, agent, AgentEpqDefinition.MAGIC_STONE,
-                        AgentEpqDefinition.STONE_NPC, member, nowMs);
+                dropStackNearNpc(session, entry, agent, AgentEpqDefinition.MAGIC_STONE,
+                        AgentEpqDefinition.STONE_NPC, member, nowMs, "stage5-human-handoff");
                 if (stonesBefore > 0
                         && actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE) == 0) {
                     session.markStageFiveStoneHandedOff(nowMs);
@@ -452,15 +575,24 @@ public final class AgentEpqCoordinator {
                     "Poison Golem ahead. Everyone resume combat!");
         }
         if (actions().liveMonsterCount(agent, AgentEpqDefinition.BOSS_MOBS) > 0) {
+            if (member.topUpActive()) endTopUp(session, agent, member, "golem", false);
+            if (bossRest(session, entry, agent, member)) return;
             actions().grind(entry, AgentEpqDefinition.BOSS_COMBAT_TARGETS);
             return;
         }
+        // The golem chain revives (9300180 -> 9300181 -> 9300182) after each die animation, so for a moment no golem
+        // lives: a rest lasts through that gap and ends with the clear (or once the member leaves this map).
+        if (member.bossResting() && AgentEpqTerminationService.pastTheClear(session.eventInstance())) {
+            endBossRest(session, agent, member, null);
+        }
         if (session.eventInstance() == null || !session.eventInstance().isEventCleared()) {
+            // Before the golem: a member under its top-up drinks first (an Agent leader before its altar drop).
+            if (topUp(session, entry, agent, member, nowMs)) return;
             if (agent.getId() == session.eventLeaderId()
                     && actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE) > 0) {
                 Reactor altar = agent.getMap().getReactorById(AgentEpqDefinition.ALTAR_REACTOR);
                 if (altar != null) dropAt(session, entry, agent, InventoryType.ETC,
-                        AgentEpqDefinition.MAGIC_STONE, altar.getPosition(), member, nowMs);
+                        AgentEpqDefinition.MAGIC_STONE, altar.getPosition(), member, nowMs, "boss-altar");
             } else {
                 actions().stop(entry);
             }
@@ -485,6 +617,147 @@ public final class AgentEpqCoordinator {
         enterPortal(entry, agent, 1, member, nowMs);
     }
 
+    /**
+     * EPQ base fix 7: while a golem lives, a living member with fewer than POT_STOP HP potions and HP under
+     * REST_HP_FRACTION of its maximum rests out of the golem's reach (AgentEpqRecoveryPolicy), so a companion out of
+     * potions is no longer sent back to its owner at the golem's feet. Away from its rest point (or airborne) it walks
+     * there; there, out of the golem's reach, it fights a golem add that reaches it and otherwise stands still
+     * (passive regen; the generic potion share still asks the party). It rejoins at RESUME_HP_FRACTION or once it
+     * holds POT_STOP potions; the rest lasts through the golem's revive gap and otherwise ends only with the clear or
+     * when it leaves the golem's map. 'EPQ boss rest:' START, END and every change of rest point (MOVE). True while
+     * the rest owns this pass.
+     */
+    private static boolean bossRest(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                     AgentEpqMemberState member) {
+        Point position = agent.getPosition();
+        Monster golem = position == null ? null : AgentMapPerception.monsters(agent.getMap()).stream()
+                .filter(Monster::isAlive)
+                .filter(monster -> AgentEpqDefinition.BOSS_MOBS.contains(monster.getId()))
+                .filter(monster -> monster.getPosition() != null)
+                .min(Comparator.comparingDouble(monster -> monster.getPosition().distanceSq(position)))
+                .orElse(null);
+        if (golem == null) return false;
+        int potions = actions().hpPotionCount(agent);
+        boolean wasResting = member.bossResting();
+        boolean rest = AgentEpqRecoveryPolicy.resting(wasResting, potions,
+                server.agents.runtime.AgentRuntimeConfig.cfg.POT_STOP, agent.getHp(), agent.getCurrentMaxHp(),
+                AgentEpqRecoveryPolicy.REST_HP_FRACTION, AgentEpqRecoveryPolicy.RESUME_HP_FRACTION);
+        Point golemAt = golem.getPosition();
+        if (!rest) {
+            if (wasResting) endBossRest(session, agent, member, golemAt);
+            return false;
+        }
+        Point stored = member.bossRestPoint();
+        Point restPoint = AgentEpqRecoveryPolicy.restPoint(golemAt, position, stored, AgentEpqDefinition.BOSS_FLOOR,
+                AgentEpqRecoveryPolicy.FLOOR_EDGE_MARGIN_PX, AgentEpqRecoveryPolicy.REACH_PX);
+        member.restAt(restPoint);
+        if (!wasResting) logBossRest(session, agent, "START", restPoint, golemAt);
+        else if (!restPoint.equals(stored)) logBossRest(session, agent, "MOVE", restPoint, golemAt);
+        if (!nearWithin(position, restPoint, AgentEpqRecoveryPolicy.REST_ARRIVAL_PX) || !actions().grounded(agent)) {
+            actions().navigate(entry, restPoint, true);
+        } else if (Math.abs(position.x - golemAt.x) > AgentEpqRecoveryPolicy.REACH_PX
+                && AgentEpqRecoveryPolicy.addThreat(position, AgentMapPerception.monsters(agent.getMap()).stream()
+                .filter(Monster::isAlive)
+                .filter(monster -> AgentEpqDefinition.BOSS_ADDS.contains(monster.getId()))
+                .map(Monster::getPosition)
+                .toList(), AgentEpqRecoveryPolicy.ADD_THREAT_PX)) {
+            actions().grindFromAnchor(entry, restPoint, AgentEpqDefinition.BOSS_ADDS, Set.of());
+        } else {
+            actions().stop(entry);
+        }
+        return true;
+    }
+
+    private static void endBossRest(AgentEpqSession session, Character agent, AgentEpqMemberState member,
+                                    Point golem) {
+        Point restPoint = member.bossRestPoint();
+        member.clearBossRest();
+        logBossRest(session, agent, "END", restPoint, golem);
+    }
+
+    /** 'EPQ boss rest:' in every mode; never throws. */
+    private static void logBossRest(AgentEpqSession session, Character agent, String state, Point restPoint,
+                                    Point golem) {
+        try {
+            log.info("EPQ boss rest: session={} member={} state={} hp={}/{} hpPots={} restPoint={} golem={}",
+                    session.sessionId(), agent.getName(), state, agent.getHp(), agent.getCurrentMaxHp(),
+                    actions().hpPotionCount(agent), xy(restPoint), xy(golem));
+        } catch (RuntimeException e) {
+            log.warn("EPQ boss rest line failed: session={}", session.sessionId(), e);
+        }
+    }
+
+    /** Within {@code radius} along both axes. */
+    private static boolean nearWithin(Point a, Point b, int radius) {
+        return a != null && b != null && Math.abs(a.x - b.x) <= radius && Math.abs(a.y - b.y) <= radius;
+    }
+
+    /**
+     * EPQ base fix 6: on the entrance, and on the golem's map while no golem lives and the event is not cleared, an
+     * Agent under TOP_UP_HP_FRACTION of its maximum HP with HP potions stands and drinks one (the autopot's own choice
+     * for its deficit) every TOP_UP_INTERVAL_MS until it reaches the fraction. One 'EPQ top-up:' START and END line per
+     * episode; a drink that raised no HP, or no potion to choose, ends the episode and the top-ups on that map.
+     * True while the top-up owns this pass.
+     */
+    private static boolean topUp(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                 AgentEpqMemberState member, long nowMs) {
+        int mapId = agent.getMapId();
+        if (member.topUpActive() && member.topUpMapId() != mapId) endTopUp(session, agent, member, "left-map", false);
+        boolean golemAlive = mapId == AgentEpqDefinition.BOSS_MAP
+                && actions().liveMonsterCount(agent, AgentEpqDefinition.BOSS_MOBS) > 0;
+        if (!AgentEpqRecoveryPolicy.topUpMap(mapId, golemAlive,
+                AgentEpqTerminationService.pastTheClear(session.eventInstance()))) {
+            return false;
+        }
+        int potions = actions().hpPotionCount(agent);
+        if (!AgentEpqRecoveryPolicy.needsTopUp(agent.getHp(), agent.getCurrentMaxHp(), potions,
+                AgentEpqRecoveryPolicy.TOP_UP_HP_FRACTION)) {
+            if (member.topUpActive()) endTopUp(session, agent, member, potions > 0 ? "target" : "no-potion", false);
+            return false;
+        }
+        if (member.topUpSpentOn(mapId)) return false;
+        if (!member.topUpActive()) {
+            member.startTopUp(mapId);
+            logTopUp(session, agent, member, "START", "");
+        }
+        if (nowMs < member.nextTopUpAtMs()) {
+            actions().stop(entry);
+            return true;
+        }
+        int hp = agent.getHp();
+        if (member.lastTopUpHp() >= 0 && hp <= member.lastTopUpHp()) {
+            endTopUp(session, agent, member, "no-gain", true);
+            return false;
+        }
+        var choice = AgentPotionService.selectAutopotForCurrentDeficit(agent, true);
+        if (choice == null) {
+            endTopUp(session, agent, member, "no-potion", true);
+            return false;
+        }
+        actions().stop(entry);
+        boolean drank = actions().useItem(agent, choice.itemId());
+        member.recordTopUpDrink(hp, nowMs + AgentEpqRecoveryPolicy.TOP_UP_INTERVAL_MS, drank);
+        return true;
+    }
+
+    private static void endTopUp(AgentEpqSession session, Character agent, AgentEpqMemberState member,
+                                 String reason, boolean spent) {
+        member.endTopUp(spent);
+        logTopUp(session, agent, member, "END", reason);
+    }
+
+    /** 'EPQ top-up:' for an episode's START or END, in every mode; never throws. */
+    private static void logTopUp(AgentEpqSession session, Character agent, AgentEpqMemberState member,
+                                 String state, String reason) {
+        try {
+            log.info("EPQ top-up: session={} member={} state={} reason={} hp={}/{} hpPots={} drinks={} map={}",
+                    session.sessionId(), agent.getName(), state, reason, agent.getHp(), agent.getCurrentMaxHp(),
+                    actions().hpPotionCount(agent), member.topUpDrinks(), member.topUpMapId());
+        } catch (RuntimeException e) {
+            log.warn("EPQ top-up line failed: session={}", session.sessionId(), e);
+        }
+    }
+
     private static void reward(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                AgentEpqMemberState member, long nowMs) {
         if (!session.rewardHit() && agent.getId() == workAgentId(session)) {
@@ -503,14 +776,17 @@ public final class AgentEpqCoordinator {
 
     /**
      * Moves the run forward, with one 'EPQ phase:' line per change in every mode (the time spent in the phase it left
-     * and in the run), so a run's pace reads straight from the log. A companion run leaving the entrance also logs its
-     * companions' potions, which its release compares.
+     * and in the run), so a run's pace reads straight from the log, followed by one 'EPQ vitals:' line (every online
+     * member's HP and potions as the phase begins). A companion run leaving the entrance also logs its companions'
+     * potions, which its release compares.
      */
     private static void transition(AgentEpqSession session, AgentEpqSession.Phase next, long nowMs) {
         AgentEpqSession.Change change = session.advance(next, nowMs);
         if (change == null) return;
         log.info("EPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", session.sessionId(),
                 change.from(), change.to(), change.phaseMs(), change.runMs(), session.companionAdopted());
+        log.info("EPQ vitals: session={} phase={} members={}", session.sessionId(), change.to(),
+                AgentEpqTerminationService.vitals(session));
         if (change.from() == AgentEpqSession.Phase.PREPARING && session.companionAdopted()) {
             String potions = AgentEpqTerminationService.potions(session);
             session.setPotionsAtEntry(potions);
@@ -528,7 +804,60 @@ public final class AgentEpqCoordinator {
             } else if (session.markMemberDown(member.characterId())) {
                 log.info("EPQ member down: session={} member={} type={} map={} phase={}", session.sessionId(),
                         member.characterId(), member.memberType(), character.getMapId(), session.phase());
+                log.info("EPQ down detail: session={} {}", session.sessionId(), downDetail(character));
             }
+        }
+    }
+
+    /**
+     * What a member that went down held and where it lay, for its 'EPQ down detail:' line: its maximum HP, potions,
+     * the stage objective items it carried (filled bottles, the stone, monster marbles, purification marbles), map and
+     * position. Never throws.
+     */
+    static String downDetail(Character member) {
+        try {
+            Point at = member.getPosition();
+            return "member=" + member.getName() + "(" + member.getId() + ") maxHp=" + member.getCurrentMaxHp()
+                    + " hpPots=" + actions().hpPotionCount(member) + " mpPots=" + actions().mpPotionCount(member)
+                    + " items={bottles=" + actions().itemCount(member, AgentEpqDefinition.PURIFIED_POISON)
+                    + ", stone=" + actions().itemCount(member, AgentEpqDefinition.MAGIC_STONE)
+                    + ", marbles=" + actions().itemCount(member, AgentEpqDefinition.MONSTER_MARBLE)
+                    + ", purifiers=" + actions().itemCount(member, AgentEpqDefinition.PURIFICATION_MARBLE)
+                    + "} map=" + member.getMapId() + " at=" + xy(at);
+        } catch (RuntimeException e) {
+            return "detail unavailable";
+        }
+    }
+
+    /** A point as the evidence lines write it: (x,y), or none. */
+    private static String xy(Point point) {
+        return point == null ? "none" : "(" + point.x + "," + point.y + ")";
+    }
+
+    /**
+     * 'EPQ drop:' for an objective drop that was made: where the dropper stood, where it meant the drop to go and where
+     * the map would land it (none when that cannot be told). Nothing decides by it; never throws.
+     */
+    private static void logDrop(AgentEpqSession session, String key, Character agent, Point at, Point target) {
+        try {
+            log.info("EPQ drop: session={} key={} member={} at={} target={} landing={}", session.sessionId(), key,
+                    agent.getName(), xy(at), xy(target), xy(actions().predictDropLanding(agent, at)));
+        } catch (RuntimeException e) {
+            log.warn("EPQ drop line failed: session={} key={}", session.sessionId(), key, e);
+        }
+    }
+
+    /**
+     * 'EPQ capture:' for a stage-4 flower caught: who caught it, whether it was its own by the stock assignment, and
+     * the stage's marble total after it. Nothing decides by it; never throws.
+     */
+    private static void logCapture(AgentEpqSession session, Character agent, Monster flower, boolean own) {
+        try {
+            log.info("EPQ capture: session={} member={} flower={} own={} marbles={} map={}", session.sessionId(),
+                    agent.getName(), flower.getObjectId(), own,
+                    stageItemTotal(session, agent, AgentEpqDefinition.MONSTER_MARBLE), agent.getMapId());
+        } catch (RuntimeException e) {
+            log.warn("EPQ capture line failed: session={}", session.sessionId(), e);
         }
     }
 
@@ -564,7 +893,12 @@ public final class AgentEpqCoordinator {
         }
     }
 
-    private static AgentEpqSession.Phase phaseForMap(int mapId) {
+    /**
+     * The phase the leader's map shows. 930000800 is also every stage's return map (a leader who died, quit or was
+     * left behind stands there before any clear), so it reads as the reward only when {@code rewardReady}: the bound
+     * event reports its clear and the leader is still in it.
+     */
+    private static AgentEpqSession.Phase phaseForMap(int mapId, boolean rewardReady) {
         return switch (mapId) {
             case AgentEpqDefinition.RECRUIT_MAP -> AgentEpqSession.Phase.PREPARING;
             case AgentEpqDefinition.ENTRANCE_MAP -> AgentEpqSession.Phase.ENTERING;
@@ -574,7 +908,7 @@ public final class AgentEpqCoordinator {
             case AgentEpqDefinition.STAGE_FOUR_MAP -> AgentEpqSession.Phase.STAGE_FOUR;
             case AgentEpqDefinition.STAGE_FIVE_MAP -> AgentEpqSession.Phase.STAGE_FIVE;
             case AgentEpqDefinition.BOSS_MAP -> AgentEpqSession.Phase.BOSS;
-            case AgentEpqDefinition.REWARD_MAP -> AgentEpqSession.Phase.REWARD;
+            case AgentEpqDefinition.REWARD_MAP -> rewardReady ? AgentEpqSession.Phase.REWARD : null;
             default -> null;
         };
     }
@@ -641,8 +975,10 @@ public final class AgentEpqCoordinator {
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
                 .map(AgentEpqMemberState::characterId)
                 .filter(characterId -> characterId != carrierId)
+                .filter(characterId -> !session.departed(characterId))
                 .map(AgentEpqCoordinator::character)
                 .filter(java.util.Objects::nonNull)
+                .filter(candidate -> candidate.getHp() > 0)
                 .sorted(Comparator.comparingInt(candidate ->
                         candidate.calculateMaxBaseDamage(candidate.getTotalWatk())))
                 .limit(2)
@@ -665,13 +1001,14 @@ public final class AgentEpqCoordinator {
         return sideTarget;
     }
 
+    /** The living Agents on this map, by id: a corpse owns no flower, rally slot or stage-5 box (EPQ base fix 4). */
     private static List<Integer> agentIds(AgentEpqSession session, MapleMap map) {
         return session.members().stream()
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
                 .map(AgentEpqMemberState::characterId)
                 .filter(id -> {
                     Character candidate = character(id);
-                    return candidate != null && candidate.getMap() == map;
+                    return candidate != null && candidate.getMap() == map && candidate.getHp() > 0;
                 })
                 .sorted()
                 .toList();
@@ -790,7 +1127,8 @@ public final class AgentEpqCoordinator {
         int total = 0;
         for (AgentEpqMemberState member : session.members()) {
             Character character = character(member.characterId());
-            if (character != null && character.getMap() == observer.getMap()) {
+            // A corpse cannot drop what it holds (EPQ base fix 4).
+            if (character != null && character.getMap() == observer.getMap() && character.getHp() > 0) {
                 total += actions().itemCount(character, itemId);
             }
         }
@@ -802,12 +1140,24 @@ public final class AgentEpqCoordinator {
         return total;
     }
 
+    /** Whether a member lying dead on this observer's map holds a filled bottle. */
+    private static boolean corpseHoldsBottle(AgentEpqSession session, Character observer) {
+        for (AgentEpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            if (character != null && character.getMap() == observer.getMap() && character.getHp() <= 0
+                    && actions().itemCount(character, AgentEpqDefinition.PURIFIED_POISON) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static int stageTwoSecuredBottleCount(
             AgentEpqSession session, Character observer, Reactor spine) {
         int total = spine == null ? 0 : spine.getState();
         for (AgentEpqMemberState member : session.members()) {
             Character character = character(member.characterId());
-            if (character != null && character.getMap() == observer.getMap()) {
+            if (character != null && character.getMap() == observer.getMap() && character.getHp() > 0) {
                 total += actions().itemCount(character, AgentEpqDefinition.PURIFIED_POISON);
             }
         }
@@ -863,7 +1213,7 @@ public final class AgentEpqCoordinator {
 
     private static boolean dropAt(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                   InventoryType type, int itemId,
-                                  Point target, AgentEpqMemberState member, long nowMs) {
+                                  Point target, AgentEpqMemberState member, long nowMs, String logKey) {
         Point position = agent.getPosition();
         Point levelTarget = new Point(target.x, position == null ? target.y : position.y);
         Point ground = actions().groundPoint(agent.getMap(), levelTarget);
@@ -873,18 +1223,20 @@ public final class AgentEpqCoordinator {
             return false;
         }
         actions().stop(entry);
+        Point at = position == null ? null : new Point(position);
         if (dropItem(entry, agent, type, itemId, (short) 1)) {
             // The map schedules item-reactor consumption itself. Only throttle the
             // carrier's transaction; lurers and tree defenders must keep working.
             member.deferUntil(nowMs + ACTION_RETRY_MS);
+            logDrop(session, logKey, agent, at, target);
             return true;
         }
         return false;
     }
 
     private static void dropStackNearNpc(
-            AgentRuntimeEntry entry, Character agent, int itemId, int npcId,
-            AgentEpqMemberState member, long nowMs) {
+            AgentEpqSession session, AgentRuntimeEntry entry, Character agent, int itemId, int npcId,
+            AgentEpqMemberState member, long nowMs, String logKey) {
         Point npc = npcApproachPoint(agent, npcId);
         if (!near(agent.getPosition(), npc, NPC_RADIUS) || !actions().grounded(agent)) {
             if (npc != null) actions().navigate(entry, npc, true);
@@ -892,9 +1244,11 @@ public final class AgentEpqCoordinator {
         }
         actions().stop(entry);
         int count = actions().itemCount(agent, itemId);
+        Point at = agent.getPosition() == null ? null : new Point(agent.getPosition());
         if (count > 0 && dropItem(entry, agent, InventoryType.ETC, itemId,
                 (short) Math.min(count, Short.MAX_VALUE))) {
             member.deferUntil(nowMs + ACTION_RETRY_MS);
+            logDrop(session, logKey, agent, at, npc);
         }
     }
 

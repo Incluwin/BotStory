@@ -7,11 +7,13 @@ import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /** EPQ aggregate root; no state is shared with another party quest. */
 public final class AgentEpqSession implements AgentCompanionRunSession {
@@ -31,6 +33,10 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
+    private final Set<Integer> departed = new LinkedHashSet<>();
+    private final Set<Integer> departuresInFlight = new LinkedHashSet<>();
+    private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private final Set<Integer> capturesInFlight = new HashSet<>();
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -107,6 +113,9 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     public synchronized void complete(long nowMs) { phase = Phase.COMPLETED; markProgress(nowMs); }
     public synchronized boolean terminal() { return phase == Phase.COMPLETED || phase == Phase.FAILED; }
 
+    /** Whether the run's release has begun (it can begin before the run is terminal). */
+    public synchronized boolean terminationStarted() { return terminating; }
+
     public String sessionId() { return sessionId; }
     public Mode mode() { return mode; }
     public long seed() { return seed; }
@@ -135,6 +144,12 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
             markProgress(nowMs);
         }
     }
+    /**
+     * The Agent that carries the run's shared work (the stage-2 bottles, the stage-5 stone, the coordination lines): an
+     * Agent event leader, else the lowest-id Agent that has not left the event (EPQ base fix 3) and is not down (EPQ
+     * base fix 4: a corpse cannot carry anything); with every Agent gone or down, the lowest-id Agent as before, else
+     * the execution Agent.
+     */
     public synchronized int workAgentId() {
         AgentEpqMemberState leader = members.get(eventLeaderId);
         if (leader != null && leader.memberType() == AgentEpqMemberState.MemberType.AGENT) {
@@ -142,8 +157,31 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
         }
         return members.values().stream()
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
-                .mapToInt(AgentEpqMemberState::characterId).min().orElse(executionAgentId);
+                .mapToInt(AgentEpqMemberState::characterId)
+                .filter(id -> !departed.contains(id) && !membersDown.contains(id))
+                .min()
+                .orElseGet(() -> members.values().stream()
+                        .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
+                        .mapToInt(AgentEpqMemberState::characterId).min().orElse(executionAgentId));
     }
+
+    /**
+     * Marks a member the bound event no longer holds (EPQ base fix 3: it pressed OK, or its respawn walked it out);
+     * true only the first time.
+     */
+    synchronized boolean markDeparted(int id) { return departed.add(id); }
+
+    /** Forgets a departure once the member is seen back in the bound event; true when it was marked. */
+    synchronized boolean clearDeparted(int id) { return departed.remove(id); }
+
+    /** Whether this member has left the bound event (and not come back). */
+    synchronized boolean departed(int id) { return departed.contains(id); }
+
+    /**
+     * Takes back the "four bottles secured" mark: a bottle it counted is gone (a leaver's bottles are deleted by the
+     * stock exit), so stage 2 counts again and secures them once four are reachable.
+     */
+    synchronized void reopenStageTwoBottles() { stageTwoBottlesSecured = false; }
     public synchronized boolean stageFiveStoneHandedOff() { return stageFiveStoneHandedOff; }
     public synchronized void markStageFiveStoneHandedOff(long nowMs) {
         if (!stageFiveStoneHandedOff) {
@@ -189,7 +227,8 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }
 
-    // What the run's log lines have said so far; nothing decides by it.
+    // What the run's log lines have said so far. Only the members seen down are also read, by workAgentId (kept
+    // current by the coordinator's logMembersDown every pass); nothing else decides by it.
 
     /** True only the first time this member is seen down since it was last seen up. */
     synchronized boolean markMemberDown(int id) { return membersDown.add(id); }
@@ -211,4 +250,55 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** A phase change: the phase left and the one entered, the time spent in the one left, and the run's time. */
     record Change(Phase from, Phase to, long phaseMs, long runMs) { }
+
+    /**
+     * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until
+     * {@link #endDeparture}) or stay down. heldMs is how long it was held before leaving, or -1 when it was not held;
+     * firstHold is true only for the first answer of a hold.
+     */
+    record Departure(boolean proceed, boolean firstHold, long heldMs, int registered, int othersInFlight) { }
+
+    /**
+     * A dead member may leave the event while more than {@code floor} registered members would stay, every departure
+     * still in flight counted as gone (EllinPQ.js ends the event when a member leaves at the floor). registeredIds is
+     * read here, under this monitor, so a departure that has just finished is seen as gone; the event's read lock
+     * nests inside this monitor, as when the coordinator reads the event's players, and nothing takes them the other
+     * way round (the event calls no Agent code under its locks).
+     */
+    synchronized Departure reserveDeparture(int id, Supplier<Set<Integer>> registeredIds, int floor, long nowMs) {
+        Set<Integer> registered = registeredIds.get();
+        int othersInFlight = (int) departuresInFlight.stream().filter(other -> other != id).count();
+        long staying = registered.stream().filter(member -> !departuresInFlight.contains(member)).count();
+        if (staying > floor) {
+            departuresInFlight.add(id);
+            Long since = heldSinceMs.remove(id);
+            return new Departure(true, false, since == null ? -1L : Math.max(0L, nowMs - since),
+                    registered.size(), othersInFlight);
+        }
+        Long since = heldSinceMs.putIfAbsent(id, nowMs);
+        return new Departure(false, since == null, since == null ? 0L : Math.max(0L, nowMs - since),
+                registered.size(), othersInFlight);
+    }
+
+    /** Ends a reserved departure (its respawn returned or threw). */
+    synchronized void endDeparture(int id) { departuresInFlight.remove(id); }
+
+    /** Forgets the hold of a member that leaves without the floor check: how long it was held, or -1 if it was not. */
+    synchronized long releaseHold(int id, long nowMs) {
+        Long since = heldSinceMs.remove(id);
+        return since == null ? -1L : Math.max(0L, nowMs - since);
+    }
+
+    /** Dead members the departure gate holds on the map now. */
+    synchronized int heldDeadCount() { return heldSinceMs.size(); }
+
+    /**
+     * Claims a stage-4 flower (by its object id) for one Agent's catch; false while another Agent's catch of it is in
+     * flight. The stock catch checks, kills and hands out the marble with no lock, so two throws at once would both
+     * spend a purifier and both get a marble. The catch runs outside this monitor; {@link #endCapture} ends the claim.
+     */
+    synchronized boolean beginCapture(int objectId) { return capturesInFlight.add(objectId); }
+
+    /** Ends a flower claim (its catch returned or threw). */
+    synchronized void endCapture(int objectId) { capturesInFlight.remove(objectId); }
 }
