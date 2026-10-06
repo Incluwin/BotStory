@@ -83,6 +83,10 @@ public final class AgentShopStateRuntime {
         return entry.shopState().sequenceTimedOut(nowMs, timeoutMs);
     }
 
+    public static void extendShopVisit(AgentRuntimeEntry entry, long extraMs) {
+        entry.shopState().extendVisit(extraMs);
+    }
+
     public static void extendShopSequence(AgentRuntimeEntry entry, long extraMs) {
         entry.shopState().extendSequence(extraMs);
     }

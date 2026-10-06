@@ -13,6 +13,7 @@ public final class AgentShopState {
     private int approachDelayMs = 0;
     private boolean sequenceActive = false;
     private long visitStartedAtMs = 0L;
+    private long visitAllowanceMs = 0L;
     private long sequenceStartedAtMs = 0L;
     private long sequenceAllowanceMs = 0L;
     private boolean sellTrashPending = false;
@@ -70,6 +71,18 @@ public final class AgentShopState {
         return visitStartedAtMs;
     }
 
+    /** Time the visit was granted on top of the visit timeout: its approach delay and the walk to the shop. */
+    public long visitAllowanceMs() {
+        return visitAllowanceMs;
+    }
+
+    /** Adds the walk to the shop (the nav route's travel time) to the visit's allowance. */
+    public void extendVisit(long extraMs) {
+        if (visitPending && !sequenceActive) {
+            visitAllowanceMs += Math.max(0L, extraMs);
+        }
+    }
+
     public long sequenceStartedAtMs() {
         return sequenceStartedAtMs;
     }
@@ -114,7 +127,7 @@ public final class AgentShopState {
     }
 
     public boolean visitTimedOut(long nowMs, long timeoutMs) {
-        return visitStartedAtMs > 0 && !sequenceActive && nowMs - visitStartedAtMs > timeoutMs;
+        return visitStartedAtMs > 0 && !sequenceActive && nowMs - visitStartedAtMs > timeoutMs + visitAllowanceMs;
     }
 
     public boolean sequenceTimedOut(long nowMs, long timeoutMs) {
@@ -149,6 +162,8 @@ public final class AgentShopState {
         this.npcPosition = npcPosition == null ? null : new Point(npcPosition);
         this.targetPosition = targetPosition == null ? null : new Point(targetPosition);
         setApproachDelayMs(approachDelayMs);
+        // The Agent stands still through the approach delay, so the visit timeout starts counting after it.
+        visitAllowanceMs = this.approachDelayMs;
         this.minimumMesoReserve = Math.max(0, minimumMesoReserve);
         this.requiredItemId = Math.max(0, requiredItemId);
         this.requiredItemCount = Math.max(0, requiredItemCount);
@@ -209,6 +224,7 @@ public final class AgentShopState {
         approachDelayMs = 0;
         sequenceActive = false;
         visitStartedAtMs = 0L;
+        visitAllowanceMs = 0L;
         sequenceStartedAtMs = 0L;
         sequenceAllowanceMs = 0L;
         sellTrashPending = false;

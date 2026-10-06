@@ -822,8 +822,18 @@ public final class AgentNavigationPathService {
                                                                            int startRegionId,
                                                                            int targetRegionId,
                                                                            Point targetPos) {
+        return findRouteForApproachProbe(graph, map, startPos, startRegionId, targetRegionId, targetPos).path();
+    }
+
+    /** The approach probe with its cost, the route's travel time in ms at the graph's movement profile. */
+    public static SearchOutcome findRouteForApproachProbe(AgentNavigationGraph graph,
+                                                          MapleMap map,
+                                                          Point startPos,
+                                                          int startRegionId,
+                                                          int targetRegionId,
+                                                          Point targetPos) {
         return runSearch(graph, map, startPos, startRegionId, targetRegionId, targetPos,
-                "approach-probe", false, true).path();
+                "approach-probe", false, true);
     }
 
     public static AgentNavigationGraph.Edge findNextEdge(AgentNavigationGraph graph,

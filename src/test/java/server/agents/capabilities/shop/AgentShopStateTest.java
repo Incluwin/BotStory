@@ -35,7 +35,9 @@ class AgentShopStateTest {
         assertEquals(new Point(10, 20), state.npcPosition());
         assertEquals(new Point(30, 40), state.targetPosition());
         assertEquals(350, state.approachDelayMs());
-        assertTrue(state.visitTimedOut(31_001L, 30_000L));
+        // The 350 ms approach delay does not count against the visit timeout.
+        assertFalse(state.visitTimedOut(31_001L, 30_000L));
+        assertTrue(state.visitTimedOut(31_351L, 30_000L));
 
         state.markSequenceActive(2_000L);
 
