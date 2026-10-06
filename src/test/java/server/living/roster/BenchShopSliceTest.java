@@ -139,6 +139,29 @@ class BenchShopSliceTest {
     }
 
     @Test
+    void aShopSliceTheBudgetRefusesNowStartsAtItsNextTurn() {
+        // found live 2026-10-06 08:45: Vex, of the same owner, loaded first in the same check; Jinx's load came inside
+        // the owner's load spacing and was refused, and its next slice (08:47) was at its camp, not at the shop
+        game.duty.shopHops = (from, to) -> 22;
+        game.companion(ANN, "brin", "Brin", BRIN, Assignment.TRAIN);
+        game.duty.tick();
+        game.companion(ANN, "cato", "Cato", 903, Assignment.TRAIN);
+        game.config.COMPANION_SPAWN_INTERVAL_MS = 2_000;
+
+        setsOffFor(SHOP);
+        game.now += 60_000L;
+        game.duty.tick();
+        assertTrue(game.duty.live("cato"), "the companion that waited longest loaded first");
+        assertFalse(game.duty.live("brin"), "one load every 2 s for an owner: Brin's waits");
+
+        game.now += 120_000L;
+        game.duty.tick();
+
+        assertTrue(game.duty.live("brin"));
+        assertEquals(SHOP, game.duty.slice("brin").mapId(), "its turn came: it restocks at the shop it set off for");
+    }
+
+    @Test
     void calledBackBeforeItsShopSliceItForgetsTheShop() {
         game.config.BENCH_LIVE_PER_OWNER = 1;
         game.duty.shopHops = (from, to) -> 22;

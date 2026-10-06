@@ -972,14 +972,18 @@ public final class BenchDutyDispatcher {
             CompanionViews.invalidate(world, entry.characterId(), persona.id());
         }
         int mapId = form.mapFor(entry, persona, characterId);
-        // its last field slice set off for a shop too far to walk to: this one restocks there (any other duty forgets it)
-        Integer shopMapId = shopTrips.remove(persona.id());
+        // its last field slice set off for a shop too far to walk to: this one restocks there. Any other duty forgets the
+        // shop; a load refused now (found live: an owner's load spacing) keeps it for its next turn.
+        Integer shopMapId = shopTrips.get(persona.id());
         boolean shop = shopMapId != null && mapId != 0 && form.pool() == CompanionBudget.Kind.BENCH_LIVE;
         if (shop) {
             mapId = shopMapId;
+        } else if (shopMapId != null) {
+            shopTrips.remove(persona.id());
         }
         MapleMap map = mapId == 0 ? null : world.residents().map(mapId);
         if (map == null) {
+            shopTrips.remove(persona.id()); // a shop map that does not load: its camp next time
             lastLiveAtMs.put(persona.id(), now); // not now: the ledger keeps it, and its turn passes
             return;
         }
@@ -1005,6 +1009,9 @@ public final class BenchDutyDispatcher {
             }
             live.put(persona.id(), slice);
             byCharacter.put(characterId, slice);
+            if (shop) {
+                shopTrips.remove(persona.id()); // live at the shop: this slice is its restock
+            }
             // it has rested off-screen since its last slice (a player idling in town regenerates): it comes back whole.
             // Found live 2026-09-30: a companion saved at its stock-revive HP (50-70) loaded onto its field that low and
             // died within seconds, slice after slice (Jinx 15 deaths in 16 slices).
