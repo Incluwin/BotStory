@@ -2917,11 +2917,11 @@ tuning:
     server.agents.capabilities.shop.AgentPotionPurchasePolicy.MP_CRITICAL_RESERVE_BARS: '1.5'
     # Values: a non-negative decimal number of full HP bars. Recommended: 6-15 around the baseline 10.
     # Purpose: Sets the comfortable HP recovery stock an Agent aims to leave a shop with; higher values mean fewer shopping trips but more mesos and inventory space held in potions.
-    # Technical: Purchase quantity is the ceiling of the normalized recovery shortfall to maximum HP multiplied by this value, bounded by visit and carried-quantity limits.
+    # Technical: Purchase quantity is the ceiling of the normalized recovery shortfall to maximum HP multiplied by this value, bounded by visit and carried-quantity limits. AgentPotionReserve judges an ordinary HP potion trip (not a readiness duty's) by the same reserve: it starts only while carried recovery is below it and ends RESTORED once it is met, the carry limit is reached or the visit bought MAX_PURCHASE_QUANTITY_PER_VISIT.
     server.agents.capabilities.shop.AgentPotionPurchasePolicy.HP_TARGET_RESERVE_BARS: '10.0'
     # Values: a non-negative decimal number of full MP bars. Recommended: 8-18 around the baseline 12.
     # Purpose: Sets the comfortable MP recovery stock an Agent aims to leave a shop with; higher values support longer skill use but commit more mesos and inventory space.
-    # Technical: Purchase quantity is the ceiling of the normalized recovery shortfall to maximum MP multiplied by this value, bounded by visit and carried-quantity limits.
+    # Technical: Purchase quantity is the ceiling of the normalized recovery shortfall to maximum MP multiplied by this value, bounded by visit and carried-quantity limits. AgentPotionReserve judges an ordinary MP potion trip (not a readiness duty's) by the same reserve: it starts only while carried recovery is below it and ends RESTORED once it is met, the carry limit is reached or the visit bought MAX_PURCHASE_QUANTITY_PER_VISIT.
     server.agents.capabilities.shop.AgentPotionPurchasePolicy.MP_TARGET_RESERVE_BARS: '12.0'
     # Values: a positive whole-item count. Recommended: 5-20 around the baseline 10.
     # Purpose: Avoids repeated trips for one or two potions by making each normal restock buy at least this many when space and budget allow.
@@ -2933,7 +2933,7 @@ tuning:
     server.agents.capabilities.shop.AgentPotionPurchasePolicy.MAX_CARRIED_QUANTITY: '200'
     # Values: a positive whole-item count. Recommended: 50-200 around the baseline 100.
     # Purpose: Limits how many HP or MP potions one shopping visit can add, smoothing meso spending and avoiding a single large restock after a long shortage.
-    # Technical: Critical and normal purchase stages share this per-resource visit allowance, and every shop transaction remains bounded by the server shop batch size.
+    # Technical: Critical and normal purchase stages share this per-resource visit allowance, and every shop transaction remains bounded by the server shop batch size. An ordinary potion trip whose visit added this many potions of its kind ends RESTORED even below the target reserve (AgentPotionReserve.restoredSince).
     server.agents.capabilities.shop.AgentPotionPurchasePolicy.MAX_PURCHASE_QUANTITY_PER_VISIT: '100'
     # Values: a finite non-negative integer. Recommended: 5-20 around the tested baseline 10; benchmark or observe behavior before moving outside this band.
     # Purpose: Limits how many recharge maximum sets can be handled in one pass or kept at once. Higher values let more Agent work progress together; lower values spread the work out and reduce peak load.
@@ -4773,8 +4773,8 @@ tuning:
     # Technical: the "runtime config" component consumes this as an integer. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
     server.agents.runtime.AgentRuntimeConfig.POT_LOW_WARN: '100'
     # Values: a finite non-negative integer. Recommended: 5-20 around the tested baseline 10; benchmark or observe behavior before moving outside this band.
-    # Purpose: Controls the positional leeway for pot stop. Higher values tolerate more separation before Agents correct course; lower values make them align sooner.
-    # Technical: the "runtime config" component consumes this as an integer. Domain: component-specific policy value; startup validation rejects missing, blank, or malformed values.
+    # Purpose: Sets how few HP or MP potions of one kind count as critical: below it an Agent may leave on an ordinary potion trip and a grinding Agent under 40% HP stops, both only while its potion reserve is also short.
+    # Technical: AgentResourcePlanningRuntime marks a count below this CRITICAL; AgentPotionReserve.tripNeeded also requires recovery below the shop's target reserve bars (a standing readiness duty holder: the count alone). AgentSupplyReadiness clamps MP standards above it and AgentLpqStageNineBossPolicy rests a member below it. Startup validation rejects missing, blank, or malformed values.
     server.agents.runtime.AgentRuntimeConfig.POT_STOP: '10'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 6-24 around the tested baseline 12; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for platform edge inset. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.

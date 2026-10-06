@@ -16,7 +16,6 @@ import server.agents.capabilities.movement.AgentChairService;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.integration.AgentRelationshipRuntime;
 import server.agents.runtime.AgentModeService;
-import server.agents.runtime.AgentRuntimeConfig;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.capabilities.navigation.AgentRouteOutcome;
 import server.agents.capabilities.navigation.AgentRouteStatus;
@@ -94,10 +93,9 @@ public final class AgentSupplyProcurementRuntime {
             // The standing readiness duty goes first: one visit fills HP and MP to the standard.
             request = AgentSupplyReadinessRuntime.select(entry, agent, nowMs);
             if (request == null) {
-                dutyHolder = hasPotionRequest(planning)
-                        ? AgentSupplyReadiness.standing(agent.getId()) : null;
-                if (dutyHolder != null) {
-                    dropRestoredPotionRequests(planning, evaluations, agent);
+                if (hasPotionRequest(planning)) {
+                    dutyHolder = AgentSupplyReadiness.standing(agent.getId());
+                    dropRestoredPotionRequests(planning, evaluations, agent, dutyHolder != null);
                 }
                 signal = evaluations.next();
                 request = signal == null
@@ -278,16 +276,21 @@ public final class AgentSupplyProcurementRuntime {
     }
 
     /**
-     * A duty holder's critical potion request that its potions no longer bear out (a readiness visit or a share
-     * filled it past POT_STOP since it was planned) is resolved, so it never starts a trip or a party ask of its own.
+     * A critical potion request that its potions no longer bear out (AgentPotionReserve.tripNeeded) is resolved, so it
+     * never starts a trip or a party ask of its own: once they number POT_STOP again (a readiness visit, a share, or the
+     * other kind's shop visit, which buys HP and MP both, filled them since it was planned), and for an Agent with no
+     * standing duty also once the reserve the shop buys to is met. Found live 2026-10-05: an MP trip went out on a
+     * request planned before the HP visit had already bought the MP (40 -> 49, 25 -> 25), and one with twelve bars of
+     * MP in nine potions went out every five minutes to buy nothing (9 -> 9).
      */
     private static void dropRestoredPotionRequests(AgentResourcePlanningState planning,
                                                    AgentSupplyMaintenanceEvaluationState evaluations,
-                                                   Character agent) {
+                                                   Character agent,
+                                                   boolean dutyHolder) {
         for (AgentResourceCategory category : new AgentResourceCategory[]{
                 AgentResourceCategory.HP_POTION, AgentResourceCategory.MP_POTION}) {
             if (critical(planning.procurement(category))
-                    && AgentSupplyInventorySnapshot.quantity(agent, category) >= AgentRuntimeConfig.cfg.POT_STOP) {
+                    && !AgentPotionReserve.tripNeeded(agent, category, dutyHolder)) {
                 planning.resolve(category);
                 evaluations.resolve(category);
             }
@@ -519,15 +522,22 @@ public final class AgentSupplyProcurementRuntime {
         if (phase == AgentShopWorkflowPhase.COMPLETED) {
             AgentProcurementRequest request = activeRequest(entry, planning, execution, nowMs);
             int after = AgentSupplyInventorySnapshot.quantity(agent, execution.category());
+            // An ordinary potion trip is judged by the reserve the shop buys to; a readiness trip and an ammo trip by count.
+            AgentPotionReserve reserve = potion(execution.category())
+                    && !AgentSupplyReadinessRuntime.readiness(execution.requestId())
+                    ? AgentPotionReserve.of(agent, execution.category()) : null;
             int target = request == null ? after : request.quantity() + execution.quantityBefore();
-            log.info("Agent '{}' finished shopping at NPC {} on map {}: {} {} -> {} (target {}), potions hp {} mp {},"
+            log.info("Agent '{}' finished shopping at NPC {} on map {}: {} {} -> {} ({}), potions hp {} mp {},"
                             + " mesos {} -> {}", agent.getName(), execution.supplierNpcId(), agent.getMapId(),
-                    execution.category(), execution.quantityBefore(), after, target,
+                    execution.category(), execution.quantityBefore(), after,
+                    reserve == null ? "target " + target
+                            : "reserve " + reserve.capacity() + "/" + reserve.target(),
                     AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION),
                     AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.MP_POTION),
                     execution.mesosBefore(), Math.max(0, agent.getMeso()));
+            boolean restored = reserve == null ? after >= target : reserve.restoredSince(execution.quantityBefore());
             AgentSupplyProcurementOutcome outcome = AgentSupplyReadinessRuntime.judged(entry, agent, execution,
-                    reconcile(execution, agent, after, target, nowMs));
+                    reconcile(execution, agent, after, restored, reserve != null, nowMs));
             execution.complete(outcome);
             journalOutcome(entry, agent, execution.requestId(), outcome);
             if (!outcome.restored()) {
@@ -945,21 +955,25 @@ public final class AgentSupplyProcurementRuntime {
         return target != null ? target : AgentRelationshipRuntime.interactionTarget(entry);
     }
 
+    /** {@code potionReserve}: {@code restored} was judged by the potion reserve the shop buys to. */
     private static AgentSupplyProcurementOutcome reconcile(
             AgentSupplyProcurementState execution,
             Character agent,
             int quantityAfter,
-            int targetQuantity,
+            boolean restored,
+            boolean potionReserve,
             long nowMs) {
         int mesosAfter = Math.max(0, agent.getMeso());
         AgentSupplyProcurementOutcome.Status status;
         String reason;
-        if (quantityAfter >= targetQuantity) {
+        if (restored) {
             status = AgentSupplyProcurementOutcome.Status.RESTORED;
-            reason = "supply target restored after liquidation and purchase";
+            reason = potionReserve ? "potion reserve restored to the restock target"
+                    : "supply target restored after liquidation and purchase";
         } else if (quantityAfter > execution.quantityBefore()) {
             status = AgentSupplyProcurementOutcome.Status.PARTIALLY_RESTORED;
-            reason = "shop improved supplies but did not restore the resume target";
+            reason = potionReserve ? "shop improved potions but the reserve is still short of the restock target"
+                    : "shop improved supplies but did not restore the resume target";
         } else if (mesosAfter <= 0) {
             status = AgentSupplyProcurementOutcome.Status.INSUFFICIENT_MESO;
             reason = "safe liquidation produced insufficient mesos for the required supply";
