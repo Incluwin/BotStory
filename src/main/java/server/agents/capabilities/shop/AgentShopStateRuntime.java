@@ -128,8 +128,14 @@ public final class AgentShopStateRuntime {
         return entry.shopState().sequenceValid(botPosition, npcPosition, arriveDistance);
     }
 
-    public static boolean shouldRunScheduledShopStep(AgentRuntimeEntry entry) {
-        return entry.shopState().visitPending();
+    public static long shopVisitGeneration(AgentRuntimeEntry entry) {
+        return entry.shopState().visitGeneration();
+    }
+
+    /** A scheduled step runs only while the visit that scheduled it is still open, never against a later visit. */
+    public static boolean shouldRunScheduledShopStep(AgentRuntimeEntry entry, long visitGeneration) {
+        AgentShopState state = entry.shopState();
+        return state.visitPending() && state.visitGeneration() == visitGeneration;
     }
 
     public static boolean lastVisitRequestedItem(

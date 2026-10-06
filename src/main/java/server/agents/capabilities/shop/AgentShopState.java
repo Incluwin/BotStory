@@ -1,12 +1,14 @@
 package server.agents.capabilities.shop;
 
 import java.awt.Point;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Mutable runtime state for one Agent shop visit/resupply sequence.
  */
 public final class AgentShopState {
     private final AgentShopWorkflow workflow = new AgentShopWorkflow();
+    private final AtomicLong visitGeneration = new AtomicLong();
     private volatile boolean visitPending = false;
     private volatile Point npcPosition = null;
     private volatile Point targetPosition = null;
@@ -26,6 +28,11 @@ public final class AgentShopState {
 
     public boolean visitPending() {
         return visitPending;
+    }
+
+    /** Changes each time a visit ends, so a step scheduled for an ended visit can tell it from the next one. */
+    public long visitGeneration() {
+        return visitGeneration.get();
     }
 
     public AgentShopWorkflow workflow() {
@@ -198,6 +205,7 @@ public final class AgentShopState {
             workflow.transition(AgentShopWorkflowPhase.CANCELLED, "legacy shop state cleared",
                     Math.max(System.currentTimeMillis(), workflow.updatedAtMs()));
         }
+        visitGeneration.incrementAndGet();
         visitPending = false;
         npcPosition = null;
         targetPosition = null;
