@@ -9,6 +9,8 @@ import server.agents.capabilities.supplies.AgentSupplyProcurementState;
 import server.agents.capabilities.supplies.AgentSupplyRecoveryPolicy;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.cosmic.CosmicAgentOfflineLoader;
+import server.agents.progression.AgentVictoriaRouteRuntime;
+import server.agents.runtime.AgentInteractionRuntime;
 import server.agents.runtime.AgentMailboxAction;
 import server.agents.runtime.AgentMailboxRuntime;
 import server.agents.runtime.AgentRuntimeCleanupService;
@@ -47,6 +49,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.IntBinaryOperator;
 import java.util.function.IntPredicate;
 import java.util.function.LongSupplier;
 import java.util.function.ToLongFunction;
@@ -70,7 +73,10 @@ import java.util.function.ToLongFunction;
  * slice back in town, at its pace target, at the daily farming cap or with what it was asked for). Flow 12: a death
  * ends it once the companion has revived by stock rules in its camp's return town, and it rests one field slice
  * ("resting after a rough hunt") while the ledger resumes; out of supplies, its hunt ends, the Agent's own shop
- * resupply runs, and only then does the slice unload and free its seat for the next one. A slice ends clean, each step
+ * resupply runs, and only then does the slice unload and free its seat for the next one. When that shop is more than
+ * BENCH_RESUPPLY_MAX_HOPS from its camp, the walk would outlast the slice: the slice ends once it has set off, and its
+ * next slice is a shop slice that loads it at that shop, ends when its own shop visit there is over (never "back in
+ * town") and hunts nothing; the slice after it is at its camp. A slice ends clean, each step
  * on its own so one failing never skips the rest: its form's last harvest, the hand-back on the Agent's own mailbox
  * (each primary activity asked to stop, the visit-lease checkpoints cleared), the field yield recorded
  * (BenchYieldModel) and the call-back report, then the unload, the save and the lease. A companion still online after
@@ -131,6 +137,8 @@ public final class BenchDutyDispatcher {
         /** The camp its row named when the slice began (its map may be the field chosen for a town camp). */
         private final int rowCampMapId;
         private final long startedAtMs;
+        /** A shop slice: loaded at the shop its last field slice set off for, to restock there; it never hunts. */
+        private final boolean shop;
         /** What it picked up since the last harvest, fed by the pickup hook. */
         final HarvestDiff loot = new HarvestDiff();
         private final AtomicInteger deaths = new AtomicInteger();
@@ -146,6 +154,10 @@ public final class BenchDutyDispatcher {
         private String endReason;
 
         Slice(RosterEntry entry, int characterId, Form form, int mapId, long startedAtMs) {
+            this(entry, characterId, form, mapId, startedAtMs, false);
+        }
+
+        Slice(RosterEntry entry, int characterId, Form form, int mapId, long startedAtMs, boolean shop) {
             this.personaId = entry.personaId();
             this.ownerId = entry.characterId();
             this.characterId = characterId;
@@ -155,6 +167,9 @@ public final class BenchDutyDispatcher {
             this.mapId = mapId;
             this.rowCampMapId = entry.campMapId();
             this.startedAtMs = startedAtMs;
+            this.shop = shop;
+            // a shop slice restocks from the start: it hunted 0 ms, and the yield model keeps no sample of it
+            this.huntEndedAtMs = shop ? startedAtMs : 0L;
         }
 
         public String personaId() {
@@ -251,6 +266,21 @@ public final class BenchDutyDispatcher {
     BiFunction<Integer, String, List<String[]>> campHistory = this::storedCampHistory;
     /** persona ids held in the ledger because no camp for their level is safe for them (the card says so). */
     private final Set<String> noSafeCamp = ConcurrentHashMap.newKeySet();
+    /**
+     * A field slice out of supplies whose shop is more than BENCH_RESUPPLY_MAX_HOPS from its camp ends once it has set off
+     * (found live 2026-10-02..06: Jinx, camped 22 maps below the nearest potion shop, walked toward Henesys until
+     * BENCH_RESUPPLY_MAX_MS unloaded it on the way, then loaded at its camp and set off again, 530 times).
+     */
+    static final String SHOP_TOO_FAR = "set off for a shop too far to walk to";
+    /** persona id -> the shop map its last field slice set off for: its next field slice is a shop slice there. */
+    private final Map<String, Integer> shopTrips = new ConcurrentHashMap<>();
+    /**
+     * persona id -> when its last shop slice began. A field slice sets off on foot again within BENCH_LIVE_SLICE_MS of
+     * one, so a shop that did not restock it never alternates with its camp at every tick.
+     */
+    private final Map<String, Long> lastShopAtMs = new ConcurrentHashMap<>();
+    /** Portal hops from a camp to a shop, -1 when no route (a test gives its own). */
+    IntBinaryOperator shopHops = this::routeHops;
 
     /** The dispatcher with {@code field} as the form of TRAIN, FARM_MESO and FARM_ITEM. */
     public BenchDutyDispatcher(LivingWorld world, BenchSessions field) {
@@ -572,6 +602,10 @@ public final class BenchDutyDispatcher {
         return moved;
     }
 
+    private int routeHops(int fromMapId, int toMapId) {
+        return AgentVictoriaRouteRuntime.routeHops(null, fromMapId, toMapId, clock.getAsLong());
+    }
+
     /** Its saved USE tab holds no HP potion and its saved purse cannot buy a stack (a failed read: it may try). */
     private boolean savedStateCannotSupply(int characterId) {
         long meso = world.store().characterMeso(characterId);
@@ -739,11 +773,15 @@ public final class BenchDutyDispatcher {
         startDue(now);
     }
 
-    /** Ends a live slice before the character is needed elsewhere (a call, a release, a shutdown). */
+    /**
+     * Ends a live slice before the character is needed elsewhere (a call, a release, a shutdown), and forgets a shop its
+     * next slice would have restocked at (out of the bench, it restocks its own way).
+     */
     public void endFor(String personaId, String reason) {
         if (handedOver("bench_duty.end " + personaId, () -> endFor(personaId, reason))) {
             return;
         }
+        shopTrips.remove(personaId);
         Slice slice = slice(personaId);
         if (slice != null) {
             end(slice, reason, clock.getAsLong());
@@ -785,15 +823,19 @@ public final class BenchDutyDispatcher {
             return agent.getHp() > 0 ? ROUGH_HUNT : null; // it revives by stock rules in its camp's return town first
         }
         if (slice.resupplying()) {
-            if (!resupplying(entry)) {
+            // a shop slice is over once a shop visit of its own there is, not before it began (it asks its party first)
+            if (!resupplying(entry) && (!slice.shop || tripEndedSince(entry, slice.startedAtMs))) {
                 return "resupplied";
+            }
+            if (!slice.shop && setOffForAFarShop(slice, entry, agent, now)) {
+                return SHOP_TOO_FAR;
             }
             return now - slice.huntEndedAtMs >= world.config().BENCH_RESUPPLY_MAX_MS ? "resupply took too long" : null;
         }
         if (slice.pool == CompanionBudget.Kind.BENCH_LIVE && resupplying(entry)) {
             slice.huntEndedAtMs = now; // out of supplies: the hunt is over, its own shop visit runs, then it unloads
             world.store().event(slice.ownerId, slice.personaId, "bench.resupply", "out of supplies at map " + slice.mapId);
-            return null;
+            return setOffForAFarShop(slice, entry, agent, now) ? SHOP_TOO_FAR : null;
         }
         String own = slice.form.check(slice, agent, roster, now);
         if (own != null) {
@@ -801,6 +843,38 @@ public final class BenchDutyDispatcher {
         }
         return timeUp(slice.pool, now - slice.startedAtMs, agent.getMap() != null && ResidentRuntime.humansIn(agent.getMap()) > 0,
                 world.config());
+    }
+
+    /**
+     * True, and its next slice restocks at that shop, once the Agent's own trip has walked it off its camp toward a shop
+     * more than BENCH_RESUPPLY_MAX_HOPS from there (nobody watching its camp sees it vanish), unless a shop slice of this
+     * companion began within BENCH_LIVE_SLICE_MS. False while it walks there.
+     */
+    private boolean setOffForAFarShop(Slice slice, AgentRuntimeEntry entry, Character agent, long now) {
+        AgentSupplyProcurementState trip = entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .orElse(null);
+        Long lastShop = lastShopAtMs.get(slice.personaId);
+        if (trip == null || trip.phase() != AgentSupplyProcurementState.Phase.TRAVEL_TO_SUPPLIER
+                || trip.supplierMapId() == 0 || agent.getMap() == null || agent.getMap().getId() == slice.mapId
+                || lastShop != null && now - lastShop < world.config().BENCH_LIVE_SLICE_MS) {
+            return false;
+        }
+        int shop = trip.supplierMapId();
+        if (shopHops.applyAsInt(slice.mapId, shop) <= world.config().BENCH_RESUPPLY_MAX_HOPS) {
+            return false;
+        }
+        shopTrips.put(slice.personaId, shop);
+        log.info("bench slice: {} set off from {} for the shop at {}, too far to walk to; its next slice restocks there",
+                slice.personaId, slice.mapId, shop);
+        return true;
+    }
+
+    /** True when a supply trip of the Agent's own ended (it bought, or gave up) at or after {@code sinceMs}. */
+    private static boolean tripEndedSince(AgentRuntimeEntry entry, long sinceMs) {
+        return entry.capabilityStates().find(AgentSupplyProcurementState.STATE_KEY)
+                .map(AgentSupplyProcurementState::lastOutcome)
+                .map(outcome -> outcome.occurredAtMs() >= sinceMs)
+                .orElse(false);
     }
 
     /** True while the Agent's own supply procurement (the existing shop resupply) runs. */
@@ -898,6 +972,12 @@ public final class BenchDutyDispatcher {
             CompanionViews.invalidate(world, entry.characterId(), persona.id());
         }
         int mapId = form.mapFor(entry, persona, characterId);
+        // its last field slice set off for a shop too far to walk to: this one restocks there (any other duty forgets it)
+        Integer shopMapId = shopTrips.remove(persona.id());
+        boolean shop = shopMapId != null && mapId != 0 && form.pool() == CompanionBudget.Kind.BENCH_LIVE;
+        if (shop) {
+            mapId = shopMapId;
+        }
         MapleMap map = mapId == 0 ? null : world.residents().map(mapId);
         if (map == null) {
             lastLiveAtMs.put(persona.id(), now); // not now: the ledger keeps it, and its turn passes
@@ -915,7 +995,7 @@ public final class BenchDutyDispatcher {
         }
         Character agent = null;
         boolean begun = false;
-        Slice slice = new Slice(entry, characterId, form, mapId, now);
+        Slice slice = new Slice(entry, characterId, form, mapId, now, shop);
         try {
             agent = CosmicAgentOfflineLoader.loadOfflineAgent(characterId, world.config().WORLD, world.config().CHANNEL,
                     map, arrival(map, form.pool(), persona.id()));
@@ -934,7 +1014,11 @@ public final class BenchDutyDispatcher {
             if (!(form instanceof BenchStallForm)) {
                 reclaimStall(entry.characterId(), persona.id(), agent); // a stall's own begin takes its stock back itself
             }
-            if (!form.begin(slice, agent, now)) {
+            if (shop) {
+                // no activity of its duty's: registered, its own supply procurement finds it short and shops right here
+                AgentInteractionRuntime.registerSelfDirectedAgent(agent);
+                lastShopAtMs.put(persona.id(), now);
+            } else if (!form.begin(slice, agent, now)) {
                 close(slice, agent, "not begun", false, now); // its form left nothing running
                 return;
             }
@@ -947,10 +1031,9 @@ public final class BenchDutyDispatcher {
             if (restingUntilMs.remove(persona.id()) != null) {
                 CompanionViews.invalidate(world, entry.characterId(), persona.id());
             }
-            world.store().event(entry.characterId(), persona.id(), "bench.live",
-                    world.roster().describeAssignment(entry) + " live at map " + mapId);
-            log.info("bench slice: {} {} live at {} for {}", persona.name(), world.roster().describeAssignment(entry), mapId,
-                    entry.characterId());
+            String what = shop ? "restock" : world.roster().describeAssignment(entry);
+            world.store().event(entry.characterId(), persona.id(), "bench.live", what + " live at map " + mapId);
+            log.info("bench slice: {} {} live at {} for {}", persona.name(), what, mapId, entry.characterId());
         } catch (Exception failure) {
             log.warn("bench slice for {} failed", persona.id(), failure);
             if (agent == null) {
@@ -988,7 +1071,9 @@ public final class BenchDutyDispatcher {
             Character agent = entry == null ? null : AgentRuntimeIdentityRuntime.bot(entry);
             slice.leaving = agent;
             try {
-                slice.form.finish(slice, agent, reason); // its last harvest
+                if (!slice.shop) { // a shop slice began nothing of its form's and picks nothing up
+                    slice.form.finish(slice, agent, reason); // its last harvest
+                }
             } catch (RuntimeException failure) {
                 log.warn("bench slice of {} failed to finish", slice.personaId, failure);
             }

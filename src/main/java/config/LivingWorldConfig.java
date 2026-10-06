@@ -168,6 +168,11 @@ public class LivingWorldConfig {
     /** A live field companion out of supplies ends its hunt and restocks at a shop; after this long it unloads anyway. */
     public int BENCH_RESUPPLY_MAX_MS = 300000;
     /**
+     * It walks to its shop when the shop is at most this many portal hops from its camp; farther, its slice ends once it
+     * has set off and its next slice loads it at that shop. 0: every shop off its camp's map.
+     */
+    public int BENCH_RESUPPLY_MAX_HOPS = 10;
+    /**
      * How many full live slices the ledger's prior (the BENCH_FARM_EFFICIENCY rates) counts for against the rates
      * measured at a camp: the offline credit is (slices x measured + this x prior) / (slices + this).
      */
@@ -406,9 +411,9 @@ public class LivingWorldConfig {
             throw new IllegalArgumentException("living_world.BENCH_TOWN_PER_OWNER must be within 0..BENCH_TOWN_MAX and"
                     + " COMMERCE_PER_OWNER within 0..COMMERCE_LIVE_MAX");
         }
-        if (BENCH_TOWN_SLICE_MS < 0 || COMMERCE_SLICE_MS < 0 || BENCH_RESUPPLY_MAX_MS < 0) {
-            throw new IllegalArgumentException(
-                    "living_world.BENCH_TOWN_SLICE_MS, COMMERCE_SLICE_MS and BENCH_RESUPPLY_MAX_MS must be >= 0");
+        if (BENCH_TOWN_SLICE_MS < 0 || COMMERCE_SLICE_MS < 0 || BENCH_RESUPPLY_MAX_MS < 0 || BENCH_RESUPPLY_MAX_HOPS < 0) {
+            throw new IllegalArgumentException("living_world.BENCH_TOWN_SLICE_MS, COMMERCE_SLICE_MS, BENCH_RESUPPLY_MAX_MS"
+                    + " and BENCH_RESUPPLY_MAX_HOPS must be >= 0");
         }
         if (BENCH_YIELD_PRIOR_SLICES < 0) {
             throw new IllegalArgumentException("living_world.BENCH_YIELD_PRIOR_SLICES must be >= 0");
