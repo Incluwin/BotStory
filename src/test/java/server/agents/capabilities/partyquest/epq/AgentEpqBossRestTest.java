@@ -273,6 +273,36 @@ class AgentEpqBossRestTest {
     }
 
     @Test
+    void anAirborneResterAtItsPointKeepsNavigating() {
+        AgentEpqSession session = boss();
+        golemAt(392);
+        vitals(tobi, 1_020, 1_000, 3);
+        when(run.actions.grounded(tobi)).thenReturn(false); // knocked into the air at its point
+        AgentRuntimeEntry entry = run.entry(tobi);
+
+        AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+
+        verify(run.actions).navigate(entry, new Point(1_020, 150), true);
+        verify(run.actions, never()).stop(entry);
+    }
+
+    /** Inside the arrival tolerance but still within the golem's reach, a rester fights no add: only out of reach. */
+    @Test
+    void aResterStillWithinTheGolemsReachFightsNoAdd() {
+        AgentEpqSession session = boss();
+        golemAt(519); // its point, the right end (1020), is 501 px away
+        Monster add = run.monster(9_300_177);
+        when(add.getPosition()).thenReturn(new Point(1_040, 150));
+        vitals(tobi, 1_001, 1_000, 3); // 19 px from its point, 482 px from the golem
+        AgentRuntimeEntry entry = run.entry(tobi);
+
+        AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+
+        verify(run.actions, never()).grindFromAnchor(any(), any(), any(), any());
+        verify(run.actions).stop(entry);
+    }
+
+    @Test
     void aMemberWithPotionsOrHealthKeepsTodaysGrind() {
         AgentEpqSession session = boss();
         golemAt(392);

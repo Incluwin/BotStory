@@ -230,6 +230,28 @@ class AgentEpqTopUpTest {
         verify(run.epq).enterPortal(mira, 4); // done: it goes in on the same pass
     }
 
+    /** An episode still open on the entrance (a GM checkpoint warps the team on) ends before one opens elsewhere. */
+    @Test
+    void anEpisodeLeftOpenOnTheEntranceEndsBeforeANewOneOnTheGolemsMap() {
+        AgentEpqSession session = entering();
+        hp(mira, 50, 4_400, 113);
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            AgentEpqCoordinator.tickMember(session, run.entry(mira), mira, 2_000L);
+            run.onMap(mira, AgentEpqDefinition.BOSS_MAP); // no golem yet
+            AgentEpqCoordinator.tickMember(session, run.entry(mira), mira, 2_600L);
+
+            List<String> topUps = lines.startingWith("EPQ top-up:");
+            assertEquals(3, topUps.size(), topUps::toString);
+            assertTrue(topUps.get(0).contains(" state=START ") && topUps.get(0).endsWith(" map=930000000"),
+                    topUps::toString);
+            assertTrue(topUps.get(1).contains(" state=END reason=left-map ")
+                    && topUps.get(1).endsWith(" map=930000000"), topUps::toString);
+            assertTrue(topUps.get(2).contains(" state=START ") && topUps.get(2).endsWith(" map=930000600"),
+                    topUps::toString);
+        }
+        verify(run.actions, times(2)).useItem(mira, WHITE_POTION);
+    }
+
     @Test
     void aDrinkThatRaisesNoHpEndsTheEpisodeAndTheDrinking() {
         AgentEpqSession session = entering();
