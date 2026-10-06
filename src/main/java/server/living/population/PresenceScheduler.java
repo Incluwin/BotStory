@@ -1,6 +1,7 @@
 package server.living.population;
 
 import client.Character;
+import client.Job;
 import config.YamlConfig;
 import net.server.Server;
 import net.server.world.World;
@@ -70,6 +71,7 @@ public final class PresenceScheduler {
     private final Population population;
     private final Map<Integer, CitizenSession> sessions = new ConcurrentHashMap<>();
     private final Random random;
+    private final CitizenJobErrands jobs;
     private volatile long lastSweepMs;
     private volatile long lastSweepDurationMs;
     private volatile int forcedOnline;
@@ -77,6 +79,12 @@ public final class PresenceScheduler {
     PresenceScheduler(Population population) {
         this.population = population;
         this.random = new Random(population.config().SEED ^ 0x5eedL);
+        this.jobs = new CitizenJobErrands(population, this);
+    }
+
+    /** Third and fourth jobs taken at the instructor (activity JOB). */
+    CitizenJobErrands jobs() {
+        return jobs;
     }
 
     public Collection<CitizenSession> sessions() {
@@ -216,7 +224,7 @@ public final class PresenceScheduler {
             return null;
         }
         sessions.put(citizen.characterId(), session);
-        population.save(citizen.withOnline(now));
+        population.update(citizen.characterId(), latest -> latest.withOnline(now)); // the catch-up may have cleared a flag
         session.citizen = population.citizen(citizen.characterId());
         if (!virtual) {
             population.social().onLogin(session);
@@ -248,7 +256,13 @@ public final class PresenceScheduler {
             if (agent == null) {
                 return false;
             }
-            population.ledger().catchUp(agent, citizen);
+            Job offScreen = population.ledger().catchUp(agent, citizen);
+            boolean replanSoon = false;
+            if (activity == Activity.JOB && jobs.due(citizen, agent.getJob(), agent.getLevel()) != session.errandJob) {
+                session.errandJob = null; // the catch-up settled it after all: an ordinary visit, re-planned soon
+                activity = Activity.TOWN;
+                replanSoon = true;
+            }
             AgentRuntimeEntry entry = activity == Activity.TRAIN
                     ? AgentInteractionRuntime.registerSelfDirectedAgent(agent)
                     : AgentInteractionRuntime.registerDirectorIdleAgent(agent);
@@ -256,9 +270,12 @@ public final class PresenceScheduler {
             session.mapId = map.getId();
             session.channel = citizen.channel();
             session.activity = activity;
-            session.lastPlanAtMs = now;
+            session.lastPlanAtMs = replanSoon ? 0L : now;
             openKnowledge(session, agent, map.getId(), now);
             startActivity(session, map, now);
+            if (offScreen != null) {
+                jobs.mentionOffScreen(session, offScreen);
+            }
             World world = population.gameWorld();
             if (world != null) {
                 world.loggedOn(agent.getName(), agent.getId(), citizen.channel(), agent.getBuddylist().getBuddyIds());
@@ -413,6 +430,11 @@ public final class PresenceScheduler {
 
     Activity plan(CitizenSession session, long now) {
         Citizen citizen = session.citizen;
+        Job errand = jobs.planned(session);
+        session.errandJob = errand;
+        if (errand != null) {
+            return Activity.JOB; // its life reached its next job: it goes to its instructor first
+        }
         Cohort cohort = population.content().cohort(citizen.cohort());
         Map<String, Integer> weights = cohort == null ? Map.of("TRAIN", 60, "TOWN", 40) : cohort.activities();
         int level = population.store().characterProgress(citizen.characterId())[0];
@@ -464,6 +486,10 @@ public final class PresenceScheduler {
             case MARKET -> {
                 return FieldCatalog.FM_ENTRANCE;
             }
+            case JOB -> {
+                int instructorMap = jobs.mapFor(session);
+                return instructorMap > 0 ? instructorMap : population.fields().homeTown(citizen, random);
+            }
             default -> {
                 return population.fields().homeTown(citizen, random);
             }
@@ -479,11 +505,21 @@ public final class PresenceScheduler {
         switch (session.activity) {
             case TRAIN -> AgentMovementCommandRuntime.grind(entry);
             case MARKET -> population.market().onArrive(session);
-            default -> {
-                if (!townLife(session, map, now)) {
-                    AgentMovementCommandRuntime.moveTo(entry, ResidentSpots.fallback(map, session.characterId + (int) (now / 60_000L)), true);
+            case JOB -> {
+                if (!jobs.begin(session, map)) { // nothing to go for here after all: an ordinary visit, re-planned soon
+                    session.errandJob = null;
+                    session.activity = Activity.TOWN;
+                    session.lastPlanAtMs = 0L;
+                    stroll(session, map, now);
                 }
             }
+            default -> stroll(session, map, now);
+        }
+    }
+
+    private void stroll(CitizenSession session, MapleMap map, long now) {
+        if (!townLife(session, map, now)) {
+            AgentMovementCommandRuntime.moveTo(session.entry, ResidentSpots.fallback(map, session.characterId + (int) (now / 60_000L)), true);
         }
     }
 
@@ -538,6 +574,10 @@ public final class PresenceScheduler {
             return;
         }
         long since = now - session.lastPlanAtMs;
+        if (session.activity == Activity.JOB && since < (long) population.config().JOB_ERRAND_WALK_MAX_MS
+                + population.config().JOB_ERRAND_TALK_MS + CitizenJobErrands.OVERDUE_SLACK_MS) {
+            return; // on its way to its instructor: the errand re-plans it when it is done
+        }
         if (since < REPLAN_MIN_MS + random.nextInt((int) (REPLAN_MAX_MS - REPLAN_MIN_MS))) {
             idleWander(session);
             return;
@@ -551,9 +591,32 @@ public final class PresenceScheduler {
             }
             return;
         }
+        replan(session, now);
+    }
+
+    /** Plans its next activity now and goes there (the usual re-plan; also after a job errand). */
+    void replan(CitizenSession session, long now) {
+        session.lastPlanAtMs = now;
         Activity next = plan(session, now);
-        int mapId = mapFor(session, next);
-        travel(session, next, mapId, now);
+        travel(session, next, mapFor(session, next), now);
+    }
+
+    /**
+     * Ops/test knob (!citizens login): loads this citizen now, replacing a ledger-only session; null when it cannot be
+     * (hired, rostered, leased or already owned by a runtime). An already loaded session is returned as it is.
+     */
+    public synchronized CitizenSession bringOnline(Citizen citizen, long now) {
+        CitizenSession existing = sessions.get(citizen.characterId());
+        if (existing != null && !existing.virtual) {
+            return existing;
+        }
+        if (citizen.hired() || citizen.state() != Citizen.State.ACTIVE || rostered(citizen.characterId())) {
+            return null;
+        }
+        if (existing != null) {
+            logout(existing, "loaded by a GM");
+        }
+        return login(population.citizen(citizen.characterId()), now, false);
     }
 
     private void resume(CitizenSession session, long now) {

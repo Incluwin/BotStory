@@ -53,7 +53,20 @@ nobody can see either side and paced by the road-hop ETA when someone can.
 **Progression.** Loaded citizens level by fighting. The ledger raises the stored level of offline
 citizens toward their life-curve target (`0.5 + level/20` hours per level, 1.2 h a day times pace,
 slowing to a fifth past the career cap) so the rank board moves without anyone loaded; the next
-load repairs growth, advances jobs, upgrades gear and tops up pocket money.
+load repairs growth, advances jobs, upgrades gear and tops up pocket money. Every load also repairs the AP, SP and HP of
+levels the ledger wrote alone and spends SP along the job chain's profiles, a first job left unspent included.
+
+**Jobs (2026-10-06).** `careers.yaml` names a second job; a citizen's life goes on along that branch to the fourth
+(FIGHTER: CRUSADER at 70, HERO at 120; `CitizenJobPath`). The first and second job come off-screen with the catch-up when
+it loads. The third and fourth it takes like a player (`CitizenJobErrands`): once its life reaches the level, its next
+session (or its next re-plan, if it got there fighting) starts on its instructor's map (El Nath's Chief's Residence
+211000001, Leafre's Forest of the Priest 240010501), it walks up to its chief or elder (at most `JOB_ERRAND_WALK_MAX_MS`),
+stands `JOB_ERRAND_TALK_MS`, advances with the stock job change, says a `jobadvance.self` line (others there say
+`jobadvance.other`) and goes about its day. SP banked past Lv70 goes into the new job's skills. Moved away or logged out
+on the way: no job yet, it goes again with its next plan; refused: again next session. Citizens already old enough for
+their next job when this shipped were flagged `job-backlog` once (world flag `population.job-backlog-marked`, 105
+citizens on 2026-10-06): that job came off-screen at their next load, and they mention it a little after logging in
+(`jobadvance.offscreen.self`). `JOB_ERRANDS_ENABLED: false` is the kill switch: every job off-screen at the next load.
 
 **Churn.** Citizens past their retirement date stop logging in (a goodbye if anyone can hear it)
 and `BIRTHS_PER_DAY` newcomers are born while below target.
@@ -97,7 +110,18 @@ with what they looted (up to `MARKET_STALLS_MAX` stalls); browsing citizens buy 
 `!citizens` (GM 5): `status`, `online`, `cohorts`, `who <name>` (card, targets, journal),
 `birth [cohort] [backdateDays]`, `seed [regionId count]` (below), `retire <name>`, `purge confirm` (retire everyone, reseed),
 `force <n>` (keep n loaded regardless of the hour - load tests), `sweep`, `reload`, `guilds`,
-`market`, `conversation`.
+`market`, `conversation`, `level <name> <level>` (raise an offline citizen's stored level as the ledger does; never
+lowers), `login <name>` (load that citizen now, replacing a ledger-only session).
+
+**Testing job errands live.**
+1. Pick an active second-job citizen below Lv70 that is offline: `!citizens who <name>` shows its job and flags.
+2. Type `!warp 211000001` (El Nath's Chief's Residence), so you are there when it arrives.
+3. Type `!citizens level <name> 70`.
+4. Type `!citizens login <name>`. The reply says `JOB at map 211000001`, going for its third job.
+5. Watch it walk up to its chief, stand a moment, change job (the job effect) and say a line.
+6. Type `!citizens who <name>`. The journal says `became a crusader`, and the job is the third job.
+7. For the backlog path, pick a citizen with flag `job-backlog` and type `!citizens login <name>`. It loads with its
+   third job, the flag is gone, and within a minute it mentions the job in map chat.
 
 AdminControlPort: `GET /runtime/citizens` (census, online, cohorts, recent chatter, counters),
 `POST /actions/citizens` `{"force": n, "sweep": true, "reload": true, "seed": "regionId", "count": n}`. MapleEdit's Living World

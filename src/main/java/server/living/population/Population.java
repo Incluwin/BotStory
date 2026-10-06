@@ -30,6 +30,8 @@ import java.util.function.UnaryOperator;
  */
 public final class Population {
     private static final Logger log = LoggerFactory.getLogger(Population.class);
+    /** World flag: the citizens already overdue a third/fourth job when they started taking them are marked (once). */
+    static final String JOB_BACKLOG_MARKED_FLAG = "population.job-backlog-marked";
     private static volatile Population instance;
 
     private final LivingWorld world;
@@ -115,6 +117,7 @@ public final class Population {
         for (Citizen citizen : population.store.all(null)) {
             population.registry.put(citizen.characterId(), citizen);
         }
+        population.markJobBacklogOnce();
         population.social.installSeams();
         population.conversation.installSeams();
         ContentAnswers.installPrices(itemId -> {
@@ -170,6 +173,20 @@ public final class Population {
     }
 
     // ---- accessors -----------------------------------------------------------------------
+
+    /** ProgressionLedger.markJobBacklog, the first time this world starts with citizen job errands. */
+    private void markJobBacklogOnce() {
+        try {
+            if (world.store().worldFlags().contains(JOB_BACKLOG_MARKED_FLAG)) {
+                return;
+            }
+            int marked = ledger.markJobBacklog();
+            world.store().setWorldFlag(JOB_BACKLOG_MARKED_FLAG, 0);
+            log.info("{} citizens were already old enough for their next job: it comes off-screen at their next load", marked);
+        } catch (RuntimeException failure) {
+            log.warn("marking the citizens' job backlog failed; it is tried again next start", failure);
+        }
+    }
 
     public LivingWorld world() {
         return world;

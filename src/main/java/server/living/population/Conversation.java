@@ -590,7 +590,7 @@ public final class Conversation {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("name", session.name());
             row.put("distance_px", agent == null ? 999 : (int) agent.getPosition().distance(speaker.getPosition()));
-            row.put("doing", session.activity == null ? "standing" : session.activity.name().toLowerCase(Locale.ROOT));
+            row.put("doing", session.activity == null ? "standing" : doing(session, "their"));
             players.add(row);
         }
         state.put("nearby_players", players);
@@ -706,7 +706,7 @@ public final class Conversation {
         if (session != null && agent != null && agent.getMap() != null) {
             int humans = Population.humansIn(agent.getMap());
             facts.put("scene", "at " + population.fields().name(session.mapId).toLowerCase(Locale.ROOT) + ", "
-                    + (session.activity == null ? "hanging around" : session.activity.name().toLowerCase(Locale.ROOT))
+                    + (session.activity == null ? "hanging around" : doing(session, "my"))
                     + ", " + humans + " other player(s) nearby");
         }
         facts.put("rules", "one short line like a real player would type; never mention being an AI or a bot; you cannot give items or meso through chat");
@@ -732,5 +732,14 @@ public final class Conversation {
 
     private static String trim(String text, int max) {
         return text.length() <= max ? text : text.substring(0, max - 3) + "...";
+    }
+
+    /** Its activity in a few words; on a job errand, what it came for ("here for my 3rd job advancement"). */
+    private static String doing(CitizenSession session, String whose) {
+        client.Job errand = session.errandJob;
+        if (session.activity == CitizenSession.Activity.JOB && errand != null) {
+            return "here for " + whose + " " + server.living.roster.JobInstructors.tier(errand) + " job advancement";
+        }
+        return session.activity.name().toLowerCase(Locale.ROOT);
     }
 }

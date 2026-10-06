@@ -110,3 +110,48 @@ intents:
       - "congrats {name}"
       - "nice, welcome to {job}"
       - "gz {job}"
+  # Its own advancement at its instructor (CitizenJobErrands): said in the Chief's Residence or the Forest of the Priest.
+  - id: react.jobadvance.self
+    trigger: jobadvance.self
+    where: any
+    channel: map
+    weight: 8
+    cooldownMs: 0
+    lines:
+      - "yes!! {job}"
+      - "finally a {job}"
+      - "{job} lets gooo"
+      - "ty ty"
+      - "{job} at last"
+      - "worth every level. {job}"
+  - id: react.jobadvance.self.guild
+    trigger: jobadvance.self
+    where: any
+    channel: guild
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "just became a {job}!"
+      - "{job} now :D"
+      - "job advanced, {job} finally"
+  # An advancement that came off-screen (a backlog citizen, CitizenJobPath): mentioned a little after it logs in.
+  - id: react.jobadvance.offscreen
+    trigger: jobadvance.offscreen.self
+    where: any
+    channel: map
+    weight: 8
+    cooldownMs: 0
+    lines:
+      - "got my job adv done last night, {job} now"
+      - "still getting used to being a {job}"
+      - "{job} now. took long enough"
+      - "new skills to try, {job} finally"
+  - id: react.jobadvance.offscreen.guild
+    trigger: jobadvance.offscreen.self
+    where: any
+    channel: guild
+    weight: 6
+    cooldownMs: 0
+    lines:
+      - "did my job adv while yall were off. {job} now"
+      - "{job} now btw"
