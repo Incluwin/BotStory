@@ -13,6 +13,7 @@ import server.agents.capabilities.combat.AgentCombatAttackRuntime;
 import server.agents.capabilities.combat.AgentCombatConfig;
 import server.agents.capabilities.combat.AgentCombatPlanRuntime;
 import server.agents.capabilities.combat.AgentCombatSkillConstraintState;
+import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
@@ -214,7 +215,9 @@ public final class AgentEpqCoordinator {
 
         switch (agent.getMapId()) {
             case AgentEpqDefinition.RECRUIT_MAP -> enterEvent(session, entry, agent, member, nowMs);
-            case AgentEpqDefinition.ENTRANCE_MAP -> enterPortal(entry, agent, 4, member, nowMs);
+            case AgentEpqDefinition.ENTRANCE_MAP -> {
+                if (!topUp(session, entry, agent, member, nowMs)) enterPortal(entry, agent, 4, member, nowMs);
+            }
             case AgentEpqDefinition.STAGE_ONE_MAP -> stageOne(entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_TWO_MAP -> stageTwo(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_THREE_MAP -> stageThree(entry, agent, member, nowMs);
@@ -560,10 +563,13 @@ public final class AgentEpqCoordinator {
                     "Poison Golem ahead. Everyone resume combat!");
         }
         if (actions().liveMonsterCount(agent, AgentEpqDefinition.BOSS_MOBS) > 0) {
+            if (member.topUpActive()) endTopUp(session, agent, member, "golem", false);
             actions().grind(entry, AgentEpqDefinition.BOSS_COMBAT_TARGETS);
             return;
         }
         if (session.eventInstance() == null || !session.eventInstance().isEventCleared()) {
+            // Before the golem: a member under its top-up drinks first (an Agent leader before its altar drop).
+            if (topUp(session, entry, agent, member, nowMs)) return;
             if (agent.getId() == session.eventLeaderId()
                     && actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE) > 0) {
                 Reactor altar = agent.getMap().getReactorById(AgentEpqDefinition.ALTAR_REACTOR);
@@ -591,6 +597,72 @@ public final class AgentEpqCoordinator {
                     "The Altair Fragment is reserved for our human party member; loot it before exiting.");
         }
         enterPortal(entry, agent, 1, member, nowMs);
+    }
+
+    /**
+     * EPQ base fix 6: on the entrance, and on the golem's map while no golem lives and the event is not cleared, an
+     * Agent under TOP_UP_HP_FRACTION of its maximum HP with HP potions stands and drinks one (the autopot's own choice
+     * for its deficit) every TOP_UP_INTERVAL_MS until it reaches the fraction. One 'EPQ top-up:' START and END line per
+     * episode; a drink that raised no HP, or no potion to choose, ends the episode and the top-ups on that map.
+     * True while the top-up owns this pass.
+     */
+    private static boolean topUp(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                 AgentEpqMemberState member, long nowMs) {
+        int mapId = agent.getMapId();
+        if (member.topUpActive() && member.topUpMapId() != mapId) endTopUp(session, agent, member, "left-map", false);
+        boolean golemAlive = mapId == AgentEpqDefinition.BOSS_MAP
+                && actions().liveMonsterCount(agent, AgentEpqDefinition.BOSS_MOBS) > 0;
+        if (!AgentEpqRecoveryPolicy.topUpMap(mapId, golemAlive,
+                AgentEpqTerminationService.pastTheClear(session.eventInstance()))) {
+            return false;
+        }
+        int potions = actions().hpPotionCount(agent);
+        if (!AgentEpqRecoveryPolicy.needsTopUp(agent.getHp(), agent.getCurrentMaxHp(), potions,
+                AgentEpqRecoveryPolicy.TOP_UP_HP_FRACTION)) {
+            if (member.topUpActive()) endTopUp(session, agent, member, potions > 0 ? "target" : "no-potion", false);
+            return false;
+        }
+        if (member.topUpSpentOn(mapId)) return false;
+        if (!member.topUpActive()) {
+            member.startTopUp(mapId);
+            logTopUp(session, agent, member, "START", "");
+        }
+        if (nowMs < member.nextTopUpAtMs()) {
+            actions().stop(entry);
+            return true;
+        }
+        int hp = agent.getHp();
+        if (member.lastTopUpHp() >= 0 && hp <= member.lastTopUpHp()) {
+            endTopUp(session, agent, member, "no-gain", true);
+            return false;
+        }
+        var choice = AgentPotionService.selectAutopotForCurrentDeficit(agent, true);
+        if (choice == null) {
+            endTopUp(session, agent, member, "no-potion", true);
+            return false;
+        }
+        actions().stop(entry);
+        boolean drank = actions().useItem(agent, choice.itemId());
+        member.recordTopUpDrink(hp, nowMs + AgentEpqRecoveryPolicy.TOP_UP_INTERVAL_MS, drank);
+        return true;
+    }
+
+    private static void endTopUp(AgentEpqSession session, Character agent, AgentEpqMemberState member,
+                                 String reason, boolean spent) {
+        member.endTopUp(spent);
+        logTopUp(session, agent, member, "END", reason);
+    }
+
+    /** 'EPQ top-up:' for an episode's START or END, in every mode; never throws. */
+    private static void logTopUp(AgentEpqSession session, Character agent, AgentEpqMemberState member,
+                                 String state, String reason) {
+        try {
+            log.info("EPQ top-up: session={} member={} state={} reason={} hp={}/{} hpPots={} drinks={} map={}",
+                    session.sessionId(), agent.getName(), state, reason, agent.getHp(), agent.getCurrentMaxHp(),
+                    actions().hpPotionCount(agent), member.topUpDrinks(), member.topUpMapId());
+        } catch (RuntimeException e) {
+            log.warn("EPQ top-up line failed: session={}", session.sessionId(), e);
+        }
     }
 
     private static void reward(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,

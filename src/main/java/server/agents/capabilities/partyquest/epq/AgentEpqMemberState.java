@@ -14,6 +14,12 @@ public final class AgentEpqMemberState {
     private int stageTwoBestTreeDistance = Integer.MAX_VALUE;
     private long stageTwoLastLureProgressAtMs;
     private boolean stageTwoReturningToTree;
+    private boolean topUpActive;
+    private int topUpMapId;
+    private long nextTopUpAtMs;
+    private int lastTopUpHp = -1;
+    private int topUpDrinks;
+    private int topUpSpentMapId;
     private final Set<String> announcements = new HashSet<>();
 
     AgentEpqMemberState(int characterId, MemberType memberType) {
@@ -60,4 +66,49 @@ public final class AgentEpqMemberState {
     public boolean claimAnnouncement(String key) {
         return key != null && !key.isBlank() && announcements.add(key);
     }
+
+    // The HP top-up episode (EPQ base fix 6), owned by this member's own tick.
+
+    /** Whether a top-up episode is open. */
+    public boolean topUpActive() { return topUpActive; }
+
+    /** The map the open (or last) episode runs on. */
+    public int topUpMapId() { return topUpMapId; }
+
+    /** When the next drink of the open episode may be taken. */
+    public long nextTopUpAtMs() { return nextTopUpAtMs; }
+
+    /** The HP seen at the episode's last drink, or -1 before its first. */
+    public int lastTopUpHp() { return lastTopUpHp; }
+
+    /** The drinks the episode has taken. */
+    public int topUpDrinks() { return topUpDrinks; }
+
+    /** Opens an episode on this map. */
+    void startTopUp(int mapId) {
+        topUpActive = true;
+        topUpMapId = mapId;
+        nextTopUpAtMs = 0L;
+        lastTopUpHp = -1;
+        topUpDrinks = 0;
+    }
+
+    /** One drink tried at {@code hp}; the next may follow at {@code nextAtMs}. */
+    void recordTopUpDrink(int hp, long nextAtMs, boolean drank) {
+        lastTopUpHp = hp;
+        nextTopUpAtMs = Math.max(0L, nextAtMs);
+        if (drank) topUpDrinks++;
+    }
+
+    /**
+     * Closes the open episode; a spent one (its drinks raised no HP, or no potion could be chosen) also ends the
+     * top-ups on its map for this member, so it never drinks without end.
+     */
+    void endTopUp(boolean spent) {
+        topUpActive = false;
+        if (spent) topUpSpentMapId = topUpMapId;
+    }
+
+    /** Whether an episode on this map was spent. */
+    boolean topUpSpentOn(int mapId) { return topUpSpentMapId != 0 && topUpSpentMapId == mapId; }
 }

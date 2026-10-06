@@ -1166,6 +1166,14 @@ tuning:
     # Purpose: Bounds abandoned mixed EPQ runs without imposing autonomous timing on the human participant.
     # Technical: Applies only to HUMAN_ASSISTED EPQ sessions and remains below the authored 30-minute event timeout.
     server.agents.capabilities.partyquest.epq.AgentEpqWatchdogRuntime.HUMAN_ASSISTED_IDLE_MS: '480000'
+    # Values: 0.70-0.95 of maximum HP. Recommended: 0.9 so a member walks into the golem with room for its biggest hits (9300182's attack1 PADamage 300 before defense).
+    # Purpose: Sets the HP fraction an EPQ Agent drinks HP potions up to on the entrance map and before the golem fight.
+    # Technical: Only AgentEpqRecoveryPolicy reads this, for EPQ map 930000000 and for 930000600 while no golem lives and the event is not cleared; the generic autopot is unchanged, a potion-less member never tops up, and a drink that raises no HP ends the episode.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.TOP_UP_HP_FRACTION: '0.9'
+    # Values: 300-2000 milliseconds. Recommended: 600 so a top-up looks like a player's quick potion presses without draining a stack in one tick.
+    # Purpose: Spaces one EPQ Agent's HP top-up drinks on the entrance map and before the golem fight.
+    # Technical: Stored on the member's own EPQ state; one AgentPotionService-selected HP potion per interval through the primitive gateway's useItem.
+    server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.TOP_UP_INTERVAL_MS: '600'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.
