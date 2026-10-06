@@ -480,10 +480,11 @@ public final class AgentEpqCoordinator {
             if (runNearbyNpc(entry, agent, AgentEpqDefinition.STAGE_NPC)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
-        Monster target = flowers(agent).stream()
-                .filter(flower -> captureAgentId(session, flower) == agent.getId())
-                .min(Comparator.comparingDouble(mob -> mob.getPosition().distanceSq(agent.getPosition())))
-                .orElse(null);
+        // EPQ base fix 8: an Agent whose own flowers are caught helps with another's; only with no live flower at all
+        // does the assist below run (930000400's flowers are one-shot, so its respawn call spawns nothing).
+        Monster target = AgentEpqParticipationPolicy.captureTarget(flowers(agent),
+                flower -> captureAgentId(session, flower), agent.getId(),
+                mob -> mob.getPosition().distanceSq(agent.getPosition()));
         if (target == null) {
             actions().stop(entry);
             agent.getMap().instanceMapForceRespawn();
