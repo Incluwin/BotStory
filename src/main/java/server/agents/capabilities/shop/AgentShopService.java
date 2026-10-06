@@ -1569,8 +1569,17 @@ public final class AgentShopService {
     }
 
     private static void scheduleShopStep(AgentRuntimeEntry entry, long delayMs, Runnable step) {
+        // The step belongs to the visit open now. If that visit ends and another opens before the step comes
+        // due (a supply trip or a map change re-runs onMapChange), the step is dropped: live, it aborted the
+        // new visit with "couldn't get to the shopkeeper" because the new visit had no transaction yet.
+        long visitGeneration = AgentShopStateRuntime.shopVisitGeneration(entry);
         AgentShopRuntime.afterDelay(entry, delayMs, () -> {
-            if (!AgentShopStateRuntime.shouldRunScheduledShopStep(entry)) {
+            if (!AgentShopStateRuntime.shouldRunScheduledShopStep(entry, visitGeneration)) {
+                if (AgentShopStateRuntime.shopVisitPending(entry)) {
+                    Character bot = AgentRuntimeIdentityRuntime.bot(entry);
+                    log.info("Agent '{}' dropped a shop step left from an earlier visit; the current visit continues",
+                            bot == null ? "?" : bot.getName());
+                }
                 return;
             }
             try {

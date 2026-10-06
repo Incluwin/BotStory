@@ -130,4 +130,24 @@ class AgentShopStateRuntimeTest {
         assertTrue(AgentShopStateRuntime.sequenceValid(entry, new Point(125, 100), npc, 100));
         assertFalse(AgentShopStateRuntime.sequenceValid(entry, new Point(400, 400), npc, 100));
     }
+
+    @Test
+    void aScheduledStepRunsOnlyForTheVisitThatScheduledIt() {
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(null, null, null);
+        AgentShopStateRuntime.startShopVisit(entry, new Point(100, 200), null, 0, 1_000L);
+        long first = AgentShopStateRuntime.shopVisitGeneration(entry);
+        assertTrue(AgentShopStateRuntime.shouldRunScheduledShopStep(entry, first));
+
+        // Asking for the open visit again keeps it: its steps still run.
+        AgentShopStateRuntime.startShopVisit(entry, new Point(100, 200), null, 0, 1_500L);
+        assertTrue(AgentShopStateRuntime.shouldRunScheduledShopStep(entry, first));
+
+        // The visit ends and the next one opens: the first visit's steps no longer run.
+        AgentShopStateRuntime.clearShopState(entry);
+        assertFalse(AgentShopStateRuntime.shouldRunScheduledShopStep(entry, first));
+        AgentShopStateRuntime.startShopVisit(entry, new Point(100, 200), null, 0, 2_000L);
+        assertFalse(AgentShopStateRuntime.shouldRunScheduledShopStep(entry, first));
+        assertTrue(AgentShopStateRuntime.shouldRunScheduledShopStep(
+                entry, AgentShopStateRuntime.shopVisitGeneration(entry)));
+    }
 }

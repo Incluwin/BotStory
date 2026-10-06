@@ -23,6 +23,7 @@ import server.maps.MapleMap;
 import testutil.Items;
 
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -127,6 +129,54 @@ class AgentShopServiceTest {
         }
 
         assertTrue(AgentShopStateRuntime.shopVisitPending(entry));
+    }
+
+    @Test
+    void aShopStepLeftFromAnEarlierVisitDoesNotAbortTheNextVisit() {
+        // Live 2026-09-21..10-06: a supply trip started (begin() re-runs onMapChange) while a transaction's
+        // purchase step was scheduled. The step then ran against the new visit and aborted it with
+        // "couldn't get to the shopkeeper, never mind" (sequenceActive=false, visitAgeMs 10-2000).
+        Character bot = clawBotWithStars(800, 1000, 1000); // 2800 of the best star: a visit opens
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        MapleMap map = bot.getMap();
+        NPC npc = shopNpc(new Point(20, 0));
+        Shop shop = mock(Shop.class);
+
+        when(map.getMapObjectsInRange(any(Point.class), anyDouble(), any())).thenReturn(List.of(npc));
+        when(shop.getItems()).thenReturn(List.of());
+
+        InventoryGateway inventory = starStatsInventory();
+        List<Runnable> scheduled = new ArrayList<>();
+        try (MockedStatic<AgentAttackExecutionProvider> attacks =
+                     mockStatic(AgentAttackExecutionProvider.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+             MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class);
+             MockedStatic<ShopFactory> shops = mockStatic(ShopFactory.class);
+             MockedStatic<AgentShopRuntime> runtime = mockStatic(AgentShopRuntime.class)) {
+            ShopFactory factory = mock(ShopFactory.class);
+            shops.when(ShopFactory::getInstance).thenReturn(factory);
+            when(factory.getShopForNPC(npc.getId())).thenReturn(shop);
+            attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(WeaponType.CLAW);
+            potions.when(() -> AgentPotionService.countPotions(bot)).thenReturn(new int[]{9999, 9999});
+            runtime.when(() -> AgentShopRuntime.afterDelay(any(AgentRuntimeEntry.class), anyLong(), any(Runnable.class)))
+                    .thenAnswer(invocation -> scheduled.add(invocation.getArgument(2)));
+
+            // The first visit reaches the shopkeeper: its transaction opens and its first step is scheduled.
+            AgentShopService.onMapChange(entry, bot, inventory);
+            AgentShopStateRuntime.setShopApproachDelayMs(entry, 0);
+            assertTrue(AgentShopService.tickShopVisit(entry, bot, inventory));
+            assertTrue(AgentShopStateRuntime.shopSequenceActive(entry));
+            assertEquals(1, scheduled.size());
+
+            // Before that step comes due, the shops are scanned again: the first visit ends and a second opens.
+            AgentShopService.onMapChange(entry, bot, inventory);
+            assertTrue(AgentShopStateRuntime.shopVisitPending(entry));
+            assertFalse(AgentShopStateRuntime.shopSequenceActive(entry));
+
+            scheduled.get(0).run();
+        }
+
+        assertTrue(AgentShopStateRuntime.shopVisitPending(entry));
+        assertEquals(AgentShopWorkflowPhase.APPROACHING, AgentShopStateRuntime.workflow(entry).phase());
     }
 
     @Test
