@@ -131,7 +131,7 @@ public final class AgentClimbMovementService {
     }
 
     public static void jumpOffRope(AgentRuntimeEntry entry, Character agent, int dx) {
-        int airVelX = AgentJumpActionService.resolveAirVelocityX(
+        double airVelX = AgentMovementKinematicsService.ropeJumpVelocityX(
                 agent.getMap(), AgentMovementStateRuntime.movementProfile(entry), dx);
         AgentRopeMovementService.beginJumpOffRope(entry, agent, airVelX);
         AgentMovementBroadcastService.broadcastMovement(entry);
@@ -139,7 +139,7 @@ public final class AgentClimbMovementService {
 
     public static void jumpToRope(AgentRuntimeEntry entry, Character agent, int dx) {
         Rope sourceRope = AgentClimbStateRuntime.climbRope(entry);
-        int airVelX = AgentJumpActionService.resolveAirVelocityX(
+        double airVelX = AgentMovementKinematicsService.ropeJumpVelocityX(
                 agent.getMap(), AgentMovementStateRuntime.movementProfile(entry), dx);
         AgentRopeMovementService.beginRopeTransferJump(entry, agent, sourceRope, airVelX);
         AgentMovementBroadcastService.broadcastMovement(entry);

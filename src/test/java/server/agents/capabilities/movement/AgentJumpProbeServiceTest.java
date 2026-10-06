@@ -92,4 +92,38 @@ class AgentJumpProbeServiceTest {
 
         assertTrue(AgentJumpProbeService.canReachRopeFromGround(null, new Point(100, 120), rope));
     }
+
+    @Test
+    void ropeGrabAfterTickCatchesTheRopeAtTheTickEndWhenItIsWithinReach() {
+        Rope rope = new Rope(100, 0, 50, false);
+
+        assertEquals(new Point(100, 45),
+                AgentJumpProbeService.ropeGrabAfterTick(new Point(120, 40), new Point(106, 45), rope));
+    }
+
+    @Test
+    void ropeGrabAfterTickCatchesTheRopeMidTickWhenTheTickEndsBelowIt() {
+        // Within reach from x 108 on, at y 47; the tick ends at y 60, past the rope's bottom.
+        Rope rope = new Rope(100, 0, 50, false);
+
+        assertEquals(new Point(100, 47),
+                AgentJumpProbeService.ropeGrabAfterTick(new Point(116, 20), new Point(104, 60), rope));
+    }
+
+    @Test
+    void ropeGrabAfterTickCatchesARopeTheTickFliesPast() {
+        Rope rope = new Rope(100, 0, 50, false);
+
+        assertEquals(new Point(100, 23),
+                AgentJumpProbeService.ropeGrabAfterTick(new Point(112, 20), new Point(88, 40), rope));
+    }
+
+    @Test
+    void ropeGrabAfterTickMissesARopeOutOfReachOrBelowIt() {
+        Rope rope = new Rope(100, 0, 50, false);
+
+        assertNull(AgentJumpProbeService.ropeGrabAfterTick(new Point(130, 20), new Point(120, 30), rope));
+        assertNull(AgentJumpProbeService.ropeGrabAfterTick(new Point(116, 52), new Point(104, 70), rope));
+        assertNull(AgentJumpProbeService.ropeGrabAfterTick(new Point(104, -30), new Point(104, -2), rope));
+    }
 }

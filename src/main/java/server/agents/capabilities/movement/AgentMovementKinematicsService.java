@@ -17,11 +17,23 @@ public final class AgentMovementKinematicsService {
     }
 
     public static int walkStep(MapleMap map, AgentMovementProfile profile) {
-        double step = maxHorizontalSpeedPerClientStep(profile)
+        return Math.max(1, (int) Math.round(exactWalkStep(map, profile)));
+    }
+
+    /**
+     * Horizontal velocity of a rope jump toward {@code direction}, in px per movement tick,
+     * unrounded. Rounding it like {@link #walkStep} flies a speed-100 Agent 6 instead of 6.25 px
+     * per tick, short of the 86-89 px rope gaps a base-speed player crosses (105080000).
+     */
+    public static double ropeJumpVelocityX(MapleMap map, AgentMovementProfile profile, int direction) {
+        return Integer.signum(direction) * exactWalkStep(map, profile);
+    }
+
+    private static double exactWalkStep(MapleMap map, AgentMovementProfile profile) {
+        return maxHorizontalSpeedPerClientStep(profile)
                 * AgentMovementPhysicsConfig.configuredMovementTickMs()
                 * mapGroundSpeedScale(map)
                 / CLIENT_GROUND_STEP_MS;
-        return Math.max(1, (int) Math.round(step));
     }
 
     public static int climbStepPerTick() {

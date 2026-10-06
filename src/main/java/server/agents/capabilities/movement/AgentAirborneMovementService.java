@@ -66,7 +66,7 @@ public final class AgentAirborneMovementService {
                 return;
             }
 
-            if (successfullyGrabbedRope(entry, agent, agent.getPosition())) {
+            if (successfullyGrabbedRopeAfterTick(entry, agent, agentPosition, agent.getPosition())) {
                 return;
             }
             broadcastAirborneStep(entry, agentPosition, flashJumpFired);
@@ -94,6 +94,32 @@ public final class AgentAirborneMovementService {
         entry.capabilityStates()
                 .find(AgentMovementSkillState.STATE_KEY)
                 .ifPresent(state -> state.setFlashJumpFired(false));
+    }
+
+    /**
+     * Rope grab after a free-flight tick from {@code from} to {@code to}: the graph's rope-grab rule
+     * first, so the Agent catches a rope exactly where its navigation edge says, then the looser
+     * tick-end check.
+     */
+    static boolean successfullyGrabbedRopeAfterTick(AgentRuntimeEntry entry, Character agent, Point from, Point to) {
+        if (!AgentClimbStateRuntime.climbUpIntent(entry)) {
+            return false;
+        }
+
+        for (Rope rope : agent.getMap().getRopes()) {
+            if (AgentClimbMovementPolicy.sameRope(AgentClimbStateRuntime.blockedRopeGrab(entry), rope)) {
+                continue;
+            }
+            Point grab = AgentJumpProbeService.ropeGrabAfterTick(from, to, rope);
+            if (grab != null) {
+                AgentMovementSkillStateRuntime.clearAirborneCast(entry);
+                AgentRopeMovementService.attachToRope(entry, agent, rope, grab.y);
+                AgentMovementBroadcastService.broadcastMovement(entry);
+                return true;
+            }
+        }
+
+        return successfullyGrabbedRope(entry, agent, to);
     }
 
     static boolean successfullyGrabbedRope(AgentRuntimeEntry entry, Character agent, Point agentPosition) {

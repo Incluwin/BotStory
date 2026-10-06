@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 public final class AgentNavigationGraphService {
     private static final Logger log = LoggerFactory.getLogger(AgentNavigationGraphService.class);
 
-    private static final int GRAPH_VERSION = 59;
+    private static final int GRAPH_VERSION = 60;
     private static final int ENDPOINT_ANCHOR_SPACING_PX = config.AgentTuning.intValue(
             "server.agents.capabilities.navigation.AgentNavigationGraphService.ENDPOINT_ANCHOR_SPACING_PX");
     private static final int DOWN_JUMP_PRELAUNCH_WINDOW_PX = config.AgentTuning.intValue(

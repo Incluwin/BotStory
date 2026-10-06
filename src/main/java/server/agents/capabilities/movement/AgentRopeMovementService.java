@@ -126,7 +126,7 @@ public final class AgentRopeMovementService {
                 true);
     }
 
-    public static void beginJumpOffRope(AgentRuntimeEntry entry, Character agent, int airVelocityX) {
+    public static void beginJumpOffRope(AgentRuntimeEntry entry, Character agent, double airVelocityX) {
         AgentClimbStateRuntime.clearBlockedRopeGrab(entry);
         AgentAirborneLaunchService.launchAirborne(
                 entry,
@@ -136,7 +136,7 @@ public final class AgentRopeMovementService {
                 false);
     }
 
-    public static void beginRopeTransferJump(AgentRuntimeEntry entry, Character agent, Rope sourceRope, int airVelocityX) {
+    public static void beginRopeTransferJump(AgentRuntimeEntry entry, Character agent, Rope sourceRope, double airVelocityX) {
         AgentClimbStateRuntime.setBlockedRopeGrab(entry, sourceRope);
         AgentAirborneLaunchService.launchAirborne(
                 entry,
