@@ -154,7 +154,32 @@ class AgentSupplyReadinessTest {
         assertEquals(60, AgentSupplyReadiness.buyTarget(ppq, warrior, true), "PPQ's 30 HP, bought to 200%");
 
         AgentSupplyReadiness.install(id -> PQ);
-        assertEquals(PQ, AgentSupplyReadiness.shoppingActivity(entry, warrior), "a duty it can read wins");
+        assertEquals(ppq, AgentSupplyReadiness.shoppingActivity(entry, warrior),
+                "the trip it is judged by wins over a duty it can read");
+    }
+
+    @Test
+    void atTheCounterAReadinessTripBuysTowardTheActivityItIsJudgedByWhateverTheDutyThereAnswers() {
+        // at Mayoren the duty answers the default (no desk map) while the trip set off for the EPQ standard
+        Character mage = withJob(Job.FP_WIZARD);
+        when(mage.getId()).thenReturn(437);
+        server.agents.runtime.AgentRuntimeEntry entry = new server.agents.runtime.AgentRuntimeEntry(mage, null, null);
+        AgentSupplyReadiness.Activity lpq = AgentSupplyReadiness.Activity.partyQuest("lpq");
+        AgentSupplyReadiness.install(id -> null);
+        assertEquals(null, AgentSupplyReadiness.shoppingActivity(entry, mage), "no duty, no trip: nothing");
+
+        AgentSupplyReadiness.install(id -> PQ);
+        AgentSupplyReadinessState state = entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY);
+        state.offer(new server.agents.capabilities.contracts.AgentProcurementRequest("readiness:HP_POTION:2",
+                server.agents.capabilities.contracts.AgentResourceCategory.HP_POTION, 40, 0L,
+                java.util.List.of(server.agents.capabilities.contracts.AgentProcurementMethod.NPC_SHOP),
+                server.agents.capabilities.contracts.AgentSupplyUrgency.CRITICAL, "",
+                Long.MAX_VALUE), lpq, 5, 150_000L, 221024500);
+        assertEquals(lpq, AgentSupplyReadiness.shoppingActivity(entry, mage), "the trip's activity, not the duty's");
+        assertEquals(80, AgentSupplyReadiness.buyTarget(AgentSupplyReadiness.shoppingActivity(entry, mage), mage, true));
+
+        state.clearRequest();
+        assertEquals(PQ, AgentSupplyReadiness.shoppingActivity(entry, mage), "no trip: the standing duty");
     }
 
     @Test

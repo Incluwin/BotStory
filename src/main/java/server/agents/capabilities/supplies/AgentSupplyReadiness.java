@@ -281,22 +281,18 @@ public final class AgentSupplyReadiness {
     }
 
     /**
-     * The activity a shop visit buys toward: the standing duty the host answers for this Agent, or, on a readiness trip
-     * under way, the activity that trip set off for. Travel clears the follow target a duty is read from (and a chat
-     * can move its interaction target), so at the counter the host may answer no duty for a companion it sent there.
-     * Null: neither.
+     * The activity a shop visit buys toward: on a readiness trip under way, the activity that trip set off for (the
+     * one its end is judged by); otherwise the standing duty the host answers for this Agent. At the counter the host
+     * may answer another duty or none: travel clears the follow target a duty is read from, a chat can move its
+     * interaction target, and a shop map is no desk map. Null: neither.
      */
     public static Activity shoppingActivity(AgentRuntimeEntry entry, Character agent) {
-        Activity standing = agent == null ? null : standing(agent.getId());
-        if (standing != null || entry == null) {
-            return standing;
+        AgentSupplyReadinessState state = entry == null ? null
+                : entry.capabilityStates().find(AgentSupplyReadinessState.STATE_KEY).orElse(null);
+        if (state != null && state.request() != null) {
+            return state.activity() == null ? Activity.PARTY_QUEST : state.activity();
         }
-        AgentSupplyReadinessState state = entry.capabilityStates().find(AgentSupplyReadinessState.STATE_KEY)
-                .orElse(null);
-        if (state == null || state.request() == null) {
-            return null;
-        }
-        return state.activity() == null ? Activity.PARTY_QUEST : state.activity();
+        return agent == null ? null : standing(agent.getId());
     }
 
     /**
