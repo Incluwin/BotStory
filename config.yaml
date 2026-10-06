@@ -819,8 +819,11 @@ living_world:
     # long one of their slices lasts (a player watching stretches a town or stall slice to twice that at most). The town
     # and stall pools stay at 4 and 2 until the P5 soak (-Xmx2048m, 2 humans x 5 active, the pools full, /runtime/budget)
     # measures scheduler queue-lag p95 under 100 ms; raise them only from that measurement. A live field companion out
-    # of supplies ends its hunt and restocks at a shop, unloading after BENCH_RESUPPLY_MAX_MS at the latest. The ledger
-    # credits the rates measured at a camp, shrunk toward its priors, which count for BENCH_YIELD_PRIOR_SLICES full slices.
+    # of supplies ends its hunt and restocks at a shop, unloading after BENCH_RESUPPLY_MAX_MS at the latest. It walks
+    # there when the shop is at most BENCH_RESUPPLY_MAX_HOPS portal hops from its camp; farther, its slice ends once it
+    # has set off and its next slice loads it at that shop (live 2026-09-29..10-06: walks of up to 9 maps restocked in
+    # time, none of 11 or more did; Jinx walked 22 maps toward Henesys 530 times). The ledger credits the rates measured
+    # at a camp, shrunk toward its priors, which count for BENCH_YIELD_PRIOR_SLICES full slices.
     BENCH_TOWN_MAX: 4
     BENCH_TOWN_PER_OWNER: 1
     BENCH_TOWN_SLICE_MS: 3600000
@@ -828,6 +831,7 @@ living_world:
     COMMERCE_PER_OWNER: 1
     COMMERCE_SLICE_MS: 7200000
     BENCH_RESUPPLY_MAX_MS: 300000
+    BENCH_RESUPPLY_MAX_HOPS: 10
     BENCH_YIELD_PRIOR_SLICES: 1.0
     # Decision 19 (b): bench upkeep is 30 meso per level an hour (paid ahead as wages, else out of the haul; a hired
     # hand's hourly wage is the same number), but never more than BENCH_UPKEEP_MAX_SHARE of the meso an hour the
