@@ -95,6 +95,7 @@ public final class LivingWorld {
     private final server.living.roster.CompanionRunLifecycle partyQuestRuns;
     private final server.living.roster.CompanionRestock restock;
     private final server.living.roster.GmLevelHolds gmLevelHolds;
+    private final server.living.roster.JobErrands jobErrands;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -144,6 +145,7 @@ public final class LivingWorld {
         this.partyQuestRuns = new server.living.roster.CompanionRunLifecycle(this, partyQuests);
         this.restock = new server.living.roster.CompanionRestock(this); // companions restock their own potions
         this.gmLevelHolds = new server.living.roster.GmLevelHolds(this); // !setlevel records; read lazily, no timer
+        this.jobErrands = new server.living.roster.JobErrands(this); // companions go for their next job (2026-10-05)
     }
 
     public static LivingWorld get() {
@@ -208,6 +210,9 @@ public final class LivingWorld {
         world.hiredHands.install();
         // boot reconciliation (decision 8a) goes first on companion-ops, ahead of any login's restore
         world.executor.submit("roster.boot", world.roster::reconcileAtBoot);
+        // companions go to their instructor for their next job by themselves; after the boot reconciliation, so the
+        // errands a restart cut short are carried on over reconciled rows (2026-10-05)
+        world.jobErrands.install();
         // decision 18: Residents of owners away too long go home, at boot (after the reconciliation) and daily
         world.executor.submit("residents.allocation", world.residentAllocation::sweep);
         // the yields live bench slices measured (companion_yield), before the first ledger tick credits them
@@ -220,6 +225,10 @@ public final class LivingWorld {
         // then its clear-time records (pq_run_pace), fitted against that warm data, which the estimate learns from
         world.executor.submit("pq.pace.records", world.partyQuests.paceLedger()::load);
         TimerManager timers = TimerManager.getInstance();
+        // the job errands out: a return its owner was offline for, one called back meanwhile (JobErrands)
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("job_errands.sweep", world.jobErrands::sweep),
+                world.config.COMPANION_JOB_ERRAND_SWEEP_MS, world.config.COMPANION_JOB_ERRAND_SWEEP_MS));
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
             world.executor.submit("residents.allocation", world.residentAllocation::sweep);
             world.executor.submit("hire.reconcile", world.hiredHands::reconcileFlags); // and the hired flags, daily
@@ -304,6 +313,7 @@ public final class LivingWorld {
         server.living.roster.BenchCombatLearning.uninstall();
         server.living.roster.CompanionSettingsApplier.uninstall();
         server.living.roster.CompanionRestock.uninstall();
+        server.living.roster.JobErrands.uninstall();
         HiredHands.uninstall();
         server.living.population.Population.stop();
         server.knowledge.PersonalKnowledge.shared().stop(); // the citizens logged out: their worlds are written now, DB still up

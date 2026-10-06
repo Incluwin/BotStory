@@ -114,6 +114,8 @@ public final class RosterService {
     private final java.util.Set<String> seating = ConcurrentHashMap.newKeySet();
     /** Persona id -> the walk-out of a companion benched a moment ago; any despawn or a new seat ends it. */
     private final Map<String, Object> leaving = new ConcurrentHashMap<>();
+    /** Persona id -> what it says on its next arrival instead of its join line (back from its instructor: JobErrands). */
+    private final Map<String, String> arrivalLines = new ConcurrentHashMap<>();
     /**
      * Persona ids whose rows are TRAVELLING, HOLD or AWAY: kept off follow (CompanionFollowGuard, any thread) until
      * the roster's own arrival, rejoin or call walks them over. Kept in step by {@link #write}; {@link #walkToOwner}
@@ -1109,8 +1111,7 @@ public final class RosterService {
         if (readyLine != null && partyChat(bot, readyLine.text())) {
             readyLine.said(bot.getName());
         } else {
-            List<String> lines = world.arcs().lines(persona, "join");
-            world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(ownerId, lines.size())));
+            world.residents().reply(persona, owner, joinLine(persona, ownerId));
         }
         BenchLedger ledger = world.bench();
         String report = ledger == null ? null : ledger.takeReport(ownerId, persona.id(), bot.getLevel());
@@ -1248,8 +1249,7 @@ public final class RosterService {
         world.store().event(owner.getId(), persona.id(), "roster.call", null);
         String report = world.bench().takeReport(owner.getId(), persona.id(), result.agent().getLevel()); // spent either way
         if (!quiet) {
-            List<String> lines = world.arcs().lines(persona, "join");
-            world.residents().reply(persona, owner, lines.isEmpty() ? "here." : lines.get(Math.floorMod(owner.getId(), lines.size())));
+            world.residents().reply(persona, owner, joinLine(persona, owner.getId()));
             if (report != null) {
                 world.residents().whisper(persona, owner, report); // what it did on the bench, once (P5)
             }
@@ -1892,6 +1892,46 @@ public final class RosterService {
         world.store().event(owner.getId(), persona.id(), "roster.delegate", describeAssignment(away) + " at map " + workMap);
         return new RosterResult.Ok(persona.name() + " leaves to " + describeAssignment(away) + (mapId != 0 ? " here" : " at map " + workMap)
                 + ", keeping the party slot. Say '" + persona.name().toLowerCase(Locale.ROOT) + " come back' to recall." + warning);
+    }
+
+    /**
+     * A companion out with its owner leaves on an errand of its own (its next job: JobErrands): it says why in
+     * {@code line}, keeps its party seat as an AWAY reservation and walks out like a delegated one. Its duty and camp
+     * stay as they were, so the bench keeps it as before once the errand is over. Never while it is committed to a run.
+     */
+    public RosterResult leaveOnErrand(Character owner, Persona persona, String line) {
+        RosterEntry entry = world.store().rosterEntry(owner.getId(), persona.id());
+        if (entry == null || entry.state() != RosterState.ACTIVE || companion(entry) == null) {
+            return new RosterResult.Failed(persona.name() + " is not out with you.");
+        }
+        if (committed(persona.id())) {
+            return new RosterResult.InEventInstance();
+        }
+        world.residents().reply(persona, owner, line);
+        keepAwaySeat(owner.getId(), persona.id()); // before it leaves the party, so its seat is never up for grabs
+        walkOut(owner, entry); // it walks out to the portal (off its owner's map it goes at once)
+        write(entry.with(RosterState.AWAY, System.currentTimeMillis()));
+        world.store().event(owner.getId(), persona.id(), "roster.errand", line);
+        return new RosterResult.Ok(persona.name() + " leaves on an errand, keeping the party slot.");
+    }
+
+    /** Its next arrival (the end of a trip, or a seat at once) says {@code line} instead of its join line; null forgets it. */
+    void sayOnArrival(String personaId, String line) {
+        if (line == null) {
+            arrivalLines.remove(personaId);
+        } else {
+            arrivalLines.put(personaId, line);
+        }
+    }
+
+    /** What it says to its owner as it joins them: a line kept for this arrival (sayOnArrival), else its own "join" line. */
+    private String joinLine(Persona persona, int ownerId) {
+        String kept = arrivalLines.remove(persona.id());
+        if (kept != null) {
+            return kept;
+        }
+        List<String> lines = world.arcs().lines(persona, "join");
+        return lines.isEmpty() ? "here." : lines.get(Math.floorMod(ownerId, lines.size()));
     }
 
     public String describeAssignment(RosterEntry entry) {

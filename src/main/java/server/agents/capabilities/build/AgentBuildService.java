@@ -467,6 +467,9 @@ public final class AgentBuildService {
 
     /** Returns the next job-advancement prompt, or null if none is pending. */
     public static String buildJobPrompt(AgentRuntimeEntry entry, Character bot) {
+        if (AgentJobPath.selfDirected(bot)) {
+            return null; // its host names its path and takes each step with it (AgentJobPath)
+        }
         int lvl = bot.getLevel();
         Job job = bot.getJob();
         int prompted = AgentBuildStateRuntime.jobPromptSent(entry);

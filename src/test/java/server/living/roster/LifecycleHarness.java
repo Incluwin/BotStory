@@ -123,6 +123,8 @@ final class LifecycleHarness implements AutoCloseable {
     MockedStatic<AgentRuntimeRegistry> registry;
     /** The mocked stock party calls (Party.createParty, Party.joinParty), for a test that stubs a citizen's guest join. */
     MockedStatic<Party> parties;
+    /** The mocked Agent spawns and registrations, for a test that stubs more of them (a bench slice's registration). */
+    MockedStatic<AgentInteractionRuntime> interaction;
 
     private final Map<Integer, MapleMap> botMaps = new HashMap<>();
     private final Map<Integer, Point> botPositions = new HashMap<>();
@@ -197,7 +199,7 @@ final class LifecycleHarness implements AutoCloseable {
             }
             return null;
         });
-        MockedStatic<AgentInteractionRuntime> interaction = open(AgentInteractionRuntime.class);
+        interaction = open(AgentInteractionRuntime.class);
         interaction.when(() -> AgentInteractionRuntime.spawnStationaryAgentForLeaderAt(eq(ann), anyString(), any(), any()))
                 .thenAnswer(inv -> spawn(inv.getArgument(1), inv.getArgument(2), inv.getArgument(3)));
         interaction.when(() -> AgentInteractionRuntime.spawnAgentForLeader(eq(ann), anyString()))
@@ -283,7 +285,17 @@ final class LifecycleHarness implements AutoCloseable {
 
     /** A companion of {@code ownerId}'s (a friend's crew), as {@link #companion}. */
     Persona companionOf(int ownerId, String id, String name, int characterId, RosterState state, int campMapId) {
-        Persona persona = new Persona(id, name, "", "BEGINNER", new Content.LevelBand(1, 1), Content.Strength.ROOKIE, null,
+        return companionOf(ownerId, id, name, characterId, state, campMapId, "BEGINNER");
+    }
+
+    /** A companion of Ann's whose persona is authored as {@code job} (its job path: JobErrands). */
+    Persona companionAs(String job, String id, String name, int characterId, RosterState state, int campMapId) {
+        return companionOf(ANN, id, name, characterId, state, campMapId, job);
+    }
+
+    private Persona companionOf(int ownerId, String id, String name, int characterId, RosterState state, int campMapId,
+                                String job) {
+        Persona persona = new Persona(id, name, "", job, new Content.LevelBand(1, 1), Content.Strength.ROOKIE, null,
                 "relaxed-v1", null, "lith-harbor", List.of(), false, null, List.of(), null, List.of(), List.of(), Map.of(),
                 -1, -1, -1, List.of(), 0, Look.NONE, "test");
         personas.put(id, persona);

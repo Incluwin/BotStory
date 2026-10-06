@@ -43,7 +43,7 @@
   name: Brannock
   look: { gender: male }
   title: "Deckhand"
-  job: WARRIOR
+  job: FIGHTER
   level: { min: 13, max: 16 }
   strength: ROOKIE
   loadout: dock-worker
@@ -307,7 +307,7 @@
 - id: yara
   name: Yara
   title: "Dock Guard"
-  job: WARRIOR
+  job: FIGHTER
   level: { min: 22, max: 25 }
   strength: SEASONED
   loadout: dock-worker

@@ -715,3 +715,33 @@ Tory's name tag hides behind a crowd of companions when the switch lacks hpq; Gr
 - DYING collector trigger is low HP AND no HP potions (KPQ's rule), not the plan's "or".
 - A downed non-leader human is never timed out in HPQ companion runs (KPQ keeps its 45 s rule).
 - All entrances warm and load at boot whatever the switch lists.
+
+
+# Companion job errands (2026-10-05)
+
+Found in the LPQ investigation of 2026-10-05: Casse (persona I/L Wizard) reached Lv50 still a Magician with 60 SP unspent. A companion only advanced when its owner typed a branch name in chat (`AgentChatJobAdvancementFlow`), the owner prompt fired once per spawn ("lv30! ..."), and a Resident's persona job was honoured only when `ResidentShaper` first built it (Casse was built at Lv24). Live state that day (read-only SQL): Vex Lv49 Thief (66 SP), Rurik and Yara Lv47 Warriors (51 SP), HappyWolf Lv45 Warrior (45 SP), Casse Lv37 Magician under a GM level hold (Lv50 I/L Wizard while held), Olwen Lv29 Beginner; Fenna Lv28, SilentSin Lv29 and Brannock Lv27 next.
+
+User decisions (2026-10-05):
+- A companion whose persona names its job goes on an **errand to its instructor**: it tells its owner, walks out keeping its seat, travels (road time), walks up to its instructor, advances there and comes back.
+- Rurik, Yara and Brannock (personas naming only WARRIOR) get a **second-job branch authored**: Rurik PAGE (he swings a two-handed blunt), Yara FIGHTER and Brannock FIGHTER (two-handed axes). Hires stay **owner-chooses** at first job.
+- SP banked at first job **carries into the second job** (the second-job instructors never check SP; the new branch's SP profile spends it as for a late advancer).
+- **Third and fourth job happen by themselves for every companion** (no branch choice is left), hires included.
+
+Built on `feat/companion-job-errand` (from `feat/companion-manager` 348544678):
+- `server.agents.capabilities.build.AgentJobPath`: the owner-free seam. A host rule names an Agent's path; `next(current, path, level)` is the next legal step on `AgentCharacterShaper.advancementChain`; `advance(entry, job)` is the stock job change plus the Agent's build follow-up. `AgentBuildService.buildJobPrompt` asks no owner for an Agent with a path and tells the rule when a step is legal (at a spawn, a map change, the 8/10/30/70/120 level-up). No rule or no path: exactly as before.
+- `server.living.roster.JobErrands` (the rule, installed at `LivingWorld.start`): path = persona job at first job (or as a Beginner on the way to it), the companion's own line to fourth job from second job on, none for a hire at first job or a Beginner persona. Out with its owner and free (no run or event, following them, alive, not held at a GM level), it leaves through `RosterService.leaveOnErrand` (AWAY seat, walk-out; duty and camp unchanged) with a persona line `jobErrand` or a fallback ("gotta go see grendel about my 2nd job. brb"). The errand is a `living_world_flag` (`companion.job-errand.<owner>.<persona>`), so a restart carries it on.
+- The visit is a bench form ahead of every duty (`BenchDutyDispatcher.first`, BENCH_TOWN pool): after the road time (`RecallTravel`) it loads on the instructor's map, walks up to the NPC (`JobInstructors`: Dances with Balrog / Grendel / Athena Pierce / the Dark Lord / Kyrin for 1st and 2nd job, El Nath's Chief's Residence 211000001 for 3rd, Leafre's Forest of the Priest 240010501 for 4th), stands `COMPANION_JOB_ERRAND_TALK_MS`, advances, thanks the instructor when a player is there, and is called back (`RosterService.call`: the trip back, then `jobBack` or "made it back. i/l wizard now :)" through `sayOnArrival`). A benched companion goes between its duties and back to them.
+- Owner offline, in a run or with a full party: it does its duty meanwhile and the sweep (`COMPANION_JOB_ERRAND_SWEEP_MS`) calls it back once they can take it. Called back before it advanced, a refused job change or a visit over its time: it comes back with its usual join line and waits `COMPANION_JOB_ERRAND_RETRY_MS` before it goes again. Kill switch `COMPANION_JOB_ERRANDS_ENABLED: false`: everyone is asked in chat as before, and errands still on their way are called back.
+
+Live checks for the deploy session (not run here: no server restart, no game log-in):
+1. Vex (Jevelopers, Lv49 Thief, persona BANDIT): call him out; at his first map change he says he is off to see the dark lord and walks out. About the road time later he appears in 103000003, walks to the Dark Lord, advances (job 420, `job.advanced` in living_event_log) and travels back with "back! bandit now"-style line. His 66 SP go into Bandit skills.
+2. Rurik / Yara (Crewfriend, BENCHED Lv47 Warriors): without being called, the bench takes each to Dances with Balrog (102000003) between duties: Rurik PAGE, Yara FIGHTER; then back to training.
+3. HappyWolf (hire, Lv45 Warrior): still asked by his owner in chat (unchanged).
+4. Casse: `!setlevel casse restore` first (she is held at Lv50); then as Vex, to Grendel (101000003) for I/L Wizard.
+5. Call a companion back mid-errand ("<name> come back"): it comes back, says its usual line, and does not set off again for 30 min.
+6. A restart mid-errand: the flag carries it on to its instructor (or, advanced already, back to its owner).
+
+Open:
+- Olwen (Beginner persona, Lv29) stays owner-chooses; authoring her a class is a content decision.
+- The crew window shows an errand as "away" with its old duty; no "gone to see Grendel" status yet (Lakelis/Tory desks neither).
+- Owner chat ("casse fp") still advances in place at once, as before.

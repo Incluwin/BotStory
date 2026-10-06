@@ -266,6 +266,24 @@ public class LivingWorldConfig {
      */
     public String COMPANION_RESTOCK_BOSS_MAPS = "220080000,106021402";
 
+    // Companions go for their next job by themselves (AgentJobPath, JobErrands)
+    /**
+     * A companion whose persona names its job, and every companion from its second job on (its own line to fourth
+     * job), takes each advancement by itself once the game allows it: it tells its owner, walks out, travels to its
+     * instructor, walks up to them, advances there and comes back (a benched one goes between its duties). A hire at
+     * first job or a Beginner persona is asked to pick in chat as before. false = the kill switch: every companion is
+     * asked, as before.
+     */
+    public boolean COMPANION_JOB_ERRANDS_ENABLED = true;
+    /** How long it stands with its instructor before it advances. */
+    public int COMPANION_JOB_ERRAND_TALK_MS = 5000;
+    /** How long it walks up to its instructor at most; then it advances where it stands. */
+    public int COMPANION_JOB_ERRAND_WALK_MAX_MS = 45000;
+    /** Called back by its owner before it advanced, it sets off again no sooner than this. */
+    public int COMPANION_JOB_ERRAND_RETRY_MS = 1800000;
+    /** How often the errands out are looked at (a return its owner was offline for, one called back meanwhile). */
+    public int COMPANION_JOB_ERRAND_SWEEP_MS = 30000;
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
@@ -445,6 +463,13 @@ public class LivingWorldConfig {
         }
         if (COMPANION_RESTOCK_ASK_EVERY_MS < 0) {
             throw new IllegalArgumentException("living_world.COMPANION_RESTOCK_ASK_EVERY_MS must be >= 0");
+        }
+        if (COMPANION_JOB_ERRAND_TALK_MS < 0 || COMPANION_JOB_ERRAND_WALK_MAX_MS < 0 || COMPANION_JOB_ERRAND_RETRY_MS < 0) {
+            throw new IllegalArgumentException(
+                    "living_world.COMPANION_JOB_ERRAND_TALK_MS, _WALK_MAX_MS and _RETRY_MS must be >= 0");
+        }
+        if (COMPANION_JOB_ERRAND_SWEEP_MS <= 0) {
+            throw new IllegalArgumentException("living_world.COMPANION_JOB_ERRAND_SWEEP_MS must be > 0");
         }
         for (String id : COMPANION_RESTOCK_BOSS_MAPS == null ? new String[0] : COMPANION_RESTOCK_BOSS_MAPS.split(",")) {
             if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
