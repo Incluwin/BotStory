@@ -128,7 +128,7 @@ public final class AgentEpqMemberState {
         bossRestPoint = point == null ? null : new java.awt.Point(point);
     }
 
-    /** Back in the fight, or no golem lives. */
+    /** Back in the fight, the event cleared, or the member left the golem's map. */
     void clearBossRest() {
         bossResting = false;
         bossRestPoint = null;

@@ -3,8 +3,11 @@ package server.agents.capabilities.partyquest.epq;
 import client.Character;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
+import server.agents.capabilities.supplies.AgentAutopotPolicy;
+import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.runtime.AgentModeService;
 import server.agents.runtime.AgentModeStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -26,6 +29,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -281,6 +285,80 @@ class AgentEpqBossRestTest {
         verify(run.actions).grind(run.entry(tobi), AgentEpqDefinition.BOSS_COMBAT_TARGETS);
         verify(run.actions).grind(run.entry(una), AgentEpqDefinition.BOSS_COMBAT_TARGETS);
         verify(run.actions, never()).navigate(any(), any(), anyBoolean());
+    }
+
+    /**
+     * The golem chain spawns by Mob.wz revive after each die animation, so for a moment between 9300180 and 9300181
+     * no golem lives. A rester at 50 % with 5 potions keeps resting through that gap (it may top up there) and does not
+     * walk back into melee when 9300181 appears: it rejoins only at RESUME_HP_FRACTION or with POT_STOP potions.
+     */
+    @Test
+    void aRestLastsThroughTheGolemsRevive() {
+        AgentEpqSession session = boss();
+        Monster first = golemAt(392);
+        vitals(tobi, 400, 1_320, 5); // 30 %, 5 potions: rests
+        AgentRuntimeEntry entry = run.entry(tobi);
+        try (MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class);
+             EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            potions.when(() -> AgentPotionService.selectAutopotForCurrentDeficit(any(), eq(true)))
+                    .thenReturn(new AgentAutopotPolicy.AutopotItemChoice(2_000_002, (short) 1, null));
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+            vitals(tobi, 1_020, 2_200, 5); // 50 %: still resting
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 3_000L);
+
+            when(first.isAlive()).thenReturn(false); // 9300180 dies; 9300181 follows its die animation
+            when(run.actions.liveMonsterCount(any(), eq(AgentEpqDefinition.BOSS_MOBS))).thenReturn(0);
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 4_000L);
+            assertTrue(session.member(tobi.getId()).bossResting(), "the rest lasts through the revive");
+
+            Monster second = run.monster(9_300_181);
+            when(second.getPosition()).thenReturn(new Point(392, 150));
+            when(run.actions.liveMonsterCount(any(), eq(AgentEpqDefinition.BOSS_MOBS))).thenReturn(1);
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 5_000L);
+
+            verify(run.actions, never()).grind(eq(entry), any());
+            List<String> rest = lines.startingWith("EPQ boss rest:");
+            assertEquals(1, rest.size(), rest::toString);
+            assertTrue(rest.getFirst().contains(" state=START "), rest::toString);
+        }
+        assertTrue(session.member(tobi.getId()).bossResting());
+    }
+
+    @Test
+    void aRestEndsWithTheClear() {
+        AgentEpqSession session = boss();
+        Monster golem = golemAt(392);
+        vitals(tobi, 1_020, 1_000, 0);
+        AgentRuntimeEntry entry = run.entry(tobi);
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+            when(golem.isAlive()).thenReturn(false); // 9300182's death clears the event
+            when(run.actions.liveMonsterCount(any(), eq(AgentEpqDefinition.BOSS_MOBS))).thenReturn(0);
+            when(run.event.isEventCleared()).thenReturn(true);
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 3_000L);
+
+            assertEquals(1, lines.startingWith("EPQ boss rest: session=" + session.sessionId()
+                    + " member=Tobi state=END").size(), lines.startingWith("EPQ boss rest:")::toString);
+        }
+        assertFalse(session.member(tobi.getId()).bossResting());
+        assertEquals(null, session.member(tobi.getId()).bossRestPoint());
+    }
+
+    @Test
+    void aRestEndsWhenTheMemberLeavesTheGolemsMap() {
+        AgentEpqSession session = boss();
+        golemAt(392);
+        vitals(tobi, 1_020, 1_000, 0);
+        AgentRuntimeEntry entry = run.entry(tobi);
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 2_000L);
+            run.onMap(tobi, AgentEpqDefinition.REWARD_MAP); // a GM warp; still in the event
+            AgentEpqCoordinator.tickMember(session, entry, tobi, 3_000L);
+
+            assertEquals(1, lines.startingWith("EPQ boss rest: session=" + session.sessionId()
+                    + " member=Tobi state=END").size(), lines.startingWith("EPQ boss rest:")::toString);
+        }
+        assertFalse(session.member(tobi.getId()).bossResting());
     }
 
     /**

@@ -203,6 +203,9 @@ public final class AgentEpqCoordinator {
         if (agent.getMapId() != AgentEpqDefinition.STAGE_FOUR_MAP) {
             actions().clearHorizontalBoundary(entry);
         }
+        if (member.bossResting() && agent.getMapId() != AgentEpqDefinition.BOSS_MAP) {
+            endBossRest(session, agent, member, null); // EPQ base fix 7: the rest belongs to the golem's map
+        }
         if (leftEvent(session, agent)) {
             // EPQ base fix 3: the event no longer holds this Agent (its respawn walked it out, or it pressed OK). It
             // has left the run and idles until the release; it does not fail it.
@@ -577,7 +580,11 @@ public final class AgentEpqCoordinator {
             actions().grind(entry, AgentEpqDefinition.BOSS_COMBAT_TARGETS);
             return;
         }
-        if (member.bossResting()) endBossRest(session, agent, member, null);
+        // The golem chain revives (9300180 -> 9300181 -> 9300182) after each die animation, so for a moment no golem
+        // lives: a rest lasts through that gap and ends with the clear (or once the member leaves this map).
+        if (member.bossResting() && AgentEpqTerminationService.pastTheClear(session.eventInstance())) {
+            endBossRest(session, agent, member, null);
+        }
         if (session.eventInstance() == null || !session.eventInstance().isEventCleared()) {
             // Before the golem: a member under its top-up drinks first (an Agent leader before its altar drop).
             if (topUp(session, entry, agent, member, nowMs)) return;
@@ -616,8 +623,9 @@ public final class AgentEpqCoordinator {
      * potions is no longer sent back to its owner at the golem's feet. Away from its rest point (or airborne) it walks
      * there; there, out of the golem's reach, it fights a golem add that reaches it and otherwise stands still
      * (passive regen; the generic potion share still asks the party). It rejoins at RESUME_HP_FRACTION or once it
-     * holds POT_STOP potions. 'EPQ boss rest:' START, END and every change of rest point (MOVE). True while the rest
-     * owns this pass.
+     * holds POT_STOP potions; the rest lasts through the golem's revive gap and otherwise ends only with the clear or
+     * when it leaves the golem's map. 'EPQ boss rest:' START, END and every change of rest point (MOVE). True while
+     * the rest owns this pass.
      */
     private static boolean bossRest(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                      AgentEpqMemberState member) {
