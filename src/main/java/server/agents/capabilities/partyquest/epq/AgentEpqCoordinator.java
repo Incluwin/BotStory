@@ -299,12 +299,14 @@ public final class AgentEpqCoordinator {
         }
         Reactor pond = agent.getMap().getReactorById(AgentEpqDefinition.POND_REACTOR);
         if (pond == null) { actions().stop(entry); return; }
-        if (session.stageTwoBottlesSecured() && corpseHoldsBottle(session, agent)) {
-            // EPQ base fix 4: a bottle holder lying dead here keeps its bottle but cannot drop it; count again and
-            // secure the bottles only while four are still reachable.
+        int securedBottles = stageTwoSecuredBottleCount(session, agent, spine);
+        if (session.stageTwoBottlesSecured() && securedBottles < STAGE_TWO_BOTTLES_REQUIRED
+                && corpseHoldsBottle(session, agent)) {
+            // EPQ base fix 4: a bottle holder lying dead here keeps its bottle but cannot drop it; the bottles are
+            // secured only while four are still reachable without it. Reopened only when they are short, so a
+            // secured mark is never reopened and re-secured (each counted as progress) on every pass.
             session.reopenStageTwoBottles();
         }
-        int securedBottles = stageTwoSecuredBottleCount(session, agent, spine);
         if (securedBottles >= STAGE_TWO_BOTTLES_REQUIRED) {
             session.secureStageTwoBottles(nowMs);
         }

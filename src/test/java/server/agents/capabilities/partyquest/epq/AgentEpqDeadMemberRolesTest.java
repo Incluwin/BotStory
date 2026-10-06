@@ -159,6 +159,28 @@ class AgentEpqDeadMemberRolesTest {
         verify(run.actions).navigate(run.entry(una), new Point(900, 0), true);
     }
 
+    /**
+     * A corpse holding a bottle while the living still reach four keeps the secured mark: reopening and re-securing it
+     * on every pass would count as progress each time and keep the watchdog from ever seeing a stall.
+     */
+    @Test
+    void aCorpsesBottleWithFourStillReachableLeavesTheMarkAndTheProgressClock() {
+        everyoneOn(AgentEpqDefinition.STAGE_TWO_MAP);
+        AgentEpqSession session = session(AgentEpqSession.Phase.STAGE_TWO);
+        stageTwoReactors((byte) 3);
+        session.secureStageTwoBottles(1_500L);
+        when(tobi.getHp()).thenReturn(0);
+        when(run.actions.itemCount(tobi, AgentEpqDefinition.PURIFIED_POISON)).thenReturn(1);
+        when(run.actions.itemCount(ben, AgentEpqDefinition.PURIFIED_POISON)).thenReturn(1); // the fourth, alive
+
+        AgentEpqCoordinator.tickMember(session, run.entry(una), una, 2_000L);
+        AgentEpqCoordinator.tickMember(session, run.entry(una), una, 3_000L);
+
+        assertTrue(session.stageTwoBottlesSecured());
+        assertEquals(1_500L, session.lastProgressAtMs(), "no pass counts as progress");
+        verify(run.actions, org.mockito.Mockito.times(2)).navigate(run.entry(una), new Point(900, 0), true);
+    }
+
     @Test
     void theStoneCollectorIsTheLivingWorkAgentAndMayLootTheStone() {
         everyoneOn(AgentEpqDefinition.STAGE_FIVE_MAP);
