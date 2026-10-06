@@ -212,6 +212,50 @@ class AgentEpqEventEndTest {
     }
 
     /**
+     * The leader took out00 (warpEventTeam to the instance 930000800) and then east00 to 300030100 before any
+     * coordinator pass saw him on 930000800, so the phase never read REWARD (the backward PREPARING is ignored). An
+     * Agent the cleared event still holds on 930000800 is at the reward: it hits the reward and takes the exit as
+     * before fix 2, instead of idling there until the watchdog fails a cleared run.
+     */
+    @Test
+    void afterTheClearAnAgentTheEventHoldsOnTheExitMapTakesTheRewardThoughThePhaseNeverReadIt() {
+        AgentEpqSession session = boss();
+        when(run.event.isEventCleared()).thenReturn(true);
+        run.onMap(ben, AgentEpqDefinition.RECRUIT_MAP); // out through east00 already
+        when(ben.getEventInstance()).thenReturn(null);
+        run.onMap(mira, AgentEpqDefinition.REWARD_MAP); // still in the bound event
+        Reactor reward = rewardReactor();
+        when(run.actions.hitReactor(mira, reward.getObjectId())).thenReturn(true);
+        when(run.actions.portalPosition(mira, 1)).thenReturn(new Point(0, 0));
+        when(run.epq.enterPortal(mira, 1)).thenReturn(true);
+
+        AgentEpqCoordinator.tickSession(session, 2_000L);
+        assertEquals(AgentEpqSession.Phase.BOSS, session.phase());
+        AgentEpqCoordinator.tickMember(session, run.entry(mira), mira, 2_000L);
+        verify(run.actions).hitReactor(mira, reward.getObjectId());
+        assertTrue(session.rewardHit());
+
+        AgentEpqCoordinator.tickMember(session, run.entry(mira), mira, 10_000L);
+        verify(run.epq).enterPortal(mira, 1);
+        assertEquals(AgentEpqSession.Phase.EXITING, session.phase());
+    }
+
+    @Test
+    void afterTheClearAnAgentOnTheNormalExitMapStillOnlyStops() {
+        AgentEpqSession session = boss();
+        when(run.event.isEventCleared()).thenReturn(true);
+        run.onMap(mira, AgentEpqDefinition.REWARD_MAP); // died after the clear: the normal 930000800
+        when(mira.getEventInstance()).thenReturn(null);
+        rewardReactor();
+
+        AgentEpqCoordinator.tickMember(session, run.entry(mira), mira, 2_000L);
+
+        verify(run.actions).stop(run.entry(mira));
+        verify(run.actions, never()).hitReactor(eq(mira), anyInt());
+        verify(run.epq, never()).enterPortal(eq(mira), anyInt());
+    }
+
+    /**
      * A release (a GM's '!epqtest stop' on another thread) marks the run terminating, exits every player, disposes the
      * event and fails the run only at its end; a lease holder's pass in that window sees no event end and no departure.
      */

@@ -229,8 +229,11 @@ public final class AgentEpqCoordinator {
             case AgentEpqDefinition.BOSS_MAP -> boss(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.REWARD_MAP -> {
                 // 930000800 is every stage's return map: only the reward phase hits its reactor (whose hit gives
-                // everyone on the map its EXP) and takes its exit.
-                if (session.phase().ordinal() >= AgentEpqSession.Phase.REWARD.ordinal()) {
+                // everyone on the map its EXP) and takes its exit. An Agent the cleared event still holds here is at
+                // the reward too (out00's warp), even when no coordinator pass saw the leader here before east00.
+                if (session.phase().ordinal() >= AgentEpqSession.Phase.REWARD.ordinal()
+                        || (AgentEpqTerminationService.pastTheClear(session.eventInstance())
+                        && agent.getEventInstance() == session.eventInstance())) {
                     reward(session, entry, agent, member, nowMs);
                 } else {
                     actions().stop(entry);
