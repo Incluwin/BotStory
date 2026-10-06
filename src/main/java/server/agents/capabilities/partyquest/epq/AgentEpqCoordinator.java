@@ -202,7 +202,7 @@ public final class AgentEpqCoordinator {
         if (actions().itemCount(agent, AgentEpqDefinition.PURIFIED_POISON) > 0
                 && spine != null) {
             if (dropAt(session, entry, agent, InventoryType.ETC,
-                    AgentEpqDefinition.PURIFIED_POISON, spine.getPosition(), member, nowMs)) {
+                    AgentEpqDefinition.PURIFIED_POISON, spine.getPosition(), member, nowMs, "stage2-bottle-dropped")) {
                 if (session.stageTwoBottlesSecured()) {
                     member.finishStageTwoTreeReturn();
                     sendVisiblePartyChat(session, "stage2-bottle-dropped", agent,
@@ -354,8 +354,8 @@ public final class AgentEpqCoordinator {
                     }
                 }
             } else if (monsterMarbles > 0) {
-                dropStackNearNpc(entry, agent, AgentEpqDefinition.MONSTER_MARBLE,
-                        AgentEpqDefinition.STAGE_NPC, member, nowMs);
+                dropStackNearNpc(session, entry, agent, AgentEpqDefinition.MONSTER_MARBLE,
+                        AgentEpqDefinition.STAGE_NPC, member, nowMs, "stage4-handoff");
                 if (actions().itemCount(agent, AgentEpqDefinition.MONSTER_MARBLE) == 0) {
                     announce(session, member, agent, "stage4-handoff",
                             "I left my Monster Marbles beside Ellin for our leader.");
@@ -388,7 +388,9 @@ public final class AgentEpqCoordinator {
         }
         actions().stop(entry);
         if (AgentEpqCaptureRuntime.ready(target)) {
+            boolean own = captureAgentId(session, target) == agent.getId();
             if (AgentEpqCaptureRuntime.capture(agent, target)) {
+                logCapture(session, agent, target, own);
                 member.deferUntil(nowMs + ACTION_RETRY_MS);
             }
             return;
@@ -419,8 +421,8 @@ public final class AgentEpqCoordinator {
                 }
             } else {
                 int stonesBefore = magicStones;
-                dropStackNearNpc(entry, agent, AgentEpqDefinition.MAGIC_STONE,
-                        AgentEpqDefinition.STONE_NPC, member, nowMs);
+                dropStackNearNpc(session, entry, agent, AgentEpqDefinition.MAGIC_STONE,
+                        AgentEpqDefinition.STONE_NPC, member, nowMs, "stage5-human-handoff");
                 if (stonesBefore > 0
                         && actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE) == 0) {
                     session.markStageFiveStoneHandedOff(nowMs);
@@ -460,7 +462,7 @@ public final class AgentEpqCoordinator {
                     && actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE) > 0) {
                 Reactor altar = agent.getMap().getReactorById(AgentEpqDefinition.ALTAR_REACTOR);
                 if (altar != null) dropAt(session, entry, agent, InventoryType.ETC,
-                        AgentEpqDefinition.MAGIC_STONE, altar.getPosition(), member, nowMs);
+                        AgentEpqDefinition.MAGIC_STONE, altar.getPosition(), member, nowMs, "boss-altar");
             } else {
                 actions().stop(entry);
             }
@@ -503,14 +505,17 @@ public final class AgentEpqCoordinator {
 
     /**
      * Moves the run forward, with one 'EPQ phase:' line per change in every mode (the time spent in the phase it left
-     * and in the run), so a run's pace reads straight from the log. A companion run leaving the entrance also logs its
-     * companions' potions, which its release compares.
+     * and in the run), so a run's pace reads straight from the log, followed by one 'EPQ vitals:' line (every online
+     * member's HP and potions as the phase begins). A companion run leaving the entrance also logs its companions'
+     * potions, which its release compares.
      */
     private static void transition(AgentEpqSession session, AgentEpqSession.Phase next, long nowMs) {
         AgentEpqSession.Change change = session.advance(next, nowMs);
         if (change == null) return;
         log.info("EPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", session.sessionId(),
                 change.from(), change.to(), change.phaseMs(), change.runMs(), session.companionAdopted());
+        log.info("EPQ vitals: session={} phase={} members={}", session.sessionId(), change.to(),
+                AgentEpqTerminationService.vitals(session));
         if (change.from() == AgentEpqSession.Phase.PREPARING && session.companionAdopted()) {
             String potions = AgentEpqTerminationService.potions(session);
             session.setPotionsAtEntry(potions);
@@ -528,7 +533,60 @@ public final class AgentEpqCoordinator {
             } else if (session.markMemberDown(member.characterId())) {
                 log.info("EPQ member down: session={} member={} type={} map={} phase={}", session.sessionId(),
                         member.characterId(), member.memberType(), character.getMapId(), session.phase());
+                log.info("EPQ down detail: session={} {}", session.sessionId(), downDetail(character));
             }
+        }
+    }
+
+    /**
+     * What a member that went down held and where it lay, for its 'EPQ down detail:' line: its maximum HP, potions,
+     * the stage objective items it carried (filled bottles, the stone, monster marbles, purification marbles), map and
+     * position. Never throws.
+     */
+    static String downDetail(Character member) {
+        try {
+            Point at = member.getPosition();
+            return "member=" + member.getName() + "(" + member.getId() + ") maxHp=" + member.getCurrentMaxHp()
+                    + " hpPots=" + actions().hpPotionCount(member) + " mpPots=" + actions().mpPotionCount(member)
+                    + " items={bottles=" + actions().itemCount(member, AgentEpqDefinition.PURIFIED_POISON)
+                    + ", stone=" + actions().itemCount(member, AgentEpqDefinition.MAGIC_STONE)
+                    + ", marbles=" + actions().itemCount(member, AgentEpqDefinition.MONSTER_MARBLE)
+                    + ", purifiers=" + actions().itemCount(member, AgentEpqDefinition.PURIFICATION_MARBLE)
+                    + "} map=" + member.getMapId() + " at=" + xy(at);
+        } catch (RuntimeException e) {
+            return "detail unavailable";
+        }
+    }
+
+    /** A point as the evidence lines write it: (x,y), or none. */
+    private static String xy(Point point) {
+        return point == null ? "none" : "(" + point.x + "," + point.y + ")";
+    }
+
+    /**
+     * 'EPQ drop:' for an objective drop that was made: where the dropper stood, where it meant the drop to go and where
+     * the map would land it (none when that cannot be told). Nothing decides by it; never throws.
+     */
+    private static void logDrop(AgentEpqSession session, String key, Character agent, Point at, Point target) {
+        try {
+            log.info("EPQ drop: session={} key={} member={} at={} target={} landing={}", session.sessionId(), key,
+                    agent.getName(), xy(at), xy(target), xy(actions().predictDropLanding(agent, at)));
+        } catch (RuntimeException e) {
+            log.warn("EPQ drop line failed: session={} key={}", session.sessionId(), key, e);
+        }
+    }
+
+    /**
+     * 'EPQ capture:' for a stage-4 flower caught: who caught it, whether it was its own by the stock assignment, and
+     * the stage's marble total after it. Nothing decides by it; never throws.
+     */
+    private static void logCapture(AgentEpqSession session, Character agent, Monster flower, boolean own) {
+        try {
+            log.info("EPQ capture: session={} member={} flower={} own={} marbles={} map={}", session.sessionId(),
+                    agent.getName(), flower.getObjectId(), own,
+                    stageItemTotal(session, agent, AgentEpqDefinition.MONSTER_MARBLE), agent.getMapId());
+        } catch (RuntimeException e) {
+            log.warn("EPQ capture line failed: session={}", session.sessionId(), e);
         }
     }
 
@@ -863,7 +921,7 @@ public final class AgentEpqCoordinator {
 
     private static boolean dropAt(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                   InventoryType type, int itemId,
-                                  Point target, AgentEpqMemberState member, long nowMs) {
+                                  Point target, AgentEpqMemberState member, long nowMs, String logKey) {
         Point position = agent.getPosition();
         Point levelTarget = new Point(target.x, position == null ? target.y : position.y);
         Point ground = actions().groundPoint(agent.getMap(), levelTarget);
@@ -873,18 +931,20 @@ public final class AgentEpqCoordinator {
             return false;
         }
         actions().stop(entry);
+        Point at = position == null ? null : new Point(position);
         if (dropItem(entry, agent, type, itemId, (short) 1)) {
             // The map schedules item-reactor consumption itself. Only throttle the
             // carrier's transaction; lurers and tree defenders must keep working.
             member.deferUntil(nowMs + ACTION_RETRY_MS);
+            logDrop(session, logKey, agent, at, target);
             return true;
         }
         return false;
     }
 
     private static void dropStackNearNpc(
-            AgentRuntimeEntry entry, Character agent, int itemId, int npcId,
-            AgentEpqMemberState member, long nowMs) {
+            AgentEpqSession session, AgentRuntimeEntry entry, Character agent, int itemId, int npcId,
+            AgentEpqMemberState member, long nowMs, String logKey) {
         Point npc = npcApproachPoint(agent, npcId);
         if (!near(agent.getPosition(), npc, NPC_RADIUS) || !actions().grounded(agent)) {
             if (npc != null) actions().navigate(entry, npc, true);
@@ -892,9 +952,11 @@ public final class AgentEpqCoordinator {
         }
         actions().stop(entry);
         int count = actions().itemCount(agent, itemId);
+        Point at = agent.getPosition() == null ? null : new Point(agent.getPosition());
         if (count > 0 && dropItem(entry, agent, InventoryType.ETC, itemId,
                 (short) Math.min(count, Short.MAX_VALUE))) {
             member.deferUntil(nowMs + ACTION_RETRY_MS);
+            logDrop(session, logKey, agent, at, npc);
         }
     }
 
