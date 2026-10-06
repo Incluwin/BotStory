@@ -898,6 +898,20 @@ living_world:
     COMPANION_RESTOCK_ENABLED: true
     COMPANION_RESTOCK_ASK_EVERY_MS: 1800000
     COMPANION_RESTOCK_BOSS_MAPS: "220080000,106021402"
+    # Companions go for their next job by themselves (2026-10-05, replacing "only an owner typing a branch name in chat
+    # advances a companion"; AgentJobPath, JobErrands): a companion whose persona names its job, and every companion
+    # from its second job on (its own line to fourth job), takes each advancement once the game allows it. Out with
+    # its owner it says so, walks out, travels to its instructor (its town's for 1st/2nd job, El Nath's chiefs, Leafre's
+    # elders), walks up to them, advances there and comes back; a benched one goes between its duties. A hire at first
+    # job or a Beginner persona is asked to pick in chat as before. false = the kill switch, everyone asked as before.
+    # TALK_MS: how long it stands with its instructor. WALK_MAX_MS: how long it walks up to them at most (then it
+    # advances where it stands). RETRY_MS: called back by its owner first, it sets off again no sooner than this.
+    # SWEEP_MS: how often the errands out are looked at (a return its owner was offline for).
+    COMPANION_JOB_ERRANDS_ENABLED: true
+    COMPANION_JOB_ERRAND_TALK_MS: 5000
+    COMPANION_JOB_ERRAND_WALK_MAX_MS: 45000
+    COMPANION_JOB_ERRAND_RETRY_MS: 1800000
+    COMPANION_JOB_ERRAND_SWEEP_MS: 30000
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 

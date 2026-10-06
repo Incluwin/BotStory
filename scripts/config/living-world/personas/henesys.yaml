@@ -249,7 +249,7 @@
 - id: rurik
   name: Rurik
   title: "Boar Farmer"
-  job: WARRIOR
+  job: PAGE
   level: { min: 26, max: 29 }
   strength: SEASONED
   loadout: dock-worker

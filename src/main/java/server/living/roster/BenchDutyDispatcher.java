@@ -46,6 +46,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.function.LongSupplier;
 import java.util.function.ToLongFunction;
@@ -207,6 +208,8 @@ public final class BenchDutyDispatcher {
     private final LivingWorld world;
     private final LongSupplier clock;
     private final Map<Assignment, Form> forms = new ConcurrentHashMap<>();
+    /** What takes a row ahead of its duty's form (JobErrands); answers null for none. */
+    private volatile Function<RosterEntry, Form> first = entry -> null;
     /** persona id -> its live slice. */
     private final Map<String, Slice> live = new ConcurrentHashMap<>();
     /** character id -> its live slice, for the pickup and death hooks. */
@@ -274,6 +277,29 @@ public final class BenchDutyDispatcher {
     /** The form of {@code duty}, or null when the ledger alone keeps it. */
     public Form form(Assignment duty) {
         return duty == null ? null : forms.get(duty);
+    }
+
+    /**
+     * Installs what takes a row ahead of its duty when it answers a form (a companion going for its next job:
+     * JobErrands); null for none, so every row goes to its duty's form.
+     */
+    public void first(Function<RosterEntry, Form> chooser) {
+        first = chooser == null ? entry -> null : chooser;
+    }
+
+    /**
+     * The form a row's next slice takes: the one {@link #first} answers for it, else its duty's (also when the chooser
+     * fails: one row's errand never stops every other row's turn).
+     */
+    Form formOf(RosterEntry entry) {
+        Form ahead;
+        try {
+            ahead = first.apply(entry);
+        } catch (RuntimeException failure) {
+            log.warn("the form ahead of {}'s duty failed; it keeps its duty", entry.personaId(), failure);
+            ahead = null;
+        }
+        return ahead != null ? ahead : form(entry.assignment());
     }
 
     /** The CompanionLeases kind that holds a slice of {@code pool}. */
@@ -796,7 +822,7 @@ public final class BenchDutyDispatcher {
         List<RosterEntry> due = new ArrayList<>();
         Set<Integer> owners = new HashSet<>();
         for (RosterEntry entry : world.store().allBenched()) {
-            if (BenchSessions.benchGoverned(entry) && form(entry.assignment()) != null && !live.containsKey(entry.personaId())
+            if (BenchSessions.benchGoverned(entry) && formOf(entry) != null && !live.containsKey(entry.personaId())
                     && restingUntilMs.getOrDefault(entry.personaId(), 0L) <= now
                     && world.roster().companion(entry) == null && world.residents().agentOf(entry.personaId()) == null) {
                 due.add(entry);
@@ -817,7 +843,7 @@ public final class BenchDutyDispatcher {
                 log.warn("your call for {} failed; it keeps its duty", turn.personaId(), failure);
                 entry = turn;
             }
-            Form form = form(entry.assignment());
+            Form form = formOf(entry);
             if (form == null) {
                 continue;
             }

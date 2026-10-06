@@ -114,6 +114,32 @@ class AgentBuildServiceTest {
     }
 
     @Test
+    void aLateSecondJobSpendsTheSpBankedAtFirstJobOnTheNewBranch() {
+        // Casse: a Lv47 Magician with 60 SP banked past her first-job profile takes I/L Wizard (+1 SP); the
+        // instructor never checks SP at second job, so the bank goes into her new skills as a late advancer's would.
+        Character bot = mock(Character.class);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
+        entry.spBuildProfileState().assign(AgentSpBuildProfileRepository.defaultRepository()
+                .find("mapleroyals-optimal-2026-magician-first-job").orElseThrow());
+        int book = GameConstants.getSkillBook(Job.IL_WIZARD.getId());
+        int[] remainingSps = new int[5];
+        remainingSps[book] = 61;
+        Map<Integer, Integer> skillLevels = new HashMap<>();
+        SkillGateway skills = mock(SkillGateway.class);
+        when(skills.getSkill(anyInt())).thenAnswer(invocation -> mockSkill(invocation.getArgument(0), 30, false));
+        when(bot.getJob()).thenReturn(Job.IL_WIZARD);
+        when(bot.getLevel()).thenReturn(47);
+        stubSkillState(bot, remainingSps, skillLevels);
+
+        assertTrue(AgentSpBuildProfileService.autoAssign(entry, bot, skills));
+
+        assertEquals("mapleroyals-optimal-2026-il-wizard", entry.spBuildProfileState().profile().profileId());
+        int intoIlWizard = skillLevels.entrySet().stream().filter(level -> level.getKey() / 10000 == Job.IL_WIZARD.getId())
+                .mapToInt(Map.Entry::getValue).sum();
+        assertTrue(intoIlWizard >= 1 + 3 * (47 - 30), "the second-job SP of Lv30-47 went into I/L skills: " + skillLevels);
+    }
+
+    @Test
     void setApBuildConfirmsThroughAgentBuildRuntime() {
         Character bot = mock(Character.class);
         when(bot.getRemainingAp()).thenReturn(0);

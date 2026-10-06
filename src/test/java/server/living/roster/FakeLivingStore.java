@@ -85,6 +85,8 @@ final class FakeLivingStore {
     /** owner:persona keys whose settings_json the database cannot read, or write, right now. */
     final Set<String> unreadable = new java.util.HashSet<>();
     final Set<String> unwritable = new java.util.HashSet<>();
+    /** living_world_flag rows (flag -> set_by). */
+    final Map<String, Integer> flags = new LinkedHashMap<>();
     final LivingStore store = mock(LivingStore.class);
 
     FakeLivingStore() {
@@ -296,6 +298,9 @@ final class FakeLivingStore {
             personaStates.put(state.personaId(), state);
             return null;
         }).when(store).savePersonaState(any());
+        when(store.worldFlags()).thenAnswer(inv -> new java.util.LinkedHashSet<>(flags.keySet()));
+        doAnswer(inv -> flags.putIfAbsent(inv.getArgument(0), inv.getArgument(1))).when(store).setWorldFlag(anyString(), anyInt());
+        doAnswer(inv -> flags.remove((String) inv.getArgument(0))).when(store).clearWorldFlag(anyString());
     }
 
     void seed(RosterEntry entry) {
