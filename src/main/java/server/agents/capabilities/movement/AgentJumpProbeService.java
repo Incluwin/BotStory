@@ -52,9 +52,10 @@ public final class AgentJumpProbeService {
 
     public static AgentJumpLanding simulateRopeJumpLanding(MapleMap map,
                                                            Point from,
-                                                           int stepX,
+                                                           int direction,
                                                            AgentMovementProfile profile) {
-        return simulateLanding(map, from, -AgentMovementKinematicsService.ropeJumpForcePerTick(profile), stepX, 0L);
+        return simulateLanding(map, from, -AgentMovementKinematicsService.ropeJumpForcePerTick(profile),
+                AgentMovementKinematicsService.ropeJumpVelocityX(map, profile, direction), 0L);
     }
 
     public static AgentJumpLanding simulateFallLanding(MapleMap map, Point from, int stepX) {
@@ -204,28 +205,28 @@ public final class AgentJumpProbeService {
 
     public static int estimateRopeJumpLandingTimeMs(MapleMap map,
                                                     Point from,
-                                                    int stepX,
+                                                    int direction,
                                                     AgentMovementProfile profile) {
         return estimateLandingTimeMs(map, from, -AgentMovementKinematicsService.ropeJumpForcePerTick(profile),
-                stepX, 0L);
+                AgentMovementKinematicsService.ropeJumpVelocityX(map, profile, direction), 0L);
     }
 
     public static Point simulateRopeJumpGrab(MapleMap map,
                                              Point from,
-                                             int stepX,
+                                             int direction,
                                              Rope targetRope,
                                              AgentMovementProfile profile) {
-        return simulateRopeGrab(map, from, -AgentMovementKinematicsService.ropeJumpForcePerTick(profile), stepX,
-                targetRope, 0L);
+        return simulateRopeGrab(map, from, -AgentMovementKinematicsService.ropeJumpForcePerTick(profile),
+                AgentMovementKinematicsService.ropeJumpVelocityX(map, profile, direction), targetRope, 0L);
     }
 
     public static int estimateRopeJumpGrabTimeMs(MapleMap map,
                                                  Point from,
-                                                 int stepX,
+                                                 int direction,
                                                  Rope targetRope,
                                                  AgentMovementProfile profile) {
-        return estimateRopeGrabTimeMs(map, from, -AgentMovementKinematicsService.ropeJumpForcePerTick(profile), stepX,
-                targetRope, 0L);
+        return estimateRopeGrabTimeMs(map, from, -AgentMovementKinematicsService.ropeJumpForcePerTick(profile),
+                AgentMovementKinematicsService.ropeJumpVelocityX(map, profile, direction), targetRope, 0L);
     }
 
     public static AgentPostLandingJump simulateJumpLandingWithPostLandingTicks(MapleMap map,
@@ -287,7 +288,7 @@ public final class AgentJumpProbeService {
     private static Point simulateRopeGrab(MapleMap map,
                                           Point from,
                                           float initialVelocityY,
-                                          int stepX,
+                                          double stepX,
                                           Rope targetRope,
                                           long landingGraceMs) {
         RopeGrabResult result = simulateRopeGrabCore(map, from, initialVelocityY, stepX, targetRope, landingGraceMs);
@@ -297,7 +298,7 @@ public final class AgentJumpProbeService {
     private static int estimateRopeGrabTimeMs(MapleMap map,
                                               Point from,
                                               float initialVelocityY,
-                                              int stepX,
+                                              double stepX,
                                               Rope targetRope,
                                               long landingGraceMs) {
         RopeGrabResult result = simulateRopeGrabCore(map, from, initialVelocityY, stepX, targetRope, landingGraceMs);
@@ -308,7 +309,7 @@ public final class AgentJumpProbeService {
     private static RopeGrabResult simulateRopeGrabCore(MapleMap map,
                                                        Point from,
                                                        float initialVelocityY,
-                                                       int stepX,
+                                                       double stepX,
                                                        Rope targetRope,
                                                        long landingGraceMs) {
         if (targetRope == null) {
@@ -345,8 +346,9 @@ public final class AgentJumpProbeService {
 
             int x = (int) Math.round(physicsX);
             int intY = (int) Math.round(physicsY);
-            AirCollision collision = resolveAirCollision(map, new Point((int) Math.round(physicsX - stepX), previousIntY),
-                    new Point(x, intY));
+            Point previousPoint = new Point((int) Math.round(physicsX - stepX), previousIntY);
+            Point nextPoint = new Point(x, intY);
+            AirCollision collision = resolveAirCollision(map, previousPoint, nextPoint);
             if (collision.type() == AirCollisionType.WALL) {
                 physicsX = collision.point().x;
                 physicsY = collision.point().y;
@@ -368,6 +370,10 @@ public final class AgentJumpProbeService {
             if (intY > floorY) {
                 return null;
             }
+            Point grab = ropeGrabAfterTick(previousPoint, nextPoint, targetRope);
+            if (grab != null) {
+                return new RopeGrabResult(grab, tick + 1);
+            }
             previousIntY = intY;
         }
 
@@ -380,10 +386,61 @@ public final class AgentJumpProbeService {
                 && position.y <= rope.bottomY();
     }
 
+    /**
+     * Where a climbing-intent Agent catches {@code rope} after a free-flight tick from {@code from}
+     * to {@code to}: at the tick end when that is within reach, else at the first point of the
+     * tick's path within reach, else null. Tick ends alone miss a rope passed mid-tick: an Agent
+     * can be within reach above the rope's bottom during a tick and below it when the tick ends.
+     * The graph's rope-grab simulation and the live airborne executor both use this rule.
+     */
+    public static Point ropeGrabAfterTick(Point from, Point to, Rope rope) {
+        if (canGrabRopeAtPoint(to, rope)) {
+            return new Point(rope.x(), to.y);
+        }
+        return ropeGrabAlongPath(from, to, rope, AgentNavigationPhysicsService.firstClimbableY(rope), rope.bottomY());
+    }
+
+    /**
+     * The first point of the straight path from {@code from} to {@code to} within grab reach of
+     * {@code rope} at a height in [minY, maxY], as a point on the rope, or null.
+     */
+    static Point ropeGrabAlongPath(Point from, Point to, Rope rope, int minY, int maxY) {
+        int reach = AgentMovementPhysicsConfig.configuredRopeGrabX();
+        double dx = to.x - from.x;
+        double dy = to.y - from.y;
+        double enter = 0.0;
+        double exit = 1.0;
+        if (dx == 0.0) {
+            if (Math.abs(from.x - rope.x()) > reach) {
+                return null;
+            }
+        } else {
+            double left = (rope.x() - reach - from.x) / dx;
+            double right = (rope.x() + reach - from.x) / dx;
+            enter = Math.max(enter, Math.min(left, right));
+            exit = Math.min(exit, Math.max(left, right));
+        }
+        if (dy == 0.0) {
+            if (from.y < minY || from.y > maxY) {
+                return null;
+            }
+        } else {
+            double top = (minY - from.y) / dy;
+            double bottom = (maxY - from.y) / dy;
+            enter = Math.max(enter, Math.min(top, bottom));
+            exit = Math.min(exit, Math.max(top, bottom));
+        }
+        if (enter > exit) {
+            return null;
+        }
+        int y = (int) Math.round(from.y + dy * enter);
+        return new Point(rope.x(), Math.clamp(y, minY, maxY));
+    }
+
     private static AgentJumpLanding simulateLanding(MapleMap map,
                                                     Point from,
                                                     float initialVelocityY,
-                                                    int stepX,
+                                                    double stepX,
                                                     long landingGraceMs) {
         return simulateLanding(map, from, initialVelocityY, stepX, landingGraceMs, null);
     }
@@ -391,7 +448,7 @@ public final class AgentJumpProbeService {
     private static AgentJumpLanding simulateLanding(MapleMap map,
                                                     Point from,
                                                     float initialVelocityY,
-                                                    int stepX,
+                                                    double stepX,
                                                     long landingGraceMs,
                                                     Integer moverZMass) {
         return simulateLanding(map, from, initialVelocityY, stepX, landingGraceMs, moverZMass, null);
@@ -400,7 +457,7 @@ public final class AgentJumpProbeService {
     private static AgentJumpLanding simulateLanding(MapleMap map,
                                                     Point from,
                                                     float initialVelocityY,
-                                                    int stepX,
+                                                    double stepX,
                                                     long landingGraceMs,
                                                     Integer moverZMass,
                                                     FlashImpulse flashImpulse) {
@@ -508,7 +565,7 @@ public final class AgentJumpProbeService {
     private static int estimateLandingTimeMs(MapleMap map,
                                              Point from,
                                              float initialVelocityY,
-                                             int stepX,
+                                             double stepX,
                                              long landingGraceMs) {
         AgentJumpLanding landing = simulateLanding(map, from, initialVelocityY, stepX, landingGraceMs);
         return landing != null ? landing.timeMs() : Integer.MAX_VALUE;

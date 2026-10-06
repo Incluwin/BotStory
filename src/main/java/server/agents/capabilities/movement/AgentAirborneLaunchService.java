@@ -12,7 +12,7 @@ public final class AgentAirborneLaunchService {
     public static void launchAirborne(AgentRuntimeEntry entry,
                                       Point position,
                                       float initialVelocityY,
-                                      int airVelocityX,
+                                      double airVelocityX,
                                       boolean climbUpIntent) {
         AgentClimbStateRuntime.setClimbingOnRope(entry, null);
         AgentMovementStateRuntime.setInAir(entry, true);

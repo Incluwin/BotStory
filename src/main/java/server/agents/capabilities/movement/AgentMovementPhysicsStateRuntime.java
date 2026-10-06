@@ -35,11 +35,11 @@ public final class AgentMovementPhysicsStateRuntime {
         state(entry).setVerticalVelocity(verticalVelocity);
     }
 
-    public static int airVelocityX(AgentRuntimeEntry entry) {
+    public static double airVelocityX(AgentRuntimeEntry entry) {
         return airborneSteeringState(entry).velocityX();
     }
 
-    public static void setAirVelocityX(AgentRuntimeEntry entry, int airVelocityX) {
+    public static void setAirVelocityX(AgentRuntimeEntry entry, double airVelocityX) {
         airborneSteeringState(entry).setVelocityX(airVelocityX);
     }
 

@@ -100,7 +100,7 @@ public final class AgentAirbornePhysicsService {
                 || AgentMovementPhysicsStateRuntime.verticalVelocity(entry) < 0f) {
             return;
         }
-        int direction = Integer.signum(AgentMovementPhysicsStateRuntime.airVelocityX(entry));
+        int direction = (int) Math.signum(AgentMovementPhysicsStateRuntime.airVelocityX(entry));
         if (direction == 0) {
             direction = AgentMovementStateRuntime.facingDirectionSign(entry);
         }

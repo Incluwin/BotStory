@@ -4,15 +4,15 @@ package server.agents.capabilities.movement;
  * Mutable airborne horizontal steering state for one live Agent runtime.
  */
 public final class AgentAirborneSteeringState {
-    private int velocityX;
+    private double velocityX;
     private double steeringVelocityX;
     private boolean fixedAirArc;
 
-    public int velocityX() {
+    public double velocityX() {
         return velocityX;
     }
 
-    public void setVelocityX(int velocityX) {
+    public void setVelocityX(double velocityX) {
         this.velocityX = velocityX;
     }
 

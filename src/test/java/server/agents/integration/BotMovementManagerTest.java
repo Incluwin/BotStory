@@ -792,14 +792,14 @@ class BotMovementManagerTest {
         AgentFidgetService.startFidget(entry, AgentFidgetMode.DIAGONAL_JUMP, System.currentTimeMillis(), 3000);
 
         assertTrue(AgentFidgetService.tryHandleTick(entry, new Point(110, 100), true));
-        int firstJumpVelX = AgentMovementPhysicsStateRuntime.airVelocityX(entry);
+        double firstJumpVelX = AgentMovementPhysicsStateRuntime.airVelocityX(entry);
         assertTrue(firstJumpVelX != 0, "diagonal jump fidget should launch with horizontal momentum");
 
         AgentMovementPoseService.idleOnGround(entry, bot);
         entry.fidgetState().setNextJumpAtMs(0L);
 
         assertTrue(AgentFidgetService.tryHandleTick(entry, new Point(110, 100), true));
-        assertEquals(-Integer.signum(firstJumpVelX), Integer.signum(AgentMovementPhysicsStateRuntime.airVelocityX(entry)),
+        assertEquals(-Math.signum(firstJumpVelX), Math.signum(AgentMovementPhysicsStateRuntime.airVelocityX(entry)),
                 "diagonal jump fidget should alternate jump direction on the next grounded launch");
     }
 
