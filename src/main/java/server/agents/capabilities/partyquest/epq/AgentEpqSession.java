@@ -7,6 +7,7 @@ import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -31,6 +32,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
+    private final Set<Integer> departed = new LinkedHashSet<>();
     private Phase phase = Phase.PREPARING;
     private int eventLeaderId;
     private int executionAgentId;
@@ -135,6 +137,11 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
             markProgress(nowMs);
         }
     }
+    /**
+     * The Agent that carries the run's shared work (the stage-2 bottles, the stage-5 stone, the coordination lines): an
+     * Agent event leader, else the lowest-id Agent that has not left the event (EPQ base fix 3); with every Agent gone,
+     * the lowest-id Agent as before, else the execution Agent.
+     */
     public synchronized int workAgentId() {
         AgentEpqMemberState leader = members.get(eventLeaderId);
         if (leader != null && leader.memberType() == AgentEpqMemberState.MemberType.AGENT) {
@@ -142,8 +149,31 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
         }
         return members.values().stream()
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
-                .mapToInt(AgentEpqMemberState::characterId).min().orElse(executionAgentId);
+                .mapToInt(AgentEpqMemberState::characterId)
+                .filter(id -> !departed.contains(id))
+                .min()
+                .orElseGet(() -> members.values().stream()
+                        .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
+                        .mapToInt(AgentEpqMemberState::characterId).min().orElse(executionAgentId));
     }
+
+    /**
+     * Marks a member the bound event no longer holds (EPQ base fix 3: it pressed OK, or its respawn walked it out);
+     * true only the first time.
+     */
+    synchronized boolean markDeparted(int id) { return departed.add(id); }
+
+    /** Forgets a departure once the member is seen back in the bound event; true when it was marked. */
+    synchronized boolean clearDeparted(int id) { return departed.remove(id); }
+
+    /** Whether this member has left the bound event (and not come back). */
+    synchronized boolean departed(int id) { return departed.contains(id); }
+
+    /**
+     * Takes back the "four bottles secured" mark: a bottle it counted is gone (a leaver's bottles are deleted by the
+     * stock exit), so stage 2 counts again and secures them once four are reachable.
+     */
+    synchronized void reopenStageTwoBottles() { stageTwoBottlesSecured = false; }
     public synchronized boolean stageFiveStoneHandedOff() { return stageFiveStoneHandedOff; }
     public synchronized void markStageFiveStoneHandedOff(long nowMs) {
         if (!stageFiveStoneHandedOff) {

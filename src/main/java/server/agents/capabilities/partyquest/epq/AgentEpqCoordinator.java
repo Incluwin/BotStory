@@ -92,6 +92,10 @@ public final class AgentEpqCoordinator {
             fail(session, EVENT_ENDED_OR_EXPIRED, nowMs);
             return;
         }
+        for (AgentEpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            if (character != null) observeDeparture(session, character, leader);
+        }
         boolean rewardReady = AgentEpqTerminationService.pastTheClear(bound) && leader.getEventInstance() == bound;
         AgentEpqSession.Phase observed = phaseForMap(leader.getMapId(), rewardReady);
         if (observed != null) transition(session, observed, nowMs);
@@ -99,11 +103,60 @@ public final class AgentEpqCoordinator {
         AgentEpqWatchdogRuntime.tick(session, nowMs);
         logMembersDown(session);
         logBossProgress(session, leader, nowMs);
+        // A member is out once it is off the EPQ maps or no longer in the bound event (a leaver stands on the normal
+        // 930000800, observed or not).
         if (session.phase() == AgentEpqSession.Phase.EXITING
                 && session.members().stream().map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
-                .noneMatch(member -> AgentEpqDefinition.isEventMap(member.getMapId()))) {
+                .noneMatch(member -> AgentEpqDefinition.isEventMap(member.getMapId())
+                        && member.getEventInstance() == bound)) {
             session.complete(nowMs);
+        }
+    }
+
+    /** The bound event still runs and still holds the run's leader. */
+    private static boolean eventLive(AgentEpqSession session, Character leader) {
+        EventInstanceManager bound = session.eventInstance();
+        return bound != null && !bound.isEventDisposed() && leader != null && leader.getEventInstance() == bound;
+    }
+
+    /**
+     * The leaver's signature: the run is bound, and the member stands on an EPQ map with no event instance. The stock
+     * exit sends every leaver to the normal 930000800 (every EPQ map's return map); a member the event never
+     * registered still stands on the recruit map and is not a leaver.
+     */
+    private static boolean leftEvent(AgentEpqSession session, Character member) {
+        return session.eventInstance() != null && member.getEventInstance() == null
+                && AgentEpqDefinition.isEventMap(member.getMapId());
+    }
+
+    /**
+     * EPQ base fix 3: marks a member the live bound event no longer holds as departed, once ('EPQ departed:'), and
+     * reopens the stage-2 bottles it may have carried; a departed member seen back in the bound event is a member
+     * again ('EPQ returned:'). Humans and Agents alike; never throws.
+     */
+    private static void observeDeparture(AgentEpqSession session, Character member, Character leader) {
+        try {
+            EventInstanceManager bound = session.eventInstance();
+            if (bound == null) return;
+            if (member.getEventInstance() == bound) {
+                if (session.clearDeparted(member.getId())) {
+                    log.info("EPQ returned: session={} member={}({}) map={} phase={}", session.sessionId(),
+                            member.getName(), member.getId(), member.getMapId(), session.phase());
+                }
+                return;
+            }
+            if (!eventLive(session, leader) || !leftEvent(session, member) || !session.markDeparted(member.getId())) {
+                return;
+            }
+            AgentEpqMemberState state = session.member(member.getId());
+            log.info("EPQ departed: session={} member={}({}) type={} map={} phase={} registered={} companionRun={}",
+                    session.sessionId(), member.getName(), member.getId(),
+                    state == null ? "UNKNOWN" : state.memberType(), member.getMapId(), session.phase(),
+                    bound.getPlayers().size(), session.companionAdopted());
+            if (session.phase() == AgentEpqSession.Phase.STAGE_TWO) session.reopenStageTwoBottles();
+        } catch (RuntimeException e) {
+            log.warn("EPQ departure check failed: session={} member={}", session.sessionId(), member.getId(), e);
         }
     }
 
@@ -145,8 +198,15 @@ public final class AgentEpqCoordinator {
         if (agent.getMapId() != AgentEpqDefinition.STAGE_FOUR_MAP) {
             actions().clearHorizontalBoundary(entry);
         }
+        if (leftEvent(session, agent)) {
+            // EPQ base fix 3: the event no longer holds this Agent (its respawn walked it out, or it pressed OK). It
+            // has left the run and idles until the release; it does not fail it.
+            actions().stop(entry);
+            observeDeparture(session, agent, character(session.eventLeaderId()));
+            return;
+        }
         if (session.eventInstance() != null && AgentEpqDefinition.isEventMap(agent.getMapId())
-                && agent.getEventInstance() != session.eventInstance()) {
+                && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
             fail(session, "EPQ member entered a different event instance", nowMs);
             return;
         }
@@ -744,6 +804,7 @@ public final class AgentEpqCoordinator {
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
                 .map(AgentEpqMemberState::characterId)
                 .filter(characterId -> characterId != carrierId)
+                .filter(characterId -> !session.departed(characterId))
                 .map(AgentEpqCoordinator::character)
                 .filter(java.util.Objects::nonNull)
                 .sorted(Comparator.comparingInt(candidate ->
