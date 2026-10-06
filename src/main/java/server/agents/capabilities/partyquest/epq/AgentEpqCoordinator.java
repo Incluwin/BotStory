@@ -5,6 +5,7 @@ import client.inventory.Item;
 import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.capabilities.inventory.AgentInventoryReservationRuntime;
 import server.agents.capabilities.combat.AgentAttackPlan;
 import server.agents.capabilities.combat.AgentAttackTransactionResult;
@@ -62,6 +63,8 @@ public final class AgentEpqCoordinator {
     private static final int REACTOR_RADIUS = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCoordinator.REACTOR_RADIUS");
 
+    private static final String EVENT_ENDED_OR_EXPIRED = "The EPQ event instance ended or expired";
+
     private AgentEpqCoordinator() { }
 
     public static void tickSession(AgentEpqSession session, long nowMs) {
@@ -79,7 +82,18 @@ public final class AgentEpqCoordinator {
             session.bindEventInstance(leader.getEventInstance());
             session.markProgress(nowMs);
         }
-        AgentEpqSession.Phase observed = phaseForMap(leader.getMapId());
+        // EPQ base fix 2: before the clear, a bound event that was disposed, or that no longer holds the leader (the
+        // stock event ends when its leader leaves it, or at its floor), ends the run at once; after the clear the
+        // leader leaves through the exit and this check is inert.
+        EventInstanceManager bound = session.eventInstance();
+        if (bound != null && !session.terminal() && !AgentEpqTerminationService.pastTheClear(bound)
+                && (bound.isEventDisposed() || leader.getEventInstance() != bound)) {
+            log.warn("EPQ event end detail: session={} {}", session.sessionId(), eventEndDetail(session, leader));
+            fail(session, EVENT_ENDED_OR_EXPIRED, nowMs);
+            return;
+        }
+        boolean rewardReady = AgentEpqTerminationService.pastTheClear(bound) && leader.getEventInstance() == bound;
+        AgentEpqSession.Phase observed = phaseForMap(leader.getMapId(), rewardReady);
         if (observed != null) transition(session, observed, nowMs);
         session.observeProgressSignature(progressSignature(session, leader), nowMs);
         AgentEpqWatchdogRuntime.tick(session, nowMs);
@@ -90,6 +104,24 @@ public final class AgentEpqCoordinator {
                 .filter(java.util.Objects::nonNull)
                 .noneMatch(member -> AgentEpqDefinition.isEventMap(member.getMapId()))) {
             session.complete(nowMs);
+        }
+    }
+
+    /**
+     * What the coordinator can still see when its event "ended or expired" (logged before the failure): the leader's
+     * map and HP, whether the leader is in the bound event, in none or in another, whether the bound event was
+     * disposed, and how many players it still holds. Never throws.
+     */
+    static String eventEndDetail(AgentEpqSession session, Character leader) {
+        try {
+            EventInstanceManager bound = session.eventInstance();
+            EventInstanceManager leaderEvent = leader.getEventInstance();
+            String where = leaderEvent == null ? "none" : leaderEvent == bound ? "bound" : "other";
+            return "leaderMap=" + leader.getMapId() + " leaderHp=" + leader.getHp() + " leaderEvent=" + where
+                    + " eventDisposed=" + (bound == null ? "unbound" : String.valueOf(bound.isEventDisposed()))
+                    + " registered=" + (bound == null ? 0 : bound.getPlayers().size());
+        } catch (RuntimeException e) {
+            return "detail unavailable";
         }
     }
 
@@ -128,7 +160,15 @@ public final class AgentEpqCoordinator {
             case AgentEpqDefinition.STAGE_FOUR_MAP -> stageFour(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_FIVE_MAP -> stageFive(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.BOSS_MAP -> boss(session, entry, agent, member, nowMs);
-            case AgentEpqDefinition.REWARD_MAP -> reward(session, entry, agent, member, nowMs);
+            case AgentEpqDefinition.REWARD_MAP -> {
+                // 930000800 is every stage's return map: only the reward phase hits its reactor (whose hit gives
+                // everyone on the map its EXP) and takes its exit.
+                if (session.phase().ordinal() >= AgentEpqSession.Phase.REWARD.ordinal()) {
+                    reward(session, entry, agent, member, nowMs);
+                } else {
+                    actions().stop(entry);
+                }
+            }
             default -> {
                 actions().stop(entry);
                 if (session.phase() == AgentEpqSession.Phase.EXITING) session.markProgress(nowMs);
@@ -622,7 +662,12 @@ public final class AgentEpqCoordinator {
         }
     }
 
-    private static AgentEpqSession.Phase phaseForMap(int mapId) {
+    /**
+     * The phase the leader's map shows. 930000800 is also every stage's return map (a leader who died, quit or was
+     * left behind stands there before any clear), so it reads as the reward only when {@code rewardReady}: the bound
+     * event reports its clear and the leader is still in it.
+     */
+    private static AgentEpqSession.Phase phaseForMap(int mapId, boolean rewardReady) {
         return switch (mapId) {
             case AgentEpqDefinition.RECRUIT_MAP -> AgentEpqSession.Phase.PREPARING;
             case AgentEpqDefinition.ENTRANCE_MAP -> AgentEpqSession.Phase.ENTERING;
@@ -632,7 +677,7 @@ public final class AgentEpqCoordinator {
             case AgentEpqDefinition.STAGE_FOUR_MAP -> AgentEpqSession.Phase.STAGE_FOUR;
             case AgentEpqDefinition.STAGE_FIVE_MAP -> AgentEpqSession.Phase.STAGE_FIVE;
             case AgentEpqDefinition.BOSS_MAP -> AgentEpqSession.Phase.BOSS;
-            case AgentEpqDefinition.REWARD_MAP -> AgentEpqSession.Phase.REWARD;
+            case AgentEpqDefinition.REWARD_MAP -> rewardReady ? AgentEpqSession.Phase.REWARD : null;
             default -> null;
         };
     }
