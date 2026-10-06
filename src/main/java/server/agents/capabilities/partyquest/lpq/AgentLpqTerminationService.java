@@ -111,6 +111,8 @@ final class AgentLpqTerminationService {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
         });
+        // A companion run's full-rate holds go with it (a stock run never holds one, so this does nothing there).
+        quietly(session, "release-full-rate", () -> AgentLpqFullRateSimulation.releaseAll(session));
         if (session.companionAdopted()) {
             quietly(session, "log-potions", () -> log.info("LPQ potions: session={} start={} end={}",
                     session.sessionId(), session.potionsAtEntry(), potions(session)));

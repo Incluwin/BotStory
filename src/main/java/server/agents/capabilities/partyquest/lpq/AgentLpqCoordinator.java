@@ -5179,6 +5179,7 @@ final class AgentLpqCoordinator {
             AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", nowMs);
             return;
         }
+        holdFullRateSimulation(session);
         Character leader = character(session.eventLeaderId());
         if (leader == null || leader.getHp() <= 0) {
             AgentLpqTerminationService.fail(session, "The LPQ event leader is unavailable", nowMs);
@@ -5264,6 +5265,26 @@ final class AgentLpqCoordinator {
             case EJECT_ABSENT, GIVE_UP -> AgentLpqTerminationService.fail(session,
                     "Fewer than five of the companion run entered LPQ within the entry wait", nowMs);
             default -> { }
+        }
+    }
+
+    /**
+     * A companion run's companions standing in its instance (stages 1-9, the bonus, and the reward map until their
+     * reward is claimed) run at full rate, so a room nobody watches plays as a watched one (KPQ's rule); nobody else's
+     * are held, and the hold lets go as a member leaves the instance or the run.
+     */
+    private static void holdFullRateSimulation(AgentLpqSession session) {
+        AgentLpqSession.Phase phase = session.phase();
+        boolean ending = session.terminationStarted();
+        boolean inside = stageNumberOrZero(phase) > 0 || phase == AgentLpqSession.Phase.BONUS;
+        boolean claiming = phase == AgentLpqSession.Phase.CLAIMING_REWARD;
+        EventInstanceManager event = session.eventInstance();
+        for (AgentLpqMemberState member : session.members()) {
+            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
+            Character agent = character(member.characterId());
+            boolean wanted = !ending && session.companionAdopted() && agent != null && event != null
+                    && LPQ.event(agent) == event && (inside || claiming && !member.rewardResolved());
+            AgentLpqFullRateSimulation.apply(member, entry(member.characterId()), wanted);
         }
     }
 

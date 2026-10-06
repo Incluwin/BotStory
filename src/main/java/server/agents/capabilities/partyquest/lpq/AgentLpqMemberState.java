@@ -78,6 +78,8 @@ public final class AgentLpqMemberState {
     private RewardState rewardState = RewardState.PENDING;
     private AgentLpqStageNineBossPolicy.MemberState stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
     private boolean stageNineGroupLogged;
+    private boolean fullRateHeld;
+    private boolean fullRateWasRequired;
 
     public AgentLpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -88,6 +90,20 @@ public final class AgentLpqMemberState {
     }
 
     public int characterId() { return characterId; }
+
+    /** A companion run's full-rate simulation hold on this member (AgentLpqFullRateSimulation); run-scoped. */
+    boolean fullRateHeld() { return fullRateHeld; }
+    boolean fullRateWasRequired() { return fullRateWasRequired; }
+
+    void holdFullRate(boolean alreadyRequired) {
+        fullRateHeld = true;
+        fullRateWasRequired = alreadyRequired;
+    }
+
+    void releaseFullRate() {
+        fullRateHeld = false;
+        fullRateWasRequired = false;
+    }
     public MemberType memberType() { return memberType; }
     public Role role() { return role; }
     public int assignedMapId() { return assignedMapId; }
