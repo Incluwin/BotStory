@@ -157,6 +157,26 @@ class AgentSupplyReadinessTest {
         assertEquals(PQ, AgentSupplyReadiness.shoppingActivity(entry, warrior), "a duty it can read wins");
     }
 
+    @Test
+    void aRangedFighterBelowThePartyQuestAmmoStandardIsShortAndNoOneElseEverIs() {
+        int standard = config.AgentTuning.intValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO");
+        assertEquals(standard, AgentSupplyReadiness.ammoShortfall(0, PQ), "a claw with no stars");
+        assertEquals(standard - 120, AgentSupplyReadiness.ammoShortfall(120, PQ));
+        assertEquals(0, AgentSupplyReadiness.ammoShortfall(standard, PQ));
+        assertEquals(0, AgentSupplyReadiness.ammoShortfall(Integer.MAX_VALUE, PQ),
+                "no ammo weapon, or Soul Arrow / Shadow Claw up");
+        assertEquals(0, AgentSupplyReadiness.ammoShortfall(0, null), "no activity");
+        assertEquals(0, AgentSupplyReadiness.ammoShortfall(withJob(Job.WARRIOR), PQ), "nothing equipped to shoot");
+    }
+
+    @Test
+    void ammoNeverMakesThePotionShortfall() {
+        Character assassin = withJob(Job.ASSASSIN);
+        assertTrue(AgentSupplyReadiness.shortfall(20, 25, true, PQ).none(), "the restock duty only ever sees potions");
+        assertEquals(0, AgentSupplyReadiness.ammoShortfall(assassin, PQ), "no claw equipped on this mock");
+    }
+
     private static AgentSupplyReadiness.Standard standardFor(String key) {
         return AgentSupplyReadiness.standard(AgentSupplyReadiness.Activity.partyQuest(key));
     }

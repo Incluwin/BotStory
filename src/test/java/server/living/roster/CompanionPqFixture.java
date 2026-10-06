@@ -62,6 +62,8 @@ final class CompanionPqFixture implements AutoCloseable {
     final Map<Integer, Integer> potions = new HashMap<>();
     /** Character id -> the mana potions it carries (50 unless a test says otherwise). */
     final Map<Integer, Integer> manaPotions = new HashMap<>();
+    /** Character id -> the projectiles it carries (plenty, or no ranged weapon, unless a test says otherwise). */
+    final Map<Integer, Integer> ammo = new HashMap<>();
     /** Character id -> what it hits for in KPQ, damage per second (0 unless a test says otherwise). */
     final Map<Integer, Double> dps = new HashMap<>();
     /** Where the lineup's clear time is read from: none unless a test says otherwise (set it before ready()). */
@@ -166,6 +168,7 @@ final class CompanionPqFixture implements AutoCloseable {
         service = new CompanionPartyQuestService(game.world, doors, bot -> potions.getOrDefault(bot.getId(), 50),
                 bot -> manaPotions.getOrDefault(bot.getId(), 50), bot -> dps.getOrDefault(bot.getId(), 0.0d), pace,
                 ledger == null ? new PqPaceLedger(game.world) : ledger);
+        service.ammoCounter(bot -> ammo.getOrDefault(bot.getId(), Integer.MAX_VALUE));
         lifecycle = new CompanionRunLifecycle(game.world, service);
         when(game.world.partyQuests()).thenReturn(service);
         service.installDesk(new CompanionPartyQuestService.Desk() {
