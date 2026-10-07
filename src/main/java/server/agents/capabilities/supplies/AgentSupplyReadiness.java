@@ -314,15 +314,22 @@ public final class AgentSupplyReadiness {
     }
 
     /**
-     * The {HP, MP} counts PARTY_QUEST_STANDARDS lists for {@code key} ("lpq=40/50,..."), or null: the key is blank or
-     * not listed, or its pair is malformed (skipped, the default applies).
+     * The {HP, MP} counts PARTY_QUEST_STANDARDS lists for {@code key} ("lpq=40/50,..."), else the ones BOSS_STANDARDS
+     * lists ("easy_balrog=40/50"), or null: the key is blank or in neither, or its pair is malformed (skipped, the
+     * default applies).
      */
     private static int[] partyQuestStandard(String key) {
         if (key == null || key.isEmpty()) {
             return null;
         }
-        String standards = config.AgentTuning.stringValue(
-                "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS");
+        int[] own = listed(key, config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS"));
+        return own != null ? own : listed(key, config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_STANDARDS"));
+    }
+
+    /** The {HP, MP} counts {@code standards} ("key=HP/MP,...") lists for {@code key}, or null. */
+    private static int[] listed(String key, String standards) {
         for (String pair : standards == null ? new String[0] : standards.split(",")) {
             int equals = pair.indexOf('=');
             int slash = pair.indexOf('/', equals + 1);

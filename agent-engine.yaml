@@ -4559,6 +4559,10 @@ tuning:
     # Purpose: The part of a shown store trip that grows with the portal hops between the Agent and its potion supplier.
     # Technical: Multiplied by the routeHops measured when the readiness trip was assessed (or max(1, supplierHopBudget) for a critical potion trip) and added to TRIP_ETA_BASE_MS by AgentSupplyReadiness.status for the RESTOCKING estimate.
     server.agents.capabilities.supplies.AgentSupplyReadiness.TRIP_ETA_PER_HOP_MS: '25000'
+    # Values: comma-separated key=HP/MP pairs (lowercase boss keys, whole potion counts, MP above POT_STOP); never blank (the loader refuses a blank value). Recommended: easy_balrog=40/50 (user decision 8, 2026-10-06; retune from the "PQ potions ... pq=easy_balrog" lines).
+    # Purpose: The potion standard a companion keeps for a boss expedition (Easy Balrog at Mu Young's room), kept apart from the party quest standards.
+    # Technical: AgentSupplyReadiness.standard(Activity.partyQuest(key)) reads it after PARTY_QUEST_STANDARDS at every call; a key listed there wins, a key in neither keeps PARTY_QUEST_HP_POTIONS / PARTY_QUEST_MP_POTIONS; BUY_TO_PERCENT and the POT_STOP clamp apply as to the default.
+    server.agents.capabilities.supplies.AgentSupplyReadiness.BOSS_STANDARDS: 'easy_balrog=40/50'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 50-200 around the tested baseline 100; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for interaction distance. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "victoria quest pack runtime" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.

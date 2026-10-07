@@ -140,6 +140,9 @@ final class AgentEngineConfigValidator {
         if (key.endsWith("AgentSupplyReadiness.PARTY_QUEST_STANDARDS")) {
             return value.isBlank() || value.matches("[a-z0-9]+=\\d+/\\d+(,[a-z0-9]+=\\d+/\\d+)*");
         }
+        if (key.endsWith("AgentSupplyReadiness.BOSS_STANDARDS")) {
+            return value.matches("[a-z0-9_]+=\\d+/\\d+(,[a-z0-9_]+=\\d+/\\d+)*");
+        }
         if (key.matches(".*AgentLpqStageRecoveryPolicy\\.STAGE_[1-9]_PROFILE")) {
             return value.matches("submission=\\d+;missingPass=\\d+;portal=\\d+;reactor=\\d+;"
                     + "traversal=\\d+;roomExitPlacement=\\d+;rallyRetry=\\d+;rallyRecovery=\\d+");
