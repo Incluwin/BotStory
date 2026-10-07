@@ -157,8 +157,29 @@ final class AgentEpqHandOver {
         session.markProgress(nowMs);
         // The stone is handed off: the collector no longer picks up a stone lying on this map (Step 2.8).
         if (itemId == AgentEpqDefinition.MAGIC_STONE) session.markStageFiveStoneHandedOff(nowMs);
+        if (itemId == AgentEpqDefinition.GOLEMS_MARBLE) {
+            session.noteGolemMarble(place == AgentEpqCompanionPlay.Place.FEET
+                    || place == AgentEpqCompanionPlay.Place.BESIDE ? "handed" : "dropped");
+        }
         logHandOver(session, agent, itemId, held, place, recollect, leader, at, landing);
         say(session, agent, itemId, held, place, recollect, leader, lyingBefore, handOver);
+    }
+
+    /**
+     * Drops the whole stack where this companion stands, without a word ('EPQ handover: ... place=HERE'): the golem's
+     * marble before the companions leave, when the leader cannot take it (Step 2.9).
+     */
+    static void dropHere(AgentEpqSession session, AgentRuntimeEntry entry, Character agent, AgentEpqMemberState member,
+                         int itemId, int held, long nowMs) {
+        Point at = agent.getPosition() == null ? null : new Point(agent.getPosition());
+        Point landing = actions().predictDropLanding(agent, at);
+        actions().stop(entry);
+        if (!AgentEpqCoordinator.dropItem(entry, agent, InventoryType.ETC, itemId, (short) held)) return;
+        member.endHandOver();
+        session.markProgress(nowMs);
+        if (itemId == AgentEpqDefinition.GOLEMS_MARBLE) session.noteGolemMarble("dropped");
+        logHandOver(session, agent, itemId, held, AgentEpqCompanionPlay.Place.HERE, false,
+                AgentEpqCoordinator.character(session.eventLeaderId()), at, landing);
     }
 
     /** A carrier about to go down drops its stack where it stands, says so, and the stack is due back at once. */
@@ -293,7 +314,8 @@ final class AgentEpqHandOver {
                 AgentEpqCompanionPlay.marblesTwentyLine(name, atHisFeet))) {
             return;
         }
-        AgentEpqCompanionRun.coordinate(session, agent, item + "-at-feet-" + handOver,
+        AgentEpqCompanionRun.coordinate(session, agent,
+                itemId == AgentEpqDefinition.GOLEMS_MARBLE ? "golem-marble-handed" : item + "-at-feet-" + handOver,
                 AgentEpqCompanionPlay.atFeetLine(itemId, name, atHisFeet));
     }
 

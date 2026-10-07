@@ -16,6 +16,8 @@ import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.CharacterGateway;
 import server.agents.integration.InventoryGateway;
+import server.agents.integration.AgentPartyMemberSnapshot;
+import server.agents.integration.AgentPartySnapshot;
 import server.agents.integration.PacketGateway;
 import server.agents.integration.PartyGateway;
 import server.agents.integration.PartyQuestGateway;
@@ -209,6 +211,16 @@ final class EpqRunFixture implements AutoCloseable {
         when(etc.findById(itemId)).thenReturn(item);
         when(member.getInventory(InventoryType.ETC)).thenReturn(etc);
         when(actions.itemCount(member, itemId)).thenReturn(quantity);
+    }
+
+    /** The live party as every member sees it: these members, the first leading. */
+    void party(Character... members) {
+        List<AgentPartyMemberSnapshot> snapshots = new ArrayList<>();
+        for (int i = 0; i < members.length; i++) {
+            snapshots.add(new AgentPartyMemberSnapshot(members[i].getId(), members[i].getName(), i == 0,
+                    members[i].getMapId()));
+        }
+        when(party.snapshot(any())).thenReturn(new AgentPartySnapshot(1, snapshots));
     }
 
     /** The inventory gateway (its drops are recorded, not run), opened on first use. */

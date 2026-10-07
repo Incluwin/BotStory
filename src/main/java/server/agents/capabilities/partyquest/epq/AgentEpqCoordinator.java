@@ -75,12 +75,13 @@ public final class AgentEpqCoordinator {
         }
         Character leader = character(session.eventLeaderId());
         if (leader == null) {
-            // A companion run whose leader is offline before the party went in waits out the entry wait.
-            if (session.companionAdopted() && AgentEpqCompanionRun.leaderOffline(session, nowMs)) return;
+            // A companion run whose leader is offline before the party went in waits out the entry wait; past the clear
+            // its companions leave without him.
+            if (AgentEpqCompanionRun.acting(session) && AgentEpqCompanionRun.leaderOffline(session, nowMs)) return;
             AgentEpqWatchdogRuntime.tick(session, nowMs);
             return;
         }
-        if (session.companionAdopted() && AgentEpqCompanionRun.beforeEntry(session, leader, nowMs)) return;
+        if (AgentEpqCompanionRun.acting(session) && AgentEpqCompanionRun.beforeEntry(session, leader, nowMs)) return;
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentEpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance());
@@ -103,17 +104,33 @@ public final class AgentEpqCoordinator {
             Character character = character(member.characterId());
             if (character != null) observeDeparture(session, character, leader);
         }
+        // Step 2.9: past the clear a companion run's companions wait for their leader, then leave on their own.
+        if (AgentEpqCompanionRun.acting(session) && AgentEpqTerminationService.pastTheClear(bound)) {
+            AgentEpqCompanionRun.afterClear(session, leader, nowMs);
+        }
         boolean rewardReady = AgentEpqTerminationService.pastTheClear(bound) && leader.getEventInstance() == bound;
         AgentEpqSession.Phase observed = phaseForMap(leader.getMapId(), rewardReady);
         if (observed != null) transition(session, observed, nowMs);
         session.observeProgressSignature(progressSignature(session, leader), nowMs);
         AgentEpqWatchdogRuntime.tick(session, nowMs);
+        if (session.companionAdopted() && session.terminal()) return; // the watchdog ended it: nothing more
         logMembersDown(session);
         logBossProgress(session, leader, nowMs);
-        // A member is out once it is off the EPQ maps or no longer in the bound event (a leaver stands on the normal
-        // 930000800, observed or not).
-        if (session.phase() == AgentEpqSession.Phase.EXITING
-                && session.members().stream().map(member -> character(member.characterId()))
+        completeWhenOut(session, nowMs);
+    }
+
+    /**
+     * EXITING completes once every member is out: off the EPQ maps or no longer in the bound event (a leaver stands on
+     * the normal 930000800, observed or not). A companion run awaits its companions only, never a human (Step 2.9).
+     */
+    static void completeWhenOut(AgentEpqSession session, long nowMs) {
+        if (session.phase() != AgentEpqSession.Phase.EXITING) return;
+        boolean companionRun = session.companionAdopted();
+        if (companionRun && !AgentEpqCompanionRun.acting(session)) return;
+        EventInstanceManager bound = session.eventInstance();
+        if (session.members().stream()
+                .filter(member -> !companionRun || member.memberType() == AgentEpqMemberState.MemberType.AGENT)
+                .map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .noneMatch(member -> AgentEpqDefinition.isEventMap(member.getMapId())
                         && member.getEventInstance() == bound)) {
@@ -211,6 +228,11 @@ public final class AgentEpqCoordinator {
         AgentEpqMemberState member = session.member(agent.getId());
         if (member == null || member.memberType() != AgentEpqMemberState.MemberType.AGENT
                 || nowMs < member.nextActionAtMs()) return;
+        if (session.companionAdopted() && !AgentEpqCompanionRun.acting(session)) {
+            // A companion run that ended or is being released does nothing more, and never falls back to stock play.
+            actions().stop(entry);
+            return;
+        }
         entry.capabilityStates().require(AgentCombatSkillConstraintState.STATE_KEY)
                 .requireAttackSkill();
         if (agent.getMapId() != AgentEpqDefinition.STAGE_FOUR_MAP) {
@@ -669,6 +691,11 @@ public final class AgentEpqCoordinator {
             } else {
                 actions().stop(entry);
             }
+            return;
+        }
+        if (session.companionAdopted()) {
+            // Step 2.9: no dummy kill and no out00 tries (the leader's exit); the golem's marble and the leave.
+            AgentEpqCompanionRun.afterClearMember(session, entry, agent, member, nowMs);
             return;
         }
         AgentMapPerception.monsters(agent.getMap()).stream()

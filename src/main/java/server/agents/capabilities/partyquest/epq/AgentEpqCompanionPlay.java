@@ -226,11 +226,12 @@ final class AgentEpqCompanionPlay {
         return itemId == AgentEpqDefinition.MAGIC_STONE ? "sprite" : "ellin";
     }
 
-    /** E9 or E13 (the at-feet line) for this item; null for an item with no hand-over line. */
+    /** E9, E13 or E16h (the at-feet line) for this item; null for an item with no hand-over line. */
     static String atFeetLine(int itemId, String leader, boolean atHisFeet) {
         return switch (itemId) {
             case AgentEpqDefinition.MONSTER_MARBLE -> marblesAtFeetLine(leader, atHisFeet);
             case AgentEpqDefinition.MAGIC_STONE -> stoneAtFeetLine(leader, atHisFeet);
+            case AgentEpqDefinition.GOLEMS_MARBLE -> golemMarbleHandedLine(leader, atHisFeet);
             default -> null;
         };
     }
@@ -269,5 +270,58 @@ final class AgentEpqCompanionPlay {
             case AgentEpqDefinition.MAGIC_STONE -> LEAVING_STONE;
             default -> null;
         };
+    }
+
+    // ---- after the golem ----
+
+    /** E16: the golem is down and the leader stands on its map; only he can open out00. */
+    static String clearedLine(String leader) {
+        return "we did it! only you can open the way out, " + leader + ". the portal on the right.";
+    }
+
+    /** E16d: the golem is down, and so is the leader. */
+    static String clearedLeaderDownLine(String leader) {
+        return "we got the golem! sorry you went down, " + leader + ". see you outside.";
+    }
+
+    /** E16m: the golem's marble lies on its map. */
+    static String golemMarbleLine(String leader) {
+        return "the golem dropped a marble, " + leader + "! grab it, it goes in the fountain outside.";
+    }
+
+    /** E16t: the work Agent picked up the golem's marble. */
+    static final String GOLEM_MARBLE_TAKEN = "got the golem's marble. i'll drop it in the fountain outside.";
+
+    /** E16h: before the companions leave, the golem's marble lies at the leader's feet (or right next to him). */
+    static String golemMarbleHandedLine(String leader, boolean atHisFeet) {
+        return leader + ", the golem's marble is " + (atHisFeet ? "at your feet" : "right next to you")
+                + ". drop it by the fountain outside.";
+    }
+
+    /** E16w: the companions leave through the event's exit while their leader is still in the event. */
+    static final String WAIT_OUTSIDE = "we'll head out and wait for you outside.";
+
+    /** The work Agent takes the golem's marble once it has lain the leader's first claim. */
+    static boolean golemMarbleMayBeTaken(boolean workAgent, long lyingMs, long leaderFirstMs) {
+        return workAgent && lyingMs >= leaderFirstMs;
+    }
+
+    /**
+     * Why the companions leave after the clear, or null while they wait: their leader let go (offline, down, out of
+     * the event, or no longer leading the live party), or he stayed on the golem's map past the wait.
+     */
+    static String leaveWhy(boolean leaderOnline, int leaderHp, boolean leaderInEvent, boolean leadsParty,
+                           boolean leaderOnBossMap, long sinceClearMs, long clearWaitMs) {
+        if (!leaderOnline) return "offline";
+        if (leaderHp <= 0) return "down";
+        if (!leaderInEvent) return "left";
+        if (!leadsParty) return "lead";
+        if (leaderOnBossMap && sinceClearMs >= clearWaitMs) return "wait";
+        return null;
+    }
+
+    /** A decided leave goes once no companion in the event holds the golem's marble, or its hand-over ran out of time. */
+    static boolean leaveGoes(int holders, long sinceDecidedMs, long handOverTimeoutMs) {
+        return holders <= 0 || sinceDecidedMs >= handOverTimeoutMs;
     }
 }

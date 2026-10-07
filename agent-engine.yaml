@@ -1250,6 +1250,14 @@ tuning:
     # Purpose: Bounds the walk of the companion who found the purple stone down to the leader; after it the stone is left by the sprite.
     # Technical: AgentEpqHandOver reads this on 930000500 in companion runs instead of TIMEOUT_MS (the stone boxes stand about 3600 px above the sprite); an unreachable leader (canReach false) still goes to the sprite at once. The companion's line follows where the stone lands.
     server.agents.capabilities.partyquest.epq.AgentEpqHandOver.STONE_TIMEOUT_MS: '120000'
+    # Values: 20000-180000 milliseconds. Recommended: 60000, a short grace.
+    # Purpose: Bounds how long companions wait on the golem's map for their leader to take the exit only he can open; then they leave through the event's exit and the run ends cleared.
+    # Technical: Counted from the first pass that saw EllinPQ's clear; AgentEpqCompanionRun skips it when the leader is offline, down, out of the event or no longer the party leader. A companion holding the golem's marble first leaves it at his feet. The human stays in the event and can still take out00 alone. On 930000800 it also bounds how long an Agent that east00 refuses stays in the event. Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.CLEAR_WAIT_MS: '60000'
+    # Values: 0-60000 milliseconds. Recommended: 15000.
+    # Purpose: Gives the leader first claim on the golem's marble before a companion picks it up for the fountain.
+    # Technical: Counted from the marble's drop time; then only the work Agent may loot 4001164 on 930000600 (AgentEpqSessionRegistry.canLootExclusive), and no companion once they decided to leave. Stock runs keep today's loot.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.GOLEM_MARBLE_LEADER_FIRST_MS: '15000'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

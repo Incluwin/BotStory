@@ -40,6 +40,11 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<Integer> dyingStacks = new HashSet<>();
     private int handOvers;
     private int stoneFinderId;
+    private long clearSeenAtMs;
+    private long leaveDecidedAtMs;
+    private String leaveWhy = "";
+    private boolean leftAfterClear;
+    private String golemMarble = "none";
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -331,6 +336,51 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** Whether a carrier about to go down left this stack. */
     synchronized boolean dyingStack(int objectId) { return dyingStacks.contains(objectId); }
+
+    // A companion run after the golem (Step 2.9): read by the lease holder, the companions' own ticks and the loot path.
+
+    /** The first pass that saw EllinPQ's clear: the after-clear clock. The first call starts it; later calls read it. */
+    synchronized long clearSeenAtMs(long nowMs) {
+        if (clearSeenAtMs == 0L) clearSeenAtMs = Math.max(1L, nowMs);
+        return clearSeenAtMs;
+    }
+
+    /** Decides the companions' leave, with why; true only for the call that decided it. */
+    synchronized boolean decideLeave(long nowMs, String why) {
+        if (leaveDecidedAtMs > 0L || leftAfterClear) return false;
+        leaveDecidedAtMs = Math.max(1L, nowMs);
+        leaveWhy = why == null ? "" : why;
+        return true;
+    }
+
+    /** When the companions decided to leave, or 0 while they have not (or the leave was cancelled). */
+    synchronized long leaveDecidedAtMs() { return leaveDecidedAtMs; }
+
+    /** Why the companions decided to leave, or "". */
+    synchronized String leaveWhy() { return leaveWhy; }
+
+    /** Cancels a decided leave that has not gone yet (the leader took out00 in time); true when one was cancelled. */
+    synchronized boolean cancelLeave() {
+        if (leaveDecidedAtMs == 0L || leftAfterClear) return false;
+        leaveDecidedAtMs = 0L;
+        leaveWhy = "";
+        return true;
+    }
+
+    /** Marks the decided leave as gone; true only the first time. */
+    synchronized boolean markLeftAfterClear() {
+        if (leftAfterClear) return false;
+        leftAfterClear = true;
+        return true;
+    }
+
+    /** Whether the companions already left through the event's exit. */
+    synchronized boolean leftAfterClear() { return leftAfterClear; }
+
+    /** What became of the golem's marble before the leave: none, handed (at the leader's feet) or dropped. */
+    synchronized void noteGolemMarble(String outcome) { golemMarble = outcome == null ? "none" : outcome; }
+
+    synchronized String golemMarble() { return golemMarble; }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }

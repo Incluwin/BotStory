@@ -43,6 +43,12 @@ class AgentEpqEventEndTest {
                 ben, mira, tobi, una);
     }
 
+    /** The same run outside a companion run: its subject is every mode's behaviour. */
+    private AgentEpqSession stockBoss() {
+        return run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false, AgentEpqSession.Phase.BOSS,
+                ben, mira, tobi, una);
+    }
+
     @Test
     void aLeaderOutOfTheEventBeforeTheClearFailsTheRunAtOnce() {
         AgentEpqSession session = boss();
@@ -96,7 +102,7 @@ class AgentEpqEventEndTest {
 
     @Test
     void afterTheClearALeaderInTheEventOnTheExitMapReadsAsTheReward() {
-        AgentEpqSession session = boss();
+        AgentEpqSession session = stockBoss();
         run.onMap(ben, AgentEpqDefinition.REWARD_MAP);
         when(run.event.isEventCleared()).thenReturn(true);
         try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
@@ -110,7 +116,7 @@ class AgentEpqEventEndTest {
 
     @Test
     void afterTheClearALeaderWhoLeftFailsNothing() {
-        AgentEpqSession session = boss();
+        AgentEpqSession session = stockBoss();
         run.onMap(ben, AgentEpqDefinition.RECRUIT_MAP); // out through east00
         when(ben.getEventInstance()).thenReturn(null);
         when(run.event.isEventCleared()).thenReturn(true);
@@ -169,7 +175,7 @@ class AgentEpqEventEndTest {
 
     @Test
     void afterTheClearALeaderOnTheNormalExitMapIsNotTheReward() {
-        AgentEpqSession session = boss();
+        AgentEpqSession session = stockBoss();
         run.onMap(ben, AgentEpqDefinition.REWARD_MAP); // died after the clear: the normal 930000800
         when(ben.getEventInstance()).thenReturn(null);
         when(run.event.isEventCleared()).thenReturn(true);
@@ -219,7 +225,7 @@ class AgentEpqEventEndTest {
      */
     @Test
     void afterTheClearAnAgentTheEventHoldsOnTheExitMapTakesTheRewardThoughThePhaseNeverReadIt() {
-        AgentEpqSession session = boss();
+        AgentEpqSession session = stockBoss();
         when(run.event.isEventCleared()).thenReturn(true);
         run.onMap(ben, AgentEpqDefinition.RECRUIT_MAP); // out through east00 already
         when(ben.getEventInstance()).thenReturn(null);

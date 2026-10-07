@@ -120,7 +120,7 @@ class AgentEpqProgressLogTest {
     @Test
     void killingTheDummyAfterTheClearIsAnAssistAndStillHappens() {
         for (Character member : List.of(ben, mira, tobi, una)) run.onMap(member, AgentEpqDefinition.BOSS_MAP);
-        AgentEpqSession session = session(AgentEpqSession.Phase.BOSS);
+        AgentEpqSession session = stockSession(AgentEpqSession.Phase.BOSS);
         when(run.event.isEventCleared()).thenReturn(true);
         Monster dummy = run.monster(AgentEpqDefinition.POST_DEATH_DUMMY);
         try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {

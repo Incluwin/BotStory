@@ -7,8 +7,11 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
-
+import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.AgentPartySnapshot;
+import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.maps.MapItem;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -30,9 +33,39 @@ final class AgentEpqCompanionRun {
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_AT_EXIT_PX");
     static final long LEADER_HINT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_HINT_MS");
+    static final long CLEAR_WAIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.CLEAR_WAIT_MS");
+    static final long GOLEM_MARBLE_LEADER_FIRST_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.GOLEM_MARBLE_LEADER_FIRST_MS");
     static final String QUEST_KEY = "epq";
 
     private AgentEpqCompanionRun() {
+    }
+
+    /**
+     * A companion run that still acts: adopted, not ended and not being released. Every companion row of the
+     * coordinator checks it, so a run another thread ended (a failure, the host's stop) never drops, leaves, ejects or
+     * speaks again, and is never failed a second time over its first reason.
+     */
+    static boolean acting(AgentEpqSession session) {
+        return session.companionAdopted() && !session.terminal() && !session.terminationStarted();
+    }
+
+    /** The live party, as the first online member of the run sees it; null when none has one (HPQ's shape). */
+    static AgentPartySnapshot liveParty(AgentEpqSession session) {
+        for (AgentEpqMemberState member : session.members()) {
+            Character character = AgentEpqCoordinator.character(member.characterId());
+            AgentPartySnapshot party = character == null ? null : AgentPartyGatewayRuntime.party().snapshot(character);
+            if (party != null) return party;
+        }
+        return null;
+    }
+
+    /** Whether the run's leader still leads the live party (false when no member has a party). */
+    static boolean leaderLeadsLiveParty(AgentEpqSession session) {
+        AgentPartySnapshot party = liveParty(session);
+        return party != null && party.members().stream().anyMatch(member -> member != null && member.leader()
+                && member.id() == session.eventLeaderId());
     }
 
     // ---- who speaks ----
@@ -106,9 +139,18 @@ final class AgentEpqCompanionRun {
      * leader online; true when this owns the pass. Otherwise the coordinator's watchdog keeps watch, as today.
      */
     static boolean leaderOffline(AgentEpqSession session, long nowMs) {
-        if (session.eventInstance() != null) return false;
-        beforeEntry(session, null, nowMs);
-        return true;
+        EventInstanceManager bound = session.eventInstance();
+        if (bound == null) {
+            beforeEntry(session, null, nowMs);
+            return true;
+        }
+        if (AgentEpqTerminationService.pastTheClear(bound)) {
+            // Past the clear an offline leader is not waited on: the companions leave (Step 2.9).
+            afterClear(session, null, nowMs);
+            AgentEpqCoordinator.completeWhenOut(session, nowMs);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -221,5 +263,147 @@ final class AgentEpqCompanionRun {
                     AgentEpqCompanionPlay.exitNudgeLine(leader.getName()));
         }
         return true;
+    }
+
+    // ---- after the golem ----
+
+    /**
+     * The lease holder's pass past the clear (Step 2.9). The companions tell their leader that only he can open the
+     * way out (E16, or E16d when he is down), point out the golem's marble (E16m) and say when the work Agent took it
+     * (E16t). They leave once he let go (offline, down, out of the event, no longer leading the live party) or after
+     * CLEAR_WAIT_MS with him still on the golem's map; a leave not yet gone is called off when he took out00 in time.
+     * Before it goes, a companion holding the golem's marble leaves it with him (afterClearMember). Never fails the run.
+     */
+    static void afterClear(AgentEpqSession session, Character leader, long nowMs) {
+        long clearSeenAtMs = session.clearSeenAtMs(nowMs);
+        if (session.leftAfterClear()) return;
+        boolean leaderInEvent = inBoundEvent(session, leader);
+        boolean leaderStands = leaderInEvent && leader.getHp() > 0;
+        boolean onBossMap = leader != null && leader.getMapId() == AgentEpqDefinition.BOSS_MAP;
+        Character narrator = narrator(session, leader);
+        if (leaderInEvent && onBossMap) {
+            coordinate(session, narrator, "cleared", leaderStands
+                    ? AgentEpqCompanionPlay.clearedLine(leader.getName())
+                    : AgentEpqCompanionPlay.clearedLeaderDownLine(leader.getName()));
+            if (leaderStands && golemMarbleLying(leader)) {
+                coordinate(session, narrator, "golem-marble", AgentEpqCompanionPlay.golemMarbleLine(leader.getName()));
+            }
+        }
+        String why = AgentEpqCompanionPlay.leaveWhy(leader != null, leader == null ? 0 : leader.getHp(),
+                leaderInEvent, leaderLeadsLiveParty(session), onBossMap, nowMs - clearSeenAtMs, CLEAR_WAIT_MS);
+        if (why == null && leaderStands && leader.getMapId() == AgentEpqDefinition.REWARD_MAP) {
+            if (session.cancelLeave()) {
+                log.info("EPQ after clear: session={} action=stay why=out00 leader={}", session.sessionId(),
+                        leader.getName());
+            }
+        } else if (why != null) {
+            session.decideLeave(nowMs, why);
+        }
+        if (session.leaveDecidedAtMs() > 0L) {
+            leaveWhenReady(session, leader, nowMs);
+            return;
+        }
+        Character workAgent = AgentEpqCoordinator.character(session.workAgentId());
+        if (leaderStands && workAgent != null && inBoundEvent(session, workAgent)
+                && AgentEpqCoordinator.actions().itemCount(workAgent, AgentEpqDefinition.GOLEMS_MARBLE) > 0) {
+            coordinate(session, workAgent, "golem-marble-taken", AgentEpqCompanionPlay.GOLEM_MARBLE_TAKEN);
+        }
+    }
+
+    /**
+     * The watchdog past the clear (Step 2.9): the companions leave instead of failing the run (why=stall). A run whose
+     * companions already left and still stalls is complete: a cleared companion run never fails.
+     */
+    static void stalledAfterClear(AgentEpqSession session, long nowMs) {
+        if (session.leftAfterClear()) {
+            log.info("EPQ after clear: session={} action=complete why=stall", session.sessionId());
+            session.complete(nowMs);
+            return;
+        }
+        session.decideLeave(nowMs, "stall");
+        leaveWhenReady(session, AgentEpqCoordinator.character(session.eventLeaderId()), nowMs);
+    }
+
+    /**
+     * A decided leave goes once no companion in the event holds the golem's marble, or AgentEpqHandOver.TIMEOUT_MS
+     * after the decision: E16w while the leader still stands in the event, the EXITING phase and the event's own exit
+     * for the companions only ('EPQ after clear: ... action=leave').
+     */
+    static void leaveWhenReady(AgentEpqSession session, Character leader, long nowMs) {
+        int holders = golemMarbleHolders(session);
+        if (!AgentEpqCompanionPlay.leaveGoes(holders, nowMs - session.leaveDecidedAtMs(), AgentEpqHandOver.TIMEOUT_MS)
+                || !session.markLeftAfterClear()) {
+            return;
+        }
+        if (leader != null && leader.getHp() > 0 && inBoundEvent(session, leader)) {
+            coordinate(session, narrator(session, leader), "wait-outside", AgentEpqCompanionPlay.WAIT_OUTSIDE);
+        }
+        log.info("EPQ after clear: session={} action=leave why={} leader={} marble={}", session.sessionId(),
+                session.leaveWhy(), leader == null ? String.valueOf(session.eventLeaderId()) : leader.getName(),
+                holders > 0 ? "held" : session.golemMarble());
+        AgentEpqCoordinator.transition(session, AgentEpqSession.Phase.EXITING, nowMs);
+        AgentEpqTerminationService.exitAgentsOnly(session);
+    }
+
+    /**
+     * A companion on the golem's map past the clear, on its own tick (Step 2.9). Out00 is the leader's
+     * (party6_out.js), so no companion tries it, and the invisible dummy is left alone. Before the leave the work Agent
+     * takes the golem's marble once the leader had GOLEM_MARBLE_LEADER_FIRST_MS to take it; once the leave is decided a
+     * companion holding it hands it over at the leader's feet (AgentEpqHandOver, no NPC: an unreachable leader or a
+     * walk past TIMEOUT_MS gets it where the companion stands), or drops it where it stands without a word when he
+     * cannot take it. Everyone else stands.
+     */
+    static void afterClearMember(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                 AgentEpqMemberState member, long nowMs) {
+        int held = AgentEpqCoordinator.actions().itemCount(agent, AgentEpqDefinition.GOLEMS_MARBLE);
+        if (session.leaveDecidedAtMs() > 0L) {
+            if (held <= 0 || session.leftAfterClear()) {
+                AgentEpqCoordinator.actions().stop(entry);
+                return;
+            }
+            Character leader = AgentEpqCoordinator.character(session.eventLeaderId());
+            boolean leaderTakesIt = leader != null && leader.getHp() > 0 && inBoundEvent(session, leader)
+                    && leader.getMap() == agent.getMap();
+            if (!leaderTakesIt) {
+                AgentEpqHandOver.dropHere(session, entry, agent, member, AgentEpqDefinition.GOLEMS_MARBLE, held, nowMs);
+                return;
+            }
+            AgentEpqHandOver.tick(session, entry, agent, member, AgentEpqDefinition.GOLEMS_MARBLE, 0, nowMs);
+            return;
+        }
+        if (held <= 0 && agent.getId() == session.workAgentId()) {
+            MapItem marble = AgentMapPerception.items(agent.getMap()).stream()
+                    .filter(drop -> drop != null && !drop.isPickedUp() && drop.getPosition() != null
+                            && drop.getItemId() == AgentEpqDefinition.GOLEMS_MARBLE)
+                    .filter(drop -> AgentEpqCompanionPlay.golemMarbleMayBeTaken(true, nowMs - drop.getDropTime(),
+                            GOLEM_MARBLE_LEADER_FIRST_MS))
+                    .findFirst().orElse(null);
+            if (marble != null) {
+                AgentEpqCoordinator.pickUp(entry, agent, marble);
+                return;
+            }
+        }
+        AgentEpqCoordinator.actions().stop(entry);
+    }
+
+    /** A golem's marble lies on this leader's map. */
+    private static boolean golemMarbleLying(Character leader) {
+        return leader.getMap() != null && AgentMapPerception.items(leader.getMap()).stream()
+                .anyMatch(drop -> drop != null && !drop.isPickedUp()
+                        && drop.getItemId() == AgentEpqDefinition.GOLEMS_MARBLE);
+    }
+
+    /** The run's companions in its bound event that hold the golem's marble (read from the characters). */
+    static int golemMarbleHolders(AgentEpqSession session) {
+        int holders = 0;
+        for (AgentEpqMemberState member : session.members()) {
+            if (member.memberType() != AgentEpqMemberState.MemberType.AGENT) continue;
+            Character agent = AgentEpqCoordinator.character(member.characterId());
+            if (inBoundEvent(session, agent)
+                    && AgentEpqCoordinator.actions().itemCount(agent, AgentEpqDefinition.GOLEMS_MARBLE) > 0) {
+                holders++;
+            }
+        }
+        return holders;
     }
 }

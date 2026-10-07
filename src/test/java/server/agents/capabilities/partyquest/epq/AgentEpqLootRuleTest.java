@@ -82,11 +82,20 @@ class AgentEpqLootRuleTest {
     }
 
     @Test
-    void golemsMarbleIsStillFreeInACompanionRunUntilStepTwoNine() {
-        session(true);
+    void golemsMarbleInACompanionRunIsTheWorkAgentsOnTheGolemsMapAfterTheLeadersFirstClaim() {
+        AgentEpqSession session = session(true);
+        run.onMap(mira, AgentEpqDefinition.BOSS_MAP);
+        run.onMap(tobi, AgentEpqDefinition.BOSS_MAP);
         MapItem marble = run.drop(AgentEpqDefinition.GOLEMS_MARBLE, 1, new Point(0, 0), false, 0, 1_000L);
 
-        assertTrue(AgentEpqSessionRegistry.canLootExclusive(mira, marble, 2_000L));
+        assertFalse(AgentEpqSessionRegistry.canLootExclusive(mira, marble, 15_999L), "the leader's first claim");
+        assertTrue(AgentEpqSessionRegistry.canLootExclusive(mira, marble, 16_000L));
+        assertFalse(AgentEpqSessionRegistry.canLootExclusive(tobi, marble, 16_000L), "the work Agent only");
+        run.onMap(mira, AgentEpqDefinition.REWARD_MAP);
+        assertFalse(AgentEpqSessionRegistry.canLootExclusive(mira, marble, 16_000L), "on the golem's map only");
+        run.onMap(mira, AgentEpqDefinition.BOSS_MAP);
+        session.decideLeave(16_500L, "wait");
+        assertFalse(AgentEpqSessionRegistry.canLootExclusive(mira, marble, 17_000L), "never once they leave");
     }
 
     @Test

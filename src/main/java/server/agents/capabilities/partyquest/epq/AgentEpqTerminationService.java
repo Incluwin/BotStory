@@ -107,6 +107,24 @@ final class AgentEpqTerminationService {
                 log.warn("EPQ companion exit failed: event={} member={}", event.getName(), participant.getId(), failure);
             }
         }
+        closeIfEmpty(session, event);
+    }
+
+    /**
+     * Closes an event no player is left in (Step 2.9): only dispose frees EllinPQ's one lobby on the channel, and
+     * neither the event's exit nor its unregister ever disposes. Read from the event's players after the exits (never
+     * getPlayerCount): a human still registered (alive, or dead before he presses OK) keeps it open, and the stock exit
+     * ends it when he leaves.
+     */
+    private static void closeIfEmpty(AgentEpqSession session, EventInstanceManager event) {
+        try {
+            if (!event.getPlayers().isEmpty()) return;
+            event.dispose();
+            log.info("EPQ companion exit closed the empty event: session={} event={}", session.sessionId(),
+                    event.getName());
+        } catch (RuntimeException failure) {
+            log.warn("EPQ empty event close failed: session={}", session.sessionId(), failure);
+        }
     }
 
     /** The companions' HP/MP potions, by name, as 'EPQ potions:' logs them: {Mira:12/30, Tobi:0/5}. */

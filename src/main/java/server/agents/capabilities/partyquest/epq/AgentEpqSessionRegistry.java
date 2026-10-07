@@ -81,7 +81,14 @@ public final class AgentEpqSessionRegistry {
         int itemId = drop.getItemId();
         AgentEpqSession session = forMember(character.getId());
         boolean companion = session != null && session.companionAdopted();
-        if (itemId == AgentEpqDefinition.GOLEMS_MARBLE) return true;
+        if (itemId == AgentEpqDefinition.GOLEMS_MARBLE) {
+            // Step 2.9: in a companion run the leader has first claim on the golem's marble; then only the work Agent
+            // may take it, on the golem's map, and no companion once they decided to leave. Elsewhere it is free.
+            return !companion || (character.getId() == session.workAgentId()
+                    && character.getMapId() == AgentEpqDefinition.BOSS_MAP && session.leaveDecidedAtMs() == 0L
+                    && AgentEpqCompanionPlay.golemMarbleMayBeTaken(true, nowMs - drop.getDropTime(),
+                    AgentEpqCompanionRun.GOLEM_MARBLE_LEADER_FIRST_MS));
+        }
         if (companion && drop.isPlayerDrop()
                 && ((itemId == AgentEpqDefinition.MONSTER_MARBLE
                 && character.getMapId() == AgentEpqDefinition.STAGE_FOUR_MAP)
