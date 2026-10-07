@@ -95,6 +95,8 @@ class AgentGroundActionPlannerTest {
     @Test
     void shouldPlanJumpWhenMobBlocksWalkLaneAndLandingStaysInCurrentRegion() {
         MapleMap map = spy(new MapleMap(910009048, 0, 0, 910009048, 1.0f));
+        // A floor caps each fall probe. Unbounded, the spy records millions of map calls (over 3 GB).
+        map.setMapLineBoundings(-500, 500, -500, 800);
         Foothold foothold = new Foothold(new Point(0, 100), new Point(300, 100), 1);
         map.setFootholds(footholds(foothold));
         AgentNavigationGraphService.rebuildGraph(map);

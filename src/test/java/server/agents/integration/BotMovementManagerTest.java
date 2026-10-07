@@ -401,6 +401,7 @@ class BotMovementManagerTest {
     @Test
     void shouldJumpForwardWhenMobBlocksWalkLaneAndLandingStaysInCurrentRegion() {
         MapleMap map = spy(new MapleMap(910009048, 0, 0, 910009048, 1.0f));
+        boundMobAvoidMap(map);
         server.maps.FootholdTree footholds = new server.maps.FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
         footholds.insert(new Foothold(new Point(0, 100), new Point(300, 100), 1));
         map.setFootholds(footholds);
@@ -426,6 +427,7 @@ class BotMovementManagerTest {
     @Test
     void shouldNotJumpOverBlockingMobWhenSimulatedLandingLeavesCurrentRegion() {
         MapleMap map = spy(new MapleMap(910009049, 0, 0, 910009049, 1.0f));
+        boundMobAvoidMap(map);
         server.maps.FootholdTree footholds = new server.maps.FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
         footholds.insert(new Foothold(new Point(0, 100), new Point(140, 100), 1));
         map.setFootholds(footholds);
@@ -440,6 +442,14 @@ class BotMovementManagerTest {
         AgentGroundMovementRuntimeService.tickGrounded(entry, new Point(190, 100));
 
         assertFalse(AgentMovementStateRuntime.inAir(entry), "mob-avoid jump should be skipped when simulation would leave the current platform region");
+    }
+
+    /**
+     * Gives a spied map a floor. Without bounds every fall probe runs the 2,000-tick backstop,
+     * and the spy records each map call: millions of invocations, over 3 GB of heap.
+     */
+    private static void boundMobAvoidMap(MapleMap map) {
+        map.setMapLineBoundings(-500, 500, -500, 800);
     }
 
     @Test
