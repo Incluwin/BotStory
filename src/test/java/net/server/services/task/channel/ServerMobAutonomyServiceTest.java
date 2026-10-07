@@ -596,6 +596,48 @@ class ServerMobAutonomyServiceTest {
     }
 
     @Test
+    void forcedEncounterKeepsEasyBalrogServerOwnedDespiteCapableParticipant() {
+        MapleMap forcedMap = mock(MapleMap.class);
+        EventInstanceManager forcedEvent = mock(EventInstanceManager.class);
+        Expedition forcedExpedition = mock(Expedition.class);
+        Character forcedParticipant = nativeHuman(92_501, forcedMap, forcedEvent);
+        Monster forcedClaw = encounterMonster(
+                EasyBalrogInitialClawBehavior.MOB_ID, 901, forcedMap);
+        when(forcedMap.getEventInstance()).thenReturn(forcedEvent);
+        when(forcedMap.getAllPlayers()).thenReturn(List.of(forcedParticipant));
+        when(forcedEvent.getPlayers()).thenReturn(List.of(forcedParticipant));
+        when(forcedEvent.getExpedition()).thenReturn(forcedExpedition);
+        when(forcedExpedition.contains(forcedParticipant)).thenReturn(true);
+        when(forcedMap.getMonsterByOid(901)).thenReturn(forcedClaw);
+
+        service.registerEncounterActor(forcedClaw, new Object(), true);
+
+        assertTrue(service.isActive(forcedClaw),
+                "a forced encounter starts server-driven with a capable native participant");
+        assertEquals(0, service.nativeAuthorityCountForTest());
+        verify(forcedClaw, never()).pinBossController(forcedParticipant);
+
+        MapleMap stockMap = mock(MapleMap.class);
+        EventInstanceManager stockEvent = mock(EventInstanceManager.class);
+        Expedition stockExpedition = mock(Expedition.class);
+        Character stockParticipant = nativeHuman(92_502, stockMap, stockEvent);
+        Monster stockClaw = encounterMonster(
+                EasyBalrogInitialClawBehavior.MOB_ID, 902, stockMap);
+        when(stockMap.getEventInstance()).thenReturn(stockEvent);
+        when(stockMap.getAllPlayers()).thenReturn(List.of(stockParticipant));
+        when(stockEvent.getPlayers()).thenReturn(List.of(stockParticipant));
+        when(stockEvent.getExpedition()).thenReturn(stockExpedition);
+        when(stockExpedition.contains(stockParticipant)).thenReturn(true);
+        when(stockMap.getMonsterByOid(902)).thenReturn(stockClaw);
+
+        service.registerEncounterActor(stockClaw, new Object(), false);
+
+        assertFalse(service.isActive(stockClaw), "false keeps the stock native choice");
+        assertEquals(1, service.nativeAuthorityCountForTest());
+        verify(stockClaw).pinBossController(stockParticipant);
+    }
+
+    @Test
     void stickyBalrogTargetsRegisteredAgentAndRenderOnlyHumanButExcludesObserver() {
         MapleMap map = mock(MapleMap.class);
         EventInstanceManager event = mock(EventInstanceManager.class);

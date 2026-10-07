@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 
 /** Owns Easy Balrog's seal, claw, body, clear, and cleanup phase graph. */
 public final class EasyBalrogEncounterService {
@@ -32,8 +33,19 @@ public final class EasyBalrogEncounterService {
     private static final Logger log =
             LoggerFactory.getLogger(EasyBalrogEncounterService.class);
     private static final Map<MapleMap, Encounter> ENCOUNTERS = new ConcurrentHashMap<>();
+    private static volatile Predicate<MapleMap> serverAuthorityRule;
 
     private EasyBalrogEncounterService() {
+    }
+
+    /**
+     * Installs the rule that decides, once per encounter start, whether the whole fight is
+     * server-driven from its first actor (the living world forces it while companions are signed
+     * up); null uninstalls it. The rule runs inside the event's start on the starting thread, so it
+     * must answer from memory; a failure counts as false (the stock choice).
+     */
+    public static void installServerAuthorityRule(Predicate<MapleMap> rule) {
+        serverAuthorityRule = rule;
     }
 
     public static EncounterHandle start(MapleMap map, Point origin) {
@@ -46,7 +58,8 @@ public final class EasyBalrogEncounterService {
             throw new IllegalArgumentException("Easy Balrog requires a live map and origin");
         }
         stop(map, "replaced");
-        Encounter encounter = new Encounter(map, new Point(origin), monsterFactory);
+        Encounter encounter = new Encounter(map, new Point(origin), monsterFactory,
+                serverAuthorityForced(map));
         ENCOUNTERS.put(map, encounter);
         try {
             encounter.start();
@@ -55,6 +68,19 @@ public final class EasyBalrogEncounterService {
             ENCOUNTERS.remove(map, encounter);
             encounter.abort("start-failed");
             throw failure;
+        }
+    }
+
+    private static boolean serverAuthorityForced(MapleMap map) {
+        Predicate<MapleMap> rule = serverAuthorityRule;
+        if (rule == null) {
+            return false;
+        }
+        try {
+            return rule.test(map);
+        } catch (RuntimeException | LinkageError failure) {
+            log.warn("Easy Balrog server authority rule failed map={}", map.getId(), failure);
+            return false;
         }
     }
 
@@ -120,6 +146,7 @@ public final class EasyBalrogEncounterService {
         private final MapleMap map;
         private final Point origin;
         private final IntFunction<Monster> monsterFactory;
+        private final boolean forceServer;
         private final long generation = System.nanoTime();
         private final EnumSet<Role> defeated = EnumSet.noneOf(Role.class);
         private final List<Monster> helpers = new ArrayList<>();
@@ -130,10 +157,11 @@ public final class EasyBalrogEncounterService {
         private Monster seal;
 
         private Encounter(MapleMap map, Point origin,
-                          IntFunction<Monster> monsterFactory) {
+                          IntFunction<Monster> monsterFactory, boolean forceServer) {
             this.map = map;
             this.origin = origin;
             this.monsterFactory = monsterFactory;
+            this.forceServer = forceServer;
         }
 
         private synchronized void start() {
@@ -151,8 +179,8 @@ public final class EasyBalrogEncounterService {
                     .getServiceAccess(ChannelServices.OVERALL);
             scheduler.registerOverallAction(map.getId(), this::releaseSeal,
                     RELEASE_DELAY_MS);
-            log.info("Easy Balrog encounter started map={} generation={}",
-                    map.getId(), generation);
+            log.info("Easy Balrog encounter started map={} generation={} serverAuthorityForced={}",
+                    map.getId(), generation, forceServer);
         }
 
         private Monster actor(int mobId, Role role) {
@@ -169,7 +197,11 @@ public final class EasyBalrogEncounterService {
         private void registerCombatActor(Monster monster) {
             if (map.getChannelServer().getServiceAccess(ChannelServices.MOB_AUTONOMY)
                     instanceof ServerMobAutonomyService autonomy) {
-                autonomy.registerEncounterActor(monster, this);
+                if (forceServer) {
+                    autonomy.registerEncounterActor(monster, this, true);
+                } else {
+                    autonomy.registerEncounterActor(monster, this);
+                }
             }
         }
 

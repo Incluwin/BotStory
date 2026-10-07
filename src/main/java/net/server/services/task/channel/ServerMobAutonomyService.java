@@ -140,6 +140,17 @@ public final class ServerMobAutonomyService extends BaseService {
 
     /** Adds a boss component to one encounter-wide authority decision. */
     public void registerEncounterActor(Monster monster, Object encounterKey) {
+        registerEncounterActor(monster, encounterKey, false);
+    }
+
+    /**
+     * Adds a boss component to one encounter-wide authority decision. With forceServer the
+     * encounter key's first registration starts in sticky server mode even when a capable native
+     * client is present (Poison Golem's mechanism, carried per encounter because behaviours are
+     * shared singletons); a key that already has a mode keeps it.
+     */
+    public void registerEncounterActor(Monster monster, Object encounterKey,
+                                       boolean forceServer) {
         if (monster == null || encounterKey == null || !monster.isAlive()) {
             return;
         }
@@ -154,7 +165,8 @@ public final class ServerMobAutonomyService extends BaseService {
                 release(monster, "join-encounter");
             }
             if (!authorityByMonster.containsKey(monster)) {
-                register(monster, behavior, encounterKey, behavior.forceServerAuthority(),
+                register(monster, behavior, encounterKey,
+                        forceServer || behavior.forceServerAuthority(),
                         false, -1, System.nanoTime());
             }
         }
