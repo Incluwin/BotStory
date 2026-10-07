@@ -58,6 +58,12 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         /** True while a member {@code enlistedBy} enlisted in run {@code sessionId} still waits to sign up. */
         boolean waiting(long sessionId, int enlistedBy);
 
+        /**
+         * True while boss run {@code sessionId} still takes sign-ups: the run is REGISTERING and its expedition is
+         * registering (the leader has not pressed Start).
+         */
+        boolean registering(long sessionId);
+
         /** True when a companion of {@code event}'s run signed up for this fight (AgentBossRunRegistry.signedUpIn). */
         boolean signedUpIn(EventInstanceManager event);
 
@@ -79,6 +85,13 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                     }
                 }
                 return false;
+            }
+
+            @Override
+            public boolean registering(long sessionId) {
+                AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+                return session != null && session.phase() == AgentBossRunSession.Phase.REGISTERING
+                        && session.expedition().isRegistering();
             }
 
             @Override
@@ -157,7 +170,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * The companion is on the entry NPC's list: its persona and its potions are noted for its record and the potion
-     * line, and once none of its owner's companions waits to sign up any more, one of them says they are all set.
+     * line, and once none of its owner's companions waits to sign up any more (the list still open), one of them says
+     * they are all set.
      */
     private void signedUp(Seat seat) {
         int id = seat.agentCharacterId();
@@ -176,7 +190,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * The companion did not get onto the list, or the leader took it off: it is let go and says why. When it was the
-     * last one of its owner's still waiting, one already on the list says they are all set.
+     * last one of its owner's still waiting and the list is still open, one already on the list says they are all set.
      */
     private void notListed(Seat seat, Refusal refusal) {
         int id = seat.agentCharacterId();
@@ -192,11 +206,13 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
-     * Once per owner, when none of their companions waits to sign up any more and one is on the list: {@code speaker}
-     * (or, when it is 0 or not loaded, another on the list) says they are all signed up.
+     * Once per owner, while the entry NPC's list is still open, when none of their companions waits to sign up any
+     * more and one is on the list: {@code speaker} (or, when it is 0 or not loaded, another on the list) says they are
+     * all signed up. After Start it says nothing: the owner is already on the way into the fight.
      */
     private void allSignedUp(CompanionBossRun run, int speaker) {
-        if (run.signedUpSaid || run.signedUp.isEmpty() || open.waiting(run.sessionId, run.ownerId)) {
+        if (run.signedUpSaid || run.signedUp.isEmpty() || !open.registering(run.sessionId)
+                || open.waiting(run.sessionId, run.ownerId)) {
             return;
         }
         Character bot = speaker == 0 ? null : bot(speaker);

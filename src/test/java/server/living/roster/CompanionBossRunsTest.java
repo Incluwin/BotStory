@@ -68,6 +68,7 @@ class CompanionBossRunsTest {
         game.outWithAnn(thane);
         game.outWithAnn(sorrel);
         open.open.add(SID);
+        open.registering.add(SID); // Mu Young's list is open until the leader presses Start
         runs = new CompanionBossRuns(game.world, open, potions::get);
     }
 
@@ -139,6 +140,7 @@ class CompanionBossRunsTest {
         runs.registered(seat(ISOLDE));
         assertEquals(List.of(), game.partyChat, "Thane is still at the store");
 
+        assertTrue(open.registering.contains(SID), "the list is still open: Thane's restock ran past its bound");
         open.waiting.clear();
         runs.refused(seat(THANE), Refusal.LATE);
 
@@ -149,6 +151,21 @@ class CompanionBossRunsTest {
 
         runs.refused(seat(SORREL), Refusal.NOT_HERE);
         assertEquals(3, game.partyChat.size(), "said once: " + game.partyChat);
+    }
+
+    @Test
+    void noSignedUpLineOnceStartClosedTheList() {
+        open.waiting.add(SID + ":" + ANN);
+        runs.seat(seat(ISOLDE));
+        runs.registered(seat(ISOLDE));
+        assertEquals(List.of(), game.partyChat, "Thane still walks up");
+
+        open.registering.remove(SID); // the leader pressed Start: Bossfriend is on the way into the fight
+        open.waiting.clear();
+        runs.refused(seat(THANE), Refusal.LATE);
+        runs.registered(seat(SORREL)); // a sign-up report that companion-ops reads only after Start
+
+        assertEquals(List.of("Thane: not gonna make it back in time, go on without me."), game.partyChat);
     }
 
     @Test
@@ -458,6 +475,7 @@ class CompanionBossRunsTest {
     void theLiveViewOfTheAgentLayerKnowsNoRunItWasNotGiven() {
         assertFalse(CompanionBossRuns.OpenRuns.LIVE.open(Long.MIN_VALUE));
         assertFalse(CompanionBossRuns.OpenRuns.LIVE.waiting(Long.MIN_VALUE, ANN));
+        assertFalse(CompanionBossRuns.OpenRuns.LIVE.registering(Long.MIN_VALUE));
         assertFalse(CompanionBossRuns.OpenRuns.LIVE.signedUpIn(null));
     }
 
@@ -547,6 +565,8 @@ class CompanionBossRunsTest {
         final Set<Long> open = new HashSet<>();
         /** "session:enlister" while a member that enlister enlisted still waits to sign up. */
         final Set<String> waiting = new HashSet<>();
+        /** Sessions whose entry NPC list is still open (before the leader's Start). */
+        final Set<Long> registering = new HashSet<>();
         final Set<EventInstanceManager> signedUp = new HashSet<>();
 
         @Override
@@ -557,6 +577,11 @@ class CompanionBossRunsTest {
         @Override
         public boolean waiting(long sessionId, int enlistedBy) {
             return waiting.contains(sessionId + ":" + enlistedBy);
+        }
+
+        @Override
+        public boolean registering(long sessionId) {
+            return registering.contains(sessionId);
         }
 
         @Override
