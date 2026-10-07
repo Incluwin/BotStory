@@ -6,6 +6,7 @@ import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.ollama.OllamaDialogueProvider;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentMailboxRuntime;
+import server.agents.runtime.AgentSchedulerRuntime;
 import server.agents.social.config.SocialDialogueSettings;
 import server.agents.social.contracts.ConversationTurn;
 import server.agents.social.contracts.DialogueMode;
@@ -123,7 +124,7 @@ public final class AgentSocialDialogueRuntime {
             } else {
                 shown = styled.text();
                 String finalText = shown;
-                server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY,
+                AgentSchedulerRuntime.scheduleLowPriority(
                         () -> AgentDialogueTransportRuntime.replyNow(entry, finalText), Math.max(1L, styled.delayMs()));
             }
             long repliedAtMs = System.currentTimeMillis();
@@ -168,7 +169,7 @@ public final class AgentSocialDialogueRuntime {
         StringBuilder said = new StringBuilder();
         for (Styled line : lines) {
             String text = line.text();
-            server.TimerManager.getInstance().schedule(server.TimerManager.SchedulerLane.LOW_PRIORITY, () -> {
+            AgentSchedulerRuntime.scheduleLowPriority(() -> {
                 if (speaker.getMapId() == askedOn) {
                     AgentDialogueTransportRuntime.replyNow(entry, text);
                 }

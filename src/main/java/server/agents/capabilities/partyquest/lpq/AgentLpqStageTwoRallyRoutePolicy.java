@@ -1,5 +1,6 @@
 package server.agents.capabilities.partyquest.lpq;
 
+import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.maps.MapleMap;
@@ -25,8 +26,12 @@ final class AgentLpqStageTwoRallyRoutePolicy {
             return null;
         }
         AgentNavigationGraph graph = AgentNavigationGraphService.peekGraph(map);
-        if (graph == null) graph = AgentNavigationGraphService.getGraph(map);
-        if (graph == null) return null;
+        if (graph == null) {
+            // Never build a graph on the tick thread. Until the background build lands, the
+            // caller walks toward the authored waypoint or the final target instead.
+            AgentNavigationGraphService.warmGraphAsync(map, AgentMovementProfile.base());
+            return null;
+        }
 
         // A character hanging on a rope still has a platform below it. The generic
         // lookup grounds first and can therefore report that lower platform, making

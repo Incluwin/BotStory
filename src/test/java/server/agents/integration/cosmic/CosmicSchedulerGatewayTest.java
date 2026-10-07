@@ -28,4 +28,21 @@ class CosmicSchedulerGatewayTest {
             assertSame(repeating, CosmicSchedulerGateway.INSTANCE.register(action, 100L));
         }
     }
+
+    @Test
+    void lowPriorityTasksRunOnTheTimerManagerLowPriorityLane() {
+        TimerManager timer = mock(TimerManager.class);
+        ScheduledFuture<?> oneShot = mock(ScheduledFuture.class);
+        ScheduledFuture<?> repeating = mock(ScheduledFuture.class);
+        Runnable action = () -> { };
+
+        try (MockedStatic<TimerManager> timers = mockStatic(TimerManager.class)) {
+            timers.when(TimerManager::getInstance).thenReturn(timer);
+            doReturn(oneShot).when(timer).schedule(TimerManager.SchedulerLane.LOW_PRIORITY, action, 250L);
+            doReturn(repeating).when(timer).register(TimerManager.SchedulerLane.LOW_PRIORITY, action, 60_000L, 60_000L);
+
+            assertSame(oneShot, CosmicSchedulerGateway.INSTANCE.scheduleLowPriority(action, 250L));
+            assertSame(repeating, CosmicSchedulerGateway.INSTANCE.registerLowPriority(action, 60_000L, 60_000L));
+        }
+    }
 }
