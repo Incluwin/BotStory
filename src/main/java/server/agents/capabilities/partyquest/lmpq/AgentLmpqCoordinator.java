@@ -24,8 +24,6 @@ import java.util.Set;
 
 /** Natural-action LMPQ coordinator: distributed farming, handoff, and Room 9 barrier. */
 public final class AgentLmpqCoordinator {
-    private static final PrimitiveCapabilityGateway ACTIONS = AgentPrimitiveCapabilityGatewayRuntime.gateway();
-    private static final PartyQuestGateway LMPQ = AgentPartyQuestGatewayRuntime.partyQuest();
     private static final long EVENT_TIMEOUT_MS = 15L * 60_000L;
     private static final long ROOM_LEASE_MS = 20_000L;
     private static final long ACTION_RETRY_MS = 900L;
@@ -146,7 +144,7 @@ public final class AgentLmpqCoordinator {
             case REGROUPING -> regroup(session, entry, agent, member, nowMs);
             case CLEARING -> clearRoom(session, entry, agent, member, nowMs);
             case REWARD -> reward(session, entry, agent, member, nowMs);
-            case EXITING, COMPLETED, FAILED -> ACTIONS.stop(entry);
+            case EXITING, COMPLETED, FAILED -> actions().stop(entry);
         }
     }
 
@@ -156,9 +154,9 @@ public final class AgentLmpqCoordinator {
             session.transition(AgentLmpqSession.Phase.FARMING, nowMs);
             return;
         }
-        if (agent.getMapId() != AgentLmpqDefinition.RECRUIT_MAP) { ACTIONS.stop(entry); return; }
-        if (agent.getId() != session.eventLeaderId()) { ACTIONS.stop(entry); return; }
-        if (session.mode() == AgentLmpqSession.Mode.HUMAN_LEADER) { ACTIONS.stop(entry); return; }
+        if (agent.getMapId() != AgentLmpqDefinition.RECRUIT_MAP) { actions().stop(entry); return; }
+        if (agent.getId() != session.eventLeaderId()) { actions().stop(entry); return; }
+        if (session.mode() == AgentLmpqSession.Mode.HUMAN_LEADER) { actions().stop(entry); return; }
         if (runNearbyNpc(entry, agent, AgentLmpqDefinition.ENTRY_NPC, 0)) {
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             session.transition(AgentLmpqSession.Phase.ENTERING, nowMs);
@@ -168,12 +166,12 @@ public final class AgentLmpqCoordinator {
     private static void farm(AgentLmpqSession session, AgentRuntimeEntry entry, Character agent,
                              AgentLmpqMemberState member, long nowMs) {
         int currentRoom = AgentLmpqDefinition.roomForMap(agent.getMapId());
-        if (currentRoom < 1 || currentRoom > 15) { ACTIONS.stop(entry); return; }
+        if (currentRoom < 1 || currentRoom > 15) { actions().stop(entry); return; }
         if (member.portalMarked(currentRoom, 0)) member.clearPortalMarker();
         int target = member.targetRoom();
         if (target == 0) {
             target = selectAndReserveRoom(session, agent, nowMs);
-            if (target == 0) { ACTIONS.stop(entry); return; }
+            if (target == 0) { actions().stop(entry); return; }
             member.assignTargetRoom(target);
         }
         if (currentRoom != target) {
@@ -190,26 +188,26 @@ public final class AgentLmpqCoordinator {
             return;
         }
         session.rooms().heartbeat(currentRoom, agent.getId(), nowMs);
-        if (LMPQ.lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON))) {
+        if (partyQuest().lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON))) {
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             session.markProgress(nowMs);
             return;
         }
-        if (ACTIONS.liveMonsterCount(agent, AgentLmpqDefinition.COUPON_MOBS) > 0) {
-            ACTIONS.grind(entry, AgentLmpqDefinition.COUPON_MOBS);
+        if (actions().liveMonsterCount(agent, AgentLmpqDefinition.COUPON_MOBS) > 0) {
+            actions().grind(entry, AgentLmpqDefinition.COUPON_MOBS);
             return;
         }
         Reactor reactor = activeBox(agent, member.committedReactorObjectId());
         if (reactor == null) reactor = nearestUnclaimedBox(session, agent);
         if (reactor != null) {
             member.commitReactor(reactor.getObjectId());
-            if (!near(agent.getPosition(), reactor.getPosition(), REACTOR_RADIUS) || !ACTIONS.grounded(agent)) {
-                Point ground = ACTIONS.groundPoint(agent.getMap(), reactor.getPosition());
-                if (ground != null) ACTIONS.navigate(entry, ground, true);
+            if (!near(agent.getPosition(), reactor.getPosition(), REACTOR_RADIUS) || !actions().grounded(agent)) {
+                Point ground = actions().groundPoint(agent.getMap(), reactor.getPosition());
+                if (ground != null) actions().navigate(entry, ground, true);
                 return;
             }
-            ACTIONS.stop(entry);
-            if (ACTIONS.hitReactor(agent, reactor.getObjectId())) {
+            actions().stop(entry);
+            if (actions().hitReactor(agent, reactor.getObjectId())) {
                 member.clearReactor();
                 member.deferUntil(nowMs + ACTION_RETRY_MS);
                 session.markProgress(nowMs);
@@ -217,7 +215,7 @@ public final class AgentLmpqCoordinator {
             return;
         }
         if (couponDropPresent(agent)) {
-            LMPQ.lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON));
+            partyQuest().lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON));
             return;
         }
         session.rooms().depleted(currentRoom, agent.getId(), nowMs);
@@ -231,7 +229,7 @@ public final class AgentLmpqCoordinator {
         if (room != session.rendezvousRoom()) {
             if (room >= 1 && room <= 16) navigateToRoom(session, entry, agent, member, room,
                     session.rendezvousRoom(), nowMs);
-            else ACTIONS.stop(entry);
+            else actions().stop(entry);
             return;
         }
         Character leader = character(session.eventLeaderId());
@@ -252,9 +250,9 @@ public final class AgentLmpqCoordinator {
             }
         }
         if (agent.getId() == session.eventLeaderId()) {
-            LMPQ.lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON));
+            partyQuest().lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON));
         }
-        ACTIONS.stop(entry);
+        actions().stop(entry);
     }
 
     private static void clearRoom(AgentLmpqSession session, AgentRuntimeEntry entry, Character agent,
@@ -263,21 +261,21 @@ public final class AgentLmpqCoordinator {
         if (room == AgentLmpqDefinition.CLEAR_ROOM) {
             // The coordinator guides the leader toward Pierre, so do not let the member tick
             // immediately cancel that navigation. Followers should remain settled in place.
-            if (agent.getId() != session.eventLeaderId()) ACTIONS.stop(entry);
+            if (agent.getId() != session.eventLeaderId()) actions().stop(entry);
             return;
         }
         if (room >= 1 && room <= 15) {
             navigateToRoom(session, entry, agent, member, room, AgentLmpqDefinition.CLEAR_ROOM, nowMs);
-        } else ACTIONS.stop(entry);
+        } else actions().stop(entry);
     }
 
     private static void reward(AgentLmpqSession session, AgentRuntimeEntry entry, Character agent,
                                AgentLmpqMemberState member, long nowMs) {
-        if (agent.getMapId() != AgentLmpqDefinition.REWARD_MAP) { ACTIONS.stop(entry); return; }
+        if (agent.getMapId() != AgentLmpqDefinition.REWARD_MAP) { actions().stop(entry); return; }
         // Event warp preserves the previous room's movement state. Settle on the authored spawn
         // before approaching Rolly so reward entry cannot carry horizontal momentum off-map.
         if (member.claimAnnouncement("reward-arrival-settled")) {
-            ACTIONS.stop(entry);
+            actions().stop(entry);
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -312,20 +310,20 @@ public final class AgentLmpqCoordinator {
             AgentLmpqSession session, AgentRuntimeEntry entry, Character agent,
             AgentLmpqMemberState member, int currentRoom, int targetRoom, long nowMs) {
         int portalId = AgentLmpqDefinition.nextPortalId(currentRoom, targetRoom);
-        if (portalId < 0) { ACTIONS.stop(entry); return; }
-        Point portal = ACTIONS.portalPosition(agent, portalId);
-        if (!near(agent.getPosition(), portal, PORTAL_RADIUS) || !ACTIONS.grounded(agent)) {
-            if (portal != null) ACTIONS.navigate(entry, portal, true);
+        if (portalId < 0) { actions().stop(entry); return; }
+        Point portal = actions().portalPosition(agent, portalId);
+        if (!near(agent.getPosition(), portal, PORTAL_RADIUS) || !actions().grounded(agent)) {
+            if (portal != null) actions().navigate(entry, portal, true);
             return;
         }
-        ACTIONS.stop(entry);
+        actions().stop(entry);
         if (!member.portalMarked(currentRoom, portalId)) {
             AgentScriptItemActionService.dropMesos(entry, AgentLmpqDefinition.ROOM_MARKER_MESOS);
             member.markPortal(currentRoom, portalId);
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
-        if (LMPQ.enterPortal(agent, portalId)) {
+        if (partyQuest().enterPortal(agent, portalId)) {
             member.clearPortalMarker();
             if (member.targetRoom() > 0) session.rooms().heartbeat(member.targetRoom(), agent.getId(), nowMs);
             session.markProgress(nowMs);
@@ -335,7 +333,7 @@ public final class AgentLmpqCoordinator {
 
     private static Reactor activeBox(Character agent, int objectId) {
         if (objectId == 0) return null;
-        return ACTIONS.reactors(agent).stream().filter(java.util.Objects::nonNull)
+        return actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
                 .filter(reactor -> reactor.getObjectId() == objectId)
                 .filter(Reactor::isAlive).filter(Reactor::isActive).findFirst().orElse(null);
     }
@@ -344,7 +342,7 @@ public final class AgentLmpqCoordinator {
         Set<Integer> claimed = session.members().stream()
                 .map(AgentLmpqMemberState::committedReactorObjectId)
                 .filter(id -> id != 0).collect(java.util.stream.Collectors.toSet());
-        return ACTIONS.reactors(agent).stream().filter(java.util.Objects::nonNull)
+        return actions().reactors(agent).stream().filter(java.util.Objects::nonNull)
                 .filter(Reactor::isAlive).filter(Reactor::isActive)
                 .filter(reactor -> AgentLmpqDefinition.BOX_REACTORS.contains(reactor.getId()))
                 .filter(reactor -> !claimed.contains(reactor.getObjectId()))
@@ -421,13 +419,13 @@ public final class AgentLmpqCoordinator {
 
     private static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId, int... selections) {
         if (entry == null) return false;
-        Point npc = ACTIONS.npcPosition(agent, npcId);
+        Point npc = actions().npcPosition(agent, npcId);
         if (!near(agent.getPosition(), npc, NPC_RADIUS)) {
-            if (npc != null) ACTIONS.navigate(entry, npc, true);
+            if (npc != null) actions().navigate(entry, npc, true);
             return false;
         }
-        ACTIONS.stop(entry);
-        return LMPQ.runNpc(agent, npcId, selections);
+        actions().stop(entry);
+        return partyQuest().runNpc(agent, npcId, selections);
     }
 
     private static void announceOnce(AgentLmpqSession session, String key, String message) {
@@ -463,6 +461,19 @@ public final class AgentLmpqCoordinator {
                     human.getName() + ", from Maze Room " + room + " take the " + direction
                             + " portal toward Room " + target + '.');
         }
+    }
+
+    /**
+     * The primitive gateway as installed now. Resolved per call, never captured at class load: the gateway is one
+     * adapter singleton, so this is behaviour-identical, and a test's stand-in installed after the class loaded is seen.
+     */
+    private static PrimitiveCapabilityGateway actions() {
+        return AgentPrimitiveCapabilityGatewayRuntime.gateway();
+    }
+
+    /** The party-quest gateway as installed now; resolved per call, as {@link #actions()}. */
+    private static PartyQuestGateway partyQuest() {
+        return AgentPartyQuestGatewayRuntime.partyQuest();
     }
 
     private static boolean near(Point first, Point second, int radius) {
