@@ -1160,6 +1160,10 @@ public class Client extends ChannelInboundHandlerAdapter {
             final World wserv = getWorldServer();   // obviously wserv is NOT null if this player was online on it
             try {
                 removePlayer(wserv, this.serverTransition);
+                if (this instanceof BotClient && shutdown && channel != -1 && !this.serverTransition && bl != null) {
+                    // a bot is unloaded with forceDisconnect, which skips the stock notice below: its buddies see it go
+                    wserv.loggedOff(player.getName(), player.getId(), channel, bl.getBuddyIds());
+                }
 
                 if (!(channel == -1 || shutdown)) {
                     if (!cashshop) {

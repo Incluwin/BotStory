@@ -260,8 +260,7 @@ public final class PresenceScheduler {
             openKnowledge(session, agent, map.getId(), now);
             startActivity(session, map, now);
             World world = population.gameWorld();
-            if (world != null) {
-                world.loggedOn(agent.getName(), agent.getId(), citizen.channel(), agent.getBuddylist().getBuddyIds());
+            if (world != null) { // its buddies were told it came online as it loaded (CosmicMapGateway.addWorldPlayer)
                 if (agent.getGuildId() > 0) {
                     Server.getInstance().setGuildMemberOnline(agent, true, citizen.channel());
                 }
@@ -289,8 +288,7 @@ public final class PresenceScheduler {
                     AgentTownLifeVisitLeaseRuntime.clear(entry, agent);
                 }
                 World world = population.gameWorld();
-                if (world != null) {
-                    world.loggedOff(agent.getName(), agent.getId(), session.channel, agent.getBuddylist().getBuddyIds());
+                if (world != null) { // its buddies are told it went offline as it unloads (Client.disconnectInternal)
                     if (agent.getGuildId() > 0) {
                         Server.getInstance().setGuildMemberOnline(agent, false, session.channel);
                     }

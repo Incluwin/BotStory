@@ -33,7 +33,10 @@ public enum CosmicMapGateway implements MapGateway {
 
     @Override
     public void addWorldPlayer(int world, int channel, Character agent) {
-        Server.getInstance().getChannel(world, channel).getWorldServer().addPlayer(agent);
+        net.server.world.World worldServer = Server.getInstance().getChannel(world, channel).getWorldServer();
+        worldServer.addPlayer(agent);
+        // its buddies see it come online, as at a player's login (Client.disconnectInternal tells them when it leaves)
+        worldServer.loggedOn(agent.getName(), agent.getId(), channel, agent.getBuddylist().getBuddyIds());
     }
 
     @Override
