@@ -34,6 +34,10 @@ class AgentEpqCompanionTimerTest {
         AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, companionRun,
                 AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
         session.markEnteredEvent(ENTERED);
+        // Stage 4 can still be finished (Step 4.5 would end a run whose marbles are gone for good): twenty flowers.
+        for (int flower = 0; flower < AgentEpqDefinition.REQUIRED_MONSTER_MARBLES; flower++) {
+            run.monster(AgentEpqDefinition.POISON_FLOWER);
+        }
         return session;
     }
 

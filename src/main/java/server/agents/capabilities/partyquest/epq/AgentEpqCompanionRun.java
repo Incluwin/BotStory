@@ -49,6 +49,8 @@ final class AgentEpqCompanionRun {
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.ALTAR_READY_WAIT_MS");
     static final long MEMBER_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS");
+    static final long OBJECTIVE_LOST_CONFIRM_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.OBJECTIVE_LOST_CONFIRM_MS");
     static final String QUEST_KEY = "epq";
 
     private AgentEpqCompanionRun() {
@@ -263,6 +265,58 @@ final class AgentEpqCompanionRun {
                 }
             }
         }
+        return true;
+    }
+
+    /**
+     * Step 4.5, the lease holder's pass before the clear: with the leader on stage 4, stage 5 or the golem's map before
+     * any golem, the stage's objective is gone for good (AgentEpqCompanionPlay.marblesLost, stoneLost, altarStoneLost)
+     * for OBJECTIVE_LOST_CONFIRM_MS without a break -> 'EPQ objective lost:' and the run ends LOST, instead of waiting
+     * out the stall watchdog. Any change back stops the clock. True when it ended the run.
+     */
+    static boolean objectiveLost(AgentEpqSession session, Character leader, long nowMs) {
+        var actions = AgentEpqCoordinator.actions();
+        AgentEpqSession.Phase phase = session.phase();
+        int mapId = leader.getMapId();
+        int itemId;
+        int total;
+        int flowers = 0;
+        boolean lost;
+        if (phase == AgentEpqSession.Phase.STAGE_FOUR && mapId == AgentEpqDefinition.STAGE_FOUR_MAP) {
+            itemId = AgentEpqDefinition.MONSTER_MARBLE;
+            total = AgentEpqCoordinator.stageItemTotal(session, leader, itemId);
+            flowers = AgentEpqCoordinator.flowers(leader).size();
+            lost = AgentEpqCompanionPlay.marblesLost(total, flowers, AgentEpqDefinition.REQUIRED_MONSTER_MARBLES);
+        } else if (phase == AgentEpqSession.Phase.STAGE_FIVE && mapId == AgentEpqDefinition.STAGE_FIVE_MAP) {
+            itemId = AgentEpqDefinition.MAGIC_STONE;
+            total = AgentEpqCoordinator.stageItemTotal(session, leader, itemId);
+            int boxes = (int) actions.reactors(leader).stream().filter(java.util.Objects::nonNull)
+                    .filter(reactor -> reactor.getId() == AgentEpqDefinition.STONE_BOX)
+                    .filter(Reactor::isAlive).filter(Reactor::isActive).count();
+            lost = AgentEpqCompanionPlay.stoneLost(boxes, total);
+        } else if (phase == AgentEpqSession.Phase.BOSS && mapId == AgentEpqDefinition.BOSS_MAP) {
+            itemId = AgentEpqDefinition.MAGIC_STONE;
+            total = AgentEpqCoordinator.stageItemTotal(session, leader, itemId);
+            Reactor altar = leader.getMap() == null ? null
+                    : leader.getMap().getReactorById(AgentEpqDefinition.ALTAR_REACTOR);
+            boolean golemSeen = AgentEpqDefinition.BOSS_MOBS.stream()
+                    .anyMatch(golem -> session.logMarked("golem-" + golem));
+            lost = AgentEpqCompanionPlay.altarStoneLost(golemSeen, altar == null ? 0 : altar.getState(), total);
+        } else {
+            session.clearObjectiveLost();
+            return false;
+        }
+        if (!lost) {
+            session.clearObjectiveLost();
+            return false;
+        }
+        if (nowMs - session.objectiveLostSince(nowMs) < OBJECTIVE_LOST_CONFIRM_MS) return false;
+        String item = AgentEpqCompanionPlay.itemKey(itemId);
+        log.warn("EPQ objective lost: session={} item={} total={} flowers={} required={}", session.sessionId(), item,
+                total, flowers, itemId == AgentEpqDefinition.MONSTER_MARBLE
+                        ? AgentEpqDefinition.REQUIRED_MONSTER_MARBLES : 1);
+        fail(session, "The EPQ companion run lost its " + item + " for good", AgentEpqParting.lost(itemId), null,
+                nowMs);
         return true;
     }
 

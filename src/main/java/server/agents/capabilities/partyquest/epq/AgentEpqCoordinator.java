@@ -114,8 +114,9 @@ public final class AgentEpqCoordinator {
         }
         // Step 4.3: inside the event before the clear the leader's rules, the live party and every member's verdict.
         if (AgentEpqCompanionRun.acting(session) && bound != null && !AgentEpqTerminationService.pastTheClear(bound)
-                && !AgentEpqCompanionRun.members(session, leader, nowMs)) {
-            return;
+                && (!AgentEpqCompanionRun.members(session, leader, nowMs)
+                || AgentEpqCompanionRun.objectiveLost(session, leader, nowMs))) {
+            return; // Step 4.5: the stage's objective gone for good ends the run too
         }
         boolean rewardReady = AgentEpqTerminationService.pastTheClear(bound) && leader.getEventInstance() == bound;
         AgentEpqSession.Phase observed = phaseForMap(leader.getMapId(), rewardReady);

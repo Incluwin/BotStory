@@ -176,6 +176,29 @@ final class AgentEpqCompanionPlay {
         return leader + ", hang in there! don't press ok yet, we can still beat it.";
     }
 
+    // ---- the lost objective (Step 4.5) ----
+
+    /**
+     * Stage 4 can no longer be finished: the marbles in living members' bags and on the floor, plus one for each live
+     * Poison Flower (a capture gives one; a flower killed by damage revives), fall short of the twenty.
+     */
+    static boolean marblesLost(int marbles, int liveFlowers, int required) {
+        return marbles + liveFlowers < required;
+    }
+
+    /** Stage 5 can no longer be finished: no stone box left, and no purple stone in a bag or on the floor. */
+    static boolean stoneLost(int stoneBoxesLeft, int stones) {
+        return stoneBoxesLeft <= 0 && stones <= 0;
+    }
+
+    /**
+     * The altar can no longer be fired: no golem seen yet, the altar still at state 0, and no purple stone in a bag
+     * or on the floor (a stone lying in the altar's area is on the floor: the altar takes it 5 s after the drop).
+     */
+    static boolean altarStoneLost(boolean golemSeen, int altarState, int stones) {
+        return !golemSeen && altarState <= 0 && stones <= 0;
+    }
+
     // ---- the stock lines' sites ----
 
     /** E4a: the first diluted poison is on the thorns. */

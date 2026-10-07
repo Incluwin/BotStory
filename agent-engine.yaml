@@ -1270,6 +1270,10 @@ tuning:
     # Purpose: Bounds how long a companion run waits for a member it cannot see (an unloaded companion) before it takes that member out of the run.
     # Technical: Read by AgentEpqCompanionRun in companion runs before the clear, counted on the session from the first pass that missed the member. A dead companion is never timed out: it waits like a player who has not pressed OK, until no companion stands.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
+    # Values: 3000-60000 milliseconds. Recommended: 10000, longer than a flower's revive.
+    # Purpose: Confirms that a companion run can no longer finish stage 4, stage 5 or the altar before it ends the run, instead of waiting out the 480-second stall watchdog.
+    # Technical: With the leader on that map, AgentEpqCompanionRun checks 930000400 (the monster marbles in living members' bags and on the floor plus the live Poison Flowers under twenty), 930000500 (no stone box left and no Purple Stone of Magic in a bag or on the floor) and 930000600 before any golem (no Purple Stone of Magic in a bag or on the floor and the altar not yet fired); the condition must hold this long without a break. Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.OBJECTIVE_LOST_CONFIRM_MS: '10000'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

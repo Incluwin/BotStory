@@ -52,6 +52,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Long> companionDownSinceMs = new HashMap<>();
     private final Set<Integer> tapOutsRequested = new HashSet<>();
     private final Set<Integer> tapOutsRefused = new HashSet<>();
+    private long objectiveLostSinceMs;
     private final Map<Integer, Boolean> fullRateHolds = new HashMap<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
@@ -455,6 +456,15 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     synchronized void markTapOutRefused(int id) { tapOutsRefused.add(id); }
 
     synchronized boolean tapOutRefused(int id) { return tapOutsRefused.contains(id); }
+
+    /** When the pass first saw the run's objective lost for good (Step 4.5): the first call starts the clock. */
+    synchronized long objectiveLostSince(long nowMs) {
+        if (objectiveLostSinceMs == 0L) objectiveLostSinceMs = Math.max(1L, nowMs);
+        return objectiveLostSinceMs;
+    }
+
+    /** The objective can be finished again: the clock stops. */
+    synchronized void clearObjectiveLost() { objectiveLostSinceMs = 0L; }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }
