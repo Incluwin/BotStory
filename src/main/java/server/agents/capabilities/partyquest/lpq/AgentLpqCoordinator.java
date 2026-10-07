@@ -6169,8 +6169,7 @@ final class AgentLpqCoordinator {
                         AgentLpqCompanionPlay.PassPlace.DYING, lying, nowMs);
                 continue;
             }
-            boolean inUnfinishedRoom = member.assignedMapId() != 0
-                    && !session.rooms().completed(member.assignedMapId());
+            boolean inUnfinishedRoom = inUnfinishedRoom(session, member, stage);
             boolean due = member.handOverStartedAtMs() != 0L || member.handOverRecollectStack() != 0
                     || AgentLpqCompanionPlay.handOverDue(held, PASS_HANDOVER_BATCH,
                     onMainMap && agent.getMap() == leader.getMap()
@@ -6194,6 +6193,16 @@ final class AgentLpqCoordinator {
             coordinate(session, narrator(session, leader), "s" + stage + "-all",
                     AgentLpqCompanionPlay.allPassesLine(leader.getName(), stage));
         }
+    }
+
+    /**
+     * A companion run's carrier keeps its passes while it owns one of this stage's split rooms (stages 4-5) that is not
+     * done yet. Stage 7's roles name the stage's own map (assignStageSevenRoles), which is no room: a companion still
+     * in that role when the count is reached (it picked up the last pass, or fought the last Rombard) hands over too.
+     */
+    static boolean inUnfinishedRoom(AgentLpqSession session, AgentLpqMemberState member, int stage) {
+        int room = member.assignedMapId();
+        return AgentLpqDefinition.roomMaps(stage).contains(room) && !session.rooms().completed(room);
     }
 
     /** The run's leader stands on this map. */
