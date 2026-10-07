@@ -112,11 +112,12 @@ class AgentLpqCompanionTerminationTest {
             }
             verify(run.event, never()).exitPlayer(ben);
             verify(run.event, never()).dispose();
-            assertEquals(AgentLpqSession.Phase.FAILED, session.phase());
-            assertEquals("No LPQ progress before phase timeout", session.failure());
+            // P6g LPQ C2.8: past the clear a companion run wraps up as completed, once.
+            assertEquals(AgentLpqSession.Phase.COMPLETED, session.phase());
             run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(
                     anyString(), anyBoolean(), anyString(), anyLong(), any()), times(1));
-            assertEquals(1, log.startingWith("LPQ session failure: ").size());
+            assertEquals(0, log.startingWith("LPQ session failure: ").size());
+            assertEquals(1, log.startingWith("LPQ after-clear wrap-up: ").size());
             assertEquals(1, log.startingWith("LPQ session released: ").size());
         }
     }
@@ -199,16 +200,22 @@ class AgentLpqCompanionTerminationTest {
     }
 
     @Test
-    void aCompanionFailureAfterTheClearSaysSo() {
+    void aCompanionRunPastTheClearEndsCompleted() {
+        // P6g LPQ C2.8 (renamed from aCompanionFailureAfterTheClearSaysSo): no failure is recorded past the clear.
         AgentLpqSession session = companionRun(AgentLpqSession.Phase.BONUS);
         session.freezeRewardEligibility();
         try (LpqLogLines log = new LpqLogLines(AgentLpqTerminationService.class)) {
             AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", 5_000L);
 
-            assertEquals(List.of("LPQ session failure: session=" + session.sessionId() + " phase=BONUS"
-                            + " reason=No LPQ progress before phase timeout pastTheClear=true companionRun=true"
-                            + " members=6"),
-                    log.startingWith("LPQ session failure: "));
+            assertEquals(List.of(), log.startingWith("LPQ session failure: "));
+            assertEquals(List.of("LPQ after-clear wrap-up: session=" + session.sessionId() + " phase=BONUS"
+                            + " reason=No LPQ progress before phase timeout unresolved=6"),
+                    log.startingWith("LPQ after-clear wrap-up: "));
+            assertEquals(List.of("LPQ session released: session=" + session.sessionId()
+                            + " outcome=completed members=6 companionRun=true"),
+                    log.startingWith("LPQ session released: "));
+            run.lifecycle.verify(() -> AgentPartyQuestLifecycleRuntime.childFinished(eq(session.sessionId()),
+                    eq(true), eq("completed"), eq(5_000L), any()));
             assertEquals(List.of("LPQ potions: session=" + session.sessionId()
                             + " start=null end={Mira:0/0, Kes:0/0, Pel:0/0, Hal:0/0, Cas:0/0}"),
                     log.startingWith("LPQ potions: "), "stage 1 never logged its start");
@@ -246,8 +253,10 @@ class AgentLpqCompanionTerminationTest {
                 eq(false), eq("The LPQ event timer expired"), eq(93_000L), pace.capture()));
         assertNotNull(pace.getValue());
         assertEquals("lpq", pace.getValue().questKey());
-        assertEquals(List.of(new AgentPqPace.Span("stage1", 3_000L, 63_000L, 0.0d, true),
-                        new AgentPqPace.Span("stage2", 63_000L, 93_000L, 0.0d, false)),
+        // P6g LPQ C4.2: the pace profile's keys (no passes were seen at his feet, so each collection is open).
+        assertEquals(List.of(new AgentPqPace.Span("yes", 1_000L, 3_000L, 0.0d, true),
+                        new AgentPqPace.Span("s1.collect", 3_000L, 63_000L, 0.0d, false),
+                        new AgentPqPace.Span("s2.collect", 63_000L, 93_000L, 0.0d, false)),
                 pace.getValue().spans());
 
         AgentLpqSession stock = run.session(AgentLpqSession.Mode.PRODUCTION, false, AgentLpqSession.Phase.STAGE_2,

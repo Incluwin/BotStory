@@ -130,7 +130,8 @@ class AgentLpqRescueTest {
 
     @Test
     void aVacuumNotesOnceWithItsTotalAndOnlyWhenItTookSomething() {
-        register(true);
+        // A stock run's vacuum (P6g LPQ C2.3: a companion run withholds it, AgentLpqRescueGateTest).
+        register(false);
         InventoryGateway inventory = mock(InventoryGateway.class);
         when(inventory.addItem(any(), anyInt(), anyShort())).thenReturn(true);
         MapGateway maps = mock(MapGateway.class);
@@ -160,7 +161,7 @@ class AgentLpqRescueTest {
             verify(maps).removeItemDrop(room, two, 2, MIRA);
             verify(maps, never()).removeItemDrop(any(), eq(potion), anyInt(), anyInt());
             assertEquals(List.of("LPQ rescue: session=" + session.sessionId() + " kind=VACUUM site=stage4-pass-loot"
-                            + " phase=STAGE_4 member=Mira(743001) applied=true companionRun=true"
+                            + " phase=STAGE_4 member=Mira(743001) applied=true companionRun=false"
                             + " detail=item=4001022 quantity=5"),
                     log.startingWith("LPQ rescue: "));
         }

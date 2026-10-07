@@ -83,6 +83,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private boolean stage6SequenceAnnounced;
     private boolean stage2ScoutPlanAnnounced;
     private boolean stage2TrapClearAnnounced;
+    private long stage2TrapClearAtMs;
     private Phase assignmentsCalculatedPhase;
     private long bonusDrainedAtMs;
     private long readyAtMs;
@@ -100,6 +101,23 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
     private final Set<Integer> departuresInFlight = new java.util.LinkedHashSet<>();
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
+    private final Set<String> narratedKeys = new java.util.LinkedHashSet<>();
+    private final Set<String> withheldNotes = new java.util.LinkedHashSet<>();
+    private int recollectStackObjectId;
+    private int recollectorId;
+    private int recollectHeldBefore;
+    private int recollectItemId;
+    private int recollects;
+    private int keyCarrierId;
+    private int leaderClimbBestRow = -1;
+    private long stageSixAllAtTopSinceMs;
+    private long leaderKeySinceMs;
+    private long clearedAtMs;
+    private boolean leaderReleased;
+    private int stage8LeaderBoxTold;
+    private final AgentLpqPaceMarks paceMarks = new AgentLpqPaceMarks();
+    private final Set<Integer> companionsOfRun = new java.util.LinkedHashSet<>();
+    private long enteredEventAtMs;
 
     public AgentLpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0
@@ -193,6 +211,14 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
                     : AgentLpqMemberState.Role.GENERAL);
         });
         resetStage7LootSweep();
+        recollectStackObjectId = 0;
+        recollectorId = 0;
+        recollectHeldBefore = 0;
+        recollectItemId = 0;
+        recollects = 0;
+        leaderClimbBestRow = -1;
+        stageSixAllAtTopSinceMs = 0L;
+        leaderKeySinceMs = 0L;
         rooms.reset();
         members.values().forEach(AgentLpqMemberState::clearReactorWork);
         int nextStage = stageNumber(next);
@@ -433,8 +459,11 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     }
 
     public synchronized boolean stage2TrapClearAnnounced() { return stage2TrapClearAnnounced; }
+    /** When the scouts' trap clear was announced (0 before it). */
+    public synchronized long stage2TrapClearAtMs() { return stage2TrapClearAtMs; }
     public synchronized void markStage2TrapClearAnnounced(long nowMs) {
         stage2TrapClearAnnounced = true;
+        stage2TrapClearAtMs = nowMs;
         markProgress(nowMs);
     }
 
@@ -701,6 +730,111 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     synchronized String potionsAtEntry() { return potionsAtEntry; }
 
     synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions; }
+
+    /** A companion-run line key was already said this run. */
+    synchronized boolean narrated(String key) { return narratedKeys.contains(key); }
+
+    /** The stage's hand-over stack being picked back up (0 for none), who picks it up, and what it held before. */
+    synchronized int recollectStackObjectId() { return recollectStackObjectId; }
+    synchronized int recollectorId() { return recollectorId; }
+    synchronized int recollectHeldBefore() { return recollectHeldBefore; }
+    /** The item of the stack being picked back up (a pass or Alishar's key; 0 for none). */
+    synchronized int recollectItemId() { return recollectItemId; }
+    /** Re-collects done this stage (AgentLpqSession.transition resets them). */
+    synchronized int recollects() { return recollects; }
+
+    synchronized void beginRecollect(int collectorId, int stackObjectId, int itemId, int heldBefore) {
+        recollectorId = collectorId;
+        recollectStackObjectId = stackObjectId;
+        recollectItemId = itemId;
+        recollectHeldBefore = Math.max(0, heldBefore);
+    }
+
+    /** The re-collect ends: the recollector picked the stack up ({@code pickedUp}) or it is gone. */
+    synchronized void endRecollect(boolean pickedUp) {
+        if (pickedUp) recollects++;
+        recollectorId = 0;
+        recollectStackObjectId = 0;
+        recollectHeldBefore = 0;
+        recollectItemId = 0;
+    }
+
+    /** This member is picking up this hand-over stack now (the loot rule lets it). */
+    public synchronized boolean recollecting(int characterId, int objectId) {
+        return recollectStackObjectId != 0 && recollectorId == characterId && recollectStackObjectId == objectId;
+    }
+
+    /**
+     * The leader reached a maze row higher than any before this stage (a companion run's stage-6 progress is his
+     * climb as well as the companions').
+     */
+    synchronized boolean observeLeaderClimb(int row) {
+        if (row <= leaderClimbBestRow) return false;
+        leaderClimbBestRow = row;
+        return true;
+    }
+
+    /** Since when every standing companion waits at the top of the maze (0 while one is still climbing). */
+    synchronized long observeStageSixAllAtTop(boolean allAtTop, long nowMs) {
+        if (!allAtTop) {
+            stageSixAllAtTopSinceMs = 0L;
+            return 0L;
+        }
+        if (stageSixAllAtTopSinceMs == 0L) stageSixAllAtTopSinceMs = Math.max(1L, nowMs);
+        return nowMs - stageSixAllAtTopSinceMs;
+    }
+
+    /** How long the leader has held Alishar's key (0 while he does not). */
+    synchronized long observeLeaderKey(boolean holds, long nowMs) {
+        if (!holds) {
+            leaderKeySinceMs = 0L;
+            return 0L;
+        }
+        if (leaderKeySinceMs == 0L) leaderKeySinceMs = Math.max(1L, nowMs);
+        return nowMs - leaderKeySinceMs;
+    }
+
+    /** A companion run's pace boundaries the phases do not show (written only in companion branches). */
+    AgentLpqPaceMarks pace() { return paceMarks; }
+
+    /** The stage-8 box a five-member companion run last told its leader to take (0 before). */
+    synchronized int stage8LeaderBoxTold() { return stage8LeaderBoxTold; }
+
+    synchronized void tellStage8LeaderBox(int platform) { stage8LeaderBoxTold = platform; }
+
+    /** When a companion run first saw its clear (0 before); its after-clear limit counts from here. */
+    synchronized long clearedAtMs() { return clearedAtMs; }
+
+    synchronized void markCleared(long nowMs) { if (clearedAtMs == 0L) clearedAtMs = Math.max(1L, nowMs); }
+
+    /**
+     * After the clear the leader logged off, went down or no longer leads the party: the companions stop waiting on
+     * him, claim and go. It is never a failure.
+     */
+    synchronized boolean leaderReleased() { return leaderReleased; }
+
+    synchronized void markLeaderReleased() { leaderReleased = true; }
+
+    /** The companion that took (or takes) Alishar's key to the leader; 0 before one is chosen. */
+    public synchronized int keyCarrierId() { return keyCarrierId; }
+
+    synchronized void setKeyCarrierId(int characterId) { keyCarrierId = characterId; }
+
+    /** True the first time a withheld rescue (kind, site, member, phase) is noted in this run. */
+    synchronized boolean claimWithheldNote(String key) { return key != null && withheldNotes.add(key); }
+
+    /** True the first time a companion-run line key is used; each key is said once a run. */
+    synchronized boolean narrateOnce(String key) { return key != null && narratedKeys.add(key); }
+
+    /** When the companion run's leader first stood inside on stage 1 (0 before). */
+    synchronized long enteredEventAtMs() { return enteredEventAtMs; }
+
+    synchronized void markEnteredEvent(long nowMs) { if (enteredEventAtMs == 0L) enteredEventAtMs = nowMs; }
+
+    /** Every companion ever admitted to this run (a departed one stays: its drops are still the run's). */
+    synchronized boolean companionOfRun(int characterId) { return companionsOfRun.contains(characterId); }
+
+    synchronized void addCompanionOfRun(int characterId) { companionsOfRun.add(characterId); }
 
     /**
      * What {@link #reserveDeparture} answered a dead member: leave now (the departure is then reserved until

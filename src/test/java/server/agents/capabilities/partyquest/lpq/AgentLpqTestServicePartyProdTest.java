@@ -48,9 +48,9 @@ import static org.mockito.Mockito.when;
 class AgentLpqTestServicePartyProdTest {
     private static final int CREW = 743_200;
     private static final int[] COMPANIONS = {743_201, 743_202, 743_203, 743_204, 743_205};
-    /** Step 1 has no entry wait: an adopted run waits at PREPARING up to PHASE_TIMEOUT_MS (600000 in the yaml). */
+    /** An adopted run waits at PREPARING up to COMPANION_ENTRY_WAIT_MS (30000 in the yaml; P6g LPQ C2.1). */
     static final String ADOPTED =
-            "Adopted as a companion run. Talk to the Red Sign now; the run waits up to 10 minutes for you.";
+            "Adopted as a companion run. Talk to the Red Sign now; the run waits up to 30 seconds for you.";
 
     private final Character crew = member(CREW, "Crewfriend");
     private final List<Character> companions = new ArrayList<>();

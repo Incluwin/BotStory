@@ -78,6 +78,22 @@ public final class AgentLpqMemberState {
     private RewardState rewardState = RewardState.PENDING;
     private AgentLpqStageNineBossPolicy.MemberState stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
     private boolean stageNineGroupLogged;
+    private boolean fullRateHeld;
+    private boolean fullRateWasRequired;
+    private long handOverStartedAtMs;
+    private boolean handOverToBalloon;
+    private int handOverRecollectStack;
+    private int roomRetryMapId;
+    private int claimFailures;
+    private long arrivedOnRewardMapAtMs;
+    private long downSinceMs;
+    private int passesWhenDown;
+    private boolean tapOutRequested;
+    private long revivedSeenAtMs;
+    private long missingSinceMs;
+    private int roomRetries;
+    private int givenUpRoom;
+    private boolean givenUpPassLeft;
 
     public AgentLpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -88,6 +104,63 @@ public final class AgentLpqMemberState {
     }
 
     public int characterId() { return characterId; }
+
+    /** A companion run's full-rate simulation hold on this member (AgentLpqFullRateSimulation); run-scoped. */
+    boolean fullRateHeld() { return fullRateHeld; }
+    boolean fullRateWasRequired() { return fullRateWasRequired; }
+
+    void holdFullRate(boolean alreadyRequired) {
+        fullRateHeld = true;
+        fullRateWasRequired = alreadyRequired;
+    }
+
+    void releaseFullRate() {
+        fullRateHeld = false;
+        fullRateWasRequired = false;
+    }
+
+    /** A companion run's hand-over of what this member carries (stage-scoped): when it began, 0 for none. */
+    long handOverStartedAtMs() { return handOverStartedAtMs; }
+    boolean handOverToBalloon() { return handOverToBalloon; }
+    /** The stack this member picked back up for the leader (its drop says H3), or 0. */
+    int handOverRecollectStack() { return handOverRecollectStack; }
+
+    void startHandOver(long nowMs) {
+        handOverStartedAtMs = Math.max(1L, nowMs);
+        handOverToBalloon = false;
+    }
+
+    void sendHandOverToBalloon() { handOverToBalloon = true; }
+
+    void markHandOverRecollect(int stackObjectId) { handOverRecollectStack = stackObjectId; }
+
+    void endHandOver() {
+        handOverStartedAtMs = 0L;
+        handOverToBalloon = false;
+        handOverRecollectStack = 0;
+    }
+
+    /** Route re-plans done in this split room (a companion run's stage-5 retry, one per STAGE_5_ROOM_CEILING_MS). */
+    int roomRetries(int mapId) { return roomRetryMapId == mapId ? roomRetries : 0; }
+
+    void markRoomRetries(int mapId, int retries) {
+        roomRetryMapId = mapId;
+        roomRetries = retries;
+    }
+
+    /** A room this member gave up, still to be told to the leader (0 for none), and whether a pass (not a box) is left. */
+    int givenUpRoom() { return givenUpRoom; }
+    boolean givenUpPassLeft() { return givenUpPassLeft; }
+
+    void markRoomGivenUp(int mapId, boolean passLeft) {
+        givenUpRoom = mapId;
+        givenUpPassLeft = passLeft;
+    }
+
+    void clearRoomGivenUp() {
+        givenUpRoom = 0;
+        givenUpPassLeft = false;
+    }
     public MemberType memberType() { return memberType; }
     public Role role() { return role; }
     public int assignedMapId() { return assignedMapId; }
@@ -111,11 +184,68 @@ public final class AgentLpqMemberState {
         return true;
     }
     void cancelRewardClaim() {
-        if (rewardState == RewardState.CLAIMING) rewardState = RewardState.PENDING;
+        if (rewardState == RewardState.CLAIMING) {
+            rewardState = RewardState.PENDING;
+            claimFailures++;
+        }
+    }
+
+    /** Claims Arturo turned away (no free slot); read only by companion runs. */
+    int claimFailures() { return claimFailures; }
+
+    /** When this member was first seen on the reward map (the first call sets it). */
+    long observeArrivedOnRewardMap(long nowMs) {
+        if (arrivedOnRewardMapAtMs == 0L) arrivedOnRewardMapAtMs = Math.max(1L, nowMs);
+        return arrivedOnRewardMapAtMs;
     }
     void forfeitReward() {
         if (rewardState == RewardState.PENDING) rewardState = RewardState.FORFEITED;
     }
+
+    /**
+     * A companion run marks this member down from its first sighting, with the passes it held then (the stock
+     * respawn's unregister takes them from it, so the count is kept for the departure's log); a down sighting also
+     * breaks any revive streak. Stock runs never mark anyone down.
+     */
+    void markDown(long nowMs, int passesHeld) {
+        if (downSinceMs == 0L) {
+            downSinceMs = Math.max(1L, nowMs);
+            passesWhenDown = Math.max(0, passesHeld);
+        }
+        revivedSeenAtMs = 0L;
+    }
+
+    void clearDown() {
+        downSinceMs = 0L;
+        tapOutRequested = false;
+        revivedSeenAtMs = 0L;
+        passesWhenDown = 0;
+    }
+
+    long downSinceMs() { return downSinceMs; }
+    boolean down() { return downSinceMs > 0L; }
+    boolean tapOutRequested() { return tapOutRequested; }
+    void markTapOutRequested() { tapOutRequested = true; }
+    /** The passes it held as it went down; 0 when it is not down. */
+    int passesWhenDown() { return passesWhenDown; }
+
+    /**
+     * True from the second tick in a row that sees this downed member standing in the event again. The respawn
+     * restores HP before it changes map, so a single sighting can be a companion on its way out.
+     */
+    boolean confirmRevived(long nowMs) {
+        if (revivedSeenAtMs > 0L) return true;
+        revivedSeenAtMs = Math.max(1L, nowMs);
+        return false;
+    }
+
+    /** Since when this member has been missing (offline or unloaded), from its first sighting so. */
+    long observeMissing(long nowMs) {
+        if (missingSinceMs == 0L) missingSinceMs = Math.max(1L, nowMs);
+        return missingSinceMs;
+    }
+
+    void clearMissing() { missingSinceMs = 0L; }
     public int reactorTargetMapId() { return reactorTargetMapId; }
     public int reactorTargetObjectId() { return reactorTargetObjectId; }
     public int reactorApproachMapId() { return reactorApproachMapId; }
@@ -184,6 +314,9 @@ public final class AgentLpqMemberState {
         stageFiveUnhandedPasses = 0;
         stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
         stageNineGroupLogged = false;
+        endHandOver();
+        markRoomRetries(0, 0);
+        clearRoomGivenUp();
     }
 
     /**

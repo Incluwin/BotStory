@@ -22,7 +22,9 @@ public final class AgentLpqHumanInteractionRuntime {
         log.info("LPQ stage8 check: session={} attempt={} correct={} gmBypass={} leader={}({})",
                 session.sessionId(), session.stage8Attempt() + 1, correct, correct && leader.gmLevel() > 1,
                 leader.getName(), leader.getId());
+        if (correct && session.companionAdopted()) session.pace().markJudgedCheck(nowMs);
         if (correct) session.markProgress(nowMs);
+        else if (session.companionAdopted()) AgentLpqCoordinator.stageEightCheckMissed(session, leader, nowMs);
         else session.advanceStage8(nowMs);
     }
 }

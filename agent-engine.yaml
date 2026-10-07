@@ -1127,6 +1127,146 @@ tuning:
     # Purpose: Sets the HP fraction at which a resting LPQ stage-9 member rejoins the fight; it also rejoins once it holds POT_STOP HP potions again.
     # Technical: Only AgentLpqStageNineBossPolicy reads this, for LPQ stage 9. Resting heals by passive regen only (BASE_HP_RECOVERY 10 HP per 10 s, plus a warrior's Improved HP Recovery while it stands still), and a stopped member does not ask anyone for potions.
     server.agents.capabilities.partyquest.lpq.AgentLpqStageNineBossPolicy.RESUME_HP_FRACTION: '0.7'
+    # Values: 5000-120000 milliseconds. Recommended: 30000, the 30 seconds '!lpqtest party prod' gives the leader to talk to the Red Sign.
+    # Purpose: How long a companion run waits for its human leader to take the party into LPQ, and then for every member to stand in his instance on stage 1, before it ends quietly or goes on without the absent ones while five are inside.
+    # Technical: Read only by AgentLpqCoordinator's companion-run PREPARING and ENTERING (AgentLpqSession.companionAdopted); stock, background and '!lpqtest' fixture runs keep PHASE_TIMEOUT_MS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_ENTRY_WAIT_MS: '30000'
+    # Values: 1-32 passes. Recommended: 5, a fifth of stage 1's 25, so the leader gets a few drops a stage, not one per pass.
+    # Purpose: A companion of a companion run walks the passes it carries to the leader's feet once it holds this many and he is near on its map; it also goes at once when the party holds the stage's count, when its split room is done, or when it is about to go down.
+    # Technical: AgentLpqCompanionPlay.handOverDue, companion runs only, stages 1-5 and 7; stage 9's key is handed over at once.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_BATCH: '5'
+    # Values: 100-1500 pixels. Recommended: 400, as HPQ's CAKE_HANDOVER_NEAR_PX.
+    # Purpose: How close the leader must be (same map, both axes) for a carrier holding PASS_HANDOVER_BATCH passes to bring them over before the stage's count is reached; also the radius in which lying passes count as at his feet.
+    # Technical: AgentLpqCoordinator companion collection; the distance on both axes between the carrier's and the leader's positions, and between a lying stack and the leader.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_NEAR_PX: '400'
+    # Values: 20-120 pixels. Recommended: 60; the WASM client picks up from about 9 px left to 41 px right of a drop.
+    # Purpose: A carrier drops its passes only when it and the leader both stand on a foothold within this distance on both axes, and only where the map's own drop placement lands them at his feet or beside him on his floor.
+    # Technical: AgentLpqCompanionPlay.atFeet/landsAt with PrimitiveCapabilityGateway.predictDropLanding (the KPQ and HPQ hand-over rule); companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_REACH_PX: '60'
+    # Values: 5000-90000 milliseconds. Recommended: 30000.
+    # Purpose: A carrier on the leader's map that has walked this long without reaching the leader, or that has no route to him, drops its passes beside the stage's balloon and tells him.
+    # Technical: AgentLpqCompanionPlay.handOver TO_BALLOON; measured from the carrier's hand-over start (AgentLpqMemberState.handOverStartedAtMs); companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_TIMEOUT_MS: '30000'
+    # Values: 500-10000 milliseconds. Recommended: 3000.
+    # Purpose: After a hand-over drop no companion of the run loots anything for this long, so a nearby companion's ordinary looting cannot take the stack meant for the leader.
+    # Technical: AgentInventoryStateRuntime.setLootInhibitMs on every Agent of the run; the loot rule (AgentLpqSessionRegistry.canLootExclusive with the drop) keeps refusing the stack afterwards unless its recollect is due.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_LOOT_INHIBIT_MS: '3000'
+    # Values: 10000-120000 milliseconds. Recommended: 40000, as HPQ.
+    # Purpose: A hand-over stack the leader has left lying this long gets one reminder from a companion on his map.
+    # Technical: AgentLpqCompanionPlay.nudgeDue against the MapItem drop time; one H2 line per stack, said by a companion standing on the leader's map; companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_PICKUP_NUDGE_MS: '40000'
+    # Values: 60000-170000 milliseconds with the shipped item expiry; a value past config.yaml ITEM_EXPIRE_TIME minus ITEM_EXPIRE_CHECK is read as that, with one WARN. Recommended: 150000.
+    # Purpose: A companion picks a hand-over stack (passes or Alishar's key) back up before the map removes it, and drops it at the leader's feet again.
+    # Technical: AgentLpqCoordinator reads ITEM_EXPIRE_TIME (180000) and ITEM_EXPIRE_CHECK (10000) from the server config at class load and caps this at their difference (AgentLpqDefinition.DROP_RECOLLECT_LATEST_MS 170000 when the config cannot be read).
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_RECOLLECT_MS: '150000'
+    # Values: 0-5 re-collects per stage. Recommended: 2; 0 never picks a stack back up.
+    # Purpose: Bounds how often companions pick up and re-drop stacks the leader leaves lying in one stage.
+    # Technical: AgentLpqCompanionPlay.recollectDue against the stage's recollect count in AgentLpqSession, which AgentLpqSession.transition resets when the stage changes; companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_RECOLLECT_MAX: '2'
+    # Values: 5-60 percent of maximum HP. Recommended: 25, as HPQ's CAKE_DYING_HP_PERCENT.
+    # Purpose: A companion of a companion run carrying passes, at or below this share of its maximum HP with no HP potion left, drops its passes where it stands and says so, so a death does not take them out of the event.
+    # Technical: AgentLpqCompanionPlay.dying (HP is read first, then the HP-potion count the 'LPQ potions' line uses); companion runs only, stages 1-5 and 7, and stage 9's key carrier.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_DYING_HP_PERCENT: '25'
+    # Values: 240000-900000 milliseconds, above STAGE_5_ROOM_CEILING_MS. Recommended: 480000, twice the ceiling.
+    # Purpose: In a companion run a stage-5 room owner re-plans its route every STAGE_5_ROOM_CEILING_MS; at this time an ordinary room (502-505) with a box or pass still in it is given up: the owner walks out with what it holds and tells the leader what is left there. Rooms 501 and 506 never give up.
+    # Technical: AgentLpqCoordinator.companionRoomCeiling (a room with a live box) and the companion branch of tickStageFiveRoomContinuation (a loose pass left); replaces the stock four-minute recovery (remote box hits, vacuum, teleport) in companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_5_ROOM_GIVE_UP_MS: '480000'
+    # Values: 10000-300000 milliseconds. Recommended: 30000.
+    # Purpose: How long the leader may stay away from the next portal after a stage's clear while the companions wait at it, below the top of the stage-6 maze while they wait at the top, or with Alishar's key in his bag without the clear, before a companion says so once.
+    # Technical: AgentLpqCoordinator companion-run nudges N1 (a companion at the portal), S6n (a companion at the top of the maze) and K4; each said at most once per stage, companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.LEADER_NUDGE_MS: '30000'
+    # Values: 0-30000 milliseconds. Recommended: 5000.
+    # Purpose: After the clear, a companion that arrives on the reward map waits this long (the leader sees them arrive and hears where Arturo is) before it walks up to claim.
+    # Technical: AgentLpqCoordinator.companionAfterClear CLAIMING_REWARD, from AgentLpqMemberState.arrivedOnRewardMapAtMs; companion runs only, stock claims are unchanged.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_CLAIM_GRACE_MS: '5000'
+    # Values: 1-10 refusals. Recommended: 3.
+    # Purpose: A companion Arturo turns away this many times (no free slot) gives its reward up and leaves through the event's exit, so it holds nobody up.
+    # Technical: counted by AgentLpqMemberState.cancelRewardClaim (2040035.js cancels a claim that found no slot); read only by companion runs.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_CLAIM_FAILURE_LIMIT: '3'
+    # Values: 60000-900000 milliseconds. Recommended: 300000: the 60 s bonus, the walk up to Arturo and the claim, with room to spare.
+    # Purpose: After the clear, the longest a companion run waits for its companions to claim and leave before it wraps up: the rest leave through the event's exit, and the run is recorded as cleared.
+    # Technical: AgentLpqTerminationService.completeAfterClear from AgentLpqCoordinator.companionRunTick, measured from AgentLpqSession.clearedAtMs; humans are never waited for.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_AFTER_CLEAR_LIMIT_MS: '300000'
+    # Values: 10000-120000 milliseconds. Recommended: 45000, as HPQ.
+    # Purpose: How long a companion run waits for a downed companion (its respawn, then its host's tap-out), or for a member who went missing, before the run ends.
+    # Technical: AgentLpqMemberVerdicts timeouts and AgentLpqWatchdogRuntime's companion-run wait (AgentLpqCoordinator.awaitingRespawn); the stock departure gate still decides when a dead Agent may leave the event.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
+    # Values: 0-10000 milliseconds. Recommended: 2000, as HPQ.
+    # Purpose: An event that ends within this of LudiPQ's 45-minute timer is told to the players as the time running out.
+    # Technical: AgentLpqParting.eventEnded from AgentLpqCoordinator.endedCause; the timer is AgentPartyQuestCatalog lpq eventTimerMs (LudiPQ.js eventTime 45); companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.TIMEOUT_SLACK_MS: '2000'
+    # Values: 0-60000 milliseconds. Recommended: 2000; the desk Yes put the party inside in under a second at Tory and Lakelis.
+    # Purpose: Prior time from the Red Sign's Yes to the party standing on stage 1.
+    # Technical: AgentLpqPaceProfile seeds the yes term (a companion-side Fixed segment) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.YES_TO_STAGE_MS: '2000'
+    # Values: 10000-600000 milliseconds. Recommended: 100000; live run ab19091b had stage 1's passes in companion hands 99 s after the stage began.
+    # Purpose: Prior time for the companions to collect stage 1's 25 passes and bring them to the leader.
+    # Technical: AgentLpqPaceProfile seeds s1.collect (a leader-bounded companion term); recorded runs refit it.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S1_COLLECT_MS: '100000'
+    # Values: 10000-600000 milliseconds. Recommended: 100000 (run ab19091b: 99 s, scouts and trap included).
+    # Purpose: Prior time for stage 2's scouts, trap room and 15 passes, up to the passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s2.collect segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S2_COLLECT_MS: '100000'
+    # Values: 10000-600000 milliseconds. Recommended: 160000 (run ab19091b: 159 s).
+    # Purpose: Prior time for stage 3's 32 passes, up to the passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s3.collect segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S3_COLLECT_MS: '160000'
+    # Values: 30000-600000 milliseconds. Recommended: 170000: run ab19091b took 114 s with two forced 90-s room recoveries; room 404's two Dark Eyes take about 150 s at a spearman's damage without them.
+    # Purpose: Prior time for stage 4's five dark rooms, up to their passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s4.rooms segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S4_ROOMS_MS: '170000'
+    # Values: 30000-900000 milliseconds. Recommended: 240000, the room ceiling; run ab19091b took 229 s with eleven teleports.
+    # Purpose: Prior time for stage 5's six rooms, up to their 24 passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s5.rooms segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S5_ROOMS_MS: '240000'
+    # Values: 10000-600000 milliseconds. Recommended: 120000 (run ab19091b: 174 s including a 45-s regroup wait).
+    # Purpose: Prior time for stage 7's Ratz, Rombards and three passes, up to the passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s7.fight segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S7_FIGHT_MS: '120000'
+    # Values: 1000-120000 milliseconds. Recommended: 15000 (R3: the Black Ratz died 8 s into stage 9, Alishar showed 5 s later).
+    # Purpose: Prior time from stage 9's start to Alishar's appearance.
+    # Technical: AgentLpqPaceProfile seeds the s9.ratz segment (a companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S9_RATZ_MS: '15000'
+    # Values: 0.03-1.0 fraction. Recommended: 0.5, assumed (R3 killed 125,000 HP in about 45 s; refit from recorded runs).
+    # Purpose: Prior share of the companions' summed expected damage per second that reaches Alishar while shooters keep their distance and melee take his summons.
+    # Technical: seeds the s9.boss Clear term; the estimate's Alishar time is his Mob.wz HP over this times the members' summed policy dps on 9300012, times the shared efficiency multiplier.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S9_BOSS_EFFICIENCY: '0.5'
+    # Values: 0-120000 milliseconds. Recommended: 25000; assumed quick human (the driver took 24-50 s).
+    # Purpose: Prior time a human leader needs to pick up the passes at his feet, talk the stage's balloon through and step to the next portal, learned per leader.
+    # Technical: AgentLpqPaceProfile seeds the leader-side handin term shared by the s1-s5 and s7 handin segments; refitted per leader from recorded runs, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_HANDIN_MS: '25000'
+    # Values: 10000-900000 milliseconds. Recommended: 150000, assumed (fifteen rows of three portals; never measured: the driver warped).
+    # Purpose: Prior time a human leader needs to climb stage 6's portal maze, learned per leader.
+    # Technical: AgentLpqPaceProfile seeds the leader-side s6.climb term (the leader's climb of the portal maze) from this; refitted per leader from recorded runs, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_CLIMB_MS: '150000'
+    # Values: 0-120000 milliseconds. Recommended: 30000, assumed.
+    # Purpose: Prior time from stage 8's start to the leader's first judged check (the Blue Balloon's preamble and the first formation).
+    # Technical: AgentLpqPaceProfile seeds the leader-side s8.entry term (stage 8's start to his first judged Blue Balloon check) from this; refitted per leader from recorded runs, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_PUZZLE_ENTRY_MS: '30000'
+    # Values: 0-120000 milliseconds. Recommended: 10000, assumed (KPQ's 9000 plus LPQ's longer box walks).
+    # Purpose: Prior time between two of the leader's judged Blue Balloon checks; with up to 126 combinations it sets most of stage 8.
+    # Technical: seeds puzzle.check; recorded runs refit it per leader as (accept - first judged check) / (checks - 1) less the leader's move share.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_PUZZLE_CHECK_MS: '10000'
+    # Values: 0-60000 milliseconds. Recommended: 4000, as KPQ.
+    # Purpose: Extra time a check takes in a five-member run when the leader himself has to move to another box.
+    # Technical: seeds puzzle.move; the estimate adds the leader's move share times this to every check after the first; never learned.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_PUZZLE_MOVE_MS: '4000'
+    # Values: 0-300000 milliseconds. Recommended: 40000, assumed.
+    # Purpose: Prior time from Alishar's death to the clear: the key brought to the leader's feet, picked up, and the Violet Balloon talked through.
+    # Technical: AgentLpqPaceProfile seeds the leader-side s9.key term (Alishar's death to the BONUS phase) from this; refitted per leader from recorded runs, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_KEY_MS: '40000'
+    # Values: 1-50 touches. Recommended: 3; Alishar hits a Lv48-50 crew for about 550 a touch.
+    # Purpose: A companion that goes down in fewer Alishar touches than this is named fragile, so the Red Sign can warn about it.
+    # Technical: AgentPqPaceEstimator compares AgentPqMemberPower.touchesToDown against dangerMobId 9300012 and records a FRAGILE weakness; it never enters the time.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.FRAGILE_TOUCHES: '3'
+    # Values: 0.0-1.0 hit chance. Recommended: 0.6, as KPQ and HPQ.
+    # Purpose: A companion whose best attack lands less often than this on an LPQ mob it fights is named as missing it.
+    # Technical: AgentPqPaceEstimator records a MISSES weakness for the s9.boss Clear segment; it never enters the time.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1 and up. Recommended: 1; bump when an LPQ pace change lands.
+    # Purpose: Marks which LPQ pace records belong together; records of another epoch are never learned from.
+    # Technical: AgentLpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row for lpq.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.PACE_EPOCH: '1'
 
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.

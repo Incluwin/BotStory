@@ -98,7 +98,7 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
         List<String> lines = new ArrayList<>();
         lines.add(voice.title());
         if (topLine != null) {
-            lines.add(topLine);
+            lines.add(voice.local(topLine));
         }
         lines.add(voice.lineupHeader(plan.lineup().size()));
         for (Seat seat : plan.lineup()) {
@@ -118,7 +118,7 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
                 (extra.here() ? here : away).add(extra.name() + (why == null ? "" : " (" + why + ")"));
             }
             if (!here.isEmpty()) {
-                lines.add("Waiting here with me: " + String.join(", ", here));
+                lines.add(voice.local("Waiting here with me: ") + String.join(", ", here));
             }
             if (!away.isEmpty()) {
                 lines.add("Staying behind: " + String.join(", ", away));
@@ -138,7 +138,7 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
             }
         }
         if (plan.blocker() != null) {
-            lines.add("#r" + voice.blockerHeader() + "#k " + plan.blocker());
+            lines.add("#r" + voice.blockerHeader() + "#k " + voice.local(plan.blocker()));
         }
         return String.join("\r\n", lines) + "\r\n";
     }
@@ -323,7 +323,7 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
 
     /** "Rin is on the way (~40 s). Talk to me again once they're here." */
     private void onTheWay(Character leader, String pqKey, String line) {
-        talk(leader).menu(line + " Talk to me again once they're here.\r\n", List.of(
+        talk(leader).menu(line + voice.local(" Talk to me again once they're here.") + "\r\n", List.of(
                 new Option("Are they here yet?", () -> proposal(leader, service.plan(leader, pqKey), null)),
                 new Option("Never mind.", null))).show();
     }
@@ -337,13 +337,15 @@ public final class EntryDesk implements CompanionPartyQuestService.Desk {
      */
     @Override
     public void outcome(Character leader, String line, long clickedAtMs) {
-        answer(leader, line, clickedAtMs, () -> talk(leader).ok(line).show());
+        String said = voice.local(line); // in the voice's words, the pink text too
+        answer(leader, said, clickedAtMs, () -> talk(leader).ok(said).show());
     }
 
     /** A companion still finishing what it was doing: the lineup again under her line, so the next Yes is one click. */
     @Override
     public void stillFinishing(Character leader, LineupPlan plan, String line, long clickedAtMs) {
-        answer(leader, line, clickedAtMs, () -> proposal(leader, plan, line));
+        String said = voice.local(line); // in the voice's words, the pink text too
+        answer(leader, said, clickedAtMs, () -> proposal(leader, plan, said));
     }
 
     /** {@code window} as the answer to the click, as {@link #outcome} draws it; else her line in pink text. */

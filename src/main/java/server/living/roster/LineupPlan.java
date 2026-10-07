@@ -487,4 +487,10 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
                     .map(member -> member.seat().personaId() == null ? "" : member.seat().personaId()).sorted().toList());
         }
     }
+
+    /** This lineup kept out by {@code blocker} (null: nothing keeps it out), all else as it is. */
+    public LineupPlan withBlocker(String blocker) {
+        return new LineupPlan(pqKey, leaderId, lineup, extras, onTheWay, waiting, blocker, benchUseful, picked,
+                clearTime);
+    }
 }

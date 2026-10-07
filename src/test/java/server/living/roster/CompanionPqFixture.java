@@ -293,7 +293,7 @@ final class CompanionPqFixture implements AutoCloseable {
     /** Each quest past HPQ, by its key, in the slots of PqEntrance's entrances(). */
     private static Map<String, FixtureEntrance> fixtureEntrances() {
         Map<String, FixtureEntrance> entrances = new LinkedHashMap<>();
-        // slot: lpq
+        entrances.put("lpq", new LpqFixtureEntrance());
 
         // slot: epq
 

@@ -96,7 +96,7 @@ public final class AgentLootEligibility {
         }
 
         if ((itemId == AgentLpqDefinition.PASS || itemId == AgentLpqDefinition.BOSS_KEY)
-                && !AgentLpqSessionRegistry.canLootExclusive(bot, itemId)) {
+                && !AgentLpqSessionRegistry.canLootExclusive(bot, drop)) {
             return false;
         }
 

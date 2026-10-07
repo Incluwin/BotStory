@@ -78,7 +78,8 @@ class AgentLpqTerminationPolicyTest {
         verify(run.event, never()).exitPlayer(ben);
         verify(run.event, never()).dispose();
         verify(run.party, never()).leaveCurrentParty(any());
-        assertEquals(AgentLpqSession.Phase.FAILED, session.phase());
+        // P6g LPQ C2.8: a cleared companion run never records a failure.
+        assertEquals(AgentLpqSession.Phase.COMPLETED, session.phase());
         assertNull(AgentLpqSessionRegistry.forMember(ben.getId()));
     }
 

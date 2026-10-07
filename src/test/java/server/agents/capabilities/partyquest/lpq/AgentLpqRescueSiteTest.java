@@ -217,7 +217,9 @@ class AgentLpqRescueSiteTest {
                 callers("\\binventory\\s*\\(\\s*\\)\\s*\\.\\s*removeById\\s*\\("));
         assertEquals(Map.of("remoteBoxHits", 1, "hitReactorFromCandidates", 2),
                 callers("ACTIONS\\s*\\.\\s*hitReactor\\s*\\("));
-        assertEquals(Map.of("prepare", 1, "submit", 1, "platformPuzzle", 2, "bonus", 1, "claim", 2),
+        // P6g LPQ C2.8: a companion run leaves through the Pink Balloon and claims at Arturo after its own approach.
+        assertEquals(Map.of("prepare", 1, "submit", 1, "platformPuzzle", 2, "bonus", 1, "claim", 2,
+                        "leaveThroughThePinkBalloon", 1, "companionClaim", 1),
                 callers("\\bLPQ\\s*\\.\\s*runNpc\\s*\\("));
     }
 

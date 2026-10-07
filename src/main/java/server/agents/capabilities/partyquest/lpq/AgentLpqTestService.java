@@ -227,12 +227,12 @@ public final class AgentLpqTestService {
     }
 
     /**
-     * How long an adopted run waits at the Red Sign for its leader to talk to it. Step 1 has no entry wait of its own:
-     * a human-led PREPARING run makes no progress until it enters, so it ends at the coordinator's PHASE_TIMEOUT_MS.
+     * How long an adopted run waits at the Red Sign for its leader to talk to it: the companion run's own entry wait
+     * (AgentLpqCoordinator's companion PREPARING ends after COMPANION_ENTRY_WAIT_MS).
      */
     private static String preparingWait() {
         long waitMs = config.AgentTuning.longValue(
-                "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PHASE_TIMEOUT_MS");
+                "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_ENTRY_WAIT_MS");
         long minutes = TimeUnit.MILLISECONDS.toMinutes(waitMs);
         if (minutes > 0) return minutes + (minutes == 1 ? " minute" : " minutes");
         return TimeUnit.MILLISECONDS.toSeconds(waitMs) + " seconds";

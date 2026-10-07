@@ -36,7 +36,8 @@ public final class AgentLpqAdmissionService {
      */
     public static AdmissionResult admit(
             Character operator, Character eventLeader, List<Character> members, long seed, long nowMs) {
-        Validation validation = validate(operator, eventLeader, members);
+        Validation validation = validate(operator, eventLeader, members, 0,
+                AgentLpqSession.HumanRolePreference.DEFAULT, true);
         if (!validation.success()) return AdmissionResult.failure(validation.message());
         AgentPartyQuestEngagement engagement = new AgentPartyQuestEngagement(
                 "lpq", AgentPartyQuestEngagement.Mode.PRODUCTION, seed, operator.getId(),
@@ -123,7 +124,7 @@ public final class AgentLpqAdmissionService {
             long seed, long nowMs, AgentLpqSession.Mode mode, int preferredHumanId,
             AgentLpqSession.HumanRolePreference humanRolePreference, boolean companionRun) {
         Validation validation = validate(operator, eventLeader, partyMembers,
-                preferredHumanId, humanRolePreference);
+                preferredHumanId, humanRolePreference, companionRun);
         if (!validation.success()) return restoreFailure(engagement, lobby, validation.message(), nowMs);
         if (engagement == null || lobby == null
                 || !engagement.engagementId().equals(lobby.engagementId())
@@ -154,6 +155,7 @@ public final class AgentLpqAdmissionService {
         }
         session.setLeadership(eventLeader.getId(), validation.agentMembers().getFirst().getId());
         if (companionRun) session.setCompanionAdopted(true);
+        if (companionRun) validation.agentMembers().forEach(agent -> session.addCompanionOfRun(agent.getId()));
         boolean published = false;
         try {
             lobby.reserve(nowMs);
@@ -183,6 +185,16 @@ public final class AgentLpqAdmissionService {
     static Validation validate(Character operator, Character eventLeader, List<Character> partyMembers,
                                int preferredHumanId,
                                AgentLpqSession.HumanRolePreference humanRolePreference) {
+        return validate(operator, eventLeader, partyMembers, preferredHumanId, humanRolePreference, false);
+    }
+
+    /**
+     * {@code companionRun}: a host's own party (admit) takes LPQ's stock five or six (LudiPQ.js minPlayers 5,
+     * maxPlayers 6); every other admission keeps Agent-assisted LPQ's six. Every other check is the same.
+     */
+    static Validation validate(Character operator, Character eventLeader, List<Character> partyMembers,
+                               int preferredHumanId,
+                               AgentLpqSession.HumanRolePreference humanRolePreference, boolean companionRun) {
         if (operator == null || eventLeader == null || partyMembers == null) {
             return Validation.failure("Operator, leader, and party members are required");
         }
@@ -191,7 +203,11 @@ public final class AgentLpqAdmissionService {
         partyMembers.stream().filter(java.util.Objects::nonNull).forEach(member -> {
             if (unique.stream().noneMatch(existing -> existing.getId() == member.getId())) unique.add(member);
         });
-        if (unique.size() != AgentLpqDefinition.RECOMMENDED_PARTY_SIZE) {
+        if (companionRun && (unique.size() < AgentLpqDefinition.MIN_PARTY_SIZE
+                || unique.size() > AgentLpqDefinition.MAX_PARTY_SIZE)) {
+            return Validation.failure("LPQ takes five or six members");
+        }
+        if (!companionRun && unique.size() != AgentLpqDefinition.RECOMMENDED_PARTY_SIZE) {
             return Validation.failure("Agent-assisted LPQ currently requires six members; the ordinary event still accepts five to six");
         }
         List<Character> agents = unique.stream().filter(AgentLpqAdmissionService::isAgent).toList();
@@ -226,6 +242,16 @@ public final class AgentLpqAdmissionService {
             if (!problem.isEmpty()) return Validation.failure(problem);
         }
         return new Validation(true, "", List.copyOf(unique), agents, party);
+    }
+
+    /**
+     * The LPQ capabilities these companions do not cover between them (Teleport with magic damage, Dark Sight, stage
+     * 7's weapon-ranged attack and a physical attack, as admission checks them), in admission's own words; empty when
+     * they cover all. A host can name what a lineup lacks before admitting it.
+     */
+    public static List<String> missingCapabilities(List<Character> companions) {
+        return AgentLpqRosterRequirementPolicy.evaluate(companions == null ? List.of() : companions)
+                .missingRequirements();
     }
 
     /**

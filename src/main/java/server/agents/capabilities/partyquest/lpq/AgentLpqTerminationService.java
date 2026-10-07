@@ -24,12 +24,13 @@ final class AgentLpqTerminationService {
     private AgentLpqTerminationService() { }
 
     /**
-     * Ends the run. A companion run past its clear (failAfterClear) lets only its companions go, so the human keeps
-     * his bonus and his reward; every other run is released as it always was: everyone out, the event disposed.
+     * Ends the run. A companion run past its clear never records a failure (completeAfterClear): only its companions
+     * go, the human keeps his bonus and his reward, and the run is recorded as cleared; every other run is released as
+     * it always was: everyone out, the event disposed.
      */
     static void fail(AgentLpqSession session, String reason, long nowMs) {
         if (session != null && session.companionAdopted() && pastTheClear(session)) {
-            failAfterClear(session, reason, nowMs);
+            completeAfterClear(session, reason, nowMs);
             return;
         }
         release(session, reason, nowMs, true, false, false);
@@ -43,6 +44,28 @@ final class AgentLpqTerminationService {
     static boolean pastTheClear(AgentLpqSession session) {
         EventInstanceManager event = session.eventInstance();
         return session.rewardEligibilityFrozen() || (event != null && event.isEventCleared());
+    }
+
+    /**
+     * Ends a companion run that has no companion left (every one tapped out or left): the run is released without a
+     * disposal, so the humans carry on in the event by themselves.
+     */
+    static void detach(AgentLpqSession session, String reason, long nowMs) {
+        release(session, reason, nowMs, false, false, false);
+    }
+
+    /**
+     * Wraps a cleared companion run up (its after-clear limit, or anything that would have failed it past the clear):
+     * 'LPQ after-clear wrap-up:' with how many rewards are unresolved, its companions leave through the event's own
+     * exit, and the event and the players still in it stay. The release is claimed first and recorded as completed.
+     */
+    static void completeAfterClear(AgentLpqSession session, String reason, long nowMs) {
+        if (session == null || !session.beginTermination()) return;
+        quietly(session, "log-wrap-up", () -> log.info(
+                "LPQ after-clear wrap-up: session={} phase={} reason={} unresolved={}", session.sessionId(),
+                session.phase(), reason, session.members().stream().filter(member -> !member.rewardResolved()).count()));
+        exitAgentsOnly(session);
+        release(session, "completed", nowMs, false, true, true);
     }
 
     /**
@@ -111,6 +134,8 @@ final class AgentLpqTerminationService {
             AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(member.characterId());
             if (entry != null) AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
         });
+        // A companion run's full-rate holds go with it (a stock run never holds one, so this does nothing there).
+        quietly(session, "release-full-rate", () -> AgentLpqFullRateSimulation.releaseAll(session));
         if (session.companionAdopted()) {
             quietly(session, "log-potions", () -> log.info("LPQ potions: session={} start={} end={}",
                     session.sessionId(), session.potionsAtEntry(), potions(session)));
