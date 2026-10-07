@@ -11934,6 +11934,12 @@ public class Character extends AbstractCharacterObject {
         if (this.isGM() || this.isBanned()) {  // thanks RedHat for noticing GM's being able to get banned
             return;
         }
+        // An Agent's account is already locked ("Agent-only backing account"); a ban would overwrite that reason.
+        // Its anomalies are server bugs, so they stay in the logs and security events instead.
+        if (client instanceof BotClient) {
+            log.warn("Autoban skipped for Agent {} ({}): {}", name, id, reason);
+            return;
+        }
 
         this.ban(reason);
         sendPacket(PacketCreator.sendPolice(String.format("You have been blocked by the#b %s Police for HACK reason.#k", "Cosmic")));
