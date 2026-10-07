@@ -328,11 +328,12 @@ class AgentArchitectureBoundaryTest {
                 // Reviewed after teleport/Flash Jump execution landed in 3be10ae349. Navigation
                 // currently composes movement primitives directly; freeze that accepted debt
                 // until a traversal port can replace the concrete imports.
-                // navigation->movement 95 and combat->movement 62 recorded 2026-10-06 from upstream e20e5224a
-                // (AgentNavigationClimbExitExecutionService, AgentCombatTargetRuntime).
-                Map.entry("navigation->movement", 95),
+                // Upstream e20e5224a raised navigation->movement to 95 and combat->movement to 62; on 2026-10-06
+                // rope step-off moved behind AgentClimbMovementService and jump height behind
+                // AgentMovementProfile, which brought both back to these values.
+                Map.entry("navigation->movement", 93),
                 Map.entry("movement->navigation", 41),
-                Map.entry("combat->movement", 62),
+                Map.entry("combat->movement", 61),
                 // The pre-reliability combat baseline contains fifteen navigation imports.
                 // Keep route validation behind the existing path-service seam so it adds none.
                 Map.entry("combat->navigation", 15),
