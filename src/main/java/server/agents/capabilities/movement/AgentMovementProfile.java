@@ -76,4 +76,8 @@ public record AgentMovementProfile(int totalSpeedStat, int totalJumpStat) implem
     public float ropeJumpSpeedPxs() {
         return (float) (AgentMovementPhysicsConfig.configuredRopeJumpSpeedPxs() * jumpMultiplier());
     }
+
+    public float maxJumpHeight() {
+        return AgentMovementKinematicsService.calculateMaxJumpHeight(this);
+    }
 }

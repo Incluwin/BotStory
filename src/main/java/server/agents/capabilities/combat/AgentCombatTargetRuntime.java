@@ -8,7 +8,6 @@ import server.agents.perception.AgentMapPerception;
 import server.agents.perception.AgentPeerPerception;
 import server.agents.perception.AgentPerceptionSnapshot;
 import server.agents.capabilities.movement.AgentMovementProfile;
-import server.agents.capabilities.movement.AgentMovementKinematicsService;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.monitoring.AgentPerformanceMonitor;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -844,7 +843,7 @@ public final class AgentCombatTargetRuntime {
                 route,
                 bot.getPosition(),
                 monster.getPosition(),
-                AgentMovementKinematicsService.calculateMaxJumpHeight(movementProfile));
+                movementProfile.maxJumpHeight());
     }
 
     private static void recordDecision(AgentRuntimeEntry entry,
