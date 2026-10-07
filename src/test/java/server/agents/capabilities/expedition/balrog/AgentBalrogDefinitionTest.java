@@ -70,6 +70,21 @@ class AgentBalrogDefinitionTest {
     }
 
     @Test
+    void exitIdsMatchTheBattleMapNpcAndTheRewardRoomPortal() throws Exception {
+        String battle = Files.readString(Path.of("wz/Map.wz/Map/Map1/105100400.img.xml"));
+        String reward = Files.readString(Path.of("wz/Map.wz/Map/Map1/105100401.img.xml"));
+
+        assertEquals(1061018, AgentBalrogDefinition.BATTLE_EXIT_NPC_ID);
+        assertEquals(2, AgentBalrogDefinition.REWARD_EXIT_PORTAL_ID);
+        assertTrue(battle.contains("<string name=\"id\" value=\""
+                + AgentBalrogDefinition.BATTLE_EXIT_NPC_ID + "\"/>"));
+        assertTrue(java.util.regex.Pattern.compile(
+                "<imgdir name=\"" + AgentBalrogDefinition.REWARD_EXIT_PORTAL_ID + "\">"
+                        + "(?:(?!</imgdir>).)*<string name=\"script\" value=\"balog_end\"/>",
+                java.util.regex.Pattern.DOTALL).matcher(reward).find());
+    }
+
+    @Test
     void scenarioUsesTheEasyNpcRegistrationAndStartSequence() {
         var scenario = new AgentEasyBalrogScenario(1234L);
         var spec = scenario.spec();

@@ -1,5 +1,9 @@
 package server.agents.capabilities.expedition.balrog;
 
+import client.Character;
+import client.inventory.WeaponType;
+import server.agents.capabilities.combat.AgentAttackExecutionProvider;
+import server.agents.capabilities.combat.AgentCombatAmmoCounter;
 import server.agents.field.AgentBalrogTestFixtureService;
 
 import java.awt.Point;
@@ -40,6 +44,16 @@ final class AgentEasyBalrogCombatPolicy {
             case WAND, STAFF, BOW, CROSSBOW, CLAW, GUN -> true;
             default -> false;
         };
+    }
+
+    /** Companions carry real weapons rather than fixture weapon classes; the same split applies. */
+    static boolean isRanged(WeaponType weaponType) {
+        return weaponType == WeaponType.WAND || weaponType == WeaponType.STAFF
+                || AgentCombatAmmoCounter.isRangedAmmoWeapon(weaponType);
+    }
+
+    static boolean isRanged(Character member) {
+        return isRanged(AgentAttackExecutionProvider.getEquippedWeaponType(member));
     }
 
     static Point headAnchor(int ordinal, boolean ranged) {

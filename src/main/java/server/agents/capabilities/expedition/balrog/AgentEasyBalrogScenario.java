@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.combat.AgentCombatPolicyDiagnostics;
+import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.capabilities.expedition.AgentExpeditionPreparedMember;
 import server.agents.capabilities.expedition.AgentExpeditionScenario;
 import server.agents.capabilities.expedition.AgentExpeditionSpec;
@@ -32,7 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Easy Balrog's build pool, claw/body phase policy, and battle status. */
-public final class AgentEasyBalrogScenario implements AgentExpeditionScenario {
+public final class AgentEasyBalrogScenario implements AgentExpeditionScenario, AgentBossFight {
     private static final Logger log = LoggerFactory.getLogger(AgentEasyBalrogScenario.class);
     private static final int POWER_ELIXIR_ITEM_ID = 2_000_005;
     private static final int BATTLE_EXIT_NPC = 1_061_018;
@@ -70,7 +71,19 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario {
     private final Map<Integer, Integer> rewardFidgetStepByMember = new ConcurrentHashMap<>();
 
     public AgentEasyBalrogScenario(long seed) {
-        roster = AgentBalrogTestFixtureService.selectRoster(seed);
+        this(AgentBalrogTestFixtureService.selectRoster(seed));
+    }
+
+    /**
+     * The fight for adopted companions: no fixture roster, so no {@link #prepareMember} rewrite and no
+     * Power Elixirs; each member's ranged flag comes from the weapon it carries.
+     */
+    public static AgentEasyBalrogScenario forCompanions() {
+        return new AgentEasyBalrogScenario(List.of());
+    }
+
+    private AgentEasyBalrogScenario(List<AgentBalrogTestFixtureService.Build> roster) {
+        this.roster = roster;
         spec = new AgentExpeditionSpec(
                 "easy-balrog-level-60",
                 "Easy Balrog",
@@ -95,6 +108,9 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario {
     @Override
     public AgentExpeditionPreparedMember prepareMember(
             AgentRuntimeEntry entry, int ordinal, long memberSeed, long nowMs) throws Exception {
+        if (roster.isEmpty()) {
+            throw new IllegalStateException("a companion Easy Balrog fight has no fixture roster to prepare");
+        }
         AgentBalrogTestFixtureService.Build build = roster.get(ordinal);
         int clothingRank = AgentBalrogTestFixtureService.clothingRank(roster, ordinal);
         AgentBalrogTestFixtureService.PreparationResult prepared =
@@ -166,8 +182,7 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario {
                     AgentEasyBalrogCombatPolicy.battleMaxX());
             maintainBattleResources(entry, member);
             int ordinal = memberOrdinals.getOrDefault(member.getId(), 0);
-            boolean ranged = AgentEasyBalrogCombatPolicy
-                    .isRanged(roster.get(ordinal).weaponClass());
+            boolean ranged = rangedFor(member, ordinal);
             Set<Integer> bossTargets = liveClaw
                     ? AgentBalrogDefinition.CLAW_MOBS
                     : realBody ? Set.of(AgentBalrogDefinition.BODY_MOB) : Set.of();
@@ -400,6 +415,21 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario {
         rewardFidgetStepByMember.clear();
     }
 
+    @Override
+    public void adopt(int characterId, int ordinal) {
+        memberOrdinals.put(characterId, ordinal);
+    }
+
+    @Override
+    public void tick(List<Character> fighters, EventInstanceManager event, long nowMs) {
+        tickCombat(fighters, event, nowMs);
+    }
+
+    @Override
+    public void end(EventInstanceManager event) {
+        endRun(event);
+    }
+
     private static void clearRewardClaims(EventInstanceManager event) {
         if (event != null) {
             AgentEasyBalrogRewardClaimRegistry.clear(
@@ -554,12 +584,24 @@ public final class AgentEasyBalrogScenario implements AgentExpeditionScenario {
                 && from.distanceSq(to) <= (long) rangePx * rangePx;
     }
 
-    private static void maintainBattleResources(AgentRuntimeEntry entry, Character member) {
+    private void maintainBattleResources(AgentRuntimeEntry entry, Character member) {
         AgentCombatBuffRuntime.tryCastCriticalSurvivalBuff(entry, member);
-        if (needsExpeditionRecovery(member.getHp(), member.getCurrentMaxHp())
-                || needsExpeditionRecovery(member.getMp(), member.getCurrentMaxMp())) {
+        // Only the fixture carries 2,000 Power Elixirs; companions drink their own potions by their settings.
+        if (usesElixir()
+                && (needsExpeditionRecovery(member.getHp(), member.getCurrentMaxHp())
+                || needsExpeditionRecovery(member.getMp(), member.getCurrentMaxMp()))) {
             AgentPrimitiveCapabilityGatewayRuntime.gateway().useItem(member, POWER_ELIXIR_ITEM_ID);
         }
+    }
+
+    boolean usesElixir() {
+        return !roster.isEmpty();
+    }
+
+    boolean rangedFor(Character member, int ordinal) {
+        return roster.isEmpty()
+                ? AgentEasyBalrogCombatPolicy.isRanged(member)
+                : AgentEasyBalrogCombatPolicy.isRanged(roster.get(ordinal).weaponClass());
     }
 
     static boolean needsExpeditionRecovery(int current, int maximum) {

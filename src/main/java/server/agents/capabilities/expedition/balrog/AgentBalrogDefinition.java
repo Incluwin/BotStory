@@ -10,6 +10,8 @@ public final class AgentBalrogDefinition {
     public static final int BATTLE_MAP = 105100400;
     public static final int CLEAR_MAP = 105100401;
     public static final int ENTRY_NPC = 1061014;
+    public static final int BATTLE_EXIT_NPC_ID = 1_061_018;
+    public static final int REWARD_EXIT_PORTAL_ID = 2;
     public static final int PARTY_CAPACITY = 6;
     public static final int ROSTER_SIZE = 12;
     public static final int LEVEL = AgentBalrogTestFixtureService.LEVEL;
