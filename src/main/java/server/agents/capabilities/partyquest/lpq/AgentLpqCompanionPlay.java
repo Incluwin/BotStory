@@ -34,6 +34,8 @@ final class AgentLpqCompanionPlay {
     static final String BATCH_EXPLAINED = "i'll drop my passes at your feet as we get them, grab them.";
     /** H5, a carrier about to go down (low on HP, no HP potion left) leaves its passes where it stands. */
     static final String LEAVING_PASSES = "almost out of pots, leaving my passes here, grab them.";
+    /** K5, said by Alishar's key carrier as it drops the key, about to go down. */
+    static final String LEAVING_THE_KEY = "almost out of pots, leaving the key here, grab it.";
     /** S6, said at the bottom of the portal maze, where everyone starts. */
     static final String MAZE_CODE = "it's 133 221 333 123 111 from the bottom, left to right. see you up top.";
 
@@ -271,6 +273,16 @@ final class AgentLpqCompanionPlay {
     /** About to go down: low on HP with no HP potion left (an unknown count, -1, is not none). */
     static boolean dying(int hp, int maxHp, int hpPotions, int dyingPercent) {
         return lowOnHp(hp, maxHp, dyingPercent) && hpPotions == 0;
+    }
+
+    private static final List<String> COUNT_WORDS = List.of("none", "one", "two", "three", "four", "five", "six");
+
+    /** T1: a player left the run and it carries on with the rest (the count in words; LPQ never has more than six). */
+    static String carryOnLine(String member, int remaining) {
+        if (remaining < 0 || remaining >= COUNT_WORDS.size()) {
+            throw new IllegalArgumentException("an LPQ party has zero to six members: " + remaining);
+        }
+        return member + " had to go. we'll keep going with " + COUNT_WORDS.get(remaining) + ".";
     }
 
     /** How a companion run's entry stands, as HPQ's: everyone inside, keep waiting, go on without some, or give up. */

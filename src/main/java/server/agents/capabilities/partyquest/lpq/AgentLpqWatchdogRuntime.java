@@ -34,7 +34,16 @@ final class AgentLpqWatchdogRuntime {
                     Character agent = AgentRuntimeIdentityRuntime.bot(candidate);
                     return agent != null && agent.getHp() > 0;
                 }).findFirst().orElse(null);
-        if (entry == null) { AgentLpqTerminationService.fail(session, "No live Agent remains", nowMs); return; }
+        if (entry == null) {
+            // A companion run waits for its downed companions' respawn (their host taps them out); a stock run ends.
+            if (session.companionAdopted()) {
+                if (AgentLpqCoordinator.awaitingRespawn(session, nowMs)) return;
+                AgentLpqCoordinator.failWithoutLiveAgent(session, nowMs);
+                return;
+            }
+            AgentLpqTerminationService.fail(session, "No live Agent remains", nowMs);
+            return;
+        }
         Character agent = AgentRuntimeIdentityRuntime.bot(entry);
         long lease = config.AgentTuning.longValue(
                 "server.agents.capabilities.partyquest.lpq.AgentLpqRuntime.COORDINATOR_LEASE_MS");

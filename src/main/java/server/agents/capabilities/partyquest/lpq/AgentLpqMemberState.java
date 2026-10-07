@@ -86,6 +86,11 @@ public final class AgentLpqMemberState {
     private int roomRetryMapId;
     private int claimFailures;
     private long arrivedOnRewardMapAtMs;
+    private long downSinceMs;
+    private int passesWhenDown;
+    private boolean tapOutRequested;
+    private long revivedSeenAtMs;
+    private long missingSinceMs;
     private int roomRetries;
     private int givenUpRoom;
     private boolean givenUpPassLeft;
@@ -196,6 +201,51 @@ public final class AgentLpqMemberState {
     void forfeitReward() {
         if (rewardState == RewardState.PENDING) rewardState = RewardState.FORFEITED;
     }
+
+    /**
+     * A companion run marks this member down from its first sighting, with the passes it held then (the stock
+     * respawn's unregister takes them from it, so the count is kept for the departure's log); a down sighting also
+     * breaks any revive streak. Stock runs never mark anyone down.
+     */
+    void markDown(long nowMs, int passesHeld) {
+        if (downSinceMs == 0L) {
+            downSinceMs = Math.max(1L, nowMs);
+            passesWhenDown = Math.max(0, passesHeld);
+        }
+        revivedSeenAtMs = 0L;
+    }
+
+    void clearDown() {
+        downSinceMs = 0L;
+        tapOutRequested = false;
+        revivedSeenAtMs = 0L;
+        passesWhenDown = 0;
+    }
+
+    long downSinceMs() { return downSinceMs; }
+    boolean down() { return downSinceMs > 0L; }
+    boolean tapOutRequested() { return tapOutRequested; }
+    void markTapOutRequested() { tapOutRequested = true; }
+    /** The passes it held as it went down; 0 when it is not down. */
+    int passesWhenDown() { return passesWhenDown; }
+
+    /**
+     * True from the second tick in a row that sees this downed member standing in the event again. The respawn
+     * restores HP before it changes map, so a single sighting can be a companion on its way out.
+     */
+    boolean confirmRevived(long nowMs) {
+        if (revivedSeenAtMs > 0L) return true;
+        revivedSeenAtMs = Math.max(1L, nowMs);
+        return false;
+    }
+
+    /** Since when this member has been missing (offline or unloaded), from its first sighting so. */
+    long observeMissing(long nowMs) {
+        if (missingSinceMs == 0L) missingSinceMs = Math.max(1L, nowMs);
+        return missingSinceMs;
+    }
+
+    void clearMissing() { missingSinceMs = 0L; }
     public int reactorTargetMapId() { return reactorTargetMapId; }
     public int reactorTargetObjectId() { return reactorTargetObjectId; }
     public int reactorApproachMapId() { return reactorApproachMapId; }

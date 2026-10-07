@@ -47,6 +47,14 @@ final class AgentLpqTerminationService {
     }
 
     /**
+     * Ends a companion run that has no companion left (every one tapped out or left): the run is released without a
+     * disposal, so the humans carry on in the event by themselves.
+     */
+    static void detach(AgentLpqSession session, String reason, long nowMs) {
+        release(session, reason, nowMs, false, false, false);
+    }
+
+    /**
      * Wraps a cleared companion run up (its after-clear limit, or anything that would have failed it past the clear):
      * 'LPQ after-clear wrap-up:' with how many rewards are unresolved, its companions leave through the event's own
      * exit, and the event and the players still in it stay. The release is claimed first and recorded as completed.

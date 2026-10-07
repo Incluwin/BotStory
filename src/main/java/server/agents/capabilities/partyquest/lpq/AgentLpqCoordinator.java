@@ -26,6 +26,10 @@ import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
 import server.agents.capabilities.inventory.AgentInventoryStateRuntime;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
+import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
+import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.dialogue.AgentDialogueReportFormatter;
 import server.agents.integration.AgentCharacterGatewayRuntime;
@@ -152,6 +156,8 @@ final class AgentLpqCoordinator {
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_AFTER_CLEAR_LIMIT_MS");
     private static final long TIMEOUT_SLACK_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.TIMEOUT_SLACK_MS");
+    private static final long MEMBER_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS");
     private static final int DARK_SIGHT_SAFE_PORTAL_ID = 0;
     private static final Point STAGE_7_BOTTOM = new Point(1, -211);
     private static final int STAGE_7_FIRING_ANCHOR_RADIUS = config.AgentTuning.intValue(
@@ -5402,6 +5408,11 @@ final class AgentLpqCoordinator {
             fail(session, eventFailure, parting, nowMs);
             return;
         }
+        // Departures and deaths come before the stage logic; a downed companion pauses nothing (the others play on).
+        if (AgentLpqMemberVerdicts.insideEvent(session.phase())
+                && (!reconcileLiveParty(session, nowMs) || !membersAlive(session, leader, nowMs))) {
+            return;
+        }
         recalculateStageAssignments(session, nowMs);
         companionStageLine(session, leader);
         switch (session.phase()) {
@@ -5657,6 +5668,251 @@ final class AgentLpqCoordinator {
     }
 
     /**
+     * Takes one member out of the run and both indexes (out of the event first, while still in it) and hands an Agent
+     * back to its owner. The split rooms it had not finished go back at once (a free companion takes them on the next
+     * tick, not after the room lease), and the key carrier and re-collector roles end if they were its.
+     */
+    private static void departMember(AgentLpqSession session, AgentLpqMemberState member, String reason, long nowMs) {
+        int id = member.characterId();
+        Character character = character(id);
+        EventInstanceManager event = session.eventInstance();
+        if (character != null && event != null && LPQ.event(character) == event) event.exitPlayer(character);
+        AgentLpqFullRateSimulation.apply(member, AgentRuntimeRegistry.findByAgentCharacterId(id), false);
+        // A companion killed outright still held its passes as it went down; the respawn's unregister took them.
+        int held = character == null ? -1 : character.getItemQuantity(AgentLpqDefinition.PASS, false);
+        log.info("LPQ passes lost with member: session={} member={} passes={}", session.sessionId(), id,
+                member.passesWhenDown() > 0 ? Math.max(held, member.passesWhenDown()) : held);
+        log.warn("LPQ member left the run and was ejected: session={} member={} type={} phase={} reason={} "
+                        + "remainingBefore={}", session.sessionId(), id, member.memberType(), session.phase(), reason,
+                session.memberCount());
+        session.rooms().assignments().forEach((room, owner) -> {
+            if (owner == id && !session.rooms().completed(room)) session.rooms().release(room);
+        });
+        session.removeMember(id);
+        AgentLpqSessionRegistry.unindexMember(session, id);
+        AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forOperator(session.operatorId());
+        if (engagement != null) AgentPartyQuestEngagementRegistry.removeAndUnindexMember(engagement, id, nowMs);
+        if (member.memberType() == AgentLpqMemberState.MemberType.AGENT) {
+            AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, "lpq", nowMs);
+        }
+        if (session.keyCarrierId() == id) session.setKeyCarrierId(0);
+        if (session.recollectorId() == id) session.endRecollect(false);
+    }
+
+    /** False when the departures ended the run: fewer than five left, or no companion (the humans carry on). */
+    private static boolean carriesOn(AgentLpqSession session, AgentLpqParting belowFive, long nowMs) {
+        if (session.memberCount() < AgentLpqDefinition.MIN_PARTY_SIZE) {
+            fail(session, "The companion run fell below five members", belowFive, nowMs);
+            return false;
+        }
+        if (session.members().stream()
+                .noneMatch(member -> member.memberType() == AgentLpqMemberState.MemberType.AGENT)) {
+            AgentLpqTerminationService.detach(session, "every companion left; the humans carry on", nowMs);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * The departed-member pass, read from the live party as HPQ's: a member no longer in it (a tapped-out companion its
+     * host took out, a player who left) is ejected; fewer than five end the run LEFT, and with no companion left the
+     * humans carry on. A lead passed inside the event ends the run. False when the run ended.
+     */
+    private static boolean reconcileLiveParty(AgentLpqSession session, long nowMs) {
+        if (session.eventInstance() == null) return true;
+        AgentPartySnapshot party = liveParty(session);
+        if (party == null) {
+            fail(session, "The LPQ party was disbanded", AgentLpqParting.GENERIC, nowMs);
+            return false;
+        }
+        Set<Integer> live = party.members().stream().filter(java.util.Objects::nonNull)
+                .map(member -> member.id()).collect(java.util.stream.Collectors.toSet());
+        List<AgentLpqMemberState> departed = session.members().stream()
+                .filter(member -> member.characterId() != session.eventLeaderId())
+                .filter(member -> !live.contains(member.characterId()))
+                .toList();
+        AgentLpqParting left = AgentLpqParting.of(AgentLpqParting.Kind.LEFT);
+        for (AgentLpqMemberState member : departed) {
+            Character character = character(member.characterId());
+            if (left.subject() == null && character != null) {
+                left = AgentLpqParting.of(AgentLpqParting.Kind.LEFT, character);
+            }
+            departMember(session, member, "left the party", nowMs);
+        }
+        if (!departed.isEmpty() && !carriesOn(session, left, nowMs)) return false;
+        int liveLeaderId = party.members().stream().filter(java.util.Objects::nonNull)
+                .filter(member -> member.leader())
+                .mapToInt(member -> member.id()).findFirst().orElse(0);
+        if (liveLeaderId != session.eventLeaderId()) {
+            fail(session, "The live LPQ party is no longer led by the run's leader", AgentLpqParting.GENERIC, nowMs);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Every non-leader member by AgentLpqMemberVerdicts (the leader was handled before). A downed one is marked down
+     * and left out of the stage loops, which keep running; a companion up outside the event (the departure gate let
+     * its respawn through at six) is tapped out by its host, which voices it (a refusal ends the run DEFEATED); a human
+     * who dropped is ejected. With fewer than five others standing the run ends WENT_DOWN. False when the run ended.
+     */
+    private static boolean membersAlive(AgentLpqSession session, Character leader, long nowMs) {
+        EventInstanceManager event = session.eventInstance();
+        boolean leaderInBoundEvent = event != null && LPQ.event(leader) == event;
+        boolean cleared = event != null && event.isEventCleared();
+        // Counted as the loop marks members, so two companions downed in one tick cannot both wait.
+        int down = (int) session.members().stream().filter(AgentLpqMemberState::down).count();
+        for (AgentLpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (id == session.eventLeaderId()) continue;
+            Character character = character(id);
+            AgentLpqMemberVerdicts.Verdict verdict = AgentLpqMemberVerdicts.verdict(new AgentLpqMemberVerdicts.Facts(
+                    true, session.phase(), member.memberType(), false, character != null,
+                    character == null ? 0 : character.getHp(), character != null && LPQ.event(character) == event,
+                    leaderInBoundEvent, cleared, member.downSinceMs(), member.tapOutRequested(),
+                    session.memberCount() - 1 - (down - (member.down() ? 1 : 0)), nowMs, MEMBER_RECOVERY_TIMEOUT_MS));
+            switch (verdict) {
+                case MISSING -> {
+                    if (nowMs - member.observeMissing(nowMs) >= MEMBER_RECOVERY_TIMEOUT_MS) {
+                        fail(session, "Party member " + id + " disconnected or left the channel",
+                                new AgentLpqParting(AgentLpqParting.Kind.GONE, id, memberName(session, id)), nowMs);
+                        return false;
+                    }
+                }
+                case OK -> member.clearMissing();
+                case DEFEATED -> {
+                    fail(session, character.getName() + " was defeated during LPQ",
+                            AgentLpqParting.of(AgentLpqParting.Kind.DEFEATED, character), nowMs);
+                    return false;
+                }
+                case SHORT_HANDED -> {
+                    fail(session, character.getName() + " went down, and LPQ needs five",
+                            AgentLpqParting.of(AgentLpqParting.Kind.WENT_DOWN, character), nowMs);
+                    return false;
+                }
+                case DROP_HUMAN -> {
+                    if (!dropHuman(session, member, character, nowMs)) return false;
+                }
+                case DOWN_WAIT -> {
+                    if (!member.down()) down++;
+                    markDown(session, member, character, nowMs);
+                }
+                case REQUEST_TAP_OUT -> {
+                    // The stock respawn carried it out of the event; its host takes it out of the party (and has it
+                    // say its own tap-out line there), and the departed-member pass ejects it on a later tick.
+                    if (AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
+                            "lpq", session.sessionId(), id, character.getMapId(), nowMs))) {
+                        member.markTapOutRequested();
+                        log.info("LPQ companion tapped out: session={} member={} map={}",
+                                session.sessionId(), id, character.getMapId());
+                    } else if (!cleared) {
+                        fail(session, character.getName() + " was defeated during LPQ and its host kept it",
+                                AgentLpqParting.of(AgentLpqParting.Kind.DEFEATED, character), nowMs);
+                        return false;
+                    }
+                    // Else the Violet Balloon cleared the run on its own thread since this tick read the clear: after
+                    // the clear nothing is asked of a downed member.
+                }
+                case REVIVED -> {
+                    if (member.confirmRevived(nowMs)) {
+                        member.clearDown();
+                        down--;
+                    }
+                }
+                case IGNORE -> {
+                }
+            }
+        }
+        return true;
+    }
+
+    /** Marks a member down at its first sighting, with the passes it holds (logged once). */
+    private static void markDown(AgentLpqSession session, AgentLpqMemberState member, Character character,
+                                 long nowMs) {
+        boolean first = !member.down();
+        int passes = character == null ? 0
+                : Math.max(0, character.getItemQuantity(AgentLpqDefinition.PASS, false));
+        member.markDown(nowMs, passes);
+        if (first) {
+            log.info("LPQ member down: session={} member={} type={} phase={} passes={}",
+                    session.sessionId(), member.characterId(), member.memberType(), session.phase(), passes);
+        }
+    }
+
+    /**
+     * A non-leader human who went offline or is up outside the event is left behind: the run carries on with T1, or
+     * ends LEFT below five. False when the run ended.
+     */
+    private static boolean dropHuman(AgentLpqSession session, AgentLpqMemberState member, Character character,
+                                     long nowMs) {
+        int id = member.characterId();
+        String name = memberName(session, id);
+        departMember(session, member, character == null ? "offline" : "up outside the event", nowMs);
+        if (session.memberCount() < AgentLpqDefinition.MIN_PARTY_SIZE) {
+            fail(session, "A human member dropped, and LPQ needs five",
+                    new AgentLpqParting(AgentLpqParting.Kind.LEFT, id, name), nowMs);
+            return false;
+        }
+        coordinate(session, partingNarrator(session), "drop-" + id,
+                AgentLpqCompanionPlay.carryOnLine(name == null ? "someone" : name, session.memberCount()));
+        return true;
+    }
+
+    /**
+     * True when the watchdog, finding no standing companion to run a companion run, should wait: one has been down less
+     * than MEMBER_RECOVERY_TIMEOUT_MS and the stock respawn will carry it out, where its host taps it out. Short-handed
+     * the run ends WENT_DOWN now (LudiPQ.js would end the event at the respawn anyway).
+     */
+    static boolean awaitingRespawn(AgentLpqSession session, long nowMs) {
+        synchronized (session) {
+            if (session.terminal() || session.terminationStarted()) return true;
+            // Before entry a respawn stays in Ludibrium, so there is nothing to wait for.
+            if (beforeEntry(session.phase())) return false;
+            Character downed = null;
+            for (AgentLpqMemberState member : session.members()) {
+                if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
+                Character agent = character(member.characterId());
+                if (agent == null) continue;
+                if (agent.getHp() <= 0) markDown(session, member, agent, nowMs);
+                if (downed == null && member.down() && nowMs - member.downSinceMs() < MEMBER_RECOVERY_TIMEOUT_MS) {
+                    downed = agent;
+                }
+            }
+            if (downed == null) return false;
+            if (shortHanded(session)) {
+                fail(session, downed.getName() + " went down, and LPQ needs five",
+                        AgentLpqParting.of(AgentLpqParting.Kind.WENT_DOWN, downed), nowMs);
+            }
+            return true;
+        }
+    }
+
+    /** The watchdog found no live Agent to run the session: a companion run hears it end, a stock run ends as ever. */
+    static void failWithoutLiveAgent(AgentLpqSession session, long nowMs) {
+        String reason = "No live Agent remains";
+        if (!session.companionAdopted()) {
+            AgentLpqTerminationService.fail(session, reason, nowMs);
+            return;
+        }
+        synchronized (session) {
+            fail(session, reason, AgentLpqParting.GENERIC, nowMs);
+        }
+    }
+
+    /** Inside an uncleared stage, fewer than five members still stand in the event (up, not marked down, inside). */
+    private static boolean shortHanded(AgentLpqSession session) {
+        EventInstanceManager event = session.eventInstance();
+        if (!AgentLpqMemberVerdicts.insideEvent(session.phase()) || event == null || event.isEventCleared()) {
+            return false;
+        }
+        return session.members().stream()
+                .filter(member -> !member.down())
+                .map(member -> character(member.characterId()))
+                .filter(character -> character != null && character.getHp() > 0 && LPQ.event(character) == event)
+                .count() < AgentLpqDefinition.MIN_PARTY_SIZE;
+    }
+
+    /**
      * He clicks the Red Sign himself: nobody walks anywhere and nobody announces anything. The run goes on once he
      * stands in the event on stage 1, and ends without a word if he has not after COMPANION_ENTRY_WAIT_MS.
      */
@@ -5702,7 +5958,17 @@ final class AgentLpqCoordinator {
                 beginStageOne(session, nowMs);
                 companionStageLine(session, leader);
             }
-            case EJECT_ABSENT, GIVE_UP -> fail(session,
+            case EJECT_ABSENT -> {
+                // Five or more are inside: the run goes on without the rest, as a party of players would.
+                for (AgentLpqMemberState member : absent) {
+                    if (member.characterId() == session.eventLeaderId()) continue;
+                    departMember(session, member, "not inside at the end of the entry wait", nowMs);
+                }
+                if (!carriesOn(session, AgentLpqParting.SILENT, nowMs)) return;
+                beginStageOne(session, nowMs);
+                companionStageLine(session, leader);
+            }
+            case GIVE_UP -> fail(session,
                     "Fewer than five of the companion run entered LPQ within the entry wait", AgentLpqParting.SILENT,
                     nowMs);
             default -> { }
@@ -5954,7 +6220,11 @@ final class AgentLpqCoordinator {
         boolean recollecting = session.recollectStackObjectId() != 0 && session.recollectorId() == session.keyCarrierId();
         if (carrier != null && entry != null && !recollecting) {
             int held = carrier.getItemQuantity(AgentLpqDefinition.BOSS_KEY, false);
-            if (held > 0 && carrier.getMap() == leader.getMap()) {
+            if (held > 0 && aboutToGoDown(carrier)) {
+                // Its death would take the key out of the event with it (LudiPQ's event exclusives).
+                dropHandOver(session, member, carrier, entry, leader, AgentLpqDefinition.BOSS_KEY, held, 9,
+                        AgentLpqCompanionPlay.PassPlace.DYING, lying, nowMs);
+            } else if (held > 0 && carrier.getMap() == leader.getMap()) {
                 if (member.handOverStartedAtMs() == 0L) member.startHandOver(nowMs);
                 handOverItem(session, member, carrier, entry, leader, AgentLpqDefinition.BOSS_KEY, held, 9, lying,
                         nowMs);
@@ -6129,7 +6399,9 @@ final class AgentLpqCoordinator {
                 place, recollected != 0, leader.getId(), agent.getPosition());
         String name = leader.getName();
         if (itemId == AgentLpqDefinition.BOSS_KEY) {
-            if (place == AgentLpqCompanionPlay.PassPlace.BALLOON) {
+            if (place == AgentLpqCompanionPlay.PassPlace.DYING) {
+                coordinate(session, agent, "s9-key-dying", AgentLpqCompanionPlay.LEAVING_THE_KEY);
+            } else if (place == AgentLpqCompanionPlay.PassPlace.BALLOON) {
                 coordinate(session, agent, "s9-key-balloon", AgentLpqCompanionPlay.keyByTheBalloonLine(name));
             } else if (recollected != 0) {
                 coordinate(session, agent, "s9-key-recollect", AgentLpqCompanionPlay.keyRecollectedLine(name));
@@ -6268,9 +6540,9 @@ final class AgentLpqCoordinator {
         return drop.getItem() == null ? 1 : Math.max(1, drop.getItem().getQuantity());
     }
 
-    /** A loaded companion of the run, online and standing; null otherwise. */
+    /** A loaded companion of the run, online and standing (up, and not marked down); null otherwise. */
     private static Character standingCompanion(AgentLpqMemberState member) {
-        if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) return null;
+        if (member.memberType() != AgentLpqMemberState.MemberType.AGENT || member.down()) return null;
         Character agent = character(member.characterId());
         return agent != null && agent.getHp() > 0 ? agent : null;
     }
@@ -6411,7 +6683,7 @@ final class AgentLpqCoordinator {
     private static Character narrator(AgentLpqSession session, Character leader) {
         if (leader == null || leader.getMap() == null) return null;
         for (AgentLpqMemberState member : session.members()) {
-            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
+            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT || member.down()) continue;
             Character agent = character(member.characterId());
             if (agent != null && agent.getHp() > 0 && agent.getMap() == leader.getMap()) return agent;
         }

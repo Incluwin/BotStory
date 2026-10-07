@@ -1159,7 +1159,7 @@ tuning:
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_RECOLLECT_MAX: '2'
     # Values: 5-60 percent of maximum HP. Recommended: 25, as HPQ's CAKE_DYING_HP_PERCENT.
     # Purpose: A companion of a companion run carrying passes, at or below this share of its maximum HP with no HP potion left, drops its passes where it stands and says so, so a death does not take them out of the event.
-    # Technical: AgentLpqCompanionPlay.dying (HP is read first, then the HP-potion count the 'LPQ potions' line uses); companion runs only, stages 1-5 and 7.
+    # Technical: AgentLpqCompanionPlay.dying (HP is read first, then the HP-potion count the 'LPQ potions' line uses); companion runs only, stages 1-5 and 7, and stage 9's key carrier.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_DYING_HP_PERCENT: '25'
     # Values: 240000-900000 milliseconds, above STAGE_5_ROOM_CEILING_MS. Recommended: 480000, twice the ceiling.
     # Purpose: In a companion run a stage-5 room owner re-plans its route every STAGE_5_ROOM_CEILING_MS; at this time an ordinary room (502-505) with a box or pass still in it is given up: the owner walks out with what it holds and tells the leader what is left there. Rooms 501 and 506 never give up.
@@ -1181,6 +1181,10 @@ tuning:
     # Purpose: After the clear, the longest a companion run waits for its companions to claim and leave before it wraps up: the rest leave through the event's exit, and the run is recorded as cleared.
     # Technical: AgentLpqTerminationService.completeAfterClear from AgentLpqCoordinator.companionRunTick, measured from AgentLpqSession.clearedAtMs; humans are never waited for.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_AFTER_CLEAR_LIMIT_MS: '300000'
+    # Values: 10000-120000 milliseconds. Recommended: 45000, as HPQ.
+    # Purpose: How long a companion run waits for a downed companion (its respawn, then its host's tap-out), or for a member who went missing, before the run ends.
+    # Technical: AgentLpqMemberVerdicts timeouts and AgentLpqWatchdogRuntime's companion-run wait (AgentLpqCoordinator.awaitingRespawn); the stock departure gate still decides when a dead Agent may leave the event.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
     # Values: 0-10000 milliseconds. Recommended: 2000, as HPQ.
     # Purpose: An event that ends within this of LudiPQ's 45-minute timer is told to the players as the time running out.
     # Technical: AgentLpqParting.eventEnded from AgentLpqCoordinator.endedCause; the timer is AgentPartyQuestCatalog lpq eventTimerMs (LudiPQ.js eventTime 45); companion runs only.
