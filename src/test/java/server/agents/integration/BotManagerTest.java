@@ -491,6 +491,7 @@ class BotManagerTest {
     @Test
     void shouldCommitToBreakoutDirectionWhenSurroundedDespiteTargetSwap() {
         MapleMap sourceMap = createEmptyTestMap(910000063);
+        bound(sourceMap);
         sourceMap.getFootholds().insert(new Foothold(new Point(-500, 100), new Point(500, 100), 1));
         AgentNavigationGraphService.rebuildGraph(sourceMap);
         MapleMap map = spy(sourceMap);
@@ -526,6 +527,7 @@ class BotManagerTest {
     @Test
     void shouldClearBreakoutOnceNoLongerSurrounded() {
         MapleMap map = spy(createEmptyTestMap(910000064));
+        bound(map);
         map.getFootholds().insert(new Foothold(new Point(-500, 100), new Point(500, 100), 1));
         AgentNavigationGraphService.rebuildGraph(map);
         Character bot = mock(Character.class);
@@ -551,6 +553,7 @@ class BotManagerTest {
     @Test
     void shouldNotEngageBreakoutForSingleMobKiting() {
         MapleMap map = spy(createEmptyTestMap(910000065));
+        bound(map);
         map.getFootholds().insert(new Foothold(new Point(-500, 100), new Point(500, 100), 1));
         AgentNavigationGraphService.rebuildGraph(map);
         Character bot = mock(Character.class);
@@ -1548,6 +1551,15 @@ class BotManagerTest {
         MapleMap map = new MapleMap(mapId, 0, 0, mapId, 1.0f);
         map.setFootholds(new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000)));
         return map;
+    }
+
+    /**
+     * Gives the map bounds around its foothold (x -500..500, y 100). Without bounds every fall probe
+     * runs the 2,000-tick backstop, and a spied map records each map call: millions of invocations,
+     * over 4 GB of heap.
+     */
+    private static void bound(MapleMap map) {
+        map.setMapLineBoundings(-500, 500, -800, 800);
     }
 
     private static Character mockMovingBot(Point startPosition, MapleMap map) {

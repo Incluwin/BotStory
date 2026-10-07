@@ -1687,6 +1687,7 @@ class BotCombatManagerTest {
     @Test
     void shouldAllowPathScoringToBeatFarCurrentFootholdTarget() {
         MapleMap map = spy(new MapleMap(910009050, 0, 0, 910009050, 1.0f));
+        bound(map);
         server.maps.FootholdTree footholds = new server.maps.FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
         footholds.insert(new Foothold(new Point(0, 100), new Point(300, 100), 1));
         footholds.insert(new Foothold(new Point(0, 200), new Point(300, 200), 2));
@@ -1711,6 +1712,7 @@ class BotCombatManagerTest {
         // wins on distance score; with an AoE skill, the cluster anchor must win so
         // planAttack can fire an AoE plan that out-DPSes the basic single shot.
         MapleMap map = spy(new MapleMap(910009060, 0, 0, 910009060, 1.0f));
+        bound(map);
         server.maps.FootholdTree footholds = new server.maps.FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
         footholds.insert(new Foothold(new Point(-400, 100), new Point(400, 100), 1));
         map.setFootholds(footholds);
@@ -1801,6 +1803,7 @@ class BotCombatManagerTest {
     @Test
     void shouldUseRangedHitBoxTargetOutsideCurrentRegionWithoutPathingThere() {
         MapleMap map = spy(new MapleMap(910009051, 0, 0, 910009051, 1.0f));
+        bound(map);
         server.maps.FootholdTree footholds = new server.maps.FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
         footholds.insert(new Foothold(new Point(0, 100), new Point(200, 100), 1));
         footholds.insert(new Foothold(new Point(250, 130), new Point(450, 130), 2));
@@ -1895,6 +1898,15 @@ class BotCombatManagerTest {
                     .thenAnswer(invocation -> scheduledFuture);
             action.run();
         }
+    }
+
+    /**
+     * Gives the map bounds around the graph tests' footholds (x -400..450, y 100..200). Without bounds
+     * every fall probe runs the 2,000-tick backstop, and the spy records each map call: millions of
+     * invocations, up to 5 GB of heap.
+     */
+    private static void bound(MapleMap map) {
+        map.setMapLineBoundings(-500, 500, -700, 800);
     }
 
     private static Character mockBot(Point startPosition, MapleMap map, int startingHp, Integer stancePercent) {
