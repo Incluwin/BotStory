@@ -65,10 +65,18 @@ final class AgentEpqTerminationService {
         }
         session.clearEventInstance();
         boolean completed = session.phase() == AgentEpqSession.Phase.COMPLETED;
-        if (!completed) session.fail(reason, nowMs);
+        // Step 2.10: a companion run past the clear is cleared whoever ends it (a stall, the host's stop, an Agent
+        // removed): it reads COMPLETED and its host hears success. Every other run that did not complete fails.
+        boolean cleared = completed || (companionRun && pastTheClear);
+        if (cleared && !completed) {
+            session.complete(nowMs);
+            log.info("EPQ cleared run wrapped up: session={} reason={}", session.sessionId(), reason);
+        } else if (!completed) {
+            session.fail(reason, nowMs);
+        }
         AgentEpqSessionRegistry.remove(session);
         // A companion run's pace goes to the host's clear-time records; a stock run reports none.
-        AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), completed, reason, nowMs,
+        AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), cleared, reason, nowMs,
                 companionRun ? pace(session, nowMs) : null);
         log.info("EPQ session released: session={} outcome={} phase={} members={} companionRun={} pastTheClear={}"
                         + " rescues={}", session.sessionId(), completed ? "completed" : reason, phaseAtRelease,
