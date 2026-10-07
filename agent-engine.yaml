@@ -1212,7 +1212,7 @@ tuning:
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_AT_EXIT_PX: '150'
     # Values: 5000-60000 milliseconds. Recommended: 20000 so a leader who is looking around is not rushed.
     # Purpose: Sets how long a companion waits on the leader (at an exit, or while he holds a stage item) before it says one short hint.
-    # Technical: AgentEpqCompanionRun keeps one hint clock per kind on the session (exit, diluted poison, marbles, stone, altar); each hint is said once per run through the coordination chat.
+    # Technical: AgentEpqCompanionRun keeps one hint clock per kind on the session (exit, diluted poison, marbles, stone, altar); each hint is said once per run through the coordination chat. AgentEpqHandOver also uses it as the window in which one hand-over line (at his feet, by the NPC, picked back up) speaks for every carrier converging on the leader; the twenty line is always said.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_HINT_MS: '20000'
     # Values: 1-20 marbles. Recommended: 5 so the leader gets the marbles in four or so trips, not one by one.
     # Purpose: Sets how many monster marbles a companion holds before it brings them to a leader who is near.
@@ -1232,7 +1232,7 @@ tuning:
     server.agents.capabilities.partyquest.epq.AgentEpqHandOver.TIMEOUT_MS: '30000'
     # Values: 10000-120000 milliseconds. Recommended: 40000.
     # Purpose: Reminds the leader once about a stack a companion dropped for him that still lies on the floor.
-    # Technical: Keyed by the stack's map object id; said by its dropper through the coordination chat. Companion runs only.
+    # Technical: Keyed by the stack's map object id; said by its dropper through the coordination chat. One nudge per item speaks for every stack that comes due within this time after it, so stacks dropped together get one. Companion runs only.
     server.agents.capabilities.partyquest.epq.AgentEpqHandOver.PICKUP_NUDGE_MS: '40000'
     # Values: 60000-170000 milliseconds with the shipped item expiry; a value past config.yaml ITEM_EXPIRE_TIME minus ITEM_EXPIRE_CHECK is read as that, with one WARN. Recommended: 150000.
     # Purpose: Has a companion pick back up marbles or the stone the leader left lying before the map removes them, and drop them for him again.

@@ -162,6 +162,118 @@ class AgentEpqMarbleHandOverTest {
         said(mira, line);
     }
 
+    /**
+     * Review B: carriers converging on the leader as the twenty are made say one line between them: the first at-feet
+     * line, nothing from another carrier within LEADER_HINT_MS, and the twenty line from the drop that makes it.
+     */
+    @Test
+    void carriersConvergingOnHimSayOneAtFeetLineThenTheTwenty() {
+        AgentEpqSession session = companionRun();
+        run.holds(mira, MARBLE, 3);
+        run.holds(tobi, MARBLE, 2);
+        run.holds(una, MARBLE, 4);
+        when(run.actions.itemCount(ben, MARBLE)).thenReturn(11);
+        for (Character carrier : List.of(mira, tobi, una)) at(carrier, BEN_SPOT);
+        dropsLandWhereTheyAreMade(2_000L);
+        String atFeet = "the monster marbles are at your feet, Ben. pick them up.";
+
+        tick(session, mira, 2_000L);
+        tick(session, tobi, 2_500L);
+        tick(session, una, 3_000L);
+
+        verify(run.inventory()).dropItem(tobi, InventoryType.ETC, (short) 1, (short) 2);
+        verify(run.packets, times(1)).broadcastChatText(any(), eq(atFeet), anyBoolean(), anyInt());
+        said(mira, atFeet);
+        said(una, "that's all twenty at your feet, Ben. pick them up and give them to ellin up top.");
+    }
+
+    /** Review B: the twenty line speaks for a carrier that drops for him right after it. */
+    @Test
+    void theTwentyLineSpeaksForACarrierRightAfterIt() {
+        AgentEpqSession session = companionRun();
+        run.holds(mira, MARBLE, 6);
+        run.holds(tobi, MARBLE, 2);
+        when(run.actions.itemCount(ben, MARBLE)).thenReturn(14);
+        for (Character carrier : List.of(mira, tobi)) at(carrier, BEN_SPOT);
+        dropsLandWhereTheyAreMade(2_000L);
+
+        tick(session, mira, 2_000L);
+        tick(session, tobi, 2_500L);
+
+        verify(run.inventory()).dropItem(tobi, InventoryType.ETC, (short) 1, (short) 2);
+        said(mira, "that's all twenty at your feet, Ben. pick them up and give them to ellin up top.");
+        verify(run.packets, never()).broadcastChatText(any(),
+                eq("the monster marbles are at your feet, Ben. pick them up."), anyBoolean(), anyInt());
+    }
+
+    /** Review B: carriers that cannot reach him and leave their marbles by Ellin together say one line. */
+    @Test
+    void carriersLeavingTheirMarblesByEllinTogetherSayOneLine() {
+        AgentEpqSession session = companionRun();
+        run.holds(mira, MARBLE, 6);
+        run.holds(tobi, MARBLE, 6);
+        when(run.actions.canReach(any(), any(), any())).thenReturn(false);
+        for (Character carrier : List.of(mira, tobi)) {
+            at(carrier, ELLIN_SPOT);
+            when(run.actions.predictDropLanding(eq(carrier), any())).thenReturn(new Point(ELLIN_SPOT));
+        }
+        String line = "Ben, couldn't get to you, left the marbles by ellin.";
+
+        tick(session, mira, 2_000L);
+        tick(session, tobi, 2_500L);
+
+        verify(run.inventory()).dropItem(tobi, InventoryType.ETC, (short) 1, (short) 6);
+        verify(run.packets, times(1)).broadcastChatText(any(), eq(line), anyBoolean(), anyInt());
+        said(mira, line);
+    }
+
+    /** Review B: a carrier dropping for him well after the last at-feet line says its own. */
+    @Test
+    void aCarrierDroppingAfterTheWindowSaysItsOwnAtFeetLine() {
+        AgentEpqSession session = companionRun();
+        run.holds(mira, MARBLE, 6);
+        run.holds(tobi, MARBLE, 6);
+        for (Character carrier : List.of(mira, tobi)) at(carrier, BEN_SPOT);
+        String atFeet = "the monster marbles are at your feet, Ben. pick them up.";
+
+        tick(session, mira, 2_000L);
+        tick(session, tobi, 2_000L + AgentEpqCompanionRun.LEADER_HINT_MS);
+
+        said(mira, atFeet);
+        said(tobi, atFeet);
+    }
+
+    /** Review B: stacks of one convergence lying for him get one nudge between their droppers, never one each. */
+    @Test
+    void stacksDroppedTogetherGetOneNudge() {
+        AgentEpqSession session = companionRun();
+        run.drop(MARBLE, 3, new Point(0, 0), true, mira.getId(), 10_000L);
+        run.drop(MARBLE, 2, new Point(0, 0), true, tobi.getId(), 11_000L);
+        String line = "Ben, the monster marbles are still on the ground. grab them before they vanish.";
+
+        tick(session, mira, 50_000L);
+        tick(session, tobi, 51_000L);
+        tick(session, tobi, 95_000L); // the first nudge spoke for this stack too: nothing later either
+
+        verify(run.packets, times(1)).broadcastChatText(any(), eq(line), anyBoolean(), anyInt());
+        said(mira, line);
+    }
+
+    /** Review B: a stack dropped after the last nudge's window gets its own nudge. */
+    @Test
+    void aStackDroppedLaterGetsItsOwnNudge() {
+        AgentEpqSession session = companionRun();
+        run.drop(MARBLE, 3, new Point(0, 0), true, mira.getId(), 10_000L);
+        run.drop(MARBLE, 2, new Point(0, 0), true, tobi.getId(), 60_000L);
+        String line = "Ben, the monster marbles are still on the ground. grab them before they vanish.";
+
+        tick(session, mira, 50_000L);
+        tick(session, tobi, 100_000L);
+
+        said(mira, line);
+        said(tobi, line);
+    }
+
     @Test
     void itsDropperPicksAStackLeftLyingBackUpAndDropsItForHimAgain() {
         AgentEpqSession session = companionRun();

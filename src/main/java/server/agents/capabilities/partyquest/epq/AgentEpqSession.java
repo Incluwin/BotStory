@@ -34,6 +34,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<String> narrations = new HashSet<>();
     private final Set<Integer> seenInEvent = new HashSet<>();
     private final Map<String, Long> leaderHints = new HashMap<>();
+    private final Map<String, Long> lineWindows = new HashMap<>();
     private final Set<Integer> runCompanions = new HashSet<>();
     private final Map<Integer, Integer> recollectors = new HashMap<>();
     private final Map<Integer, Integer> recollectCounts = new HashMap<>();
@@ -285,6 +286,21 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** Stops a hint clock: the leader did what the companions were waiting for. */
     synchronized void clearLeaderHint(String key) { leaderHints.remove(key); }
+
+    /**
+     * One line for a burst of one kind (carriers converging on the leader, stacks lying together): true, and this
+     * kind's window starts now, when none started within {@code windowMs} before {@code nowMs}; false while one is
+     * open (the line already said speaks for this one).
+     */
+    synchronized boolean claimLineWindow(String kind, long nowMs, long windowMs) {
+        Long started = lineWindows.get(kind);
+        if (started != null && nowMs - started < windowMs) return false;
+        lineWindows.put(kind, nowMs);
+        return true;
+    }
+
+    /** Starts this kind's window now: a line said whatever the window (the twenty) still speaks for what follows. */
+    synchronized void startLineWindow(String kind, long nowMs) { lineWindows.put(kind, nowMs); }
 
     // A companion run's hand-overs (Step 2.7): read by the companions' own ticks and the bots' loot path.
 

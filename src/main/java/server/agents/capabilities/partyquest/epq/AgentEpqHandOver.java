@@ -169,7 +169,7 @@ final class AgentEpqHandOver {
                     || place == AgentEpqCompanionPlay.Place.BESIDE ? "handed" : "dropped");
         }
         logHandOver(session, agent, itemId, held, place, recollect, leader, at, landing);
-        say(session, agent, itemId, held, place, recollect, leader, lyingBefore, handOver);
+        say(session, agent, itemId, held, place, recollect, leader, lyingBefore, handOver, nowMs);
     }
 
     /**
@@ -226,9 +226,7 @@ final class AgentEpqHandOver {
             boolean dying = session.dyingStack(stack.getObjectId());
             if (!dying && stack.getOwnerId() == agent.getId() && leader != null
                     && AgentEpqCompanionPlay.nudgeDue(stack.getDropTime(), nowMs, PICKUP_NUDGE_MS)) {
-                AgentEpqCompanionRun.coordinate(session, agent,
-                        AgentEpqCompanionPlay.itemKey(itemId) + "-nudge-" + stack.getObjectId(),
-                        AgentEpqCompanionPlay.nudgeLine(itemId, leader.getName()));
+                nudge(session, agent, itemId, stack, leader, nowMs);
             }
         }
         if (aboutToGoDown(agent)) return false;
@@ -246,6 +244,22 @@ final class AgentEpqHandOver {
             return true;
         }
         return false;
+    }
+
+    /**
+     * E10 or E13n once for this stack, and one for stacks lying together (review B): a nudge of this item said within
+     * PICKUP_NUDGE_MS spoke for this stack too, which is then never nudged on its own.
+     */
+    private static void nudge(AgentEpqSession session, Character agent, int itemId, MapItem stack, Character leader,
+                              long nowMs) {
+        String item = AgentEpqCompanionPlay.itemKey(itemId);
+        String key = item + "-nudge-" + stack.getObjectId();
+        if (session.narrated(key)) return;
+        if (!session.claimLineWindow(item + "-nudge", nowMs, PICKUP_NUDGE_MS)) {
+            session.narrateOnce(key);
+            return;
+        }
+        AgentEpqCompanionRun.coordinate(session, agent, key, AgentEpqCompanionPlay.nudgeLine(itemId, leader.getName()));
     }
 
     /** Who picks this stack back up; this companion's id when any companion here may (a dying stack, no work Agent). */
@@ -295,13 +309,19 @@ final class AgentEpqHandOver {
                 .map(MapItem::getObjectId).orElse(0);
     }
 
+    /**
+     * The hand-over's line. Carriers converging on the leader say one line between them (review B): a line of the same
+     * place said within LEADER_HINT_MS speaks for this drop, except the twenty line, which is always said once.
+     */
     private static void say(AgentEpqSession session, Character agent, int itemId, int held,
                             AgentEpqCompanionPlay.Place place, boolean recollect, Character leader, int lyingBefore,
-                            int handOver) {
+                            int handOver, long nowMs) {
         if (leader == null) return;
         String item = AgentEpqCompanionPlay.itemKey(itemId);
         String name = leader.getName();
+        long window = AgentEpqCompanionRun.LEADER_HINT_MS;
         if (place == AgentEpqCompanionPlay.Place.NPC) {
+            if (!session.claimLineWindow(item + "-npc", nowMs, window)) return;
             AgentEpqCompanionRun.coordinate(session, agent,
                     item + "-by-" + AgentEpqCompanionPlay.npcKey(itemId) + "-" + handOver,
                     AgentEpqCompanionPlay.byNpcLine(itemId, name));
@@ -309,7 +329,9 @@ final class AgentEpqHandOver {
         }
         if (place == AgentEpqCompanionPlay.Place.HERE) return;
         boolean atHisFeet = place == AgentEpqCompanionPlay.Place.FEET;
+        String feet = item + "-feet";
         if (recollect) {
+            if (!session.claimLineWindow(feet, nowMs, window)) return;
             AgentEpqCompanionRun.coordinate(session, agent, item + "-recollected-" + handOver,
                     AgentEpqCompanionPlay.recollectedLine(itemId));
             return;
@@ -319,8 +341,10 @@ final class AgentEpqHandOver {
                 AgentEpqDefinition.REQUIRED_MONSTER_MARBLES)
                 && AgentEpqCompanionRun.coordinate(session, agent, "marbles-twenty",
                 AgentEpqCompanionPlay.marblesTwentyLine(name, atHisFeet))) {
+            session.startLineWindow(feet, nowMs);
             return;
         }
+        if (!session.claimLineWindow(feet, nowMs, window)) return;
         AgentEpqCompanionRun.coordinate(session, agent,
                 itemId == AgentEpqDefinition.GOLEMS_MARBLE ? "golem-marble-handed" : item + "-at-feet-" + handOver,
                 AgentEpqCompanionPlay.atFeetLine(itemId, name, atHisFeet));
