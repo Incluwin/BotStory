@@ -191,6 +191,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     static final class Host implements AgentBossRunHost.Rule {
         final List<String> calls;
         final Set<Integer> busy = new HashSet<>();
+        /** The members a granted seat tied to the run; a test removes one to let go of its tie. */
+        final Set<Integer> held = new HashSet<>();
         final List<AgentBossRunHost.RunEnded> ended = new ArrayList<>();
 
         Host(List<String> calls) {
@@ -200,7 +202,11 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         @Override
         public boolean seat(AgentBossRunHost.Seat seat) {
             calls.add("seat " + seat.agentCharacterId());
-            return !busy.contains(seat.agentCharacterId());
+            if (busy.contains(seat.agentCharacterId())) {
+                return false;
+            }
+            held.add(seat.agentCharacterId());
+            return true;
         }
 
         @Override

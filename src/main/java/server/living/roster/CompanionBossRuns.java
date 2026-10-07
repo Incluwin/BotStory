@@ -436,7 +436,8 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
     /**
      * Ties the companion to its owner's run key, from memory and at once (Commitments is synchronized and memory only);
-     * false when it is tied to another run (the run refuses it BUSY).
+     * false when it is tied to another run (the run refuses it BUSY, or counts it out MISSED_START at adoption). The run
+     * asks again at adoption, which ties a companion again that a park let go of.
      */
     @Override
     public boolean seat(Seat seat) {

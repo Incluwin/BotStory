@@ -500,7 +500,11 @@ public final class AgentBossRunSession {
         return true;
     }
 
-    /** Adopts a signed-up member the Start took into this expedition's event on the battle map. */
+    /**
+     * Adopts a signed-up member the Start took into this expedition's event on the battle map. It is tied to the run
+     * again first: an owner's logout before Start let go of its tie, and the list still took it in once it was loaded
+     * again. A member the host will not tie again missed the start and is never adopted.
+     */
     private void adoptOrMiss(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
                              boolean graceOver, long nowMs) {
         int agentId = member.agentId();
@@ -508,6 +512,12 @@ public final class AgentBossRunSession {
         EventInstanceManager memberEvent = agent == null ? null : agent.getEventInstance();
         if (memberEvent != null && memberEvent.getExpedition() == expedition
                 && agent.getMapId() == definition.battleMapId()) {
+            if (!host.seat(member.seat(definition.key(), sessionId))) {
+                log.info("Boss run adoption refused: session={} boss={} member={} (tied to another run)", sessionId,
+                        definition.key(), agentId);
+                memberOut(host, member, AgentBossRunHost.Out.MISSED_START);
+                return;
+            }
             if (ports.prepareAdoption(agentId, "entering " + definition.key(), nowMs)) {
                 if (event == null) {
                     event = memberEvent;

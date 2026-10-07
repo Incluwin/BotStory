@@ -88,6 +88,10 @@ class CompanionBossRunsTest {
         assertTrue(runs.seat(seat(ISOLDE)));
         assertEquals(KEY, game.commitments.keyOf(ISOLDE));
         assertTrue(runs.seat(seat(ISOLDE)), "the same run again keeps it");
+        // An owner's logout parks her and lets go of the tie; the seat at adoption ties her again.
+        game.commitments.releaseMember(ISOLDE);
+        assertTrue(runs.seat(seat(ISOLDE)), "the seat after a park ties her again");
+        assertEquals(KEY, game.commitments.keyOf(ISOLDE));
 
         game.commitments.commit("pq:kpq:s-1", ANN, THANE);
         assertFalse(runs.seat(seat(THANE)), "tied to a party quest");

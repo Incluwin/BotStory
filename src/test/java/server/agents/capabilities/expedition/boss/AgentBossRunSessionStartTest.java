@@ -94,14 +94,60 @@ class AgentBossRunSessionStartTest {
         assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase());
         assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(ISOLDE).phase());
         assertTrue(session.member(THANE).wentIn());
-        assertEquals(List.of("prepareAdoption " + THANE, "prepareAdoption " + ISOLDE), ports.calls);
+        // Each is tied to the run again just before it is adopted; a member still tied from its sign-up stays so.
+        assertEquals(List.of("seat " + THANE, "prepareAdoption " + THANE, "seat " + ISOLDE,
+                "prepareAdoption " + ISOLDE), ports.calls);
+        assertEquals(Set.of(THANE, ISOLDE), host.held);
         assertEquals(List.of("adopt " + THANE + " 0", "adopt " + ISOLDE + " 1", "tick [" + THANE + ", " + ISOLDE + "]"),
                 fight.calls);
         assertEquals(AgentBossRunSession.Phase.FIGHTING, session.phase());
 
         session.tick(ports, host, START + 1_000L);
+        assertEquals(1L, ports.count("seat " + THANE));
         assertEquals(1L, ports.count("prepareAdoption " + THANE));
         assertEquals(1L, fight.calls.stream().filter(call -> call.startsWith("adopt " + THANE)).count());
+    }
+
+    @Test
+    void signedUpMemberParkedBeforeStartAndLoadedAgainIsTiedToTheRunAgainWhenAdopted() {
+        AgentBossRunSession session = signedUp(List.of(THANE), List.of());
+        assertTrue(host.held.contains(THANE), "the sign-up tied Thane to the run");
+        // The owner logs out on Mu Young's map: the park lets go of Thane's tie and unloads him, the list keeps him.
+        host.held.remove(THANE);
+        ports.agents.remove(THANE);
+        session.tick(ports, host, NOW + 10_000L);
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(THANE).phase());
+        // The owner is back within the list time: Thane is loaded beside him again, and the Start warps him in.
+        ports.place(THANE, RECRUIT_MAP, MU_YOUNG_X - 50, FLOOR_Y, 70);
+        start(session);
+        inside(THANE);
+
+        session.tick(ports, host, START + 500L);
+
+        assertTrue(host.held.contains(THANE), "tied to the run again before he fights");
+        assertEquals(List.of("seat " + THANE, "prepareAdoption " + THANE), ports.calls);
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase());
+        assertEquals(List.of("adopt " + THANE + " 0", "tick [" + THANE + "]"), fight.calls);
+    }
+
+    @Test
+    void memberTheHostWillNotTieAgainAtAdoptionMissesTheStartAtOnceAndIsNeverAdopted() {
+        AgentBossRunSession session = started(List.of(THANE, ISOLDE), List.of());
+        inside(THANE);
+        inside(ISOLDE);
+        // Thane was let go before Start, and another run holds him now.
+        host.held.remove(THANE);
+        host.busy.add(THANE);
+
+        session.tick(ports, host, START + 500L);
+
+        assertEquals(AgentBossRunMember.Phase.OUT, session.member(THANE).phase());
+        assertEquals(AgentBossRunHost.Out.MISSED_START, session.member(THANE).out());
+        assertFalse(session.member(THANE).wentIn());
+        assertEquals(List.of("seat " + THANE, "out " + THANE + " MISSED_START", "seat " + ISOLDE,
+                "prepareAdoption " + ISOLDE), ports.calls);
+        assertEquals(List.of("adopt " + ISOLDE + " 1", "tick [" + ISOLDE + "]"), fight.calls);
+        assertEquals(AgentBossRunSession.Phase.FIGHTING, session.phase());
     }
 
     @Test
@@ -317,6 +363,13 @@ class AgentBossRunSessionStartTest {
      * store, ticked once after the leader pressed Start (at {@link #START}); call logs are cleared.
      */
     private AgentBossRunSession started(List<Integer> registered, List<Integer> waiting) {
+        AgentBossRunSession session = signedUp(registered, waiting);
+        start(session);
+        return session;
+    }
+
+    /** A run whose {@code registered} members signed up and whose {@code waiting} members are at the store; no Start. */
+    private AgentBossRunSession signedUp(List<Integer> registered, List<Integer> waiting) {
         AgentBossRunSession session = new AgentBossRunSession(7L, AgentBossRunCatalog.EASY_BALROG, expedition, fight,
                 NOW);
         AgentBossRunRegistry.put(session);
@@ -335,13 +388,16 @@ class AgentBossRunSessionStartTest {
         }
         registered.forEach(agentId ->
                 assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(agentId).phase()));
+        return session;
+    }
 
+    /** The leader pressed Start (at {@link #START}): the run is ticked once into STARTING; call logs are cleared. */
+    private void start(AgentBossRunSession session) {
         when(expedition.isRegistering()).thenReturn(false);
         session.tick(ports, host, START);
         assertEquals(AgentBossRunSession.Phase.STARTING, session.phase());
         ports.calls.clear();
         fight.calls.clear();
-        return session;
     }
 
     /** The stock Start warp: the member stands on the battle map in the expedition's event. */

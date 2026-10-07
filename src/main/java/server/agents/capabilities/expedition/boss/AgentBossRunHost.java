@@ -71,7 +71,11 @@ public final class AgentBossRunHost {
      * scheduler), so any work it needs must be submitted elsewhere.
      */
     public interface Rule {
-        /** Ties the member to the run just before it signs up; false keeps it out (refused BUSY). Synchronous. */
+        /**
+         * Ties the member to the run just before it signs up, and again just before it is adopted at Start; false keeps
+         * it out (refused BUSY before sign-up, out MISSED_START at adoption). The same seat again answers true.
+         * Synchronous.
+         */
         boolean seat(Seat seat);
 
         /** The entry NPC listed the member. */
