@@ -1,16 +1,23 @@
 package server.agents.capabilities.partyquest.epq;
 
 import client.Character;
+import client.inventory.Inventory;
+import client.inventory.InventoryType;
+import client.inventory.Item;
 import org.mockito.MockedStatic;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
+import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.CharacterGateway;
+import server.agents.integration.InventoryGateway;
+import server.agents.integration.AgentPartyMemberSnapshot;
+import server.agents.integration.AgentPartySnapshot;
 import server.agents.integration.PacketGateway;
 import server.agents.integration.PartyGateway;
 import server.agents.integration.PartyQuestGateway;
@@ -55,6 +62,8 @@ final class EpqRunFixture implements AutoCloseable {
     private final List<MapItem> drops = new ArrayList<>();
     private final List<AgentEpqSession> sessions = new ArrayList<>();
     private final List<MockedStatic<?>> statics = new ArrayList<>();
+    private int nextDropObjectId = 10_000;
+    private InventoryGateway inventory;
 
     EpqRunFixture() {
         registry = open(AgentRuntimeRegistry.class);
@@ -144,11 +153,84 @@ final class EpqRunFixture implements AutoCloseable {
         }
         session.setLeadership(members[0].getId(), executionAgentId);
         session.setCompanionAdopted(companionAdopted);
+        party(members);
         session.bindEventInstance(event);
         session.transition(phase, 1_000L);
         AgentEpqSessionRegistry.registerComplete(session);
         sessions.add(session);
         return session;
+    }
+
+    /**
+     * As {@link #session}, never bound to the event and left in PREPARING: the run as admitted, before its leader
+     * clicked Ellin.
+     */
+    AgentEpqSession unboundSession(AgentEpqSession.Mode mode, boolean companionAdopted, Character... members) {
+        AgentEpqSession session = new AgentEpqSession(mode, 7L, members[0].getId(), 1_000L);
+        int executionAgentId = 0;
+        for (Character member : members) {
+            boolean companion = entries.containsKey(member.getId());
+            session.addMember(member.getId(), companion
+                    ? AgentEpqMemberState.MemberType.AGENT : AgentEpqMemberState.MemberType.HUMAN);
+            if (companion && executionAgentId == 0) executionAgentId = member.getId();
+        }
+        session.setLeadership(members[0].getId(), executionAgentId);
+        session.setCompanionAdopted(companionAdopted);
+        AgentEpqSessionRegistry.registerComplete(session);
+        sessions.add(session);
+        return session;
+    }
+
+    /** A drop lying on the map: a player's (a companion's hand-over: its owner is the dropper) or the map's own. */
+    MapItem drop(int itemId, int quantity, Point position, boolean playerDrop, int ownerId, long droppedAtMs) {
+        MapItem drop = mock(MapItem.class);
+        Item item = mock(Item.class);
+        when(item.getQuantity()).thenReturn((short) quantity);
+        when(drop.getItem()).thenReturn(item);
+        when(drop.getItemId()).thenReturn(itemId);
+        when(drop.getPosition()).thenReturn(new Point(position));
+        when(drop.isPlayerDrop()).thenReturn(playerDrop);
+        when(drop.getOwnerId()).thenReturn(ownerId);
+        when(drop.getDropTime()).thenReturn(droppedAtMs);
+        when(drop.getObjectId()).thenReturn(nextDropObjectId++);
+        drops.add(drop);
+        return drop;
+    }
+
+    /** The drop is picked up (or expired): it no longer lies on the map. */
+    void pickUp(MapItem drop) {
+        when(drop.isPickedUp()).thenReturn(true);
+        drops.remove(drop);
+    }
+
+    /** The member's Etc bag holds this many of the item, as a drop reads it. */
+    void holds(Character member, int itemId, int quantity) {
+        Inventory etc = mock(Inventory.class);
+        Item item = mock(Item.class);
+        when(item.getQuantity()).thenReturn((short) quantity);
+        when(item.getPosition()).thenReturn((short) 1);
+        when(etc.findById(itemId)).thenReturn(item);
+        when(member.getInventory(InventoryType.ETC)).thenReturn(etc);
+        when(actions.itemCount(member, itemId)).thenReturn(quantity);
+    }
+
+    /** The live party as every member sees it: these members, the first leading. */
+    void party(Character... members) {
+        List<AgentPartyMemberSnapshot> snapshots = new ArrayList<>();
+        for (int i = 0; i < members.length; i++) {
+            snapshots.add(new AgentPartyMemberSnapshot(members[i].getId(), members[i].getName(), i == 0,
+                    members[i].getMapId()));
+        }
+        when(party.snapshot(any())).thenReturn(new AgentPartySnapshot(1, snapshots));
+    }
+
+    /** The inventory gateway (its drops are recorded, not run), opened on first use. */
+    InventoryGateway inventory() {
+        if (inventory == null) {
+            inventory = mock(InventoryGateway.class);
+            open(AgentInventoryGatewayRuntime.class).when(AgentInventoryGatewayRuntime::inventory).thenReturn(inventory);
+        }
+        return inventory;
     }
 
     private <T> MockedStatic<T> open(Class<T> type) {

@@ -33,7 +33,7 @@ class AgentEpqLineLogTest {
 
     @Test
     void theLobbyReadyLineIsLoggedAndStillSaidInPartyAndMapChat() {
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.PREPARING, ben, mira, tobi, una);
         try (EpqLogLines lines = new EpqLogLines(AgentEpqDialogue.class)) {
             AgentEpqCoordinator.tickMember(session, run.entry(mira), mira, 1_600L); // before Mira's turn
@@ -51,7 +51,7 @@ class AgentEpqLineLogTest {
     @Test
     void theBossLineIsLoggedOnceUnderItsClaimKey() {
         for (Character member : List.of(ben, mira, tobi, una)) run.onMap(member, AgentEpqDefinition.BOSS_MAP);
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.BOSS, ben, mira, tobi, una);
         when(run.actions.liveMonsterCount(any(), any())).thenReturn(1);
         try (EpqLogLines lines = new EpqLogLines(AgentEpqDialogue.class)) {
@@ -70,7 +70,7 @@ class AgentEpqLineLogTest {
     @Test
     void theMarbleHandoffLineIsLoggedUnderItsMemberKey() {
         for (Character member : List.of(ben, mira, tobi, una)) run.onMap(member, AgentEpqDefinition.STAGE_FOUR_MAP);
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
         when(run.actions.npcPosition(tobi, AgentEpqDefinition.STAGE_NPC)).thenReturn(new Point(48, 1));
         // Tobi holds 20 marbles: his own count, the party total, the drop, and then none left after it.

@@ -22,6 +22,12 @@ public final class AgentEpqMemberState {
     private int topUpSpentMapId;
     private boolean bossResting;
     private java.awt.Point bossRestPoint;
+    private int handOverItemId;
+    private long handOverStartedAtMs;
+    private boolean handOverToNpc;
+    private boolean handOverRecollect;
+    private int handOverRecollectCount;
+    private int heldBefore;
     private final Set<String> announcements = new HashSet<>();
 
     AgentEpqMemberState(int characterId, MemberType memberType) {
@@ -133,4 +139,44 @@ public final class AgentEpqMemberState {
         bossResting = false;
         bossRestPoint = null;
     }
+
+    // A companion run's hand-over at the leader's feet (Step 2.7), owned by this member's own tick.
+
+    /** The item of the open hand-over, or 0. */
+    int handOverItemId() { return handOverItemId; }
+
+    /** When the open hand-over began, or 0 when none is open. */
+    long handOverStartedAtMs() { return handOverStartedAtMs; }
+
+    /** Whether the open hand-over goes to the stage's NPC (the leader could not be reached in time). */
+    boolean handOverToNpc() { return handOverToNpc; }
+
+    /** Whether the open hand-over carries a stack picked back up from the floor. */
+    boolean handOverRecollect() { return handOverRecollect; }
+
+    /** How often the carried stack's lineage was picked back up, this time included; 0 for a fresh stack. */
+    int handOverRecollectCount() { return handOverRecollectCount; }
+
+    /** What it held as it set out to pick a stack back up. */
+    int heldBefore() { return heldBefore; }
+
+    void startHandOver(int itemId, long nowMs, boolean recollect, int recollectCount) {
+        handOverItemId = itemId;
+        handOverStartedAtMs = Math.max(1L, nowMs);
+        handOverToNpc = false;
+        handOverRecollect = recollect;
+        handOverRecollectCount = Math.max(0, recollectCount);
+    }
+
+    void sendHandOverToNpc() { handOverToNpc = true; }
+
+    void endHandOver() {
+        handOverItemId = 0;
+        handOverStartedAtMs = 0L;
+        handOverToNpc = false;
+        handOverRecollect = false;
+        handOverRecollectCount = 0;
+    }
+
+    void setHeldBefore(int held) { heldBefore = Math.max(0, held); }
 }

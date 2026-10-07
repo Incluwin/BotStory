@@ -69,18 +69,27 @@ public final class AgentEpqCoordinator {
     private AgentEpqCoordinator() { }
 
     public static void tickSession(AgentEpqSession session, long nowMs) {
-        if (nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS && !session.terminal()) {
-            fail(session, "EPQ event timer expired", nowMs);
+        if (eventTimerExpired(session, nowMs) && !session.terminal()) {
+            AgentEpqCompanionRun.fail(session, "EPQ event timer expired",
+                    AgentEpqParting.of(AgentEpqParting.Kind.TIMEOUT), null, nowMs);
             return;
         }
+        // Step 2.12: a companion run's companions in its instance tick at full rate, whoever leads.
+        if (AgentEpqCompanionRun.acting(session)) holdFullRate(session);
         Character leader = character(session.eventLeaderId());
         if (leader == null) {
+            // A companion run whose leader is offline before the party went in waits out the entry wait; past the clear
+            // its companions leave without him.
+            if (AgentEpqCompanionRun.acting(session) && AgentEpqCompanionRun.leaderOffline(session, nowMs)) return;
             AgentEpqWatchdogRuntime.tick(session, nowMs);
             return;
         }
+        if (AgentEpqCompanionRun.acting(session) && AgentEpqCompanionRun.beforeEntry(session, leader, nowMs)) return;
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentEpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance());
+            session.markEnteredEvent(nowMs);
+            if (session.companionAdopted()) AgentEpqCompanionRun.beginPace(session, nowMs); // Step 5.2
             session.markProgress(nowMs);
         }
         // EPQ base fix 2: before the clear, a bound event that was disposed, or that no longer holds the leader (the
@@ -92,29 +101,82 @@ public final class AgentEpqCoordinator {
                 && !AgentEpqTerminationService.pastTheClear(bound)
                 && (bound.isEventDisposed() || leader.getEventInstance() != bound)) {
             log.warn("EPQ event end detail: session={} {}", session.sessionId(), eventEndDetail(session, leader));
-            fail(session, EVENT_ENDED_OR_EXPIRED, nowMs);
+            AgentEpqCompanionRun.fail(session, EVENT_ENDED_OR_EXPIRED,
+                    AgentEpqCompanionRun.eventEnded(session, leader, nowMs), null, nowMs);
             return;
         }
         for (AgentEpqMemberState member : session.members()) {
             Character character = character(member.characterId());
             if (character != null) observeDeparture(session, character, leader);
         }
+        // Step 2.9: past the clear a companion run's companions wait for their leader, then leave on their own.
+        if (AgentEpqCompanionRun.acting(session) && AgentEpqTerminationService.pastTheClear(bound)) {
+            AgentEpqCompanionRun.afterClear(session, leader, nowMs);
+        }
+        // Step 4.3: inside the event before the clear the leader's rules, the live party and every member's verdict.
+        if (AgentEpqCompanionRun.acting(session) && bound != null && !AgentEpqTerminationService.pastTheClear(bound)
+                && (!AgentEpqCompanionRun.members(session, leader, nowMs)
+                || AgentEpqCompanionRun.objectiveLost(session, leader, nowMs))) {
+            return; // Step 4.5: the stage's objective gone for good ends the run too
+        }
         boolean rewardReady = AgentEpqTerminationService.pastTheClear(bound) && leader.getEventInstance() == bound;
         AgentEpqSession.Phase observed = phaseForMap(leader.getMapId(), rewardReady);
         if (observed != null) transition(session, observed, nowMs);
         session.observeProgressSignature(progressSignature(session, leader), nowMs);
         AgentEpqWatchdogRuntime.tick(session, nowMs);
+        if (session.companionAdopted() && session.terminal()) return; // the watchdog ended it: nothing more
         logMembersDown(session);
         logBossProgress(session, leader, nowMs);
-        // A member is out once it is off the EPQ maps or no longer in the bound event (a leaver stands on the normal
-        // 930000800, observed or not).
-        if (session.phase() == AgentEpqSession.Phase.EXITING
-                && session.members().stream().map(member -> character(member.characterId()))
+        // Step 3.2: before the clear a companion run's companions coach their leader through each stage.
+        if (AgentEpqCompanionRun.acting(session) && !AgentEpqTerminationService.pastTheClear(bound)) {
+            AgentEpqCompanionRun.coach(session, leader, nowMs);
+            AgentEpqCompanionRun.observePace(session, leader, nowMs); // Step 5.2
+        }
+        completeWhenOut(session, nowMs);
+    }
+
+    /**
+     * Step 2.12: every companion standing in the run's bound event runs at full rate (KPQ's rule: rooms nobody watches
+     * would run at reduced fidelity); one out of the event is let go. A run whose release began takes no hold back.
+     */
+    private static void holdFullRate(AgentEpqSession session) {
+        EventInstanceManager bound = session.eventInstance();
+        for (AgentEpqMemberState member : session.members()) {
+            if (member.memberType() != AgentEpqMemberState.MemberType.AGENT) continue;
+            Character agent = character(member.characterId());
+            boolean wanted = !session.terminationStarted() && agent != null && bound != null
+                    && agent.getEventInstance() == bound;
+            AgentEpqFullRateSimulation.apply(session, member.characterId(),
+                    AgentRuntimeRegistry.findByAgentCharacterId(member.characterId()), wanted);
+        }
+    }
+
+    /**
+     * EXITING completes once every member is out: off the EPQ maps or no longer in the bound event (a leaver stands on
+     * the normal 930000800, observed or not). A companion run awaits its companions only, never a human (Step 2.9).
+     */
+    static void completeWhenOut(AgentEpqSession session, long nowMs) {
+        if (session.phase() != AgentEpqSession.Phase.EXITING) return;
+        boolean companionRun = session.companionAdopted();
+        if (companionRun && !AgentEpqCompanionRun.acting(session)) return;
+        EventInstanceManager bound = session.eventInstance();
+        if (session.members().stream()
+                .filter(member -> !companionRun || member.memberType() == AgentEpqMemberState.MemberType.AGENT)
+                .map(member -> character(member.characterId()))
                 .filter(java.util.Objects::nonNull)
                 .noneMatch(member -> AgentEpqDefinition.isEventMap(member.getMapId())
                         && member.getEventInstance() == bound)) {
             session.complete(nowMs);
         }
+    }
+
+    /**
+     * The coordinator's backstop for the event's 30-minute timer: a stock run counts from its admission, a companion
+     * run from the party's entry (AgentEpqCompanionRun.timerExpired).
+     */
+    private static boolean eventTimerExpired(AgentEpqSession session, long nowMs) {
+        if (session.companionAdopted()) return AgentEpqCompanionRun.timerExpired(session, nowMs, EVENT_TIMEOUT_MS);
+        return nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS;
     }
 
     /** The bound event still runs and still holds the run's leader. */
@@ -198,6 +260,11 @@ public final class AgentEpqCoordinator {
         AgentEpqMemberState member = session.member(agent.getId());
         if (member == null || member.memberType() != AgentEpqMemberState.MemberType.AGENT
                 || nowMs < member.nextActionAtMs()) return;
+        if (session.companionAdopted() && !AgentEpqCompanionRun.acting(session)) {
+            // A companion run that ended or is being released does nothing more, and never falls back to stock play.
+            actions().stop(entry);
+            return;
+        }
         entry.capabilityStates().require(AgentCombatSkillConstraintState.STATE_KEY)
                 .requireAttackSkill();
         if (agent.getMapId() != AgentEpqDefinition.STAGE_FOUR_MAP) {
@@ -215,18 +282,26 @@ public final class AgentEpqCoordinator {
         }
         if (session.eventInstance() != null && AgentEpqDefinition.isEventMap(agent.getMapId())
                 && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
-            fail(session, "EPQ member entered a different event instance", nowMs);
+            AgentEpqCompanionRun.fail(session, "EPQ member entered a different event instance",
+                    AgentEpqParting.GENERIC, null, nowMs);
             return;
         }
 
         switch (agent.getMapId()) {
-            case AgentEpqDefinition.RECRUIT_MAP -> enterEvent(session, entry, agent, member, nowMs);
-            case AgentEpqDefinition.ENTRANCE_MAP -> {
-                if (!topUp(session, entry, agent, member, nowMs)) enterPortal(entry, agent, 4, member, nowMs);
+            case AgentEpqDefinition.RECRUIT_MAP -> {
+                // A companion run's leader clicks Ellin himself: his companions neither announce nor talk to her.
+                if (session.companionAdopted()) actions().stop(entry);
+                else enterEvent(session, entry, agent, member, nowMs);
             }
-            case AgentEpqDefinition.STAGE_ONE_MAP -> stageOne(entry, agent, member, nowMs);
+            case AgentEpqDefinition.ENTRANCE_MAP -> {
+                if (!topUp(session, entry, agent, member, nowMs)
+                        && !holdAtWalkingExit(session, entry, agent, 4, nowMs)) {
+                    enterPortal(entry, agent, 4, member, nowMs);
+                }
+            }
+            case AgentEpqDefinition.STAGE_ONE_MAP -> stageOne(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_TWO_MAP -> stageTwo(session, entry, agent, member, nowMs);
-            case AgentEpqDefinition.STAGE_THREE_MAP -> stageThree(entry, agent, member, nowMs);
+            case AgentEpqDefinition.STAGE_THREE_MAP -> stageThree(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_FOUR_MAP -> stageFour(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_FIVE_MAP -> stageFive(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.BOSS_MAP -> boss(session, entry, agent, member, nowMs);
@@ -237,7 +312,9 @@ public final class AgentEpqCoordinator {
                 if (session.phase().ordinal() >= AgentEpqSession.Phase.REWARD.ordinal()
                         || (AgentEpqTerminationService.pastTheClear(session.eventInstance())
                         && agent.getEventInstance() == session.eventInstance())) {
-                    reward(session, entry, agent, member, nowMs);
+                    // Step 2.11: a companion run's companions finish at the fountain without hitting it.
+                    if (session.companionAdopted()) AgentEpqCompanionRun.reward(session, entry, agent, member, nowMs);
+                    else reward(session, entry, agent, member, nowMs);
                 } else {
                     actions().stop(entry);
                 }
@@ -268,10 +345,10 @@ public final class AgentEpqCoordinator {
         }
     }
 
-    private static void stageOne(AgentRuntimeEntry entry, Character agent,
+    private static void stageOne(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                  AgentEpqMemberState member, long nowMs) {
         if (actions().liveMonsterCount(agent, Set.of(AgentEpqDefinition.STAGE_ONE_MOB)) == 0) {
-            enterPortal(entry, agent, 3, member, nowMs);
+            if (!holdAtWalkingExit(session, entry, agent, 3, nowMs)) enterPortal(entry, agent, 3, member, nowMs);
             return;
         }
         actions().grind(entry, Set.of(AgentEpqDefinition.STAGE_ONE_MOB));
@@ -303,7 +380,7 @@ public final class AgentEpqCoordinator {
                         "Filled bottles applied: " + STAGE_TWO_BOTTLES_REQUIRED + "/" + STAGE_TWO_BOTTLES_REQUIRED
                         + ". The thorns are open.");
             }
-            enterPortal(entry, agent, 3, member, nowMs);
+            if (!holdAtWalkingExit(session, entry, agent, 3, nowMs)) enterPortal(entry, agent, 3, member, nowMs);
             return;
         }
         Reactor pond = agent.getMap().getReactorById(AgentEpqDefinition.POND_REACTOR);
@@ -360,7 +437,9 @@ public final class AgentEpqCoordinator {
                 .filter(mob -> mob.getId() == AgentEpqDefinition.STAGE_TWO_MOB)
                 .toList();
         List<Integer> lurers = stageTwoLurerIds(session);
-        int lureSide = lurers.indexOf(agent.getId());
+        int lureSide = session.companionAdopted()
+                ? companionLureSide(session, agent, bugs, pond, lurers)
+                : lurers.indexOf(agent.getId());
         Monster tagged = bugs.stream()
                 .filter(mob -> mob.getObjectId() == member.stageTwoTaggedObjectId())
                 .findFirst().orElse(null);
@@ -411,8 +490,11 @@ public final class AgentEpqCoordinator {
         if (bugs.isEmpty()) {
             member.clearStageTwoTag();
             actions().stop(entry);
-            agent.getMap().instanceMapForceRespawn();
-            rescue(session, "respawn-bugs", agent);
+            // A companion run plays stock: EllinPQ.respawnStg2 refills the bugs every 4 s while a player stands here.
+            if (!session.companionAdopted()) {
+                agent.getMap().instanceMapForceRespawn();
+                rescue(session, "respawn-bugs", agent);
+            }
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -428,10 +510,33 @@ public final class AgentEpqCoordinator {
         attackTarget(entry, agent, target, member, nowMs, true, pond.getPosition());
     }
 
-    private static void stageThree(AgentRuntimeEntry entry, Character agent,
+    /**
+     * Step 2.5: a companion run's lure side (AgentEpqCompanionPlay.lureSide). One lurer works whichever side has a bug,
+     * and the carrier with no lurer at all lures too while no Stone Bug waits in the pond and no diluted poison is held
+     * or lying; -1 is no lure (it hits the bug in the pond and carries, as today).
+     */
+    private static int companionLureSide(AgentEpqSession session, Character agent, List<Monster> bugs, Reactor pond,
+                                         List<Integer> lurers) {
+        boolean left = stageTwoSideTarget(bugs, pond.getPosition(), pond.getArea(), 0) != null;
+        boolean right = stageTwoSideTarget(bugs, pond.getPosition(), pond.getArea(), 1) != null;
+        boolean loneCarrier = lurers.isEmpty() && agent.getId() == workAgentId(session);
+        boolean bugInPond = bugs.stream()
+                .anyMatch(mob -> mob.getPosition() != null && pond.getArea().contains(mob.getPosition()));
+        boolean bottle = actions().itemCount(agent, AgentEpqDefinition.PURIFIED_POISON) > 0
+                || AgentMapPerception.items(agent.getMap()).stream().anyMatch(drop -> !drop.isPickedUp()
+                && drop.getItemId() == AgentEpqDefinition.PURIFIED_POISON);
+        return AgentEpqCompanionPlay.lureSide(lurers.indexOf(agent.getId()), lurers.size(), left, right, loneCarrier,
+                bugInPond, bottle);
+    }
+
+    private static void stageThree(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                    AgentEpqMemberState member, long nowMs) {
         Point coordinator = npcApproachPoint(agent, AgentEpqDefinition.STAGE_NPC);
         if (near(agent.getPosition(), coordinator, MAZE_EXIT_APPROACH_RADIUS)) {
+            // Step 3.2: the companion that reaches maze Ellin first says so (E7), before its talk.
+            if (session.companionAdopted() && near(agent.getPosition(), coordinator, NPC_RADIUS)) {
+                AgentEpqCompanionRun.mazeFound(session, agent);
+            }
             if (runNearbyNpc(entry, agent, AgentEpqDefinition.STAGE_NPC)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -451,6 +556,11 @@ public final class AgentEpqCoordinator {
         // below the map and trigger the global emergency recovery teleport.
         actions().setHorizontalBoundary(entry, AgentEpqDefinition.STAGE_FOUR_MAP,
                 STAGE_FOUR_MIN_X, STAGE_FOUR_MAX_X);
+        // A companion run's companions bring their marbles to the leader's feet (Step 2.7).
+        if (session.companionAdopted() && AgentEpqHandOver.tick(session, entry, agent, member,
+                AgentEpqDefinition.MONSTER_MARBLE, AgentEpqDefinition.STAGE_NPC, nowMs)) {
+            return;
+        }
         int monsterMarbles = actions().itemCount(agent, AgentEpqDefinition.MONSTER_MARBLE);
         int total = stageItemTotal(session, agent, AgentEpqDefinition.MONSTER_MARBLE);
         if (agent.getId() == workAgentId(session)) {
@@ -473,7 +583,7 @@ public final class AgentEpqCoordinator {
                         else actions().stop(entry);
                     }
                 }
-            } else if (monsterMarbles > 0) {
+            } else if (monsterMarbles > 0 && !session.companionAdopted()) {
                 dropStackNearNpc(session, entry, agent, AgentEpqDefinition.MONSTER_MARBLE,
                         AgentEpqDefinition.STAGE_NPC, member, nowMs, "stage4-handoff");
                 if (actions().itemCount(agent, AgentEpqDefinition.MONSTER_MARBLE) == 0) {
@@ -488,6 +598,12 @@ public final class AgentEpqCoordinator {
             return;
         }
         if (actions().itemCount(agent, AgentEpqDefinition.PURIFICATION_MARBLE) == 0) {
+            // In a companion run nobody asks Ellin for purifiers with no flower left: then her Yes warps the talker out.
+            if (session.companionAdopted() && flowers(agent).isEmpty()) {
+                actions().stop(entry);
+                member.deferUntil(nowMs + ACTION_RETRY_MS);
+                return;
+            }
             if (runNearbyNpc(entry, agent, AgentEpqDefinition.STAGE_NPC)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -498,8 +614,10 @@ public final class AgentEpqCoordinator {
                 mob -> mob.getPosition().distanceSq(agent.getPosition()));
         if (target == null) {
             actions().stop(entry);
-            agent.getMap().instanceMapForceRespawn();
-            rescue(session, "respawn-flowers", agent);
+            if (!session.companionAdopted()) { // a companion run plays stock: no forced respawn
+                agent.getMap().instanceMapForceRespawn();
+                rescue(session, "respawn-flowers", agent);
+            }
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -527,11 +645,27 @@ public final class AgentEpqCoordinator {
 
     private static void stageFive(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                   AgentEpqMemberState member, long nowMs) {
+        boolean companionRun = session.companionAdopted();
+        if (companionRun) {
+            // Step 2.8: the companion that finds the stone says so once and brings it to the leader's feet; no
+            // companion talks to the sprite (the leader's own click).
+            if (actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE) > 0
+                    && session.noteStoneFinder(agent.getId())) {
+                AgentEpqCompanionRun.coordinate(session, agent, "stone-found", AgentEpqCompanionPlay.STONE_FOUND);
+            }
+            if (AgentEpqHandOver.tick(session, entry, agent, member, AgentEpqDefinition.MAGIC_STONE,
+                    AgentEpqDefinition.STONE_NPC, nowMs)) {
+                return;
+            }
+        }
         boolean collector = mayCollectStageFiveStone(session, agent.getId());
-        if (collector && !session.stageFiveStoneHandedOff()
-                && collectNearest(entry, agent, Set.of(AgentEpqDefinition.MAGIC_STONE))) return;
+        // In a companion run the collector takes only the stone a box dropped: a stone a companion dropped is the
+        // leader's, or its recollector's (AgentEpqSessionRegistry.canLootExclusive).
+        if (collector && !session.stageFiveStoneHandedOff() && (companionRun
+                ? collectNearestBoxDrop(entry, agent, AgentEpqDefinition.MAGIC_STONE)
+                : collectNearest(entry, agent, Set.of(AgentEpqDefinition.MAGIC_STONE)))) return;
         int magicStones = actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE);
-        if (magicStones > 0) {
+        if (magicStones > 0 && !companionRun) {
             if (session.claimAnnouncement("stage5-stone-found")) {
                 partyChat(session, "stage5-stone-found", agent,
                         "Purple Stone of Magic found. Bringing it to Yuris.");
@@ -598,6 +732,11 @@ public final class AgentEpqCoordinator {
             }
             return;
         }
+        if (session.companionAdopted()) {
+            // Step 2.9: no dummy kill and no out00 tries (the leader's exit); the golem's marble and the leave.
+            AgentEpqCompanionRun.afterClearMember(session, entry, agent, member, nowMs);
+            return;
+        }
         AgentMapPerception.monsters(agent.getMap()).stream()
                 .filter(Monster::isAlive)
                 .filter(monster -> monster.getId() == AgentEpqDefinition.POST_DEATH_DUMMY)
@@ -606,7 +745,7 @@ public final class AgentEpqCoordinator {
                     rescue(session, "kill-dummy", agent);
                 });
         if (agent.getId() == fragmentCollectorId(session)
-                && collectNearest(entry, agent, Set.of(AgentEpqDefinition.ALTAIRE_FRAGMENT))) return;
+                && collectNearest(entry, agent, Set.of(AgentEpqDefinition.GOLEMS_MARBLE))) return;
         if (nowMs - session.observeBossCleared(nowMs) < BOSS_LOOT_SETTLE_MS) { actions().stop(entry); return; }
         if (agent.getId() == workAgentId(session)
                 && session.members().stream().anyMatch(state ->
@@ -719,6 +858,7 @@ public final class AgentEpqCoordinator {
         if (!member.topUpActive()) {
             member.startTopUp(mapId);
             logTopUp(session, agent, member, "START", "");
+            if (session.companionAdopted()) AgentEpqCompanionRun.drinkingUp(session, agent); // Step 3.2: E14w
         }
         if (nowMs < member.nextTopUpAtMs()) {
             actions().stop(entry);
@@ -780,13 +920,14 @@ public final class AgentEpqCoordinator {
      * member's HP and potions as the phase begins). A companion run leaving the entrance also logs its companions'
      * potions, which its release compares.
      */
-    private static void transition(AgentEpqSession session, AgentEpqSession.Phase next, long nowMs) {
+    static void transition(AgentEpqSession session, AgentEpqSession.Phase next, long nowMs) {
         AgentEpqSession.Change change = session.advance(next, nowMs);
         if (change == null) return;
         log.info("EPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", session.sessionId(),
                 change.from(), change.to(), change.phaseMs(), change.runMs(), session.companionAdopted());
         log.info("EPQ vitals: session={} phase={} members={}", session.sessionId(), change.to(),
                 AgentEpqTerminationService.vitals(session));
+        if (session.companionAdopted()) session.pace().markPhase(change.to(), nowMs); // Step 5.2
         if (change.from() == AgentEpqSession.Phase.PREPARING && session.companionAdopted()) {
             String potions = AgentEpqTerminationService.potions(session);
             session.setPotionsAtEntry(potions);
@@ -802,6 +943,7 @@ public final class AgentEpqCoordinator {
             if (character.getHp() > 0) {
                 session.clearMemberDown(member.characterId());
             } else if (session.markMemberDown(member.characterId())) {
+                if (session.companionAdopted()) session.pace().markDown(member.characterId()); // Step 5.2
                 log.info("EPQ member down: session={} member={} type={} map={} phase={}", session.sessionId(),
                         member.characterId(), member.memberType(), character.getMapId(), session.phase());
                 log.info("EPQ down detail: session={} {}", session.sessionId(), downDetail(character));
@@ -830,7 +972,7 @@ public final class AgentEpqCoordinator {
     }
 
     /** A point as the evidence lines write it: (x,y), or none. */
-    private static String xy(Point point) {
+    static String xy(Point point) {
         return point == null ? "none" : "(" + point.x + "," + point.y + ")";
     }
 
@@ -863,7 +1005,8 @@ public final class AgentEpqCoordinator {
 
     /**
      * 'EPQ boss:' the first time each golem is alive on the boss map while the leader is there, and the first time the
-     * bound event reports its clear, wherever the leader is; nothing decides by it.
+     * bound event reports its clear, wherever the leader is. In a companion run a companion says each golem's line
+     * (E15a-c). Its marks decide the golem fight (AgentEpqCompanionRun.golemFight) of Steps 3.2, 4.3 and 4.5.
      */
     private static void logBossProgress(AgentEpqSession session, Character leader, long nowMs) {
         if (leader.getMapId() == AgentEpqDefinition.BOSS_MAP && leader.getMap() != null) {
@@ -874,10 +1017,15 @@ public final class AgentEpqCoordinator {
                         && session.claimLogMark("golem-" + golem)) {
                     log.info("EPQ boss: session={} golem={} runMs={}", session.sessionId(), golem,
                             nowMs - session.startedAtMs());
+                    if (session.companionAdopted() && golem == AgentEpqDefinition.POISON_GOLEM) {
+                        session.pace().markGolem(nowMs); // Step 5.2
+                    }
+                    if (AgentEpqCompanionRun.acting(session)) AgentEpqCompanionRun.golemSeen(session, leader, golem);
                 }
             }
         }
         if (AgentEpqTerminationService.pastTheClear(session.eventInstance()) && session.claimLogMark("cleared")) {
+            if (session.companionAdopted()) session.pace().markCleared(nowMs); // Step 5.2
             log.info("EPQ boss: session={} cleared runMs={}", session.sessionId(), nowMs - session.startedAtMs());
         }
     }
@@ -913,7 +1061,7 @@ public final class AgentEpqCoordinator {
         };
     }
 
-    private static List<Monster> flowers(Character agent) {
+    static List<Monster> flowers(Character agent) {
         return AgentMapPerception.monsters(agent.getMap()).stream()
                 .filter(Monster::isAlive).filter(mob -> mob.getId() == AgentEpqDefinition.POISON_FLOWER).toList();
     }
@@ -1014,7 +1162,7 @@ public final class AgentEpqCoordinator {
                 .toList();
     }
 
-    private static int workAgentId(AgentEpqSession session) {
+    static int workAgentId(AgentEpqSession session) {
         return session.workAgentId();
     }
 
@@ -1046,6 +1194,7 @@ public final class AgentEpqCoordinator {
 
     /** One of the coordinator's lines in party and map chat, logged first as 'EPQ line:' under its key. */
     private static void sendVisiblePartyChat(AgentEpqSession session, String key, Character speaker, String message) {
+        if (voice(session, key, speaker)) return;
         AgentEpqDialogue.logLine(session.sessionId(), key, speaker, message);
         AgentPartyGatewayRuntime.party().sendPartyChat(speaker, message);
         AgentPacketGatewayRuntime.packets().broadcastChatText(speaker, message, false, 0);
@@ -1053,8 +1202,22 @@ public final class AgentEpqCoordinator {
 
     /** One of the coordinator's lines in party chat, logged first as 'EPQ line:' under its key. */
     private static void partyChat(AgentEpqSession session, String key, Character speaker, String message) {
+        if (voice(session, key, speaker)) return;
         AgentEpqDialogue.logLine(session.sessionId(), key, speaker, message);
         AgentPartyGatewayRuntime.party().sendPartyChat(speaker, message);
+    }
+
+    /**
+     * Step 3.1: every stock line site routes through here. A companion run never hears the status lines: its
+     * companions say their own words for the site's key in map chat (AgentEpqCompanionPlay.voice, through the
+     * coordination chat under the same key), or nothing; true then, and the stock line is not said. A stock run says
+     * the stock line as before (false).
+     */
+    static boolean voice(AgentEpqSession session, String key, Character speaker) {
+        if (!session.companionAdopted()) return false;
+        String line = AgentEpqCompanionPlay.voice(key);
+        if (line != null) AgentEpqCompanionRun.coordinate(session, speaker, key, line);
+        return true;
     }
 
     private static int fragmentCollectorId(AgentEpqSession session) {
@@ -1104,7 +1267,7 @@ public final class AgentEpqCoordinator {
                 .orElse(null);
     }
 
-    private static boolean collectNearest(AgentRuntimeEntry entry, Character agent,
+    static boolean collectNearest(AgentRuntimeEntry entry, Character agent,
                                           Set<Integer> itemIds) {
         MapItem item = AgentMapPerception.items(agent.getMap()).stream()
                 .filter(drop -> !drop.isPickedUp() && itemIds.contains(drop.getItemId()))
@@ -1113,6 +1276,25 @@ public final class AgentEpqCoordinator {
                         drop.getPosition().distanceSq(agent.getPosition())))
                 .orElse(null);
         if (item == null) return false;
+        pickUp(entry, agent, item);
+        return true;
+    }
+
+    /** As collectNearest for one item, but only a drop the map made (a box's), never one a player dropped. */
+    private static boolean collectNearestBoxDrop(AgentRuntimeEntry entry, Character agent, int itemId) {
+        MapItem item = AgentMapPerception.items(agent.getMap()).stream()
+                .filter(drop -> !drop.isPickedUp() && !drop.isPlayerDrop() && drop.getItemId() == itemId)
+                .filter(drop -> drop.getPosition() != null)
+                .min(Comparator.comparingDouble(drop ->
+                        drop.getPosition().distanceSq(agent.getPosition())))
+                .orElse(null);
+        if (item == null) return false;
+        pickUp(entry, agent, item);
+        return true;
+    }
+
+    /** Walks to this drop, and loots it once within LOOT_RADIUS. */
+    static void pickUp(AgentRuntimeEntry entry, Character agent, MapItem item) {
         if (!near(agent.getPosition(), item.getPosition(), LOOT_RADIUS)) {
             Point ground = actions().groundPoint(agent.getMap(), item.getPosition());
             actions().navigate(entry, ground == null ? item.getPosition() : ground, true);
@@ -1120,10 +1302,9 @@ public final class AgentEpqCoordinator {
             actions().stop(entry);
             actions().lootItem(agent, item.getObjectId(), LOOT_RADIUS);
         }
-        return true;
     }
 
-    private static int stageItemTotal(AgentEpqSession session, Character observer, int itemId) {
+    static int stageItemTotal(AgentEpqSession session, Character observer, int itemId) {
         int total = 0;
         for (AgentEpqMemberState member : session.members()) {
             Character character = character(member.characterId());
@@ -1175,7 +1356,7 @@ public final class AgentEpqCoordinator {
         return total;
     }
 
-    private static boolean hitReactor(AgentRuntimeEntry entry, Character agent, Reactor reactor,
+    static boolean hitReactor(AgentRuntimeEntry entry, Character agent, Reactor reactor,
                                       AgentEpqMemberState member, long nowMs) {
         if (!near(agent.getPosition(), reactor.getPosition(), REACTOR_RADIUS) || !actions().grounded(agent)) {
             Point target = actions().groundPoint(agent.getMap(), reactor.getPosition());
@@ -1188,20 +1369,37 @@ public final class AgentEpqCoordinator {
         return true;
     }
 
-    private static boolean enterPortal(AgentRuntimeEntry entry, Character agent, int portalId,
+    static boolean enterPortal(AgentRuntimeEntry entry, Character agent, int portalId,
                                        AgentEpqMemberState member, long nowMs) {
+        if (!walkToPortal(entry, agent, portalId)) return false;
+        if (!epq().enterPortal(agent, portalId)) return false;
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
+        return true;
+    }
+
+    /** Walks to the portal; true once the Agent stands there, grounded, and has stopped. */
+    static boolean walkToPortal(AgentRuntimeEntry entry, Character agent, int portalId) {
         Point portal = actions().portalPosition(agent, portalId);
         if (!near(agent.getPosition(), portal, PORTAL_RADIUS) || !actions().grounded(agent)) {
             if (portal != null) actions().navigate(entry, portal, true);
             return false;
         }
         actions().stop(entry);
-        if (!epq().enterPortal(agent, portalId)) return false;
-        member.deferUntil(nowMs + ACTION_RETRY_MS);
         return true;
     }
 
-    private static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId, int... selections) {
+    /**
+     * A companion run's walking exits (portal 4 of the entrance and portal 3 of stages 1 and 2) are taken together
+     * with the leader: true while the companion waits at the portal for him (AgentEpqCompanionRun.holdAtWalkingExit).
+     * Never in other runs.
+     */
+    private static boolean holdAtWalkingExit(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                             int portalId, long nowMs) {
+        return session.companionAdopted() && AgentEpqCompanionRun.holdAtWalkingExit(session, entry, agent, portalId,
+                nowMs);
+    }
+
+    static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId, int... selections) {
         Point npc = npcApproachPoint(agent, npcId);
         if (!near(agent.getPosition(), npc, NPC_RADIUS)) {
             if (npc != null) actions().navigate(entry, npc, true);
@@ -1211,7 +1409,7 @@ public final class AgentEpqCoordinator {
         return epq().runNpc(agent, npcId, selections);
     }
 
-    private static boolean dropAt(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+    static boolean dropAt(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                   InventoryType type, int itemId,
                                   Point target, AgentEpqMemberState member, long nowMs, String logKey) {
         Point position = agent.getPosition();
@@ -1252,7 +1450,7 @@ public final class AgentEpqCoordinator {
         }
     }
 
-    private static Point npcApproachPoint(Character agent, int npcId) {
+    static Point npcApproachPoint(Character agent, int npcId) {
         Point npc = actions().npcPosition(agent, npcId);
         if (npc == null || agent == null || agent.getMap() == null) return npc;
         if (agent.getMapId() == AgentEpqDefinition.RECRUIT_MAP) {
@@ -1269,13 +1467,14 @@ public final class AgentEpqCoordinator {
         return grounded == null ? besideNpc : grounded;
     }
 
-    private static boolean dropItem(
+    static boolean dropItem(
             AgentRuntimeEntry entry, Character agent, InventoryType type, int itemId, short quantity) {
         var inventory = agent == null ? null : agent.getInventory(type);
         Item item = inventory == null ? null : inventory.findById(itemId);
         // This helper is private to the EPQ coordinator. Its objective items must
         // remain usable even if the generic loot capability reserved the stack.
-        boolean epqOwned = AgentEpqDefinition.EXCLUSIVE_ITEMS.contains(itemId);
+        boolean epqOwned = AgentEpqDefinition.EXCLUSIVE_ITEMS.contains(itemId)
+                || itemId == AgentEpqDefinition.GOLEMS_MARBLE; // only a companion run's code drops it
         if (item == null || item.getQuantity() <= 0
                 || (!epqOwned && !AgentInventoryReservationRuntime.mayConsume(
                 entry, item, System.currentTimeMillis()))) return false;
@@ -1295,7 +1494,7 @@ public final class AgentEpqCoordinator {
         return true;
     }
 
-    private static boolean near(Point first, Point second, int radius) {
+    static boolean near(Point first, Point second, int radius) {
         return first != null && second != null && first.distanceSq(second) <= (long) radius * radius;
     }
 
@@ -1310,11 +1509,11 @@ public final class AgentEpqCoordinator {
      * The gateways are resolved per call (each is one adapter singleton), so a test can stand in for them without a
      * class loaded under its mock keeping that mock for every later test.
      */
-    private static PrimitiveCapabilityGateway actions() {
+    static PrimitiveCapabilityGateway actions() {
         return AgentPrimitiveCapabilityGatewayRuntime.gateway();
     }
 
-    private static PartyQuestGateway epq() {
+    static PartyQuestGateway epq() {
         return AgentPartyQuestGatewayRuntime.partyQuest();
     }
 

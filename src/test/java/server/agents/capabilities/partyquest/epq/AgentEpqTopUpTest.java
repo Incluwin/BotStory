@@ -128,7 +128,7 @@ class AgentEpqTopUpTest {
 
     @Test
     void nobodyDrinksOnTheRecruitMap() {
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.PREPARING, ben, mira, tobi, una);
         run.onMap(mira, AgentEpqDefinition.RECRUIT_MAP);
         hp(mira, 50, 4_400, 113);

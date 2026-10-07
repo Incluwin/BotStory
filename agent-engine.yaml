@@ -1344,6 +1344,134 @@ tuning:
     # Purpose: Sets the HP fraction at which a resting EPQ golem-fight member rejoins the fight; it also rejoins once it holds POT_STOP HP potions again.
     # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600. Resting heals by passive regen only, and the rest ends when no golem lives.
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.RESUME_HP_FRACTION: '0.7'
+    # Values: 5000-120000 milliseconds. Recommended: 30000, the "within 30 seconds" the adoption reply and the desk promise.
+    # Purpose: Bounds how long a companion run waits for its human leader to take the party into EPQ, and then for every member to be inside, before it gives up without a word or goes on without the absent members.
+    # Technical: AgentEpqCompanionRun reads this in tickSession: from admission while no event is bound, and from the leader's entry for members never seen inside, in any phase; absent members are ejected only while at least four are inside (EllinPQ.js minPlayers 4). Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.COMPANION_ENTRY_WAIT_MS: '30000'
+    # Values: 0-10000 milliseconds. Recommended: 2000 so EllinPQ's own timer always ends the event first.
+    # Purpose: Lets the stock 30-minute event timer end a companion run before the coordinator's own backstop does.
+    # Technical: In companion runs AgentEpqCoordinator counts EVENT_TIMEOUT_MS from the party's entry plus this slack, and AgentEpqParting reads a run that stood in the event at least the catalog timer minus this as TIMEOUT. Stock runs keep the admission-based count.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.TIMEOUT_SLACK_MS: '2000'
+    # Values: 60-400 pixels. Recommended: 150, about two character widths from the portal.
+    # Purpose: Lets companions take a stage's walking exit together with their leader once he stands this close to it.
+    # Technical: AgentEpqCompanionRun reads this for portal 4 of 930000000 and portal 3 of 930000100 and 930000200 in companion runs; an Agent also goes once the leader stands on a later stage. Warped stages (Ellin, the sprite, out00) are not affected.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_AT_EXIT_PX: '150'
+    # Values: 5000-60000 milliseconds. Recommended: 20000 so a leader who is looking around is not rushed.
+    # Purpose: Sets how long a companion waits on the leader (at an exit, or while he holds a stage item) before it says one short hint.
+    # Technical: AgentEpqCompanionRun keeps one hint clock per kind on the session (exit, diluted poison, marbles, stone, altar, a golem's marble outside the fountain); each hint is said once per run through the coordination chat. AgentEpqHandOver also uses it as the window in which one hand-over line (at his feet, by the NPC, picked back up) speaks for every carrier converging on the leader; the twenty line is always said.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_HINT_MS: '20000'
+    # Values: 1-20 marbles. Recommended: 5 so the leader gets the marbles in four or so trips, not one by one.
+    # Purpose: Sets how many monster marbles a companion holds before it brings them to a leader who is near.
+    # Technical: AgentEpqHandOver reads this on 930000400 in companion runs; once the stage's marbles (bags plus floor) reach twenty, or no flower is left, every carrier brings what it holds whatever the batch.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.MARBLE_BATCH: '5'
+    # Values: 100-1500 pixels. Recommended: 400, about a screen's half width.
+    # Purpose: Sets how near the leader must stand for a carrier to bring him a batch early.
+    # Technical: Same map and within this distance; used only by the batch rule of AgentEpqHandOver in companion runs.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.NEAR_PX: '400'
+    # Values: 20-120 pixels. Recommended: 60, HPQ's and KPQ's at-feet distance.
+    # Purpose: Sets how close to the leader's spot a carrier drops its stack, so it lands at his feet.
+    # Technical: Both on a foothold and within this on both axes, with the map's own drop landing (predictDropLanding) checked before the drop; a landing above or below him makes the carrier walk on. The companion's line follows the landing.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.REACH_PX: '60'
+    # Values: 5000-90000 milliseconds. Recommended: 30000.
+    # Purpose: Bounds the walk to the leader with monster marbles; after it the carrier leaves the stack by Ellin instead.
+    # Technical: Counted from the hand-over's start on the carrier's own EPQ state; an unreachable leader (canReach false) goes to Ellin at once. The purple stone uses STONE_TIMEOUT_MS. It also bounds the hand-over of the golem's marble before the companions leave, which has no NPC: the marble is then dropped where the companion stands.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.TIMEOUT_MS: '30000'
+    # Values: 10000-120000 milliseconds. Recommended: 40000.
+    # Purpose: Reminds the leader once about a stack a companion dropped for him that still lies on the floor.
+    # Technical: Keyed by the stack's map object id; said by its dropper through the coordination chat. One nudge per item speaks for every stack that comes due within this time after it, so stacks dropped together get one. Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.PICKUP_NUDGE_MS: '40000'
+    # Values: 60000-170000 milliseconds with the shipped item expiry; a value past config.yaml ITEM_EXPIRE_TIME minus ITEM_EXPIRE_CHECK is read as that, with one WARN. Recommended: 150000.
+    # Purpose: Has a companion pick back up marbles or the stone the leader left lying before the map removes them, and drop them for him again.
+    # Technical: A dropped item lies ITEM_EXPIRE_TIME (180000) and goes on the next ITEM_EXPIRE_CHECK (10000) sweep; AgentEpqHandOver caps this at their difference (AgentEpqDefinition.OBJECTIVE_RECOLLECT_LATEST_MS 170000 when the config cannot be read). From then the loot rule lets that one companion take the player-dropped stack back. A stack a dying companion dropped is due at once; the loot path still waits 15000 ms for any stack an Agent dropped.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.RECOLLECT_MS: '150000'
+    # Values: 0-5 per stack. Recommended: 2; 0 never picks a stack back up.
+    # Purpose: Bounds how often companions pick up and re-drop a stack the leader keeps leaving.
+    # Technical: Counted per stack lineage on the session (a re-drop inherits the count); past it the stack is left to expire and the lost-objective check of Step 4 may end the run.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.RECOLLECT_MAX: '2'
+    # Values: 5-60 percent of maximum HP. Recommended: 25.
+    # Purpose: Has a carrier about to go down (this low and no HP potion left) drop what it carries where it stands, so a death does not delete it.
+    # Technical: EllinPQ deletes a leaver's 4001162/4001163/4001169/2270004 (EventInstanceManager dropExclusiveItems); the dying drop keeps them on the floor for the leader or a recollect. Unknown potion counts (-1) never count as none.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.DYING_HP_PERCENT: '25'
+    # Values: 30000-300000 milliseconds. Recommended: 120000, a walk down the whole climb with room to spare.
+    # Purpose: Bounds the walk of the companion who found the purple stone down to the leader; after it the stone is left by the sprite.
+    # Technical: AgentEpqHandOver reads this on 930000500 in companion runs instead of TIMEOUT_MS (the stone boxes stand about 3600 px above the sprite); an unreachable leader (canReach false) still goes to the sprite at once. The companion's line follows where the stone lands.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.STONE_TIMEOUT_MS: '120000'
+    # Values: 20000-180000 milliseconds. Recommended: 60000, a short grace.
+    # Purpose: Bounds how long companions wait on the golem's map for their leader to take the exit only he can open; then they leave through the event's exit and the run ends cleared.
+    # Technical: Counted from the first pass that saw EllinPQ's clear; AgentEpqCompanionRun skips it when the leader is offline, down, out of the event or no longer the party leader. A companion holding the golem's marble first leaves it at his feet. The human stays in the event and can still take out00 alone. On 930000800 it also bounds how long an Agent that east00 refuses stays in the event, counted from the end of FOUNTAIN_WAIT_MS (the reward's start plus that wait), so no pair of values pulls out a companion still waiting for the leader's marble. Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.CLEAR_WAIT_MS: '60000'
+    # Values: 0-60000 milliseconds. Recommended: 15000.
+    # Purpose: Gives the leader first claim on the golem's marble before a companion picks it up for the fountain.
+    # Technical: Counted from the marble's drop time; then only the work Agent may loot 4001164 on 930000600 (AgentEpqSessionRegistry.canLootExclusive), and no companion once they decided to leave. Stock runs keep today's loot.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.GOLEM_MARBLE_LEADER_FIRST_MS: '15000'
+    # Values: 15000-120000 milliseconds. Recommended: 45000.
+    # Purpose: Bounds how long companions wait on the reward map for their leader to drop the golem's marble in the fountain (everyone on the map gets its EXP, and a fragment on the way out); then they take the exit.
+    # Technical: Counted from the REWARD phase; skipped when no marble is held or lying there, when the fountain already fired (reactor 3008000 state > 0), or when the leader left. A companion holding the marble drops it at once. A companion east00 refuses is taken out through the event's exit CLEAR_WAIT_MS after this wait ends. Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.FOUNTAIN_WAIT_MS: '45000'
+    # Values: 5000-60000 milliseconds. Recommended: 20000, about the top-ups' length from 50 HP.
+    # Purpose: Bounds how long companions ask their leader to wait at the altar while they drink up before they say they are ready.
+    # Technical: Counted from the BOSS phase; AgentEpqCompanionRun says the ready line sooner once no standing companion on 930000600 is under AgentEpqRecoveryPolicy.TOP_UP_HP_FRACTION with potions. Companion runs only; the top-up itself is base fix 6 (every mode).
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.ALTAR_READY_WAIT_MS: '20000'
+    # Values: 10000-120000 milliseconds. Recommended: 45000.
+    # Purpose: Bounds how long a companion run waits for a member it cannot see (an unloaded companion) before it takes that member out of the run.
+    # Technical: Read by AgentEpqCompanionRun in companion runs before the clear, counted on the session from the first pass that missed the member. A dead companion is never timed out: it waits like a player who has not pressed OK, until no companion stands.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
+    # Values: 3000-60000 milliseconds. Recommended: 10000, longer than a flower's revive.
+    # Purpose: Confirms that a companion run can no longer finish stage 4, stage 5 or the altar before it ends the run, instead of waiting out the 480-second stall watchdog.
+    # Technical: With the leader on that map, AgentEpqCompanionRun checks 930000400 (the monster marbles in living members' bags and on the floor plus the live Poison Flowers under twenty), 930000500 (no stone box left and no Purple Stone of Magic in a bag or on the floor) and 930000600 before any golem (no Purple Stone of Magic in a bag or on the floor and the altar not yet fired); the condition must hold this long without a break. Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.OBJECTIVE_LOST_CONFIRM_MS: '10000'
+    # Values: 0-60000 milliseconds. Recommended: 2000 (the desk's Yes starts the instance at once; party prod adds the leader's own click).
+    # Purpose: Prior of the companions' time from the desk's Yes to the party standing in the forest's entrance.
+    # Technical: AgentEpqPaceProfile seeds the companion-side yes term; recorded companion runs refit it from admission to the leader's entry (the bind; ENTERING can be skipped).
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.YES_MS: '2000'
+    # Values: 0.05-1.0 of the theory kill rate. Recommended: 0.30, fitted to Step 0's 165 s for 50 trees at Lv48-50.
+    # Purpose: Prior efficiency of the party clearing stage 1's Poisoned Lord Trees.
+    # Technical: The trees segment is a Clear of the Map.wz 930000100 census (50 x 9300172, 6100 HP) that every member fights, the leader included; it also carries the entrance walk and top-ups. Refit per run from the leader's entry (the bind) to STAGE_TWO. At 0.30 AgentEpqPaceProfileTest's reference crew (six members at 1000 damage a second on a tree) clears the trees in about 175 s, Step 0's 165 s within 15 %.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.TREES_EFFICIENCY: '0.30'
+    # Values: 30000-600000 milliseconds. Recommended: 105000 (Step 0).
+    # Purpose: Prior of stage 2: luring Stone Bugs into the fountain and carrying four diluted poisons to the thorns.
+    # Technical: AgentEpqPaceProfile's companion-side fixed term bottles, from STAGE_TWO to STAGE_THREE; recorded companion runs refit it, and Ellin's clear-time estimate adds it as a fixed time.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.BOTTLES_MS: '105000'
+    # Values: 10000-300000 milliseconds. Recommended: 40000 (Step 0: 37 s).
+    # Purpose: Prior of stage 3, the maze, until a companion finds Ellin and she brings everyone over.
+    # Technical: AgentEpqPaceProfile's companion-side fixed term maze, from STAGE_THREE to STAGE_FOUR; recorded companion runs refit it, and Ellin's clear-time estimate adds it as a fixed time.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.MAZE_MS: '40000'
+    # Values: 60000-900000 milliseconds. Recommended: 300000 (Step 0: 438 s with a 224 s tail that base fix 8 removed).
+    # Purpose: Prior of stage 4 until the twentieth monster marble lies at the leader's feet.
+    # Technical: Companion-side fixed term, leader-bounded (it ends at his feet), STAGE_FOUR to the hand-over that makes twenty or the leader first holding twenty.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.MARBLES_MS: '300000'
+    # Values: 5000-180000 milliseconds. Recommended: 30000.
+    # Purpose: Prior of the leader picking up the marbles and handing them to Ellin up top.
+    # Technical: Leader-side term, learned per leader and never from COMPANION_PQ_PACE_EXCLUDED_LEADERS; from the twentieth marble to STAGE_FIVE.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.HANDIN_MS: '30000'
+    # Values: 30000-600000 milliseconds. Recommended: 165000 (Step 0).
+    # Purpose: Prior of the climb until the purple stone lies at the leader's feet.
+    # Technical: Companion-side fixed term, leader-bounded, STAGE_FIVE to the stone hand-over or the leader first holding the stone.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.CLIMB_MS: '165000'
+    # Values: 5000-120000 milliseconds. Recommended: 20000.
+    # Purpose: Prior of the leader picking up the stone and showing it to the sprite.
+    # Technical: AgentEpqPaceProfile's leader-side term sprite, learned per leader and never from COMPANION_PQ_PACE_EXCLUDED_LEADERS; from the stone at his feet (or in his bag) to BOSS.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.SPRITE_MS: '20000'
+    # Values: 5000-120000 milliseconds. Recommended: 25000 (the top-ups and his drop on the altar).
+    # Purpose: Prior of the leader placing the stone under the altar.
+    # Technical: Leader-side term, from BOSS to Poison Golem 9300180 first alive ('EPQ boss: golem=9300180').
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.ALTAR_MS: '25000'
+    # Values: 0.05-1.0 of the theory kill rate. Recommended: 0.18, fitted to Step 0's golem chain (21 s, 31 s, about 360 s) at Lv48-50.
+    # Purpose: Prior efficiency of the party killing the three Poison Golems.
+    # Technical: The golem segment is a Clear of 9300180/9300181/9300182 (63000/83000/113500 HP) fought one after another (the revive chain); rests and adds are inside the efficiency. Refit per run from 9300180 alive to the clear. At 0.18 AgentEpqPaceProfileTest's reference crew (six members at 700/650/550 damage a second on the three golems) kills them in about 405 s, Step 0's 410 s within 15 %.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.GOLEM_EFFICIENCY: '0.18'
+    # Values: 2-15 touches. Recommended: 5.
+    # Purpose: Names a companion that the Super-Charged Poison Golem would put down in fewer touches as fragile, for Ellin's caution.
+    # Technical: AgentEpqPaceProfile passes it as Thresholds.fragileTouches; AgentPqPaceEstimator names a non-leader member FRAGILE when its effective HP over the danger mob 9300182's expected touch damage (PADamage 300, AgentPqMemberPower.touchesToDown) is below it.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.FRAGILE_TOUCHES: '5'
+    # Values: 0.3-0.9. Recommended: 0.6, the EPQ fixtures' MINIMUM_BOSS_HIT_CHANCE.
+    # Purpose: Names a companion whose best attack lands under this chance on a golem, for Ellin's caution.
+    # Technical: AgentEpqPaceProfile passes it as Thresholds.weakHitChance; AgentPqPaceEstimator names a non-leader member MISSES when its best attack lands under it on a mob of the trees or golem segment.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: whole numbers from 1. Recommended: 1; bump it when a pace change lands so older records are not learned from.
+    # Purpose: Marks which EPQ pace records the clear-time calibration may learn from.
+    # Technical: AgentEpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row it records for epq.
+    server.agents.capabilities.partyquest.epq.AgentEpqPaceProfile.PACE_EPOCH: '1'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

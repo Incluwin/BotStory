@@ -151,7 +151,7 @@ class AgentEpqStageFourHelpTest {
 
     @Test
     void aHelpersCaptureIsLoggedAsNotItsOwn() {
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
         Monster last = flower(100);
         Character helper = helperFor(owner(session, last));
@@ -172,7 +172,7 @@ class AgentEpqStageFourHelpTest {
 
     @Test
     void withNoLiveFlowerAtAllTodaysAssistStillRuns() {
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
         Monster caught = flower(100);
         when(caught.isAlive()).thenReturn(false);

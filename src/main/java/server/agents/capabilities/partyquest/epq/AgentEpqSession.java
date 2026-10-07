@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -30,6 +31,31 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final long startedAtMs;
     private final Map<Integer, AgentEpqMemberState> members = new LinkedHashMap<>();
     private final Set<String> announcements = new HashSet<>();
+    private final Set<String> narrations = new HashSet<>();
+    private final Set<Integer> seenInEvent = new HashSet<>();
+    private final Map<String, Long> leaderHints = new HashMap<>();
+    private final Map<String, Long> lineWindows = new HashMap<>();
+    private final Set<Integer> runCompanions = new HashSet<>();
+    private final Map<Integer, Integer> recollectors = new HashMap<>();
+    private final Map<Integer, Integer> recollectCounts = new HashMap<>();
+    private final Set<Integer> dyingStacks = new HashSet<>();
+    private int handOvers;
+    private int stoneFinderId;
+    private long clearSeenAtMs;
+    private long leaveDecidedAtMs;
+    private String leaveWhy = "";
+    private boolean leftAfterClear;
+    private String golemMarble = "none";
+    private long rewardStartedAtMs;
+    private boolean failureClaimed;
+    private boolean leaderWentDown;
+    private final Map<Integer, Long> missingSinceMs = new HashMap<>();
+    private final Map<Integer, Long> companionDownSinceMs = new HashMap<>();
+    private final Set<Integer> tapOutsRequested = new HashSet<>();
+    private final Set<Integer> tapOutsRefused = new HashSet<>();
+    private long objectiveLostSinceMs;
+    private final AgentEpqPaceMarks pace = new AgentEpqPaceMarks();
+    private final Map<Integer, Boolean> fullRateHolds = new HashMap<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -55,6 +81,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private boolean companionAdopted;
     private boolean memberCoordinationChatEnabled;
     private String potionsAtEntry = "";
+    private long enteredEventAtMs;
 
     public AgentEpqSession(Mode mode, long seed, int operatorId, long nowMs) {
         if (mode == null || operatorId <= 0 || nowMs < 0L) throw new IllegalArgumentException("valid EPQ session required");
@@ -71,6 +98,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
                 || members.putIfAbsent(id, new AgentEpqMemberState(id, type)) != null) {
             throw new IllegalStateException("invalid or duplicate EPQ member");
         }
+        if (type == AgentEpqMemberState.MemberType.AGENT) runCompanions.add(id);
     }
     public synchronized void setLeadership(int leaderId, int executionId) {
         if (!members.containsKey(leaderId) || !members.containsKey(executionId)) {
@@ -197,6 +225,11 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
         return key != null && !key.isBlank() && announcements.add(key);
     }
 
+    /** A companion run's line key, apart from the stock announcements: true only the first time it is claimed. */
+    synchronized boolean narrateOnce(String key) {
+        return key != null && !key.isBlank() && narrations.add(key);
+    }
+
     /**
      * A human-led run of owner-bound companions, admitted by AgentEpqAdmissionService.admit. Every companion-run
      * behaviour is gated on it; stock and GM-observed runs leave it false.
@@ -224,6 +257,236 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions == null ? "" : potions; }
 
+    /**
+     * When the run's leader first stood in its bound event (the bind): the party's entry. Only the first call counts;
+     * true when it was the first.
+     */
+    synchronized boolean markEnteredEvent(long nowMs) {
+        if (enteredEventAtMs > 0L) return false;
+        enteredEventAtMs = Math.max(1L, nowMs);
+        return true;
+    }
+
+    /** The party's entry (see {@link #markEnteredEvent}), or 0 before it. */
+    synchronized long enteredEventAtMs() { return enteredEventAtMs; }
+
+    /** Marks a member seen standing in the bound event; a companion run never treats it as absent again. */
+    synchronized void markSeenInEvent(int id) { seenInEvent.add(id); }
+
+    /** Whether this member was ever seen standing in the bound event. */
+    synchronized boolean seenInEvent(int id) { return seenInEvent.contains(id); }
+
+    /**
+     * When a companion first waited on the leader for this hint kind (an exit, a stage item he holds): the first call
+     * starts the clock and every later call reads it, until {@link #clearLeaderHint}.
+     */
+    synchronized long leaderHintSince(String key, long nowMs) {
+        return leaderHints.computeIfAbsent(key, ignored -> nowMs);
+    }
+
+    /** Stops a hint clock: the leader did what the companions were waiting for. */
+    synchronized void clearLeaderHint(String key) { leaderHints.remove(key); }
+
+    /**
+     * One line for a burst of one kind (carriers converging on the leader, stacks lying together): true, and this
+     * kind's window starts now, when none started within {@code windowMs} before {@code nowMs}; false while one is
+     * open (the line already said speaks for this one).
+     */
+    synchronized boolean claimLineWindow(String kind, long nowMs, long windowMs) {
+        Long started = lineWindows.get(kind);
+        if (started != null && nowMs - started < windowMs) return false;
+        lineWindows.put(kind, nowMs);
+        return true;
+    }
+
+    /** Starts this kind's window now: a line said whatever the window (the twenty) still speaks for what follows. */
+    synchronized void startLineWindow(String kind, long nowMs) { lineWindows.put(kind, nowMs); }
+
+    // A companion run's hand-overs (Step 2.7): read by the companions' own ticks and the bots' loot path.
+
+    /** Whether this character was ever one of the run's Agents (also after it was taken out of the run). */
+    synchronized boolean companionOfRun(int characterId) { return runCompanions.contains(characterId); }
+
+    /** The next hand-over's number, for its line key. */
+    synchronized int nextHandOver() { return ++handOvers; }
+
+    /**
+     * Claims a stack lying on the floor (by its map object id) for this companion to pick back up; false when another
+     * companion claimed it first or this one already picks up another.
+     */
+    synchronized boolean beginRecollect(int objectId, int agentId) {
+        if (recollectors.containsValue(agentId)) return false;
+        return recollectors.putIfAbsent(objectId, agentId) == null;
+    }
+
+    /** The companion picking this stack back up, or 0. */
+    synchronized int recollectorOf(int objectId) { return recollectors.getOrDefault(objectId, 0); }
+
+    /** The stack this companion picks back up, or 0. */
+    synchronized int recollectOf(int agentId) {
+        return recollectors.entrySet().stream().filter(entry -> entry.getValue() == agentId)
+                .mapToInt(Map.Entry::getKey).findFirst().orElse(0);
+    }
+
+    /** Ends the claim on this stack (picked up or gone) and says how often its lineage was picked back up before. */
+    synchronized int endRecollect(int objectId) {
+        recollectors.remove(objectId);
+        dyingStacks.remove(objectId);
+        Integer count = recollectCounts.remove(objectId);
+        return count == null ? 0 : count;
+    }
+
+    /** How often the lineage of the stack lying now was picked back up. */
+    synchronized int recollectCount(int objectId) { return recollectCounts.getOrDefault(objectId, 0); }
+
+    /** A re-dropped stack inherits its lineage's count. */
+    synchronized void setRecollectCount(int objectId, int count) {
+        if (objectId != 0 && count > 0) recollectCounts.put(objectId, count);
+    }
+
+    /**
+     * Notes the first companion seen holding the purple stone on 930000500: the stone's finder, who coaches the leader
+     * with it. True only for that first sighting.
+     */
+    synchronized boolean noteStoneFinder(int agentId) {
+        if (stoneFinderId != 0 || agentId <= 0) return false;
+        stoneFinderId = agentId;
+        return true;
+    }
+
+    /** The companion that found the purple stone, or 0. */
+    synchronized int stoneFinderId() { return stoneFinderId; }
+
+    /** Marks a stack a carrier about to go down left where it stood: it is picked back up at once. */
+    synchronized void markDyingStack(int objectId) { if (objectId != 0) dyingStacks.add(objectId); }
+
+    /** Whether a carrier about to go down left this stack. */
+    synchronized boolean dyingStack(int objectId) { return dyingStacks.contains(objectId); }
+
+    // A companion run after the golem (Step 2.9): read by the lease holder, the companions' own ticks and the loot path.
+
+    /** The first pass that saw EllinPQ's clear: the after-clear clock. The first call starts it; later calls read it. */
+    synchronized long clearSeenAtMs(long nowMs) {
+        if (clearSeenAtMs == 0L) clearSeenAtMs = Math.max(1L, nowMs);
+        return clearSeenAtMs;
+    }
+
+    /** Decides the companions' leave, with why; true only for the call that decided it. */
+    synchronized boolean decideLeave(long nowMs, String why) {
+        if (leaveDecidedAtMs > 0L || leftAfterClear) return false;
+        leaveDecidedAtMs = Math.max(1L, nowMs);
+        leaveWhy = why == null ? "" : why;
+        return true;
+    }
+
+    /** When the companions decided to leave, or 0 while they have not (or the leave was cancelled). */
+    synchronized long leaveDecidedAtMs() { return leaveDecidedAtMs; }
+
+    /** Why the companions decided to leave, or "". */
+    synchronized String leaveWhy() { return leaveWhy; }
+
+    /** Cancels a decided leave that has not gone yet (the leader took out00 in time); true when one was cancelled. */
+    synchronized boolean cancelLeave() {
+        if (leaveDecidedAtMs == 0L || leftAfterClear) return false;
+        leaveDecidedAtMs = 0L;
+        leaveWhy = "";
+        return true;
+    }
+
+    /** Marks the decided leave as gone; true only the first time. */
+    synchronized boolean markLeftAfterClear() {
+        if (leftAfterClear) return false;
+        leftAfterClear = true;
+        return true;
+    }
+
+    /** Whether the companions already left through the event's exit. */
+    synchronized boolean leftAfterClear() { return leftAfterClear; }
+
+    /** What became of the golem's marble before the leave: none, handed (at the leader's feet) or dropped. */
+    synchronized void noteGolemMarble(String outcome) { golemMarble = outcome == null ? "none" : outcome; }
+
+    synchronized String golemMarble() { return golemMarble; }
+
+    /**
+     * When the companions' reward began (Step 2.11): the REWARD phase's start once the run reads that phase, else the
+     * first call (a companion the cleared event holds on 930000800 before any pass saw its leader there).
+     */
+    synchronized long rewardStartedAtMs(long nowMs) {
+        if (rewardStartedAtMs == 0L) {
+            rewardStartedAtMs = phase == Phase.REWARD ? phaseEnteredAtMs : Math.max(1L, nowMs);
+        }
+        return rewardStartedAtMs;
+    }
+
+    /**
+     * Marks the run's full-rate hold on this member (Step 2.12), with whether full rate was required before it, and
+     * returns the marked answer (a hold already marked keeps its first one); null once the run's release began (it
+     * takes no hold).
+     */
+    synchronized Boolean holdFullRate(int memberId, boolean requiredBefore) {
+        if (terminating) return null;
+        Boolean marked = fullRateHolds.putIfAbsent(memberId, requiredBefore);
+        return marked == null ? requiredBefore : marked;
+    }
+
+    /** Ends the run's hold on this member: whether full rate was required before it, or null when none was held. */
+    synchronized Boolean releaseFullRate(int memberId) { return fullRateHolds.remove(memberId); }
+
+    /** The members the run holds at full rate. */
+    synchronized List<Integer> fullRateHolders() { return List.copyOf(fullRateHolds.keySet()); }
+
+    /**
+     * Claims the run's one companion-run failure (Step 4.2): two threads can fail one run at once (the departure gate on
+     * a dead companion's tick and the lease holder's pass), and only the first speaks and fails it. True only once.
+     */
+    synchronized boolean claimFailure() {
+        if (failureClaimed) return false;
+        failureClaimed = true;
+        return true;
+    }
+
+    /** The leader went down on the golem's map while the fight went on (Step 4.3): the event's end is DEFEATED. */
+    synchronized void markLeaderWentDown() { leaderWentDown = true; }
+
+    synchronized boolean leaderWentDown() { return leaderWentDown; }
+
+    // A companion run's member verdicts (Step 4.3): written and read by the lease holder's pass.
+
+    /** When the pass first missed this member (not online, not loaded): the first call starts the clock. */
+    synchronized long missingSince(int id, long nowMs) { return missingSinceMs.computeIfAbsent(id, ignored -> nowMs); }
+
+    synchronized void clearMissing(int id) { missingSinceMs.remove(id); }
+
+    /** When the pass first saw this member down in the event, or 0 while it is not. */
+    synchronized long companionDownSinceMs(int id) { return companionDownSinceMs.getOrDefault(id, 0L); }
+
+    synchronized void markCompanionDown(int id, long nowMs) { companionDownSinceMs.putIfAbsent(id, Math.max(1L, nowMs)); }
+
+    synchronized void clearCompanionDown(int id) { companionDownSinceMs.remove(id); }
+
+    /** Its host took this departed companion's tap-out. */
+    synchronized void markTapOutRequested(int id) { tapOutsRequested.add(id); }
+
+    synchronized boolean tapOutRequested(int id) { return tapOutsRequested.contains(id); }
+
+    /** Its host refused this departed companion's tap-out: it stays departed and idle. */
+    synchronized void markTapOutRefused(int id) { tapOutsRefused.add(id); }
+
+    synchronized boolean tapOutRefused(int id) { return tapOutsRefused.contains(id); }
+
+    /** When the pass first saw the run's objective lost for good (Step 4.5): the first call starts the clock. */
+    synchronized long objectiveLostSince(long nowMs) {
+        if (objectiveLostSinceMs == 0L) objectiveLostSinceMs = Math.max(1L, nowMs);
+        return objectiveLostSinceMs;
+    }
+
+    /** The objective can be finished again: the clock stops. */
+    synchronized void clearObjectiveLost() { objectiveLostSinceMs = 0L; }
+
+    /** A companion run's pace marks (Step 5.2); a stock run marks nothing. Locked by itself. */
+    AgentEpqPaceMarks pace() { return pace; }
+
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }
 
@@ -234,6 +497,12 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     synchronized boolean markMemberDown(int id) { return membersDown.add(id); }
 
     synchronized void clearMemberDown(int id) { membersDown.remove(id); }
+
+    /** Whether this log mark was claimed (a golem seen, the clear): Steps 3.2, 4.3 and 4.5 decide by it. */
+    synchronized boolean logMarked(String key) { return logMarks.contains(key); }
+
+    /** Whether a companion run's line key was already said. */
+    synchronized boolean narrated(String key) { return narrations.contains(key); }
 
     /** A once-only mark for a log line, apart from the chat announcements. */
     synchronized boolean claimLogMark(String key) {
