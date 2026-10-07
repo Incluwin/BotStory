@@ -327,7 +327,8 @@ class CompanionSettingsScreensTest {
         // a blank line first: the v83 client draws a plain line right after an option over that option
         assertTrue(page.text().contains("#l\r\n\r\n#eWhat I pick up:#n\r\n#L"), page.text());
         assertEquals(List.of("Drink an HP potion below 70%...", "Drink an MP potion below 50%...", "Everything - now",
-                "Only what I hit", "Meso and your quest items", "Nothing", "Leave boss drops to you outside boss runs: on",
+                "Only what I hit", "Meso and your quest items", "Nothing",
+                "Leave boss drops to you except in party runs: on",
                 "Here's some coin for supplies...", "I brought you something...", "Back"), page.labels());
         pick("Back");
         assertTrue(lastTalk().text().startsWith("#eHadrik#n"), "Back is the card again");
@@ -451,11 +452,11 @@ class CompanionSettingsScreensTest {
         menus.card(owner, hadrikRow);
         pick("Supplies & loot...");
 
-        pick("Leave boss drops to you outside boss runs: on");
+        pick("Leave boss drops to you except in party runs: on");
 
         verify(manager).setLeaveBossDrops(owner, hadrik, false);
         assertTrue(lastTalk().text().startsWith("Hadrik: ok, i'll pick up boss drops too.\r\n"), lastTalk().text());
-        pick("Leave boss drops to you outside boss runs: off");
+        pick("Leave boss drops to you except in party runs: off");
         verify(manager).setLeaveBossDrops(owner, hadrik, true);
         assertTrue(lastTalk().text().startsWith("Hadrik: ok, boss drops are yours.\r\n"), lastTalk().text());
     }

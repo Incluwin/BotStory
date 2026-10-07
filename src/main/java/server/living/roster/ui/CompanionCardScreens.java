@@ -841,10 +841,11 @@ final class CompanionCardScreens {
 
     /**
      * "Supplies & loot...": what it carries, the HP and MP percentages it drinks a potion below (each in the stock
-     * number box, starting at its setting now), what it picks up, whether it leaves a boss's drops to the owner outside
-     * boss runs (inside one the run's own loot rules decide), and some coin for its supplies (a number box up to what
-     * the owner has, 0 to change their mind). A change is saved on companion-ops and answered on top of this page
-     * again, which has Back to the card. Nothing here changes a seat, so nothing waits for a run.
+     * number box, starting at its setting now), what it picks up, whether it leaves a boss's drops to the owner except
+     * in party runs (inside a party quest the run's own loot rules decide, and a boss run leaves them too), and some
+     * coin for its supplies (a number box up to what the owner has, 0 to change their mind). A change is saved on
+     * companion-ops and answered on top of this page again, which has Back to the card. Nothing here changes a seat,
+     * so nothing waits for a run.
      */
     private void supplies(Character owner, Persona persona, String note) {
         Stamp stamp = stamp(owner, persona);
@@ -864,7 +865,7 @@ final class CompanionCardScreens {
             options.add(stamp.option(lootLabel(mode) + now(mode == own.loot()), () -> setLoot(owner, persona, mode)));
         }
         boolean leave = own.leaveBossDrops();
-        options.add(stamp.option("Leave boss drops to you outside boss runs: " + onOff(leave),
+        options.add(stamp.option("Leave boss drops to you except in party runs: " + onOff(leave),
                 () -> setLeaveBossDrops(owner, persona, !leave)));
         if (owner.getMeso() > 0) {
             options.add(stamp.option("Here's some coin for supplies...", () -> coinBox(owner, persona)));

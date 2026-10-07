@@ -409,6 +409,18 @@ public final class CompanionSettingsApplier implements AgentPotionThresholds.Rul
     }
 
     /**
+     * NO_BOSS inside a boss run (P7): true while the companion is committed to a boss run ("boss:"), so inside its
+     * event instance it leaves a boss's drops to the humans when its settings say so. A party quest's run ("pq:")
+     * keeps its own loot rules (KPQ's pass from King Slime). Memory only.
+     */
+    @Override
+    public boolean leavesBossDropsInRun(int agentCharacterId) {
+        Commitments commitments = world.commitments();
+        String key = commitments == null ? null : commitments.keyOf(agentCharacterId);
+        return key != null && key.startsWith(CompanionBossRuns.KEY_PREFIX);
+    }
+
+    /**
      * True when a quest the owner has started still needs more of the item to complete (its Quest.wz completion
      * requirement) than the owner and the companion hold between them. Memory only: what the owner's started quests
      * need (read again at most once a second) and both bags.

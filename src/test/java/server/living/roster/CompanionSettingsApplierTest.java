@@ -417,6 +417,26 @@ class CompanionSettingsApplierTest {
         assertEquals(new AgentPotionThresholds.Thresholds(0.55f, 0.45f), applier().thresholds(902));
     }
 
+    // ---- boss drops inside a boss run (P7, A9) ------------------------------------------------------
+
+    @Test
+    void bossDropsAreLeftInsideARunOnlyWhileItIsCommittedToABossRun() {
+        hadrik = companion("hadrik", "Hadrik", HADRIK, RosterState.BENCHED, HENESYS_FIELD, CUSTOM);
+        game.roster().call(game.ann, hadrik);
+        assertFalse(applier().leavesBossDropsInRun(HADRIK), "no run");
+
+        assertTrue(game.commitments.commit("pq:kpq:9", ANN, HADRIK));
+        assertFalse(applier().leavesBossDropsInRun(HADRIK), "a party quest's run keeps its own loot rules");
+        game.commitments.releaseMember(HADRIK);
+
+        assertTrue(game.commitments.commit(CompanionBossRun.key("easy_balrog", 7L, ANN), ANN, HADRIK));
+        assertTrue(applier().leavesBossDropsInRun(HADRIK), "a boss run");
+        assertFalse(applier().leavesBossDropsInRun(902), "another character");
+
+        game.commitments.releaseMember(HADRIK);
+        assertFalse(applier().leavesBossDropsInRun(HADRIK), "out of the run");
+    }
+
     // ---- a release forgets them --------------------------------------------------------------------
 
     @Test
