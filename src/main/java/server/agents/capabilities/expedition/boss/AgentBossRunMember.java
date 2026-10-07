@@ -41,6 +41,8 @@ public final class AgentBossRunMember {
     /** Since when its logged-out anchor has been gone from the event; -1 while the anchor is there. */
     private volatile long anchorGoneSinceMs = -1L;
     private volatile Phase phase = Phase.WAITING;
+    /** Its host took it back before Start; set from any thread, acted on by the session's next tick. */
+    private volatile boolean withdrawn;
     private long onMapSinceMs;
     private AgentBossRunHost.Refusal refusal;
     private boolean wentIn;
@@ -96,6 +98,11 @@ public final class AgentBossRunMember {
         return phase;
     }
 
+    /** Its host took it back before Start (see AgentBossRunService.withdraw). */
+    public boolean withdrawn() {
+        return withdrawn;
+    }
+
     /** Why it was refused; null unless {@link Phase#REFUSED}. */
     public AgentBossRunHost.Refusal refusal() {
         return refusal;
@@ -145,6 +152,11 @@ public final class AgentBossRunMember {
 
     void registered() {
         phase = Phase.REGISTERED;
+    }
+
+    /** Taken back by its host; the flag only, so any thread may set it without the session's lock. */
+    void withdraw() {
+        withdrawn = true;
     }
 
     void refused(AgentBossRunHost.Refusal reason) {

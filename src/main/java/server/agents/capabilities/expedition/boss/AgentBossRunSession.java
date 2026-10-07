@@ -24,6 +24,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * gone; a failed tick ends it at once and hands back whoever is still in it. {@link #tick} runs on the Agent scheduler
  * under the session's lock. A SELF_LED member (one that leads itself, with no owner to walk up with or follow) walks to
  * the spot the host names beside the entry NPC, and wherever the others would follow their owner again it is stopped.
+ * A member its host withdraws before Start is taken off the entry NPC's list by the next tick and refused.
  */
 public final class AgentBossRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunSession.class);
@@ -150,6 +151,20 @@ public final class AgentBossRunSession {
             log.info("Boss run starting: session={} boss={} registered={}", sessionId, definition.key(),
                     count(AgentBossRunMember.Phase.REGISTERED));
             return;
+        }
+        // Withdrawn members go first, so a listed one's own leave below is never taken for the leader's ban. One with
+        // no runtime cannot be taken off the list here; the Start warps only members standing on the recruit map.
+        for (AgentBossRunMember member : members) {
+            AgentBossRunMember.Phase memberPhase = member.phase();
+            if (!member.withdrawn() || (memberPhase != AgentBossRunMember.Phase.WAITING
+                    && memberPhase != AgentBossRunMember.Phase.REGISTERED)) {
+                continue;
+            }
+            Character agent = memberPhase == AgentBossRunMember.Phase.REGISTERED ? ports.agent(member.agentId()) : null;
+            if (agent != null) {
+                ports.leaveList(expedition, agent);
+            }
+            refuse(host, member, AgentBossRunHost.Refusal.WITHDRAWN);
         }
         for (AgentBossRunMember member : members) {
             if (member.phase() != AgentBossRunMember.Phase.REGISTERED) {
@@ -559,6 +574,27 @@ public final class AgentBossRunSession {
         member.anchorTo(humanId);
         log.info("Boss run member handed over: session={} boss={} member={} from={} to={}", sessionId,
                 definition.key(), agentId, from, humanId);
+        return true;
+    }
+
+    /**
+     * Takes a WAITING or REGISTERED member back before Start (its owner logged out, say): the next registering tick
+     * takes it off the entry NPC's list when it is on it and refuses it WITHDRAWN. False once the run left
+     * REGISTERING, or when the Agent is no WAITING or REGISTERED member of it. Takes no lock, like handTo, so a host
+     * thread never waits on a tick; a member whose sign-up finishes meanwhile is taken off the list on the next tick.
+     */
+    boolean withdraw(int agentId) {
+        AgentBossRunMember member = member(agentId);
+        if (phase != Phase.REGISTERING || member == null) {
+            return false;
+        }
+        AgentBossRunMember.Phase memberPhase = member.phase();
+        if (memberPhase != AgentBossRunMember.Phase.WAITING && memberPhase != AgentBossRunMember.Phase.REGISTERED) {
+            return false;
+        }
+        member.withdraw();
+        log.info("Boss run member withdrawn: session={} boss={} member={} phase={}", sessionId, definition.key(),
+                agentId, memberPhase);
         return true;
     }
 

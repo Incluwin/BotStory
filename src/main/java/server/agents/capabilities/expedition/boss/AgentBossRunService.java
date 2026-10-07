@@ -108,6 +108,16 @@ public final class AgentBossRunService {
     }
 
     /**
+     * Takes the WAITING or REGISTERED member {@code agentId} of run {@code sessionId} back before Start: the run's next
+     * tick takes it off the entry NPC's list and refuses it WITHDRAWN. False when the run is gone or no longer
+     * registering, or the Agent is no WAITING or REGISTERED member of it. Memory only, any thread; it takes no lock.
+     */
+    public static boolean withdraw(long sessionId, int agentId) {
+        AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+        return session != null && session.withdraw(agentId);
+    }
+
+    /**
      * When a run of {@code expedition} stops waiting for members to sign up: the list's close (the expedition's start
      * time while it registers) less REGISTRATION_MARGIN_MS. Read from the expedition at each call.
      */

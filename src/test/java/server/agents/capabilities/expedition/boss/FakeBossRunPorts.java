@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import static org.mockito.Mockito.mock;
@@ -51,6 +52,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     boolean stillTheChannels = true;
     boolean adoptionAnswer = true;
     RunNpc runNpc = (agent, npcId, selections) -> true;
+    /** What a fake leave from the entry NPC's list does once the call is logged; nothing by default. */
+    BiConsumer<Expedition, Character> leaveList = (expedition, agent) -> { };
 
     /**
      * A loaded Agent standing at (x, y) on {@code mapId} with {@code level}; it is logged in, in the event
@@ -130,6 +133,12 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         calls.add("runNpc " + agent.getId() + " " + npcId + " " + Arrays.stream(selections)
                 .mapToObj(Integer::toString).collect(Collectors.joining(",")));
         return runNpc.run(agent, npcId, selections);
+    }
+
+    @Override
+    public void leaveList(Expedition expedition, Character agent) {
+        calls.add("leaveList " + agent.getId());
+        leaveList.accept(expedition, agent);
     }
 
     @Override

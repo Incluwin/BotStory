@@ -189,6 +189,7 @@ class CompanionBossRunsTest {
         said.put(Refusal.NOT_HERE, BossRunLines.REFUSED_NOT_HERE);
         said.put(Refusal.BUSY, BossRunLines.REFUSED_OTHER);
         said.put(Refusal.UNKNOWN, BossRunLines.REFUSED_OTHER);
+        said.put(Refusal.WITHDRAWN, BossRunLines.REFUSED_OTHER);
         List<String> released = new ArrayList<>();
         game.commitments.addListener(ended -> released.add(ended.key() + " " + ended.members().size()));
 

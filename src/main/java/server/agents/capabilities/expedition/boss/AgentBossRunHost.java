@@ -36,7 +36,9 @@ public final class AgentBossRunHost {
         /** The host would not tie it to the run. */
         BUSY,
         /** The NPC did not list it for a reason the session could not see. */
-        UNKNOWN
+        UNKNOWN,
+        /** The host took it back before Start (AgentBossRunService.withdraw); the run took it off the list itself. */
+        WITHDRAWN
     }
 
     /** How a member left a run it was part of. */

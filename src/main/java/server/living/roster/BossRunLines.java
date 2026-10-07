@@ -110,7 +110,7 @@ final class BossRunLines {
             case BANNED -> REFUSED_BANNED;
             case LATE -> REFUSED_LATE;
             case NOT_HERE -> REFUSED_NOT_HERE;
-            case BUSY, UNKNOWN -> REFUSED_OTHER;
+            case BUSY, UNKNOWN, WITHDRAWN -> REFUSED_OTHER;
         };
     }
 
