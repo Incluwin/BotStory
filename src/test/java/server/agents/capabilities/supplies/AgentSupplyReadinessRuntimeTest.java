@@ -655,6 +655,40 @@ class AgentSupplyReadinessRuntimeTest {
     }
 
     @Test
+    void anEpqTripHeldBackAtTheRunsSlotEndsShortOfSpaceNotCutShort() {
+        // review 2026-10-06: the counter keeps the run's slot free for a standard of more than one stack
+        // (AgentShopService.roomBesideTheRunsSlot); a trip that ends there ran out of room, nobody cut it short
+        stackSize = 100;
+        Character casse = companion(553, "Casse", Job.MAGICIAN, 0, 0, 200_000);
+        activities.put(553, EPQ);
+        freeSlots.put(553, 8);
+        AgentRuntimeEntry entry = following(casse);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
+        freeSlots.put(553, 1); // loot on the way took a slot: the counter stopped at the run's
+        shopCompletes(entry, casse, 250, 300);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 2_000L));
+        AgentSupplyProcurementRuntime.tick(entry, casse, 2_100L);
+        assertFalse(execution(entry).isActive());
+        assertEquals("finished 553 SHORT_SPACE", calls.getLast());
+        AgentSupplyReadinessState state = entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY);
+        assertEquals(AgentSupplyReadinessState.Cooldown.SHORT_SPACE, state.cooldown());
+        assertEquals(1, state.interrupted(KERNING), "no trip from Kerning was counted as cut short");
+
+        // a KPQ trip that ends short with one slot free is cut short as before: its standard is one stack
+        Character silent = companion(554, "SilentSin", Job.ASSASSIN, 15, 30, 20_000);
+        entry = following(silent);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 1_000L));
+        freeSlots.put(554, 1);
+        shopCompletes(entry, silent, 18, 30);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, silent, 2_000L));
+        AgentSupplyProcurementRuntime.tick(entry, silent, 2_100L);
+        assertFalse(execution(entry).isActive());
+        assertEquals("finished 554 INTERRUPTED", calls.getLast());
+        assertEquals(AgentSupplyReadinessState.Cooldown.INTERRUPTED,
+                entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY).cooldown());
+    }
+
+    @Test
     void anEpqCompanionNeedsAFreeUseSlotForEveryStackAndOneForTheRun() {
         stackSize = 100;
         // from 0/0: 3 stacks of HP potions, 4 of MP potions, and the slot the run keeps free
