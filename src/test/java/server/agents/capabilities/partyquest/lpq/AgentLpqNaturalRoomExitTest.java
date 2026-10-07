@@ -174,13 +174,19 @@ class AgentLpqNaturalRoomExitTest {
         AgentLpqSession session = companionRun(crew, owner);
         AgentLpqMemberState member = session.member(owner.getId());
 
-        for (long now = 3_000L; now <= 40_000L; now += 1_000L) {
-            AgentLpqCoordinator.hitReactorFromCandidates(fx.entry(owner), owner, now, member, false, Set.of(),
-                    List.of(box), true);
+        try (LpqLogLines coordinator = new LpqLogLines(AgentLpqCoordinator.class);
+             LpqLogLines rescues = new LpqLogLines(AgentLpqRescue.class)) {
+            for (long now = 3_000L; now <= 40_000L; now += 1_000L) {
+                assertTrue(AgentLpqCoordinator.hitReactorFromCandidates(fx.entry(owner), owner, now, member, false,
+                        Set.of(), List.of(box), true));
+            }
+            // The assist is not even attempted (its withheld teleport would log, and it would skip the walk).
+            assertEquals(List.of(), coordinator.startingWith("LPQ Stage 5 unobserved ordinary-room box assist"));
+            assertEquals(List.of(), rescues.startingWith("LPQ rescue: "));
         }
 
         verify(fx.actions, never()).stagePosition(any(), any(), any());
-        verify(fx.actions, atLeastOnce()).navigate(eq(fx.entry(owner)), any(), eq(true));
+        verify(fx.actions, times(38)).navigate(eq(fx.entry(owner)), any(), eq(true));
     }
 
     @Test
