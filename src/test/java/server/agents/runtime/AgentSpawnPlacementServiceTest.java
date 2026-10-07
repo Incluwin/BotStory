@@ -39,7 +39,7 @@ class AgentSpawnPlacementServiceTest {
         Character leader = mock(Character.class);
         MapleMap map = mock(MapleMap.class);
         when(map.getId()).thenReturn(1000);
-        when(map.getFootholds()).thenReturn(mock(server.maps.FootholdTree.class));
+        when(map.getFootholds()).thenReturn(new server.maps.FootholdTree(new Point(-1000, -1000), new Point(1000, 1000)));
         TestRuntimeEntry entry = new TestRuntimeEntry(agent, leader);
         Point spawnPosition = new Point(10, 20);
         List<String> calls = new ArrayList<>();

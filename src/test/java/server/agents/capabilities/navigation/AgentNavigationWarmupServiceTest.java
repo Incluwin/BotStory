@@ -82,8 +82,8 @@ class AgentNavigationWarmupServiceTest {
             footholds.add(new Foothold(new Point(i * 10, 0), new Point(i * 10 + 10, 0), i + 1));
         }
         footholds.add(new Foothold(new Point(0, 0), new Point(0, -100), walkableFootholds + 1));
-        FootholdTree tree = mock(FootholdTree.class);
-        when(tree.getAllFootholds()).thenReturn(footholds);
+        FootholdTree tree = new FootholdTree(new Point(-1000, -1000), new Point(10_000, 1000));
+        footholds.forEach(tree::insert);
         MapleMap map = mock(MapleMap.class);
         when(map.getId()).thenReturn(MAP_ID);
         when(map.getFootholds()).thenReturn(tree);

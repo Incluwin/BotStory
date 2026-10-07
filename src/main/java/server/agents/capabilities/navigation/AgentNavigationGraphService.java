@@ -707,6 +707,19 @@ public final class AgentNavigationGraphService {
         }
     }
 
+    /**
+     * Drops every in-memory graph and per-map index kept for {@code mapId}. Only tests call this: they build
+     * different synthetic maps under the same id, and a later test would otherwise read an earlier test's graph.
+     * Cache files are left alone; rebuildGraph overwrites them.
+     */
+    public static synchronized void forgetMap(int mapId) {
+        GRAPHS.removeIf(key -> key.mapId() == mapId);
+        LAST_BUILD_REPORTS.keySet().removeIf(key -> key.mapId() == mapId);
+        ANY_GRAPH_BY_MAP.remove(mapId);
+        COLLIDABLE_FROM_BELOW_IDS_BY_MAP_ID.remove(mapId);
+        AgentNavigationWalkRegionLookupService.forgetMap(mapId);
+    }
+
     private static void refreshAnyGraphForMap(int mapId) {
         for (Map.Entry<GraphCacheKey, AgentNavigationGraph> entry : GRAPHS.snapshotEntries()) {
             if (entry.getKey().mapId() == mapId) {

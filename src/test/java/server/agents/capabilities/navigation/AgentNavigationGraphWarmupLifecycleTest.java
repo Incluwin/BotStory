@@ -6,6 +6,7 @@ import server.agents.capabilities.movement.AgentMovementProfile;
 import server.maps.FootholdTree;
 import server.maps.MapleMap;
 
+import java.awt.Point;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -25,12 +26,11 @@ class AgentNavigationGraphWarmupLifecycleTest {
     @Test
     void shutdownInterruptsActiveWarmupBeforeMapDisposal() throws Exception {
         MapleMap map = mock(MapleMap.class);
-        FootholdTree footholds = mock(FootholdTree.class);
+        FootholdTree footholds = new FootholdTree(new Point(-1000, -1000), new Point(1000, 1000));
         CountDownLatch probeStarted = new CountDownLatch(1);
         CountDownLatch probeInterrupted = new CountDownLatch(1);
         when(map.getId()).thenReturn(919_999_998);
         when(map.getFootholds()).thenReturn(footholds);
-        when(footholds.getAllFootholds()).thenReturn(List.of());
         when(map.getRopes()).thenAnswer(ignored -> {
             probeStarted.countDown();
             try {

@@ -78,10 +78,19 @@ final class BotMovementSimulationLab {
         return fromMap(map);
     }
 
+    /** A WZ map: its graph is the same for every test, so a cached one is reused. */
     static BotMovementSimulationLab fromMap(MapleMap map) {
-        if (AgentNavigationGraphService.peekGraph(map, AgentMovementProfile.base()) == null) {
-            AgentNavigationGraphService.rebuildGraph(map);
-        }
+        AgentNavigationGraphService.getGraph(map, AgentMovementProfile.base());
+        return new BotMovementSimulationLab();
+    }
+
+    /**
+     * A map built in the test: other tests build different maps under the same id, so drop whatever is cached for
+     * the id and build this map's graph.
+     */
+    static BotMovementSimulationLab fromSyntheticMap(MapleMap map) {
+        AgentNavigationGraphService.forgetMap(map.getId());
+        AgentNavigationGraphService.rebuildGraph(map);
         return new BotMovementSimulationLab();
     }
 

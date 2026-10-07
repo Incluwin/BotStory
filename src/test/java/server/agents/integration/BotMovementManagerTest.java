@@ -466,7 +466,8 @@ class BotMovementManagerTest {
 
         AgentClimbMovementService.tickClimbing(entry, new Point(-157, -25), false);
 
-        assertEquals(new Point(-157, -23), bot.getPosition());
+        // one climb-down step at the configured climb speed (CLIMB_SPEED_PXS)
+        assertEquals(new Point(-157, -28 + AgentMovementKinematicsService.climbStepPerTick()), bot.getPosition());
     }
 
     @Test
@@ -892,6 +893,8 @@ class BotMovementManagerTest {
         server.maps.FootholdTree footholds = new server.maps.FootholdTree(new Point(-2000, -2000), new Point(2000, 2000));
         footholds.insert(new Foothold(new Point(0, 100), new Point(300, 100), 1));
         map.setFootholds(footholds);
+        // BotDirectionalDropNavigationTest builds a different map under this id
+        AgentNavigationGraphService.forgetMap(map.getId());
 
         Character bot = mockBot(new Point(100, 100), map);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);

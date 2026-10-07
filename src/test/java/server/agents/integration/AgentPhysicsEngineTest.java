@@ -395,8 +395,7 @@ class AgentPhysicsEngineTest {
         });
         Character bot = mockBot(new Point(100, 110), map);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
-        Foothold foothold = mock(Foothold.class);
-        when(foothold.slope()).thenReturn(0.0);
+        Foothold foothold = new Foothold(new Point(0, 120), new Point(200, 120), 1);
 
         AgentMovementPoseService.resetMotion(entry, bot.getPosition());
         AgentMovementStateRuntime.setMoveDirection(entry, 0);  // intent: idle
