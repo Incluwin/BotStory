@@ -277,7 +277,9 @@ class CompanionRunDelegationTest {
                 source.indexOf("public static synchronized void stop()"));
         String stop = source.substring(source.indexOf("public static synchronized void stop()"));
 
-        assertTrue(start.contains("world.roster.installInstanceDelegation(world.partyQuestRuns);"));
+        // P7: by key, so a party quest's companion still asks P6's runs (CompanionBossRuns.byKey)
+        assertTrue(start.contains("world.roster.installInstanceDelegation(server.living.roster.CompanionBossRuns.byKey("
+                + "world.bossRuns, world.partyQuestRuns));"));
         assertTrue(stop.contains("world.roster.installInstanceDelegation(null);"));
     }
 }

@@ -143,6 +143,10 @@ public final class CompanionAuditor {
         if (partyQuests != null) {
             partyQuests.sweepLostRuns(started); // a companion run whose KPQ session went away without ending it (P6)
         }
+        CompanionBossRuns bossRuns = world.bossRuns();
+        if (bossRuns != null) {
+            bossRuns.sweepLostRuns(started); // and a companion boss run whose run went away without ending it (P7)
+        }
         LastRun previous = last;
         last = new LastRun(started, Math.max(0L, clock.getAsLong() - started), reports.size(), deferred.size(),
                 previous.driftNow(), previous.driftByCode());

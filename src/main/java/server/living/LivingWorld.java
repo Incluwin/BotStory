@@ -97,6 +97,7 @@ public final class LivingWorld {
     private final server.living.roster.CompanionRestock restock;
     private final server.living.roster.GmLevelHolds gmLevelHolds;
     private final server.living.roster.JobErrands jobErrands;
+    private final server.living.roster.CompanionBossRuns bossRuns;
     private final List<ScheduledFuture<?>> timers = new ArrayList<>();
 
     private LivingWorld(LivingWorldConfig config, LivingContent content) {
@@ -148,6 +149,7 @@ public final class LivingWorld {
         this.restock = new server.living.roster.CompanionRestock(this); // companions restock their own potions
         this.gmLevelHolds = new server.living.roster.GmLevelHolds(this); // !setlevel records; read lazily, no timer
         this.jobErrands = new server.living.roster.JobErrands(this); // companions go for their next job (2026-10-05)
+        this.bossRuns = new server.living.roster.CompanionBossRuns(this); // P7: boss runs with companions
     }
 
     public static LivingWorld get() {
@@ -193,8 +195,13 @@ public final class LivingWorld {
         // a companion a party quest lets go goes back to its owner, not to Kerning TownLife (P6); before any admission,
         // whose own rollback recovers its Agents
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(world.partyQuestRuns);
-        // and a companion whose owner logs off inside its run sees it through for the friend still in it (decision 8b)
-        world.roster.installInstanceDelegation(world.partyQuestRuns);
+        // and a companion whose owner logs off inside its run sees it through for the friend still in it (decision 8b),
+        // a boss run's asked by its own runs and a party quest's by P6's
+        world.roster.installInstanceDelegation(server.living.roster.CompanionBossRuns.byKey(world.bossRuns, world.partyQuestRuns));
+        // a boss run's companions are tied to it, said for and recorded by the living world (P7), and while one signed
+        // up for Easy Balrog is in the fight the server moves Balrog (living_world.COMPANION_BOSS_SERVER_AUTHORITY)
+        server.agents.capabilities.expedition.boss.AgentBossRunHost.install(world.bossRuns);
+        server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule(world.bossRuns::forcesServerAuthority);
         // each entry NPC offers a party with companions its lineup (living_world.COMPANION_PQ_ENABLED_KEYS): one desk
         // per entrance, Lakelis's for KPQ and Tory's for HPQ
         server.living.roster.ui.CompanionMenus deskMenus = new server.living.roster.ui.CompanionMenus(world);
@@ -316,6 +323,8 @@ public final class LivingWorld {
         server.agents.capabilities.follow.AgentFollowGuard.install(null);
         server.agents.capabilities.partyquest.AgentPartyQuestHandback.install(null);
         world.roster.installInstanceDelegation(null);
+        server.agents.capabilities.expedition.boss.AgentBossRunHost.install(null);
+        server.life.autonomy.balrog.EasyBalrogEncounterService.installServerAuthorityRule(null);
         server.living.roster.BenchCombatLearning.uninstall();
         server.living.roster.CompanionSettingsApplier.uninstall();
         server.living.roster.CompanionRestock.uninstall();
@@ -547,6 +556,11 @@ public final class LivingWorld {
 
     public server.living.roster.CompanionPartyQuestService partyQuests() {
         return partyQuests;
+    }
+
+    /** P7: boss runs with companions (Mu Young's Easy Balrog): the Agent layer's boss-run host. */
+    public server.living.roster.CompanionBossRuns bossRuns() {
+        return bossRuns;
     }
 
     public ResidentRuntime residents() {
