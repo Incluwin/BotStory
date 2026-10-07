@@ -11,6 +11,7 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -290,6 +291,18 @@ class AgentEpqCoachingTest {
 
         said(mira, "here it comes! everyone on the golem.");
         notSaid("it's charging up! keep hitting it.");
+    }
+
+    /**
+     * Review B: each golem's line names only what that golem does (Mob.wz): the super-charged 9300182 is the first that
+     * can seal (mob skill 120); none of them rains poison (all three use the ground mist, 131).
+     */
+    @Test
+    void theSuperChargedGolemsLineNamesWhatItReallyDoes() {
+        assertEquals("super-charged now, careful, it can seal your skills!", AgentEpqCompanionPlay.golemLine(9_300_182));
+        for (int golem : AgentEpqDefinition.BOSS_MOBS) {
+            assertFalse(AgentEpqCompanionPlay.golemLine(golem).contains("rain"), golem + " rains nothing");
+        }
     }
 
     @Test

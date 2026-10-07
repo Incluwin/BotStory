@@ -139,8 +139,6 @@ class AgentEpqCoordinatorVoiceTest {
             assertEquals(List.of(
                     "EPQ line: session=" + session.sessionId() + " key=stage2-progress-1 speaker=Mira text="
                             + "first poison's on the thorns. keep them coming.",
-                    "EPQ line: session=" + session.sessionId() + " key=stage2-progress-2 speaker=Mira text="
-                            + "halfway through the thorns.",
                     "EPQ line: session=" + session.sessionId() + " key=stage2-progress-3 speaker=Mira text="
                             + "one more and the thorns are gone.",
                     "EPQ line: session=" + session.sessionId() + " key=stage2-progress-4 speaker=Mira text="
@@ -155,6 +153,9 @@ class AgentEpqCoordinatorVoiceTest {
     void theVoiceTable() {
         assertEquals("first poison's on the thorns. keep them coming.", AgentEpqCompanionPlay.voice("stage2-progress-1"));
         assertEquals("the thorns are gone! the exit's on the right.", AgentEpqCompanionPlay.voice("stage2-progress-4"));
+        // Review B: no running tally of the four poisons (the first, "one more", and the thorns gone only).
+        assertEquals(null, AgentEpqCompanionPlay.voice("stage2-progress-2"));
+        assertEquals("one more and the thorns are gone.", AgentEpqCompanionPlay.voice("stage2-progress-3"));
         for (String key : List.of("stage2-bottle-dropped", "stage2-bottles-secured", "stage2-collected",
                 "stage4-progress-5", "stage4-handoff", "stage5-stone-found", "stage5-human-handoff", "boss-combat",
                 "boss-human-fragment", "lobby-entry")) {

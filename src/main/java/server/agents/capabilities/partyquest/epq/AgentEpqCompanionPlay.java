@@ -130,12 +130,15 @@ final class AgentEpqCompanionPlay {
         return leader + ", the stone has to land right under the altar. pick it up and try again.";
     }
 
-    /** E15a, E15b, E15c: each golem the first time it is alive; null for another mob. */
+    /**
+     * E15a, E15b, E15c: each golem the first time it is alive; null for another mob. Each names only what that golem
+     * does (Mob.wz): the super-charged 9300182 is the first that can seal (mob skill 120).
+     */
     static String golemLine(int golemId) {
         return switch (golemId) {
             case 9_300_180 -> "here it comes! everyone on the golem.";
             case 9_300_181 -> "it's charging up! keep hitting it.";
-            case 9_300_182 -> "super-charged now, watch out for the poison rain!";
+            case 9_300_182 -> "super-charged now, careful, it can seal your skills!";
             default -> null;
         };
     }
@@ -204,9 +207,6 @@ final class AgentEpqCompanionPlay {
     /** E4a: the first diluted poison is on the thorns. */
     static final String FIRST_POISON = "first poison's on the thorns. keep them coming.";
 
-    /** E4b: two of the four. */
-    static final String HALFWAY = "halfway through the thorns.";
-
     /** E4c: three of the four. */
     static final String ONE_MORE = "one more and the thorns are gone.";
 
@@ -215,15 +215,15 @@ final class AgentEpqCompanionPlay {
 
     /**
      * What a companion says at a stock line's site in a companion run (by the site's key), or null for nothing: the
-     * thorns' progress in its own words, and no status line (bottles dropped, secured or collected, the marbles'
-     * count, the golem's warning; the golem's own lines come with the coaching). The hand-overs, the stone, the lobby
-     * and the fragment sites are never reached in a companion run.
+     * thorns' first poison, "one more" and the thorns gone in its own words (no running tally: the second poison says
+     * nothing, review B), and no status line (bottles dropped, secured or collected, the marbles' count, the golem's
+     * warning; the golem's own lines come with the coaching). The hand-overs, the stone, the lobby and the fragment
+     * sites are never reached in a companion run.
      */
     static String voice(String key) {
         if (key == null) return null;
         return switch (key) {
             case "stage2-progress-1" -> FIRST_POISON;
-            case "stage2-progress-2" -> HALFWAY;
             case "stage2-progress-3" -> ONE_MORE;
             case "stage2-progress-4" -> THORNS_GONE;
             default -> null;
@@ -542,7 +542,7 @@ final class AgentEpqCompanionPlay {
      */
     static List<String> sampleLines(String leader, String name) {
         List<String> lines = new ArrayList<>(List.of(exitNudgeLine(leader), TREES, TREES_DONE, BOTTLES,
-                bottleHintLine(leader), FIRST_POISON, HALFWAY, ONE_MORE, THORNS_GONE, MAZE, MAZE_FOUND, FLOWERS,
+                bottleHintLine(leader), FIRST_POISON, ONE_MORE, THORNS_GONE, MAZE, MAZE_FOUND, FLOWERS,
                 marblesNudgeLine(leader), MARBLES_RECOLLECTED, MARBLES_HELD, marblesHandInLine(leader),
                 marblesByEllinLine(leader), LEAVING_MARBLES, CLIMB, STONE_FOUND, stoneBySpriteLine(leader),
                 stoneNudgeLine(leader), STONE_RECOLLECTED, stoneHeldLine(leader), LEAVING_STONE, DRINKING_UP,
