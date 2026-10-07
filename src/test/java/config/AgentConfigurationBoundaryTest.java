@@ -63,7 +63,6 @@ class AgentConfigurationBoundaryTest {
             "src/main/java/server/agents/capabilities/expedition/balrog/AgentEasyBalrogScenario.java:REWARD_FIDGET_MIN_PERIOD_MS",
             "src/main/java/server/agents/capabilities/expedition/balrog/AgentEasyBalrogScenario.java:REWARD_FIDGET_PERIOD_VARIANCE_MS",
             "src/main/java/server/agents/capabilities/expedition/balrog/AgentEasyBalrogScenario.java:REWARD_REACTOR",
-            "src/main/java/server/agents/capabilities/movement/AgentMovementSubstepPolicy.java:MAX_SUBSTEPS",
             "src/main/java/server/agents/capabilities/partyquest/epq/AgentEpqCoordinator.java:ITEM_REACTOR_DROP_RADIUS",
             "src/main/java/server/agents/capabilities/partyquest/epq/AgentEpqCoordinator.java:LOBBY_CHAT_STAGGER_MS",
             "src/main/java/server/agents/capabilities/partyquest/epq/AgentEpqCoordinator.java:LOBBY_ENTRY_DELAY_MS",
@@ -104,8 +103,7 @@ class AgentConfigurationBoundaryTest {
             "src/main/java/server/agents/field/AgentOpqTestFixtureService.java:OPQ_MINIMUM_JUMP_STAT",
             "src/main/java/server/agents/field/AgentPpqTestFixtureService.java:CAPE",
             "src/main/java/server/agents/field/AgentPpqTestFixtureService.java:EARRING",
-            "src/main/java/server/agents/field/AgentPpqTestFixtureService.java:SHOES_SPEED_SCROLL",
-            "src/main/java/server/agents/progression/AgentSecondJobAdvancementRuntime.java:ELLINIA_TREE_TUNNEL_UPPER_EXIT_Y");
+            "src/main/java/server/agents/field/AgentPpqTestFixtureService.java:SHOES_SPEED_SCROLL");
 
     @Test
     void cosmicServerConfigurationContainsNoAgentOwnedKeys() throws Exception {

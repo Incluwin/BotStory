@@ -8,7 +8,8 @@ import server.agents.runtime.simulation.AgentSimulationMode;
  * Converts a throttled background movement tick into bounded physics-sized steps.
  */
 public final class AgentMovementSubstepPolicy {
-    private static final int MAX_SUBSTEPS = 5;
+    private static final int MAX_SUBSTEPS = config.AgentTuning.intValue(
+            "server.agents.capabilities.movement.AgentMovementSubstepPolicy.MAX_SUBSTEPS");
     private static final long BACKGROUND_ACTIVE_TICK_MS =
             AgentSchedulerConfig.fromSystemProperties().backgroundActiveTickMs();
 

@@ -1710,6 +1710,10 @@ tuning:
     # Purpose: Controls how strongly walk vel pxs changes visible movement. Higher values make its effect more noticeable; lower values make movement gentler or less pronounced.
     # Technical: the "movement physics config" component consumes this as an integer. Unit: MapleStory map pixels per second.
     server.agents.capabilities.movement.AgentMovementPhysicsConfig.WALK_VEL_PXS: '125'
+    # Values: a positive integer; unit: movement physics steps per scheduler tick. Recommended: 4-8; 5 matches the 250 ms background tick divided by the 50 ms movement tick.
+    # Purpose: Upper bound on the movement physics steps a BACKGROUND_ACTIVE Agent runs in one throttled scheduler tick, so it covers the same ground as a foreground Agent.
+    # Technical: AgentMovementSubstepPolicy divides AgentSchedulerConfig.DEFAULT_BACKGROUND_ACTIVE_TICK_MS by AgentMovementPhysicsConfig.MOVEMENT_TICK_MS and clamps the quotient to 1..this bound; a bound below the quotient makes background Agents move slower than foreground ones, and 0 is rejected by Math.clamp.
+    server.agents.capabilities.movement.AgentMovementSubstepPolicy.MAX_SUBSTEPS: '5'
     # Values: a finite non-negative integer; unit: map pixels. Recommended: 6-24 around the tested baseline 12; benchmark or observe behavior before moving outside this band.
     # Purpose: Controls the distance or margin used for platform edge inset. Higher values allow action from farther away or leave more space; lower values require closer, more precise positioning.
     # Technical: the "movement target runtime" component consumes this as an integer. Unit: MapleStory map pixels; horizontal and vertical values use the server map coordinate system.
@@ -3907,6 +3911,10 @@ tuning:
     # Purpose: Funds only explicit Mushroom Kingdom test fixtures that begin before Explorer second-job advancement.
     # Technical: Fixture provisioning raises the test character to this balance before adding nearest-town scrolls; production progression never reads it.
     server.agents.progression.AgentMushroomKingdomFixtureService.SECOND_JOB_TRAVEL_MESO: '100000'
+    # Values: a positive integer; unit: map pixels above y=0 (the code negates it). Recommended: 1200-1800; 1500 sits between the tunnel exit at y 92 and the top exit at y -1908.
+    # Purpose: Height line on the Ellinia north forest map that decides whether a Magician Agent walking to its second-job instructor still takes the tree tunnel shortcut.
+    # Technical: routeMagicianThroughTreeTunnel sends a Magician on map 101020000 whose y is greater (lower on screen) than minus this value to portal 9 (y 2092) and up tunnel map 101020001 to its top portal 12; above the line generic navigation resumes.
+    server.agents.progression.AgentSecondJobAdvancementRuntime.ELLINIA_TREE_TUNNEL_UPPER_EXIT_HEIGHT: '1500'
     # Values: 60-300 map pixels. Recommended: 180 for Explorer instructor and job-advancement NPC sprite geometry.
     # Purpose: Controls how close an Agent must approach a second-job advancement NPC before invoking its ordinary quest script.
     # Technical: AgentSecondJobAdvancementRuntime passes this bound to the shared grounded NPC reachability service without changing any other progression flow.
