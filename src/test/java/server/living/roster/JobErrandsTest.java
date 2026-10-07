@@ -216,6 +216,8 @@ class JobErrandsTest {
 
         assertFalse(errands.form.begin(slice, bot, clock.get()));
         assertEquals(RosterState.AWAY, game.row(casse).state(), "nothing called while its slice starts");
+        assertFalse(errands.underway("casse"), "it holds its job: it waits to be called back");
+        assertNull(errands.visiting("casse"), "the Crew window no longer says it went to see Grendel");
         errands.sweep();
         game.runTimers();
 
