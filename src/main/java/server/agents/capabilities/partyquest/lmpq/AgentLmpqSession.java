@@ -33,6 +33,7 @@ public final class AgentLmpqSession {
     private boolean terminating;
     private String failure = "";
     private EventInstanceManager eventInstance;
+    private boolean companionAdopted;
 
     public AgentLmpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
         if (mode == null || operatorId <= 0 || requestedPartySize < AgentLmpqDefinition.MIN_PARTY_SIZE
@@ -131,4 +132,13 @@ public final class AgentLmpqSession {
     public synchronized AgentLmpqMemberState member(int id) { return members.get(id); }
     public synchronized Collection<AgentLmpqMemberState> members() { return List.copyOf(members.values()); }
     public synchronized int memberCount() { return members.size(); }
+
+    /**
+     * A human-led run of owner-bound companions, admitted by AgentLmpqAdmissionService.admit. Every companion-run
+     * behaviour is gated on it; stock, background and GM fixture runs leave it false.
+     */
+    public synchronized boolean companionAdopted() { return companionAdopted; }
+
+    /** Set only by the public admit, before the session is published. */
+    synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
 }
