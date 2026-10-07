@@ -44,6 +44,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     final Map<Integer, Character> humans = new HashMap<>();
     final Set<Integer> away = new HashSet<>();
     final Set<Integer> changingMaps = new HashSet<>();
+    /** For an Agent listed here clearBoundary, moveOut and follow throw once the call is logged. */
+    final Set<Integer> broken = new HashSet<>();
     final List<Runnable> scheduled = new ArrayList<>();
     final List<Long> scheduledDelays = new ArrayList<>();
     boolean stillTheChannels = true;
@@ -143,6 +145,7 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     @Override
     public void clearBoundary(int agentId) {
         calls.add("clearBoundary " + agentId);
+        failIfBroken(agentId);
     }
 
     @Override
@@ -154,11 +157,19 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     @Override
     public void moveOut(Character agent, int mapId) {
         calls.add("moveOut " + agent.getId() + " " + mapId);
+        failIfBroken(agent.getId());
     }
 
     @Override
     public void follow(int agentId) {
         calls.add("follow " + agentId);
+        failIfBroken(agentId);
+    }
+
+    private void failIfBroken(int agentId) {
+        if (broken.contains(agentId)) {
+            throw new IllegalStateException("broken port for " + agentId);
+        }
     }
 
     @Override

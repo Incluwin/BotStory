@@ -101,7 +101,10 @@ public final class AgentBossRunService {
                 && !AgentPartyQuestRuntime.active(agentId);
     }
 
-    /** One tick of the run, then the next one; a failing tick ends the run instead of leaving it open. */
+    /**
+     * One tick of the run, then the next one; a failing tick ends the run instead of leaving it open, and the end hands
+     * back the members still in it.
+     */
     static void monitor(AgentBossRunPorts ports, AgentBossRunSession session) {
         if (session.phase() == AgentBossRunSession.Phase.ENDED) {
             return;
@@ -113,7 +116,7 @@ public final class AgentBossRunService {
         } catch (RuntimeException failure) {
             log.warn("Boss run tick failed: session={} boss={}", session.sessionId(), session.definition().key(),
                     failure);
-            session.end(host, "error", nowMs);
+            session.end(ports, host, "error", nowMs);
         }
         if (session.phase() != AgentBossRunSession.Phase.ENDED) {
             ports.schedule(() -> monitor(ports, session), monitorMs());

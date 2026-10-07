@@ -21,7 +21,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * drives the alive ones through the fight, and at the clear hands them back to following their owner. A member that
  * died, or left the event, waits outside for its owner; when no human stands in the fight any more, or after the clear
  * once its anchor left, a member walks out by the stock ways. The run ends when every member is out or the event is
- * gone. {@link #tick} runs on the Agent scheduler under the session's lock.
+ * gone; a failed tick ends it at once and hands back whoever is still in it. {@link #tick} runs on the Agent scheduler
+ * under the session's lock.
  */
 public final class AgentBossRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunSession.class);
@@ -134,7 +135,7 @@ public final class AgentBossRunSession {
     private void tickRegistering(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
         // A Stop or the registration timeout drops the expedition from its channel but leaves it registering.
         if (!ports.stillTheChannels(expedition)) {
-            end(host, "disbanded", nowMs);
+            end(ports, host, "disbanded", nowMs);
             return;
         }
         if (!expedition.isRegistering()) {
@@ -264,7 +265,7 @@ public final class AgentBossRunSession {
         if (phase == Phase.STARTING) {
             if (count(AgentBossRunMember.Phase.INSIDE) == 0) {
                 if (count(AgentBossRunMember.Phase.REGISTERED) == 0) {
-                    end(host, "nobody-inside", nowMs);
+                    end(ports, host, "nobody-inside", nowMs);
                 }
                 return;
             }
@@ -280,7 +281,7 @@ public final class AgentBossRunSession {
                     handBack(ports, host, member, ports.agent(member.agentId()) != null);
                 }
             }
-            end(host, "event-disposed", nowMs);
+            end(ports, host, "event-disposed", nowMs);
             return;
         }
         if (phase == Phase.FIGHTING && event.isEventCleared()) {
@@ -297,7 +298,7 @@ public final class AgentBossRunSession {
         }
         if (count(AgentBossRunMember.Phase.INSIDE) + count(AgentBossRunMember.Phase.LEAVING)
                 + count(AgentBossRunMember.Phase.REGISTERED) == 0) {
-            end(host, "members-out", nowMs);
+            end(ports, host, "members-out", nowMs);
         }
     }
 
@@ -344,12 +345,16 @@ public final class AgentBossRunSession {
             memberOut(host, member, AgentBossRunHost.Out.GONE);
             return;
         }
-        AgentBossRunHost.Out out = member.seenDead() ? AgentBossRunHost.Out.DIED
-                : member.leavingFor() != null ? member.leavingFor() : AgentBossRunHost.Out.EXITED;
         int agentId = member.agentId();
         ports.clearBoundary(agentId);
         ports.follow(agentId);
-        memberOut(host, member, out);
+        memberOut(host, member, outOf(member));
+    }
+
+    /** How a loaded member left: it died out, it left for the reason it was leaving, or it simply left. */
+    private static AgentBossRunHost.Out outOf(AgentBossRunMember member) {
+        return member.seenDead() ? AgentBossRunHost.Out.DIED
+                : member.leavingFor() != null ? member.leavingFor() : AgentBossRunHost.Out.EXITED;
     }
 
     /**
@@ -608,11 +613,15 @@ public final class AgentBossRunSession {
         return (int) members.stream().filter(member -> member.phase() == wanted).count();
     }
 
-    /** Ends the run once: it leaves the registry, then the host hears how it went. */
-    synchronized void end(AgentBossRunHost.Rule host, String reason, long nowMs) {
+    /**
+     * Ends the run once: a member still in it is handed back, the run leaves the registry, then the host hears how it
+     * went. Only an error ends a run with a member still INSIDE or LEAVING.
+     */
+    synchronized void end(AgentBossRunPorts ports, AgentBossRunHost.Rule host, String reason, long nowMs) {
         if (phase == Phase.ENDED) {
             return;
         }
+        handBackStranded(ports, host);
         boolean started = phase != Phase.REGISTERING;
         phase = Phase.ENDED;
         AgentBossRunRegistry.remove(this);
@@ -628,6 +637,48 @@ public final class AgentBossRunSession {
                 definition.key(), reason, started, cleared, results.size());
         host.runEnded(new AgentBossRunHost.RunEnded(sessionId, definition.key(), started, cleared, reason,
                 started ? startedAtMs : 0L, nowMs, partySize, results));
+    }
+
+    /**
+     * Best effort for a member still INSIDE or LEAVING when the run ends (a failed tick): with no runtime it is GONE;
+     * otherwise it is freed from the battle walls, moved to the recruit map while it stands alive in the event (a dead
+     * one is left to the respawn), and follows its owner again. Each step is tried on its own, so a failure stops
+     * neither the next step nor the next member; the host hears memberOut before runEnded.
+     */
+    private void handBackStranded(AgentBossRunPorts ports, AgentBossRunHost.Rule host) {
+        for (AgentBossRunMember member : members) {
+            if (!inTheRun(member)) {
+                continue;
+            }
+            int agentId = member.agentId();
+            try {
+                Character agent = ports.agent(agentId);
+                if (agent == null) {
+                    memberOut(host, member, AgentBossRunHost.Out.GONE);
+                    continue;
+                }
+                bestEffort("clearBoundary", agentId, () -> ports.clearBoundary(agentId));
+                bestEffort("moveOut", agentId, () -> {
+                    if (event != null && agent.isAlive() && agent.getEventInstance() == event) {
+                        moveOut(ports, agent);
+                    }
+                });
+                bestEffort("follow", agentId, () -> ports.follow(agentId));
+                memberOut(host, member, outOf(member));
+            } catch (RuntimeException failure) {
+                log.warn("Boss run hand-back failed: session={} boss={} member={}", sessionId, definition.key(),
+                        agentId, failure);
+            }
+        }
+    }
+
+    private void bestEffort(String step, int agentId, Runnable call) {
+        try {
+            call.run();
+        } catch (RuntimeException failure) {
+            log.warn("Boss run hand-back step failed: session={} boss={} member={} step={}", sessionId,
+                    definition.key(), agentId, step, failure);
+        }
     }
 
     // ---- tuning (agent-engine.yaml), read at call time ----------------------------------------

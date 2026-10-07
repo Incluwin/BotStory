@@ -343,7 +343,7 @@ class AgentBossRunSessionStartTest {
         when(event.isEventCleared()).thenReturn(true);
         session.tick(ports, host, START + 600_000L);
 
-        session.end(host, "test", START + 700_000L);
+        session.end(ports, host, "test", START + 700_000L);
 
         AgentBossRunHost.RunEnded ended = host.ended.getFirst();
         assertTrue(ended.started());

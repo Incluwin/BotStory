@@ -105,6 +105,7 @@ class AgentBossRunSessionExitTest {
 
     @AfterEach
     void tearDown() {
+        AgentBossRunHost.install(null);
         AgentBossRunRegistry.resetForTest();
     }
 
@@ -469,7 +470,7 @@ class AgentBossRunSessionExitTest {
 
         session.tick(ports, host, FIGHT + 1_000L);
         session.tick(ports, host, FIGHT + 1_500L);
-        session.end(host, "again", FIGHT + 2_000L);
+        session.end(ports, host, "again", FIGHT + 2_000L);
 
         assertEquals(1, host.ended.size());
         AgentBossRunHost.RunEnded ended = host.ended.getFirst();
@@ -501,6 +502,78 @@ class AgentBossRunSessionExitTest {
         assertEquals(List.of("out " + THANE + " GONE"), ports.calls);
         assertEquals(AgentBossRunHost.Out.GONE, session.member(THANE).out());
         assertEquals(AgentBossRunSession.Phase.FIGHTING, session.phase());
+    }
+
+    @Test
+    void failingTickInTheFightHandsEveryMemberBackAndEndsTheRunAsAnErrorOnce() {
+        AgentBossRunHost.install(host);
+        AgentBossRunSession session = fighting(THANE, ISOLDE);
+        when(event.getPlayers()).thenThrow(new IllegalStateException("broken event"));
+
+        AgentBossRunService.monitor(ports, session);
+        AgentBossRunService.monitor(ports, session);
+        session.end(ports, host, "again", FIGHT + 2_000L);
+
+        assertEquals(List.of(
+                "clearBoundary " + THANE, "moveOut " + THANE + " " + RECRUIT_MAP, "follow " + THANE,
+                "out " + THANE + " EXITED",
+                "clearBoundary " + ISOLDE, "moveOut " + ISOLDE + " " + RECRUIT_MAP, "follow " + ISOLDE,
+                "out " + ISOLDE + " EXITED",
+                "ended error"), ports.calls);
+        assertEquals(1, host.ended.size());
+        AgentBossRunHost.RunEnded ended = host.ended.getFirst();
+        assertEquals("error", ended.reason());
+        assertTrue(ended.started());
+        assertEquals(List.of(AgentBossRunHost.Out.EXITED, AgentBossRunHost.Out.EXITED),
+                ended.members().stream().map(AgentBossRunHost.MemberResult::out).toList());
+        assertEquals(List.of(), ports.scheduled, "an ended run schedules no further monitor");
+        assertEquals("end", fight.calls.getLast());
+        assertEquals(AgentBossRunSession.Phase.ENDED, session.phase());
+        assertForgotten(session);
+    }
+
+    @Test
+    void handBackStepThatThrowsForOneMemberStillHandsBackTheNext() {
+        AgentBossRunHost.install(host);
+        AgentBossRunSession session = fighting(THANE, ISOLDE);
+        ports.broken.add(THANE);
+        when(event.getPlayers()).thenThrow(new IllegalStateException("broken event"));
+
+        AgentBossRunService.monitor(ports, session);
+
+        assertEquals(List.of(
+                "clearBoundary " + THANE, "moveOut " + THANE + " " + RECRUIT_MAP, "follow " + THANE,
+                "out " + THANE + " EXITED",
+                "clearBoundary " + ISOLDE, "moveOut " + ISOLDE + " " + RECRUIT_MAP, "follow " + ISOLDE,
+                "out " + ISOLDE + " EXITED",
+                "ended error"), ports.calls);
+        assertEquals(AgentBossRunMember.Phase.OUT, session.member(THANE).phase());
+        assertEquals(AgentBossRunMember.Phase.OUT, session.member(ISOLDE).phase());
+        assertEquals(AgentBossRunSession.Phase.ENDED, session.phase());
+    }
+
+    @Test
+    void failingTickKeepsALeavingMembersReasonAndLeavesADeadMemberToTheRespawn() {
+        AgentBossRunHost.install(host);
+        AgentBossRunSession session = fighting(THANE, INGRID);
+        ports.dead.add(INGRID);
+        ports.dead.add(OWNER);
+        long gone = FIGHT + 500L;
+        session.tick(ports, host, gone);
+        session.tick(ports, host, gone + AgentBossRunSession.humanGoneGraceMs());
+        assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(THANE).phase());
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(INGRID).phase());
+        ports.calls.clear();
+        when(event.getPlayers()).thenThrow(new IllegalStateException("broken event"));
+
+        AgentBossRunService.monitor(ports, session);
+
+        assertEquals(List.of(
+                "clearBoundary " + THANE, "moveOut " + THANE + " " + RECRUIT_MAP, "follow " + THANE,
+                "out " + THANE + " NO_HUMAN_LEFT",
+                "clearBoundary " + INGRID, "follow " + INGRID, "out " + INGRID + " DIED",
+                "ended error"), ports.calls);
+        assertEquals(AgentBossRunSession.Phase.ENDED, session.phase());
     }
 
     // ---- helpers ---------------------------------------------------------------------------------
