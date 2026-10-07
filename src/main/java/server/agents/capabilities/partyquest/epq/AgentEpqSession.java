@@ -39,6 +39,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Integer> recollectCounts = new HashMap<>();
     private final Set<Integer> dyingStacks = new HashSet<>();
     private int handOvers;
+    private int stoneFinderId;
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -311,6 +312,19 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     synchronized void setRecollectCount(int objectId, int count) {
         if (objectId != 0 && count > 0) recollectCounts.put(objectId, count);
     }
+
+    /**
+     * Notes the first companion seen holding the purple stone on 930000500: the stone's finder, who coaches the leader
+     * with it. True only for that first sighting.
+     */
+    synchronized boolean noteStoneFinder(int agentId) {
+        if (stoneFinderId != 0 || agentId <= 0) return false;
+        stoneFinderId = agentId;
+        return true;
+    }
+
+    /** The companion that found the purple stone, or 0. */
+    synchronized int stoneFinderId() { return stoneFinderId; }
 
     /** Marks a stack a carrier about to go down left where it stood: it is picked back up at once. */
     synchronized void markDyingStack(int objectId) { if (objectId != 0) dyingStacks.add(objectId); }

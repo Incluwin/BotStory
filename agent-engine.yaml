@@ -1246,6 +1246,10 @@ tuning:
     # Purpose: Has a carrier about to go down (this low and no HP potion left) drop what it carries where it stands, so a death does not delete it.
     # Technical: EllinPQ deletes a leaver's 4001162/4001163/4001169/2270004 (EventInstanceManager dropExclusiveItems); the dying drop keeps them on the floor for the leader or a recollect. Unknown potion counts (-1) never count as none.
     server.agents.capabilities.partyquest.epq.AgentEpqHandOver.DYING_HP_PERCENT: '25'
+    # Values: 30000-300000 milliseconds. Recommended: 120000, a walk down the whole climb with room to spare.
+    # Purpose: Bounds the walk of the companion who found the purple stone down to the leader; after it the stone is left by the sprite.
+    # Technical: AgentEpqHandOver reads this on 930000500 in companion runs instead of TIMEOUT_MS (the stone boxes stand about 3600 px above the sprite); an unreachable leader (canReach false) still goes to the sprite at once. The companion's line follows where the stone lands.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.STONE_TIMEOUT_MS: '120000'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

@@ -95,6 +95,31 @@ final class AgentEpqCompanionPlay {
     /** E19: a carrier about to go down (low on HP, no HP potion left) leaves its marbles where it stands. */
     static final String LEAVING_MARBLES = "almost out of pots, leaving the marbles here, grab them.";
 
+    /** E13f: said once by the companion that finds the purple stone in a box up top. */
+    static final String STONE_FOUND = "found the purple stone! bringing it down to you.";
+
+    /** E13: the purple stone lies at the leader's feet, or right next to him. */
+    static String stoneAtFeetLine(String leader, boolean atHisFeet) {
+        return "the purple stone is " + (atHisFeet ? "at your feet" : "right next to you") + ", " + leader
+                + ". pick it up and show it to the sprite.";
+    }
+
+    /** E13b: the leader could not be reached (or the walk ran out of time), so the stone lies by the sprite. */
+    static String stoneBySpriteLine(String leader) {
+        return leader + ", couldn't get to you, left the stone by the sprite.";
+    }
+
+    /** E13n: the stone has lain PICKUP_NUDGE_MS without the leader picking it up. */
+    static String stoneNudgeLine(String leader) {
+        return leader + ", the stone's still on the ground. the sprite needs to see it.";
+    }
+
+    /** E13r, after a stone the leader left lying was picked back up and dropped for him again. */
+    static final String STONE_RECOLLECTED = "picked the stone back up so it doesn't vanish. here it is again.";
+
+    /** E19s: a carrier about to go down leaves the stone where it stands. */
+    static final String LEAVING_STONE = "almost out of pots, leaving the stone here, grab it.";
+
     /** Where a hand-over stack went. */
     enum Place { FEET, BESIDE, NPC, DYING, HERE }
 
@@ -201,28 +226,48 @@ final class AgentEpqCompanionPlay {
         return itemId == AgentEpqDefinition.MAGIC_STONE ? "sprite" : "ellin";
     }
 
-    /** E9 (the batch line) for this item; null for an item with no hand-over line. */
+    /** E9 or E13 (the at-feet line) for this item; null for an item with no hand-over line. */
     static String atFeetLine(int itemId, String leader, boolean atHisFeet) {
-        return itemId == AgentEpqDefinition.MONSTER_MARBLE ? marblesAtFeetLine(leader, atHisFeet) : null;
+        return switch (itemId) {
+            case AgentEpqDefinition.MONSTER_MARBLE -> marblesAtFeetLine(leader, atHisFeet);
+            case AgentEpqDefinition.MAGIC_STONE -> stoneAtFeetLine(leader, atHisFeet);
+            default -> null;
+        };
     }
 
-    /** E9b for this item; null for an item with no NPC. */
+    /** E9b or E13b for this item; null for an item with no NPC. */
     static String byNpcLine(int itemId, String leader) {
-        return itemId == AgentEpqDefinition.MONSTER_MARBLE ? marblesByEllinLine(leader) : null;
+        return switch (itemId) {
+            case AgentEpqDefinition.MONSTER_MARBLE -> marblesByEllinLine(leader);
+            case AgentEpqDefinition.MAGIC_STONE -> stoneBySpriteLine(leader);
+            default -> null;
+        };
     }
 
-    /** E10 for this item. */
+    /** E10 or E13n for this item. */
     static String nudgeLine(int itemId, String leader) {
-        return itemId == AgentEpqDefinition.MONSTER_MARBLE ? marblesNudgeLine(leader) : null;
+        return switch (itemId) {
+            case AgentEpqDefinition.MONSTER_MARBLE -> marblesNudgeLine(leader);
+            case AgentEpqDefinition.MAGIC_STONE -> stoneNudgeLine(leader);
+            default -> null;
+        };
     }
 
-    /** E11 for this item. */
+    /** E11 or E13r for this item. */
     static String recollectedLine(int itemId) {
-        return itemId == AgentEpqDefinition.MONSTER_MARBLE ? MARBLES_RECOLLECTED : null;
+        return switch (itemId) {
+            case AgentEpqDefinition.MONSTER_MARBLE -> MARBLES_RECOLLECTED;
+            case AgentEpqDefinition.MAGIC_STONE -> STONE_RECOLLECTED;
+            default -> null;
+        };
     }
 
-    /** E19 for this item. */
+    /** E19 or E19s for this item. */
     static String leavingLine(int itemId) {
-        return itemId == AgentEpqDefinition.MONSTER_MARBLE ? LEAVING_MARBLES : null;
+        return switch (itemId) {
+            case AgentEpqDefinition.MONSTER_MARBLE -> LEAVING_MARBLES;
+            case AgentEpqDefinition.MAGIC_STONE -> LEAVING_STONE;
+            default -> null;
+        };
     }
 }

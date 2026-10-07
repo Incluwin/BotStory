@@ -32,6 +32,8 @@ final class AgentEpqHandOver {
             "server.agents.capabilities.partyquest.epq.AgentEpqHandOver.REACH_PX");
     static final long TIMEOUT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqHandOver.TIMEOUT_MS");
+    static final long STONE_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqHandOver.STONE_TIMEOUT_MS");
     static final long PICKUP_NUDGE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqHandOver.PICKUP_NUDGE_MS");
     static final long RECOLLECT_MS = recollectAfterMs(config.AgentTuning.longValue(
@@ -153,6 +155,8 @@ final class AgentEpqHandOver {
         if (stack != 0 && lineage > 0) session.setRecollectCount(stack, lineage);
         int handOver = session.nextHandOver();
         session.markProgress(nowMs);
+        // The stone is handed off: the collector no longer picks up a stone lying on this map (Step 2.8).
+        if (itemId == AgentEpqDefinition.MAGIC_STONE) session.markStageFiveStoneHandedOff(nowMs);
         logHandOver(session, agent, itemId, held, place, recollect, leader, at, landing);
         say(session, agent, itemId, held, place, recollect, leader, lyingBefore, handOver);
     }
@@ -328,8 +332,9 @@ final class AgentEpqHandOver {
                 && AgentEpqCompanionPlay.dying(hp, maxHp, actions().hpPotionCount(agent), DYING_HP_PERCENT);
     }
 
-    private static long timeoutMs(int itemId) {
-        return TIMEOUT_MS;
+    /** The walk limit: the stone's long climb down (STONE_TIMEOUT_MS), else TIMEOUT_MS. */
+    static long timeoutMs(int itemId) {
+        return itemId == AgentEpqDefinition.MAGIC_STONE ? STONE_TIMEOUT_MS : TIMEOUT_MS;
     }
 
     /** Where a character stands, on its foothold. */

@@ -584,11 +584,27 @@ public final class AgentEpqCoordinator {
 
     private static void stageFive(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                   AgentEpqMemberState member, long nowMs) {
+        boolean companionRun = session.companionAdopted();
+        if (companionRun) {
+            // Step 2.8: the companion that finds the stone says so once and brings it to the leader's feet; no
+            // companion talks to the sprite (the leader's own click).
+            if (actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE) > 0
+                    && session.noteStoneFinder(agent.getId())) {
+                AgentEpqCompanionRun.coordinate(session, agent, "stone-found", AgentEpqCompanionPlay.STONE_FOUND);
+            }
+            if (AgentEpqHandOver.tick(session, entry, agent, member, AgentEpqDefinition.MAGIC_STONE,
+                    AgentEpqDefinition.STONE_NPC, nowMs)) {
+                return;
+            }
+        }
         boolean collector = mayCollectStageFiveStone(session, agent.getId());
-        if (collector && !session.stageFiveStoneHandedOff()
-                && collectNearest(entry, agent, Set.of(AgentEpqDefinition.MAGIC_STONE))) return;
+        // In a companion run the collector takes only the stone a box dropped: a stone a companion dropped is the
+        // leader's, or its recollector's (AgentEpqSessionRegistry.canLootExclusive).
+        if (collector && !session.stageFiveStoneHandedOff() && (companionRun
+                ? collectNearestBoxDrop(entry, agent, AgentEpqDefinition.MAGIC_STONE)
+                : collectNearest(entry, agent, Set.of(AgentEpqDefinition.MAGIC_STONE)))) return;
         int magicStones = actions().itemCount(agent, AgentEpqDefinition.MAGIC_STONE);
-        if (magicStones > 0) {
+        if (magicStones > 0 && !companionRun) {
             if (session.claimAnnouncement("stage5-stone-found")) {
                 partyChat(session, "stage5-stone-found", agent,
                         "Purple Stone of Magic found. Bringing it to Yuris.");
@@ -1165,6 +1181,19 @@ public final class AgentEpqCoordinator {
                                           Set<Integer> itemIds) {
         MapItem item = AgentMapPerception.items(agent.getMap()).stream()
                 .filter(drop -> !drop.isPickedUp() && itemIds.contains(drop.getItemId()))
+                .filter(drop -> drop.getPosition() != null)
+                .min(Comparator.comparingDouble(drop ->
+                        drop.getPosition().distanceSq(agent.getPosition())))
+                .orElse(null);
+        if (item == null) return false;
+        pickUp(entry, agent, item);
+        return true;
+    }
+
+    /** As collectNearest for one item, but only a drop the map made (a box's), never one a player dropped. */
+    private static boolean collectNearestBoxDrop(AgentRuntimeEntry entry, Character agent, int itemId) {
+        MapItem item = AgentMapPerception.items(agent.getMap()).stream()
+                .filter(drop -> !drop.isPickedUp() && !drop.isPlayerDrop() && drop.getItemId() == itemId)
                 .filter(drop -> drop.getPosition() != null)
                 .min(Comparator.comparingDouble(drop ->
                         drop.getPosition().distanceSq(agent.getPosition())))
