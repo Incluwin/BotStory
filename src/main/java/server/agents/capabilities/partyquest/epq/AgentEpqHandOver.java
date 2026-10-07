@@ -68,10 +68,13 @@ final class AgentEpqHandOver {
                 pickUp(entry, agent, stack);
                 return true;
             }
+            // A dying carrier's stack never lay at his feet and was not about to vanish: its hand-over is an at-feet
+            // one (E9/E13), not a re-collect's (E11/E13r) (review B). Read before endRecollect forgets it.
+            boolean dying = session.dyingStack(claimed);
             int lineage = session.endRecollect(claimed);
             if (held > member.heldBefore()) {
-                member.startHandOver(itemId, nowMs, true, lineage + 1);
-                logRecollect(session, agent, itemId, claimed, lineage + 1, nowMs);
+                member.startHandOver(itemId, nowMs, !dying, lineage + 1);
+                logRecollect(session, agent, itemId, claimed, lineage + 1, dying);
             }
         }
         if (member.handOverStartedAtMs() > 0L) {
@@ -366,11 +369,10 @@ final class AgentEpqHandOver {
 
     /** 'EPQ recollect:' once a companion has picked a stack back up. Nothing decides by it; never throws. */
     private static void logRecollect(AgentEpqSession session, Character agent, int itemId, int stack, int count,
-                                     long nowMs) {
+                                     boolean dying) {
         try {
             log.info("EPQ recollect: session={} item={} member={} stack={} count={} dying={}", session.sessionId(),
-                    AgentEpqCompanionPlay.itemKey(itemId), agent.getName(), stack, count,
-                    session.dyingStack(stack));
+                    AgentEpqCompanionPlay.itemKey(itemId), agent.getName(), stack, count, dying);
         } catch (RuntimeException e) {
             log.warn("EPQ recollect line failed: session={}", session.sessionId(), e);
         }

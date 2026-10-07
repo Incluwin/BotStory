@@ -337,7 +337,7 @@ class AgentEpqMarbleHandOverTest {
             assertEquals(1, lines.startingWith("EPQ handover: session=" + session.sessionId()
                     + " item=marbles member=Mira count=6 place=DYING").size());
         }
-        said(mira, "almost out of pots, leaving the marbles here, grab them.");
+        said(mira, "out of pots, leaving the marbles here.");
         MapItem left = AgentEpqHandOver.lyingStacks(session, mira, MARBLE).getFirst();
         assertTrue(session.dyingStack(left.getObjectId()));
 
@@ -346,6 +346,39 @@ class AgentEpqMarbleHandOverTest {
         int leftId = left.getObjectId();
         assertEquals(tobi.getId(), session.recollectorOf(leftId));
         verify(run.actions).lootItem(eq(tobi), eq(leftId), anyInt());
+    }
+
+    /**
+     * Review B: a dying carrier's stack another companion took back is handed over as at his feet (E9), not as picked
+     * back up so it does not vanish (E11): it never lay at his feet and was not about to vanish. 'EPQ recollect:' says
+     * dying=true.
+     */
+    @Test
+    void aDyingCarriersStackTakenBackIsHandedOverAtHisFeet() {
+        AgentEpqSession session = companionRun();
+        run.holds(mira, MARBLE, 6);
+        when(mira.getHp()).thenReturn(100);
+        when(mira.getCurrentMaxHp()).thenReturn(1_000);
+        when(run.actions.hpPotionCount(mira)).thenReturn(0);
+        dropsLandWhereTheyAreMade(2_000L);
+        tick(session, mira, 2_000L);
+        MapItem left = AgentEpqHandOver.lyingStacks(session, mira, MARBLE).getFirst();
+        tick(session, tobi, 2_001L); // Tobi takes it back at once
+        run.pickUp(left);
+        run.holds(tobi, MARBLE, 6);
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqHandOver.class)) {
+            tick(session, tobi, 3_000L);
+
+            assertEquals(1, lines.startingWith("EPQ recollect: session=" + session.sessionId()
+                    + " item=marbles member=Tobi stack=" + left.getObjectId() + " count=1 dying=true").size());
+        }
+
+        at(tobi, BEN_SPOT);
+        tick(session, tobi, 4_000L);
+
+        said(tobi, "the monster marbles are at your feet, Ben. pick them up.");
+        verify(run.packets, never()).broadcastChatText(any(),
+                eq("picked the marbles back up so they don't vanish. here they are again."), anyBoolean(), anyInt());
     }
 
     @Test

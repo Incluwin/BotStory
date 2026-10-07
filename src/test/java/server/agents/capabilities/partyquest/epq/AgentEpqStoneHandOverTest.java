@@ -215,7 +215,7 @@ class AgentEpqStoneHandOverTest {
             assertEquals(1, lines.startingWith("EPQ handover: session=" + session.sessionId()
                     + " item=stone member=Mira count=1 place=DYING").size());
         }
-        said(mira, "almost out of pots, leaving the stone here, grab it.");
+        said(mira, "out of pots, leaving the stone here.");
         MapItem left = AgentEpqHandOver.lyingStacks(session, mira, STONE).getFirst();
         assertTrue(session.dyingStack(left.getObjectId()));
     }

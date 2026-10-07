@@ -257,8 +257,11 @@ final class AgentEpqCompanionPlay {
     /** E11, after a stack the leader left lying was picked back up and dropped for him again. */
     static final String MARBLES_RECOLLECTED = "picked the marbles back up so they don't vanish. here they are again.";
 
-    /** E19: a carrier about to go down (low on HP, no HP potion left) leaves its marbles where it stands. */
-    static final String LEAVING_MARBLES = "almost out of pots, leaving the marbles here, grab them.";
+    /**
+     * E19: a carrier about to go down (low on HP, no HP potion left) leaves its marbles where it stands; another
+     * companion takes them to the leader at once, so the line asks nothing of him.
+     */
+    static final String LEAVING_MARBLES = "out of pots, leaving the marbles here.";
 
     /** E13f: said once by the companion that finds the purple stone in a box up top. */
     static final String STONE_FOUND = "found the purple stone! bringing it down to you.";
@@ -282,8 +285,8 @@ final class AgentEpqCompanionPlay {
     /** E13r, after a stone the leader left lying was picked back up and dropped for him again. */
     static final String STONE_RECOLLECTED = "picked the stone back up so it doesn't vanish. here it is again.";
 
-    /** E19s: a carrier about to go down leaves the stone where it stands. */
-    static final String LEAVING_STONE = "almost out of pots, leaving the stone here, grab it.";
+    /** E19s: a carrier about to go down leaves the stone where it stands (another companion takes it to him). */
+    static final String LEAVING_STONE = "out of pots, leaving the stone here.";
 
     /** Where a hand-over stack went. */
     enum Place { FEET, BESIDE, NPC, DYING, HERE }
