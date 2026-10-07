@@ -414,6 +414,35 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
+    void thePickRoomIsTheRoomOfTheCoveragePickOnlyWhileItsWholeCountFits() {
+        // review 2026-10-06: the counter buys the coverage pick whenever its whole count fits (selectForCount), and
+        // fills the stack of it carried first; any other pick depends on the budget
+        Shop shop = shop(List.of(RED, WHITE, BLUE));
+        use = new Inventory(bot, InventoryType.USE, (byte) 24);
+        use.addItem(Items.itemWithQuantity(WHITE, 20));
+        use.addItem(Items.itemWithQuantity(BLUE, 30));
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(slotMax);
+            assertEquals(320, AgentShopService.coveragePickPrice(bot, shop, true), "White is this hunter's pick");
+            assertEquals(200, AgentShopService.coveragePickPrice(bot, shop, false));
+            assertEquals(-1, AgentShopService.coveragePickPrice(bot, shop(List.of(BLUE)), true), "no HP potion on sale");
+
+            assertEquals(80, AgentShopService.readinessPickRoom(bot, shop, true, 230, 80_000L));
+            assertEquals(80, AgentShopService.readinessPickRoom(bot, shop, true, 230, 230L * 320), "exactly");
+            assertEquals(0, AgentShopService.readinessPickRoom(bot, shop, true, 230, 230L * 320 - 1),
+                    "one meso short: the counter may buy another HP potion");
+            assertEquals(0, AgentShopService.readinessPickRoom(bot, shop, true, 230, 50_000L));
+            assertEquals(70, AgentShopService.readinessPickRoom(bot, shop, false, 320, 64_000L));
+            assertEquals(0, AgentShopService.readinessPickRoom(bot, shop(List.of(BLUE)), true, 230, 80_000L),
+                    "no HP potion on sale");
+
+            carry(20, 0); // 20 Red: room on a potion the counter does not buy here
+            assertEquals(0, AgentShopService.readinessPickRoom(bot, shop, true, 230, 80_000L));
+        }
+    }
+
+    @Test
     void thePotionStackIsTheSmallestSlotMaxOfThePotionsOfTheKindThisShopSells() {
         InventoryGateway stacks = mock(InventoryGateway.class);
         when(stacks.getSlotMax(any(Character.class), anyInt())).thenReturn((short) 100);

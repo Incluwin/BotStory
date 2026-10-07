@@ -106,6 +106,15 @@ class AgentSupplyReadinessRuntimeTest {
     private int stackSize;
     /** Character id -> what AgentShopService.carriedStackRoom answers for HP (0 when not listed). */
     private final Map<Integer, Integer> hpStackRoom = new HashMap<>();
+    /**
+     * Character id -> the room of its carried stacks of the coverage picks, HP and MP: what
+     * AgentShopService.readinessPickRoom answers while the pick's whole count fits its budget (0 when not listed).
+     */
+    private final Map<Integer, int[]> pickRoom = new HashMap<>();
+    /** What AgentShopService.coveragePickPrice answers for HP: a White Potion. */
+    private int hpPickPrice = 320;
+    /** What AgentShopService.coveragePickPrice answers for MP: a Blue Potion, the cheapest. */
+    private int mpPickPrice = BLUE;
     /** The rule's callbacks and the party asks, in order. */
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
@@ -140,6 +149,17 @@ class AgentSupplyReadinessRuntimeTest {
                 .thenAnswer(inv -> stackSize);
         shopService.when(() -> AgentShopService.carriedStackRoom(any(), any(), eq(true)))
                 .thenAnswer(inv -> hpStackRoom.getOrDefault(((Character) inv.getArgument(0)).getId(), 0));
+        shopService.when(() -> AgentShopService.coveragePickPrice(any(), any(), anyBoolean()))
+                .thenAnswer(inv -> (boolean) inv.getArgument(2) ? hpPickPrice : mpPickPrice);
+        shopService.when(() -> AgentShopService.readinessPickRoom(any(), any(), anyBoolean(), anyInt(), anyLong()))
+                .thenAnswer(inv -> {
+                    boolean forHp = inv.getArgument(2);
+                    int want = inv.getArgument(3);
+                    long budget = inv.getArgument(4);
+                    int[] room = pickRoom.get(((Character) inv.getArgument(0)).getId());
+                    long cost = (long) (forHp ? hpPickPrice : mpPickPrice) * want;
+                    return room == null || cost > budget ? 0 : room[forHp ? 0 : 1]; // only while its whole count fits
+                });
         when(shops.findForNpc(anyInt())).thenReturn(mock(Shop.class));
         shopGateway = mockStatic(AgentShopGatewayRuntime.class);
         shopGateway.when(AgentShopGatewayRuntime::shop).thenReturn(shops);
@@ -587,6 +607,51 @@ class AgentSupplyReadinessRuntimeTest {
         assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(51, false, 100, 250, 50), "one more takes a slot");
         assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(25, false, 100, 25, 50),
                 "one stack: today's rule, which reads its own stack");
+    }
+
+    @Test
+    void slotsForSubtractsTheRoomOfTheStackTheCounterBuysOnto() {
+        // review 2026-10-06: back from an EPQ run with 20/30 on a stack each, its restock asked two slots too many
+        assertEquals(2, AgentSupplyReadinessRuntime.slotsFor(230, false, 100, 250, 80));
+        assertEquals(3, AgentSupplyReadinessRuntime.slotsFor(320, false, 100, 350, 70));
+        assertEquals(3, AgentSupplyReadinessRuntime.slotsFor(250, false, 100, 250, 0));
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(80, false, 100, 250, 80), "all onto the carried stack");
+    }
+
+    @Test
+    void anEpqCompanionBackFromARunRestocksIntoTheSlotsItsRunFreed() {
+        // review 2026-10-06: from 0/0 with exactly 8 free the visit leaves White 100/100/50 and Blue 100/100/100/50; a
+        // run uses 230/320, autopot empties 2 + 3 stacks: 6 free, 20 White and 30 Blue on a stack each. 2 + 3 + the run's
+        stackSize = 100;
+        Character casse = companion(545, "Casse", Job.MAGICIAN, 20, 30, 200_000);
+        activities.put(545, EPQ);
+        pickRoom.put(545, new int[]{80, 70});
+        freeSlots.put(545, 5);
+        AgentRuntimeEntry entry = following(casse);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 1_000L));
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, casse, 6_000L));
+        assertFalse(execution(entry).isActive());
+        assertEquals(List.of("refused 545 NO_SPACE 0"), calls, "one slot short: it says so once");
+        freeSlots.put(545, 6);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, casse, 11_000L), "the slots its run freed are enough");
+        assertTrue(execution(entry).isActive());
+
+        // 230 White do not fit the purse less the mana potions at their cheapest (100,000 - 320 x 200): the counter
+        // may buy another HP potion, so that stack's room is not counted on (3), the Blue's is (3), and the run's
+        assertFalse(epqMagicianSetsOff(546, 100_000, 80, 70, 6));
+        assertTrue(epqMagicianSetsOff(547, 100_000, 80, 70, 7));
+        // two carried White stacks with 130 room: still not counted on while the White do not fit
+        assertFalse(epqMagicianSetsOff(548, 100_000, 130, 70, 6));
+        assertTrue(epqMagicianSetsOff(549, 200_000, 130, 70, 5), "they fit: 1 + 3 + the run's");
+
+        // the MP pick is dearer than the cheapest: after an HP pass that may spend its whole budget, 320 of it at 310
+        // do not fit what is left (64,000), so its room is not counted on (3 + 4 + the run's)
+        mpPickPrice = 310;
+        assertFalse(epqMagicianSetsOff(550, 100_000, 80, 70, 7));
+        assertTrue(epqMagicianSetsOff(551, 100_000, 80, 70, 8));
+        // the White fit (200,000 - 64,000): that pass spends 73,600, and 320 at 250 fit the 126,400 left (2 + 3 + 1)
+        mpPickPrice = 250;
+        assertTrue(epqMagicianSetsOff(552, 200_000, 80, 70, 6));
     }
 
     @Test
@@ -1058,6 +1123,20 @@ class AgentSupplyReadinessRuntimeTest {
     }
 
     // ---- fixture ---------------------------------------------------------------------------
+
+    /**
+     * An EPQ magician back from a run with 20/30 potions, its carried stacks of the coverage picks with this room,
+     * {@code free} Use slots free: whether it sets off on its first tick.
+     */
+    private boolean epqMagicianSetsOff(int id, int mesos, int hpRoom, int mpRoom, int free) {
+        stackSize = 100;
+        Character agent = companion(id, "Casse", Job.MAGICIAN, 20, 30, mesos);
+        activities.put(id, EPQ);
+        pickRoom.put(id, new int[]{hpRoom, mpRoom});
+        freeSlots.put(id, free);
+        return AgentSupplyProcurementRuntime.tick(following(agent), agent, 1_000L);
+    }
+
 
     /** A Lv25 companion of {@code job} in Kerning with these potions and mesos, under a standing duty. */
     private Character companion(int id, String name, Job job, int hp, int mp, int mesos) {

@@ -1244,6 +1244,32 @@ public final class AgentShopService {
         return least;
     }
 
+    /**
+     * How many of {@code want} HP (or MP) potions a readiness floor pass surely puts on a carried stack: the room of
+     * the stacks of the coverage pick ({@link #findPotionItem}) carried, when {@code want} of it fit {@code budget}
+     * (AgentShopPotionPolicy.selectForCount then always buys it, and the shop fills a carried stack before it takes a
+     * new Use slot); 0 when they do not fit (the potion it buys then depends on the budget), or the shop sells none.
+     */
+    public static int readinessPickRoom(Character bot, Shop shop, boolean forHp, int want, long budget) {
+        if (bot == null || shop == null || want <= 0) {
+            return 0;
+        }
+        ShopSlotItem pick = findPotionItem(shop, bot, forHp);
+        if (pick == null || (long) pick.shopItem.getPrice() * want > budget) {
+            return 0;
+        }
+        return stackRoom(bot, pick.shopItem.getItemId(), AgentInventoryGatewayRuntime.inventory());
+    }
+
+    /** The price of the HP (or MP) potion a visit picks for coverage ({@link #findPotionItem}); -1 when it sells none. */
+    public static int coveragePickPrice(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null) {
+            return -1;
+        }
+        ShopSlotItem pick = findPotionItem(shop, bot, forHp);
+        return pick == null ? -1 : pick.shopItem.getPrice();
+    }
+
     /** The strongest HP (or MP) recovery potion this shop sells of which the bot carries a stack with room; or null. */
     private static ShopSlotItem carriedStack(Shop shop, Character bot, boolean forHp, InventoryGateway inventory) {
         if (bot.getInventory(InventoryType.USE) == null) {
