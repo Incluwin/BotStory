@@ -61,6 +61,7 @@ class AgentShopServicePotionFloorTest {
     private static final int POWER_ELIXIR = 2_000_005;
     private static final int ARROW = 2_060_000;
     private static final int SUBI = 2_070_000;
+    private static final int WARRIOR_POTION = 2_002_004;
     private static final AgentSupplyReadiness.Activity EPQ = AgentSupplyReadiness.Activity.partyQuest("epq");
 
     private final Map<Integer, StatEffect> effects = new HashMap<>();
@@ -354,6 +355,45 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
+    void anEpqDutyKeepsTheRunsSlotFromANewKindOfBuffPotion() {
+        // review 2026-10-06: the trip went for 8 free slots, the floor filled 7, a Warrior Potion took the 8th
+        AgentSupplyReadiness.install(id -> EPQ);
+        prices.put(WARRIOR_POTION, 500);
+        purse = 100_000;
+        useTab(2); // 1 free slot: the run's
+        fillCarriedStacksFirst();
+
+        buyBuffPotions(List.of(RED, WHITE, BLUE, WARRIOR_POTION));
+        assertEquals(List.of(), transactions, "a new kind of buff potion would take the run's slot");
+
+        use.addItem(Items.itemWithQuantity(WARRIOR_POTION, 4)); // bought before, in the slot the floor left
+        buyBuffPotions(List.of(RED, WHITE, BLUE, WARRIOR_POTION));
+        assertEquals(List.of("6 x " + WARRIOR_POTION), transactions, "onto the stack it carries");
+
+        transactions.clear();
+        useTab(3); // 2 free slots
+        buyBuffPotions(List.of(RED, WHITE, BLUE, WARRIOR_POTION));
+        assertEquals(List.of("10 x " + WARRIOR_POTION), transactions);
+    }
+
+    @Test
+    void aStandardOfOneStackStillBuysANewKindOfBuffPotionIntoTheLastSlot() {
+        // KPQ and HPQ stay as they are
+        prices.put(WARRIOR_POTION, 500);
+        purse = 100_000;
+        useTab(2);
+        AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
+        buyBuffPotions(List.of(RED, WHITE, BLUE, WARRIOR_POTION));
+        assertEquals(List.of("10 x " + WARRIOR_POTION), transactions);
+
+        transactions.clear();
+        useTab(2);
+        AgentSupplyReadiness.install(null); // no duty: an ordinary trip
+        buyBuffPotions(List.of(RED, WHITE, BLUE, WARRIOR_POTION));
+        assertEquals(List.of("10 x " + WARRIOR_POTION), transactions);
+    }
+
+    @Test
     void theCarriedStackRoomIsTheLeastRoomOfTheStacksTheLastSlotMayBuyOnto() {
         carry(40, 0);
         try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
@@ -451,6 +491,19 @@ class AgentShopServicePotionFloorTest {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
         AgentShopService.buyPotionStock(new AgentShopPurchaseSequence<>(entry, bot, inventory,
                 new Point(), List.of(), new ArrayList<>(), null), shop(itemIds), 0);
+    }
+
+    /** The buff potion step of a visit with the 100-a-stack inventory gateway. */
+    private void buyBuffPotions(List<Integer> itemIds) {
+        AgentShopService.buyBuffConsumables(new AgentShopPurchaseSequence<>(new AgentRuntimeEntry(bot, null, null), bot,
+                slotMax, new Point(), List.of(), new ArrayList<>(), null), shop(itemIds), 0);
+    }
+
+    /** A Use tab of {@code slots} slots holding only the 15 Power Elixirs. */
+    private void useTab(int slots) {
+        use = new Inventory(bot, InventoryType.USE, (byte) slots);
+        use.addItem(Items.itemWithQuantity(POWER_ELIXIR, 15));
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
     }
 
     /** The shop fills the stacks it carries (100 each) before it takes a new Use slot, as the live one does. */
