@@ -151,6 +151,23 @@ class AgentEpqObjectiveLostTest {
         lostOnlyAtTheConfirmTime(session, "stone");
     }
 
+    /**
+     * Review A: Map.wz 930000500's stone box (3002001) has reactorTime 0, so a broken box is never destroyed; it stays
+     * on the map, alive, at its last state, which has no event (inactive). A broken box is no box left.
+     */
+    @Test
+    void aBrokenBoxThatStaysOnTheMapIsNoBoxLeft() {
+        AgentEpqSession session = companionRun(AgentEpqSession.Phase.STAGE_FIVE, AgentEpqDefinition.STAGE_FIVE_MAP);
+        session.markStageFiveStoneHandedOff(1_500L);
+        Reactor box = mock(Reactor.class);
+        when(box.getId()).thenReturn(AgentEpqDefinition.STONE_BOX);
+        when(box.isAlive()).thenReturn(true);
+        when(box.isActive()).thenReturn(false);
+        when(run.actions.reactors(ben)).thenReturn(List.of(box));
+
+        lostOnlyAtTheConfirmTime(session, "stone");
+    }
+
     @Test
     void aStoneInTheLeadersBagIsNeverLost() {
         AgentEpqSession session = companionRun(AgentEpqSession.Phase.STAGE_FIVE, AgentEpqDefinition.STAGE_FIVE_MAP);

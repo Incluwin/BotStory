@@ -244,6 +244,33 @@ class AgentEpqCompanionAfterClearTest {
         assertEquals(AgentEpqSession.Phase.EXITING, session.phase());
     }
 
+    /**
+     * Review A: companions the event's exit left in the event (an exit that threw, or one that returned early for a
+     * companion not logged in) never hold the run for good: the next stall after their leave completes it, and it is
+     * no failure.
+     */
+    @Test
+    void aStallAfterTheCompanionsLeftCompletesTheRun() {
+        AgentEpqSession session = companionRun();
+        try (EpqLogLines lines = new EpqLogLines(AgentEpqCompanionRun.class);
+             EpqLogLines coordinator = new EpqLogLines(AgentEpqCoordinator.class)) {
+            AgentEpqCoordinator.tickSession(session, 2_000L);
+            AgentEpqCoordinator.tickSession(session, 62_000L); // the leave; the exit leaves all three in the event
+            assertEquals(AgentEpqSession.Phase.EXITING, session.phase());
+            assertTrue(session.leftAfterClear());
+
+            AgentEpqCoordinator.tickSession(session, 62_000L + 480_000L - 1L);
+            assertEquals(AgentEpqSession.Phase.EXITING, session.phase(), "1 ms before the stall");
+
+            AgentEpqCoordinator.tickSession(session, 62_000L + 480_000L);
+
+            assertEquals(List.of("EPQ after clear: session=" + session.sessionId() + " action=complete why=stall"),
+                    lines.startingWith("EPQ after clear: session=" + session.sessionId() + " action=complete"));
+            assertEquals(List.of(), coordinator.startingWith("EPQ session failure:"));
+        }
+        assertEquals(AgentEpqSession.Phase.COMPLETED, session.phase());
+    }
+
     @Test
     void exitingCompletesOnceTheCompanionsAreOutWhileTheLeaderIsStillInTheEvent() {
         AgentEpqSession session = companionRun();
