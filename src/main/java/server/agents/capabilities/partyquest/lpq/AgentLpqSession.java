@@ -105,6 +105,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private int recollectStackObjectId;
     private int recollectorId;
     private int recollectHeldBefore;
+    private int recollectItemId;
     private int recollects;
     private int keyCarrierId;
     private int leaderClimbBestRow = -1;
@@ -212,6 +213,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
         recollectStackObjectId = 0;
         recollectorId = 0;
         recollectHeldBefore = 0;
+        recollectItemId = 0;
         recollects = 0;
         leaderClimbBestRow = -1;
         stageSixAllAtTopSinceMs = 0L;
@@ -732,12 +734,15 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     synchronized int recollectStackObjectId() { return recollectStackObjectId; }
     synchronized int recollectorId() { return recollectorId; }
     synchronized int recollectHeldBefore() { return recollectHeldBefore; }
+    /** The item of the stack being picked back up (a pass or Alishar's key; 0 for none). */
+    synchronized int recollectItemId() { return recollectItemId; }
     /** Re-collects done this stage (AgentLpqSession.transition resets them). */
     synchronized int recollects() { return recollects; }
 
-    synchronized void beginRecollect(int collectorId, int stackObjectId, int heldBefore) {
+    synchronized void beginRecollect(int collectorId, int stackObjectId, int itemId, int heldBefore) {
         recollectorId = collectorId;
         recollectStackObjectId = stackObjectId;
+        recollectItemId = itemId;
         recollectHeldBefore = Math.max(0, heldBefore);
     }
 
@@ -747,6 +752,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
         recollectorId = 0;
         recollectStackObjectId = 0;
         recollectHeldBefore = 0;
+        recollectItemId = 0;
     }
 
     /** This member is picking up this hand-over stack now (the loot rule lets it). */

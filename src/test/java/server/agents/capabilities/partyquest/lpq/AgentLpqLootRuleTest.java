@@ -40,7 +40,7 @@ class AgentLpqLootRuleTest {
 
         assertFalse(AgentLpqSessionRegistry.canLootExclusive(kes, handOver));
         assertTrue(AgentLpqSessionRegistry.canLootExclusive(kes, natural));
-        session.beginRecollect(kes.getId(), handOver.getObjectId(), 0);
+        session.beginRecollect(kes.getId(), handOver.getObjectId(), handOver.getItemId(), 0);
         assertTrue(AgentLpqSessionRegistry.canLootExclusive(kes, handOver), "the recollector");
         assertFalse(AgentLpqSessionRegistry.canLootExclusive(crew.get(3), handOver), "anyone else");
     }
@@ -59,7 +59,7 @@ class AgentLpqLootRuleTest {
 
         MapItem dropped = fx.drop(S9, AgentLpqDefinition.BOSS_KEY, 1, new Point(0, 184), true, kes.getId(), 2L);
         assertFalse(AgentLpqSessionRegistry.canLootExclusive(kes, dropped), "its own hand-over drop");
-        session.beginRecollect(kes.getId(), dropped.getObjectId(), 0);
+        session.beginRecollect(kes.getId(), dropped.getObjectId(), dropped.getItemId(), 0);
         assertTrue(AgentLpqSessionRegistry.canLootExclusive(kes, dropped), "on its re-collect");
     }
 

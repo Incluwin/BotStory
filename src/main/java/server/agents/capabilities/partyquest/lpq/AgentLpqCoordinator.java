@@ -6573,7 +6573,7 @@ final class AgentLpqCoordinator {
             }
         }
         if (recollector == null) return;
-        session.beginRecollect(recollector.getId(), stack.getObjectId(),
+        session.beginRecollect(recollector.getId(), stack.getObjectId(), stack.getItemId(),
                 recollector.getItemQuantity(stack.getItemId(), false));
         log.info("LPQ recollect: session={} member={}({}) stage={} stack={} quantity={} lyingMs={}",
                 session.sessionId(), recollector.getName(), recollector.getId(), stageNumberOrZero(session.phase()),
@@ -6581,8 +6581,9 @@ final class AgentLpqCoordinator {
     }
 
     /**
-     * The recollector walks to its stack and picks it up; once the stack is gone, a recollector holding more than
-     * before picked it up and hands it over at once (its drop says H3).
+     * The recollector walks to its stack and picks it up; once the stack is gone, a recollector holding more of the
+     * stack's item than before picked it up and hands it over at once (its drop says H3, or K3 for the key). A
+     * companion that picked Alishar's key back up carries it from then on, whoever carried it before.
      */
     private static void followRecollect(AgentLpqSession session, List<MapItem> lying, long nowMs) {
         int stackId = session.recollectStackObjectId();
@@ -6591,11 +6592,18 @@ final class AgentLpqCoordinator {
         AgentLpqMemberState member = session.member(session.recollectorId());
         MapItem stack = lying.stream().filter(drop -> drop.getObjectId() == stackId).findFirst().orElse(null);
         if (stack == null || recollector == null || member == null || recollector.getHp() <= 0) {
-            int itemId = stack == null ? AgentLpqDefinition.PASS : stack.getItemId();
+            int itemId = session.recollectItemId();
             boolean pickedUp = recollector != null
                     && recollector.getItemQuantity(itemId, false) > session.recollectHeldBefore();
             session.endRecollect(pickedUp);
-            if (pickedUp && member != null) member.markHandOverRecollect(stackId);
+            if (pickedUp && member != null) {
+                member.markHandOverRecollect(stackId);
+                if (itemId == AgentLpqDefinition.BOSS_KEY && session.keyCarrierId() != recollector.getId()) {
+                    session.setKeyCarrierId(recollector.getId());
+                    log.info("LPQ key carrier: session={} member={}({}) key=recollected", session.sessionId(),
+                            recollector.getName(), recollector.getId());
+                }
+            }
             return;
         }
         AgentRuntimeEntry entry = entry(recollector.getId());
