@@ -88,7 +88,7 @@ public final class AgentPotionPurchasePolicy {
      * Potions to buy toward a count ({@code targetCount}, a readiness standard or its buy target) when {@code carried}
      * are on hand: the difference, within the carry and per-visit limits (MAX_CARRIED_QUANTITY,
      * MAX_PURCHASE_QUANTITY_PER_VISIT). A {@code standard} above a limit raises that limit to itself, so one visit
-     * reaches it and a top-up adds nothing past it.
+     * reaches it, and nothing buys past the larger of it and MAX_CARRIED_QUANTITY.
      */
     public static int floorQuantity(int targetCount, int carried, int alreadyBoughtThisVisit, int standard) {
         int want = Math.max(0, targetCount - Math.max(0, carried));

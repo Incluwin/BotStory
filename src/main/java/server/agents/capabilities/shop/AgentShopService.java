@@ -1069,7 +1069,8 @@ public final class AgentShopService {
      * (AgentSupplyReadiness.buyTarget), again holding back what the other kind still wants, buying only what the
      * budget pays for. {@link #floorItem} picks the potion. Nothing without a duty; {@code bought} counts this visit's
      * purchases per kind (HP, MP) against the per-visit limit. A standard above the carry or per-visit limit raises
-     * that limit to itself (AgentPotionPurchasePolicy.floorQuantity), so one visit reaches it.
+     * that limit to itself (AgentPotionPurchasePolicy.floorQuantity), so one visit reaches it, and nothing buys
+     * past the larger of it and MAX_CARRIED_QUANTITY.
      */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyReadinessFloor(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
