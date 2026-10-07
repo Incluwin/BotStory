@@ -91,6 +91,23 @@ final class AgentEpqCompanionRun {
      * 'EPQ session failure:' line and the failure's reason are today's.
      */
     static void fail(AgentEpqSession session, String reason, AgentEpqParting parting, Character speaker, long nowMs) {
+        fail(session, reason, parting, speaker, true, nowMs);
+    }
+
+    /**
+     * The departure gate's end of a companion run with no companion standing (Step 4.4), on the dying companion's own
+     * tick: WENT_DOWN in its own words ("sorry, i went down too"). A companion that cannot be loaded says nothing, and
+     * nobody says it for it.
+     */
+    static void shortHanded(AgentEpqSession session, int dyingId, long nowMs) {
+        Character dying = AgentEpqCoordinator.character(dyingId);
+        fail(session, (dying == null ? "Companion " + dyingId : dying.getName())
+                        + " went down, and no companion of the EPQ run stands",
+                AgentEpqParting.of(AgentEpqParting.Kind.WENT_DOWN, dying), dying, dying != null, nowMs);
+    }
+
+    private static void fail(AgentEpqSession session, String reason, AgentEpqParting parting, Character speaker,
+                             boolean anySpeaker, long nowMs) {
         if (!session.companionAdopted()) {
             AgentEpqCoordinator.fail(session, reason, nowMs);
             return;
@@ -102,7 +119,7 @@ final class AgentEpqCompanionRun {
         }
         if (!session.claimFailure()) return;
         if (parting != null && parting.kind() != AgentEpqParting.Kind.SILENT && session.eventInstance() != null) {
-            Character who = speaker != null ? speaker : partingSpeaker(session);
+            Character who = speaker != null ? speaker : anySpeaker ? partingSpeaker(session) : null;
             log.info("EPQ parting: session={} kind={} speaker={}", session.sessionId(), parting.kind(),
                     who == null ? "none" : who.getName());
             narrate(session, who, "failed", parting.line(who == null ? 0 : who.getId()));

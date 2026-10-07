@@ -92,6 +92,12 @@ public final class AgentEpqDeathDepartureGate {
             if (departure.firstHold()) {
                 logDeparture(session, id, name, "HOLD", departure.registered(), departure.othersInFlight(), 0L);
             }
+            // Step 4.4: with no other companion standing a companion run ends here, on the dead companion's own tick
+            // (with every companion down no other tick runs). It still holds: its next due tick finds the run ended
+            // and lets it go, and the first live tick releases the run.
+            if (session.companionAdopted() && noOtherCompanionStands(session, id, event)) {
+                AgentEpqCompanionRun.shortHanded(session, id, nowMs);
+            }
             return false;
         }
         logDeparture(session, id, name, departure.heldMs() >= 0L ? "RELEASED" : "PROCEED",
@@ -100,6 +106,21 @@ public final class AgentEpqDeathDepartureGate {
             respawn.run();
         } finally {
             session.endDeparture(id);
+        }
+        return true;
+    }
+
+    /** No other companion of the run is registered in the event, online, up and not departed. */
+    private static boolean noOtherCompanionStands(AgentEpqSession session, int id, EventView event) {
+        Set<Integer> registered = event.registeredIds();
+        for (AgentEpqMemberState member : session.members()) {
+            int other = member.characterId();
+            if (other == id || member.memberType() != AgentEpqMemberState.MemberType.AGENT
+                    || !registered.contains(other) || session.departed(other)) {
+                continue;
+            }
+            Character character = AgentEpqCoordinator.character(other);
+            if (character != null && character.getHp() > 0) return false;
         }
         return true;
     }
