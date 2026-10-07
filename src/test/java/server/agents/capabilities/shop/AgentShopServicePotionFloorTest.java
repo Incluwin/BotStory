@@ -40,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -302,6 +303,57 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
+    void anEpqDutyWithFewerFreeUseSlotsThanItsStacksStillLeavesTheRunsSlotFree() {
+        // review 2026-10-06: a floor pass of more than one stack filled every free slot, the run's one too
+        AgentSupplyReadiness.install(id -> EPQ);
+        purse = 200_000;
+        use = new Inventory(bot, InventoryType.USE, (byte) 4);
+        use.addItem(Items.itemWithQuantity(POWER_ELIXIR, 15)); // 3 free slots: loot on the way took the rest
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+
+        AgentShopPurchaseSequence<AgentRuntimeEntry> visit = AgentShopService.buyPotionStock(
+                new AgentShopPurchaseSequence<>(new AgentRuntimeEntry(bot, null, null), bot, slotMax, new Point(),
+                        List.of(), new ArrayList<>(), null), shop(List.of(RED, WHITE, BLUE)), 0);
+
+        assertEquals(List.of("100 x " + WHITE, "100 x " + WHITE), transactions,
+                "two stacks of HP potions, and no new stack of mana potions in the run's slot");
+        assertEquals(1, use.getNumFreeSlot());
+        assertEquals(new AgentShopBuyReport(WHITE, 200, 235, AgentShopShortfallReason.NO_SPACE),
+                visit.firstShortfall(), "it says its bag is full");
+    }
+
+    @Test
+    void anEpqDutyFillsTheRoomOfAStackItCarriesBesideTheRunsSlot() {
+        AgentSupplyReadiness.install(id -> EPQ);
+        purse = 200_000;
+        use = new Inventory(bot, InventoryType.USE, (byte) 3);
+        use.addItem(Items.itemWithQuantity(POWER_ELIXIR, 15));
+        use.addItem(Items.itemWithQuantity(WHITE, 40)); // 60 room, and 1 free slot: the run's
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        fillCarriedStacksFirst();
+
+        visit(List.of(RED, WHITE, BLUE), slotMax);
+
+        assertEquals(List.of("60 x " + WHITE), transactions, "onto the carried stack, the run's slot stays free");
+        assertEquals(1, use.getNumFreeSlot());
+        assertArrayEquals(new int[]{115, 15}, AgentPotionService.countPotions(bot), "15 Power Elixirs count as both");
+    }
+
+    @Test
+    void aStandardOfOneStackKeepsTodaysFloorAtTheLastFreeSlot() {
+        // KPQ and HPQ stay as they are: carrying no potion this shop sells, the floor still opens a stack there
+        AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
+        use = new Inventory(bot, InventoryType.USE, (byte) 2);
+        use.addItem(Items.itemWithQuantity(POWER_ELIXIR, 15)); // 1 free slot
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        fillCarriedStacksFirst();
+
+        visit(List.of(RED, WHITE, BLUE), slotMax);
+
+        assertEquals(List.of("5 x " + WHITE, "20 x " + WHITE), transactions);
+    }
+
+    @Test
     void thePotionStackIsTheSmallestSlotMaxOfThePotionsOfTheKindThisShopSells() {
         InventoryGateway stacks = mock(InventoryGateway.class);
         when(stacks.getSlotMax(any(Character.class), anyInt())).thenReturn((short) 100);
@@ -379,6 +431,33 @@ class AgentShopServicePotionFloorTest {
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, null, null);
         AgentShopService.buyPotionStock(new AgentShopPurchaseSequence<>(entry, bot, inventory,
                 new Point(), List.of(), new ArrayList<>(), null), shop(itemIds), 0);
+    }
+
+    /** The shop fills the stacks it carries (100 each) before it takes a new Use slot, as the live one does. */
+    private void fillCarriedStacksFirst() {
+        doAnswer(inv -> {
+            int itemId = inv.getArgument(3);
+            int quantity = (short) inv.getArgument(4);
+            int room = use.getNumFreeSlot() * 100;
+            for (Item stack : use.listById(itemId)) {
+                room += 100 - stack.getQuantity();
+            }
+            if (quantity > room) {
+                return Shop.TransactionResult.NO_SPACE;
+            }
+            purse -= prices.get(itemId) * quantity;
+            transactions.add(quantity + " x " + itemId);
+            int left = quantity;
+            for (Item stack : use.listById(itemId)) {
+                int onto = Math.min(left, 100 - stack.getQuantity());
+                stack.setQuantity((short) (stack.getQuantity() + onto));
+                left -= onto;
+            }
+            for (; left > 0; left -= 100) {
+                use.addItem(Items.itemWithQuantity(itemId, Math.min(left, 100)));
+            }
+            return Shop.TransactionResult.SUCCESS;
+        }).when(gateway).buy(any(), any(), anyShort(), anyInt(), anyShort());
     }
 
     /** It carries {@code red} Red and {@code blue} Blue potions, nothing else. */

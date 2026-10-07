@@ -1064,18 +1064,21 @@ public final class AgentShopService {
             long heldForMana = mpWant <= 0 ? 0L
                     : (long) mpWant * Math.max(0, cheapestRecoveryPrice(bot, shop, false));
             current = buyFloor(current, shop, hpPick, true, hpWant,
-                    Math.max(0L, spendable(bot, minimumMesoReserve) - heldForMana), minimumMesoReserve, bought, topUp);
+                    Math.max(0L, spendable(bot, minimumMesoReserve) - heldForMana), minimumMesoReserve, bought, topUp,
+                    standard.hp());
         }
         if (mpWant > 0) {
             current = buyFloor(current, shop, mpPick, false, mpWant, spendable(bot, minimumMesoReserve),
-                    minimumMesoReserve, bought, topUp);
+                    minimumMesoReserve, bought, topUp, standard.mp());
         }
         return current;
     }
 
     /**
      * One kind of the floor: {@code want} of the potion {@link #floorItem} picks within {@code budget}; a top-up buys
-     * only what the budget pays for, so a short purse is no shortfall to report.
+     * only what the budget pays for, so a short purse is no shortfall to report. Never past the room that leaves the
+     * Use slot a party quest keeps free ({@link #roomBesideTheRunsSlot}); a standard pass held back by it says its
+     * bag is full.
      */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyFloor(
             AgentShopPurchaseSequence<AgentRuntimeEntry> current,
@@ -1086,7 +1089,8 @@ public final class AgentShopService {
             long budget,
             int minimumMesoReserve,
             int[] bought,
-            boolean topUp) {
+            boolean topUp,
+            int standard) {
         Character bot = current.bot();
         ShopSlotItem item = floorItem(shop, bot, pick, forHp, want, budget, current.inventory());
         if (item == null) {
@@ -1100,10 +1104,32 @@ public final class AgentShopService {
                 return current;
             }
         }
-        AgentShopBuyReport report = buyFixedCostItem(bot, shop, item, quantity, 100, minimumMesoReserve,
-                (int) Math.min(Integer.MAX_VALUE, budget));
+        int room = roomBesideTheRunsSlot(bot, item, standard, current.inventory());
+        AgentShopBuyReport report = buyFixedCostItem(bot, shop, item, Math.min(quantity, room), 100,
+                minimumMesoReserve, (int) Math.min(Integer.MAX_VALUE, budget));
+        if (!topUp && room < quantity && report.reason() == AgentShopShortfallReason.NONE) {
+            report = new AgentShopBuyReport(item.shopItem.getItemId(), report.quantity(), quantity,
+                    AgentShopShortfallReason.NO_SPACE);
+        }
         bought[forHp ? 0 : 1] += report.quantity();
         return appendBuyReport(current, report, forHp ? "HP pots" : "MP pots");
+    }
+
+    /**
+     * How many of {@code item} a floor pass may buy and still leave free the Use slot a party quest keeps for its
+     * items and rewards. A {@code standard} of at most one stack: no limit ({@link #floorItem} keeps that slot). A
+     * larger one: the room of the stacks of it carried, and a full stack in every free slot but one (the slots its
+     * readiness trip was let go for, AgentSupplyReadinessRuntime.useSlotsNeeded). Unknown stack size: no limit.
+     */
+    private static int roomBesideTheRunsSlot(Character bot, ShopSlotItem item, int standard,
+                                             InventoryGateway inventory) {
+        int perSlot = inventory.getSlotMax(bot, item.shopItem.getItemId());
+        if (perSlot <= 0 || standard <= perSlot) {
+            return Integer.MAX_VALUE;
+        }
+        long room = stackRoom(bot, item.shopItem.getItemId(), inventory)
+                + (long) Math.max(0, freeUseSlots(bot) - 1) * perSlot;
+        return (int) Math.min(Integer.MAX_VALUE, room);
     }
 
     /**
