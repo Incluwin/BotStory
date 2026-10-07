@@ -65,6 +65,37 @@ final class AgentEpqCompanionPlay {
         return leftHasTarget ? 0 : rightHasTarget ? 1 : 0;
     }
 
+    // ---- the stock lines' sites ----
+
+    /** E4a: the first diluted poison is on the thorns. */
+    static final String FIRST_POISON = "first poison's on the thorns. keep them coming.";
+
+    /** E4b: two of the four. */
+    static final String HALFWAY = "halfway through the thorns.";
+
+    /** E4c: three of the four. */
+    static final String ONE_MORE = "one more and the thorns are gone.";
+
+    /** E5: the thorns are gone. */
+    static final String THORNS_GONE = "the thorns are gone! the exit's on the right.";
+
+    /**
+     * What a companion says at a stock line's site in a companion run (by the site's key), or null for nothing: the
+     * thorns' progress in its own words, and no status line (bottles dropped, secured or collected, the marbles'
+     * count, the golem's warning; the golem's own lines come with the coaching). The hand-overs, the stone, the lobby
+     * and the fragment sites are never reached in a companion run.
+     */
+    static String voice(String key) {
+        if (key == null) return null;
+        return switch (key) {
+            case "stage2-progress-1" -> FIRST_POISON;
+            case "stage2-progress-2" -> HALFWAY;
+            case "stage2-progress-3" -> ONE_MORE;
+            case "stage2-progress-4" -> THORNS_GONE;
+            default -> null;
+        };
+    }
+
     // ---- hand-overs at the leader's feet ----
 
     /** E9/E9 beside: a batch of monster marbles lies at the leader's feet, or right next to him. */

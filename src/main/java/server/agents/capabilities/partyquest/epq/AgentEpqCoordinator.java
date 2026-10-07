@@ -1166,6 +1166,7 @@ public final class AgentEpqCoordinator {
 
     /** One of the coordinator's lines in party and map chat, logged first as 'EPQ line:' under its key. */
     private static void sendVisiblePartyChat(AgentEpqSession session, String key, Character speaker, String message) {
+        if (voice(session, key, speaker)) return;
         AgentEpqDialogue.logLine(session.sessionId(), key, speaker, message);
         AgentPartyGatewayRuntime.party().sendPartyChat(speaker, message);
         AgentPacketGatewayRuntime.packets().broadcastChatText(speaker, message, false, 0);
@@ -1173,8 +1174,22 @@ public final class AgentEpqCoordinator {
 
     /** One of the coordinator's lines in party chat, logged first as 'EPQ line:' under its key. */
     private static void partyChat(AgentEpqSession session, String key, Character speaker, String message) {
+        if (voice(session, key, speaker)) return;
         AgentEpqDialogue.logLine(session.sessionId(), key, speaker, message);
         AgentPartyGatewayRuntime.party().sendPartyChat(speaker, message);
+    }
+
+    /**
+     * Step 3.1: every stock line site routes through here. A companion run never hears the status lines: its
+     * companions say their own words for the site's key in map chat (AgentEpqCompanionPlay.voice, through the
+     * coordination chat under the same key), or nothing; true then, and the stock line is not said. A stock run says
+     * the stock line as before (false).
+     */
+    static boolean voice(AgentEpqSession session, String key, Character speaker) {
+        if (!session.companionAdopted()) return false;
+        String line = AgentEpqCompanionPlay.voice(key);
+        if (line != null) AgentEpqCompanionRun.coordinate(session, speaker, key, line);
+        return true;
     }
 
     private static int fragmentCollectorId(AgentEpqSession session) {

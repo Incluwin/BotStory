@@ -51,7 +51,7 @@ class AgentEpqLineLogTest {
     @Test
     void theBossLineIsLoggedOnceUnderItsClaimKey() {
         for (Character member : List.of(ben, mira, tobi, una)) run.onMap(member, AgentEpqDefinition.BOSS_MAP);
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.BOSS, ben, mira, tobi, una);
         when(run.actions.liveMonsterCount(any(), any())).thenReturn(1);
         try (EpqLogLines lines = new EpqLogLines(AgentEpqDialogue.class)) {
