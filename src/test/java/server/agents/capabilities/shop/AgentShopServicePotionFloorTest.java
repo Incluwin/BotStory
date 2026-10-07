@@ -354,6 +354,26 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
+    void theCarriedStackRoomIsTheLeastRoomOfTheStacksTheLastSlotMayBuyOnto() {
+        carry(40, 0);
+        try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(slotMax);
+            assertEquals(60, AgentShopService.carriedStackRoom(bot, shop(List.of(RED, WHITE, BLUE)), true));
+            assertEquals(0, AgentShopService.carriedStackRoom(bot, shop(List.of(WHITE, BLUE)), true), "not sold here");
+            assertEquals(0, AgentShopService.carriedStackRoom(bot, shop(List.of(RED, WHITE, BLUE)), false),
+                    "no mana stack");
+            use.addItem(Items.itemWithQuantity(WHITE, 90));
+            assertEquals(10, AgentShopService.carriedStackRoom(bot, shop(List.of(RED, WHITE, BLUE)), true));
+            carry(95, 0);
+            use.addItem(Items.itemWithQuantity(WHITE, 50));
+            assertEquals(5, AgentShopService.carriedStackRoom(bot, shop(List.of(RED, WHITE, BLUE)), true),
+                    "the least room of them: floorItem may buy onto either");
+            carry(100, 0);
+            assertEquals(0, AgentShopService.carriedStackRoom(bot, shop(List.of(RED, WHITE, BLUE)), true));
+        }
+    }
+
+    @Test
     void thePotionStackIsTheSmallestSlotMaxOfThePotionsOfTheKindThisShopSells() {
         InventoryGateway stacks = mock(InventoryGateway.class);
         when(stacks.getSlotMax(any(Character.class), anyInt())).thenReturn((short) 100);

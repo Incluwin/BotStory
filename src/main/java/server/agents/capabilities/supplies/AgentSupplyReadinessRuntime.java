@@ -247,9 +247,10 @@ public final class AgentSupplyReadinessRuntime {
 
     /**
      * The free Use slots a readiness trip needs: for each short kind, its slots ({@link #slotsFor}: one per stack
-     * when the activity's standard is more than one stack, otherwise one unless it carries a stack of that kind this
-     * shop sells that still has room), plus, when it needs any, the one a party quest keeps free for its items and
-     * rewards (KPQ and EPQ admission refuse a member without it).
+     * when the activity's standard is more than one stack, or none when only the run's slot is free and a carried
+     * stack takes them all; otherwise one unless it carries a stack of that kind this shop sells that still has room),
+     * plus, when it needs any, the one a party quest keeps free for its items and rewards (KPQ and EPQ admission
+     * refuse a member without it).
      */
     static int useSlotsNeeded(Character agent, Shop shop, AgentSupplyReadiness.Activity activity,
                               AgentSupplyReadiness.Shortfall shortfall) {
@@ -259,29 +260,39 @@ public final class AgentSupplyReadinessRuntime {
         return fresh == 0 ? 0 : fresh + (activity != null ? 1 : 0); // every activity is a party quest
     }
 
-    /** {@link #slotsFor(int, boolean, int, int)} for one kind at this shop; looks at the shop only when short. */
+    /**
+     * {@link #slotsFor(int, boolean, int, int, int)} for one kind at this shop; looks at the shop only when short, and
+     * at the carried stacks' room only at the last free Use slot.
+     */
     private static int slotsFor(Character agent, Shop shop, boolean forHp, int count, int standard) {
         if (count <= 0) {
             return 0;
         }
         int perSlot = AgentShopService.potionStackSize(agent, shop, forHp);
         boolean perStack = perSlot > 0 && standard > perSlot;
+        int lastSlotRoom = perStack && freeUseSlots(agent) <= 1
+                ? AgentShopService.carriedStackRoom(agent, shop, forHp) : 0;
         return slotsFor(count, !perStack && AgentShopService.carriesStackWithRoom(agent, shop, forHp), perSlot,
-                standard);
+                standard, lastSlotRoom);
     }
 
     /**
      * The new Use slots {@code count} potions of one kind take. A {@code standard} of at most one stack
      * ({@code perSlot} potions; 0: not known): one, or none when they go onto a carried stack with room. A larger
      * standard: one per stack, without counting on a carried stack's room (a shortfall of one stack onto a stack with
-     * one free place needs a slot too).
+     * one free place needs a slot too), unless {@code lastSlotRoom} takes them all: at its last free Use slot the
+     * counter buys onto a carried stack (AgentShopService.floorItem), and this is the room it surely has there (0:
+     * more slots free, or no such stack).
      */
-    static int slotsFor(int count, boolean stackWithRoom, int perSlot, int standard) {
+    static int slotsFor(int count, boolean stackWithRoom, int perSlot, int standard, int lastSlotRoom) {
         if (count <= 0) {
             return 0;
         }
         if (perSlot <= 0 || standard <= perSlot) {
             return stackWithRoom ? 0 : 1;
+        }
+        if (count <= lastSlotRoom) {
+            return 0;
         }
         return (count + perSlot - 1) / perSlot;
     }

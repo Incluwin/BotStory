@@ -1184,6 +1184,32 @@ public final class AgentShopService {
         return smallest;
     }
 
+    /**
+     * How many HP (or MP) potions a purchase at the last free Use slot surely fits on a carried stack: the least room
+     * among the recovery potions of the kind this shop sells of which the bot carries a stack with room, since
+     * {@link #floorItem} may buy onto any of them; 0 when it carries none.
+     */
+    public static int carriedStackRoom(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null || bot.getInventory(InventoryType.USE) == null) {
+            return 0;
+        }
+        InventoryGateway inventory = AgentInventoryGatewayRuntime.inventory();
+        int least = 0;
+        for (ShopItem item : shop.getItems()) {
+            if (item.getPrice() <= 0 || !AgentUseItemClassificationPolicy.isRecoveryPotion(item.getItemId())) {
+                continue;
+            }
+            int room = stackRoom(bot, item.getItemId(), inventory);
+            StatEffect effect = room <= 0 ? null : AgentUseItemClassificationPolicy.itemEffect(item.getItemId());
+            if (effect != null && AgentPotionRecoveryPolicy.recovery(
+                    effect, bot.getCurrentMaxHp(), bot.getCurrentMaxMp(), forHp) != null
+                    && (least == 0 || room < least)) {
+                least = room;
+            }
+        }
+        return least;
+    }
+
     /** The strongest HP (or MP) recovery potion this shop sells of which the bot carries a stack with room; or null. */
     private static ShopSlotItem carriedStack(Shop shop, Character bot, boolean forHp, InventoryGateway inventory) {
         if (bot.getInventory(InventoryType.USE) == null) {

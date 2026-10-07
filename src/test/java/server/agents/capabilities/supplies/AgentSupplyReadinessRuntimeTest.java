@@ -104,6 +104,8 @@ class AgentSupplyReadinessRuntimeTest {
     private final Map<Integer, AgentSupplyReadiness.Activity> activities = new HashMap<>();
     /** What AgentShopService.potionStackSize answers; 0 (the stacks are not known) keeps the one-slot rule. */
     private int stackSize;
+    /** Character id -> what AgentShopService.carriedStackRoom answers for HP (0 when not listed). */
+    private final Map<Integer, Integer> hpStackRoom = new HashMap<>();
     /** The rule's callbacks and the party asks, in order. */
     private final List<String> calls = new ArrayList<>();
     private final java.util.Set<Integer> duty = new java.util.HashSet<>();
@@ -136,6 +138,8 @@ class AgentSupplyReadinessRuntimeTest {
                 .thenAnswer(inv -> blueStack.contains(((Character) inv.getArgument(0)).getId()));
         shopService.when(() -> AgentShopService.potionStackSize(any(), any(), anyBoolean()))
                 .thenAnswer(inv -> stackSize);
+        shopService.when(() -> AgentShopService.carriedStackRoom(any(), any(), eq(true)))
+                .thenAnswer(inv -> hpStackRoom.getOrDefault(((Character) inv.getArgument(0)).getId(), 0));
         when(shops.findForNpc(anyInt())).thenReturn(mock(Shop.class));
         shopGateway = mockStatic(AgentShopGatewayRuntime.class);
         shopGateway.when(AgentShopGatewayRuntime::shop).thenReturn(shops);
@@ -560,19 +564,29 @@ class AgentSupplyReadinessRuntimeTest {
 
     @Test
     void slotsForCountsEveryStackOnceTheStandardIsMoreThanOne() {
-        assertEquals(3, AgentSupplyReadinessRuntime.slotsFor(250, false, 100, 250));
-        assertEquals(3, AgentSupplyReadinessRuntime.slotsFor(250, true, 100, 250),
+        assertEquals(3, AgentSupplyReadinessRuntime.slotsFor(250, false, 100, 250, 0));
+        assertEquals(3, AgentSupplyReadinessRuntime.slotsFor(250, true, 100, 250, 0),
                 "the room of a carried stack is not counted on");
-        assertEquals(4, AgentSupplyReadinessRuntime.slotsFor(350, false, 100, 350));
-        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(100, true, 100, 250),
+        assertEquals(4, AgentSupplyReadinessRuntime.slotsFor(350, false, 100, 350, 0));
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(100, true, 100, 250, 0),
                 "one stack's worth onto a stack with one free place still needs a slot");
-        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(30, true, 100, 250));
-        assertEquals(2, AgentSupplyReadinessRuntime.slotsFor(101, false, 100, 250));
-        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(25, true, 100, 25), "one stack: today's rule");
-        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(25, false, 100, 25));
-        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(40, true, 100, 40));
-        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(250, false, 0, 250), "stacks not known: today's rule");
-        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(0, false, 100, 250));
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(30, true, 100, 250, 0));
+        assertEquals(2, AgentSupplyReadinessRuntime.slotsFor(101, false, 100, 250, 0));
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(25, true, 100, 25, 0), "one stack: today's rule");
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(25, false, 100, 25, 0));
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(40, true, 100, 40, 0));
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(250, false, 0, 250, 0), "stacks not known: today's rule");
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(0, false, 100, 250, 0));
+    }
+
+    @Test
+    void slotsForCountsNoneWhenTheLastFreeSlotsStackTakesThemAll() {
+        // review 2026-10-06: at its last free slot the counter buys onto a carried stack (AgentShopService.floorItem)
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(30, false, 100, 250, 50));
+        assertEquals(0, AgentSupplyReadinessRuntime.slotsFor(50, false, 100, 250, 50), "exactly its room");
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(51, false, 100, 250, 50), "one more takes a slot");
+        assertEquals(1, AgentSupplyReadinessRuntime.slotsFor(25, false, 100, 25, 50),
+                "one stack: today's rule, which reads its own stack");
     }
 
     @Test
@@ -605,6 +619,23 @@ class AgentSupplyReadinessRuntimeTest {
         assertTrue(AgentSupplyProcurementRuntime.tick(entry, halvard, 6_000L));
         assertTrue(execution(entry).isActive());
         shopService.verify(() -> AgentShopService.carriesStackWithRoom(eq(halvard), any(), anyBoolean()), never());
+
+        // a few short of 250 with only the run's slot free: the counter puts them on the carried stack
+        calls.clear();
+        Character fenna = companion(543, "Fenna", Job.CLERIC, 220, 350, 200_000);
+        activities.put(543, EPQ);
+        freeSlots.put(543, 1);
+        hpStackRoom.put(543, 20);
+        entry = following(fenna);
+        assertFalse(AgentSupplyProcurementRuntime.tick(entry, fenna, 1_000L));
+        assertEquals(List.of("refused 543 NO_SPACE 0"), calls, "20 room for 30: a new stack would take the slot");
+        Character garrick = companion(544, "Garrick", Job.CLERIC, 220, 350, 200_000);
+        activities.put(544, EPQ);
+        freeSlots.put(544, 1);
+        hpStackRoom.put(544, 50);
+        entry = following(garrick);
+        assertTrue(AgentSupplyProcurementRuntime.tick(entry, garrick, 1_000L), "50 room for 30: no new slot");
+        assertTrue(execution(entry).isActive());
 
         // a KPQ companion short 5 HP potions keeps today's rule: its standard is under one stack
         calls.clear();
