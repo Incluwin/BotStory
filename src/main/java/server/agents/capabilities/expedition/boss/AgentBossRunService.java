@@ -83,6 +83,16 @@ public final class AgentBossRunService {
         }
     }
 
+    /**
+     * A logout handoff: the INSIDE member {@code agentId} of run {@code sessionId} stays with {@code humanId} (the heir)
+     * from now on instead of its enlister, and after the clear leaves when the heir leaves. False when the run is gone
+     * or the Agent is no INSIDE member of it. Memory only, any thread; it takes no lock.
+     */
+    public static boolean handTo(long sessionId, int agentId, int humanId) {
+        AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+        return session != null && session.handTo(agentId, humanId);
+    }
+
     /** The enlister controls it, the host claims it, and it is in no boss run and no party quest. */
     private static boolean adoptable(Character human, int agentId) {
         return AgentClaimGuard.mayControl(human, agentId)

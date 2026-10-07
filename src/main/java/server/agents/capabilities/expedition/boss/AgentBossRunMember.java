@@ -31,7 +31,10 @@ public final class AgentBossRunMember {
     private AgentBossRunHost.Refusal refusal;
     private boolean wentIn;
     private boolean inAtClear;
+    private boolean seenDead;
     private int deaths;
+    private AgentBossRunHost.Out leavingFor;
+    private long leavingSinceMs;
     private AgentBossRunHost.Out out;
 
     AgentBossRunMember(int agentId, int enlistedBy, int ordinal, long enlistedAtMs) {
@@ -82,6 +85,11 @@ public final class AgentBossRunMember {
         return inAtClear;
     }
 
+    /** Seen dead since it was last seen alive in the fight; alive outside the event next means it died out. */
+    public boolean seenDead() {
+        return seenDead;
+    }
+
     public int deaths() {
         return deaths;
     }
@@ -126,6 +134,42 @@ public final class AgentBossRunMember {
     /** Was still in the fight when the boss fell. */
     void clearedInside() {
         inAtClear = true;
+    }
+
+    /** Seen dead; true (and one more death) only for the first sighting of this death. */
+    boolean died() {
+        if (seenDead) {
+            return false;
+        }
+        seenDead = true;
+        deaths++;
+        return true;
+    }
+
+    /** Seen alive in the fight again (raised where it fell): its next fall is another death. */
+    void upAgain() {
+        seenDead = false;
+    }
+
+    /** Why it is on its way out (NO_HUMAN_LEFT or EXITED); null unless {@link Phase#LEAVING}. */
+    AgentBossRunHost.Out leavingFor() {
+        return leavingFor;
+    }
+
+    long leavingSinceMs() {
+        return leavingSinceMs;
+    }
+
+    /** Heads out of the event for {@code reason}; its way out is timed from {@code nowMs}. */
+    void leaving(AgentBossRunHost.Out reason, long nowMs) {
+        leavingFor = reason;
+        leavingSinceMs = nowMs;
+        phase = Phase.LEAVING;
+    }
+
+    /** Stays with {@code humanId} from now on (the heir of its owner's logout). */
+    void anchorTo(int humanId) {
+        anchorId = humanId;
     }
 
     void leftRun(AgentBossRunHost.Out reason) {

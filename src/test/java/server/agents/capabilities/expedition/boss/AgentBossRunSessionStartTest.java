@@ -72,6 +72,10 @@ class AgentBossRunSessionStartTest {
                 listed.contains(((Character) invocation.getArgument(0)).getId()));
         ports.runNpc = (agent, npcId, selections) -> listed.add(agent.getId());
         event = eventOf(expedition);
+        // The owner fights too: a standing human, so the members never leave for want of one here.
+        Character owner = ports.human(OWNER);
+        when(event.getPlayers()).thenReturn(List.of(owner));
+        when(event.getPlayerById(OWNER)).thenReturn(owner);
     }
 
     @AfterEach

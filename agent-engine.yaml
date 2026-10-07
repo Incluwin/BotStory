@@ -5406,6 +5406,18 @@ tuning:
     # Purpose: How long after Start a signed-up companion has to be inside before it counts as having missed the start.
     # Technical: A REGISTERED member found in the expedition's event on the battle map becomes INSIDE; one still outside after this is OUT MISSED_START through AgentBossRunHost.memberOut.
     server.agents.capabilities.expedition.boss.AgentBossRunSession.START_GRACE_MS: '5000'
+    # Values: a non-negative integer in milliseconds. Recommended: 2000-10000; 3000 sends the companions out a few seconds after the last human in the fight went down or left, past a slow monitor tick or two.
+    # Purpose: How long the fight may have no living human in it before the companions leave and wait for their owner outside.
+    # Technical: Counts event players whose client is no BotClient (AgentBossRunPorts.headless), alive and logged in; one changing maps counts; at 0 for this long every alive INSIDE member turns LEAVING with NO_HUMAN_LEFT.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.HUMAN_GONE_GRACE_MS: '3000'
+    # Values: a positive distance in pixels. Recommended: 80-200; 120 matches the GM Balrog scenario's interaction range, so a companion is seen to walk up to the NPC or into the portal.
+    # Purpose: How close to the exit NPC or the reward room's portal a leaving companion stands before it uses it.
+    # Technical: Distance to npcPosition(exit NPC) before the clear or portalPosition(reward exit portal) after it; within it the session stops the member and calls runNpc or enterPortal, else it navigates there.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.EXIT_REACH_PX: '120'
+    # Values: a positive integer in milliseconds. Recommended: 15000-60000; 30000 lets a companion cross the battle map or the reward room twice before it is moved out.
+    # Purpose: How long a leaving companion walks to its way out before it is moved straight to the recruit map, the way its respawn moves it.
+    # Technical: After this since LEAVING, MapGateway.changeMapNear to the channel's recruit map at portal 0, which runs the event's changedMap, unregisters it and disposes an empty instance.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.EXIT_TIMEOUT_MS: '30000'
     # Values: a positive integer. Recommended: 3-10; 5 tolerates a brief blip without letting a dead endpoint absorb a request per judgment.
     # Purpose: Number of consecutive failed System One requests after which the circuit breaker opens and requests are refused locally.
     # Technical: Any success resets the count; while the breaker is open every ask returns empty immediately so callers fall back to deterministic behaviour without network latency.

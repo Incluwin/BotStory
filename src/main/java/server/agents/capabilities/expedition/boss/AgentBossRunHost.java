@@ -39,7 +39,16 @@ public final class AgentBossRunHost {
 
     /** How a member left a run it was part of. */
     public enum Out {
-        DIED, MISSED_START, NO_HUMAN_LEFT, EXITED, GONE
+        /** Died in the fight and came to outside the event (the stock respawn). */
+        DIED,
+        /** Signed up but was not inside the event on the battle map soon enough after Start. */
+        MISSED_START,
+        /** Walked out because no human stood in the fight any more. */
+        NO_HUMAN_LEFT,
+        /** Left the event alive: after its anchor once the boss fell, or by any other way out. */
+        EXITED,
+        /** Its runtime went away (unloaded at its owner's logout). */
+        GONE
     }
 
     /** What one member did in a run that ended. */

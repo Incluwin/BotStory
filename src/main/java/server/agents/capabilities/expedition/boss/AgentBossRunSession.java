@@ -18,8 +18,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * up to the entry NPC and signs up through her own window, one conversation per tick, the way the GM expedition lobby
  * signs its members up; a member still at the store, or off the recruit map, waits until the list is about to close.
  * After Start the run adopts each signed-up member the stock warp took into the expedition's event on the battle map,
- * drives the alive ones through the fight, and at the clear hands them back to following their owner.
- * {@link #tick} runs on the Agent scheduler under the session's lock.
+ * drives the alive ones through the fight, and at the clear hands them back to following their owner. A member that
+ * died, or left the event, waits outside for its owner; when no human stands in the fight any more, or after the clear
+ * once its anchor left, a member walks out by the stock ways. The run ends when every member is out or the event is
+ * gone. {@link #tick} runs on the Agent scheduler under the session's lock.
  */
 public final class AgentBossRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunSession.class);
@@ -41,6 +43,9 @@ public final class AgentBossRunSession {
     private long startedAtMs;
     private int partySize;
     private boolean cleared;
+    /** Since when no human stands in the event; -1 while one does. */
+    private long noHumanSinceMs = -1L;
+    private boolean exitNpcPrepared;
 
     AgentBossRunSession(long sessionId, AgentBossRunDefinition definition, Expedition expedition,
                         AgentBossFight fight, long nowMs) {
@@ -117,8 +122,8 @@ public final class AgentBossRunSession {
         try {
             switch (phase) {
                 case REGISTERING -> tickRegistering(ports, host, nowMs);
-                case STARTING, FIGHTING -> tickStarted(ports, host, nowMs);
-                case POST_CLEAR, ENDED -> {
+                case STARTING, FIGHTING, POST_CLEAR -> tickStarted(ports, host, nowMs);
+                case ENDED -> {
                 }
             }
         } finally {
@@ -242,7 +247,9 @@ public final class AgentBossRunSession {
     /**
      * After Start: a member still waiting is too late; a signed-up member found in the event on the battle map is
      * adopted, one still outside after the grace missed the start. The run fights while anyone is inside, ends when
-     * nobody went in, and stops the fight at the clear.
+     * nobody went in, and stops the fight at the clear. Deaths and departures are seen before the clear, so a member
+     * that left is never handed back as if it were still fighting; the run ends once the event is gone or every
+     * member is out.
      */
     private void tickStarted(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
         boolean graceOver = nowMs - startedAtMs >= startGraceMs();
@@ -265,11 +272,231 @@ public final class AgentBossRunSession {
             log.info("Boss run fighting: session={} boss={} inside={} partySize={}", sessionId, definition.key(),
                     count(AgentBossRunMember.Phase.INSIDE), partySize);
         }
-        if (event.isEventCleared()) {
+        watchMembers(ports, host);
+        if (event.isEventDisposed()) {
+            // A timeout, or the last player out: the stock event is gone, and with it whoever was still in it.
+            for (AgentBossRunMember member : members) {
+                if (inTheRun(member)) {
+                    handBack(ports, host, member, ports.agent(member.agentId()) != null);
+                }
+            }
+            end(host, "event-disposed", nowMs);
+            return;
+        }
+        if (phase == Phase.FIGHTING && event.isEventCleared()) {
             clear(ports);
             return;
         }
-        tickFight(ports, nowMs);
+        if (phase == Phase.POST_CLEAR) {
+            followAnchorsOut(ports, nowMs);
+        }
+        watchHumans(ports, nowMs);
+        tickLeaving(ports, nowMs);
+        if (phase == Phase.FIGHTING) {
+            tickFight(ports, nowMs);
+        }
+        if (count(AgentBossRunMember.Phase.INSIDE) + count(AgentBossRunMember.Phase.LEAVING)
+                + count(AgentBossRunMember.Phase.REGISTERED) == 0) {
+            end(host, "members-out", nowMs);
+        }
+    }
+
+    /** INSIDE or LEAVING: adopted and not yet out of the event. */
+    private static boolean inTheRun(AgentBossRunMember member) {
+        AgentBossRunMember.Phase memberPhase = member.phase();
+        return memberPhase == AgentBossRunMember.Phase.INSIDE || memberPhase == AgentBossRunMember.Phase.LEAVING;
+    }
+
+    /**
+     * Deaths and departures of the adopted members. A death counts once, however many ticks see it; a member alive
+     * outside the event (the stock respawn, an exit, the event's own warp) is out of the run and follows its owner
+     * again; one raised where it fell fights on; one whose runtime is gone (parked at a logout) is out with no call.
+     */
+    private void watchMembers(AgentBossRunPorts ports, AgentBossRunHost.Rule host) {
+        for (AgentBossRunMember member : members) {
+            if (!inTheRun(member)) {
+                continue;
+            }
+            Character agent = ports.agent(member.agentId());
+            if (agent == null) {
+                memberOut(host, member, AgentBossRunHost.Out.GONE);
+            } else if (!agent.isAlive()) {
+                if (member.died()) {
+                    log.info("Boss run member down: session={} boss={} member={} deaths={}", sessionId,
+                            definition.key(), member.agentId(), member.deaths());
+                }
+            } else if (agent.getEventInstance() != event) {
+                handBack(ports, host, member, true);
+            } else {
+                member.upAgain();
+            }
+        }
+    }
+
+    /**
+     * The member is out of the event: it died out, left for want of a human or with its anchor, or simply left. A
+     * loaded one is freed from the battle walls and follows its owner again; one with no runtime is GONE.
+     */
+    private void handBack(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
+                          boolean loaded) {
+        if (!loaded) {
+            memberOut(host, member, AgentBossRunHost.Out.GONE);
+            return;
+        }
+        AgentBossRunHost.Out out = member.seenDead() ? AgentBossRunHost.Out.DIED
+                : member.leavingFor() != null ? member.leavingFor() : AgentBossRunHost.Out.EXITED;
+        int agentId = member.agentId();
+        ports.clearBoundary(agentId);
+        ports.follow(agentId);
+        memberOut(host, member, out);
+    }
+
+    /**
+     * Decision 9: with no human standing in the event (alive and logged in; one changing maps stands, a dead one or
+     * an Agent does not) for HUMAN_GONE_GRACE_MS, every alive member still fighting heads out to wait outside.
+     */
+    private void watchHumans(AgentBossRunPorts ports, long nowMs) {
+        if (standingHumans(ports) > 0) {
+            noHumanSinceMs = -1L;
+            return;
+        }
+        if (noHumanSinceMs < 0L) {
+            noHumanSinceMs = nowMs;
+            log.info("Boss run has no standing human: session={} boss={}", sessionId, definition.key());
+        }
+        if (nowMs - noHumanSinceMs < humanGoneGraceMs()) {
+            return;
+        }
+        for (AgentBossRunMember member : members) {
+            if (member.phase() == AgentBossRunMember.Phase.INSIDE && alive(ports, member)) {
+                leave(ports, member, AgentBossRunHost.Out.NO_HUMAN_LEFT, nowMs);
+            }
+        }
+    }
+
+    private int standingHumans(AgentBossRunPorts ports) {
+        int standing = 0;
+        for (Character player : event.getPlayers()) {
+            if (player != null && !ports.headless(player) && player.isAlive() && player.isLoggedinWorld()) {
+                standing++;
+            }
+        }
+        return standing;
+    }
+
+    /** After the clear a member stays while its anchor (its owner, or a handoff's heir) is in the event. */
+    private void followAnchorsOut(AgentBossRunPorts ports, long nowMs) {
+        for (AgentBossRunMember member : members) {
+            if (member.phase() == AgentBossRunMember.Phase.INSIDE && event.getPlayerById(member.anchorId()) == null
+                    && alive(ports, member)) {
+                leave(ports, member, AgentBossRunHost.Out.EXITED, nowMs);
+            }
+        }
+    }
+
+    private static boolean alive(AgentBossRunPorts ports, AgentBossRunMember member) {
+        Character agent = ports.agent(member.agentId());
+        return agent != null && agent.isAlive();
+    }
+
+    /** The member heads out; before the clear the fight drove it, so it is stopped and freed from the battle walls. */
+    private void leave(AgentBossRunPorts ports, AgentBossRunMember member, AgentBossRunHost.Out reason, long nowMs) {
+        int agentId = member.agentId();
+        if (!cleared) {
+            ports.stop(agentId);
+            ports.clearBoundary(agentId);
+            if (!exitNpcPrepared) {
+                exitNpcPrepared = true;
+                ports.prepareScripts(definition.exitNpcId());
+            }
+        }
+        member.leaving(reason, nowMs);
+        log.info("Boss run member leaving: session={} boss={} member={} reason={} anchor={}", sessionId,
+                definition.key(), agentId, reason, member.anchorId());
+    }
+
+    /** Walks each leaving member still in the event out by the stock ways; a failed step is logged and retried. */
+    private void tickLeaving(AgentBossRunPorts ports, long nowMs) {
+        for (AgentBossRunMember member : members) {
+            if (member.phase() != AgentBossRunMember.Phase.LEAVING) {
+                continue;
+            }
+            Character agent = ports.agent(member.agentId());
+            if (agent == null || !agent.isAlive() || agent.getEventInstance() != event) {
+                continue;
+            }
+            try {
+                walkOut(ports, member, agent, nowMs);
+            } catch (RuntimeException failure) {
+                log.warn("Boss run exit step failed: session={} boss={} member={}", sessionId, definition.key(),
+                        member.agentId(), failure);
+            }
+        }
+    }
+
+    /**
+     * One step out. In the reward room the member takes the stock exit portal; on the battle map before the clear it
+     * talks to the exit NPC, whose yes then warps only the talker to the recruit map. After the clear that NPC warps
+     * the whole team into the reward room, so a member still on the battle map then, one on any other map of the
+     * event, and one still inside after EXIT_TIMEOUT_MS are moved straight to the recruit map.
+     */
+    private void walkOut(AgentBossRunPorts ports, AgentBossRunMember member, Character agent, long nowMs) {
+        int agentId = member.agentId();
+        int mapId = agent.getMapId();
+        boolean clearedNow = cleared || event.isEventCleared();
+        if (nowMs - member.leavingSinceMs() >= exitTimeoutMs()) {
+            moveOut(ports, agent);
+        } else if (mapId == definition.clearMapId()) {
+            Point portal = ports.portalPosition(agent, definition.rewardExitPortalId());
+            if (portal == null) {
+                moveOut(ports, agent);
+            } else if (near(agent, portal, exitReachPx())) {
+                ports.stop(agentId);
+                ports.enterPortal(agent, definition.rewardExitPortalId());
+            } else {
+                ports.navigate(agentId, portal, true);
+            }
+        } else if (mapId == definition.battleMapId() && !clearedNow) {
+            Point npc = ports.npcPosition(agent, definition.exitNpcId());
+            if (npc == null) {
+                moveOut(ports, agent);
+            } else if (near(agent, npc, exitReachPx())) {
+                ports.stop(agentId);
+                ports.runNpc(agent, definition.exitNpcId());
+            } else {
+                ports.navigate(agentId, npc, true);
+            }
+        } else {
+            moveOut(ports, agent);
+        }
+    }
+
+    private void moveOut(AgentBossRunPorts ports, Character agent) {
+        log.info("Boss run member moved out: session={} boss={} member={} from={}", sessionId, definition.key(),
+                agent.getId(), agent.getMapId());
+        ports.moveOut(agent, definition.recruitMapId());
+    }
+
+    private static boolean near(Character agent, Point spot, long reachPx) {
+        Point position = agent.getPosition();
+        return position != null && position.distanceSq(spot) <= reachPx * reachPx;
+    }
+
+    /**
+     * A logout handoff: the INSIDE member stays with {@code humanId} (the heir) from now on. False when the Agent is no
+     * INSIDE member of this run. Takes no lock (the phase and the anchor are volatile), so a host thread never waits on
+     * a tick; a member that turns LEAVING meanwhile just leaves.
+     */
+    boolean handTo(int agentId, int humanId) {
+        AgentBossRunMember member = member(agentId);
+        if (member == null || member.phase() != AgentBossRunMember.Phase.INSIDE) {
+            return false;
+        }
+        int from = member.anchorId();
+        member.anchorTo(humanId);
+        log.info("Boss run member handed over: session={} boss={} member={} from={} to={}", sessionId,
+                definition.key(), agentId, from, humanId);
+        return true;
     }
 
     /** Adopts a signed-up member the Start took into this expedition's event on the battle map. */
@@ -399,5 +626,20 @@ public final class AgentBossRunSession {
     static long startGraceMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossRunSession.START_GRACE_MS");
+    }
+
+    static long humanGoneGraceMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.HUMAN_GONE_GRACE_MS");
+    }
+
+    static int exitReachPx() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.EXIT_REACH_PX");
+    }
+
+    static long exitTimeoutMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.EXIT_TIMEOUT_MS");
     }
 }

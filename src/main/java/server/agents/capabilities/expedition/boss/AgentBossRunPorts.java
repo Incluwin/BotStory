@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import server.agents.capabilities.movement.AgentMovementCommandRuntime;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
+import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
@@ -27,6 +28,9 @@ public interface AgentBossRunPorts {
 
     /** The loaded Agent character, or null when it has no runtime. */
     Character agent(int agentId);
+
+    /** True when the server drives the character (a headless Agent client); a human's character answers false. */
+    boolean headless(Character character);
 
     Point npcPosition(Character agent, int npcId);
 
@@ -81,6 +85,11 @@ public interface AgentBossRunPorts {
         public Character agent(int agentId) {
             AgentRuntimeEntry entry = entry(agentId);
             return entry == null ? null : entry.bot();
+        }
+
+        @Override
+        public boolean headless(Character character) {
+            return AgentCharacterGatewayRuntime.characters().isHeadlessControlled(character);
         }
 
         @Override

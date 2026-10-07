@@ -41,6 +41,9 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     final Set<Integer> restockPending = new HashSet<>();
     final Map<Integer, EventInstanceManager> eventOf = new HashMap<>();
     final Set<Integer> dead = new HashSet<>();
+    final Map<Integer, Character> humans = new HashMap<>();
+    final Set<Integer> away = new HashSet<>();
+    final Set<Integer> changingMaps = new HashSet<>();
     final List<Runnable> scheduled = new ArrayList<>();
     final List<Long> scheduledDelays = new ArrayList<>();
     boolean stillTheChannels = true;
@@ -68,6 +71,22 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         });
     }
 
+    /**
+     * A human at a keyboard: alive unless {@link #dead} lists it, logged in unless {@link #away} lists it, and changing
+     * maps while {@link #changingMaps} lists it. Every character {@link #place} made is headless.
+     */
+    Character human(int humanId) {
+        return humans.computeIfAbsent(humanId, id -> {
+            Character human = mock(Character.class);
+            when(human.getId()).thenReturn(id);
+            when(human.getName()).thenReturn("Human" + id);
+            when(human.isAlive()).thenAnswer(invocation -> !dead.contains(id));
+            when(human.isLoggedinWorld()).thenAnswer(invocation -> !away.contains(id));
+            when(human.isChangingMaps()).thenAnswer(invocation -> changingMaps.contains(id));
+            return human;
+        });
+    }
+
     long count(String prefix) {
         return calls.stream().filter(call -> call.startsWith(prefix)).count();
     }
@@ -75,6 +94,11 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     @Override
     public Character agent(int agentId) {
         return agents.get(agentId);
+    }
+
+    @Override
+    public boolean headless(Character character) {
+        return character != null && !humans.containsKey(character.getId());
     }
 
     @Override

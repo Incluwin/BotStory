@@ -90,11 +90,15 @@ public final class AgentBossRunRegistry {
         return member != null && member.phase() == AgentBossRunMember.Phase.WAITING ? member.ordinal() : -1;
     }
 
-    /** True while the Agent is an INSIDE member of an open run: adopted into the fight. Memory only, any thread. */
+    /**
+     * True while the Agent is an INSIDE or LEAVING member of an open run: adopted into the fight and not yet out of
+     * its event (a leaving member still walks the battle map or the reward room). Memory only, any thread.
+     */
     public static boolean inside(int agentId) {
         AgentBossRunSession session = SESSIONS.isEmpty() ? null : forMember(agentId);
         AgentBossRunMember member = session == null ? null : session.member(agentId);
-        return member != null && member.phase() == AgentBossRunMember.Phase.INSIDE;
+        AgentBossRunMember.Phase phase = member == null ? null : member.phase();
+        return phase == AgentBossRunMember.Phase.INSIDE || phase == AgentBossRunMember.Phase.LEAVING;
     }
 
     /**
