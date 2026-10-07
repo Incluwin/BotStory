@@ -33,7 +33,8 @@ public final class AgentSecondJobAdvancementRuntime {
     private static final int ELLINIA_TREE_TUNNEL_MAP_ID = 101_020_001;
     private static final int ELLINIA_TREE_TUNNEL_BOTTOM_PORTAL_ID = 9;
     private static final int ELLINIA_TREE_TUNNEL_TOP_PORTAL_ID = 12;
-    private static final int ELLINIA_TREE_TUNNEL_UPPER_EXIT_Y = -1_500;
+    private static final int ELLINIA_TREE_TUNNEL_UPPER_EXIT_Y = -config.AgentTuning.intValue(
+            "server.agents.progression.AgentSecondJobAdvancementRuntime.ELLINIA_TREE_TUNNEL_UPPER_EXIT_HEIGHT");
 
     private AgentSecondJobAdvancementRuntime() { }
 
