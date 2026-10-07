@@ -6138,7 +6138,7 @@ final class AgentLpqCoordinator {
             if (member.handOverStartedAtMs() == 0L) member.startHandOver(nowMs);
             handOverItem(session, member, agent, entry, leader, AgentLpqDefinition.PASS, held, stage, lying, nowMs);
         }
-        nudgeLyingStacks(session, leader, lying, nowMs);
+        nudgeLyingStacks(session, stage, leader, lying, nowMs);
         beginRecollect(session, lying, nowMs);
         if (leader.getItemQuantity(AgentLpqDefinition.PASS, false) >= required
                 && !session.narrated("s" + stage + "-passes") && !session.narrated("s" + stage + "-balloon")) {
@@ -6531,16 +6531,20 @@ final class AgentLpqCoordinator {
         return leader.getItemQuantity(AgentLpqDefinition.PASS, false) + lying;
     }
 
-    /** H2: one reminder per hand-over stack he has left lying PASS_PICKUP_NUDGE_MS, by a companion on his map. */
-    private static void nudgeLyingStacks(AgentLpqSession session, Character leader, List<MapItem> lying, long nowMs) {
+    /**
+     * H2: a reminder, by a companion on his map, once a hand-over stack he left lying has lain PASS_PICKUP_NUDGE_MS:
+     * once a stage for stacks by his feet and once for stacks back where he was, however many stacks lie there.
+     */
+    private static void nudgeLyingStacks(AgentLpqSession session, int stage, Character leader, List<MapItem> lying,
+                                         long nowMs) {
         for (MapItem stack : lying) {
             if (stack.getItemId() != AgentLpqDefinition.PASS
                     || !AgentLpqCompanionPlay.nudgeDue(stack.getDropTime(), nowMs, PASS_PICKUP_NUDGE_MS)) continue;
             boolean onHisMap = leader.getMap() != null && leader.getMap().getDroppedItems().contains(stack);
             if (!onHisMap) continue;
-            coordinate(session, narrator(session, leader), "nudge-" + stack.getObjectId(),
-                    AgentLpqCompanionPlay.passesStillLyingLine(leader.getName(),
-                            near(stack.getPosition(), leader.getPosition(), PASS_HANDOVER_NEAR_PX)));
+            boolean byHisFeet = near(stack.getPosition(), leader.getPosition(), PASS_HANDOVER_NEAR_PX);
+            coordinate(session, narrator(session, leader), "s" + stage + (byHisFeet ? "-nudge" : "-nudge-back"),
+                    AgentLpqCompanionPlay.passesStillLyingLine(leader.getName(), byHisFeet));
         }
     }
 

@@ -116,20 +116,22 @@ class AgentLpqPassHandOverTest {
     }
 
     @Test
-    void aStackLeftLyingIsNudgedThenPickedBackUpAtMostTwice() {
+    void stacksLeftLyingAreNudgedOnceThenPickedBackUpAtMostTwice() {
         AgentLpqSession session = stageOne(true, BALLOON);
         fx.tick(session, 3_000L);
         fx.moveTo(mira, new Point(-150, -192));
         fx.moveTo(kes, new Point(-145, -192));
         fx.moveTo(pel, new Point(-140, -192));
         fx.tick(session, 4_000L);
-        fx.dialogue.verify(() -> AgentLpqDialogue.sayMapNow(anyString(), startsWith("nudge-"), any(), anyString()),
+        fx.dialogue.verify(() -> AgentLpqDialogue.sayMapNow(anyString(), startsWith("s1-nudge"), any(), anyString()),
                 never());
 
         fx.tickEvery(session, 5_000L, 44_001L, 1_000L);
         fx.tick(session, 44_001L);
-        fx.dialogue.verify(() -> AgentLpqDialogue.sayMapNow(eq(session.sessionId()), startsWith("nudge-"), any(),
-                eq("Crewfriend, the passes are still by your feet.")), times(3));
+        // Three stacks came due together: one reminder, as a player says it once.
+        fx.dialogue.verify(() -> AgentLpqDialogue.sayMapNow(eq(session.sessionId()), startsWith("s1-nudge"), any(),
+                anyString()), times(1));
+        fx.said(session, "s1-nudge", crew.get(1), "Crewfriend, the passes are still by your feet.");
 
         fx.tickEvery(session, 45_000L, 600_000L, 1_000L);
 
@@ -138,6 +140,23 @@ class AgentLpqPassHandOverTest {
                 times(2));
         assertEquals(2, session.recollects());
         assertTrue(session.lastProgressAtMs() > 150_000L, "a re-collect is progress");
+    }
+
+    @Test
+    void stacksHeWalkedAwayFromAreNudgedOnceAsBackThere() {
+        AgentLpqSession session = stageOne(true, BALLOON);
+        fx.tick(session, 3_000L);
+        fx.moveTo(mira, new Point(-150, -192));
+        fx.moveTo(kes, new Point(-145, -192));
+        fx.moveTo(pel, new Point(-140, -192));
+        fx.tick(session, 4_000L);
+        fx.moveTo(crew.getFirst(), new Point(600, -192));
+
+        fx.tickEvery(session, 5_000L, 60_000L, 1_000L);
+
+        fx.dialogue.verify(() -> AgentLpqDialogue.sayMapNow(eq(session.sessionId()), startsWith("s1-nudge"), any(),
+                anyString()), times(1));
+        fx.said(session, "s1-nudge-back", crew.get(1), "Crewfriend, you left some passes on the ground back there.");
     }
 
     @Test
