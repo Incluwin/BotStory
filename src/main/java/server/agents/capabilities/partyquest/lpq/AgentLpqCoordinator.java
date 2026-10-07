@@ -25,6 +25,7 @@ import server.agents.capabilities.combat.AgentCombatWeaponPolicy;
 import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
 import server.agents.capabilities.inventory.AgentInventoryStateRuntime;
+import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.dialogue.AgentDialogueReportFormatter;
 import server.agents.integration.AgentCharacterGatewayRuntime;
@@ -149,6 +150,8 @@ final class AgentLpqCoordinator {
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_CLAIM_FAILURE_LIMIT");
     private static final long COMPANION_AFTER_CLEAR_LIMIT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_AFTER_CLEAR_LIMIT_MS");
+    private static final long TIMEOUT_SLACK_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.TIMEOUT_SLACK_MS");
     private static final int DARK_SIGHT_SAFE_PORTAL_ID = 0;
     private static final Point STAGE_7_BOTTOM = new Point(1, -211);
     private static final int STAGE_7_FIRING_ANCHOR_RADIUS = config.AgentTuning.intValue(
@@ -5351,12 +5354,14 @@ final class AgentLpqCoordinator {
     private static void companionRunTick(AgentLpqSession session, long nowMs) {
         boolean cleared = AgentLpqTerminationService.pastTheClear(session);
         if (!cleared && nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
-            AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", nowMs);
+            fail(session, "No LPQ progress before phase timeout", AgentLpqParting.of(AgentLpqParting.Kind.TOO_LONG),
+                    nowMs);
             return;
         }
         if (cleared && session.clearedAtMs() > 0L && nowMs - session.clearedAtMs() > COMPANION_AFTER_CLEAR_LIMIT_MS) {
-            AgentLpqTerminationService.completeAfterClear(session,
-                    "The companions did not all claim within the after-clear limit", nowMs);
+            // The wrap-up line first; past the clear the termination service completes the run (nothing disposed).
+            fail(session, "The companions did not all claim within the after-clear limit",
+                    AgentLpqParting.of(AgentLpqParting.Kind.TOO_LONG), nowMs);
             return;
         }
         holdFullRateSimulation(session);
@@ -5368,8 +5373,14 @@ final class AgentLpqCoordinator {
             companionAfterClear(session, session.leaderReleased() ? null : leader, nowMs);
             return;
         }
-        if (leader == null || leader.getHp() <= 0) {
-            AgentLpqTerminationService.fail(session, "The LPQ event leader is unavailable", nowMs);
+        if (leader == null) {
+            fail(session, "The LPQ event leader is unavailable", new AgentLpqParting(AgentLpqParting.Kind.GONE,
+                    session.eventLeaderId(), memberName(session, session.eventLeaderId())), nowMs);
+            return;
+        }
+        if (leader.getHp() <= 0) {
+            fail(session, "The LPQ event leader is unavailable",
+                    AgentLpqParting.of(AgentLpqParting.Kind.DEFEATED, leader), nowMs);
             return;
         }
         if (session.phase() == AgentLpqSession.Phase.PREPARING) {
@@ -5381,11 +5392,14 @@ final class AgentLpqCoordinator {
         if (AgentLpqTerminationService.pastTheClear(session)) return;
         String eventFailure = liveEventFailure(session, leader);
         if (!eventFailure.isEmpty()) {
+            AgentLpqParting parting = eventParting(session, eventFailure, nowMs);
+            // LudiPQ's clearPQ stops the event timer before it marks the clear: no failure, the next tick sees it.
+            if (parting == null) return;
             if (EVENT_ENDED_OR_EXPIRED.equals(eventFailure)) {
                 log.warn("LPQ event end detail: session={} {}", session.sessionId(),
                         eventEndDetail(session, leader));
             }
-            AgentLpqTerminationService.fail(session, eventFailure, nowMs);
+            fail(session, eventFailure, parting, nowMs);
             return;
         }
         recalculateStageAssignments(session, nowMs);
@@ -5551,6 +5565,98 @@ final class AgentLpqCoordinator {
     }
 
     /**
+     * A companion run's end. A companion puts it in its own words (partingNarrator), SILENT before the party was
+     * inside (the desk already answered the leader); the raw reason goes only to the log. Then the termination service
+     * ends it: before the clear as a stock failure does (everyone out, the event disposed), past the clear as a
+     * completed run (only the companions leave). A stock run fails as it always did, without a line.
+     */
+    private static void fail(AgentLpqSession session, String reason, AgentLpqParting parting, long nowMs) {
+        if (!session.companionAdopted()) {
+            AgentLpqTerminationService.fail(session, reason, nowMs);
+            return;
+        }
+        if (session.terminal() || session.terminationStarted()) return;
+        boolean pastTheClear = AgentLpqTerminationService.pastTheClear(session);
+        AgentLpqParting said = beforeEntry(session.phase()) ? AgentLpqParting.SILENT : parting;
+        Character speaker = partingNarrator(session);
+        log.info("LPQ parting: session={} phase={} kind={} speaker={} pastTheClear={}", session.sessionId(),
+                session.phase(), said.kind(), speaker == null ? "none" : speaker.getName(), pastTheClear);
+        if (speaker != null) narrate(session, speaker, "failed", said.line(speaker.getId(), pastTheClear));
+        AgentLpqTerminationService.fail(session, reason, nowMs);
+    }
+
+    /** Before the party was inside: the desk already answered the leader, so the run ends without a word. */
+    private static boolean beforeEntry(AgentLpqSession.Phase phase) {
+        return phase == AgentLpqSession.Phase.PREPARING || phase == AgentLpqSession.Phase.ENTERING;
+    }
+
+    /**
+     * How a companion run puts a live-event failure: the event's end by its cause, too few registered members as
+     * someone having left, the timer as the time running out, anything else in general words. Null when the timer
+     * reads stopped long before its end: LudiPQ.js clearPQ stops it before it marks the clear, so a tick in between
+     * sees neither; the next tick sees the clear, or the event's real end.
+     */
+    private static AgentLpqParting eventParting(AgentLpqSession session, String eventFailure, long nowMs) {
+        if (EVENT_ENDED_OR_EXPIRED.equals(eventFailure)) return AgentLpqParting.of(endedCause(session, nowMs));
+        if ("LPQ no longer has five registered session members".equals(eventFailure)) {
+            return AgentLpqParting.of(AgentLpqParting.Kind.LEFT);
+        }
+        if ("The LPQ event timer expired".equals(eventFailure)) {
+            return endedCause(session, nowMs) == AgentLpqParting.Kind.TIMEOUT
+                    ? AgentLpqParting.of(AgentLpqParting.Kind.TIMEOUT) : null;
+        }
+        return AgentLpqParting.GENERIC;
+    }
+
+    /** Why the event ended under the run: LudiPQ's timer, when the run has stood in it that long; else neither. */
+    private static AgentLpqParting.Kind endedCause(AgentLpqSession session, long nowMs) {
+        long enteredAtMs = session.enteredEventAtMs() > 0L ? session.enteredEventAtMs() : session.startedAtMs();
+        return AgentLpqParting.eventEnded(nowMs - enteredAtMs,
+                AgentPartyQuestCatalog.require("lpq").eventTimerMs(), TIMEOUT_SLACK_MS);
+    }
+
+    /**
+     * Who says a parting line: the narrator on the leader's map, else the first standing companion in the run's
+     * event, else the first companion online even when it is down; null when none is.
+     */
+    private static Character partingNarrator(AgentLpqSession session) {
+        Character onHisMap = narrator(session, character(session.eventLeaderId()));
+        if (onHisMap != null) return onHisMap;
+        EventInstanceManager event = session.eventInstance();
+        Character online = null;
+        for (AgentLpqMemberState member : session.members()) {
+            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
+            Character agent = character(member.characterId());
+            if (agent == null) continue;
+            if (standingCompanion(member) != null && (event == null || LPQ.event(agent) == event)) return agent;
+            if (online == null) online = agent;
+        }
+        return online;
+    }
+
+    /** The live party, as the first online member of the run sees it; null when none has one. */
+    private static AgentPartySnapshot liveParty(AgentLpqSession session) {
+        for (AgentLpqMemberState member : session.members()) {
+            Character character = character(member.characterId());
+            AgentPartySnapshot party = character == null ? null : PARTY.snapshot(character);
+            if (party != null) return party;
+        }
+        return null;
+    }
+
+    /** A member's name: from the live party, which keeps offline members, else from the online character; or null. */
+    private static String memberName(AgentLpqSession session, int characterId) {
+        AgentPartySnapshot party = liveParty(session);
+        String name = party == null ? null : party.members().stream()
+                .filter(member -> member != null && member.id() == characterId)
+                .map(member -> member.name())
+                .findFirst().orElse(null);
+        if (name != null) return name;
+        Character character = character(characterId);
+        return character == null ? null : character.getName();
+    }
+
+    /**
      * He clicks the Red Sign himself: nobody walks anywhere and nobody announces anything. The run goes on once he
      * stands in the event on stage 1, and ends without a word if he has not after COMPANION_ENTRY_WAIT_MS.
      */
@@ -5561,8 +5667,8 @@ final class AgentLpqCoordinator {
             return;
         }
         if (nowMs - session.phaseEnteredAtMs() >= COMPANION_ENTRY_WAIT_MS) {
-            AgentLpqTerminationService.fail(session,
-                    "The companion run's leader did not take the party into LPQ within the entry wait", nowMs);
+            fail(session, "The companion run's leader did not take the party into LPQ within the entry wait",
+                    AgentLpqParting.SILENT, nowMs);
         }
     }
 
@@ -5576,8 +5682,8 @@ final class AgentLpqCoordinator {
         EventInstanceManager event = LPQ.event(leader);
         if (leader.getMapId() != stageOne || event == null) {
             if (waitedMs >= COMPANION_ENTRY_WAIT_MS) {
-                AgentLpqTerminationService.fail(session,
-                        "The companion run's leader left before the party was inside LPQ", nowMs);
+                fail(session, "The companion run's leader left before the party was inside LPQ",
+                        AgentLpqParting.SILENT, nowMs);
             }
             return;
         }
@@ -5596,8 +5702,9 @@ final class AgentLpqCoordinator {
                 beginStageOne(session, nowMs);
                 companionStageLine(session, leader);
             }
-            case EJECT_ABSENT, GIVE_UP -> AgentLpqTerminationService.fail(session,
-                    "Fewer than five of the companion run entered LPQ within the entry wait", nowMs);
+            case EJECT_ABSENT, GIVE_UP -> fail(session,
+                    "Fewer than five of the companion run entered LPQ within the entry wait", AgentLpqParting.SILENT,
+                    nowMs);
             default -> { }
         }
     }
