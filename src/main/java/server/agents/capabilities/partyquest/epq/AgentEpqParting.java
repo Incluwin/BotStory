@@ -43,8 +43,18 @@ record AgentEpqParting(Kind kind, int subjectId, String subject, int itemId) {
         return inEventMs >= timerMs - slackMs ? Kind.TIMEOUT : Kind.GENERIC;
     }
 
-    /** The line as this speaker says it (about itself when it is the one who went down); null for SILENT. */
+    /** The line as this speaker says it in the event (about itself when it is the one who went down); null for SILENT. */
     String line(int speakerId) {
+        return line(speakerId, false);
+    }
+
+    /**
+     * The line as this speaker says it; {@code outside}: the speaker already stands outside the event (EllinPQ's end
+     * moved everyone to 930000800: the leader pressed OK, went offline, or the event ended), so the line has no
+     * "let's head out" (review B). Null for SILENT.
+     */
+    String line(int speakerId, boolean outside) {
+        if (outside) return outsideLine(speakerId);
         boolean self = subjectId > 0 && subjectId == speakerId;
         boolean named = subject != null && !subject.isBlank();
         String generic = "we can't finish this one. let's head out.";
@@ -66,7 +76,30 @@ record AgentEpqParting(Kind kind, int subjectId, String subject, int itemId) {
         };
     }
 
-    /** Every parting line, each kind as said by itself, about a named member and about nobody (for the lint). */
+    private String outsideLine(int speakerId) {
+        boolean self = subjectId > 0 && subjectId == speakerId;
+        boolean named = subject != null && !subject.isBlank();
+        String generic = "we couldn't finish this one.";
+        return switch (kind) {
+            case SILENT -> null;
+            case GENERIC -> generic;
+            case WENT_DOWN -> self ? "sorry, i went down too." : "too many of us went down.";
+            case LEFT -> named ? subject + " left, and we need four for the forest."
+                    : "we're short now, and we need four for the forest.";
+            case DEFEATED -> named ? subject + ", you went down, so we couldn't finish this one." : generic;
+            case GONE -> named ? subject + " dropped out, so we couldn't finish this one." : generic;
+            case LOST -> "we lost the "
+                    + (itemId == AgentEpqDefinition.MAGIC_STONE ? "purple stone" : "monster marbles")
+                    + ", so there was no way to finish.";
+            case TIMEOUT -> "we ran out of time. we'll get the golem next time.";
+            case TOO_LONG -> "we were stuck too long, so we called it.";
+        };
+    }
+
+    /**
+     * Every parting line, each kind as said by itself, about a named member and about nobody, in the event and from
+     * outside it (for the lint).
+     */
     static List<String> sampleLines(String name) {
         List<String> lines = new ArrayList<>();
         for (Kind kind : Kind.values()) {
@@ -74,8 +107,10 @@ record AgentEpqParting(Kind kind, int subjectId, String subject, int itemId) {
                     new AgentEpqParting(kind, 0, null, 0), new AgentEpqParting(kind, 7, name,
                             AgentEpqDefinition.MAGIC_STONE))) {
                 for (int speaker : new int[] {7, 8}) {
-                    String line = parting.line(speaker);
-                    if (line != null && !lines.contains(line)) lines.add(line);
+                    for (boolean outside : new boolean[] {false, true}) {
+                        String line = parting.line(speaker, outside);
+                        if (line != null && !lines.contains(line)) lines.add(line);
+                    }
                 }
             }
         }

@@ -92,7 +92,8 @@ final class AgentEpqCompanionRun {
      * is being released is left alone, and past the clear a companion run never fails: its companions leave (Step
      * 2.9). Only the run's first failure speaks and fails it (claimFailure: two threads can fail one run). SILENT, or
      * a run that never went in, says nothing; otherwise the given speaker, else a companion on the leader's map, else
-     * any companion standing in the event, else the first online one says the parting once ('EPQ parting:'). The
+     * any companion standing in the event, else the first online one says the parting once ('EPQ parting:'); a speaker
+     * already outside the event (EllinPQ's end moved everyone out) says it without "let's head out". The
      * 'EPQ session failure:' line and the failure's reason are today's.
      */
     static void fail(AgentEpqSession session, String reason, AgentEpqParting parting, Character speaker, long nowMs) {
@@ -127,7 +128,8 @@ final class AgentEpqCompanionRun {
             Character who = speaker != null ? speaker : anySpeaker ? partingSpeaker(session) : null;
             log.info("EPQ parting: session={} kind={} speaker={}", session.sessionId(), parting.kind(),
                     who == null ? "none" : who.getName());
-            narrate(session, who, "failed", parting.line(who == null ? 0 : who.getId()));
+            narrate(session, who, "failed",
+                    parting.line(who == null ? 0 : who.getId(), who != null && !inBoundEvent(session, who)));
         }
         AgentEpqCoordinator.fail(session, reason, nowMs);
     }

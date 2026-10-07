@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -92,6 +93,40 @@ class AgentEpqCompanionFailTest {
         AgentEpqCoordinator.tickSession(session, 5_000L);
 
         saidOnce(mira, "Ben, you went down, so we can't finish this one. let's head out.");
+    }
+
+    /** EllinPQ's end moved everyone to 930000800 before the run saw it. */
+    private void everyoneOutside() {
+        for (Character member : List.of(ben, mira, tobi, una)) {
+            when(member.getEventInstance()).thenReturn(null);
+            run.onMap(member, AgentEpqDefinition.REWARD_MAP);
+        }
+    }
+
+    /** Review B: a parting said with everyone already outside the event says no "let's head out". */
+    @Test
+    void theEventEndingWithEveryoneAlreadyOutsideSaysNoLetsHeadOut() {
+        AgentEpqSession session = companionRun();
+        everyoneOutside();
+
+        AgentEpqCoordinator.tickSession(session, 5_000L);
+
+        saidOnce(mira, "we couldn't finish this one.");
+        verify(run.packets, never()).broadcastChatText(any(), eq("we can't finish this one. let's head out."),
+                anyBoolean(), anyInt());
+        assertEquals("The EPQ event instance ended or expired", session.failure());
+    }
+
+    /** Review B: the leader pressed OK at the golem and the event put everyone outside: his defeat, said from there. */
+    @Test
+    void theLeadersDefeatSaidFromOutsideSaysNoLetsHeadOut() {
+        AgentEpqSession session = companionRun();
+        session.markLeaderWentDown();
+        everyoneOutside();
+
+        AgentEpqCoordinator.tickSession(session, 5_000L);
+
+        saidOnce(mira, "Ben, you went down, so we couldn't finish this one.");
     }
 
     @Test
