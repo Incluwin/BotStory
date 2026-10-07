@@ -54,6 +54,7 @@ class CompanionBossRunsTest {
     private static final int ISOLDE = 901;
     private static final int THANE = 902;
     private static final int SORREL = 903;
+    private static final int INGRID = 904;
 
     private final LifecycleHarness game = new LifecycleHarness();
     private final FakeRuns open = new FakeRuns();
@@ -118,7 +119,7 @@ class CompanionBossRunsTest {
         ops.forEach(Runnable::run);
         assertFalse(game.commitments.isCommitted(ISOLDE));
         assertEquals(2, game.partyChat.size(), game.partyChat.toString());
-        assertEquals("Isolde: mu young won't take me yet. i'll wait out here.", game.partyChat.get(0));
+        assertSays("Isolde", BossRunLines.REFUSED_LEVEL, game.partyChat.get(0));
         assertTrue(game.partyChat.get(1).startsWith("Thane: "), game.partyChat.get(1));
     }
 
@@ -153,7 +154,7 @@ class CompanionBossRunsTest {
         runs.refused(seat(THANE), Refusal.LATE);
 
         assertEquals(2, game.partyChat.size(), game.partyChat.toString());
-        assertEquals("Thane: not gonna make it back in time, go on without me.", game.partyChat.get(0));
+        assertSays("Thane", BossRunLines.REFUSED_LATE, game.partyChat.get(0));
         assertTrue(Set.of("Isolde: we're all signed up. ready when you are.", "Isolde: names are down. let's do this.")
                 .contains(game.partyChat.get(1)), game.partyChat.get(1));
 
@@ -173,20 +174,21 @@ class CompanionBossRunsTest {
         runs.refused(seat(THANE), Refusal.LATE);
         runs.registered(seat(SORREL)); // a sign-up report that companion-ops reads only after Start
 
-        assertEquals(List.of("Thane: not gonna make it back in time, go on without me."), game.partyChat);
+        assertEquals(1, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Thane", BossRunLines.REFUSED_LATE, game.partyChat.get(0));
     }
 
     @Test
     void aRefusalLetsTheCompanionGoWithOneLineForItsReason() {
         Map<Refusal, String> said = new EnumMap<>(Refusal.class);
-        said.put(Refusal.LEVEL, "mu young won't take me yet. i'll wait out here.");
-        said.put(Refusal.CLOSED, "sign-ups are closed already. i'll wait out here.");
-        said.put(Refusal.FULL, "the list's full, i'll sit this one out.");
-        said.put(Refusal.BANNED, "guess i'm off the list. i'll wait out here.");
-        said.put(Refusal.LATE, "not gonna make it back in time, go on without me.");
-        said.put(Refusal.NOT_HERE, "couldn't get to mu young in time. i'll catch up after.");
-        said.put(Refusal.BUSY, "couldn't get my name down, sorry. i'll wait out here.");
-        said.put(Refusal.UNKNOWN, "couldn't get my name down, sorry. i'll wait out here.");
+        said.put(Refusal.LEVEL, BossRunLines.REFUSED_LEVEL);
+        said.put(Refusal.CLOSED, BossRunLines.REFUSED_CLOSED);
+        said.put(Refusal.FULL, BossRunLines.REFUSED_FULL);
+        said.put(Refusal.BANNED, BossRunLines.REFUSED_BANNED);
+        said.put(Refusal.LATE, BossRunLines.REFUSED_LATE);
+        said.put(Refusal.NOT_HERE, BossRunLines.REFUSED_NOT_HERE);
+        said.put(Refusal.BUSY, BossRunLines.REFUSED_OTHER);
+        said.put(Refusal.UNKNOWN, BossRunLines.REFUSED_OTHER);
         List<String> released = new ArrayList<>();
         game.commitments.addListener(ended -> released.add(ended.key() + " " + ended.members().size()));
 
@@ -199,7 +201,8 @@ class CompanionBossRunsTest {
 
             assertFalse(game.commitments.isCommitted(ISOLDE), refusal.name());
             assertEquals(List.of(KEY + " 1"), released, refusal.name());
-            assertEquals(List.of("Isolde: " + said.get(refusal)), game.partyChat, refusal.name());
+            assertEquals(1, game.partyChat.size(), refusal.name() + " " + game.partyChat);
+            assertSays("Isolde", said.get(refusal), game.partyChat.get(0));
         }
     }
 
@@ -213,8 +216,70 @@ class CompanionBossRunsTest {
 
         assertEquals("pq:kpq:s-1", game.commitments.keyOf(THANE));
         assertFalse(game.commitments.isCommitted(SORREL));
-        assertEquals(List.of("Thane: couldn't get my name down, sorry. i'll wait out here.",
-                "Sorrel: not gonna make it back in time, go on without me."), game.partyChat);
+        assertEquals(2, game.partyChat.size(), game.partyChat.toString());
+        assertSays("Thane", BossRunLines.REFUSED_OTHER, game.partyChat.get(0));
+        assertSays("Sorrel", BossRunLines.REFUSED_LATE, game.partyChat.get(1));
+    }
+
+    @Test
+    void threeCompanionsRefusedLateInOneRunSayThreeDifferentLinesAndAFourthReusesOne() {
+        Persona ingrid = game.companion("ingrid", "Ingrid", INGRID, RosterState.ACTIVE, 105100100);
+        game.outWithAnn(ingrid);
+        runs.seat(seat(ISOLDE));
+        open.registering.remove(SID); // the leader pressed Start before the walk-ups finished
+
+        for (int id : new int[] {ISOLDE, THANE, SORREL, INGRID}) {
+            runs.refused(seat(id), Refusal.LATE);
+        }
+
+        assertEquals(4, game.partyChat.size(), game.partyChat.toString());
+        List<String> first = List.of(wording("Isolde", game.partyChat.get(0)), wording("Thane", game.partyChat.get(1)),
+                wording("Sorrel", game.partyChat.get(2)));
+        assertEquals(3, Set.copyOf(first).size(), "no companion repeats another's words: " + game.partyChat);
+        for (String said : first) {
+            assertTrue(BossRunLines.GENERIC.get(BossRunLines.REFUSED_LATE).contains(said), said);
+        }
+        assertTrue(first.contains(wording("Ingrid", game.partyChat.get(3))),
+                "every wording was said: the fourth says one again: " + game.partyChat);
+    }
+
+    @Test
+    void otherLinesSaidInBetweenStillLeaveTheRefusedNoWordsToRepeat() {
+        Character ingrid = game.bot(INGRID, "Ingrid"); // a companion in another run, speaking on companion-ops too
+        runs.seat(seat(ISOLDE));
+        open.registering.remove(SID);
+
+        for (int id : new int[] {ISOLDE, THANE, SORREL}) {
+            runs.refused(seat(id), Refusal.LATE);
+            // two lines from elsewhere move the shared turn on by a whole round of three wordings
+            BossRunLines.say(game.world, ingrid, BossRunLines.GG, null, 0);
+            BossRunLines.say(game.world, ingrid, BossRunLines.GG, null, 0);
+        }
+
+        List<String> refused = game.partyChat.stream().filter(line -> !line.startsWith("Ingrid: ")).toList();
+        assertEquals(3, refused.size(), game.partyChat.toString());
+        Set<String> said = new HashSet<>(List.of(wording("Isolde", refused.get(0)), wording("Thane", refused.get(1)),
+                wording("Sorrel", refused.get(2))));
+        assertEquals(3, said.size(), "no companion repeats another's words: " + refused);
+    }
+
+    @Test
+    void aPersonasOwnRefusalLineStillWinsAndTheOthersStillDiffer() {
+        Persona isolde = game.world.residents().personaOfCharacterId(ISOLDE);
+        when(game.world.arcs().lines(isolde, BossRunLines.REFUSED_LATE))
+                .thenReturn(List.of("ugh, still miles away. go without me."));
+        runs.seat(seat(THANE));
+
+        runs.refused(seat(THANE), Refusal.LATE);
+        runs.refused(seat(ISOLDE), Refusal.LATE);
+        runs.refused(seat(SORREL), Refusal.LATE);
+
+        assertEquals(3, game.partyChat.size(), game.partyChat.toString());
+        assertEquals("Isolde: ugh, still miles away. go without me.", game.partyChat.get(1));
+        assertSays("Thane", BossRunLines.REFUSED_LATE, game.partyChat.get(0));
+        assertSays("Sorrel", BossRunLines.REFUSED_LATE, game.partyChat.get(2));
+        assertFalse(wording("Thane", game.partyChat.get(0)).equals(wording("Sorrel", game.partyChat.get(2))),
+                game.partyChat.toString());
     }
 
     // ---- out of the run --------------------------------------------------------------------------
@@ -230,10 +295,27 @@ class CompanionBossRunsTest {
         assertFalse(game.commitments.isCommitted(ISOLDE));
         assertEquals(KEY, game.commitments.keyOf(THANE), "it waits outside, still in the run, until it ends");
         assertEquals(2, game.partyChat.size(), game.partyChat.toString());
-        assertEquals("Isolde: couldn't make it in time, i'll wait for you here.", game.partyChat.get(0));
+        assertSays("Isolde", BossRunLines.MISSED, game.partyChat.get(0));
         assertTrue(Set.of("Thane: ugh, i'm down. i'll wait out here for you.",
                 "Thane: sorry, balrog got me. waiting outside.", "Thane: that hurt... i'll wait out here.")
                 .contains(game.partyChat.get(1)), game.partyChat.get(1));
+    }
+
+    @Test
+    void threeMissedStartsInOneRunAreThreeDifferentLines() {
+        runs.seat(seat(ISOLDE));
+        runs.seat(seat(THANE));
+        runs.seat(seat(SORREL));
+
+        runs.memberOut(seat(ISOLDE), Out.MISSED_START);
+        runs.memberOut(seat(THANE), Out.MISSED_START);
+        runs.memberOut(seat(SORREL), Out.MISSED_START);
+
+        assertEquals(3, game.partyChat.size(), game.partyChat.toString());
+        Set<String> said = new HashSet<>(List.of(wording("Isolde", game.partyChat.get(0)),
+                wording("Thane", game.partyChat.get(1)), wording("Sorrel", game.partyChat.get(2))));
+        assertEquals(3, said.size(), "no companion repeats another's words: " + game.partyChat);
+        assertTrue(BossRunLines.GENERIC.get(BossRunLines.MISSED).containsAll(said), said.toString());
     }
 
     @Test
@@ -530,6 +612,29 @@ class CompanionBossRunsTest {
     }
 
     @Test
+    void everyRefusalAndTheMissedStartHaveTwoOrThreeWordingsTheFirstOnesKept() {
+        Map<String, String> kept = Map.of(
+                BossRunLines.REFUSED_LEVEL, "mu young won't take me yet. i'll wait out here.",
+                BossRunLines.REFUSED_CLOSED, "sign-ups are closed already. i'll wait out here.",
+                BossRunLines.REFUSED_FULL, "the list's full, i'll sit this one out.",
+                BossRunLines.REFUSED_BANNED, "guess i'm off the list. i'll wait out here.",
+                BossRunLines.REFUSED_LATE, "not gonna make it back in time, go on without me.",
+                BossRunLines.REFUSED_NOT_HERE, "couldn't get to mu young in time. i'll catch up after.",
+                BossRunLines.REFUSED_OTHER, "couldn't get my name down, sorry. i'll wait out here.",
+                BossRunLines.MISSED, "couldn't make it in time, i'll wait for you here.");
+        for (Map.Entry<String, String> intent : kept.entrySet()) {
+            List<String> wordings = BossRunLines.GENERIC.get(intent.getKey());
+            assertTrue(wordings.size() >= 2 && wordings.size() <= 3, intent.getKey() + " " + wordings);
+            assertEquals(wordings.size(), Set.copyOf(wordings).size(), intent.getKey() + " " + wordings);
+            assertTrue(wordings.contains(intent.getValue()), intent.getKey() + " " + wordings);
+        }
+        assertEquals(3, BossRunLines.GENERIC.get(BossRunLines.REFUSED_LATE).size(),
+                "Start can refuse three walking up at once");
+        assertEquals(3, BossRunLines.GENERIC.get(BossRunLines.MISSED).size(),
+                "the grace can count three out at once");
+    }
+
+    @Test
     void aPersonasOwnLinesForAnIntentWinAndTheHeirIsNamed() {
         Persona isolde = game.world.residents().personaOfCharacterId(ISOLDE);
         when(game.world.arcs().lines(isolde, BossRunLines.DOWN)).thenReturn(List.of("ow. i'll be outside."));
@@ -542,6 +647,17 @@ class CompanionBossRunsTest {
     }
 
     // ---- helpers -------------------------------------------------------------------------------
+
+    /** {@code line} is "{@code name}: " and one of the generic wordings for {@code intent}. */
+    private static void assertSays(String name, String intent, String line) {
+        assertTrue(BossRunLines.GENERIC.get(intent).contains(wording(name, line)), intent + ": " + line);
+    }
+
+    /** What {@code name} said in party chat line {@code line} ("Name: words"). */
+    private static String wording(String name, String line) {
+        assertTrue(line.startsWith(name + ": "), line);
+        return line.substring(name.length() + 2);
+    }
 
     private static Seat seat(int agentId) {
         return new Seat("easy_balrog", SID, agentId, ANN);

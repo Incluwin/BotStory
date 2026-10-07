@@ -497,12 +497,12 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      */
     private void notListed(Seat seat, Refusal refusal) {
         int id = seat.agentCharacterId();
-        CompanionBossRun run = runs.get(key(seat));
+        CompanionBossRun run = whileOpen(seat);
         if (run != null) {
             run.signedUp.remove(id);
         }
         release(key(seat), id);
-        BossRunLines.say(world, bot(id), BossRunLines.refusal(refusal), null, 0);
+        BossRunLines.say(world, bot(id), BossRunLines.refusal(refusal), null, 0, run);
         if (run != null) {
             allSignedUp(run, 0);
         }
@@ -538,7 +538,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         switch (out) {
             case MISSED_START -> {
                 release(key(seat), id);
-                BossRunLines.say(world, bot(id), BossRunLines.MISSED, null, 0);
+                BossRunLines.say(world, bot(id), BossRunLines.MISSED, null, 0, whileOpen(seat));
             }
             case DIED -> BossRunLines.say(world, bot(id), BossRunLines.DOWN, null, 0);
             case NO_HUMAN_LEFT -> {
@@ -732,6 +732,14 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     private CompanionBossRun run(Seat seat) {
         return runs.computeIfAbsent(key(seat),
                 key -> new CompanionBossRun(seat.bossKey(), seat.sessionId(), seat.enlistedBy()));
+    }
+
+    /**
+     * The seat's owner's part of its run, kept from now on while the run is open (its lines' wordings are noted there);
+     * after the run, only one still kept, else null: nothing is kept again for a run that is over.
+     */
+    private CompanionBossRun whileOpen(Seat seat) {
+        return open.open(seat.sessionId()) ? run(seat) : runs.get(key(seat));
     }
 
     /** The companion's commitment ends when it is tied to {@code key}; another run's is left alone. */

@@ -1,5 +1,8 @@
 package server.living.roster;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -9,7 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * survives a restart (boot reconciliation parks whoever it held). The Agent layer's boss run (AgentBossRunSession)
  * drives the companions; this keeps what the living world needs for them: its key ("boss:easy_balrog:<session>:
  * <owner>"), which its companions are committed under from their seat to the run's end, each companion's persona and
- * potions as it signed up, for its record and the potion line, and which lines were said once per owner already.
+ * potions as it signed up, for its record and the potion line, which lines were said once per owner already, and
+ * which wordings its companions said for a line each of them says (no two refused for one reason say the same words).
  */
 final class CompanionBossRun {
     final String key;
@@ -34,12 +38,32 @@ final class CompanionBossRun {
     volatile boolean ggSaid;
     /** When the lost-run sweep first found its session gone (0: it has not); read and written on companion-ops only. */
     long goneSinceMs;
+    /** Intent -> the wordings its companions said for it in this run, until every one was said (guarded by this). */
+    private final Map<String, Set<String>> wordingsSaid = new HashMap<>();
 
     CompanionBossRun(String bossKey, long sessionId, int ownerId) {
         this.key = key(bossKey, sessionId, ownerId);
         this.bossKey = bossKey;
         this.sessionId = sessionId;
         this.ownerId = ownerId;
+    }
+
+    /**
+     * One of {@code wordings} (not empty) for {@code intent} that no companion of this run said yet, the first such one
+     * from {@code turn} on; once each of them was said they all count as unsaid again. Any thread.
+     */
+    synchronized String wording(String intent, List<String> wordings, int turn) {
+        Set<String> said = wordingsSaid.computeIfAbsent(intent, unused -> new HashSet<>());
+        if (said.containsAll(wordings)) {
+            said.removeAll(wordings);
+        }
+        for (int step = 0; step < wordings.size(); step++) {
+            String wording = wordings.get(Math.floorMod(turn + step, wordings.size()));
+            if (said.add(wording)) {
+                return wording;
+            }
+        }
+        return wordings.get(Math.floorMod(turn, wordings.size()));
     }
 
     /** The commitment key of {@code ownerId}'s companions in boss run {@code sessionId}. */

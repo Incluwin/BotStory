@@ -37,14 +37,38 @@ final class BossRunLines {
             Map.entry(SIGNED_UP, List.of(
                     "we're all signed up. ready when you are.",
                     "names are down. let's do this.")),
-            Map.entry(REFUSED_LEVEL, List.of("mu young won't take me yet. i'll wait out here.")),
-            Map.entry(REFUSED_CLOSED, List.of("sign-ups are closed already. i'll wait out here.")),
-            Map.entry(REFUSED_FULL, List.of("the list's full, i'll sit this one out.")),
-            Map.entry(REFUSED_BANNED, List.of("guess i'm off the list. i'll wait out here.")),
-            Map.entry(REFUSED_LATE, List.of("not gonna make it back in time, go on without me.")),
-            Map.entry(REFUSED_NOT_HERE, List.of("couldn't get to mu young in time. i'll catch up after.")),
-            Map.entry(REFUSED_OTHER, List.of("couldn't get my name down, sorry. i'll wait out here.")),
-            Map.entry(MISSED, List.of("couldn't make it in time, i'll wait for you here.")),
+            Map.entry(REFUSED_LEVEL, List.of(
+                    "mu young won't take me yet. i'll wait out here.",
+                    "too low for this one still. i'll wait out here.",
+                    "she says i'm not strong enough yet lol. waiting outside.")),
+            Map.entry(REFUSED_CLOSED, List.of(
+                    "sign-ups are closed already. i'll wait out here.",
+                    "list's closed, missed it. i'll hang back.",
+                    "too late to sign up now, i'll wait here.")),
+            Map.entry(REFUSED_FULL, List.of(
+                    "the list's full, i'll sit this one out.",
+                    "no room left on the list. i'll hang out here.",
+                    "list's full already. good luck in there!")),
+            Map.entry(REFUSED_BANNED, List.of(
+                    "guess i'm off the list. i'll wait out here.",
+                    "mu young won't let me sign. i'll sit this one out.",
+                    "she won't take my name... i'll wait here.")),
+            Map.entry(REFUSED_LATE, List.of(
+                    "not gonna make it back in time, go on without me.",
+                    "won't be back in time, go ahead without me.",
+                    "still too far, don't wait for me.")),
+            Map.entry(REFUSED_NOT_HERE, List.of(
+                    "couldn't get to mu young in time. i'll catch up after.",
+                    "couldn't reach mu young, sorry. catch you after.",
+                    "got stuck on the way to mu young. i'll catch up later.")),
+            Map.entry(REFUSED_OTHER, List.of(
+                    "couldn't get my name down, sorry. i'll wait out here.",
+                    "no luck signing up. i'll hang back here.",
+                    "something came up, couldn't sign up. i'll wait here.")),
+            Map.entry(MISSED, List.of(
+                    "couldn't make it in time, i'll wait for you here.",
+                    "missed the start, sorry. i'll wait for you here.",
+                    "too slow, you went in without me. i'll wait here.")),
             Map.entry(DOWN, List.of(
                     "ugh, i'm down. i'll wait out here for you.",
                     "sorry, balrog got me. waiting outside.",
@@ -88,6 +112,16 @@ final class BossRunLines {
      * {@code name} and "{n}" as {@code minutes}. False when it has no line for it or could not say it.
      */
     static boolean say(LivingWorld world, Character bot, String intent, String name, int minutes) {
+        return say(world, bot, intent, name, minutes, null);
+    }
+
+    /**
+     * As {@link #say(LivingWorld, Character, String, String, int)}, and when {@code run} is known, never a wording a
+     * companion of that owner's run already said for {@code intent} until it said every one (several refused or late
+     * for one reason each say their own line, in their own words).
+     */
+    static boolean say(LivingWorld world, Character bot, String intent, String name, int minutes,
+                       CompanionBossRun run) {
         if (bot == null) {
             return false;
         }
@@ -95,7 +129,9 @@ final class BossRunLines {
         if (lines.isEmpty()) {
             return false;
         }
-        String line = lines.get(Math.floorMod(counter.getAndIncrement(), lines.size()))
+        int turn = counter.getAndIncrement();
+        String wording = run == null ? lines.get(Math.floorMod(turn, lines.size())) : run.wording(intent, lines, turn);
+        String line = wording
                 .replace("{name}", name == null ? "" : name)
                 .replace("{n}", Integer.toString(minutes));
         return world.roster().sayInParty(bot, line);
