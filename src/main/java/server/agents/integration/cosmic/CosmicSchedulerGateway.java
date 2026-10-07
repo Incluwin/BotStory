@@ -17,4 +17,15 @@ public enum CosmicSchedulerGateway implements SchedulerGateway {
     public ScheduledFuture<?> register(Runnable action, long periodMs) {
         return TimerManager.getInstance().register(action, periodMs);
     }
+
+    @Override
+    public ScheduledFuture<?> scheduleLowPriority(Runnable action, long delayMs) {
+        return TimerManager.getInstance().schedule(TimerManager.SchedulerLane.LOW_PRIORITY, action, delayMs);
+    }
+
+    @Override
+    public ScheduledFuture<?> registerLowPriority(Runnable action, long periodMs, long initialDelayMs) {
+        return TimerManager.getInstance().register(
+                TimerManager.SchedulerLane.LOW_PRIORITY, action, periodMs, initialDelayMs);
+    }
 }

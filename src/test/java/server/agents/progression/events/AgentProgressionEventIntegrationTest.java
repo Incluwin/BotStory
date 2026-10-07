@@ -2,6 +2,8 @@ package server.agents.progression.events;
 
 import client.Character;
 import client.Job;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import server.agents.capabilities.build.AgentBuildService;
 import server.agents.capabilities.build.AgentBuildStateRuntime;
@@ -20,6 +22,20 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AgentProgressionEventIntegrationTest {
+    private boolean oldDialogueTransport;
+
+    @BeforeEach
+    void withoutDialogueTransport() {
+        // the live config turns dialogue transport on; the level-10 status reply would then need the game timer
+        oldDialogueTransport = config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = false;
+    }
+
+    @AfterEach
+    void restoreDialogueTransport() {
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = oldDialogueTransport;
+    }
+
     @Test
     void buildBoundariesPublishLevelAndJobFactsInMutationOrder() {
         Character agent = mock(Character.class);

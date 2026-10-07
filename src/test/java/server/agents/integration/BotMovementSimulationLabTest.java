@@ -36,7 +36,7 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldReachMoveTargetOnFlatGround() {
         MapleMap map = createFlatMap(910000101, 0, 600, 100);
-        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromSyntheticMap(map);
         AgentRuntimeEntry entry = lab.spawnBot("SLASH", 1, map, new Point(100, 100));
 
         lab.setMoveTarget("SLASH", new Point(320, 100), true);
@@ -52,7 +52,7 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldFollowOwnerUsingFormationOffsetOnFlatGround() {
         MapleMap map = createFlatMap(910000102, 0, 800, 100);
-        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromSyntheticMap(map);
         lab.spawnActor("OWNER", 10, map, new Point(400, 100));
         AgentRuntimeEntry entry = lab.spawnBot("CRASH", 11, map, new Point(120, 100));
 
@@ -76,7 +76,7 @@ class BotMovementSimulationLabTest {
         footholds.insert(new Foothold(new Point(0, 110), new Point(20, 110), 1));
         footholds.insert(new Foothold(new Point(4, 102), new Point(6, 102), 2));
         map.setFootholds(footholds);
-        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromSyntheticMap(map);
         AgentRuntimeEntry entry = lab.spawnBot("BUMP", 12, map, new Point(0, 100));
         AgentMovementStateRuntime.setInAir(entry, true);
         AgentMovementPhysicsStateRuntime.setPhysicsX(entry, 0);
@@ -99,7 +99,7 @@ class BotMovementSimulationLabTest {
         footholds.insert(new Foothold(new Point(0, 0), new Point(20, 0), 1));
         footholds.insert(new Foothold(new Point(0, 0), new Point(0, 80), 2));
         map.setFootholds(footholds);
-        BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
+        BotMovementSimulationLab lab = BotMovementSimulationLab.fromSyntheticMap(map);
         AgentRuntimeEntry entry = lab.spawnBot("DROP", 13, map, new Point(0, 0));
         AgentMovementStateRuntime.setInAir(entry, true);
         AgentMovementPhysicsStateRuntime.setPhysicsX(entry, 0);
@@ -116,7 +116,6 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldResolveSlashRopeOscillationDumpByExecutingCommittedExit() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000000);
-        AgentNavigationGraphService.rebuildGraph(map);
         BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
         lab.spawnActor("OWNER", 20, map, new Point(-69, 156));
         AgentRuntimeEntry entry = lab.spawnBot("SLASH", 21, map, new Point(366, -117));
@@ -153,7 +152,6 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldResolveBashRopeOscillationDumpByExecutingImmediatelyFromRopeAnchorWindow() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000800);
-        AgentNavigationGraphService.rebuildGraph(map);
         BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
         lab.spawnActor("OWNER", 30, map, new Point(-437, -859));
         lab.spawnBot("BASH", 31, map, new Point(-437, -1142));
@@ -183,7 +181,6 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldLeaveThievesHideoutAfterFirstJobAdvancement() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(103000003);
-        AgentNavigationGraphService.rebuildGraph(map);
         BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
         lab.spawnBot("ROGUE", 35, map, new Point(113, 128));
         lab.setMoveTarget("ROGUE", new Point(201, -266), true);
@@ -201,7 +198,6 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldCommitJohnSecondJumpOnTheNextAiTickAfterLanding() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(101020001);
-        AgentNavigationGraphService.rebuildGraph(map);
         BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
         lab.spawnActor("OWNER", 50, map, new Point(115, -1521));
         lab.spawnBot("JOHN", 51, map, new Point(114, -1091));
@@ -258,7 +254,6 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldUsePetWalkingRoadLocalWalkOffDrop() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(100000202);
-        AgentNavigationGraphService.rebuildGraph(map);
         BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);
         lab.spawnActor("OWNER", 40, map, new Point(-1799, -926));
         lab.spawnBot("JOHN", 41, map, new Point(-1366, -664));
@@ -313,7 +308,7 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldCommitForestEastRegion38DirectionalDrop() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(100030000);
-        AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map);
         AgentNavigationGraph.Edge edge = graph.getOutgoing(38).stream()
                 .filter(candidate -> candidate.type == AgentNavigationGraph.EdgeType.DROP
                         && candidate.toRegionId == 42
@@ -342,7 +337,7 @@ class BotMovementSimulationLabTest {
     @Test
     void shouldNotOscillateBetweenForestEastRegion39BranchEdges() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(100030000);
-        AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map);
         Point target = new Point(-3368, -506);
 
         BotMovementSimulationLab lab = BotMovementSimulationLab.fromMap(map);

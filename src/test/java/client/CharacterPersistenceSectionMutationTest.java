@@ -8,6 +8,7 @@ import client.inventory.Pet;
 import client.keybind.KeyBinding;
 import constants.id.MapId;
 import org.junit.jupiter.api.Test;
+import server.StatEffect;
 import server.maps.MapObjectType;
 import server.persistence.DirtySectionTracker;
 import server.quest.Quest;
@@ -82,6 +83,8 @@ class CharacterPersistenceSectionMutationTest {
         clear(tracker);
         Skill skill = mock(Skill.class);
         when(skill.getId()).thenReturn(1000);
+        when(skill.getMaxLevel()).thenReturn(3);
+        when(skill.getEffect(1)).thenReturn(mock(StatEffect.class));
         character.changeSkillLevel(skill, (byte) 1, 0, -1);
         assertOnlyDirty(tracker, Character.PersistenceSection.SKILLS);
 

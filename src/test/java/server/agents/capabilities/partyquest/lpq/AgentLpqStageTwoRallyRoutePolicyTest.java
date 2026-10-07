@@ -1,6 +1,8 @@
 package server.agents.capabilities.partyquest.lpq;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import server.agents.capabilities.movement.AgentMovementProfile;
 import server.agents.capabilities.navigation.AgentNavigationGraph;
 import server.agents.capabilities.navigation.AgentNavigationGraphService;
 import server.agents.capabilities.navigation.AgentNavigationMapLoader;
@@ -10,7 +12,13 @@ import java.awt.Point;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
 
 class AgentLpqStageTwoRallyRoutePolicyTest {
     @Test
@@ -76,9 +84,24 @@ class AgentLpqStageTwoRallyRoutePolicyTest {
     }
 
     @Test
+    void coldGraphCacheStartsABackgroundBuildInsteadOfBuildingOnTheTickThread() {
+        MapleMap map = mock(MapleMap.class);
+        when(map.getId()).thenReturn(922_010_200);
+        AgentLpqMemberState member = new AgentLpqMemberState(
+                72_046, AgentLpqMemberState.MemberType.AGENT);
+
+        try (MockedStatic<AgentNavigationGraphService> graphs = mockStatic(AgentNavigationGraphService.class)) {
+            assertNull(AgentLpqStageTwoRallyRoutePolicy.nextWaypoint(map, new Point(24, -2_202), member));
+
+            graphs.verify(() -> AgentNavigationGraphService.warmGraphAsync(map, AgentMovementProfile.base()));
+            graphs.verify(() -> AgentNavigationGraphService.getGraph(any()), never());
+        }
+    }
+
+    @Test
     void ropeFortyFiveAdvancesUpwardInsteadOfFallingBackToPlatformEleven() {
         MapleMap map = AgentNavigationMapLoader.loadMapGeometry(922_010_200);
-        AgentNavigationGraph graph = AgentNavigationGraphService.rebuildGraph(map);
+        AgentNavigationGraph graph = AgentNavigationGraphService.getGraph(map);
         AgentLpqMemberState member = new AgentLpqMemberState(
                 72_045, AgentLpqMemberState.MemberType.AGENT);
 

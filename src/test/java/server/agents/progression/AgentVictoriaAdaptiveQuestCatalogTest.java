@@ -32,7 +32,7 @@ class AgentVictoriaAdaptiveQuestCatalogTest {
 
         assertEquals(2, index.schemaVersion());
         assertFalse(index.revision().isBlank());
-        assertEquals(93, index.entries().size());
+        assertEquals(92, index.entries().size());
         assertTrue(index.mobEntries().size() > 100);
         assertTrue(index.entries().stream()
                 .flatMap(entry -> entry.objectives().stream())

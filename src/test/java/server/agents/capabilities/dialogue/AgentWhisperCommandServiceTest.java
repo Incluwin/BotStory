@@ -3,6 +3,8 @@ package server.agents.capabilities.dialogue;
 import client.BotClient;
 import client.Character;
 import client.Client;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.commands.AgentReplyChannel;
@@ -23,6 +25,19 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class AgentWhisperCommandServiceTest {
+    private String oldAdministrators;
+
+    @BeforeEach
+    void leaderMayOperate() {
+        oldAdministrators = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES;
+        config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = "Kiwi";
+    }
+
+    @AfterEach
+    void restoreAdministrators() {
+        config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = oldAdministrators;
+    }
+
     @Test
     void ignoresNonAgentTargets() {
         List<String> calls = new ArrayList<>();

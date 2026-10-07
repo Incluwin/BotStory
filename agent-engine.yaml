@@ -1067,7 +1067,13 @@ tuning:
     # Purpose: Requires a Stage 4 room to remain unchanged before its 60-second positioning assist is allowed to run.
     # Technical: The recovery clock observes authoritative monster count, total HP, and collected passes without interrupting the ordinary combat target.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_4_COMBAT_STALL_MS: '15000'
+    # Values: 30000-120000 milliseconds. Recommended: 60000 so ordinary Stage 4 combat finishes before any assist runs.
+    # Purpose: Sets how long an Agent fights in a Stage 4 room before the positioning assist and the pass-loot sweep may run.
+    # Technical: Measured from room entry; the assist also needs STAGE_4_COMBAT_STALL_MS of no progress, while the pass-loot sweep only needs an empty room.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_4_ROOM_ASSIST_MS: '60000'
+    # Values: 60000-300000 milliseconds. Recommended: 90000, kept above STAGE_4_ROOM_ASSIST_MS so the gentle assist always runs first.
+    # Purpose: Sets the last-resort deadline after which a stuck Stage 4 room is cleared so the LPQ run can continue.
+    # Technical: Once per room, the coordinator stops the Agent, kills the remaining room targets with drops, vacuums the passes, and marks session progress.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_4_ROOM_HARD_RECOVERY_MS: '90000'
     # Values: 250-3000 milliseconds. Recommended: 750 after the Stage 4 positioning assist.
     # Purpose: Lets the recovered Agent settle on the remaining monster's foothold before resuming the direct combat loop.
@@ -1152,7 +1158,7 @@ tuning:
     server.agents.capabilities.partyquest.epq.AgentEpqRuntime.COORDINATOR_LEASE_MS: '250'
     # Values: 100-2000 milliseconds. Recommended: 350 to avoid simultaneous login, job-build, and equipment initialization pressure.
     # Purpose: Spaces the five dedicated EPQ observation fixtures without affecting production Agent admission.
-    # Technical: Used only by !epqtest when scheduling EPQer01 through EPQer05.
+    # Technical: Used only by the GM-only !epqtest harness when it schedules EPQer01 through EPQer05; production EPQ admission never reads it.
     server.agents.capabilities.partyquest.epq.AgentEpqTestService.SPAWN_STAGGER_MS: '350'
     # Values: 60000-600000 milliseconds. Recommended: 180000 so five local fixtures have ample time to spawn, join, and pass roster admission.
     # Purpose: Cleans up an EPQ observation run if its party never reaches a complete five-class roster.
@@ -1227,9 +1233,9 @@ tuning:
     # Purpose: Spaces creation of the six dedicated OPQ observation fixtures.
     # Technical: The GM-only harness consumes this value before PQ entry; active OPQ travel and room ticks do not use it.
     server.agents.capabilities.partyquest.opq.AgentOpqTestService.SPAWN_STAGGER_MS: '500'
-
+    # Values: 100-2000 milliseconds. Recommended: 500 to avoid simultaneous login, build, inventory, and party initialization pressure.
     # Purpose: Spaces GM-only LMPQ observation fixture launches to avoid simultaneous login and build pressure.
-    # Technical: Production LMPQ admission and coordination never read this value.
+    # Technical: Read only by the GM-only LMPQ observation harness between fixture launches; production LMPQ admission and coordination never read this value.
     server.agents.capabilities.partyquest.lmpq.AgentLmpqTestService.SPAWN_STAGGER_MS: '500'
 
     # ---- PPQ companion-run and pace keys go below (PPQ branch only) ----
@@ -2265,7 +2271,7 @@ tuning:
     server.agents.capabilities.partyquest.lobby.AgentPartyQuestQueueRuntime.AGENT_FORMATION_GRACE_MS: '10000'
     # Values: 30000-1800000 milliseconds. Recommended: 300000. A timed-out Agent returns to the Director for another activity.
     # Purpose: Prevents an undersupplied PQ lobby from holding an Agent forever.
-    # Technical: Queue ownership ends cleanly without creating a MapleStory party or event instance.
+    # Technical: Queue ownership ends cleanly without creating a MapleStory party or event instance, and the Agent is handed back to the Director.
     server.agents.capabilities.partyquest.lobby.AgentPartyQuestQueueRuntime.QUEUE_TIMEOUT_MS: '300000'
     # Values: 5000-120000 milliseconds. Recommended: 18000. This is independently varied per waiting Agent.
     # Purpose: Minimum interval between an unpartied Agent's visible lobby messages.
@@ -2273,15 +2279,15 @@ tuning:
     server.agents.capabilities.partyquest.lobby.AgentPartyQuestQueueRuntime.CHAT_MINIMUM_MS: '18000'
     # Values: 5000-180000 milliseconds. Recommended: 38000. Keep this above the queue minimum.
     # Purpose: Maximum interval between an unpartied Agent's visible lobby messages.
-    # Technical: The deterministic range prevents queued Agents from speaking in unison.
+    # Technical: Each waiting Agent samples its interval between the minimum and this maximum, so queued Agents do not speak in unison.
     server.agents.capabilities.partyquest.lobby.AgentPartyQuestQueueRuntime.CHAT_MAXIMUM_MS: '38000'
     # Values: 0-60000 milliseconds. Recommended: 8000. Roster changes restart the countdown.
     # Purpose: Minimum stable-party preparation time before an Agent leader starts a PQ.
-    # Technical: The gate keys stability to the authoritative lobby roster revision.
+    # Technical: The gate keys stability to the authoritative lobby roster revision, so any roster change restarts the preparation countdown.
     server.agents.capabilities.partyquest.lobby.AgentPartyQuestReadyGate.READY_MINIMUM_MS: '8000'
     # Values: 0-90000 milliseconds. Recommended: 15000. Keep this at or above the minimum.
     # Purpose: Maximum stable-party preparation time before PQ entry.
-    # Technical: A deterministic value is sampled from the engagement seed and roster revision.
+    # Technical: A deterministic value between the minimum and this maximum is sampled from the engagement seed and the lobby roster revision.
     server.agents.capabilities.partyquest.lobby.AgentPartyQuestReadyGate.READY_MAXIMUM_MS: '15000'
     # Values: 1000-600000 milliseconds. Recommended: 90000. Production Agents remain owned but inactive at the PQ exit before returning to the Director.
     # Purpose: Creates a human-like cooldown window after a run and avoids instant activity switching.

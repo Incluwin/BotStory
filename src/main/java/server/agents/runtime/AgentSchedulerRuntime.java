@@ -37,6 +37,10 @@ public final class AgentSchedulerRuntime {
         return AgentSchedulerGatewayRuntime.scheduler().schedule(action, delayMs);
     }
 
+    public static ScheduledFuture<?> scheduleLowPriority(Runnable action, long delayMs) {
+        return AgentSchedulerGatewayRuntime.scheduler().scheduleLowPriority(action, delayMs);
+    }
+
     public static ScheduledFuture<?> schedule(AgentRuntimeEntry entry, Runnable action, long delayMs) {
         if (entry == null) {
             return schedule(action, delayMs);

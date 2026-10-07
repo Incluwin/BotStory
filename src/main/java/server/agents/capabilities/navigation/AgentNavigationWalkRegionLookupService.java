@@ -54,6 +54,10 @@ public final class AgentNavigationWalkRegionLookupService {
         return new WalkRegionLookup(map.getId(), graph.regionsById, graph.regionIdByFootholdId, footholdsById(map));
     }
 
+    static void forgetMap(int mapId) {
+        FOOTHOLDS_BY_ID_BY_MAP_ID.remove(mapId);
+    }
+
     private static Map<Integer, Foothold> footholdsById(MapleMap map) {
         if (map == null || map.getFootholds() == null) {
             return Map.of();

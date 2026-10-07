@@ -2,7 +2,7 @@ package server.agents.integration.typesafe;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import server.TimerManager;
+import server.agents.integration.AgentSchedulerGatewayRuntime;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -34,8 +34,8 @@ public final class JevUsageReporter {
             return;
         }
         long intervalMs = TimeUnit.MINUTES.toMillis(LOG_INTERVAL_MINUTES);
-        schedule = TimerManager.getInstance().register(
-                TimerManager.SchedulerLane.LOW_PRIORITY, JevUsageReporter::report, intervalMs, intervalMs);
+        schedule = AgentSchedulerGatewayRuntime.scheduler().registerLowPriority(
+                JevUsageReporter::report, intervalMs, intervalMs);
         log.info("TypeSafe usage reporting every {} min to the log and {}", LOG_INTERVAL_MINUTES, CSV_PATH);
     }
 

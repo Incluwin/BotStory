@@ -3,6 +3,8 @@ package server.agents.capabilities.dialogue;
 import server.agents.capabilities.movement.AgentFormationService;
 import server.agents.runtime.AgentRuntimeEntry;
 import client.Character;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import server.agents.capabilities.dialogue.AgentChatIngressService;
@@ -20,6 +22,19 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 class AgentChatRouteCoordinatorTest {
+    private String oldAdministrators;
+
+    @BeforeEach
+    void leaderMayOperate() {
+        oldAdministrators = config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES;
+        config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = "Kiwi";
+    }
+
+    @AfterEach
+    void restoreAdministrators() {
+        config.AgentYamlConfig.config.agent.AGENT_AUTHORITY_ADMINISTRATOR_NAMES = oldAdministrators;
+    }
+
     @Test
     void compactChatRouteUsesAgentRuntimeDefaults() {
         Character leader = mock(Character.class);

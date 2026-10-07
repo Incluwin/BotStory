@@ -57,6 +57,20 @@ final class AgentWeightedLruCache<K, V> {
                 .toList();
     }
 
+    synchronized List<K> removeIf(Predicate<K> predicate) {
+        List<K> removed = new ArrayList<>();
+        var iterator = values.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<K, WeightedValue<V>> entry = iterator.next();
+            if (predicate.test(entry.getKey())) {
+                currentWeight -= entry.getValue().weight();
+                removed.add(entry.getKey());
+                iterator.remove();
+            }
+        }
+        return List.copyOf(removed);
+    }
+
     synchronized boolean anyKeyMatches(Predicate<K> predicate) {
         return values.keySet().stream().anyMatch(predicate);
     }
