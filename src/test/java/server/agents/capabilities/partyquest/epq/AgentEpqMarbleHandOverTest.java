@@ -128,6 +128,7 @@ class AgentEpqMarbleHandOverTest {
 
         verify(run.inventory(), times(1)).dropItem(mira, InventoryType.ETC, (short) 1, (short) 6);
         said(mira, "that's all twenty at your feet, Ben. pick them up and give them to ellin up top.");
+        assertEquals(2_000L, session.pace().snapshot().marblesAtMs(), "Step 5.2: the hand-over that makes twenty");
     }
 
     @Test

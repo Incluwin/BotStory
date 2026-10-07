@@ -156,7 +156,14 @@ final class AgentEpqHandOver {
         int handOver = session.nextHandOver();
         session.markProgress(nowMs);
         // The stone is handed off: the collector no longer picks up a stone lying on this map (Step 2.8).
-        if (itemId == AgentEpqDefinition.MAGIC_STONE) session.markStageFiveStoneHandedOff(nowMs);
+        if (itemId == AgentEpqDefinition.MAGIC_STONE) {
+            session.markStageFiveStoneHandedOff(nowMs);
+            if (place != AgentEpqCompanionPlay.Place.HERE) session.pace().markStone(nowMs); // Step 5.2
+        }
+        if (itemId == AgentEpqDefinition.MONSTER_MARBLE && leader != null && AgentEpqCompanionPlay.makesTwenty(held,
+                actions().itemCount(leader, itemId), lyingBefore, AgentEpqDefinition.REQUIRED_MONSTER_MARBLES)) {
+            session.pace().markMarbles(nowMs); // Step 5.2: the hand-over that makes twenty
+        }
         if (itemId == AgentEpqDefinition.GOLEMS_MARBLE) {
             session.noteGolemMarble(place == AgentEpqCompanionPlay.Place.FEET
                     || place == AgentEpqCompanionPlay.Place.BESIDE ? "handed" : "dropped");

@@ -89,6 +89,7 @@ public final class AgentEpqCoordinator {
                 && AgentEpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance());
             session.markEnteredEvent(nowMs);
+            if (session.companionAdopted()) AgentEpqCompanionRun.beginPace(session, nowMs); // Step 5.2
             session.markProgress(nowMs);
         }
         // EPQ base fix 2: before the clear, a bound event that was disposed, or that no longer holds the leader (the
@@ -129,6 +130,7 @@ public final class AgentEpqCoordinator {
         // Step 3.2: before the clear a companion run's companions coach their leader through each stage.
         if (AgentEpqCompanionRun.acting(session) && !AgentEpqTerminationService.pastTheClear(bound)) {
             AgentEpqCompanionRun.coach(session, leader, nowMs);
+            AgentEpqCompanionRun.observePace(session, leader, nowMs); // Step 5.2
         }
         completeWhenOut(session, nowMs);
     }
@@ -925,6 +927,7 @@ public final class AgentEpqCoordinator {
                 change.from(), change.to(), change.phaseMs(), change.runMs(), session.companionAdopted());
         log.info("EPQ vitals: session={} phase={} members={}", session.sessionId(), change.to(),
                 AgentEpqTerminationService.vitals(session));
+        if (session.companionAdopted()) session.pace().markPhase(change.to(), nowMs); // Step 5.2
         if (change.from() == AgentEpqSession.Phase.PREPARING && session.companionAdopted()) {
             String potions = AgentEpqTerminationService.potions(session);
             session.setPotionsAtEntry(potions);
@@ -940,6 +943,7 @@ public final class AgentEpqCoordinator {
             if (character.getHp() > 0) {
                 session.clearMemberDown(member.characterId());
             } else if (session.markMemberDown(member.characterId())) {
+                if (session.companionAdopted()) session.pace().markDown(member.characterId()); // Step 5.2
                 log.info("EPQ member down: session={} member={} type={} map={} phase={}", session.sessionId(),
                         member.characterId(), member.memberType(), character.getMapId(), session.phase());
                 log.info("EPQ down detail: session={} {}", session.sessionId(), downDetail(character));
@@ -1013,11 +1017,15 @@ public final class AgentEpqCoordinator {
                         && session.claimLogMark("golem-" + golem)) {
                     log.info("EPQ boss: session={} golem={} runMs={}", session.sessionId(), golem,
                             nowMs - session.startedAtMs());
+                    if (session.companionAdopted() && golem == AgentEpqDefinition.POISON_GOLEM) {
+                        session.pace().markGolem(nowMs); // Step 5.2
+                    }
                     if (AgentEpqCompanionRun.acting(session)) AgentEpqCompanionRun.golemSeen(session, leader, golem);
                 }
             }
         }
         if (AgentEpqTerminationService.pastTheClear(session.eventInstance()) && session.claimLogMark("cleared")) {
+            if (session.companionAdopted()) session.pace().markCleared(nowMs); // Step 5.2
             log.info("EPQ boss: session={} cleared runMs={}", session.sessionId(), nowMs - session.startedAtMs());
         }
     }

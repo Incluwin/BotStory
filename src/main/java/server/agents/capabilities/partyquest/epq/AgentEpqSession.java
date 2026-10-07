@@ -53,6 +53,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<Integer> tapOutsRequested = new HashSet<>();
     private final Set<Integer> tapOutsRefused = new HashSet<>();
     private long objectiveLostSinceMs;
+    private final AgentEpqPaceMarks pace = new AgentEpqPaceMarks();
     private final Map<Integer, Boolean> fullRateHolds = new HashMap<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
@@ -465,6 +466,9 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** The objective can be finished again: the clock stops. */
     synchronized void clearObjectiveLost() { objectiveLostSinceMs = 0L; }
+
+    /** A companion run's pace marks (Step 5.2); a stock run marks nothing. Locked by itself. */
+    AgentEpqPaceMarks pace() { return pace; }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }

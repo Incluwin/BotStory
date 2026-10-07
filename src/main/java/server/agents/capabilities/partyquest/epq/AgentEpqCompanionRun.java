@@ -10,6 +10,9 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartyMemberSnapshot;
 import server.agents.integration.AgentPartySnapshot;
@@ -250,7 +253,10 @@ final class AgentEpqCompanionRun {
                 case REQUEST_TAP_OUT -> {
                     boolean accepted = AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
                             QUEST_KEY, session.sessionId(), id, character.getMapId(), nowMs));
-                    if (accepted) session.markTapOutRequested(id);
+                    if (accepted) {
+                        session.markTapOutRequested(id);
+                        session.pace().markTappedOut(id); // Step 5.2
+                    }
                     else session.markTapOutRefused(id);
                     log.info("EPQ tap-out: session={} member={} map={} accepted={}", session.sessionId(), id,
                             character.getMapId(), accepted);
@@ -363,6 +369,50 @@ final class AgentEpqCompanionRun {
         if (name != null) return name;
         Character character = AgentEpqCoordinator.character(characterId);
         return character == null ? null : character.getName();
+    }
+
+    // ---- the pace (Step 5.2) ----
+
+    /**
+     * The party is inside (the bind): the run's pace record begins with who entered and each one's power against
+     * EPQ's mobs, read on this tick from the warmed pace profile (none while it is cold, or when any member cannot be
+     * read). HPQ's beginPace.
+     */
+    static void beginPace(AgentEpqSession session, long nowMs) {
+        List<Integer> entrants = new ArrayList<>();
+        List<AgentPqMemberPower> power = new ArrayList<>();
+        AgentPqPaceProfile profile = AgentPqPaceProfiles.cached(QUEST_KEY);
+        boolean readable = profile != null;
+        for (AgentEpqMemberState member : session.members()) {
+            entrants.add(member.characterId());
+            if (!readable) continue;
+            Character character = AgentEpqCoordinator.character(member.characterId());
+            if (character == null) {
+                readable = false;
+                continue;
+            }
+            try {
+                power.add(AgentPqMemberPower.of(character, profile,
+                        member.memberType() == AgentEpqMemberState.MemberType.HUMAN,
+                        member.characterId() == session.eventLeaderId()));
+            } catch (RuntimeException | LinkageError failure) {
+                readable = false;
+                log.debug("EPQ pace power unreadable: session={} member={}", session.sessionId(),
+                        member.characterId(), failure);
+            }
+        }
+        session.pace().markEntered(readable ? power : List.of(), entrants, nowMs);
+    }
+
+    /** The leader's own marks: he first holds the twenty marbles, or the purple stone. */
+    static void observePace(AgentEpqSession session, Character leader, long nowMs) {
+        if (leader == null) return;
+        var actions = AgentEpqCoordinator.actions();
+        if (actions.itemCount(leader, AgentEpqDefinition.MONSTER_MARBLE)
+                >= AgentEpqDefinition.REQUIRED_MONSTER_MARBLES) {
+            session.pace().markMarbles(nowMs);
+        }
+        if (actions.itemCount(leader, AgentEpqDefinition.MAGIC_STONE) > 0) session.pace().markStone(nowMs);
     }
 
     /** Who says a parting: a companion on the leader's map, else any standing one, else the first online one. */

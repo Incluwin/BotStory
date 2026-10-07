@@ -114,6 +114,7 @@ class AgentEpqStoneHandOverTest {
         verify(run.inventory(), times(1)).dropItem(mira, InventoryType.ETC, (short) 1, (short) 1);
         said(mira, "the purple stone is at your feet, Ben. pick it up and show it to the sprite.");
         assertTrue(session.stageFiveStoneHandedOff(), "the collector no longer picks up a stone here");
+        assertEquals(40_000L, session.pace().snapshot().stoneAtMs(), "Step 5.2: the stone at his feet");
         verify(run.epq, never()).runNpc(any(), eq(AgentEpqDefinition.STONE_NPC));
         verify(run.party, never()).sendPartyChat(any(), any());
     }
