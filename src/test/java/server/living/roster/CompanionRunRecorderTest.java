@@ -176,6 +176,21 @@ class CompanionRunRecorderTest {
     }
 
     @Test
+    void aCardNamesEachQuestTheCompanionHasRunThreeTimesOrMore() {
+        game.store.performance.addAll(List.of(row(900, "cleared"), row(900, "failed"), row(900, "cleared"),
+                row("hpq", 900, "cleared"), row("hpq", 900, "cleared"), row(901, "tapped_out")));
+        records.load();
+
+        assertEquals(List.of("KPQ: cleared 2 of 3"), records.recordLines(900), "two HPQ runs are too few to show");
+        assertEquals(List.of(), records.recordLines(901));
+
+        game.store.performance.add(row("hpq", 900, "failed"));
+        records.load();
+        assertEquals(List.of("KPQ: cleared 2 of 3", "HPQ: cleared 2 of 3"), records.recordLines(900),
+                "in the order the entrances are listed");
+    }
+
+    @Test
     void theRecordsAreReadOnCompanionOpsAtBoot() throws IOException {
         String source = Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"));
         String start = source.substring(source.indexOf("public static synchronized void start()"),

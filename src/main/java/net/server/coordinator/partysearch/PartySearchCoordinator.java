@@ -19,6 +19,7 @@
 */
 package net.server.coordinator.partysearch;
 
+import client.BotClient;
 import client.Character;
 import client.Job;
 import config.YamlConfig;
@@ -30,6 +31,7 @@ import provider.Data;
 import provider.DataProviderFactory;
 import provider.DataTool;
 import provider.wz.WZFiles;
+import server.living.LivingWorldHooks;
 import tools.PacketCreator;
 import tools.Pair;
 
@@ -190,6 +192,9 @@ public class PartySearchCoordinator {
     }
 
     public void attachPlayer(Character chr) {
+        if (chr.getClient() instanceof BotClient) {
+            return; // nothing answers a search's invite to a bot; an owner's bench answers it instead (runPartySearch)
+        }
         upcomers.get(getPartySearchJob(chr.getJob())).attachPlayer(chr);
     }
 
@@ -207,7 +212,7 @@ public class PartySearchCoordinator {
         }
     }
 
-    private static Job getPartySearchJob(Job job) {
+    static Job getPartySearchJob(Job job) {
         if (job.getJobNiche() == 0) {
             return Job.BEGINNER;
         } else if (job.getId() < 600) { // explorers
@@ -290,6 +295,16 @@ public class PartySearchCoordinator {
         return null;
     }
 
+    /**
+     * No human answered this round: one of the leader's own bench companions may (the living world, P9 flow 11). An
+     * answer counts as a found member, so the search goes on while the party has room.
+     */
+    private boolean benchAnswered(Character leader) {
+        LeaderSearchMetadata settings = searchSettings.get(leader.getId());
+        return settings != null && LivingWorldHooks.partySearchUnanswered(leader,
+                new PartySearchWant(settings.minLevel, settings.maxLevel, new HashSet<>(settings.searchedJobs)));
+    }
+
     private boolean sendPartyInviteFromSearch(Character chr, Character leader) {
         if (chr == null) {
             return false;
@@ -369,7 +384,7 @@ public class PartySearchCoordinator {
 
         for (Character leader : queuedLeaders.getLeft()) {
             Character chr = searchPlayer(leader);
-            if (sendPartyInviteFromSearch(chr, leader)) {
+            if (sendPartyInviteFromSearch(chr, leader) || benchAnswered(leader)) {
                 searchedLeaders.add(leader);
             } else {
                 LeaderSearchMetadata settings = searchSettings.get(leader.getId());

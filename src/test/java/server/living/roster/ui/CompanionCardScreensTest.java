@@ -26,8 +26,11 @@ import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionManager;
+import server.living.roster.CompanionPartyQuestService;
+import server.living.roster.CompanionRunRecorder;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionViews;
+import server.living.roster.JobErrands;
 import server.living.roster.DirectExecutor;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
@@ -39,6 +42,7 @@ import server.living.store.LivingStore.HaulItem;
 import server.living.store.LivingStore.RosterEntry;
 import server.living.store.LivingStore.RosterState;
 import server.maps.MapleMap;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import testutil.NpcTalks;
@@ -241,6 +245,52 @@ class CompanionCardScreensTest {
         pick("More...");
         assertEquals(List.of("Your haul...", "Your wages...", "Let me see your gear", "Let's trade", "We should part ways",
                 "Back to the top..."), lastTalk().labels());
+    }
+
+    @Test
+    void bothCardsShowTheCompanionsPartyQuestRecordsUnderItsHeader() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        CompanionPartyQuestService quests = mock(CompanionPartyQuestService.class);
+        CompanionRunRecorder records = mock(CompanionRunRecorder.class);
+        when(world.partyQuests()).thenReturn(quests);
+        when(quests.records()).thenReturn(records);
+        when(records.recordLines(900)).thenReturn(List.of("KPQ: cleared 4 of 5", "HPQ: cleared 3 of 3"));
+        when(records.recordLines(901)).thenReturn(List.of("KPQ: cleared 1 of 3"));
+
+        menus.card(owner, hadrikRow);
+
+        assertTrue(lastTalk().text().startsWith("#eHadrik#n, Lv31 Fighter - HP 812/900 - 38 Red Potions\r\n"
+                + "KPQ: cleared 4 of 5\r\nHPQ: cleared 3 of 3\r\n\r\n#L"), lastTalk().text());
+        LivingTalk.forget(owner);
+
+        menus.card(owner, miraRow);
+
+        String bench = lastTalk().text();
+        assertTrue(bench.contains("\r\nKPQ: cleared 1 of 3\r\n") && bench.indexOf("KPQ") < bench.indexOf("#L"), bench);
+    }
+
+    @Test
+    void oneOnItsOwnRestockTripSaysItIsAtTheStoreAndOneGoneForItsJobWhom() {
+        rows.addAll(List.of(hadrikRow, miraRow));
+        registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(900)).thenReturn(mock(AgentRuntimeEntry.class));
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class)) {
+            readiness.when(() -> AgentSupplyReadiness.status(any(), anyLong())).thenReturn(
+                    new AgentSupplyReadiness.Status(AgentSupplyReadiness.StatusKind.RESTOCKING, 30_000L, 0));
+
+            menus.card(owner, hadrikRow);
+        }
+
+        assertTrue(lastTalk().text().startsWith("#eHadrik#n, Lv31 Fighter - HP 812/900 - 38 Red Potions\r\n"
+                + "at the store\r\n\r\n#L"), lastTalk().text());
+        LivingTalk.forget(owner);
+
+        JobErrands errands = mock(JobErrands.class);
+        when(errands.visiting("mira")).thenReturn("Athena Pierce in Henesys");
+        when(world.jobErrands()).thenReturn(errands);
+        menus.card(owner, miraRow);
+
+        assertTrue(lastTalk().text().contains("gone to see Athena Pierce in Henesys\r\n"), lastTalk().text());
+        assertFalse(lastTalk().text().contains("train @"), lastTalk().text());
     }
 
     @Test

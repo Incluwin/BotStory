@@ -403,6 +403,24 @@ public final class LivingWorldHooks {
     }
 
     /**
+     * A round of the leader's stock Party Search that no human answered (PartySearchCoordinator, on its timer). True
+     * when one of the leader's own bench companions answers it instead (P9 flow 11); the call itself runs on
+     * companion-ops.
+     */
+    public static boolean partySearchUnanswered(Character leader, net.server.coordinator.partysearch.PartySearchWant want) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || leader == null) {
+            return false;
+        }
+        try {
+            return world.manager().fillFromBench(leader, want);
+        } catch (RuntimeException failure) {
+            log.warn("living world partySearchUnanswered hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
      * A committed party change ({@code PartyEvents} listener, on the thread that made it). It is queued for the
      * companion-ops thread and never handled here, so nothing re-enters {@code World.updateParty} or takes the roster's
      * locks under the party's. The seat and view caches take it first, then the roster is reconciled.

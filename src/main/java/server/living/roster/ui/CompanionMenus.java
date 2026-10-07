@@ -2,6 +2,9 @@ package server.living.roster.ui;
 
 import client.Character;
 import client.Client;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.LivingWorld;
 import server.living.bond.ContractService;
 import server.living.config.Content.Persona;
@@ -11,6 +14,7 @@ import server.living.roster.CompanionManager;
 import server.living.roster.CompanionView;
 import server.living.roster.CompanionViews;
 import server.living.roster.HireOffers;
+import server.living.roster.JobErrands;
 import server.living.roster.RecallTravel;
 import server.living.store.LivingStore.Assignment;
 import server.living.store.LivingStore.RosterEntry;
@@ -237,6 +241,44 @@ public final class CompanionMenus {
                     answer.accept(line);
                 } else if (!line.isEmpty()) {
                     owner.dropMessage(5, line);
+                }
+            });
+        });
+    }
+
+    /**
+     * Decision 11 (P9): what a companion went off to do on its own, as a player would say it ("gone to see Grendel in
+     * Ellinia" for its next job, "at the store" on its own restock trip), or null. From memory.
+     */
+    String errand(CompanionView view) {
+        JobErrands errands = world.jobErrands();
+        String instructor = errands == null ? null : errands.visiting(view.personaId());
+        if (instructor != null) {
+            return "gone to see " + instructor;
+        }
+        if (!view.loaded() || view.state() != RosterState.ACTIVE || !world.config().COMPANION_RESTOCK_ENABLED) {
+            return null;
+        }
+        AgentRuntimeEntry agent = AgentRuntimeRegistry.findByAgentCharacterId(world.residents().characterIdOf(view.personaId()));
+        return AgentSupplyReadiness.status(agent, System.currentTimeMillis()).restocking() ? "at the store" : null;
+    }
+
+    /**
+     * A page that needs a store read first: {@code work} runs on companion-ops, and {@code show} draws its answer on the
+     * owner's packet thread as the answer to the click, as {@link #command} answers, unless that came too late or
+     * another window waits (then the click shows nothing; the player clicks again).
+     */
+    <T> void compute(Character owner, String name, Supplier<T> work, Consumer<T> show) {
+        long clickedAtMs = System.currentTimeMillis();
+        world.executor().submit(name, () -> {
+            T found = work.get();
+            Client client = owner.getClient();
+            if (client == null) {
+                return; // logged off meanwhile
+            }
+            client.runOnIoThread(() -> {
+                if (System.currentTimeMillis() - clickedAtMs <= LATE_OUTCOME_MS && LivingTalk.mayShow(owner)) {
+                    show.accept(found);
                 }
             });
         });

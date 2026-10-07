@@ -141,6 +141,31 @@ class JobErrandsTest {
     }
 
     @Test
+    void anErrandIsUnderwayAndNamesItsInstructorUntilItHasAdvanced() {
+        assertFalse(errands.underway("casse"));
+        assertNull(errands.visiting("casse"));
+
+        errands.due(CASSE, Job.IL_WIZARD);
+
+        assertTrue(errands.underway("casse"));
+        assertEquals("Grendel in Ellinia", errands.visiting("casse"), "the Crew window's 'gone to see ...'");
+        game.runTimers();
+        RosterEntry away = game.row(casse);
+        assertSame(errands.form, errands.formFor(away));
+        clock.addAndGet(RecallTravel.etaMs(LifecycleHarness.HENESYS_FIELD, MAGIC_LIBRARY, game.config.RECALL_MAX_ETA_MS));
+        assertEquals(MAGIC_LIBRARY, errands.form.mapFor(away, casse, CASSE));
+        visit(away, game.bot(casse), MAGIC_LIBRARY, GRENDEL, new Point(400, 150));
+        game.runDueTimers();
+        assertEquals("Grendel in Ellinia", errands.visiting("casse"), "with him: still underway");
+        clock.addAndGet(game.config.COMPANION_JOB_ERRAND_TALK_MS);
+        game.runDueTimers();
+
+        assertEquals(List.of("Casse IL_WIZARD"), advanced);
+        assertFalse(errands.underway("casse"), "on its way back: its usual trip home");
+        assertNull(errands.visiting("casse"));
+    }
+
+    @Test
     void aRefusedJobChangeBringsItBackWithoutClaimingItAndItWaitsBeforeGoingAgain() {
         errands.advance = (runtime, job) -> false;
         Character bot = goneToGrendel();

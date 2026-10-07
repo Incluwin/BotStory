@@ -528,4 +528,17 @@ public final class JobErrands implements AgentJobPath.Rule {
     Errand errand(String personaId) {
         return errands.get(personaId);
     }
+
+    /** True while {@code personaId} is on its way to its instructor or with them (not yet on its way back). */
+    public boolean underway(String personaId) {
+        Errand errand = personaId == null ? null : errands.get(personaId);
+        return errand != null && errand.phase != Phase.HOMEWARD;
+    }
+
+    /** Whom {@code personaId} went to see, while {@link #underway}: "Grendel in Ellinia"; else null. */
+    public String visiting(String personaId) {
+        Errand errand = personaId == null ? null : errands.get(personaId);
+        return errand == null || errand.phase == Phase.HOMEWARD ? null
+                : errand.instructor.name() + " in " + errand.instructor.town();
+    }
 }

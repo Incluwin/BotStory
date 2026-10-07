@@ -35,6 +35,7 @@ import server.living.roster.BenchStallForm;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionBudget;
 import server.living.roster.CompanionManager;
+import server.living.roster.CompanionPartyQuestService;
 import server.living.roster.CompanionSettings;
 import server.living.roster.CompanionSettings.Support;
 import server.living.roster.CompanionView;
@@ -237,13 +238,29 @@ final class CompanionCardScreens {
             }));
         }
         options.add(new Option("We should part ways", () -> partWays(owner, persona)));
+        String errand = menus.errand(view);
         String status = switch (entry.state()) {
             case TRAVELLING -> view.eta().isEmpty() ? "on the way\r\n" : "on the way (" + view.eta() + ")\r\n";
             case HOLD -> "waiting at the entrance\r\n";
-            default -> "";
+            default -> errand == null ? "" : errand + "\r\n";
         };
-        String text = note(note) + cardHeader(view, bot) + status + (committed ? "in a run with you\r\n" : "");
+        String text = note(note) + cardHeader(view, bot) + status + (committed ? "in a run with you\r\n" : "")
+                + records(persona);
         LivingTalk.open(owner, portrait(persona)).menu(text, options).back(crewBack(owner)).show();
+    }
+
+    /** Its party-quest records, a line each ("KPQ: cleared 4 of 5"; CompanionRunRecorder.recordLines), or nothing. */
+    private String records(Persona persona) {
+        CompanionPartyQuestService quests = world.partyQuests();
+        int characterId = quests == null ? 0 : world.residents().characterIdOf(persona.id());
+        if (characterId == 0) {
+            return "";
+        }
+        StringBuilder lines = new StringBuilder();
+        for (String line : quests.records().recordLines(characterId)) {
+            lines.append(line).append("\r\n");
+        }
+        return lines.toString();
     }
 
     /** BENCHED, AWAY (on an errand, its seat kept) or PARKED; one already called shows its way and is not called twice. */
@@ -265,12 +282,13 @@ final class CompanionCardScreens {
         options.add(new Option("Your haul...", () -> haul(owner, persona)));
         options.add(new Option("Your wages...", () -> wages(owner, persona)));
         options.add(new Option("We should part ways", () -> partWays(owner, persona)));
-        String status = view.travelMs() > 0 ? onTheWay(view) : duty(view, entry.assignment());
-        String live = view.travelMs() > 0 ? "" : liveState(entry, menus.placeNames);
+        String errand = menus.errand(view);
+        String status = view.travelMs() > 0 ? onTheWay(view) : errand != null ? errand : duty(view, entry.assignment());
+        String live = view.travelMs() > 0 || errand != null ? "" : liveState(entry, menus.placeNames);
         boolean marker = live.startsWith("(");
         String progress = view.progress().isEmpty() ? "" : view.progress() + (marker ? " " + live : "") + "\r\n";
         String more = (marker || live.isEmpty() ? "" : live + "\r\n") + progress
-                + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n");
+                + (view.haul().isEmpty() ? "" : "haul: " + view.haul() + "\r\n") + records(persona);
         String statusLine = status + (marker && view.progress().isEmpty() ? " " + live : "");
         LivingTalk.open(owner, portrait(persona)).menu(note(note) + header(view) + statusLine + "\r\n" + more, options)
                 .back(crewBack(owner)).show();

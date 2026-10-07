@@ -916,6 +916,11 @@ living_world:
     COMPANION_JOB_ERRAND_WALK_MAX_MS: 45000
     COMPANION_JOB_ERRAND_RETRY_MS: 1800000
     COMPANION_JOB_ERRAND_SWEEP_MS: 30000
+    # Party Search fills from the bench (2026-10-06, P9 flow 11; PartySearchBench): while an owner's stock Party
+    # Search runs, a rested bench companion of theirs whose level and job it asks for answers each search round
+    # (about every 10 s) that no human answered: it whispers that it saw the search and comes like a call
+    # (join-then-travel). Bots never get the search's own invite. false = the kill switch, only humans answer.
+    COMPANION_PARTY_SEARCH_FILL: true
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 

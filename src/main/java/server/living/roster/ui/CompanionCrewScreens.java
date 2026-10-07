@@ -19,11 +19,14 @@ import server.living.roster.BenchLedger;
 import server.living.roster.Commitments;
 import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionManager;
+import server.living.roster.CompanionManager.NamedLineup;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionView;
 import server.living.roster.CompanionViews;
 import server.living.roster.CrewRotation;
+import server.living.roster.CrewSuggestions;
 import server.living.roster.HiredHands;
+import server.living.roster.PqEntrance;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.roster.RosterVoice;
@@ -36,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -111,7 +115,8 @@ final class CompanionCrewScreens {
         }
         List<Option> options = new ArrayList<>();
         for (CompanionView view : party) {
-            options.add(row(owner, from, view, partyLine(view)));
+            String errand = menus.errand(view);
+            options.add(row(owner, from, view, errand == null ? partyLine(view) : errandLine(view, errand)));
         }
         for (CompanionView guest : guests(owner)) {
             // a row like the others (the v83 client draws a plain line after a #L row half a line up, over it); a
@@ -127,7 +132,8 @@ final class CompanionCrewScreens {
         options.add(Option.heading("\r\n#eBench (" + bench.size() + " of " + (world.config().ROSTER_MAX - party.size())
                 + " bench seats)#n"));
         for (CompanionView view : bench) {
-            options.add(row(owner, from, view, benchLine(view, benchNote(view))));
+            String errand = menus.errand(view);
+            options.add(row(owner, from, view, errand == null ? benchLine(view, benchNote(view)) : errandLine(view, errand)));
         }
         if (bench.isEmpty()) {
             options.add(Option.heading("(nobody at camp)"));
@@ -196,10 +202,82 @@ final class CompanionCrewScreens {
                 && hires < world.config().HIRE_MAX_PER_OWNER) {
             actions.add(new Option("Adventurers looking for a crew...", () -> hireList(owner, from)));
         }
+        // P9: the Hunting, PQ and Boss lineups, and the crew each party quest's own rule would pick (its pages read the
+        // store and the rows afresh, so they need no stamp)
+        if (!party.isEmpty() || !bench.isEmpty()) {
+            actions.add(new Option("My lineups...", () -> namedLineups(owner, from)));
+        }
+        if (PqEntrance.keys().stream().anyMatch(world.config()::companionPqEnabled)) {
+            actions.add(new Option("Who should come along?", () -> suggestions(owner, from)));
+        }
         return actions;
     }
 
     // ---- the crew-wide pages -----------------------------------------------------------------
+
+    /**
+     * P9 named lineups (decisions 6 and 7): who each of the three keeps; calling one trades the crew out for its own,
+     * and "Remember this crew as ..." keeps whoever is out with the owner now.
+     */
+    private void namedLineups(Character owner, Persona from) {
+        menus.compute(owner, "menu.crew.lineups", () -> menus.manager().namedLineups(owner), saved -> {
+            boolean anyoneOut = menus.rows(owner).stream().anyMatch(entry -> inPartyBlock(entry.state()));
+            StringBuilder text = new StringBuilder(voice(from, "The lineups I keep:", "the lineups you keep:"));
+            List<Option> options = new ArrayList<>();
+            for (NamedLineup lineup : NamedLineup.values()) {
+                List<String> names = saved.get(lineup);
+                text.append("\r\n#e").append(lineup.label()).append("#n: ")
+                        .append(names == null ? "(none yet)" : String.join(", ", names));
+                if (names != null) {
+                    options.add(new Option("Call the " + lineup.label() + " lineup", () -> act(owner, from,
+                            "menu.crew.call_named", manager -> manager.callNamed(owner, lineup))));
+                }
+            }
+            if (anyoneOut) {
+                for (NamedLineup lineup : NamedLineup.values()) {
+                    options.add(new Option("Remember this crew as " + lineup.label(), () -> act(owner, from,
+                            "menu.crew.save_named", manager -> manager.saveNamed(owner, lineup))));
+                }
+            }
+            talk(owner, from).menu(text + "\r\n", options).back(() -> render(owner, from, "")).show();
+        });
+    }
+
+    /**
+     * P9 learned lineup suggestions (decisions 4 and 5): for each party quest that takes the owner's level, the crew its
+     * entry NPC's own rule picks from the party and the rested bench (CrewSuggestions), with a call for those at camp.
+     */
+    private void suggestions(Character owner, Persona from) {
+        menus.compute(owner, "menu.crew.suggest", () -> menus.manager().suggestCrews(owner), found -> {
+            StringBuilder text = new StringBuilder(voice(from, "Who should come along?", "who should come along?"));
+            if (found.isEmpty()) {
+                text.append("\r\n").append(voice(from, "No party quest takes my level right now.",
+                        "no party quest takes your level right now."));
+            }
+            List<Option> options = new ArrayList<>();
+            for (CrewSuggestions.Suggestion suggestion : found) {
+                String quest = suggestion.pqKey().toUpperCase(Locale.ROOT);
+                text.append("\r\n#e").append(quest).append("#n: ").append(joined(suggestion.crew()));
+                if (!suggestion.fromBench().isEmpty()) {
+                    List<String> names = suggestion.fromBench().stream().map(Persona::name).toList();
+                    options.add(new Option("Call " + joined(names) + " for " + quest, () -> act(owner, from,
+                            "menu.crew.suggest_call", manager -> manager.callSuggested(owner, suggestion.own()))));
+                }
+            }
+            talk(owner, from).menu(text + "\r\n", options).back(() -> render(owner, from, "")).show();
+        });
+    }
+
+    /** "Casse, Lv37 Magician - gone to see Grendel in Ellinia", "Hadrik, Lv31 Fighter - at the store - HP 90%". */
+    static String errandLine(CompanionView view, String errand) {
+        return view.name() + levelJob(view) + " - " + errand + (view.loaded() ? " - HP " + view.hpPercent() + "%" : "");
+    }
+
+    /** "you, Mira and Jinx". */
+    private static String joined(List<String> names) {
+        return names.size() <= 1 ? String.join("", names)
+                : String.join(", ", names.subList(0, names.size() - 1)) + " and " + names.get(names.size() - 1);
+    }
 
     /** The formations the menu offers (CompanionManager.FORMATIONS), for everyone out with you. */
     private void formationPicker(Character owner, Persona from) {

@@ -111,6 +111,21 @@ public final class CompanionRunRecorder {
         return stats(KPQ, companionId);
     }
 
+    /**
+     * What the companion's card shows of its records: "KPQ: cleared 4 of 5", one line for each quest (in the order the
+     * entrances are listed) it has run as often as a lineup ranks by its record (LineupPlan.RECORD_RUNS). Any thread.
+     */
+    public List<String> recordLines(int companionId) {
+        List<String> lines = new ArrayList<>();
+        for (String pqKey : PqEntrance.keys()) {
+            CompanionRunStats record = stats(pqKey, companionId);
+            if (record.runs() >= LineupPlan.RECORD_RUNS) {
+                lines.add(pqKey.toUpperCase(Locale.ROOT) + ": cleared " + record.clears() + " of " + record.runs());
+            }
+        }
+        return lines;
+    }
+
     /** The companion's record in {@code pqKey} ({@link #NONE} before its first run of it). */
     CompanionRunStats stats(String pqKey, int companionId) {
         Map<Integer, CompanionRunStats> quest = stats.get(pqKey);

@@ -289,6 +289,14 @@ public class LivingWorldConfig {
     /** How often the errands out are looked at (a return its owner was offline for, one called back meanwhile). */
     public int COMPANION_JOB_ERRAND_SWEEP_MS = 30000;
 
+    // Party Search fills from the bench (P9 flow 11, PartySearchBench)
+    /**
+     * While an owner's stock Party Search runs, a rested bench companion of theirs whose level and job it asks for
+     * answers each round no human answered: it whispers that it saw the search and comes like a call. false = the
+     * kill switch: only humans answer, as before (bots stay out of the search either way).
+     */
+    public boolean COMPANION_PARTY_SEARCH_FILL = true;
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;

@@ -245,8 +245,8 @@ public final class CrewRotation {
         return in == null ? null : new Swap(out, in, why);
     }
 
-    /** The bench companion's level when it is rested (see the class comment), else 0. */
-    private int restedLevel(Character owner, RosterEntry entry, Persona persona) {
+    /** The bench companion's level when it is rested (see the class comment), else 0 (companion-ops: a store read). */
+    int restedLevel(Character owner, RosterEntry entry, Persona persona) {
         int characterId = world.residents().characterIdOf(persona.id());
         BenchDutyDispatcher bench = world.benchDuty();
         if (characterId == 0 || committed(characterId) || world.roster().inFlight(owner.getId(), persona.id())

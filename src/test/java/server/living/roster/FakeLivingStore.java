@@ -54,6 +54,8 @@ final class FakeLivingStore {
     final List<String> events = new ArrayList<>();
     final Map<Integer, Integer> levels = new HashMap<>();
     final Map<String, PersonaState> personaStates = new HashMap<>();
+    /** owner:LINEUP -> persona ids in place order (companion_named_lineup), as saveNamedLineup keeps them. */
+    final Map<String, List<String>> namedLineups = new LinkedHashMap<>();
     /** owner:persona -> lineup_slot (the usual lineup), as saveLineupSlot keeps it. */
     final Map<String, Integer> lineup = new HashMap<>();
     /** owner:persona -> settings_json, as saveSettings keeps it. */
@@ -156,6 +158,22 @@ final class FakeLivingStore {
         when(store.crewFormation(anyInt())).thenAnswer(inv -> crews.get((int) inv.getArgument(0)));
         when(store.saveCrewFormation(anyInt(), any())).thenAnswer(inv -> {
             crews.put(inv.getArgument(0), inv.getArgument(1));
+            return true;
+        });
+        when(store.namedLineups(anyInt())).thenAnswer(inv -> {
+            Map<String, List<String>> out = new LinkedHashMap<>();
+            String owner = inv.getArgument(0) + ":";
+            namedLineups.forEach((key, personas) -> {
+                if (key.startsWith(owner) && !personas.isEmpty()) {
+                    out.put(key.substring(owner.length()), new ArrayList<>(personas));
+                }
+            });
+            return out;
+        });
+        when(store.saveNamedLineup(anyInt(), anyString(), any())).thenAnswer(inv -> {
+            List<String> personas = inv.getArgument(2);
+            namedLineups.put(inv.getArgument(0) + ":" + inv.getArgument(1),
+                    List.copyOf(personas.subList(0, Math.min(personas.size(), LivingStore.NAMED_LINEUP_PLACES))));
             return true;
         });
         when(store.crewsKeptFresh()).thenAnswer(inv -> new java.util.LinkedHashSet<>(keptFresh));

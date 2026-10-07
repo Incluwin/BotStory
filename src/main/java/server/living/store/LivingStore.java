@@ -739,6 +739,75 @@ public final class LivingStore {
         }
     }
 
+    // ---- named lineups (P9) ------------------------------------------------------------------
+
+    /** The places a named lineup keeps (the usual lineup's, living_roster.lineup_slot, are as many). */
+    public static final int NAMED_LINEUP_PLACES = 5;
+
+    /**
+     * An owner's named lineups (companion_named_lineup, changeset 46): lineup name -> persona ids in place order; a
+     * lineup never saved is absent.
+     *
+     * @throws ReadFailed when the read failed
+     */
+    public Map<String, List<String>> namedLineups(int ownerId) {
+        Map<String, List<String>> out = new LinkedHashMap<>();
+        try (Connection con = DatabaseConnection.getConnection(); PreparedStatement ps = con.prepareStatement(
+                "SELECT lineup, persona_id FROM companion_named_lineup WHERE owner_character_id = ? ORDER BY lineup, slot")) {
+            ps.setInt(1, ownerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.computeIfAbsent(rs.getString(1), name -> new ArrayList<>()).add(rs.getString(2));
+                }
+            }
+            return out;
+        } catch (SQLException failure) {
+            log.warn("companion_named_lineup read failed for {}", ownerId, failure);
+            throw new ReadFailed("companion_named_lineup of " + ownerId, failure);
+        }
+    }
+
+    /**
+     * Replaces one of an owner's named lineups with {@code personaIds} (places 1.. in order, the first
+     * {@link #NAMED_LINEUP_PLACES}; empty clears it), in one transaction; false when the write failed.
+     */
+    public boolean saveNamedLineup(int ownerId, String lineup, List<String> personaIds) {
+        try (Connection con = DatabaseConnection.getConnection()) {
+            boolean autoCommit = con.getAutoCommit();
+            con.setAutoCommit(false);
+            try (PreparedStatement clear = con.prepareStatement(
+                    "DELETE FROM companion_named_lineup WHERE owner_character_id = ? AND lineup = ?");
+                 PreparedStatement insert = con.prepareStatement(
+                         "INSERT INTO companion_named_lineup (owner_character_id, lineup, slot, persona_id) VALUES (?, ?, ?, ?)")) {
+                clear.setInt(1, ownerId);
+                clear.setString(2, lineup);
+                clear.executeUpdate();
+                int slot = 0;
+                for (String personaId : personaIds) {
+                    if (slot >= NAMED_LINEUP_PLACES) {
+                        break;
+                    }
+                    insert.setInt(1, ownerId);
+                    insert.setString(2, lineup);
+                    insert.setInt(3, ++slot);
+                    insert.setString(4, personaId);
+                    insert.addBatch();
+                }
+                insert.executeBatch();
+                con.commit();
+                return true;
+            } catch (SQLException failure) {
+                con.rollback();
+                throw failure;
+            } finally {
+                con.setAutoCommit(autoCommit);
+            }
+        } catch (SQLException failure) {
+            log.warn("companion_named_lineup write failed for {}/{}", ownerId, lineup, failure);
+            return false;
+        }
+    }
+
     // ---- crews (P3b) -------------------------------------------------------------------------
 
     /**

@@ -2441,6 +2441,14 @@ public final class RosterService {
      * "Remember this lineup" calls it too.
      */
     public void saveUsualLineup(Character owner) {
+        saveLineup(owner.getId(), lineupOrder(owner));
+    }
+
+    /**
+     * Who is out with the owner as a lineup orders them (the usual one, a named one): those in the party window in its
+     * order, then those waiting outside a run or parked, in their old usual-lineup order.
+     */
+    List<String> lineupOrder(Character owner) {
         List<RosterEntry> out = new ArrayList<>();
         Map<Integer, String> byCharacter = new HashMap<>();
         for (RosterEntry entry : inLineupOrder(owner.getId(), roster(owner))) {
@@ -2465,7 +2473,7 @@ public final class RosterService {
                 order.add(entry.personaId());
             }
         }
-        saveLineup(owner.getId(), order);
+        return order;
     }
 
     /** Writes the usual lineup: places 1.. in {@code order} (5 at most) and none for the owner's other rows. */

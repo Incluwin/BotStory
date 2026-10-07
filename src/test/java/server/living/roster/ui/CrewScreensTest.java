@@ -29,11 +29,14 @@ import server.living.roster.CompanionDirectory;
 import server.living.roster.CompanionDirectory.Relation;
 import server.living.roster.CompanionExecutor;
 import server.living.roster.CompanionManager;
+import server.living.roster.CompanionManager.NamedLineup;
 import server.living.roster.CompanionPartySync;
 import server.living.roster.CompanionSlots;
 import server.living.roster.CompanionViews;
 import server.living.roster.CrewRotation;
+import server.living.roster.CrewSuggestions;
 import server.living.roster.DirectExecutor;
+import server.living.roster.JobErrands;
 import server.living.roster.RosterResult;
 import server.living.roster.RosterService;
 import server.living.store.LivingStore;
@@ -232,8 +235,8 @@ class CrewScreensTest {
 
         menus.rosterBook(owner);
         assertTrue(lastTalk().text().contains("(nobody out with me)\r\n\r\n#eBench (1 of 10 bench seats)#n"), lastTalk().text());
-        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel", "Call my usual lineup", "Everyone on the bench..."),
-                lastTalk().labels(), "nobody is out: no orders, and nobody to remember");
+        assertEquals(List.of("Mira, Lv28 Hunter - train @ Ant Tunnel", "Call my usual lineup", "Everyone on the bench...",
+                "My lineups..."), lastTalk().labels(), "nobody is out: no orders, and nobody to remember");
 
         LivingTalk.forget(owner);
         rows.clear();
@@ -263,8 +266,8 @@ class CrewScreensTest {
         pick("More...");
 
         assertEquals(List.of("Call my usual lineup", "Remember this lineup", "Everyone: follow me", "Everyone: wait here",
-                "Everyone: gather up", "Everyone: rebuff", "Formation...", "Everyone on the bench...", "Back to the top..."),
-                lastTalk().labels());
+                "Everyone: gather up", "Everyone: rebuff", "Formation...", "Everyone on the bench...", "My lineups...",
+                "Back to the top..."), lastTalk().labels());
     }
 
     // ---- rows --------------------------------------------------------------------------------
@@ -499,6 +502,100 @@ class CrewScreensTest {
         order.verify(manager).callUsual(owner);
         verify(owner).dropMessage(5, "callUsual done.");
         assertTrue(lastTalk().text().startsWith("#eParty "), lastTalk().text());
+    }
+
+    // ---- P9: named lineups and "Who should come along?" ------------------------------------------
+
+    @Test
+    void myLineupsShowsEachLineupCallsOneAndRemembersWhoIsOut() {
+        hadrik();
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        when(manager.namedLineups(owner)).thenReturn(Map.of(NamedLineup.HUNTING, List.of("Hadrik", "Mira")));
+        when(manager.callNamed(owner, NamedLineup.HUNTING)).thenReturn(new RosterResult.Ok("Mira is on the way."));
+        menus.crew(owner);
+
+        pick("My lineups...");
+
+        assertEquals("The lineups I keep:\r\n#eHunting#n: Hadrik, Mira\r\n#ePQ#n: (none yet)\r\n#eBoss#n: (none yet)\r\n\r\n",
+                lastTalk().text().substring(0, lastTalk().text().indexOf("#L")));
+        assertEquals(List.of("Call the Hunting lineup", "Remember this crew as Hunting", "Remember this crew as PQ",
+                "Remember this crew as Boss", "Back"), lastTalk().labels());
+
+        pick("Call the Hunting lineup");
+
+        verify(manager).callNamed(owner, NamedLineup.HUNTING);
+        verify(owner).dropMessage(5, "Mira is on the way.");
+        assertTrue(lastTalk().text().startsWith("#eParty "), "the Crew window is drawn again: " + lastTalk().text());
+    }
+
+    @Test
+    void aCompanionGoneToSeeItsInstructorSaysSoOnItsRow() {
+        hadrik();
+        add(row("casse", RosterState.AWAY), "Casse", 906, 37, Job.MAGICIAN);
+        JobErrands errands = mock(JobErrands.class);
+        when(errands.visiting("casse")).thenReturn("Grendel in Ellinia");
+        when(world.jobErrands()).thenReturn(errands);
+
+        menus.crew(owner);
+
+        assertTrue(lastTalk().labels().contains("Casse, Lv37 Magician - gone to see Grendel in Ellinia"),
+                lastTalk().labels().toString());
+        assertTrue(lastTalk().labels().contains("Hadrik, Lv31 Fighter - Perion - HP 90%"), "no errand: as before");
+    }
+
+    @Test
+    void withNobodyOutMyLineupsOnlyCalls() {
+        add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER);
+        when(manager.namedLineups(owner)).thenReturn(Map.of(NamedLineup.BOSS, List.of("Mira")));
+        menus.crew(owner);
+
+        pick("My lineups...");
+
+        assertEquals(List.of("Call the Boss lineup", "Back"), lastTalk().labels());
+    }
+
+    @Test
+    void whoShouldComeAlongIsOfferedWithAPartyQuestOnAndCallsTheBenchOnesOfACrew() {
+        hadrik();
+        Persona mira = personas.get(add(row("mira", RosterState.BENCHED), "Mira", 901, 28, Job.HUNTER).personaId());
+        menus.crew(owner);
+        assertFalse(lastTalk().labels().contains("Who should come along?"), "no party quest is on");
+        assertFalse(lastTalk().labels().contains("More..."), "ten options fit one page");
+
+        world.config().COMPANION_PQ_ENABLED_KEYS = "kpq,hpq";
+        when(manager.suggestCrews(owner)).thenReturn(List.of(
+                new CrewSuggestions.Suggestion("hpq", List.of("you", "Hadrik (cleared 3 of 4)", "Mira"),
+                        List.of(personas.get("hadrik"), mira), List.of(mira))));
+        when(manager.callSuggested(owner, List.of(personas.get("hadrik"), mira)))
+                .thenReturn(new RosterResult.Ok("Mira is on the way."));
+        LivingTalk.forget(owner);
+        menus.crew(owner);
+        pick("More...");
+
+        pick("Who should come along?");
+
+        assertTrue(lastTalk().text().startsWith("Who should come along?\r\n#eHPQ#n: you, Hadrik (cleared 3 of 4) and Mira\r\n"),
+                lastTalk().text());
+        assertEquals(List.of("Call Mira for HPQ", "Back"), lastTalk().labels());
+
+        pick("Call Mira for HPQ");
+
+        verify(manager).callSuggested(owner, List.of(personas.get("hadrik"), mira));
+        verify(owner).dropMessage(5, "Mira is on the way.");
+    }
+
+    @Test
+    void whoShouldComeAlongSaysSoWhenNoQuestTakesTheOwnersLevel() {
+        hadrik();
+        world.config().COMPANION_PQ_ENABLED_KEYS = "kpq";
+        when(manager.suggestCrews(owner)).thenReturn(List.of());
+        menus.crew(owner);
+
+        pick("Who should come along?");
+
+        assertTrue(lastTalk().text().startsWith("Who should come along?\r\nNo party quest takes my level right now.\r\n"),
+                lastTalk().text());
+        assertEquals(List.of("Back"), lastTalk().labels());
     }
 
     @Test

@@ -607,4 +607,13 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="46-companion-named-lineups" author="ganre">
+        <!-- Named lineups (P9): companion_named_lineup, the crews an owner keeps as Hunting, PQ and Boss on the Crew
+             window. Ships behind living_world.ENABLED. -->
+        <sqlFile path="db/tables/037-companion-named-lineups.sql" splitStatements="true"/>
+        <rollback>
+            <sqlFile path="db/tables/037-companion-named-lineups-down.sql" splitStatements="true"/>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

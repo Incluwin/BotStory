@@ -102,6 +102,7 @@ public final class CompanionManager {
     /** A fresh piece of gear by item id (null when it is none), and an item's name: the item data, in production. */
     private final IntFunction<Equip> equips;
     private final IntFunction<String> itemNames;
+    private final PartySearchBench partySearch;
 
     public CompanionManager(LivingWorld world) {
         this(world, itemId -> ItemInformationProvider.getInstance().getEquipById(itemId) instanceof Equip equip ? equip : null,
@@ -112,6 +113,7 @@ public final class CompanionManager {
         this.world = world;
         this.equips = equips;
         this.itemNames = itemNames;
+        this.partySearch = new PartySearchBench(world);
     }
 
     // ---- roster verbs ----------------------------------------------------------------------
@@ -119,6 +121,14 @@ public final class CompanionManager {
     /** Calls a companion of the owner's out (join-then-travel). */
     public RosterResult call(Character owner, Persona persona) {
         return owns(owner, persona) ? world.roster().call(owner, persona) : new RosterResult.NotOwned();
+    }
+
+    /**
+     * A round of the owner's stock Party Search that no human answered (plan flow 11; the search's timer thread): true
+     * when a rested bench companion the search asks for answers it and comes like a call (PartySearchBench).
+     */
+    public boolean fillFromBench(Character owner, net.server.coordinator.partysearch.PartySearchWant want) {
+        return partySearch.round(owner, want);
     }
 
     /** Benches a companion of the owner's; "after the run" while it is committed. */
@@ -246,6 +256,168 @@ public final class CompanionManager {
         String line = String.join("; ", parts) + ".";
         line = line.substring(0, 1).toUpperCase(Locale.ROOT) + line.substring(1);
         return call.called().isEmpty() ? new RosterResult.Failed(line) : new RosterResult.Ok(line);
+    }
+
+    // ---- named lineups (P9) --------------------------------------------------------------------
+
+    /** The crews the Crew window keeps by name (P9, decision 6): stored by name, shown by label. */
+    public enum NamedLineup {
+        HUNTING("Hunting"), PQ("PQ"), BOSS("Boss");
+
+        private final String label;
+
+        NamedLineup(String label) {
+            this.label = label;
+        }
+
+        public String label() {
+            return label;
+        }
+    }
+
+    /** The owner's named lineups that hold anyone still in their roster: the names in place order (store read). */
+    public Map<NamedLineup, List<String>> namedLineups(Character owner) {
+        Map<String, List<String>> stored = world.store().namedLineups(owner.getId());
+        Map<NamedLineup, List<String>> out = new java.util.EnumMap<>(NamedLineup.class);
+        for (NamedLineup lineup : NamedLineup.values()) {
+            List<String> names = personaNames(members(owner, stored.getOrDefault(lineup.name(), List.of())));
+            if (!names.isEmpty()) {
+                out.put(lineup, names);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * "Remember this crew as ...": whoever is out with the owner, as the usual lineup orders them (the party window's
+     * order, then those waiting outside a run), becomes that lineup; the usual lineup stays as it was.
+     */
+    public RosterResult saveNamed(Character owner, NamedLineup lineup) {
+        List<String> order = world.roster().lineupOrder(owner);
+        if (order.isEmpty()) {
+            return new RosterResult.Failed("Nobody is out with you to remember.");
+        }
+        if (!world.store().saveNamedLineup(owner.getId(), lineup.name(), order)) {
+            return new RosterResult.Failed("That didn't save. Try again in a moment.");
+        }
+        List<String> names = namedLineups(owner).getOrDefault(lineup, List.of());
+        return new RosterResult.Ok("Your " + lineup.label() + " lineup: " + names(names) + ".");
+    }
+
+    /**
+     * Calls a named lineup (decision 7 a): its companions on the bench come (each trading places with one out who is
+     * not in it while there is one, else to a free seat), and whoever is out and not in it goes back to the bench.
+     */
+    public RosterResult callNamed(Character owner, NamedLineup lineup) {
+        List<Persona> wanted = members(owner, world.store().namedLineups(owner.getId()).getOrDefault(lineup.name(), List.of()));
+        if (wanted.isEmpty()) {
+            return new RosterResult.Failed("You have no " + lineup.label() + " lineup yet.");
+        }
+        return bringIn(owner, wanted, true, "Everyone in your " + lineup.label() + " lineup is out already.");
+    }
+
+    /** "Who should come along?": a crew for each party quest that takes the owner's level (CrewSuggestions; store reads). */
+    public List<CrewSuggestions.Suggestion> suggestCrews(Character owner) {
+        return new CrewSuggestions(world).suggest(owner);
+    }
+
+    /**
+     * "Call them" on "Who should come along?" (CrewSuggestions): of the owner's companions in a suggested crew
+     * ({@code crew}), those at camp come, each to a free seat, or trading places with one out who is not in the crew when
+     * no seat is free; nobody else is sent off.
+     */
+    public RosterResult callSuggested(Character owner, List<Persona> crew) {
+        return bringIn(owner, members(owner, crew.stream().map(Persona::id).toList()), false,
+                "They're out with you already.");
+    }
+
+    /**
+     * Brings {@code wanted} out with the owner: each on the bench trades places with one out who is not wanted (the last
+     * out first) when {@code benchOthers} is set or no seat is free, else takes a free seat; with {@code benchOthers}
+     * the rest out who are not wanted go back to the bench. One line says what came of it; {@code allOut} when nobody
+     * wanted was on the bench. Companion-ops.
+     */
+    RosterResult bringIn(Character owner, List<Persona> wanted, boolean benchOthers, String allOut) {
+        java.util.Set<String> wantedIds = new java.util.HashSet<>();
+        wanted.forEach(persona -> wantedIds.add(persona.id()));
+        List<Persona> others = new ArrayList<>();
+        List<Persona> coming = new ArrayList<>();
+        for (RosterEntry entry : world.roster().roster(owner)) {
+            Persona persona = world.content().persona(entry.personaId());
+            if (persona == null) {
+                continue;
+            }
+            if (!wantedIds.contains(persona.id())) {
+                if (entry.state() == RosterState.ACTIVE || entry.state() == RosterState.TRAVELLING) {
+                    others.add(0, persona); // the last out goes first
+                }
+            }
+        }
+        for (Persona persona : wanted) {
+            RosterEntry entry = row(owner, persona);
+            if (entry != null && entry.state() == RosterState.BENCHED) {
+                coming.add(persona);
+            }
+        }
+        if (coming.isEmpty() && (!benchOthers || others.isEmpty())) {
+            return new RosterResult.Failed(allOut);
+        }
+        List<Persona> called = new ArrayList<>();
+        List<Persona> benched = new ArrayList<>();
+        List<Persona> noRoom = new ArrayList<>();
+        List<Persona> cannot = new ArrayList<>();
+        for (Persona in : coming) {
+            boolean trade = !others.isEmpty() && (benchOthers || world.slots().free(owner) <= 0);
+            Persona out = trade ? others.remove(0) : null;
+            RosterResult result = trade ? world.roster().swap(owner, out, in) : world.roster().call(owner, in);
+            if (result.ok()) {
+                called.add(in);
+                if (out != null) {
+                    benched.add(out);
+                }
+            } else {
+                (result instanceof RosterResult.PartyFull || result instanceof RosterResult.LeaderCapped ? noRoom : cannot)
+                        .add(in);
+            }
+        }
+        if (benchOthers) {
+            for (Persona out : others) {
+                if (world.roster().bench(owner, out).ok()) {
+                    benched.add(out);
+                }
+            }
+        }
+        List<String> parts = new ArrayList<>();
+        if (!called.isEmpty()) {
+            parts.add(names(personaNames(called)) + (called.size() == 1 ? " is on the way" : " are on their way"));
+        }
+        if (!benched.isEmpty()) {
+            parts.add(names(personaNames(benched)) + (benched.size() == 1 ? " heads back to camp" : " head back to camp"));
+        }
+        if (!noRoom.isEmpty()) {
+            parts.add("no room for " + names(personaNames(noRoom)));
+        }
+        if (!cannot.isEmpty()) {
+            parts.add(names(personaNames(cannot)) + " could not come right now");
+        }
+        if (parts.isEmpty()) {
+            return new RosterResult.Failed(allOut);
+        }
+        String line = String.join("; ", parts) + ".";
+        line = line.substring(0, 1).toUpperCase(Locale.ROOT) + line.substring(1);
+        return called.isEmpty() && benched.isEmpty() ? new RosterResult.Failed(line) : new RosterResult.Ok(line);
+    }
+
+    /** The personas of {@code personaIds} still in the owner's roster, in that order. */
+    private List<Persona> members(Character owner, List<String> personaIds) {
+        List<Persona> out = new ArrayList<>();
+        for (String personaId : personaIds) {
+            Persona persona = world.content().persona(personaId);
+            if (persona != null && row(owner, persona) != null) {
+                out.add(persona);
+            }
+        }
+        return out;
     }
 
     /**

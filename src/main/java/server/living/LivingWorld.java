@@ -518,6 +518,11 @@ public final class LivingWorld {
         return crewRotation;
     }
 
+    /** Companions going for their next job by themselves (2026-10-05): the errands out. */
+    public server.living.roster.JobErrands jobErrands() {
+        return jobErrands;
+    }
+
     /** P6: party quests with companions, which start at the quest's entry NPC (Lakelis). */
     /** Companions restocking their own potions: the Agent layer's readiness rule (CompanionRestock). */
     public server.living.roster.CompanionRestock restock() {
