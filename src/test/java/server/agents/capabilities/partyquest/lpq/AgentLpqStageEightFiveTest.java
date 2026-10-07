@@ -19,8 +19,8 @@ import static org.mockito.Mockito.verify;
 /**
  * P6g LPQ C3.4 (decision D-c): a five-member companion run has four companions for stage 8's five boxes, so its leader
  * stands on the fifth, after them. He is given a box like the others but never moved: a companion tells him which
- * (L8a "you take the ... box"), and which to move to when the next formation changes his (L8m). With him on his box the
- * formation stands and S8b is said.
+ * (L8a "you take the ..."), and which to move to when the next formation changes his (L8m). With him on his box the
+ * formation stands and S8b tells him to click the balloon from his box (stepping off would undo the formation).
  */
 class AgentLpqStageEightFiveTest {
     private static final int S8 = AgentLpqDefinition.stage(8).mapId();
@@ -56,12 +56,12 @@ class AgentLpqStageEightFiveTest {
             assertNotEquals(box, session.member(companion.getId()).assignedPlatform());
         }
         fx.said(session, "s8-yours", crew.get(1),
-                "Crewfriend, you take the " + AgentLpqCompanionPlay.boxName(box) + " box.");
+                "Crewfriend, you take the " + AgentLpqCompanionPlay.boxName(box) + ".");
         fx.neverSaid("s8-next-1");
 
         everyoneToTheirBoxes(session);
         fx.tick(session, 4_000L);
-        fx.said(session, "s8-next-1", crew.get(1), "we're on the boxes. try the balloon.");
+        fx.said(session, "s8-next-1", crew.get(1), "we're all on. click the balloon from your box.");
 
         long now = 5_000L;
         int moved = box;
@@ -73,17 +73,22 @@ class AgentLpqStageEightFiveTest {
         }
         assertNotEquals(box, moved, "some later formation moves him");
         fx.said(session, "s8-move-" + session.stage8Attempt(), crew.get(1),
-                "Crewfriend, move to the " + AgentLpqCompanionPlay.boxName(moved) + " box.");
+                "Crewfriend, move to the " + AgentLpqCompanionPlay.boxName(moved) + ".");
         verify(fx.mapGateway, never()).changeMapNear(eq(leader), any(), any());
         verify(fx.actions, never()).navigate(eq(fx.entry(leader)), any(), anyBoolean());
     }
 
     @Test
     void theBoxNamesReadLikeAPlayersAndStayInRange() {
-        assertEquals(List.of("top left", "top right", "middle left", "middle", "middle right", "bottom left",
-                        "second from the left at the bottom", "third from the left at the bottom", "bottom right"),
+        assertEquals(List.of("top left box", "top right box", "middle left box", "middle box", "middle right box",
+                        "bottom left box", "bottom row, second from the left", "bottom row, third from the left",
+                        "bottom right box"),
                 java.util.stream.IntStream.rangeClosed(1, 9).mapToObj(AgentLpqCompanionPlay::boxName).toList());
         assertEquals("Crewfriend, you take the middle box.", AgentLpqCompanionPlay.yourBoxLine("Crewfriend", 4));
         assertEquals("Crewfriend, move to the bottom right box.", AgentLpqCompanionPlay.moveToBoxLine("Crewfriend", 9));
+        assertEquals("Crewfriend, you take the bottom row, second from the left.",
+                AgentLpqCompanionPlay.yourBoxLine("Crewfriend", 7));
+        assertEquals("Crewfriend, move to the bottom row, third from the left.",
+                AgentLpqCompanionPlay.moveToBoxLine("Crewfriend", 8));
     }
 }

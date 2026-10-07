@@ -24,6 +24,8 @@ final class AgentLpqCompanionPlay {
     static final String ARTURO = "arturo's up at the top. grab your reward, we'll wait for you outside.";
     /** S8b, the first formation stands on its boxes. */
     static final String ON_THE_BOXES = "we're on the boxes. try the balloon.";
+    /** S8b in a five-member run, where the leader stands on a box too: he checks from it (stepping off undoes it). */
+    static final String ALL_ON_YOUR_BOX = "we're all on. click the balloon from your box.";
     /** S8w, a check came while one of them was still moving to its box. */
     static final String STILL_MOVING = "wait, still moving. try again when we're all on.";
     /** R1, said by a stage-9 member out of potions as it backs off. */
@@ -115,9 +117,13 @@ final class AgentLpqCompanionPlay {
                 + "then we stand on the boxes and you ask it if we got it right.";
     }
 
-    /** S8b for the first formation, then S8n by turns for each later one ({@code attempt} counts from 0). */
-    static String formationLine(int attempt) {
-        return attempt <= 0 ? ON_THE_BOXES : NEXT_FORMATION.get((attempt - 1) % NEXT_FORMATION.size());
+    /**
+     * S8b for the first formation (with the leader on a box, that he checks from it), then S8n by turns for each later
+     * one ({@code attempt} counts from 0).
+     */
+    static String formationLine(int attempt, boolean leaderOnABox) {
+        if (attempt <= 0) return leaderOnABox ? ALL_ON_YOUR_BOX : ON_THE_BOXES;
+        return NEXT_FORMATION.get((attempt - 1) % NEXT_FORMATION.size());
     }
 
     /** S8x: in a six-member run the leader stands on a box. */
@@ -300,11 +306,14 @@ final class AgentLpqCompanionPlay {
         return member + " had to go. we'll keep going with " + COUNT_WORDS.get(remaining) + ".";
     }
 
-    private static final List<String> BOX_NAMES = List.of("top left", "top right", "middle left", "middle",
-            "middle right", "bottom left", "second from the left at the bottom", "third from the left at the bottom",
-            "bottom right");
+    private static final List<String> BOX_NAMES = List.of("top left box", "top right box", "middle left box",
+            "middle box", "middle right box", "bottom left box", "bottom row, second from the left",
+            "bottom row, third from the left", "bottom right box");
 
-    /** Stage 8's box {@code platform} (1-9: the top row's two, the middle row's three, the bottom row's four) as players name it. */
+    /**
+     * Stage 8's box {@code platform} (1-9: the top row's two, the middle row's three, the bottom row's four) as players
+     * name it after "the" ("the top left box", "the bottom row, second from the left").
+     */
     static String boxName(int platform) {
         if (platform < 1 || platform > BOX_NAMES.size()) {
             throw new IllegalArgumentException("stage 8 has boxes 1 to 9: " + platform);
@@ -314,12 +323,12 @@ final class AgentLpqCompanionPlay {
 
     /** L8a: in a five-member run the leader stands on a box too; said when he is first given one. */
     static String yourBoxLine(String leader, int platform) {
-        return leader + ", you take the " + boxName(platform) + " box.";
+        return leader + ", you take the " + boxName(platform) + ".";
     }
 
     /** L8m: his box changed for the next formation. */
     static String moveToBoxLine(String leader, int platform) {
-        return leader + ", move to the " + boxName(platform) + " box.";
+        return leader + ", move to the " + boxName(platform) + ".";
     }
 
     /** How a companion run's entry stands, as HPQ's: everyone inside, keep waiting, go on without some, or give up. */

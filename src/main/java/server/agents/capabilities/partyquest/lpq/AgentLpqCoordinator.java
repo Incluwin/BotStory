@@ -6229,7 +6229,7 @@ final class AgentLpqCoordinator {
         if (!positioned || leaderOnBox) return;
         int attempt = session.stage8Attempt();
         coordinate(session, narrator(session, leader), "s8-next-" + (attempt + 1),
-                AgentLpqCompanionPlay.formationLine(attempt));
+                AgentLpqCompanionPlay.formationLine(attempt, leaderParticipates));
     }
 
     /**
