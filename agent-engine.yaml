@@ -1189,6 +1189,78 @@ tuning:
     # Purpose: An event that ends within this of LudiPQ's 45-minute timer is told to the players as the time running out.
     # Technical: AgentLpqParting.eventEnded from AgentLpqCoordinator.endedCause; the timer is AgentPartyQuestCatalog lpq eventTimerMs (LudiPQ.js eventTime 45); companion runs only.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.TIMEOUT_SLACK_MS: '2000'
+    # Values: 0-60000 milliseconds. Recommended: 2000; the desk Yes put the party inside in under a second at Tory and Lakelis.
+    # Purpose: Prior time from the Red Sign's Yes to the party standing on stage 1.
+    # Technical: AgentLpqPaceProfile seeds the yes term (a companion-side Fixed segment) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.YES_TO_STAGE_MS: '2000'
+    # Values: 10000-600000 milliseconds. Recommended: 100000; live run ab19091b had stage 1's passes in companion hands 99 s after the stage began.
+    # Purpose: Prior time for the companions to collect stage 1's 25 passes and bring them to the leader.
+    # Technical: AgentLpqPaceProfile seeds s1.collect (a leader-bounded companion term); recorded runs refit it.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S1_COLLECT_MS: '100000'
+    # Values: 10000-600000 milliseconds. Recommended: 100000 (run ab19091b: 99 s, scouts and trap included).
+    # Purpose: Prior time for stage 2's scouts, trap room and 15 passes, up to the passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s2.collect segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S2_COLLECT_MS: '100000'
+    # Values: 10000-600000 milliseconds. Recommended: 160000 (run ab19091b: 159 s).
+    # Purpose: Prior time for stage 3's 32 passes, up to the passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s3.collect segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S3_COLLECT_MS: '160000'
+    # Values: 30000-600000 milliseconds. Recommended: 170000: run ab19091b took 114 s with two forced 90-s room recoveries; room 404's two Dark Eyes take about 150 s at a spearman's damage without them.
+    # Purpose: Prior time for stage 4's five dark rooms, up to their passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s4.rooms segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S4_ROOMS_MS: '170000'
+    # Values: 30000-900000 milliseconds. Recommended: 240000, the room ceiling; run ab19091b took 229 s with eleven teleports.
+    # Purpose: Prior time for stage 5's six rooms, up to their 24 passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s5.rooms segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S5_ROOMS_MS: '240000'
+    # Values: 10000-600000 milliseconds. Recommended: 120000 (run ab19091b: 174 s including a 45-s regroup wait).
+    # Purpose: Prior time for stage 7's Ratz, Rombards and three passes, up to the passes at the leader's feet.
+    # Technical: AgentLpqPaceProfile seeds the s7.fight segment (a leader-bounded companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S7_FIGHT_MS: '120000'
+    # Values: 1000-120000 milliseconds. Recommended: 15000 (R3: the Black Ratz died 8 s into stage 9, Alishar showed 5 s later).
+    # Purpose: Prior time from stage 9's start to Alishar's appearance.
+    # Technical: AgentLpqPaceProfile seeds the s9.ratz segment (a companion term) from this; AgentPqPaceCalibration refits it from recorded companion runs of the same PACE_EPOCH.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S9_RATZ_MS: '15000'
+    # Values: 0.03-1.0 fraction. Recommended: 0.5, assumed (R3 killed 125,000 HP in about 45 s; refit from recorded runs).
+    # Purpose: Prior share of the companions' summed expected damage per second that reaches Alishar while shooters keep their distance and melee take his summons.
+    # Technical: seeds the s9.boss Clear term; the estimate's Alishar time is his Mob.wz HP over this times the members' summed policy dps on 9300012, times the shared efficiency multiplier.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.S9_BOSS_EFFICIENCY: '0.5'
+    # Values: 0-120000 milliseconds. Recommended: 25000; assumed quick human (the driver took 24-50 s).
+    # Purpose: Prior time a human leader needs to pick up the passes at his feet, talk the stage's balloon through and step to the next portal, learned per leader.
+    # Technical: AgentLpqPaceProfile seeds the leader-side handin term shared by the s1-s5 and s7 handin segments; refitted per leader from recorded runs, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_HANDIN_MS: '25000'
+    # Values: 10000-900000 milliseconds. Recommended: 150000, assumed (fifteen rows of three portals; never measured: the driver warped).
+    # Purpose: Prior time a human leader needs to climb stage 6's portal maze, learned per leader.
+    # Technical: AgentLpqPaceProfile seeds the leader-side s6.climb term (the leader's climb of the portal maze) from this; refitted per leader from recorded runs, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_CLIMB_MS: '150000'
+    # Values: 0-120000 milliseconds. Recommended: 30000, assumed.
+    # Purpose: Prior time from stage 8's start to the leader's first judged check (the Blue Balloon's preamble and the first formation).
+    # Technical: AgentLpqPaceProfile seeds the leader-side s8.entry term (stage 8's start to his first judged Blue Balloon check) from this; refitted per leader from recorded runs, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_PUZZLE_ENTRY_MS: '30000'
+    # Values: 0-120000 milliseconds. Recommended: 10000, assumed (KPQ's 9000 plus LPQ's longer box walks).
+    # Purpose: Prior time between two of the leader's judged Blue Balloon checks; with up to 126 combinations it sets most of stage 8.
+    # Technical: seeds puzzle.check; recorded runs refit it per leader as (accept - first judged check) / (checks - 1) less the leader's move share.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_PUZZLE_CHECK_MS: '10000'
+    # Values: 0-60000 milliseconds. Recommended: 4000, as KPQ.
+    # Purpose: Extra time a check takes in a five-member run when the leader himself has to move to another box.
+    # Technical: seeds puzzle.move; the estimate adds the leader's move share times this to every check after the first; never learned.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_PUZZLE_MOVE_MS: '4000'
+    # Values: 0-300000 milliseconds. Recommended: 40000, assumed.
+    # Purpose: Prior time from Alishar's death to the clear: the key brought to the leader's feet, picked up, and the Violet Balloon talked through.
+    # Technical: AgentLpqPaceProfile seeds the leader-side s9.key term (Alishar's death to the BONUS phase) from this; refitted per leader from recorded runs, never from COMPANION_PQ_PACE_EXCLUDED_LEADERS.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.HUMAN_KEY_MS: '40000'
+    # Values: 1-50 touches. Recommended: 3; Alishar hits a Lv48-50 crew for about 550 a touch.
+    # Purpose: A companion that goes down in fewer Alishar touches than this is named fragile, so the Red Sign can warn about it.
+    # Technical: AgentPqPaceEstimator compares AgentPqMemberPower.touchesToDown against dangerMobId 9300012 and records a FRAGILE weakness; it never enters the time.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.FRAGILE_TOUCHES: '3'
+    # Values: 0.0-1.0 hit chance. Recommended: 0.6, as KPQ and HPQ.
+    # Purpose: A companion whose best attack lands less often than this on an LPQ mob it fights is named as missing it.
+    # Technical: AgentPqPaceEstimator records a MISSES weakness for the s9.boss Clear segment; it never enters the time.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.WEAK_HIT_CHANCE: '0.6'
+    # Values: 1 and up. Recommended: 1; bump when an LPQ pace change lands.
+    # Purpose: Marks which LPQ pace records belong together; records of another epoch are never learned from.
+    # Technical: AgentLpqPaceProfile.epoch; AgentPqPaceCalibration.fit drops observations whose epoch differs, and the host stores it with each pq_run_pace row for lpq.
+    server.agents.capabilities.partyquest.lpq.AgentLpqPaceProfile.PACE_EPOCH: '1'
 
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.
