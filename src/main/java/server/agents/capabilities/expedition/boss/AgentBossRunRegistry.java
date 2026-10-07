@@ -1,5 +1,6 @@
 package server.agents.capabilities.expedition.boss;
 
+import scripting.event.EventInstanceManager;
 import server.expeditions.Expedition;
 
 import java.util.Collection;
@@ -87,6 +88,25 @@ public final class AgentBossRunRegistry {
         AgentBossRunSession session = forMember(agentId);
         AgentBossRunMember member = session == null ? null : session.member(agentId);
         return member != null && member.phase() == AgentBossRunMember.Phase.WAITING ? member.ordinal() : -1;
+    }
+
+    /**
+     * True when a player of {@code event} is a REGISTERED or INSIDE member of the open run for the event's expedition:
+     * a companion signed up for this very fight. Memory only (the event's player lock aside), for any thread.
+     */
+    public static boolean signedUpIn(EventInstanceManager event) {
+        AgentBossRunSession session = event == null || SESSIONS.isEmpty() ? null : forExpedition(event.getExpedition());
+        if (session == null) {
+            return false;
+        }
+        for (AgentBossRunMember member : session.members()) {
+            AgentBossRunMember.Phase phase = member.phase();
+            if ((phase == AgentBossRunMember.Phase.REGISTERED || phase == AgentBossRunMember.Phase.INSIDE)
+                    && event.getPlayerById(member.agentId()) != null) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Forgets every run; tests only. */

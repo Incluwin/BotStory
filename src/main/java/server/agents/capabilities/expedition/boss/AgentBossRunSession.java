@@ -3,11 +3,13 @@ package server.agents.capabilities.expedition.boss;
 import client.Character;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.expeditions.Expedition;
 import server.expeditions.ExpeditionType;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -15,6 +17,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * One boss run: the adopted companions of one expedition. While the expedition registers, each enlisted member walks
  * up to the entry NPC and signs up through her own window, one conversation per tick, the way the GM expedition lobby
  * signs its members up; a member still at the store, or off the recruit map, waits until the list is about to close.
+ * After Start the run adopts each signed-up member the stock warp took into the expedition's event on the battle map,
+ * drives the alive ones through the fight, and at the clear hands them back to following their owner.
  * {@link #tick} runs on the Agent scheduler under the session's lock.
  */
 public final class AgentBossRunSession {
@@ -32,6 +36,11 @@ public final class AgentBossRunSession {
     private final long createdAtMs;
     private final List<AgentBossRunMember> members = new CopyOnWriteArrayList<>();
     private volatile Phase phase = Phase.REGISTERING;
+    /** The expedition's event, from the first member adopted in it; null until then. */
+    private EventInstanceManager event;
+    private long startedAtMs;
+    private int partySize;
+    private boolean cleared;
 
     AgentBossRunSession(long sessionId, AgentBossRunDefinition definition, Expedition expedition,
                         AgentBossFight fight, long nowMs) {
@@ -108,7 +117,8 @@ public final class AgentBossRunSession {
         try {
             switch (phase) {
                 case REGISTERING -> tickRegistering(ports, host, nowMs);
-                case STARTING, FIGHTING, POST_CLEAR, ENDED -> {
+                case STARTING, FIGHTING -> tickStarted(ports, host, nowMs);
+                case POST_CLEAR, ENDED -> {
                 }
             }
         } finally {
@@ -124,6 +134,7 @@ public final class AgentBossRunSession {
         }
         if (!expedition.isRegistering()) {
             phase = Phase.STARTING;
+            startedAtMs = nowMs;
             log.info("Boss run starting: session={} boss={} registered={}", sessionId, definition.key(),
                     count(AgentBossRunMember.Phase.REGISTERED));
             return;
@@ -228,6 +239,115 @@ public final class AgentBossRunSession {
         host.refused(member.seat(definition.key(), sessionId), reason);
     }
 
+    /**
+     * After Start: a member still waiting is too late; a signed-up member found in the event on the battle map is
+     * adopted, one still outside after the grace missed the start. The run fights while anyone is inside, ends when
+     * nobody went in, and stops the fight at the clear.
+     */
+    private void tickStarted(AgentBossRunPorts ports, AgentBossRunHost.Rule host, long nowMs) {
+        boolean graceOver = nowMs - startedAtMs >= startGraceMs();
+        for (AgentBossRunMember member : members) {
+            switch (member.phase()) {
+                case WAITING -> refuse(host, member, AgentBossRunHost.Refusal.LATE);
+                case REGISTERED -> adoptOrMiss(ports, host, member, graceOver, nowMs);
+                default -> {
+                }
+            }
+        }
+        if (phase == Phase.STARTING) {
+            if (count(AgentBossRunMember.Phase.INSIDE) == 0) {
+                if (count(AgentBossRunMember.Phase.REGISTERED) == 0) {
+                    end(host, "nobody-inside", nowMs);
+                }
+                return;
+            }
+            phase = Phase.FIGHTING;
+            log.info("Boss run fighting: session={} boss={} inside={} partySize={}", sessionId, definition.key(),
+                    count(AgentBossRunMember.Phase.INSIDE), partySize);
+        }
+        if (event.isEventCleared()) {
+            clear(ports);
+            return;
+        }
+        tickFight(ports, nowMs);
+    }
+
+    /** Adopts a signed-up member the Start took into this expedition's event on the battle map. */
+    private void adoptOrMiss(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
+                             boolean graceOver, long nowMs) {
+        int agentId = member.agentId();
+        Character agent = ports.agent(agentId);
+        EventInstanceManager memberEvent = agent == null ? null : agent.getEventInstance();
+        if (memberEvent != null && memberEvent.getExpedition() == expedition
+                && agent.getMapId() == definition.battleMapId()) {
+            if (ports.prepareAdoption(agentId, "entering " + definition.key(), nowMs)) {
+                if (event == null) {
+                    event = memberEvent;
+                    partySize = memberEvent.getPlayerCount();
+                }
+                fight.adopt(agentId, member.ordinal());
+                member.adopted();
+                log.info("Boss run member inside: session={} boss={} member={} ordinal={}", sessionId,
+                        definition.key(), agentId, member.ordinal());
+                return;
+            }
+            log.info("Boss run adoption waits: session={} boss={} member={} (another activity would not stop)",
+                    sessionId, definition.key(), agentId);
+        }
+        if (graceOver) {
+            memberOut(host, member, AgentBossRunHost.Out.MISSED_START);
+        }
+    }
+
+    /** The boss fell: the members inside stop fighting and follow their owner again; the fight is not ticked after. */
+    private void clear(AgentBossRunPorts ports) {
+        cleared = true;
+        for (AgentBossRunMember member : members) {
+            if (member.phase() != AgentBossRunMember.Phase.INSIDE) {
+                continue;
+            }
+            int agentId = member.agentId();
+            ports.stop(agentId);
+            ports.clearBoundary(agentId);
+            ports.follow(agentId);
+            member.clearedInside();
+        }
+        phase = Phase.POST_CLEAR;
+        log.info("Boss run cleared: session={} boss={} inside={}", sessionId, definition.key(),
+                count(AgentBossRunMember.Phase.INSIDE));
+    }
+
+    /** Ticks the fight for the alive members inside that stand on the battle map in the event; a failure is logged. */
+    private void tickFight(AgentBossRunPorts ports, long nowMs) {
+        List<Character> fighters = new ArrayList<>();
+        for (AgentBossRunMember member : members) {
+            if (member.phase() != AgentBossRunMember.Phase.INSIDE) {
+                continue;
+            }
+            Character agent = ports.agent(member.agentId());
+            if (agent != null && agent.isAlive() && agent.getMapId() == definition.battleMapId()
+                    && agent.getEventInstance() == event) {
+                fighters.add(agent);
+            }
+        }
+        if (fighters.isEmpty()) {
+            return;
+        }
+        try {
+            fight.tick(fighters, event, nowMs);
+        } catch (RuntimeException failure) {
+            log.warn("Boss run fight tick failed: session={} boss={} fighters={}", sessionId, definition.key(),
+                    fighters.size(), failure);
+        }
+    }
+
+    private void memberOut(AgentBossRunHost.Rule host, AgentBossRunMember member, AgentBossRunHost.Out out) {
+        member.leftRun(out);
+        log.info("Boss run member out: session={} boss={} member={} out={}", sessionId, definition.key(),
+                member.agentId(), out);
+        host.memberOut(member.seat(definition.key(), sessionId), out);
+    }
+
     private int count(AgentBossRunMember.Phase wanted) {
         return (int) members.stream().filter(member -> member.phase() == wanted).count();
     }
@@ -240,11 +360,18 @@ public final class AgentBossRunSession {
         boolean started = phase != Phase.REGISTERING;
         phase = Phase.ENDED;
         AgentBossRunRegistry.remove(this);
+        if (event != null) {
+            try {
+                fight.end(event);
+            } catch (RuntimeException failure) {
+                log.warn("Boss run fight end failed: session={} boss={}", sessionId, definition.key(), failure);
+            }
+        }
         List<AgentBossRunHost.MemberResult> results = members.stream().map(AgentBossRunMember::result).toList();
-        log.info("Boss run ended: session={} boss={} reason={} started={} members={}", sessionId, definition.key(),
-                reason, started, results.size());
-        host.runEnded(new AgentBossRunHost.RunEnded(sessionId, definition.key(), started, false, reason, 0L, nowMs,
-                0, results));
+        log.info("Boss run ended: session={} boss={} reason={} started={} cleared={} members={}", sessionId,
+                definition.key(), reason, started, cleared, results.size());
+        host.runEnded(new AgentBossRunHost.RunEnded(sessionId, definition.key(), started, cleared, reason,
+                started ? startedAtMs : 0L, nowMs, partySize, results));
     }
 
     // ---- tuning (agent-engine.yaml), read at call time ----------------------------------------
@@ -267,5 +394,10 @@ public final class AgentBossRunSession {
     static long walkTimeoutMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossRunSession.WALK_TIMEOUT_MS");
+    }
+
+    static long startGraceMs() {
+        return config.AgentTuning.longValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.START_GRACE_MS");
     }
 }

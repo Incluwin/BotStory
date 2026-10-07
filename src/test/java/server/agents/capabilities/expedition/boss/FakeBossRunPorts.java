@@ -39,13 +39,18 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     final Map<Integer, Point> portals = new HashMap<>();
     final Set<Integer> restocking = new HashSet<>();
     final Set<Integer> restockPending = new HashSet<>();
+    final Map<Integer, EventInstanceManager> eventOf = new HashMap<>();
+    final Set<Integer> dead = new HashSet<>();
     final List<Runnable> scheduled = new ArrayList<>();
     final List<Long> scheduledDelays = new ArrayList<>();
     boolean stillTheChannels = true;
     boolean adoptionAnswer = true;
     RunNpc runNpc = (agent, npcId, selections) -> true;
 
-    /** A loaded Agent standing at (x, y) on {@code mapId} with {@code level}. */
+    /**
+     * A loaded Agent standing at (x, y) on {@code mapId} with {@code level}; it is in the event {@link #eventOf} names
+     * (none by default) and alive unless {@link #dead} lists it.
+     */
     Character place(int agentId, int mapId, int x, int y, int level) {
         mapOf.put(agentId, mapId);
         positionOf.put(agentId, new Point(x, y));
@@ -57,6 +62,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
             when(agent.getMapId()).thenAnswer(invocation -> mapOf.getOrDefault(id, 0));
             when(agent.getPosition()).thenAnswer(invocation -> new Point(positionOf.get(id)));
             when(agent.getLevel()).thenAnswer(invocation -> levelOf.getOrDefault(id, 1));
+            when(agent.getEventInstance()).thenAnswer(invocation -> eventOf.get(id));
+            when(agent.isAlive()).thenAnswer(invocation -> !dead.contains(id));
             return agent;
         });
     }
@@ -191,9 +198,10 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         }
     }
 
-    /** A fight that only records what the session asked of it. */
+    /** A fight that only records what the session asked of it; a set {@link #tickFailure} is thrown from tick. */
     static final class Fight implements AgentBossFight {
         final List<String> calls = new ArrayList<>();
+        RuntimeException tickFailure;
 
         @Override
         public void adopt(int characterId, int ordinal) {
@@ -203,6 +211,9 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         @Override
         public void tick(List<Character> fighters, EventInstanceManager event, long nowMs) {
             calls.add("tick " + fighters.stream().map(Character::getId).toList());
+            if (tickFailure != null) {
+                throw tickFailure;
+            }
         }
 
         @Override

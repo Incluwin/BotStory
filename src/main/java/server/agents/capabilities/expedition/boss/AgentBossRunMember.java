@@ -116,4 +116,20 @@ public final class AgentBossRunMember {
         refusal = reason;
         phase = Phase.REFUSED;
     }
+
+    /** Adopted on the battle map: it fights with the run from now on. */
+    void adopted() {
+        wentIn = true;
+        phase = Phase.INSIDE;
+    }
+
+    /** Was still in the fight when the boss fell. */
+    void clearedInside() {
+        inAtClear = true;
+    }
+
+    void leftRun(AgentBossRunHost.Out reason) {
+        out = reason;
+        phase = Phase.OUT;
+    }
 }

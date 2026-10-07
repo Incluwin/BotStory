@@ -5402,6 +5402,10 @@ tuning:
     # Purpose: How long a companion on the recruit map walks toward the entry NPC before it signs up from where it stands, so a blocked walk never costs it the run.
     # Technical: Starts when a WAITING member is first seen on the recruit map; runNpcScript needs only the NPC on its map (CosmicPrimitiveCapabilityGateway.runNpcScript), so the late sign-up still works.
     server.agents.capabilities.expedition.boss.AgentBossRunSession.WALK_TIMEOUT_MS: '30000'
+    # Values: a non-negative integer in milliseconds. Recommended: 3000-10000; 5000 covers the stock Start warp, which moves every member on the recruit map before the run looks, plus ten monitor ticks for a slow map change.
+    # Purpose: How long after Start a signed-up companion has to be inside before it counts as having missed the start.
+    # Technical: A REGISTERED member found in the expedition's event on the battle map becomes INSIDE; one still outside after this is OUT MISSED_START through AgentBossRunHost.memberOut.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.START_GRACE_MS: '5000'
     # Values: a positive integer. Recommended: 3-10; 5 tolerates a brief blip without letting a dead endpoint absorb a request per judgment.
     # Purpose: Number of consecutive failed System One requests after which the circuit breaker opens and requests are refused locally.
     # Technical: Any success resets the count; while the breaker is open every ask returns empty immediately so callers fall back to deterministic behaviour without network latency.
