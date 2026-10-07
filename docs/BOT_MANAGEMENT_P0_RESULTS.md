@@ -762,7 +762,7 @@ All recommendations except decision 8, where the user chose "probe 8 first, then
 
 ## Deployed
 - `8523bfcc6` (23:16): `0a211852e` + P9 `3b33b3329` + constants `d080dae52`. Changeset 46 (`companion_named_lineup`) applied.
-- Full suite: 10,635 tests, 0 failures (two load-timing benchmarks pass alone).
+- Full suite: 10,635 tests, 2 failures: the KnowledgeProbeTest and KnownWorldBudgetTest timing benchmarks, which both pass alone.
 
 ## Probe 8 (live, Crewfriend, channel 1)
 - **The request:** `!companionprobe buddy Casse` shows the stock bottom-left notice "Buddy request from 'Casse'" with O and X. O sends BUDDYLIST_MODIFY mode=2. She lands in "Default Group", online.
