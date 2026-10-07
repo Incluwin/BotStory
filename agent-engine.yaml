@@ -5408,7 +5408,7 @@ tuning:
     server.agents.capabilities.expedition.boss.AgentBossRunSession.START_GRACE_MS: '5000'
     # Values: a non-negative integer in milliseconds. Recommended: 2000-10000; 3000 sends the companions out a few seconds after the last human in the fight went down or left, past a slow monitor tick or two.
     # Purpose: How long the fight may have no living human in it before the companions leave and wait for their owner outside.
-    # Technical: Counts event players whose client is no BotClient (AgentBossRunPorts.headless), alive and logged in; one changing maps counts; at 0 for this long every alive INSIDE member turns LEAVING with NO_HUMAN_LEFT.
+    # Technical: Counts event players whose client is no BotClient (AgentBossRunPorts.headless), alive and logged in; one changing maps counts; at 0 for this long every alive INSIDE member turns LEAVING with NO_HUMAN_LEFT. After the clear it is also how long an INSIDE member waits for an anchor that logged out (AgentBossRunPorts.online false) before it turns LEAVING with EXITED, so the logout handoff (handTo) can still name an heir; an anchor that walked out is followed at once.
     server.agents.capabilities.expedition.boss.AgentBossRunSession.HUMAN_GONE_GRACE_MS: '3000'
     # Values: a positive distance in pixels. Recommended: 80-200; 120 matches the GM Balrog scenario's interaction range, so a companion is seen to walk up to the NPC or into the portal.
     # Purpose: How close to the exit NPC or the reward room's portal a leaving companion stands before it uses it.

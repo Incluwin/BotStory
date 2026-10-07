@@ -369,6 +369,93 @@ class AgentBossRunSessionExitTest {
     }
 
     @Test
+    void afterTheClearAnAnchorThatWalkedOutStillLoggedInIsFollowedOutOnTheFirstTick() {
+        AgentBossRunSession session = fighting(THANE);
+        players.put(FRIEND, ports.human(FRIEND));
+        cleared = true;
+        session.tick(ports, host, FIGHT + 500L);
+        ports.place(THANE, CLEAR_MAP, 100, REWARD_PORTAL_SPOT.y, 70);
+        ports.calls.clear();
+
+        // The owner took the reward room's portal: out of the event, still logged in.
+        players.remove(OWNER);
+        session.tick(ports, host, FIGHT + 1_000L);
+
+        assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(THANE).phase(), "no wait for a walk-out");
+        assertEquals(AgentBossRunHost.Out.EXITED, session.member(THANE).leavingFor());
+        assertEquals(List.of("navigate " + THANE + " " + REWARD_PORTAL_SPOT.x + "," + REWARD_PORTAL_SPOT.y),
+                callsFor(THANE));
+    }
+
+    @Test
+    void afterTheClearALoggedOutAnchorIsWaitedForThroughTheGraceThenTheMemberLeaves() {
+        AgentBossRunSession session = fighting(THANE);
+        // Another human stays in the reward room, so only the anchor's logout is under test.
+        players.put(FRIEND, ports.human(FRIEND));
+        cleared = true;
+        session.tick(ports, host, FIGHT + 500L);
+        ports.place(THANE, CLEAR_MAP, 100, REWARD_PORTAL_SPOT.y, 70);
+        ports.calls.clear();
+        long grace = AgentBossRunSession.humanGoneGraceMs();
+
+        // Client.disconnect: the owner is marked away from the world, then the event drops it.
+        ports.away.add(OWNER);
+        players.remove(OWNER);
+        long gone = FIGHT + 1_000L;
+        session.tick(ports, host, gone);
+        session.tick(ports, host, gone + grace - 1L);
+
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase(),
+                "a logout handoff may still name an heir");
+        assertEquals(List.of(), callsFor(THANE));
+
+        session.tick(ports, host, gone + grace);
+
+        assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(THANE).phase());
+        assertEquals(AgentBossRunHost.Out.EXITED, session.member(THANE).leavingFor());
+        assertEquals(List.of("navigate " + THANE + " " + REWARD_PORTAL_SPOT.x + "," + REWARD_PORTAL_SPOT.y),
+                callsFor(THANE));
+    }
+
+    @Test
+    void handToWithinTheGraceOfALoggedOutAnchorKeepsTheMemberWithTheHeirWhileTheHeirIsInTheEvent() {
+        AgentBossRunSession session = fighting(THANE);
+        players.put(HEIR, ports.human(HEIR));
+        cleared = true;
+        session.tick(ports, host, FIGHT + 500L);
+        ports.place(THANE, CLEAR_MAP, 100, REWARD_PORTAL_SPOT.y, 70);
+        ports.calls.clear();
+        long grace = AgentBossRunSession.humanGoneGraceMs();
+
+        // The owner logs out; a session tick lands before companion-ops reaches the handoff.
+        ports.away.add(OWNER);
+        players.remove(OWNER);
+        long gone = FIGHT + 1_000L;
+        session.tick(ports, host, gone);
+        assertTrue(AgentBossRunService.handTo(SESSION_ID, THANE, HEIR), "the member is still INSIDE");
+
+        for (long at = gone + 500L; at <= gone + 4L * grace; at += 500L) {
+            session.tick(ports, host, at);
+        }
+
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase(), "the heir is still here");
+        assertEquals(HEIR, session.member(THANE).anchorId());
+        assertEquals(List.of(), callsFor(THANE));
+
+        // The heir logs out too: a fresh wait from its own logout, not from the owner's.
+        ports.away.add(HEIR);
+        players.remove(HEIR);
+        players.put(FRIEND, ports.human(FRIEND));
+        long heirGone = gone + 5L * grace;
+        session.tick(ports, host, heirGone);
+        session.tick(ports, host, heirGone + grace - 1L);
+        assertEquals(AgentBossRunMember.Phase.INSIDE, session.member(THANE).phase());
+
+        session.tick(ports, host, heirGone + grace);
+        assertEquals(AgentBossRunMember.Phase.LEAVING, session.member(THANE).phase());
+    }
+
+    @Test
     void disposedEventEndsTheRunOnceAndReportsEachMember() {
         AgentBossRunSession session = fighting(THANE, ISOLDE, INGRID);
         ports.dead.add(INGRID);

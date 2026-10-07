@@ -104,6 +104,13 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         return character != null && !humans.containsKey(character.getId());
     }
 
+    /** Only a {@link #human} is online, while {@link #away} does not list it. */
+    @Override
+    public boolean online(int characterId) {
+        Character human = humans.get(characterId);
+        return human != null && human.isLoggedinWorld();
+    }
+
     @Override
     public Point npcPosition(Character agent, int npcId) {
         Point npc = npcs.get(npcId);

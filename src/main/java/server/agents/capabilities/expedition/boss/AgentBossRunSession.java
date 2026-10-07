@@ -385,11 +385,28 @@ public final class AgentBossRunSession {
         return standing;
     }
 
-    /** After the clear a member stays while its anchor (its owner, or a handoff's heir) is in the event. */
+    /**
+     * After the clear a member stays while its anchor (its owner, or a handoff's heir) is in the event. An anchor that
+     * walked out is followed at once. One that logged out is waited for HUMAN_GONE_GRACE_MS from the first tick that
+     * misses it: its logout leaves the event before companion-ops hands the member to an heir (handTo), and a member
+     * already LEAVING could not be handed over.
+     */
     private void followAnchorsOut(AgentBossRunPorts ports, long nowMs) {
         for (AgentBossRunMember member : members) {
-            if (member.phase() == AgentBossRunMember.Phase.INSIDE && event.getPlayerById(member.anchorId()) == null
-                    && alive(ports, member)) {
+            if (member.phase() != AgentBossRunMember.Phase.INSIDE) {
+                continue;
+            }
+            int anchor = member.anchorId();
+            if (event.getPlayerById(anchor) != null) {
+                member.anchorHere();
+                continue;
+            }
+            if (!alive(ports, member)) {
+                continue;
+            }
+            boolean anchorLeft = ports.online(anchor) || nowMs - member.anchorGoneSince(nowMs) >= humanGoneGraceMs();
+            // A handTo that landed during this tick has the last word.
+            if (anchorLeft && member.anchorId() == anchor) {
                 leave(ports, member, AgentBossRunHost.Out.EXITED, nowMs);
             }
         }
@@ -485,8 +502,9 @@ public final class AgentBossRunSession {
 
     /**
      * A logout handoff: the INSIDE member stays with {@code humanId} (the heir) from now on. False when the Agent is no
-     * INSIDE member of this run. Takes no lock (the phase and the anchor are volatile), so a host thread never waits on
-     * a tick; a member that turns LEAVING meanwhile just leaves.
+     * INSIDE member of this run. After the clear a member whose anchor logged out stays INSIDE for HUMAN_GONE_GRACE_MS
+     * (see followAnchorsOut), so this call still finds it. Takes no lock (the phase and the anchor are volatile), so a
+     * host thread never waits on a tick; a member that turns LEAVING meanwhile just leaves.
      */
     boolean handTo(int agentId, int humanId) {
         AgentBossRunMember member = member(agentId);

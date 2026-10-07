@@ -32,6 +32,13 @@ public interface AgentBossRunPorts {
     /** True when the server drives the character (a headless Agent client); a human's character answers false. */
     boolean headless(Character character);
 
+    /**
+     * True while the character is logged in to its world: in the world's player storage and not on its way out. A
+     * logout marks the character away before it leaves its event, so a human gone from the event that still answers
+     * true walked out; false means it logged out or disconnected.
+     */
+    boolean online(int characterId);
+
     Point npcPosition(Character agent, int npcId);
 
     Point portalPosition(Character agent, int portalId);
@@ -90,6 +97,12 @@ public interface AgentBossRunPorts {
         @Override
         public boolean headless(Character character) {
             return AgentCharacterGatewayRuntime.characters().isHeadlessControlled(character);
+        }
+
+        @Override
+        public boolean online(int characterId) {
+            Character character = AgentCharacterGatewayRuntime.characters().findOnlineCharacterById(characterId);
+            return character != null && character.isLoggedinWorld();
         }
 
         @Override

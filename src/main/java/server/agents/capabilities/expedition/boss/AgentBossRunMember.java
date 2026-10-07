@@ -26,6 +26,8 @@ public final class AgentBossRunMember {
     private final int ordinal;
     private final long enlistedAtMs;
     private volatile int anchorId;
+    /** Since when its logged-out anchor has been gone from the event; -1 while the anchor is there. */
+    private volatile long anchorGoneSinceMs = -1L;
     private volatile Phase phase = Phase.WAITING;
     private long onMapSinceMs;
     private AgentBossRunHost.Refusal refusal;
@@ -187,9 +189,25 @@ public final class AgentBossRunMember {
         phase = Phase.LEAVING;
     }
 
-    /** Stays with {@code humanId} from now on (the heir of its owner's logout). */
+    /** Stays with {@code humanId} from now on (the heir of its owner's logout); any wait for the old anchor ends. */
     void anchorTo(int humanId) {
         anchorId = humanId;
+        anchorGoneSinceMs = -1L;
+    }
+
+    /** Since when its logged-out anchor has been gone, starting the wait at {@code nowMs} on the first sighting. */
+    long anchorGoneSince(long nowMs) {
+        long since = anchorGoneSinceMs;
+        if (since < 0L) {
+            since = nowMs;
+            anchorGoneSinceMs = since;
+        }
+        return since;
+    }
+
+    /** Its anchor is in the event again: the wait is over. */
+    void anchorHere() {
+        anchorGoneSinceMs = -1L;
     }
 
     void leftRun(AgentBossRunHost.Out reason) {
