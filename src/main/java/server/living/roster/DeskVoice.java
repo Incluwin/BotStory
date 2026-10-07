@@ -61,4 +61,9 @@ public interface DeskVoice {
 
     /** Her line under the leader's pick; null without a clear time. */
     String chooseLine(LineupPlan plan);
+
+    /** A line every desk shares, as this voice puts it; a speaking NPC says it as it is. */
+    default String local(String sharedLine) {
+        return sharedLine;
+    }
 }

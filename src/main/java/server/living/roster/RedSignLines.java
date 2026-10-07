@@ -7,6 +7,7 @@ import server.agents.capabilities.partyquest.pace.AgentPqPaceEstimate.Kind;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -96,6 +97,23 @@ public final class RedSignLines {
     private static final int CAUTIONS = 2;
     /** A record-backed time is shown once the crew's estimate rests on this many recorded runs; a hedged one before. */
     static final int SEEN_RUNS = 3;
+
+    // ---- the lines every desk shares, as the sign shows them ------------------------------------
+
+    /** CompanionMenus.THINGS_CHANGED (package-private there): a window drawn again because things changed. */
+    private static final String THINGS_CHANGED = "Things changed meanwhile.";
+    /**
+     * The shared desk lines a speaking NPC says in the first person, each as the sign's notice (DeskVoice.local);
+     * every other shared line passes through as it is.
+     */
+    private static final Map<String, String> LOCAL = Map.of(
+            "Waiting here with me: ", "Waiting by the sign: ",
+            " Talk to me again once they're here.", " Read the sign again once they arrive.",
+            DeskLines.PARTY_CHANGED, "Notice: your party changed. Read the sign again.",
+            DeskLines.HOLD_ON, "Notice: your party is lining up.",
+            DeskLines.CATCHING_BREATH, BUSY,
+            DeskLines.RAN_TO_THE_STORE, "Notice: some of your party went to buy potions.",
+            THINGS_CHANGED, "Notice: your party changed since you last read this.");
 
     static final String QUICK_CREW = "This crew should finish in under 30 minutes.";
     static final String MAY_NOT_SURVIVE = "Warning: <name> may not survive Alishar's blows.";
@@ -216,6 +234,11 @@ public final class RedSignLines {
             }
             return RedSignLines.chooseLine(clearTime.estimate(), clearTime.objectiveS(), clearTime.ownObjectiveS(),
                     clearTime.timeS(), clearTime.ownTimeS(), clearTime.timerMs());
+        }
+
+        @Override
+        public String local(String sharedLine) {
+            return sharedLine == null ? null : LOCAL.getOrDefault(sharedLine, sharedLine);
         }
     };
 
