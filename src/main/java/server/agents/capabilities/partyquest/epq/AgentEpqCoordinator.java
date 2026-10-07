@@ -380,7 +380,9 @@ public final class AgentEpqCoordinator {
                 .filter(mob -> mob.getId() == AgentEpqDefinition.STAGE_TWO_MOB)
                 .toList();
         List<Integer> lurers = stageTwoLurerIds(session);
-        int lureSide = lurers.indexOf(agent.getId());
+        int lureSide = session.companionAdopted()
+                ? companionLureSide(session, agent, bugs, pond, lurers)
+                : lurers.indexOf(agent.getId());
         Monster tagged = bugs.stream()
                 .filter(mob -> mob.getObjectId() == member.stageTwoTaggedObjectId())
                 .findFirst().orElse(null);
@@ -431,8 +433,11 @@ public final class AgentEpqCoordinator {
         if (bugs.isEmpty()) {
             member.clearStageTwoTag();
             actions().stop(entry);
-            agent.getMap().instanceMapForceRespawn();
-            rescue(session, "respawn-bugs", agent);
+            // A companion run plays stock: EllinPQ.respawnStg2 refills the bugs every 4 s while a player stands here.
+            if (!session.companionAdopted()) {
+                agent.getMap().instanceMapForceRespawn();
+                rescue(session, "respawn-bugs", agent);
+            }
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -446,6 +451,25 @@ public final class AgentEpqCoordinator {
             return;
         }
         attackTarget(entry, agent, target, member, nowMs, true, pond.getPosition());
+    }
+
+    /**
+     * Step 2.5: a companion run's lure side (AgentEpqCompanionPlay.lureSide). One lurer works whichever side has a bug,
+     * and the carrier with no lurer at all lures too while no Stone Bug waits in the pond and no diluted poison is held
+     * or lying; -1 is no lure (it hits the bug in the pond and carries, as today).
+     */
+    private static int companionLureSide(AgentEpqSession session, Character agent, List<Monster> bugs, Reactor pond,
+                                         List<Integer> lurers) {
+        boolean left = stageTwoSideTarget(bugs, pond.getPosition(), pond.getArea(), 0) != null;
+        boolean right = stageTwoSideTarget(bugs, pond.getPosition(), pond.getArea(), 1) != null;
+        boolean loneCarrier = lurers.isEmpty() && agent.getId() == workAgentId(session);
+        boolean bugInPond = bugs.stream()
+                .anyMatch(mob -> mob.getPosition() != null && pond.getArea().contains(mob.getPosition()));
+        boolean bottle = actions().itemCount(agent, AgentEpqDefinition.PURIFIED_POISON) > 0
+                || AgentMapPerception.items(agent.getMap()).stream().anyMatch(drop -> !drop.isPickedUp()
+                && drop.getItemId() == AgentEpqDefinition.PURIFIED_POISON);
+        return AgentEpqCompanionPlay.lureSide(lurers.indexOf(agent.getId()), lurers.size(), left, right, loneCarrier,
+                bugInPond, bottle);
     }
 
     private static void stageThree(AgentRuntimeEntry entry, Character agent,

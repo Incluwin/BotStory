@@ -47,6 +47,11 @@ class AgentEpqDepartedMemberTest {
         return run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true, phase, ben, mira, tobi, una, pia, cleo);
     }
 
+    /** A stock run: for the base fixes' all-mode rules a companion run now plays differently (Steps 2-4). */
+    private AgentEpqSession stockSession(AgentEpqSession.Phase phase) {
+        return run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false, phase, ben, mira, tobi, una, pia, cleo);
+    }
+
     /** The stock departure: unregistered, standing on the normal 930000800. */
     private void leaves(Character member) {
         run.onMap(member, AgentEpqDefinition.REWARD_MAP);
@@ -210,7 +215,7 @@ class AgentEpqDepartedMemberTest {
         for (Character member : List.of(ben, mira, tobi, una, pia, cleo)) {
             run.onMap(member, AgentEpqDefinition.STAGE_TWO_MAP);
         }
-        AgentEpqSession session = session(AgentEpqSession.Phase.STAGE_TWO);
+        AgentEpqSession session = stockSession(AgentEpqSession.Phase.STAGE_TWO);
         Reactor spine = reactor(new Point(-400, 0), (byte) 0);
         Reactor pond = reactor(new Point(400, 0), (byte) 0);
         when(run.map.getReactorById(AgentEpqDefinition.SPINE_REACTOR)).thenReturn(spine);

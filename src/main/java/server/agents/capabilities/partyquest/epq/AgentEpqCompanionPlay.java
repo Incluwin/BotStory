@@ -42,4 +42,24 @@ final class AgentEpqCompanionPlay {
         if (leaderStage > agentStage) return true;
         return leaderStage == agentStage && leaderToPortalPx >= 0L && leaderToPortalPx <= atExitPx;
     }
+
+    // ---- stage 2 ----
+
+    /**
+     * The side a companion lures Stone Bugs from (0 left of the fountain, 1 right of it, -1 none). Two or more lurers
+     * keep their order (today's split). One lurer takes the left while it has a bug, else the right. The carrier with
+     * no lurer at all (the only companion standing) lures the same way, but only while no bug waits in the pond and no
+     * diluted poison is held or lying: then it hits the bug in the pond and carries, as today.
+     */
+    static int lureSide(int index, int lurers, boolean leftHasTarget, boolean rightHasTarget, boolean loneCarrier,
+                        boolean bugInPond, boolean bottleHeldOrLying) {
+        if (lurers >= 2) return index;
+        if (lurers == 1) return index == 0 ? oneLurerSide(leftHasTarget, rightHasTarget) : -1;
+        if (loneCarrier && !bugInPond && !bottleHeldOrLying) return oneLurerSide(leftHasTarget, rightHasTarget);
+        return -1;
+    }
+
+    private static int oneLurerSide(boolean leftHasTarget, boolean rightHasTarget) {
+        return leftHasTarget ? 0 : rightHasTarget ? 1 : 0;
+    }
 }

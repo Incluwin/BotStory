@@ -52,6 +52,11 @@ class AgentEpqDeadMemberRolesTest {
         return run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true, phase, ben, mira, tobi, una, pia);
     }
 
+    /** A stock run: for the base fixes' all-mode rules a companion run now plays differently (Steps 2-4). */
+    private AgentEpqSession stockSession(AgentEpqSession.Phase phase) {
+        return run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false, phase, ben, mira, tobi, una, pia);
+    }
+
     private void everyoneOn(int mapId) {
         for (Character member : List.of(ben, mira, tobi, una, pia)) run.onMap(member, mapId);
     }
@@ -119,7 +124,7 @@ class AgentEpqDeadMemberRolesTest {
     @Test
     void aCorpseIsNoLurerAndItsBottleDoesNotCount() {
         everyoneOn(AgentEpqDefinition.STAGE_TWO_MAP);
-        AgentEpqSession session = session(AgentEpqSession.Phase.STAGE_TWO);
+        AgentEpqSession session = stockSession(AgentEpqSession.Phase.STAGE_TWO);
         stageTwoReactors((byte) 3);
         when(tobi.getHp()).thenReturn(0); // the first lurer by today's order
         when(run.actions.itemCount(tobi, AgentEpqDefinition.PURIFIED_POISON)).thenReturn(1);
