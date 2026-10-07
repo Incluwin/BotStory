@@ -145,6 +145,11 @@ public final class AgentClimbMovementService {
         AgentMovementBroadcastService.broadcastMovement(entry);
     }
 
+    public static void stepOffRopeOntoGround(AgentRuntimeEntry entry, Character agent, Point landing) {
+        AgentRopeMovementService.stepOffRopeOntoGround(entry, agent, landing);
+        AgentMovementBroadcastService.broadcastMovement(entry);
+    }
+
     private static void applyClimbAction(AgentRuntimeEntry entry, Character agent, ClimbAction action) {
         AgentClimbStateRuntime.setClimbVerticalDirection(entry, switch (action) {
             case CLIMB_UP -> -1;

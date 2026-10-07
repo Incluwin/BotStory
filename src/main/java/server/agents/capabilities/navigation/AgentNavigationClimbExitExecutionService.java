@@ -4,8 +4,6 @@ import client.Character;
 import server.agents.capabilities.movement.AgentClimbMovementPolicy;
 import server.agents.capabilities.movement.AgentClimbMovementService;
 import server.agents.capabilities.movement.AgentClimbStateRuntime;
-import server.agents.capabilities.movement.AgentMovementBroadcastService;
-import server.agents.capabilities.movement.AgentRopeMovementService;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.Rope;
 
@@ -39,8 +37,7 @@ public final class AgentNavigationClimbExitExecutionService {
         }
 
         if (edge.launchStepX == 0) {
-            AgentRopeMovementService.stepOffRopeOntoGround(entry, agent, edge.endPoint);
-            AgentMovementBroadcastService.broadcastMovement(entry);
+            AgentClimbMovementService.stepOffRopeOntoGround(entry, agent, edge.endPoint);
             return true;
         }
 
