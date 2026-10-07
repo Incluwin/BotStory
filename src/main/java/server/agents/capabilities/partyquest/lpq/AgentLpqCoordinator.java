@@ -6136,6 +6136,13 @@ final class AgentLpqCoordinator {
             for (AgentLpqMemberState member : session.members()) {
                 Character agent = standingCompanion(member);
                 AgentRuntimeEntry entry = entry(member.characterId());
+                if (agent != null && entry != null && agent.getMapId() == AgentLpqDefinition.STAGE_2_TRAP_MAP) {
+                    // Every pass is found (the trap room's last one is often the 15th): a scout still in there walks
+                    // out through its exit and brings its passes to his feet, as a player does.
+                    member.clearReactorWork();
+                    useStageTwoTrapExit(session, entry, agent, nowMs);
+                    continue;
+                }
                 if (agent != null && entry != null && agent.getMapId() == contract.mapId() && npc != null
                         && agent.getItemQuantity(AgentLpqDefinition.PASS, false) <= 0) {
                     rallyMemberAtNpc(member, agent, entry, npc);
