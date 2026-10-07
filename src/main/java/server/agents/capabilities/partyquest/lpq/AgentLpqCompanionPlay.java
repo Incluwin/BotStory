@@ -13,6 +13,10 @@ final class AgentLpqCompanionPlay {
     static final String SCOUTS_GO_FIRST = "two of us go in first, there's a trap in there. wait here a sec.";
     /** S2b, once a scout reached the trap room and the way is clear. */
     static final String TRAP_CLEAR = "trap's clear, let's go in.";
+    /** S4, as stage 4 begins. */
+    static final String DARK_ROOMS = "we'll split up for the dark rooms. wait by the lime balloon, we'll bring the passes.";
+    /** S5, as stage 5 begins. */
+    static final String ROOMS = "we'll take the rooms. wait by the green balloon, we'll bring the passes.";
     /** H0, the run's first batch that does not make the count yet (once a run). */
     static final String BATCH_EXPLAINED = "i'll drop my passes at your feet as we get them, grab them.";
     /** H5, a carrier about to go down (low on HP, no HP potion left) leaves its passes where it stands. */
@@ -42,13 +46,34 @@ final class AgentLpqCompanionPlay {
         return leader + ", talk to the " + balloonName(3) + ", we'll get the passes.";
     }
 
-    /** The line a stage begins with (S1, S3), or null for a stage that has none of its own. */
+    /** The line a stage begins with (S1, S3, S4, S5), or null for a stage that has none of its own. */
     static String stageStartLine(int stage, String leader) {
         return switch (stage) {
             case 1 -> stageOneLine(leader);
             case 3 -> stageThreeLine(leader);
+            case 4 -> DARK_ROOMS;
+            case 5 -> ROOMS;
             default -> null;
         };
+    }
+
+    /** An ordinary stage-5 room's door as a player names it (502-505), or null for the rooms that never give up. */
+    static String stageFiveDoor(int roomMapId) {
+        return switch (roomMapId) {
+            case 922_010_502 -> "the second door from the top";
+            case 922_010_503 -> "the third door from the top";
+            case 922_010_504 -> "the fourth door from the top";
+            case 922_010_505 -> "the door above the balloon";
+            default -> null;
+        };
+    }
+
+    /** H6p (a pass is left) or H6b (a box is left): a given-up room, so he can fetch it himself. */
+    static String roomGivenUpLine(String leader, int roomMapId, boolean passLeft) {
+        String door = stageFiveDoor(roomMapId);
+        if (door == null) return null;
+        return passLeft ? leader + ", there's a pass i can't reach in " + door + ". can you get it?"
+                : leader + ", there's a box i can't get to in " + door + ". can you break it?";
     }
 
     // ---- hand-overs (H0-H5) ----

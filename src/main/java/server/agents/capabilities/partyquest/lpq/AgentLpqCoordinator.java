@@ -138,6 +138,8 @@ final class AgentLpqCoordinator {
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_RECOLLECT_MAX");
     private static final int PASS_DYING_HP_PERCENT = config.AgentTuning.intValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_DYING_HP_PERCENT");
+    private static final long STAGE_5_ROOM_GIVE_UP_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_5_ROOM_GIVE_UP_MS");
     private static final int DARK_SIGHT_SAFE_PORTAL_ID = 0;
     private static final Point STAGE_7_BOTTOM = new Point(1, -211);
     private static final int STAGE_7_FIRING_ANCHOR_RADIUS = config.AgentTuning.intValue(
@@ -1721,7 +1723,11 @@ final class AgentLpqCoordinator {
                     session, entry, agent, nowMs)) {
                 continue;
             }
-            if (stage == 5 && rooms.contains(agent.getMapId())
+            if (stage == 5 && session.companionAdopted() && rooms.contains(agent.getMapId())
+                    && companionRoomCeiling(session, member, entry, agent, mainMap, false, nowMs)) {
+                continue;
+            }
+            if (stage == 5 && !session.companionAdopted() && rooms.contains(agent.getMapId())
                     && stageFiveRoomCeilingRecoveryDue(
                     member.roomTimingElapsed(agent.getMapId(), nowMs))) {
                 recoverStageFiveRoomAtCeiling(
@@ -2439,6 +2445,10 @@ final class AgentLpqCoordinator {
                                 roomPasses, passQuota, settledForMs);
                     }
                 }
+                if (looseRoomPass && session.companionAdopted() && companionRoomCeiling(session, member, entry,
+                        agent, AgentLpqDefinition.stage(5).mapId(), true, nowMs)) {
+                    return true;
+                }
                 if (looseRoomPass) {
                     collectNearestDrop(entry, agent,
                             Set.of(AgentLpqDefinition.PASS), new LinkedHashSet<>());
@@ -2458,6 +2468,19 @@ final class AgentLpqCoordinator {
                                 + "settledForMs={}",
                         session.sessionId(), agent.getName(), agent.getId(), roomMapId,
                         roomPasses, passQuota, settledForMs);
+            }
+            if (session.companionAdopted() && roomPasses < passQuota) {
+                // Nothing is left in it (no box, no mob, no loose pass) and its last drops have settled: a player
+                // walks out with what it holds (no missing pass is granted in a companion run).
+                if (settledForMs < STAGE_5_MISSING_ROOM_PASS_SETTLE_MS) return true;
+                member.finishRoomTiming(roomMapId, nowMs);
+                member.recordStageFiveEarnedPasses(roomPasses);
+                session.rooms().complete(roomMapId);
+                member.beginRoomExit(roomMapId, nowMs);
+                session.markProgress(nowMs);
+                log.info("LPQ stage5 room short: session={} room={} member={}({}) passes={}/{}",
+                        session.sessionId(), roomMapId, agent.getName(), agent.getId(), roomPasses, passQuota);
+                return tickStageFiveCompletedRoomExit(session, member, entry, agent, nowMs);
             }
             if (roomPasses < passQuota) return true;
 
@@ -5430,6 +5453,7 @@ final class AgentLpqCoordinator {
             AgentRuntimeEntry entry = entry(member.characterId());
             if (agent == null || entry == null) continue;
             if (session.recollectStackObjectId() != 0 && session.recollectorId() == agent.getId()) continue;
+            tellGivenUpRoom(session, member, agent, leader, contract.mapId());
             int held = agent.getItemQuantity(AgentLpqDefinition.PASS, false);
             if (held <= 0) {
                 if (member.handOverStartedAtMs() != 0L) member.endHandOver();
@@ -5466,6 +5490,54 @@ final class AgentLpqCoordinator {
             coordinate(session, narrator(session, leader), "s" + stage + "-all",
                     AgentLpqCompanionPlay.allPassesLine(leader.getName(), stage));
         }
+    }
+
+    /**
+     * A companion run's stage-5 room that runs long: its owner re-plans its route (a fresh route to the next box or
+     * pass) every STAGE_5_ROOM_CEILING_MS of the room's time, and gives an ordinary room (502-505) up at
+     * STAGE_5_ROOM_GIVE_UP_MS while a box or a pass is still in it: the room is done as it is, the owner walks out with
+     * what it holds and, back on the main map, tells the leader what is left there (H6b/H6p). Rooms 501 (Teleport) and
+     * 506 (Dark Sight) never give up, since a leader without the skill could not fetch what is left. True once it gave up.
+     */
+    private static boolean companionRoomCeiling(AgentLpqSession session, AgentLpqMemberState member,
+                                                AgentRuntimeEntry entry, Character agent, int mainMapId,
+                                                boolean passLeft, long nowMs) {
+        int room = agent.getMapId();
+        long elapsedMs = member.roomTimingElapsed(room, nowMs);
+        int quota = AgentLpqDefinition.roomPassQuota(room);
+        int passes = member.roomPassesCollectedFor(room, agent.getItemQuantity(AgentLpqDefinition.PASS, false));
+        if (stageFiveOrdinaryRoom(room) && elapsedMs >= STAGE_5_ROOM_GIVE_UP_MS) {
+            log.info("LPQ stage5 room retry: session={} room={} member={}({}) step=GIVE_UP elapsedMs={} passes={}/{}",
+                    session.sessionId(), room, agent.getName(), agent.getId(), elapsedMs, passes, quota);
+            member.finishRoomTiming(room, nowMs);
+            member.recordStageFiveEarnedPasses(passes);
+            session.rooms().complete(room);
+            member.beginRoomExit(room, nowMs);
+            member.markRoomGivenUp(room, passLeft);
+            member.clearReactorWork();
+            session.markProgress(nowMs);
+            tickStageFiveCompletedRoomExit(session, member, entry, agent, nowMs);
+            return true;
+        }
+        int due = (int) Math.min(Integer.MAX_VALUE, elapsedMs / Math.max(1L, STAGE_5_ROOM_CEILING_MS));
+        if (due > member.roomRetries(room)) {
+            member.markRoomRetries(room, due);
+            ACTIONS.refreshNavigation(entry, agent);
+            member.clearReactorWork();
+            log.info("LPQ stage5 room retry: session={} room={} member={}({}) step=RETRY elapsedMs={} passes={}/{}",
+                    session.sessionId(), room, agent.getName(), agent.getId(), elapsedMs, passes, quota);
+        }
+        return false;
+    }
+
+    /** H6b/H6p: a member that gave its room up tells the leader once it stands on the stage's main map. */
+    private static void tellGivenUpRoom(AgentLpqSession session, AgentLpqMemberState member, Character agent,
+                                        Character leader, int mainMapId) {
+        int room = member.givenUpRoom();
+        if (room == 0 || agent.getMapId() != mainMapId) return;
+        coordinate(session, agent, "s5-room-" + room,
+                AgentLpqCompanionPlay.roomGivenUpLine(leader.getName(), room, member.givenUpPassLeft()));
+        member.clearRoomGivenUp();
     }
 
     /**

@@ -83,6 +83,10 @@ public final class AgentLpqMemberState {
     private long handOverStartedAtMs;
     private boolean handOverToBalloon;
     private int handOverRecollectStack;
+    private int roomRetryMapId;
+    private int roomRetries;
+    private int givenUpRoom;
+    private boolean givenUpPassLeft;
 
     public AgentLpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -127,6 +131,28 @@ public final class AgentLpqMemberState {
         handOverStartedAtMs = 0L;
         handOverToBalloon = false;
         handOverRecollectStack = 0;
+    }
+
+    /** Route re-plans done in this split room (a companion run's stage-5 retry, one per STAGE_5_ROOM_CEILING_MS). */
+    int roomRetries(int mapId) { return roomRetryMapId == mapId ? roomRetries : 0; }
+
+    void markRoomRetries(int mapId, int retries) {
+        roomRetryMapId = mapId;
+        roomRetries = retries;
+    }
+
+    /** A room this member gave up, still to be told to the leader (0 for none), and whether a pass (not a box) is left. */
+    int givenUpRoom() { return givenUpRoom; }
+    boolean givenUpPassLeft() { return givenUpPassLeft; }
+
+    void markRoomGivenUp(int mapId, boolean passLeft) {
+        givenUpRoom = mapId;
+        givenUpPassLeft = passLeft;
+    }
+
+    void clearRoomGivenUp() {
+        givenUpRoom = 0;
+        givenUpPassLeft = false;
     }
     public MemberType memberType() { return memberType; }
     public Role role() { return role; }
@@ -225,6 +251,8 @@ public final class AgentLpqMemberState {
         stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
         stageNineGroupLogged = false;
         endHandOver();
+        markRoomRetries(0, 0);
+        clearRoomGivenUp();
     }
 
     /**
