@@ -107,6 +107,9 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private int recollectHeldBefore;
     private int recollects;
     private int keyCarrierId;
+    private int leaderClimbBestRow = -1;
+    private long stageSixAllAtTopSinceMs;
+    private long leaderKeySinceMs;
     private final Set<Integer> companionsOfRun = new java.util.LinkedHashSet<>();
     private long enteredEventAtMs;
 
@@ -206,6 +209,9 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
         recollectorId = 0;
         recollectHeldBefore = 0;
         recollects = 0;
+        leaderClimbBestRow = -1;
+        stageSixAllAtTopSinceMs = 0L;
+        leaderKeySinceMs = 0L;
         rooms.reset();
         members.values().forEach(AgentLpqMemberState::clearReactorWork);
         int nextStage = stageNumber(next);
@@ -742,6 +748,36 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     /** This member is picking up this hand-over stack now (the loot rule lets it). */
     public synchronized boolean recollecting(int characterId, int objectId) {
         return recollectStackObjectId != 0 && recollectorId == characterId && recollectStackObjectId == objectId;
+    }
+
+    /**
+     * The leader reached a maze row higher than any before this stage (a companion run's stage-6 progress is his
+     * climb as well as the companions').
+     */
+    synchronized boolean observeLeaderClimb(int row) {
+        if (row <= leaderClimbBestRow) return false;
+        leaderClimbBestRow = row;
+        return true;
+    }
+
+    /** Since when every standing companion waits at the top of the maze (0 while one is still climbing). */
+    synchronized long observeStageSixAllAtTop(boolean allAtTop, long nowMs) {
+        if (!allAtTop) {
+            stageSixAllAtTopSinceMs = 0L;
+            return 0L;
+        }
+        if (stageSixAllAtTopSinceMs == 0L) stageSixAllAtTopSinceMs = Math.max(1L, nowMs);
+        return nowMs - stageSixAllAtTopSinceMs;
+    }
+
+    /** How long the leader has held Alishar's key (0 while he does not). */
+    synchronized long observeLeaderKey(boolean holds, long nowMs) {
+        if (!holds) {
+            leaderKeySinceMs = 0L;
+            return 0L;
+        }
+        if (leaderKeySinceMs == 0L) leaderKeySinceMs = Math.max(1L, nowMs);
+        return nowMs - leaderKeySinceMs;
     }
 
     /** The companion that took (or takes) Alishar's key to the leader; 0 before one is chosen. */

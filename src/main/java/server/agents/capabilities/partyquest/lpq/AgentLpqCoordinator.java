@@ -140,6 +140,8 @@ final class AgentLpqCoordinator {
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_DYING_HP_PERCENT");
     private static final long STAGE_5_ROOM_GIVE_UP_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_5_ROOM_GIVE_UP_MS");
+    private static final long LEADER_NUDGE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.LEADER_NUDGE_MS");
     private static final int DARK_SIGHT_SAFE_PORTAL_ID = 0;
     private static final Point STAGE_7_BOTTOM = new Point(1, -211);
     private static final int STAGE_7_FIRING_ANCHOR_RADIUS = config.AgentTuning.intValue(
@@ -1373,6 +1375,8 @@ final class AgentLpqCoordinator {
         long combatClearedForMs = session.observeStage7CombatCleared(combatCleared, nowMs);
         Point npc = observer == null ? null : ACTIONS.npcPosition(
                 observer, AgentLpqDefinition.stage(7).npcId());
+        if (session.companionAdopted()) sayStageSevenRoles(session, topIds);
+        Set<Integer> stageSevenLootClaims = new LinkedHashSet<>();
         for (AgentLpqMemberState member : session.members()) {
             int topIndex = topIds.indexOf(member.characterId());
             if (topIndex >= 0) {
@@ -1399,6 +1403,11 @@ final class AgentLpqCoordinator {
 
             AgentRuntimeEntry entry = entry(member.characterId());
             if (entry == null) continue;
+            if (combatCleared && session.companionAdopted()
+                    && collectStageTwoPassDrop(session, entry, participant, stageSevenLootClaims)) {
+                // A companion run: the nearest companion walks to each natural pass and picks it up.
+                continue;
+            }
             if (combatCleared) {
                 if (member.characterId() != session.eventLeaderId() && npc != null) {
                     rallyMemberAtNpc(member, participant, entry, npc);
@@ -3503,6 +3512,7 @@ final class AgentLpqCoordinator {
                 ? AgentLpqDefinition.CLEAR_MAP : AgentLpqDefinition.stage(stage + 1).mapId();
         long transitionElapsedMs = session.beginOrObservePostClearTransition(nowMs);
         boolean recoveryDue = !session.companionAdopted() && postClearTransitionRecoveryDue(stage, transitionElapsedMs);
+        if (session.companionAdopted()) nudgeLeaderToPortal(session, stage, source, destination, transitionElapsedMs);
         boolean allReady = true;
         int recovered = 0;
         for (AgentLpqMemberState member : session.members()) {
@@ -3763,6 +3773,7 @@ final class AgentLpqCoordinator {
     private static void portalMaze(AgentLpqSession session, Character leader, long nowMs) {
         catchUpLaggingMembers(session, 6, AgentLpqDefinition.stage(6).mapId(), nowMs);
         announceStageSixSequence(session, leader, nowMs);
+        if (session.companionAdopted()) companionMazeClimb(session, leader, nowMs);
         for (AgentLpqMemberState member : session.members()) {
             if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
@@ -3827,6 +3838,8 @@ final class AgentLpqCoordinator {
             if (portal != null && approachStageSixPortal(
                     session, member, entry, agent, portal,
                     STAGE_6_PORTAL_IDS.size(), nowMs)) {
+                // A companion run's companions wait at the top portal and go through with him (or after him).
+                if (session.companionAdopted() && !leaderOnMap(session, AgentLpqDefinition.stage(7).mapId())) return;
                 LPQ.enterPortal(agent, portalId);
             }
             return;
@@ -3937,6 +3950,8 @@ final class AgentLpqCoordinator {
             return;
         }
         if ("-1".equals(LPQ.property(leader, "statusStg8"))) {
+            coordinate(session, narrator(session, leader), "s8-start",
+                    AgentLpqCompanionPlay.stageEightStartLine(leader.getName()));
             if (!rallyPartyAtNpc(session, leader, 8, nowMs)) return;
             if (!isAgent(leader)) {
                 return;
@@ -3997,6 +4012,7 @@ final class AgentLpqCoordinator {
                         session, member, entry, participant, area, platform, nowMs);
             }
         }
+        if (session.companionAdopted()) companionFormationLines(session, leader, participants, positioned);
         if (!positioned) return;
         if (!isAgent(leader)) {
             return;
@@ -4106,6 +4122,7 @@ final class AgentLpqCoordinator {
                 .allMatch(member -> member.stageNineGroup() == null);
         List<Point> stageNineSummons = alisharAlive
                 ? ACTIONS.liveMonsterPositions(leader, AgentLpqDefinition.ALISHAR_SUMMONS) : List.of();
+        if (session.companionAdopted()) selectKeyCarrier(session, leader);
         for (AgentLpqMemberState member : session.members()) {
             if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
@@ -4115,13 +4132,16 @@ final class AgentLpqCoordinator {
             // A dead member held on the map (LPQ base fix 1) gets no order, group, station or loot claim in any
             // phase: a corpse must not reserve a cleanup drop the living then skip, nor count as firing at the Ratz.
             if (agent.getHp() <= 0) continue;
+            // A companion run's key carrier is handled by companionBossKey until it has handed the key over.
+            if (session.companionAdopted() && member.characterId() == session.keyCarrierId()
+                    && keyCarrierBusy(session, agent)) continue;
             if (member.characterId() == leader.getId()
                     && collectNearestDrop(entry, agent,
                             Set.of(AgentLpqDefinition.BOSS_KEY), lootClaims)) continue;
             if (cleanupPhase && collectNearestDrop(
                     entry, agent, null, lootClaims,
                     itemId -> stageNineAgentMayCollectItem(
-                            member.characterId(), leader.getId(), itemId))) continue;
+                            member.characterId(), leader.getId(), session.keyCarrierId(), itemId))) continue;
             if (alisharAlive) {
                 boolean joiningBossCombat = member.claimIntentAnnouncement(
                         "stage9:alishar-combat");
@@ -4168,6 +4188,12 @@ final class AgentLpqCoordinator {
                 continue;
             }
             ACTIONS.stop(entry);
+        }
+        if (session.companionAdopted()) {
+            // The carrier brings the key to his feet; he talks to the violet balloon himself (no consolidation, no
+            // key recovery, no submit).
+            companionBossKey(session, leader, nowMs);
+            return;
         }
         if (cleanupPhase && (!leader.getMap().getAllMonsters().isEmpty()
                 || leader.getMap().getDroppedItems().stream()
@@ -4232,6 +4258,9 @@ final class AgentLpqCoordinator {
             log.info("LPQ stage9 rest: session={} member={}({}) state={} hp={} hpPotions={} restPoint={}",
                     session.sessionId(), agent.getName(), agent.getId(), after.resting() ? "START" : "END",
                     agent.getHp(), potions, after.resting() ? after.restPoint() : before.restPoint());
+            if (after.resting()) {
+                coordinate(session, agent, "rest-" + agent.getId(), AgentLpqCompanionPlay.BACKING_OFF);
+            }
         }
         if (order.move() == AgentLpqStageNineBossPolicy.Move.MELEE) {
             if (member.claimStageNineGroupLine()) {
@@ -4634,7 +4663,13 @@ final class AgentLpqCoordinator {
 
     static boolean stageNineAgentMayCollectItem(
             int agentId, int eventLeaderId, int itemId) {
-        return itemId != AgentLpqDefinition.BOSS_KEY || agentId == eventLeaderId;
+        return stageNineAgentMayCollectItem(agentId, eventLeaderId, 0, itemId);
+    }
+
+    /** The key is the event leader's, and a companion run's key carrier's ({@code carrierId}, 0 for none). */
+    static boolean stageNineAgentMayCollectItem(int agentId, int eventLeaderId, int carrierId, int itemId) {
+        return itemId != AgentLpqDefinition.BOSS_KEY || agentId == eventLeaderId
+                || (carrierId != 0 && agentId == carrierId);
     }
 
     private static void bonus(AgentLpqSession session, long nowMs) {
@@ -5492,6 +5527,217 @@ final class AgentLpqCoordinator {
         }
     }
 
+    /** The run's leader stands on this map. */
+    private static boolean leaderOnMap(AgentLpqSession session, int mapId) {
+        Character leader = character(session.eventLeaderId());
+        return leader != null && leader.getMapId() == mapId;
+    }
+
+    /**
+     * A companion run's maze: the leader's climb to a new highest row is progress, and once every standing companion
+     * waits at the top while he is still below it, one of them tells him the code again (S6n) after LEADER_NUDGE_MS.
+     */
+    private static void companionMazeClimb(AgentLpqSession session, Character leader, long nowMs) {
+        int mazeMap = AgentLpqDefinition.stage(6).mapId();
+        if (leader.getMapId() != mazeMap || leader.getPosition() == null) return;
+        int row = leader.getPosition().y < -3_050 ? STAGE_6_PORTAL_IDS.size() : mazeRow(leader);
+        if (row >= 0 && session.observeLeaderClimb(row)) session.markProgress(nowMs);
+        Character atTheTop = null;
+        boolean allAtTop = true;
+        for (AgentLpqMemberState member : session.members()) {
+            Character agent = standingCompanion(member);
+            if (agent == null) continue;
+            if (agent.getMapId() != mazeMap || agent.getPosition() == null || agent.getPosition().y >= -3_050) {
+                allAtTop = false;
+            } else if (atTheTop == null) {
+                atTheTop = agent;
+            }
+        }
+        boolean leaderBelow = leader.getPosition().y >= -3_050;
+        long waitedMs = session.observeStageSixAllAtTop(allAtTop && atTheTop != null && leaderBelow, nowMs);
+        if (waitedMs >= LEADER_NUDGE_MS) {
+            coordinate(session, atTheTop, "s6-climb", AgentLpqCompanionPlay.mazeClimbLine(leader.getName()));
+        }
+    }
+
+    /**
+     * N1: LEADER_NUDGE_MS after a stage's clear the leader is still on its map away from the next portal, while the
+     * companions wait at it: one of them, at the portal on his map, calls him once.
+     */
+    private static void nudgeLeaderToPortal(AgentLpqSession session, int stage, int source, int destination,
+                                            long sinceClearMs) {
+        if (stage == 6 || stage >= 9 || sinceClearMs < LEADER_NUDGE_MS) return;
+        Character leader = character(session.eventLeaderId());
+        if (leader == null || leader.getMapId() != source) return;
+        Integer portalId = portalIdTo(leader, destination);
+        Point portal = portalId == null ? null : ACTIONS.portalPosition(leader, portalId);
+        if (portal == null || near(leader.getPosition(), portal, INTERACTION_RADIUS)) return;
+        for (AgentLpqMemberState member : session.members()) {
+            Character agent = standingCompanion(member);
+            if (agent != null && agent.getMap() == leader.getMap() && near(agent.getPosition(), portal, INTERACTION_RADIUS)) {
+                coordinate(session, agent, "s" + stage + "-portal", AgentLpqCompanionPlay.portalOpenLine(leader.getName()));
+                return;
+            }
+        }
+    }
+
+    /** S7: who takes the trigger ratz on the ledges, and that he stays at the bottom. */
+    private static void sayStageSevenRoles(AgentLpqSession session, List<Integer> topIds) {
+        Character leader = character(session.eventLeaderId());
+        if (leader == null || leader.getMapId() != AgentLpqDefinition.stage(7).mapId()) return;
+        List<String> shooters = topIds.stream().map(AgentLpqCoordinator::character)
+                .filter(java.util.Objects::nonNull).map(Character::getName).toList();
+        coordinate(session, narrator(session, leader), "s7-start",
+                AgentLpqCompanionPlay.stageSevenLine(shooters, leader.getName()));
+    }
+
+    /**
+     * Stage 8's lines in a companion run (the stock order of boxes is kept): S8x once when the leader of a six-member
+     * run stands on a box, then S8b for the first formation standing and S8n for each later one, keyed by attempt so
+     * each formation is told once. The judgement of a check is never read from here (stageEightCheckMissed).
+     */
+    private static void companionFormationLines(AgentLpqSession session, Character leader,
+                                                List<AgentLpqMemberState> participants, boolean positioned) {
+        boolean leaderParticipates = participants.stream()
+                .anyMatch(member -> member.characterId() == leader.getId());
+        boolean leaderOnBox = !leaderParticipates && boxOf(leader, leader.getMap()) != 0;
+        if (leaderOnBox) {
+            coordinate(session, narrator(session, leader), "s8-off",
+                    AgentLpqCompanionPlay.offTheBoxesLine(leader.getName()));
+        }
+        if (!positioned || leaderOnBox) return;
+        int attempt = session.stage8Attempt();
+        coordinate(session, narrator(session, leader), "s8-next-" + (attempt + 1),
+                AgentLpqCompanionPlay.formationLine(attempt));
+    }
+
+    /**
+     * The box (1-9) a character stands on, as 2040043.js reads it: the first of {@code map}'s areas (the stage-8 map
+     * the leader checks from) containing its position, or 0.
+     */
+    private static int boxOf(Character character, MapleMap map) {
+        if (map == null || character == null || character.getPosition() == null) return 0;
+        List<Rectangle> areas = map.getAreas();
+        for (int index = 0; index < areas.size(); index++) {
+            if (areas.get(index).contains(character.getPosition())) return index + 1;
+        }
+        return 0;
+    }
+
+    /**
+     * A companion run's wrong Blue Balloon check (2040043.js told the leader so). The boxes the event's players stand on
+     * now are read as the script read them; when they are this attempt's formation the attempt was judged and the next
+     * one comes (stock). Otherwise someone was still moving: the attempt is not skipped (advancing would lose a
+     * combination for good), it is logged, and a companion says S8w once per attempt. Called from the NPC script
+     * thread, holding no event or map lock; the session monitor nests the reads as the coordinator does.
+     */
+    static void stageEightCheckMissed(AgentLpqSession session, Character leader, long nowMs) {
+        synchronized (session) {
+            List<Integer> expected = session.stage8Combination().stream().sorted().toList();
+            EventInstanceManager event = session.eventInstance();
+            List<Integer> occupied = new ArrayList<>();
+            if (event != null) {
+                for (Character player : event.getPlayers()) {
+                    int box = boxOf(player, leader.getMap());
+                    if (box != 0 && !occupied.contains(box)) occupied.add(box);
+                }
+            }
+            occupied.sort(Comparator.naturalOrder());
+            if (occupied.equals(expected)) {
+                session.advanceStage8(nowMs);
+                return;
+            }
+            int attempt = session.stage8Attempt() + 1;
+            log.info("LPQ stage8 check ignored: session={} attempt={} reason=formation-mismatch occupied={} expected={}",
+                    session.sessionId(), attempt, occupied, expected);
+            session.markProgress(nowMs);
+            coordinate(session, narrator(session, leader), "s8-wait-" + attempt, AgentLpqCompanionPlay.STILL_MOVING);
+        }
+    }
+
+    /** The key carrier still has the key's hand-over in hand (it holds the key, or the key lies to be fetched). */
+    private static boolean keyCarrierBusy(AgentLpqSession session, Character carrier) {
+        if (carrier.getItemQuantity(AgentLpqDefinition.BOSS_KEY, false) > 0) return true;
+        MapleMap map = carrier.getMap();
+        return map != null && map.getDroppedItems().stream().anyMatch(drop -> drop != null && !drop.isPickedUp()
+                && drop.getItemId() == AgentLpqDefinition.BOSS_KEY && !drop.isPlayerDrop());
+    }
+
+    /**
+     * Alishar's key in a companion run: the standing companion nearest to the dropped key becomes its carrier, loots
+     * it (the loot rule lets only it) and brings it to the leader's feet with the pass hand-over (K1, K1p, K1b), with a
+     * nudge (K2), a re-collect before it vanishes (K3), and a reminder once he has held it LEADER_NUDGE_MS (K4).
+     */
+    private static void companionBossKey(AgentLpqSession session, Character leader, long nowMs) {
+        MapleMap map = stageNineMap(session, leader);
+        if (map == null) return;
+        List<MapItem> keys = naturalKeys(map);
+        List<MapItem> lying = lyingRunStacks(session, Set.of(map), AgentLpqDefinition.BOSS_KEY);
+        followRecollect(session, lying, nowMs);
+        AgentLpqMemberState member = session.member(session.keyCarrierId());
+        Character carrier = member == null ? null : standingCompanion(member);
+        AgentRuntimeEntry entry = carrier == null ? null : entry(carrier.getId());
+        boolean recollecting = session.recollectStackObjectId() != 0 && session.recollectorId() == session.keyCarrierId();
+        if (carrier != null && entry != null && !recollecting) {
+            int held = carrier.getItemQuantity(AgentLpqDefinition.BOSS_KEY, false);
+            if (held > 0 && carrier.getMap() == leader.getMap()) {
+                if (member.handOverStartedAtMs() == 0L) member.startHandOver(nowMs);
+                handOverItem(session, member, carrier, entry, leader, AgentLpqDefinition.BOSS_KEY, held, 9, lying,
+                        nowMs);
+            } else if (held <= 0 && !keys.isEmpty()) {
+                collectNearestDrop(entry, carrier, Set.of(AgentLpqDefinition.BOSS_KEY), new LinkedHashSet<>());
+            }
+        }
+        for (MapItem stack : lying) {
+            if (AgentLpqCompanionPlay.nudgeDue(stack.getDropTime(), nowMs, PASS_PICKUP_NUDGE_MS)) {
+                coordinate(session, narrator(session, leader), "s9-key-nudge",
+                        AgentLpqCompanionPlay.keyStillLyingLine(leader.getName()));
+            }
+        }
+        beginRecollect(session, lying, nowMs);
+        boolean holds = leader.getItemQuantity(AgentLpqDefinition.BOSS_KEY, false) > 0;
+        if (session.observeLeaderKey(holds, nowMs) >= LEADER_NUDGE_MS) {
+            coordinate(session, narrator(session, leader), "s9-key-held",
+                    AgentLpqCompanionPlay.keyHeldLine(leader.getName()));
+        }
+    }
+
+    private static MapleMap stageNineMap(AgentLpqSession session, Character leader) {
+        return session.eventInstance() == null ? leader.getMap()
+                : session.eventInstance().getMapInstance(AgentLpqDefinition.stage(9).mapId());
+    }
+
+    /** Alishar's key as he dropped it (never a hand-over stack). */
+    private static List<MapItem> naturalKeys(MapleMap map) {
+        return map.getDroppedItems().stream()
+                .filter(drop -> drop != null && !drop.isPickedUp() && !drop.isPlayerDrop()
+                        && drop.getItemId() == AgentLpqDefinition.BOSS_KEY).toList();
+    }
+
+    /** Once Alishar's key lies on stage 9, the standing companion nearest to it becomes its carrier (before any loot). */
+    private static void selectKeyCarrier(AgentLpqSession session, Character leader) {
+        int stageNine = AgentLpqDefinition.stage(9).mapId();
+        MapleMap map = stageNineMap(session, leader);
+        List<MapItem> keys = map == null ? List.of() : naturalKeys(map);
+        if (session.keyCarrierId() == 0 && !keys.isEmpty()) {
+            MapItem key = keys.getFirst();
+            Character nearest = null;
+            for (AgentLpqMemberState member : session.members()) {
+                Character agent = standingCompanion(member);
+                if (agent == null || agent.getMapId() != stageNine || agent.getPosition() == null) continue;
+                if (nearest == null || agent.getPosition().distanceSq(key.getPosition())
+                        < nearest.getPosition().distanceSq(key.getPosition())) {
+                    nearest = agent;
+                }
+            }
+            if (nearest != null) {
+                session.setKeyCarrierId(nearest.getId());
+                log.info("LPQ key carrier: session={} member={}({}) key={}", session.sessionId(), nearest.getName(),
+                        nearest.getId(), key.getPosition());
+            }
+        }
+    }
+
     /**
      * A companion run's stage-5 room that runs long: its owner re-plans its route (a fresh route to the next box or
      * pass) every STAGE_5_ROOM_CEILING_MS of the room's time, and gives an ordinary room (502-505) up at
@@ -5607,8 +5853,19 @@ final class AgentLpqCoordinator {
         log.info("LPQ hand-over: session={} member={}({}) stage={} item={} quantity={} place={} recollect={} "
                         + "leader={} at={}", session.sessionId(), agent.getName(), agent.getId(), stage, itemId, held,
                 place, recollected != 0, leader.getId(), agent.getPosition());
-        if (itemId != AgentLpqDefinition.PASS) return;
         String name = leader.getName();
+        if (itemId == AgentLpqDefinition.BOSS_KEY) {
+            if (place == AgentLpqCompanionPlay.PassPlace.BALLOON) {
+                coordinate(session, agent, "s9-key-balloon", AgentLpqCompanionPlay.keyByTheBalloonLine(name));
+            } else if (recollected != 0) {
+                coordinate(session, agent, "s9-key-recollect", AgentLpqCompanionPlay.keyRecollectedLine(name));
+            } else {
+                coordinate(session, agent, "s9-key", AgentLpqCompanionPlay.keyLine(name, place,
+                        "-1".equals(LPQ.property(leader, "statusStg9"))));
+            }
+            return;
+        }
+        if (itemId != AgentLpqDefinition.PASS) return;
         switch (place) {
             case DYING -> coordinate(session, agent, "dying-" + agent.getId(), AgentLpqCompanionPlay.LEAVING_PASSES);
             case BALLOON -> coordinate(session, agent, "s" + stage + "-balloon",
@@ -5843,12 +6100,13 @@ final class AgentLpqCoordinator {
         return run != null && run.companionAdopted();
     }
 
-    /** A stage's own start line (S1, S3), once, said on the leader's map. */
+    /** A stage's own start line (S1, S3, S4, S5, S9), once, said on the leader's map. */
     private static void companionStageLine(AgentLpqSession session, Character leader) {
         int stage = stageNumberOrZero(session.phase());
         if (stage == 0 || leader.getMapId() != AgentLpqDefinition.stage(stage).mapId()) return;
-        coordinate(session, narrator(session, leader), "s" + stage + "-start",
-                AgentLpqCompanionPlay.stageStartLine(stage, leader.getName()));
+        coordinate(session, narrator(session, leader), "s" + stage + "-start", stage == 9
+                ? AgentLpqCompanionPlay.stageNineLine(leader.getName())
+                : AgentLpqCompanionPlay.stageStartLine(stage, leader.getName()));
     }
 
     /**

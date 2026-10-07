@@ -1165,6 +1165,10 @@ tuning:
     # Purpose: In a companion run a stage-5 room owner re-plans its route every STAGE_5_ROOM_CEILING_MS; at this time an ordinary room (502-505) with a box or pass still in it is given up: the owner walks out with what it holds and tells the leader what is left there. Rooms 501 and 506 never give up.
     # Technical: AgentLpqCoordinator.companionRoomCeiling (a room with a live box) and the companion branch of tickStageFiveRoomContinuation (a loose pass left); replaces the stock four-minute recovery (remote box hits, vacuum, teleport) in companion runs only.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_5_ROOM_GIVE_UP_MS: '480000'
+    # Values: 10000-300000 milliseconds. Recommended: 30000.
+    # Purpose: How long the leader may stay away from the next portal after a stage's clear while the companions wait at it, below the top of the stage-6 maze while they wait at the top, or with Alishar's key in his bag without the clear, before a companion says so once.
+    # Technical: AgentLpqCoordinator companion-run nudges N1 (a companion at the portal), S6n (a companion at the top of the maze) and K4; each said at most once per stage, companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.LEADER_NUDGE_MS: '30000'
 
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.

@@ -17,6 +17,14 @@ final class AgentLpqCompanionPlay {
     static final String DARK_ROOMS = "we'll split up for the dark rooms. wait by the lime balloon, we'll bring the passes.";
     /** S5, as stage 5 begins. */
     static final String ROOMS = "we'll take the rooms. wait by the green balloon, we'll bring the passes.";
+    /** S8b, the first formation stands on its boxes. */
+    static final String ON_THE_BOXES = "we're on the boxes. try the balloon.";
+    /** S8w, a check came while one of them was still moving to its box. */
+    static final String STILL_MOVING = "wait, still moving. try again when we're all on.";
+    /** R1, said by a stage-9 member out of potions as it backs off. */
+    static final String BACKING_OFF = "out of pots, backing off for a bit.";
+    private static final List<String> NEXT_FORMATION = List.of("next one, try the balloon.", "moved. try it again.",
+            "new boxes, check again.", "next one, try it.");
     /** H0, the run's first batch that does not make the count yet (once a run). */
     static final String BATCH_EXPLAINED = "i'll drop my passes at your feet as we get them, grab them.";
     /** H5, a carrier about to go down (low on HP, no HP potion left) leaves its passes where it stands. */
@@ -55,6 +63,78 @@ final class AgentLpqCompanionPlay {
             case 5 -> ROOMS;
             default -> null;
         };
+    }
+
+    /** S9, as stage 9 begins. */
+    static String stageNineLine(String leader) {
+        return "shoot the black ratz on the ledge first, then alishar comes. " + leader + ", stay out of his reach.";
+    }
+
+    /** S6n, said from the top of the maze while he is still below it. */
+    static String mazeClimbLine(String leader) {
+        return leader + ", we're up top. 133 221 333 123 111 from the bottom, left to right.";
+    }
+
+    /** N1, said at the next portal while he stays away from it after the clear. */
+    static String portalOpenLine(String leader) {
+        return leader + ", the portal's open. come on.";
+    }
+
+    /** S7: who takes the ratz on the ledges, and where he waits; null without a shooter. */
+    static String stageSevenLine(List<String> shooters, String leader) {
+        if (shooters == null || shooters.isEmpty()) return null;
+        String who = shooters.size() == 1 ? shooters.getFirst() : shooters.get(0) + " and " + shooters.get(1);
+        return who + ", take the ratz up on the ledges. the rest of us wait for rombard down here. " + leader
+                + ", stay at the bottom with us.";
+    }
+
+    /** S8a, while the blue balloon has not explained the boxes yet. */
+    static String stageEightStartLine(String leader) {
+        return leader + ", talk to the blue balloon first. then we stand on the boxes and you ask it if we got it right.";
+    }
+
+    /** S8b for the first formation, then S8n by turns for each later one ({@code attempt} counts from 0). */
+    static String formationLine(int attempt) {
+        return attempt <= 0 ? ON_THE_BOXES : NEXT_FORMATION.get((attempt - 1) % NEXT_FORMATION.size());
+    }
+
+    /** S8x: in a six-member run the leader stands on a box. */
+    static String offTheBoxesLine(String leader) {
+        return leader + ", stay off the boxes, only five can stand on them.";
+    }
+
+    /** K1 (and K1p while the violet balloon still has to explain itself), by where the key lies. */
+    static String keyLine(String leader, PassPlace place, boolean balloonExplainsFirst) {
+        String explains = balloonExplainsFirst ? " it explains first, then talk to it again." : "";
+        String talk = " grab it and talk to the " + balloonName(9) + "." + explains;
+        return switch (place == null ? PassPlace.FEET : place) {
+            case FEET -> leader + ", alishar's key is at your feet." + talk;
+            case LEFT -> leader + ", alishar's key is just to your left." + talk;
+            case RIGHT -> leader + ", alishar's key is just to your right." + talk;
+            case AROUND -> leader + ", alishar's key is right around you." + talk;
+            case ABOVE -> leader + ", alishar's key landed up above you. hop up," + talk;
+            case BALLOON, DYING -> null;
+        };
+    }
+
+    /** K1b: he could not be reached, so the key lies by the violet balloon. */
+    static String keyByTheBalloonLine(String leader) {
+        return leader + ", couldn't get to you, left the key by the " + balloonName(9) + ".";
+    }
+
+    /** K2: the key he left lying. */
+    static String keyStillLyingLine(String leader) {
+        return leader + ", the key's still by your feet.";
+    }
+
+    /** K3: the key he left lying was picked back up and dropped at his feet again. */
+    static String keyRecollectedLine(String leader) {
+        return leader + ", picked the key back up so it doesn't vanish. it's at your feet again.";
+    }
+
+    /** K4: he has held the key a while without talking to the balloon. */
+    static String keyHeldLine(String leader) {
+        return leader + ", take the key to the " + balloonName(9) + " up on the platform.";
     }
 
     /** An ordinary stage-5 room's door as a player names it (502-505), or null for the rooms that never give up. */
