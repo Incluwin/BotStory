@@ -19,8 +19,10 @@ final class AgentEpqWatchdogRuntime {
                 AgentEpqCompanionRun.stalledAfterClear(session, nowMs); // Step 2.9: never a failure past the clear
                 return;
             }
-            AgentEpqCoordinator.fail(session, "EPQ stalled in " + session.phase() + " for "
-                    + (limit / 1_000L) + " seconds", nowMs);
+            // Step 4.6: a companion run says why it stops (TOO_LONG, by a companion on the leader's map); the text
+            // and every other run are today's.
+            AgentEpqCompanionRun.fail(session, "EPQ stalled in " + session.phase() + " for "
+                    + (limit / 1_000L) + " seconds", AgentEpqParting.of(AgentEpqParting.Kind.TOO_LONG), null, nowMs);
         }
     }
 }
