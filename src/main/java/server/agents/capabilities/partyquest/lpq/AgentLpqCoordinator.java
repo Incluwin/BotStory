@@ -6112,12 +6112,14 @@ final class AgentLpqCoordinator {
                 if (member.handOverStartedAtMs() != 0L) member.endHandOver();
                 continue;
             }
-            if (aboutToGoDown(agent)) {
+            boolean onMainMap = agent.getMapId() == contract.mapId();
+            // On the main map its passes stay in the event when it goes down; in a room (stages 4-5) it keeps them,
+            // since a stack dropped there is nobody's to loot and its room is not done.
+            if (onMainMap && aboutToGoDown(agent)) {
                 dropHandOver(session, member, agent, entry, leader, AgentLpqDefinition.PASS, held, stage,
                         AgentLpqCompanionPlay.PassPlace.DYING, lying, nowMs);
                 continue;
             }
-            boolean onMainMap = agent.getMapId() == contract.mapId();
             boolean inUnfinishedRoom = member.assignedMapId() != 0
                     && !session.rooms().completed(member.assignedMapId());
             boolean due = member.handOverStartedAtMs() != 0L || member.handOverRecollectStack() != 0
