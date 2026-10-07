@@ -745,3 +745,58 @@ Open:
 - Olwen (Beginner persona, Lv29) stays owner-chooses; authoring her a class is a content decision.
 - The crew window shows an errand as "away" with its old duty; no "gone to see Grendel" status yet (Lakelis/Tory desks neither).
 - Owner chat ("casse fp") still advances in place at once, as before.
+
+
+# P9 results (polish and learned suggestions, 2026-10-06 / 07)
+
+## Decisions (user, 2026-10-06)
+All recommendations except decision 8, where the user chose "probe 8 first, then build", and added: "I do want bots to friend the player using the native buddy list feature."
+- **Party Search:** rested bench companions answer one per search round, only in a round no human answered.
+- **Search pool:** bots leave the stock search pool.
+- **Records:** cards show a quest's record after three runs.
+- **Crew window:** a "Who should come along?" page, ranked by the desks' own rule.
+- **Named lineups:** Hunting, PQ and Boss; calling one swaps the crew.
+- **Not built:** no Registrar, no slot lending.
+- **Errands:** shown on rows and cards.
+- **Buddy requests:** companions and met citizens ask after a bond grows. Companions land once in a "Crew" group that the player can move.
+
+## Deployed
+- `8523bfcc6` (23:16): `0a211852e` + P9 `3b33b3329` + constants `d080dae52`. Changeset 46 (`companion_named_lineup`) applied.
+- Full suite: 10,635 tests, 0 failures (two load-timing benchmarks pass alone).
+
+## Probe 8 (live, Crewfriend, channel 1)
+- **The request:** `!companionprobe buddy Casse` shows the stock bottom-left notice "Buddy request from 'Casse'" with O and X. O sends BUDDYLIST_MODIFY mode=2. She lands in "Default Group", online.
+- **The window:** the v83 buddy window has no find button. Selecting a row sends WHISPER 0x44 and shows "<name>'s Location - <map>". WHISPER only switches the chat target. TALK opens Messenger, which the own companion joins at once (P1 rule) but never speaks in.
+- **Online row:** INVITE TO PARTY on a full party is refused by the client.
+- **Benched companion:** her row stayed online, because companions never sent loggedOff. INVITE from that stale row sent op=4, and P1 routing called her.
+- **Offline row:** a truly offline row greys out TALK, WHISPER and INVITE and sends nothing. With correct status, benched companions are called from the Crew window only.
+
+## Live checks (deploy session, 23:27-23:48)
+| Check | Result |
+|---|---|
+| L1 Party Search | **PASS.** Search 35-65, Magician only: Lioren answered in round 2 and IceCookie in round 3. Each sent the ETA whisper and then "saw ur party search, count me in" / "saw your party search :)". Event `roster.party-search` was logged. Warriors and the Hunter (unticked) never answered; 0 hook failures. The switch-off case was not run (it needs a restart). |
+| L2 Bots out of the search | Not observable live (an invite to a bot leaves no trace); unit-tested. |
+| L3 Card records | **PASS.** "KPQ: cleared 1 of 6" (Casse, out card), "KPQ: cleared 2 of 11" (Rurik, bench card); HPQ with 2 runs shows no line. |
+| L4 My lineups | **PASS.** "Your PQ lineup: Kestrel, Halvard, Casse, Lioren and IceCookie." wrote 5 rows. Calling it gave "Kestrel is on the way; Rurik heads back to camp." |
+| L5 Who should come along? | **PASS.** "HPQ: you, Casse, Kestrel and Pell". "Call Pell for HPQ" gave "Pell is on the way; Lioren heads back to camp."; Casse and Kestrel stayed. No KPQ line (owner Lv50). |
+| L6 Errand rows | Not run live (no companion was on an errand); unit-tested. |
+| L7 Zero drift | **PASS.** Audit 32 runs, drift 0, repairs 0, 0 ERROR lines. |
+
+Window titles on these pages are lowercase ("who should come along?") when opened from a card, where the companion speaks. From the Roster book, the player's notes speak with capitals.
+
+## Buddy friends (branch `feat/companion-buddies`, on `8523bfcc6`)
+- **`0e25fd0a7`, always on:** every bot shows online in its buddies' lists while it is in the world and offline when it is not.
+  - `CosmicMapGateway.addWorldPlayer` sends the online notice.
+  - `Client.disconnectInternal` sends the offline notice for a bot, because forceDisconnect skipped the stock one.
+  - The duplicate notices in `PresenceScheduler` are removed.
+- **`6de25dd54`, companion requests:**
+  - A Resident at friendship level 4 ("Friend") asks to be buddies. Its bond flag `buddy.asked` stops a second request.
+  - A hired hand asks after 30 minutes in the player's party (`living_acquaintance`).
+  - Both happen once, while both are online.
+  - Every bot request is now two-sided (`BuddyRequests`: the bot lists the player first). Citizens' requests use it too.
+  - An accept puts the player's own companion in "Crew" (`LivingWorldHooks.buddyGroup`).
+  - Switch: `living_world.COMPANION_BUDDY_REQUESTS`, off until its live check passes.
+
+## Open
+- Lineup suggestions in the Lakelis/Tory proposals wait for the LPQ/EPQ desk merge.
+- Companions never speak in Maple Messenger.
