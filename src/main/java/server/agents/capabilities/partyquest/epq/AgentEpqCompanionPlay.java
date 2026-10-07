@@ -498,6 +498,14 @@ final class AgentEpqCompanionPlay {
         return leader + ", drop the marble by the fountain. exp for everyone, and a fragment on the way out.";
     }
 
+    /**
+     * E17m: the golem's marble has lain outside the fountain's area a while with the leader on the reward map (it never
+     * fires the fountain there).
+     */
+    static String fountainMissLine(String leader) {
+        return leader + ", the marble has to land right in the fountain. pick it up and try again.";
+    }
+
     /** E17c: the first companion to take east00. */
     static final String SEE_YOU = "see you outside!";
 
@@ -548,7 +556,7 @@ final class AgentEpqCompanionPlay {
                 stoneNudgeLine(leader), STONE_RECOLLECTED, stoneHeldLine(leader), LEAVING_STONE, DRINKING_UP,
                 altarReadyLine(leader), altarNudgeLine(leader), stoneOnTheFloorLine(leader), clearedLine(leader),
                 clearedLeaderDownLine(leader), golemMarbleLine(leader), GOLEM_MARBLE_TAKEN, WAIT_OUTSIDE,
-                FOUNTAIN_DROPPED, fountainHintLine(leader), SEE_YOU));
+                FOUNTAIN_DROPPED, fountainHintLine(leader), fountainMissLine(leader), SEE_YOU));
         lines.addAll(atFeetLines(leader));
         lines.add(memberLeftLine(name, 4));
         lines.add(memberLeftLine(name, 5));

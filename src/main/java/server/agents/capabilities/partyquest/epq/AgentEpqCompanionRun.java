@@ -928,8 +928,9 @@ final class AgentEpqCompanionRun {
      * dropped in its area fires it 5 s later (52000 EXP to everyone on the map), and east00 then gives each leaver an
      * Altaire Fragment. A companion holding the marble drops it there itself (E17a); the others wait while a marble
      * lies in the fountain, while another companion holds one, or while one lies elsewhere or in the leader's bag with
-     * him on the map (E17b once when he holds it), up to FOUNTAIN_WAIT_MS from the reward's start. Then, or once the
-     * fountain fired, they take east00 (E17c once). Never a hit on the fountain.
+     * him on the map (E17b once when he holds it; E17m once when one has lain outside the fountain LEADER_HINT_MS), up
+     * to FOUNTAIN_WAIT_MS from the reward's start. Then, or once the fountain fired, they take east00 (E17c once). Never
+     * a hit on the fountain.
      */
     static void reward(AgentEpqSession session, AgentRuntimeEntry entry, Character agent, AgentEpqMemberState member,
                        long nowMs) {
@@ -977,6 +978,11 @@ final class AgentEpqCompanionRun {
                 if (leaderHolds) {
                     coordinate(session, agent, "fountain-hint",
                             AgentEpqCompanionPlay.fountainHintLine(leader.getName()));
+                }
+                // Review B: a marble outside the fountain's area never fires it; tell him once, as E14m at the altar.
+                if (heldFor(session, "fountain-miss", leaderHere && lyingElsewhere, nowMs)) {
+                    coordinate(session, agent, "fountain-miss",
+                            AgentEpqCompanionPlay.fountainMissLine(leader.getName()));
                 }
             }
             default -> {

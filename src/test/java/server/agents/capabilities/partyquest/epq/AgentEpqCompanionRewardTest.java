@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -136,6 +137,42 @@ class AgentEpqCompanionRewardTest {
 
         tick(session, tobi, REWARD_AT + 45_000L);
         verify(run.epq).enterPortal(tobi, 1);
+    }
+
+    /**
+     * Review B: a golem's marble lying outside the fountain with the leader on the map never fires it; a companion
+     * tells him once, after LEADER_HINT_MS, while they still wait.
+     */
+    @Test
+    void aMarbleOutsideTheFountainIsPointedOutOnce() {
+        AgentEpqSession session = companionRun();
+        run.drop(MARBLE, 1, new Point(500, 150), true, ben.getId(), 2_000L);
+        String line = "Ben, the marble has to land right in the fountain. pick it up and try again.";
+
+        tick(session, tobi, 3_000L);
+        tick(session, tobi, 3_000L + AgentEpqCompanionRun.LEADER_HINT_MS - 1L);
+        verify(run.packets, never()).broadcastChatText(any(), eq(line), anyBoolean(), anyInt());
+
+        tick(session, tobi, 3_000L + AgentEpqCompanionRun.LEADER_HINT_MS);
+        tick(session, una, 4_000L + AgentEpqCompanionRun.LEADER_HINT_MS);
+
+        said(tobi, line);
+        verify(run.packets, times(1)).broadcastChatText(any(), eq(line), anyBoolean(), anyInt());
+        verify(run.epq, never()).enterPortal(any(), anyInt());
+    }
+
+    /** Review B: a marble lying in the fountain is no miss. */
+    @Test
+    void aMarbleInTheFountainIsNoMiss() {
+        AgentEpqSession session = companionRun();
+        run.drop(MARBLE, 1, FOUNTAIN, true, ben.getId(), 2_000L);
+
+        tick(session, tobi, 3_000L);
+        tick(session, tobi, 3_000L + AgentEpqCompanionRun.LEADER_HINT_MS);
+
+        verify(run.packets, never()).broadcastChatText(any(),
+                eq("Ben, the marble has to land right in the fountain. pick it up and try again."), anyBoolean(),
+                anyInt());
     }
 
     @Test

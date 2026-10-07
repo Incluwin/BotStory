@@ -1212,7 +1212,7 @@ tuning:
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_AT_EXIT_PX: '150'
     # Values: 5000-60000 milliseconds. Recommended: 20000 so a leader who is looking around is not rushed.
     # Purpose: Sets how long a companion waits on the leader (at an exit, or while he holds a stage item) before it says one short hint.
-    # Technical: AgentEpqCompanionRun keeps one hint clock per kind on the session (exit, diluted poison, marbles, stone, altar); each hint is said once per run through the coordination chat. AgentEpqHandOver also uses it as the window in which one hand-over line (at his feet, by the NPC, picked back up) speaks for every carrier converging on the leader; the twenty line is always said.
+    # Technical: AgentEpqCompanionRun keeps one hint clock per kind on the session (exit, diluted poison, marbles, stone, altar, a golem's marble outside the fountain); each hint is said once per run through the coordination chat. AgentEpqHandOver also uses it as the window in which one hand-over line (at his feet, by the NPC, picked back up) speaks for every carrier converging on the leader; the twenty line is always said.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_HINT_MS: '20000'
     # Values: 1-20 marbles. Recommended: 5 so the leader gets the marbles in four or so trips, not one by one.
     # Purpose: Sets how many monster marbles a companion holds before it brings them to a leader who is near.
