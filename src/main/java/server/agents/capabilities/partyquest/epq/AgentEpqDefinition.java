@@ -38,6 +38,10 @@ public final class AgentEpqDefinition {
     public static final int STAGE_ONE_MOB = 9_300_172;
     public static final int STAGE_TWO_MOB = 9_300_173;
     public static final int POISON_FLOWER = 9_300_175;
+    /** Poison Golem, Charged Poison Golem and Super-Charged Poison Golem (Mob.wz): one revives into the next. */
+    public static final int POISON_GOLEM = 9_300_180;
+    public static final int CHARGED_POISON_GOLEM = 9_300_181;
+    public static final int SUPER_CHARGED_POISON_GOLEM = 9_300_182;
     public static final Set<Integer> BOSS_MOBS = Set.of(9_300_180, 9_300_181, 9_300_182);
     public static final Set<Integer> BOSS_ADDS = Set.of(9_300_177, 9_300_178, 9_300_179);
     public static final Set<Integer> BOSS_COMBAT_TARGETS = Set.of(
