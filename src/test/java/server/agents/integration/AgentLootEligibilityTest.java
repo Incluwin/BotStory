@@ -105,9 +105,10 @@ class AgentLootEligibilityTest {
     }
     @Test
     void shouldDelayTargetingBotInventoryDropsForFifteenSeconds() {
+        long now = System.currentTimeMillis(); // one clock read: a slow run must not age the drop past 15 s
         MapleMap map = mock(MapleMap.class);
         Character bot = mock(Character.class);
-        MapItem drop = mockLoot(1, 99, true, System.currentTimeMillis() - 14_000L);
+        MapItem drop = mockLoot(1, 99, true, now - 14_000L);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, mock(Character.class), null);
         Character dropBotOwner = mock(Character.class);
 
@@ -119,15 +120,16 @@ class AgentLootEligibilityTest {
             lifecycle.when(() -> AgentSessionLifecycleRuntime.activeLeaderByAgentCharacterId(99))
                     .thenReturn(dropBotOwner);
 
-            assertFalse(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, System.currentTimeMillis()));
+            assertFalse(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, now));
         }
     }
 
     @Test
     void shouldAllowTargetingBotInventoryDropsAfterFifteenSeconds() {
+        long now = System.currentTimeMillis();
         MapleMap map = mock(MapleMap.class);
         Character bot = mock(Character.class);
-        MapItem drop = mockLoot(1, 99, true, System.currentTimeMillis() - 16_000L);
+        MapItem drop = mockLoot(1, 99, true, now - 16_000L);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, mock(Character.class), null);
         Character dropBotOwner = mock(Character.class);
 
@@ -139,16 +141,17 @@ class AgentLootEligibilityTest {
             lifecycle.when(() -> AgentSessionLifecycleRuntime.activeLeaderByAgentCharacterId(99))
                     .thenReturn(dropBotOwner);
 
-            assertTrue(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, System.currentTimeMillis()));
+            assertTrue(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, now));
         }
     }
 
     @Test
     void shouldDelayTargetingOwnBotInventoryDropsForFifteenSeconds() {
+        long now = System.currentTimeMillis(); // one clock read: a slow run must not age the drop past 15 s
         MapleMap map = mock(MapleMap.class);
         Character bot = mock(Character.class);
         Character owner = mock(Character.class);
-        MapItem drop = mockLoot(1, 88, true, System.currentTimeMillis() - 14_000L);
+        MapItem drop = mockLoot(1, 88, true, now - 14_000L);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, owner, null);
 
         when(bot.getId()).thenReturn(88);
@@ -159,15 +162,16 @@ class AgentLootEligibilityTest {
             lifecycle.when(() -> AgentSessionLifecycleRuntime.activeLeaderByAgentCharacterId(88))
                     .thenReturn(owner);
 
-            assertFalse(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, System.currentTimeMillis()));
+            assertFalse(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, now));
         }
     }
 
     @Test
     void shouldKeepExistingThreeSecondTargetDelayForHumanInventoryDrops() {
+        long now = System.currentTimeMillis();
         MapleMap map = mock(MapleMap.class);
         Character bot = mock(Character.class);
-        MapItem drop = mockLoot(1, 77, true, System.currentTimeMillis() - 4_000L);
+        MapItem drop = mockLoot(1, 77, true, now - 4_000L);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, mock(Character.class), null);
 
         when(bot.getId()).thenReturn(88);
@@ -178,23 +182,24 @@ class AgentLootEligibilityTest {
             lifecycle.when(() -> AgentSessionLifecycleRuntime.activeLeaderByAgentCharacterId(77))
                     .thenReturn(null);
 
-            assertTrue(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, System.currentTimeMillis()));
+            assertTrue(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, now));
         }
     }
 
     @Test
     void shouldAllowMobLootWhenBasePickupEligibilityAllowsIt() {
+        long now = System.currentTimeMillis();
         MapleMap map = mock(MapleMap.class);
         Character bot = mock(Character.class);
         Character owner = mock(Character.class);
-        MapItem drop = mockLoot(1, 77, false, System.currentTimeMillis() - 16_000L);
+        MapItem drop = mockLoot(1, 77, false, now - 16_000L);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, owner, null);
 
         when(bot.getId()).thenReturn(88);
         when(owner.getId()).thenReturn(10);
         doReturn(drop).when(map).getMapObject(1);
 
-        assertTrue(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, System.currentTimeMillis()));
+        assertTrue(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, now));
     }
 
     @Test
@@ -218,10 +223,11 @@ class AgentLootEligibilityTest {
 
     @Test
     void shouldRejectMobLootWhenBasePickupEligibilityRejectsIt() {
+        long now = System.currentTimeMillis();
         MapleMap map = mock(MapleMap.class);
         Character bot = mock(Character.class);
         Character owner = mock(Character.class);
-        MapItem drop = mockLoot(1, 77, false, System.currentTimeMillis() - 16_000L);
+        MapItem drop = mockLoot(1, 77, false, now - 16_000L);
         AgentRuntimeEntry entry = new AgentRuntimeEntry(bot, owner, null);
 
         when(bot.getId()).thenReturn(88);
@@ -229,7 +235,7 @@ class AgentLootEligibilityTest {
         when(drop.canBePickedBy(bot)).thenReturn(false);
         doReturn(drop).when(map).getMapObject(1);
 
-        assertFalse(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, System.currentTimeMillis()));
+        assertFalse(AgentLootEligibility.canBotTargetLoot(entry, bot, map, drop, now));
     }
 
     /** HPQ decides a rice cake by the drop itself, so a companion-run collector can leave a hand-over lying. */
