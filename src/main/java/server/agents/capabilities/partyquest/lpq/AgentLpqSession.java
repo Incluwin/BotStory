@@ -83,6 +83,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private boolean stage6SequenceAnnounced;
     private boolean stage2ScoutPlanAnnounced;
     private boolean stage2TrapClearAnnounced;
+    private long stage2TrapClearAtMs;
     private Phase assignmentsCalculatedPhase;
     private long bonusDrainedAtMs;
     private long readyAtMs;
@@ -458,8 +459,11 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     }
 
     public synchronized boolean stage2TrapClearAnnounced() { return stage2TrapClearAnnounced; }
+    /** When the scouts' trap clear was announced (0 before it). */
+    public synchronized long stage2TrapClearAtMs() { return stage2TrapClearAtMs; }
     public synchronized void markStage2TrapClearAnnounced(long nowMs) {
         stage2TrapClearAnnounced = true;
+        stage2TrapClearAtMs = nowMs;
         markProgress(nowMs);
     }
 

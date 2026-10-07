@@ -3678,13 +3678,16 @@ final class AgentLpqCoordinator {
         }
         if (!session.stage2TrapClearAnnounced()) return;
 
+        Character porter = stageTwoPorter(session, scoutIds, stageOneMap);
         for (AgentLpqMemberState member : session.members()) {
             if (scoutIds.contains(member.characterId())) continue;
             Character participant = character(member.characterId());
             if (participant == null || participant.getMapId() != stageOneMap) continue;
             if (member.memberType() == AgentLpqMemberState.MemberType.AGENT) {
                 AgentRuntimeEntry participantEntry = entry(member.characterId());
-                if (participantEntry != null) enterStagePortalWithRecovery(
+                if (participantEntry != null && participant == porter) {
+                    waitAtStageTwoPortal(session, participantEntry, participant, stageTwoMap, nowMs);
+                } else if (participantEntry != null) enterStagePortalWithRecovery(
                         session, member, participantEntry, participant, stageTwoMap,
                         nowMs, "Stage 2 party entry");
             } else if (nowMs >= member.nextActionAtMs()) {
@@ -3692,6 +3695,45 @@ final class AgentLpqCoordinator {
                 if (clearLine != null) participant.dropMessage(6, clearLine);
                 member.deferUntil(nowMs + 5_000L);
             }
+        }
+    }
+
+    /**
+     * A companion run whose leader is still on stage 1 after the trap clear keeps one companion with him: the first
+     * companion standing on his map (never a scout). Null for a stock run, or once he has gone in.
+     */
+    private static Character stageTwoPorter(AgentLpqSession session, List<Integer> scoutIds, int stageOneMap) {
+        if (!session.companionAdopted()) return null;
+        Character leader = character(session.eventLeaderId());
+        if (leader == null || leader.getMapId() != stageOneMap) return null;
+        Character porter = narrator(session, leader);
+        return porter == null || scoutIds.contains(porter.getId()) ? null : porter;
+    }
+
+    /**
+     * The companion that stays with the leader walks to the stage-2 portal and waits there (it follows him in once he
+     * has gone, as a laggard); LEADER_NUDGE_MS after the trap clear, with him still away from the portal, it calls him
+     * once (N1).
+     */
+    private static void waitAtStageTwoPortal(AgentLpqSession session, AgentRuntimeEntry entry, Character porter,
+                                             int stageTwoMap, long nowMs) {
+        Integer portalId = portalIdTo(porter, stageTwoMap);
+        Point portal = portalId == null ? null : ACTIONS.portalPosition(porter, portalId);
+        if (portal == null) return;
+        if (!near(porter.getPosition(), portal, INTERACTION_RADIUS)) {
+            // The authored approach enterPortalTo walks, one leg at a time, without going through.
+            Point waypoint = AgentLpqExitRoutePolicy.nextWaypoint(porter.getMapId(), stageTwoMap,
+                    porter.getPosition(), portal);
+            if (waypoint != null && near(porter.getPosition(), waypoint, INTERACTION_RADIUS)) {
+                waypoint = AgentLpqExitRoutePolicy.nextWaypoint(porter.getMapId(), stageTwoMap, waypoint, portal);
+            }
+            ACTIONS.navigate(entry, waypoint != null ? waypoint : portal, true);
+            return;
+        }
+        Character leader = character(session.eventLeaderId());
+        if (leader != null && nowMs - session.stage2TrapClearAtMs() >= LEADER_NUDGE_MS
+                && !near(leader.getPosition(), portal, INTERACTION_RADIUS)) {
+            coordinate(session, porter, "s1-portal", AgentLpqCompanionPlay.portalOpenLine(leader.getName()));
         }
     }
 
