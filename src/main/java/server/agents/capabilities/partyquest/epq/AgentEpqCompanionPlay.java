@@ -1,6 +1,8 @@
 package server.agents.capabilities.partyquest.epq;
 
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A companion run's EPQ play, kept apart from the coordinator so each rule and every line is pinned on its own: when
@@ -476,5 +478,37 @@ final class AgentEpqCompanionPlay {
     /** A decided leave goes once no companion in the event holds the golem's marble, or its hand-over ran out of time. */
     static boolean leaveGoes(int holders, long sinceDecidedMs, long handOverTimeoutMs) {
         return holders <= 0 || sinceDecidedMs >= handOverTimeoutMs;
+    }
+
+    // ---- every line, for the lint ----
+
+    /**
+     * Every companion line this class says, each builder with every variant, for {@code leader} as the run's leader and
+     * {@code name} as a companion's name (AgentEpqCompanionLinesTest lints them all).
+     */
+    static List<String> sampleLines(String leader, String name) {
+        List<String> lines = new ArrayList<>(List.of(exitNudgeLine(leader), TREES, TREES_DONE, BOTTLES,
+                bottleHintLine(leader), FIRST_POISON, HALFWAY, ONE_MORE, THORNS_GONE, MAZE, MAZE_FOUND, FLOWERS,
+                marblesNudgeLine(leader), MARBLES_RECOLLECTED, MARBLES_HELD, marblesHandInLine(leader),
+                marblesByEllinLine(leader), LEAVING_MARBLES, CLIMB, STONE_FOUND, stoneBySpriteLine(leader),
+                stoneNudgeLine(leader), STONE_RECOLLECTED, stoneHeldLine(leader), LEAVING_STONE, DRINKING_UP,
+                altarReadyLine(leader), altarNudgeLine(leader), stoneOnTheFloorLine(leader), clearedLine(leader),
+                clearedLeaderDownLine(leader), golemMarbleLine(leader), GOLEM_MARBLE_TAKEN, WAIT_OUTSIDE,
+                FOUNTAIN_DROPPED, fountainHintLine(leader), SEE_YOU));
+        lines.addAll(atFeetLines(leader));
+        for (int golem : AgentEpqDefinition.BOSS_MOBS.stream().sorted().toList()) lines.add(golemLine(golem));
+        return lines;
+    }
+
+    /** The lines that tell the leader where a hand-over lies (E9, E9t, E13, E16h), both forms each. */
+    static List<String> atFeetLines(String leader) {
+        List<String> lines = new ArrayList<>();
+        for (boolean atHisFeet : new boolean[] {true, false}) {
+            lines.add(marblesAtFeetLine(leader, atHisFeet));
+            lines.add(marblesTwentyLine(leader, atHisFeet));
+            lines.add(stoneAtFeetLine(leader, atHisFeet));
+            lines.add(golemMarbleHandedLine(leader, atHisFeet));
+        }
+        return lines;
     }
 }
