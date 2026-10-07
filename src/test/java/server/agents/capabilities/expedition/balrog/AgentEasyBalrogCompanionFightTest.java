@@ -6,8 +6,15 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import server.agents.capabilities.combat.AgentAttackExecutionProvider;
+import server.agents.capabilities.combat.AgentCombatBuffRuntime;
 import server.agents.capabilities.expedition.AgentBossFight;
 import server.agents.field.AgentBalrogTestFixtureService;
+import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
+import server.agents.integration.PrimitiveCapabilityGateway;
+import server.agents.perception.AgentMapPerception;
+import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
+import server.maps.MapleMap;
 
 import java.util.List;
 
@@ -18,9 +25,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /** Companions fight Easy Balrog with the scenario's combat policy but none of the fixture contract. */
 class AgentEasyBalrogCompanionFightTest {
+    private static final int POWER_ELIXIR = 2_000_005;
 
     @Test
     void companionFightHasNoFixtureRosterAndRefusesFixturePreparation() {
@@ -108,6 +119,50 @@ class AgentEasyBalrogCompanionFightTest {
     void onlyTheFixtureRosterDrinksPowerElixirs() {
         assertFalse(AgentEasyBalrogScenario.forCompanions().usesElixir());
         assertTrue(new AgentEasyBalrogScenario(1234L).usesElixir());
+    }
+
+    @Test
+    void companionAtLowHpLeavesItsOwnersPowerElixirsAloneInTheFightTick() {
+        tickOneLowHpMember(AgentEasyBalrogScenario.forCompanions(), 0);
+    }
+
+    @Test
+    void fixtureMemberAtLowHpStillDrinksAPowerElixirInTheFightTick() {
+        tickOneLowHpMember(new AgentEasyBalrogScenario(1234L), 1);
+    }
+
+    /**
+     * One adopted member at 10/100 HP with no mobs in sight runs one fight tick. nowMs -1 skips the
+     * vitals log. The survival buff runs either way; the Power Elixir only for the fixture roster.
+     */
+    private static void tickOneLowHpMember(AgentEasyBalrogScenario fight, int expectedElixirs) {
+        Character member = mock(Character.class);
+        MapleMap map = mock(MapleMap.class);
+        AgentRuntimeEntry entry = mock(AgentRuntimeEntry.class);
+        PrimitiveCapabilityGateway gateway = mock(PrimitiveCapabilityGateway.class);
+        when(member.getId()).thenReturn(7001);
+        when(member.getMap()).thenReturn(map);
+        when(member.getHp()).thenReturn(10);
+        when(member.getCurrentMaxHp()).thenReturn(100);
+        when(member.getMp()).thenReturn(100);
+        when(member.getCurrentMaxMp()).thenReturn(100);
+
+        try (MockedStatic<AgentPrimitiveCapabilityGatewayRuntime> primitives =
+                     Mockito.mockStatic(AgentPrimitiveCapabilityGatewayRuntime.class);
+             MockedStatic<AgentRuntimeRegistry> registry = Mockito.mockStatic(AgentRuntimeRegistry.class);
+             MockedStatic<AgentCombatBuffRuntime> buffs = Mockito.mockStatic(AgentCombatBuffRuntime.class);
+             MockedStatic<AgentMapPerception> perception = Mockito.mockStatic(AgentMapPerception.class)) {
+            primitives.when(AgentPrimitiveCapabilityGatewayRuntime::gateway).thenReturn(gateway);
+            registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(7001)).thenReturn(entry);
+            perception.when(() -> AgentMapPerception.monsters(map)).thenReturn(List.of());
+
+            fight.adopt(7001, 0);
+            fight.tick(List.of(member), null, -1L);
+
+            buffs.verify(() -> AgentCombatBuffRuntime.tryCastCriticalSurvivalBuff(entry, member));
+            verify(gateway, times(expectedElixirs)).useItem(member, POWER_ELIXIR);
+            verify(gateway).stop(entry);
+        }
     }
 
     @Test
