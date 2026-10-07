@@ -34,8 +34,11 @@ import java.util.Set;
  */
 final class AgentOpqCoordinator {
     private static final Logger log = LoggerFactory.getLogger(AgentOpqCoordinator.class);
-    private static final PrimitiveCapabilityGateway ACTIONS = AgentPrimitiveCapabilityGatewayRuntime.gateway();
-    private static final PartyQuestGateway OPQ = AgentPartyQuestGatewayRuntime.partyQuest();
+    // Resolved per call (AgentOpqGateways): each is one adapter singleton, and a test can stand in for it.
+    private static final PrimitiveCapabilityGateway ACTIONS = AgentOpqGateways.perCall(
+            PrimitiveCapabilityGateway.class, AgentPrimitiveCapabilityGatewayRuntime::gateway);
+    private static final PartyQuestGateway OPQ = AgentOpqGateways.perCall(
+            PartyQuestGateway.class, AgentPartyQuestGatewayRuntime::partyQuest);
     private static final long ACTION_RETRY_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.opq.AgentOpqCoordinator.ACTION_RETRY_MS");
     private static final long PHASE_TIMEOUT_MS = config.AgentTuning.longValue(
