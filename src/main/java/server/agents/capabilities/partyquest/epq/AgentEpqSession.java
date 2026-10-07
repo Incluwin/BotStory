@@ -404,13 +404,14 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     }
 
     /**
-     * Marks the run's full-rate hold on this member (Step 2.12), with whether full rate was required before it; false
-     * once the run's release began (it takes no hold back). A hold already marked keeps its first answer.
+     * Marks the run's full-rate hold on this member (Step 2.12), with whether full rate was required before it, and
+     * returns the marked answer (a hold already marked keeps its first one); null once the run's release began (it
+     * takes no hold).
      */
-    synchronized boolean holdFullRate(int memberId, boolean requiredBefore) {
-        if (terminating) return false;
-        fullRateHolds.putIfAbsent(memberId, requiredBefore);
-        return true;
+    synchronized Boolean holdFullRate(int memberId, boolean requiredBefore) {
+        if (terminating) return null;
+        Boolean marked = fullRateHolds.putIfAbsent(memberId, requiredBefore);
+        return marked == null ? requiredBefore : marked;
     }
 
     /** Ends the run's hold on this member: whether full rate was required before it, or null when none was held. */

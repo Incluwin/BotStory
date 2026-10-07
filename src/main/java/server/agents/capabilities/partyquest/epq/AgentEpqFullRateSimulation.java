@@ -21,10 +21,16 @@ final class AgentEpqFullRateSimulation {
         AgentSimulationState state = entry == null ? null : entry.simulationState();
         if (session == null || state == null) return;
         if (wanted) {
-            if (!session.holdFullRate(memberId, state.fullRateSimulationRequired())) return;
+            Boolean requiredBefore = session.holdFullRate(memberId, state.fullRateSimulationRequired());
+            if (requiredBefore == null) return;
             state.requireFullRateSimulation();
-            // A release that began meanwhile has already let go of the run's holds: take this one back.
-            if (session.terminationStarted()) apply(session, memberId, entry, false);
+            // A release that began meanwhile may already have let go of the run's holds, this mark included (its
+            // releaseAll can run whole between the mark and the line above): take this one back by the stored answer,
+            // whether or not the mark is still there.
+            if (session.terminationStarted()) {
+                session.releaseFullRate(memberId);
+                if (!requiredBefore) state.clearFullRateSimulationRequirement();
+            }
         } else {
             Boolean wasRequired = session.releaseFullRate(memberId);
             if (wasRequired != null && !wasRequired) state.clearFullRateSimulationRequirement();

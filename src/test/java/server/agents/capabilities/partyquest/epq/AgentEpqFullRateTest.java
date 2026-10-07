@@ -8,9 +8,12 @@ import server.agents.runtime.simulation.AgentSimulationState;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 /**
@@ -105,6 +108,48 @@ class AgentEpqFullRateTest {
         AgentEpqFullRateSimulation.apply(session, mira.getId(), run.entry(mira), true);
 
         assertFalse(fullRate(mira));
+    }
+
+    /**
+     * Review A: another thread's release runs start to end between the run's hold mark and the state's requirement
+     * (its releaseAll finds the mark and clears a requirement not yet set); the hold taken just after is taken back.
+     */
+    @Test
+    void aReleaseThatRunsInsideTheHoldWindowLeavesNoRequirementBehind() {
+        AgentSimulationState state = spy(new AgentSimulationState());
+        when(run.entry(mira).simulationState()).thenReturn(state);
+        AgentEpqSession session = session(true);
+        AtomicBoolean once = new AtomicBoolean();
+        doAnswer(call -> {
+            if (once.compareAndSet(false, true)) {
+                AgentEpqTerminationService.release(session, "stopped by operator", 3_000L, true);
+            }
+            return call.callRealMethod();
+        }).when(state).requireFullRateSimulation();
+
+        AgentEpqFullRateSimulation.apply(session, mira.getId(), run.entry(mira), true);
+
+        assertFalse(state.fullRateSimulationRequired(), "the run ended: its hold must be gone");
+    }
+
+    /** Review A: the take-back never clears a requirement something else set before the run's hold. */
+    @Test
+    void aTakeBackInsideTheHoldWindowKeepsARequirementSomethingElseSet() {
+        AgentSimulationState state = spy(new AgentSimulationState());
+        state.requireFullRateSimulation();
+        when(run.entry(mira).simulationState()).thenReturn(state);
+        AgentEpqSession session = session(true);
+        AtomicBoolean once = new AtomicBoolean();
+        doAnswer(call -> {
+            if (once.compareAndSet(false, true)) {
+                AgentEpqTerminationService.release(session, "stopped by operator", 3_000L, true);
+            }
+            return call.callRealMethod();
+        }).when(state).requireFullRateSimulation();
+
+        AgentEpqFullRateSimulation.apply(session, mira.getId(), run.entry(mira), true);
+
+        assertTrue(state.fullRateSimulationRequired(), "something else still wants it");
     }
 
     @Test
