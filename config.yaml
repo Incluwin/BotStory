@@ -939,6 +939,20 @@ living_world:
     # Timings: agent-engine.yaml AgentBossRunSession.
     COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
+    # Bench allies and second owners in boss expeditions (P7 Part B, 2026-10-07): for each type listed here and in
+    # COMPANION_BOSS_ENABLED_TYPES, the entry NPC also offers an owner on her list "Call allies from my bench...".
+    # Up to ROSTER_MAX - 5 of their benched companions travel down (the recall ETA, at most RECALL_MAX_ETA_MS on
+    # Victoria), come in at the top of her stairs, sign up, fight in their own bot party and go back to their bench
+    # duty after the run. The server holds at most EXPEDITION_BURST_MAX of them at once, split evenly between owners.
+    # Empty = the kill switch: Mu Young's window and every boss run stay as Part A built them.
+    # OWNERS_MAX: owners whose companions may sign up for one expedition (1 = Part A's one-owner rule).
+    # HUMAN_SEATS: seats of the list's 30 that companions always leave free for players.
+    # ALLY_WALK_OUT_MS: how long an ally walks to the room's way out after the run (Mu Young to the outPerrion portal
+    # is about 1,300 px) before it goes where it stands.
+    COMPANION_BOSS_ALLY_TYPES: ""
+    COMPANION_BOSS_OWNERS_MAX: 1
+    COMPANION_BOSS_HUMAN_SEATS: 2
+    COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 
