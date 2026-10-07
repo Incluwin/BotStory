@@ -31,6 +31,7 @@ import server.agents.runtime.activity.AgentActivityHostState;
 import server.maps.MapleMap;
 
 import java.util.List;
+import java.util.function.LongSupplier;
 
 /**
  * The standing readiness duty on the Agent tick (AgentSupplyReadiness). An Agent the host gave a duty looks at its
@@ -239,22 +240,96 @@ public final class AgentSupplyReadinessRuntime {
             return new Assessment(Assessed.CANNOT_AFFORD, stop, hops, (int) Math.max(0L, spendable),
                     (int) Math.min(Integer.MAX_VALUE, spend - spendable));
         }
-        if (freeUseSlots(agent) < useSlotsNeeded(agent, shop, activity, shortfall)) {
+        if (freeUseSlots(agent) < useSlotsNeeded(agent, shop, activity, shortfall, spendable - ammo)) {
             return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0);
         }
         return new Assessment(Assessed.GO, stop, hops, (int) Math.min(Integer.MAX_VALUE, spendable), 0);
     }
 
     /**
-     * The free Use slots a readiness trip needs: one for each short kind it carries no stack of that this shop
-     * sells and that still has room (bought potions stack onto it), plus, when it needs any, the one a party quest
-     * keeps free for its items and rewards (KPQ admission refuses a member without it).
+     * The free Use slots a readiness trip needs: for each short kind, its slots ({@link #slotsFor}: for a standard of
+     * more than one stack, one per stack of what it does not surely put on a carried stack; otherwise one unless it
+     * carries a stack of that kind this shop sells that still has room), plus, when it needs any, the one a party
+     * quest keeps free for its items and rewards (KPQ and EPQ admission refuse a member without it).
+     * {@code spendable}: what the counter has for potions (the purse less its wallet reserve and the ammo it buys
+     * first).
      */
     static int useSlotsNeeded(Character agent, Shop shop, AgentSupplyReadiness.Activity activity,
-                              AgentSupplyReadiness.Shortfall shortfall) {
-        int fresh = (shortfall.hp() > 0 && !AgentShopService.carriesStackWithRoom(agent, shop, true) ? 1 : 0)
-                + (shortfall.mp() > 0 && !AgentShopService.carriesStackWithRoom(agent, shop, false) ? 1 : 0);
+                              AgentSupplyReadiness.Shortfall shortfall, long spendable) {
+        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
+        int fresh = slotsFor(agent, shop, true, shortfall.hp(), standard.hp(),
+                () -> hpFloorBudget(agent, shop, shortfall, spendable))
+                + slotsFor(agent, shop, false, shortfall.mp(), standard.mp(),
+                () -> mpFloorBudget(agent, shop, shortfall, spendable));
         return fresh == 0 ? 0 : fresh + (activity != null ? 1 : 0); // every activity is a party quest
+    }
+
+    /**
+     * {@link #slotsFor(int, boolean, int, int, int)} for one kind at this shop; looks at the shop only when short, and
+     * at the carried stacks' room only for a standard of more than one stack: at the last free Use slot the least
+     * room of the stacks of the kind carried (the counter buys onto one of them, AgentShopService.floorItem), with
+     * more slots free the room of the stacks of the potion it surely buys within the kind's {@code budget}
+     * (AgentShopService.readinessPickRoom).
+     */
+    private static int slotsFor(Character agent, Shop shop, boolean forHp, int count, int standard,
+                                LongSupplier budget) {
+        if (count <= 0) {
+            return 0;
+        }
+        int perSlot = AgentShopService.potionStackSize(agent, shop, forHp);
+        boolean perStack = perSlot > 0 && standard > perSlot;
+        int room = !perStack ? 0 : freeUseSlots(agent) <= 1
+                ? AgentShopService.carriedStackRoom(agent, shop, forHp)
+                : AgentShopService.readinessPickRoom(agent, shop, forHp, count, budget.getAsLong());
+        return slotsFor(count, !perStack && AgentShopService.carriesStackWithRoom(agent, shop, forHp), perSlot,
+                standard, room);
+    }
+
+    /**
+     * What the counter's first HP pass may spend (AgentShopService.buyReadinessFloor): the potion money less what
+     * the mana potions it lacks cost at their cheapest.
+     */
+    private static long hpFloorBudget(Character agent, Shop shop, AgentSupplyReadiness.Shortfall shortfall,
+                                      long spendable) {
+        long heldForMana = shortfall.mp() <= 0 ? 0L
+                : (long) shortfall.mp() * Math.max(0, AgentShopService.cheapestRecoveryPrice(agent, shop, false));
+        return Math.max(0L, spendable - heldForMana);
+    }
+
+    /**
+     * The least the counter's first MP pass has left: the potion money less what the HP pass spends, which is the
+     * HP coverage pick's whole count when that fits the HP budget (the pass then buys only that), else at most that
+     * budget.
+     */
+    private static long mpFloorBudget(Character agent, Shop shop, AgentSupplyReadiness.Shortfall shortfall,
+                                      long spendable) {
+        long hpSpend = 0L;
+        if (shortfall.hp() > 0) {
+            long hpBudget = hpFloorBudget(agent, shop, shortfall, spendable);
+            int price = AgentShopService.coveragePickPrice(agent, shop, true);
+            long coverage = (long) price * shortfall.hp();
+            hpSpend = price >= 0 && coverage <= hpBudget ? coverage : hpBudget;
+        }
+        return Math.max(0L, spendable - hpSpend);
+    }
+
+    /**
+     * The new Use slots {@code count} potions of one kind take. A {@code standard} of at most one stack
+     * ({@code perSlot} potions; 0: not known): one, or none when they go onto a carried stack with room. A larger
+     * standard: one per stack of what does not go onto carried stacks, where {@code room} is what the counter surely
+     * puts there (0: none, or not sure; a shortfall of one stack onto a stack with one free place needs a slot).
+     */
+    static int slotsFor(int count, boolean stackWithRoom, int perSlot, int standard, int room) {
+        if (count <= 0) {
+            return 0;
+        }
+        if (perSlot <= 0 || standard <= perSlot) {
+            return stackWithRoom ? 0 : 1;
+        }
+        if (count <= room) {
+            return 0;
+        }
+        return (count - room + perSlot - 1) / perSlot;
     }
 
     /**
@@ -355,8 +430,9 @@ public final class AgentSupplyReadinessRuntime {
 
     /**
      * A readiness trip given up: INTERRUPTED when its owner called it back; else SHORT_MESOS when what is left of the
-     * purse cannot buy what it still lacks at the supplier's cheapest potions, else SHORT_SPACE with no Use slot free,
-     * else INTERRUPTED; each sets its cooldown.
+     * purse cannot buy what it still lacks at the supplier's cheapest potions, else SHORT_SPACE with no Use slot free
+     * (or only the run's, where the counter held back a kind whose standard is more than one stack), else
+     * INTERRUPTED; each sets its cooldown.
      */
     static AgentSupplyReadiness.Outcome abandonedOutcome(AgentRuntimeEntry entry, Character agent,
                                                          AgentSupplyProcurementState execution, long nowMs) {
@@ -370,8 +446,9 @@ public final class AgentSupplyReadinessRuntime {
         int mesos = mesos(agent);
         int freeSlots = freeUseSlots(agent);
         long missing = 0L;
+        Shop shop = null;
         if (!shortfall.none() && execution.supplierNpcId() > 0) {
-            Shop shop = AgentShopGatewayRuntime.shop().findForNpc(execution.supplierNpcId());
+            shop = AgentShopGatewayRuntime.shop().findForNpc(execution.supplierNpcId());
             int hpPrice = shop == null || shortfall.hp() <= 0 ? 0 : AgentShopService.cheapestRecoveryPrice(agent, shop, true);
             int mpPrice = shop == null || shortfall.mp() <= 0 ? 0 : AgentShopService.cheapestRecoveryPrice(agent, shop, false);
             long needed = (long) shortfall.hp() * Math.max(0, hpPrice) + (long) shortfall.mp() * Math.max(0, mpPrice);
@@ -384,13 +461,30 @@ public final class AgentSupplyReadinessRuntime {
                     (int) Math.min(Integer.MAX_VALUE, missing), freeSlots, shortfall, agent.getMapId());
             return AgentSupplyReadiness.Outcome.SHORT_MESOS;
         }
-        if (!shortfall.none() && freeSlots == 0) {
+        if (!shortfall.none() && (freeSlots == 0
+                || freeSlots == 1 && heldAtTheRunsSlot(agent, shop, activityOf(entry), shortfall))) {
             state.cooldown(AgentSupplyReadinessState.Cooldown.SHORT_SPACE, until, mesos, 0, freeSlots, shortfall,
                     agent.getMapId());
             return AgentSupplyReadiness.Outcome.SHORT_SPACE;
         }
         cutShort(agent, state, origin, execution.supplierMapId(), nowMs);
         return AgentSupplyReadiness.Outcome.INTERRUPTED;
+    }
+
+    /**
+     * True when a kind it still lacks has a standard of more than one stack of the potions {@code shop} sells: the
+     * counter never fills the run's Use slot with it (AgentShopService.roomBesideTheRunsSlot), so a trip that ended
+     * with only that slot free ran out of room. False without a shop.
+     */
+    private static boolean heldAtTheRunsSlot(Character agent, Shop shop, AgentSupplyReadiness.Activity activity,
+                                             AgentSupplyReadiness.Shortfall shortfall) {
+        if (shop == null) {
+            return false;
+        }
+        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
+        int hpStack = shortfall.hp() > 0 ? AgentShopService.potionStackSize(agent, shop, true) : 0;
+        int mpStack = shortfall.mp() > 0 ? AgentShopService.potionStackSize(agent, shop, false) : 0;
+        return hpStack > 0 && standard.hp() > hpStack || mpStack > 0 && standard.mp() > mpStack;
     }
 
     /**

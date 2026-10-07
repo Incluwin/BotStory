@@ -410,9 +410,10 @@ public final class AgentShopService {
     /**
      * Accuracy and attack potions for the Agent's job, topped up only on a visit that happens anyway.
      * They are optional stock: each is capped at a share of the spare mesos, and a capped or failed
-     * purchase never counts as the visit's shortfall.
+     * purchase never counts as the visit's shortfall. They never take the Use slot a readiness trip of more than one
+     * stack keeps free for its run ({@link #buffRoomBesideTheRunsSlot}).
      */
-    private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyBuffConsumables(
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> buyBuffConsumables(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, int minimumMesoReserve) {
         Character bot = sequence.bot();
         Map<Integer, Integer> targets = AgentBuffConsumableSupplyPolicy.targets(
@@ -423,7 +424,11 @@ public final class AgentShopService {
             if (missing <= 0 || item == null) {
                 continue;
             }
-            AgentShopBuyReport report = buyFixedCostItem(bot, shop, item, missing, missing, minimumMesoReserve,
+            int quantity = Math.min(missing, buffRoomBesideTheRunsSlot(sequence, shop, item));
+            if (quantity <= 0) {
+                continue;
+            }
+            AgentShopBuyReport report = buyFixedCostItem(bot, shop, item, quantity, quantity, minimumMesoReserve,
                     buffPotionBudget(bot.getMeso(), minimumMesoReserve));
             if (report.quantity() > 0) {
                 sequence.bought().add(report.quantity() + " "
@@ -431,6 +436,34 @@ public final class AgentShopService {
             }
         }
         return sequence;
+    }
+
+    /**
+     * How many of a buff potion a visit may buy: no limit, except at the last free Use slot of a readiness duty whose
+     * standard is more than one stack of the potions this shop sells (its trip was let go for one free slot per stack
+     * and the one its run keeps, AgentSupplyReadinessRuntime.useSlotsNeeded): then the room of the stacks of it
+     * carried. A standard of one stack (KPQ, HPQ) and an ordinary trip keep today's purchase.
+     */
+    private static int buffRoomBesideTheRunsSlot(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop,
+                                                 ShopSlotItem item) {
+        Character bot = sequence.bot();
+        if (freeUseSlots(bot) > 1) {
+            return Integer.MAX_VALUE;
+        }
+        AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.shoppingActivity(sequence.entry(), bot);
+        if (activity == null || !aboveOneStack(bot, shop, AgentSupplyReadiness.standard(activity),
+                sequence.inventory())) {
+            return Integer.MAX_VALUE;
+        }
+        return stackRoom(bot, item.shopItem.getItemId(), sequence.inventory());
+    }
+
+    /** True when {@code standard} is more than one stack of the HP, or for a skill user MP, potions this shop sells. */
+    private static boolean aboveOneStack(Character bot, Shop shop, AgentSupplyReadiness.Standard standard,
+                                         InventoryGateway inventory) {
+        int hpStack = potionStackSize(bot, shop, true, inventory);
+        int mpStack = AgentSupplyReadiness.needsManaPotions(bot) ? potionStackSize(bot, shop, false, inventory) : 0;
+        return hpStack > 0 && standard.hp() > hpStack || mpStack > 0 && standard.mp() > mpStack;
     }
 
     static int buffPotionBudget(int mesos, int minimumMesoReserve) {
@@ -983,13 +1016,15 @@ public final class AgentShopService {
         boolean needsMp = needsPotionTarget(bot, mpPotion, false);
 
         if (needsHp) {
-            String intent = potionPurchaseIntent(bot, hpPotion, true, sequence.inventory());
+            String intent = potionPurchaseIntent(bot, hpPotion, true, sequence.inventory(),
+                    reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
             if (intent != null) {
                 AgentShopRuntime.sayMapNow(bot, intent);
             }
         }
         if (needsMp) {
-            String intent = potionPurchaseIntent(bot, mpPotion, false, sequence.inventory());
+            String intent = potionPurchaseIntent(bot, mpPotion, false, sequence.inventory(),
+                    reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
             if (intent != null) {
                 AgentShopRuntime.sayMapNow(bot, intent);
             }
@@ -1007,7 +1042,8 @@ public final class AgentShopService {
                 hpBought,
                 false,
                 minimumMesoReserve,
-                Integer.MAX_VALUE);
+                Integer.MAX_VALUE,
+                reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
         hpBought += report.quantity();
         current = appendBuyReport(current, report, "critical HP pots");
 
@@ -1020,7 +1056,8 @@ public final class AgentShopService {
                 mpBought,
                 false,
                 minimumMesoReserve,
-                Integer.MAX_VALUE);
+                Integer.MAX_VALUE,
+                reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
         current = appendBuyReport(current, report, "critical MP pots");
 
@@ -1037,7 +1074,8 @@ public final class AgentShopService {
                 hpBought,
                 true,
                 minimumMesoReserve,
-                hpBudget);
+                hpBudget,
+                reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
         hpBought += report.quantity();
         current = appendBuyReport(current, report, "HP pots");
 
@@ -1050,7 +1088,8 @@ public final class AgentShopService {
                 mpBought,
                 true,
                 minimumMesoReserve,
-                Integer.MAX_VALUE);
+                Integer.MAX_VALUE,
+                reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
         current = appendBuyReport(current, report, "MP pots");
         // Last, with what is left, a duty holder tops up toward its buy target (BUY_TO_PERCENT of the standard).
@@ -1065,7 +1104,9 @@ public final class AgentShopService {
      * standard always reaches it. Last ({@code topUp} true), with what is left, toward the buy target
      * (AgentSupplyReadiness.buyTarget), again holding back what the other kind still wants, buying only what the
      * budget pays for. {@link #floorItem} picks the potion. Nothing without a duty; {@code bought} counts this visit's
-     * purchases per kind (HP, MP) against the per-visit limit.
+     * purchases per kind (HP, MP) against the per-visit limit. A standard above the carry or per-visit limit raises
+     * that limit to itself (AgentPotionPurchasePolicy.floorQuantity), so one visit reaches it, and nothing buys
+     * past the larger of it and MAX_CARRIED_QUANTITY.
      */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyReadinessFloor(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
@@ -1086,25 +1127,28 @@ public final class AgentShopService {
         int mpGoal = !AgentSupplyReadiness.needsManaPotions(bot) ? 0
                 : topUp ? AgentSupplyReadiness.buyTarget(activity, bot, false) : standard.mp();
         int[] carried = AgentPotionService.countPotions(bot);
-        int hpWant = AgentPotionPurchasePolicy.floorQuantity(hpGoal, carried[0], bought[0]);
-        int mpWant = AgentPotionPurchasePolicy.floorQuantity(mpGoal, carried[1], bought[1]);
+        int hpWant = AgentPotionPurchasePolicy.floorQuantity(hpGoal, carried[0], bought[0], standard.hp());
+        int mpWant = AgentPotionPurchasePolicy.floorQuantity(mpGoal, carried[1], bought[1], standard.mp());
         AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
         if (hpWant > 0) {
             long heldForMana = mpWant <= 0 ? 0L
                     : (long) mpWant * Math.max(0, cheapestRecoveryPrice(bot, shop, false));
             current = buyFloor(current, shop, hpPick, true, hpWant,
-                    Math.max(0L, spendable(bot, minimumMesoReserve) - heldForMana), minimumMesoReserve, bought, topUp);
+                    Math.max(0L, spendable(bot, minimumMesoReserve) - heldForMana), minimumMesoReserve, bought, topUp,
+                    standard.hp());
         }
         if (mpWant > 0) {
             current = buyFloor(current, shop, mpPick, false, mpWant, spendable(bot, minimumMesoReserve),
-                    minimumMesoReserve, bought, topUp);
+                    minimumMesoReserve, bought, topUp, standard.mp());
         }
         return current;
     }
 
     /**
      * One kind of the floor: {@code want} of the potion {@link #floorItem} picks within {@code budget}; a top-up buys
-     * only what the budget pays for, so a short purse is no shortfall to report.
+     * only what the budget pays for, so a short purse is no shortfall to report. Never past the room that leaves the
+     * Use slot a party quest keeps free ({@link #roomBesideTheRunsSlot}); a standard pass held back by it says its
+     * bag is full.
      */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> buyFloor(
             AgentShopPurchaseSequence<AgentRuntimeEntry> current,
@@ -1115,7 +1159,8 @@ public final class AgentShopService {
             long budget,
             int minimumMesoReserve,
             int[] bought,
-            boolean topUp) {
+            boolean topUp,
+            int standard) {
         Character bot = current.bot();
         ShopSlotItem item = floorItem(shop, bot, pick, forHp, want, budget, current.inventory());
         if (item == null) {
@@ -1129,10 +1174,52 @@ public final class AgentShopService {
                 return current;
             }
         }
-        AgentShopBuyReport report = buyFixedCostItem(bot, shop, item, quantity, 100, minimumMesoReserve,
-                (int) Math.min(Integer.MAX_VALUE, budget));
+        int room = roomBesideTheRunsSlot(bot, item, standard, current.inventory());
+        AgentShopBuyReport report = buyFixedCostItem(bot, shop, item, Math.min(quantity, room), 100,
+                minimumMesoReserve, (int) Math.min(Integer.MAX_VALUE, budget));
+        if (!topUp && room < quantity && report.reason() == AgentShopShortfallReason.NONE) {
+            report = new AgentShopBuyReport(item.shopItem.getItemId(), report.quantity(), quantity,
+                    AgentShopShortfallReason.NO_SPACE);
+        }
         bought[forHp ? 0 : 1] += report.quantity();
         return appendBuyReport(current, report, forHp ? "HP pots" : "MP pots");
+    }
+
+    /**
+     * How many of {@code item} a floor pass may buy and still leave free the Use slot a party quest keeps for its
+     * items and rewards. A {@code standard} of at most one stack: no limit ({@link #floorItem} keeps that slot). A
+     * larger one: the room of the stacks of it carried, and a full stack in every free slot but one (the slots its
+     * readiness trip was let go for, AgentSupplyReadinessRuntime.useSlotsNeeded). Unknown stack size: no limit.
+     */
+    private static int roomBesideTheRunsSlot(Character bot, ShopSlotItem item, int standard,
+                                             InventoryGateway inventory) {
+        int perSlot = inventory.getSlotMax(bot, item.shopItem.getItemId());
+        if (perSlot <= 0 || standard <= perSlot) {
+            return Integer.MAX_VALUE;
+        }
+        long room = stackRoom(bot, item.shopItem.getItemId(), inventory)
+                + (long) Math.max(0, freeUseSlots(bot) - 1) * perSlot;
+        return (int) Math.min(Integer.MAX_VALUE, room);
+    }
+
+    /**
+     * How many of {@code potion} a reserve-bar pass of buyPotionStock may buy and still leave free the Use slot a
+     * party quest keeps (the floor's rule, {@link #roomBesideTheRunsSlot}): limited only under a duty whose standard
+     * of the kind is above one stack, so a floor pass held back by that slot is not undone by the passes after it.
+     * No duty, or a standard of at most one stack: no limit.
+     */
+    private static int reserveRoomBesideTheRunsSlot(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+                                                    ShopSlotItem potion, boolean forHp) {
+        if (potion == null) {
+            return Integer.MAX_VALUE;
+        }
+        Character bot = sequence.bot();
+        AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.shoppingActivity(sequence.entry(), bot);
+        if (activity == null) {
+            return Integer.MAX_VALUE;
+        }
+        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
+        return roomBesideTheRunsSlot(bot, potion, forHp ? standard.hp() : standard.mp(), sequence.inventory());
     }
 
     /**
@@ -1158,6 +1245,86 @@ public final class AgentShopService {
     public static boolean carriesStackWithRoom(Character bot, Shop shop, boolean forHp) {
         return bot != null && shop != null
                 && carriedStack(shop, bot, forHp, AgentInventoryGatewayRuntime.inventory()) != null;
+    }
+
+    /**
+     * How many HP (or MP) potions one Use slot holds at this shop: the smallest stack of the recovery potions of the
+     * kind it sells, since a floor pass may buy another one than the coverage pick; 0 when it sells none.
+     */
+    public static int potionStackSize(Character bot, Shop shop, boolean forHp) {
+        return bot == null || shop == null ? 0
+                : potionStackSize(bot, shop, forHp, AgentInventoryGatewayRuntime.inventory());
+    }
+
+    private static int potionStackSize(Character bot, Shop shop, boolean forHp, InventoryGateway inventory) {
+        int smallest = 0;
+        for (ShopItem item : shop.getItems()) {
+            if (item.getPrice() <= 0 || !AgentUseItemClassificationPolicy.isRecoveryPotion(item.getItemId())) {
+                continue;
+            }
+            StatEffect effect = AgentUseItemClassificationPolicy.itemEffect(item.getItemId());
+            if (effect == null || AgentPotionRecoveryPolicy.recovery(
+                    effect, bot.getCurrentMaxHp(), bot.getCurrentMaxMp(), forHp) == null) {
+                continue;
+            }
+            int stack = inventory.getSlotMax(bot, item.getItemId());
+            if (stack > 0 && (smallest == 0 || stack < smallest)) {
+                smallest = stack;
+            }
+        }
+        return smallest;
+    }
+
+    /**
+     * How many HP (or MP) potions a purchase at the last free Use slot surely fits on a carried stack: the least room
+     * among the recovery potions of the kind this shop sells of which the bot carries a stack with room, since
+     * {@link #floorItem} may buy onto any of them; 0 when it carries none.
+     */
+    public static int carriedStackRoom(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null || bot.getInventory(InventoryType.USE) == null) {
+            return 0;
+        }
+        InventoryGateway inventory = AgentInventoryGatewayRuntime.inventory();
+        int least = 0;
+        for (ShopItem item : shop.getItems()) {
+            if (item.getPrice() <= 0 || !AgentUseItemClassificationPolicy.isRecoveryPotion(item.getItemId())) {
+                continue;
+            }
+            int room = stackRoom(bot, item.getItemId(), inventory);
+            StatEffect effect = room <= 0 ? null : AgentUseItemClassificationPolicy.itemEffect(item.getItemId());
+            if (effect != null && AgentPotionRecoveryPolicy.recovery(
+                    effect, bot.getCurrentMaxHp(), bot.getCurrentMaxMp(), forHp) != null
+                    && (least == 0 || room < least)) {
+                least = room;
+            }
+        }
+        return least;
+    }
+
+    /**
+     * How many of {@code want} HP (or MP) potions a readiness floor pass surely puts on a carried stack: the room of
+     * the stacks of the coverage pick ({@link #findPotionItem}) carried, when {@code want} of it fit {@code budget}
+     * (AgentShopPotionPolicy.selectForCount then always buys it, and the shop fills a carried stack before it takes a
+     * new Use slot); 0 when they do not fit (the potion it buys then depends on the budget), or the shop sells none.
+     */
+    public static int readinessPickRoom(Character bot, Shop shop, boolean forHp, int want, long budget) {
+        if (bot == null || shop == null || want <= 0) {
+            return 0;
+        }
+        ShopSlotItem pick = findPotionItem(shop, bot, forHp);
+        if (pick == null || (long) pick.shopItem.getPrice() * want > budget) {
+            return 0;
+        }
+        return stackRoom(bot, pick.shopItem.getItemId(), AgentInventoryGatewayRuntime.inventory());
+    }
+
+    /** The price of the HP (or MP) potion a visit picks for coverage ({@link #findPotionItem}); -1 when it sells none. */
+    public static int coveragePickPrice(Character bot, Shop shop, boolean forHp) {
+        if (bot == null || shop == null) {
+            return -1;
+        }
+        ShopSlotItem pick = findPotionItem(shop, bot, forHp);
+        return pick == null ? -1 : pick.shopItem.getPrice();
     }
 
     /** The strongest HP (or MP) recovery potion this shop sells of which the bot carries a stack with room; or null. */
@@ -1283,7 +1450,8 @@ public final class AgentShopService {
             int alreadyBoughtThisVisit,
             boolean applyMinimumPurchase,
             int minimumMesoReserve,
-            int maximumSpend) {
+            int maximumSpend,
+            int room) {
         if (potion == null || potion.recovery == null) {
             return new AgentShopBuyReport(0, 0, 0, AgentShopShortfallReason.NONE);
         }
@@ -1301,7 +1469,7 @@ public final class AgentShopService {
                 bot,
                 shop,
                 potion,
-                quantity,
+                Math.min(quantity, room),
                 100,
                 minimumMesoReserve,
                 maximumSpend);
@@ -1329,7 +1497,8 @@ public final class AgentShopService {
             Character bot,
             ShopSlotItem potion,
             boolean forHp,
-            InventoryGateway inventory) {
+            InventoryGateway inventory,
+            int room) {
         int[] counts = AgentPotionService.countPotions(bot);
         int plannedQuantity = AgentPotionPurchasePolicy.quantityToTarget(
                 potionRecoveryCapacity(bot, forHp),
@@ -1339,6 +1508,7 @@ public final class AgentShopService {
                 AgentPotionPurchasePolicy.targetReserveBars(forHp),
                 0,
                 true);
+        plannedQuantity = Math.min(plannedQuantity, room);
         return plannedQuantity <= 0
                 ? null
                 : AgentDialogueCatalog.shopPurchaseIntent(

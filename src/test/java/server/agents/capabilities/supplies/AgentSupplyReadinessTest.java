@@ -5,6 +5,7 @@ import client.Job;
 import config.AgentYamlConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import server.agents.runtime.AgentRuntimeConfig;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -13,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
@@ -96,8 +98,30 @@ class AgentSupplyReadinessTest {
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("lpq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("opq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("rjpq"));
-        assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("EPQ "), "keys are trimmed, any case");
+        assertEquals(new AgentSupplyReadiness.Standard(250, 350), standardFor("EPQ "), "keys are trimmed, any case");
         assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("cwkpq"), "an unlisted key: the default");
+    }
+
+    @Test
+    void theCountOverloadAndTheCompanionsOwnCountAgreeOnTheEpqStandard() {
+        // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion. This checks the
+        // two overloads only: no desk passes epq on this branch (Ellin's desk reads PARTY_QUEST until EPQ step 6.3)
+        AgentSupplyReadiness.Activity epq = AgentSupplyReadiness.Activity.partyQuest("epq");
+        Character mage = withJob(Job.FP_WIZARD);
+        when(mage.getInventory(client.inventory.InventoryType.USE)).thenReturn(mock(client.inventory.Inventory.class));
+        int[] carried = {249, 350};
+        try (MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class)) {
+            potions.when(() -> AgentPotionService.countPotions(mage)).thenAnswer(inv -> carried.clone());
+
+            assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(249, 350, true, epq),
+                    "the count overload, which a desk calls with its own key");
+            assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(mage, epq),
+                    "what the companion's own restock reads");
+
+            carried[0] = 250;
+            assertTrue(AgentSupplyReadiness.shortfall(250, 350, true, epq).none());
+            assertTrue(AgentSupplyReadiness.shortfall(mage, epq).none());
+        }
     }
 
     @Test
@@ -154,7 +178,32 @@ class AgentSupplyReadinessTest {
         assertEquals(60, AgentSupplyReadiness.buyTarget(ppq, warrior, true), "PPQ's 30 HP, bought to 200%");
 
         AgentSupplyReadiness.install(id -> PQ);
-        assertEquals(PQ, AgentSupplyReadiness.shoppingActivity(entry, warrior), "a duty it can read wins");
+        assertEquals(ppq, AgentSupplyReadiness.shoppingActivity(entry, warrior),
+                "the trip it is judged by wins over a duty it can read");
+    }
+
+    @Test
+    void atTheCounterAReadinessTripBuysTowardTheActivityItIsJudgedByWhateverTheDutyThereAnswers() {
+        // at Mayoren the duty answers the default (no desk map) while the trip set off for the EPQ standard
+        Character mage = withJob(Job.FP_WIZARD);
+        when(mage.getId()).thenReturn(437);
+        server.agents.runtime.AgentRuntimeEntry entry = new server.agents.runtime.AgentRuntimeEntry(mage, null, null);
+        AgentSupplyReadiness.Activity lpq = AgentSupplyReadiness.Activity.partyQuest("lpq");
+        AgentSupplyReadiness.install(id -> null);
+        assertEquals(null, AgentSupplyReadiness.shoppingActivity(entry, mage), "no duty, no trip: nothing");
+
+        AgentSupplyReadiness.install(id -> PQ);
+        AgentSupplyReadinessState state = entry.capabilityStates().require(AgentSupplyReadinessState.STATE_KEY);
+        state.offer(new server.agents.capabilities.contracts.AgentProcurementRequest("readiness:HP_POTION:2",
+                server.agents.capabilities.contracts.AgentResourceCategory.HP_POTION, 40, 0L,
+                java.util.List.of(server.agents.capabilities.contracts.AgentProcurementMethod.NPC_SHOP),
+                server.agents.capabilities.contracts.AgentSupplyUrgency.CRITICAL, "",
+                Long.MAX_VALUE), lpq, 5, 150_000L, 221024500);
+        assertEquals(lpq, AgentSupplyReadiness.shoppingActivity(entry, mage), "the trip's activity, not the duty's");
+        assertEquals(80, AgentSupplyReadiness.buyTarget(AgentSupplyReadiness.shoppingActivity(entry, mage), mage, true));
+
+        state.clearRequest();
+        assertEquals(PQ, AgentSupplyReadiness.shoppingActivity(entry, mage), "no trip: the standing duty");
     }
 
     @Test
