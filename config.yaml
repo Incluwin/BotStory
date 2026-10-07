@@ -926,7 +926,7 @@ living_world:
     # buddy request once while you are both online. Your own companions land in your "Crew" group; you move them like
     # any friend. Every bot shows online while it is in the world and offline when it is not. false = the kill switch:
     # nobody new asks (citizens you met still ask, as before).
-    COMPANION_BUDDY_REQUESTS: false
+    COMPANION_BUDDY_REQUESTS: true
     COMPANION_BUDDY_FRIENDSHIP_LEVEL: 4
     COMPANION_BUDDY_HIRE_PARTY_MINUTES: 30
     RUMOR_TICK_MS: 60000
