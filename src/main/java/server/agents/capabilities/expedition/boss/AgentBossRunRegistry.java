@@ -90,6 +90,13 @@ public final class AgentBossRunRegistry {
         return member != null && member.phase() == AgentBossRunMember.Phase.WAITING ? member.ordinal() : -1;
     }
 
+    /** True while the Agent is an INSIDE member of an open run: adopted into the fight. Memory only, any thread. */
+    public static boolean inside(int agentId) {
+        AgentBossRunSession session = SESSIONS.isEmpty() ? null : forMember(agentId);
+        AgentBossRunMember member = session == null ? null : session.member(agentId);
+        return member != null && member.phase() == AgentBossRunMember.Phase.INSIDE;
+    }
+
     /**
      * True when a player of {@code event} is a REGISTERED or INSIDE member of the open run for the event's expedition:
      * a companion signed up for this very fight. Memory only (the event's player lock aside), for any thread.

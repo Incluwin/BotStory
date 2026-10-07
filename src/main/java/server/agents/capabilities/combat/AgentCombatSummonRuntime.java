@@ -4,10 +4,13 @@ import java.util.function.IntPredicate;
 import client.Character;
 import client.Skill;
 import server.StatEffect;
+import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
 import server.agents.integration.AgentClientGatewayRuntime;
 import server.agents.integration.AgentCombatGatewayRuntime;
 import server.agents.integration.AgentSkillGatewayRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.maps.FieldLimit;
+import server.maps.MapleMap;
 
 /**
  * Casts summon skills (Puppet, Silver Hawk, Ifrit, Bahamut, Beholder, Octopus, ...). The skill
@@ -141,8 +144,20 @@ public final class AgentCombatSummonRuntime {
         return mastery <= 0 ? 0.5 : Math.min(0.95, (mastery * 5 + 15) / 100.0);
     }
 
-    public enum SummonResult { CAST, ALREADY_ACTIVE, NOT_A_SUMMON, NOT_READY, DISPATCH_FAILED }
+    public enum SummonResult { CAST, ALREADY_ACTIVE, NOT_A_SUMMON, NOT_READY, DISPATCH_FAILED, BARRED }
 
+    /**
+     * True where this Agent must not summon: the map forbids summons to players (FieldLimit.SUMMON, which the server
+     * never checks) and the Agent fights there as an INSIDE member of a boss run (Easy Balrog's battle map). KPQ stages
+     * and LPQ's boss map carry the bit too; Agents outside boss runs keep summoning there as before.
+     */
+    static boolean summonsBarred(Character bot) {
+        MapleMap map = bot.getMap();
+        return map != null && FieldLimit.SUMMON.check(map.getFieldLimit())
+                && AgentBossRunRegistry.inside(bot.getId());
+    }
+
+    /** Casts one summon skill; {@link SummonResult#BARRED} where {@link #summonsBarred} forbids it. */
     public static SummonResult trySummon(AgentRuntimeEntry entry, Character bot, int skillId) {
         if (entry == null || bot == null || !bot.isAlive() || !AgentClientGatewayRuntime.clients().hasClient(bot)) {
             return SummonResult.NOT_READY;
@@ -155,6 +170,9 @@ public final class AgentCombatSummonRuntime {
         StatEffect effect = skill.getEffect(level);
         if (!AgentCombatSkillClassifier.isSummonSkill(effect)) {
             return SummonResult.NOT_A_SUMMON;
+        }
+        if (summonsBarred(bot)) {
+            return SummonResult.BARRED;
         }
         if (bot.getSummonByKey(skillId) != null) {
             return SummonResult.ALREADY_ACTIVE;
