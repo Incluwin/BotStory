@@ -84,6 +84,8 @@ public final class AgentLpqMemberState {
     private boolean handOverToBalloon;
     private int handOverRecollectStack;
     private int roomRetryMapId;
+    private int claimFailures;
+    private long arrivedOnRewardMapAtMs;
     private int roomRetries;
     private int givenUpRoom;
     private boolean givenUpPassLeft;
@@ -177,7 +179,19 @@ public final class AgentLpqMemberState {
         return true;
     }
     void cancelRewardClaim() {
-        if (rewardState == RewardState.CLAIMING) rewardState = RewardState.PENDING;
+        if (rewardState == RewardState.CLAIMING) {
+            rewardState = RewardState.PENDING;
+            claimFailures++;
+        }
+    }
+
+    /** Claims Arturo turned away (no free slot); read only by companion runs. */
+    int claimFailures() { return claimFailures; }
+
+    /** When this member was first seen on the reward map (the first call sets it). */
+    long observeArrivedOnRewardMap(long nowMs) {
+        if (arrivedOnRewardMapAtMs == 0L) arrivedOnRewardMapAtMs = Math.max(1L, nowMs);
+        return arrivedOnRewardMapAtMs;
     }
     void forfeitReward() {
         if (rewardState == RewardState.PENDING) rewardState = RewardState.FORFEITED;

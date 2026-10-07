@@ -33,6 +33,7 @@ import server.agents.integration.AgentMapGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPacketGatewayRuntime;
 import server.agents.integration.AgentPartyQuestGatewayRuntime;
+import server.agents.integration.AgentPartySnapshot;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.PartyQuestGateway;
@@ -142,6 +143,12 @@ final class AgentLpqCoordinator {
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.STAGE_5_ROOM_GIVE_UP_MS");
     private static final long LEADER_NUDGE_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.LEADER_NUDGE_MS");
+    private static final long COMPANION_CLAIM_GRACE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_CLAIM_GRACE_MS");
+    private static final int COMPANION_CLAIM_FAILURE_LIMIT = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_CLAIM_FAILURE_LIMIT");
+    private static final long COMPANION_AFTER_CLEAR_LIMIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_AFTER_CLEAR_LIMIT_MS");
     private static final int DARK_SIGHT_SAFE_PORTAL_ID = 0;
     private static final Point STAGE_7_BOTTOM = new Point(1, -211);
     private static final int STAGE_7_FIRING_ANCHOR_RADIUS = config.AgentTuning.intValue(
@@ -5342,12 +5349,25 @@ final class AgentLpqCoordinator {
      * Called under the session monitor, from tick.
      */
     private static void companionRunTick(AgentLpqSession session, long nowMs) {
-        if (nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
+        boolean cleared = AgentLpqTerminationService.pastTheClear(session);
+        if (!cleared && nowMs - session.lastProgressAtMs() > PHASE_TIMEOUT_MS) {
             AgentLpqTerminationService.fail(session, "No LPQ progress before phase timeout", nowMs);
+            return;
+        }
+        if (cleared && session.clearedAtMs() > 0L && nowMs - session.clearedAtMs() > COMPANION_AFTER_CLEAR_LIMIT_MS) {
+            AgentLpqTerminationService.completeAfterClear(session,
+                    "The companions did not all claim within the after-clear limit", nowMs);
             return;
         }
         holdFullRateSimulation(session);
         Character leader = character(session.eventLeaderId());
+        if (cleared) {
+            // After the clear nothing about the leader ends the run: once he is let go they claim and go.
+            if (session.clearedAtMs() == 0L) companionCleared(session, nowMs);
+            releaseLeaderAfterClear(session, leader);
+            companionAfterClear(session, session.leaderReleased() ? null : leader, nowMs);
+            return;
+        }
         if (leader == null || leader.getHp() <= 0) {
             AgentLpqTerminationService.fail(session, "The LPQ event leader is unavailable", nowMs);
             return;
@@ -5358,6 +5378,7 @@ final class AgentLpqCoordinator {
         }
         if (session.eventInstance() == null && LPQ.event(leader) != null) session.bindEventInstance(LPQ.event(leader));
         synchronizePhase(session, leader, nowMs);
+        if (AgentLpqTerminationService.pastTheClear(session)) return;
         String eventFailure = liveEventFailure(session, leader);
         if (!eventFailure.isEmpty()) {
             if (EVENT_ENDED_OR_EXPIRED.equals(eventFailure)) {
@@ -5376,11 +5397,157 @@ final class AgentLpqCoordinator {
             case STAGE_6 -> portalMaze(session, leader, nowMs);
             case STAGE_8 -> platformPuzzle(session, leader, nowMs);
             case STAGE_9 -> boss(session, leader, nowMs);
-            case BONUS -> bonus(session, nowMs);
-            case CLAIMING_REWARD -> claim(session, nowMs);
+            default -> { }
+        }
+    }
+
+    /** The run is cleared: rewards freeze, any hand-over ends, the companions stop where they stand, the bonus begins. */
+    private static void companionCleared(AgentLpqSession session, long nowMs) {
+        session.freezeRewardEligibility();
+        session.markCleared(nowMs);
+        session.endRecollect(false);
+        for (AgentLpqMemberState member : session.members()) {
+            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
+            member.endHandOver();
+            AgentRuntimeEntry entry = entry(member.characterId());
+            if (entry == null) continue;
+            AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry);
+            ACTIONS.stop(entry);
+        }
+        if (stageNumberOrZero(session.phase()) > 0) session.transition(AgentLpqSession.Phase.BONUS, nowMs);
+    }
+
+    /** After the clear: the bonus, the claims, the way out; a null leader has been let go. */
+    private static void companionAfterClear(AgentLpqSession session, Character leader, long nowMs) {
+        switch (session.phase()) {
+            case BONUS -> companionBonus(session, leader, nowMs);
+            case CLAIMING_REWARD -> companionClaim(session, nowMs);
             case EXITING -> exitAfterRewardWarpSettles(session, nowMs);
             default -> { }
         }
+    }
+
+    /**
+     * The bonus map: while the leader stays on it the companions loot and break the boxes beside him (C1, said there
+     * by one of them); without him they leave through the Pink Balloon. A companion still on a stage map waits,
+     * stopped, for clearPQ's warp and holds the bonus. With no companion on the bonus map or a stage map the claims
+     * begin (the bonus timer warps everyone anyway; COMPANION_AFTER_CLEAR_LIMIT_MS bounds a warp that never comes).
+     */
+    private static void companionBonus(AgentLpqSession session, Character leader, long nowMs) {
+        boolean leaderStays = leader != null && leader.getHp() > 0
+                && leader.getMapId() == AgentLpqDefinition.CLEAR_MAP && inRun(session, leader);
+        if (leaderStays) coordinate(session, narrator(session, leader), "cleared", AgentLpqCompanionPlay.CLEARED);
+        boolean holdsBonus = false;
+        Set<Integer> reactorClaims = activeReactorClaims(session, AgentLpqDefinition.CLEAR_MAP);
+        Set<Integer> lootClaims = new LinkedHashSet<>();
+        for (AgentLpqMemberState member : session.members()) {
+            Character agent = standingCompanion(member);
+            if (agent != null && onStageMap(agent)) {
+                holdsBonus = true;
+                continue;
+            }
+            AgentRuntimeEntry entry = entry(member.characterId());
+            if (agent == null || entry == null || agent.getMapId() != AgentLpqDefinition.CLEAR_MAP) continue;
+            holdsBonus = true;
+            if (leaderStays) {
+                if (collectNearestDrop(entry, agent, null, lootClaims)) continue;
+                if (hitNearestReactorWithoutRecovery(entry, agent, nowMs, member, reactorClaims)) {
+                    session.markProgress(nowMs);
+                }
+                if (member.reactorTargetObjectId() != 0) reactorClaims.add(member.reactorTargetObjectId());
+            } else {
+                leaveThroughThePinkBalloon(session, member, entry, agent, nowMs);
+            }
+        }
+        if (!holdsBonus) session.transition(AgentLpqSession.Phase.CLAIMING_REWARD, nowMs);
+    }
+
+    private static void leaveThroughThePinkBalloon(AgentLpqSession session, AgentLpqMemberState member,
+                                                   AgentRuntimeEntry entry, Character agent, long nowMs) {
+        if (!approachRewardNpc(session, member, entry, agent, AgentLpqDefinition.CLEAR_NPC, "bonus exit balloon",
+                nowMs) || nowMs < member.nextActionAtMs()) {
+            return;
+        }
+        member.deferUntil(nowMs + INTERACTION_RETRY_MS);
+        if (LPQ.runNpc(agent, AgentLpqDefinition.CLEAR_NPC, 1)) session.markProgress(nowMs);
+    }
+
+    /**
+     * The claims: each companion still in the event leaves the bonus map, and on the reward map waits
+     * COMPANION_CLAIM_GRACE_MS (C2 from the first one there) and claims at Arturo, which takes it out. One Arturo turned
+     * away COMPANION_CLAIM_FAILURE_LIMIT times gives its reward up and leaves through the event's exit. Humans are
+     * never waited for: with no companion pending the run exits.
+     */
+    private static void companionClaim(AgentLpqSession session, long nowMs) {
+        session.freezeRewardEligibility();
+        boolean pending = false;
+        for (AgentLpqMemberState member : session.members()) {
+            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT || member.rewardResolved()) continue;
+            Character agent = character(member.characterId());
+            if (agent == null || !inRun(session, agent)) continue;
+            if (member.claimFailures() >= COMPANION_CLAIM_FAILURE_LIMIT) {
+                giveUpClaim(session, member, agent);
+                continue;
+            }
+            pending = true;
+            AgentRuntimeEntry entry = entry(member.characterId());
+            if (entry == null || agent.getHp() <= 0) continue;
+            if (agent.getMapId() == AgentLpqDefinition.CLEAR_MAP) {
+                leaveThroughThePinkBalloon(session, member, entry, agent, nowMs);
+                continue;
+            }
+            if (agent.getMapId() != AgentLpqDefinition.BONUS_MAP) continue;
+            long arrivedAtMs = member.observeArrivedOnRewardMap(nowMs);
+            coordinate(session, agent, "arturo", AgentLpqCompanionPlay.ARTURO);
+            if (nowMs - arrivedAtMs < COMPANION_CLAIM_GRACE_MS) continue;
+            if (approachRewardNpc(session, member, entry, agent, AgentLpqDefinition.REWARD_NPC, "Arturo reward", nowMs)
+                    && nowMs >= member.nextActionAtMs()) {
+                member.deferUntil(nowMs + INTERACTION_RETRY_MS);
+                if (LPQ.runNpc(agent, AgentLpqDefinition.REWARD_NPC, 1)) session.markProgress(nowMs);
+            }
+        }
+        if (!pending) session.transition(AgentLpqSession.Phase.EXITING, nowMs);
+    }
+
+    /** Its reward forfeited, a companion Arturo keeps turning away leaves through the event's exit. */
+    private static void giveUpClaim(AgentLpqSession session, AgentLpqMemberState member, Character agent) {
+        session.forfeitReward(member.characterId());
+        log.warn("LPQ claim failed: session={} member={} reason=inventory failures={}", session.sessionId(),
+                member.characterId(), member.claimFailures());
+        EventInstanceManager event = session.eventInstance();
+        if (event != null && LPQ.event(agent) == event) event.exitPlayer(agent);
+    }
+
+    /** After the clear the leader is let go once he logs off, goes down, or no longer leads the live party. */
+    private static void releaseLeaderAfterClear(AgentLpqSession session, Character leader) {
+        if (session.leaderReleased()) return;
+        String why = leader == null ? "offline"
+                : leader.getHp() <= 0 ? "down"
+                : leadPassed(session, leader) ? "lead passed" : null;
+        if (why == null) return;
+        session.markLeaderReleased();
+        log.info("LPQ leader let go after the clear: session={} leader={} why={} phase={}",
+                session.sessionId(), session.eventLeaderId(), why, session.phase());
+    }
+
+    /** His live party is gone, or someone else leads it. */
+    private static boolean leadPassed(AgentLpqSession session, Character leader) {
+        AgentPartySnapshot party = PARTY.snapshot(leader);
+        return party == null || party.members().stream().noneMatch(member -> member != null && member.leader()
+                && member.id() == session.eventLeaderId());
+    }
+
+    /** This character stands in the run's own event instance. */
+    private static boolean inRun(AgentLpqSession session, Character character) {
+        EventInstanceManager event = session.eventInstance();
+        return character != null && event != null && LPQ.event(character) == event;
+    }
+
+    /** On one of the run's stage maps (stages 1-9 and their rooms), not on the bonus or the reward map. */
+    private static boolean onStageMap(Character character) {
+        int mapId = character.getMapId();
+        return AgentLpqDefinition.isEventMap(mapId) && mapId != AgentLpqDefinition.CLEAR_MAP
+                && mapId != AgentLpqDefinition.BONUS_MAP;
     }
 
     /**

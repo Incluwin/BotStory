@@ -110,6 +110,8 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private int leaderClimbBestRow = -1;
     private long stageSixAllAtTopSinceMs;
     private long leaderKeySinceMs;
+    private long clearedAtMs;
+    private boolean leaderReleased;
     private final Set<Integer> companionsOfRun = new java.util.LinkedHashSet<>();
     private long enteredEventAtMs;
 
@@ -779,6 +781,19 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
         if (leaderKeySinceMs == 0L) leaderKeySinceMs = Math.max(1L, nowMs);
         return nowMs - leaderKeySinceMs;
     }
+
+    /** When a companion run first saw its clear (0 before); its after-clear limit counts from here. */
+    synchronized long clearedAtMs() { return clearedAtMs; }
+
+    synchronized void markCleared(long nowMs) { if (clearedAtMs == 0L) clearedAtMs = Math.max(1L, nowMs); }
+
+    /**
+     * After the clear the leader logged off, went down or no longer leads the party: the companions stop waiting on
+     * him, claim and go. It is never a failure.
+     */
+    synchronized boolean leaderReleased() { return leaderReleased; }
+
+    synchronized void markLeaderReleased() { leaderReleased = true; }
 
     /** The companion that took (or takes) Alishar's key to the leader; 0 before one is chosen. */
     public synchronized int keyCarrierId() { return keyCarrierId; }

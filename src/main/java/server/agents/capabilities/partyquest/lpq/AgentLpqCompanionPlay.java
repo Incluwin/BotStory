@@ -17,6 +17,11 @@ final class AgentLpqCompanionPlay {
     static final String DARK_ROOMS = "we'll split up for the dark rooms. wait by the lime balloon, we'll bring the passes.";
     /** S5, as stage 5 begins. */
     static final String ROOMS = "we'll take the rooms. wait by the green balloon, we'll bring the passes.";
+    /** C1, on the bonus map after the clear. */
+    static final String CLEARED = "we did it! break the boxes for loot. the pink balloon lets you out early, arturo has"
+            + " the rewards.";
+    /** C2, when the first companion reaches the reward map. */
+    static final String ARTURO = "arturo's up at the top. grab your reward, we'll wait for you outside.";
     /** S8b, the first formation stands on its boxes. */
     static final String ON_THE_BOXES = "we're on the boxes. try the balloon.";
     /** S8w, a check came while one of them was still moving to its box. */

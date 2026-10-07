@@ -1169,6 +1169,18 @@ tuning:
     # Purpose: How long the leader may stay away from the next portal after a stage's clear while the companions wait at it, below the top of the stage-6 maze while they wait at the top, or with Alishar's key in his bag without the clear, before a companion says so once.
     # Technical: AgentLpqCoordinator companion-run nudges N1 (a companion at the portal), S6n (a companion at the top of the maze) and K4; each said at most once per stage, companion runs only.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.LEADER_NUDGE_MS: '30000'
+    # Values: 0-30000 milliseconds. Recommended: 5000.
+    # Purpose: After the clear, a companion that arrives on the reward map waits this long (the leader sees them arrive and hears where Arturo is) before it walks up to claim.
+    # Technical: AgentLpqCoordinator.companionAfterClear CLAIMING_REWARD, from AgentLpqMemberState.arrivedOnRewardMapAtMs; companion runs only, stock claims are unchanged.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_CLAIM_GRACE_MS: '5000'
+    # Values: 1-10 refusals. Recommended: 3.
+    # Purpose: A companion Arturo turns away this many times (no free slot) gives its reward up and leaves through the event's exit, so it holds nobody up.
+    # Technical: counted by AgentLpqMemberState.cancelRewardClaim (2040035.js cancels a claim that found no slot); read only by companion runs.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_CLAIM_FAILURE_LIMIT: '3'
+    # Values: 60000-900000 milliseconds. Recommended: 300000: the 60 s bonus, the walk up to Arturo and the claim, with room to spare.
+    # Purpose: After the clear, the longest a companion run waits for its companions to claim and leave before it wraps up: the rest leave through the event's exit, and the run is recorded as cleared.
+    # Technical: AgentLpqTerminationService.completeAfterClear from AgentLpqCoordinator.companionRunTick, measured from AgentLpqSession.clearedAtMs; humans are never waited for.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_AFTER_CLEAR_LIMIT_MS: '300000'
 
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.

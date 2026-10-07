@@ -24,12 +24,13 @@ final class AgentLpqTerminationService {
     private AgentLpqTerminationService() { }
 
     /**
-     * Ends the run. A companion run past its clear (failAfterClear) lets only its companions go, so the human keeps
-     * his bonus and his reward; every other run is released as it always was: everyone out, the event disposed.
+     * Ends the run. A companion run past its clear never records a failure (completeAfterClear): only its companions
+     * go, the human keeps his bonus and his reward, and the run is recorded as cleared; every other run is released as
+     * it always was: everyone out, the event disposed.
      */
     static void fail(AgentLpqSession session, String reason, long nowMs) {
         if (session != null && session.companionAdopted() && pastTheClear(session)) {
-            failAfterClear(session, reason, nowMs);
+            completeAfterClear(session, reason, nowMs);
             return;
         }
         release(session, reason, nowMs, true, false, false);
@@ -43,6 +44,20 @@ final class AgentLpqTerminationService {
     static boolean pastTheClear(AgentLpqSession session) {
         EventInstanceManager event = session.eventInstance();
         return session.rewardEligibilityFrozen() || (event != null && event.isEventCleared());
+    }
+
+    /**
+     * Wraps a cleared companion run up (its after-clear limit, or anything that would have failed it past the clear):
+     * 'LPQ after-clear wrap-up:' with how many rewards are unresolved, its companions leave through the event's own
+     * exit, and the event and the players still in it stay. The release is claimed first and recorded as completed.
+     */
+    static void completeAfterClear(AgentLpqSession session, String reason, long nowMs) {
+        if (session == null || !session.beginTermination()) return;
+        quietly(session, "log-wrap-up", () -> log.info(
+                "LPQ after-clear wrap-up: session={} phase={} reason={} unresolved={}", session.sessionId(),
+                session.phase(), reason, session.members().stream().filter(member -> !member.rewardResolved()).count()));
+        exitAgentsOnly(session);
+        release(session, "completed", nowMs, false, true, true);
     }
 
     /**
