@@ -425,9 +425,14 @@ final class LpqTickFixture implements AutoCloseable {
         return session;
     }
 
-    /** This companion line was said (map chat through AgentLpqDialogue), by this speaker, under this key. */
+    /**
+     * This companion line was said (map chat through AgentLpqDialogue), by this speaker, under this key; a line with
+     * a line break was said as its parts, each its own chat line.
+     */
     void said(AgentLpqSession session, String key, Character speaker, String text) {
-        dialogue.verify(() -> AgentLpqDialogue.sayMapNow(session.sessionId(), key, speaker, text));
+        for (String part : text.split(String.valueOf(AgentLpqCompanionPlay.THEN))) {
+            dialogue.verify(() -> AgentLpqDialogue.sayMapNow(session.sessionId(), key, speaker, part));
+        }
     }
 
     void neverSaid(String key) {

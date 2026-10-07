@@ -80,7 +80,7 @@ class AgentLpqCompanionPlayTest {
     void theHandOverLines() {
         assertEquals("Crewfriend, the passes are at your feet. grab them and talk to the red balloon.",
                 AgentLpqCompanionPlay.passesLine("Crewfriend", 1, PassPlace.FEET, false));
-        assertEquals("Crewfriend, the passes are at your feet. grab them and talk to the yellow balloon. it explains"
+        assertEquals("Crewfriend, the passes are at your feet. grab them and talk to the yellow balloon.\nit explains"
                 + " first, then talk to it again.", AgentLpqCompanionPlay.passesLine("Crewfriend", 3, PassPlace.FEET,
                 true));
         assertEquals("Crewfriend, the passes landed up above you. hop up, grab them and talk to the lime balloon.",

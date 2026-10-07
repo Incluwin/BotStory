@@ -88,7 +88,7 @@ class AgentLpqBossKeyHandOverTest {
         fx.tick(session, 4_000L);
 
         fx.said(session, "s9-key", kes, "Crewfriend, alishar's key is at your feet. grab it and talk to the violet"
-                + " balloon. it explains first, then talk to it again.");
+                + " balloon.\nit explains first, then talk to it again.");
     }
 
     @Test

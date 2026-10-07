@@ -36,13 +36,27 @@ final class AgentLpqCompanionPlay {
     static final String LEAVING_PASSES = "almost out of pots, leaving my passes here, grab them.";
     /** K5, said by Alishar's key carrier as it drops the key, about to go down. */
     static final String LEAVING_THE_KEY = "almost out of pots, leaving the key here, grab it.";
+    /** H1p/K1p's own second line: the balloon talks first before it takes what he brings. */
+    static final String EXPLAINS_FIRST = "it explains first, then talk to it again.";
     /** S6, said at the bottom of the portal maze, where everyone starts. */
     static final String MAZE_CODE = "it's 133 221 333 123 111 from the bottom, left to right. see you up top.";
+
+    /**
+     * Joins the two map-chat lines of a line too long for one (a player can send at most 127 characters): the same
+     * speaker says them one after the other (chatLines).
+     */
+    static final char THEN = '\n';
 
     private static final List<String> BALLOONS = List.of("red balloon", "orange balloon", "yellow balloon",
             "lime balloon", "green balloon", "aqua balloon", "sky-blue balloon", "blue balloon", "violet balloon");
 
     private AgentLpqCompanionPlay() {
+    }
+
+    /** The map-chat lines a line is said as, in order: one, or the parts THEN joins. */
+    static List<String> chatLines(String line) {
+        if (line == null) return List.of();
+        return java.util.Arrays.stream(line.split(String.valueOf(THEN))).filter(part -> !part.isBlank()).toList();
     }
 
     /** The stage's balloon as players call it (stages 1-9). */
@@ -91,13 +105,14 @@ final class AgentLpqCompanionPlay {
     static String stageSevenLine(List<String> shooters, String leader) {
         if (shooters == null || shooters.isEmpty()) return null;
         String who = shooters.size() == 1 ? shooters.getFirst() : shooters.get(0) + " and " + shooters.get(1);
-        return who + ", take the ratz up on the ledges. the rest of us wait for rombard down here. " + leader
+        return who + ", take the ratz up on the ledges." + THEN + "the rest of us wait for rombard down here. " + leader
                 + ", stay at the bottom with us.";
     }
 
     /** S8a, while the blue balloon has not explained the boxes yet. */
     static String stageEightStartLine(String leader) {
-        return leader + ", talk to the blue balloon first. then we stand on the boxes and you ask it if we got it right.";
+        return leader + ", talk to the blue balloon first." + THEN
+                + "then we stand on the boxes and you ask it if we got it right.";
     }
 
     /** S8b for the first formation, then S8n by turns for each later one ({@code attempt} counts from 0). */
@@ -112,7 +127,7 @@ final class AgentLpqCompanionPlay {
 
     /** K1 (and K1p while the violet balloon still has to explain itself), by where the key lies. */
     static String keyLine(String leader, PassPlace place, boolean balloonExplainsFirst) {
-        String explains = balloonExplainsFirst ? " it explains first, then talk to it again." : "";
+        String explains = balloonExplainsFirst ? THEN + EXPLAINS_FIRST : "";
         String talk = " grab it and talk to the " + balloonName(9) + "." + explains;
         return switch (place == null ? PassPlace.FEET : place) {
             case FEET -> leader + ", alishar's key is at your feet." + talk;
@@ -181,7 +196,7 @@ final class AgentLpqCompanionPlay {
     /** H1 (and H1p while the balloon still has to explain itself), by where the passes lie; null for BALLOON/DYING. */
     static String passesLine(String leader, int stage, PassPlace place, boolean balloonExplainsFirst) {
         String balloon = balloonName(stage);
-        String explains = balloonExplainsFirst ? " it explains first, then talk to it again." : "";
+        String explains = balloonExplainsFirst ? THEN + EXPLAINS_FIRST : "";
         return switch (place == null ? PassPlace.FEET : place) {
             case FEET -> leader + ", the passes are at your feet. grab them and talk to the " + balloon + "." + explains;
             case LEFT -> leader + ", the passes are just to your left. grab them and talk to the " + balloon + "."

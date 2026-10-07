@@ -21,6 +21,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class AgentLpqCompanionLinesTest {
     static final List<String> PLAYERS = List.of("Crewfriend", "Kes", "Pel", "Mira");
+    /** Names as long as the game allows (12 characters), for the length rule. */
+    private static final List<String> LONG_NAMES = List.of("Abcdefghijkl", "Mnopqrstuvwx", "Opqrstuvwxyz");
+    /**
+     * The longest map-chat line a companion says: HPQ's longest live line is 96, and a non-GM player who sends more than
+     * 127 characters is disconnected as a packet editor (GeneralChatHandler), so no player ever reads a longer one.
+     */
+    private static final int LONGEST_CHAT_LINE = 100;
     private static final Pattern COUNTER = Pattern.compile("\\d\\s*[:/]\\s*\\d");
     private static final Pattern STAGE_NUMBER = Pattern.compile("(?i)\\bstage\\s*\\d");
     private static final Pattern ID = Pattern.compile("\\d{5,}");
@@ -45,6 +52,11 @@ class AgentLpqCompanionLinesTest {
 
     /** Every line AgentLpqCompanionPlay can produce for the sample arguments. */
     static List<String> allLines() throws ReflectiveOperationException {
+        return allLines(List.of("Crewfriend", "Kes", "Pel"));
+    }
+
+    /** Every line AgentLpqCompanionPlay can produce with these player names (the first two as names, all in lists). */
+    private static List<String> allLines(List<String> names) throws ReflectiveOperationException {
         List<String> lines = new ArrayList<>();
         for (Field field : AgentLpqCompanionPlay.class.getDeclaredFields()) {
             if (field.getType() == String.class && Modifier.isStatic(field.getModifiers())) {
@@ -55,7 +67,7 @@ class AgentLpqCompanionLinesTest {
         for (Method method : AgentLpqCompanionPlay.class.getDeclaredMethods()) {
             if (method.getReturnType() != String.class || !Modifier.isStatic(method.getModifiers())) continue;
             method.setAccessible(true);
-            for (List<Object> args : argumentSets(method.getParameterTypes())) {
+            for (List<Object> args : argumentSets(method.getParameterTypes(), names)) {
                 try {
                     Object line = method.invoke(null, args.toArray());
                     if (line != null) lines.add((String) line);
@@ -67,18 +79,20 @@ class AgentLpqCompanionLinesTest {
         return lines;
     }
 
-    private static List<List<Object>> argumentSets(Class<?>[] types) {
+    private static List<List<Object>> argumentSets(Class<?>[] types, List<String> names) {
         List<List<Object>> sets = new ArrayList<>();
         sets.add(new ArrayList<>());
         for (Class<?> type : types) {
             List<Object> values = new ArrayList<>();
-            if (type == String.class) values.addAll(List.of("Crewfriend", "Kes"));
+            if (type == String.class) values.addAll(names.subList(0, 2));
             else if (type == int.class || type == Integer.class) {
                 for (int value = 0; value <= 12; value++) values.add(value);
                 values.addAll(List.of(501, 502, 503, 504, 505, 506, 922_010_502, 922_010_503));
             } else if (type == long.class) values.addAll(List.of(0L, 1L));
             else if (type == boolean.class) values.addAll(List.of(true, false));
-            else if (type == List.class) values.addAll(List.of(List.of("Kes"), List.of("Kes", "Pel"), List.of()));
+            else if (type == List.class) {
+                values.addAll(List.of(List.of(names.get(1)), List.of(names.get(1), names.get(2)), List.of()));
+            }
             else if (type.isEnum()) values.addAll(List.of(type.getEnumConstants()));
             else return List.of();
             List<List<Object>> next = new ArrayList<>();
@@ -104,6 +118,30 @@ class AgentLpqCompanionLinesTest {
             if (!problems.isEmpty()) bad.add(problems + ": " + line);
         }
         assertEquals(List.of(), bad);
+    }
+
+    /**
+     * Every map-chat line fits what a player can send, with the longest names: a long line is said as two lines by
+     * the same speaker (the parts a builder joins with a line break).
+     */
+    @Test
+    void everyChatLineFitsWhatAPlayerCanSend() throws ReflectiveOperationException {
+        List<String> lines = new ArrayList<>(allLines(LONG_NAMES));
+        for (AgentLpqParting.Kind kind : AgentLpqParting.Kind.values()) {
+            for (int speaker : List.of(1, 9)) {
+                for (boolean pastTheClear : List.of(true, false)) {
+                    String line = new AgentLpqParting(kind, 9, LONG_NAMES.getFirst()).line(speaker, pastTheClear);
+                    if (line != null) lines.add(line);
+                }
+            }
+        }
+        List<String> tooLong = new ArrayList<>();
+        for (String line : lines) {
+            for (String part : line.split("\n")) {
+                if (part.length() > LONGEST_CHAT_LINE) tooLong.add(part.length() + ": " + part);
+            }
+        }
+        assertEquals(List.of(), tooLong);
     }
 
     @Test

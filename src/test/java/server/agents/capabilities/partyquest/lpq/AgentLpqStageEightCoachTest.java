@@ -60,8 +60,8 @@ class AgentLpqStageEightCoachTest {
     void theLeaderIsCoachedThroughEachFormation() {
         AgentLpqSession session = stageEight();
         fx.tickEvery(session, 3_000L, 5_000L, 1_000L);
-        fx.said(session, "s8-start", crew.get(1), "Crewfriend, talk to the blue balloon first. then we stand on the"
-                + " boxes and you ask it if we got it right.");
+        fx.said(session, "s8-start", crew.get(1), "Crewfriend, talk to the blue balloon first.\nthen we stand"
+                + " on the boxes and you ask it if we got it right.");
 
         fx.property("statusStg8", "0");
         fx.tick(session, 6_000L);

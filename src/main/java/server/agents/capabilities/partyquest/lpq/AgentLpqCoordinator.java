@@ -6758,10 +6758,15 @@ final class AgentLpqCoordinator {
         return session != null && session.companionAdopted() ? companionLine : stockLine;
     }
 
-    /** True when the line was said now; each key is said once a run, and a line nobody can say keeps its key. */
+    /**
+     * True when the line was said now; each key is said once a run, and a line nobody can say keeps its key. A line
+     * too long for one chat line is said as its parts, by the same speaker, one after the other.
+     */
     private static boolean narrate(AgentLpqSession session, Character speaker, String key, String line) {
         if (speaker == null || line == null || !session.narrateOnce(key)) return false;
-        AgentLpqDialogue.sayMapNow(session.sessionId(), key, speaker, line);
+        for (String part : AgentLpqCompanionPlay.chatLines(line)) {
+            AgentLpqDialogue.sayMapNow(session.sessionId(), key, speaker, part);
+        }
         return true;
     }
 

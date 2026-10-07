@@ -66,7 +66,7 @@ class AgentLpqStageSevenLootTest {
 
         fx.tick(session, 3_000L);
 
-        fx.said(session, "s7-start", crew.get(1), "Kes and Pel, take the ratz up on the ledges. the rest of us wait for"
-                + " rombard down here. Crewfriend, stay at the bottom with us.");
+        fx.said(session, "s7-start", crew.get(1), "Kes and Pel, take the ratz up on the ledges.\nthe rest of us wait"
+                + " for rombard down here. Crewfriend, stay at the bottom with us.");
     }
 }
