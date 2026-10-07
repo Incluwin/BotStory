@@ -18,6 +18,15 @@ final class CosmicHeadlessNpcScriptGateway {
     }
 
     static boolean execute(CosmicPreparedNpcScriptEngines engines, Character agent, int npcId, int... selections) {
+        return executeOnObject(engines, agent, npcId, -1, selections);
+    }
+
+    /**
+     * Runs {@code npcId}'s script as a click on the NPC map object {@code npcObjectId} would (-1: no object, as
+     * {@link #execute} does), for scripts that key their state by the clicked object.
+     */
+    static boolean executeOnObject(CosmicPreparedNpcScriptEngines engines, Character agent, int npcId,
+                                   int npcObjectId, int... selections) {
         Client client = agent.getClient();
         if (!(client instanceof BotClient)) {
             return false;
@@ -28,7 +37,7 @@ final class CosmicHeadlessNpcScriptGateway {
         try {
             synchronized (scripts) {
                 client.removeClickedNPC();
-                if (!scripts.start(client, npcId, agent, prepared)) {
+                if (!scripts.start(client, npcId, npcObjectId, agent, prepared)) {
                     return false;
                 }
                 int advances = 0;

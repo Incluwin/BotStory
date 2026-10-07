@@ -71,7 +71,15 @@ public class NPCScriptManager extends AbstractScriptManager {
      * invoked, instead of evaluating one on the calling thread. A null {@code prepared} evaluates as usual.
      */
     public boolean start(Client c, int npc, Character chr, ScriptEngine prepared) {
-        return start(c, npc, -1, null, chr, false, "cm", prepared);
+        return start(c, npc, -1, chr, prepared);
+    }
+
+    /**
+     * Same as {@link #start(Client, int, Character, ScriptEngine)}, talking to the NPC map object {@code oid} the way
+     * a client click names it, so a script that tells its NPC objects apart (getNpcObjectId) sees which one it is.
+     */
+    public boolean start(Client c, int npc, int oid, Character chr, ScriptEngine prepared) {
+        return start(c, npc, oid, null, chr, false, "cm", prepared);
     }
 
     public static String npcScriptPath(int npc) {
