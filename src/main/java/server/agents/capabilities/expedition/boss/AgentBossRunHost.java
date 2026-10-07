@@ -1,0 +1,176 @@
+package server.agents.capabilities.expedition.boss;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
+/**
+ * Per-run boss seam. The Agent layer stays owner-free: a boss run tells the host (the living world) when a member is
+ * tied to the run, signed up, refused, out of the run, and when the run ended, and the host installs the rule that
+ * keeps commitments, lines and records. With nothing installed a seat is always granted and every report is dropped.
+ */
+public final class AgentBossRunHost {
+    private static final Logger log = LoggerFactory.getLogger(AgentBossRunHost.class);
+
+    /** One member's place in one run. */
+    public record Seat(String bossKey, long sessionId, int agentCharacterId, int enlistedBy) {
+    }
+
+    /** Why a member did not get onto the entry NPC's list, or fell off it. */
+    public enum Refusal {
+        /** Below or above the expedition's level range. */
+        LEVEL,
+        /** The list closed before its turn. */
+        CLOSED,
+        /** The list was full. */
+        FULL,
+        /** The leader took it off the list. */
+        BANNED,
+        /** Still at the store, or still waiting, when the list was about to close. */
+        LATE,
+        /** Never reached the recruit map in time. */
+        NOT_HERE,
+        /** The host would not tie it to the run. */
+        BUSY,
+        /** The NPC did not list it for a reason the session could not see. */
+        UNKNOWN
+    }
+
+    /** How a member left a run it was part of. */
+    public enum Out {
+        DIED, MISSED_START, NO_HUMAN_LEFT, EXITED, GONE
+    }
+
+    /** What one member did in a run that ended. */
+    public record MemberResult(int agentId, int enlistedBy, boolean wentIn, boolean inAtClear, int deaths, Out out) {
+    }
+
+    /**
+     * A run ended. {@code started} is false when the expedition never started with the run (a disbanded list);
+     * {@code startedAtMs} is 0 then. {@code partySize} counts the event's players when the first member went in.
+     */
+    public record RunEnded(long sessionId, String bossKey, boolean started, boolean cleared, String reason,
+                           long startedAtMs, long endedAtMs, int partySize, List<MemberResult> members) {
+        public RunEnded {
+            members = List.copyOf(members);
+        }
+    }
+
+    /**
+     * The installed host rule. Every method answers from memory on the thread that ticks the run (the Agent
+     * scheduler), so any work it needs must be submitted elsewhere.
+     */
+    public interface Rule {
+        /** Ties the member to the run just before it signs up; false keeps it out (refused BUSY). Synchronous. */
+        boolean seat(Seat seat);
+
+        /** The entry NPC listed the member. */
+        default void registered(Seat seat) {
+        }
+
+        /** The member did not get onto the list, or the leader took it off. */
+        default void refused(Seat seat, Refusal refusal) {
+        }
+
+        /** The member left a run it was part of. */
+        default void memberOut(Seat seat, Out out) {
+        }
+
+        /** The run ended; called once per session. */
+        default void runEnded(RunEnded ended) {
+        }
+    }
+
+    private static volatile Rule rule;
+    private static final Rule INSTALLED = new Guarded(null);
+
+    private AgentBossRunHost() {
+    }
+
+    public static void install(Rule installed) {
+        rule = installed;
+    }
+
+    /** The installed rule behind a guard: a missing rule grants seats and drops reports, a failing one is logged. */
+    public static Rule installed() {
+        return INSTALLED;
+    }
+
+    /** {@code delegate} behind the same guard; null reads the installed rule at each call. */
+    static Rule guarded(Rule delegate) {
+        return new Guarded(delegate);
+    }
+
+    private record Guarded(Rule fixed) implements Rule {
+        private Rule current() {
+            return fixed != null ? fixed : rule;
+        }
+
+        @Override
+        public boolean seat(Seat seat) {
+            Rule current = current();
+            if (current == null) {
+                return true;
+            }
+            try {
+                return current.seat(seat);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run seat rule failed for {}", seat, failure);
+                return false;
+            }
+        }
+
+        @Override
+        public void registered(Seat seat) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.registered(seat);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run registered rule failed for {}", seat, failure);
+            }
+        }
+
+        @Override
+        public void refused(Seat seat, Refusal refusal) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.refused(seat, refusal);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run refused rule failed for {} ({})", seat, refusal, failure);
+            }
+        }
+
+        @Override
+        public void memberOut(Seat seat, Out out) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.memberOut(seat, out);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run member-out rule failed for {} ({})", seat, out, failure);
+            }
+        }
+
+        @Override
+        public void runEnded(RunEnded ended) {
+            Rule current = current();
+            if (current == null) {
+                return;
+            }
+            try {
+                current.runEnded(ended);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run run-ended rule failed for {}", ended, failure);
+            }
+        }
+    }
+}

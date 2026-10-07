@@ -5382,6 +5382,26 @@ tuning:
     # Purpose: Provides the matching Agent-only virtual right wall so high-velocity knockback cannot launch expedition Agents beyond the continuous floor.
     # Technical: Both grounded displacement and airborne integration clamp against this bound only while the Balrog scenario has explicitly enabled it.
     server.agents.capabilities.expedition.balrog.AgentEasyBalrogCombatPolicy.BATTLE_MAX_X: '1068'
+    # Values: a positive integer in milliseconds. Recommended: 250-1000; 500 matches the GM expedition lobby monitor, so sign-up takes at most one Mu Young conversation every half second.
+    # Purpose: How often a boss run with companions looks at its members: sign-ups, the fight, deaths and the way out.
+    # Technical: AgentBossRunService reschedules each session's monitor on AgentSchedulerRuntime this often; one tick makes at most one headless Mu Young conversation and ticks the fight for members on the battle map.
+    server.agents.capabilities.expedition.boss.AgentBossRunService.MONITOR_MS: '500'
+    # Values: a non-negative integer in milliseconds, below the 5-minute Easy Balrog registration. Recommended: 30000-120000; 60000 leaves the owner the list's last minute to start without a companion still at the store.
+    # Purpose: How long before Mu Young's list closes a companion still at the store gives up signing up and says it will not make it.
+    # Technical: Compared with Expedition.getStartTime() (the registration end while registering) minus this for a WAITING member that is RESTOCKING or off the recruit map; past it the member is refused LATE or NOT_HERE.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.REGISTRATION_MARGIN_MS: '60000'
+    # Values: a non-negative integer in milliseconds. Recommended: 5000-20000; 12000 covers two readiness checks (AgentSupplyReadiness.CHECK_INTERVAL_MS 5000) and a slow tick before sign-up stops waiting.
+    # Purpose: How long sign-up waits for a short companion to decide on a shop trip, so it never commits to the run first and loses its potion duty.
+    # Technical: A WAITING member is skipped while AgentSupplyReadiness.restockPending is true and less than this has passed since enlist; AgentBossRunHost.seat commits it, which ends CompanionRestock.standing.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.VERDICT_WAIT_MS: '12000'
+    # Values: a positive distance in pixels. Recommended: 150-250; 200 covers every spot the host lines companions up on beside Mu Young (50-170 px) with room for a step of drift.
+    # Purpose: How close to the entry NPC a companion stands before it talks to her, so it walks up like a player.
+    # Technical: Distance to PrimitiveCapabilityGateway.npcPosition; within it the session runs PartyQuestGateway.runNpc with the definition's join selections; the living spots beside Mu Young lie 50-170 px from her.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.NPC_REACH_PX: '200'
+    # Values: a positive integer in milliseconds. Recommended: 15000-60000; 30000 lets a companion cross Mu Young's room twice before it signs up from where it stands.
+    # Purpose: How long a companion on the recruit map walks toward the entry NPC before it signs up from where it stands, so a blocked walk never costs it the run.
+    # Technical: Starts when a WAITING member is first seen on the recruit map; runNpcScript needs only the NPC on its map (CosmicPrimitiveCapabilityGateway.runNpcScript), so the late sign-up still works.
+    server.agents.capabilities.expedition.boss.AgentBossRunSession.WALK_TIMEOUT_MS: '30000'
     # Values: a positive integer. Recommended: 3-10; 5 tolerates a brief blip without letting a dead endpoint absorb a request per judgment.
     # Purpose: Number of consecutive failed System One requests after which the circuit breaker opens and requests are refused locally.
     # Technical: Any success resets the count; while the breaker is open every ask returns empty immediately so callers fall back to deterministic behaviour without network latency.
