@@ -5667,7 +5667,7 @@ final class AgentLpqCoordinator {
         Character speaker = partingNarrator(session);
         log.info("LPQ parting: session={} phase={} kind={} speaker={} pastTheClear={}", session.sessionId(),
                 session.phase(), said.kind(), speaker == null ? "none" : speaker.getName(), pastTheClear);
-        if (speaker != null) narrate(session, speaker, "failed", said.line(speaker.getId(), pastTheClear));
+        if (speaker != null) narrate(session, speaker, "failed", said.line(speaker.getId(), session.eventLeaderId(), pastTheClear));
         AgentLpqTerminationService.fail(session, reason, nowMs);
     }
 

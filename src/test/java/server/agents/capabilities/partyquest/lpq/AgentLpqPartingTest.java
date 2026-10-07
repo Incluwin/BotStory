@@ -75,6 +75,24 @@ class AgentLpqPartingTest {
         }
     }
 
+    /** The leader lies there and hears it: a player says "you" to him, not his name (only when he went down). */
+    @Test
+    void theLeaderWhoWentDownIsSpokenTo() {
+        int leader = 1;
+        assertEquals("you went down, so we can't finish this one. let's head out.",
+                new AgentLpqParting(Kind.DEFEATED, leader, "Crewfriend").line(KES, leader, false));
+        assertEquals("you went down, and we need five for this. let's head out.",
+                new AgentLpqParting(Kind.WENT_DOWN, leader, "Crewfriend").line(KES, leader, false));
+        assertEquals("you went down. let's wrap it up and head back.",
+                new AgentLpqParting(Kind.DEFEATED, leader, "Crewfriend").line(KES, leader, true));
+        assertEquals("Crewfriend dropped out, so we can't finish this one. let's head out.",
+                new AgentLpqParting(Kind.GONE, leader, "Crewfriend").line(KES, leader, false), "he is not there");
+        assertEquals("Pel went down, so we can't finish this one. let's head out.",
+                new AgentLpqParting(Kind.DEFEATED, 4, "Pel").line(KES, leader, false));
+        assertEquals("sorry, i went down. we can't finish this one, let's head out.",
+                new AgentLpqParting(Kind.DEFEATED, KES, "Kes").line(KES, leader, false));
+    }
+
     @Test
     void theEventEndedByTheTimerOnlyNearItsEnd() {
         assertEquals(Kind.TIMEOUT, AgentLpqParting.eventEnded(TIMER - SLACK, TIMER, SLACK));

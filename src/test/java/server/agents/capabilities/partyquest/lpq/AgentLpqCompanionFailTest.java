@@ -58,13 +58,13 @@ class AgentLpqCompanionFailTest {
     }
 
     @Test
-    void aLeaderWhoWentDownIsNamed() {
+    void aLeaderWhoWentDownIsSpokenTo() {
         AgentLpqSession session = run(true, AgentLpqSession.Phase.STAGE_3, AgentLpqDefinition.stage(3).mapId());
         when(crew.getFirst().getHp()).thenReturn(0);
 
         fx.tick(session, 5_000L);
 
-        fx.said(session, "failed", crew.get(1), "Crewfriend went down, so we can't finish this one. let's head out.");
+        fx.said(session, "failed", crew.get(1), "you went down, so we can't finish this one. let's head out.");
         assertEquals(AgentLpqSession.Phase.FAILED, session.phase());
     }
 
