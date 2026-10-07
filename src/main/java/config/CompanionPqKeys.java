@@ -20,7 +20,7 @@ public final class CompanionPqKeys {
 
         keys.add("hpq");
 
-        // slot: lpq
+        keys.add("lpq");
 
         // slot: epq
 
