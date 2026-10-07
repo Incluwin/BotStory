@@ -195,7 +195,7 @@ final class LpqTickFixture implements AutoCloseable {
             when(map.getEventInstance()).thenReturn(event);
             when(map.getDroppedItems()).thenAnswer(call -> List.copyOf(drops.getOrDefault(id, List.of())));
             when(map.getAllMonsters()).thenAnswer(call -> List.copyOf(monsters.getOrDefault(id, List.of())));
-            when(map.getFootholds()).thenReturn(mock(FootholdTree.class));
+            when(map.getFootholds()).thenReturn(new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000)));
             when(map.getAreas()).thenAnswer(call -> List.copyOf(areas.getOrDefault(id, List.of())));
             Portal spawn = mock(Portal.class);
             when(spawn.getPosition()).thenReturn(new Point(0, 0));

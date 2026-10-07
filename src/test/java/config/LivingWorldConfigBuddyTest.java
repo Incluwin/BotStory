@@ -14,9 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * The companions' buddy requests' living_world keys (P9): COMPANION_BUDDY_REQUESTS, off until its live check passes;
- * FRIENDSHIP_LEVEL, the friendship a Resident asks at (4, "Friend"); HIRE_PARTY_MINUTES, the party time a hired hand
- * asks after (30, as a citizen). config.yaml ships them and says why.
+ * The companions' buddy requests' living_world keys (P9): COMPANION_BUDDY_REQUESTS, off in code and on in the shipped
+ * config.yaml since its live check passed (2026-10-07); FRIENDSHIP_LEVEL, the friendship a Resident asks at (4,
+ * "Friend"); HIRE_PARTY_MINUTES, the party time a hired hand asks after (30, as a citizen). config.yaml ships them and
+ * says why.
  */
 class LivingWorldConfigBuddyTest {
 
@@ -45,7 +46,7 @@ class LivingWorldConfigBuddyTest {
     @Test
     void configYamlShipsTheBuddyKeysAndSaysWhy() throws IOException {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        assertTrue(yaml.contains("\n    COMPANION_BUDDY_REQUESTS: false\n"));
+        assertTrue(yaml.contains("\n    COMPANION_BUDDY_REQUESTS: true\n"));
         assertTrue(yaml.contains("\n    COMPANION_BUDDY_FRIENDSHIP_LEVEL: 4\n"));
         assertTrue(yaml.contains("\n    COMPANION_BUDDY_HIRE_PARTY_MINUTES: 30\n"));
         String comment = yaml.substring(yaml.indexOf("# Companions ask you to be buddies"),

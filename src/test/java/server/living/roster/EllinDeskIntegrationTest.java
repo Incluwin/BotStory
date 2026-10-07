@@ -13,6 +13,7 @@ import scripting.npc.NPCConversationManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback.TapOut;
 import server.agents.capabilities.partyquest.epq.AgentEpqSession;
 import server.agents.capabilities.partyquest.epq.AgentEpqSessionRegistry;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.config.Content.Persona;
@@ -79,8 +80,13 @@ class EllinDeskIntegrationTest {
                     ? entries.computeIfAbsent(id, key -> new AgentRuntimeEntry(game.bots.get(key), game.ann, null))
                     : null;
         });
+        // ready companions carry the forest's own standard (PARTY_QUEST_STANDARDS epq), not the fixture's 50
+        AgentSupplyReadiness.Standard forest =
+                AgentSupplyReadiness.standard(AgentSupplyReadiness.Activity.partyQuest("epq"));
         for (int id : List.of(900, 901, 902, 903, 904)) {
             when(game.world.directory().ownerOfCharacter(id)).thenReturn(ANN);
+            fx.potions.put(id, forest.hp());
+            fx.manaPotions.put(id, forest.mp());
         }
         when(client.getPlayer()).thenReturn(game.ann);
         when(client.canClickNPC()).thenReturn(true);
