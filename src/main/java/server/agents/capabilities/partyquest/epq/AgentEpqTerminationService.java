@@ -90,6 +90,7 @@ final class AgentEpqTerminationService {
             session.fail(reason, nowMs);
         }
         AgentEpqSessionRegistry.remove(session);
+        if (companionRun) AgentEpqPaceReport.logSpans(session, nowMs); // Step 5.3: measurement only
         // A companion run's pace goes to the host's clear-time records; a stock run reports none.
         AgentPartyQuestLifecycleRuntime.childFinished(session.sessionId(), cleared, reason, nowMs,
                 companionRun ? pace(session, nowMs) : null);
@@ -188,9 +189,9 @@ final class AgentEpqTerminationService {
         return companionRun;
     }
 
-    /** A companion run's pace for the host's records; none yet (Step 5: AgentEpqPaceReport.of). */
+    /** A companion run's pace for the host's records (Step 5.3); none for no run. */
     static AgentPqPace pace(AgentEpqSession session, long nowMs) {
-        return null;
+        return session == null ? null : AgentEpqPaceReport.of(session, nowMs);
     }
 
     private static void logPotions(AgentEpqSession session) {
