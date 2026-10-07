@@ -104,7 +104,8 @@ class AgentSupplyReadinessTest {
 
     @Test
     void theCountOverloadAndTheCompanionsOwnCountAgreeOnTheEpqStandard() {
-        // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion
+        // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion. This checks the
+        // two overloads only: no desk passes epq on this branch (Ellin's desk reads PARTY_QUEST until EPQ step 6.3)
         AgentSupplyReadiness.Activity epq = AgentSupplyReadiness.Activity.partyQuest("epq");
         Character mage = withJob(Job.FP_WIZARD);
         when(mage.getInventory(client.inventory.InventoryType.USE)).thenReturn(mock(client.inventory.Inventory.class));
@@ -113,7 +114,7 @@ class AgentSupplyReadinessTest {
             potions.when(() -> AgentPotionService.countPotions(mage)).thenAnswer(inv -> carried.clone());
 
             assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(249, 350, true, epq),
-                    "what the desk reads");
+                    "the count overload, which a desk calls with its own key");
             assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(mage, epq),
                     "what the companion's own restock reads");
 

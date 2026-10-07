@@ -17,6 +17,7 @@ import server.agents.capabilities.inventory.AgentUseItemClassificationPolicy;
 import server.agents.capabilities.supplies.AgentPotionInventoryPolicy;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.capabilities.supplies.AgentSupplyReadiness;
+import server.agents.capabilities.supplies.AgentSupplyReadinessRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
 import server.agents.integration.AgentShopGatewayRuntime;
 import server.agents.integration.InventoryGateway;
@@ -25,6 +26,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import testutil.Items;
 
 import java.awt.Point;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -60,6 +62,8 @@ class AgentShopServicePotionFloorTest {
     private static final int RED = 2_000_000;
     private static final int WHITE = 2_000_002;
     private static final int BLUE = 2_000_003;
+    private static final int APPLE = 2_010_000;
+    private static final int ORANGE = 2_010_003;
     private static final int POWER_ELIXIR = 2_000_005;
     private static final int ARROW = 2_060_000;
     private static final int SUBI = 2_070_000;
@@ -368,6 +372,37 @@ class AgentShopServicePotionFloorTest {
     }
 
     @Test
+    void theReadinessGateAsksExactlyTheUseSlotsTheCounterTakesAndTheRunsSlotStaysFree() throws Exception {
+        // review 2026-10-06: the gate's count and the counter's use were only argued to match; this runs the gate's
+        // real count and the real counter on one Mayoren-like shop and bag
+        AgentSupplyReadiness.install(id -> EPQ);
+        effects.put(APPLE, effect(30, 0, 0.0d, 0.0d));
+        effects.put(ORANGE, effect(0, 50, 0.0d, 0.0d));
+        prices.put(APPLE, 30);
+        prices.put(ORANGE, 100);
+        purse = 200_000;
+        use = new Inventory(bot, InventoryType.USE, (byte) 8);
+        use.addItem(Items.itemWithQuantity(WHITE, 20));
+        use.addItem(Items.itemWithQuantity(BLUE, 30)); // 6 free slots
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        fillCarriedStacksFirst();
+        Shop mayoren = shop(List.of(APPLE, ORANGE, RED, WHITE, BLUE));
+
+        int needed;
+        try (MockedStatic<AgentInventoryGatewayRuntime> inventories = mockStatic(AgentInventoryGatewayRuntime.class)) {
+            inventories.when(AgentInventoryGatewayRuntime::inventory).thenReturn(slotMax);
+            needed = useSlotsNeeded(mayoren, AgentSupplyReadiness.shortfall(bot, EPQ), purse);
+        }
+        assertEquals(6, needed, "2 stacks of White and 3 of Blue beside the carried ones, and the run's slot");
+        assertTrue(use.getNumFreeSlot() >= needed, "the gate lets it go");
+
+        visit(List.of(APPLE, ORANGE, RED, WHITE, BLUE), slotMax);
+
+        assertArrayEquals(new int[]{250, 350}, AgentPotionService.countPotions(bot), transactions.toString());
+        assertEquals(1, use.getNumFreeSlot(), "the counter took the slots the gate asked for, less the run's one");
+    }
+
+    @Test
     void anEpqDutyFillsTheRoomOfAStackItCarriesBesideTheRunsSlot() {
         AgentSupplyReadiness.install(id -> EPQ);
         purse = 200_000;
@@ -554,6 +589,14 @@ class AgentShopServicePotionFloorTest {
         }
         assertEquals(slots, recharged, "both partial stacks, as estimated");
         assertTrue(planned > 0L);
+    }
+
+    /** The readiness gate's real slot count (AgentSupplyReadinessRuntime.useSlotsNeeded, package-private there). */
+    private int useSlotsNeeded(Shop shop, AgentSupplyReadiness.Shortfall shortfall, long spendable) throws Exception {
+        Method gate = AgentSupplyReadinessRuntime.class.getDeclaredMethod("useSlotsNeeded", Character.class,
+                Shop.class, AgentSupplyReadiness.Activity.class, AgentSupplyReadiness.Shortfall.class, long.class);
+        gate.setAccessible(true);
+        return (int) gate.invoke(null, bot, shop, EPQ, shortfall, spendable);
     }
 
     private void visit(List<Integer> itemIds) {
