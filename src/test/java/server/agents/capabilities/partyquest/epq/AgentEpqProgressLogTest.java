@@ -97,7 +97,7 @@ class AgentEpqProgressLogTest {
         for (Character member : List.of(ben, mira, tobi, una)) {
             run.onMap(member, AgentEpqDefinition.STAGE_FOUR_MAP);
         }
-        AgentEpqSession session = session(AgentEpqSession.Phase.STAGE_FOUR);
+        AgentEpqSession session = stockSession(AgentEpqSession.Phase.STAGE_FOUR);
         when(run.actions.itemCount(mira, AgentEpqDefinition.PURIFICATION_MARBLE)).thenReturn(1);
         try (EpqLogLines coordinator = new EpqLogLines(AgentEpqCoordinator.class);
              EpqLogLines termination = new EpqLogLines(AgentEpqTerminationService.class)) {
@@ -136,5 +136,10 @@ class AgentEpqProgressLogTest {
 
     private AgentEpqSession session(AgentEpqSession.Phase phase) {
         return run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true, phase, ben, mira, tobi, una);
+    }
+
+    /** The same run outside a companion run: its subject is every mode's behaviour. */
+    private AgentEpqSession stockSession(AgentEpqSession.Phase phase) {
+        return run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false, phase, ben, mira, tobi, una);
     }
 }

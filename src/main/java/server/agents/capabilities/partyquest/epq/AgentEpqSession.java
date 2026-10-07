@@ -34,6 +34,11 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<String> narrations = new HashSet<>();
     private final Set<Integer> seenInEvent = new HashSet<>();
     private final Map<String, Long> leaderHints = new HashMap<>();
+    private final Set<Integer> runCompanions = new HashSet<>();
+    private final Map<Integer, Integer> recollectors = new HashMap<>();
+    private final Map<Integer, Integer> recollectCounts = new HashMap<>();
+    private final Set<Integer> dyingStacks = new HashSet<>();
+    private int handOvers;
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -76,6 +81,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
                 || members.putIfAbsent(id, new AgentEpqMemberState(id, type)) != null) {
             throw new IllegalStateException("invalid or duplicate EPQ member");
         }
+        if (type == AgentEpqMemberState.MemberType.AGENT) runCompanions.add(id);
     }
     public synchronized void setLeadership(int leaderId, int executionId) {
         if (!members.containsKey(leaderId) || !members.containsKey(executionId)) {
@@ -263,6 +269,54 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** Stops a hint clock: the leader did what the companions were waiting for. */
     synchronized void clearLeaderHint(String key) { leaderHints.remove(key); }
+
+    // A companion run's hand-overs (Step 2.7): read by the companions' own ticks and the bots' loot path.
+
+    /** Whether this character was ever one of the run's Agents (also after it was taken out of the run). */
+    synchronized boolean companionOfRun(int characterId) { return runCompanions.contains(characterId); }
+
+    /** The next hand-over's number, for its line key. */
+    synchronized int nextHandOver() { return ++handOvers; }
+
+    /**
+     * Claims a stack lying on the floor (by its map object id) for this companion to pick back up; false when another
+     * companion claimed it first or this one already picks up another.
+     */
+    synchronized boolean beginRecollect(int objectId, int agentId) {
+        if (recollectors.containsValue(agentId)) return false;
+        return recollectors.putIfAbsent(objectId, agentId) == null;
+    }
+
+    /** The companion picking this stack back up, or 0. */
+    synchronized int recollectorOf(int objectId) { return recollectors.getOrDefault(objectId, 0); }
+
+    /** The stack this companion picks back up, or 0. */
+    synchronized int recollectOf(int agentId) {
+        return recollectors.entrySet().stream().filter(entry -> entry.getValue() == agentId)
+                .mapToInt(Map.Entry::getKey).findFirst().orElse(0);
+    }
+
+    /** Ends the claim on this stack (picked up or gone) and says how often its lineage was picked back up before. */
+    synchronized int endRecollect(int objectId) {
+        recollectors.remove(objectId);
+        dyingStacks.remove(objectId);
+        Integer count = recollectCounts.remove(objectId);
+        return count == null ? 0 : count;
+    }
+
+    /** How often the lineage of the stack lying now was picked back up. */
+    synchronized int recollectCount(int objectId) { return recollectCounts.getOrDefault(objectId, 0); }
+
+    /** A re-dropped stack inherits its lineage's count. */
+    synchronized void setRecollectCount(int objectId, int count) {
+        if (objectId != 0 && count > 0) recollectCounts.put(objectId, count);
+    }
+
+    /** Marks a stack a carrier about to go down left where it stood: it is picked back up at once. */
+    synchronized void markDyingStack(int objectId) { if (objectId != 0) dyingStacks.add(objectId); }
+
+    /** Whether a carrier about to go down left this stack. */
+    synchronized boolean dyingStack(int objectId) { return dyingStacks.contains(objectId); }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }

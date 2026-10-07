@@ -495,6 +495,11 @@ public final class AgentEpqCoordinator {
         // below the map and trigger the global emergency recovery teleport.
         actions().setHorizontalBoundary(entry, AgentEpqDefinition.STAGE_FOUR_MAP,
                 STAGE_FOUR_MIN_X, STAGE_FOUR_MAX_X);
+        // A companion run's companions bring their marbles to the leader's feet (Step 2.7).
+        if (session.companionAdopted() && AgentEpqHandOver.tick(session, entry, agent, member,
+                AgentEpqDefinition.MONSTER_MARBLE, AgentEpqDefinition.STAGE_NPC, nowMs)) {
+            return;
+        }
         int monsterMarbles = actions().itemCount(agent, AgentEpqDefinition.MONSTER_MARBLE);
         int total = stageItemTotal(session, agent, AgentEpqDefinition.MONSTER_MARBLE);
         if (agent.getId() == workAgentId(session)) {
@@ -517,7 +522,7 @@ public final class AgentEpqCoordinator {
                         else actions().stop(entry);
                     }
                 }
-            } else if (monsterMarbles > 0) {
+            } else if (monsterMarbles > 0 && !session.companionAdopted()) {
                 dropStackNearNpc(session, entry, agent, AgentEpqDefinition.MONSTER_MARBLE,
                         AgentEpqDefinition.STAGE_NPC, member, nowMs, "stage4-handoff");
                 if (actions().itemCount(agent, AgentEpqDefinition.MONSTER_MARBLE) == 0) {
@@ -532,6 +537,12 @@ public final class AgentEpqCoordinator {
             return;
         }
         if (actions().itemCount(agent, AgentEpqDefinition.PURIFICATION_MARBLE) == 0) {
+            // In a companion run nobody asks Ellin for purifiers with no flower left: then her Yes warps the talker out.
+            if (session.companionAdopted() && flowers(agent).isEmpty()) {
+                actions().stop(entry);
+                member.deferUntil(nowMs + ACTION_RETRY_MS);
+                return;
+            }
             if (runNearbyNpc(entry, agent, AgentEpqDefinition.STAGE_NPC)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -542,8 +553,10 @@ public final class AgentEpqCoordinator {
                 mob -> mob.getPosition().distanceSq(agent.getPosition()));
         if (target == null) {
             actions().stop(entry);
-            agent.getMap().instanceMapForceRespawn();
-            rescue(session, "respawn-flowers", agent);
+            if (!session.companionAdopted()) { // a companion run plays stock: no forced respawn
+                agent.getMap().instanceMapForceRespawn();
+                rescue(session, "respawn-flowers", agent);
+            }
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -1157,6 +1170,12 @@ public final class AgentEpqCoordinator {
                         drop.getPosition().distanceSq(agent.getPosition())))
                 .orElse(null);
         if (item == null) return false;
+        pickUp(entry, agent, item);
+        return true;
+    }
+
+    /** Walks to this drop, and loots it once within LOOT_RADIUS. */
+    static void pickUp(AgentRuntimeEntry entry, Character agent, MapItem item) {
         if (!near(agent.getPosition(), item.getPosition(), LOOT_RADIUS)) {
             Point ground = actions().groundPoint(agent.getMap(), item.getPosition());
             actions().navigate(entry, ground == null ? item.getPosition() : ground, true);
@@ -1164,7 +1183,6 @@ public final class AgentEpqCoordinator {
             actions().stop(entry);
             actions().lootItem(agent, item.getObjectId(), LOOT_RADIUS);
         }
-        return true;
     }
 
     static int stageItemTotal(AgentEpqSession session, Character observer, int itemId) {

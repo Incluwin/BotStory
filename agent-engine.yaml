@@ -1214,6 +1214,38 @@ tuning:
     # Purpose: Sets how long a companion waits on the leader (at an exit, or while he holds a stage item) before it says one short hint.
     # Technical: AgentEpqCompanionRun keeps one hint clock per kind on the session (exit, diluted poison, marbles, stone, altar); each hint is said once per run through the coordination chat.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_HINT_MS: '20000'
+    # Values: 1-20 marbles. Recommended: 5 so the leader gets the marbles in four or so trips, not one by one.
+    # Purpose: Sets how many monster marbles a companion holds before it brings them to a leader who is near.
+    # Technical: AgentEpqHandOver reads this on 930000400 in companion runs; once the stage's marbles (bags plus floor) reach twenty, or no flower is left, every carrier brings what it holds whatever the batch.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.MARBLE_BATCH: '5'
+    # Values: 100-1500 pixels. Recommended: 400, about a screen's half width.
+    # Purpose: Sets how near the leader must stand for a carrier to bring him a batch early.
+    # Technical: Same map and within this distance; used only by the batch rule of AgentEpqHandOver in companion runs.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.NEAR_PX: '400'
+    # Values: 20-120 pixels. Recommended: 60, HPQ's and KPQ's at-feet distance.
+    # Purpose: Sets how close to the leader's spot a carrier drops its stack, so it lands at his feet.
+    # Technical: Both on a foothold and within this on both axes, with the map's own drop landing (predictDropLanding) checked before the drop; a landing above or below him makes the carrier walk on. The companion's line follows the landing.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.REACH_PX: '60'
+    # Values: 5000-90000 milliseconds. Recommended: 30000.
+    # Purpose: Bounds the walk to the leader with monster marbles; after it the carrier leaves the stack by Ellin instead.
+    # Technical: Counted from the hand-over's start on the carrier's own EPQ state; an unreachable leader (canReach false) goes to Ellin at once. The purple stone uses STONE_TIMEOUT_MS. It also bounds the hand-over of the golem's marble before the companions leave, which has no NPC: the marble is then dropped where the companion stands.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.TIMEOUT_MS: '30000'
+    # Values: 10000-120000 milliseconds. Recommended: 40000.
+    # Purpose: Reminds the leader once about a stack a companion dropped for him that still lies on the floor.
+    # Technical: Keyed by the stack's map object id; said by its dropper through the coordination chat. Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.PICKUP_NUDGE_MS: '40000'
+    # Values: 60000-170000 milliseconds with the shipped item expiry; a value past config.yaml ITEM_EXPIRE_TIME minus ITEM_EXPIRE_CHECK is read as that, with one WARN. Recommended: 150000.
+    # Purpose: Has a companion pick back up marbles or the stone the leader left lying before the map removes them, and drop them for him again.
+    # Technical: A dropped item lies ITEM_EXPIRE_TIME (180000) and goes on the next ITEM_EXPIRE_CHECK (10000) sweep; AgentEpqHandOver caps this at their difference (AgentEpqDefinition.OBJECTIVE_RECOLLECT_LATEST_MS 170000 when the config cannot be read). From then the loot rule lets that one companion take the player-dropped stack back. A stack a dying companion dropped is due at once; the loot path still waits 15000 ms for any stack an Agent dropped.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.RECOLLECT_MS: '150000'
+    # Values: 0-5 per stack. Recommended: 2; 0 never picks a stack back up.
+    # Purpose: Bounds how often companions pick up and re-drop a stack the leader keeps leaving.
+    # Technical: Counted per stack lineage on the session (a re-drop inherits the count); past it the stack is left to expire and the lost-objective check of Step 4 may end the run.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.RECOLLECT_MAX: '2'
+    # Values: 5-60 percent of maximum HP. Recommended: 25.
+    # Purpose: Has a carrier about to go down (this low and no HP potion left) drop what it carries where it stands, so a death does not delete it.
+    # Technical: EllinPQ deletes a leaver's 4001162/4001163/4001169/2270004 (EventInstanceManager dropExclusiveItems); the dying drop keeps them on the floor for the leader or a recollect. Unknown potion counts (-1) never count as none.
+    server.agents.capabilities.partyquest.epq.AgentEpqHandOver.DYING_HP_PERCENT: '25'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

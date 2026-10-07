@@ -136,7 +136,7 @@ class AgentEpqVitalsLogTest {
     @Test
     void aNonLeaderMarbleDropNearEllinLogsWhereItWasMadeAndWhereItLands() {
         for (Character member : List.of(ben, mira, tobi, una)) run.onMap(member, AgentEpqDefinition.STAGE_FOUR_MAP);
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
         when(run.actions.npcPosition(tobi, AgentEpqDefinition.STAGE_NPC)).thenReturn(new Point(48, 1));
         when(run.actions.itemCount(tobi, AgentEpqDefinition.MONSTER_MARBLE)).thenReturn(20, 20, 20, 0);
@@ -155,7 +155,7 @@ class AgentEpqVitalsLogTest {
     @Test
     void anUnknownLandingIsLoggedAsNone() {
         for (Character member : List.of(ben, mira, tobi, una)) run.onMap(member, AgentEpqDefinition.STAGE_FOUR_MAP);
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
         when(run.actions.npcPosition(tobi, AgentEpqDefinition.STAGE_NPC)).thenReturn(new Point(48, 1));
         when(run.actions.itemCount(tobi, AgentEpqDefinition.MONSTER_MARBLE)).thenReturn(20, 20, 20, 0);
@@ -173,7 +173,7 @@ class AgentEpqVitalsLogTest {
     @Test
     void aFailedDropLogsNothing() {
         for (Character member : List.of(ben, mira, tobi, una)) run.onMap(member, AgentEpqDefinition.STAGE_FOUR_MAP);
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
         when(run.actions.npcPosition(tobi, AgentEpqDefinition.STAGE_NPC)).thenReturn(new Point(48, 1));
         when(run.actions.itemCount(tobi, AgentEpqDefinition.MONSTER_MARBLE)).thenReturn(20, 20, 20, 0);

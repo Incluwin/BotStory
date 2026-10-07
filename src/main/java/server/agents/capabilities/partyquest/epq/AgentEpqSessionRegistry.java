@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.epq;
 
 import client.Character;
+import server.maps.MapItem;
 
 import java.util.Collection;
 import java.util.List;
@@ -62,6 +63,33 @@ public final class AgentEpqSessionRegistry {
         if (session == null || !SESSIONS.remove(session.sessionId(), session)) return;
         BY_OPERATOR.remove(session.operatorId(), session.sessionId());
         session.members().forEach(member -> BY_MEMBER.remove(member.characterId(), session.sessionId()));
+    }
+
+    /** {@link #canLootExclusive(Character, MapItem, long)} now. */
+    public static boolean canLootExclusive(Character character, MapItem drop) {
+        return canLootExclusive(character, drop, System.currentTimeMillis());
+    }
+
+    /**
+     * Whether this bot may loot this drop of an EPQ objective item. In a companion run a stack a companion dropped for
+     * the leader (monster marbles on 930000400, the purple stone on 930000500) is his: only the companion that claimed
+     * it back before it can expire may take it. Golem's Marble (4001164) is no exclusive item and stays free outside a
+     * companion run, as before. Everything else is {@link #canLootExclusive(Character, int)}, unchanged.
+     */
+    public static boolean canLootExclusive(Character character, MapItem drop, long nowMs) {
+        if (character == null || drop == null) return false;
+        int itemId = drop.getItemId();
+        AgentEpqSession session = forMember(character.getId());
+        boolean companion = session != null && session.companionAdopted();
+        if (itemId == AgentEpqDefinition.GOLEMS_MARBLE) return true;
+        if (companion && drop.isPlayerDrop()
+                && ((itemId == AgentEpqDefinition.MONSTER_MARBLE
+                && character.getMapId() == AgentEpqDefinition.STAGE_FOUR_MAP)
+                || (itemId == AgentEpqDefinition.MAGIC_STONE
+                && character.getMapId() == AgentEpqDefinition.STAGE_FIVE_MAP))) {
+            return session.recollectorOf(drop.getObjectId()) == character.getId();
+        }
+        return canLootExclusive(character, itemId);
     }
 
     public static boolean canLootExclusive(Character character, int itemId) {

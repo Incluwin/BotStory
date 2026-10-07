@@ -103,7 +103,7 @@ class AgentEpqDeadMemberRolesTest {
 
     @Test
     void aCorpsesMarblesDoNotCountTowardTheTwenty() {
-        AgentEpqSession session = session(AgentEpqSession.Phase.STAGE_FOUR);
+        AgentEpqSession session = stockSession(AgentEpqSession.Phase.STAGE_FOUR);
         for (Character agent : List.of(mira, una, pia)) {
             when(run.actions.itemCount(agent, AgentEpqDefinition.MONSTER_MARBLE)).thenReturn(6);
         }

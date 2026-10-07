@@ -30,6 +30,8 @@ public final class AgentEpqDefinition {
     public static final int GOLEMS_MARBLE = 4_001_164;
     /** Altaire Fragment (String.wz Etc 4001198): east00 gives one to each leaver once the fountain has fired. */
     public static final int ALTAIRE_FRAGMENT = 4_001_198;
+    /** The monster marbles Ellin takes on 930000400 (2133001.js). */
+    public static final int REQUIRED_MONSTER_MARBLES = 20;
     public static final Set<Integer> EXCLUSIVE_ITEMS = Set.of(
             PURIFIED_POISON, MAGIC_STONE, MONSTER_MARBLE, PURIFICATION_MARBLE);
 

@@ -70,7 +70,7 @@ class AgentEpqLineLogTest {
     @Test
     void theMarbleHandoffLineIsLoggedUnderItsMemberKey() {
         for (Character member : List.of(ben, mira, tobi, una)) run.onMap(member, AgentEpqDefinition.STAGE_FOUR_MAP);
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.STAGE_FOUR, ben, mira, tobi, una);
         when(run.actions.npcPosition(tobi, AgentEpqDefinition.STAGE_NPC)).thenReturn(new Point(48, 1));
         // Tobi holds 20 marbles: his own count, the party total, the drop, and then none left after it.
