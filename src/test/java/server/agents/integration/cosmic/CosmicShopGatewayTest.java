@@ -15,12 +15,12 @@ class CosmicShopGatewayTest {
         Character agent = mock(Character.class);
         Shop shop = mock(Shop.class);
         short slot = 4;
-        when(shop.rechargeDirect(agent, slot)).thenReturn(Shop.TransactionResult.NO_SPACE);
+        when(shop.rechargeDirect(agent, slot, 0)).thenReturn(Shop.TransactionResult.NO_SPACE);
 
         Shop.TransactionResult result = CosmicShopGateway.INSTANCE.recharge(agent, shop, slot);
 
         assertSame(Shop.TransactionResult.NO_SPACE, result);
-        verify(shop).rechargeDirect(agent, slot);
+        verify(shop).rechargeDirect(agent, slot, 0);
     }
 
     @Test

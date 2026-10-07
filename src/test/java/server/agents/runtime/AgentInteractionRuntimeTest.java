@@ -65,7 +65,8 @@ class AgentInteractionRuntimeTest {
                             eq("AgentA"),
                             any(AgentLifecycleService.AgentTickCallback.class),
                             any(Consumer.class),
-                            any(Logger.class)))
+                            any(Logger.class),
+                            eq(true)))
                     .thenReturn(expected);
 
             AgentLifecycleService.AgentSpawnResult result = AgentInteractionRuntime.spawnAgentForLeader(leader, "AgentA");

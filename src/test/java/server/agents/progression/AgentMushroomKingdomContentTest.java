@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,7 +37,7 @@ class AgentMushroomKingdomContentTest {
         String map = Files.readString(
                 Path.of("wz/Map.wz/Map/Map1/106020401.img.xml"));
 
-        assertTrue(map.contains("<imgdir name=\"4\"><string name=\"pn\" value=\"left00\""));
+        assertTrue(Pattern.compile("<imgdir name=\"4\">\\s*<string name=\"pn\" value=\"left00\"").matcher(map).find());
         assertTrue(map.contains("<int name=\"tm\" value=\"106020400\""));
     }
 
@@ -71,7 +72,8 @@ class AgentMushroomKingdomContentTest {
 
         assertTrue(equipment.contains("1332013"));
         assertTrue(dagger.contains("<int name=\"reqLevel\" value=\"22\""));
-        assertTrue(dagger.contains("<int name=\"reqDEX\" value=\"40\""));
+        // this server zeroes secondary-stat requirements (SecondaryStatRequirementOverrides)
+        assertTrue(dagger.contains("<int name=\"reqDEX\" value=\"0\""));
         assertTrue(dagger.contains("<int name=\"reqLUK\" value=\"55\""));
     }
 
@@ -84,7 +86,8 @@ class AgentMushroomKingdomContentTest {
 
         assertTrue(equipment.contains("1462003"));
         assertTrue(crossbow.contains("<int name=\"reqLevel\" value=\"22\""));
-        assertTrue(crossbow.contains("<int name=\"reqSTR\" value=\"22\""));
+        // this server zeroes secondary-stat requirements (SecondaryStatRequirementOverrides)
+        assertTrue(crossbow.contains("<int name=\"reqSTR\" value=\"0\""));
         assertTrue(crossbow.contains("<int name=\"reqDEX\" value=\"70\""));
     }
 

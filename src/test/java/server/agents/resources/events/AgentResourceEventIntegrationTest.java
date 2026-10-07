@@ -2,6 +2,7 @@ package server.agents.resources.events;
 
 import client.Character;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import server.agents.events.AgentEvent;
 import server.agents.events.AgentEventBus;
@@ -20,9 +21,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class AgentResourceEventIntegrationTest {
+    private boolean oldDialogueTransport;
+
+    @BeforeEach
+    void withoutDialogueReactions() {
+        // the live config turns dialogue transport on, which adds a chat reaction to every scroll fact
+        oldDialogueTransport = config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED;
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = false;
+    }
+
     @AfterEach
     void clearRegistry() {
         AgentRuntimeRegistry.clear();
+        config.AgentYamlConfig.config.agent.AGENT_DIALOGUE_TRANSPORT_ENABLED = oldDialogueTransport;
     }
 
     @Test

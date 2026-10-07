@@ -23,6 +23,7 @@ Classifications:
 | `AgentActionMailbox` | `RUNTIME_STATE` | Stores bounded FIFO external actions for one live Agent session. |
 | `AgentBehaviorRoutingRuntime` | `RUNTIME_ADAPTER` | Routes behavior-mode requests through the live entry without owning the capability implementation. |
 | `AgentBoundedExecutorFactory` | `RUNTIME_SERVICE` | Creates bounded daemon executors for Agent-owned background work. |
+| `AgentCharacterMaintenanceRuntime` | `RUNTIME_STATE` | Holds per-character locks that serialize offline character loading with destructive administrative maintenance. |
 | `AgentChatOrchestratorContext` | `RUNTIME_ADAPTER` | Adapts one live runtime entry to the dialogue orchestrator callback contract. |
 | `AgentCommonTickRuntime` | `RUNTIME_ADAPTER` | Wires common-tick service hooks to capability and integration implementations. |
 | `AgentCommonTickService` | `RUNTIME_SERVICE` | Preserves ordered execution of systems shared by every live Agent tick. |
@@ -59,6 +60,7 @@ Classifications:
 | `AgentModeStateRuntime` | `RUNTIME_ADAPTER` | Exposes mode state held by the live runtime entry. |
 | `AgentMovementOnlyModeCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Coordinates movement-only dispatch when normal live AI phases are unavailable. |
 | `AgentMovementOnlyTickCoordinator` | `LEGITIMATE_RUNTIME_ORCHESTRATION` | Runs one movement-only tick through lifecycle, movement, and map-transition seams. |
+| `AgentPartyGatherRegistry` | `RUNTIME_STATE` | Holds open party gatherings per owner, shared by combat (when to cast party buffs) and movement (walking Agents into the buff box). |
 | `AgentPersonalityRuntime` | `RUNTIME_ADAPTER` | Exposes personality state initialization and lookup for the live session. |
 | `AgentPresentationTickRuntime` | `RUNTIME_ADAPTER` | Routes presentation-only cadence work without owning gameplay policy. |
 | `AgentRandom` | `RUNTIME_SERVICE` | Supplies shared nondeterministic delay selection used by runtime and capabilities. |

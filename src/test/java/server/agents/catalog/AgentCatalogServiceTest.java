@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -12,13 +13,21 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class AgentCatalogServiceTest {
+    /**
+     * The generated catalogs (tools/catalog/Update-AllCatalogs.ps1; about 380 MB, gitignored) exist only where someone
+     * generated them. Tests that read them skip without them; once generated, a broken catalog still fails.
+     */
+    private static final Path GENERATED_MAP_CATALOG = Path.of("tmp/game-catalog/generated_map_catalog.json");
     private static AgentCatalogService sharedCatalog;
 
     @BeforeAll
     static void loadSharedCatalogOnce() {
-        sharedCatalog = AgentCatalogService.loadFromRepoRoot(Path.of("."));
+        if (Files.isRegularFile(GENERATED_MAP_CATALOG)) {
+            sharedCatalog = AgentCatalogService.loadFromRepoRoot(Path.of("."));
+        }
     }
 
     @TempDir
@@ -36,6 +45,7 @@ class AgentCatalogServiceTest {
 
     @Test
     void loaderAllowsMissingOptionalReactorCatalog() {
+        loadCatalog();
         Path repoRoot = Path.of(".").toAbsolutePath().normalize();
         CatalogLoadOptions options = new CatalogLoadOptions(
                 repoRoot,
@@ -243,6 +253,7 @@ class AgentCatalogServiceTest {
     }
 
     private static AgentCatalogService loadCatalog() {
+        assumeTrue(sharedCatalog != null, "generated catalogs are missing; run tools/catalog/Update-AllCatalogs.ps1");
         return sharedCatalog;
     }
 }

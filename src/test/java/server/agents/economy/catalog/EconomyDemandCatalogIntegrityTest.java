@@ -21,8 +21,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class EconomyDemandCatalogIntegrityTest {
     @Test
     void configuredStallPermitPoolContainsOnlyVerifiedPlayerShopPermitsInWz() throws Exception {
-        String wzPath = System.getProperty("wz-path");
-        Assumptions.assumeTrue(wzPath != null, "set -Dwz-path for authoritative WZ integration");
+        // wz/ is part of this repository; earlier tests may also set wz-path, so read both the same way
+        String wzPath = System.getProperty("wz-path", "wz");
+        Assumptions.assumeTrue(Files.isDirectory(Path.of(wzPath)), "set -Dwz-path for authoritative WZ integration");
         int permitId = new EconomyConfigLoader().load().config().bootstrap.shopPermitItemId;
         assertEquals(5_140_000, permitId);
         assertTrue(ItemConstants.isPlayerShop(permitId));
@@ -34,7 +35,8 @@ class EconomyDemandCatalogIntegrityTest {
             assertTrue(cashNames.contains("<imgdir name=\"" + configured + "\">"),
                     "missing configured permit " + configured);
         }
-        assertTrue(cashNames.contains("<imgdir name=\"5140000\"><string name=\"name\" value=\"Regular Store Permit\""));
+        assertTrue(Pattern.compile("<imgdir name=\"5140000\">\\s*<string name=\"name\" value=\"Regular Store Permit\"")
+                .matcher(cashNames).find());
         assertTrue(cashNames.contains("Can sell up to 16 items at once."));
         String cashItems = Files.readString(Path.of(wzPath, "Item.wz", "Cash", "0514.img.xml"));
         assertTrue(cashItems.contains("<imgdir name=\"05140000\">"));
