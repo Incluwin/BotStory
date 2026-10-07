@@ -516,6 +516,16 @@ final class AgentEpqCompanionPlay {
         return marbleToCome && sinceRewardMs < fountainWaitMs ? Fountain.WAIT : Fountain.EXIT;
     }
 
+    /**
+     * A companion still in the event on the reward map is stuck (east00 keeps refusing it) once {@code clearWaitMs}
+     * passed after the fountain wait: the companions may legitimately wait up to {@code fountainWaitMs} from the
+     * reward's start for the leader's marble, so the stuck clock starts only where that wait ends, whatever the two
+     * values are.
+     */
+    static boolean stuckAtTheFountain(long sinceRewardMs, long fountainWaitMs, long clearWaitMs) {
+        return sinceRewardMs >= fountainWaitMs + clearWaitMs;
+    }
+
     /** A decided leave goes once no companion in the event holds the golem's marble, or its hand-over ran out of time. */
     static boolean leaveGoes(int holders, long sinceDecidedMs, long handOverTimeoutMs) {
         return holders <= 0 || sinceDecidedMs >= handOverTimeoutMs;

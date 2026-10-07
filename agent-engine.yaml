@@ -1252,7 +1252,7 @@ tuning:
     server.agents.capabilities.partyquest.epq.AgentEpqHandOver.STONE_TIMEOUT_MS: '120000'
     # Values: 20000-180000 milliseconds. Recommended: 60000, a short grace.
     # Purpose: Bounds how long companions wait on the golem's map for their leader to take the exit only he can open; then they leave through the event's exit and the run ends cleared.
-    # Technical: Counted from the first pass that saw EllinPQ's clear; AgentEpqCompanionRun skips it when the leader is offline, down, out of the event or no longer the party leader. A companion holding the golem's marble first leaves it at his feet. The human stays in the event and can still take out00 alone. On 930000800 it also bounds how long an Agent that east00 refuses stays in the event. Companion runs only.
+    # Technical: Counted from the first pass that saw EllinPQ's clear; AgentEpqCompanionRun skips it when the leader is offline, down, out of the event or no longer the party leader. A companion holding the golem's marble first leaves it at his feet. The human stays in the event and can still take out00 alone. On 930000800 it also bounds how long an Agent that east00 refuses stays in the event, counted from the end of FOUNTAIN_WAIT_MS (the reward's start plus that wait), so no pair of values pulls out a companion still waiting for the leader's marble. Companion runs only.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.CLEAR_WAIT_MS: '60000'
     # Values: 0-60000 milliseconds. Recommended: 15000.
     # Purpose: Gives the leader first claim on the golem's marble before a companion picks it up for the fountain.
@@ -1260,7 +1260,7 @@ tuning:
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.GOLEM_MARBLE_LEADER_FIRST_MS: '15000'
     # Values: 15000-120000 milliseconds. Recommended: 45000.
     # Purpose: Bounds how long companions wait on the reward map for their leader to drop the golem's marble in the fountain (everyone on the map gets its EXP, and a fragment on the way out); then they take the exit.
-    # Technical: Counted from the REWARD phase; skipped when no marble is held or lying there, when the fountain already fired (reactor 3008000 state > 0), or when the leader left. A companion holding the marble drops it at once. Companion runs only.
+    # Technical: Counted from the REWARD phase; skipped when no marble is held or lying there, when the fountain already fired (reactor 3008000 state > 0), or when the leader left. A companion holding the marble drops it at once. A companion east00 refuses is taken out through the event's exit CLEAR_WAIT_MS after this wait ends. Companion runs only.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.FOUNTAIN_WAIT_MS: '45000'
     # Values: 5000-60000 milliseconds. Recommended: 20000, about the top-ups' length from 50 HP.
     # Purpose: Bounds how long companions ask their leader to wait at the altar while they drink up before they say they are ready.

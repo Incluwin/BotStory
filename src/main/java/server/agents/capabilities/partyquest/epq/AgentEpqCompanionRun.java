@@ -655,11 +655,13 @@ final class AgentEpqCompanionRun {
             }
         }
         // At the fountain (Step 2.11) the companions take east00 themselves (reward); they leave through the event's
-        // exit only when one is still in the event CLEAR_WAIT_MS after the reward began (east00 refused it: stuck).
+        // exit only when one is still in the event CLEAR_WAIT_MS after the fountain wait ended (east00 refused it:
+        // stuck). Counting from the wait's end keeps a companion waiting for the leader's marble from being pulled out
+        // whatever the two tunables are (review A).
         boolean atTheFountain = session.phase().ordinal() >= AgentEpqSession.Phase.REWARD.ordinal();
         String why = atTheFountain
-                ? (nowMs - session.rewardStartedAtMs(nowMs) >= CLEAR_WAIT_MS && companionAtTheFountain(session)
-                ? "stuck" : null)
+                ? (AgentEpqCompanionPlay.stuckAtTheFountain(nowMs - session.rewardStartedAtMs(nowMs), FOUNTAIN_WAIT_MS,
+                CLEAR_WAIT_MS) && companionAtTheFountain(session) ? "stuck" : null)
                 : AgentEpqCompanionPlay.leaveWhy(leader != null, leader == null ? 0 : leader.getHp(), leaderInEvent,
                 leaderLeadsLiveParty(session), onBossMap, nowMs - clearSeenAtMs, CLEAR_WAIT_MS);
         if (why == null && !atTheFountain && leaderStands && leader.getMapId() == AgentEpqDefinition.REWARD_MAP) {

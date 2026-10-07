@@ -11,6 +11,7 @@ import java.awt.Rectangle;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -26,8 +27,8 @@ import static org.mockito.Mockito.when;
  * reactor (3008000): the golem's marble dropped in its area fires it 5 s later, and east00 gives the fragment only
  * once it fired. A companion holding the marble drops it there itself; the others wait while a marble lies in the
  * fountain or the leader still holds one, up to FOUNTAIN_WAIT_MS; then, or once the fountain fired, they take east00.
- * Nobody hits the fountain. A companion east00 keeps refusing is taken out through the event's exit after
- * CLEAR_WAIT_MS. A stock run keeps today's hit and exit.
+ * Nobody hits the fountain. A companion east00 keeps refusing is taken out through the event's exit CLEAR_WAIT_MS
+ * after the fountain wait ended. A stock run keeps today's hit and exit.
  */
 class AgentEpqCompanionRewardTest {
     private static final int MARBLE = AgentEpqDefinition.GOLEMS_MARBLE;
@@ -161,16 +162,20 @@ class AgentEpqCompanionRewardTest {
         assertEquals(AgentEpqSession.Phase.EXITING, session.phase());
     }
 
+    /**
+     * Review A: the stuck clock (CLEAR_WAIT_MS) starts where the fountain wait (FOUNTAIN_WAIT_MS) ends, so the
+     * shipped 45000 + 60000 take a stuck companion out 105 s after the reward began.
+     */
     @Test
     void aCompanionEast00KeepsRefusingIsTakenOutThroughTheEventsExit() {
         AgentEpqSession session = companionRun();
         when(fountain.getState()).thenReturn((byte) 1);
         when(run.epq.enterPortal(any(), eq(1))).thenReturn(false); // a full Etc bag: east00 refuses
         try (EpqLogLines lines = new EpqLogLines(AgentEpqCompanionRun.class)) {
-            AgentEpqCoordinator.tickSession(session, REWARD_AT + 59_999L);
+            AgentEpqCoordinator.tickSession(session, REWARD_AT + 104_999L);
             verify(run.event, never()).exitPlayer(any());
 
-            AgentEpqCoordinator.tickSession(session, REWARD_AT + 60_000L);
+            AgentEpqCoordinator.tickSession(session, REWARD_AT + 105_000L);
 
             assertEquals(1, lines.startingWith("EPQ after clear: session=" + session.sessionId()
                     + " action=leave why=stuck").size());
@@ -179,8 +184,21 @@ class AgentEpqCompanionRewardTest {
             verify(run.event).exitPlayer(agent);
             when(agent.getEventInstance()).thenReturn(null);
         }
-        AgentEpqCoordinator.tickSession(session, REWARD_AT + 61_000L);
+        AgentEpqCoordinator.tickSession(session, REWARD_AT + 106_000L);
         assertEquals(AgentEpqSession.Phase.COMPLETED, session.phase());
+    }
+
+    /**
+     * Review A: with any legal pair of the two tunables (CLEAR_WAIT_MS 20000-180000, FOUNTAIN_WAIT_MS 15000-120000) a
+     * companion still waiting for the leader's marble is never called stuck.
+     */
+    @Test
+    void theStuckClockStartsWhereTheFountainWaitEnds() {
+        assertFalse(AgentEpqCompanionPlay.stuckAtTheFountain(40_000L, 45_000L, 30_000L), "inside the fountain wait");
+        assertFalse(AgentEpqCompanionPlay.stuckAtTheFountain(74_999L, 45_000L, 30_000L));
+        assertTrue(AgentEpqCompanionPlay.stuckAtTheFountain(75_000L, 45_000L, 30_000L));
+        assertFalse(AgentEpqCompanionPlay.stuckAtTheFountain(119_999L, 120_000L, 20_000L), "the widest wait");
+        assertTrue(AgentEpqCompanionPlay.stuckAtTheFountain(105_000L, 45_000L, 60_000L), "the shipped values");
     }
 
     @Test
