@@ -295,7 +295,7 @@ final class CompanionPqFixture implements AutoCloseable {
         Map<String, FixtureEntrance> entrances = new LinkedHashMap<>();
         // slot: lpq
 
-        // slot: epq
+        entrances.put("epq", new EpqFixtureEntrance());
 
         // slot: lmpq
 

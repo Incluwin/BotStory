@@ -22,7 +22,7 @@ public final class CompanionPqKeys {
 
         // slot: lpq
 
-        // slot: epq
+        keys.add("epq");
 
         // slot: lmpq
 

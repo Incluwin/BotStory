@@ -111,7 +111,7 @@ public final class PqEntrance {
 
         // slot: lpq
 
-        // slot: epq
+        register(entrances, EpqEntrance.create());
 
         // slot: lmpq
 
