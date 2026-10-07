@@ -5,10 +5,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.awt.Point;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -91,5 +94,57 @@ class AgentLpqCompanionRunPartyTest {
         assertEquals(AgentLpqSession.Phase.STAGE_3, session.phase());
         fx.said(session, "drop-2", kes, "Ann had to go. we'll keep going with five.");
         verify(fx.event, never()).dispose();
+    }
+
+    /** The last companion left: the run lets go and the five players carry on in the event by themselves. */
+    @Test
+    void whenTheLastCompanionLeavesTheHumansCarryOnInTheEvent() {
+        String[] names = {"Crewfriend", "Ann", "Bo", "Cy", "Di"};
+        List<Character> members = new ArrayList<>();
+        for (int i = 0; i < names.length; i++) members.add(fx.human(i + 1, names[i], S3, new Point(5 * i, 0)));
+        Character cas = fx.companion(6, "Cas", S3, new Point(30, 0));
+        members.add(cas);
+        AgentLpqSession session = onStageThree(members.toArray(Character[]::new));
+        fx.leaveParty(cas);
+
+        fx.tick(session, 3_000L);
+
+        assertEquals(AgentLpqSession.Phase.FAILED, session.phase(), "the run is released");
+        assertEquals("every companion left; the humans carry on", session.failure());
+        verify(fx.event, never()).dispose();
+        for (Character human : members.subList(0, 5)) verify(fx.event, never()).exitPlayer(human);
+        fx.neverSaid("failed");
+    }
+
+    /** A companion that stays unloaded past MEMBER_RECOVERY_TIMEOUT_MS ends the run GONE, named. */
+    @Test
+    void aCompanionMissingPastTheRecoveryTimeoutEndsTheRun() {
+        crew = fx.crew(S3, new Point(0, 0));
+        AgentLpqSession session = onStageThree(crew.toArray(Character[]::new));
+        fx.offline(crew.get(2));
+
+        fx.tick(session, 3_000L);
+        fx.tick(session, 47_999L);
+        assertEquals(AgentLpqSession.Phase.STAGE_3, session.phase(), "it may come back");
+        fx.tick(session, 48_000L);
+
+        assertEquals(AgentLpqSession.Phase.FAILED, session.phase());
+        fx.said(session, "failed", crew.get(1), "Kes dropped out, so we can't finish this one. let's head out.");
+    }
+
+    /** A downed companion standing in the event again is back only from the second tick that sees it so. */
+    @Test
+    void aCompanionUpAgainInTheEventIsBackOnceItsRevivalIsConfirmed() {
+        crew = fx.crew(S3, new Point(0, 0));
+        AgentLpqSession session = onStageThree(crew.toArray(Character[]::new));
+        Character pel = crew.get(3);
+        session.member(pel.getId()).markDown(1_500L, 0);
+
+        fx.tick(session, 2_000L);
+        assertTrue(session.member(pel.getId()).down(), "one sighting is not enough");
+        fx.tick(session, 3_000L);
+
+        assertFalse(session.member(pel.getId()).down());
+        assertEquals(AgentLpqSession.Phase.STAGE_3, session.phase());
     }
 }
