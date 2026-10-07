@@ -24,7 +24,9 @@ import java.util.function.LongSupplier;
  * on its way, away on an errand, on a live bench slice, in a run or with the kill switch off has no duty. The Agent
  * decides when and where it goes; this only says what it says about it: setting off and back
  * (an ACTIVE one; a held one goes and comes back quietly, back to the spot it waits at), and, at most once per
- * COMPANION_RESTOCK_ASK_EVERY_MS, that it cannot afford its potions or that a boss's gate has no shop.
+ * COMPANION_RESTOCK_ASK_EVERY_MS, that it cannot afford its potions or that a boss's gate has no shop. In a boss's
+ * entry NPC's room (Mu Young's, while COMPANION_BOSS_ENABLED_TYPES lists Easy Balrog) it keeps that boss's standard,
+ * says about when it will be back as it sets off, and says when no shop is in reach (P7, user decision 7).
  *
  * <p>Memory only: {@link #standing} answers on any thread, the callbacks on the Agent tick and only hand their lines to
  * companion-ops; it never reads the store or writes a row.</p>
@@ -82,13 +84,21 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
 
     /**
      * The standard of the party quest whose desk the companion stands at (PqEntrance.keyAt: Lakelis's in Kerning
-     * City, Tory's in Henesys Park, ...), so the desk and the companion agree on what to carry in; the default
-     * anywhere else.
+     * City, Tory's in Henesys Park, ...), so the desk and the companion agree on what to carry in; else that of the
+     * boss whose entry NPC's room it stands in while the switch lists it (CompanionBossRuns.restockKeyAt: Easy
+     * Balrog's in Mu Young's); the default anywhere else.
      */
-    private static AgentSupplyReadiness.Activity deskActivity(int agentCharacterId) {
-        Character bot = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId));
-        return bot == null ? AgentSupplyReadiness.Activity.PARTY_QUEST
-                : AgentSupplyReadiness.Activity.partyQuest(PqEntrance.keyAt(bot.getMapId()));
+    private AgentSupplyReadiness.Activity deskActivity(int agentCharacterId) {
+        Character bot = bot(agentCharacterId);
+        if (bot == null) {
+            return AgentSupplyReadiness.Activity.PARTY_QUEST;
+        }
+        String key = PqEntrance.keyAt(bot.getMapId());
+        CompanionBossRuns bossRuns = world.bossRuns();
+        if (key == null && bossRuns != null) {
+            key = bossRuns.restockKeyAt(bot.getMapId());
+        }
+        return AgentSupplyReadiness.Activity.partyQuest(key);
     }
 
     /**
@@ -100,16 +110,30 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         return !world.config().companionRestockBossMap(mapId);
     }
 
+    /**
+     * It set off: an ACTIVE companion says so, from a boss's entrance with about when it will be back (the
+     * owner may be signing it up meanwhile: user decision 7).
+     */
     @Override
     public void started(int agentCharacterId, AgentSupplyReadiness.Activity activity, long etaMs) {
         CompanionSettingsApplier.Bound at = world.roster().settings().boundTo(agentCharacterId);
         if (at == null || held(at)) {
             return; // a held companion goes quietly: its owner is inside the run
         }
+        if (boss(activity)) {
+            int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
+            world.executor().submit("companion.restock.boss_go " + agentCharacterId,
+                    () -> BossRunLines.say(world, bot(agentCharacterId), BossRunLines.GO, null, minutes));
+            return;
+        }
         world.executor().submit("companion.restock.go " + agentCharacterId,
                 () -> say(agentCharacterId, CompanionRestockLines.GO));
     }
 
+    /**
+     * It did not set off: too broke says so, and short at a boss's entrance with no shop in reach (an ACTIVE companion)
+     * says there is none out here; each at most once per COMPANION_RESTOCK_ASK_EVERY_MS.
+     */
     @Override
     public void refused(int agentCharacterId, AgentSupplyReadiness.Activity activity,
                         AgentSupplyReadiness.Refusal why, AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
@@ -117,6 +141,11 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             world.executor().submit("companion.restock.broke " + agentCharacterId,
                     () -> say(agentCharacterId, CompanionRestockLines.BROKE));
+        } else if (why == AgentSupplyReadiness.Refusal.NO_SUPPLIER && boss(activity) && unheld(agentCharacterId)
+                && mayAsk(agentCharacterId, CompanionRestockLines.NO_SHOP,
+                world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
+            world.executor().submit("companion.restock.no_shop " + agentCharacterId,
+                    () -> say(agentCharacterId, CompanionRestockLines.NO_SHOP));
         }
     }
 
@@ -196,6 +225,17 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         return seat != null && seat.kind() == CompanionSlots.Kind.HOLD && seat.ownerId() == at.ownerId();
     }
 
+    /** True for a companion that is not waiting outside a run for its owner. */
+    private boolean unheld(int agentCharacterId) {
+        CompanionSettingsApplier.Bound at = world.roster().settings().boundTo(agentCharacterId);
+        return at != null && !held(at);
+    }
+
+    /** True for a boss's activity (its key a boss run's, such as easy_balrog): it kept that boss's standard. */
+    private static boolean boss(AgentSupplyReadiness.Activity activity) {
+        return activity != null && BossEntrance.of(activity.partyQuestKey()) != null;
+    }
+
     /**
      * True, and remembered, when the companion has not said {@code intent} within {@code everyMs}. One memory for each
      * line, whoever says it: the Lakelis desk asks here too before its broke line (every MANA_ASK_EVERY_MS), so the
@@ -216,7 +256,10 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     }
 
     private void say(int agentCharacterId, String intent) {
-        Character bot = AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId));
-        CompanionRestockLines.say(world, bot, intent);
+        CompanionRestockLines.say(world, bot(agentCharacterId), intent);
+    }
+
+    private static Character bot(int agentCharacterId) {
+        return AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(agentCharacterId));
     }
 }

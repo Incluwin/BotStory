@@ -365,6 +365,42 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         return channel == null ? null : channel.getExpedition(definition.type());
     }
 
+    // ---- potions at the entrance (decision 7) ----------------------------------------------------
+
+    /**
+     * The boss whose potion standard (AgentSupplyReadiness.BOSS_STANDARDS) a companion keeps on {@code mapId}: the
+     * boss's key on its entry NPC's room (easy_balrog in Mu Young's, 105100100) while the switch lists it; null
+     * anywhere else or with the switch off. Memory only, any thread (CompanionRestock.standing asks it).
+     */
+    String restockKeyAt(int mapId) {
+        BossEntrance entrance = BossEntrance.atRecruitMap(mapId);
+        LivingWorldConfig config = world.config();
+        String bossKey = entrance == null ? null : entrance.definition().key();
+        return bossKey == null || config == null || !config.companionBossEnabled(bossKey) ? null : bossKey;
+    }
+
+    /**
+     * On companion-ops: the owner came into a boss's entry NPC room ({@code mapId}, RosterService.ownerEnteredMap).
+     * Each companion of theirs in their party that is short of that boss's potion standard looks at its potions on its
+     * next tick instead of its next check, so one that can reach a shop sets off (and says when it will be back), and
+     * one that cannot says there is no shop out here, before it is asked to sign up.
+     */
+    void ownerArrived(int ownerId, int mapId) {
+        String bossKey = restockKeyAt(mapId);
+        Character owner = bossKey == null ? null : world.roster().onlineCharacter(ownerId);
+        Party party = owner == null ? null : owner.getParty();
+        if (party == null) {
+            return;
+        }
+        for (PartyCharacter member : party.getMembers()) {
+            int id = member.getId();
+            Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
+            if (persona != null && world.roster().cachedOwnerOf(persona.id()) == ownerId && bot(id) != null) {
+                supplies.checkIfShort(id, bossKey);
+            }
+        }
+    }
+
     // ---- the host rule (AgentBossRunHost), on the run's tick -------------------------------------
 
     /**

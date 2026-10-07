@@ -3028,6 +3028,13 @@ public final class RosterService {
                 }
             });
         }
+        CompanionBossRuns bossRuns = world.bossRuns();
+        if (bossRuns != null && bossRuns.restockKeyAt(map.getId()) != null) {
+            int ownerId = owner.getId();
+            int mapId = map.getId();
+            // a boss's entrance (Mu Young's room): companions short of its standard look at their potions now (P7)
+            world.executor().submit("boss.owner_arrived " + ownerId, () -> bossRuns.ownerArrived(ownerId, mapId));
+        }
         if (map.getEventInstance() != null) {
             return;
         }

@@ -12,8 +12,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * What a companion says in party chat about a boss run (P7, Mu Young's Easy Balrog), in its own lower-case player
  * voice: signed up, why it could not sign up, a missed start, going down, everyone down, seeing the run through for a
- * friend, and gg. A persona's arc or dialogue may have its own lines for each intent ("boss.down" and so on); a hire
- * and everyone else use the lines below. "{name}" is a human's name. Said on companion-ops.
+ * friend, gg, and off to the shop from the boss's entrance. A persona's arc or dialogue may have its own lines for
+ * each intent ("boss.down" and so on); a hire and everyone else use the lines below. "{name}" is a human's name and
+ * "{n}" whole minutes. Said on companion-ops.
  */
 final class BossRunLines {
     static final String SIGNED_UP = "boss.signedup";
@@ -29,6 +30,7 @@ final class BossRunLines {
     static final String REGROUP = "boss.regroup";
     static final String HANDOFF = "boss.handoff";
     static final String GG = "boss.gg";
+    static final String GO = "boss.go";
 
     /** Every companion's lines for an intent its persona has none of its own for. */
     static final Map<String, List<String>> GENERIC = Map.ofEntries(
@@ -52,7 +54,10 @@ final class BossRunLines {
             Map.entry(GG, List.of(
                     "gg!",
                     "gg, nice one.",
-                    "we did it! gg.")));
+                    "we did it! gg.")),
+            Map.entry(GO, List.of(
+                    "low on pots for balrog, running to the shop. back in ~{n} min.",
+                    "gonna grab potions first. back in ~{n} min.")));
 
     private static final AtomicInteger counter = new AtomicInteger();
 
