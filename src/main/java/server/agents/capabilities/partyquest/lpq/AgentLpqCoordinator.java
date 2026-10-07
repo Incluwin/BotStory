@@ -30,6 +30,9 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
+import server.agents.capabilities.partyquest.pace.AgentPqMemberPower;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfile;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceProfiles;
 import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.dialogue.AgentDialogueReportFormatter;
 import server.agents.integration.AgentCharacterGatewayRuntime;
@@ -532,6 +535,7 @@ final class AgentLpqCoordinator {
             } catch (RuntimeException failure) {
                 log.warn("LPQ potions failed: session={}", session.sessionId(), failure);
             }
+            beginPace(session, nowMs);
         }
         session.transition(AgentLpqSession.Phase.STAGE_1, nowMs);
     }
@@ -4141,6 +4145,7 @@ final class AgentLpqCoordinator {
         List<Point> stageNineSummons = alisharAlive
                 ? ACTIONS.liveMonsterPositions(leader, AgentLpqDefinition.ALISHAR_SUMMONS) : List.of();
         if (session.companionAdopted()) selectKeyCarrier(session, leader);
+        if (session.companionAdopted()) markAlishar(session, alishar, nowMs);
         for (AgentLpqMemberState member : session.members()) {
             if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
             Character agent = character(member.characterId());
@@ -5432,6 +5437,7 @@ final class AgentLpqCoordinator {
     private static void companionCleared(AgentLpqSession session, long nowMs) {
         session.freezeRewardEligibility();
         session.markCleared(nowMs);
+        session.pace().markCleared(nowMs);
         session.endRecollect(false);
         for (AgentLpqMemberState member : session.members()) {
             if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
@@ -5599,6 +5605,42 @@ final class AgentLpqCoordinator {
     private static boolean inRun(AgentLpqSession session, Character character) {
         EventInstanceManager event = session.eventInstance();
         return character != null && event != null && LPQ.event(character) == event;
+    }
+
+    /**
+     * The party is inside: a companion run's pace record begins with who entered and each one's power against LPQ's
+     * mobs, read on this tick from the warmed pace profile (none while it is cold, or when any member cannot be read).
+     */
+    private static void beginPace(AgentLpqSession session, long nowMs) {
+        List<Integer> entrants = new ArrayList<>();
+        List<AgentPqMemberPower> power = new ArrayList<>();
+        AgentPqPaceProfile profile = AgentPqPaceProfiles.cached(AgentLpqPaceProfile.QUEST_KEY);
+        boolean readable = profile != null;
+        for (AgentLpqMemberState member : session.members()) {
+            entrants.add(member.characterId());
+            if (!readable) continue;
+            Character character = character(member.characterId());
+            if (character == null) {
+                readable = false;
+                continue;
+            }
+            try {
+                power.add(AgentPqMemberPower.of(character, profile,
+                        member.memberType() == AgentLpqMemberState.MemberType.HUMAN,
+                        member.characterId() == session.eventLeaderId()));
+            } catch (RuntimeException | LinkageError failure) {
+                readable = false;
+                log.debug("LPQ pace power unreadable: session={} member={}", session.sessionId(),
+                        member.characterId(), failure);
+            }
+        }
+        session.pace().markEntered(readable ? power : List.of(), entrants, nowMs);
+    }
+
+    /** Stage 9's pace: Alishar first seen (with his HP), then gone. */
+    private static void markAlishar(AgentLpqSession session, Monster alishar, long nowMs) {
+        if (alishar != null) session.pace().markAlisharSeen(alishar.getMaxHp(), nowMs);
+        else session.pace().markAlisharDown(nowMs);
     }
 
     /** On one of the run's stage maps (stages 1-9 and their rooms), not on the bonus or the reward map. */
@@ -5836,6 +5878,7 @@ final class AgentLpqCoordinator {
                     if (AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
                             "lpq", session.sessionId(), id, character.getMapId(), nowMs))) {
                         member.markTapOutRequested();
+                        session.pace().markTappedOut(id);
                         log.info("LPQ companion tapped out: session={} member={} map={}",
                                 session.sessionId(), id, character.getMapId());
                     } else if (!cleared) {
@@ -5867,6 +5910,7 @@ final class AgentLpqCoordinator {
                 : Math.max(0, character.getItemQuantity(AgentLpqDefinition.PASS, false));
         member.markDown(nowMs, passes);
         if (first) {
+            session.pace().markDown(member.characterId());
             log.info("LPQ member down: session={} member={} type={} phase={} passes={}",
                     session.sessionId(), member.characterId(), member.memberType(), session.phase(), passes);
         }
@@ -6041,6 +6085,7 @@ final class AgentLpqCoordinator {
         catchUpLaggingMembers(session, stage, contract.mapId(), nowMs);
         Set<MapleMap> maps = collectionMaps(session, stage);
         List<MapItem> lying = lyingRunStacks(session, maps, AgentLpqDefinition.PASS);
+        if (passesAtHisFeet(session, leader) >= required) session.pace().markPassesAtFeet(stage, nowMs);
         int accounted = partyPassCount(session) + stackQuantity(lying);
         Point npc = stageNpcPosition(session, stage);
         if (accounted < required || stage == 4 || stage == 5) {
@@ -6218,6 +6263,7 @@ final class AgentLpqCoordinator {
             }
             occupied.sort(Comparator.naturalOrder());
             if (occupied.equals(expected)) {
+                session.pace().markJudgedCheck(nowMs);
                 session.advanceStage8(nowMs);
                 return;
             }
@@ -6274,6 +6320,11 @@ final class AgentLpqCoordinator {
         }
         beginRecollect(session, lying, nowMs);
         boolean holds = leader.getItemQuantity(AgentLpqDefinition.BOSS_KEY, false) > 0;
+        if (holds || lying.stream().anyMatch(stack -> leader.getMap() != null
+                && leader.getMap().getDroppedItems().contains(stack)
+                && near(stack.getPosition(), leader.getPosition(), PASS_HANDOVER_NEAR_PX))) {
+            session.pace().markKeyAtFeet(nowMs);
+        }
         if (session.observeLeaderKey(holds, nowMs) >= LEADER_NUDGE_MS) {
             coordinate(session, narrator(session, leader), "s9-key-held",
                     AgentLpqCompanionPlay.keyHeldLine(leader.getName()));

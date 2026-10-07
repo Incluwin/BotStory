@@ -113,6 +113,7 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private long clearedAtMs;
     private boolean leaderReleased;
     private int stage8LeaderBoxTold;
+    private final AgentLpqPaceMarks paceMarks = new AgentLpqPaceMarks();
     private final Set<Integer> companionsOfRun = new java.util.LinkedHashSet<>();
     private long enteredEventAtMs;
 
@@ -782,6 +783,9 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
         if (leaderKeySinceMs == 0L) leaderKeySinceMs = Math.max(1L, nowMs);
         return nowMs - leaderKeySinceMs;
     }
+
+    /** A companion run's pace boundaries the phases do not show (written only in companion branches). */
+    AgentLpqPaceMarks pace() { return paceMarks; }
 
     /** The stage-8 box a five-member companion run last told its leader to take (0 before). */
     synchronized int stage8LeaderBoxTold() { return stage8LeaderBoxTold; }

@@ -253,8 +253,10 @@ class AgentLpqCompanionTerminationTest {
                 eq(false), eq("The LPQ event timer expired"), eq(93_000L), pace.capture()));
         assertNotNull(pace.getValue());
         assertEquals("lpq", pace.getValue().questKey());
-        assertEquals(List.of(new AgentPqPace.Span("stage1", 3_000L, 63_000L, 0.0d, true),
-                        new AgentPqPace.Span("stage2", 63_000L, 93_000L, 0.0d, false)),
+        // P6g LPQ C4.2: the pace profile's keys (no passes were seen at his feet, so each collection is open).
+        assertEquals(List.of(new AgentPqPace.Span("yes", 1_000L, 3_000L, 0.0d, true),
+                        new AgentPqPace.Span("s1.collect", 3_000L, 63_000L, 0.0d, false),
+                        new AgentPqPace.Span("s2.collect", 63_000L, 93_000L, 0.0d, false)),
                 pace.getValue().spans());
 
         AgentLpqSession stock = run.session(AgentLpqSession.Mode.PRODUCTION, false, AgentLpqSession.Phase.STAGE_2,
