@@ -75,6 +75,18 @@ class AgentLpqFullRateTest {
     }
 
     @Test
+    void theBonusMapRunsAtFullRateToo() {
+        List<Character> crew = fx.crew(AgentLpqDefinition.BONUS_MAP, new Point(0, 0));
+        AgentLpqSession session = fx.session(true, AgentLpqSession.Phase.BONUS, crew.toArray(Character[]::new));
+
+        fx.tick(session, 3_000L);
+
+        for (Character companion : crew.subList(1, 6)) {
+            assertTrue(state(companion).fullRateSimulationRequired(), companion.getName());
+        }
+    }
+
+    @Test
     void aStockRunNeverHoldsOne() {
         List<Character> crew = fx.crew(S5, new Point(0, 0));
         fx.onMap(crew.get(3), 922_010_503, new Point(0, 0));
