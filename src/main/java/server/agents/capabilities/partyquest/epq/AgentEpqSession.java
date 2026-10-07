@@ -46,6 +46,8 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private boolean leftAfterClear;
     private String golemMarble = "none";
     private long rewardStartedAtMs;
+    private boolean failureClaimed;
+    private boolean leaderWentDown;
     private final Map<Integer, Boolean> fullRateHolds = new HashMap<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
@@ -410,6 +412,21 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** The members the run holds at full rate. */
     synchronized List<Integer> fullRateHolders() { return List.copyOf(fullRateHolds.keySet()); }
+
+    /**
+     * Claims the run's one companion-run failure (Step 4.2): two threads can fail one run at once (the departure gate on
+     * a dead companion's tick and the lease holder's pass), and only the first speaks and fails it. True only once.
+     */
+    synchronized boolean claimFailure() {
+        if (failureClaimed) return false;
+        failureClaimed = true;
+        return true;
+    }
+
+    /** The leader went down on the golem's map while the fight went on (Step 4.3): the event's end is DEFEATED. */
+    synchronized void markLeaderWentDown() { leaderWentDown = true; }
+
+    synchronized boolean leaderWentDown() { return leaderWentDown; }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }

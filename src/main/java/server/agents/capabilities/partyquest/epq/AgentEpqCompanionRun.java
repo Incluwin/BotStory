@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
+import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartySnapshot;
@@ -73,6 +74,60 @@ final class AgentEpqCompanionRun {
         AgentPartySnapshot party = liveParty(session);
         return party != null && party.members().stream().anyMatch(member -> member != null && member.leader()
                 && member.id() == session.eventLeaderId());
+    }
+
+    // ---- the end ----
+
+    /**
+     * Ends a run with its companions' own words (Step 4.2). A stock run fails as before. A run that already ended or
+     * is being released is left alone, and past the clear a companion run never fails: its companions leave (Step
+     * 2.9). Only the run's first failure speaks and fails it (claimFailure: two threads can fail one run). SILENT, or
+     * a run that never went in, says nothing; otherwise the given speaker, else a companion on the leader's map, else
+     * any companion standing in the event, else the first online one says the parting once ('EPQ parting:'). The
+     * 'EPQ session failure:' line and the failure's reason are today's.
+     */
+    static void fail(AgentEpqSession session, String reason, AgentEpqParting parting, Character speaker, long nowMs) {
+        if (!session.companionAdopted()) {
+            AgentEpqCoordinator.fail(session, reason, nowMs);
+            return;
+        }
+        if (session.terminal() || session.terminationStarted()) return;
+        if (AgentEpqTerminationService.pastTheClear(session.eventInstance())) {
+            stalledAfterClear(session, nowMs);
+            return;
+        }
+        if (!session.claimFailure()) return;
+        if (parting != null && parting.kind() != AgentEpqParting.Kind.SILENT && session.eventInstance() != null) {
+            Character who = speaker != null ? speaker : partingSpeaker(session);
+            log.info("EPQ parting: session={} kind={} speaker={}", session.sessionId(), parting.kind(),
+                    who == null ? "none" : who.getName());
+            narrate(session, who, "failed", parting.line(who == null ? 0 : who.getId()));
+        }
+        AgentEpqCoordinator.fail(session, reason, nowMs);
+    }
+
+    /**
+     * Why the event ended under the run: DEFEATED when the leader went down on the golem's map (and pressed OK), else
+     * EllinPQ's timer once the run stood in the event at least the catalog timer minus TIMEOUT_SLACK_MS, else GENERIC.
+     */
+    static AgentEpqParting eventEnded(AgentEpqSession session, Character leader, long nowMs) {
+        long enteredAtMs = session.enteredEventAtMs() > 0L ? session.enteredEventAtMs() : session.startedAtMs();
+        AgentEpqParting.Kind kind = AgentEpqParting.endedCause(session.leaderWentDown(), nowMs - enteredAtMs,
+                AgentPartyQuestCatalog.require(QUEST_KEY).eventTimerMs(), TIMEOUT_SLACK_MS);
+        return kind == AgentEpqParting.Kind.DEFEATED ? AgentEpqParting.of(kind, leader) : AgentEpqParting.of(kind);
+    }
+
+    /** Who says a parting: a companion on the leader's map, else any standing one, else the first online one. */
+    private static Character partingSpeaker(AgentEpqSession session) {
+        Character speaker = narrator(session, AgentEpqCoordinator.character(session.eventLeaderId()));
+        if (speaker == null) speaker = anyStanding(session);
+        if (speaker != null) return speaker;
+        for (AgentEpqMemberState member : session.members()) {
+            if (member.memberType() != AgentEpqMemberState.MemberType.AGENT) continue;
+            Character agent = AgentEpqCoordinator.character(member.characterId());
+            if (agent != null) return agent;
+        }
+        return null;
     }
 
     // ---- who speaks ----
@@ -174,8 +229,8 @@ final class AgentEpqCompanionRun {
             boolean leaderInside = leader != null && leader.getEventInstance() != null
                     && AgentEpqDefinition.isEventMap(leader.getMapId());
             if (!leaderInside && nowMs - session.startedAtMs() >= COMPANION_ENTRY_WAIT_MS) {
-                AgentEpqCoordinator.fail(session,
-                        "The companion run's leader did not take the party into EPQ within the entry wait", nowMs);
+                fail(session, "The companion run's leader did not take the party into EPQ within the entry wait",
+                        AgentEpqParting.SILENT, null, nowMs);
                 return true;
             }
             return false;
@@ -196,8 +251,8 @@ final class AgentEpqCompanionRun {
                 return false;
             }
             case GIVE_UP -> {
-                AgentEpqCoordinator.fail(session,
-                        "Fewer than four of the companion run entered EPQ within the entry wait", nowMs);
+                fail(session, "Fewer than four of the companion run entered EPQ within the entry wait",
+                        AgentEpqParting.SILENT, null, nowMs);
                 return true;
             }
             default -> {

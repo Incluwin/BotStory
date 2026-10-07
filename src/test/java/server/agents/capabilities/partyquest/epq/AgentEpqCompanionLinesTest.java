@@ -21,7 +21,9 @@ class AgentEpqCompanionLinesTest {
 
     /** Every line that exists at this commit, through its one enumerator. */
     static List<String> everyLine() {
-        return new ArrayList<>(AgentEpqCompanionPlay.sampleLines(NAME, NAME));
+        List<String> lines = new ArrayList<>(AgentEpqCompanionPlay.sampleLines(NAME, NAME));
+        lines.addAll(AgentEpqParting.sampleLines(NAME)); // Step 4.2: the partings
+        return lines;
     }
 
     @Test

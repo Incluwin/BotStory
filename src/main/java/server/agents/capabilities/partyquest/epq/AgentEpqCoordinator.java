@@ -70,7 +70,8 @@ public final class AgentEpqCoordinator {
 
     public static void tickSession(AgentEpqSession session, long nowMs) {
         if (eventTimerExpired(session, nowMs) && !session.terminal()) {
-            fail(session, "EPQ event timer expired", nowMs);
+            AgentEpqCompanionRun.fail(session, "EPQ event timer expired",
+                    AgentEpqParting.of(AgentEpqParting.Kind.TIMEOUT), null, nowMs);
             return;
         }
         // Step 2.12: a companion run's companions in its instance tick at full rate, whoever leads.
@@ -99,7 +100,8 @@ public final class AgentEpqCoordinator {
                 && !AgentEpqTerminationService.pastTheClear(bound)
                 && (bound.isEventDisposed() || leader.getEventInstance() != bound)) {
             log.warn("EPQ event end detail: session={} {}", session.sessionId(), eventEndDetail(session, leader));
-            fail(session, EVENT_ENDED_OR_EXPIRED, nowMs);
+            AgentEpqCompanionRun.fail(session, EVENT_ENDED_OR_EXPIRED,
+                    AgentEpqCompanionRun.eventEnded(session, leader, nowMs), null, nowMs);
             return;
         }
         for (AgentEpqMemberState member : session.members()) {
@@ -272,7 +274,8 @@ public final class AgentEpqCoordinator {
         }
         if (session.eventInstance() != null && AgentEpqDefinition.isEventMap(agent.getMapId())
                 && agent.getEventInstance() != null && agent.getEventInstance() != session.eventInstance()) {
-            fail(session, "EPQ member entered a different event instance", nowMs);
+            AgentEpqCompanionRun.fail(session, "EPQ member entered a different event instance",
+                    AgentEpqParting.GENERIC, null, nowMs);
             return;
         }
 
