@@ -285,6 +285,28 @@ final class AgentLpqCompanionPlay {
         return member + " had to go. we'll keep going with " + COUNT_WORDS.get(remaining) + ".";
     }
 
+    private static final List<String> BOX_NAMES = List.of("top left", "top right", "middle left", "middle",
+            "middle right", "bottom left", "second from the left at the bottom", "third from the left at the bottom",
+            "bottom right");
+
+    /** Stage 8's box {@code platform} (1-9: the top row's two, the middle row's three, the bottom row's four) as players name it. */
+    static String boxName(int platform) {
+        if (platform < 1 || platform > BOX_NAMES.size()) {
+            throw new IllegalArgumentException("stage 8 has boxes 1 to 9: " + platform);
+        }
+        return BOX_NAMES.get(platform - 1);
+    }
+
+    /** L8a: in a five-member run the leader stands on a box too; said when he is first given one. */
+    static String yourBoxLine(String leader, int platform) {
+        return leader + ", you take the " + boxName(platform) + " box.";
+    }
+
+    /** L8m: his box changed for the next formation. */
+    static String moveToBoxLine(String leader, int platform) {
+        return leader + ", move to the " + boxName(platform) + " box.";
+    }
+
     /** How a companion run's entry stands, as HPQ's: everyone inside, keep waiting, go on without some, or give up. */
     enum Entry { WAIT, ENTERED, EJECT_ABSENT, GIVE_UP }
 

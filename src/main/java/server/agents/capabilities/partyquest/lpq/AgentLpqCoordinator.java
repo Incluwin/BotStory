@@ -307,6 +307,7 @@ final class AgentLpqCoordinator {
         List<AgentLpqMemberState> participants = session.members().stream()
                 .filter(member -> member.characterId() != session.eventLeaderId())
                 .sorted(Comparator.comparingInt(AgentLpqMemberState::characterId)).toList();
+        participants = withTheLeaderOnABox(session, participants);
         if (participants.size() < 5) return false;
         Map<Integer, Integer> assignments = session.stage8Assignments(
                 participants.stream().map(AgentLpqMemberState::characterId).toList());
@@ -3991,6 +3992,7 @@ final class AgentLpqCoordinator {
         List<AgentLpqMemberState> participants = session.members().stream()
                 .filter(member -> member.characterId() != session.eventLeaderId())
                 .sorted(Comparator.comparingInt(AgentLpqMemberState::characterId)).toList();
+        participants = withTheLeaderOnABox(session, participants);
         if (participants.size() < 5) {
             AgentLpqTerminationService.fail(session, "LPQ Stage 8 needs five nonleader participants", nowMs);
             return;
@@ -5562,6 +5564,37 @@ final class AgentLpqCoordinator {
                 && member.id() == session.eventLeaderId());
     }
 
+    /**
+     * Stage 8 needs five on the boxes: a five-member companion run has four companions, so its leader stands on the
+     * fifth, after them (decision D-c: stock party sizes). Every other run keeps its non-leaders.
+     */
+    private static List<AgentLpqMemberState> withTheLeaderOnABox(AgentLpqSession session,
+                                                                 List<AgentLpqMemberState> nonLeaders) {
+        if (!session.companionAdopted() || nonLeaders.size() >= 5) return nonLeaders;
+        AgentLpqMemberState leader = session.member(session.eventLeaderId());
+        if (leader == null) return nonLeaders;
+        List<AgentLpqMemberState> participants = new ArrayList<>(nonLeaders);
+        participants.add(leader);
+        return List.copyOf(participants);
+    }
+
+    /**
+     * A five-member run's leader is given a box like the others but never moved: a companion tells him which (L8a), and
+     * which to move to when his box changes for the next formation (L8m).
+     */
+    private static void tellTheLeaderHisBox(AgentLpqSession session, Character leader) {
+        AgentLpqMemberState leaderState = session.member(leader.getId());
+        int platform = leaderState == null ? 0 : leaderState.assignedPlatform();
+        if (platform <= 0 || platform == session.stage8LeaderBoxTold()) return;
+        boolean first = session.stage8LeaderBoxTold() == 0;
+        Character speaker = narrator(session, leader);
+        boolean said = first
+                ? coordinate(session, speaker, "s8-yours", AgentLpqCompanionPlay.yourBoxLine(leader.getName(), platform))
+                : coordinate(session, speaker, "s8-move-" + session.stage8Attempt(),
+                AgentLpqCompanionPlay.moveToBoxLine(leader.getName(), platform));
+        if (said) session.tellStage8LeaderBox(platform);
+    }
+
     /** This character stands in the run's own event instance. */
     private static boolean inRun(AgentLpqSession session, Character character) {
         EventInstanceManager event = session.eventInstance();
@@ -6140,6 +6173,7 @@ final class AgentLpqCoordinator {
                                                 List<AgentLpqMemberState> participants, boolean positioned) {
         boolean leaderParticipates = participants.stream()
                 .anyMatch(member -> member.characterId() == leader.getId());
+        if (leaderParticipates) tellTheLeaderHisBox(session, leader);
         boolean leaderOnBox = !leaderParticipates && boxOf(leader, leader.getMap()) != 0;
         if (leaderOnBox) {
             coordinate(session, narrator(session, leader), "s8-off",
