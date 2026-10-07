@@ -986,13 +986,15 @@ public final class AgentShopService {
         boolean needsMp = needsPotionTarget(bot, mpPotion, false);
 
         if (needsHp) {
-            String intent = potionPurchaseIntent(bot, hpPotion, true, sequence.inventory());
+            String intent = potionPurchaseIntent(bot, hpPotion, true, sequence.inventory(),
+                    reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
             if (intent != null) {
                 AgentShopRuntime.sayMapNow(bot, intent);
             }
         }
         if (needsMp) {
-            String intent = potionPurchaseIntent(bot, mpPotion, false, sequence.inventory());
+            String intent = potionPurchaseIntent(bot, mpPotion, false, sequence.inventory(),
+                    reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
             if (intent != null) {
                 AgentShopRuntime.sayMapNow(bot, intent);
             }
@@ -1010,7 +1012,8 @@ public final class AgentShopService {
                 hpBought,
                 false,
                 minimumMesoReserve,
-                Integer.MAX_VALUE);
+                Integer.MAX_VALUE,
+                reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
         hpBought += report.quantity();
         current = appendBuyReport(current, report, "critical HP pots");
 
@@ -1023,7 +1026,8 @@ public final class AgentShopService {
                 mpBought,
                 false,
                 minimumMesoReserve,
-                Integer.MAX_VALUE);
+                Integer.MAX_VALUE,
+                reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
         current = appendBuyReport(current, report, "critical MP pots");
 
@@ -1040,7 +1044,8 @@ public final class AgentShopService {
                 hpBought,
                 true,
                 minimumMesoReserve,
-                hpBudget);
+                hpBudget,
+                reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
         hpBought += report.quantity();
         current = appendBuyReport(current, report, "HP pots");
 
@@ -1053,7 +1058,8 @@ public final class AgentShopService {
                 mpBought,
                 true,
                 minimumMesoReserve,
-                Integer.MAX_VALUE);
+                Integer.MAX_VALUE,
+                reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
         current = appendBuyReport(current, report, "MP pots");
         // Last, with what is left, a duty holder tops up toward its buy target (BUY_TO_PERCENT of the standard).
@@ -1164,6 +1170,26 @@ public final class AgentShopService {
         long room = stackRoom(bot, item.shopItem.getItemId(), inventory)
                 + (long) Math.max(0, freeUseSlots(bot) - 1) * perSlot;
         return (int) Math.min(Integer.MAX_VALUE, room);
+    }
+
+    /**
+     * How many of {@code potion} a reserve-bar pass of buyPotionStock may buy and still leave free the Use slot a
+     * party quest keeps (the floor's rule, {@link #roomBesideTheRunsSlot}): limited only under a duty whose standard
+     * of the kind is above one stack, so a floor pass held back by that slot is not undone by the passes after it.
+     * No duty, or a standard of at most one stack: no limit.
+     */
+    private static int reserveRoomBesideTheRunsSlot(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+                                                    ShopSlotItem potion, boolean forHp) {
+        if (potion == null) {
+            return Integer.MAX_VALUE;
+        }
+        Character bot = sequence.bot();
+        AgentSupplyReadiness.Activity activity = AgentSupplyReadiness.shoppingActivity(sequence.entry(), bot);
+        if (activity == null) {
+            return Integer.MAX_VALUE;
+        }
+        AgentSupplyReadiness.Standard standard = AgentSupplyReadiness.standard(activity);
+        return roomBesideTheRunsSlot(bot, potion, forHp ? standard.hp() : standard.mp(), sequence.inventory());
     }
 
     /**
@@ -1394,7 +1420,8 @@ public final class AgentShopService {
             int alreadyBoughtThisVisit,
             boolean applyMinimumPurchase,
             int minimumMesoReserve,
-            int maximumSpend) {
+            int maximumSpend,
+            int room) {
         if (potion == null || potion.recovery == null) {
             return new AgentShopBuyReport(0, 0, 0, AgentShopShortfallReason.NONE);
         }
@@ -1412,7 +1439,7 @@ public final class AgentShopService {
                 bot,
                 shop,
                 potion,
-                quantity,
+                Math.min(quantity, room),
                 100,
                 minimumMesoReserve,
                 maximumSpend);
@@ -1440,7 +1467,8 @@ public final class AgentShopService {
             Character bot,
             ShopSlotItem potion,
             boolean forHp,
-            InventoryGateway inventory) {
+            InventoryGateway inventory,
+            int room) {
         int[] counts = AgentPotionService.countPotions(bot);
         int plannedQuantity = AgentPotionPurchasePolicy.quantityToTarget(
                 potionRecoveryCapacity(bot, forHp),
@@ -1450,6 +1478,7 @@ public final class AgentShopService {
                 AgentPotionPurchasePolicy.targetReserveBars(forHp),
                 0,
                 true);
+        plannedQuantity = Math.min(plannedQuantity, room);
         return plannedQuantity <= 0
                 ? null
                 : AgentDialogueCatalog.shopPurchaseIntent(

@@ -39,10 +39,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 /**
@@ -321,6 +323,48 @@ class AgentShopServicePotionFloorTest {
         assertEquals(1, use.getNumFreeSlot());
         assertEquals(new AgentShopBuyReport(WHITE, 200, 235, AgentShopShortfallReason.NO_SPACE),
                 visit.firstShortfall(), "it says its bag is full");
+    }
+
+    @Test
+    void theReservePassesAfterAHeldBackEpqFloorLeaveTheRunsSlotFreeToo() {
+        // review 2026-10-06: with no potion to meet its reserve bars, the critical, normal and top-up passes bought
+        // Blue into the slot the floor had kept free for the run
+        AgentSupplyReadiness.install(id -> EPQ);
+        purse = 200_000;
+        use = new Inventory(bot, InventoryType.USE, (byte) 4);
+        use.addItem(Items.itemWithQuantity(ARROW, 1_000)); // 3 free slots, and no potion
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        fillCarriedStacksFirst();
+
+        AgentShopPurchaseSequence<AgentRuntimeEntry> visit = AgentShopService.buyPotionStock(
+                new AgentShopPurchaseSequence<>(new AgentRuntimeEntry(bot, null, null), bot, slotMax, new Point(),
+                        List.of(), new ArrayList<>(), null), shop(List.of(RED, WHITE, BLUE)), 0);
+
+        assertEquals(List.of("100 x " + WHITE, "100 x " + WHITE), transactions,
+                "no mana potion in the run's slot, from the floor or from the reserve passes");
+        assertEquals(1, use.getNumFreeSlot());
+        assertEquals(new AgentShopBuyReport(WHITE, 200, 250, AgentShopShortfallReason.NO_SPACE),
+                visit.firstShortfall(), "it says its bag is full");
+        speech.verify(() -> AgentShopRuntime.sayMapNow(eq(bot), contains("for MP")), never());
+    }
+
+    @Test
+    void aStandardOfOneStackLetsTheReservePassesTakeTheLastFreeSlotAsToday() {
+        // KPQ and HPQ stay as they are: only a standard above one stack keeps the run's slot from the reserve passes
+        AgentSupplyReadiness.install(id -> AgentSupplyReadiness.Activity.PARTY_QUEST);
+        when(bot.getCurrentMaxHp()).thenReturn(30_000); // 90 White Potions are short of its reserve bars
+        purse = 200_000;
+        use = new Inventory(bot, InventoryType.USE, (byte) 4);
+        use.addItem(Items.itemWithQuantity(ARROW, 1_000));
+        use.addItem(Items.itemWithQuantity(WHITE, 90));
+        use.addItem(Items.itemWithQuantity(BLUE, 90)); // over the standard, and 1 free slot
+        when(bot.getInventory(InventoryType.USE)).thenReturn(use);
+        fillCarriedStacksFirst();
+
+        visit(List.of(RED, WHITE, BLUE), slotMax);
+
+        assertEquals(List.of("10 x " + WHITE, "90 x " + WHITE), transactions, "a new stack in the last free slot");
+        assertEquals(0, use.getNumFreeSlot());
     }
 
     @Test
