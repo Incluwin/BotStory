@@ -53,6 +53,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyShort;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -99,6 +100,8 @@ final class LpqTickFixture implements AutoCloseable {
     private final List<Character> members = new ArrayList<>();
     private final List<AgentLpqSession> sessions = new ArrayList<>();
     private int partyLeaderId;
+    /** The time of the tick being run (drops made during it carry it). */
+    long clock;
     private int nextObjectId = 10_000;
 
     LpqTickFixture() {
@@ -163,7 +166,21 @@ final class LpqTickFixture implements AutoCloseable {
             Character agent = call.getArgument(0);
             return copy(portalPositions.get(agent.getMapId() + "#" + call.getArgument(1)));
         });
-        items.when(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort())).thenReturn(true);
+        // A drop leaves the dropper's bag and lies where it stands, a player drop of its own, at the tick's time.
+        items.when(() -> AgentScriptItemActionService.dropItem(any(), any(), anyInt(), anyShort())).thenAnswer(call -> {
+            AgentRuntimeEntry entry = call.getArgument(0);
+            int itemId = call.getArgument(2);
+            short quantity = call.getArgument(3);
+            Character dropper = members.stream().filter(member -> entries.get(member.getId()) == entry)
+                    .findFirst().orElse(null);
+            if (dropper == null) return true;
+            String bag = dropper.getId() + ":" + itemId;
+            bags.put(bag, Math.max(0, bags.getOrDefault(bag, 0) - quantity));
+            Point landing = actions.predictDropLanding(dropper, dropper.getPosition());
+            drop(dropper.getMapId(), itemId, quantity, landing == null ? dropper.getPosition() : landing, true,
+                    dropper.getId(), clock);
+            return true;
+        });
     }
 
     private static Point copy(Point point) {
@@ -248,6 +265,15 @@ final class LpqTickFixture implements AutoCloseable {
         when(member.getEventInstance()).thenAnswer(call -> outside.contains(id) ? null : event);
         when(member.getItemQuantity(anyInt(), eq(false))).thenAnswer(
                 call -> bags.getOrDefault(id + ":" + call.getArgument(0), 0));
+        // A pickup takes the whole stack into the bag.
+        doAnswer(call -> {
+            MapItem picked = call.getArgument(0);
+            if (picked == null || picked.isPickedUp()) return null;
+            int quantity = picked.getItem() == null ? 1 : picked.getItem().getQuantity();
+            bags.merge(id + ":" + picked.getItemId(), quantity, Integer::sum);
+            pickUp(picked);
+            return null;
+        }).when(member).pickupItem(any());
         members.add(member);
         return member;
     }
@@ -413,6 +439,7 @@ final class LpqTickFixture implements AutoCloseable {
     }
 
     void tick(AgentLpqSession session, long nowMs) {
+        clock = nowMs;
         AgentLpqCoordinator.tick(session, nowMs);
     }
 

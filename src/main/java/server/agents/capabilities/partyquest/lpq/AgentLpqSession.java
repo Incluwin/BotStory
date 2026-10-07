@@ -102,6 +102,11 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private final Map<Integer, Long> heldSinceMs = new LinkedHashMap<>();
     private final Set<String> narratedKeys = new java.util.LinkedHashSet<>();
     private final Set<String> withheldNotes = new java.util.LinkedHashSet<>();
+    private int recollectStackObjectId;
+    private int recollectorId;
+    private int recollectHeldBefore;
+    private int recollects;
+    private int keyCarrierId;
     private final Set<Integer> companionsOfRun = new java.util.LinkedHashSet<>();
     private long enteredEventAtMs;
 
@@ -197,6 +202,10 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
                     : AgentLpqMemberState.Role.GENERAL);
         });
         resetStage7LootSweep();
+        recollectStackObjectId = 0;
+        recollectorId = 0;
+        recollectHeldBefore = 0;
+        recollects = 0;
         rooms.reset();
         members.values().forEach(AgentLpqMemberState::clearReactorWork);
         int nextStage = stageNumber(next);
@@ -705,6 +714,40 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     synchronized String potionsAtEntry() { return potionsAtEntry; }
 
     synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions; }
+
+    /** A companion-run line key was already said this run. */
+    synchronized boolean narrated(String key) { return narratedKeys.contains(key); }
+
+    /** The stage's hand-over stack being picked back up (0 for none), who picks it up, and what it held before. */
+    synchronized int recollectStackObjectId() { return recollectStackObjectId; }
+    synchronized int recollectorId() { return recollectorId; }
+    synchronized int recollectHeldBefore() { return recollectHeldBefore; }
+    /** Re-collects done this stage (AgentLpqSession.transition resets them). */
+    synchronized int recollects() { return recollects; }
+
+    synchronized void beginRecollect(int collectorId, int stackObjectId, int heldBefore) {
+        recollectorId = collectorId;
+        recollectStackObjectId = stackObjectId;
+        recollectHeldBefore = Math.max(0, heldBefore);
+    }
+
+    /** The re-collect ends: the recollector picked the stack up ({@code pickedUp}) or it is gone. */
+    synchronized void endRecollect(boolean pickedUp) {
+        if (pickedUp) recollects++;
+        recollectorId = 0;
+        recollectStackObjectId = 0;
+        recollectHeldBefore = 0;
+    }
+
+    /** This member is picking up this hand-over stack now (the loot rule lets it). */
+    public synchronized boolean recollecting(int characterId, int objectId) {
+        return recollectStackObjectId != 0 && recollectorId == characterId && recollectStackObjectId == objectId;
+    }
+
+    /** The companion that took (or takes) Alishar's key to the leader; 0 before one is chosen. */
+    public synchronized int keyCarrierId() { return keyCarrierId; }
+
+    synchronized void setKeyCarrierId(int characterId) { keyCarrierId = characterId; }
 
     /** True the first time a withheld rescue (kind, site, member, phase) is noted in this run. */
     synchronized boolean claimWithheldNote(String key) { return key != null && withheldNotes.add(key); }

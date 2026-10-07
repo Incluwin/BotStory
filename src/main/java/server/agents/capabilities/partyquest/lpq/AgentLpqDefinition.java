@@ -16,6 +16,12 @@ public final class AgentLpqDefinition {
     public static final int MIN_LEVEL = 35;
     public static final int MAX_LEVEL = 50;
     public static final int MIN_PARTY_SIZE = 5;
+    /**
+     * The latest a hand-over stack left lying is picked back up under the shipped config.yaml (ITEM_EXPIRE_TIME
+     * 180000, ITEM_EXPIRE_CHECK 10000); only used when the server's configuration cannot be read. The live clamp is
+     * {@link #dropRecollectLatestMs} of the running server's values (HPQ's rice-cake rule).
+     */
+    public static final long DROP_RECOLLECT_LATEST_MS = 170_000L;
     public static final int MAX_PARTY_SIZE = 6;
     public static final int RECOMMENDED_PARTY_SIZE = 6;
     public static final int ALISHAR = 9_300_012;
@@ -68,6 +74,14 @@ public final class AgentLpqDefinition {
     }
 
     public static List<Stage> stages() { return STAGES; }
+
+    /**
+     * The latest a stack left lying is picked back up: a dropped item lies ITEM_EXPIRE_TIME and goes on the next
+     * ITEM_EXPIRE_CHECK sweep after that, so one sweep's length before its expiry still leaves the walk time.
+     */
+    public static long dropRecollectLatestMs(long itemExpireTimeMs, long itemExpireCheckMs) {
+        return Math.max(0L, itemExpireTimeMs - Math.max(0L, itemExpireCheckMs));
+    }
 
     public static List<Integer> eventMaps() { return EVENT_MAPS; }
 

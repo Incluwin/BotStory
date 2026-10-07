@@ -80,6 +80,9 @@ public final class AgentLpqMemberState {
     private boolean stageNineGroupLogged;
     private boolean fullRateHeld;
     private boolean fullRateWasRequired;
+    private long handOverStartedAtMs;
+    private boolean handOverToBalloon;
+    private int handOverRecollectStack;
 
     public AgentLpqMemberState(int characterId, MemberType memberType) {
         if (characterId <= 0 || memberType == null) {
@@ -103,6 +106,27 @@ public final class AgentLpqMemberState {
     void releaseFullRate() {
         fullRateHeld = false;
         fullRateWasRequired = false;
+    }
+
+    /** A companion run's hand-over of what this member carries (stage-scoped): when it began, 0 for none. */
+    long handOverStartedAtMs() { return handOverStartedAtMs; }
+    boolean handOverToBalloon() { return handOverToBalloon; }
+    /** The stack this member picked back up for the leader (its drop says H3), or 0. */
+    int handOverRecollectStack() { return handOverRecollectStack; }
+
+    void startHandOver(long nowMs) {
+        handOverStartedAtMs = Math.max(1L, nowMs);
+        handOverToBalloon = false;
+    }
+
+    void sendHandOverToBalloon() { handOverToBalloon = true; }
+
+    void markHandOverRecollect(int stackObjectId) { handOverRecollectStack = stackObjectId; }
+
+    void endHandOver() {
+        handOverStartedAtMs = 0L;
+        handOverToBalloon = false;
+        handOverRecollectStack = 0;
     }
     public MemberType memberType() { return memberType; }
     public Role role() { return role; }
@@ -200,6 +224,7 @@ public final class AgentLpqMemberState {
         stageFiveUnhandedPasses = 0;
         stageNine = AgentLpqStageNineBossPolicy.MemberState.NONE;
         stageNineGroupLogged = false;
+        endHandOver();
     }
 
     /**

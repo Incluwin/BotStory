@@ -1125,6 +1125,42 @@ tuning:
     # Purpose: How long a companion run waits for its human leader to take the party into LPQ, and then for every member to stand in his instance on stage 1, before it ends quietly or goes on without the absent ones while five are inside.
     # Technical: Read only by AgentLpqCoordinator's companion-run PREPARING and ENTERING (AgentLpqSession.companionAdopted); stock, background and '!lpqtest' fixture runs keep PHASE_TIMEOUT_MS.
     server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_ENTRY_WAIT_MS: '30000'
+    # Values: 1-32 passes. Recommended: 5, a fifth of stage 1's 25, so the leader gets a few drops a stage, not one per pass.
+    # Purpose: A companion of a companion run walks the passes it carries to the leader's feet once it holds this many and he is near on its map; it also goes at once when the party holds the stage's count, when its split room is done, or when it is about to go down.
+    # Technical: AgentLpqCompanionPlay.handOverDue, companion runs only, stages 1-5 and 7; stage 9's key is handed over at once.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_BATCH: '5'
+    # Values: 100-1500 pixels. Recommended: 400, as HPQ's CAKE_HANDOVER_NEAR_PX.
+    # Purpose: How close the leader must be (same map, both axes) for a carrier holding PASS_HANDOVER_BATCH passes to bring them over before the stage's count is reached; also the radius in which lying passes count as at his feet.
+    # Technical: AgentLpqCoordinator companion collection; the distance on both axes between the carrier's and the leader's positions, and between a lying stack and the leader.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_NEAR_PX: '400'
+    # Values: 20-120 pixels. Recommended: 60; the WASM client picks up from about 9 px left to 41 px right of a drop.
+    # Purpose: A carrier drops its passes only when it and the leader both stand on a foothold within this distance on both axes, and only where the map's own drop placement lands them at his feet or beside him on his floor.
+    # Technical: AgentLpqCompanionPlay.atFeet/landsAt with PrimitiveCapabilityGateway.predictDropLanding (the KPQ and HPQ hand-over rule); companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_REACH_PX: '60'
+    # Values: 5000-90000 milliseconds. Recommended: 30000.
+    # Purpose: A carrier on the leader's map that has walked this long without reaching the leader, or that has no route to him, drops its passes beside the stage's balloon and tells him.
+    # Technical: AgentLpqCompanionPlay.handOver TO_BALLOON; measured from the carrier's hand-over start (AgentLpqMemberState.handOverStartedAtMs); companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_TIMEOUT_MS: '30000'
+    # Values: 500-10000 milliseconds. Recommended: 3000.
+    # Purpose: After a hand-over drop no companion of the run loots anything for this long, so a nearby companion's ordinary looting cannot take the stack meant for the leader.
+    # Technical: AgentInventoryStateRuntime.setLootInhibitMs on every Agent of the run; the loot rule (AgentLpqSessionRegistry.canLootExclusive with the drop) keeps refusing the stack afterwards unless its recollect is due.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_LOOT_INHIBIT_MS: '3000'
+    # Values: 10000-120000 milliseconds. Recommended: 40000, as HPQ.
+    # Purpose: A hand-over stack the leader has left lying this long gets one reminder from a companion on his map.
+    # Technical: AgentLpqCompanionPlay.nudgeDue against the MapItem drop time; one H2 line per stack, said by a companion standing on the leader's map; companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_PICKUP_NUDGE_MS: '40000'
+    # Values: 60000-170000 milliseconds with the shipped item expiry; a value past config.yaml ITEM_EXPIRE_TIME minus ITEM_EXPIRE_CHECK is read as that, with one WARN. Recommended: 150000.
+    # Purpose: A companion picks a hand-over stack (passes or Alishar's key) back up before the map removes it, and drops it at the leader's feet again.
+    # Technical: AgentLpqCoordinator reads ITEM_EXPIRE_TIME (180000) and ITEM_EXPIRE_CHECK (10000) from the server config at class load and caps this at their difference (AgentLpqDefinition.DROP_RECOLLECT_LATEST_MS 170000 when the config cannot be read).
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_RECOLLECT_MS: '150000'
+    # Values: 0-5 re-collects per stage. Recommended: 2; 0 never picks a stack back up.
+    # Purpose: Bounds how often companions pick up and re-drop stacks the leader leaves lying in one stage.
+    # Technical: AgentLpqCompanionPlay.recollectDue against the stage's recollect count in AgentLpqSession, which AgentLpqSession.transition resets when the stage changes; companion runs only.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_RECOLLECT_MAX: '2'
+    # Values: 5-60 percent of maximum HP. Recommended: 25, as HPQ's CAKE_DYING_HP_PERCENT.
+    # Purpose: A companion of a companion run carrying passes, at or below this share of its maximum HP with no HP potion left, drops its passes where it stands and says so, so a death does not take them out of the event.
+    # Technical: AgentLpqCompanionPlay.dying (HP is read first, then the HP-potion count the 'LPQ potions' line uses); companion runs only, stages 1-5 and 7.
+    server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_DYING_HP_PERCENT: '25'
 
     # Values: 250-3000 milliseconds. Recommended: 900 so an authored EPQ portal, NPC, reactor, drop, or capture action settles before the same member acts again.
     # Purpose: Spaces one EPQ member's ordinary field interactions while other members continue their own independent work.

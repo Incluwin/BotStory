@@ -24,6 +24,8 @@ import server.agents.capabilities.combat.AgentCombatTargetRuntime;
 import server.agents.capabilities.combat.AgentCombatWeaponPolicy;
 import server.agents.capabilities.combat.AgentGrindTargetStateRuntime;
 import server.agents.capabilities.combat.AgentSkillAttackPlanRuntime;
+import server.agents.capabilities.inventory.AgentInventoryStateRuntime;
+import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.dialogue.AgentDialogueReportFormatter;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
@@ -118,6 +120,24 @@ final class AgentLpqCoordinator {
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.ROOM_PROGRESS_LOG_INTERVAL_MS");
     private static final long COMPANION_ENTRY_WAIT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.COMPANION_ENTRY_WAIT_MS");
+    private static final int PASS_HANDOVER_BATCH = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_BATCH");
+    private static final int PASS_HANDOVER_NEAR_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_NEAR_PX");
+    private static final int PASS_HANDOVER_REACH_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_REACH_PX");
+    private static final long PASS_HANDOVER_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_TIMEOUT_MS");
+    private static final long PASS_HANDOVER_LOOT_INHIBIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_HANDOVER_LOOT_INHIBIT_MS");
+    private static final long PASS_PICKUP_NUDGE_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_PICKUP_NUDGE_MS");
+    private static final long PASS_RECOLLECT_MS = passRecollectAfterMs(config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_RECOLLECT_MS"));
+    private static final int PASS_RECOLLECT_MAX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_RECOLLECT_MAX");
+    private static final int PASS_DYING_HP_PERCENT = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lpq.AgentLpqCoordinator.PASS_DYING_HP_PERCENT");
     private static final int DARK_SIGHT_SAFE_PORTAL_ID = 0;
     private static final Point STAGE_7_BOTTOM = new Point(1, -211);
     private static final int STAGE_7_FIRING_ANCHOR_RADIUS = config.AgentTuning.intValue(
@@ -505,6 +525,10 @@ final class AgentLpqCoordinator {
         if (stage == 2 && (!session.stage2TrapClearAnnounced()
                 || leader.getMapId() == AgentLpqDefinition.stage(1).mapId())) {
             advanceStageTwoScoutProtocol(session, nowMs);
+            return;
+        }
+        if (session.companionAdopted()) {
+            companionCollection(session, leader, contract, nowMs);
             return;
         }
         if (session.passHandoffRecoveryActive()) {
@@ -949,7 +973,7 @@ final class AgentLpqCoordinator {
                 .count();
     }
 
-    private static boolean collectNearestDrop(
+    static boolean collectNearestDrop(
             AgentRuntimeEntry entry, Character agent, Set<Integer> itemIds,
             Set<Integer> claimedObjectIds) {
         return collectNearestDrop(entry, agent, itemIds, claimedObjectIds, ignored -> true);
@@ -965,6 +989,7 @@ final class AgentLpqCoordinator {
                 .filter(drop -> !drop.isPickedUp() && !claimed.contains(drop.getObjectId()))
                 .filter(drop -> itemIds == null || itemIds.contains(drop.getItemId()))
                 .filter(drop -> allowedItem == null || allowedItem.test(drop.getItemId()))
+                .filter(drop -> mayLootInRun(agent, drop))
                 .min(Comparator.comparingDouble(drop ->
                         drop.getPosition().distanceSq(agent.getPosition())))
                 .orElse(null);
@@ -992,6 +1017,7 @@ final class AgentLpqCoordinator {
                 .filter(drop -> !drop.isPickedUp()
                         && drop.getItemId() == AgentLpqDefinition.PASS
                         && !claimed.contains(drop.getObjectId()))
+                .filter(drop -> mayLootInRun(agent, drop))
                 .filter(drop -> nearestAgentIdToDrop(
                         activeAgentPositions, drop.getPosition()) == agent.getId())
                 .min(Comparator.comparingDouble(drop ->
@@ -5369,6 +5395,344 @@ final class AgentLpqCoordinator {
                     && LPQ.event(agent) == event && (inside || claiming && !member.rewardResolved());
             AgentLpqFullRateSimulation.apply(member, entry(member.characterId()), wanted);
         }
+    }
+
+    /**
+     * A companion run's collection stage (1-5, 7): the companions collect as today (no rescue, no regroup at the
+     * balloon, no vacuum), and each carrier brings what it holds to the leader's feet on his map (the same-map rule),
+     * by the KPQ/HPQ hand-over pattern: the map's own drop placement, the balloon when he cannot be reached, a nudge,
+     * and a re-collect before a stack he leaves lying would vanish. He talks to the balloon himself.
+     */
+    private static void companionCollection(AgentLpqSession session, Character leader,
+                                            AgentLpqDefinition.Stage contract, long nowMs) {
+        int stage = contract.number();
+        int required = contract.submissionCount();
+        catchUpLaggingMembers(session, stage, contract.mapId(), nowMs);
+        Set<MapleMap> maps = collectionMaps(session, stage);
+        List<MapItem> lying = lyingRunStacks(session, maps, AgentLpqDefinition.PASS);
+        int accounted = partyPassCount(session) + stackQuantity(lying);
+        Point npc = stageNpcPosition(session, stage);
+        if (accounted < required || stage == 4 || stage == 5) {
+            runCollectionObjectives(session, stage, nowMs);
+        } else {
+            for (AgentLpqMemberState member : session.members()) {
+                Character agent = standingCompanion(member);
+                AgentRuntimeEntry entry = entry(member.characterId());
+                if (agent != null && entry != null && agent.getMapId() == contract.mapId() && npc != null
+                        && agent.getItemQuantity(AgentLpqDefinition.PASS, false) <= 0) {
+                    rallyMemberAtNpc(member, agent, entry, npc);
+                }
+            }
+        }
+        followRecollect(session, lying, nowMs);
+        for (AgentLpqMemberState member : session.members()) {
+            Character agent = standingCompanion(member);
+            AgentRuntimeEntry entry = entry(member.characterId());
+            if (agent == null || entry == null) continue;
+            if (session.recollectStackObjectId() != 0 && session.recollectorId() == agent.getId()) continue;
+            int held = agent.getItemQuantity(AgentLpqDefinition.PASS, false);
+            if (held <= 0) {
+                if (member.handOverStartedAtMs() != 0L) member.endHandOver();
+                continue;
+            }
+            if (aboutToGoDown(agent)) {
+                dropHandOver(session, member, agent, entry, leader, AgentLpqDefinition.PASS, held, stage,
+                        AgentLpqCompanionPlay.PassPlace.DYING, lying, nowMs);
+                continue;
+            }
+            boolean onMainMap = agent.getMapId() == contract.mapId();
+            boolean inUnfinishedRoom = member.assignedMapId() != 0
+                    && !session.rooms().completed(member.assignedMapId());
+            boolean due = member.handOverStartedAtMs() != 0L || member.handOverRecollectStack() != 0
+                    || AgentLpqCompanionPlay.handOverDue(held, PASS_HANDOVER_BATCH,
+                    onMainMap && agent.getMap() == leader.getMap()
+                            && near(agent.getPosition(), leader.getPosition(), PASS_HANDOVER_NEAR_PX),
+                    accounted >= required, (stage == 4 || stage == 5) && onMainMap && member.assignedMapId() == 0,
+                    false);
+            if (!due || !onMainMap || inUnfinishedRoom) continue;
+            if (agent.getMap() != leader.getMap()) {
+                // The same-map rule: he is not on this stage's map yet; wait for him by the balloon.
+                if (member.handOverStartedAtMs() != 0L) member.endHandOver();
+                if (npc != null) rallyMemberAtNpc(member, agent, entry, npc);
+                continue;
+            }
+            if (member.handOverStartedAtMs() == 0L) member.startHandOver(nowMs);
+            handOverItem(session, member, agent, entry, leader, AgentLpqDefinition.PASS, held, stage, lying, nowMs);
+        }
+        nudgeLyingStacks(session, leader, lying, nowMs);
+        beginRecollect(session, lying, nowMs);
+        if (leader.getItemQuantity(AgentLpqDefinition.PASS, false) >= required
+                && !session.narrated("s" + stage + "-passes") && !session.narrated("s" + stage + "-balloon")) {
+            coordinate(session, narrator(session, leader), "s" + stage + "-all",
+                    AgentLpqCompanionPlay.allPassesLine(leader.getName(), stage));
+        }
+    }
+
+    /**
+     * Walks a carrier's stack (passes or Alishar's key) to the leader's grounded spot and drops it there in one drop,
+     * where the map's own placement puts it at his feet or right beside him; a leader it has no route to, or a walk
+     * longer than PASS_HANDOVER_TIMEOUT_MS, has it take the stack to the stage's balloon instead.
+     */
+    private static void handOverItem(AgentLpqSession session, AgentLpqMemberState member, Character agent,
+                                     AgentRuntimeEntry entry, Character leader, int itemId, int held, int stage,
+                                     List<MapItem> lying, long nowMs) {
+        boolean onGround = ACTIONS.footing(agent) == PrimitiveCapabilityGateway.Footing.GROUND;
+        if (!member.handOverToBalloon()) {
+            Point spot = groundSpot(leader);
+            boolean leaderOnGround = ACTIONS.footing(leader) == PrimitiveCapabilityGateway.Footing.GROUND;
+            boolean reachable = spot != null && (!onGround || ACTIONS.canReach(entry, agent, spot));
+            Point landing = AgentLpqCompanionPlay.atFeet(agent.getPosition(), spot, onGround, leaderOnGround,
+                    PASS_HANDOVER_REACH_PX) ? ACTIONS.predictDropLanding(agent, agent.getPosition()) : null;
+            switch (AgentLpqCompanionPlay.handOver(agent.getPosition(), spot, onGround, leaderOnGround, landing,
+                    reachable, nowMs - member.handOverStartedAtMs(), PASS_HANDOVER_TIMEOUT_MS,
+                    PASS_HANDOVER_REACH_PX)) {
+                case WALK -> {
+                    AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry);
+                    ACTIONS.navigate(entry, spot, true);
+                    return;
+                }
+                case DROP_AT_FEET, DROP_BESIDE -> {
+                    dropHandOver(session, member, agent, entry, leader, itemId, held, stage,
+                            AgentLpqCompanionPlay.PassPlace.of(landing == null ? agent.getPosition() : landing, spot,
+                                    PASS_HANDOVER_REACH_PX), lying, nowMs);
+                    return;
+                }
+                default -> member.sendHandOverToBalloon();
+            }
+        }
+        Point balloon = balloonSpot(agent, stage);
+        if (balloon == null) return;
+        if (AgentLpqCompanionPlay.atFeet(agent.getPosition(), balloon, onGround, true, PASS_HANDOVER_REACH_PX)) {
+            dropHandOver(session, member, agent, entry, leader, itemId, held, stage,
+                    AgentLpqCompanionPlay.PassPlace.BALLOON, lying, nowMs);
+            return;
+        }
+        AgentGrindLootStateRuntime.clearObjectiveLootTarget(entry);
+        ACTIONS.navigate(entry, balloon, true);
+    }
+
+    /**
+     * Drops the whole stack in one drop and says where it lies: by the balloon (H1b), about to go down (H5), picked
+     * back up and dropped again (H3), or at his feet, where only the drop that makes the stage's count there tells him
+     * to talk to the balloon (H1; H1p while it still has to explain itself), and the run's first batch that does not
+     * explains the hand-overs once (H0).
+     */
+    private static void dropHandOver(AgentLpqSession session, AgentLpqMemberState member, Character agent,
+                                     AgentRuntimeEntry entry, Character leader, int itemId, int held, int stage,
+                                     AgentLpqCompanionPlay.PassPlace place, List<MapItem> lying, long nowMs) {
+        ACTIONS.stop(entry);
+        // What already lies at his feet, read before this drop lands there.
+        int atHisFeetBefore = itemId == AgentLpqDefinition.PASS ? passesAtHisFeet(session, leader) : 0;
+        if (!AgentScriptItemActionService.dropItem(entry, InventoryType.ETC, itemId,
+                (short) Math.min(Short.MAX_VALUE, held))) {
+            return;
+        }
+        if (stage == 5 && itemId == AgentLpqDefinition.PASS) member.handOffStageFivePasses(held);
+        int recollected = member.handOverRecollectStack();
+        member.endHandOver();
+        session.markProgress(nowMs);
+        inhibitLoot(session);
+        log.info("LPQ hand-over: session={} member={}({}) stage={} item={} quantity={} place={} recollect={} "
+                        + "leader={} at={}", session.sessionId(), agent.getName(), agent.getId(), stage, itemId, held,
+                place, recollected != 0, leader.getId(), agent.getPosition());
+        if (itemId != AgentLpqDefinition.PASS) return;
+        String name = leader.getName();
+        switch (place) {
+            case DYING -> coordinate(session, agent, "dying-" + agent.getId(), AgentLpqCompanionPlay.LEAVING_PASSES);
+            case BALLOON -> coordinate(session, agent, "s" + stage + "-balloon",
+                    AgentLpqCompanionPlay.passesByTheBalloonLine(name, stage));
+            default -> {
+                if (recollected != 0) {
+                    coordinate(session, agent, "recollect-" + recollected,
+                            AgentLpqCompanionPlay.passesRecollectedLine(name));
+                    return;
+                }
+                if (atHisFeetBefore + held >= AgentLpqDefinition.stage(stage).submissionCount()) {
+                    coordinate(session, agent, "s" + stage + "-passes", AgentLpqCompanionPlay.passesLine(name, stage,
+                            place, "-1".equals(LPQ.property(leader, "statusStg" + stage))));
+                } else {
+                    coordinate(session, agent, "batch-explained", AgentLpqCompanionPlay.BATCH_EXPLAINED);
+                }
+            }
+        }
+    }
+
+    /**
+     * The passes the leader holds plus the run's hand-over stacks lying within PASS_HANDOVER_NEAR_PX of him on his map,
+     * read live (a stack dropped earlier this tick already lies there).
+     */
+    private static int passesAtHisFeet(AgentLpqSession session, Character leader) {
+        int lying = leader.getMap() == null ? 0
+                : lyingRunStacks(session, Set.of(leader.getMap()), AgentLpqDefinition.PASS).stream()
+                .filter(stack -> near(stack.getPosition(), leader.getPosition(), PASS_HANDOVER_NEAR_PX))
+                .mapToInt(AgentLpqCoordinator::stackSize).sum();
+        return leader.getItemQuantity(AgentLpqDefinition.PASS, false) + lying;
+    }
+
+    /** H2: one reminder per hand-over stack he has left lying PASS_PICKUP_NUDGE_MS, by a companion on his map. */
+    private static void nudgeLyingStacks(AgentLpqSession session, Character leader, List<MapItem> lying, long nowMs) {
+        for (MapItem stack : lying) {
+            if (stack.getItemId() != AgentLpqDefinition.PASS
+                    || !AgentLpqCompanionPlay.nudgeDue(stack.getDropTime(), nowMs, PASS_PICKUP_NUDGE_MS)) continue;
+            boolean onHisMap = leader.getMap() != null && leader.getMap().getDroppedItems().contains(stack);
+            if (!onHisMap) continue;
+            coordinate(session, narrator(session, leader), "nudge-" + stack.getObjectId(),
+                    AgentLpqCompanionPlay.passesStillLyingLine(leader.getName(),
+                            near(stack.getPosition(), leader.getPosition(), PASS_HANDOVER_NEAR_PX)));
+        }
+    }
+
+    /**
+     * Picks the oldest hand-over stack lying past the re-collect time back up (at most PASS_RECOLLECT_MAX a stage):
+     * its dropper if it stands on that map, else the nearest standing companion there.
+     */
+    private static void beginRecollect(AgentLpqSession session, List<MapItem> lying, long nowMs) {
+        if (session.recollectStackObjectId() != 0) return;
+        MapItem stack = lying.stream()
+                .filter(drop -> AgentLpqCompanionPlay.recollectDue(drop.getDropTime(), nowMs, PASS_RECOLLECT_MS,
+                        session.recollects(), PASS_RECOLLECT_MAX))
+                .min(Comparator.comparingLong(MapItem::getDropTime)).orElse(null);
+        if (stack == null) return;
+        Character recollector = null;
+        AgentLpqMemberState dropper = session.member(stack.getOwnerId());
+        Character owner = dropper == null ? null : standingCompanion(dropper);
+        if (owner != null && owner.getMap() != null && owner.getMap().getDroppedItems().contains(stack)) {
+            recollector = owner;
+        } else {
+            double best = Double.MAX_VALUE;
+            for (AgentLpqMemberState member : session.members()) {
+                Character agent = standingCompanion(member);
+                if (agent == null || agent.getMap() == null || !agent.getMap().getDroppedItems().contains(stack)) {
+                    continue;
+                }
+                double distance = agent.getPosition().distanceSq(stack.getPosition());
+                if (distance < best) {
+                    best = distance;
+                    recollector = agent;
+                }
+            }
+        }
+        if (recollector == null) return;
+        session.beginRecollect(recollector.getId(), stack.getObjectId(),
+                recollector.getItemQuantity(stack.getItemId(), false));
+        log.info("LPQ recollect: session={} member={}({}) stage={} stack={} quantity={} lyingMs={}",
+                session.sessionId(), recollector.getName(), recollector.getId(), stageNumberOrZero(session.phase()),
+                stack.getObjectId(), stackSize(stack), nowMs - stack.getDropTime());
+    }
+
+    /**
+     * The recollector walks to its stack and picks it up; once the stack is gone, a recollector holding more than
+     * before picked it up and hands it over at once (its drop says H3).
+     */
+    private static void followRecollect(AgentLpqSession session, List<MapItem> lying, long nowMs) {
+        int stackId = session.recollectStackObjectId();
+        if (stackId == 0) return;
+        Character recollector = character(session.recollectorId());
+        AgentLpqMemberState member = session.member(session.recollectorId());
+        MapItem stack = lying.stream().filter(drop -> drop.getObjectId() == stackId).findFirst().orElse(null);
+        if (stack == null || recollector == null || member == null || recollector.getHp() <= 0) {
+            int itemId = stack == null ? AgentLpqDefinition.PASS : stack.getItemId();
+            boolean pickedUp = recollector != null
+                    && recollector.getItemQuantity(itemId, false) > session.recollectHeldBefore();
+            session.endRecollect(pickedUp);
+            if (pickedUp && member != null) member.markHandOverRecollect(stackId);
+            return;
+        }
+        AgentRuntimeEntry entry = entry(recollector.getId());
+        if (entry != null) collectDrop(entry, recollector, stack, null);
+    }
+
+    /** Stacks the run's companions dropped (hand-overs, or left before going down) still lying on these maps. */
+    private static List<MapItem> lyingRunStacks(AgentLpqSession session, Set<MapleMap> maps, int itemId) {
+        List<MapItem> lying = new ArrayList<>();
+        for (MapleMap map : maps) {
+            for (MapItem drop : map.getDroppedItems()) {
+                if (drop != null && drop.isPlayerDrop() && !drop.isPickedUp() && drop.getItemId() == itemId
+                        && session.companionOfRun(drop.getOwnerId())) {
+                    lying.add(drop);
+                }
+            }
+        }
+        return lying;
+    }
+
+    private static int stackQuantity(List<MapItem> stacks) {
+        return stacks.stream().mapToInt(AgentLpqCoordinator::stackSize).sum();
+    }
+
+    /** The items in one stack on the floor (an unreadable stack is one). */
+    private static int stackSize(MapItem drop) {
+        return drop.getItem() == null ? 1 : Math.max(1, drop.getItem().getQuantity());
+    }
+
+    /** A loaded companion of the run, online and standing; null otherwise. */
+    private static Character standingCompanion(AgentLpqMemberState member) {
+        if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) return null;
+        Character agent = character(member.characterId());
+        return agent != null && agent.getHp() > 0 ? agent : null;
+    }
+
+    /** About to go down: low on HP with no HP potion left. The HP is read first, since the count reads its bag. */
+    private static boolean aboutToGoDown(Character agent) {
+        int hp = agent.getHp();
+        int maxHp = agent.getCurrentMaxHp();
+        return AgentLpqCompanionPlay.lowOnHp(hp, maxHp, PASS_DYING_HP_PERCENT)
+                && AgentLpqCompanionPlay.dying(hp, maxHp, ACTIONS.hpPotionCount(agent), PASS_DYING_HP_PERCENT);
+    }
+
+    /** Nobody of the run picks up for PASS_HANDOVER_LOOT_INHIBIT_MS after a hand-over: the stack is the leader's. */
+    private static void inhibitLoot(AgentLpqSession session) {
+        int inhibitMs = (int) Math.min(Integer.MAX_VALUE, Math.max(0L, PASS_HANDOVER_LOOT_INHIBIT_MS));
+        for (AgentLpqMemberState member : session.members()) {
+            if (member.memberType() != AgentLpqMemberState.MemberType.AGENT) continue;
+            AgentRuntimeEntry entry = entry(member.characterId());
+            if (entry != null) {
+                AgentInventoryStateRuntime.setLootInhibitMs(entry,
+                        Math.max(AgentInventoryStateRuntime.lootInhibitMs(entry), inhibitMs));
+            }
+        }
+    }
+
+    /** Where a character stands, on its foothold. */
+    private static Point groundSpot(Character character) {
+        Point position = character.getPosition();
+        if (position == null) return null;
+        Point grounded = ACTIONS.groundPoint(character.getMap(), position);
+        return grounded == null ? new Point(position) : grounded;
+    }
+
+    /** The stage's balloon, grounded, where a stack goes when the leader cannot be reached. */
+    private static Point balloonSpot(Character agent, int stage) {
+        Point balloon = ACTIONS.npcPosition(agent, AgentLpqDefinition.stage(stage).npcId());
+        if (balloon == null) return null;
+        Point grounded = ACTIONS.groundPoint(agent.getMap(), balloon);
+        return grounded == null ? new Point(balloon) : grounded;
+    }
+
+    /**
+     * A companion run's loot rule for its exclusive drops (AgentLpqSessionRegistry.canLootExclusive with the drop):
+     * a hand-over stack lying for the leader is never picked up again except on its re-collect, and the key only by its
+     * carrier. Every other drop, and every drop of a stock run, passes.
+     */
+    private static boolean mayLootInRun(Character agent, MapItem drop) {
+        int itemId = drop.getItemId();
+        if (itemId != AgentLpqDefinition.PASS && itemId != AgentLpqDefinition.BOSS_KEY) return true;
+        AgentLpqSession run = AgentLpqSessionRegistry.forMember(agent.getId());
+        if (run == null || !run.companionAdopted()) return true;
+        return AgentLpqSessionRegistry.canLootExclusive(agent, drop);
+    }
+
+    /** PASS_RECOLLECT_MS, clamped (with one WARN) below the drops' expiry margin on this server. */
+    private static long passRecollectAfterMs(long configuredMs) {
+        config.ServerConfig server = config.YamlConfig.config == null ? null : config.YamlConfig.config.server;
+        long latest = server == null || server.ITEM_EXPIRE_TIME <= 0 ? AgentLpqDefinition.DROP_RECOLLECT_LATEST_MS
+                : AgentLpqDefinition.dropRecollectLatestMs(server.ITEM_EXPIRE_TIME, server.ITEM_EXPIRE_CHECK);
+        long clamped = AgentLpqCompanionPlay.recollectAfterMs(configuredMs, latest);
+        if (clamped != configuredMs) {
+            log.warn("LPQ PASS_RECOLLECT_MS {} would let a stack expire before it is picked back up; using {}",
+                    configuredMs, clamped);
+        }
+        return clamped;
     }
 
     /**

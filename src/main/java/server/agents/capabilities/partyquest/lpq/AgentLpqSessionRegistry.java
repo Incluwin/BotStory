@@ -79,6 +79,29 @@ public final class AgentLpqSessionRegistry {
         return true;
     }
 
+    /**
+     * Today's rule for this drop, and in a companion run a precise one: a pass a player dropped (a companion's
+     * hand-over at the leader's feet) is the leader's, so a member takes it back only while it re-collects that stack;
+     * Alishar's key is the key carrier's to loot (its leader is human and never asks), and its own dropped key only on
+     * a re-collect. Outside companion runs this is exactly {@link #canLootExclusive(Character, int)}.
+     */
+    public static boolean canLootExclusive(Character character, MapItem drop) {
+        if (character == null || drop == null) return false;
+        int itemId = drop.getItemId();
+        if (itemId != AgentLpqDefinition.PASS && itemId != AgentLpqDefinition.BOSS_KEY) return false;
+        AgentLpqSession session = forMember(character.getId());
+        if (session == null || !session.companionAdopted()) return canLootExclusive(character, itemId);
+        if (session.eventInstance() == null || character.getEventInstance() != session.eventInstance()
+                || !AgentLpqDefinition.isEventMap(character.getMapId())) return false;
+        boolean recollecting = session.recollecting(character.getId(), drop.getObjectId());
+        if (itemId == AgentLpqDefinition.PASS) {
+            int stage = AgentLpqDefinition.stageNumber(character.getMapId());
+            boolean today = !session.couponRegrouping(stage) || character.getId() == session.eventLeaderId();
+            return today && (!drop.isPlayerDrop() || recollecting);
+        }
+        return (!drop.isPlayerDrop() && character.getId() == session.keyCarrierId()) || recollecting;
+    }
+
     /** Keeps the junk-item or 10-meso door claims visible during Stage 4/5 room fan-out. */
     public static boolean preservesRoomDoorMarker(Character character, MapItem drop) {
         if (character == null || drop == null
