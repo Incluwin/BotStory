@@ -21,10 +21,22 @@ public final class AgentBossRunMember {
         OUT
     }
 
+    /** Who leads the member outside the fight. */
+    public enum Kind {
+        /** Follows its owner (a party companion): it walks up with them and follows them again when handed back. */
+        FOLLOWER,
+        /**
+         * Leads itself (its runtime leader is its own id): it walks to the spot the host names beside the entry NPC,
+         * and when handed back it is stopped where it stands, never set following.
+         */
+        SELF_LED
+    }
+
     private final int agentId;
     private final int enlistedBy;
     private final int ordinal;
     private final long enlistedAtMs;
+    private final Kind kind;
     private volatile int anchorId;
     /** Since when its logged-out anchor has been gone from the event; -1 while the anchor is there. */
     private volatile long anchorGoneSinceMs = -1L;
@@ -41,15 +53,24 @@ public final class AgentBossRunMember {
     private AgentBossRunHost.Out out;
 
     AgentBossRunMember(int agentId, int enlistedBy, int ordinal, long enlistedAtMs) {
+        this(agentId, enlistedBy, ordinal, enlistedAtMs, Kind.FOLLOWER);
+    }
+
+    AgentBossRunMember(int agentId, int enlistedBy, int ordinal, long enlistedAtMs, Kind kind) {
         this.agentId = agentId;
         this.enlistedBy = enlistedBy;
         this.anchorId = enlistedBy;
         this.ordinal = ordinal;
         this.enlistedAtMs = enlistedAtMs;
+        this.kind = kind == null ? Kind.FOLLOWER : kind;
     }
 
     public int agentId() {
         return agentId;
+    }
+
+    public Kind kind() {
+        return kind;
     }
 
     /** The human whose enlist brought the member in. */

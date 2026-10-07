@@ -22,7 +22,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * died, or left the event, waits outside for its owner; when no human stands in the fight any more, or after the clear
  * once its anchor left, a member walks out by the stock ways. The run ends when every member is out or the event is
  * gone; a failed tick ends it at once and hands back whoever is still in it. {@link #tick} runs on the Agent scheduler
- * under the session's lock.
+ * under the session's lock. A SELF_LED member (one that leads itself, with no owner to walk up with or follow) walks to
+ * the spot the host names beside the entry NPC, and wherever the others would follow their owner again it is stopped.
  */
 public final class AgentBossRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunSession.class);
@@ -105,15 +106,20 @@ public final class AgentBossRunSession {
         return count;
     }
 
+    /** Enlists one more FOLLOWER member; see {@link #addMember(int, int, long, AgentBossRunMember.Kind)}. */
+    AgentBossRunMember addMember(int agentId, int enlistedBy, long nowMs) {
+        return addMember(agentId, enlistedBy, nowMs, AgentBossRunMember.Kind.FOLLOWER);
+    }
+
     /**
-     * Enlists one more member with the next ordinal and indexes it; null once the list is no longer the run's to
-     * fill (the run started or ended) or when the Agent is already a member.
+     * Enlists one more member of {@code kind} with the next ordinal and indexes it; null once the list is no longer
+     * the run's to fill (the run started or ended) or when the Agent is already a member.
      */
-    synchronized AgentBossRunMember addMember(int agentId, int enlistedBy, long nowMs) {
+    synchronized AgentBossRunMember addMember(int agentId, int enlistedBy, long nowMs, AgentBossRunMember.Kind kind) {
         if (phase != Phase.REGISTERING || member(agentId) != null) {
             return null;
         }
-        AgentBossRunMember member = new AgentBossRunMember(agentId, enlistedBy, members.size(), nowMs);
+        AgentBossRunMember member = new AgentBossRunMember(agentId, enlistedBy, members.size(), nowMs, kind);
         members.add(member);
         AgentBossRunRegistry.index(this, agentId);
         return member;
@@ -154,7 +160,7 @@ public final class AgentBossRunSession {
                 refuse(host, member, AgentBossRunHost.Refusal.BANNED);
             }
         }
-        long deadline = expedition.getStartTime() - registrationMarginMs();
+        long deadline = AgentBossRunService.signUpDeadlineMs(expedition);
         boolean turnTaken = false;
         for (AgentBossRunMember member : members) {
             if (member.phase() != AgentBossRunMember.Phase.WAITING) {
@@ -181,8 +187,16 @@ public final class AgentBossRunSession {
             if (member.onMapSinceMs() == 0L) {
                 member.onMapSince(nowMs);
             }
+            // A self-led member has no owner to walk up with: it walks to the spot the host names, on every tick
+            // while it is away from it, the way the GM expedition lobby moves its members.
+            Point spot = host.standAt(member.seat(definition.key(), sessionId), agent.getMap(), member.ordinal());
+            if (member.kind() == AgentBossRunMember.Kind.SELF_LED && spot != null
+                    && !near(agent, spot, spotReachPx())) {
+                ports.navigate(agentId, spot, true);
+            }
             // Only one conversation per tick; a member that cannot reach her signs up from where it stands.
-            if (turnTaken || (!inReach(ports, agent) && nowMs - member.onMapSinceMs() < walkTimeoutMs())) {
+            if (turnTaken || (!inReach(ports, agent) && !atFarSpot(ports, agent, spot)
+                    && nowMs - member.onMapSinceMs() < walkTimeoutMs())) {
                 continue;
             }
             turnTaken = true;
@@ -195,6 +209,19 @@ public final class AgentBossRunSession {
         Point position = agent.getPosition();
         long reach = npcReachPx();
         return npc != null && position != null && position.distanceSq(npc) <= reach * reach;
+    }
+
+    /**
+     * The member stands at its spot, and the spot lies beyond the entry NPC's reach (a long list lines members up
+     * further away): it takes its turn from there instead of waiting out the walk timeout.
+     */
+    private boolean atFarSpot(AgentBossRunPorts ports, Character agent, Point spot) {
+        if (spot == null) {
+            return false;
+        }
+        Point npc = ports.npcPosition(agent, definition.entryNpcId());
+        long reach = npcReachPx();
+        return npc != null && spot.distanceSq(npc) > reach * reach && near(agent, spot, spotReachPx());
     }
 
     /** The member's turn: tie it to the run, then one conversation with the entry NPC. */
@@ -337,7 +364,7 @@ public final class AgentBossRunSession {
 
     /**
      * The member is out of the event: it died out, left for want of a human or with its anchor, or simply left. A
-     * loaded one is freed from the battle walls and follows its owner again; one with no runtime is GONE.
+     * loaded one is freed from the battle walls and let go (see {@link #letGo}); one with no runtime is GONE.
      */
     private void handBack(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
                           boolean loaded) {
@@ -347,8 +374,20 @@ public final class AgentBossRunSession {
         }
         int agentId = member.agentId();
         ports.clearBoundary(agentId);
-        ports.follow(agentId);
+        letGo(ports, member);
         memberOut(host, member, outOf(member));
+    }
+
+    /**
+     * A follower follows its owner again; a self-led member has no owner to follow, so it is stopped where it stands
+     * and the host takes it from there.
+     */
+    private static void letGo(AgentBossRunPorts ports, AgentBossRunMember member) {
+        if (member.kind() == AgentBossRunMember.Kind.SELF_LED) {
+            ports.stop(member.agentId());
+        } else {
+            ports.follow(member.agentId());
+        }
     }
 
     /** How a loaded member left: it died out, it left for the reason it was leaving, or it simply left. */
@@ -560,7 +599,10 @@ public final class AgentBossRunSession {
         }
     }
 
-    /** The boss fell: the members inside stop fighting and follow their owner again; the fight is not ticked after. */
+    /**
+     * The boss fell: the members inside stop fighting, and the followers follow their owner again (a self-led member
+     * stays stopped); the fight is not ticked after.
+     */
     private void clear(AgentBossRunPorts ports) {
         cleared = true;
         for (AgentBossRunMember member : members) {
@@ -570,7 +612,9 @@ public final class AgentBossRunSession {
             int agentId = member.agentId();
             ports.stop(agentId);
             ports.clearBoundary(agentId);
-            ports.follow(agentId);
+            if (member.kind() == AgentBossRunMember.Kind.FOLLOWER) {
+                ports.follow(agentId);
+            }
             member.clearedInside();
         }
         phase = Phase.POST_CLEAR;
@@ -642,8 +686,9 @@ public final class AgentBossRunSession {
     /**
      * Best effort for a member still INSIDE or LEAVING when the run ends (a failed tick): with no runtime it is GONE;
      * otherwise it is freed from the battle walls, moved to the recruit map while it stands alive in the event (a dead
-     * one is left to the respawn), and follows its owner again. Each step is tried on its own, so a failure stops
-     * neither the next step nor the next member; the host hears memberOut before runEnded.
+     * one is left to the respawn), and let go (a follower follows its owner again, a self-led member is stopped). Each
+     * step is tried on its own, so a failure stops neither the next step nor the next member; the host hears
+     * memberOut before runEnded.
      */
     private void handBackStranded(AgentBossRunPorts ports, AgentBossRunHost.Rule host) {
         for (AgentBossRunMember member : members) {
@@ -663,7 +708,8 @@ public final class AgentBossRunSession {
                         moveOut(ports, agent);
                     }
                 });
-                bestEffort("follow", agentId, () -> ports.follow(agentId));
+                bestEffort(member.kind() == AgentBossRunMember.Kind.SELF_LED ? "stop" : "follow", agentId,
+                        () -> letGo(ports, member));
                 memberOut(host, member, outOf(member));
             } catch (RuntimeException failure) {
                 log.warn("Boss run hand-back failed: session={} boss={} member={}", sessionId, definition.key(),
@@ -721,5 +767,10 @@ public final class AgentBossRunSession {
     static long exitTimeoutMs() {
         return config.AgentTuning.longValue(
                 "server.agents.capabilities.expedition.boss.AgentBossRunSession.EXIT_TIMEOUT_MS");
+    }
+
+    static int spotReachPx() {
+        return config.AgentTuning.intValue(
+                "server.agents.capabilities.expedition.boss.AgentBossRunSession.SPOT_REACH_PX");
     }
 }

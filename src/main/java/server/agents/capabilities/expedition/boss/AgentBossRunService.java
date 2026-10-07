@@ -33,14 +33,28 @@ public final class AgentBossRunService {
     private AgentBossRunService() {
     }
 
-    /** Enlists {@code agentIds} for {@code expedition} on behalf of {@code human}; any thread. */
+    /** Enlists {@code agentIds} as followers for {@code expedition} on behalf of {@code human}; any thread. */
     public static Enlisted enlist(Character human, AgentBossRunDefinition definition, Expedition expedition,
                                   List<Integer> agentIds, long nowMs) {
-        return enlist(AgentBossRunPorts.LIVE, human, definition, expedition, agentIds, nowMs);
+        return enlist(human, definition, expedition, agentIds, nowMs, AgentBossRunMember.Kind.FOLLOWER);
+    }
+
+    /**
+     * Enlists {@code agentIds} as members of {@code kind} for {@code expedition} on behalf of {@code human}, who stays
+     * their anchor; any thread.
+     */
+    public static Enlisted enlist(Character human, AgentBossRunDefinition definition, Expedition expedition,
+                                  List<Integer> agentIds, long nowMs, AgentBossRunMember.Kind kind) {
+        return enlist(AgentBossRunPorts.LIVE, human, definition, expedition, agentIds, nowMs, kind);
     }
 
     static Enlisted enlist(AgentBossRunPorts ports, Character human, AgentBossRunDefinition definition,
                            Expedition expedition, List<Integer> agentIds, long nowMs) {
+        return enlist(ports, human, definition, expedition, agentIds, nowMs, AgentBossRunMember.Kind.FOLLOWER);
+    }
+
+    static Enlisted enlist(AgentBossRunPorts ports, Character human, AgentBossRunDefinition definition,
+                           Expedition expedition, List<Integer> agentIds, long nowMs, AgentBossRunMember.Kind kind) {
         List<Integer> ids = agentIds == null ? List.of() : List.copyOf(new LinkedHashSet<>(agentIds));
         if (human == null || definition == null || expedition == null || !expedition.isRegistering()) {
             return new Enlisted(0L, List.of(), ids);
@@ -71,7 +85,7 @@ public final class AgentBossRunService {
                         human.getId());
             }
             for (int agentId : candidates) {
-                if (session.addMember(agentId, human.getId(), nowMs) != null) {
+                if (session.addMember(agentId, human.getId(), nowMs, kind) != null) {
                     accepted.add(agentId);
                 } else {
                     refused.add(agentId);
@@ -91,6 +105,14 @@ public final class AgentBossRunService {
     public static boolean handTo(long sessionId, int agentId, int humanId) {
         AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
         return session != null && session.handTo(agentId, humanId);
+    }
+
+    /**
+     * When a run of {@code expedition} stops waiting for members to sign up: the list's close (the expedition's start
+     * time while it registers) less REGISTRATION_MARGIN_MS. Read from the expedition at each call.
+     */
+    public static long signUpDeadlineMs(Expedition expedition) {
+        return expedition.getStartTime() - AgentBossRunSession.registrationMarginMs();
     }
 
     /** The enlister controls it, the host claims it, and it is in no boss run and no party quest. */

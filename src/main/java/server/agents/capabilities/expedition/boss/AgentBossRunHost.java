@@ -2,7 +2,9 @@ package server.agents.capabilities.expedition.boss;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import server.maps.MapleMap;
 
+import java.awt.Point;
 import java.util.List;
 
 /**
@@ -92,6 +94,15 @@ public final class AgentBossRunHost {
 
         /** The run ended; called once per session. */
         default void runEnded(RunEnded ended) {
+        }
+
+        /**
+         * Where the WAITING member stands to sign up on the recruit {@code map}, by its {@code ordinal} in the run;
+         * null names no spot. Asked on every tick while it waits there: a SELF_LED member walks to the spot, and any
+         * member standing at a spot beyond the entry NPC's reach signs up from it.
+         */
+        default Point standAt(Seat seat, MapleMap map, int ordinal) {
+            return null;
         }
     }
 
@@ -183,6 +194,20 @@ public final class AgentBossRunHost {
                 current.runEnded(ended);
             } catch (RuntimeException failure) {
                 log.warn("boss-run run-ended rule failed for {}", ended, failure);
+            }
+        }
+
+        @Override
+        public Point standAt(Seat seat, MapleMap map, int ordinal) {
+            Rule current = current();
+            if (current == null) {
+                return null;
+            }
+            try {
+                return current.standAt(seat, map, ordinal);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run stand-at rule failed for {} (ordinal {})", seat, ordinal, failure);
+                return null;
             }
         }
     }

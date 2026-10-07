@@ -196,6 +196,37 @@ class AgentBossRunServiceEnlistTest {
         assertEquals(List.of(), host.ended);
     }
 
+    @Test
+    void enlistSelfLedMarksTheKind() {
+        Expedition expedition = registering();
+
+        AgentBossRunService.Enlisted allies = AgentBossRunService.enlist(ports, owner, AgentBossRunCatalog.EASY_BALROG,
+                expedition, List.of(20, 21), NOW, AgentBossRunMember.Kind.SELF_LED);
+        AgentBossRunService.Enlisted party = enlist(owner, expedition, List.of(10));
+
+        assertEquals(List.of(20, 21), allies.accepted());
+        assertEquals(allies.sessionId(), party.sessionId(), "allies and the party share one run");
+        AgentBossRunSession session = AgentBossRunRegistry.forExpedition(expedition);
+        assertEquals(AgentBossRunMember.Kind.SELF_LED, session.member(20).kind());
+        assertEquals(AgentBossRunMember.Kind.SELF_LED, session.member(21).kind());
+        assertEquals(AgentBossRunMember.Kind.FOLLOWER, session.member(10).kind(), "the old form enlists followers");
+        assertEquals(OWNER, session.member(20).enlistedBy());
+        assertEquals(OWNER, session.member(20).anchorId(), "a self-led member is still anchored to its enlister");
+        assertEquals(List.of(0, 1, 2), session.members().stream().map(AgentBossRunMember::ordinal).toList());
+    }
+
+    @Test
+    void signUpDeadlineIsTheClockLessTheMargin() {
+        Expedition expedition = registering();
+        long margin = AgentBossRunSession.registrationMarginMs();
+
+        assertEquals(NOW + 300_000L - margin, AgentBossRunService.signUpDeadlineMs(expedition));
+
+        when(expedition.getStartTime()).thenReturn(NOW + 90_000L);
+        assertEquals(NOW + 90_000L - margin, AgentBossRunService.signUpDeadlineMs(expedition),
+                "read from the expedition's clock at each call");
+    }
+
     private AgentBossRunService.Enlisted enlist(Character human, Expedition expedition, List<Integer> ids) {
         return AgentBossRunService.enlist(ports, human, AgentBossRunCatalog.EASY_BALROG, expedition, ids, NOW);
     }
