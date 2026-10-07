@@ -24,7 +24,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * gone; a failed tick ends it at once and hands back whoever is still in it. {@link #tick} runs on the Agent scheduler
  * under the session's lock. A SELF_LED member (one that leads itself, with no owner to walk up with or follow) walks to
  * the spot the host names beside the entry NPC, and wherever the others would follow their owner again it is stopped.
- * A member its host withdraws before Start is taken off the entry NPC's list by the next tick and refused.
+ * A member its host withdraws before Start is taken off the entry NPC's list by the next tick and refused; one the
+ * Start took in anyway is never adopted. A self-led member is adopted only while its anchor is a player of the event.
  */
 public final class AgentBossRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunSession.class);
@@ -601,15 +602,25 @@ public final class AgentBossRunSession {
     /**
      * Adopts a signed-up member the Start took into this expedition's event on the battle map. It is tied to the run
      * again first: an owner's logout before Start let go of its tie, and the list still took it in once it was loaded
-     * again. A member the host will not tie again missed the start and is never adopted.
+     * again. A member the host will not tie again missed the start and is never adopted. Neither is a member its host
+     * withdrew (a withdraw that landed just before Start; it misses the start at once), nor a self-led member while
+     * its anchor is no player of the event: with nobody of its own in the fight, it misses the start after the grace.
      */
     private void adoptOrMiss(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
                              boolean graceOver, long nowMs) {
         int agentId = member.agentId();
         Character agent = ports.agent(agentId);
         EventInstanceManager memberEvent = agent == null ? null : agent.getEventInstance();
-        if (memberEvent != null && memberEvent.getExpedition() == expedition
-                && agent.getMapId() == definition.battleMapId()) {
+        boolean inThisEvent = memberEvent != null && memberEvent.getExpedition() == expedition;
+        if (member.withdrawn()) {
+            log.info("Boss run adoption refused: session={} boss={} member={} (withdrawn)", sessionId,
+                    definition.key(), agentId);
+            missedStart(ports, host, member, agent, inThisEvent);
+            return;
+        }
+        boolean anchorIn = member.kind() != AgentBossRunMember.Kind.SELF_LED
+                || (inThisEvent && memberEvent.getPlayerById(member.anchorId()) != null);
+        if (inThisEvent && anchorIn && agent.getMapId() == definition.battleMapId()) {
             if (!host.seat(member.seat(definition.key(), sessionId))) {
                 log.info("Boss run adoption refused: session={} boss={} member={} (tied to another run)", sessionId,
                         definition.key(), agentId);
@@ -631,8 +642,25 @@ public final class AgentBossRunSession {
                     sessionId, definition.key(), agentId);
         }
         if (graceOver) {
-            memberOut(host, member, AgentBossRunHost.Out.MISSED_START);
+            if (inThisEvent && !anchorIn) {
+                log.info("Boss run adoption refused: session={} boss={} member={} (anchor {} is not in the event)",
+                        sessionId, definition.key(), agentId, member.anchorId());
+            }
+            missedStart(ports, host, member, agent, inThisEvent);
         }
+    }
+
+    /**
+     * The member missed the start. A self-led one standing alive in this run's event is moved to the recruit map
+     * first, since nobody leads it out of a fight it is not part of; a follower stays with its owner as before, and a
+     * dead one is left to the stock respawn.
+     */
+    private void missedStart(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
+                             Character agent, boolean inThisEvent) {
+        if (member.kind() == AgentBossRunMember.Kind.SELF_LED && inThisEvent && agent.isAlive()) {
+            bestEffort("moveOut", member.agentId(), () -> moveOut(ports, agent));
+        }
+        memberOut(host, member, AgentBossRunHost.Out.MISSED_START);
     }
 
     /**
