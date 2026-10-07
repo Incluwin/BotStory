@@ -146,13 +146,52 @@ class AgentBossRunSessionExitTest {
         session.tick(ports, host, FIGHT + 500L);
         ports.dead.remove(THANE);
         session.tick(ports, host, FIGHT + 1_000L);
-        assertFalse(thane.seenDead());
+        assertTrue(thane.seenDead(), "one sighting alive in the fight may be the respawn before its map change");
         assertEquals("tick [" + THANE + "]", fight.calls.getLast());
+        session.tick(ports, host, FIGHT + 1_500L);
+        assertFalse(thane.seenDead(), "alive in the fight on two ticks in a row: raised where it fell");
 
         ports.dead.add(THANE);
-        session.tick(ports, host, FIGHT + 1_500L);
+        session.tick(ports, host, FIGHT + 2_000L);
 
         assertEquals(2, thane.deaths());
+        assertEquals(AgentBossRunMember.Phase.INSIDE, thane.phase());
+        assertEquals(List.of(), ports.calls);
+    }
+
+    @Test
+    void memberSeenAliveInTheFightForOneTickOnItsWayToTheRespawnStillDiedThere() {
+        AgentBossRunSession session = fighting(THANE, ISOLDE);
+        AgentBossRunMember thane = session.member(THANE);
+
+        ports.dead.add(THANE);
+        session.tick(ports, host, FIGHT + 500L);
+        // AgentDeathTickService.respawnAtNearestTown restores HP before it changes the map: one tick can fall between.
+        ports.dead.remove(THANE);
+        session.tick(ports, host, FIGHT + 1_000L);
+        outOfTheEvent(THANE, RECRUIT_MAP);
+        session.tick(ports, host, FIGHT + 1_500L);
+
+        assertEquals(List.of("clearBoundary " + THANE, "follow " + THANE, "out " + THANE + " DIED"), ports.calls);
+        assertEquals(AgentBossRunHost.Out.DIED, thane.out());
+        assertEquals(1, thane.deaths());
+    }
+
+    @Test
+    void memberKilledAgainRightAfterItIsRaisedCountsTheNewDeath() {
+        AgentBossRunSession session = fighting(THANE);
+        AgentBossRunMember thane = session.member(THANE);
+
+        ports.dead.add(THANE);
+        session.tick(ports, host, FIGHT + 500L);
+        ports.dead.remove(THANE);
+        session.tick(ports, host, FIGHT + 1_000L);
+        ports.dead.add(THANE);
+        session.tick(ports, host, FIGHT + 1_500L);
+        session.tick(ports, host, FIGHT + 2_000L);
+
+        assertEquals(2, thane.deaths(), "dead after it was seen alive in the fight is a new death, counted once");
+        assertTrue(thane.seenDead());
         assertEquals(AgentBossRunMember.Phase.INSIDE, thane.phase());
         assertEquals(List.of(), ports.calls);
     }

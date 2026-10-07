@@ -32,6 +32,7 @@ public final class AgentBossRunMember {
     private boolean wentIn;
     private boolean inAtClear;
     private boolean seenDead;
+    private boolean aliveOnceSinceDeath;
     private int deaths;
     private AgentBossRunHost.Out leavingFor;
     private long leavingSinceMs;
@@ -85,7 +86,10 @@ public final class AgentBossRunMember {
         return inAtClear;
     }
 
-    /** Seen dead since it was last seen alive in the fight; alive outside the event next means it died out. */
+    /**
+     * Seen dead and not yet seen alive in the fight on two ticks in a row; alive outside the event next means it died
+     * out.
+     */
     public boolean seenDead() {
         return seenDead;
     }
@@ -136,19 +140,35 @@ public final class AgentBossRunMember {
         inAtClear = true;
     }
 
-    /** Seen dead; true (and one more death) only for the first sighting of this death. */
+    /**
+     * Seen dead; true (and one more death) only for the first sighting of this death. Dead again after a sighting
+     * alive in the fight is a new death: it was raised and fell again.
+     */
     boolean died() {
-        if (seenDead) {
+        if (seenDead && !aliveOnceSinceDeath) {
             return false;
         }
         seenDead = true;
+        aliveOnceSinceDeath = false;
         deaths++;
         return true;
     }
 
-    /** Seen alive in the fight again (raised where it fell): its next fall is another death. */
+    /**
+     * Seen alive in the fight. After a death, the first such sighting may be the stock respawn between its HP restore
+     * and its map change, so only the second in a row means it was raised where it fell; its next fall is then
+     * another death.
+     */
     void upAgain() {
-        seenDead = false;
+        if (!seenDead) {
+            return;
+        }
+        if (aliveOnceSinceDeath) {
+            seenDead = false;
+            aliveOnceSinceDeath = false;
+        } else {
+            aliveOnceSinceDeath = true;
+        }
     }
 
     /** Why it is on its way out (NO_HUMAN_LEFT or EXITED); null unless {@link Phase#LEAVING}. */

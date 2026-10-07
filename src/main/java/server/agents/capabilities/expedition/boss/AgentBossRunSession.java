@@ -310,7 +310,8 @@ public final class AgentBossRunSession {
     /**
      * Deaths and departures of the adopted members. A death counts once, however many ticks see it; a member alive
      * outside the event (the stock respawn, an exit, the event's own warp) is out of the run and follows its owner
-     * again; one raised where it fell fights on; one whose runtime is gone (parked at a logout) is out with no call.
+     * again; one raised where it fell (alive in the fight on two ticks in a row, see AgentBossRunMember.upAgain)
+     * fights on; one whose runtime is gone (parked at a logout) is out with no call.
      */
     private void watchMembers(AgentBossRunPorts ports, AgentBossRunHost.Rule host) {
         for (AgentBossRunMember member : members) {

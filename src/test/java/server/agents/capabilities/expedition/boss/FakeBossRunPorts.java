@@ -51,8 +51,8 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
     RunNpc runNpc = (agent, npcId, selections) -> true;
 
     /**
-     * A loaded Agent standing at (x, y) on {@code mapId} with {@code level}; it is in the event {@link #eventOf} names
-     * (none by default) and alive unless {@link #dead} lists it.
+     * A loaded Agent standing at (x, y) on {@code mapId} with {@code level}; it is logged in, in the event
+     * {@link #eventOf} names (none by default) and alive unless {@link #dead} lists it.
      */
     Character place(int agentId, int mapId, int x, int y, int level) {
         mapOf.put(agentId, mapId);
@@ -67,6 +67,9 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
             when(agent.getLevel()).thenAnswer(invocation -> levelOf.getOrDefault(id, 1));
             when(agent.getEventInstance()).thenAnswer(invocation -> eventOf.get(id));
             when(agent.isAlive()).thenAnswer(invocation -> !dead.contains(id));
+            // A loaded Agent is logged in (Character.newClient, setEnteredChannelWorld): only headless() keeps it
+            // out of the human count.
+            when(agent.isLoggedinWorld()).thenReturn(true);
             return agent;
         });
     }
