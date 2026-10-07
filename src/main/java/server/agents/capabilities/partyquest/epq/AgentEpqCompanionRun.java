@@ -42,6 +42,8 @@ final class AgentEpqCompanionRun {
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.GOLEM_MARBLE_LEADER_FIRST_MS");
     static final long FOUNTAIN_WAIT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.FOUNTAIN_WAIT_MS");
+    static final long ALTAR_READY_WAIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.ALTAR_READY_WAIT_MS");
     static final String QUEST_KEY = "epq";
 
     private AgentEpqCompanionRun() {
@@ -397,6 +399,157 @@ final class AgentEpqCompanionRun {
             }
         }
         AgentEpqCoordinator.actions().stop(entry);
+    }
+
+    // ---- coaching the leader (Step 3.2) ----
+
+    /**
+     * The lease holder's pass before the clear: a companion on the leader's map tells him, once each, what each stage
+     * wants of him and nudges him when he holds a stage item for a while (LEADER_HINT_MS). The stone's finder says the
+     * stone lines when it stands on his map. Nothing is said without a companion on his map (the line waits); nothing
+     * about the altar while the golem fight is on.
+     */
+    static void coach(AgentEpqSession session, Character leader, long nowMs) {
+        if (leader == null || !inBoundEvent(session, leader)) return;
+        Character narrator = narrator(session, leader);
+        if (narrator == null) return;
+        String name = leader.getName();
+        var actions = AgentEpqCoordinator.actions();
+        switch (leader.getMapId()) {
+            case AgentEpqDefinition.STAGE_ONE_MAP -> {
+                coordinate(session, narrator, "trees", AgentEpqCompanionPlay.TREES);
+                if (actions.liveMonsterCount(leader, java.util.Set.of(AgentEpqDefinition.STAGE_ONE_MOB)) == 0) {
+                    coordinate(session, narrator, "trees-done", AgentEpqCompanionPlay.TREES_DONE);
+                }
+            }
+            case AgentEpqDefinition.STAGE_TWO_MAP -> {
+                coordinate(session, narrator, "bottles", AgentEpqCompanionPlay.BOTTLES);
+                if (heldFor(session, "bottle", actions.itemCount(leader, AgentEpqDefinition.PURIFIED_POISON) > 0,
+                        nowMs)) {
+                    coordinate(session, narrator, "bottle-hint", AgentEpqCompanionPlay.bottleHintLine(name));
+                }
+            }
+            case AgentEpqDefinition.STAGE_THREE_MAP ->
+                    coordinate(session, narrator, "maze", AgentEpqCompanionPlay.MAZE);
+            case AgentEpqDefinition.STAGE_FOUR_MAP -> {
+                coordinate(session, narrator, "flowers", AgentEpqCompanionPlay.FLOWERS);
+                boolean holdsTwenty = actions.itemCount(leader, AgentEpqDefinition.MONSTER_MARBLE)
+                        >= AgentEpqDefinition.REQUIRED_MONSTER_MARBLES;
+                if (holdsTwenty && !session.narrated("marbles-twenty")) {
+                    coordinate(session, narrator, "marbles-held", AgentEpqCompanionPlay.MARBLES_HELD);
+                }
+                if (heldFor(session, "handin", holdsTwenty, nowMs)) {
+                    coordinate(session, narrator, "marbles-handin-nudge",
+                            AgentEpqCompanionPlay.marblesHandInLine(name));
+                }
+            }
+            case AgentEpqDefinition.STAGE_FIVE_MAP -> {
+                coordinate(session, narrator, "climb", AgentEpqCompanionPlay.CLIMB);
+                if (heldFor(session, "stone", actions.itemCount(leader, AgentEpqDefinition.MAGIC_STONE) > 0, nowMs)) {
+                    coordinate(session, finderOr(session, leader, narrator), "stone-held",
+                            AgentEpqCompanionPlay.stoneHeldLine(name));
+                }
+            }
+            case AgentEpqDefinition.BOSS_MAP -> coachAtTheAltar(session, leader, narrator, nowMs);
+            default -> { }
+        }
+    }
+
+    /** The golem's map before the golem: the ready line (E14), its nudge (E14n), a stone off the altar (E14m). */
+    private static void coachAtTheAltar(AgentEpqSession session, Character leader, Character narrator, long nowMs) {
+        if (golemFight(session, leader)) return;
+        var actions = AgentEpqCoordinator.actions();
+        String name = leader.getName();
+        Character speaker = finderOr(session, leader, narrator);
+        boolean holdsStone = actions.itemCount(leader, AgentEpqDefinition.MAGIC_STONE) > 0;
+        long sinceBoss = session.phase() == AgentEpqSession.Phase.BOSS ? nowMs - session.phaseEnteredAtMs() : 0L;
+        if (AgentEpqCompanionPlay.altarReady(holdsStone, anyoneToppingUp(session, leader), sinceBoss,
+                ALTAR_READY_WAIT_MS) && coordinate(session, speaker, "altar-ready",
+                AgentEpqCompanionPlay.altarReadyLine(name))) {
+            session.leaderHintSince("altar", nowMs);
+        }
+        if (session.narrated("altar-ready") && heldFor(session, "altar", holdsStone, nowMs)) {
+            coordinate(session, speaker, "altar-nudge", AgentEpqCompanionPlay.altarNudgeLine(name));
+        }
+        // A stone lying here is off the altar: one in the altar's area reads as the golem fight (above), since the
+        // altar takes it 5 s after the drop.
+        boolean stoneOffTheAltar = leader.getMap() != null && AgentMapPerception.items(leader.getMap()).stream()
+                .anyMatch(drop -> drop != null && !drop.isPickedUp() && drop.getPosition() != null
+                        && drop.getItemId() == AgentEpqDefinition.MAGIC_STONE);
+        if (heldFor(session, "stone-floor", stoneOffTheAltar, nowMs)) {
+            coordinate(session, speaker, "stone-floor", AgentEpqCompanionPlay.stoneOnTheFloorLine(name));
+        }
+    }
+
+    /**
+     * A hint clock: true once {@code holding} has held LEADER_HINT_MS without a break (the clock starts with the first
+     * pass that saw it and stops while it does not hold).
+     */
+    private static boolean heldFor(AgentEpqSession session, String clock, boolean holding, long nowMs) {
+        if (!holding) {
+            session.clearLeaderHint(clock);
+            return false;
+        }
+        return nowMs - session.leaderHintSince(clock, nowMs) >= LEADER_HINT_MS;
+    }
+
+    /** The stone's finder when it stands on the leader's map, else the narrator. */
+    private static Character finderOr(AgentEpqSession session, Character leader, Character narrator) {
+        AgentEpqMemberState finder = session.member(session.stoneFinderId());
+        Character agent = standing(session, finder);
+        return agent != null && agent.getMapId() == leader.getMapId() ? agent : narrator;
+    }
+
+    /** A standing companion on the leader's map still has to drink up (read from its HP and HP potions). */
+    private static boolean anyoneToppingUp(AgentEpqSession session, Character leader) {
+        var actions = AgentEpqCoordinator.actions();
+        for (AgentEpqMemberState member : session.members()) {
+            Character agent = standing(session, member);
+            if (agent != null && agent.getMapId() == leader.getMapId()
+                    && AgentEpqRecoveryPolicy.needsTopUp(agent.getHp(), agent.getCurrentMaxHp(),
+                    actions.hpPotionCount(agent), AgentEpqRecoveryPolicy.TOP_UP_HP_FRACTION)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * The golem fight is on (Z3), as seen from this character's map: the event is not cleared, and a golem is alive
+     * on 930000600, or the first golem was seen this run (the revive chain leaves a moment with no golem alive), or the
+     * altar fired, or a purple stone lies in the altar's area (the altar takes it 5 s after the drop).
+     */
+    static boolean golemFight(AgentEpqSession session, Character observer) {
+        boolean cleared = AgentEpqTerminationService.pastTheClear(session.eventInstance());
+        boolean firstGolemSeen = session.logMarked("golem-9300180");
+        boolean onBossMap = observer != null && observer.getMapId() == AgentEpqDefinition.BOSS_MAP
+                && observer.getMap() != null;
+        boolean golemAlive = onBossMap && AgentMapPerception.monsters(observer.getMap()).stream()
+                .anyMatch(mob -> mob != null && mob.isAlive() && AgentEpqDefinition.BOSS_MOBS.contains(mob.getId()));
+        Reactor altar = onBossMap ? observer.getMap().getReactorById(AgentEpqDefinition.ALTAR_REACTOR) : null;
+        boolean stoneInAltarArea = altar != null && altar.getArea() != null
+                && AgentMapPerception.items(observer.getMap()).stream()
+                .anyMatch(drop -> drop != null && !drop.isPickedUp() && drop.getPosition() != null
+                        && drop.getItemId() == AgentEpqDefinition.MAGIC_STONE
+                        && altar.getArea().contains(drop.getPosition()));
+        return AgentEpqCompanionPlay.golemFight(cleared, golemAlive, firstGolemSeen,
+                altar == null ? 0 : altar.getState(), stoneInAltarArea);
+    }
+
+    /** E14w, from a companion's own tick as its top-up starts on the golem's map, before the golem fight. */
+    static void drinkingUp(AgentEpqSession session, Character agent) {
+        if (agent.getMapId() != AgentEpqDefinition.BOSS_MAP || golemFight(session, agent)) return;
+        coordinate(session, agent, "boss-topup", AgentEpqCompanionPlay.DRINKING_UP);
+    }
+
+    /** E7, from a companion's own tick as it reaches maze Ellin first. */
+    static void mazeFound(AgentEpqSession session, Character agent) {
+        coordinate(session, agent, "maze-found", AgentEpqCompanionPlay.MAZE_FOUND);
+    }
+
+    /** E15a-c: a golem alive for the first time, said by a companion on the leader's map. */
+    static void golemSeen(AgentEpqSession session, Character leader, int golemId) {
+        coordinate(session, narrator(session, leader), "golem-" + golemId, AgentEpqCompanionPlay.golemLine(golemId));
     }
 
     /** A companion of the run still stands in its bound event on the reward map. */

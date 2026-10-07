@@ -1262,6 +1262,10 @@ tuning:
     # Purpose: Bounds how long companions wait on the reward map for their leader to drop the golem's marble in the fountain (everyone on the map gets its EXP, and a fragment on the way out); then they take the exit.
     # Technical: Counted from the REWARD phase; skipped when no marble is held or lying there, when the fountain already fired (reactor 3008000 state > 0), or when the leader left. A companion holding the marble drops it at once. Companion runs only.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.FOUNTAIN_WAIT_MS: '45000'
+    # Values: 5000-60000 milliseconds. Recommended: 20000, about the top-ups' length from 50 HP.
+    # Purpose: Bounds how long companions ask their leader to wait at the altar while they drink up before they say they are ready.
+    # Technical: Counted from the BOSS phase; AgentEpqCompanionRun says the ready line sooner once no standing companion on 930000600 is under AgentEpqRecoveryPolicy.TOP_UP_HP_FRACTION with potions. Companion runs only; the top-up itself is base fix 6 (every mode).
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.ALTAR_READY_WAIT_MS: '20000'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

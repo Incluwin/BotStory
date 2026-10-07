@@ -65,6 +65,97 @@ final class AgentEpqCompanionPlay {
         return leftHasTarget ? 0 : rightHasTarget ? 1 : 0;
     }
 
+    // ---- coaching the leader (Step 3.2) ----
+
+    /** E1: on entering stage 1. */
+    static final String TREES = "these trees are poisoned. we clear every one and the way opens.";
+
+    /** E1b: no tree left on stage 1. */
+    static final String TREES_DONE = "that's the last tree. the portal's on the right.";
+
+    /** E2: on entering stage 2. */
+    static final String BOTTLES =
+            "the bugs carry the poison. we pull them into the fountain first, then hit them in the water.";
+
+    /** E3: the leader has held a diluted poison for a while. */
+    static String bottleHintLine(String leader) {
+        return leader + ", drop that diluted poison by the thorns on the right.";
+    }
+
+    /** E6: on entering the maze. */
+    static final String MAZE =
+            "it's a maze. wait here, we'll find ellin. don't talk to the mileposts, they send you out.";
+
+    /** E7: said by the companion that reaches maze Ellin first. */
+    static final String MAZE_FOUND = "found ellin! she's bringing everyone over.";
+
+    /** E8: on entering stage 4. */
+    static final String FLOWERS =
+            "ellin hands out purification marbles. hit a poison flower till it's weak, then use a marble on it.";
+
+    /** E11b: the leader holds all twenty marbles and no hand-over said so. */
+    static final String MARBLES_HELD = "you've got all twenty. ellin's up top, give them to her.";
+
+    /** E11c: the leader still holds the twenty a while later. */
+    static String marblesHandInLine(String leader) {
+        return leader + ", talk to ellin with the marbles and we're through.";
+    }
+
+    /** E12: on entering stage 5. */
+    static final String CLIMB =
+            "long climb. the stone's in one of the boxes up top. wait by the sprite, we'll bring it down.";
+
+    /** E13w: the leader has held the purple stone for a while. */
+    static String stoneHeldLine(String leader) {
+        return leader + ", talk to the sprite with the stone. she'll take us to the altar.";
+    }
+
+    /** E14w: a companion starts drinking up on the golem's map before the golem. */
+    static final String DRINKING_UP = "sec, drinking up first.";
+
+    /** E14: the companions are ready for the golem. */
+    static String altarReadyLine(String leader) {
+        return "ready when you are, " + leader + ". drop the purple stone right under the altar.";
+    }
+
+    /** E14n: the leader still holds the stone a while after E14. */
+    static String altarNudgeLine(String leader) {
+        return leader + ", drop the stone under the altar and the golem comes out.";
+    }
+
+    /** E14m: a purple stone lies on the golem's map outside the altar's area. */
+    static String stoneOnTheFloorLine(String leader) {
+        return leader + ", the stone has to land right under the altar. pick it up and try again.";
+    }
+
+    /** E15a, E15b, E15c: each golem the first time it is alive; null for another mob. */
+    static String golemLine(int golemId) {
+        return switch (golemId) {
+            case 9_300_180 -> "here it comes! everyone on the golem.";
+            case 9_300_181 -> "it's charging up! keep hitting it.";
+            case 9_300_182 -> "super-charged now, watch out for the poison rain!";
+            default -> null;
+        };
+    }
+
+    /**
+     * E14 is due: the leader holds the stone and either no standing companion on the golem's map still has to drink
+     * up, or ALTAR_READY_WAIT_MS passed since the BOSS phase began.
+     */
+    static boolean altarReady(boolean leaderHoldsStone, boolean anyoneToppingUp, long sinceBossMs, long readyWaitMs) {
+        return leaderHoldsStone && (!anyoneToppingUp || sinceBossMs >= readyWaitMs);
+    }
+
+    /**
+     * The golem fight is on (Z3): the event is not cleared, and a golem is alive, or the first golem was seen (the
+     * revive chain leaves a gap with no golem alive), or the altar already fired, or a stone lies in the altar's area
+     * (the altar takes it 5 s after the drop).
+     */
+    static boolean golemFight(boolean cleared, boolean golemAlive, boolean firstGolemSeen, int altarState,
+                              boolean stoneInAltarArea) {
+        return !cleared && (golemAlive || firstGolemSeen || altarState > 0 || stoneInAltarArea);
+    }
+
     // ---- the stock lines' sites ----
 
     /** E4a: the first diluted poison is on the thorns. */

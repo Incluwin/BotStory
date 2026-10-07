@@ -422,6 +422,12 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     synchronized void clearMemberDown(int id) { membersDown.remove(id); }
 
+    /** Whether this log mark was claimed (a golem seen, the clear): Steps 3.2, 4.3 and 4.5 decide by it. */
+    synchronized boolean logMarked(String key) { return logMarks.contains(key); }
+
+    /** Whether a companion run's line key was already said. */
+    synchronized boolean narrated(String key) { return narrations.contains(key); }
+
     /** A once-only mark for a log line, apart from the chat announcements. */
     synchronized boolean claimLogMark(String key) {
         return key != null && !key.isBlank() && logMarks.add(key);

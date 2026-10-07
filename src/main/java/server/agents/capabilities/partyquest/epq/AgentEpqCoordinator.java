@@ -118,6 +118,10 @@ public final class AgentEpqCoordinator {
         if (session.companionAdopted() && session.terminal()) return; // the watchdog ended it: nothing more
         logMembersDown(session);
         logBossProgress(session, leader, nowMs);
+        // Step 3.2: before the clear a companion run's companions coach their leader through each stage.
+        if (AgentEpqCompanionRun.acting(session) && !AgentEpqTerminationService.pastTheClear(bound)) {
+            AgentEpqCompanionRun.coach(session, leader, nowMs);
+        }
         completeWhenOut(session, nowMs);
     }
 
@@ -286,7 +290,7 @@ public final class AgentEpqCoordinator {
             }
             case AgentEpqDefinition.STAGE_ONE_MAP -> stageOne(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_TWO_MAP -> stageTwo(session, entry, agent, member, nowMs);
-            case AgentEpqDefinition.STAGE_THREE_MAP -> stageThree(entry, agent, member, nowMs);
+            case AgentEpqDefinition.STAGE_THREE_MAP -> stageThree(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_FOUR_MAP -> stageFour(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_FIVE_MAP -> stageFive(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.BOSS_MAP -> boss(session, entry, agent, member, nowMs);
@@ -514,10 +518,14 @@ public final class AgentEpqCoordinator {
                 bugInPond, bottle);
     }
 
-    private static void stageThree(AgentRuntimeEntry entry, Character agent,
+    private static void stageThree(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                    AgentEpqMemberState member, long nowMs) {
         Point coordinator = npcApproachPoint(agent, AgentEpqDefinition.STAGE_NPC);
         if (near(agent.getPosition(), coordinator, MAZE_EXIT_APPROACH_RADIUS)) {
+            // Step 3.2: the companion that reaches maze Ellin first says so (E7), before its talk.
+            if (session.companionAdopted() && near(agent.getPosition(), coordinator, NPC_RADIUS)) {
+                AgentEpqCompanionRun.mazeFound(session, agent);
+            }
             if (runNearbyNpc(entry, agent, AgentEpqDefinition.STAGE_NPC)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
@@ -839,6 +847,7 @@ public final class AgentEpqCoordinator {
         if (!member.topUpActive()) {
             member.startTopUp(mapId);
             logTopUp(session, agent, member, "START", "");
+            if (session.companionAdopted()) AgentEpqCompanionRun.drinkingUp(session, agent); // Step 3.2: E14w
         }
         if (nowMs < member.nextTopUpAtMs()) {
             actions().stop(entry);
@@ -983,7 +992,8 @@ public final class AgentEpqCoordinator {
 
     /**
      * 'EPQ boss:' the first time each golem is alive on the boss map while the leader is there, and the first time the
-     * bound event reports its clear, wherever the leader is; nothing decides by it.
+     * bound event reports its clear, wherever the leader is. In a companion run a companion says each golem's line
+     * (E15a-c). Its marks decide the golem fight (AgentEpqCompanionRun.golemFight) of Steps 3.2, 4.3 and 4.5.
      */
     private static void logBossProgress(AgentEpqSession session, Character leader, long nowMs) {
         if (leader.getMapId() == AgentEpqDefinition.BOSS_MAP && leader.getMap() != null) {
@@ -994,6 +1004,7 @@ public final class AgentEpqCoordinator {
                         && session.claimLogMark("golem-" + golem)) {
                     log.info("EPQ boss: session={} golem={} runMs={}", session.sessionId(), golem,
                             nowMs - session.startedAtMs());
+                    if (AgentEpqCompanionRun.acting(session)) AgentEpqCompanionRun.golemSeen(session, leader, golem);
                 }
             }
         }
