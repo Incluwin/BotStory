@@ -611,6 +611,7 @@ class AgentSupplyReadinessRuntimeTest {
         activities.put(541, EPQ);
         redStack.add(541);
         blueStack.add(541);
+        hpStackRoom.put(541, 100); // not counted on with more than the run's slot free: the counter may open a new kind
         freeSlots.put(541, 3);
         entry = following(halvard);
         assertFalse(AgentSupplyProcurementRuntime.tick(entry, halvard, 1_000L));
