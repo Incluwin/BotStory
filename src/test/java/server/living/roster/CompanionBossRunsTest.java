@@ -469,8 +469,8 @@ class CompanionBossRunsTest {
     }
 
     @Test
-    void aBossRunDoesNotDelegateYet() {
-        runs.seat(seat(ISOLDE));
+    void aCompanionWhoseRunStillTakesSignUpsIsNotHandedOver() {
+        runs.seat(seat(ISOLDE)); // Mu Young's list is still open: the fight is not on (CompanionBossRunsDelegateTest)
 
         assertFalse(runs.delegate(game.bots.get(ISOLDE), game.ann, KEY));
     }
@@ -614,6 +614,23 @@ class CompanionBossRunsTest {
         public AgentBossRunService.Enlisted enlist(Character owner, AgentBossRunDefinition definition,
                                                    Expedition expedition, List<Integer> agentIds, long nowMs) {
             throw new UnsupportedOperationException("no enlist here");
+        }
+
+        // the logout handoff (CompanionBossRunsDelegateTest) is not under test here
+
+        @Override
+        public boolean underway(long sessionId) {
+            return false;
+        }
+
+        @Override
+        public boolean inside(long sessionId, int agentId) {
+            return false;
+        }
+
+        @Override
+        public boolean handTo(long sessionId, int agentId, int heirId) {
+            return false;
         }
     }
 }

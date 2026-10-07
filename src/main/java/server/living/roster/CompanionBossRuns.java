@@ -99,6 +99,18 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         Enlisted enlist(Character owner, AgentBossRunDefinition definition, Expedition expedition,
                         List<Integer> agentIds, long nowMs);
 
+        /** True while boss run {@code sessionId}'s fight is on, or past its clear (FIGHTING, POST_CLEAR). */
+        boolean underway(long sessionId);
+
+        /** True while the Agent is a member of run {@code sessionId} in the fight: not down outside, leaving or out. */
+        boolean inside(long sessionId, int agentId);
+
+        /**
+         * The logout handoff (AgentBossRunService.handTo): the member stays with {@code heirId} instead of its enlister
+         * from now on. False when it is no member of run {@code sessionId} in the fight any more.
+         */
+        boolean handTo(long sessionId, int agentId, int heirId);
+
         OpenRuns LIVE = new OpenRuns() {
             @Override
             public boolean open(long sessionId) {
@@ -162,6 +174,25 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             public Enlisted enlist(Character owner, AgentBossRunDefinition definition, Expedition expedition,
                                    List<Integer> agentIds, long nowMs) {
                 return AgentBossRunService.enlist(owner, definition, expedition, agentIds, nowMs);
+            }
+
+            @Override
+            public boolean underway(long sessionId) {
+                AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+                AgentBossRunSession.Phase phase = session == null ? null : session.phase();
+                return phase == AgentBossRunSession.Phase.FIGHTING || phase == AgentBossRunSession.Phase.POST_CLEAR;
+            }
+
+            @Override
+            public boolean inside(long sessionId, int agentId) {
+                AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+                AgentBossRunMember member = session == null ? null : session.member(agentId);
+                return member != null && member.phase() == AgentBossRunMember.Phase.INSIDE;
+            }
+
+            @Override
+            public boolean handTo(long sessionId, int agentId, int heirId) {
+                return AgentBossRunService.handTo(sessionId, agentId, heirId);
             }
         };
     }
@@ -666,12 +697,28 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     }
 
     /**
-     * Decision 8b for a boss run: not agreed. A boss run's companion leaves with its owner at a logout (the park lets
-     * it go, and the run counts it gone).
+     * Decision 8b for a boss run, on companion-ops (RosterService.onOwnerLogout): a companion its owner leaves in the
+     * fight sees it through for {@code heir}, the human of the owner's party still in it, while the fight is on or past
+     * its clear, the companion is in it (not down outside, leaving or out) and the heir is a player of its event. The
+     * run then has it stay with the heir instead of its owner (AgentBossRunService.handTo): it fights on, and after the
+     * clear it leaves when the heir leaves; the run's end lets it go and it parks. The first of the owner's to stay
+     * says so in party chat. Not agreed before the fight is on, nor for a run with no part of the owner's kept here:
+     * the companion leaves with its owner (the park lets it go, and the run counts it gone).
      */
     @Override
     public boolean delegate(Character companion, Character heir, String key) {
-        return false;
+        CompanionBossRun run = key == null ? null : runs.get(key);
+        EventInstanceManager event = companion == null ? null : companion.getEventInstance();
+        if (run == null || heir == null || event == null || !open.underway(run.sessionId)
+                || !open.inside(run.sessionId, companion.getId()) || event.getPlayerById(heir.getId()) == null
+                || !open.handTo(run.sessionId, companion.getId(), heir.getId())) {
+            return false;
+        }
+        if (!run.handoffSaid) {
+            run.handoffSaid = true;
+            BossRunLines.say(world, companion, BossRunLines.HANDOFF, heir.getName(), 0);
+        }
+        return true;
     }
 
     // ---- helpers --------------------------------------------------------------------------------

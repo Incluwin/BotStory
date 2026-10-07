@@ -389,6 +389,23 @@ class CompanionBossRunsOfferTest {
             List<Integer> refused = agentIds.stream().filter(refuse::contains).toList();
             return new AgentBossRunService.Enlisted(accepted.isEmpty() ? 0L : SID, accepted, refused);
         }
+
+        // the logout handoff (CompanionBossRunsDelegateTest) is not under test here
+
+        @Override
+        public boolean underway(long sessionId) {
+            return false;
+        }
+
+        @Override
+        public boolean inside(long sessionId, int agentId) {
+            return false;
+        }
+
+        @Override
+        public boolean handTo(long sessionId, int agentId, int heirId) {
+            return false;
+        }
     }
 
     /** The companions' own potion duty as a test sets it. */
