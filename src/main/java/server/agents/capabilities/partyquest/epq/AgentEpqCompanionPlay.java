@@ -26,4 +26,20 @@ final class AgentEpqCompanionPlay {
         if (waitedMs < entryWaitMs) return Entry.WAIT;
         return entered >= minimumParty ? Entry.EJECT_ABSENT : Entry.GIVE_UP;
     }
+
+    // ---- walking exits ----
+
+    /** E0: a companion has waited at a walking exit for LEADER_HINT_MS. */
+    static String exitNudgeLine(String leader) {
+        return "ready when you are, " + leader + ". the portal's over here.";
+    }
+
+    /**
+     * A companion takes a walking exit once its leader went ahead to a later stage, or stands on its stage within
+     * {@code atExitPx} of the portal ({@code leaderToPortalPx} -1 when that cannot be told).
+     */
+    static boolean mayTakeWalkingExit(int leaderStage, int agentStage, long leaderToPortalPx, int atExitPx) {
+        if (leaderStage > agentStage) return true;
+        return leaderStage == agentStage && leaderToPortalPx >= 0L && leaderToPortalPx <= atExitPx;
+    }
 }

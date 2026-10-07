@@ -8,6 +8,9 @@ import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 
+import server.agents.runtime.AgentRuntimeEntry;
+
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +26,10 @@ final class AgentEpqCompanionRun {
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.COMPANION_ENTRY_WAIT_MS");
     static final long TIMEOUT_SLACK_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.TIMEOUT_SLACK_MS");
+    static final int LEADER_AT_EXIT_PX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_AT_EXIT_PX");
+    static final long LEADER_HINT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_HINT_MS");
     static final String QUEST_KEY = "epq";
 
     private AgentEpqCompanionRun() {
@@ -183,5 +190,36 @@ final class AgentEpqCompanionRun {
         if (member.memberType() == AgentEpqMemberState.MemberType.AGENT) {
             AgentPartyQuestLifecycleRuntime.recoverDetachedMember(id, QUEST_KEY, nowMs);
         }
+    }
+
+    // ---- walking exits ----
+
+    /**
+     * A walking exit (portal 4 of the entrance, portal 3 of stages 1 and 2: per-player warps) is taken together with
+     * the leader: once he stands within LEADER_AT_EXIT_PX of it, or is already on a later stage. Until then the
+     * companion walks to the portal and waits there, and one companion says E0 once a companion has waited
+     * LEADER_HINT_MS. True while it waits.
+     */
+    static boolean holdAtWalkingExit(AgentEpqSession session, AgentRuntimeEntry entry, Character agent, int portalId,
+                                     long nowMs) {
+        Character leader = AgentEpqCoordinator.character(session.eventLeaderId());
+        Point portal = AgentEpqCoordinator.actions().portalPosition(agent, portalId);
+        boolean leaderInside = inBoundEvent(session, leader);
+        int leaderStage = leaderInside ? AgentEpqDefinition.stageForMap(leader.getMapId()) : -1;
+        long leaderToPortal = leaderInside && leader.getMapId() == agent.getMapId() && portal != null
+                && leader.getPosition() != null ? Math.round(leader.getPosition().distance(portal)) : -1L;
+        String hint = "exit-" + agent.getMapId();
+        if (AgentEpqCompanionPlay.mayTakeWalkingExit(leaderStage, AgentEpqDefinition.stageForMap(agent.getMapId()),
+                leaderToPortal, LEADER_AT_EXIT_PX)) {
+            session.clearLeaderHint(hint);
+            return false;
+        }
+        AgentEpqCoordinator.walkToPortal(entry, agent, portalId);
+        if (leaderInside && leader.getMapId() == agent.getMapId()
+                && nowMs - session.leaderHintSince(hint, nowMs) >= LEADER_HINT_MS) {
+            coordinate(session, agent, "exit-nudge-" + agent.getMapId(),
+                    AgentEpqCompanionPlay.exitNudgeLine(leader.getName()));
+        }
+        return true;
     }
 }

@@ -1206,6 +1206,14 @@ tuning:
     # Purpose: Lets the stock 30-minute event timer end a companion run before the coordinator's own backstop does.
     # Technical: In companion runs AgentEpqCoordinator counts EVENT_TIMEOUT_MS from the party's entry plus this slack, and AgentEpqParting reads a run that stood in the event at least the catalog timer minus this as TIMEOUT. Stock runs keep the admission-based count.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.TIMEOUT_SLACK_MS: '2000'
+    # Values: 60-400 pixels. Recommended: 150, about two character widths from the portal.
+    # Purpose: Lets companions take a stage's walking exit together with their leader once he stands this close to it.
+    # Technical: AgentEpqCompanionRun reads this for portal 4 of 930000000 and portal 3 of 930000100 and 930000200 in companion runs; an Agent also goes once the leader stands on a later stage. Warped stages (Ellin, the sprite, out00) are not affected.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_AT_EXIT_PX: '150'
+    # Values: 5000-60000 milliseconds. Recommended: 20000 so a leader who is looking around is not rushed.
+    # Purpose: Sets how long a companion waits on the leader (at an exit, or while he holds a stage item) before it says one short hint.
+    # Technical: AgentEpqCompanionRun keeps one hint clock per kind on the session (exit, diluted poison, marbles, stone, altar); each hint is said once per run through the coordination chat.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.LEADER_HINT_MS: '20000'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

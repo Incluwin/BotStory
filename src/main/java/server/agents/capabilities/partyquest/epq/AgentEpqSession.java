@@ -11,6 +11,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -32,6 +33,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Set<String> announcements = new HashSet<>();
     private final Set<String> narrations = new HashSet<>();
     private final Set<Integer> seenInEvent = new HashSet<>();
+    private final Map<String, Long> leaderHints = new HashMap<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -250,6 +252,17 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
 
     /** Whether this member was ever seen standing in the bound event. */
     synchronized boolean seenInEvent(int id) { return seenInEvent.contains(id); }
+
+    /**
+     * When a companion first waited on the leader for this hint kind (an exit, a stage item he holds): the first call
+     * starts the clock and every later call reads it, until {@link #clearLeaderHint}.
+     */
+    synchronized long leaderHintSince(String key, long nowMs) {
+        return leaderHints.computeIfAbsent(key, ignored -> nowMs);
+    }
+
+    /** Stops a hint clock: the leader did what the companions were waiting for. */
+    synchronized void clearLeaderHint(String key) { leaderHints.remove(key); }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }

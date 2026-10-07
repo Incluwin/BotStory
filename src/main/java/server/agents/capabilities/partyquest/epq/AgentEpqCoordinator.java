@@ -239,9 +239,12 @@ public final class AgentEpqCoordinator {
                 else enterEvent(session, entry, agent, member, nowMs);
             }
             case AgentEpqDefinition.ENTRANCE_MAP -> {
-                if (!topUp(session, entry, agent, member, nowMs)) enterPortal(entry, agent, 4, member, nowMs);
+                if (!topUp(session, entry, agent, member, nowMs)
+                        && !holdAtWalkingExit(session, entry, agent, 4, nowMs)) {
+                    enterPortal(entry, agent, 4, member, nowMs);
+                }
             }
-            case AgentEpqDefinition.STAGE_ONE_MAP -> stageOne(entry, agent, member, nowMs);
+            case AgentEpqDefinition.STAGE_ONE_MAP -> stageOne(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_TWO_MAP -> stageTwo(session, entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_THREE_MAP -> stageThree(entry, agent, member, nowMs);
             case AgentEpqDefinition.STAGE_FOUR_MAP -> stageFour(session, entry, agent, member, nowMs);
@@ -285,10 +288,10 @@ public final class AgentEpqCoordinator {
         }
     }
 
-    private static void stageOne(AgentRuntimeEntry entry, Character agent,
+    private static void stageOne(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                  AgentEpqMemberState member, long nowMs) {
         if (actions().liveMonsterCount(agent, Set.of(AgentEpqDefinition.STAGE_ONE_MOB)) == 0) {
-            enterPortal(entry, agent, 3, member, nowMs);
+            if (!holdAtWalkingExit(session, entry, agent, 3, nowMs)) enterPortal(entry, agent, 3, member, nowMs);
             return;
         }
         actions().grind(entry, Set.of(AgentEpqDefinition.STAGE_ONE_MOB));
@@ -320,7 +323,7 @@ public final class AgentEpqCoordinator {
                         "Filled bottles applied: " + STAGE_TWO_BOTTLES_REQUIRED + "/" + STAGE_TWO_BOTTLES_REQUIRED
                         + ". The thorns are open.");
             }
-            enterPortal(entry, agent, 3, member, nowMs);
+            if (!holdAtWalkingExit(session, entry, agent, 3, nowMs)) enterPortal(entry, agent, 3, member, nowMs);
             return;
         }
         Reactor pond = agent.getMap().getReactorById(AgentEpqDefinition.POND_REACTOR);
@@ -1207,15 +1210,32 @@ public final class AgentEpqCoordinator {
 
     static boolean enterPortal(AgentRuntimeEntry entry, Character agent, int portalId,
                                        AgentEpqMemberState member, long nowMs) {
+        if (!walkToPortal(entry, agent, portalId)) return false;
+        if (!epq().enterPortal(agent, portalId)) return false;
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
+        return true;
+    }
+
+    /** Walks to the portal; true once the Agent stands there, grounded, and has stopped. */
+    static boolean walkToPortal(AgentRuntimeEntry entry, Character agent, int portalId) {
         Point portal = actions().portalPosition(agent, portalId);
         if (!near(agent.getPosition(), portal, PORTAL_RADIUS) || !actions().grounded(agent)) {
             if (portal != null) actions().navigate(entry, portal, true);
             return false;
         }
         actions().stop(entry);
-        if (!epq().enterPortal(agent, portalId)) return false;
-        member.deferUntil(nowMs + ACTION_RETRY_MS);
         return true;
+    }
+
+    /**
+     * A companion run's walking exits (portal 4 of the entrance and portal 3 of stages 1 and 2) are taken together
+     * with the leader: true while the companion waits at the portal for him (AgentEpqCompanionRun.holdAtWalkingExit).
+     * Never in other runs.
+     */
+    private static boolean holdAtWalkingExit(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
+                                             int portalId, long nowMs) {
+        return session.companionAdopted() && AgentEpqCompanionRun.holdAtWalkingExit(session, entry, agent, portalId,
+                nowMs);
     }
 
     static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId, int... selections) {
