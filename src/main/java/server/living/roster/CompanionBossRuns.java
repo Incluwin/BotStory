@@ -1,11 +1,16 @@
 package server.living.roster;
 
 import client.Character;
+import client.Client;
 import config.LivingWorldConfig;
+import net.server.channel.Channel;
+import net.server.world.Party;
+import net.server.world.PartyCharacter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
+import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.MemberResult;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Out;
@@ -14,14 +19,21 @@ import server.agents.capabilities.expedition.boss.AgentBossRunHost.RunEnded;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
 import server.agents.capabilities.expedition.boss.AgentBossRunMember;
 import server.agents.capabilities.expedition.boss.AgentBossRunRegistry;
+import server.agents.capabilities.expedition.boss.AgentBossRunService;
+import server.agents.capabilities.expedition.boss.AgentBossRunService.Enlisted;
 import server.agents.capabilities.expedition.boss.AgentBossRunSession;
+import server.agents.capabilities.supplies.AgentSupplyReadiness;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
+import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
+import server.expeditions.Expedition;
+import server.integration.AgentPresence;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.maps.MapleMap;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -44,6 +56,10 @@ import java.util.function.IntFunction;
  * kept in memory here (CompanionBossRun); the audit lets go of one whose run vanished without an end. It writes no
  * roster state. Also the Easy Balrog fight's server-authority rule (EasyBalrogEncounterService) and, by key, who
  * agrees to a companion seeing a run through once its owner logs off in it (InstanceLogoutHandoff).
+ *
+ * <p>How a run starts: the entry NPC (Mu Young) offers an owner who creates or joins the expedition "My party will
+ * register too.", that pick enlists the owner's party companions in the Agent layer's run, and each one still waiting
+ * to sign up walks to its own spot beside her (the follow guard asks {@link #waitsAt}).</p>
  */
 public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceLogoutHandoff.Delegation {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossRuns.class);
@@ -66,6 +82,22 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
 
         /** True when a companion of {@code event}'s run signed up for this fight (AgentBossRunRegistry.signedUpIn). */
         boolean signedUpIn(EventInstanceManager event);
+
+        /**
+         * True when the open run for {@code expedition} holds a companion another owner than {@code ownerId} enlisted
+         * (Part A: one owner's party companions per expedition).
+         */
+        boolean heldByAnother(Expedition expedition, int ownerId);
+
+        /** True while the Agent is a member of an open boss run, in any phase. */
+        boolean inRun(int agentId);
+
+        /** The member's ordinal in its run while it waits to sign up and stays with {@code anchorId}; else -1. */
+        int waitingOrdinal(int agentId, int anchorId);
+
+        /** Enlists the owner's companions into the run for {@code expedition} (AgentBossRunService.enlist). */
+        Enlisted enlist(Character owner, AgentBossRunDefinition definition, Expedition expedition,
+                        List<Integer> agentIds, long nowMs);
 
         OpenRuns LIVE = new OpenRuns() {
             @Override
@@ -98,24 +130,103 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             public boolean signedUpIn(EventInstanceManager event) {
                 return AgentBossRunRegistry.signedUpIn(event);
             }
+
+            @Override
+            public boolean heldByAnother(Expedition expedition, int ownerId) {
+                AgentBossRunSession session = AgentBossRunRegistry.forExpedition(expedition);
+                if (session == null) {
+                    return false;
+                }
+                for (AgentBossRunMember member : session.members()) {
+                    if (member.enlistedBy() != ownerId) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            @Override
+            public boolean inRun(int agentId) {
+                return AgentBossRunRegistry.forMember(agentId) != null;
+            }
+
+            @Override
+            public int waitingOrdinal(int agentId, int anchorId) {
+                int ordinal = AgentBossRunRegistry.waitingOrdinal(agentId);
+                AgentBossRunSession session = ordinal < 0 ? null : AgentBossRunRegistry.forMember(agentId);
+                AgentBossRunMember member = session == null ? null : session.member(agentId);
+                return member != null && member.anchorId() == anchorId ? ordinal : -1;
+            }
+
+            @Override
+            public Enlisted enlist(Character owner, AgentBossRunDefinition definition, Expedition expedition,
+                                   List<Integer> agentIds, long nowMs) {
+                return AgentBossRunService.enlist(owner, definition, expedition, agentIds, nowMs);
+            }
         };
     }
+
+    /** What signing up asks of a companion's own potion duty (AgentSupplyReadiness): memory only, any thread. */
+    interface Supplies {
+        /** True while the companion is on a potion trip: gone to a shop, or on its way back from one. */
+        boolean restocking(int agentId, long nowMs);
+
+        /**
+         * A companion short of {@code bossKey}'s potion standard (AgentSupplyReadiness.BOSS_STANDARDS) looks at its
+         * potions on its next tick instead of its next check, so one that can reach a shop sets off before it signs up.
+         */
+        void checkIfShort(int agentId, String bossKey);
+
+        Supplies LIVE = new Supplies() {
+            @Override
+            public boolean restocking(int agentId, long nowMs) {
+                return AgentSupplyReadiness.status(AgentRuntimeRegistry.findByAgentCharacterId(agentId), nowMs)
+                        .restocking();
+            }
+
+            @Override
+            public void checkIfShort(int agentId, String bossKey) {
+                AgentRuntimeEntry entry = AgentRuntimeRegistry.findByAgentCharacterId(agentId);
+                Character bot = AgentRuntimeIdentityRuntime.bot(entry);
+                if (bot != null && !AgentSupplyReadiness.shortfall(bot,
+                        AgentSupplyReadiness.Activity.partyQuest(bossKey)).none()) {
+                    AgentSupplyReadiness.checkSoon(entry);
+                }
+            }
+        };
+    }
+
+    /** Mu Young's answer when the owner picks "My party will register too." and companions can sign up. */
+    public static final String SIGN_UP_REPLY = "Very well. Have them come and speak with me before time runs out.";
+    /** Her answer when none of the owner's companions can sign up now (or the living world is not running). */
+    public static final String NONE_CAN_SIGN_UP = "None of your companions can sign up right now.";
+    /** The owner's own party companions in one run (Part A): a full party is the owner and five. */
+    static final int MOST_PER_OWNER = CompanionSlots.PARTY_CAP - 1;
 
     private final LivingWorld world;
     private final OpenRuns open;
     /** A companion's HP and MP potions ({HP, MP}) as it carries them now; null when it is not online. */
     private final IntFunction<int[]> potions;
-    /** Run key -> an owner's part of an open boss run: from its first seat (or report) to the run's end. */
+    private final Supplies supplies;
+    /** Run key -> an owner's part of an open boss run: from its enlist (or first seat or report) to the run's end. */
     private final Map<String, CompanionBossRun> runs = new ConcurrentHashMap<>();
+
+    /** What the owner can sign up at a boss's entry NPC now: the expedition and their companions, in party order. */
+    private record Offer(AgentBossRunDefinition definition, Expedition expedition, List<Integer> companions) { }
 
     public CompanionBossRuns(LivingWorld world) {
         this(world, OpenRuns.LIVE, CompanionPartyQuestService::potionsOf);
     }
 
     CompanionBossRuns(LivingWorld world, OpenRuns open, IntFunction<int[]> potions) {
+        this(world, open, potions, Supplies.LIVE);
+    }
+
+    CompanionBossRuns(LivingWorld world, OpenRuns open, IntFunction<int[]> potions, Supplies supplies) {
         this.world = world;
         this.open = open;
         this.potions = potions;
+        this.supplies = supplies;
     }
 
     /**
@@ -128,6 +239,130 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             InstanceLogoutHandoff.Delegation asked = key != null && key.startsWith(KEY_PREFIX) ? boss : pq;
             return asked != null && asked.delegate(companion, heir, key);
         };
+    }
+
+    // ---- the entry NPC's offer (I/O), the enlist (companion-ops) and the walk up (Agent tick) ----
+
+    /**
+     * Mu Young's Easy window for {@code clicker} (1061014.js, on their I/O thread, from memory): true when she offers
+     * "My party will register too.". The switch lists the boss; the clicker is a human with companions; the channel's
+     * expedition of the boss takes sign-ups and a human leads it; no other owner's companions are on it (Part A); and
+     * at least one of the clicker's companions can sign up ({@link #signable}). An Agent signing itself up headless
+     * never sees it: its window stays the stock one.
+     */
+    public boolean offers(Character clicker, String bossKey) {
+        return offer(clicker, bossKey, System.currentTimeMillis()) != null;
+    }
+
+    /**
+     * The owner picked "My party will register too." (her script, on their I/O thread): her answer. When companions of
+     * theirs can sign up, enlisting them is handed to companion-ops ({@link #registerParty}).
+     */
+    public String registerFromNpc(Character clicker, String bossKey) {
+        Offer offer = offer(clicker, bossKey, System.currentTimeMillis());
+        if (offer == null) {
+            return NONE_CAN_SIGN_UP;
+        }
+        int ownerId = clicker.getId();
+        String key = offer.definition().key();
+        world.executor().submit("boss.register " + ownerId, () -> registerParty(ownerId, key));
+        return SIGN_UP_REPLY;
+    }
+
+    /**
+     * On companion-ops: the owner's companions that can sign up, asked again (five at most, in party order), are
+     * enlisted in the run for the expedition, the owner being on her list (they joined it or lead it). Each walks up to
+     * her and signs up through her own window on the run's tick; one short of the boss's potion standard looks at its
+     * potions at once, so a shop trip comes first. The owner's part of the run is kept from here on.
+     */
+    void registerParty(int ownerId, String bossKey) {
+        long now = System.currentTimeMillis();
+        Character owner = world.roster().onlineCharacter(ownerId);
+        Offer offer = owner == null ? null : offer(owner, bossKey, now);
+        if (offer == null || !offer.expedition().contains(owner)) {
+            log.info("boss sign-up {} for owner {}: nobody to enlist", bossKey, ownerId);
+            return;
+        }
+        String key = offer.definition().key();
+        Enlisted enlisted = open.enlist(owner, offer.definition(), offer.expedition(), offer.companions(), now);
+        if (enlisted.sessionId() == 0L || enlisted.accepted().isEmpty()) {
+            log.info("boss sign-up {} for owner {}: nobody enlisted, refused {}", key, ownerId, enlisted.refused());
+            return;
+        }
+        CompanionBossRun run = new CompanionBossRun(key, enlisted.sessionId(), ownerId);
+        runs.putIfAbsent(run.key, run); // a seat on the run's tick may have made it already
+        for (int id : enlisted.accepted()) {
+            supplies.checkIfShort(id, key);
+        }
+    }
+
+    /**
+     * On the Agent's tick, from memory: where a companion still waiting to sign up stands while the human it stays
+     * with is in the entry NPC's room: its own spot beside her (BossEntrance.spot, by its ordinal in the run), so it
+     * walks up as a player would. Null for every other Agent (the fast path: nobody in any run waits), once it is on
+     * her list, and while that human is anywhere else.
+     */
+    public Point waitsAt(int agentCharacterId, Character anchor) {
+        int ordinal = anchor == null ? -1 : open.waitingOrdinal(agentCharacterId, anchor.getId());
+        BossEntrance entrance = ordinal < 0 ? null : BossEntrance.atRecruitMap(anchor.getMapId());
+        return entrance == null ? null : entrance.spot(anchor.getMap(), ordinal);
+    }
+
+    /** What {@code clicker} can sign up at {@code bossKey}'s entry NPC now; null: nothing (see {@link #offers}). */
+    private Offer offer(Character clicker, String bossKey, long nowMs) {
+        AgentBossRunDefinition definition = AgentBossRunCatalog.of(bossKey);
+        LivingWorldConfig config = world.config();
+        if (clicker == null || definition == null || config == null || !config.companionBossEnabled(definition.key())
+                || AgentPresence.isAgent(clicker) || !world.roster().hasCompanions(clicker)) {
+            return null;
+        }
+        Expedition expedition = expeditionOf(clicker, definition);
+        Character leader = expedition == null ? null : expedition.getLeader();
+        if (leader == null || !expedition.isRegistering() || AgentPresence.isAgent(leader)
+                || open.heldByAnother(expedition, clicker.getId())) {
+            return null;
+        }
+        List<Integer> companions = signable(clicker, definition, nowMs);
+        return companions.isEmpty() ? null : new Offer(definition, expedition, companions);
+    }
+
+    /**
+     * The owner's companions that can sign up, in party order, {@link #MOST_PER_OWNER} at most: bots of the owner's
+     * party that are the owner's own and follow them, loaded, tied to no run (a commitment or a boss run), not kept
+     * off follow (on their way, held, away), and on the entry NPC's map on the owner's channel, or gone to the store
+     * for potions (they sign up once back).
+     */
+    private List<Integer> signable(Character owner, AgentBossRunDefinition definition, long nowMs) {
+        Party party = owner.getParty();
+        Commitments commitments = world.commitments();
+        if (party == null || commitments == null) {
+            return List.of();
+        }
+        RosterService roster = world.roster();
+        List<Integer> ids = new ArrayList<>();
+        for (PartyCharacter member : party.getMembers()) {
+            int id = member.getId();
+            Persona persona = member.isBot() ? world.residents().personaOfCharacterId(id) : null;
+            if (persona == null || roster.cachedOwnerOf(persona.id()) != owner.getId()
+                    || AgentRuntimeRegistry.leaderIdForAgentCharacter(id) != owner.getId()
+                    || commitments.isCommitted(id) || roster.keepsOffFollow(persona.id()) || open.inRun(id)) {
+                continue;
+            }
+            Character bot = bot(id);
+            boolean here = bot != null && bot.getMapId() == definition.recruitMapId()
+                    && RosterService.sameChannel(owner, bot);
+            if ((here || bot != null && supplies.restocking(id, nowMs)) && ids.size() < MOST_PER_OWNER) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    /** The expedition of {@code definition}'s type on the clicker's channel (as her script reads it), or null. */
+    private static Expedition expeditionOf(Character clicker, AgentBossRunDefinition definition) {
+        Client client = clicker.getClient();
+        Channel channel = client == null ? null : client.getChannelServer();
+        return channel == null ? null : channel.getExpedition(definition.type());
     }
 
     // ---- the host rule (AgentBossRunHost), on the run's tick -------------------------------------

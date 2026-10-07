@@ -1,15 +1,19 @@
 package server.living.roster;
 
+import client.Character;
 import net.server.Server;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.MemberResult;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Out;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Refusal;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.RunEnded;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Seat;
+import server.agents.capabilities.expedition.boss.AgentBossRunService;
+import server.expeditions.Expedition;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
 import server.living.store.LivingStore.RosterState;
@@ -587,6 +591,29 @@ class CompanionBossRunsTest {
         @Override
         public boolean signedUpIn(EventInstanceManager event) {
             return event != null && signedUp.contains(event);
+        }
+
+        // Mu Young's offer and the walk-up (CompanionBossRunsOfferTest) are not under test here
+
+        @Override
+        public boolean heldByAnother(Expedition expedition, int ownerId) {
+            return false;
+        }
+
+        @Override
+        public boolean inRun(int agentId) {
+            return false;
+        }
+
+        @Override
+        public int waitingOrdinal(int agentId, int anchorId) {
+            return -1;
+        }
+
+        @Override
+        public AgentBossRunService.Enlisted enlist(Character owner, AgentBossRunDefinition definition,
+                                                   Expedition expedition, List<Integer> agentIds, long nowMs) {
+            throw new UnsupportedOperationException("no enlist here");
         }
     }
 }

@@ -19,8 +19,9 @@ import java.util.List;
  * the owner's new map where the owner came in, one after another. Standing off an entry NPC (P6b HPQ step 6): while
  * the owner stands at Tory, on her ledge, the owner's companions wait on the park floor past its end instead of
  * crowding it (they hid her in the step 0 smoke), while her desk serves the park (the kill switch lists hpq and the
- * background population does not run it). Plain Agents, citizens and live bench slices (which lead themselves)
- * follow as before.
+ * background population does not run it). Walking up to a boss's entry NPC (P7): a companion its owner enlisted for
+ * a boss run walks to its own spot beside her until it is on her list. Plain Agents, citizens and live bench slices
+ * (which lead themselves) follow as before.
  */
 public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
     private final LivingWorld world;
@@ -54,13 +55,19 @@ public final class CompanionFollowGuard implements AgentFollowGuard.Rule {
     }
 
     /**
-     * On the Agent's tick, from memory: the spot the owner's companion waits at while the owner stands at an entry NPC
-     * kept clear of followers (PqEntrance.keptClearAt), the extras' spots (PqEntrance.beside), one per companion in the
-     * order they came out; null on every other map (the fast path), while the owner is anywhere else on hers (the next
-     * fastest: her spot is known once found), for anyone else's follower, and while her desk does not serve the park.
+     * On the Agent's tick, from memory: first the walk up to a boss's entry NPC (P7: a companion still waiting to sign
+     * up stands at its own spot beside Mu Young while its owner is in her room, CompanionBossRuns.waitsAt). Else the
+     * spot the owner's companion waits at while the owner stands at an entry NPC kept clear of followers
+     * (PqEntrance.keptClearAt), the extras' spots (PqEntrance.beside), one per companion in the order they came out;
+     * null on every other map (the fast path), while the owner is anywhere else on hers (the next fastest: her spot is
+     * known once found), for anyone else's follower, and while her desk does not serve the park.
      */
     @Override
     public Point waitsAt(int agentCharacterId, Character anchor) {
+        Point boss = world.bossRuns() == null ? null : world.bossRuns().waitsAt(agentCharacterId, anchor);
+        if (boss != null) {
+            return boss;
+        }
         PqEntrance entrance = anchor == null ? null : PqEntrance.keepingClearOn(anchor.getMapId());
         if (entrance == null) {
             return null;

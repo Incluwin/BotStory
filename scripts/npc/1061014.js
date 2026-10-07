@@ -34,6 +34,17 @@ function selectExpedition(type) {
     expedition = cm.getExpedition(exped);
 }
 
+// companions: Mu Young offers an owner "My party will register too." (living_world.COMPANION_BOSS_ENABLED_TYPES)
+var companionOptions = "\r\n#b#L1#My party will register too.#l\r\n#L2#That's all for now.#l";
+
+function companionOffer() {
+    return exped == ExpeditionType.BALROG_EASY && Java.type('server.living.LivingWorldHooks').bossPartyOffered(cm, "easy_balrog");
+}
+
+function companionRegister() {
+    return Java.type('server.living.LivingWorldHooks').bossPartyRegister(cm, "easy_balrog");
+}
+
 function openExpedition() {
     if (player.getLevel() < exped.getMinLevel() || player.getLevel() > exped.getMaxLevel()) {
         cm.sendOk("You do not meet the criteria to battle " + expedBoss + "!");
@@ -46,14 +57,35 @@ function openExpedition() {
             cm.sendOk("Your expedition is already in progress, for those who remain battling lets pray for those brave souls.");
             cm.dispose();
         } else {
+            if (companionOffer()) {
+                cm.sendSimple(list + "\r\n#L4#My party will register too.#l");
+                status = 2;
+                return;
+            }
             cm.sendSimple(list);
             status = 2;
         }
     } else if (expedition.isRegistering()) {
         if (expedition.contains(player)) {
+            if (companionOffer()) {
+                cm.sendSimple("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it." + companionOptions);
+                status = 30;
+                return;
+            }
             cm.sendOk("You have already registered for the expedition. Please wait for #r" + expedition.getLeader().getName() + "#k to begin it.");
             cm.dispose();
         } else {
+            if (companionOffer()) {
+                var joined = expedition.addMember(player);
+                if (expedition.contains(player)) {
+                    cm.sendSimple(joined + companionOptions);
+                    status = 30;
+                } else {
+                    cm.sendOk(joined);
+                    cm.dispose();
+                }
+                return;
+            }
             cm.sendOk(expedition.addMember(player));
             cm.dispose();
         }
@@ -96,6 +128,11 @@ function action(mode, type, selection) {
             }
             var result = cm.createExpedition(exped);
             if (result == 0) {
+                if (companionOffer()) {
+                    cm.sendSimple("The #r" + expedDifficulty + " " + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team or start the fight!" + companionOptions);
+                    status = 30;
+                    return;
+                }
                 cm.sendOk("The #r" + expedDifficulty + " " + expedBoss + " Expedition#k has been created.\r\n\r\nTalk to me again to view the current team or start the fight!");
             } else if (result > 0) {
                 cm.sendOk("Sorry, you've already reached the quota of attempts for this expedition! Try again another day...");
@@ -111,6 +148,11 @@ function action(mode, type, selection) {
             status = 10;
         }
     } else if (status == 2) {
+        if (selection == 4) {
+            cm.sendOk(companionRegister());
+            cm.dispose();
+            return;
+        }
         if (selection == 1) {
             if (expedition == null) {
                 cm.sendOk("The expedition could not be loaded.");
@@ -172,6 +214,11 @@ function action(mode, type, selection) {
             cm.sendSimple(list);
             status = 2;
         }
+    } else if (status == 30) {
+        if (selection == 1) {
+            cm.sendOk(companionRegister());
+        }
+        cm.dispose();
     } else if (status == 10) {
         cm.sendOk("The Order of the Altair is a group of elite mercenaries that oversees the world's economy and battle operations. It was founded 40 years after the Black Mage was defeated to foresee the next possible attack.");
         cm.dispose();

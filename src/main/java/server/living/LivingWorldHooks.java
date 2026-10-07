@@ -575,6 +575,43 @@ public final class LivingWorldHooks {
         }
     }
 
+    /**
+     * Mu Young's Easy window ({@code bossKey} "easy_balrog" in 1061014.js, on the clicker's I/O thread): true when she
+     * offers the owner "My party will register too." (living_world.COMPANION_BOSS_ENABLED_TYPES). False keeps her
+     * stock window: no living world, an Agent clicking (a companion's own headless sign-up), or any failure.
+     */
+    public static boolean bossPartyOffered(scripting.npc.NPCConversationManager cm, String bossKey) {
+        LivingWorld world = LivingWorld.get();
+        Character clicker = cm == null ? null : cm.getPlayer();
+        if (world == null || clicker == null || world.bossRuns() == null || AgentPresence.isAgent(clicker)) {
+            return false;
+        }
+        try {
+            return world.bossRuns().offers(clicker, bossKey);
+        } catch (RuntimeException failure) {
+            log.warn("living world bossPartyOffered hook failed", failure);
+            return false;
+        }
+    }
+
+    /**
+     * The owner picked "My party will register too." in Mu Young's window: her answer, the companions' sign-up handed
+     * to companion-ops; her "none of your companions" line with no living world, for an Agent, or on any failure.
+     */
+    public static String bossPartyRegister(scripting.npc.NPCConversationManager cm, String bossKey) {
+        LivingWorld world = LivingWorld.get();
+        Character clicker = cm == null ? null : cm.getPlayer();
+        if (world == null || clicker == null || world.bossRuns() == null || AgentPresence.isAgent(clicker)) {
+            return server.living.roster.CompanionBossRuns.NONE_CAN_SIGN_UP;
+        }
+        try {
+            return world.bossRuns().registerFromNpc(clicker, bossKey);
+        } catch (RuntimeException failure) {
+            log.warn("living world bossPartyRegister hook failed", failure);
+            return server.living.roster.CompanionBossRuns.NONE_CAN_SIGN_UP;
+        }
+    }
+
     /** An NPC click on a quest marker's hitbox; true when it was one (the Resident's menu opens instead). */
     public static boolean markerClicked(Character clicker, int objectId) {
         LivingWorld world = LivingWorld.get();
