@@ -1,15 +1,21 @@
 package server.living.roster;
 
+import client.Character;
 import client.Job;
+import constants.skills.Archer;
+import constants.skills.FPWizard;
+import constants.skills.Magician;
+import constants.skills.Rogue;
+import constants.skills.Warrior;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback.TapOut;
 import server.agents.capabilities.partyquest.lpq.AgentLpqSession;
 import server.agents.capabilities.partyquest.lpq.AgentLpqSessionRegistry;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.living.config.Content.Persona;
-import server.agents.capabilities.partyquest.AgentPartyQuestHandback.TapOut;
 import server.living.store.LivingStore.RosterState;
 import server.maps.MapleMap;
 
@@ -23,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
 import static server.living.roster.LifecycleHarness.ANN;
 
 /**
@@ -45,11 +52,14 @@ class LpqFixtureEntranceTest {
     void annAtTheRedSignWithFiveCompanions() {
         CompanionPqFixture.stand(game.ann, 40, Job.CLERIC);
         fx.atEntrance("lpq");
-        fx.companion("mira", "Mira", 900, 38, Job.HUNTER);
+        // the tower's roles between them (C5.4): Pip's Teleport, Rin's Dark Sight and claw, Tobi's spear
+        skills(game.bot(fx.companion("mira", "Mira", 900, 38, Job.HUNTER)), Archer.ARROW_BLOW);
         tobi = fx.companion("tobi", "Tobi", 901, 41, Job.SPEARMAN);
-        fx.companion("pip", "Pip", 902, 39, Job.FP_WIZARD);
-        fx.companion("casse", "Casse", 903, 42, Job.BANDIT);
-        fx.companion("rin", "Rin", 904, 36, Job.ASSASSIN);
+        skills(game.bot(tobi), Warrior.POWER_STRIKE);
+        skills(game.bot(fx.companion("pip", "Pip", 902, 39, Job.FP_WIZARD)), FPWizard.TELEPORT,
+                Magician.ENERGY_BOLT);
+        skills(game.bot(fx.companion("casse", "Casse", 903, 42, Job.BANDIT)), Rogue.DARK_SIGHT);
+        skills(game.bot(fx.companion("rin", "Rin", 904, 36, Job.ASSASSIN)), Rogue.DARK_SIGHT, Rogue.LUCKY_SEVEN);
         game.registry.when(() -> AgentRuntimeRegistry.findByAgentCharacterId(anyInt())).thenAnswer(inv -> {
             int id = inv.getArgument(0);
             return game.loaded.contains(id)
@@ -102,5 +112,11 @@ class LpqFixtureEntranceTest {
 
         assertEquals(RosterState.HOLD, game.row(tobi).state(), "held where it came out while Ann is inside");
         assertEquals(exit, game.row(tobi).holdMapId());
+    }
+
+    private static void skills(Character character, int... skillIds) {
+        for (int skillId : skillIds) {
+            when(character.getSkillLevel(skillId)).thenReturn(1);
+        }
     }
 }

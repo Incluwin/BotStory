@@ -572,8 +572,11 @@ public final class CompanionPartyQuestService {
             candidates.add(member.isBot() ? companion(leader, member, profile, entrance)
                     : human(leader, member, profile, entrance));
         }
-        return LineupPlan.build(pqKey, leader.getId(), leader.getLevel(), candidates, picked,
+        LineupPlan plan = LineupPlan.build(pqKey, leader.getId(), leader.getLevel(), candidates, picked,
                 profile == null ? null : clearTime(leader, pqKey, profile));
+        // what the quest needs between its members, before Yes (LPQ's roles; every other quest's plan as it is)
+        return LineupComposition.apply(plan, leader, entrance,
+                id -> AgentRuntimeIdentityRuntime.bot(AgentRuntimeRegistry.findByAgentCharacterId(id)));
     }
 
     /** The quest's warm pace profile; null while cold, or when reading it failed. */
