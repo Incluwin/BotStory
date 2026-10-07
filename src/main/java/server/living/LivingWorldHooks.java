@@ -421,6 +421,23 @@ public final class LivingWorldHooks {
     }
 
     /**
+     * The group a player's accept of a bot's buddy request puts it in (BuddylistModifyHandler): "Crew" for their own
+     * companion while companions ask (P9), else the stock "Default Group".
+     */
+    public static String buddyGroup(Character player, int otherCharacterId) {
+        LivingWorld world = LivingWorld.get();
+        if (world == null || player == null) {
+            return "Default Group";
+        }
+        try {
+            return world.companionBuddies().groupFor(player, otherCharacterId);
+        } catch (RuntimeException failure) {
+            log.warn("living world buddyGroup hook failed", failure);
+            return "Default Group";
+        }
+    }
+
+    /**
      * A committed party change ({@code PartyEvents} listener, on the thread that made it). It is queued for the
      * companion-ops thread and never handled here, so nothing re-enters {@code World.updateParty} or takes the roster's
      * locks under the party's. The seat and view caches take it first, then the roster is reconciled.

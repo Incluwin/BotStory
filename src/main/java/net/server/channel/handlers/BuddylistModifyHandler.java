@@ -31,6 +31,7 @@ import client.Client;
 import net.AbstractPacketHandler;
 import net.packet.InPacket;
 import net.server.world.World;
+import server.living.LivingWorldHooks;
 import tools.DatabaseConnection;
 import tools.PacketCreator;
 
@@ -190,7 +191,9 @@ public class BuddylistModifyHandler extends AbstractPacketHandler {
                         otherName = otherChar.getName();
                     }
                     if (otherName != null) {
-                        buddylist.put(new BuddylistEntry(otherName, "Default Group", otherCid, channel, true));
+                        // the stock "Default Group", or the one the living world names (P9: your own companions in "Crew")
+                        String group = LivingWorldHooks.buddyGroup(player, otherCid);
+                        buddylist.put(new BuddylistEntry(otherName, group, otherCid, channel, true));
                         c.sendPacket(PacketCreator.updateBuddylist(buddylist.getBuddies()));
                         notifyRemoteChannel(c, channel, otherCid, ADDED);
                     }

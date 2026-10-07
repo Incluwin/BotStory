@@ -90,6 +90,7 @@ public final class LivingWorld {
     private final RumorScheduler rumors;
     private final PhraseMatcher phrases;
     private final server.living.roster.CrewRotation crewRotation;
+    private final server.living.roster.CompanionBuddies companionBuddies;
     private final server.living.roster.BenchCombatLearning benchCombatLearning;
     private final server.living.roster.CompanionPartyQuestService partyQuests;
     private final server.living.roster.CompanionRunLifecycle partyQuestRuns;
@@ -140,6 +141,7 @@ public final class LivingWorld {
         this.rumors = new RumorScheduler(this);
         this.phrases = new PhraseMatcher(this);
         this.crewRotation = new server.living.roster.CrewRotation(this); // "Keep my crew fresh" (P5, decision 15 b)
+        this.companionBuddies = new server.living.roster.CompanionBuddies(this); // companions ask you to be buddies (P9)
         this.benchCombatLearning = new server.living.roster.BenchCombatLearning(this); // decision 13 a
         this.partyQuests = new server.living.roster.CompanionPartyQuestService(this); // P6: party quests with companions
         this.partyQuestRuns = new server.living.roster.CompanionRunLifecycle(this, partyQuests);
@@ -286,6 +288,10 @@ public final class LivingWorld {
         world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
                 () -> world.executor.submit("crew.fresh", world.crewRotation::tick),
                 config.AUTO_ROTATE_TICK_MS, config.AUTO_ROTATE_TICK_MS));
+        // P9: Residents at "Friend" and hired hands after their party time ask their players to be buddies
+        world.timers.add(timers.register(TimerManager.SchedulerLane.LOW_PRIORITY,
+                () -> world.executor.submit("companion.buddies", world.companionBuddies::tick),
+                server.living.roster.CompanionBuddies.SWEEP_MS, server.living.roster.CompanionBuddies.SWEEP_MS));
         instance = world;
         // party changes reach the roster on companion-ops, never inline; a bot joins a human's party only on a seat
         net.server.world.PartyEvents.install(LivingWorldHooks::partyChanged);
@@ -516,6 +522,11 @@ public final class LivingWorld {
     /** "Keep my crew fresh" (P5, decision 15 b): each owner's opt-in and the swaps it makes. */
     public server.living.roster.CrewRotation crewRotation() {
         return crewRotation;
+    }
+
+    /** Companions asking their players to be buddies (P9), and the group an accept puts them in. */
+    public server.living.roster.CompanionBuddies companionBuddies() {
+        return companionBuddies;
     }
 
     /** Companions going for their next job by themselves (2026-10-05): the errands out. */

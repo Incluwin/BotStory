@@ -297,6 +297,18 @@ public class LivingWorldConfig {
      */
     public boolean COMPANION_PARTY_SEARCH_FILL = true;
 
+    // Companions ask you to be buddies (P9, CompanionBuddies)
+    /**
+     * A Resident whose friendship with you reached COMPANION_BUDDY_FRIENDSHIP_LEVEL, and a hired hand after
+     * COMPANION_BUDDY_HIRE_PARTY_MINUTES in your party, sends you the stock buddy request once while you are both online;
+     * your own companions land in your "Crew" group. false = the kill switch: nobody new asks (citizens still do).
+     */
+    public boolean COMPANION_BUDDY_REQUESTS = false;
+    /** The friendship level (1-10; 4 is "Friend") at which a Resident asks. */
+    public int COMPANION_BUDDY_FRIENDSHIP_LEVEL = 4;
+    /** The minutes a hired hand spends in your party before it asks (a citizen asks after 30, PopulationConfig). */
+    public int COMPANION_BUDDY_HIRE_PARTY_MINUTES = 30;
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
@@ -483,6 +495,12 @@ public class LivingWorldConfig {
         }
         if (COMPANION_JOB_ERRAND_SWEEP_MS <= 0) {
             throw new IllegalArgumentException("living_world.COMPANION_JOB_ERRAND_SWEEP_MS must be > 0");
+        }
+        if (COMPANION_BUDDY_FRIENDSHIP_LEVEL < 1 || COMPANION_BUDDY_FRIENDSHIP_LEVEL > 10) {
+            throw new IllegalArgumentException("living_world.COMPANION_BUDDY_FRIENDSHIP_LEVEL must be 1-10");
+        }
+        if (COMPANION_BUDDY_HIRE_PARTY_MINUTES < 1) {
+            throw new IllegalArgumentException("living_world.COMPANION_BUDDY_HIRE_PARTY_MINUTES must be >= 1");
         }
         for (String id : COMPANION_RESTOCK_BOSS_MAPS == null ? new String[0] : COMPANION_RESTOCK_BOSS_MAPS.split(",")) {
             if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {

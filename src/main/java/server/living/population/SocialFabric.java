@@ -360,7 +360,7 @@ public final class SocialFabric {
         }
     }
 
-    private void maybeBuddyRequest(CitizenSession session, Character human, Acquaintance acquaintance) {
+    void maybeBuddyRequest(CitizenSession session, Character human, Acquaintance acquaintance) {
         Character agent = session.agent();
         if (agent == null || acquaintance.buddyAsked() || !population.config().BUDDIES_ENABLED) {
             return;
@@ -369,10 +369,9 @@ public final class SocialFabric {
                 && acquaintance.mapMinutes() < population.config().BUDDY_REQUEST_AFTER_MINUTES * 3) {
             return;
         }
-        if (human.getBuddylist().containsVisible(agent.getId()) || human.getClient() == null) {
+        if (human.getBuddylist().containsVisible(agent.getId()) || !server.living.BuddyRequests.ask(agent, human)) {
             return;
         }
-        human.getBuddylist().addBuddyRequest(human.getClient(), agent.getId(), agent.getName(), session.channel);
         population.store().saveAcquaintance(new Acquaintance(acquaintance.characterId(), acquaintance.playerId(),
                 acquaintance.partyMinutes(), acquaintance.mapMinutes(), true, acquaintance.guildAsked()));
         session.journal.add("social", "asked " + human.getName() + " to be buddies");
