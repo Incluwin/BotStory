@@ -153,6 +153,7 @@ final class EpqRunFixture implements AutoCloseable {
         }
         session.setLeadership(members[0].getId(), executionAgentId);
         session.setCompanionAdopted(companionAdopted);
+        party(members);
         session.bindEventInstance(event);
         session.transition(phase, 1_000L);
         AgentEpqSessionRegistry.registerComplete(session);

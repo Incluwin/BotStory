@@ -1266,6 +1266,10 @@ tuning:
     # Purpose: Bounds how long companions ask their leader to wait at the altar while they drink up before they say they are ready.
     # Technical: Counted from the BOSS phase; AgentEpqCompanionRun says the ready line sooner once no standing companion on 930000600 is under AgentEpqRecoveryPolicy.TOP_UP_HP_FRACTION with potions. Companion runs only; the top-up itself is base fix 6 (every mode).
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.ALTAR_READY_WAIT_MS: '20000'
+    # Values: 10000-120000 milliseconds. Recommended: 45000.
+    # Purpose: Bounds how long a companion run waits for a member it cannot see (an unloaded companion) before it takes that member out of the run.
+    # Technical: Read by AgentEpqCompanionRun in companion runs before the clear, counted on the session from the first pass that missed the member. A dead companion is never timed out: it waits like a player who has not pressed OK, until no companion stands.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS: '45000'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

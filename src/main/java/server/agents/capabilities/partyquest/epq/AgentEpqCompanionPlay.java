@@ -158,6 +158,24 @@ final class AgentEpqCompanionPlay {
         return !cleared && (golemAlive || firstGolemSeen || altarState > 0 || stoneInAltarArea);
     }
 
+    // ---- the members (Step 4.3) ----
+
+    /** E18: a member had to go and the run goes on with {@code remaining}. */
+    static String memberLeftLine(String name, int remaining) {
+        String count = switch (remaining) {
+            case 4 -> "four";
+            case 5 -> "five";
+            default -> null;
+        };
+        return count == null ? name + " had to go. we'll keep going." : name + " had to go. we'll keep going with "
+                + count + ".";
+    }
+
+    /** E20: the leader is down on the golem's map while the fight goes on. */
+    static String leaderDownLine(String leader) {
+        return leader + ", hang in there! don't press ok yet, we can still beat it.";
+    }
+
     // ---- the stock lines' sites ----
 
     /** E4a: the first diluted poison is on the thorns. */
@@ -496,6 +514,9 @@ final class AgentEpqCompanionPlay {
                 clearedLeaderDownLine(leader), golemMarbleLine(leader), GOLEM_MARBLE_TAKEN, WAIT_OUTSIDE,
                 FOUNTAIN_DROPPED, fountainHintLine(leader), SEE_YOU));
         lines.addAll(atFeetLines(leader));
+        lines.add(memberLeftLine(name, 4));
+        lines.add(memberLeftLine(name, 5));
+        lines.add(leaderDownLine(leader));
         for (int golem : AgentEpqDefinition.BOSS_MOBS.stream().sorted().toList()) lines.add(golemLine(golem));
         return lines;
     }

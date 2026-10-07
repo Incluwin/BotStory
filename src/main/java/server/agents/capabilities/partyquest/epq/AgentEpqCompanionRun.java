@@ -8,8 +8,10 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagement;
 import server.agents.capabilities.partyquest.AgentPartyQuestEngagementRegistry;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
+import server.agents.capabilities.partyquest.AgentPartyQuestHandback;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.AgentPartyMemberSnapshot;
 import server.agents.integration.AgentPartySnapshot;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
@@ -45,6 +47,8 @@ final class AgentEpqCompanionRun {
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.FOUNTAIN_WAIT_MS");
     static final long ALTAR_READY_WAIT_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.ALTAR_READY_WAIT_MS");
+    static final long MEMBER_RECOVERY_TIMEOUT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.MEMBER_RECOVERY_TIMEOUT_MS");
     static final String QUEST_KEY = "epq";
 
     private AgentEpqCompanionRun() {
@@ -115,6 +119,179 @@ final class AgentEpqCompanionRun {
         AgentEpqParting.Kind kind = AgentEpqParting.endedCause(session.leaderWentDown(), nowMs - enteredAtMs,
                 AgentPartyQuestCatalog.require(QUEST_KEY).eventTimerMs(), TIMEOUT_SLACK_MS);
         return kind == AgentEpqParting.Kind.DEFEATED ? AgentEpqParting.of(kind, leader) : AgentEpqParting.of(kind);
+    }
+
+    // ---- the members (Step 4.3) ----
+
+    /**
+     * The lease holder's pass inside the event before the clear: the leader's own rules, the live party, and the
+     * verdict of every other member (AgentEpqMemberVerdicts). False when the run ended (failed or detached).
+     */
+    static boolean members(AgentEpqSession session, Character leader, long nowMs) {
+        return leaderStands(session, leader, nowMs) && reconcileLiveParty(session, leader, nowMs)
+                && verdicts(session, leader, nowMs);
+    }
+
+    /**
+     * The leader at 0 HP: on the golem's map while the golem fight is on (its revive gaps included) the companions
+     * fight on and tell him not to press OK yet (E20; if he does, the event ends and its end reads DEFEATED); anywhere
+     * else the run ends DEFEATED at once.
+     */
+    private static boolean leaderStands(AgentEpqSession session, Character leader, long nowMs) {
+        if (leader.getHp() > 0) return true;
+        if (leader.getMapId() == AgentEpqDefinition.BOSS_MAP && golemFight(session, leader)) {
+            session.markLeaderWentDown();
+            if (session.claimLogMark("leader-down")) {
+                log.info("EPQ leader down: session={} leader={} map={} golemFight=true", session.sessionId(),
+                        leader.getName(), leader.getMapId());
+            }
+            coordinate(session, narrator(session, leader), "leader-down",
+                    AgentEpqCompanionPlay.leaderDownLine(leader.getName()));
+            return true;
+        }
+        fail(session, leader.getName() + " was defeated during EPQ",
+                AgentEpqParting.of(AgentEpqParting.Kind.DEFEATED, leader), null, nowMs);
+        return false;
+    }
+
+    /**
+     * The live party: gone, the run ends; a member no longer in it (a companion its host tapped out, a player who left
+     * the party) is taken out of the run, and the run goes on while it keeps four and a companion (E18 for each); the
+     * lead passed to anyone else ends the run.
+     */
+    private static boolean reconcileLiveParty(AgentEpqSession session, Character leader, long nowMs) {
+        AgentPartySnapshot party = liveParty(session);
+        if (party == null) {
+            fail(session, "The EPQ party was disbanded", AgentEpqParting.GENERIC, null, nowMs);
+            return false;
+        }
+        java.util.Set<Integer> live = party.members().stream().filter(java.util.Objects::nonNull)
+                .map(AgentPartyMemberSnapshot::id).collect(java.util.stream.Collectors.toSet());
+        int before = session.memberCount();
+        List<Character> gone = new ArrayList<>();
+        AgentEpqParting left = AgentEpqParting.of(AgentEpqParting.Kind.LEFT);
+        for (AgentEpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (id == session.eventLeaderId() || live.contains(id)) continue;
+            Character character = AgentEpqCoordinator.character(id);
+            if (character != null) {
+                gone.add(character);
+                if (left.subject() == null) left = AgentEpqParting.of(AgentEpqParting.Kind.LEFT, character);
+            }
+            departMember(session, member, "left the party", nowMs);
+        }
+        if (!gone.isEmpty() || session.memberCount() < before) {
+            if (!carriesOn(session, left, nowMs)) return false;
+            for (Character character : gone) memberLeft(session, leader, character);
+        }
+        int liveLeaderId = party.members().stream().filter(java.util.Objects::nonNull)
+                .filter(AgentPartyMemberSnapshot::leader).mapToInt(AgentPartyMemberSnapshot::id).findFirst().orElse(0);
+        if (liveLeaderId != session.eventLeaderId()) {
+            fail(session, "The live EPQ party is no longer led by the run's leader", AgentEpqParting.GENERIC, null,
+                    nowMs);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Every non-leader member by AgentEpqMemberVerdicts: an unloaded companion is taken out after
+     * MEMBER_RECOVERY_TIMEOUT_MS; a departed or vanished player is taken out (E18); a corpse waits; a departed
+     * companion is tapped out through its host (a refusal leaves it departed and idle, the run goes on); with no
+     * companion standing the run ends WENT_DOWN.
+     */
+    private static boolean verdicts(AgentEpqSession session, Character leader, long nowMs) {
+        boolean leaderIn = inBoundEvent(session, leader);
+        boolean cleared = AgentEpqTerminationService.pastTheClear(session.eventInstance());
+        for (AgentEpqMemberState member : session.members()) {
+            int id = member.characterId();
+            if (id == session.eventLeaderId()) continue;
+            Character character = AgentEpqCoordinator.character(id);
+            AgentEpqMemberVerdicts.Verdict verdict = AgentEpqMemberVerdicts.verdict(new AgentEpqMemberVerdicts.Facts(
+                    session.phase(), member.memberType(), character != null, character == null ? 0 : character.getHp(),
+                    inBoundEvent(session, character), leaderIn, cleared, session.departed(id),
+                    session.companionDownSinceMs(id), session.tapOutRequested(id), session.tapOutRefused(id),
+                    standingCompanions(session, id)));
+            if (verdict != AgentEpqMemberVerdicts.Verdict.MISSING) session.clearMissing(id);
+            switch (verdict) {
+                case MISSING -> {
+                    if (nowMs - session.missingSince(id, nowMs) >= MEMBER_RECOVERY_TIMEOUT_MS) {
+                        departMember(session, member, "not seen for the recovery timeout", nowMs);
+                        if (!carriesOn(session, AgentEpqParting.of(AgentEpqParting.Kind.LEFT), nowMs)) return false;
+                    }
+                }
+                case DROP_HUMAN -> {
+                    departMember(session, member, "left the event", nowMs);
+                    if (!carriesOn(session, AgentEpqParting.of(AgentEpqParting.Kind.LEFT, character), nowMs)) {
+                        return false;
+                    }
+                    memberLeft(session, leader, character);
+                }
+                case DOWN_WAIT -> session.markCompanionDown(id, nowMs);
+                case REQUEST_TAP_OUT -> {
+                    boolean accepted = AgentPartyQuestHandback.tapOut(new AgentPartyQuestHandback.TapOut(
+                            QUEST_KEY, session.sessionId(), id, character.getMapId(), nowMs));
+                    if (accepted) session.markTapOutRequested(id);
+                    else session.markTapOutRefused(id);
+                    log.info("EPQ tap-out: session={} member={} map={} accepted={}", session.sessionId(), id,
+                            character.getMapId(), accepted);
+                }
+                case REVIVED -> session.clearCompanionDown(id);
+                case SHORT_HANDED -> {
+                    fail(session, character.getName() + " went down, and no companion of the EPQ run stands",
+                            AgentEpqParting.of(AgentEpqParting.Kind.WENT_DOWN, character), null, nowMs);
+                    return false;
+                }
+                default -> {
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * False when the departures ended the run: no companion left (the humans carry on; the run detaches), or fewer
+     * than four (LEFT).
+     */
+    static boolean carriesOn(AgentEpqSession session, AgentEpqParting belowFour, long nowMs) {
+        if (session.members().stream()
+                .noneMatch(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)) {
+            AgentEpqTerminationService.detach(session, "every companion left; the humans carry on", nowMs);
+            return false;
+        }
+        if (session.memberCount() < AgentEpqDefinition.MIN_PARTY_SIZE) {
+            fail(session, "The EPQ companion run fell below four members", belowFour, null, nowMs);
+            return false;
+        }
+        return true;
+    }
+
+    /** E18, said once per member by a companion on the leader's map. */
+    private static void memberLeft(AgentEpqSession session, Character leader, Character character) {
+        if (character == null) return;
+        coordinate(session, narrator(session, leader), "drop-" + character.getId(),
+                AgentEpqCompanionPlay.memberLeftLine(character.getName(), session.memberCount()));
+    }
+
+    /** The run's other companions online, up, in the bound event and not departed. */
+    private static int standingCompanions(AgentEpqSession session, int except) {
+        int standing = 0;
+        for (AgentEpqMemberState member : session.members()) {
+            if (member.characterId() != except && standing(session, member) != null) standing++;
+        }
+        return standing;
+    }
+
+    /** A member's name: from the live party, which keeps offline members, else from the online character; or null. */
+    static String memberName(AgentEpqSession session, int characterId) {
+        AgentPartySnapshot party = liveParty(session);
+        String name = party == null ? null : party.members().stream()
+                .filter(member -> member != null && member.id() == characterId)
+                .map(AgentPartyMemberSnapshot::name)
+                .findFirst().orElse(null);
+        if (name != null) return name;
+        Character character = AgentEpqCoordinator.character(characterId);
+        return character == null ? null : character.getName();
     }
 
     /** Who says a parting: a companion on the leader's map, else any standing one, else the first online one. */
@@ -212,7 +389,11 @@ final class AgentEpqCompanionRun {
             AgentEpqCoordinator.completeWhenOut(session, nowMs);
             return true;
         }
-        return false;
+        // Step 4.3: inside the event before the clear an offline leader ends the run at once, in his companions' words.
+        int leaderId = session.eventLeaderId();
+        fail(session, "The EPQ companion run's leader went offline",
+                new AgentEpqParting(AgentEpqParting.Kind.GONE, leaderId, memberName(session, leaderId), 0), null, nowMs);
+        return true;
     }
 
     /**

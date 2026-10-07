@@ -30,6 +30,19 @@ final class AgentEpqTerminationService {
      * A companion run that did not complete leaves the event so with or without {@code dispose}.
      */
     static void release(AgentEpqSession session, String reason, long nowMs, boolean dispose) {
+        release(session, reason, nowMs, dispose, true);
+    }
+
+    /**
+     * Ends a companion run whose companions all left while its humans carry on in the event (Step 4.3): today's
+     * release, but nobody leaves the event and it is not disposed. The host hears a failure.
+     */
+    static void detach(AgentEpqSession session, String reason, long nowMs) {
+        release(session, reason, nowMs, false, false);
+    }
+
+    private static void release(AgentEpqSession session, String reason, long nowMs, boolean dispose,
+                                boolean mayLeaveEvent) {
         if (session == null || !session.beginTermination()) return;
         AgentEpqSession.Phase phaseAtRelease = session.phase();
         session.members().forEach(member -> {
@@ -48,7 +61,8 @@ final class AgentEpqTerminationService {
         // A companion run keeps its party, so no party leave runs EllinPQ's own exit for it as it does for a stock run:
         // one that did not complete leaves the event as the tick's failure release has it leave, whoever releases it
         // (AgentEpqRuntime.requestStop passes no dispose, and can land between the fail and the tick's release).
-        boolean leaveEvent = dispose || (companionRun && phaseAtRelease != AgentEpqSession.Phase.COMPLETED);
+        boolean leaveEvent = mayLeaveEvent
+                && (dispose || (companionRun && phaseAtRelease != AgentEpqSession.Phase.COMPLETED));
         if (leaveEvent && event != null) {
             if (companionRun && pastTheClear) {
                 exitAgentsOnly(session);

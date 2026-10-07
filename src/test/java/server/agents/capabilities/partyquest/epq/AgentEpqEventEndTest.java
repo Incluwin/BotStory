@@ -148,7 +148,7 @@ class AgentEpqEventEndTest {
 
     @Test
     void anOfflineLeaderTakesOnlyTheWatchdogPath() {
-        AgentEpqSession session = boss();
+        AgentEpqSession session = stockBoss();
         run.offline(ben);
         when(run.event.isEventDisposed()).thenReturn(true);
         try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {

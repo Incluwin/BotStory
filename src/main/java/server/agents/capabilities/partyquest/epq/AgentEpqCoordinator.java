@@ -112,6 +112,11 @@ public final class AgentEpqCoordinator {
         if (AgentEpqCompanionRun.acting(session) && AgentEpqTerminationService.pastTheClear(bound)) {
             AgentEpqCompanionRun.afterClear(session, leader, nowMs);
         }
+        // Step 4.3: inside the event before the clear the leader's rules, the live party and every member's verdict.
+        if (AgentEpqCompanionRun.acting(session) && bound != null && !AgentEpqTerminationService.pastTheClear(bound)
+                && !AgentEpqCompanionRun.members(session, leader, nowMs)) {
+            return;
+        }
         boolean rewardReady = AgentEpqTerminationService.pastTheClear(bound) && leader.getEventInstance() == bound;
         AgentEpqSession.Phase observed = phaseForMap(leader.getMapId(), rewardReady);
         if (observed != null) transition(session, observed, nowMs);

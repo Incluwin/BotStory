@@ -48,6 +48,10 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private long rewardStartedAtMs;
     private boolean failureClaimed;
     private boolean leaderWentDown;
+    private final Map<Integer, Long> missingSinceMs = new HashMap<>();
+    private final Map<Integer, Long> companionDownSinceMs = new HashMap<>();
+    private final Set<Integer> tapOutsRequested = new HashSet<>();
+    private final Set<Integer> tapOutsRefused = new HashSet<>();
     private final Map<Integer, Boolean> fullRateHolds = new HashMap<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
@@ -427,6 +431,30 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     synchronized void markLeaderWentDown() { leaderWentDown = true; }
 
     synchronized boolean leaderWentDown() { return leaderWentDown; }
+
+    // A companion run's member verdicts (Step 4.3): written and read by the lease holder's pass.
+
+    /** When the pass first missed this member (not online, not loaded): the first call starts the clock. */
+    synchronized long missingSince(int id, long nowMs) { return missingSinceMs.computeIfAbsent(id, ignored -> nowMs); }
+
+    synchronized void clearMissing(int id) { missingSinceMs.remove(id); }
+
+    /** When the pass first saw this member down in the event, or 0 while it is not. */
+    synchronized long companionDownSinceMs(int id) { return companionDownSinceMs.getOrDefault(id, 0L); }
+
+    synchronized void markCompanionDown(int id, long nowMs) { companionDownSinceMs.putIfAbsent(id, Math.max(1L, nowMs)); }
+
+    synchronized void clearCompanionDown(int id) { companionDownSinceMs.remove(id); }
+
+    /** Its host took this departed companion's tap-out. */
+    synchronized void markTapOutRequested(int id) { tapOutsRequested.add(id); }
+
+    synchronized boolean tapOutRequested(int id) { return tapOutsRequested.contains(id); }
+
+    /** Its host refused this departed companion's tap-out: it stays departed and idle. */
+    synchronized void markTapOutRefused(int id) { tapOutsRefused.add(id); }
+
+    synchronized boolean tapOutRefused(int id) { return tapOutsRefused.contains(id); }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }
