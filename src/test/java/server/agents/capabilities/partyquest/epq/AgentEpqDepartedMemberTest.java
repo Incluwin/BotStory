@@ -267,7 +267,7 @@ class AgentEpqDepartedMemberTest {
 
     @Test
     void anAgentNotYetRegisteredOnTheRecruitMapIsNoLeaver() {
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.ENTERING, ben, mira, tobi, una, pia, cleo);
         for (Character member : List.of(ben, tobi, una, pia, cleo)) run.onMap(member, AgentEpqDefinition.ENTRANCE_MAP);
         run.onMap(mira, AgentEpqDefinition.RECRUIT_MAP); // registerParty has not reached her yet

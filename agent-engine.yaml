@@ -1198,6 +1198,14 @@ tuning:
     # Purpose: Sets the HP fraction at which a resting EPQ golem-fight member rejoins the fight; it also rejoins once it holds POT_STOP HP potions again.
     # Technical: Only AgentEpqRecoveryPolicy reads this, for map 930000600. Resting heals by passive regen only, and the rest ends when no golem lives.
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.RESUME_HP_FRACTION: '0.7'
+    # Values: 5000-120000 milliseconds. Recommended: 30000, the "within 30 seconds" the adoption reply and the desk promise.
+    # Purpose: Bounds how long a companion run waits for its human leader to take the party into EPQ, and then for every member to be inside, before it gives up without a word or goes on without the absent members.
+    # Technical: AgentEpqCompanionRun reads this in tickSession: from admission while no event is bound, and from the leader's entry for members never seen inside, in any phase; absent members are ejected only while at least four are inside (EllinPQ.js minPlayers 4). Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.COMPANION_ENTRY_WAIT_MS: '30000'
+    # Values: 0-10000 milliseconds. Recommended: 2000 so EllinPQ's own timer always ends the event first.
+    # Purpose: Lets the stock 30-minute event timer end a companion run before the coordinator's own backstop does.
+    # Technical: In companion runs AgentEpqCoordinator counts EVENT_TIMEOUT_MS from the party's entry plus this slack, and AgentEpqParting reads a run that stood in the event at least the catalog timer minus this as TIMEOUT. Stock runs keep the admission-based count.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.TIMEOUT_SLACK_MS: '2000'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

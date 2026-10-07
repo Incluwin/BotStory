@@ -69,18 +69,22 @@ public final class AgentEpqCoordinator {
     private AgentEpqCoordinator() { }
 
     public static void tickSession(AgentEpqSession session, long nowMs) {
-        if (nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS && !session.terminal()) {
+        if (eventTimerExpired(session, nowMs) && !session.terminal()) {
             fail(session, "EPQ event timer expired", nowMs);
             return;
         }
         Character leader = character(session.eventLeaderId());
         if (leader == null) {
+            // A companion run whose leader is offline before the party went in waits out the entry wait.
+            if (session.companionAdopted() && AgentEpqCompanionRun.leaderOffline(session, nowMs)) return;
             AgentEpqWatchdogRuntime.tick(session, nowMs);
             return;
         }
+        if (session.companionAdopted() && AgentEpqCompanionRun.beforeEntry(session, leader, nowMs)) return;
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentEpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance());
+            session.markEnteredEvent(nowMs);
             session.markProgress(nowMs);
         }
         // EPQ base fix 2: before the clear, a bound event that was disposed, or that no longer holds the leader (the
@@ -115,6 +119,15 @@ public final class AgentEpqCoordinator {
                         && member.getEventInstance() == bound)) {
             session.complete(nowMs);
         }
+    }
+
+    /**
+     * The coordinator's backstop for the event's 30-minute timer: a stock run counts from its admission, a companion
+     * run from the party's entry (AgentEpqCompanionRun.timerExpired).
+     */
+    private static boolean eventTimerExpired(AgentEpqSession session, long nowMs) {
+        if (session.companionAdopted()) return AgentEpqCompanionRun.timerExpired(session, nowMs, EVENT_TIMEOUT_MS);
+        return nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS;
     }
 
     /** The bound event still runs and still holds the run's leader. */
@@ -220,7 +233,11 @@ public final class AgentEpqCoordinator {
         }
 
         switch (agent.getMapId()) {
-            case AgentEpqDefinition.RECRUIT_MAP -> enterEvent(session, entry, agent, member, nowMs);
+            case AgentEpqDefinition.RECRUIT_MAP -> {
+                // A companion run's leader clicks Ellin himself: his companions neither announce nor talk to her.
+                if (session.companionAdopted()) actions().stop(entry);
+                else enterEvent(session, entry, agent, member, nowMs);
+            }
             case AgentEpqDefinition.ENTRANCE_MAP -> {
                 if (!topUp(session, entry, agent, member, nowMs)) enterPortal(entry, agent, 4, member, nowMs);
             }

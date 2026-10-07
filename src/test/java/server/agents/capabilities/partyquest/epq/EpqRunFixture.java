@@ -151,6 +151,26 @@ final class EpqRunFixture implements AutoCloseable {
         return session;
     }
 
+    /**
+     * As {@link #session}, never bound to the event and left in PREPARING: the run as admitted, before its leader
+     * clicked Ellin.
+     */
+    AgentEpqSession unboundSession(AgentEpqSession.Mode mode, boolean companionAdopted, Character... members) {
+        AgentEpqSession session = new AgentEpqSession(mode, 7L, members[0].getId(), 1_000L);
+        int executionAgentId = 0;
+        for (Character member : members) {
+            boolean companion = entries.containsKey(member.getId());
+            session.addMember(member.getId(), companion
+                    ? AgentEpqMemberState.MemberType.AGENT : AgentEpqMemberState.MemberType.HUMAN);
+            if (companion && executionAgentId == 0) executionAgentId = member.getId();
+        }
+        session.setLeadership(members[0].getId(), executionAgentId);
+        session.setCompanionAdopted(companionAdopted);
+        AgentEpqSessionRegistry.registerComplete(session);
+        sessions.add(session);
+        return session;
+    }
+
     private <T> MockedStatic<T> open(Class<T> type) {
         MockedStatic<T> mocked = mockStatic(type);
         statics.add(mocked);

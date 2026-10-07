@@ -11,4 +11,19 @@ package server.agents.capabilities.partyquest.epq;
 final class AgentEpqCompanionPlay {
     private AgentEpqCompanionPlay() {
     }
+
+    // ---- the entry ----
+
+    /** What the entry does: wait, go on with everyone, go on without the absent, or give up. */
+    enum Entry { WAIT, ENTERED, EJECT_ABSENT, GIVE_UP }
+
+    /**
+     * Everyone seen inside goes on; after the entry wait at least {@code minimumParty} who entered go on without the
+     * {@code absent} rest, and fewer give up.
+     */
+    static Entry entering(int entered, int absent, long waitedMs, long entryWaitMs, int minimumParty) {
+        if (absent <= 0) return Entry.ENTERED;
+        if (waitedMs < entryWaitMs) return Entry.WAIT;
+        return entered >= minimumParty ? Entry.EJECT_ABSENT : Entry.GIVE_UP;
+    }
 }

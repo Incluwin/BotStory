@@ -33,7 +33,7 @@ class AgentEpqLineLogTest {
 
     @Test
     void theLobbyReadyLineIsLoggedAndStillSaidInPartyAndMapChat() {
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.PREPARING, ben, mira, tobi, una);
         try (EpqLogLines lines = new EpqLogLines(AgentEpqDialogue.class)) {
             AgentEpqCoordinator.tickMember(session, run.entry(mira), mira, 1_600L); // before Mira's turn

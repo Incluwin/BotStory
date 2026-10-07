@@ -31,6 +31,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private final Map<Integer, AgentEpqMemberState> members = new LinkedHashMap<>();
     private final Set<String> announcements = new HashSet<>();
     private final Set<String> narrations = new HashSet<>();
+    private final Set<Integer> seenInEvent = new HashSet<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -56,6 +57,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private boolean companionAdopted;
     private boolean memberCoordinationChatEnabled;
     private String potionsAtEntry = "";
+    private long enteredEventAtMs;
 
     public AgentEpqSession(Mode mode, long seed, int operatorId, long nowMs) {
         if (mode == null || operatorId <= 0 || nowMs < 0L) throw new IllegalArgumentException("valid EPQ session required");
@@ -229,6 +231,25 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     synchronized String potionsAtEntry() { return potionsAtEntry; }
 
     synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions == null ? "" : potions; }
+
+    /**
+     * When the run's leader first stood in its bound event (the bind): the party's entry. Only the first call counts;
+     * true when it was the first.
+     */
+    synchronized boolean markEnteredEvent(long nowMs) {
+        if (enteredEventAtMs > 0L) return false;
+        enteredEventAtMs = Math.max(1L, nowMs);
+        return true;
+    }
+
+    /** The party's entry (see {@link #markEnteredEvent}), or 0 before it. */
+    synchronized long enteredEventAtMs() { return enteredEventAtMs; }
+
+    /** Marks a member seen standing in the bound event; a companion run never treats it as absent again. */
+    synchronized void markSeenInEvent(int id) { seenInEvent.add(id); }
+
+    /** Whether this member was ever seen standing in the bound event. */
+    synchronized boolean seenInEvent(int id) { return seenInEvent.contains(id); }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }

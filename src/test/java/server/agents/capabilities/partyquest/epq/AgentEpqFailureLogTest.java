@@ -30,8 +30,9 @@ class AgentEpqFailureLogTest {
     @Test
     void theEventTimer() {
         AgentEpqSession session = stageTwo(true);
+        session.markEnteredEvent(1_000L); // a companion run's clock runs from the party's entry (Step 2.3)
         try (EpqLogLines lines = new EpqLogLines(AgentEpqCoordinator.class)) {
-            AgentEpqCoordinator.tickSession(session, 1_000L + 1_800_000L);
+            AgentEpqCoordinator.tickSession(session, 1_000L + 1_800_000L + 2_000L);
 
             assertEquals(List.of(failureLine(session, "EPQ event timer expired", true)),
                     lines.startingWith("EPQ session failure:"));
