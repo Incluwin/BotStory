@@ -46,6 +46,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private boolean leftAfterClear;
     private String golemMarble = "none";
     private long rewardStartedAtMs;
+    private final Map<Integer, Boolean> fullRateHolds = new HashMap<>();
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -393,6 +394,22 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
         }
         return rewardStartedAtMs;
     }
+
+    /**
+     * Marks the run's full-rate hold on this member (Step 2.12), with whether full rate was required before it; false
+     * once the run's release began (it takes no hold back). A hold already marked keeps its first answer.
+     */
+    synchronized boolean holdFullRate(int memberId, boolean requiredBefore) {
+        if (terminating) return false;
+        fullRateHolds.putIfAbsent(memberId, requiredBefore);
+        return true;
+    }
+
+    /** Ends the run's hold on this member: whether full rate was required before it, or null when none was held. */
+    synchronized Boolean releaseFullRate(int memberId) { return fullRateHolds.remove(memberId); }
+
+    /** The members the run holds at full rate. */
+    synchronized List<Integer> fullRateHolders() { return List.copyOf(fullRateHolds.keySet()); }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }

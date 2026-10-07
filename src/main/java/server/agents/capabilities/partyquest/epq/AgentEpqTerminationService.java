@@ -39,6 +39,7 @@ final class AgentEpqTerminationService {
                 AgentPrimitiveCapabilityGatewayRuntime.gateway().stop(entry);
             }
         });
+        AgentEpqFullRateSimulation.releaseAll(session); // Step 2.12: the run's full-rate holds end with it
         EventInstanceManager event = session.eventInstance();
         boolean companionRun = session.companionAdopted();
         boolean pastTheClear = pastTheClear(event);

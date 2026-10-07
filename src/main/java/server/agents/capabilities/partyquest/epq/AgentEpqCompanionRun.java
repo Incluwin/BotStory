@@ -12,6 +12,7 @@ import server.agents.integration.AgentPartyGatewayRuntime;
 import server.agents.integration.AgentPartySnapshot;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.agents.runtime.AgentRuntimeRegistry;
 import server.maps.MapItem;
 import server.maps.Reactor;
 
@@ -226,6 +227,7 @@ final class AgentEpqCompanionRun {
                 log.warn("EPQ member exit failed: session={} member={}", session.sessionId(), id, failure);
             }
         }
+        AgentEpqFullRateSimulation.apply(session, id, AgentRuntimeRegistry.findByAgentCharacterId(id), false);
         log.warn("EPQ member left the run and was ejected: session={} member={} type={} phase={} reason={} "
                         + "remainingBefore={}", session.sessionId(), id, member.memberType(), session.phase(), reason,
                 session.memberCount());
@@ -352,6 +354,7 @@ final class AgentEpqCompanionRun {
                 session.leaveWhy(), leader == null ? String.valueOf(session.eventLeaderId()) : leader.getName(),
                 holders > 0 ? "held" : session.golemMarble());
         AgentEpqCoordinator.transition(session, AgentEpqSession.Phase.EXITING, nowMs);
+        AgentEpqFullRateSimulation.releaseAll(session); // Step 2.12: they leave the instance
         AgentEpqTerminationService.exitAgentsOnly(session);
     }
 

@@ -73,6 +73,8 @@ public final class AgentEpqCoordinator {
             fail(session, "EPQ event timer expired", nowMs);
             return;
         }
+        // Step 2.12: a companion run's companions in its instance tick at full rate, whoever leads.
+        if (AgentEpqCompanionRun.acting(session)) holdFullRate(session);
         Character leader = character(session.eventLeaderId());
         if (leader == null) {
             // A companion run whose leader is offline before the party went in waits out the entry wait; past the clear
@@ -117,6 +119,22 @@ public final class AgentEpqCoordinator {
         logMembersDown(session);
         logBossProgress(session, leader, nowMs);
         completeWhenOut(session, nowMs);
+    }
+
+    /**
+     * Step 2.12: every companion standing in the run's bound event runs at full rate (KPQ's rule: rooms nobody watches
+     * would run at reduced fidelity); one out of the event is let go. A run whose release began takes no hold back.
+     */
+    private static void holdFullRate(AgentEpqSession session) {
+        EventInstanceManager bound = session.eventInstance();
+        for (AgentEpqMemberState member : session.members()) {
+            if (member.memberType() != AgentEpqMemberState.MemberType.AGENT) continue;
+            Character agent = character(member.characterId());
+            boolean wanted = !session.terminationStarted() && agent != null && bound != null
+                    && agent.getEventInstance() == bound;
+            AgentEpqFullRateSimulation.apply(session, member.characterId(),
+                    AgentRuntimeRegistry.findByAgentCharacterId(member.characterId()), wanted);
+        }
     }
 
     /**
