@@ -795,8 +795,23 @@ Window titles on these pages are lowercase ("who should come along?") when opene
   - Both happen once, while both are online.
   - Every bot request is now two-sided (`BuddyRequests`: the bot lists the player first). Citizens' requests use it too.
   - An accept puts the player's own companion in "Crew" (`LivingWorldHooks.buddyGroup`).
-  - Switch: `living_world.COMPANION_BUDDY_REQUESTS`, off until its live check passes.
+  - Switch: `living_world.COMPANION_BUDDY_REQUESTS`, off until its live check passed. Since 76c067fd7 it is on in `feat/companion-manager`.
+
+### Buddy live checks (deploy session, 2026-10-07 00:46-01:03)
+Two restarts: `eab3e20d5` with the switch off, then `76c067fd7` with it on. Both boots had 0 ERROR lines and 0 drift.
+
+| Check | Result |
+|---|---|
+| B1 Presence | **PASS.** Casse showed online "(1/1)" while loaded. After "rest casse" she unloaded at 00:46:57, and her row was grey "Default Group(0/1)" by 00:47:06. "call casse" loaded her at camp the same second, and the row was online again; selecting it showed her location. |
+| Switch off | **PASS.** `!world bond` adds points: Halvard went to 85, Kestrel to 60. With the switch off, 2+ minutes passed with no notice, no flags and no buddy rows. |
+| B3 Resident at Friend | **PASS.** After restart 2, Crewfriend came online at 00:57:50; "Buddy request from 'Halvard'" came by 00:59:49. O put Halvard in a new "Crew(1/1)" group, online, and set the flag `buddy.asked`. No second request through 01:03:21. |
+| B4 Below Friend | **PASS.** Kestrel at 60 never asked. |
+| B5 Hired hand | **PASS.** party_minutes was set to 29 at 01:00:30. At 01:00:44 it read 30 with buddy_asked=1, and "Buddy request from 'IceCookie'" came. The accept made "Crew(2/2)". |
+| B6 Accept with the switch off | Not run; it needs another restart. Unit-tested. |
+
+The bots' own `buddies` rows are saved with the bot's character (at its unload). They were not in the DB yet at check time, so the DB side of the two-sided rows is unverified; the client side is verified.
 
 ## Open
 - Lineup suggestions in the Lakelis/Tory proposals wait for the LPQ/EPQ desk merge.
 - Companions never speak in Maple Messenger.
+- Check `SELECT * FROM buddies WHERE characterid IN (838, 659)` after Halvard and IceCookie unload: each should list Crewfriend.
