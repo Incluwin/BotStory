@@ -205,7 +205,7 @@ class AgentEpqEventEndTest {
 
     @Test
     void anAgentOnTheExitMapInTheRewardPhaseHitsTheRewardAsBefore() {
-        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, true,
+        AgentEpqSession session = run.session(AgentEpqSession.Mode.HUMAN_ASSISTED, false,
                 AgentEpqSession.Phase.REWARD, ben, mira, tobi, una);
         run.onMap(mira, AgentEpqDefinition.REWARD_MAP);
         Reactor reward = rewardReactor();

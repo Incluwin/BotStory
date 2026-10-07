@@ -45,6 +45,7 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     private String leaveWhy = "";
     private boolean leftAfterClear;
     private String golemMarble = "none";
+    private long rewardStartedAtMs;
     private final Set<String> logMarks = new HashSet<>();
     private final Set<Integer> membersDown = new HashSet<>();
     private final Map<String, Integer> rescues = new LinkedHashMap<>();
@@ -381,6 +382,17 @@ public final class AgentEpqSession implements AgentCompanionRunSession {
     synchronized void noteGolemMarble(String outcome) { golemMarble = outcome == null ? "none" : outcome; }
 
     synchronized String golemMarble() { return golemMarble; }
+
+    /**
+     * When the companions' reward began (Step 2.11): the REWARD phase's start once the run reads that phase, else the
+     * first call (a companion the cleared event holds on 930000800 before any pass saw its leader there).
+     */
+    synchronized long rewardStartedAtMs(long nowMs) {
+        if (rewardStartedAtMs == 0L) {
+            rewardStartedAtMs = phase == Phase.REWARD ? phaseEnteredAtMs : Math.max(1L, nowMs);
+        }
+        return rewardStartedAtMs;
+    }
 
     /** Takes a member out of the run; true when it was one. */
     public synchronized boolean removeMember(int id) { return members.remove(id) != null; }

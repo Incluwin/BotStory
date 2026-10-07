@@ -320,6 +320,37 @@ final class AgentEpqCompanionPlay {
         return null;
     }
 
+    // ---- the fountain ----
+
+    /** E17a: a companion dropped the golem's marble in the fountain. */
+    static final String FOUNTAIN_DROPPED = "marble's in the fountain! exp for everyone.";
+
+    /** E17b: the leader holds the golem's marble on the reward map. */
+    static String fountainHintLine(String leader) {
+        return leader + ", drop the marble by the fountain. exp for everyone, and a fragment on the way out.";
+    }
+
+    /** E17c: the first companion to take east00. */
+    static final String SEE_YOU = "see you outside!";
+
+    /** What a companion on the reward map does this tick. */
+    enum Fountain { DROP_MARBLE, WAIT, EXIT }
+
+    /**
+     * The fountain fired: take east00 (it gives the fragment only now). This companion holds the golem's marble: drop
+     * it in the fountain. A marble lies in the fountain's area (the map fires the fountain 5 s after the drop), or
+     * another companion holds one, or one lies elsewhere on the map or in the leader's bag while he stands on it: wait,
+     * up to {@code fountainWaitMs} from the reward's start. Otherwise take east00.
+     */
+    static Fountain fountain(boolean agentHolds, boolean companionHolds, boolean leaderHolds, boolean lyingInArea,
+                             boolean lyingElsewhere, boolean leaderHere, int fountainState, long sinceRewardMs,
+                             long fountainWaitMs) {
+        if (fountainState > 0) return Fountain.EXIT;
+        if (agentHolds) return Fountain.DROP_MARBLE;
+        boolean marbleToCome = lyingInArea || companionHolds || (leaderHere && (lyingElsewhere || leaderHolds));
+        return marbleToCome && sinceRewardMs < fountainWaitMs ? Fountain.WAIT : Fountain.EXIT;
+    }
+
     /** A decided leave goes once no companion in the event holds the golem's marble, or its hand-over ran out of time. */
     static boolean leaveGoes(int holders, long sinceDecidedMs, long handOverTimeoutMs) {
         return holders <= 0 || sinceDecidedMs >= handOverTimeoutMs;

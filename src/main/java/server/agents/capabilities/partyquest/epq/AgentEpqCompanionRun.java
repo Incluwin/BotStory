@@ -1,6 +1,7 @@
 package server.agents.capabilities.partyquest.epq;
 
 import client.Character;
+import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
@@ -12,6 +13,7 @@ import server.agents.integration.AgentPartySnapshot;
 import server.agents.perception.AgentMapPerception;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.maps.MapItem;
+import server.maps.Reactor;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -37,6 +39,8 @@ final class AgentEpqCompanionRun {
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.CLEAR_WAIT_MS");
     static final long GOLEM_MARBLE_LEADER_FIRST_MS = config.AgentTuning.longValue(
             "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.GOLEM_MARBLE_LEADER_FIRST_MS");
+    static final long FOUNTAIN_WAIT_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.FOUNTAIN_WAIT_MS");
     static final String QUEST_KEY = "epq";
 
     private AgentEpqCompanionRun() {
@@ -289,9 +293,15 @@ final class AgentEpqCompanionRun {
                 coordinate(session, narrator, "golem-marble", AgentEpqCompanionPlay.golemMarbleLine(leader.getName()));
             }
         }
-        String why = AgentEpqCompanionPlay.leaveWhy(leader != null, leader == null ? 0 : leader.getHp(),
-                leaderInEvent, leaderLeadsLiveParty(session), onBossMap, nowMs - clearSeenAtMs, CLEAR_WAIT_MS);
-        if (why == null && leaderStands && leader.getMapId() == AgentEpqDefinition.REWARD_MAP) {
+        // At the fountain (Step 2.11) the companions take east00 themselves (reward); they leave through the event's
+        // exit only when one is still in the event CLEAR_WAIT_MS after the reward began (east00 refused it: stuck).
+        boolean atTheFountain = session.phase().ordinal() >= AgentEpqSession.Phase.REWARD.ordinal();
+        String why = atTheFountain
+                ? (nowMs - session.rewardStartedAtMs(nowMs) >= CLEAR_WAIT_MS && companionAtTheFountain(session)
+                ? "stuck" : null)
+                : AgentEpqCompanionPlay.leaveWhy(leader != null, leader == null ? 0 : leader.getHp(), leaderInEvent,
+                leaderLeadsLiveParty(session), onBossMap, nowMs - clearSeenAtMs, CLEAR_WAIT_MS);
+        if (why == null && !atTheFountain && leaderStands && leader.getMapId() == AgentEpqDefinition.REWARD_MAP) {
             if (session.cancelLeave()) {
                 log.info("EPQ after clear: session={} action=stay why=out00 leader={}", session.sessionId(),
                         leader.getName());
@@ -384,6 +394,83 @@ final class AgentEpqCompanionRun {
             }
         }
         AgentEpqCoordinator.actions().stop(entry);
+    }
+
+    /** A companion of the run still stands in its bound event on the reward map. */
+    private static boolean companionAtTheFountain(AgentEpqSession session) {
+        for (AgentEpqMemberState member : session.members()) {
+            if (member.memberType() != AgentEpqMemberState.MemberType.AGENT) continue;
+            Character agent = AgentEpqCoordinator.character(member.characterId());
+            if (inBoundEvent(session, agent) && agent.getMapId() == AgentEpqDefinition.REWARD_MAP) return true;
+        }
+        return false;
+    }
+
+    // ---- the fountain ----
+
+    /**
+     * A companion on the reward map, on its own tick (Step 2.11). The fountain is an item reactor: the golem's marble
+     * dropped in its area fires it 5 s later (52000 EXP to everyone on the map), and east00 then gives each leaver an
+     * Altaire Fragment. A companion holding the marble drops it there itself (E17a); the others wait while a marble
+     * lies in the fountain, while another companion holds one, or while one lies elsewhere or in the leader's bag with
+     * him on the map (E17b once when he holds it), up to FOUNTAIN_WAIT_MS from the reward's start. Then, or once the
+     * fountain fired, they take east00 (E17c once). Never a hit on the fountain.
+     */
+    static void reward(AgentEpqSession session, AgentRuntimeEntry entry, Character agent, AgentEpqMemberState member,
+                       long nowMs) {
+        var actions = AgentEpqCoordinator.actions();
+        Reactor fountain = agent.getMap() == null ? null
+                : agent.getMap().getReactorById(AgentEpqDefinition.REWARD_REACTOR);
+        Character leader = AgentEpqCoordinator.character(session.eventLeaderId());
+        boolean leaderHere = leader != null && leader.getHp() > 0 && inBoundEvent(session, leader)
+                && leader.getMap() == agent.getMap();
+        boolean agentHolds = actions.itemCount(agent, AgentEpqDefinition.GOLEMS_MARBLE) > 0;
+        boolean leaderHolds = leaderHere && actions.itemCount(leader, AgentEpqDefinition.GOLEMS_MARBLE) > 0;
+        boolean companionHolds = false;
+        for (AgentEpqMemberState other : session.members()) {
+            if (other.memberType() != AgentEpqMemberState.MemberType.AGENT || other.characterId() == agent.getId()) {
+                continue;
+            }
+            Character companion = AgentEpqCoordinator.character(other.characterId());
+            if (inBoundEvent(session, companion) && companion.getMap() == agent.getMap()
+                    && actions.itemCount(companion, AgentEpqDefinition.GOLEMS_MARBLE) > 0) {
+                companionHolds = true;
+            }
+        }
+        java.awt.Rectangle area = fountain == null ? null : fountain.getArea();
+        boolean lyingInArea = false;
+        boolean lyingElsewhere = false;
+        for (MapItem drop : AgentMapPerception.items(agent.getMap())) {
+            if (drop == null || drop.isPickedUp() || drop.getItemId() != AgentEpqDefinition.GOLEMS_MARBLE
+                    || drop.getPosition() == null) {
+                continue;
+            }
+            if (area != null && area.contains(drop.getPosition())) lyingInArea = true;
+            else lyingElsewhere = true;
+        }
+        int state = fountain == null ? 1 : fountain.getState(); // no fountain: nothing to wait for
+        switch (AgentEpqCompanionPlay.fountain(agentHolds, companionHolds, leaderHolds, lyingInArea, lyingElsewhere,
+                leaderHere, state, nowMs - session.rewardStartedAtMs(nowMs), FOUNTAIN_WAIT_MS)) {
+            case DROP_MARBLE -> {
+                if (AgentEpqCoordinator.dropAt(session, entry, agent, InventoryType.ETC,
+                        AgentEpqDefinition.GOLEMS_MARBLE, fountain.getPosition(), member, nowMs, "reward-fountain")) {
+                    coordinate(session, agent, "fountain-dropped", AgentEpqCompanionPlay.FOUNTAIN_DROPPED);
+                }
+            }
+            case WAIT -> {
+                actions.stop(entry);
+                if (leaderHolds) {
+                    coordinate(session, agent, "fountain-hint",
+                            AgentEpqCompanionPlay.fountainHintLine(leader.getName()));
+                }
+            }
+            default -> {
+                coordinate(session, agent, "see-you", AgentEpqCompanionPlay.SEE_YOU);
+                if (AgentEpqCoordinator.enterPortal(entry, agent, 1, member, nowMs)) {
+                    AgentEpqCoordinator.transition(session, AgentEpqSession.Phase.EXITING, nowMs);
+                }
+            }
+        }
     }
 
     /** A golem's marble lies on this leader's map. */

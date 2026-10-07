@@ -1258,6 +1258,10 @@ tuning:
     # Purpose: Gives the leader first claim on the golem's marble before a companion picks it up for the fountain.
     # Technical: Counted from the marble's drop time; then only the work Agent may loot 4001164 on 930000600 (AgentEpqSessionRegistry.canLootExclusive), and no companion once they decided to leave. Stock runs keep today's loot.
     server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.GOLEM_MARBLE_LEADER_FIRST_MS: '15000'
+    # Values: 15000-120000 milliseconds. Recommended: 45000.
+    # Purpose: Bounds how long companions wait on the reward map for their leader to drop the golem's marble in the fountain (everyone on the map gets its EXP, and a fragment on the way out); then they take the exit.
+    # Technical: Counted from the REWARD phase; skipped when no marble is held or lying there, when the fountain already fired (reactor 3008000 state > 0), or when the leader left. A companion holding the marble drops it at once. Companion runs only.
+    server.agents.capabilities.partyquest.epq.AgentEpqCompanionRun.FOUNTAIN_WAIT_MS: '45000'
 
     # Values: 250-3000 milliseconds. Recommended: 650 to prevent repeated portal, NPC, item-drop, or reactor inputs before the prior server action settles.
     # Purpose: Spaces ordinary OPQ interactions without slowing independent workers assigned to other rooms.

@@ -279,7 +279,9 @@ public final class AgentEpqCoordinator {
                 if (session.phase().ordinal() >= AgentEpqSession.Phase.REWARD.ordinal()
                         || (AgentEpqTerminationService.pastTheClear(session.eventInstance())
                         && agent.getEventInstance() == session.eventInstance())) {
-                    reward(session, entry, agent, member, nowMs);
+                    // Step 2.11: a companion run's companions finish at the fountain without hitting it.
+                    if (session.companionAdopted()) AgentEpqCompanionRun.reward(session, entry, agent, member, nowMs);
+                    else reward(session, entry, agent, member, nowMs);
                 } else {
                     actions().stop(entry);
                 }
@@ -1410,7 +1412,8 @@ public final class AgentEpqCoordinator {
         Item item = inventory == null ? null : inventory.findById(itemId);
         // This helper is private to the EPQ coordinator. Its objective items must
         // remain usable even if the generic loot capability reserved the stack.
-        boolean epqOwned = AgentEpqDefinition.EXCLUSIVE_ITEMS.contains(itemId);
+        boolean epqOwned = AgentEpqDefinition.EXCLUSIVE_ITEMS.contains(itemId)
+                || itemId == AgentEpqDefinition.GOLEMS_MARBLE; // only a companion run's code drops it
         if (item == null || item.getQuantity() <= 0
                 || (!epqOwned && !AgentInventoryReservationRuntime.mayConsume(
                 entry, item, System.currentTimeMillis()))) return false;
