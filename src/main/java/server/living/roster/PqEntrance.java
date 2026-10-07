@@ -25,8 +25,9 @@ import java.util.function.Supplier;
  * A party quest's entrance as companion runs go in by it (P6b HPQ step 5): Lakelis's for KPQ, Tory's for HPQ. Each has
  * its quest's definition (the event, the recruit map, the timer), its entry NPC, the seats a lineup takes, the monsters
  * a companion is weighed against without a clear time, the voice at the desk, and the Agent layer's own admission
- * words, session registry and pace profile, never another quest's. Potions are weighed alike at every entrance
- * (AgentSupplyReadiness.shortfall(PARTY_QUEST), the 2026-10-02 decision), so an entrance has no readiness of its own.
+ * words, session registry and pace profile, never another quest's. Potions are weighed by the quest's own standard
+ * (AgentSupplyReadiness.shortfall(partyQuest(key)): PARTY_QUEST_STANDARDS, else the default), so an entrance has no
+ * readiness of its own beyond its key.
  * A key without an entrance has none: {@link #of} throws, and the desk leaves its NPC stock.
  */
 public final class PqEntrance {

@@ -385,7 +385,8 @@ public final class CompanionPartyQuestService {
     }
 
     /**
-     * Every loaded companion of the party short of the readiness standard looks at its potions on its next tick
+     * Every loaded companion of the party short of the readiness standard of the quest whose entry NPC the leader
+     * stands at (PqEntrance.keyAt, the standard its restock duty there fills) looks at its potions on its next tick
      * (AgentSupplyReadiness.checkSoon), so one that can go sets off now. Memory only, on the leader's I/O thread.
      */
     private void checkShortSoon(Character leader) {
@@ -395,7 +396,8 @@ public final class CompanionPartyQuestService {
                     : null;
             Character bot = runtime == null ? null : AgentRuntimeIdentityRuntime.bot(runtime);
             if (bot != null && !AgentSupplyReadiness.shortfall(hpPotions.applyAsInt(bot), mpPotions.applyAsInt(bot),
-                    AgentSupplyReadiness.needsManaPotions(bot), AgentSupplyReadiness.Activity.PARTY_QUEST).none()) {
+                    AgentSupplyReadiness.needsManaPotions(bot),
+                    AgentSupplyReadiness.Activity.partyQuest(PqEntrance.keyAt(leader.getMapId()))).none()) {
                 AgentSupplyReadiness.checkSoon(runtime);
             }
         }
@@ -737,8 +739,8 @@ public final class CompanionPartyQuestService {
 
     /**
      * Why the quest's admission would refuse the companion (its entrance's words for it), or why it would go in
-     * unready: short of the Agents' one readiness standard (AgentSupplyReadiness.shortfall(PARTY_QUEST), the one its
-     * own restock fills, at every entrance) on HP potions, or on mana potions when it fights with skills (every job
+     * unready: short of the quest's readiness standard (AgentSupplyReadiness.shortfall(partyQuest(key)), the one its
+     * own restock fills at that entrance) on HP potions, or on mana potions when it fights with skills (every job
      * past a beginner's), or short of PARTY_QUEST_AMMO projectiles for a claw, bow, crossbow or gun (only ever asked
      * for: nothing restocks ammo); null: it can go.
      */
@@ -749,10 +751,11 @@ public final class CompanionPartyQuestService {
         }
         AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(hpPotions.applyAsInt(bot),
                 mpPotions.applyAsInt(bot), AgentSupplyReadiness.needsManaPotions(bot),
-                AgentSupplyReadiness.Activity.PARTY_QUEST);
+                AgentSupplyReadiness.Activity.partyQuest(entrance.key()));
         return shortfall.hp() > 0 ? DeskLines.LOW_ON_POTIONS
                 : shortfall.mp() > 0 ? DeskLines.LOW_ON_MANA
-                : AgentSupplyReadiness.ammoShortfall(ammo.applyAsInt(bot), AgentSupplyReadiness.Activity.PARTY_QUEST) > 0
+                : AgentSupplyReadiness.ammoShortfall(ammo.applyAsInt(bot),
+                        AgentSupplyReadiness.Activity.partyQuest(entrance.key())) > 0
                 ? DeskLines.LOW_ON_AMMO : null;
     }
 
