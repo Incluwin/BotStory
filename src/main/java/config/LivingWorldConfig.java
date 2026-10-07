@@ -309,6 +309,20 @@ public class LivingWorldConfig {
     /** The minutes a hired hand spends in your party before it asks (a citizen asks after 30, PopulationConfig). */
     public int COMPANION_BUDDY_HIRE_PARTY_MINUTES = 30;
 
+    // Boss expeditions with companions (P7, docs/BOT_MANAGEMENT_PLAN.md flow 4)
+    /**
+     * Boss expeditions whose entry NPC offers an owner who creates or joins the expedition "My party will register
+     * too.", a comma list of the keys {@link CompanionBossKeys#KNOWN} names (such as "easy_balrog", Mu Young's): the
+     * owner's party companions on her map sign up through her own window and fight beside the owner. Empty = off: the
+     * NPC, the boss and companion loot are stock.
+     */
+    public String COMPANION_BOSS_ENABLED_TYPES = "";
+    /**
+     * While a signed-up companion is in the fight, the server moves the boss for all of it and its attacks reach the
+     * companions (the Poison Golem mechanism). false = the stock choice of controller (touch damage only for bots).
+     */
+    public boolean COMPANION_BOSS_SERVER_AUTHORITY = true;
+
     // Rumors
     public int RUMOR_TICK_MS = 60000;
     public int RUMOR_LINE_PACING_MS = 3500;
@@ -330,6 +344,19 @@ public class LivingWorldConfig {
     public boolean companionRestockBossMap(int mapId) {
         for (String entry : COMPANION_RESTOCK_BOSS_MAPS == null ? new String[0] : COMPANION_RESTOCK_BOSS_MAPS.split(",")) {
             if (!entry.isBlank() && entry.trim().equals(Integer.toString(mapId))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** True when COMPANION_BOSS_ENABLED_TYPES lists {@code bossKey} (any case, spaces around it ignored). */
+    public boolean companionBossEnabled(String bossKey) {
+        if (bossKey == null || COMPANION_BOSS_ENABLED_TYPES == null) {
+            return false;
+        }
+        for (String entry : COMPANION_BOSS_ENABLED_TYPES.split(",")) {
+            if (!entry.isBlank() && entry.trim().equalsIgnoreCase(bossKey.trim())) {
                 return true;
             }
         }
@@ -506,6 +533,12 @@ public class LivingWorldConfig {
             if (!id.isBlank() && !id.trim().matches("[1-9][0-9]{0,8}")) {
                 throw new IllegalArgumentException(
                         "living_world.COMPANION_RESTOCK_BOSS_MAPS must list map ids, not \"" + id.trim() + "\"");
+            }
+        }
+        for (String key : COMPANION_BOSS_ENABLED_TYPES == null ? new String[0]
+                : COMPANION_BOSS_ENABLED_TYPES.split(",")) {
+            if (!key.isBlank() && !CompanionBossKeys.known(key)) {
+                throw new IllegalArgumentException(CompanionBossKeys.message());
             }
         }
     }

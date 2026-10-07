@@ -929,6 +929,16 @@ living_world:
     COMPANION_BUDDY_REQUESTS: true
     COMPANION_BUDDY_FRIENDSHIP_LEVEL: 4
     COMPANION_BUDDY_HIRE_PARTY_MINUTES: 30
+    # Boss expeditions with companions (P7 Part A, 2026-10-07; docs/BOT_MANAGEMENT_PLAN.md flow 4): for each type listed
+    # (a comma list of config.CompanionBossKeys: "easy_balrog", Mu Young), the entry NPC offers an owner who creates or
+    # joins the expedition "My party will register too.". The owner's party companions on her map walk up and sign up
+    # through her own window (level 50+, the list open and not full), fight beside the owner, wait outside when they go
+    # down, and follow the owner out. Empty = the kill switch: Mu Young, Balrog and companion loot exactly as stock.
+    # SERVER_AUTHORITY: while a signed-up companion is in the fight, the server moves Balrog for all of it and its
+    # attacks reach the companions (the Poison Golem mechanism); false = the stock choice (touch damage only for bots).
+    # Timings: agent-engine.yaml AgentBossRunSession.
+    COMPANION_BOSS_ENABLED_TYPES: ""
+    COMPANION_BOSS_SERVER_AUTHORITY: true
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500
 
