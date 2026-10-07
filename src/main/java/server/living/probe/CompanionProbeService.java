@@ -1,6 +1,8 @@
 package server.living.probe;
 
 import client.BotClient;
+import client.BuddyList;
+import client.BuddylistEntry;
 import client.Character;
 import client.Client;
 import client.inventory.InventoryType;
@@ -70,7 +72,7 @@ public final class CompanionProbeService {
     private CompanionProbeService() {
     }
 
-    public sealed interface Request permits Help, Log, Invite, Talk, Refresh, Imitate, GiveItem, Status {
+    public sealed interface Request permits Help, Log, Invite, Talk, Refresh, Imitate, GiveItem, Status, Buddy {
     }
 
     /** Print the usage; {@code problem} is null when no arguments were given. */
@@ -100,6 +102,10 @@ public final class CompanionProbeService {
     public record Status() implements Request {
     }
 
+    /** A buddy request to the GM from the bot {@code name}, as if the bot had added the GM (probe 8). */
+    public record Buddy(String name) implements Request {
+    }
+
     public static List<String> usage() {
         return List.of(
                 "!companionprobe log on|off - echo every packet your client sends (pink = probe opcodes)",
@@ -110,7 +116,8 @@ public final class CompanionProbeService {
                 "!companionprobe refresh [npcId] - re-send text 2 s later into the open window (probe 6)",
                 "!companionprobe imitate <name> <npcId " + IMITATE_MIN_NPC_ID + "-" + IMITATE_MAX_NPC_ID + "> (probe 4)",
                 "!companionprobe item [itemId=" + DEFAULT_ITEM_ID + "] - one item to bind to a hotkey (probe 2)",
-                "!companionprobe status - your party and the probe hints");
+                "!companionprobe status - your party and the probe hints",
+                "!companionprobe buddy <botName> - a stock buddy request from that bot to you (probe 8)");
     }
 
     public static Request parse(String[] params) {
@@ -177,6 +184,7 @@ public final class CompanionProbeService {
                 yield itemId == null || itemId <= 0 ? new Help("Usage: item [itemId]") : new GiveItem(itemId);
             }
             case "status" -> new Status();
+            case "buddy" -> params.length == 2 ? new Buddy(params[1]) : new Help("Usage: buddy <botName>");
             default -> new Help("Unknown subcommand: " + params[0]);
         };
     }
@@ -202,6 +210,7 @@ public final class CompanionProbeService {
             case Imitate imitate -> imitate(gm, imitate.name(), imitate.npcId());
             case GiveItem give -> giveItem(gm, give.itemId());
             case Status ignored -> status(gm);
+            case Buddy buddy -> buddy(gm, buddy.name());
         }
     }
 
@@ -304,6 +313,43 @@ public final class CompanionProbeService {
         if (size >= 6) {
             gm.dropMessage(ECHO, "That party is full: probe 12 (does accepting still send op=3?).");
         }
+        warnIfNotObserving(gm);
+    }
+
+    /**
+     * Probe 8: the bot puts the GM on its own list and the world sends the GM the stock request,
+     * the same two steps {@code BuddylistModifyHandler} takes when a player adds someone who is
+     * online. Accepting sends BUDDYLIST_MODIFY mode 2 into the stock accept.
+     */
+    private static void buddy(Character gm, String name) {
+        Character bot = gm.getClient().getChannelServer().getPlayerStorage().getCharacterByName(name);
+        if (bot == null) {
+            gm.dropMessage(ECHO, name + " is not on your channel.");
+            return;
+        }
+        if (!(bot.getClient() instanceof BotClient)) {
+            gm.dropMessage(ECHO, bot.getName() + " is a human player; ask them to add you instead.");
+            return;
+        }
+        if (gm.getBuddylist().containsVisible(bot.getId())) {
+            gm.dropMessage(ECHO, bot.getName() + " is already on your buddy list. Probe 8: click Party and Whisper on "
+                    + "that row now, then again after " + bot.getName() + " leaves the world (bench it).");
+            return;
+        }
+        BuddyList botList = bot.getBuddylist();
+        if (!botList.contains(gm.getId())) {
+            botList.put(new BuddylistEntry(gm.getName(), "Default Group", gm.getId(), -1, true));
+        }
+        BuddyList.BuddyAddResult result = gm.getWorldServer().requestBuddyAdd(gm.getName(), bot.getClient().getChannel(),
+                bot.getId(), bot.getName());
+        if (result == BuddyList.BuddyAddResult.BUDDYLIST_FULL) {
+            gm.dropMessage(ECHO, "Your buddy list is full; delete someone first.");
+            return;
+        }
+        gm.dropMessage(ECHO, "Sent a buddy request from " + bot.getName() + ". Accept sends BUDDYLIST_MODIFY mode=2. Probe 8: "
+                + "with " + bot.getName() + " online, click Party (PARTY_OPERATION op=4?), Whisper and any find button "
+                + "(WHISPER request=0x44?); then bench " + bot.getName() + ": does the row go offline, and what do the "
+                + "same buttons send now?");
         warnIfNotObserving(gm);
     }
 

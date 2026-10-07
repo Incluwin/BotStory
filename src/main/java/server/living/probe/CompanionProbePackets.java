@@ -29,7 +29,7 @@ public final class CompanionProbePackets {
             RecvOpcode.PARTY_OPERATION, RecvOpcode.DENY_PARTY_REQUEST, RecvOpcode.SCRIPTED_ITEM,
             RecvOpcode.USE_ITEM, RecvOpcode.CHAR_INFO_REQUEST, RecvOpcode.BUDDYLIST_MODIFY,
             RecvOpcode.NPC_TALK_MORE, RecvOpcode.PLAYER_INTERACTION, RecvOpcode.CHANGE_KEYMAP,
-            RecvOpcode.MESSENGER, RecvOpcode.PARTY_SEARCH_START);
+            RecvOpcode.MESSENGER, RecvOpcode.PARTY_SEARCH_START, RecvOpcode.WHISPER);
     /** Movement, regen and keep-alive traffic that would bury the probe lines. */
     private static final Set<RecvOpcode> QUIET = EnumSet.of(
             RecvOpcode.PONG, RecvOpcode.MOVE_PLAYER, RecvOpcode.HEAL_OVER_TIME, RecvOpcode.MOVE_PET,
@@ -86,6 +86,10 @@ public final class CompanionProbePackets {
                     yield "target=" + target(p.readInt(), names);
                 }
                 case BUDDYLIST_MODIFY -> buddylist(p, names);
+                case WHISPER -> {
+                    byte request = p.readByte();
+                    yield "request=0x" + Integer.toHexString(request & 0xFF).toUpperCase() + " name=" + p.readString();
+                }
                 case NPC_TALK_MORE -> npcTalkMore(p);
                 case PLAYER_INTERACTION -> playerInteraction(p, names);
                 case CHANGE_KEYMAP -> keymap(p);

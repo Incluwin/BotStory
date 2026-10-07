@@ -85,6 +85,16 @@ class CompanionProbePacketsTest {
     }
 
     @Test
+    void whisperShowsTheRequestFlagsAndTheName() {
+        int whisper = RecvOpcode.WHISPER.getValue();
+
+        assertEquals("request=0x44 name=Hadrik",
+                CompanionProbePackets.summarize(whisper, new Bytes().b(0x44).str("Hadrik").array(), NO_NAMES));
+        assertEquals("request=0x6 name=Hadrik",
+                CompanionProbePackets.summarize(whisper, new Bytes().b(0x06).str("Hadrik").str("hi").array(), NO_NAMES));
+    }
+
+    @Test
     void namesQuietAndDecodedOpcodes() {
         assertEquals("PARTY_OPERATION(0x7C)", CompanionProbePackets.name(PARTY_OPERATION));
         assertEquals("UNKNOWN(0xFFF0)", CompanionProbePackets.name(0xFFF0));

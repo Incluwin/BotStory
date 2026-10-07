@@ -1,6 +1,8 @@
 package server.living.probe;
 
 import client.BotClient;
+import client.BuddyList;
+import client.BuddylistEntry;
 import client.Character;
 import client.Client;
 import net.packet.Packet;
@@ -14,6 +16,7 @@ import net.server.world.World;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import server.living.probe.CompanionProbeService.Buddy;
 import server.living.probe.CompanionProbeService.GiveItem;
 import server.living.probe.CompanionProbeService.Help;
 import server.living.probe.CompanionProbeService.Imitate;
@@ -120,6 +123,14 @@ class CompanionProbeServiceTest {
         assertInstanceOf(Help.class, parse("imitate", "Hadrik", "9906600"));
         assertInstanceOf(Help.class, parse("imitate", "Hadrik", "9999999"));
         assertInstanceOf(Help.class, parse("imitate", "Hadrik"));
+    }
+
+    @Test
+    void buddyNeedsAName() {
+        assertEquals(new Buddy("Hadrik"), parse("buddy", "Hadrik"));
+        assertEquals(new Buddy("Hadrik"), parse("BUDDY", "Hadrik"));
+        assertInstanceOf(Help.class, parse("buddy"));
+        assertInstanceOf(Help.class, parse("buddy", "Hadrik", "now"));
     }
 
     @Test
@@ -291,6 +302,52 @@ class CompanionProbeServiceTest {
         verify(gm, never()).sendPacket(any(Packet.class));
         verify(gm).dropMessage(eq(6), contains("is on channel 2"));
         assertFalse(InviteCoordinator.hasInvite(InviteType.PARTY, GM_ID));
+    }
+
+    @Test
+    void buddyFromABotPutsTheGmOnItsListAndSendsTheStockRequest() {
+        Character gm = gm();
+        BuddyList gmList = new BuddyList(20);
+        when(gm.getBuddylist()).thenReturn(gmList);
+        Client botClient = mock(BotClient.class);
+        when(botClient.getChannel()).thenReturn(1);
+        Character bot = character(9001, "Hadrik", botClient);
+        BuddyList botList = new BuddyList(20);
+        when(bot.getBuddylist()).thenReturn(botList);
+        channelStorage(gm).put("Hadrik", bot);
+        World world = mock(World.class);
+        when(gm.getWorldServer()).thenReturn(world);
+        when(world.requestBuddyAdd("Gm", 1, 9001, "Hadrik")).thenReturn(BuddyList.BuddyAddResult.OK);
+
+        CompanionProbeService.execute(gm, new String[]{"buddy", "Hadrik"});
+
+        verify(world).requestBuddyAdd("Gm", 1, 9001, "Hadrik");
+        BuddylistEntry entry = botList.get(GM_ID);
+        assertTrue(entry != null && entry.isVisible() && entry.getName().equals("Gm"));
+        verify(gm).dropMessage(eq(6), contains("Sent a buddy request from Hadrik"));
+    }
+
+    @Test
+    void buddyRefusesAHumanAndABotAlreadyOnTheList() {
+        Character gm = gm();
+        BuddyList gmList = new BuddyList(20);
+        when(gm.getBuddylist()).thenReturn(gmList);
+        Character human = character(9002, "Ann", mock(Client.class));
+        Client botClient = mock(BotClient.class);
+        Character bot = character(9001, "Hadrik", botClient);
+        ChannelStorage storage = channelStorage(gm);
+        storage.put("Ann", human);
+        storage.put("Hadrik", bot);
+        World world = mock(World.class);
+        when(gm.getWorldServer()).thenReturn(world);
+        gmList.put(new BuddylistEntry("Hadrik", "Default Group", 9001, 1, true));
+
+        CompanionProbeService.execute(gm, new String[]{"buddy", "Ann"});
+        CompanionProbeService.execute(gm, new String[]{"buddy", "Hadrik"});
+
+        verify(world, never()).requestBuddyAdd(any(), anyInt(), anyInt(), any());
+        verify(gm).dropMessage(eq(6), contains("Ann is a human player"));
+        verify(gm).dropMessage(eq(6), contains("Hadrik is already on your buddy list"));
     }
 
     private static Character gm() {
