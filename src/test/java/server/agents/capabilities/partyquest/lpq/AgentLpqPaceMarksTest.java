@@ -96,6 +96,20 @@ class AgentLpqPaceMarksTest {
     }
 
     @Test
+    void theKeyAtHisFeetOrInHisBagIsMarked() {
+        AgentLpqSession session = run(true, AgentLpqSession.Phase.STAGE_9, AgentLpqDefinition.stage(9).mapId());
+        session.narrateOnce("s9-start");
+        fx.tick(session, 3_000L);
+        assertEquals(0L, session.pace().snapshot().keyAtFeetAtMs());
+
+        fx.holds(crew.getFirst(), AgentLpqDefinition.BOSS_KEY, 1);
+        fx.tick(session, 4_000L);
+        fx.tick(session, 5_000L);
+
+        assertEquals(4_000L, session.pace().snapshot().keyAtFeetAtMs());
+    }
+
+    @Test
     void theClearAndADeathAreMarked() {
         AgentLpqSession session = run(true, AgentLpqSession.Phase.STAGE_3, AgentLpqDefinition.stage(3).mapId());
         session.narrateOnce("s3-start");
