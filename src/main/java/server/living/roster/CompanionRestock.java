@@ -26,7 +26,9 @@ import java.util.function.LongSupplier;
  * (an ACTIVE one; a held one goes and comes back quietly, back to the spot it waits at), and, at most once per
  * COMPANION_RESTOCK_ASK_EVERY_MS, that it cannot afford its potions or that a boss's gate has no shop. In a boss's
  * entry NPC's room (Mu Young's, while COMPANION_BOSS_ENABLED_TYPES lists Easy Balrog) it keeps that boss's standard,
- * says about when it will be back as it sets off, and says when no shop is in reach (P7, user decision 7).
+ * says about when it will be back as it sets off, and says when no shop is in reach (P7, user decision 7). A trip for
+ * projectiles alone (its potions are fine; 2026-10-07) says the same things in its ammo lines, naming what it shoots;
+ * a trip short of both says the potion lines.
  *
  * <p>Memory only: {@link #standing} answers on any thread, the callbacks on the Agent tick and only hand their lines to
  * companion-ops; it never reads the store or writes a row.</p>
@@ -36,6 +38,8 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     private final LongSupplier clock;
     /** "characterId intent" -> when that companion last said that line on its own. */
     private final Map<String, Long> askedAt = new ConcurrentHashMap<>();
+    /** Character id -> what it shoots, while its trip under way is one for projectiles alone. */
+    private final Map<Integer, String> ammoTrips = new ConcurrentHashMap<>();
 
     public CompanionRestock(LivingWorld world) {
         this(world, System::currentTimeMillis);
@@ -120,6 +124,22 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         if (at == null || held(at)) {
             return; // a held companion goes quietly: its owner is inside the run
         }
+        Character bot = bot(agentCharacterId);
+        if (bot != null && ammoOnly(AgentSupplyReadiness.shortfall(bot, activity))) {
+            String word = CompanionRestockLines.ammoWord(bot);
+            ammoTrips.put(agentCharacterId, word);
+            if (boss(activity)) {
+                int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
+                world.executor().submit("companion.restock.boss_go_ammo " + agentCharacterId,
+                        () -> BossRunLines.say(world, bot(agentCharacterId), BossRunLines.GO_AMMO, null, minutes, null,
+                                word));
+                return;
+            }
+            world.executor().submit("companion.restock.go_ammo " + agentCharacterId,
+                    () -> say(agentCharacterId, CompanionRestockLines.GO_AMMO, word));
+            return;
+        }
+        ammoTrips.remove(agentCharacterId);
         if (boss(activity)) {
             int minutes = (int) DeskLines.minutes(etaMs / 1000.0d);
             world.executor().submit("companion.restock.boss_go " + agentCharacterId,
@@ -132,26 +152,36 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
 
     /**
      * It did not set off: too broke says so, and short at a boss's entrance with no shop in reach (an ACTIVE companion)
-     * says there is none out here; each at most once per COMPANION_RESTOCK_ASK_EVERY_MS.
+     * says there is none out here; each at most once per COMPANION_RESTOCK_ASK_EVERY_MS, in its ammo words when only
+     * projectiles are short (one memory per news: a potion and an ammo broke line never both within it).
      */
     @Override
     public void refused(int agentCharacterId, AgentSupplyReadiness.Activity activity,
                         AgentSupplyReadiness.Refusal why, AgentSupplyReadiness.Shortfall shortfall, int missingMesos) {
+        String word = ammoOnly(shortfall) ? CompanionRestockLines.ammoWord(bot(agentCharacterId)) : null;
         if (why == AgentSupplyReadiness.Refusal.CANNOT_AFFORD && mayAsk(agentCharacterId, CompanionRestockLines.BROKE,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             world.executor().submit("companion.restock.broke " + agentCharacterId,
-                    () -> say(agentCharacterId, CompanionRestockLines.BROKE));
+                    () -> say(agentCharacterId, word != null ? CompanionRestockLines.BROKE_AMMO
+                            : CompanionRestockLines.BROKE, word));
         } else if (why == AgentSupplyReadiness.Refusal.NO_SUPPLIER && boss(activity) && unheld(agentCharacterId)
                 && mayAsk(agentCharacterId, CompanionRestockLines.NO_SHOP,
                 world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
             world.executor().submit("companion.restock.no_shop " + agentCharacterId,
-                    () -> say(agentCharacterId, CompanionRestockLines.NO_SHOP));
+                    () -> say(agentCharacterId, word != null ? CompanionRestockLines.NO_SHOP_AMMO
+                            : CompanionRestockLines.NO_SHOP, word));
         }
     }
 
+    /**
+     * The trip is over: an ACTIVE companion says it is back (READY), or too broke (SHORT_MESOS, once per
+     * COMPANION_RESTOCK_ASK_EVERY_MS) in its ammo words when the trip set off for projectiles alone or ends short of
+     * them alone ({@link #ammoWordAtTheEnd}); a held one walks back to its spot.
+     */
     @Override
     public void finished(int agentCharacterId, AgentSupplyReadiness.Activity activity,
                          AgentSupplyReadiness.Outcome outcome) {
+        String word = ammoTrips.remove(agentCharacterId); // first: a trip that ends unheard leaves no word behind
         CompanionSettingsApplier.Bound at = world.roster().settings().boundTo(agentCharacterId);
         if (at == null) {
             return;
@@ -162,12 +192,27 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
         }
         if (outcome == AgentSupplyReadiness.Outcome.READY) {
             world.executor().submit("companion.restock.back " + agentCharacterId,
-                    () -> say(agentCharacterId, CompanionRestockLines.BACK));
+                    () -> say(agentCharacterId, word != null ? CompanionRestockLines.BACK_AMMO
+                            : CompanionRestockLines.BACK, word));
         } else if (outcome == AgentSupplyReadiness.Outcome.SHORT_MESOS
                 && mayAsk(agentCharacterId, CompanionRestockLines.BROKE, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
+            String broke = word != null ? word : ammoWordAtTheEnd(agentCharacterId, activity);
             world.executor().submit("companion.restock.broke " + agentCharacterId,
-                    () -> say(agentCharacterId, CompanionRestockLines.BROKE));
+                    () -> say(agentCharacterId, broke != null ? CompanionRestockLines.BROKE_AMMO
+                            : CompanionRestockLines.BROKE, broke));
         }
+    }
+
+    /**
+     * The ammo word for a trip that set off short of potions and projectiles and ends short of projectiles alone (it
+     * bought the potions; its stars were left unaffordable), so its broke line is about what is still short; null
+     * otherwise. A READY trip is short of nothing, so its back line keeps the word it set off with. Reads the bag: on
+     * the Agent tick, where the rule's callbacks run.
+     */
+    private static String ammoWordAtTheEnd(int agentCharacterId, AgentSupplyReadiness.Activity activity) {
+        Character bot = bot(agentCharacterId);
+        return bot != null && ammoOnly(AgentSupplyReadiness.shortfall(bot, activity))
+                ? CompanionRestockLines.ammoWord(bot) : null;
     }
 
     // ---- on companion-ops -------------------------------------------------------------------
@@ -193,7 +238,8 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     /**
      * The owner came into a party boss's gate map ({@code mapId}, COMPANION_RESTOCK_BOSS_MAPS), from which no shop
      * is reachable: each of their companions with them (on that map, or following them in) that is short of the
-     * standard says so, once per COMPANION_RESTOCK_ASK_EVERY_MS. Entry is never held up.
+     * standard says so (in its ammo words when only projectiles are short), once per COMPANION_RESTOCK_ASK_EVERY_MS.
+     * Entry is never held up.
      */
     void bossGate(int ownerId, int mapId) {
         Character owner = world.roster().onlineCharacter(ownerId);
@@ -210,9 +256,16 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
                     || bot.getMapId() != mapId && !AgentModeStateRuntime.following(runtime)) {
                 continue;
             }
-            if (!AgentSupplyReadiness.shortfall(bot, AgentSupplyReadiness.Activity.PARTY_QUEST).none()
+            AgentSupplyReadiness.Shortfall lacking =
+                    AgentSupplyReadiness.shortfall(bot, AgentSupplyReadiness.Activity.PARTY_QUEST);
+            if (!lacking.none()
                     && mayAsk(id, CompanionRestockLines.NO_SHOP, world.config().COMPANION_RESTOCK_ASK_EVERY_MS)) {
-                CompanionRestockLines.say(world, bot, CompanionRestockLines.NO_SHOP);
+                if (lacking.potionsNone()) {
+                    CompanionRestockLines.say(world, bot, CompanionRestockLines.NO_SHOP_AMMO,
+                            CompanionRestockLines.ammoWord(bot));
+                } else {
+                    CompanionRestockLines.say(world, bot, CompanionRestockLines.NO_SHOP);
+                }
             }
         }
     }
@@ -229,6 +282,11 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
     private boolean unheld(int agentCharacterId) {
         CompanionSettingsApplier.Bound at = world.roster().settings().boundTo(agentCharacterId);
         return at != null && !held(at);
+    }
+
+    /** True when only projectiles are short: the trip's lines are its ammo lines. */
+    private static boolean ammoOnly(AgentSupplyReadiness.Shortfall shortfall) {
+        return shortfall != null && shortfall.potionsNone() && shortfall.ammo() > 0;
     }
 
     /** True for a boss's activity (its key a boss run's, such as easy_balrog): it kept that boss's standard. */
@@ -257,6 +315,10 @@ public final class CompanionRestock implements AgentSupplyReadiness.Rule {
 
     private void say(int agentCharacterId, String intent) {
         CompanionRestockLines.say(world, bot(agentCharacterId), intent);
+    }
+
+    private void say(int agentCharacterId, String intent, String ammoWord) {
+        CompanionRestockLines.say(world, bot(agentCharacterId), intent, ammoWord);
     }
 
     private static Character bot(int agentCharacterId) {

@@ -13,6 +13,7 @@ import server.agents.capabilities.combat.AgentCombatAttackRuntime;
 import server.agents.capabilities.combat.AgentCombatConfig;
 import server.agents.capabilities.combat.AgentCombatPlanRuntime;
 import server.agents.capabilities.combat.AgentCombatSkillConstraintState;
+import server.agents.capabilities.supplies.AgentAmmoService;
 import server.agents.capabilities.supplies.AgentPotionService;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentInventoryGatewayRuntime;
@@ -1117,21 +1118,40 @@ public final class AgentEpqCoordinator {
         return ground == null ? new Point(pond.x + offset, agent.getPosition().y) : ground;
     }
 
-    private static List<Integer> stageTwoLurerIds(AgentEpqSession session) {
+    /** The run's stage-2 lurers: its living, present non-carrier companions, gated as the run is adopted or not. */
+    static List<Integer> stageTwoLurerIds(AgentEpqSession session) {
         int carrierId = workAgentId(session);
-        return session.members().stream()
+        List<Character> nonCarriers = session.members().stream()
                 .filter(member -> member.memberType() == AgentEpqMemberState.MemberType.AGENT)
                 .map(AgentEpqMemberState::characterId)
                 .filter(characterId -> characterId != carrierId)
                 .filter(characterId -> !session.departed(characterId))
                 .map(AgentEpqCoordinator::character)
                 .filter(java.util.Objects::nonNull)
+                .toList();
+        return stageTwoLurerIds(nonCarriers,
+                candidate -> stageTwoLurerCandidate(candidate, session.companionAdopted()));
+    }
+
+    /** The two weakest living non-carriers that may lure ({@code lurerCandidate}), weakest first. */
+    static List<Integer> stageTwoLurerIds(List<Character> nonCarrierAgents,
+                                          java.util.function.Predicate<Character> lurerCandidate) {
+        return nonCarrierAgents.stream()
                 .filter(candidate -> candidate.getHp() > 0)
+                .filter(lurerCandidate)
                 .sorted(Comparator.comparingInt(candidate ->
                         candidate.calculateMaxBaseDamage(candidate.getTotalWatk())))
                 .limit(2)
                 .map(Character::getId)
                 .toList();
+    }
+
+    /**
+     * Lurers attack only with skill plans: in a companion run a ranged member with nothing to shoot
+     * (AgentAmmoService.dryShooter) would walk after its bug forever, so it lures no bug. A stock run keeps them all.
+     */
+    static boolean stageTwoLurerCandidate(Character candidate, boolean companionRun) {
+        return !companionRun || !AgentAmmoService.dryShooter(candidate);
     }
 
     private static Monster stageTwoSideTarget(

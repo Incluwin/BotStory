@@ -35,16 +35,18 @@ import java.util.function.LongSupplier;
 
 /**
  * The standing readiness duty on the Agent tick (AgentSupplyReadiness). An Agent the host gave a duty looks at its
- * potions every CHECK_INTERVAL_MS; short of the standard on a town map, or a map without monsters that is no travel
- * station (a party quest's entry, a lobby), whose nearest potion supplier is at most STANDING_MAX_HOPS away
- * (DESK_MAX_HOPS on a party quest's recruit map), from a map the host lets it shop from (never a boss's gate), and free
- * (alive, outside an event, no objective, shop visit, trade, queued script task or Activity Host controller of its own,
- * and, while it follows, its anchor still on its map), it offers procurement a readiness request, which one visit to
- * the supplier fills for both HP and MP. It never goes when the trip cannot be paid for (the ammo top-up at a Victoria
- * supplier plus the potions to the standard at the supplier's cheapest potion, against its purse less its wallet
- * reserve) or when its Use tab has no room for a new kind of potion; it tells the host once and waits until its purse
- * grows by what it lacked, a slot frees, or it lacks fewer potions. Trips from one town cut short twice in a row (its
- * owner called it back, the shop failed) end its tries there until it has been elsewhere.
+ * potions and projectiles every CHECK_INTERVAL_MS; short of the standard on a town map, or a map without monsters
+ * that is no travel station (a party quest's entry, a lobby), whose nearest potion supplier is at most
+ * STANDING_MAX_HOPS away (DESK_MAX_HOPS on a party quest's recruit map), from a map the host lets it shop from (never
+ * a boss's gate), and free (alive, outside an event, no objective, shop visit, trade, queued script task or Activity
+ * Host controller of its own, and, while it follows, its anchor still on its map), it offers procurement a readiness
+ * request, which one visit to the supplier fills for HP, MP and projectiles. It never goes when the trip cannot be
+ * paid for (the ammo top-up at a Victoria supplier plus the potions to the standard at the supplier's cheapest
+ * potion, and for a trip short of ammo alone the readiness ammo at the supplier, against its purse less its wallet
+ * reserve) or when its Use tab has no room for a new kind of potion or the new ammo stacks; it tells the host once and
+ * waits until its purse grows by what it lacked, a slot frees, or it lacks fewer potions or projectiles. Trips from
+ * one town cut short twice in a row (its owner called it back, the shop failed) end its tries there until it has
+ * been elsewhere.
  *
  * <p>A duty holder's critical resupply ({@link #criticalGate}) passes a lighter check: it needs only the critical
  * deficit (back to POT_STOP) at the supplier's cheapest potion, without the ammo top-up. When even that cannot be
@@ -122,11 +124,14 @@ public final class AgentSupplyReadinessRuntime {
             return null;
         }
         state.clearVerdict();
-        AgentResourceCategory category = shortfall.hp() > 0
+        // an ammo-only trip still asks for the potion category: procurement picks the potion supplier by it, and that
+        // one visit fills potions and ammo; the trip is judged by the readiness standard (judged)
+        AgentResourceCategory category = shortfall.hp() > 0 || shortfall.mp() <= 0
                 ? AgentResourceCategory.HP_POTION : AgentResourceCategory.MP_POTION;
         AgentProcurementRequest request = new AgentProcurementRequest(
                 REQUEST_PREFIX + category + ':' + nowMs, category,
-                shortfall.hp() > 0 ? shortfall.hp() : shortfall.mp(), Math.max(0, assessment.spendable()),
+                shortfall.hp() > 0 ? shortfall.hp() : shortfall.mp() > 0 ? shortfall.mp() : shortfall.ammo(),
+                Math.max(0, assessment.spendable()),
                 List.of(AgentProcurementMethod.NPC_SHOP), AgentSupplyUrgency.CRITICAL, "",
                 nowMs + AgentSupplyReadiness.requestTtlMs(assessment.hops()));
         state.offer(request, activity, assessment.hops(), nowMs + AgentSupplyReadiness.tripEtaBaseMs()
@@ -208,8 +213,11 @@ public final class AgentSupplyReadinessRuntime {
     /**
      * Whether a readiness trip to the nearest potion supplier within {@code maxHops} can go: the supplier, then the
      * spend (the ammo top-up there, then each short category at that shop's cheapest potion) against the purse less
-     * the wallet reserve, then the Use slots the new kinds of potion take ({@link #useSlotsNeeded}). The shop is looked
-     * up on the Agent tick only.
+     * the wallet reserve, then the Use slots the new kinds of potion take ({@link #useSlotsNeeded}). Short of potions,
+     * its readiness ammo is bought with what is left and never holds the potions back. Short of ammo alone, the
+     * readiness ammo (AgentShopService.readinessAmmoPlan) must reach the ammo standard at that supplier (else
+     * NO_SUPPLIER), fit the purse (else CANNOT_AFFORD) and its new stacks the free Use slots beside the run's (else
+     * NO_SPACE). The shop is looked up on the Agent tick only.
      */
     static Assessment assess(AgentRuntimeEntry entry, Character agent, AgentSupplyReadiness.Activity activity,
                              AgentSupplyReadiness.Shortfall shortfall, int maxHops, long nowMs) {
@@ -234,7 +242,14 @@ public final class AgentSupplyReadinessRuntime {
         }
         long ammo = AgentPotionSupplierCatalog.ammoTopUpAllowedAt(stop.mapId())
                 ? AgentShopService.plannedAmmoSpend(agent, shop) : 0L;
-        long spend = ammo + (long) shortfall.hp() * hpPrice + (long) shortfall.mp() * mpPrice;
+        boolean ammoOnly = shortfall.potionsNone() && shortfall.ammo() > 0;
+        AgentShopService.ReadinessAmmoPlan readinessAmmo = ammoOnly
+                ? AgentShopService.readinessAmmoPlan(agent, shop, stop.mapId(), activity) : null;
+        if (readinessAmmo != null && readinessAmmo.projected() < AgentSupplyReadiness.ammoStandard(activity)) {
+            return new Assessment(Assessed.NO_SUPPLIER, stop, hops, 0, 0); // this supplier cannot bring it there
+        }
+        long spend = ammo + (long) shortfall.hp() * hpPrice + (long) shortfall.mp() * mpPrice
+                + (readinessAmmo == null ? 0L : readinessAmmo.spend());
         long spendable = (long) mesos(agent) - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
         if (spend > spendable) {
             return new Assessment(Assessed.CANNOT_AFFORD, stop, hops, (int) Math.max(0L, spendable),
@@ -242,6 +257,10 @@ public final class AgentSupplyReadinessRuntime {
         }
         if (freeUseSlots(agent) < useSlotsNeeded(agent, shop, activity, shortfall, spendable - ammo)) {
             return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0);
+        }
+        if (readinessAmmo != null && readinessAmmo.newStacks() > 0
+                && freeUseSlots(agent) < readinessAmmo.newStacks() + 1) {
+            return new Assessment(Assessed.NO_SPACE, stop, hops, (int) spendable, 0); // the run's slot stays free
         }
         return new Assessment(Assessed.GO, stop, hops, (int) Math.min(Integer.MAX_VALUE, spendable), 0);
     }
@@ -358,9 +377,10 @@ public final class AgentSupplyReadinessRuntime {
             return;
         }
         if (verdict != AgentSupplyReadinessState.Verdict.NO_SUPPLIER) {
-            log.info("Agent '{}' stays put instead of restocking for a {}: {} on map {} (short hp {} mp {}, mesos {},"
-                            + " missing {}, free use slots {})", agent.getName(), activity, verdict, agent.getMapId(),
-                    shortfall.hp(), shortfall.mp(), mesos, assessment.missingMesos(), freeSlots);
+            log.info("Agent '{}' stays put instead of restocking for a {}: {} on map {} (short hp {} mp {} ammo {},"
+                            + " mesos {}, missing {}, free use slots {})", agent.getName(), activity, verdict,
+                    agent.getMapId(), shortfall.hp(), shortfall.mp(), shortfall.ammo(), mesos,
+                    assessment.missingMesos(), freeSlots);
         }
         AgentSupplyReadiness.refused(agent.getId(), activity, switch (verdict) {
             case CANNOT_AFFORD -> AgentSupplyReadiness.Refusal.CANNOT_AFFORD;
@@ -402,7 +422,8 @@ public final class AgentSupplyReadinessRuntime {
 
     /**
      * The shop's outcome as a duty holder's trip counts it: a readiness trip is restored exactly when the standard is
-     * met; a critical trip of a duty holder is restored too when it bought some and the standard is met.
+     * met, projectiles included; a critical trip of a duty holder is restored too when it bought some and the potion
+     * standard is met (it is about potions: projectiles are its readiness trip's business).
      */
     static AgentSupplyProcurementOutcome judged(AgentRuntimeEntry entry, Character agent,
                                                 AgentSupplyProcurementState execution,
@@ -413,7 +434,8 @@ public final class AgentSupplyReadinessRuntime {
         if (activity == null) {
             return outcome;
         }
-        boolean ready = AgentSupplyReadiness.shortfall(agent, activity).none();
+        AgentSupplyReadiness.Shortfall lacking = AgentSupplyReadiness.shortfall(agent, activity);
+        boolean ready = readinessTrip ? lacking.none() : lacking.potionsNone();
         if (readinessTrip && !ready && outcome.restored()) {
             return withStatus(outcome, outcome.quantityAfter() > outcome.quantityBefore()
                             ? AgentSupplyProcurementOutcome.Status.PARTIALLY_RESTORED
@@ -430,8 +452,9 @@ public final class AgentSupplyReadinessRuntime {
 
     /**
      * A readiness trip given up: INTERRUPTED when its owner called it back; else SHORT_MESOS when what is left of the
-     * purse cannot buy what it still lacks at the supplier's cheapest potions, else SHORT_SPACE with no Use slot free
-     * (or only the run's, where the counter held back a kind whose standard is more than one stack), else
+     * purse cannot buy what it still lacks at the supplier's cheapest potions (short of ammo alone: the readiness ammo
+     * there, AgentShopService.readinessAmmoPlan), else SHORT_SPACE with no Use slot free (or only the run's, where the
+     * counter held back a kind whose standard is more than one stack, or the projectiles it still lacks), else
      * INTERRUPTED; each sets its cooldown.
      */
     static AgentSupplyReadiness.Outcome abandonedOutcome(AgentRuntimeEntry entry, Character agent,
@@ -451,7 +474,10 @@ public final class AgentSupplyReadinessRuntime {
             shop = AgentShopGatewayRuntime.shop().findForNpc(execution.supplierNpcId());
             int hpPrice = shop == null || shortfall.hp() <= 0 ? 0 : AgentShopService.cheapestRecoveryPrice(agent, shop, true);
             int mpPrice = shop == null || shortfall.mp() <= 0 ? 0 : AgentShopService.cheapestRecoveryPrice(agent, shop, false);
-            long needed = (long) shortfall.hp() * Math.max(0, hpPrice) + (long) shortfall.mp() * Math.max(0, mpPrice);
+            long needed = !shortfall.potionsNone() || shop == null
+                    ? (long) shortfall.hp() * Math.max(0, hpPrice) + (long) shortfall.mp() * Math.max(0, mpPrice)
+                    : AgentShopService.readinessAmmoPlan(agent, shop, execution.supplierMapId(), activityOf(entry))
+                    .spend();
             long spendable = (long) mesos - AgentSupplyRecoveryPolicy.minimumWalletReserve(agent);
             missing = Math.max(0L, needed - spendable);
         }
@@ -462,7 +488,8 @@ public final class AgentSupplyReadinessRuntime {
             return AgentSupplyReadiness.Outcome.SHORT_MESOS;
         }
         if (!shortfall.none() && (freeSlots == 0
-                || freeSlots == 1 && heldAtTheRunsSlot(agent, shop, activityOf(entry), shortfall))) {
+                || freeSlots == 1 && (shortfall.ammo() > 0
+                || heldAtTheRunsSlot(agent, shop, activityOf(entry), shortfall)))) {
             state.cooldown(AgentSupplyReadinessState.Cooldown.SHORT_SPACE, until, mesos, 0, freeSlots, shortfall,
                     agent.getMapId());
             return AgentSupplyReadiness.Outcome.SHORT_SPACE;
@@ -526,9 +553,12 @@ public final class AgentSupplyReadinessRuntime {
         if (outcome == AgentSupplyReadiness.Outcome.READY) {
             state.resetInterrupted();
         }
-        log.info("Agent '{}' readiness restock {} ended {} ({}): potions now hp {} mp {}", agent.getName(), requestId,
-                outcome, status, AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION),
-                AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.MP_POTION));
+        int ammo = AgentAmmoService.carriedProjectiles(agent);
+        log.info("Agent '{}' readiness restock {} ended {} ({}): potions now hp {} mp {}, ammo {}", agent.getName(),
+                requestId, outcome, status,
+                AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.HP_POTION),
+                AgentSupplyInventorySnapshot.quantity(agent, AgentResourceCategory.MP_POTION),
+                ammo == Integer.MAX_VALUE ? "-" : Integer.toString(ammo));
         AgentSupplyReadiness.finished(agent.getId(), activity, outcome);
     }
 

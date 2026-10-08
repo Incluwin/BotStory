@@ -12,16 +12,19 @@ import server.agents.runtime.AgentRuntimeEntry;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Readiness before an activity: the recovery potions an Agent carries into it (a party quest now; a boss arrives with
- * its expedition work), and the owner-free seam through which a host gives an Agent a standing duty to keep them.
+ * Readiness before an activity: the recovery potions, and the projectiles for a claw, bow, crossbow or gun, an Agent
+ * carries into it (a party quest or a boss run), and the owner-free seam through which a host gives an Agent a
+ * standing duty to keep them.
  *
  * <p>One standard serves everyone who asks: the host's entry desk reads {@link #shortfall(int, int, boolean, Activity)}
- * with the counts it already has, and the Agent's own procurement reads {@link #shortfall(Character, Activity)} with
- * {@link AgentPotionService#countPotions}. While the installed {@link Rule} answers {@link Rule#standing} for an Agent,
- * the Agent walks to the nearest potion shop by itself on a town map whose supplier is close (AgentSupplyReadinessRuntime)
- * and buys toward {@code BUY_TO_PERCENT} of the standard ({@link #buyTarget}); it never goes when it cannot afford the
- * trip, and says so through the rule instead of asking its party. With nothing installed, nothing here changes what an
- * Agent does.</p>
+ * with the potion counts it already has and {@link #ammoShortfall(int, Activity)} with its projectile count, and the
+ * Agent's own procurement reads {@link #shortfall(Character, Activity)}: {@link AgentPotionService#countPotions} and
+ * {@link AgentAmmoService#carriedProjectiles} together. While the installed {@link Rule} answers {@link Rule#standing}
+ * for an Agent, the Agent walks to the nearest potion shop by itself on a town map whose supplier is close
+ * (AgentSupplyReadinessRuntime) when it lacks either; one visit fills both, potions first, buying toward
+ * {@code BUY_TO_PERCENT} of the potion standard ({@link #buyTarget}) and toward {@link #ammoTarget} projectiles; it
+ * never goes when it cannot afford the trip, and says so through the rule instead of asking its party. With nothing
+ * installed, nothing here changes what an Agent does.</p>
  *
  * <p>The host's reads ({@link #status}, {@link #restockPending}, {@link #carriedBy}, {@link #checkSoon},
  * {@link #resumeFollowAfterTrip}) touch memory only and may run on any thread; the rule's callbacks run on the Agent
@@ -58,11 +61,25 @@ public final class AgentSupplyReadiness {
     /** Recovery potions an Agent goes in with at least: HP potions, and MP potions when it fights with skills. */
     public record Standard(int hp, int mp) { }
 
-    /** How many HP and MP potions an Agent still lacks for a standard (0 when it has enough). */
-    public record Shortfall(int hp, int mp) {
-        public static final Shortfall NONE = new Shortfall(0, 0);
+    /**
+     * How many HP and MP potions, and projectiles for its weapon, an Agent still lacks for a standard (0 when it has
+     * enough). The desk's count overload measures potions only; the Agent's own count includes the projectiles.
+     */
+    public record Shortfall(int hp, int mp, int ammo) {
+        public static final Shortfall NONE = new Shortfall(0, 0, 0);
 
+        /** Potions only: no projectiles lacking. */
+        public Shortfall(int hp, int mp) {
+            this(hp, mp, 0);
+        }
+
+        /** Nothing lacking at all. */
         public boolean none() {
+            return potionsNone() && ammo <= 0;
+        }
+
+        /** No potions lacking, whatever the projectiles. */
+        public boolean potionsNone() {
             return hp <= 0 && mp <= 0;
         }
 
@@ -245,16 +262,75 @@ public final class AgentSupplyReadiness {
     }
 
     /**
-     * Projectiles a fighter carrying {@code carriedAmmo} for its weapon lacks for {@code activity}'s PARTY_QUEST_AMMO;
-     * 0 without an activity, or for one that shoots none ({@code Integer.MAX_VALUE}). Pure. Only a host's desk reads
-     * it: no restock trip buys ammo (projectiles keep their own rules).
+     * Projectiles a fighter carrying {@code carriedAmmo} for its weapon lacks for {@code activity}'s ammo standard
+     * ({@link #ammoStandard}); 0 without an activity, or for one that shoots none ({@code Integer.MAX_VALUE}). Pure.
+     * The host's desk and the standing duty both read it; the duty's trip buys them at the potion supplier, after the
+     * potions.
      */
     public static int ammoShortfall(int carriedAmmo, Activity activity) {
         if (activity == null) {
             return 0;
         }
-        long standard = Math.max(0, tuningInt("PARTY_QUEST_AMMO"));
+        long standard = ammoStandard(activity);
         return (int) Math.max(0L, standard - Math.max(0, carriedAmmo));
+    }
+
+    /**
+     * The projectiles a fighter with a claw, bow, crossbow or gun goes into {@code activity} with at least: the count
+     * AMMO_STANDARDS lists for its key ("lpq=1600,..."), else PARTY_QUEST_AMMO; 0 without an activity. Read from
+     * agent-engine.yaml at every call; never negative.
+     */
+    public static int ammoStandard(Activity activity) {
+        if (activity == null) {
+            return 0;
+        }
+        Integer own = listedCount(activity.partyQuestKey(), config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_STANDARDS"));
+        return Math.max(0, own != null ? own : tuningInt("PARTY_QUEST_AMMO"));
+    }
+
+    /**
+     * How many projectiles a readiness trip's counter buys toward for {@code activity}: its standard, and at least one
+     * above AMMO_LOW_WARN, so a companion restocked to a standard at the warning does not say it runs low at its first
+     * throw; 0 for a standard of 0 (no check).
+     */
+    public static int ammoTarget(Activity activity) {
+        int standard = ammoStandard(activity);
+        return standard <= 0 ? 0 : Math.max(standard, AgentSupplyConfig.cfg.AMMO_LOW_WARN + 1);
+    }
+
+    /**
+     * How many projectiles a readiness trip's counter buys toward once the standard is met, with what is left after
+     * everything else: AMMO_BUY_TO_PERCENT of the standard, rounded up, and at least {@link #ammoTarget}; 0 for a
+     * standard of 0. The headroom keeps a bow that just restocked from walking back for a handful of arrows after
+     * its next hunt; the trip's checks and its end price the standard alone.
+     */
+    public static int ammoBuyTarget(Activity activity) {
+        int target = ammoTarget(activity);
+        if (target <= 0) {
+            return 0;
+        }
+        long wanted = ((long) ammoStandard(activity) * Math.max(0, tuningInt("AMMO_BUY_TO_PERCENT")) + 99L) / 100L;
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(target, wanted));
+    }
+
+    /** The count {@code standards} ("key=count,...") lists for {@code key}, or null: blank, unlisted or malformed. */
+    private static Integer listedCount(String key, String standards) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+        for (String pair : standards == null ? new String[0] : standards.split(",")) {
+            int equals = pair.indexOf('=');
+            if (equals < 0 || !pair.substring(0, equals).trim().equalsIgnoreCase(key)) {
+                continue;
+            }
+            try {
+                return Integer.parseInt(pair.substring(equals + 1).trim());
+            } catch (NumberFormatException malformed) {
+                return null;
+            }
+        }
+        return null;
     }
 
     /** What the Agent's projectiles for its equipped weapon ({@link #carriedAmmo}) lack for {@code activity}. */
@@ -263,21 +339,25 @@ public final class AgentSupplyReadiness {
     }
 
     /**
-     * The projectiles the Agent carries for its equipped weapon; {@code Integer.MAX_VALUE} when it shoots none, or
-     * with Soul Arrow or Shadow Claw up.
+     * The projectiles in the Agent's bag for its equipped weapon (Soul Arrow and Shadow Claw do not fill an empty bag);
+     * {@code Integer.MAX_VALUE} when it shoots none.
      */
     public static int carriedAmmo(Character agent) {
-        return AgentAmmoService.carriedAmmo(agent);
+        return AgentAmmoService.carriedProjectiles(agent);
     }
 
-    /** What the Agent's own potions ({@link AgentPotionService#countPotions}) lack for {@code activity}. */
+    /**
+     * What the Agent's own potions ({@link AgentPotionService#countPotions}) and projectiles ({@link #carriedAmmo})
+     * lack for {@code activity}.
+     */
     public static Shortfall shortfall(Character agent, Activity activity) {
         if (agent == null) {
             return Shortfall.NONE;
         }
         int[] potions = agent.getInventory(InventoryType.USE) == null ? new int[]{0, 0}
                 : AgentPotionService.countPotions(agent);
-        return shortfall(potions[0], potions[1], needsManaPotions(agent), activity);
+        Shortfall lacking = shortfall(potions[0], potions[1], needsManaPotions(agent), activity);
+        return new Shortfall(lacking.hp(), lacking.mp(), ammoShortfall(agent, activity));
     }
 
     /**
@@ -287,12 +367,24 @@ public final class AgentSupplyReadiness {
      * interaction target, and a shop map is no desk map. Null: neither.
      */
     public static Activity shoppingActivity(AgentRuntimeEntry entry, Character agent) {
-        AgentSupplyReadinessState state = entry == null ? null
-                : entry.capabilityStates().find(AgentSupplyReadinessState.STATE_KEY).orElse(null);
-        if (state != null && state.request() != null) {
-            return state.activity() == null ? Activity.PARTY_QUEST : state.activity();
+        Activity trip = tripActivity(entry);
+        if (trip != null) {
+            return trip;
         }
         return agent == null ? null : standing(agent.getId());
+    }
+
+    /**
+     * The activity of the readiness trip under way (the one its end is judged by); null when none is. A shop visit
+     * runs its readiness ammo step only then (AgentShopService.buyReadinessAmmo).
+     */
+    public static Activity tripActivity(AgentRuntimeEntry entry) {
+        AgentSupplyReadinessState state = entry == null ? null
+                : entry.capabilityStates().find(AgentSupplyReadinessState.STATE_KEY).orElse(null);
+        if (state == null || state.request() == null) {
+            return null;
+        }
+        return state.activity() == null ? Activity.PARTY_QUEST : state.activity();
     }
 
     /**

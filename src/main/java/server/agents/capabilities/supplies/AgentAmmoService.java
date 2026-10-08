@@ -55,6 +55,35 @@ public final class AgentAmmoService {
         return AgentCombatAmmoCounter.countAmmo(bot, weaponType);
     }
 
+    /**
+     * The projectiles in {@code bot}'s bag for its equipped weapon, Soul Arrow and Shadow Claw ignored (what it carries
+     * into a run, not what the fight can use now); Integer.MAX_VALUE when it shoots none.
+     */
+    public static int carriedProjectiles(Character bot) {
+        WeaponType weaponType = bot == null ? null : AgentAttackExecutionProvider.getEquippedWeaponType(bot);
+        if (weaponType == null || bot.getInventory(InventoryType.USE) == null) {
+            return Integer.MAX_VALUE;
+        }
+        return AgentCombatAmmoCounter.countCarried(bot, weaponType);
+    }
+
+    /**
+     * True for a claw, bow, crossbow or gun with nothing to shoot: the fight's own count (Soul Arrow or Shadow Claw up
+     * is not dry). A companion run hands such a member's ranged post to a loaded one.
+     */
+    public static boolean dryShooter(Character bot) {
+        WeaponType weaponType = bot == null ? null : AgentAttackExecutionProvider.getEquippedWeaponType(bot);
+        if (!AgentCombatAmmoCounter.isRangedAmmoWeapon(weaponType) || bot.getInventory(InventoryType.USE) == null) {
+            return false;
+        }
+        return AgentCombatAmmoCounter.countAmmo(bot, weaponType) <= 0;
+    }
+
+    /** What {@code bot}'s equipped weapon shoots; null when it shoots nothing. */
+    public static AgentProjectileKind projectileKind(Character bot) {
+        return bot == null ? null : AgentProjectileKind.of(AgentAttackExecutionProvider.getEquippedWeaponType(bot));
+    }
+
     public static boolean requestLowAmmoShare(AgentRuntimeEntry entry, Character bot, boolean bypassShareLimits, InventoryGateway inventory) {
         WeaponType weaponType = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
         if (!canRequestShare(weaponType)) {

@@ -27,8 +27,12 @@ public final class DeskLines {
     static final String LOW_ON_POTIONS_BROKE_LINE = "<name> is low on potions and can't afford any more.";
     static final String LOW_ON_MANA_BROKE_LINE = "<name> is low on mana potions and can't afford any more.";
     static final String LOW_ON_AMMO_LINE = "<name> is low on ammo.";
-    /** Above the lineup, when a companion in it (or waiting with it) ran to the store for potions. */
-    public static final String RAN_TO_THE_STORE = "Some of your crew ran to the store for potions. They won't be long.";
+    static final String LOW_ON_AMMO_BROKE_LINE = "<name> is low on ammo and can't afford any more.";
+    /**
+     * Above the lineup, when a companion in it (or waiting with it) ran to the store for potions or projectiles: one
+     * text for both, chosen with decision 3 (2026-10-07: companions restock ammo as they do potions).
+     */
+    public static final String RAN_TO_THE_STORE = "Some of your crew ran to the store for supplies. They won't be long.";
     static final String BUSY = "<name> is busy with something. Give them a moment.";
     /** Admission asked the companion to stop what it was doing, and it finishes its step first. */
     static final String FINISHING = "Give <name> a sec, they're finishing something.";
@@ -38,12 +42,17 @@ public final class DeskLines {
     /** Why a companion waits outside, as the lineup lists it: "Casse (low on potions)". */
     static final String LOW_ON_POTIONS = "low on potions";
     static final String LOW_ON_MANA = "low on mana potions";
-    /** A ranged companion short of the party quest's ammo (no trip: its owner or party hands some over). */
+    /**
+     * A ranged companion short of the party quest's ammo standard (AgentSupplyReadiness.ammoStandard): its own restock
+     * buys it like potions.
+     */
     static final String LOW_ON_AMMO = "low on ammo";
     /** Short of potions and its own restock cannot afford them. */
     static final String LOW_ON_POTIONS_BROKE = "low on potions, out of mesos";
     static final String LOW_ON_MANA_BROKE = "low on mana potions, out of mesos";
-    /** A companion's errand while it is on its way: gone to the store for potions (LineupPlan.Seat.errand). */
+    /** Short of ammo and its own restock cannot afford it. */
+    static final String LOW_ON_AMMO_BROKE = "low on ammo, out of mesos";
+    /** A companion's errand while it is on its way: gone to the store for supplies (LineupPlan.Seat.errand). */
     public static final String AT_THE_STORE = "at the store";
     static final String OTHER_CHANNEL = "on another channel";
     static final String KNOCKED_OUT = "knocked out";

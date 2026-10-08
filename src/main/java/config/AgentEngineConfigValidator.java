@@ -71,6 +71,24 @@ final class AgentEngineConfigValidator {
             if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
                 continue;
             }
+            if (key.endsWith("AgentSupplyReadiness.PARTY_QUEST_AMMO")) {
+                // its stated range is enforced: a whole count up to the same bound as AMMO_STANDARDS
+                long bound = ammoStandardsBound(tuning);
+                if (!validProjectileCount(value, bound)) {
+                    throw new IllegalStateException(
+                            "Agent tuning key " + key + " must be a whole projectile count from 0 to " + bound);
+                }
+                continue;
+            }
+            if (key.endsWith("AgentSupplyReadiness.AMMO_STANDARDS")) {
+                // its own branch: a false from validNonNumericTuning would let a bare count pass the numeric check
+                long bound = ammoStandardsBound(tuning);
+                if (!validAmmoStandards(value, bound)) {
+                    throw new IllegalStateException(
+                            "Agent tuning key " + key + " must be key=count pairs with counts from 0 to " + bound);
+                }
+                continue;
+            }
             if (validNonNumericTuning(key, value)) {
                 continue;
             }
@@ -106,11 +124,59 @@ final class AgentEngineConfigValidator {
     }
 
     /**
-     * A percentage is a share of a whole (0-100), except a readiness buy-to percentage: a multiple of a potion
-     * standard, so a shop visit can buy past it (AgentSupplyReadiness.BUY_TO_PERCENT, up to five times).
+     * A percentage is a share of a whole (0-100), except a readiness buy-to percentage: a multiple of a potion or ammo
+     * standard, so a shop visit can buy past it (AgentSupplyReadiness.BUY_TO_PERCENT and AMMO_BUY_TO_PERCENT, up to
+     * five times).
      */
-    private static double maximumPercent(String key) {
-        return key.endsWith("AgentSupplyReadiness.BUY_TO_PERCENT") ? 500.0d : 100.0d;
+    static double maximumPercent(String key) {
+        return key.endsWith("AgentSupplyReadiness.BUY_TO_PERCENT")
+                || key.endsWith("AgentSupplyReadiness.AMMO_BUY_TO_PERCENT") ? 500.0d : 100.0d;
+    }
+
+    private static final String AMMO_LOW_WARN_KEY = "server.agents.capabilities.supplies.AgentSupplyConfig.AMMO_LOW_WARN";
+    private static final String AMMO_TARGET_THRESHOLD_KEY =
+            "server.agents.capabilities.shop.AgentShopService.AMMO_TARGET_THRESHOLD";
+
+    /**
+     * The most projectiles an ammo standard (AMMO_STANDARDS, PARTY_QUEST_AMMO) may ask: what one Victoria visit buys
+     * (AgentSupplyConfig.AMMO_LOW_WARN x AgentShopService.AMMO_TARGET_THRESHOLD), read from the same tuning. Either
+     * missing or not a whole number refuses startup with that key's name.
+     */
+    static long ammoStandardsBound(Map<String, String> tuning) {
+        return wholeTuning(tuning, AMMO_LOW_WARN_KEY) * wholeTuning(tuning, AMMO_TARGET_THRESHOLD_KEY);
+    }
+
+    private static long wholeTuning(Map<String, String> tuning, String key) {
+        String value = tuning.get(key);
+        if (value == null || !value.trim().matches("\\d{1,9}")) {
+            throw new IllegalStateException("Agent tuning key " + key + " bounds the ammo standards"
+                    + " (AgentSupplyReadiness.AMMO_STANDARDS, PARTY_QUEST_AMMO) and must be a whole number, was "
+                    + (value == null ? "missing" : "'" + value + "'"));
+        }
+        return Long.parseLong(value.trim());
+    }
+
+    /** True for a whole projectile count from 0 to {@code bound}. */
+    static boolean validProjectileCount(String value, long bound) {
+        return value != null && value.matches("\\d{1,18}") && Long.parseLong(value) <= bound;
+    }
+
+    /** True for "key=count[,key=count...]" with lower-case keys and every count from 0 to {@code bound}. */
+    static boolean validAmmoStandards(String value, long bound) {
+        if (value == null || !value.matches("[a-z0-9_]+=\\d+(,[a-z0-9_]+=\\d+)*")) {
+            return false;
+        }
+        for (String pair : value.split(",")) {
+            String count = pair.substring(pair.indexOf('=') + 1);
+            try {
+                if (count.length() > 18 || Long.parseLong(count) > bound) {
+                    return false;
+                }
+            } catch (NumberFormatException malformed) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean validNonNumericTuning(String key, String value) {

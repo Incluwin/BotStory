@@ -12,6 +12,15 @@ public final class AgentLpqRuntime {
             "server.agents.capabilities.partyquest.lpq.AgentLpqRuntime.COORDINATOR_LEASE_MS");
     private AgentLpqRuntime() { }
 
+    /**
+     * True while the member's companion LPQ run says itself that it ran dry on stage 7 (S7d, with the members'
+     * coordination chat on: it held a ratz lane there, or nobody loaded can reach the live ratz), so its generic in-run
+     * line stays quiet (AgentPartyQuestSystem.ownsDryLine); false again once its S7d could not be said. Memory only.
+     */
+    public static boolean ownsDryLine(int characterId, int mapId) {
+        return AgentLpqCoordinator.ownsDryLine(characterId, mapId);
+    }
+
     public static boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
         AgentLpqSession session = AgentLpqSessionRegistry.forMember(agent.getId());
         if (session == null) {

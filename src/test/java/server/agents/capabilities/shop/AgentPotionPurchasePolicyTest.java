@@ -32,7 +32,7 @@ class AgentPotionPurchasePolicyTest {
 
     @Test
     void aStandardAboveTheCarryAndVisitLimitsIsBoughtInOneVisitAndNeverToppedUpPastIt() {
-        // epq=250/350: one visit buys the whole standard; the top-up toward 500/700 finds the carry room used
+        // epq=350/350 (and 250/350 before it): one visit buys the whole standard; the top-up toward twice it finds the carry room used
         assertEquals(250, AgentPotionPurchasePolicy.floorQuantity(250, 0, 0, 250));
         assertEquals(230, AgentPotionPurchasePolicy.floorQuantity(350, 120, 0, 350));
         assertEquals(0, AgentPotionPurchasePolicy.floorQuantity(500, 250, 250, 250));

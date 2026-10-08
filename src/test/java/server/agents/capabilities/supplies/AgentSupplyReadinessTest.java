@@ -1,12 +1,18 @@
 package server.agents.capabilities.supplies;
 
+import client.BuffStat;
 import client.Character;
 import client.Job;
+import client.inventory.Inventory;
+import client.inventory.InventoryType;
+import client.inventory.WeaponType;
 import config.AgentYamlConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import server.agents.capabilities.combat.AgentAttackExecutionProvider;
 import server.agents.runtime.AgentRuntimeConfig;
+import testutil.Items;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +34,8 @@ class AgentSupplyReadinessTest {
     private static final String STANDARDS_KEY =
             "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS";
     private static final AgentSupplyReadiness.Activity PQ = AgentSupplyReadiness.Activity.PARTY_QUEST;
+    private static final String AMMO_STANDARDS_KEY =
+            "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_STANDARDS";
 
     @AfterEach
     void noRule() {
@@ -98,28 +106,28 @@ class AgentSupplyReadinessTest {
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("lpq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("opq"));
         assertEquals(new AgentSupplyReadiness.Standard(40, 50), standardFor("rjpq"));
-        assertEquals(new AgentSupplyReadiness.Standard(250, 350), standardFor("EPQ "), "keys are trimmed, any case");
+        assertEquals(new AgentSupplyReadiness.Standard(350, 350), standardFor("EPQ "), "keys are trimmed, any case");
         assertEquals(new AgentSupplyReadiness.Standard(20, 25), standardFor("cwkpq"), "an unlisted key: the default");
     }
 
     @Test
     void theCountOverloadAndTheCompanionsOwnCountAgreeOnTheEpqStandard() {
-        // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion. This checks the
-        // two overloads only: no desk passes epq on this branch (Ellin's desk reads PARTY_QUEST until EPQ step 6.3)
+        // live 2026-10-06: one golem fight used 157-299 HP and 177-420 MP potions per Lv50 companion.
+        // Ellin's desk passes partyQuest("epq") (CompanionPartyQuestService.waitingReason), as the duty does.
         AgentSupplyReadiness.Activity epq = AgentSupplyReadiness.Activity.partyQuest("epq");
         Character mage = withJob(Job.FP_WIZARD);
         when(mage.getInventory(client.inventory.InventoryType.USE)).thenReturn(mock(client.inventory.Inventory.class));
-        int[] carried = {249, 350};
+        int[] carried = {349, 350};
         try (MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class)) {
             potions.when(() -> AgentPotionService.countPotions(mage)).thenAnswer(inv -> carried.clone());
 
-            assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(249, 350, true, epq),
+            assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(349, 350, true, epq),
                     "the count overload, which a desk calls with its own key");
             assertEquals(new AgentSupplyReadiness.Shortfall(1, 0), AgentSupplyReadiness.shortfall(mage, epq),
                     "what the companion's own restock reads");
 
-            carried[0] = 250;
-            assertTrue(AgentSupplyReadiness.shortfall(250, 350, true, epq).none());
+            carried[0] = 350;
+            assertTrue(AgentSupplyReadiness.shortfall(350, 350, true, epq).none());
             assertTrue(AgentSupplyReadiness.shortfall(mage, epq).none());
         }
     }
@@ -217,13 +225,103 @@ class AgentSupplyReadinessTest {
                 "no ammo weapon, or Soul Arrow / Shadow Claw up");
         assertEquals(0, AgentSupplyReadiness.ammoShortfall(0, null), "no activity");
         assertEquals(0, AgentSupplyReadiness.ammoShortfall(withJob(Job.WARRIOR), PQ), "nothing equipped to shoot");
+        assertEquals(800, AgentSupplyReadiness.ammoShortfall(800, AgentSupplyReadiness.Activity.partyQuest("epq")),
+                "EPQ's own standard (AMMO_STANDARDS)");
     }
 
     @Test
-    void ammoNeverMakesThePotionShortfall() {
+    void theDutyShortfallCountsProjectilesAndTheDeskCountStaysPotionsOnly() {
+        assertTrue(AgentSupplyReadiness.shortfall(20, 25, true, PQ).none(), "the desk's count overload: potions only");
+        AgentSupplyReadiness.Activity epq = AgentSupplyReadiness.Activity.partyQuest("epq");
         Character assassin = withJob(Job.ASSASSIN);
-        assertTrue(AgentSupplyReadiness.shortfall(20, 25, true, PQ).none(), "the restock duty only ever sees potions");
-        assertEquals(0, AgentSupplyReadiness.ammoShortfall(assassin, PQ), "no claw equipped on this mock");
+        Inventory use = new Inventory(assassin, InventoryType.USE, (byte) 24);
+        use.addItem(Items.itemWithQuantity(2_070_000, 120));
+        when(assassin.getInventory(InventoryType.USE)).thenReturn(use);
+        try (MockedStatic<AgentAttackExecutionProvider> weapons = mockStatic(AgentAttackExecutionProvider.class);
+             MockedStatic<AgentPotionService> potions = mockStatic(AgentPotionService.class)) {
+            weapons.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(assassin)).thenReturn(WeaponType.CLAW);
+            potions.when(() -> AgentPotionService.countPotions(assassin)).thenReturn(new int[]{350, 350});
+
+            AgentSupplyReadiness.Shortfall shortfall = AgentSupplyReadiness.shortfall(assassin, epq);
+            assertEquals(1_480, shortfall.ammo(), "the duty's own count: 120 of EPQ's 1600 stars");
+            assertTrue(shortfall.potionsNone());
+            assertFalse(shortfall.none());
+            assertEquals(0, shortfall.categories(), "no potion slot to size");
+        }
+    }
+
+    @Test
+    void theReadinessCountIgnoresSoulArrowAndShadowClaw() {
+        Character hunter = withJob(Job.HUNTER);
+        when(hunter.getBuffedValue(BuffStat.SOULARROW)).thenReturn(1);
+        when(hunter.getInventory(InventoryType.USE)).thenReturn(new Inventory(hunter, InventoryType.USE, (byte) 24));
+        try (MockedStatic<AgentAttackExecutionProvider> weapons = mockStatic(AgentAttackExecutionProvider.class)) {
+            weapons.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(hunter)).thenReturn(WeaponType.BOW);
+
+            assertEquals(0, AgentSupplyReadiness.carriedAmmo(hunter), "an empty quiver is empty, buff or not");
+            assertEquals(500, AgentSupplyReadiness.ammoShortfall(hunter, PQ));
+        }
+    }
+
+    @Test
+    void ammoStandardsListLpqAndEpqAtSixteenHundredAndEveryOtherKeyKeepsPartyQuestAmmo() {
+        // live 2026-10-07: a claw companion used 800 stars in one EPQ golem fight; another reached LPQ stage 7 with none
+        assertEquals("lpq=1600,epq=1600", AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
+        int partyQuestAmmo = config.AgentTuning.intValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO");
+        assertEquals(1600, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("EPQ ")));
+        assertEquals(1600, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("lpq")));
+        assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("kpq")));
+        assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("hpq")));
+        assertEquals(partyQuestAmmo,
+                AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("easy_balrog")),
+                "no shop is reachable from Mu Young's room: no standard of its own");
+        assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(PQ));
+        assertEquals(0, AgentSupplyReadiness.ammoStandard(null), "no activity");
+
+        String configured = AgentYamlConfig.config.tuning.put(AMMO_STANDARDS_KEY, "epq=x,lpq");
+        try {
+            assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("epq")),
+                    "a malformed pair keeps the default");
+            assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("lpq")));
+        } finally {
+            AgentYamlConfig.config.tuning.put(AMMO_STANDARDS_KEY, configured);
+        }
+    }
+
+    @Test
+    void theAmmoTargetIsAboveTheLowAmmoWarning() {
+        // restocked to a standard at the low-ammo warning, its first throw would say "running low on ammo"
+        assertEquals(AgentSupplyConfig.cfg.AMMO_LOW_WARN, 500, "the warning these numbers assume");
+        assertEquals(501, AgentSupplyReadiness.ammoTarget(AgentSupplyReadiness.Activity.partyQuest("kpq")));
+        assertEquals(1600, AgentSupplyReadiness.ammoTarget(AgentSupplyReadiness.Activity.partyQuest("epq")));
+        assertEquals(0, AgentSupplyReadiness.ammoTarget(null));
+        String key = "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO";
+        String configured = AgentYamlConfig.config.tuning.put(key, "0");
+        try {
+            assertEquals(0, AgentSupplyReadiness.ammoTarget(AgentSupplyReadiness.Activity.partyQuest("kpq")),
+                    "a standard of 0 turns the check off");
+        } finally {
+            AgentYamlConfig.config.tuning.put(key, configured);
+        }
+    }
+
+    @Test
+    void theAmmoBuyTargetIsTwiceTheStandardAndNeverBelowTheTarget() {
+        // review 2026-10-07: a bow bought exactly to 501 and walked back for a handful of arrows after every hunt
+        assertEquals("200", AgentYamlConfig.config.tuning.get(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_BUY_TO_PERCENT"));
+        assertEquals(1_000, AgentSupplyReadiness.ammoBuyTarget(AgentSupplyReadiness.Activity.partyQuest("kpq")));
+        assertEquals(3_200, AgentSupplyReadiness.ammoBuyTarget(AgentSupplyReadiness.Activity.partyQuest("lpq")));
+        assertEquals(0, AgentSupplyReadiness.ammoBuyTarget(null));
+        String key = "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_BUY_TO_PERCENT";
+        String configured = AgentYamlConfig.config.tuning.put(key, "50");
+        try {
+            assertEquals(501, AgentSupplyReadiness.ammoBuyTarget(AgentSupplyReadiness.Activity.partyQuest("kpq")),
+                    "under 100 percent buys to the target only");
+        } finally {
+            AgentYamlConfig.config.tuning.put(key, configured);
+        }
     }
 
     private static AgentSupplyReadiness.Standard standardFor(String key) {

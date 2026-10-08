@@ -485,6 +485,20 @@ public final class AgentShopService {
         }
 
         WeaponType wt = AgentAttackExecutionProvider.getEquippedWeaponType(bot);
+        runPurchaseStep(new AgentShopPurchaseSequence<>(entry, bot, inventory, npcPos,
+                purchaseActions(entry, bot, inventory, wt), new ArrayList<>(), null), 0);
+    }
+
+    /**
+     * The purchase steps of a visit, in order: a required travel item alone; else on a Victoria shop the old ammo
+     * top-up (a seed set, the best stacks' refills, arrows to the ammo target), the potions, then skill and buff
+     * consumables. On a readiness trip the potions come in two parts around its ammo step ({@link #buyReadinessAmmo},
+     * at any supplier): first the potion standard and the critical reserve ({@link #buyPotionStandard}), then the
+     * trip's ammo standard, then the ordinary reserve and the top-up toward the buy target ({@link #buyPotionExtras}),
+     * so nothing past the potion standard spends the money the trip's checks priced for its projectiles.
+     */
+    static List<AgentShopPurchaseAction<AgentRuntimeEntry>> purchaseActions(
+            AgentRuntimeEntry entry, Character bot, InventoryGateway inventory, WeaponType wt) {
         int minimumMesoReserve = AgentShopStateRuntime.minimumMesoReserve(entry);
         List<AgentShopPurchaseAction<AgentRuntimeEntry>> actions = new ArrayList<>();
 
@@ -537,16 +551,41 @@ public final class AgentShopService {
             actions.add((sequence, shop) -> appendBuyReport(
                     sequence, buyAmmo(bot, shop, wt, minimumMesoReserve), "ammo"));
         }
+        AgentSupplyReadiness.Activity trip = AgentSupplyReadiness.tripActivity(entry);
         if (!itemOnlyVisit) {
-            actions.add((sequence, shop) ->
-                    buyPotionStock(sequence, shop, minimumMesoReserve));
+            if (trip == null) {
+                actions.add((sequence, shop) ->
+                        buyPotionStock(sequence, shop, minimumMesoReserve));
+            } else {
+                // a readiness trip buys its ammo standard after the potion standard, before any potion past it
+                int[] potionsBought = {0, 0};
+                actions.add((sequence, shop) ->
+                        buyPotionStandard(sequence, shop, minimumMesoReserve, potionsBought));
+                actions.add((sequence, shop) -> readinessAmmoStep(sequence, shop, bot, wt,
+                        AgentSupplyReadiness.ammoTarget(trip), minimumMesoReserve));
+                actions.add((sequence, shop) ->
+                        buyPotionExtras(sequence, shop, minimumMesoReserve, potionsBought));
+            }
             actions.add((sequence, shop) ->
                     buySkillConsumables(sequence, shop, minimumMesoReserve));
             actions.add((sequence, shop) ->
                     buyBuffConsumables(sequence, shop, minimumMesoReserve));
+            if (trip != null) {
+                // last, with what is left: headroom past the ammo standard
+                actions.add((sequence, shop) -> readinessAmmoHeadroomStep(sequence, shop, bot, wt,
+                        readinessAmmoBuyTarget(trip), minimumMesoReserve));
+            }
         }
+        return actions;
+    }
 
-        runPurchaseStep(new AgentShopPurchaseSequence<>(entry, bot, inventory, npcPos, actions, new ArrayList<>(), null), 0);
+    /**
+     * What a readiness trip's last step buys its projectiles toward: AgentSupplyReadiness.ammoBuyTarget, never past
+     * what one Victoria top-up buys to (AMMO_LOW_WARN x AMMO_TARGET_THRESHOLD) unless the standard itself is.
+     */
+    static int readinessAmmoBuyTarget(AgentSupplyReadiness.Activity trip) {
+        return Math.max(AgentSupplyReadiness.ammoTarget(trip),
+                Math.min(ammoTargetThreshold(), AgentSupplyReadiness.ammoBuyTarget(trip)));
     }
 
     private static void runPurchaseStep(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, int index) {
@@ -574,6 +613,22 @@ public final class AgentShopService {
         scheduleShopStep(sequence.entry(), () -> runPurchaseStep(next, index + 1));
     }
 
+    /**
+     * What a visit says as it ends at the counter: its first spoken shortfall; else, with {@code announceIfEmpty},
+     * that it needed nothing when it bought nothing and fell short of nothing (a quiet shortfall included: the trip's
+     * own lines tell that); else nothing.
+     */
+    static String closingLine(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
+        if (sequence.firstShortfall() != null) {
+            return buildShortfallMessage(sequence.firstShortfall(), sequence.inventory());
+        }
+        if (announceIfEmpty && !sequence.boughtAnything() && !sequence.quietShortfall()) {
+            // Never end a resupply visit silently: nothing was bought and nothing fell short.
+            return AgentDialogueCatalog.shopEmptyResupplyReply();
+        }
+        return null;
+    }
+
     private static void finishPurchaseSequence(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
         if (!isShopSequenceValid(sequence.entry(), sequence.bot(), sequence.npcPos())) {
             abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
@@ -585,19 +640,19 @@ public final class AgentShopService {
                 abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
                 return;
             }
-            if (sequence.firstShortfall() != null) {
-                AgentShopRuntime.sayMapNow(sequence.bot(), buildShortfallMessage(sequence.firstShortfall(), sequence.inventory()));
-            } else if (announceIfEmpty && sequence.bought().isEmpty()) {
-                // Never end a resupply visit silently: nothing was bought and nothing fell short.
-                AgentShopRuntime.sayMapNow(sequence.bot(), AgentDialogueCatalog.shopEmptyResupplyReply());
+            String closing = closingLine(sequence, announceIfEmpty);
+            if (closing != null) {
+                AgentShopRuntime.sayMapNow(sequence.bot(), closing);
             }
             AgentShopStateRuntime.completeWorkflow(sequence.entry(), "shop transaction reconciled",
                     System.currentTimeMillis());
             clearShopState(sequence.entry());
         };
 
-        if (!sequence.bought().isEmpty()) {
-            AgentShopRuntime.sayMapNow(sequence.bot(), AgentDialogueCatalog.shopBoughtReply(sequence.bought()));
+        if (sequence.boughtAnything()) {
+            if (!sequence.bought().isEmpty()) {
+                AgentShopRuntime.sayMapNow(sequence.bot(), AgentDialogueCatalog.shopBoughtReply(sequence.bought()));
+            }
             AgentPotionService.setupAutopotForBot(sequence.bot());
             AgentCombatAmmoCheckRuntime.tickAmmoCheck(sequence.entry(), sequence.bot(),
                     AgentSupplyConfig.cfg.AMMO_LOW_WARN, AgentRuntimeConfig.cfg.POT_LOW_WARN);
@@ -811,10 +866,19 @@ public final class AgentShopService {
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
             AgentShopBuyReport report,
             String fallbackName) {
+        return appendBuyReport(sequence, report, fallbackName, false);
+    }
+
+    /** As above; with {@code quiet} a shortfall is a quiet one (logged by its trip, never said at the counter). */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> appendBuyReport(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            AgentShopBuyReport report,
+            String fallbackName,
+            boolean quiet) {
         if (report.quantity() > 0) {
             sequence.bought().add(report.quantity() + " " + resolveItemName(report.itemId(), fallbackName, sequence.inventory()));
         }
-        return sequence.withFirstShortfall(report);
+        return quiet ? sequence.withQuietShortfall(report) : sequence.withFirstShortfall(report);
     }
 
     private static boolean needsAmmo(Character bot, WeaponType wt) {
@@ -971,6 +1035,231 @@ public final class AgentShopService {
         return new AgentShopBuyReport(shortfallItemId, recharged, attempted, reason);
     }
 
+    /**
+     * A readiness trip's ammo step (after the potion standard): {@link #buyReadinessAmmo} toward {@code target},
+     * logged and counted as bought, but not added to the spoken "bought ..." line, and a shortfall is logged, not said
+     * (a quiet shortfall): the trip's own go, back and broke lines cover it in the companion's words, and the run's Use
+     * slot it keeps free on purpose is no full bag.
+     */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessAmmoStep(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, Character bot, WeaponType wt, int target,
+            int minimumMesoReserve) {
+        AgentShopBuyReport report = buyReadinessAmmo(bot, shop, wt, sequence.inventory(), target, minimumMesoReserve);
+        if (report.quantity() > 0 || report.hasShortfall()) {
+            log.info("Agent '{}' readiness ammo: {} x{} ({}), now {}", bot.getName(), report.itemId(),
+                    report.quantity(), report.reason(), AgentCombatAmmoCounter.countCarried(bot, wt));
+        }
+        return sequence.withUnspoken(report.quantity()).withQuietShortfall(report);
+    }
+
+    /**
+     * A readiness trip's last step: {@link #buyReadinessAmmo} on toward {@code buyTarget} with what is left, counted
+     * as bought but never said, and no shortfall of any kind when it stops short (headroom is a bonus).
+     */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessAmmoHeadroomStep(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, Character bot, WeaponType wt,
+            int buyTarget, int minimumMesoReserve) {
+        AgentShopBuyReport report = buyReadinessAmmo(bot, shop, wt, sequence.inventory(), buyTarget,
+                minimumMesoReserve);
+        if (report.quantity() > 0) {
+            log.info("Agent '{}' readiness ammo headroom: {} x{} ({}), now {}", bot.getName(), report.itemId(),
+                    report.quantity(), report.reason(), AgentCombatAmmoCounter.countCarried(bot, wt));
+        }
+        return sequence.withUnspoken(report.quantity());
+    }
+
+    /**
+     * Tops the projectiles for {@code wt} in the bag up to {@code target} at any shop. A claw or gun first refills
+     * every partial star or bullet stack it owns ({@link #refillableStacks}: any id, best first; every shop recharges),
+     * then buys sets of this shop's cheapest star or bullet one at a time; a bow or crossbow buys this shop's cheapest
+     * arrows or bolts. It never fills the last free Use slot (a party quest keeps it for its items and rewards), and
+     * reports a NO_SPACE shortfall when that stops it short. The report: the last item touched, the projectiles
+     * gained, the ones wanted, the first shortfall; empty when nothing is wanted or this shop sells none.
+     */
+    static AgentShopBuyReport buyReadinessAmmo(Character bot, Shop shop, WeaponType wt, InventoryGateway inventory,
+                                               int target, int minimumMesoReserve) {
+        AgentShopBuyReport none = new AgentShopBuyReport(0, 0, 0, AgentShopShortfallReason.NONE);
+        if (bot == null || shop == null || wt == null || !AgentCombatAmmoCounter.isRangedAmmoWeapon(wt)
+                || bot.getInventory(InventoryType.USE) == null) {
+            return none;
+        }
+        int start = AgentCombatAmmoCounter.countCarried(bot, wt);
+        if (target <= 0 || start >= target) {
+            return none;
+        }
+        int itemId = 0;
+        AgentShopShortfallReason reason = AgentShopShortfallReason.NONE;
+        if (isRechargeWeaponType(wt)) {
+            for (Item stack : refillableStacks(bot, wt, inventory)) {
+                if (AgentCombatAmmoCounter.countCarried(bot, wt) >= target) {
+                    break;
+                }
+                itemId = stack.getItemId();
+                Shop.TransactionResult result = AgentShopGatewayRuntime.shop().recharge(
+                        bot, shop, stack.getPosition(), minimumMesoReserve);
+                if (result != Shop.TransactionResult.SUCCESS) {
+                    reason = shortfallOf(result);
+                    break;
+                }
+            }
+            ShopSlotItem set = reason == AgentShopShortfallReason.NONE ? findSeedRechargeAmmoItem(shop, wt) : null;
+            if (set != null) {
+                itemId = set.shopItem.getItemId();
+                int count = AgentCombatAmmoCounter.countCarried(bot, wt);
+                while (count < target) {
+                    if (freeUseSlots(bot) <= 1) {
+                        reason = AgentShopShortfallReason.NO_SPACE;
+                        break;
+                    }
+                    AgentShopBuyReport bought = buyFixedCostItem(bot, shop, set, 1, 1, minimumMesoReserve);
+                    if (bought.reason() != AgentShopShortfallReason.NONE || bought.quantity() <= 0) {
+                        reason = bought.reason() == AgentShopShortfallReason.NONE
+                                ? AgentShopShortfallReason.OTHER : bought.reason();
+                        break;
+                    }
+                    int after = AgentCombatAmmoCounter.countCarried(bot, wt);
+                    if (after <= count) {
+                        break; // nothing arrived: never loop on a set that does not land
+                    }
+                    count = after;
+                }
+            }
+        } else {
+            ShopSlotItem arrows = findAmmoItem(shop, wt);
+            if (arrows != null) {
+                itemId = arrows.shopItem.getItemId();
+                int want = target - start;
+                int perSlot = inventory.getSlotMax(bot, itemId);
+                long room = stackRoom(bot, itemId, inventory)
+                        + (long) Math.max(0, freeUseSlots(bot) - 1) * Math.max(0, perSlot);
+                int quantity = (int) Math.min(want, room);
+                AgentShopBuyReport bought = buyFixedCostItem(bot, shop, arrows, quantity, 1000, minimumMesoReserve);
+                reason = bought.reason() == AgentShopShortfallReason.NONE && quantity < want
+                        ? AgentShopShortfallReason.NO_SPACE : bought.reason();
+            }
+        }
+        int gained = Math.max(0, AgentCombatAmmoCounter.countCarried(bot, wt) - start);
+        return new AgentShopBuyReport(itemId, gained, target - start, reason);
+    }
+
+    private static AgentShopShortfallReason shortfallOf(Shop.TransactionResult result) {
+        return switch (result) {
+            case NOT_ENOUGH_MESO -> AgentShopShortfallReason.NO_MESO;
+            case NO_SPACE -> AgentShopShortfallReason.NO_SPACE;
+            default -> AgentShopShortfallReason.OTHER;
+        };
+    }
+
+    /**
+     * What a readiness trip's visit to a shop does with ammo, from the bag as it is now: {@code projected}, the
+     * projectiles for the weapon after the visit (Integer.MAX_VALUE for a weapon that shoots none); {@code spend},
+     * what its readiness ammo step pays (the Victoria top-up before the potions is {@link #plannedAmmoSpend});
+     * {@code newStacks}, the Use slots the visit's ammo opens, the Victoria top-up's included. No purse or slot limit:
+     * the trip's checks compare these with the purse and the free slots.
+     */
+    public record ReadinessAmmoPlan(int projected, long spend, int newStacks) {
+        static final ReadinessAmmoPlan NONE = new ReadinessAmmoPlan(Integer.MAX_VALUE, 0L, 0);
+    }
+
+    /**
+     * {@link ReadinessAmmoPlan} for a readiness trip toward {@code activity}'s ammo target at the supplier on
+     * {@code supplierMapId} (a Victoria one runs the old top-up first).
+     */
+    public static ReadinessAmmoPlan readinessAmmoPlan(Character bot, Shop shop, int supplierMapId,
+                                                      AgentSupplyReadiness.Activity activity) {
+        if (bot == null || shop == null) {
+            return ReadinessAmmoPlan.NONE;
+        }
+        return readinessAmmoPlan(bot, shop, AgentAttackExecutionProvider.getEquippedWeaponType(bot),
+                AgentInventoryGatewayRuntime.inventory(),
+                itemId -> ItemInformationProvider.getInstance().getUnitPrice(itemId),
+                AgentPotionSupplierCatalog.ammoTopUpAllowedAt(supplierMapId), AgentSupplyReadiness.ammoTarget(activity));
+    }
+
+    /**
+     * The projection itself, step for step as the counter runs them: on Victoria the seed set, the refills of the
+     * best stacks and the arrows (with the predicates {@link #purchaseActions} builds them by), then
+     * {@link #buyReadinessAmmo}'s refills, sets or arrows toward {@code target}.
+     */
+    static ReadinessAmmoPlan readinessAmmoPlan(Character bot, Shop shop, WeaponType wt, InventoryGateway inventory,
+                                               IntToDoubleFunction unitPrice, boolean victoria, int target) {
+        if (wt == null || !AgentCombatAmmoCounter.isRangedAmmoWeapon(wt)
+                || bot.getInventory(InventoryType.USE) == null) {
+            return ReadinessAmmoPlan.NONE;
+        }
+        long count = AgentCombatAmmoCounter.countCarried(bot, wt);
+        long spend = 0L;
+        int newStacks = 0;
+        List<Item> refillable = new ArrayList<>(refillableStacks(bot, wt, inventory));
+        Map<Integer, Long> roomOf = new HashMap<>();
+        if (victoria) {
+            if (shouldBuySeedRechargeAmmoWhileShopping(bot, wt)) {
+                ShopSlotItem seed = findSeedRechargeAmmoItem(shop, wt);
+                if (seed != null) {
+                    count += Math.max(0, inventory.getSlotMax(bot, seed.shopItem.getItemId()));
+                    newStacks++; // a full stack of its own: nothing to refill
+                }
+            }
+            if (shouldRechargeWhileShopping(bot, wt, inventory)) {
+                for (int sets = 0; sets < RECHARGE_MAX_SETS && !refillable.isEmpty(); sets++) {
+                    Item stack = refillable.remove(0);
+                    count += Math.max(0, inventory.getSlotMax(bot, stack.getItemId()) - stack.getQuantity());
+                }
+            }
+            if (shouldBuyFixedAmmoWhileShopping(bot, wt)) {
+                ShopSlotItem ammo = findAmmoItem(shop, wt);
+                int missing = Math.max(0, ammoTargetThreshold() - AgentCombatAmmoCounter.countAmmo(bot, wt));
+                if (ammo != null && missing > 0) {
+                    newStacks += stacksBeyondRoom(bot, ammo, missing, inventory, roomOf);
+                    count += missing;
+                }
+            }
+        }
+        if (target > 0 && count < target) {
+            if (isRechargeWeaponType(wt)) {
+                for (Item stack : refillable) {
+                    if (count >= target) {
+                        break;
+                    }
+                    int missing = Math.max(0, inventory.getSlotMax(bot, stack.getItemId()) - stack.getQuantity());
+                    count += missing;
+                    spend += (long) Math.ceil(unitPrice.applyAsDouble(stack.getItemId()) * missing);
+                }
+                ShopSlotItem set = findSeedRechargeAmmoItem(shop, wt);
+                int perSet = set == null ? 0 : inventory.getSlotMax(bot, set.shopItem.getItemId());
+                while (perSet > 0 && count < target) {
+                    count += perSet;
+                    spend += set.shopItem.getPrice();
+                    newStacks++;
+                }
+            } else {
+                ShopSlotItem arrows = findAmmoItem(shop, wt);
+                if (arrows != null) {
+                    int want = (int) (target - count);
+                    newStacks += stacksBeyondRoom(bot, arrows, want, inventory, roomOf);
+                    spend += (long) arrows.shopItem.getPrice() * want;
+                    count += want;
+                }
+            }
+        }
+        return new ReadinessAmmoPlan((int) Math.min(Integer.MAX_VALUE, count), spend, newStacks);
+    }
+
+    /**
+     * The new Use slots {@code quantity} of {@code item} take beyond the room its carried stacks have left;
+     * {@code roomOf} keeps that room across the visit's steps.
+     */
+    private static int stacksBeyondRoom(Character bot, ShopSlotItem item, int quantity, InventoryGateway inventory,
+                                        Map<Integer, Long> roomOf) {
+        int itemId = item.shopItem.getItemId();
+        int perSlot = inventory.getSlotMax(bot, itemId);
+        long room = roomOf.computeIfAbsent(itemId, id -> (long) stackRoom(bot, id, inventory));
+        long beyond = Math.max(0L, quantity - room);
+        int stacks = perSlot <= 0 ? 0 : (int) ((beyond + perSlot - 1) / perSlot);
+        roomOf.put(itemId, Math.max(0L, room - quantity) + (long) stacks * Math.max(0, perSlot) - beyond);
+        return stacks;
+    }
+
     /** The weapon's own partial stacks a recharge refills, best attack first. */
     private static List<Item> refillableStacks(Character bot, WeaponType wt, InventoryGateway inventory) {
         List<Item> refillable = new ArrayList<>();
@@ -1000,10 +1289,26 @@ public final class AgentShopService {
                 AgentPotionPurchasePolicy.triggerReserveBars(forHp));
     }
 
+    /** A visit's potions in one step: {@link #buyPotionStandard}, then {@link #buyPotionExtras}. */
     static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionStock(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
             Shop shop,
             int minimumMesoReserve) {
+        int[] bought = {0, 0};
+        return buyPotionExtras(buyPotionStandard(sequence, shop, minimumMesoReserve, bought), shop,
+                minimumMesoReserve, bought);
+    }
+
+    /**
+     * The first part of a visit's potions: a standing readiness duty's standard ({@link #buyReadinessFloor}), the
+     * purchase intent lines, then the critical reserve-bar passes. {@code bought} counts what it buys per kind (HP,
+     * MP) for the per-visit limit {@link #buyPotionExtras} goes on with.
+     */
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionStandard(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Shop shop,
+            int minimumMesoReserve,
+            int[] bought) {
         Character bot = sequence.bot();
         ShopSlotItem hpPotion = findPotionItem(shop, bot, true);
         ShopSlotItem mpPotion = findPotionItem(shop, bot, false);
@@ -1059,13 +1364,34 @@ public final class AgentShopService {
                 Integer.MAX_VALUE,
                 reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
-        current = appendBuyReport(current, report, "critical MP pots");
+        bought[0] += hpBought;
+        bought[1] += mpBought;
+        return appendBuyReport(current, report, "critical MP pots");
+    }
 
+    /**
+     * The rest of a visit's potions, after {@link #buyPotionStandard} (and on a readiness trip after its ammo step):
+     * the ordinary reserve-bar passes, then with what is left a duty holder's top-up toward its buy target
+     * (BUY_TO_PERCENT of the standard). {@code bought}: this visit's purchases per kind (HP, MP) so far, kept up. On a
+     * readiness trip what these passes cannot buy is a quiet shortfall: the trip already met what it went for.
+     */
+    static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionExtras(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            Shop shop,
+            int minimumMesoReserve,
+            int[] bought) {
+        Character bot = sequence.bot();
+        ShopSlotItem hpPotion = findPotionItem(shop, bot, true);
+        ShopSlotItem mpPotion = findPotionItem(shop, bot, false);
+        int hpBought = bought[0];
+        int mpBought = bought[1];
+        AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
+        boolean quiet = AgentSupplyReadiness.tripActivity(sequence.entry()) != null;
         boolean mpNeedsNormalStock = needsPotionTarget(bot, mpPotion, false);
         int spendable = Math.max(0, bot.getMeso() - Math.max(0, minimumMesoReserve));
         int hpBudget = AgentPotionPurchasePolicy.normalSpendBudget(
                 spendable, mpNeedsNormalStock);
-        report = buyPotionToReserve(
+        AgentShopBuyReport report = buyPotionToReserve(
                 bot,
                 shop,
                 hpPotion,
@@ -1077,7 +1403,7 @@ public final class AgentShopService {
                 hpBudget,
                 reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
         hpBought += report.quantity();
-        current = appendBuyReport(current, report, "HP pots");
+        current = appendBuyReport(current, report, "HP pots", quiet);
 
         report = buyPotionToReserve(
                 bot,
@@ -1091,10 +1417,11 @@ public final class AgentShopService {
                 Integer.MAX_VALUE,
                 reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
-        current = appendBuyReport(current, report, "MP pots");
+        current = appendBuyReport(current, report, "MP pots", quiet);
+        bought[0] = hpBought;
+        bought[1] = mpBought;
         // Last, with what is left, a duty holder tops up toward its buy target (BUY_TO_PERCENT of the standard).
-        return buyReadinessFloor(current, shop, hpPotion, mpPotion, minimumMesoReserve,
-                new int[]{hpBought, mpBought}, true);
+        return buyReadinessFloor(current, shop, hpPotion, mpPotion, minimumMesoReserve, bought, true);
     }
 
     /**

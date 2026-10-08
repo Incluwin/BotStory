@@ -112,7 +112,7 @@ public final class RedSignLines {
             DeskLines.PARTY_CHANGED, "Notice: your party changed. Read the sign again.",
             DeskLines.HOLD_ON, "Notice: your party is lining up.",
             DeskLines.CATCHING_BREATH, BUSY,
-            DeskLines.RAN_TO_THE_STORE, "Notice: some of your party went to buy potions.",
+            DeskLines.RAN_TO_THE_STORE, "Notice: some of your party went to buy supplies.",
             THINGS_CHANGED, "Notice: your party changed since you last read this.");
 
     static final String QUICK_CREW = "This crew should finish in under 30 minutes.";

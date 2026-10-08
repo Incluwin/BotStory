@@ -29,4 +29,18 @@ public interface AgentPartyQuestSystem {
             int partySize, int maximumRuns, long nowMs);
 
     String entryBlocker(Character agent, String scenarioId, int partySize, int maximumRuns);
+
+    /**
+     * True while {@code characterId} is a member of this quest's session that a host adopted for a human leader and
+     * his companions (AgentCompanionRunSession.companionAdopted); false in a stock run or none. Memory only.
+     */
+    boolean companionRun(int characterId);
+
+    /**
+     * True when this quest's companion play says itself that the member ran out of projectiles on {@code mapId}
+     * (LPQ stage 7 names who takes its ratz), so the generic in-run line stays quiet. Memory only.
+     */
+    default boolean ownsDryLine(int characterId, int mapId) {
+        return false;
+    }
 }

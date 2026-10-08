@@ -189,6 +189,10 @@ public final class AgentDialogueCatalog {
             "no ammo left, coming to you",
             "need ammo!! walking back",
             "im out of ammo, heading to you");
+    /** Out of projectiles inside a companion run, where it keeps its post: "%s" is stars, arrows, bolts or bullets. */
+    private static final List<String> IN_RUN_AMMO_OUT_REPLIES = List.of(
+            "ugh, out of %s.",
+            "those were my last %s... this'll be rough.");
     private static final List<String> COMBAT_MP_POTS_OUT_REPLIES = List.of(
             "out of MP pots! heading back",
             "no MP pots left, coming to you",
@@ -648,6 +652,16 @@ public final class AgentDialogueCatalog {
 
     public static List<String> combatAmmoOutReplies() {
         return COMBAT_AMMO_OUT_REPLIES;
+    }
+
+    /** The in-run out-of-ammo templates ("%s": what it shoots). */
+    public static List<String> inRunAmmoOutReplies() {
+        return IN_RUN_AMMO_OUT_REPLIES;
+    }
+
+    /** One in-run out-of-ammo line naming {@code word} (stars, arrows, bolts or bullets). */
+    public static String inRunAmmoOutLine(String word) {
+        return String.format(AgentDialogueSelector.randomReply(IN_RUN_AMMO_OUT_REPLIES), word);
     }
 
     public static List<String> combatMpPotsOutReplies() {

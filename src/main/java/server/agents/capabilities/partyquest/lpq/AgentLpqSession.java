@@ -94,6 +94,10 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     private int preferredHumanId;
     private HumanRolePreference humanRolePreference = HumanRolePreference.DEFAULT;
     private final Set<String> claimedFlavorChatKeys = new java.util.LinkedHashSet<>();
+    /** Log keys the run already logged once (claimLogOnce). */
+    private final Set<String> loggedOnce = new java.util.HashSet<>();
+    /** A companion run's stage 7 at its last pass: trigger ratz alive and no loaded shooter for them. */
+    private boolean stageSevenNoShooter;
     private boolean companionAdopted;
     private boolean memberCoordinationChatEnabled;
     private AgentPqPaceCalibration paceCalibration;
@@ -712,6 +716,13 @@ public final class AgentLpqSession implements AgentCompanionRunSession {
     synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
 
     synchronized boolean memberCoordinationChatEnabled() { return memberCoordinationChatEnabled; }
+
+    /** True the first time the run logs {@code key}; a blank key never. */
+    synchronized boolean claimLogOnce(String key) { return key != null && !key.isBlank() && loggedOnce.add(key); }
+
+    synchronized boolean stageSevenNoShooter() { return stageSevenNoShooter; }
+
+    synchronized void setStageSevenNoShooter(boolean none) { stageSevenNoShooter = none; }
 
     @Override
     public synchronized void setMemberCoordinationChatEnabled(boolean enabled) {

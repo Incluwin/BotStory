@@ -300,6 +300,9 @@ public record LineupPlan(String pqKey, int leaderId, List<Seat> lineup, List<Sea
             if (DeskLines.LOW_ON_AMMO.equals(member.reason())) {
                 return DeskLines.named(DeskLines.LOW_ON_AMMO_LINE, member.name());
             }
+            if (DeskLines.LOW_ON_AMMO_BROKE.equals(member.reason())) {
+                return DeskLines.named(DeskLines.LOW_ON_AMMO_BROKE_LINE, member.name());
+            }
         }
         return voice.tooFew();
     }

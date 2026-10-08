@@ -59,6 +59,7 @@ public final class AgentSupplyReadinessState {
     private int cooldownFreeUseSlotsAt;
     private int cooldownHpShortAt;
     private int cooldownMpShortAt;
+    private int cooldownAmmoShortAt;
     private int cooldownMapId;
     private int cooldownSupplierMapId = -1;
     private int interruptedInARow;
@@ -171,6 +172,7 @@ public final class AgentSupplyReadinessState {
         cooldownFreeUseSlotsAt = Math.max(0, freeUseSlotsAt);
         cooldownHpShortAt = shortfallAt == null ? Integer.MAX_VALUE : shortfallAt.hp();
         cooldownMpShortAt = shortfallAt == null ? Integer.MAX_VALUE : shortfallAt.mp();
+        cooldownAmmoShortAt = shortfallAt == null ? Integer.MAX_VALUE : shortfallAt.ammo();
         cooldownMapId = mapId;
         cooldownSupplierMapId = -1;
     }
@@ -183,7 +185,8 @@ public final class AgentSupplyReadinessState {
     /**
      * The cooldown in force now, or null once lifted (and then forgotten): a meso cooldown lifts when the purse has
      * grown by what it lacked, a space cooldown when more Use slots are free than when it was set, either when it now
-     * lacks fewer potions of a kind (someone gave it some); an interrupted trip's when its time is up; a given-up one
+     * lacks fewer potions of a kind or fewer projectiles (someone gave it some); an interrupted trip's when its time is
+     * up; a given-up one
      * once it stands on another map.
      */
     synchronized Cooldown cooldownInForce(long nowMs, int mesos, int freeUseSlots,
@@ -206,7 +209,8 @@ public final class AgentSupplyReadinessState {
     private boolean lifted(long nowMs, int mesos, int freeUseSlots, AgentSupplyReadiness.Shortfall shortfall,
                            int mapId) {
         boolean fewer = shortfall != null
-                && (shortfall.hp() < cooldownHpShortAt || shortfall.mp() < cooldownMpShortAt);
+                && (shortfall.hp() < cooldownHpShortAt || shortfall.mp() < cooldownMpShortAt
+                || shortfall.ammo() < cooldownAmmoShortAt);
         return switch (cooldown) {
             case CANNOT_AFFORD, SHORT_MESOS -> (long) mesos >= (long) cooldownMesosAt + cooldownMissingMesos || fewer;
             case NO_SPACE, SHORT_SPACE -> freeUseSlots > cooldownFreeUseSlotsAt || fewer;

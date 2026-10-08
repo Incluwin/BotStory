@@ -113,7 +113,7 @@ class CompanionPartyQuestServiceTest {
         }
     }
 
-    // ---- ammo: the desk counts it, nothing buys it (user 2026-10-05) ------------------------
+    // ---- ammo: the desk counts it, the companion's own restock buys it (user 2026-10-07) -----
 
     @Test
     void aRangedCompanionShortOfAmmoWaitsLowOnAmmoAndAsksItsPartyForSome() {
@@ -138,16 +138,69 @@ class CompanionPartyQuestServiceTest {
     }
 
     @Test
-    void ammoNeverSendsACompanionToTheStore() {
-        fx.ammo.put(902, 0);
+    void aCompanionShortOfAmmoLooksAtItsAmmoOnTheClick() {
+        fx.ammo.put(902, 0); // SilentSin: full potions, no throwing stars
         fx.ready();
         enableDesk();
         try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
                 Mockito.CALLS_REAL_METHODS)) {
             assertTrue(offer());
-            readiness.verify(() -> AgentSupplyReadiness.checkSoon(any()), Mockito.never());
-            readiness.verify(() -> AgentSupplyReadiness.status(any(), anyLong()), Mockito.never());
+            readiness.verify(() -> AgentSupplyReadiness.checkSoon(entries.get(902)));
+            readiness.verify(() -> AgentSupplyReadiness.checkSoon(entries.get(901)), never());
         }
+    }
+
+    @Test
+    void aCompanionOnAnAmmoTripIsAtTheStore() {
+        fx.ammo.put(902, 0);
+        fx.ready();
+        onTrip(902);
+
+        LineupPlan plan = fx.service.plan(game.ann, "kpq");
+
+        assertEquals(List.of(), plan.waiting());
+        LineupPlan.Seat seat = plan.onTheWay().getFirst();
+        assertEquals(902, seat.characterId());
+        assertEquals(LakelisLines.AT_THE_STORE, seat.errand());
+        assertFalse(plan.startable(), "Yes waits for him");
+    }
+
+    @Test
+    void aCompanionThatCannotAffordAmmoWaitsLowOnAmmoOutOfMesos() {
+        fx.ammo.put(902, 0);
+        fx.ready();
+        enableDesk();
+        CompanionRestock restock = new CompanionRestock(game.world);
+        when(game.world.restock()).thenReturn(restock);
+        List<Runnable> ops = fx.holdCompanionOps();
+        try (MockedStatic<AgentSupplyReadiness> readiness = mockStatic(AgentSupplyReadiness.class,
+                Mockito.CALLS_REAL_METHODS)) {
+            readiness.when(() -> AgentSupplyReadiness.status(any(), anyLong())).thenAnswer(inv ->
+                    inv.getArgument(0) == entries.get(902)
+                            ? new AgentSupplyReadiness.Status(AgentSupplyReadiness.StatusKind.CANNOT_AFFORD, 0L, 500)
+                            : AgentSupplyReadiness.Status.NONE);
+
+            LineupPlan plan = fx.service.plan(game.ann, "kpq");
+            assertEquals(List.of(new LineupPlan.Waiting(902, "SilentSin", DeskLines.LOW_ON_AMMO_BROKE)),
+                    plan.waiting());
+            assertEquals("SilentSin is low on ammo and can't afford any more.", plan.blocker());
+
+            assertTrue(offer());
+            assertTrue(offer());
+        }
+        CompanionPqFixture.drain(ops);
+        assertEquals(1, game.partyChat.size(), "once: " + game.partyChat);
+        String said = game.partyChat.getFirst();
+        String word = CompanionRestockLines.ammoWord(game.bot(sin));
+        assertTrue(said.startsWith("SilentSin: ") && CompanionRestockLines.GENERIC.get(CompanionRestockLines.BROKE_AMMO)
+                .stream().map(line -> CompanionRestockLines.withAmmo(line, word)).toList()
+                .contains(said.substring("SilentSin: ".length())), said);
+
+        List<Runnable> later = fx.holdCompanionOps();
+        restock.refused(902, AgentSupplyReadiness.Activity.partyQuest("kpq"),
+                AgentSupplyReadiness.Refusal.CANNOT_AFFORD, new AgentSupplyReadiness.Shortfall(0, 0, 500), 500);
+        CompanionPqFixture.drain(later);
+        assertEquals(1, game.partyChat.size(), "its own refusal says no second broke line: " + game.partyChat);
     }
 
     // ---- gone to the store -----------------------------------------------------------------

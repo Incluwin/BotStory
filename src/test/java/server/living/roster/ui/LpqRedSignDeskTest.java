@@ -141,7 +141,7 @@ class LpqRedSignDeskTest {
         assertEquals(MENU, window.msgType());
         assertEquals(RED_SIGN, window.npcId());
         assertTrue(window.text().startsWith(TITLE + "\r\n"
-                + "Notice: some of your party went to buy potions.\r\n"
+                + "Notice: some of your party went to buy supplies.\r\n"
                 + "Party of six. Entering the tower:\r\n"
                 + "#bBen#k (leader)\r\n"), window.text());
         assertTrue(window.text().contains("\r\nWaiting by the sign: Garrick (bags full)\r\n"), window.text());

@@ -1,5 +1,7 @@
 package server.agents.capabilities.partyquest.lpq;
 
+import server.agents.capabilities.supplies.AgentProjectileKind;
+
 import java.awt.Point;
 import java.util.List;
 
@@ -109,6 +111,36 @@ final class AgentLpqCompanionPlay {
         String who = shooters.size() == 1 ? shooters.getFirst() : shooters.get(0) + " and " + shooters.get(1);
         return who + ", take the ratz up on the ledges." + THEN + "the rest of us wait for rombard down here. " + leader
                 + ", stay at the bottom with us.";
+    }
+
+    /** S7d's reply from the one shooter left: it takes all three ratz. */
+    static final String STAGE_SEVEN_TAKE_ALL = "got it, i'll take them all.";
+    /** S7d's reply from a shooter now on the dry member's lane, beside another. */
+    static final String STAGE_SEVEN_TAKE_SIDE = "got it, i'll cover your side.";
+
+    /** S7d: a member that held a ratz lane ran out; {@code taker} is the loaded shooter now on its lane. */
+    static String stageSevenDryLine(String taker, AgentProjectileKind kind) {
+        return taker + ", i'm out of " + word(kind) + ". can you get the ratz up there for me?";
+    }
+
+    /** S7d with no shooter left and a loaded ranged leader. */
+    static String stageSevenDryAskLeaderUpLine(String leader, AgentProjectileKind kind) {
+        return leader + ", i'm out of " + word(kind) + ". can you get the ratz up there?";
+    }
+
+    /** S7d when nobody can shoot the ratz (said once a run). */
+    static String stageSevenDryAskLeaderAmmoLine(String leader, AgentProjectileKind kind) {
+        String ammo = word(kind);
+        return leader + ", i'm out of " + ammo + " and nobody else can reach the ratz up there. got any " + ammo + "?";
+    }
+
+    /** S7r: the member that ran dry has projectiles again and takes its lane back. */
+    static String stageSevenBackLine(AgentProjectileKind kind) {
+        return "got more " + word(kind) + ". i'll take my side again.";
+    }
+
+    private static String word(AgentProjectileKind kind) {
+        return kind == null ? "ammo" : kind.word();
     }
 
     /** S8a, while the blue balloon has not explained the boxes yet. */

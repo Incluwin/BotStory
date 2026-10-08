@@ -150,7 +150,7 @@ class LakelisDeskGoldenTest {
         desk.proposal(ben, four(clearTime(MEASURED, 1100.0d, 1100.0d)), LakelisLines.RAN_TO_THE_STORE);
 
         assertWindow(MENU, TITLE
-                + "Some of your crew ran to the store for potions. They won't be long.\r\n"
+                + "Some of your crew ran to the store for supplies. They won't be long.\r\n"
                 + "Four of you, then? Here's who I'd send in:\r\n"
                 + "#bBen#k (leader)\r\n"
                 + "#bAnn#k, Lv24 Cleric\r\n"

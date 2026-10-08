@@ -1,6 +1,8 @@
 package server.agents.capabilities.partyquest.lpq;
 
 import java.awt.Point;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Per-participant state owned only by an LPQ session. */
 public final class AgentLpqMemberState {
@@ -68,6 +70,13 @@ public final class AgentLpqMemberState {
     private long destinationApproachProgressAtMs;
     private long destinationApproachLastRetryAtMs;
     private String announcedIntentKey = "";
+    /** Log keys this member already logged in this run (claimLogOnce). */
+    private final Set<String> loggedOnce = new HashSet<>();
+    /** A companion run: it held a stage-7 ratz lane (index), and said it ran dry there. */
+    private boolean heldStageSevenLane;
+    private int stageSevenLaneIndex;
+    private boolean saidStageSevenDry;
+    private boolean releasedStageSevenDryLine;
     private int passReportStage;
     private int passReportMapId;
     private int passReportCount;
@@ -667,6 +676,34 @@ public final class AgentLpqMemberState {
         announcedIntentKey = key;
         return true;
     }
+
+    /**
+     * True the first time this member logs {@code key} in this run; a blank key never. Unlike
+     * {@link #claimIntentAnnouncement} it shares no slot with the intent lines, so a warning and an intent line never
+     * take turns at being new.
+     */
+    public synchronized boolean claimLogOnce(String key) {
+        return key != null && !key.isBlank() && loggedOnce.add(key);
+    }
+
+    /** A companion run's stage 7 gave it ratz lane {@code index} (it stays the last lane it held). */
+    public synchronized void holdStageSevenLane(int index) {
+        heldStageSevenLane = true;
+        stageSevenLaneIndex = Math.max(0, index);
+    }
+
+    public synchronized boolean heldStageSevenLane() { return heldStageSevenLane; }
+
+    public synchronized int stageSevenLaneIndex() { return stageSevenLaneIndex; }
+
+    public synchronized boolean saidStageSevenDry() { return saidStageSevenDry; }
+
+    public synchronized void setSaidStageSevenDry(boolean said) { saidStageSevenDry = said; }
+
+    /** Its S7d could not be said (chat off, nobody to name, its key taken): its generic in-run line speaks. */
+    public synchronized void releaseStageSevenDryLine() { releasedStageSevenDryLine = true; }
+
+    public synchronized boolean stageSevenDryLineReleased() { return releasedStageSevenDryLine; }
 
     public boolean shouldReportPassProgress(int stage, int mapId, int count, int quota) {
         if (stage <= 0 || mapId <= 0 || count <= 0 || quota <= 0) return false;

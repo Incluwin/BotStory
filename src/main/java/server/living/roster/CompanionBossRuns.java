@@ -203,8 +203,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         boolean restocking(int agentId, long nowMs);
 
         /**
-         * A companion short of {@code bossKey}'s potion standard (AgentSupplyReadiness.BOSS_STANDARDS) looks at its
-         * potions on its next tick instead of its next check, so one that can reach a shop sets off before it signs up.
+         * A companion short of {@code bossKey}'s potion and ammo standards (AgentSupplyReadiness.BOSS_STANDARDS,
+         * AMMO_STANDARDS) looks at its supplies on its next tick instead of its next check, so one that can reach a
+         * shop sets off before it signs up.
          */
         void checkIfShort(int agentId, String bossKey);
 

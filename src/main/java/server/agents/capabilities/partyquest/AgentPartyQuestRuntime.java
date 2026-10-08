@@ -131,6 +131,37 @@ public final class AgentPartyQuestRuntime {
         return system != null && system.resumeExact(characterId, sessionId, nowMs);
     }
 
+    /** True while the character is a member of a companion run of any party quest (memory only, any thread). */
+    public static boolean companionRun(int characterId) {
+        for (AgentPartyQuestSystem system : SYSTEMS) {
+            if (system.companionRun(characterId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True when the member's run says itself that it ran out of projectiles on {@code mapId}
+     * (AgentPartyQuestSystem.ownsDryLine). Memory only.
+     */
+    public static boolean ownsDryLine(int characterId, int mapId) {
+        for (AgentPartyQuestSystem system : SYSTEMS) {
+            if (system.ownsDryLine(characterId, mapId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * True for a session a host adopted for a human leader and his companions. Typed as Object: a quest whose session
+     * does not implement AgentCompanionRunSession yet (LMPQ, OPQ, PPQ) answers false until it does.
+     */
+    private static boolean adopted(Object session) {
+        return session instanceof AgentCompanionRunSession run && run.companionAdopted();
+    }
+
     private static AgentPartyQuestSystem systemFor(int characterId) {
         AgentPartyQuestEngagement engagement = AgentPartyQuestEngagementRegistry.forMember(characterId);
         if (engagement != null) {
@@ -143,6 +174,10 @@ public final class AgentPartyQuestRuntime {
     }
 
     private static final class HpqSystem implements AgentPartyQuestSystem {
+        @Override public boolean companionRun(int characterId) {
+            return adopted(AgentHpqSessionRegistry.forMember(characterId));
+        }
+
         @Override public AgentPartyQuestDefinition definition() {
             return AgentPartyQuestCatalog.require("hpq");
         }
@@ -214,6 +249,10 @@ public final class AgentPartyQuestRuntime {
     }
 
     private static final class KpqSystem implements AgentPartyQuestSystem {
+        @Override public boolean companionRun(int characterId) {
+            return adopted(AgentKpqSessionRegistry.forMember(characterId));
+        }
+
         @Override
         public AgentPartyQuestDefinition definition() {
             return AgentPartyQuestCatalog.require("kpq");
@@ -290,6 +329,14 @@ public final class AgentPartyQuestRuntime {
     }
 
     private static final class LpqSystem implements AgentPartyQuestSystem {
+        @Override public boolean companionRun(int characterId) {
+            return adopted(AgentLpqSessionRegistry.forMember(characterId));
+        }
+
+        @Override public boolean ownsDryLine(int characterId, int mapId) {
+            return AgentLpqRuntime.ownsDryLine(characterId, mapId);
+        }
+
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("lpq"); }
         @Override public boolean sessionActive(int characterId) { return AgentLpqSessionRegistry.active(characterId); }
         @Override public boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
@@ -346,6 +393,10 @@ public final class AgentPartyQuestRuntime {
     }
 
     private static final class LmpqSystem implements AgentPartyQuestSystem {
+        @Override public boolean companionRun(int characterId) {
+            return adopted(AgentLmpqSessionRegistry.forMember(characterId));
+        }
+
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("lmpq"); }
         @Override public boolean sessionActive(int characterId) { return AgentLmpqSessionRegistry.active(characterId); }
         @Override public boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
@@ -401,6 +452,10 @@ public final class AgentPartyQuestRuntime {
     }
 
     private static final class OpqSystem implements AgentPartyQuestSystem {
+        @Override public boolean companionRun(int characterId) {
+            return adopted(AgentOpqSessionRegistry.forMember(characterId));
+        }
+
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("opq"); }
         @Override public boolean sessionActive(int characterId) { return AgentOpqSessionRegistry.active(characterId); }
         @Override public boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
@@ -454,6 +509,10 @@ public final class AgentPartyQuestRuntime {
     }
 
     private static final class EpqSystem implements AgentPartyQuestSystem {
+        @Override public boolean companionRun(int characterId) {
+            return adopted(AgentEpqSessionRegistry.forMember(characterId));
+        }
+
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("epq"); }
         @Override public boolean sessionActive(int characterId) { return AgentEpqSessionRegistry.active(characterId); }
         @Override public boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
@@ -510,6 +569,10 @@ public final class AgentPartyQuestRuntime {
     }
 
     private static final class PpqSystem implements AgentPartyQuestSystem {
+        @Override public boolean companionRun(int characterId) {
+            return adopted(AgentPpqSessionRegistry.forMember(characterId));
+        }
+
         @Override public AgentPartyQuestDefinition definition() { return AgentPartyQuestCatalog.require("ppq"); }
         @Override public boolean sessionActive(int characterId) { return AgentPpqSessionRegistry.active(characterId); }
         @Override public boolean tick(AgentRuntimeEntry entry, Character agent, long nowMs) {
