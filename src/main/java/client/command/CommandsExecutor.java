@@ -236,6 +236,7 @@ import client.command.commands.gm6.WarpLpqCommand;
 import client.command.commands.gm6.MushroomTestCommand;
 import client.command.commands.gm6.BalrogTestCommand;
 import client.command.commands.gm6.BalrogProbeCommand;
+import client.command.commands.gm6.BossGearCommand;
 import client.command.commands.gm6.SecondJobTestCommand;
 import client.command.commands.gm6.AgentFieldCommand;
 import client.command.commands.gm6.AmherstCommand;
@@ -700,6 +701,7 @@ public class CommandsExecutor {
         addCommand("observer", 6, ObserverCommand.class);
         addCommand("southperry", 6, SouthperryCommand.class);
         addCommand("economy", 6, EconomyCommand.class);
+        addCommand("bossgear", 6, BossGearCommand.class);
 
         commandsNameDesc.add(levelCommandsCursor);
     }
