@@ -1,5 +1,8 @@
 package server.agents.capabilities.partyquest.rjpq;
 
+import client.Character;
+import server.maps.MapItem;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +68,24 @@ public final class AgentRjpqSessionRegistry {
     public static AgentRjpqSession forOperator(int id) {
         String sessionId = BY_OPERATOR.get(id);
         return sessionId == null ? null : SESSIONS.get(sessionId);
+    }
+
+    /**
+     * The RJPQ refuse-only loot clause (plan 7.7) the shared loot eligibility asks once the wiring lands: false only
+     * when a companion standing in its run's bound event may not take this drop by the run's rules
+     * ({@link AgentRjpqLootRule}); true for everyone and everything else, which the stock rules then decide.
+     */
+    public static boolean canLoot(Character bot, MapItem drop) {
+        if (bot == null || drop == null) {
+            return true;
+        }
+        AgentRjpqSession session = forMember(bot.getId());
+        AgentRjpqMemberState member = session == null ? null : session.member(bot.getId());
+        if (member == null || !member.agent() || session.eventInstance() == null
+                || bot.getEventInstance() != session.eventInstance()) {
+            return true;
+        }
+        return AgentRjpqLootRule.allows(AgentRjpqLootRule.facts(session, bot, drop));
     }
 
     public static boolean active(int id) {
