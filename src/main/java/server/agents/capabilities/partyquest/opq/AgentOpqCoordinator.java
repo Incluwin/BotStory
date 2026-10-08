@@ -1003,7 +1003,8 @@ final class AgentOpqCoordinator {
     private static void tickReward(AgentOpqSession session, long nowMs) {
         boolean allOutside = session.members().stream().map(m -> character(m.characterId()))
                 .filter(java.util.Objects::nonNull).allMatch(c -> c.getMapId() == AgentOpqDefinition.RECRUIT_MAP);
-        if (allOutside) session.complete(nowMs);
+        // The completed run is released here, as LPQ and HPQ release theirs; nothing else in the tick would.
+        if (allOutside) AgentOpqTerminationService.complete(session, nowMs);
     }
 
     private static void tickRewardMember(AgentOpqSession session, AgentRuntimeEntry entry,

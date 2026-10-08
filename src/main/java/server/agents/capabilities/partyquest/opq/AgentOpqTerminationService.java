@@ -35,6 +35,16 @@ final class AgentOpqTerminationService {
     }
 
     /**
+     * The run completed (every member claimed and left): it is released as a completion, with no exit and no dispose.
+     * The release is claimed before the session is marked complete, so a release already under way wins.
+     */
+    static void complete(AgentOpqSession session, long nowMs) {
+        if (session == null || !session.beginTermination()) return;
+        session.complete(nowMs);
+        release(session, "completed", nowMs, false, true);
+    }
+
+    /**
      * The run is past its clear: the event says it is cleared, Minerva is free (statusStg8, which 2006001.js sets with
      * the clear), or the run is claiming its reward. The property is read as text: a missing one is not the clear.
      */
