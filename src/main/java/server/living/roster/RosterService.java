@@ -2342,6 +2342,10 @@ public final class RosterService {
         if (ownParty) {
             parkedParty.put(ownerId, party.getId());
         }
+        CompanionBossRuns bossRuns = world.bossRuns();
+        if (bossRuns != null) {
+            bossRuns.ownerLoggedOut(owner); // P7 Part B: their bench allies (BENCHED rows, so none of them is out)
+        }
     }
 
     /**

@@ -216,7 +216,7 @@ final class BossAllyHarness implements AutoCloseable {
         final Set<Integer> inRun = new HashSet<>();
         /** Ids the run turns away. */
         final Set<Integer> refuse = new HashSet<>();
-        /** "enlistSelfLed <owner> <ids>", "enlist <owner> <ids>", "withdraw <id>", in order. */
+        /** "enlistSelfLed <owner> <ids>", "enlist <owner> <ids>", "withdraw <id>", "handTo <id> -> <heir>", in turn. */
         final List<String> calls = new ArrayList<>();
         /** Agent id -> its phase in the run, from its enlist on. */
         final Map<Integer, AgentBossRunMember.Phase> phases = new HashMap<>();
@@ -288,9 +288,11 @@ final class BossAllyHarness implements AutoCloseable {
             return false;
         }
 
+        /** Records "handTo <id> -> <heir>"; the run agrees while the member is in the fight (INSIDE). */
         @Override
         public boolean handTo(long sessionId, int agentId, int heirId) {
-            return false;
+            calls.add("handTo " + agentId + " -> " + heirId);
+            return sessionId == SID && phases.get(agentId) == AgentBossRunMember.Phase.INSIDE;
         }
 
         @Override

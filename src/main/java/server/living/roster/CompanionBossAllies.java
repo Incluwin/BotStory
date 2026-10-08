@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import net.server.world.CauseScope;
 import net.server.world.Party;
 import net.server.world.PartyEvents;
+import scripting.event.EventInstanceManager;
 import server.agents.capabilities.expedition.boss.AgentBossRunCatalog;
 import server.agents.capabilities.expedition.boss.AgentBossRunDefinition;
 import server.agents.capabilities.expedition.boss.AgentBossRunHost.Out;
@@ -60,10 +61,11 @@ import java.util.function.LongSupplier;
  * refusal, a missed start, the fight, a death it waits out beside her, the run's end, a lost run), it says how it went
  * where its owner hears it, leaves its party, walks to the room's way out and is unloaded; only then do its lease, its
  * commitment and its trip go, and its BENCHED row takes up its bench duty again. While a trip lasts, bench duty, the
- * bench ledger and the roster's call leave its persona alone. Calls, arrivals and the way home run on companion-ops;
- * the entry NPC's window (her offer, the picker of who can come and how many, the owner's pick) reads the crew cache
- * and memory on the owner's I/O thread. It writes no roster state. Owned by CompanionBossRuns; nothing survives a
- * restart (the rows stayed BENCHED).
+ * bench ledger and the roster's call leave its persona alone. When its owner logs off, an ally not here yet is called
+ * off, one on her list is taken off it, and one in the fight sees it through for a human still there (its lines are
+ * theirs from then on). Calls, arrivals and the way home run on companion-ops; the entry NPC's window (her offer, the
+ * picker of who can come and how many, the owner's pick) reads the crew cache and memory on the owner's I/O thread. It
+ * writes no roster state. Owned by CompanionBossRuns; nothing survives a restart (the rows stayed BENCHED).
  */
 final class CompanionBossAllies {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossAllies.class);
@@ -139,6 +141,8 @@ final class CompanionBossAllies {
         volatile boolean waitingOutside;
         /** When it set off for the way out (LEAVING). */
         volatile long leftAtMs;
+        /** The human it sees the fight through for since its owner logged off (0: none, it is its owner's). */
+        volatile int heirId;
         /** When the audit first found its run gone (0: it has not); companion-ops only. */
         long goneSinceMs;
 
@@ -318,10 +322,11 @@ final class CompanionBossAllies {
     /**
      * The entry NPC's picker for {@code clicker} (memory and the crew cache): null unless both switches list the boss,
      * the clicker is a human with companions, the channel's expedition of the boss takes sign-ups, a human leads it,
-     * the clicker is on it, and no other owner's companions are (Part A's one-owner rule). Each BENCHED row of theirs
-     * is offered when it has no trip, is tied to no run, is in no boss run, is loaded by nothing but its own live
-     * slice, is within the expedition's level range, and its recall ETA (from where its slice stands, else its camp)
-     * plus the widest arrival stagger reaches her before the run stops taking sign-ups.
+     * the clicker is on it, and the owners rule lets them in (CompanionBossRuns.ownerFits: Part A's one owner, or up to
+     * COMPANION_BOSS_OWNERS_MAX owners). Each BENCHED row of theirs is offered when it has no trip, is tied to no run,
+     * is in no boss run, is loaded by nothing but its own live slice, is within the expedition's level range, and its
+     * recall ETA (from where its slice stands, else its camp) plus the widest arrival stagger reaches her before the
+     * run stops taking sign-ups.
      */
     Picker picker(Character clicker, String bossKey, long nowMs) {
         Context context = context(clicker, bossKey);
@@ -395,7 +400,7 @@ final class CompanionBossAllies {
     /**
      * The entry NPC's Easy window for {@code clicker} (memory and the crew cache): true when she offers "Call allies
      * from my bench...": the terms of her picker hold ({@link #picker}: both switches, a human owner on a list a human
-     * leads that still takes sign-ups, no other owner's companions on it) and a BENCHED row of theirs has no trip.
+     * leads that still takes sign-ups, the owners rule) and a BENCHED row of theirs has no trip.
      */
     boolean offers(Character clicker, String bossKey) {
         if (context(clicker, bossKey) == null) {
@@ -783,6 +788,73 @@ final class CompanionBossAllies {
         return false;
     }
 
+    // ---- the owner's logout (companion-ops) --------------------------------------------------------
+
+    /**
+     * On companion-ops, the owner logged off (RosterService.onOwnerLogout; never the old session of a channel change).
+     * Each ally of theirs still being called or on its way down is called off and lets everything go with no line (the
+     * run's refusal that follows finds no trip). One here on the entry NPC's list, or walking up to her, is taken off
+     * it, and the run's WITHDRAWN refusal sends it home. One in the fight sees it through for a human still in it
+     * ({@link #handOver}); with no human there it fights on, and the run's no-human rule takes it out. One down outside
+     * goes home now; one on its way out goes on.
+     */
+    void ownerLoggedOut(Character owner) {
+        if (owner == null) {
+            return;
+        }
+        for (Trip trip : List.copyOf(trips.values())) {
+            if (trip.ownerId != owner.getId()) {
+                continue;
+            }
+            switch (trip.state) {
+                case CALLING, TRAVELLING -> {
+                    log.info("Boss ally called off: session={} ally={} (its owner {} logged off)", trip.sessionId,
+                            trip.characterId, trip.ownerId);
+                    undo(trip);
+                }
+                case HERE -> {
+                    AgentBossRunMember.Phase phase = open.phaseOf(trip.sessionId, trip.characterId);
+                    if (trip.waitingOutside) {
+                        sendHome(trip, BossRunLines.ALLY_GOODBYE, run(trip));
+                    } else if (phase == AgentBossRunMember.Phase.WAITING
+                            || phase == AgentBossRunMember.Phase.REGISTERED) {
+                        boolean taken = open.withdraw(trip.sessionId, trip.characterId); // its refusal sends it home
+                        log.info("Boss ally withdrawn: session={} ally={} (its owner {} logged off) taken={}",
+                                trip.sessionId, trip.characterId, trip.ownerId, taken);
+                    } else if (phase == AgentBossRunMember.Phase.INSIDE) {
+                        handOver(owner, trip);
+                    }
+                }
+                case LEAVING -> {
+                }
+            }
+        }
+    }
+
+    /**
+     * The ally in the fight stays with a human still in its fight's event, its owner's party first, else the
+     * expedition's leader, else any human there (InstanceLogoutHandoff.anyHuman: wider than a party companion's heir),
+     * as far as the run agrees (AgentBossRunService.handTo): it fights on and after the clear leaves with them. The
+     * first of the owner's to stay says so once where that human hears it, unless a party companion of theirs said it
+     * already, and from now on its lines are for that human. No human there: nothing changes.
+     */
+    private void handOver(Character owner, Trip trip) {
+        Character agent = trip.agent;
+        EventInstanceManager fight = agent == null ? null : agent.getEventInstance();
+        Character heir = InstanceLogoutHandoff.anyHuman(owner, fight);
+        if (heir == null || !open.handTo(trip.sessionId, trip.characterId, heir.getId())) {
+            return;
+        }
+        trip.heirId = heir.getId();
+        log.info("Boss ally handed over: session={} ally={} owner={} heir={}", trip.sessionId, trip.characterId,
+                trip.ownerId, heir.getId());
+        CompanionBossRun run = run(trip);
+        if (run != null && !run.handoffSaid) {
+            run.handoffSaid = true;
+            BossRunLines.tell(world, agent, BossRunLines.HANDOFF, heir.getName(), null, run, heir.getId());
+        }
+    }
+
     // ---- the overflow party (companion-ops) ------------------------------------------------------
 
     /**
@@ -908,7 +980,7 @@ final class CompanionBossAllies {
             return;
         }
         trip.waitingOutside = true;
-        BossRunLines.tell(world, agent, BossRunLines.DOWN, null, null, run, trip.ownerId);
+        BossRunLines.tell(world, agent, BossRunLines.DOWN, null, null, run, anchor(trip));
         BossEntrance entrance = BossEntrance.of(trip.bossKey);
         MapleMap map = agent.getMap();
         int ordinal = open.ordinalOf(trip.sessionId, trip.characterId);
@@ -931,11 +1003,11 @@ final class CompanionBossAllies {
 
     /**
      * The ally's trip ends and it goes back to its bench duty, saying {@code intent} (null: nothing). One never loaded
-     * lets everything go at once and whispers it. A loaded one says it where its owner hears it, leaves its party, and
-     * walks to the room's way out (its exit portal on the entry NPC's map, else the portal nearest it) while a human
-     * there sees it; it is unloaded once there, after COMPANION_BOSS_ALLY_WALK_OUT_MS, or when nobody is left to see
-     * it, and at once inside an event or with nowhere to walk. Its lease, its commitment and its trip go only once it
-     * is offline. Once per trip.
+     * lets everything go at once and whispers it. A loaded one says it where its owner (or the human it stays with
+     * since its owner logged off) hears it, leaves its party, and walks to the room's way out (its exit portal on the
+     * entry NPC's map, else the portal nearest it) while a human there sees it; it is unloaded once there, after
+     * COMPANION_BOSS_ALLY_WALK_OUT_MS, or when nobody is left to see it, and at once inside an event or with nowhere to
+     * walk. Its lease, its commitment and its trip go only once it is offline. Once per trip.
      */
     private void dismiss(Trip trip, String intent, CompanionBossRun run) {
         if (trip.state == State.LEAVING || trips.get(trip.personaId) != trip) {
@@ -950,7 +1022,7 @@ final class CompanionBossAllies {
             return;
         }
         if (intent != null) {
-            BossRunLines.tell(world, agent, intent, null, null, run, trip.ownerId);
+            BossRunLines.tell(world, agent, intent, null, null, run, anchor(trip));
         }
         trip.state = State.LEAVING;
         trip.waitingOutside = false;
@@ -1062,26 +1134,33 @@ final class CompanionBossAllies {
 
     /** How many more allies the owner may call to {@code expedition} now: the least of the three shares, never < 0. */
     private int left(int ownerId, Expedition expedition) {
-        LivingWorldConfig config = world.config();
-        int calling = 0;
-        int callingMine = 0;
         int mineInThisRun = 0;
         for (Trip trip : trips.values()) {
-            if (trip.expedition != expedition) {
-                continue;
-            }
-            if (trip.state == State.CALLING) { // not enlisted yet: the run's list does not count it
+            mineInThisRun += trip.expedition == expedition && trip.ownerId == ownerId && trip.state != State.LEAVING
+                    ? 1 : 0;
+        }
+        int alliesLeft = Math.max(0, perOwnerCap(world.config()) - mineInThisRun);
+        return Math.min(seatsLeft(ownerId, expedition), Math.min(permitsLeft(ownerId, null), alliesLeft));
+    }
+
+    /**
+     * The seats of {@code expedition}'s list the owner's companions may still take (CompanionBossRuns.seatsLeft, the
+     * HUMAN_SEATS kept free for players), the calls still waiting on companion-ops counted as on it: the picker's
+     * share, and with more than one owner allowed the owner's party sign-up's too (CompanionBossRuns.signable).
+     */
+    int seatsLeft(int ownerId, Expedition expedition) {
+        int calling = 0;
+        int callingMine = 0;
+        for (Trip trip : trips.values()) {
+            if (trip.expedition == expedition && trip.state == State.CALLING) { // not enlisted: the list misses it
                 calling++;
                 callingMine += trip.ownerId == ownerId ? 1 : 0;
             }
-            mineInThisRun += trip.ownerId == ownerId && trip.state != State.LEAVING ? 1 : 0;
         }
         CompanionBossRuns.Seats seats = open.seats(expedition, ownerId);
-        int seatsLeft = CompanionBossRuns.seatsLeft(expedition.getMaxSize(), config.COMPANION_BOSS_HUMAN_SEATS,
+        return CompanionBossRuns.seatsLeft(expedition.getMaxSize(), world.config().COMPANION_BOSS_HUMAN_SEATS,
                 seats.humansListed(), seats.botsListedOrPending() + calling, seats.owners(),
                 seats.held() + callingMine);
-        int alliesLeft = Math.max(0, perOwnerCap(config) - mineInThisRun);
-        return Math.min(seatsLeft, Math.min(permitsLeft(ownerId, null), alliesLeft));
     }
 
     /** The owner's EXPEDITION permits left by the even share of the burst over every trip but {@code except}. */
@@ -1115,7 +1194,8 @@ final class CompanionBossAllies {
         Expedition expedition = CompanionBossRuns.expeditionOf(clicker, definition);
         Character leader = expedition == null ? null : expedition.getLeader();
         if (leader == null || !expedition.isRegistering() || AgentPresence.isAgent(leader)
-                || !expedition.contains(clicker) || open.heldByAnother(expedition, clicker.getId())) {
+                || !expedition.contains(clicker) || !CompanionBossRuns.ownerFits(config, open, expedition,
+                clicker.getId())) {
             return null;
         }
         return new Context(definition, expedition);
@@ -1215,6 +1295,12 @@ final class CompanionBossAllies {
             }
         }
         return null;
+    }
+
+    /** Whom a loaded ally's lines are for: the human it stays with since its owner logged off, else its owner. */
+    private static int anchor(Trip trip) {
+        int heirId = trip.heirId;
+        return heirId != 0 ? heirId : trip.ownerId;
     }
 
     /** Its owner's part of its run while CompanionBossRuns keeps it (an ally's lines rotate their wordings there). */

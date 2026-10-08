@@ -65,7 +65,9 @@ import java.util.function.IntFunction;
  * window offers an owner on her list "Call allies from my bench..." ({@link #alliesOffered}) and a picker of their
  * benched companions ({@link #allyPicker}, {@link #allyCall}). They walk to their spot ({@link #standAt}), each report
  * about one goes to them first, they never say a party companion's party line where no human hears it (the signed-up
- * line, gg), and the run's end and the audit send them home.</p>
+ * line, gg), and the run's end and the audit send them home. With COMPANION_BOSS_OWNERS_MAX above 1, owners up to it
+ * share one expedition ({@link #ownerFits}), each signing up no more than their share of its seats; an owner who logs
+ * off leaves their allies' fight to a human still in it ({@link #ownerLoggedOut}).</p>
  */
 public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceLogoutHandoff.Delegation {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossRuns.class);
@@ -147,6 +149,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         /** The member's ordinal in run {@code sessionId} (its enlist order, its spot beside the entry NPC); else -1. */
         default int ordinalOf(long sessionId, int agentId) {
             return -1;
+        }
+
+        /**
+         * P7 Part B: how many owners other than {@code ownerId} enlisted companions in the open run for {@code
+         * expedition} (counted as {@link #heldByAnother} counts them: every member, in any phase). Unless implemented,
+         * 1 when {@link #heldByAnother}, else 0.
+         */
+        default int otherOwners(Expedition expedition, int ownerId) {
+            return heldByAnother(expedition, ownerId) ? 1 : 0;
         }
 
         OpenRuns LIVE = new OpenRuns() {
@@ -284,6 +295,18 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 AgentBossRunMember member = session == null ? null : session.member(agentId);
                 return member == null ? -1 : member.ordinal();
             }
+
+            @Override
+            public int otherOwners(Expedition expedition, int ownerId) {
+                AgentBossRunSession session = AgentBossRunRegistry.forExpedition(expedition);
+                Set<Integer> others = new LinkedHashSet<>();
+                for (AgentBossRunMember member : session == null ? List.<AgentBossRunMember>of() : session.members()) {
+                    if (member.enlistedBy() != ownerId) {
+                        others.add(member.enlistedBy());
+                    }
+                }
+                return others.size();
+            }
         };
     }
 
@@ -391,9 +414,9 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
     /**
      * Mu Young's Easy window for {@code clicker} (1061014.js, on their I/O thread, from memory): true when she offers
      * "My party will register too.". The switch lists the boss; the clicker is a human with companions; the channel's
-     * expedition of the boss takes sign-ups and a human leads it; no other owner's companions are on it (Part A); and
-     * at least one of the clicker's companions can sign up ({@link #signable}). An Agent signing itself up headless
-     * never sees it: its window stays the stock one.
+     * expedition of the boss takes sign-ups and a human leads it; the owners rule lets the clicker in ({@link
+     * #ownerFits}: in Part A, no other owner's companions are on it); and at least one of the clicker's companions can
+     * sign up ({@link #signable}). An Agent signing itself up headless never sees it: its window stays the stock one.
      */
     public boolean offers(Character clicker, String bossKey) {
         return offer(clicker, bossKey, System.currentTimeMillis()) != null;
@@ -464,25 +487,39 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         Expedition expedition = expeditionOf(clicker, definition);
         Character leader = expedition == null ? null : expedition.getLeader();
         if (leader == null || !expedition.isRegistering() || AgentPresence.isAgent(leader)
-                || open.heldByAnother(expedition, clicker.getId())) {
+                || !ownerFits(config, open, expedition, clicker.getId())) {
             return null;
         }
-        List<Integer> companions = signable(clicker, definition, nowMs);
+        List<Integer> companions = signable(clicker, definition, expedition, nowMs);
         return companions.isEmpty() ? null : new Offer(definition, expedition, companions);
+    }
+
+    /**
+     * The owners rule at a boss's entry NPC (memory, any thread), for her offer and her bench picker alike: with
+     * COMPANION_BOSS_OWNERS_MAX 1, Part A's one-owner rule (no other owner's companions in the open run for {@code
+     * expedition}); above 1 (P7 Part B), fewer other owners' companions in it than that.
+     */
+    static boolean ownerFits(LivingWorldConfig config, OpenRuns open, Expedition expedition, int ownerId) {
+        int most = config.COMPANION_BOSS_OWNERS_MAX;
+        return most <= 1 ? !open.heldByAnother(expedition, ownerId) : open.otherOwners(expedition, ownerId) < most;
     }
 
     /**
      * The owner's companions that can sign up, in party order, {@link #MOST_PER_OWNER} at most: bots of the owner's
      * party that are the owner's own and follow them, loaded, tied to no run (a commitment or a boss run), not kept
      * off follow (on their way, held, away), and on the entry NPC's map on the owner's channel, or gone to the store
-     * for potions (they sign up once back).
+     * for potions (they sign up once back). With more than one owner allowed (P7 Part B), no more than the owner's
+     * share of {@code expedition}'s seats left (CompanionBossAllies.seatsLeft).
      */
-    private List<Integer> signable(Character owner, AgentBossRunDefinition definition, long nowMs) {
+    private List<Integer> signable(Character owner, AgentBossRunDefinition definition, Expedition expedition,
+                                   long nowMs) {
         Party party = owner.getParty();
         Commitments commitments = world.commitments();
         if (party == null || commitments == null) {
             return List.of();
         }
+        int most = world.config().COMPANION_BOSS_OWNERS_MAX > 1
+                ? Math.min(MOST_PER_OWNER, allies.seatsLeft(owner.getId(), expedition)) : MOST_PER_OWNER;
         RosterService roster = world.roster();
         List<Integer> ids = new ArrayList<>();
         for (PartyCharacter member : party.getMembers()) {
@@ -496,7 +533,7 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             Character bot = bot(id);
             boolean here = bot != null && bot.getMapId() == definition.recruitMapId()
                     && RosterService.sameChannel(owner, bot);
-            if ((here || bot != null && supplies.restocking(id, nowMs)) && ids.size() < MOST_PER_OWNER) {
+            if ((here || bot != null && supplies.restocking(id, nowMs)) && ids.size() < most) {
                 ids.add(id);
             }
         }
@@ -975,6 +1012,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             BossRunLines.say(world, companion, BossRunLines.HANDOFF, heir.getName(), 0);
         }
         return true;
+    }
+
+    /**
+     * P7 Part B, on companion-ops (RosterService.onOwnerLogout, after the owner's party companions were parked or
+     * handed over; never for the old session of a channel change): the owner's bench allies are called off, or see
+     * their fight through for a human still in it (CompanionBossAllies.ownerLoggedOut).
+     */
+    void ownerLoggedOut(Character owner) {
+        allies.ownerLoggedOut(owner);
     }
 
     // ---- helpers --------------------------------------------------------------------------------

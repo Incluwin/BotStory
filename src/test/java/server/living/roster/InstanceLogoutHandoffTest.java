@@ -5,6 +5,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import scripting.event.EventInstanceManager;
+import server.expeditions.Expedition;
+import server.integration.AgentPresence;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.RosterState;
 
@@ -13,6 +15,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -26,7 +29,9 @@ import static server.living.roster.LifecycleHarness.LITH;
  * commitments stay), and once the run ends for one (its commitment ends) it leaves Ben's party and parks (the first says
  * the goodbye nobody said at the logout), or walks back in to Ann when she is online again. With no human of her party
  * left in the run, no delegation installed, or a
- * companion not committed to the run, they leave with her under stock eim rules and their commitments end.
+ * companion not committed to the run, they leave with her under stock eim rules and their commitments end. A bench
+ * ally in a boss run (P7 Part B) is handed further: to her party's heir, else to the expedition's leader, else to any
+ * human still in the run ({@link InstanceLogoutHandoff#anyHuman}); never to her or an Agent.
  */
 class InstanceLogoutHandoffTest {
     private static final int BEN = 20;
@@ -62,6 +67,7 @@ class InstanceLogoutHandoffTest {
 
     @AfterEach
     void close() {
+        AgentPresence.install(null);
         game.close();
     }
 
@@ -200,5 +206,69 @@ class InstanceLogoutHandoffTest {
         assertEquals(cid, InstanceLogoutHandoff.heir(game.ann, instance));
         when(game.party.getLeaderId()).thenReturn(ANN); // Ann leads: the first other human
         assertEquals(ben, InstanceLogoutHandoff.heir(game.ann, instance));
+    }
+
+    // ---- a bench ally's heir (P7 Part B) -------------------------------------------------------
+
+    @Test
+    void anAllysHeirIsHerPartysHeirThenTheExpeditionsLeaderThenTheFirstHumanInTheRun() {
+        Character hadrikBot = game.bot(hadrik);
+        AgentPresence.install(chr -> chr.getId() == 901 || chr.getId() == 902);
+        when(ben.isLoggedin()).thenReturn(true);
+        Character cid = human(21, "Cid"); // leads the expedition; in no party of Ann's
+        Character dot = human(22, "Dot"); // only in the run
+        Expedition expedition = mock(Expedition.class);
+        when(expedition.getLeader()).thenReturn(cid);
+        when(instance.getExpedition()).thenReturn(expedition);
+        when(instance.getPlayers()).thenReturn(List.of(game.ann, hadrikBot, dot, cid, ben));
+
+        assertEquals(ben, InstanceLogoutHandoff.anyHuman(game.ann, instance), "her party's heir first");
+
+        game.members.remove((Integer) BEN); // Ben is still in the run, no longer in her party
+        assertEquals(cid, InstanceLogoutHandoff.anyHuman(game.ann, instance), "then the expedition's leader");
+        assertNull(InstanceLogoutHandoff.heir(game.ann, instance), "a party companion's heir is still her party's");
+
+        when(instance.getPlayerById(21)).thenReturn(null); // Cid walked out of the run
+        when(instance.getPlayers()).thenReturn(List.of(game.ann, hadrikBot, dot, ben));
+        assertEquals(dot, InstanceLogoutHandoff.anyHuman(game.ann, instance), "then the first human in it");
+    }
+
+    @Test
+    void anAllysHeirIsNeverTheOwnerNorAnAgentAndNoneWithNoOtherHumanInTheRun() {
+        Character hadrikBot = game.bot(hadrik);
+        AgentPresence.install(chr -> chr.getId() == 901 || chr.getId() == 902);
+        game.members.remove((Integer) BEN);
+        when(instance.getPlayerById(BEN)).thenReturn(null);
+        when(instance.getPlayerById(ANN)).thenReturn(game.ann); // read before her disconnect took her out
+        when(game.ann.isLoggedin()).thenReturn(true);
+        when(hadrikBot.isLoggedin()).thenReturn(true);
+        Expedition expedition = mock(Expedition.class);
+        when(expedition.getLeader()).thenReturn(game.ann); // she leads it
+        when(instance.getExpedition()).thenReturn(expedition);
+        when(instance.getPlayers()).thenReturn(List.of(game.ann, hadrikBot));
+
+        assertNull(InstanceLogoutHandoff.anyHuman(game.ann, instance), "only her and an Agent");
+
+        when(expedition.getLeader()).thenReturn(hadrikBot); // a bot leads it (a GM's lobby)
+        assertNull(InstanceLogoutHandoff.anyHuman(game.ann, instance));
+
+        Character eve = human(23, "Eve");
+        when(eve.isLoggedin()).thenReturn(false); // logging off herself
+        when(instance.getPlayers()).thenReturn(List.of(game.ann, hadrikBot, eve));
+        assertNull(InstanceLogoutHandoff.anyHuman(game.ann, instance));
+
+        when(instance.getExpedition()).thenReturn(null); // a run of no expedition
+        assertNull(InstanceLogoutHandoff.anyHuman(game.ann, instance));
+        assertNull(InstanceLogoutHandoff.anyHuman(game.ann, null), "in no run");
+    }
+
+    /** A human player in the run, logged in. */
+    private Character human(int id, String name) {
+        Character human = mock(Character.class);
+        when(human.getId()).thenReturn(id);
+        when(human.getName()).thenReturn(name);
+        when(human.isLoggedin()).thenReturn(true);
+        when(instance.getPlayerById(id)).thenReturn(human);
+        return human;
     }
 }

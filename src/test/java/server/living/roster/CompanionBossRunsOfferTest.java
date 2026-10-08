@@ -1,6 +1,7 @@
 package server.living.roster;
 
 import client.Character;
+import client.Job;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,7 +52,9 @@ import static server.living.roster.LifecycleHarness.HENESYS;
  * to no run, and in her room or gone to the store for potions. Picking it answers in her words and, on companion-ops,
  * enlists those companions (5 at most, in party order, the owner on her list), each short one looking at its potions
  * at once. A companion still waiting to sign up walks to its own spot beside her while its owner is in her room. An
- * Agent's headless sign-up ([1]) never sees the offer: its window stays the stock one.
+ * Agent's headless sign-up ([1]) never sees the offer: its window stays the stock one. With COMPANION_BOSS_OWNERS_MAX
+ * above 1 (P7 Part B), owners up to it share her list: both offers stay open to a second owner, each owner signs up no
+ * more than their share of its seats, and a GM owner still brings only their own companions.
  */
 class CompanionBossRunsOfferTest {
     private static final long SID = 9L;
@@ -61,7 +64,10 @@ class CompanionBossRunsOfferTest {
     private static final int INGRID = 904;
     private static final int FLINT = 905;
     private static final int ORRIN = 906;
+    private static final int MAGNA = 907;
+    private static final int BEN = 20;
     private static final int MU_YOUNGS_ROOM = 105100100;
+    private static final int SLEEPYWOOD_CAMP = 105040300;
     private static final int MU_YOUNG = 1061014;
 
     private final LifecycleHarness game = new LifecycleHarness();
@@ -81,6 +87,10 @@ class CompanionBossRunsOfferTest {
         crew.put("flint", game.companion("flint", "Flint", FLINT, RosterState.ACTIVE, MU_YOUNGS_ROOM));
         crew.put("ingrid", game.companion("ingrid", "Ingrid", INGRID, RosterState.ACTIVE, MU_YOUNGS_ROOM));
         crew.put("orrin", game.companion("orrin", "Orrin", ORRIN, RosterState.ACTIVE, MU_YOUNGS_ROOM));
+        crew.put("magna", game.companion("magna", "Magna", MAGNA, RosterState.BENCHED, SLEEPYWOOD_CAMP)); // her bench
+        // Ben's crew: a friend's companions are never part of Ann's offers
+        crew.put("brannock", game.companionOf(BEN, "brannock", "Brannock", 920, RosterState.ACTIVE, MU_YOUNGS_ROOM));
+        crew.put("fenna", game.companionOf(BEN, "fenna", "Fenna", 921, RosterState.BENCHED, SLEEPYWOOD_CAMP));
         game.moveAnn(MU_YOUNGS_ROOM, 617, 246);
         game.roster();
         game.outWithAnn(crew.get("isolde"));
@@ -196,6 +206,72 @@ class CompanionBossRunsOfferTest {
         assertTrue(runs.offers(game.ann, "easy_balrog"));
         assertEquals(CompanionBossRuns.SIGN_UP_REPLY, runs.registerFromNpc(game.ann, "easy_balrog"));
         assertEquals(List.of("enlist " + ANN + " easy_balrog [903]"), open.enlisted);
+    }
+
+    // ---- two owners (P7 Part B) ----------------------------------------------------------------
+
+    @Test
+    void withOneOwnerAllowedAnotherOwnersCompanionsOnHerListCloseBothOffers() {
+        withTheAllySwitchOn();
+        assertTrue(runs.alliesOffered(game.ann, "easy_balrog"));
+
+        open.heldByAnother.add(expedition);
+        open.otherOwners = 0; // only Part A's own question decides
+
+        assertFalse(runs.offers(game.ann, "easy_balrog"));
+        assertFalse(runs.alliesOffered(game.ann, "easy_balrog"));
+    }
+
+    @Test
+    void withTwoOwnersAllowedTheSecondOwnerIsOfferedAndTheThirdIsRefused() {
+        game.config.COMPANION_BOSS_OWNERS_MAX = 2;
+        withTheAllySwitchOn();
+        open.heldByAnother.add(expedition);
+        open.otherOwners = 1; // Ben's companions are on her list
+
+        assertTrue(runs.offers(game.ann, "easy_balrog"), "Ann is the second owner");
+        assertTrue(runs.alliesOffered(game.ann, "easy_balrog"));
+        assertTrue(runs.allyPicker(game.ann, "easy_balrog").contains("Magna"));
+
+        open.otherOwners = 2; // Ben's and Cid's
+
+        assertFalse(runs.offers(game.ann, "easy_balrog"), "a third owner");
+        assertFalse(runs.alliesOffered(game.ann, "easy_balrog"));
+        assertNull(runs.allyPicker(game.ann, "easy_balrog"));
+        assertEquals(CompanionBossRuns.NONE_CAN_SIGN_UP, runs.registerFromNpc(game.ann, "easy_balrog"));
+    }
+
+    @Test
+    void theSeatShareCapsTheSignUpOnlyWithMoreThanOneOwnerAllowed() {
+        when(expedition.getMaxSize()).thenReturn(ExpeditionType.BALROG_EASY.getMaxSize());
+        open.seats = new CompanionBossRuns.Seats(2, 24, 2, 0); // Ben's 24 listed or on their way: 2 seats of room
+
+        runs.registerParty(ANN, "easy_balrog");
+        assertEquals(List.of("enlist " + ANN + " easy_balrog [901, 902, 903]"), open.enlisted, "Part A: no share");
+
+        game.config.COMPANION_BOSS_OWNERS_MAX = 2;
+        runs.registerParty(ANN, "easy_balrog");
+        assertEquals("enlist " + ANN + " easy_balrog [901, 902]", open.enlisted.get(1), "the list's room");
+
+        open.seats = new CompanionBossRuns.Seats(2, 26, 2, 0); // full but for the seats kept for players
+        assertFalse(runs.offers(game.ann, "easy_balrog"));
+
+        game.config.COMPANION_BOSS_OWNERS_MAX = 1;
+        assertTrue(runs.offers(game.ann, "easy_balrog"), "Part A asks nothing of the seats");
+    }
+
+    @Test
+    void aGmOwnersOffersHoldOnlyTheirOwnCompanions() {
+        when(game.ann.gmLevel()).thenReturn(6); // a GM may control any Agent (CompanionDirectory.mayControl)
+        game.outWithAnn(crew.get("brannock")); // Ben's, in Ann's party and following her
+        withTheAllySwitchOn();
+
+        runs.registerParty(ANN, "easy_balrog");
+        String picker = runs.allyPicker(game.ann, "easy_balrog");
+
+        assertEquals(List.of("enlist " + ANN + " easy_balrog [901, 902, 903]"), open.enlisted, "never Brannock");
+        assertTrue(picker.contains("Magna"), picker);
+        assertFalse(picker.contains("Fenna"), "Ben's bench is not hers: " + picker);
     }
 
     // ---- picking it ----------------------------------------------------------------------------
@@ -328,6 +404,20 @@ class CompanionBossRunsOfferTest {
 
     // ---- helpers -------------------------------------------------------------------------------
 
+    /**
+     * The ally switch lists easy_balrog too, so her window may offer Ann's bench (Magna); every companion is a Lv70
+     * White Knight (the crew view reads a loaded one's own level and job).
+     */
+    private void withTheAllySwitchOn() {
+        game.config.COMPANION_BOSS_ALLY_TYPES = "easy_balrog";
+        when(game.world.views()).thenReturn(new CompanionViews(game.world, id -> "camp", id -> "item"));
+        when(expedition.getMaxSize()).thenReturn(ExpeditionType.BALROG_EASY.getMaxSize());
+        for (Character bot : game.bots.values()) {
+            when(bot.getLevel()).thenReturn(70);
+            when(bot.getJob()).thenReturn(Job.WHITEKNIGHT);
+        }
+    }
+
     /** The companion steps onto {@code mapId} (the same map mock the harness hands out for it). */
     private void moveBot(int characterId, int mapId) {
         MapleMap map = game.map(mapId);
@@ -344,10 +434,24 @@ class CompanionBossRunsOfferTest {
         final Set<Integer> refuse = new HashSet<>();
         /** "enlist <owner> <boss> <ids>" per enlist, in order. */
         final List<String> enlisted = new ArrayList<>();
+        /** The owners other than the asker with companions on her list (P7 Part B). */
+        int otherOwners;
+        /** Her list as the seat share reads it: by default Ann alone on it. */
+        CompanionBossRuns.Seats seats = new CompanionBossRuns.Seats(1, 0, 1, 0);
 
         @Override
         public boolean open(long sessionId) {
             return false;
+        }
+
+        @Override
+        public int otherOwners(Expedition expedition, int ownerId) {
+            return otherOwners;
+        }
+
+        @Override
+        public CompanionBossRuns.Seats seats(Expedition expedition, int ownerId) {
+            return seats;
         }
 
         @Override
