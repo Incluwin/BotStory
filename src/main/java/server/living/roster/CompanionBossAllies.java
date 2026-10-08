@@ -29,6 +29,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
 import server.integration.AgentPresence;
+import server.life.Monster;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.resident.ResidentRuntime;
@@ -63,9 +64,11 @@ import java.util.function.LongSupplier;
  * commitment and its trip go, and its BENCHED row takes up its bench duty again. While a trip lasts, bench duty, the
  * bench ledger and the roster's call leave its persona alone. When its owner logs off, an ally not here yet is called
  * off, one on her list is taken off it, and one in the fight sees it through for a human still there (its lines are
- * theirs from then on). Calls, arrivals and the way home run on companion-ops; the entry NPC's window (her offer, the
- * picker of who can come and how many, the owner's pick) reads the crew cache and memory on the owner's I/O thread. It
- * writes no roster state. Owned by CompanionBossRuns; nothing survives a restart (the rows stayed BENCHED).
+ * theirs from then on). A monster an ally tops the damage on in the fight drops for the human it fights for (its
+ * owner, or that human), not for the ally. Calls, arrivals and the way home run on companion-ops; the entry NPC's
+ * window (her offer, the picker of who can come and how many, the owner's pick) reads the crew cache and memory on the
+ * owner's I/O thread; the drop owner is read from memory on the thread that landed the kill. It writes no roster state.
+ * Owned by CompanionBossRuns; nothing survives a restart (the rows stayed BENCHED).
  */
 final class CompanionBossAllies {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossAllies.class);
@@ -853,6 +856,54 @@ final class CompanionBossAllies {
             run.handoffSaid = true;
             BossRunLines.tell(world, agent, BossRunLines.HANDOFF, heir.getName(), null, run, heir.getId());
         }
+    }
+
+    // ---- the drop owner (the thread that landed a kill) ------------------------------------------
+
+    /**
+     * On the thread that landed a kill (Monster.killBy through CompanionBossRuns), from memory: who gets the monster's
+     * drops and mesos, {@code candidate} (an Agent) being its stock owner, its top damager on the map. When it is a
+     * bench ally of the open run for the monster's event's expedition, the ally switch lists that boss and no human
+     * shares its party (its party of allies holds none), they go to the human it fights for: its anchor in the run
+     * (its owner, or the human it stays with since its owner logged off) while that one stands on the monster's map,
+     * else the top damager there who is a player and no Agent; with neither, the ally keeps them. The owner's party
+     * then gets the mesos split and the party drop. Every monster of the run's event counts, the body, its claws and
+     * any add; damage credit, EXP and quest credit stay as they were. A party companion, a run of humans only, a party
+     * quest and any map with no run keep the stock owner; nothing is read while no ally is on a trip.
+     */
+    Character dropOwner(Monster monster, Character candidate) {
+        MapleMap map = monster == null || candidate == null || trips.isEmpty() ? null : monster.getMap();
+        EventInstanceManager event = map == null ? null : map.getEventInstance();
+        Expedition expedition = event == null ? null : event.getExpedition();
+        int anchorId = expedition == null ? 0 : open.anchorIn(expedition, candidate.getId());
+        if (anchorId == 0 || !allyIn(expedition, candidate.getId()) || BossRunLines.humanInParty(candidate)) {
+            return candidate;
+        }
+        Character owner = map.getCharacterById(anchorId);
+        if (owner == null) {
+            int top = monster.highestDamagerIdWhere(id -> {
+                Character damager = map.getCharacterById(id);
+                return damager != null && !AgentPresence.isAgent(damager);
+            });
+            owner = top == 0 ? null : map.getCharacterById(top);
+        }
+        if (owner == null) {
+            return candidate;
+        }
+        log.info("Boss drop owner: map={} mob={} from={} to={}", map.getId(), monster.getId(), candidate.getName(),
+                owner.getName());
+        return owner;
+    }
+
+    /** True when the Agent is a bench ally on a trip to {@code expedition}'s run and the ally switch lists its boss. */
+    private boolean allyIn(Expedition expedition, int characterId) {
+        LivingWorldConfig config = world.config();
+        for (Trip trip : trips.values()) {
+            if (trip.characterId == characterId && trip.expedition == expedition) {
+                return config != null && config.companionBossAlliesEnabled(trip.bossKey);
+            }
+        }
+        return false;
     }
 
     // ---- the overflow party (companion-ops) ------------------------------------------------------

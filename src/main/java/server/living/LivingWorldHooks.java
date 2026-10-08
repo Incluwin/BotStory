@@ -670,6 +670,31 @@ public final class LivingWorldHooks {
         }
     }
 
+    /**
+     * A monster died (Monster.killBy, on the thread that landed the kill, from memory): who its drops and mesos go to,
+     * {@code candidate} being its stock owner (its top damager on the map, else its killer). P7 Part B: a bench ally
+     * that topped the damage in a companion boss run hands them to the human it fights for
+     * (CompanionBossRuns.dropOwner). {@code candidate} at once when it is no Agent (every kill a player tops) or no
+     * living world runs, and on any failure.
+     */
+    public static Character bossDropOwner(Monster monster, Character candidate) {
+        if (candidate == null || !AgentPresence.isAgent(candidate)) {
+            return candidate;
+        }
+        LivingWorld world = LivingWorld.get();
+        if (world == null) {
+            return candidate;
+        }
+        try {
+            server.living.roster.CompanionBossRuns bossRuns = world.bossRuns();
+            Character owner = bossRuns == null ? null : bossRuns.dropOwner(monster, candidate);
+            return owner == null ? candidate : owner;
+        } catch (RuntimeException failure) {
+            log.warn("living world bossDropOwner hook failed", failure);
+            return candidate;
+        }
+    }
+
     /** An NPC click on a quest marker's hitbox; true when it was one (the Resident's menu opens instead). */
     public static boolean markerClicked(Character clicker, int objectId) {
         LivingWorld world = LivingWorld.get();

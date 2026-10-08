@@ -259,7 +259,7 @@ final class BossRunLines {
     }
 
     /** True when a human online is in {@code bot}'s party (its owner's, for a party companion; never an ally's). */
-    private static boolean humanInParty(Character bot) {
+    static boolean humanInParty(Character bot) {
         Party party = bot.getParty();
         if (party == null) {
             return false;

@@ -107,6 +107,7 @@ final class BossAllyHarness implements AutoCloseable {
     private void stub() {
         game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
         game.config.COMPANION_BOSS_ALLY_TYPES = "easy_balrog";
+        open.expedition = expedition;
         game.moveAnn(ROOM, 617, 246);
         Portal top = mock(Portal.class);
         when(top.getPosition()).thenReturn(new Point(-65, -264)); // WZ 105100100 portal 1
@@ -230,6 +231,10 @@ final class BossAllyHarness implements AutoCloseable {
         final Map<Integer, Integer> ordinals = new HashMap<>();
         /** The run left the Agent layer's registry without an end (a lost run). */
         boolean gone;
+        /** The expedition run {@link #SID} is for (the harness's). */
+        Expedition expedition;
+        /** Agent id -> the human it stays with in the run: its enlister, or its heir once a handoff was agreed. */
+        final Map<Integer, Integer> anchors = new HashMap<>();
 
         @Override
         public boolean open(long sessionId) {
@@ -288,11 +293,23 @@ final class BossAllyHarness implements AutoCloseable {
             return false;
         }
 
-        /** Records "handTo <id> -> <heir>"; the run agrees while the member is in the fight (INSIDE). */
+        /**
+         * Records "handTo <id> -> <heir>"; the run agrees while the member is in the fight (INSIDE), and the member
+         * stays with the heir from then on.
+         */
         @Override
         public boolean handTo(long sessionId, int agentId, int heirId) {
             calls.add("handTo " + agentId + " -> " + heirId);
-            return sessionId == SID && phases.get(agentId) == AgentBossRunMember.Phase.INSIDE;
+            boolean agreed = sessionId == SID && phases.get(agentId) == AgentBossRunMember.Phase.INSIDE;
+            if (agreed) {
+                anchors.put(agentId, heirId);
+            }
+            return agreed;
+        }
+
+        @Override
+        public int anchorIn(Expedition expedition, int agentId) {
+            return !gone && expedition != null && expedition == this.expedition ? anchors.getOrDefault(agentId, 0) : 0;
         }
 
         @Override
@@ -304,6 +321,7 @@ final class BossAllyHarness implements AutoCloseable {
             accepted.forEach(id -> {
                 onEnlist.accept(id);
                 phases.put(id, AgentBossRunMember.Phase.WAITING);
+                anchors.putIfAbsent(id, owner.getId());
                 ordinals.putIfAbsent(id, CompanionBossRuns.MOST_PER_OWNER + ordinals.size());
             });
             return new AgentBossRunService.Enlisted(accepted.isEmpty() ? 0L : SID, accepted,

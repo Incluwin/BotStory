@@ -28,6 +28,7 @@ import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
 import server.expeditions.Expedition;
 import server.integration.AgentPresence;
+import server.life.Monster;
 import server.living.LivingWorld;
 import server.living.config.Content.Persona;
 import server.living.store.LivingStore.CompanionRunRow;
@@ -67,7 +68,8 @@ import java.util.function.IntFunction;
  * about one goes to them first, they never say a party companion's party line where no human hears it (the signed-up
  * line, gg), and the run's end and the audit send them home. With COMPANION_BOSS_OWNERS_MAX above 1, owners up to it
  * share one expedition ({@link #ownerFits}), each signing up no more than their share of its seats; an owner who logs
- * off leaves their allies' fight to a human still in it ({@link #ownerLoggedOut}).</p>
+ * off leaves their allies' fight to a human still in it ({@link #ownerLoggedOut}). A monster an ally tops the damage
+ * on drops for the human it fights for ({@link #dropOwner}).</p>
  */
 public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceLogoutHandoff.Delegation {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossRuns.class);
@@ -158,6 +160,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
          */
         default int otherOwners(Expedition expedition, int ownerId) {
             return heldByAnother(expedition, ownerId) ? 1 : 0;
+        }
+
+        /**
+         * P7 Part B: the human the Agent stays with as a member of the open run for {@code expedition}, in any phase:
+         * its enlister, or its heir since a logout handoff (AgentBossRunMember.anchorId). 0 when it is no member of
+         * that run, or none is open for it; unless implemented, 0.
+         */
+        default int anchorIn(Expedition expedition, int agentId) {
+            return 0;
         }
 
         OpenRuns LIVE = new OpenRuns() {
@@ -306,6 +317,13 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                     }
                 }
                 return others.size();
+            }
+
+            @Override
+            public int anchorIn(Expedition expedition, int agentId) {
+                AgentBossRunSession session = AgentBossRunRegistry.forExpedition(expedition);
+                AgentBossRunMember member = session == null ? null : session.member(agentId);
+                return member == null ? 0 : member.anchorId();
             }
         };
     }
@@ -575,6 +593,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      */
     public String allyCall(Character clicker, String bossKey, int selection) {
         return allies.callFromNpc(clicker, bossKey, selection, System.currentTimeMillis());
+    }
+
+    /**
+     * P7 Part B, on the thread that landed a kill, from memory (LivingWorldHooks.bossDropOwner from Monster.killBy):
+     * who gets a monster's drops and mesos, {@code candidate} (an Agent) being its stock owner. A bench ally's go to
+     * the human it fights for (CompanionBossAllies.dropOwner); {@code candidate} for anyone else.
+     */
+    public Character dropOwner(Monster monster, Character candidate) {
+        return allies.dropOwner(monster, candidate);
     }
 
     /**
