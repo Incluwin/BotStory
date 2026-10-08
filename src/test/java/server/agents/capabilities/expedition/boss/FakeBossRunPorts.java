@@ -221,9 +221,23 @@ final class FakeBossRunPorts implements AgentBossRunPorts {
         /** The members a granted seat tied to the run; a test removes one to let go of its tie. */
         final Set<Integer> held = new HashSet<>();
         final List<AgentBossRunHost.RunEnded> ended = new ArrayList<>();
+        /**
+         * The seats of the list a companion leaves free for players (roomFor, logged as "room id listed/max"); below 0
+         * (the default) the host does not answer it, as a rule that leaves every seat to the stock list.
+         */
+        int reserve = -1;
 
         Host(List<String> calls) {
             this.calls = calls;
+        }
+
+        @Override
+        public boolean roomFor(AgentBossRunHost.Seat seat, int listed, int maxSize) {
+            if (reserve < 0) {
+                return true;
+            }
+            calls.add("room " + seat.agentCharacterId() + " " + listed + "/" + maxSize);
+            return listed < maxSize - reserve;
         }
 
         @Override

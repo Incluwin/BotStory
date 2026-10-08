@@ -192,6 +192,61 @@ class AgentBossRunSessionRegistrationTest {
     }
 
     @Test
+    void memberTheHostHasNoRoomForIsRefusedFullAndNeverTiedOrTalkingToMuYoung() {
+        AgentBossRunSession session = session(THANE);
+        session.addMember(ISOLDE, OWNER, NOW, AgentBossRunMember.Kind.SELF_LED);
+        inReach(THANE);
+        inReach(ISOLDE);
+        host.reserve = 2;
+        for (int player = 100; player < 126; player++) {
+            listed.add(player); // the owner and 26 more players: 27 of 30
+        }
+
+        session.tick(ports, host, NOW);
+        session.tick(ports, host, NOW + 500L);
+
+        assertEquals(List.of("room " + THANE + " 27/30", "seat " + THANE, "runNpc " + THANE + " " + MU_YOUNG + " 1",
+                        "registered " + THANE, "room " + ISOLDE + " 28/30", "refused " + ISOLDE + " FULL"),
+                ports.calls, "the host is asked with the list as it is before each turn, a self-led member's too");
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(THANE).phase());
+        assertEquals(AgentBossRunMember.Phase.REFUSED, session.member(ISOLDE).phase());
+        assertEquals(AgentBossRunHost.Refusal.FULL, session.member(ISOLDE).refusal());
+        assertFalse(host.held.contains(ISOLDE), "a member refused for room is never tied to the run");
+    }
+
+    @Test
+    void theRoomRuleIsForwardedAndAFailingOrMissingOneLeavesTheListToMuYoung() {
+        AgentBossRunSession session = session(THANE, ISOLDE);
+        inReach(THANE);
+        inReach(ISOLDE);
+        host.reserve = 30;
+        AgentBossRunHost.install(null);
+
+        session.tick(ports, AgentBossRunHost.guarded(host), NOW);
+        assertEquals(List.of("room " + THANE + " 1/30", "refused " + THANE + " FULL"), ports.calls);
+
+        AgentBossRunHost.Rule failing = new AgentBossRunHost.Rule() {
+            @Override
+            public boolean seat(AgentBossRunHost.Seat seat) {
+                return true;
+            }
+
+            @Override
+            public boolean roomFor(AgentBossRunHost.Seat seat, int listed, int maxSize) {
+                throw new IllegalStateException("host down");
+            }
+        };
+        session.tick(ports, AgentBossRunHost.guarded(failing), NOW + 500L);
+        assertEquals(AgentBossRunMember.Phase.REGISTERED, session.member(ISOLDE).phase(),
+                "a failing room rule leaves the list's own check to Mu Young");
+
+        AgentBossRunHost.Seat seat = new AgentBossRunHost.Seat("easy_balrog", 7L, THANE, OWNER);
+        AgentBossRunHost.Rule silent = s -> true;
+        assertTrue(silent.roomFor(seat, 29, 30), "a rule that does not answer it leaves every seat to the list");
+        assertTrue(AgentBossRunHost.installed().roomFor(seat, 29, 30), "no rule installed");
+    }
+
+    @Test
     void unlistedAfterTheConversationIsRefusedForTheReasonReadBeforeIt() {
         ports.runNpc = (agent, npcId, selections) -> false;
 

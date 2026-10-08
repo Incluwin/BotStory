@@ -25,7 +25,7 @@ public final class AgentBossRunHost {
         LEVEL,
         /** The list closed before its turn. */
         CLOSED,
-        /** The list was full. */
+        /** The list was full, or the host keeps its last seats for players (Rule.roomFor). */
         FULL,
         /** The leader took it off the list. */
         BANNED,
@@ -82,6 +82,16 @@ public final class AgentBossRunHost {
          */
         boolean seat(Seat seat);
 
+        /**
+         * True when the member may take a seat on the entry NPC's list of {@code maxSize} that holds {@code listed}
+         * now. Asked at its turn to sign up, before {@link #seat}; false refuses it FULL before it is tied to the run or
+         * talks to the entry NPC (the host keeps the list's last seats for players). Unless answered, every seat the
+         * list has: the entry NPC's own check. Synchronous.
+         */
+        default boolean roomFor(Seat seat, int listed, int maxSize) {
+            return true;
+        }
+
         /** The entry NPC listed the member. */
         default void registered(Seat seat) {
         }
@@ -118,7 +128,10 @@ public final class AgentBossRunHost {
         rule = installed;
     }
 
-    /** The installed rule behind a guard: a missing rule grants seats and drops reports, a failing one is logged. */
+    /**
+     * The installed rule behind a guard: a missing rule grants seats and drops reports, a failing one is logged (a
+     * failing room answer leaves the list to the entry NPC's own check).
+     */
     public static Rule installed() {
         return INSTALLED;
     }
@@ -144,6 +157,20 @@ public final class AgentBossRunHost {
             } catch (RuntimeException failure) {
                 log.warn("boss-run seat rule failed for {}", seat, failure);
                 return false;
+            }
+        }
+
+        @Override
+        public boolean roomFor(Seat seat, int listed, int maxSize) {
+            Rule current = current();
+            if (current == null) {
+                return true;
+            }
+            try {
+                return current.roomFor(seat, listed, maxSize);
+            } catch (RuntimeException failure) {
+                log.warn("boss-run room rule failed for {} ({}/{})", seat, listed, maxSize, failure);
+                return true;
             }
         }
 

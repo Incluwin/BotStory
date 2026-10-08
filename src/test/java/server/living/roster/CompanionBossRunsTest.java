@@ -113,6 +113,26 @@ class CompanionBossRunsTest {
     }
 
     @Test
+    void withAlliesOnACompanionLeavesTheHumanSeatsFreeAtItsTurnAndWithAlliesOffTheListIsMuYoungs() {
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "easy_balrog";
+        assertTrue(runs.roomFor(seat(ISOLDE), 29, 30), "Part A: the ally switch leaves the boss out");
+
+        game.config.COMPANION_BOSS_ALLY_TYPES = "easy_balrog";
+        assertTrue(runs.roomFor(seat(ISOLDE), 27, 30), "the 28th seat is the last a companion takes");
+        assertFalse(runs.roomFor(seat(ISOLDE), 28, 30), "the last 2 stay free for players");
+        assertFalse(runs.roomFor(new Seat("easy_balrog", SID, ORRIN, ANN), 28, 30), "a bench ally's turn too");
+
+        game.config.COMPANION_BOSS_HUMAN_SEATS = 0;
+        assertTrue(runs.roomFor(seat(ISOLDE), 29, 30), "no reserve: every seat the list has");
+        assertFalse(runs.roomFor(seat(ISOLDE), 30, 30));
+
+        game.config.COMPANION_BOSS_HUMAN_SEATS = 2;
+        game.config.COMPANION_BOSS_ENABLED_TYPES = "";
+        assertTrue(runs.roomFor(seat(ISOLDE), 29, 30), "the kill switch off turns allies off too");
+        assertFalse(game.commitments.isCommitted(ISOLDE), "the answer ties nobody to the run");
+    }
+
+    @Test
     void onlyTheSeatIsAnsweredOnTheRunsTickEveryOtherReportGoesToCompanionOps() {
         List<Runnable> ops = DirectExecutor.queue();
         CompanionExecutor queued = DirectExecutor.queued(ops);

@@ -26,6 +26,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * the spot the host names beside the entry NPC, and wherever the others would follow their owner again it is stopped.
  * A member its host withdraws before Start is taken off the entry NPC's list by the next tick and refused; one the
  * Start took in anyway is never adopted. A self-led member is adopted only while its anchor is a player of the event.
+ * A member its host has no room for on the list at its turn (AgentBossRunHost.Rule.roomFor) is refused FULL.
  */
 public final class AgentBossRunSession {
     private static final Logger log = LoggerFactory.getLogger(AgentBossRunSession.class);
@@ -240,10 +241,17 @@ public final class AgentBossRunSession {
         return npc != null && spot.distanceSq(npc) > reach * reach && near(agent, spot, spotReachPx());
     }
 
-    /** The member's turn: tie it to the run, then one conversation with the entry NPC. */
+    /**
+     * The member's turn: the host's room for it on the list as it is now (no room refuses it FULL), tie it to the run,
+     * then one conversation with the entry NPC.
+     */
     private void signUp(AgentBossRunPorts ports, AgentBossRunHost.Rule host, AgentBossRunMember member,
                         Character agent) {
         AgentBossRunHost.Seat seat = member.seat(definition.key(), sessionId);
+        if (!host.roomFor(seat, expedition.getMembers().size(), expedition.getMaxSize())) {
+            refuse(host, member, AgentBossRunHost.Refusal.FULL);
+            return;
+        }
         if (!host.seat(seat)) {
             refuse(host, member, AgentBossRunHost.Refusal.BUSY);
             return;

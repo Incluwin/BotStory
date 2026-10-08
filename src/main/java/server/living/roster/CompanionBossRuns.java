@@ -67,7 +67,8 @@ import java.util.function.IntFunction;
  * benched companions ({@link #allyPicker}, {@link #allyCall}). They walk to their spot ({@link #standAt}), each report
  * about one goes to them first, they never say a party companion's party line where no human hears it (the signed-up
  * line, gg), and the run's end and the audit send them home. With COMPANION_BOSS_OWNERS_MAX above 1, owners up to it
- * share one expedition ({@link #ownerFits}), each signing up no more than their share of its seats; an owner who logs
+ * share one expedition ({@link #ownerFits}), each signing up no more than their share of its seats, and no companion
+ * takes one of the seats kept free for players at its turn ({@link #roomFor}); an owner who logs
  * off leaves their allies' fight to a human still in it ({@link #ownerLoggedOut}). A monster an ally tops the damage
  * on drops for the human it fights for ({@link #dropOwner}).</p>
  */
@@ -743,6 +744,20 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         }
         CompanionBossRun run = run(seat);
         return commitments.commit(run.key, run.ownerId, seat.agentCharacterId());
+    }
+
+    /**
+     * P7 Part B, on the run's tick, from memory: room for a companion at its turn to sign up, on a list of {@code
+     * maxSize} that holds {@code listed} now. While the ally switch lists the boss, no companion (a party companion or
+     * a bench ally) takes one of the last COMPANION_BOSS_HUMAN_SEATS seats, so players who joined while it was on its
+     * way still find them free; it is refused FULL and says the list is full. Otherwise every seat the list has, so
+     * Part A's sign-ups stay exactly as they were.
+     */
+    @Override
+    public boolean roomFor(Seat seat, int listed, int maxSize) {
+        LivingWorldConfig config = world.config();
+        return config == null || !config.companionBossAlliesEnabled(seat.bossKey())
+                || listed < maxSize - config.COMPANION_BOSS_HUMAN_SEATS;
     }
 
     @Override
