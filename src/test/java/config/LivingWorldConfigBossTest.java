@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * living_world.COMPANION_BOSS_ENABLED_TYPES lists the boss, and only easy_balrog (Mu Young) may be listed.
  * COMPANION_BOSS_SERVER_AUTHORITY (on) lets the server move the boss while companions fight it. The code default is
  * off; config.yaml ships easy_balrog on since its live checks began (2026-10-07), and says why. Part B: bench allies
- * need COMPANION_BOSS_ALLY_TYPES to list the boss as well, and COMPANION_BOSS_OWNERS_MAX ships at 1 (Part A's
- * one-owner rule).
+ * need COMPANION_BOSS_ALLY_TYPES to list the boss as well (off in code, easy_balrog on in config.yaml since its live
+ * checks began, 2026-10-08), and COMPANION_BOSS_OWNERS_MAX ships at 1 (Part A's one-owner rule).
  */
 class LivingWorldConfigBossTest {
 
@@ -81,17 +81,21 @@ class LivingWorldConfigBossTest {
         }
     }
 
-    // P7 Part B: bench allies and second owners. Both ship off, so every Part A path stays as it is.
+    // P7 Part B: bench allies and second owners. Both are off in code; config.yaml ships bench allies on for Easy
+    // Balrog (its live checks, 2026-10-08) and keeps the one-owner rule.
 
     @Test
-    void allyKeysShipOffWithOneOwner() {
+    void allyKeysAreOffInCodeAndShipEasyBalrogOnWithOneOwner() {
         LivingWorldConfig shipped = YamlConfig.config.living_world;
-        for (LivingWorldConfig config : new LivingWorldConfig[] {new LivingWorldConfig(), shipped}) {
-            assertEquals("", config.COMPANION_BOSS_ALLY_TYPES);
+        LivingWorldConfig defaults = new LivingWorldConfig();
+        assertEquals("", defaults.COMPANION_BOSS_ALLY_TYPES);
+        assertFalse(defaults.companionBossAlliesEnabled("easy_balrog"));
+        assertEquals("easy_balrog", shipped.COMPANION_BOSS_ALLY_TYPES);
+        assertTrue(shipped.companionBossAlliesEnabled("easy_balrog"), "bench allies are on for their live checks");
+        for (LivingWorldConfig config : new LivingWorldConfig[] {defaults, shipped}) {
             assertEquals(1, config.COMPANION_BOSS_OWNERS_MAX, "Part A's one-owner rule");
             assertEquals(2, config.COMPANION_BOSS_HUMAN_SEATS);
             assertEquals(20000, config.COMPANION_BOSS_ALLY_WALK_OUT_MS);
-            assertFalse(config.companionBossAlliesEnabled("easy_balrog"));
             assertDoesNotThrow(config::validate);
         }
     }
@@ -197,7 +201,7 @@ class LivingWorldConfigBossTest {
     @Test
     void theYamlCarriesTheFourKeys() throws IOException {
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        String[] keys = {"\n    COMPANION_BOSS_ALLY_TYPES: \"\"\n", "\n    COMPANION_BOSS_OWNERS_MAX: 1\n",
+        String[] keys = {"\n    COMPANION_BOSS_ALLY_TYPES: \"easy_balrog\"\n", "\n    COMPANION_BOSS_OWNERS_MAX: 1\n",
                 "\n    COMPANION_BOSS_HUMAN_SEATS: 2\n", "\n    COMPANION_BOSS_ALLY_WALK_OUT_MS: 20000\n"};
         int after = yaml.indexOf("\n    COMPANION_BOSS_SERVER_AUTHORITY: true\n");
         assertTrue(after > 0);
