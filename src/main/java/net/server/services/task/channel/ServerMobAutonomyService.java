@@ -496,9 +496,15 @@ public final class ServerMobAutonomyService extends BaseService {
         int skillId = 0;
         int skillLevel = 0;
         if (action instanceof BossAction.Skill skill) {
-            rawActivity = 42 + (skill.actionNumber() - 1) * 2 + facing;
-            skillId = skill.mobSkill().getId().type().getId();
-            skillLevel = skill.mobSkill().getId().level();
+            if (actor.behavior.telegraphSkillAction(skill)) {
+                rawActivity = 42 + (skill.actionNumber() - 1) * 2 + facing;
+                skillId = skill.mobSkill().getId().type().getId();
+                skillLevel = skill.mobSkill().getId().level();
+            } else {
+                // A negative action makes the client skip the action change, the skill sound
+                // and the skill lookups and decode only the movement (as for refused attacks).
+                rawActivity = -1;
+            }
         } else {
             BossAction.OrdinaryAttack attack = (BossAction.OrdinaryAttack) action;
             rawActivity = 24 + attack.attackIndex() * 2 + facing;

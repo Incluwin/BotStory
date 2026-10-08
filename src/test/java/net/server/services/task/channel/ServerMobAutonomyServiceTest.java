@@ -18,6 +18,7 @@ import server.life.Monster;
 import server.life.autonomy.BossClientSimulationCapability;
 import server.life.autonomy.ServerMobBehaviorRegistry;
 import server.life.autonomy.alishar.AlisharActorBehavior;
+import server.life.autonomy.balrog.EasyBalrogBodyBehavior;
 import server.life.autonomy.balrog.EasyBalrogInitialClawBehavior;
 import server.life.autonomy.balrog.EasyBalrogReleasedClawBehavior;
 import server.life.autonomy.papapixie.PapaPixieActorBehavior;
@@ -248,6 +249,66 @@ class ServerMobAutonomyServiceTest {
                 "left-facing skill1 must use the client skill animation activity");
         assertEquals(server.life.MobSkillType.SEAL.getId(), Byte.toUnsignedInt(bytes[9]));
         assertEquals(1, Byte.toUnsignedInt(bytes[10]));
+    }
+
+    @Test
+    void easyBalrogBodyCastPacketCarriesNoSkillActionByDefault() {
+        Fixture fixture = easyBalrogBodyAtHalfHp();
+
+        assertTrue(service.acquire(fixture.monster, fixture.agent));
+        service.tickForTest(System.nanoTime());
+
+        verify(fixture.monster).canUseSkill(
+                org.mockito.ArgumentMatchers.argThat(skill -> skill.getType()
+                        == server.life.MobSkillType.PHYSICAL_AND_MAGIC_COUNTER),
+                org.mockito.ArgumentMatchers.eq(true));
+        byte[] bytes = castPacketBytes(fixture);
+        assertEquals(0xFF, Byte.toUnsignedInt(bytes[8]),
+                "the body's cast must carry no action, so the client skips skill1 and its sound");
+        assertEquals(0, Byte.toUnsignedInt(bytes[9]));
+        assertEquals(0, Byte.toUnsignedInt(bytes[10]));
+        verify(fixture.overall).registerOverallAction(
+                org.mockito.ArgumentMatchers.eq(922010900),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(2_280L));
+    }
+
+    @Test
+    void easyBalrogBodyCastPacketCarriesItsSkillActionWhenTheSwitchAllowsIt() {
+        EasyBalrogBodyBehavior.setTelegraphSkillActions(true);
+        try {
+            Fixture fixture = easyBalrogBodyAtHalfHp();
+
+            assertTrue(service.acquire(fixture.monster, fixture.agent));
+            service.tickForTest(System.nanoTime());
+
+            byte[] bytes = castPacketBytes(fixture);
+            assertEquals(43, Byte.toUnsignedInt(bytes[8]),
+                    "left-facing skill1 must use the client skill animation activity");
+            assertEquals(server.life.MobSkillType.PHYSICAL_AND_MAGIC_COUNTER.getId(),
+                    Byte.toUnsignedInt(bytes[9]));
+            assertEquals(4, Byte.toUnsignedInt(bytes[10]));
+            verify(fixture.overall).registerOverallAction(
+                    org.mockito.ArgumentMatchers.eq(922010900),
+                    org.mockito.ArgumentMatchers.any(),
+                    org.mockito.ArgumentMatchers.eq(2_280L));
+        } finally {
+            EasyBalrogBodyBehavior.setTelegraphSkillActions(false);
+        }
+    }
+
+    @Test
+    void easyBalrogClawSummonCastKeepsItsSkillAction() {
+        Fixture fixture = fixture(EasyBalrogReleasedClawBehavior.MOB_ID, 0);
+
+        assertTrue(service.acquire(fixture.monster, fixture.agent));
+        service.tickForTest(System.nanoTime());
+
+        byte[] bytes = castPacketBytes(fixture);
+        assertEquals(43, Byte.toUnsignedInt(bytes[8]),
+                "left-facing skill1 must use the client skill animation activity");
+        assertEquals(server.life.MobSkillType.SUMMON.getId(), Byte.toUnsignedInt(bytes[9]));
+        assertEquals(162, Byte.toUnsignedInt(bytes[10]));
     }
 
     @Test
@@ -752,6 +813,20 @@ class ServerMobAutonomyServiceTest {
 
     private Fixture fixture(int selectedIndex) {
         return fixture(AlisharActorBehavior.MOB_ID, selectedIndex);
+    }
+
+    /** The body at 49% HP: only Physical/Magic Counter 145 level 4 (HP gate 50) is eligible. */
+    private Fixture easyBalrogBodyAtHalfHp() {
+        Fixture fixture = fixture(EasyBalrogBodyBehavior.MOB_ID, 0);
+        when(fixture.monster.getHp()).thenReturn(1_572_900L);
+        when(fixture.monster.getMaxHp()).thenReturn(3_210_000L);
+        return fixture;
+    }
+
+    private static byte[] castPacketBytes(Fixture fixture) {
+        ArgumentCaptor<Packet> telegraph = ArgumentCaptor.forClass(Packet.class);
+        verify(fixture.map).broadcastMessage(telegraph.capture());
+        return telegraph.getValue().getBytes();
     }
 
     private Fixture fixture(int mobId, int selectedIndex) {

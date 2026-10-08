@@ -41,6 +41,14 @@ public interface BossActorBehavior {
         return false;
     }
 
+    /**
+     * Whether this skill's cast packet tells clients to play the skill action. When false the
+     * cast packet carries no action and no skill id; the movement and the impact are unchanged.
+     */
+    default boolean telegraphSkillAction(BossAction.Skill skill) {
+        return true;
+    }
+
     record SelectedAction(BossAction action, Character primaryTarget,
                           Boolean facingLeftOverride) {
         public SelectedAction(BossAction action, Character primaryTarget) {
