@@ -39,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -225,8 +226,7 @@ class AgentShopServiceReadinessAmmoTest {
         assertEquals(1, use.getNumFreeSlot(), "the run's slot stays free");
         assertEquals("set x " + SUBI, transactions.getLast(), "potions first, then stars");
         assertEquals(1, transactions.stream().filter(line -> line.endsWith(" x " + SUBI)).count());
-        assertEquals(new AgentShopBuyReport(SUBI, 500, 1_600, AgentShopShortfallReason.NO_SPACE),
-                visit.firstShortfall(), "it says its bag is full");
+        assertNull(visit.firstShortfall(), "no shop line with counts and an item name; the trip's own lines tell it");
     }
 
     @Test
@@ -313,8 +313,7 @@ class AgentShopServiceReadinessAmmoTest {
         AgentShopPurchaseSequence<AgentRuntimeEntry> visit = visit(List.of(RED, WHITE, BLUE, ARROW), WeaponType.BOW);
         assertEquals(1_000, arrows(), "one stack beside the run's slot");
         assertEquals(1, use.getNumFreeSlot());
-        assertEquals(new AgentShopBuyReport(ARROW, 1_000, 1_600, AgentShopShortfallReason.NO_SPACE),
-                visit.firstShortfall());
+        assertNull(visit.firstShortfall(), "never \"bag's full\" for the slot it keeps free on purpose");
     }
 
     @Test
@@ -385,9 +384,24 @@ class AgentShopServiceReadinessAmmoTest {
                 AgentSupplyReadiness.ammoTarget(LPQ));
         purse = (int) plan.spend() + 500;
 
-        visit(mayoren, WeaponType.CLAW);
+        AgentShopPurchaseSequence<AgentRuntimeEntry> visit = visit(mayoren, WeaponType.CLAW);
 
         assertTrue(stars() >= 1_600, stars() + " stars after " + transactions);
+        assertNull(visit.firstShortfall(), "the extra Blue it could not afford past the standard is no news");
+    }
+
+    @Test
+    void anAmmoOnlyTripThatCanAffordNoStarsSaysNoShopLine() {
+        trip = LPQ;
+        carryPotions(80, 100);
+        purse = 100;
+
+        AgentShopPurchaseSequence<AgentRuntimeEntry> visit = visit(List.of(RED, WHITE, BLUE, SUBI), WeaponType.CLAW);
+
+        assertEquals(0, stars());
+        assertNull(visit.firstShortfall(), "no \"could only afford 0 Subi\" line");
+        assertTrue(visit.quietShortfall());
+        assertNull(AgentShopService.closingLine(visit, true), "nor \"turned out I didn't need anything here\"");
     }
 
     @Test

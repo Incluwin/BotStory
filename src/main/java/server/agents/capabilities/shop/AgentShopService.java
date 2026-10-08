@@ -599,6 +599,22 @@ public final class AgentShopService {
         scheduleShopStep(sequence.entry(), () -> runPurchaseStep(next, index + 1));
     }
 
+    /**
+     * What a visit says as it ends at the counter: its first spoken shortfall; else, with {@code announceIfEmpty},
+     * that it needed nothing when it bought nothing and fell short of nothing (a quiet shortfall included: the trip's
+     * own lines tell that); else nothing.
+     */
+    static String closingLine(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
+        if (sequence.firstShortfall() != null) {
+            return buildShortfallMessage(sequence.firstShortfall(), sequence.inventory());
+        }
+        if (announceIfEmpty && !sequence.boughtAnything() && !sequence.quietShortfall()) {
+            // Never end a resupply visit silently: nothing was bought and nothing fell short.
+            return AgentDialogueCatalog.shopEmptyResupplyReply();
+        }
+        return null;
+    }
+
     private static void finishPurchaseSequence(AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, boolean announceIfEmpty) {
         if (!isShopSequenceValid(sequence.entry(), sequence.bot(), sequence.npcPos())) {
             abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
@@ -610,11 +626,9 @@ public final class AgentShopService {
                 abortShop(sequence.entry(), sequence.bot(), AgentDialogueCatalog.shopFinishFailedReply());
                 return;
             }
-            if (sequence.firstShortfall() != null) {
-                AgentShopRuntime.sayMapNow(sequence.bot(), buildShortfallMessage(sequence.firstShortfall(), sequence.inventory()));
-            } else if (announceIfEmpty && !sequence.boughtAnything()) {
-                // Never end a resupply visit silently: nothing was bought and nothing fell short.
-                AgentShopRuntime.sayMapNow(sequence.bot(), AgentDialogueCatalog.shopEmptyResupplyReply());
+            String closing = closingLine(sequence, announceIfEmpty);
+            if (closing != null) {
+                AgentShopRuntime.sayMapNow(sequence.bot(), closing);
             }
             AgentShopStateRuntime.completeWorkflow(sequence.entry(), "shop transaction reconciled",
                     System.currentTimeMillis());
@@ -838,10 +852,19 @@ public final class AgentShopService {
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
             AgentShopBuyReport report,
             String fallbackName) {
+        return appendBuyReport(sequence, report, fallbackName, false);
+    }
+
+    /** As above; with {@code quiet} a shortfall is a quiet one (logged by its trip, never said at the counter). */
+    private static AgentShopPurchaseSequence<AgentRuntimeEntry> appendBuyReport(
+            AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
+            AgentShopBuyReport report,
+            String fallbackName,
+            boolean quiet) {
         if (report.quantity() > 0) {
             sequence.bought().add(report.quantity() + " " + resolveItemName(report.itemId(), fallbackName, sequence.inventory()));
         }
-        return sequence.withFirstShortfall(report);
+        return quiet ? sequence.withQuietShortfall(report) : sequence.withFirstShortfall(report);
     }
 
     private static boolean needsAmmo(Character bot, WeaponType wt) {
@@ -999,9 +1022,10 @@ public final class AgentShopService {
     }
 
     /**
-     * A readiness trip's ammo step (after the potions): {@link #buyReadinessAmmo} toward {@code target}, logged and
-     * counted as bought, but not added to the spoken "bought ..." line (the trip's own go and back lines cover it); a
-     * shortfall is said like any other.
+     * A readiness trip's ammo step (after the potion standard): {@link #buyReadinessAmmo} toward {@code target},
+     * logged and counted as bought, but not added to the spoken "bought ..." line, and a shortfall is logged, not said
+     * (a quiet shortfall): the trip's own go, back and broke lines cover it in the companion's words, and the run's Use
+     * slot it keeps free on purpose is no full bag.
      */
     private static AgentShopPurchaseSequence<AgentRuntimeEntry> readinessAmmoStep(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence, Shop shop, Character bot, WeaponType wt, int target,
@@ -1011,7 +1035,7 @@ public final class AgentShopService {
             log.info("Agent '{}' readiness ammo: {} x{} ({}), now {}", bot.getName(), report.itemId(),
                     report.quantity(), report.reason(), AgentCombatAmmoCounter.countCarried(bot, wt));
         }
-        return sequence.withUnspoken(report.quantity()).withFirstShortfall(report);
+        return sequence.withUnspoken(report.quantity()).withQuietShortfall(report);
     }
 
     /**
@@ -1318,7 +1342,8 @@ public final class AgentShopService {
     /**
      * The rest of a visit's potions, after {@link #buyPotionStandard} (and on a readiness trip after its ammo step):
      * the ordinary reserve-bar passes, then with what is left a duty holder's top-up toward its buy target
-     * (BUY_TO_PERCENT of the standard). {@code bought}: this visit's purchases per kind (HP, MP) so far, kept up.
+     * (BUY_TO_PERCENT of the standard). {@code bought}: this visit's purchases per kind (HP, MP) so far, kept up. On a
+     * readiness trip what these passes cannot buy is a quiet shortfall: the trip already met what it went for.
      */
     static AgentShopPurchaseSequence<AgentRuntimeEntry> buyPotionExtras(
             AgentShopPurchaseSequence<AgentRuntimeEntry> sequence,
@@ -1331,6 +1356,7 @@ public final class AgentShopService {
         int hpBought = bought[0];
         int mpBought = bought[1];
         AgentShopPurchaseSequence<AgentRuntimeEntry> current = sequence;
+        boolean quiet = AgentSupplyReadiness.tripActivity(sequence.entry()) != null;
         boolean mpNeedsNormalStock = needsPotionTarget(bot, mpPotion, false);
         int spendable = Math.max(0, bot.getMeso() - Math.max(0, minimumMesoReserve));
         int hpBudget = AgentPotionPurchasePolicy.normalSpendBudget(
@@ -1347,7 +1373,7 @@ public final class AgentShopService {
                 hpBudget,
                 reserveRoomBesideTheRunsSlot(sequence, hpPotion, true));
         hpBought += report.quantity();
-        current = appendBuyReport(current, report, "HP pots");
+        current = appendBuyReport(current, report, "HP pots", quiet);
 
         report = buyPotionToReserve(
                 bot,
@@ -1361,7 +1387,7 @@ public final class AgentShopService {
                 Integer.MAX_VALUE,
                 reserveRoomBesideTheRunsSlot(sequence, mpPotion, false));
         mpBought += report.quantity();
-        current = appendBuyReport(current, report, "MP pots");
+        current = appendBuyReport(current, report, "MP pots", quiet);
         bought[0] = hpBought;
         bought[1] = mpBought;
         // Last, with what is left, a duty holder tops up toward its buy target (BUY_TO_PERCENT of the standard).
