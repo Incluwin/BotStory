@@ -21,9 +21,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -130,6 +132,17 @@ final class LmpqRunFixture implements AutoCloseable {
         sessions.add(session);
         when(event.getPlayers()).thenReturn(new ArrayList<>(List.of(members)));
         return session;
+    }
+
+    /** From now on the event holds exactly {@code players}, and its exit takes a player out of them. */
+    List<Character> livePlayers(Character... players) {
+        List<Character> held = new CopyOnWriteArrayList<>(List.of(players));
+        when(event.getPlayers()).thenAnswer(call -> new ArrayList<>(held));
+        doAnswer(call -> {
+            held.remove(call.<Character>getArgument(0));
+            return null;
+        }).when(event).exitPlayer(any());
+        return held;
     }
 
     @Override

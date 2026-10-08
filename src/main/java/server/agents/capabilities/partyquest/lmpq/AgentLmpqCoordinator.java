@@ -65,7 +65,7 @@ public final class AgentLmpqCoordinator {
         if (session.eventInstance() == null && leader.getEventInstance() != null
                 && AgentLmpqDefinition.isEventMap(leader.getMapId())) {
             session.bindEventInstance(leader.getEventInstance());
-            session.transition(AgentLmpqSession.Phase.FARMING, nowMs);
+            beginFarming(session, nowMs);
         }
         if (session.eventInstance() != null && session.eventInstance().isEventDisposed()
                 && session.phase().ordinal() < AgentLmpqSession.Phase.REWARD.ordinal()) {
@@ -169,10 +169,29 @@ public final class AgentLmpqCoordinator {
         }
     }
 
+    /**
+     * The party is inside the maze: farming begins. A companion run first logs its companions' potions
+     * ('LMPQ potions: session= start=') and keeps them for the release's end line; the first caller wins, and a
+     * failure to read them is logged and never keeps farming from beginning.
+     */
+    static void beginFarming(AgentLmpqSession session, long nowMs) {
+        if (session.companionAdopted() && session.potionsAtEntry() == null) {
+            try {
+                String potions = AgentLmpqTerminationService.potions(session);
+                if (session.recordPotionsAtEntry(potions)) {
+                    log.info("LMPQ potions: session={} start={}", session.sessionId(), potions);
+                }
+            } catch (RuntimeException failure) {
+                log.warn("LMPQ potions failed: session={}", session.sessionId(), failure);
+            }
+        }
+        session.transition(AgentLmpqSession.Phase.FARMING, nowMs);
+    }
+
     private static void prepare(AgentLmpqSession session, AgentRuntimeEntry entry, Character agent,
                                 AgentLmpqMemberState member, long nowMs) {
         if (AgentLmpqDefinition.isFarmMap(agent.getMapId())) {
-            session.transition(AgentLmpqSession.Phase.FARMING, nowMs);
+            beginFarming(session, nowMs);
             return;
         }
         if (agent.getMapId() != AgentLmpqDefinition.RECRUIT_MAP) { actions().stop(entry); return; }

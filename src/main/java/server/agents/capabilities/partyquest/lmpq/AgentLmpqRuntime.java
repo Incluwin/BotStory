@@ -20,7 +20,7 @@ public final class AgentLmpqRuntime {
         if (session.claimExecutionTick(agent.getId(), nowMs, COORDINATOR_LEASE_MS)) {
             AgentLmpqCoordinator.tickSession(session, nowMs);
         }
-        if (session.terminal()) AgentLmpqTerminationService.release(
+        if (session.terminal()) AgentLmpqTerminationService.finish(
                 session, session.failure(), nowMs, session.phase() == AgentLmpqSession.Phase.FAILED);
         return true;
     }
@@ -32,7 +32,7 @@ public final class AgentLmpqRuntime {
             return AgentPartyQuestLifecycleRuntime.requestStop(id, reason, nowMs);
         }
         if (!session.terminal()) return false;
-        AgentLmpqTerminationService.release(session, reason, nowMs, false);
+        AgentLmpqTerminationService.finish(session, reason, nowMs, false);
         return true;
     }
 
@@ -41,7 +41,7 @@ public final class AgentLmpqRuntime {
         if (session == null) {
             AgentLmpqLobbyAdmissionRuntime.releaseTracking(id);
             AgentPartyQuestLifecycleRuntime.forceStop(id, reason, nowMs);
-        } else AgentLmpqTerminationService.release(session, reason, nowMs, true);
+        } else AgentLmpqTerminationService.finish(session, reason, nowMs, true);
     }
 
     public static void runtimeRemoved(int id, long nowMs) {
