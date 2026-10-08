@@ -79,6 +79,7 @@ class CompanionBossAlliesEndTest {
     void aClearedRunSendsEachHomeAsItComesOutWithAGoodFight() {
         signUp(ORRIN, MAGNA);
         inside(ORRIN, MAGNA);
+        h.open.cleared = true; // the boss fell
 
         h.bossRuns.memberOut(seat(ORRIN), Out.EXITED);
         h.bossRuns.memberOut(seat(MAGNA), Out.EXITED);
@@ -100,6 +101,7 @@ class CompanionBossAlliesEndTest {
                 result(MAGNA, false, Out.EXITED)));
 
         assertAllHome(ORRIN, MAGNA);
+        assertSaid(BossRunLines.ALLY_NEXT_TIME, "Magna"); // the time ran out: nobody cleared it
     }
 
     @Test
@@ -136,6 +138,61 @@ class CompanionBossAlliesEndTest {
                 result(MAGNA, false, Out.DIED)));
 
         assertAllHome(ORRIN, MAGNA);
+        assertSaid(BossRunLines.ALLY_NEXT_TIME, "Orrin");
+    }
+
+    /**
+     * An ally out of the fight alive says goodbye by how the run stood as the run handed it back: a "good fight" once
+     * the boss fell, a "next time" when it is out before that (the time ran out, a failed tick, the event gone, no
+     * human left in it).
+     */
+    @ParameterizedTest
+    @CsvSource({"EXITED, true, boss.ally.goodfight", "EXITED, false, boss.ally.nexttime",
+            "NO_HUMAN_LEFT, false, boss.ally.nexttime"})
+    void anAllyOutAliveSaysGoodbyeByHowTheRunStoodAsItCameOut(Out out, boolean cleared, String intent) {
+        signUp(ORRIN, MAGNA);
+        inside(ORRIN, MAGNA);
+        h.open.cleared = cleared;
+
+        h.bossRuns.memberOut(seat(ORRIN), out);
+        h.bossRuns.memberOut(seat(MAGNA), out);
+        h.bossRuns.runEnded(ended(true, cleared, cleared ? "members-out" : "event-disposed",
+                result(ORRIN, cleared, out), result(MAGNA, cleared, out)));
+
+        assertAllHome(ORRIN, MAGNA);
+        assertLines(intent, "Orrin", "Magna");
+    }
+
+    /**
+     * The clear is read as the run hands the ally back, on its tick: the last ones out end the run on that same tick,
+     * and it leaves the Agent layer's registry before companion-ops gets to their reports.
+     */
+    @Test
+    void theClearCountsAsTheRunHandsTheAllyBackNotWhenCompanionOpsGetsToIt() {
+        signUp(ORRIN, MAGNA);
+        inside(ORRIN, MAGNA);
+        h.open.cleared = true;
+        List<Runnable> ops = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(ops);
+        when(h.game.world.executor()).thenReturn(queued);
+
+        h.bossRuns.memberOut(seat(ORRIN), Out.EXITED);
+        h.bossRuns.memberOut(seat(MAGNA), Out.EXITED);
+        h.bossRuns.runEnded(ended(true, true, "members-out", result(ORRIN, true, Out.EXITED),
+                result(MAGNA, true, Out.EXITED)));
+        h.open.cleared = false;
+        h.open.gone = true;
+        for (int i = 0; i < ops.size(); i++) {
+            ops.get(i).run();
+        }
+
+        assertAllHome(ORRIN, MAGNA);
+        assertLines(BossRunLines.ALLY_GOOD_FIGHT, "Orrin", "Magna");
+    }
+
+    @Test
+    void theLiveViewKnowsNoClearOfARunItWasNotGiven() {
+        assertFalse(CompanionBossRuns.OpenRuns.LIVE.cleared(Long.MIN_VALUE));
     }
 
     @Test

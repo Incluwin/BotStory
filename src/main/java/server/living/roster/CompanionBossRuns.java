@@ -172,6 +172,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
             return 0;
         }
 
+        /**
+         * P7 Part B: true while boss run {@code sessionId} is past its clear (POST_CLEAR: its boss fell). Read on the
+         * run's tick as it hands a member back: the run leaves the registry only after its last hand-back, so this
+         * still finds it. Unless implemented, false.
+         */
+        default boolean cleared(long sessionId) {
+            return false;
+        }
+
         OpenRuns LIVE = new OpenRuns() {
             @Override
             public boolean open(long sessionId) {
@@ -325,6 +334,12 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
                 AgentBossRunSession session = AgentBossRunRegistry.forExpedition(expedition);
                 AgentBossRunMember member = session == null ? null : session.member(agentId);
                 return member == null ? 0 : member.anchorId();
+            }
+
+            @Override
+            public boolean cleared(long sessionId) {
+                AgentBossRunSession session = AgentBossRunRegistry.byId(sessionId);
+                return session != null && session.phase() == AgentBossRunSession.Phase.POST_CLEAR;
             }
         };
     }
@@ -770,9 +785,15 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         world.executor().submit("boss.refused " + seat.agentCharacterId(), () -> notListed(seat, refusal));
     }
 
+    /**
+     * On the run's tick, from memory: the member left the run. For an exit alive, whether the run is past its clear is
+     * read here, as the run hands the member back (a bench ally's goodbye goes by it): the last ones out end the run on
+     * this same tick, and it leaves the registry before companion-ops gets to the report.
+     */
     @Override
     public void memberOut(Seat seat, Out out) {
-        world.executor().submit("boss.member_out " + seat.agentCharacterId(), () -> out(seat, out));
+        boolean cleared = out == Out.EXITED && open.cleared(seat.sessionId());
+        world.executor().submit("boss.member_out " + seat.agentCharacterId(), () -> out(seat, out, cleared));
     }
 
     @Override
@@ -872,11 +893,12 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
      * The companion left the run (a bench ally's way home is CompanionBossAllies'). A missed start lets it go with a
      * line; a death keeps it tied to the run (it waits outside for its owner and follows them out) with a line; no
      * human left is one line per owner and the run's end lets them go; a plain exit says nothing; a runtime that went
-     * away (parked at its owner's logout) is let go.
+     * away (parked at its owner's logout) is let go. {@code cleared}: the run was past its clear as it handed the
+     * member back (only a bench ally's goodbye reads it).
      */
-    private void out(Seat seat, Out out) {
+    private void out(Seat seat, Out out, boolean cleared) {
         int id = seat.agentCharacterId();
-        if (allies.out(seat, out, runs.get(key(seat)))) {
+        if (allies.out(seat, out, cleared, runs.get(key(seat)))) {
             return;
         }
         switch (out) {

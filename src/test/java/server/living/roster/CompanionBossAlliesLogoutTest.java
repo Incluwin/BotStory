@@ -152,6 +152,7 @@ class CompanionBossAlliesLogoutTest {
         when(orrin.getEventInstance()).thenReturn(null);
         when(h.room.getCharacterById(BEN)).thenReturn(ben);
         h.mapChat.clear();
+        h.open.cleared = true;
         h.bossRuns.memberOut(seat(ORRIN), Out.EXITED);
 
         assertEquals(1, h.mapChat.size(), "said where Ben hears it: " + h.mapChat);

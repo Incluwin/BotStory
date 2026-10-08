@@ -231,6 +231,8 @@ final class BossAllyHarness implements AutoCloseable {
         final Map<Integer, Integer> ordinals = new HashMap<>();
         /** The run left the Agent layer's registry without an end (a lost run). */
         boolean gone;
+        /** Run {@link #SID} is past its clear: its boss fell. */
+        boolean cleared;
         /** The expedition run {@link #SID} is for (the harness's). */
         Expedition expedition;
         /** Agent id -> the human it stays with in the run: its enlister, or its heir once a handoff was agreed. */
@@ -244,6 +246,11 @@ final class BossAllyHarness implements AutoCloseable {
         @Override
         public int ordinalOf(long sessionId, int agentId) {
             return sessionId == SID ? ordinals.getOrDefault(agentId, -1) : -1;
+        }
+
+        @Override
+        public boolean cleared(long sessionId) {
+            return sessionId == SID && !gone && cleared;
         }
 
         @Override

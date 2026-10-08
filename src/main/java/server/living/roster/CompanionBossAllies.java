@@ -732,10 +732,11 @@ final class CompanionBossAllies {
     /**
      * On companion-ops, the ally of {@code seat} left the run ({@code out}): false when it is no ally's. Down in the
      * fight, it waits outside ({@link #waitOutside}). Having missed the start, with no human left in the fight, or out
-     * of it alive, it says so and goes back to its bench duty; one whose runtime went away goes with no line. Its
-     * owner's other allies form their party again.
+     * of it alive, it says so and goes back to its bench duty: out alive, a "good fight" when the run was past its
+     * clear as it handed the ally back ({@code cleared}), else "next time" (the time ran out, a failed tick, the event
+     * gone). One whose runtime went away goes with no line. Its owner's other allies form their party again.
      */
-    boolean out(Seat seat, Out out, CompanionBossRun run) {
+    boolean out(Seat seat, Out out, boolean cleared, CompanionBossRun run) {
         Trip trip = tripOf(seat);
         if (trip == null) {
             return false;
@@ -744,7 +745,7 @@ final class CompanionBossAllies {
             case DIED -> waitOutside(trip, run);
             case MISSED_START -> sendHome(trip, BossRunLines.ALLY_MISSED, run);
             case NO_HUMAN_LEFT -> sendHome(trip, BossRunLines.ALLY_NEXT_TIME, run);
-            case EXITED -> sendHome(trip, BossRunLines.ALLY_GOOD_FIGHT, run);
+            case EXITED -> sendHome(trip, cleared ? BossRunLines.ALLY_GOOD_FIGHT : BossRunLines.ALLY_NEXT_TIME, run);
             case GONE -> sendHome(trip, null, run);
         }
         return true;
