@@ -40,6 +40,14 @@ public final class AgentDeathTickCoordinator {
     }
 
     /**
+     * Whether this Agent is dead past its respawn time: a party-quest departure gate holds it in its event (an Agent no
+     * gate holds respawns on its first due tick). Such a corpse stays where it lies until its gate lets it go.
+     */
+    public static boolean respawnHeld(AgentRuntimeEntry entry, long nowMs) {
+        return entry != null && AgentDeathStateRuntime.isDead(entry) && AgentDeathStateRuntime.isRespawnDue(entry, nowMs);
+    }
+
+    /**
      * The respawn a due dead tick runs: the gate runs {@code respawn} at once, or holds the Agent dead until a later
      * tick (an LPQ member, or an EPQ member, whose departure would end its event). An Agent without an LPQ session
      * respawns as before.
