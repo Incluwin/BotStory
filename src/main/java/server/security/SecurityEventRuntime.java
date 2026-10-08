@@ -42,30 +42,46 @@ public final class SecurityEventRuntime {
 
     public static SecurityEvent record(Client client, SecurityEventType type, SecuritySeverity severity,
                                        Map<String, String> evidence) {
-        Character chr = client == null ? null : client.getPlayer();
-        int accountId = client == null ? -1 : client.getAccID();
-        int characterId = chr == null ? -1 : chr.getId();
-        String remote = client == null ? "unknown" : fingerprint(client.getRemoteAddress());
-        return record(type, severity, accountId, characterId, remote, evidence);
+        return record(client, type, severity, evidence, true);
     }
 
     public static SecurityEvent record(Character chr, SecurityEventType type, SecuritySeverity severity,
                                        Map<String, String> evidence) {
-        return record(chr == null ? null : chr.getClient(), type, severity, evidence);
+        return record(chr == null ? null : chr.getClient(), type, severity, evidence, true);
+    }
+
+    /**
+     * Records an event that only in-process readers see. It joins {@link #snapshot()} with the next sequence number,
+     * so a reader such as the GM skill probe still finds it. It is not persisted, not alerted on, and logged at DEBUG
+     * only. Use it for events that nobody reviews, such as the autoban signals of an Agent.
+     */
+    public static SecurityEvent recordInMemoryOnly(Character chr, SecurityEventType type, SecuritySeverity severity,
+                                                   Map<String, String> evidence) {
+        return record(chr == null ? null : chr.getClient(), type, severity, evidence, false);
+    }
+
+    private static SecurityEvent record(Client client, SecurityEventType type, SecuritySeverity severity,
+                                        Map<String, String> evidence, boolean reported) {
+        Character chr = client == null ? null : client.getPlayer();
+        int accountId = client == null ? -1 : client.getAccID();
+        int characterId = chr == null ? -1 : chr.getId();
+        String remote = client == null ? "unknown" : fingerprint(client.getRemoteAddress());
+        return record(type, severity, accountId, characterId, remote, evidence, reported);
     }
 
     public static SecurityEvent record(int characterId, SecurityEventType type, SecuritySeverity severity,
                                        Map<String, String> evidence) {
-        return record(type, severity, -1, characterId, "internal", evidence);
+        return record(type, severity, -1, characterId, "internal", evidence, true);
     }
 
     public static SecurityEvent recordExternal(SecurityEventType type, SecuritySeverity severity,
                                                String remoteAddress, Map<String, String> evidence) {
-        return record(type, severity, -1, -1, fingerprint(remoteAddress), evidence);
+        return record(type, severity, -1, -1, fingerprint(remoteAddress), evidence, true);
     }
 
     private static SecurityEvent record(SecurityEventType type, SecuritySeverity severity, int accountId,
-                                        int characterId, String remote, Map<String, String> evidence) {
+                                        int characterId, String remote, Map<String, String> evidence,
+                                        boolean reported) {
         SecurityEvent event = new SecurityEvent(sequence.incrementAndGet(), UUID.randomUUID(), Instant.now(), type, severity,
                 accountId, characterId, remote, evidence);
         synchronized (recent) {
@@ -73,6 +89,11 @@ public final class SecurityEventRuntime {
                 recent.removeFirst();
             }
             recent.addLast(event);
+        }
+        if (!reported) {
+            log.debug("securityEvent memoryOnly sequence={} type={} severity={} accountId={} characterId={} evidence={}",
+                    event.sequence(), type, severity, accountId, characterId, event.evidence());
+            return event;
         }
         if (severity == SecuritySeverity.CRITICAL) {
             log.warn("securityEvent sequence={} type={} accountId={} characterId={} remote={} evidence={}",
