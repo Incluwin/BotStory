@@ -71,6 +71,15 @@ final class AgentEngineConfigValidator {
             if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
                 continue;
             }
+            if (key.endsWith("AgentSupplyReadiness.PARTY_QUEST_AMMO")) {
+                // its stated range is enforced: a whole count up to the same bound as AMMO_STANDARDS
+                long bound = ammoStandardsBound(tuning);
+                if (!validProjectileCount(value, bound)) {
+                    throw new IllegalStateException(
+                            "Agent tuning key " + key + " must be a whole projectile count from 0 to " + bound);
+                }
+                continue;
+            }
             if (key.endsWith("AgentSupplyReadiness.AMMO_STANDARDS")) {
                 // its own branch: a false from validNonNumericTuning would let a bare count pass the numeric check
                 long bound = ammoStandardsBound(tuning);
@@ -124,18 +133,32 @@ final class AgentEngineConfigValidator {
                 || key.endsWith("AgentSupplyReadiness.AMMO_BUY_TO_PERCENT") ? 500.0d : 100.0d;
     }
 
+    private static final String AMMO_LOW_WARN_KEY = "server.agents.capabilities.supplies.AgentSupplyConfig.AMMO_LOW_WARN";
+    private static final String AMMO_TARGET_THRESHOLD_KEY =
+            "server.agents.capabilities.shop.AgentShopService.AMMO_TARGET_THRESHOLD";
+
     /**
-     * The most projectiles an AMMO_STANDARDS count may ask: what one Victoria visit buys (AgentSupplyConfig.AMMO_LOW_WARN
-     * x AgentShopService.AMMO_TARGET_THRESHOLD), read from the same tuning; 0 when either is missing or malformed.
+     * The most projectiles an ammo standard (AMMO_STANDARDS, PARTY_QUEST_AMMO) may ask: what one Victoria visit buys
+     * (AgentSupplyConfig.AMMO_LOW_WARN x AgentShopService.AMMO_TARGET_THRESHOLD), read from the same tuning. Either
+     * missing or not a whole number refuses startup with that key's name.
      */
-    private static long ammoStandardsBound(Map<String, String> tuning) {
-        try {
-            return Long.parseLong(tuning.get("server.agents.capabilities.supplies.AgentSupplyConfig.AMMO_LOW_WARN").trim())
-                    * Long.parseLong(tuning.get(
-                    "server.agents.capabilities.shop.AgentShopService.AMMO_TARGET_THRESHOLD").trim());
-        } catch (RuntimeException missing) {
-            return 0L;
+    static long ammoStandardsBound(Map<String, String> tuning) {
+        return wholeTuning(tuning, AMMO_LOW_WARN_KEY) * wholeTuning(tuning, AMMO_TARGET_THRESHOLD_KEY);
+    }
+
+    private static long wholeTuning(Map<String, String> tuning, String key) {
+        String value = tuning.get(key);
+        if (value == null || !value.trim().matches("\\d{1,9}")) {
+            throw new IllegalStateException("Agent tuning key " + key + " bounds the ammo standards"
+                    + " (AgentSupplyReadiness.AMMO_STANDARDS, PARTY_QUEST_AMMO) and must be a whole number, was "
+                    + (value == null ? "missing" : "'" + value + "'"));
         }
+        return Long.parseLong(value.trim());
+    }
+
+    /** True for a whole projectile count from 0 to {@code bound}. */
+    static boolean validProjectileCount(String value, long bound) {
+        return value != null && value.matches("\\d{1,18}") && Long.parseLong(value) <= bound;
     }
 
     /** True for "key=count[,key=count...]" with lower-case keys and every count from 0 to {@code bound}. */
