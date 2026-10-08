@@ -28,8 +28,6 @@ import net.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.PacketCreator;
-import server.security.SecurityEventRuntime;
-import server.security.SecurityEventType;
 import server.security.SecuritySeverity;
 
 import java.util.Collection;
@@ -97,7 +95,7 @@ public enum AutobanFactory {
     }
 
     public void alert(Character chr, String reason) {
-        SecurityEventRuntime.record(chr, SecurityEventType.AUTOBAN_SIGNAL, SecuritySeverity.WARNING,
+        AutobanSignals.record(chr, SecuritySeverity.WARNING,
                 Map.of("signal", name(), "action", "ALERT", "reason", reason));
         if (YamlConfig.config.server.USE_AUTOBAN) {
             if (chr != null && isIgnored(chr.getId())) {
@@ -112,7 +110,7 @@ public enum AutobanFactory {
     }
 
     public void autoban(Character chr, String value) {
-        SecurityEventRuntime.record(chr, SecurityEventType.AUTOBAN_SIGNAL, SecuritySeverity.CRITICAL,
+        AutobanSignals.record(chr, SecuritySeverity.CRITICAL,
                 Map.of("signal", name(), "action", "AUTOBAN", "reason", value));
         if (YamlConfig.config.server.USE_AUTOBAN) {
             chr.autoban("Autobanned for (" + this.name() + ": " + value + ")");

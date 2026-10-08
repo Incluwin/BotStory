@@ -10,8 +10,6 @@ import config.YamlConfig;
 import net.server.Server;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import server.security.SecurityEventRuntime;
-import server.security.SecurityEventType;
 import server.security.SecuritySeverity;
 
 import java.util.HashMap;
@@ -50,7 +48,7 @@ public class AutobanManager {
         if (fac.getExpire() != -1) {
             lastTime.put(fac, now);
         }
-        SecurityEventRuntime.record(chr, SecurityEventType.AUTOBAN_SIGNAL,
+        AutobanSignals.record(chr,
                 updated >= fac.getMaximum() ? SecuritySeverity.CRITICAL : SecuritySeverity.WARNING,
                 Map.of(
                         "signal", fac.name(),
@@ -120,7 +118,7 @@ public class AutobanManager {
         if (this.timestamp[type] == time) {
             this.timestampcounter[type]++;
             if (this.timestampcounter[type] >= times) {
-                SecurityEventRuntime.record(chr, SecurityEventType.AUTOBAN_SIGNAL, SecuritySeverity.CRITICAL,
+                AutobanSignals.record(chr, SecuritySeverity.CRITICAL,
                         Map.of("signal", "TIMESTAMP_SPAM", "type", type + "", "count", times + ""));
                 if (YamlConfig.config.server.USE_AUTOBAN) {
                     chr.getClient().disconnect(false, false);

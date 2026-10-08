@@ -1426,12 +1426,12 @@ public final class AgentSkillProbeService {
         probeMobOids.clear();
     }
 
-    private static long latestSecuritySequence() {
+    static long latestSecuritySequence() {
         List<SecurityEvent> events = SecurityEventRuntime.snapshot();
         return events.isEmpty() ? 0L : events.get(events.size() - 1).sequence();
     }
 
-    private static List<String> autobanSignalsSince(int characterId, long floorSequence) {
+    static List<String> autobanSignalsSince(int characterId, long floorSequence) {
         List<String> signals = new ArrayList<>();
         for (SecurityEvent event : SecurityEventRuntime.snapshot()) {
             if (event.sequence() <= floorSequence || event.type() != SecurityEventType.AUTOBAN_SIGNAL
