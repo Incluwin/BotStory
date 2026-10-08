@@ -937,7 +937,7 @@ living_world:
     # SERVER_AUTHORITY: while a signed-up companion is in the fight, the server moves Balrog for all of it and its
     # attacks reach the companions (the Poison Golem mechanism); false = the stock choice (touch damage only for bots).
     # Timings: agent-engine.yaml AgentBossRunSession.
-    COMPANION_BOSS_ENABLED_TYPES: ""
+    COMPANION_BOSS_ENABLED_TYPES: "easy_balrog"
     COMPANION_BOSS_SERVER_AUTHORITY: true
     RUMOR_TICK_MS: 60000
     RUMOR_LINE_PACING_MS: 3500

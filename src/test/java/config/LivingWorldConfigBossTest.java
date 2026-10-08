@@ -16,8 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * The P7 kill switch (docs/BOT_MANAGEMENT_PLAN.md flow 4): boss expeditions with companions are off unless
  * living_world.COMPANION_BOSS_ENABLED_TYPES lists the boss, and only easy_balrog (Mu Young) may be listed.
- * COMPANION_BOSS_SERVER_AUTHORITY (on) lets the server move the boss while companions fight it. config.yaml ships the
- * switch empty until the live checks pass, and says why.
+ * COMPANION_BOSS_SERVER_AUTHORITY (on) lets the server move the boss while companions fight it. The code default is
+ * off; config.yaml ships easy_balrog on since its live checks began (2026-10-07), and says why.
  */
 class LivingWorldConfigBossTest {
 
@@ -63,14 +63,14 @@ class LivingWorldConfigBossTest {
     }
 
     @Test
-    void configYamlShipsTheSwitchEmptyWithServerAuthorityAndSaysWhy() throws IOException {
+    void configYamlShipsEasyBalrogOnWithServerAuthorityAndSaysWhy() throws IOException {
         LivingWorldConfig living = YamlConfig.config.living_world;
-        assertEquals("", living.COMPANION_BOSS_ENABLED_TYPES);
-        assertFalse(living.companionBossEnabled("easy_balrog"), "off until the Easy Balrog live checks pass");
+        assertEquals("easy_balrog", living.COMPANION_BOSS_ENABLED_TYPES);
+        assertTrue(living.companionBossEnabled("easy_balrog"), "on for the Easy Balrog live checks");
         assertTrue(living.COMPANION_BOSS_SERVER_AUTHORITY);
 
         String yaml = new String(Files.readAllBytes(Path.of("config.yaml")), StandardCharsets.US_ASCII);
-        assertTrue(yaml.contains("\n    COMPANION_BOSS_ENABLED_TYPES: \"\"\n"));
+        assertTrue(yaml.contains("\n    COMPANION_BOSS_ENABLED_TYPES: \"easy_balrog\"\n"));
         assertTrue(yaml.contains("\n    COMPANION_BOSS_SERVER_AUTHORITY: true\n"));
         String comment = yaml.substring(yaml.indexOf("# Boss expeditions with companions"),
                 yaml.indexOf("COMPANION_BOSS_ENABLED_TYPES:"));
