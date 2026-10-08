@@ -1,5 +1,7 @@
 package server.agents.capabilities.partyquest.opq;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentCompanionRunSession;
 import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
@@ -16,6 +18,7 @@ import java.util.Set;
 
 /** OPQ aggregate root. All mutable party/room/item ownership is session scoped. */
 public final class AgentOpqSession implements AgentCompanionRunSession {
+    private static final Logger log = LoggerFactory.getLogger(AgentOpqSession.class);
     public enum Mode { TEST_OBSERVATION, AUTONOMOUS, HUMAN_ASSISTED }
     public enum Phase {
         PREPARING, ENTERING, ENTRANCE, SPLIT_ROOMS, RESTORING_STATUE,
@@ -98,6 +101,7 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;
         if (next != phase) {
             firstEntries.putIfAbsent(next, nowMs);
+            logPhaseChange(next, nowMs);
             phase = next;
             phaseEnteredAtMs = nowMs;
         }
@@ -111,13 +115,28 @@ public final class AgentOpqSession implements AgentCompanionRunSession {
     public synchronized void fail(String reason, long nowMs) {
         failure = reason == null ? "OPQ failed" : reason;
         firstEntries.putIfAbsent(Phase.FAILED, nowMs);
+        if (phase != Phase.FAILED) logPhaseChange(Phase.FAILED, nowMs);
         phase = Phase.FAILED;
         markProgress(nowMs);
     }
     public synchronized void complete(long nowMs) {
         firstEntries.putIfAbsent(Phase.COMPLETED, nowMs);
+        if (phase != Phase.COMPLETED) logPhaseChange(Phase.COMPLETED, nowMs);
         phase = Phase.COMPLETED;
         markProgress(nowMs);
+    }
+
+    /**
+     * The phase line every PQ logs (HPQ/KPQ shape), for stock and companion runs alike: once per phase change, the time
+     * spent in the phase it leaves and in the run so far. Logging only; it never throws into the state machine.
+     */
+    private void logPhaseChange(Phase next, long nowMs) {
+        try {
+            log.info("OPQ phase: session={} {}->{} phaseMs={} runMs={} companionRun={}", sessionId, phase, next,
+                    Math.max(0L, nowMs - phaseEnteredAtMs), Math.max(0L, nowMs - startedAtMs), companionAdopted);
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
+        }
     }
 
     /** When the run first entered {@code phase} (a later entry keeps the first), or 0 when it never did. */

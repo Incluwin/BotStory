@@ -230,7 +230,7 @@ final class AgentOpqCoordinator {
                     // exclusive-item collector pick the offering back up on the next tick,
                     // trapping the entrance in a drop/pickup loop even though the leader is
                     // standing legally beside Eak.
-                    if (runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC)) {
+                    if (runEak(session, entry, agent, EakKind.ENTRANCE, 0)) {
                         session.markProgress(nowMs);
                     }
                     member.deferUntil(nowMs + ACTION_RETRY_MS);
@@ -242,7 +242,7 @@ final class AgentOpqCoordinator {
             if (leader != null && propertyInt(leader, "statusStg0") != 1
                     && partyItemCount(session, AgentOpqDefinition.CLOUD_PIECE) == 0
                     && !cloudDropRemaining) {
-                runNearbyNpc(entry, leader, AgentOpqDefinition.EAK_NPC);
+                runEak(session, entry, leader, EakKind.ENTRANCE, 0);
             }
         }
     }
@@ -291,7 +291,7 @@ final class AgentOpqCoordinator {
         List<AgentOpqMemberState> others = agents.stream()
                 .filter(m -> m.characterId() != session.eventLeaderId()).toList();
         if (!session.rooms().complete(AgentOpqDefinition.Room.SEALED)) {
-            session.rooms().claim(AgentOpqDefinition.Room.SEALED, leader.characterId(), nowMs);
+            claimRoom(session, AgentOpqDefinition.Room.SEALED, leader.characterId(), nowMs);
             leader.assign(AgentOpqMemberState.Role.LEADER, AgentOpqDefinition.Room.SEALED, 0);
             for (int i = 0; i < 3; i++) {
                 others.get(i).assign(AgentOpqMemberState.Role.SEALED_PLATFORM, AgentOpqDefinition.Room.SEALED, 0);
@@ -337,8 +337,32 @@ final class AgentOpqCoordinator {
                                    AgentOpqDefinition.Room room, AgentOpqMemberState.Role role, long nowMs) {
         if (session.rooms().complete(room)) return;
         AgentOpqRoomLedger.Lease lease = session.rooms().lease(room);
-        if (lease == null) session.rooms().claim(room, member.characterId(), nowMs);
+        if (lease == null) claimRoom(session, room, member.characterId(), nowMs);
         member.assign(role, room, member.assignedSubroomMapId());
+    }
+
+    /** The room ledger's claim, with an 'OPQ room:' line when it changed the room's owner or state. */
+    private static void claimRoom(AgentOpqSession session, AgentOpqDefinition.Room room, int ownerId, long nowMs) {
+        AgentOpqRoomLedger.Lease before = session.rooms().lease(room);
+        session.rooms().claim(room, ownerId, nowMs);
+        logRoomChange(session, room, before, nowMs);
+    }
+
+    /**
+     * 'OPQ room: session= room= state= owner= runMs=' once per change of a room's lease (a claim, a completion), in
+     * every mode. Logging only.
+     */
+    private static void logRoomChange(AgentOpqSession session, AgentOpqDefinition.Room room,
+                                      AgentOpqRoomLedger.Lease before, long nowMs) {
+        try {
+            AgentOpqRoomLedger.Lease after = session.rooms().lease(room);
+            if (after == null || before != null && before.ownerId() == after.ownerId()
+                    && before.state() == after.state()) return;
+            log.info("OPQ room: session={} room={} state={} owner={} runMs={}", session.sessionId(), room,
+                    after.state(), after.ownerId(), Math.max(0L, nowMs - session.startedAtMs()));
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
+        }
     }
 
     private static void assignLoungeSubrooms(AgentOpqSession session) {
@@ -411,7 +435,7 @@ final class AgentOpqCoordinator {
         int held = agent.getItemQuantity(AgentOpqDefinition.WALKWAY_FRAGMENT, false);
         Character leader = character(session.eventLeaderId());
         if (agent.getId() == session.eventLeaderId() && held >= 30) {
-            runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC);
+            runEak(session, entry, agent, EakKind.WALKWAY, 0);
         } else if (held >= 30 && leader != null && leader.getMapId() == AgentOpqDefinition.WALKWAY_MAP) {
             if (!moveTo(entry, agent, WALKWAY_EAK, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
             dropItem(entry, InventoryType.ETC,
@@ -452,7 +476,7 @@ final class AgentOpqCoordinator {
         }
         if (navigateLobbyLpAscent(entry, agent)) return;
         if (propertyInt(agent, "statusStg3") == 0 && agent.getId() == session.eventLeaderId()) {
-            if (runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC)) member.deferUntil(nowMs + ACTION_RETRY_MS);
+            if (runEak(session, entry, agent, EakKind.LOBBY, 0)) member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
         List<Reactor> target = activeReactors(agent).stream()
@@ -493,7 +517,7 @@ final class AgentOpqCoordinator {
                 .map(m -> character(m.characterId())).filter(java.util.Objects::nonNull).toList();
         if (holders.size() != 3 || !sealedFormationReady(session, holders)) return;
         if (nowMs - session.sealedCheckedAtMs() < 1_500L) return;
-        if (runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC)) {
+        if (runEak(session, entry, agent, EakKind.SEALED, session.sealedAttempt() + 1)) {
             if (propertyInt(agent, "statusStg4") != 1) session.advanceSealedAttempt(nowMs);
             else session.markProgress(nowMs);
             session.markSealedChecked(nowMs);
@@ -540,7 +564,7 @@ final class AgentOpqCoordinator {
                 }
             } else if (collectGroundItem(entry, agent, AgentOpqDefinition.LOUNGE_FRAGMENT, false, nowMs)) return;
             else if (agent.getItemQuantity(AgentOpqDefinition.LOUNGE_FRAGMENT, false) >= 40) {
-                runNearbyNpc(entry, agent, AgentOpqDefinition.EAK_NPC);
+                runEak(session, entry, agent, EakKind.LOUNGE, 0);
             }
             return;
         }
@@ -686,7 +710,7 @@ final class AgentOpqCoordinator {
                 hitNearestLegalReactor(entry, leader, member, List.of(levers.get(i)), nowMs); return;
             }
         }
-        if (runNearbyNpc(entry, leader, AgentOpqDefinition.EAK_NPC)) session.advanceWayUpLeverAttempt(nowMs);
+        if (runEak(session, entry, leader, EakKind.WAY_UP, attempt + 1)) session.advanceWayUpLeverAttempt(nowMs);
     }
 
     private static void synchronizeRoomCompletion(AgentOpqSession session, Character leader, long nowMs) {
@@ -696,7 +720,10 @@ final class AgentOpqCoordinator {
             boolean pieceSecured = partyItemCount(session, AgentOpqDefinition.statuePiece(room)) > 0;
             boolean complete = solved && pieceSecured;
             AgentOpqRoomLedger.Lease lease = session.rooms().lease(room);
-            if (complete && lease != null) session.rooms().advance(room, lease.ownerId(), AgentOpqRoomLedger.State.COMPLETE, nowMs);
+            if (complete && lease != null) {
+                session.rooms().advance(room, lease.ownerId(), AgentOpqRoomLedger.State.COMPLETE, nowMs);
+                logRoomChange(session, room, lease, nowMs);
+            }
         }
     }
 
@@ -708,7 +735,7 @@ final class AgentOpqCoordinator {
                 if (reactor == null || reactor.getState() < 1) { complete = false; break; }
             }
         } else complete = false;
-        if (complete && runNearbyNpc(entry(leader.getId()), leader, AgentOpqDefinition.EAK_NPC)) {
+        if (complete && runEak(session, entry(leader.getId()), leader, EakKind.STATUE, 0)) {
             session.markProgress(nowMs);
         }
     }
@@ -727,6 +754,7 @@ final class AgentOpqCoordinator {
             if (!moveTo(entry, agent, target, AgentOpqInteractionPolicy.ITEM_DROP_RADIUS_PX)) return;
             if (dropItem(entry, InventoryType.ETC, piece, (short) 1)) {
                 session.loot().delivered(piece, agent.getId(), nowMs);
+                logStatue(session, scar, piece, agent);
                 member.deferUntil(nowMs + ACTION_RETRY_MS);
             }
             return;
@@ -1072,6 +1100,45 @@ final class AgentOpqCoordinator {
                                  long nowMs, AgentOpqMemberState member) {
         Integer portal = AgentOpqDefinition.ROOM_EXIT_PORTALS.get(room);
         if (portal != null) enterAuthoredPortal(entry, agent, portal, nowMs, member);
+    }
+
+    /** Which of Eak's stages a coordinator run talked to, and the event property that stage writes. */
+    enum EakKind {
+        ENTRANCE("statusStg0"), WALKWAY("statusStg1"), LOBBY("statusStg3"), SEALED("statusStg4"),
+        LOUNGE("statusStg5"), WAY_UP("statusStg6"), STATUE("statusStg7");
+
+        private final String property;
+
+        EakKind(String property) {
+            this.property = property;
+        }
+    }
+
+    /**
+     * Eak's script run by the coordinator, as runNearbyNpc runs it, with an 'OPQ eak:' line when it ran (every mode):
+     * the talker, the stage, the puzzle attempt it judged (1-based; 0 for a stage without one) and the stage's event
+     * property as the run left it.
+     */
+    private static boolean runEak(AgentOpqSession session, AgentRuntimeEntry entry, Character talker, EakKind kind,
+                                  int attempt) {
+        if (!runNearbyNpc(entry, talker, AgentOpqDefinition.EAK_NPC)) return false;
+        try {
+            log.info("OPQ eak: session={} map={} talker={} kind={} attempt={} result={}", session.sessionId(),
+                    talker.getMapId(), talker.getName(), kind, attempt, propertyInt(talker, kind.property));
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
+        }
+        return true;
+    }
+
+    /** 'OPQ statue: session= scar= piece= by=' when a carrier drops a statue piece on its scar (every mode). */
+    private static void logStatue(AgentOpqSession session, String scar, int piece, Character carrier) {
+        try {
+            log.info("OPQ statue: session={} scar={} piece={} by={}", session.sessionId(), scar, piece,
+                    carrier.getName());
+        } catch (RuntimeException ignored) {
+            // a log line never changes a run
+        }
     }
 
     private static boolean runNearbyNpc(AgentRuntimeEntry entry, Character agent, int npcId) {

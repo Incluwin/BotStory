@@ -6,10 +6,12 @@ import scripting.event.EventInstanceManager;
 import server.agents.capabilities.partyquest.AgentPartyQuestLifecycleRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
+import server.agents.integration.AgentPartyQuestGatewayRuntime;
 import server.agents.integration.AgentPrimitiveCapabilityGatewayRuntime;
 import server.agents.integration.AgentRuntimeIdentityRuntime;
 import server.agents.integration.CharacterGateway;
 import server.agents.integration.PartyGateway;
+import server.agents.integration.PartyQuestGateway;
 import server.agents.integration.PrimitiveCapabilityGateway;
 import server.agents.runtime.AgentRuntimeEntry;
 import server.agents.runtime.AgentRuntimeRegistry;
@@ -29,6 +31,7 @@ import static org.mockito.Mockito.when;
  * One OPQ run at session level, for its release: mocked members in a mocked event instance, and the gateways the
  * termination service reaches through. Companions are loaded Agents; humans are only online. Every member is in a
  * party ({@link #party} answers hasParty), and the lifecycle runtime is a mock, so childFinished is only recorded.
+ * The coordinator's gateways ({@link #actions}, {@link #partyQuest}) are mocks too, so a coordinator pass can run.
  */
 final class OpqRunFixture implements AutoCloseable {
     final EventInstanceManager event = mock(EventInstanceManager.class);
@@ -36,6 +39,7 @@ final class OpqRunFixture implements AutoCloseable {
     final CharacterGateway characters = mock(CharacterGateway.class);
     final PartyGateway party = mock(PartyGateway.class);
     final PrimitiveCapabilityGateway actions = mock(PrimitiveCapabilityGateway.class);
+    final PartyQuestGateway partyQuest = mock(PartyQuestGateway.class);
     final MockedStatic<AgentPartyQuestLifecycleRuntime> lifecycle;
     final MockedStatic<AgentRuntimeRegistry> registry;
     final MockedStatic<AgentRuntimeIdentityRuntime> identity;
@@ -50,6 +54,8 @@ final class OpqRunFixture implements AutoCloseable {
         open(AgentPartyGatewayRuntime.class).when(AgentPartyGatewayRuntime::party).thenReturn(party);
         open(AgentPrimitiveCapabilityGatewayRuntime.class).when(AgentPrimitiveCapabilityGatewayRuntime::gateway)
                 .thenReturn(actions);
+        open(AgentPartyQuestGatewayRuntime.class).when(AgentPartyQuestGatewayRuntime::partyQuest)
+                .thenReturn(partyQuest);
         lifecycle = open(AgentPartyQuestLifecycleRuntime.class);
         when(party.hasParty(any())).thenReturn(true);
         when(event.getName()).thenReturn("OrbisPQ_test");
