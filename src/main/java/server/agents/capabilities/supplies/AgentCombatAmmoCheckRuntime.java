@@ -23,7 +23,8 @@ import server.agents.runtime.AgentRuntimeEntry;
  * none it stops shooting; grinding, it heads back to whom it follows. Inside a companion run (a party quest a host
  * adopted, or a boss run) a member that runs dry keeps its post and says once that it ran out, in its own words,
  * unless the run says it itself (AgentPartyQuestRuntime.ownsDryLine); any projectile it gets back lets it shoot again
- * at once.
+ * at once. That news is said again only after a run ends (the next run hears it too) or once its bag holds
+ * AMMO_LOW_WARN again; Soul Arrow's endless count is no refill.
  */
 public final class AgentCombatAmmoCheckRuntime {
     private AgentCombatAmmoCheckRuntime() {
@@ -93,6 +94,10 @@ public final class AgentCombatAmmoCheckRuntime {
             }
             case NO_CHANGE -> {
             }
+        }
+        if (AgentAmmoStateRuntime.dryLineSaid(entry)
+                && (!inRun || AgentCombatAmmoCounter.countCarried(bot, weaponType) >= ammoLowWarn)) {
+            AgentAmmoStateRuntime.setDryLineSaid(entry, false); // out of a run, or a bag refilled: news again
         }
         if (inRun && ammo <= 0 && !AgentAmmoStateRuntime.dryLineSaid(entry)
                 && !AgentPartyQuestRuntime.ownsDryLine(bot.getId(), bot.getMapId())) {

@@ -182,6 +182,64 @@ class AgentCombatAmmoCheckRuntimeTest {
         }
     }
 
+    @Test
+    void soulArrowDoesNotMakeAnEmptyQuiverNewsAgain() {
+        // review: Soul Arrow counts as endless ammo, which cleared the flag, so each expiry repeated the line
+        try (Scene scene = new Scene(WeaponType.BOW, 0)) {
+            scene.companionRun = true;
+            scene.tick();
+            scene.count = Integer.MAX_VALUE; // Soul Arrow up; the quiver is still empty
+            scene.tick();
+            scene.count = 0; // it expires
+            scene.tick();
+
+            assertEquals(1, scene.said.size(), scene.said.toString());
+        }
+    }
+
+    @Test
+    void aBagBackAtTheWarningMakesTheNextDryEpisodeNews() {
+        try (Scene scene = new Scene(WeaponType.CLAW, 0)) {
+            scene.companionRun = true;
+            scene.tick();
+            scene.count = 300; // a share: it throws again, but the dry news keeps its hysteresis
+            scene.carried = 300;
+            scene.tick();
+            scene.count = 0;
+            scene.carried = 0;
+            scene.tick();
+            assertEquals(1, dryLines(scene), scene.said.toString());
+
+            scene.count = 600; // refilled past AMMO_LOW_WARN
+            scene.carried = 600;
+            scene.tick();
+            scene.count = 0;
+            scene.carried = 0;
+            scene.tick();
+            assertEquals(2, dryLines(scene), scene.said.toString());
+        }
+    }
+
+    /** The in-run dry lines it said (its "running low" warning aside). */
+    private static long dryLines(Scene scene) {
+        return scene.said.stream().filter(inRunLines("stars")::contains).count();
+    }
+
+    @Test
+    void aMemberThatEntersItsNextRunStillDrySaysItThere() {
+        // review: the prod-lane harness skips the desks, so a companion can go from one run to the next unrestocked
+        try (Scene scene = new Scene(WeaponType.CLAW, 0)) {
+            scene.companionRun = true;
+            scene.tick();
+            scene.companionRun = false; // the run is over
+            scene.tick();
+            scene.companionRun = true; // the next one
+            scene.tick();
+
+            assertEquals(2, scene.said.size(), scene.said.toString());
+        }
+    }
+
     private static List<String> inRunLines(String word) {
         return AgentDialogueCatalog.inRunAmmoOutReplies().stream().map(line -> String.format(line, word)).toList();
     }
@@ -194,6 +252,9 @@ class AgentCombatAmmoCheckRuntimeTest {
         boolean companionRun;
         boolean bossRun;
         boolean ownsDryLine;
+        /** What it counts (Integer.MAX_VALUE under Soul Arrow) and what its bag holds. */
+        int count;
+        int carried;
         final MockedStatic<AgentAttackExecutionProvider> attacks = mockStatic(AgentAttackExecutionProvider.class);
         final MockedStatic<AgentCombatAmmoCounter> ammo =
                 mockStatic(AgentCombatAmmoCounter.class, org.mockito.Mockito.CALLS_REAL_METHODS);
@@ -206,7 +267,10 @@ class AgentCombatAmmoCheckRuntimeTest {
             when(bot.getId()).thenReturn(77);
             when(bot.getMapId()).thenReturn(922_010_700);
             attacks.when(() -> AgentAttackExecutionProvider.getEquippedWeaponType(bot)).thenReturn(weapon);
-            ammo.when(() -> AgentCombatAmmoCounter.countAmmo(bot, weapon)).thenReturn(count);
+            this.count = count;
+            this.carried = count;
+            ammo.when(() -> AgentCombatAmmoCounter.countAmmo(bot, weapon)).thenAnswer(inv -> this.count);
+            ammo.when(() -> AgentCombatAmmoCounter.countCarried(bot, weapon)).thenAnswer(inv -> this.carried);
             runtime.when(() -> AgentCombatRuntime.sayMapNow(eq(bot), anyString()))
                     .thenAnswer(inv -> said.add(inv.getArgument(1)));
             runs.when(() -> AgentPartyQuestRuntime.companionRun(anyInt())).thenAnswer(inv -> companionRun);
