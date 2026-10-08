@@ -69,6 +69,7 @@ Each code change has a test that was red before it (red logs `p6g_epq_rv_<item>_
 | 370319997 | B12 (low): "let's head out" said from outside | Outside forms of every parting, chosen by whether the speaker still stands in the bound event. |
 | (this commit) | B1-B5, B7, B13 (docs) | The line table above; the Step 7 recipe fixes below. |
 | (fix/epq-golem-marble-fountain) | Live 2026-10-08: the holder of the golem's marble left with it ('marble=held') | The leave went at the hand-over's time-out with the walk to the leader still open, and the hand-over's own fallback (drop where it stands past TIMEOUT_MS) could never come first. The event's exit put the holder on the public 930000800 and the run was released in the same pass, so nothing could drop it in the fountain. Now a holder still holding it as the leave goes leaves it on its map first (E16h beside him, else the new E16x), and E16t no longer promises the fountain without the portal. |
+| (fix/epq-after-clear-adds) | Live 2026-10-07 and 2026-10-08: after 'EPQ boss: cleared' the golem's last adds (9300177-9300179) kept hitting the companions, who stood still (10-07: Halvard, Pell and Kestrel went down at x -540 with no HP potion left; 10-08: the holder's walk to the leader never ended within 30 s) | AgentEpqCoordinator.boss fights only while a golem lives; past the clear AgentEpqCompanionRun.afterClearMember called stop for every companion without an errand. Now, until the leave goes, a companion fights an add within ADD_THREAT_PX first, then does its golem's-marble errand (the work Agent's take, the hand-over), then fights the adds left anywhere on the map, and stands only when none is left ('EPQ after clear adds: state=FIGHT' once, 'state=GONE' once). The leave, its timers, the hand-overs and stock runs are unchanged. Tests: AgentEpqAfterClearAddsTest. |
 
 Recipe fixes in Step 7: the restore trap (B1: never '!setlevel me restore' or '!setlevel party restore' on Crewfriend), '!hpmp 0' for the leader (B2), L1b i with '!drop' only (B3), L10b on 930000200 (B4), the pass items for where the companions stand after an after-clear leave (B7), and the log proofs (B13: a case-insensitive grep that also matches 'EPQ companion exit closed the empty event:', 'EPQ member left the run and was ejected' and 'companion EPQ'; L0 without the desk-install line, which does not exist; 'decision=PROCEED'; E16m at once in L1b f; E14w only when a companion tops up; COMPLETED only on 'EPQ session released:').
 
@@ -338,6 +339,15 @@ L1b Prod lane, targeted (each its own run; checkpoints allowed):
       [Z1] In the first run also: 'EPQ companion exit closed the empty event:' once the companions are out; then a new
       '!epqtest party prod' party on that channel gets in with one Ellin click (no "Another party has already
       entered...").
+   h) [Fix 2026-10-08, adds after the clear] '!epqtest checkpoint boss' + '!item 4001163 1', drop the stone, fight the
+      golem chain to 'EPQ boss: ... cleared'. If no add is left at the clear, stand by the companions and type '!spawn
+      9300179 3', then '!spawn 9300177 2' (setup only; record both). Then stand still. Pass: 'EPQ after clear adds: ...
+      state=FIGHT' at once; the companions attack the adds; 'EPQ after clear adds: ... state=GONE' once they are dead;
+      no 'EPQ member down:' line after the clear; then at 60 s E16w and 'EPQ after clear: action=leave why=wait', with
+      'marble=handed' or 'marble=none' when the golem dropped its marble or not, never 'marble=held'.
+      Second run, marble with adds: when 9300182 drops its marble, spawn the adds next to it at once. Pass: E16t at
+      about 15 s, the holder fights an add on it and then walks to you, 'EPQ handover: item=golem-marble ...
+      place=FEET'. Extra grep: grep -E "EPQ (after clear adds|member down|boss: .* cleared)" logs/cosmic-log.log
    h) N1, the fountain window (when 9300182 drops its marble): pick the marble up yourself, take out00, drop it
       in the fountain (x -73..220 on 930000800) and walk straight to east00. Pass: no companion takes east00 before
       the fountain fires (about 5 s after your drop), 52000 EXP for everyone on the map, each companion leaves with

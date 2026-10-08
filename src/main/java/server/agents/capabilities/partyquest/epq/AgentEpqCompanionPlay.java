@@ -501,6 +501,22 @@ final class AgentEpqCompanionPlay {
         return null;
     }
 
+    /** What a standing companion on the golem's map does after the clear, until its leave goes. */
+    enum AfterClear { FIGHT, ERRAND, STAND }
+
+    /**
+     * Players finish the golem's adds after the clear (live 2026-10-07: three companions that stood still while they
+     * waited went down to them). An add on this companion is fought first: its hits knock a walker into the air, and
+     * an at-feet drop needs both on the ground (live 2026-10-08). Then its golem's-marble errand (the work Agent's
+     * take, or the hand-over once the leave is decided). Then any add still alive on the map. With none it stands, as
+     * before.
+     */
+    static AfterClear afterClear(boolean addOnIt, boolean errand, boolean addsLeft) {
+        if (addOnIt) return AfterClear.FIGHT;
+        if (errand) return AfterClear.ERRAND;
+        return addsLeft ? AfterClear.FIGHT : AfterClear.STAND;
+    }
+
     // ---- the fountain ----
 
     /** E17a: a companion dropped the golem's marble in the fountain. */

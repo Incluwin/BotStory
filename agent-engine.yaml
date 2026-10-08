@@ -1332,9 +1332,9 @@ tuning:
     # Purpose: Sets how close to its rest point a resting EPQ member counts as arrived.
     # Technical: Compared along both axes by AgentEpqCoordinator on map 930000600 only; an airborne member keeps walking.
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.REST_ARRIVAL_PX: '20'
-    # Values: 60-200 map pixels. Recommended: 100 so a resting member fights back only against an add that is on it.
-    # Purpose: Sets how near a golem add (9300177, 9300178, 9300179) must be before a resting EPQ member fights it from its rest point.
-    # Technical: Compared along both axes; the resting member fights only the adds (never the golem) through the gateway's anchored grind, and only while it stands out of the golem's reach.
+    # Values: 60-200 map pixels. Recommended: 100 so a resting member fights back only against an add that is on it, and a companion after the clear stops its errand only for an add that is on it.
+    # Purpose: Sets how near a golem add (9300177, 9300178, 9300179) must be before a resting EPQ member fights it from its rest point, and before a companion on 930000600 after the clear fights it ahead of its golem's-marble errand.
+    # Technical: Compared along both axes; the resting member fights only the adds (never the golem) through the gateway's anchored grind, and only while it stands out of the golem's reach. After the clear AgentEpqCompanionRun.afterClearMember (companion runs only) reads it: an add this near comes before the work Agent's walk to the golem's marble and the holder's walk to the leader; adds farther away are fought only after that errand.
     server.agents.capabilities.partyquest.epq.AgentEpqRecoveryPolicy.ADD_THREAT_PX: '100'
     # Values: 0.2-0.6 of maximum HP. Recommended: 0.4, the generic out-of-potions stop's own threshold.
     # Purpose: Sets the HP fraction under which an EPQ golem-fight member with fewer than POT_STOP HP potions backs off to rest.

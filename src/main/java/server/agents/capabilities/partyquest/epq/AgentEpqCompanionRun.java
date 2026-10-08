@@ -730,17 +730,20 @@ final class AgentEpqCompanionRun {
      * takes the golem's marble once the leader had GOLEM_MARBLE_LEADER_FIRST_MS to take it; once the leave is decided a
      * companion holding it hands it over at the leader's feet (AgentEpqHandOver, no NPC: an unreachable leader gets it
      * where the companion stands, and a walk still open when the leave goes TIMEOUT_MS after its decision leaves it
-     * there too, in leaveWhenReady), or drops it where it stands without a word when he cannot take it. Everyone else
-     * stands.
+     * there too, in leaveWhenReady), or drops it where it stands without a word when he cannot take it. Until the
+     * leave goes the companions finish the golem's adds as players do (AgentEpqCompanionPlay.afterClear): an add
+     * within ADD_THREAT_PX of a companion comes before its marble errand, and the adds anywhere on the map come after
+     * it. With no add left they stand. 'EPQ after clear adds:' FIGHT once and GONE once.
      */
     static void afterClearMember(AgentEpqSession session, AgentRuntimeEntry entry, Character agent,
                                  AgentEpqMemberState member, long nowMs) {
+        if (session.leftAfterClear()) {
+            AgentEpqCoordinator.actions().stop(entry);
+            return;
+        }
         int held = AgentEpqCoordinator.actions().itemCount(agent, AgentEpqDefinition.GOLEMS_MARBLE);
-        if (session.leaveDecidedAtMs() > 0L) {
-            if (held <= 0 || session.leftAfterClear()) {
-                AgentEpqCoordinator.actions().stop(entry);
-                return;
-            }
+        boolean handOver = session.leaveDecidedAtMs() > 0L && held > 0;
+        if (handOver) {
             Character leader = AgentEpqCoordinator.character(session.eventLeaderId());
             boolean leaderTakesIt = leader != null && leader.getHp() > 0 && inBoundEvent(session, leader)
                     && leader.getMap() == agent.getMap();
@@ -748,22 +751,52 @@ final class AgentEpqCompanionRun {
                 AgentEpqHandOver.dropHere(session, entry, agent, member, AgentEpqDefinition.GOLEMS_MARBLE, held, nowMs);
                 return;
             }
-            AgentEpqHandOver.tick(session, entry, agent, member, AgentEpqDefinition.GOLEMS_MARBLE, 0, nowMs);
-            return;
         }
-        if (held <= 0 && agent.getId() == session.workAgentId()) {
-            MapItem marble = AgentMapPerception.items(agent.getMap()).stream()
-                    .filter(drop -> drop != null && !drop.isPickedUp() && drop.getPosition() != null
-                            && drop.getItemId() == AgentEpqDefinition.GOLEMS_MARBLE)
-                    .filter(drop -> AgentEpqCompanionPlay.golemMarbleMayBeTaken(true, nowMs - drop.getDropTime(),
-                            GOLEM_MARBLE_LEADER_FIRST_MS))
-                    .findFirst().orElse(null);
-            if (marble != null) {
-                AgentEpqCoordinator.pickUp(entry, agent, marble);
-                return;
+        MapItem marble = session.leaveDecidedAtMs() <= 0L && held <= 0 && agent.getId() == session.workAgentId()
+                ? takeableGolemMarble(agent, nowMs) : null;
+        List<Point> adds = agent.getHp() > 0 ? liveAdds(agent) : List.of(); // a companion down fights nothing
+        boolean addOnIt = AgentEpqRecoveryPolicy.addThreat(agent.getPosition(), adds,
+                AgentEpqRecoveryPolicy.ADD_THREAT_PX);
+        switch (AgentEpqCompanionPlay.afterClear(addOnIt, handOver || marble != null, !adds.isEmpty())) {
+            case FIGHT -> {
+                if (session.claimLogMark("after-clear-adds-fight")) {
+                    log.info("EPQ after clear adds: session={} state=FIGHT member={} adds={}", session.sessionId(),
+                            agent.getName(), adds.size());
+                }
+                AgentEpqCoordinator.actions().grind(entry, AgentEpqDefinition.BOSS_ADDS);
+            }
+            case ERRAND -> {
+                if (marble != null) AgentEpqCoordinator.pickUp(entry, agent, marble);
+                else AgentEpqHandOver.tick(session, entry, agent, member, AgentEpqDefinition.GOLEMS_MARBLE, 0, nowMs);
+            }
+            default -> {
+                if (session.logMarked("after-clear-adds-fight") && session.claimLogMark("after-clear-adds-gone")) {
+                    log.info("EPQ after clear adds: session={} state=GONE member={}", session.sessionId(),
+                            agent.getName());
+                }
+                AgentEpqCoordinator.actions().stop(entry);
             }
         }
-        AgentEpqCoordinator.actions().stop(entry);
+    }
+
+    /** The golem's marble lying on this companion's map that the work Agent may take now; null when none. */
+    private static MapItem takeableGolemMarble(Character agent, long nowMs) {
+        return AgentMapPerception.items(agent.getMap()).stream()
+                .filter(drop -> drop != null && !drop.isPickedUp() && drop.getPosition() != null
+                        && drop.getItemId() == AgentEpqDefinition.GOLEMS_MARBLE)
+                .filter(drop -> AgentEpqCompanionPlay.golemMarbleMayBeTaken(true, nowMs - drop.getDropTime(),
+                        GOLEM_MARBLE_LEADER_FIRST_MS))
+                .findFirst().orElse(null);
+    }
+
+    /** Where the golem's adds (9300177-9300179) still alive on this companion's map stand. */
+    private static List<Point> liveAdds(Character agent) {
+        if (agent.getMap() == null) return List.of();
+        return AgentMapPerception.monsters(agent.getMap()).stream()
+                .filter(mob -> mob != null && mob.isAlive() && mob.getPosition() != null
+                        && AgentEpqDefinition.BOSS_ADDS.contains(mob.getId()))
+                .map(mob -> new Point(mob.getPosition()))
+                .toList();
     }
 
     // ---- coaching the leader (Step 3.2) ----

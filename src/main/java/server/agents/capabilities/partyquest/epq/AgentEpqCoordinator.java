@@ -734,7 +734,7 @@ public final class AgentEpqCoordinator {
             return;
         }
         if (session.companionAdopted()) {
-            // Step 2.9: no dummy kill and no out00 tries (the leader's exit); the golem's marble and the leave.
+            // Step 2.9: no dummy kill and no out00 tries (the leader's exit); the adds, the golem's marble, the leave.
             AgentEpqCompanionRun.afterClearMember(session, entry, agent, member, nowMs);
             return;
         }
