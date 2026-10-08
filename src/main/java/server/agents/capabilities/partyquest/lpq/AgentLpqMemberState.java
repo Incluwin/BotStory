@@ -76,6 +76,7 @@ public final class AgentLpqMemberState {
     private boolean heldStageSevenLane;
     private int stageSevenLaneIndex;
     private boolean saidStageSevenDry;
+    private boolean releasedStageSevenDryLine;
     private int passReportStage;
     private int passReportMapId;
     private int passReportCount;
@@ -698,6 +699,11 @@ public final class AgentLpqMemberState {
     public synchronized boolean saidStageSevenDry() { return saidStageSevenDry; }
 
     public synchronized void setSaidStageSevenDry(boolean said) { saidStageSevenDry = said; }
+
+    /** Its S7d could not be said (chat off, nobody to name, its key taken): its generic in-run line speaks. */
+    public synchronized void releaseStageSevenDryLine() { releasedStageSevenDryLine = true; }
+
+    public synchronized boolean stageSevenDryLineReleased() { return releasedStageSevenDryLine; }
 
     public boolean shouldReportPassProgress(int stage, int mapId, int count, int quota) {
         if (stage <= 0 || mapId <= 0 || count <= 0 || quota <= 0) return false;

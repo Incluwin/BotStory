@@ -1386,15 +1386,17 @@ final class AgentLpqCoordinator {
 
     /**
      * What a companion-run member that ran dry on stage 7 says (S7d): the line kind, its narration key and who takes
-     * its ratz (0: nobody). Null in a stock run or for a member that never held a lane (it entered stage 7 dry: the
-     * stage's start line named the loaded ones). With shooters left, the one now on its lane takes it ("s7-dry-" +
-     * its id); with none, it asks the leader to go up when he is a loaded box-wacker, else for projectiles, once a
-     * run ("s7-dry-none").
+     * its ratz (0: nobody). Null in a stock run, and for a member that never held a lane while someone loaded holds
+     * one (it entered stage 7 dry: the stage's start line named the loaded ones) or no trigger ratz is alive. With
+     * shooters left, the one now on its lane takes it ("s7-dry-" + its id); with none, it asks the leader to go up
+     * when he is a loaded box-wacker, else for projectiles, once a run ("s7-dry-none"), lane or not: nobody else
+     * would say why the stage stands still.
      */
     static StageSevenDryNews stageSevenDryNews(int memberId, boolean companionRun, boolean heldLane, int laneIndex,
-                                               List<Integer> topIds, boolean leaderLoadedBoxWacker) {
-        if (!companionRun || !heldLane) return null;
-        if (topIds != null && !topIds.isEmpty()) {
+                                               List<Integer> topIds, boolean leaderLoadedBoxWacker, boolean ratzLive) {
+        boolean noShooter = topIds == null || topIds.isEmpty();
+        if (!companionRun || !heldLane && !(noShooter && ratzLive)) return null;
+        if (!noShooter) {
             int taker = topIds.get(Math.min(Math.max(0, laneIndex), topIds.size() - 1));
             return new StageSevenDryNews(topIds.size() == 1 ? StageSevenDryNews.Kind.TAKE_ALL
                     : StageSevenDryNews.Kind.TAKE_SIDE, "s7-dry-" + memberId, taker);
@@ -1415,26 +1417,42 @@ final class AgentLpqCoordinator {
         member.setSaidStageSevenDry(true);
     }
 
-    /** S7d for a dry member that held a lane, and the taker's reply when the taker is a companion. */
+    /**
+     * S7d's words for {@code kind}: to the taker by name, or to the leader by name; null when that name is unknown or
+     * blank (offline, another channel), so no line starts with a comma.
+     */
+    static String stageSevenDryText(StageSevenDryNews.Kind kind, String takerName, String leaderName,
+                                    server.agents.capabilities.supplies.AgentProjectileKind projectile) {
+        String name = kind == StageSevenDryNews.Kind.TAKE_ALL || kind == StageSevenDryNews.Kind.TAKE_SIDE
+                ? takerName : leaderName;
+        if (name == null || name.isBlank()) return null;
+        return switch (kind) {
+            case TAKE_ALL, TAKE_SIDE -> AgentLpqCompanionPlay.stageSevenDryLine(name, projectile);
+            case ASK_LEADER_UP -> AgentLpqCompanionPlay.stageSevenDryAskLeaderUpLine(name, projectile);
+            case ASK_LEADER_AMMO -> AgentLpqCompanionPlay.stageSevenDryAskLeaderAmmoLine(name, projectile);
+        };
+    }
+
+    /**
+     * S7d for a dry member that held a lane (or any dry member while nobody loaded can reach the live ratz), and the
+     * taker's reply when the taker is a companion. Not said (chat off, a name unknown, its key taken): the member's
+     * own generic in-run line is released to say it ran out.
+     */
     private static void sayStageSevenDryNews(AgentLpqSession session, AgentLpqMemberState member,
-                                             AgentRuntimeEntry entry, Character participant, List<Integer> topIds) {
+                                             AgentRuntimeEntry entry, Character participant, List<Integer> topIds,
+                                             boolean ratzLive) {
         Character leader = character(session.eventLeaderId());
         boolean leaderLoaded = leader != null && AgentLpqRosterRequirementPolicy.stageSevenBoxWacker(leader)
                 && AgentAmmoService.projectileKind(leader) != null && !AgentAmmoService.dryShooter(leader);
         StageSevenDryNews news = stageSevenDryNews(member.characterId(), session.companionAdopted(),
-                member.heldStageSevenLane(), member.stageSevenLaneIndex(), topIds, leaderLoaded);
+                member.heldStageSevenLane(), member.stageSevenLaneIndex(), topIds, leaderLoaded, ratzLive);
         if (news == null) return;
-        server.agents.capabilities.supplies.AgentProjectileKind kind = AgentAmmoService.projectileKind(participant);
         Character taker = news.takerId() > 0 ? character(news.takerId()) : null;
-        String leaderName = leader == null ? "" : leader.getName();
-        String line = switch (news.kind()) {
-            case TAKE_ALL, TAKE_SIDE -> taker == null ? null : AgentLpqCompanionPlay.stageSevenDryLine(
-                    taker.getName(), kind);
-            case ASK_LEADER_UP -> AgentLpqCompanionPlay.stageSevenDryAskLeaderUpLine(leaderName, kind);
-            case ASK_LEADER_AMMO -> AgentLpqCompanionPlay.stageSevenDryAskLeaderAmmoLine(leaderName, kind);
-        };
+        String line = stageSevenDryText(news.kind(), taker == null ? null : taker.getName(),
+                leader == null ? null : leader.getName(), AgentAmmoService.projectileKind(participant));
         boolean said = line != null && coordinate(session, participant, news.key(), line);
         afterStageSevenDryNews(said, member, entry);
+        if (!said) member.releaseStageSevenDryLine(); // its generic in-run line speaks instead (once: dryLineSaid)
         AgentLpqMemberState takerState = news.takerId() > 0 ? session.member(news.takerId()) : null;
         if (said && taker != null && takerState != null
                 && takerState.memberType() == AgentLpqMemberState.MemberType.AGENT) {
@@ -1445,14 +1463,24 @@ final class AgentLpqCoordinator {
     }
 
     /**
-     * True while the member's companion LPQ run says itself that it ran dry on stage 7 (it held a ratz lane there):
-     * its generic in-run line stays quiet (AgentPartyQuestSystem.ownsDryLine). Memory only.
+     * True while the member's companion LPQ run says itself that it ran dry on stage 7: its generic in-run line stays
+     * quiet (AgentPartyQuestSystem.ownsDryLine). Memory only.
      */
     static boolean ownsDryLine(int characterId, int mapId) {
-        AgentLpqSession run = AgentLpqSessionRegistry.forMember(characterId);
-        if (run == null || !run.companionAdopted() || mapId != AgentLpqDefinition.stage(7).mapId()) return false;
+        return ownsDryLine(AgentLpqSessionRegistry.forMember(characterId), characterId, mapId);
+    }
+
+    /**
+     * {@link #ownsDryLine(int, int)} for {@code run}: on stage 7 of a companion run whose member coordination chat is
+     * on (else S7d cannot be said), for a member that held a ratz lane, or any member while nobody loaded can reach
+     * the live ratz, until its S7d failed to be said (released).
+     */
+    static boolean ownsDryLine(AgentLpqSession run, int characterId, int mapId) {
+        if (run == null || !run.companionAdopted() || !run.memberCoordinationChatEnabled()
+                || mapId != AgentLpqDefinition.stage(7).mapId()) return false;
         AgentLpqMemberState member = run.member(characterId);
-        return member != null && member.heldStageSevenLane();
+        return member != null && !member.stageSevenDryLineReleased()
+                && (member.heldStageSevenLane() || run.stageSevenNoShooter());
     }
 
     private static void stageSevenObjectives(AgentLpqSession session, long nowMs) {
@@ -1480,6 +1508,14 @@ final class AgentLpqCoordinator {
         Point npc = observer == null ? null : ACTIONS.npcPosition(
                 observer, AgentLpqDefinition.stage(7).npcId());
         if (session.companionAdopted()) sayStageSevenRoles(session, topIds);
+        boolean ratzLive = !liveTriggerRatz.isEmpty();
+        boolean noShooter = session.companionAdopted() && topIds.isEmpty() && ratzLive;
+        session.setStageSevenNoShooter(noShooter);
+        if (noShooter && session.claimLogOnce("stage7:no-loaded-shooter")) {
+            log.warn("LPQ Stage 7 has no loaded shooter for the trigger ratz: session={} ratz={} members={}",
+                    session.sessionId(), liveTriggerRatz.size(), session.members().stream()
+                            .map(AgentLpqMemberState::characterId).toList());
+        }
         Set<Integer> stageSevenLootClaims = new LinkedHashSet<>();
         for (AgentLpqMemberState member : session.members()) {
             int topIndex = topIds.indexOf(member.characterId());
@@ -1525,7 +1561,7 @@ final class AgentLpqCoordinator {
                         AgentLpqCompanionPlay.stageSevenBackLine(AgentAmmoService.projectileKind(participant)));
             } else if (session.companionAdopted() && topIndex < 0 && AgentAmmoService.dryShooter(participant)) {
                 // S7d: it ran dry; it keeps the bottom role below (Rombards, or the rally at the npc)
-                sayStageSevenDryNews(session, member, entry, participant, topIds);
+                sayStageSevenDryNews(session, member, entry, participant, topIds, ratzLive);
             }
             if (topIndex >= 0) {
                 Monster triggerRatz = stageSevenTriggerForWorker(
