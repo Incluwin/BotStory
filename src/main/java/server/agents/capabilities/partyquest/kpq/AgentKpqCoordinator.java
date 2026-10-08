@@ -30,6 +30,7 @@ import server.agents.capabilities.looting.AgentGrindLootStateRuntime;
 import server.agents.capabilities.looting.AgentGrindLootTargetService;
 import server.agents.capabilities.looting.AgentLootCollectionPolicyConfig;
 import server.agents.capabilities.looting.AgentLootEligibility;
+import server.agents.capabilities.supplies.AgentAmmoService;
 import server.agents.catalog.AgentMapRegionAssignment;
 import server.agents.field.AgentFieldObservationState;
 import server.agents.operations.events.AgentOperationalEventProjectionState;
@@ -3436,7 +3437,7 @@ final class AgentKpqCoordinator {
     private static Point stageOneFiringSpot(AgentKpqSession session, AgentKpqMemberState member,
                                             AgentRuntimeEntry entry, Character agent,
                                             AgentKpqSession.HelperTerritory territory) {
-        if (!ACTIONS.rangedWeapon(agent)) return null;
+        if (!stageOneFiresFromASpot(agent, ACTIONS.rangedWeapon(agent), session.companionAdopted())) return null;
         List<Point> area = territory.spawns();
         if (!member.stage1FiringSpotKnownFor(area)) {
             Point spot = AgentKpqStageOneClusterPolicy.firingSpot(area, STAGE1_RANGED_SPAWN_STANDOFF_PX,
@@ -3448,6 +3449,15 @@ final class AgentKpqCoordinator {
                     area.stream().map(point -> point.x + "," + point.y).toList());
         }
         return member.stage1FiringSpot();
+    }
+
+    /**
+     * Whether a stage-1 member holds a standoff firing spot: a ranged weapon, and in a companion run something to shoot
+     * (AgentAmmoService.dryShooter); a dry one grinds its territory like a melee member, and its cached spot waits for
+     * its next projectiles. A stock run keeps the spot.
+     */
+    static boolean stageOneFiresFromASpot(Character agent, boolean rangedWeapon, boolean companionRun) {
+        return rangedWeapon && (!companionRun || !AgentAmmoService.dryShooter(agent));
     }
 
     /** The navigation region of this Agent's own graph under a ground point, or -1 while it cannot tell. */
