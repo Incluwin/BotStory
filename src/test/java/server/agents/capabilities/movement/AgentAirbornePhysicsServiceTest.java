@@ -2,8 +2,12 @@ package server.agents.capabilities.movement;
 
 import client.Character;
 import org.junit.jupiter.api.Test;
+import server.agents.capabilities.combat.AgentMobKnockbackPolicy;
+import server.agents.capabilities.mobcontrol.AgentMobPhysicsConfig;
 import server.agents.capabilities.movement.AgentMovementStateRuntime;
 import server.agents.runtime.AgentRuntimeEntry;
+import server.maps.Foothold;
+import server.maps.FootholdTree;
 import server.maps.MapleMap;
 import server.maps.Portal;
 
@@ -189,5 +193,113 @@ class AgentAirbornePhysicsServiceTest {
         assertTrue(position.get().y > 100, "the wall must preserve ordinary vertical physics");
         assertEquals(0, AgentMovementPhysicsStateRuntime.airVelocityX(entry));
         assertTrue(AgentMovementStateRuntime.inAir(entry));
+    }
+
+    @Test
+    void knockbackIntoTheFightBoundaryLandsOnTheFloorUnderTheWall() {
+        // Live 2026-10-07: a boss hit knocked Isolde left into the Easy Balrog wall (x=-100). The tick that
+        // clamped x was also the tick that crossed fh1 (y=262), so she fell through and was recovered at
+        // (-100,468). With the live tuning (-9 px/tick, -21.875 px/tick) launches at x=-28..-20 hit that tick;
+        // sweep the whole floor left of x=0 so a tuning change cannot hide the case.
+        MapleMap map = easyBalrogFightMap();
+        int tickMs = AgentMovementPhysicsConfig.configuredMovementTickMs();
+        float launchVelocityY = -AgentMobKnockbackPolicy.scaledOpenStoryStep(
+                AgentMobPhysicsConfig.cfg.KNOCKBACK_VFORCE, tickMs);
+        int knockbackVelocityX = AgentMobKnockbackPolicy.airVelocityForDamageDirection(
+                0, AgentMobPhysicsConfig.cfg.KNOCKBACK_HSPEED, tickMs);
+        assertTrue(knockbackVelocityX < 0, "a hit from the right knocks the Agent toward the left wall");
+
+        for (int launchX = -99; launchX <= 0; launchX++) {
+            AtomicReference<Point> position = new AtomicReference<>(new Point(launchX, 262));
+            Character agent = trackedAgent(map, position);
+            AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+            AgentHorizontalBoundaryStateRuntime.set(entry, 105100400, -100, 1068);
+            AgentKnockbackMovementService.beginKnockback(
+                    entry, agent, new Point(launchX, 262), launchVelocityY, knockbackVelocityX);
+
+            AgentAirborneStepResult result = AgentAirborneStepResult.CONTINUE;
+            for (int tick = 1; tick <= 40 && AgentMovementStateRuntime.inAir(entry); tick++) {
+                result = AgentAirbornePhysicsService.stepAirborne(entry, agent);
+                assertTrue(position.get().y <= 262,
+                        "launch x=" + launchX + " passed through the floor on tick " + tick
+                                + " to " + position.get() + " (" + result + ")");
+            }
+
+            assertEquals(AgentAirborneStepResult.LANDED, result, "launch x=" + launchX);
+            assertFalse(AgentMovementStateRuntime.inAir(entry), "launch x=" + launchX);
+            assertEquals(262, position.get().y, "launch x=" + launchX);
+            assertTrue(position.get().x >= -100 && position.get().x <= launchX,
+                    "launch x=" + launchX + " landed at " + position.get());
+        }
+    }
+
+    @Test
+    void airSteeringPastTheFightBoundaryLandsOnTheFloorItCrosses() {
+        MapleMap map = easyBalrogFightMap();
+        AtomicReference<Point> position = new AtomicReference<>(new Point(-100, 250));
+        Character agent = trackedAgent(map, position);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, position.get());
+        AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, -5);
+        AgentMovementPhysicsStateRuntime.setVerticalVelocity(entry, 20f);
+        AgentHorizontalBoundaryStateRuntime.set(entry, 105100400, -100, 1068);
+
+        AgentAirborneStepResult result = AgentAirbornePhysicsService.stepAirborne(entry, agent);
+
+        assertEquals(AgentAirborneStepResult.LANDED, result);
+        assertEquals(new Point(-100, 262), position.get());
+        assertFalse(AgentMovementStateRuntime.inAir(entry));
+        assertEquals(0, AgentMovementPhysicsStateRuntime.airVelocityX(entry));
+    }
+
+    @Test
+    void fightBoundaryClampBelowTheMapRecoversOnTheSameTick() {
+        MapleMap map = easyBalrogFightMap();
+        AtomicReference<Point> position = new AtomicReference<>(new Point(-100, 470));
+        Character agent = trackedAgent(map, position);
+        AgentRuntimeEntry entry = new AgentRuntimeEntry(agent, null, null);
+        AgentMovementStateRuntime.setInAir(entry, true);
+        AgentMovementPhysicsStateRuntime.setPhysicsPosition(entry, position.get());
+        AgentMovementPhysicsStateRuntime.setAirVelocityX(entry, -5);
+        AgentMovementPhysicsStateRuntime.setVerticalVelocity(entry, 10f);
+        AgentHorizontalBoundaryStateRuntime.set(entry, 105100400, -100, 1068);
+
+        AgentAirborneStepResult result = AgentAirbornePhysicsService.stepAirborne(entry, agent);
+
+        assertEquals(AgentAirborneStepResult.LANDED, result);
+        assertEquals(new Point(-100, 262), position.get());
+        assertFalse(AgentMovementStateRuntime.inAir(entry));
+    }
+
+    /** Easy Balrog fight map 105100400: VR -117..1083 x -510..400 and its three floor footholds. */
+    private static MapleMap easyBalrogFightMap() {
+        MapleMap map = new MapleMap(105100400, 0, 0, 105100400, 1.0f);
+        map.setMapLineBoundings(-510, 400, -117, 1083);
+        map.setFootholds(new FootholdTree(new Point(-2000, -2000), new Point(2000, 2000)));
+        Foothold fh1 = new Foothold(new Point(-116, 262), new Point(197, 262), 1);
+        Foothold fh2 = new Foothold(new Point(197, 262), new Point(213, 258), 2);
+        Foothold fh3 = new Foothold(new Point(213, 258), new Point(1084, 258), 3);
+        fh1.setNext(2);
+        fh2.setPrev(1);
+        fh2.setNext(3);
+        fh3.setPrev(2);
+        map.getFootholds().insert(fh1);
+        map.getFootholds().insert(fh2);
+        map.getFootholds().insert(fh3);
+        return map;
+    }
+
+    private static Character trackedAgent(MapleMap map, AtomicReference<Point> position) {
+        Character agent = mock(Character.class);
+        when(agent.getPosition()).thenAnswer(ignored -> new Point(position.get()));
+        doAnswer(invocation -> {
+            position.set(new Point(invocation.getArgument(0)));
+            return null;
+        }).when(agent).setPosition(any(Point.class));
+        when(agent.getHp()).thenReturn(1);
+        when(agent.getMap()).thenReturn(map);
+        when(agent.getMapId()).thenReturn(map.getId());
+        return agent;
     }
 }

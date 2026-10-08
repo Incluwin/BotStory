@@ -45,15 +45,14 @@ public final class AgentAirbornePhysicsService {
         Point previousPosition = roundedAirPosition(entry);
         Point nextPosition = advanceAirbornePosition(entry);
         MapleMap map = agent.getMap();
+        int moverZMass = AgentWallCollisionPolicy.moverZMassForRegion(
+                map, entry.navigationContinuityState().lastRegionIdForMap(agent.getMapId()));
         int boundedX = AgentHorizontalBoundaryStateRuntime.clampX(
                 entry, map == null ? -1 : map.getId(), nextPosition.x);
         if (boundedX != nextPosition.x) {
-            Point boundaryCollision = new Point(boundedX, nextPosition.y);
-            collideWithAirWall(entry, agent, boundaryCollision);
-            return AgentAirborneStepResult.WALL;
+            return stepAgainstActivityBoundary(entry, agent, map, previousPosition,
+                    new Point(boundedX, nextPosition.y), moverZMass);
         }
-        int moverZMass = AgentWallCollisionPolicy.moverZMassForRegion(
-                map, entry.navigationContinuityState().lastRegionIdForMap(agent.getMapId()));
         AgentJumpProbeService.AirCollision collision =
                 AgentJumpProbeService.resolveAirCollision(map, previousPosition, nextPosition, moverZMass);
         if (collision.type() == AgentJumpProbeService.AirCollisionType.WALL) {
@@ -69,26 +68,64 @@ public final class AgentAirbornePhysicsService {
                     nextPosition.x - previousPosition.x, nextPosition.y - previousPosition.y);
             return AgentAirborneStepResult.LANDED;
         }
-        Point recoveryPoint = belowMapRecoveryPoint(
-                map, nextPosition, AgentMapStateRuntime.entryPortalId(entry));
-        if (recoveryPoint != null) {
-            if (server.agents.progression.AgentMushroomKingdomMovementRecovery.blockWithoutTeleport(
-                    entry, agent, "fell below the map's reachable footholds")) {
-                return AgentAirborneStepResult.CONTINUE;
-            }
-            log.warn("Recovered Agent '{}' below map bounds map={} from={} to={}",
-                    agent.getName(), agent.getMapId(), nextPosition, recoveryPoint);
-            AgentMovementPoseService.teleportTo(entry, agent, recoveryPoint);
-            AgentOperationalEventPublisher.publish(entry,
-                    objectiveId -> new AgentRecoveryPerformedEvent(
-                            agent.getId(), System.currentTimeMillis(), agent.getMapId(),
-                            "below-map-bounds", nextPosition.x, nextPosition.y,
-                            recoveryPoint.x, recoveryPoint.y, objectiveId),
-                    AgentEventPriority.CRITICAL);
-            return AgentAirborneStepResult.LANDED;
+        AgentAirborneStepResult recovery = recoverBelowMap(entry, agent, map, nextPosition);
+        if (recovery != null) {
+            return recovery;
         }
         applyAirbornePosition(entry, agent, nextPosition);
         return AgentAirborneStepResult.CONTINUE;
+    }
+
+    /**
+     * An activity boundary (a scenario's virtual wall) clamps x, but the tick still moves the Agent
+     * down: a clamp on the tick that crosses a floor must land on it, and a clamp past the map bottom
+     * must recover, or the Agent passes the floor under the wall.
+     */
+    private static AgentAirborneStepResult stepAgainstActivityBoundary(AgentRuntimeEntry entry,
+                                                                       Character agent,
+                                                                       MapleMap map,
+                                                                       Point previousPosition,
+                                                                       Point boundaryPoint,
+                                                                       int moverZMass) {
+        AgentJumpProbeService.AirCollision collision =
+                AgentJumpProbeService.resolveAirCollision(map, previousPosition, boundaryPoint, moverZMass);
+        if (collision.type() == AgentJumpProbeService.AirCollisionType.LAND && canLand(entry)) {
+            landOnGround(entry, agent, collision.point(), collision.foothold(),
+                    boundaryPoint.x - previousPosition.x, boundaryPoint.y - previousPosition.y);
+            return AgentAirborneStepResult.LANDED;
+        }
+        AgentAirborneStepResult recovery = recoverBelowMap(entry, agent, map, boundaryPoint);
+        if (recovery != null) {
+            return recovery;
+        }
+        collideWithAirWall(entry, agent, boundaryPoint);
+        return AgentAirborneStepResult.WALL;
+    }
+
+    /** Returns null while the Agent is still above the map's bottom margin. */
+    private static AgentAirborneStepResult recoverBelowMap(AgentRuntimeEntry entry,
+                                                           Character agent,
+                                                           MapleMap map,
+                                                           Point position) {
+        Point recoveryPoint = belowMapRecoveryPoint(
+                map, position, AgentMapStateRuntime.entryPortalId(entry));
+        if (recoveryPoint == null) {
+            return null;
+        }
+        if (server.agents.progression.AgentMushroomKingdomMovementRecovery.blockWithoutTeleport(
+                entry, agent, "fell below the map's reachable footholds")) {
+            return AgentAirborneStepResult.CONTINUE;
+        }
+        log.warn("Recovered Agent '{}' below map bounds map={} from={} to={}",
+                agent.getName(), agent.getMapId(), position, recoveryPoint);
+        AgentMovementPoseService.teleportTo(entry, agent, recoveryPoint);
+        AgentOperationalEventPublisher.publish(entry,
+                objectiveId -> new AgentRecoveryPerformedEvent(
+                        agent.getId(), System.currentTimeMillis(), agent.getMapId(),
+                        "below-map-bounds", position.x, position.y,
+                        recoveryPoint.x, recoveryPoint.y, objectiveId),
+                AgentEventPriority.CRITICAL);
+        return AgentAirborneStepResult.LANDED;
     }
 
     private static void applyPendingFlashJump(AgentRuntimeEntry entry) {
