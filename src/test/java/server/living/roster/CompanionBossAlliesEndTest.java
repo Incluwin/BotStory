@@ -18,6 +18,7 @@ import java.awt.Point;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -40,12 +41,14 @@ import static server.living.roster.LifecycleHarness.ANN;
  * one line for how it went, walks the ally out of its party and to the room's way out while a human watches, unloads
  * it, and only then lets its EXPEDITION lease, its commitment and its trip go; an unload that leaves it online is tried
  * again by the audit. An ally down in the fight waits beside Mu Young, still tied to the run, until its owner comes out
- * to her room or the run ends.
+ * to her room or the run ends. As the server shuts down (step 12), every ally goes at once, saying nothing.
  */
 class CompanionBossAlliesEndTest {
     private static final int ORRIN = 911;
     private static final int MAGNA = 912;
     private static final int GUNNAR = 913;
+    private static final int BRYN = 914;
+    private static final int FENNA = 915;
     private static final int MU_YOUNG = 1061014;
 
     private final BossAllyHarness h = new BossAllyHarness();
@@ -354,6 +357,66 @@ class CompanionBossAlliesEndTest {
 
         assertAllHome(ORRIN, MAGNA);
         assertLines(intent, "Orrin", "Magna");
+    }
+
+    @Test
+    void theRunsEndLogsHowManyWentHomeAndThePeakOfThePermits() {
+        signUp(ORRIN, MAGNA);
+        inside(ORRIN, MAGNA);
+
+        try (LivingLogLines log = new LivingLogLines(CompanionBossAllies.class)) {
+            h.bossRuns.runEnded(ended(true, true, "members-out", result(ORRIN, true, Out.EXITED),
+                    result(MAGNA, true, Out.EXITED)));
+
+            assertEquals(List.of("Boss allies: session=7 boss=easy_balrog reason=members-out sent home=2 peak=2/12"),
+                    log.startingWith("Boss allies:"));
+        }
+    }
+
+    // ---- the server's shutdown -----------------------------------------------------------------
+
+    @Test
+    void theShutdownSendsEveryAllyHomeAtOnceSayingNothing() {
+        h.annIsInTheRoom(); // a human sees them: still nobody walks
+        h.ports.walksArrive = false;
+        h.benched("bryn", "Bryn", BRYN, SLEEPYWOOD_CAMP);
+        h.benched("fenna", "Fenna", FENNA, SLEEPYWOOD_CAMP);
+        h.game.world.views().invalidate(ANN); // new rows: the crew cache reads them again
+        h.arrived("bryn");
+        signUp(ORRIN, MAGNA, BRYN); // on her list, in their party of bots
+        h.bossRuns.refused(seat(BRYN), Refusal.BANNED); // walking out
+        h.allies.send(h.game.ann, "easy_balrog", List.of("gunnar"), h.now); // on its way down
+        List<Runnable> ops = DirectExecutor.queue();
+        CompanionExecutor queued = DirectExecutor.queued(ops);
+        when(h.game.world.executor()).thenReturn(queued);
+        h.allies.send(h.game.ann, "easy_balrog", List.of("fenna"), h.now); // its call still waits on companion-ops
+        assertEquals(State.LEAVING, h.allies.trip("bryn").state);
+        assertEquals(State.TRAVELLING, h.allies.trip("gunnar").state);
+        assertEquals(State.CALLING, h.allies.trip("fenna").state);
+        assertEquals(List.of(ORRIN, MAGNA), h.ports.partyOf(ORRIN));
+        h.whispers.clear();
+        h.mapChat.clear();
+        h.ports.walks.clear();
+        h.ports.party.clear();
+        h.ports.unloads.clear();
+
+        h.bossRuns.stopAllies();
+        h.game.runDueTimers(); // Gunnar's arrival and Bryn's walk out come too late
+        for (int i = 0; i < ops.size(); i++) {
+            ops.get(i).run(); // and so does Fenna's call
+        }
+
+        assertAllHome(ORRIN, MAGNA, BRYN, GUNNAR, FENNA);
+        assertEquals(Set.of("unload Orrin", "unload Magna", "unload Bryn"), Set.copyOf(h.ports.unloads));
+        assertEquals(3, h.ports.unloads.size(), h.ports.unloads.toString());
+        assertEquals(List.of(), h.ports.walks, "nobody walks out");
+        assertEquals(Set.of("leave Orrin (companion.boss)", "leave Magna (companion.boss)"), Set.copyOf(h.ports.party));
+        assertEquals(List.of(), h.ports.partyOf(ORRIN));
+        assertEquals(List.of(), h.ports.partyOf(MAGNA));
+        assertTrue(h.open.calls.contains("withdraw " + GUNNAR), h.open.calls.toString());
+        assertEquals(3, h.ports.loads.size(), "Gunnar and Fenna never loaded: " + h.ports.loads);
+        assertEquals(List.of(), h.mapChat, "the server is going down: nobody says a word");
+        assertEquals(List.of(), h.whispers);
     }
 
     // ---- helpers -------------------------------------------------------------------------------

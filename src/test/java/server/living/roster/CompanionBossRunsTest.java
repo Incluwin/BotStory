@@ -54,7 +54,8 @@ import static server.living.roster.LifecycleHarness.ANN;
  * that went in, logs the potion line and says one gg. A run whose session vanished is let go by the audit after a
  * minute. The server-authority rule and the logout delegation by key are wired here too. A bench ally (Part B, an
  * Agent that leads itself in a party of bots) is noted for its record like the rest, but the signed-up line comes from
- * a companion in the owner's party when there is one, and gg never comes from an ally.
+ * a companion in the owner's party when there is one, and gg never comes from an ally. An ally that went in gets its
+ * owner's record row like a party companion, and the living world sends the allies home first as it stops.
  */
 class CompanionBossRunsTest {
     private static final long SID = 7L;
@@ -65,6 +66,8 @@ class CompanionBossRunsTest {
     private static final int INGRID = 904;
     /** A bench ally of Ann's (P7 Part B). */
     private static final int ORRIN = 911;
+    private static final int MAGNA = 912;
+    private static final int GUNNAR = 913;
 
     private final LifecycleHarness game = new LifecycleHarness();
     private final FakeRuns open = new FakeRuns();
@@ -550,6 +553,50 @@ class CompanionBossRunsTest {
 
         assertEquals(List.of(), game.partyChat, "only an ally went in: no gg");
         verify(game.residents, never()).whisper(any(), any(), argThat(line -> line.contains("gg")));
+    }
+
+    @Test
+    void eachAllyThatWentInGetsItsEasyBalrogRowWithItsOutcomeForItsOwner() {
+        ally();
+        game.companion("magna", "Magna", MAGNA, RosterState.BENCHED, 105040300);
+        game.loaded.add(MAGNA);
+        game.selfLed.add(MAGNA);
+        game.companion("gunnar", "Gunnar", GUNNAR, RosterState.BENCHED, 105040300);
+        game.loaded.add(GUNNAR);
+        game.selfLed.add(GUNNAR);
+        signUp(ISOLDE, ORRIN, MAGNA, GUNNAR);
+
+        runs.runEnded(new RunEnded(SID, "easy_balrog", true, true, "members-out", 1_000L, 301_000L, 5, List.of(
+                new MemberResult(ISOLDE, ANN, true, true, 0, Out.EXITED),
+                new MemberResult(ORRIN, ANN, true, false, 1, Out.DIED),    // down outside as Balrog fell
+                new MemberResult(MAGNA, ANN, true, true, 1, Out.DIED),     // lay dead in the fight as Balrog fell
+                new MemberResult(GUNNAR, ANN, false, false, 0, Out.MISSED_START)))); // never went in: no row
+
+        assertEquals(List.of("901 isolde easy_balrog cleared, deaths 0, party 5, 300 s",
+                "911 orrin easy_balrog tapped_out, deaths 1, party 5, 300 s",
+                "912 magna easy_balrog cleared, deaths 1, party 5, 300 s"), rows());
+        assertTrue(game.store.performance.stream().allMatch(row -> row.ownerCharacterId() == ANN),
+                "an ally's row is its owner's, who enlisted it");
+
+        open.open.add(8L);
+        runs.seat(new Seat("easy_balrog", 8L, ORRIN, ANN));
+        runs.registered(new Seat("easy_balrog", 8L, ORRIN, ANN));
+        runs.runEnded(new RunEnded(8L, "easy_balrog", true, false, "event-disposed", 1_000L, 61_000L, 2,
+                List.of(new MemberResult(ORRIN, ANN, true, false, 0, Out.NO_HUMAN_LEFT))));
+
+        assertEquals("911 orrin easy_balrog failed, deaths 0, party 2, 60 s", rows().get(rows().size() - 1));
+    }
+
+    @Test
+    void theLivingWorldSendsTheBenchAlliesHomeOnCompanionOpsBeforeItsBenchSlicesEnd() throws IOException {
+        String source = Files.readString(Path.of("src/main/java/server/living/LivingWorld.java"));
+        String stop = source.substring(source.indexOf("public static synchronized void stop()"));
+        int allies = stop.indexOf("world.executor.submit(\"boss.allies_stop\", world.bossRuns::stopAllies);");
+        int bench = stop.indexOf("world.executor.submit(\"bench_duty.end_all\"");
+
+        assertTrue(allies >= 0, "the allies' unloads go to companion-ops");
+        assertTrue(allies < bench, "queued first on the one companion-ops thread: the bench's wait covers them");
+        assertEquals(1, source.split("stopAllies", -1).length - 1);
     }
 
     // ---- the lost-run sweep --------------------------------------------------------------------

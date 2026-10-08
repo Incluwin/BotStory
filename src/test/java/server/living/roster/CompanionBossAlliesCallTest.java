@@ -4,6 +4,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import server.TimerManager;
+import server.agents.capabilities.expedition.boss.AgentBossRunHost.Refusal;
 import server.living.roster.CompanionBossAllies.State;
 
 import java.util.ArrayList;
@@ -31,12 +32,14 @@ import static server.living.roster.LifecycleHarness.ANN;
  * the ally whispers there is no room; then its live slice ends, its EXPEDITION lease is taken, it is enlisted as a
  * member that leads itself and committed under its owner's run key, and it whispers the recall ETA it arrives at (plus
  * a stagger). Each failure after the admission undoes the steps before it, last first, and it whispers that it cannot
- * come. Two quick picks never take more than the owner's share.
+ * come. Two quick picks never take more than the owner's share. Each lease taken raises the server's peak of
+ * EXPEDITION leases held at once (step 12, /runtime/budget), which never falls.
  */
 class CompanionBossAlliesCallTest {
     private static final int ORRIN = 911;
     private static final int MAGNA = 912;
     private static final int GUNNAR = 913;
+    private static final int BRYN = 914;
     private static final int OTHER_OWNER = 30;
     private static final CompanionLeases.Lease ANNS_EXPEDITION =
             new CompanionLeases.Lease(CompanionLeases.Kind.EXPEDITION, ANN);
@@ -209,6 +212,28 @@ class CompanionBossAlliesCallTest {
         assertEquals(State.TRAVELLING, h.allies.trip("magna").state);
         assertNull(h.allies.trip("gunnar"));
         assertEquals(List.of(), send("gunnar"), "both permits held");
+    }
+
+    @Test
+    void thePeakOfExpeditionLeasesRisesWithEachLeaseAndNeverFalls() {
+        send("orrin");
+        assertEquals(1, h.bossRuns.expeditionPeak());
+        send("magna");
+        assertEquals(2, h.bossRuns.expeditionPeak(), "raised as its lease is taken, before it arrives");
+        assertEquals(State.TRAVELLING, h.allies.trip("magna").state);
+
+        h.bossRuns.refused(BossAllyHarness.seat(MAGNA), Refusal.BANNED); // it turns back: its lease goes
+        assertEquals(1, h.game.leases.count(CompanionLeases.Kind.EXPEDITION));
+        assertEquals(2, h.bossRuns.expeditionPeak(), "never falls");
+        send("gunnar");
+        assertEquals(2, h.bossRuns.expeditionPeak(), "two held again is no new peak");
+
+        holdExpeditionLeases(2); // another owner's allies
+        h.benched("bryn", "Bryn", BRYN, SLEEPYWOOD_CAMP);
+        h.game.world.views().invalidate(ANN); // a new row: the crew cache reads it again
+        send("bryn");
+        assertEquals(5, h.game.leases.count(CompanionLeases.Kind.EXPEDITION));
+        assertEquals(5, h.bossRuns.expeditionPeak(), "every EXPEDITION lease held counts: the server's own peak");
     }
 
     private List<String> send(String... personaIds) {

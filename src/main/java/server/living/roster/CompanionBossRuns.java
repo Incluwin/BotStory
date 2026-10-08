@@ -612,6 +612,22 @@ public final class CompanionBossRuns implements AgentBossRunHost.Rule, InstanceL
         return allies.onTrip(personaId);
     }
 
+    /**
+     * P7 Part B, any thread (/runtime/budget): the most EXPEDITION leases held at once since the living world started,
+     * raised as a bench ally's call takes one (CompanionBossAllies); it never falls.
+     */
+    public int expeditionPeak() {
+        return allies.peak();
+    }
+
+    /**
+     * P7 Part B, on companion-ops as the living world stops (LivingWorld.stop, queued before the bench slices end):
+     * every bench ally goes at once, saying nothing (CompanionBossAllies.stopAll).
+     */
+    public void stopAllies() {
+        allies.stopAll();
+    }
+
     /** The expedition of {@code definition}'s type on the clicker's channel (as her script reads it), or null. */
     static Expedition expeditionOf(Character clicker, AgentBossRunDefinition definition) {
         Client client = clicker.getClient();

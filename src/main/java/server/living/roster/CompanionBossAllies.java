@@ -68,7 +68,8 @@ import java.util.function.LongSupplier;
  * owner, or that human), not for the ally. Calls, arrivals and the way home run on companion-ops; the entry NPC's
  * window (her offer, the picker of who can come and how many, the owner's pick) reads the crew cache and memory on the
  * owner's I/O thread; the drop owner is read from memory on the thread that landed the kill. It writes no roster state.
- * Owned by CompanionBossRuns; nothing survives a restart (the rows stayed BENCHED).
+ * It keeps the most EXPEDITION leases held at once (/runtime/budget), and as the server shuts down every ally goes at
+ * once. Owned by CompanionBossRuns; nothing survives a restart (the rows stayed BENCHED).
  */
 final class CompanionBossAllies {
     private static final Logger log = LoggerFactory.getLogger(CompanionBossAllies.class);
@@ -281,6 +282,8 @@ final class CompanionBossAllies {
     private final AtomicInteger turns = new AtomicInteger();
     /** Owner id -> the picker their entry NPC window last showed (their I/O thread); dropped once that list closed. */
     private final Map<Integer, Snapshot> snapshots = new ConcurrentHashMap<>();
+    /** The most EXPEDITION leases held at once since the living world started: each call's lease raises it. */
+    private final AtomicInteger peak = new AtomicInteger();
 
     /** The boss and the expedition an owner on its entry NPC's list may call allies to now. */
     private record Context(AgentBossRunDefinition definition, Expedition expedition) { }
@@ -318,6 +321,11 @@ final class CompanionBossAllies {
     /** The persona's trip, or null. */
     Trip trip(String personaId) {
         return personaId == null ? null : trips.get(personaId);
+    }
+
+    /** The most EXPEDITION leases held at once since the living world started (any thread; /runtime/budget). */
+    int peak() {
+        return peak.get();
     }
 
     // ---- the picker and the reservation (the owner's I/O thread) -------------------------------
@@ -537,6 +545,7 @@ final class CompanionBossAllies {
                 cantCome(trip, persona, "its lease is held");
                 return;
             }
+            peak.accumulateAndGet(world.leases().count(CompanionLeases.Kind.EXPEDITION), Math::max);
             Enlisted enlisted = open.enlistSelfLed(owner, context.definition(), trip.expedition, List.of(id), now);
             if (enlisted.sessionId() == 0L || !enlisted.accepted().contains(id)) {
                 cantCome(trip, persona, "the run refused it");
@@ -718,8 +727,8 @@ final class CompanionBossAllies {
         }
         parties.values().removeIf(party -> party.sessionId == ended.sessionId());
         if (sent > 0) {
-            log.info("Boss allies: session={} boss={} reason={} sent home={}", ended.sessionId(), ended.bossKey(),
-                    ended.reason(), sent);
+            log.info("Boss allies: session={} boss={} reason={} sent home={} peak={}/{}", ended.sessionId(),
+                    ended.bossKey(), ended.reason(), sent, peak.get(), world.config().EXPEDITION_BURST_MAX);
         }
     }
 
@@ -855,6 +864,47 @@ final class CompanionBossAllies {
         if (run != null && !run.handoffSaid) {
             run.handoffSaid = true;
             BossRunLines.tell(world, agent, BossRunLines.HANDOFF, heir.getName(), null, run, heir.getId());
+        }
+    }
+
+    // ---- the server's shutdown (companion-ops) ---------------------------------------------------
+
+    /**
+     * On companion-ops, as the living world stops (LivingWorld.stop, queued before the live bench slices end, so the
+     * shutdown's wait for those covers this too): every ally goes at once and says nothing, the server going down
+     * around it. One still being called or on its way down is called off; one here leaves its party and is unloaded
+     * where it stands, with no walk (no timer of it runs again); one on its way out is unloaded now. As on any way
+     * home, its lease, its commitment and its trip go once it is offline.
+     */
+    void stopAll() {
+        int sent = 0;
+        for (Trip trip : List.copyOf(trips.values())) {
+            sent++;
+            try {
+                switch (trip.state) {
+                    case CALLING, TRAVELLING -> undo(trip);
+                    case HERE -> {
+                        trip.state = State.LEAVING;
+                        trip.waitingOutside = false;
+                        trip.generation++;
+                        trip.leftAtMs = clock.getAsLong();
+                        Character agent = trip.agent;
+                        if (agent != null) {
+                            leaveParty(trip, agent);
+                        }
+                        leave(trip);
+                    }
+                    case LEAVING -> leave(trip);
+                }
+            } catch (RuntimeException failure) {
+                log.warn("boss ally {} did not stop", trip.personaId, failure);
+            }
+        }
+        parties.clear();
+        snapshots.clear();
+        if (sent > 0 || peak.get() > 0) {
+            log.info("Boss allies stopped: sent home={} peak={}/{}", sent, peak.get(),
+                    world.config().EXPEDITION_BURST_MAX);
         }
     }
 
