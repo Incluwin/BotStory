@@ -221,6 +221,37 @@ class BossRunLinesTellTest {
     }
 
     @Test
+    void aMissedStartLineIsTrueWhenTheAllyWentInAndItsOwnerDidNot() {
+        // Ann stood on the stairway when the leader pressed Start: the Start took Orrin in from the room, the run
+        // moved him back out after the grace (his anchor was not in it), and he whispers her. She never went in.
+        game.moveAnn(105100000, 0, 0);
+
+        assertTrue(BossRunLines.tell(game.world, orrin, BossRunLines.ALLY_MISSED, null, null, run, ANN));
+
+        assertEquals(1, whispers.size(), whispers.toString());
+        assertWhispers("Orrin", "Ann", BossRunLines.ALLY_MISSED, whispers.get(0));
+        for (String line : BossRunLines.GENERIC.get(BossRunLines.ALLY_MISSED)) {
+            for (String claim : List.of("you went", "went in", "without me")) {
+                assertFalse(line.contains(claim), "no missed-start line says who went in: " + line);
+            }
+        }
+    }
+
+    @Test
+    void aPersonaWithItsOwnMissedStartLinesSaysThoseInstead() {
+        Persona orrinPersona = game.world.residents().personaOfCharacterId(ORRIN);
+        when(game.world.arcs().lines(orrinPersona, BossRunLines.ALLY_MISSED))
+                .thenReturn(List.of("late again... back to camp for me."));
+
+        assertTrue(BossRunLines.tell(game.world, orrin, BossRunLines.ALLY_MISSED, null, null, run, ANN));
+        assertTrue(BossRunLines.tell(game.world, magna, BossRunLines.ALLY_MISSED, null, null, run, ANN));
+
+        assertEquals(2, mapChat.size(), mapChat.toString());
+        assertEquals("Orrin: late again... back to camp for me.", mapChat.get(0), "the persona's own line");
+        assertSays("Magna", BossRunLines.ALLY_MISSED, mapChat.get(1));
+    }
+
+    @Test
     void everyAllyIntentHasItsOwnPlayerLinesAndOnlyTheOnMyWayLinesNameTheEta() {
         Map<String, List<String>> plan = Map.ofEntries(
                 Map.entry(BossRunLines.ALLY_ON_MY_WAY, List.of("heading down to the temple. {eta}.",
@@ -240,8 +271,8 @@ class BossRunLinesTellTest {
                         "missed the list, sorry. back to camp for me.")),
                 Map.entry(BossRunLines.ALLY_CALLED_OFF, List.of("guess we're not going. back to camp.",
                         "no fight today huh. back to camp then.")),
-                Map.entry(BossRunLines.ALLY_MISSED, List.of("you went in without me. heading back to camp.",
-                        "missed the start. back to camp for me.")),
+                Map.entry(BossRunLines.ALLY_MISSED, List.of("missed the start. back to camp for me.",
+                        "didn't make it in with you. heading back to camp.")),
                 Map.entry(BossRunLines.ALLY_GOOD_FIGHT, List.of("good fight! back to camp.",
                         "good fight. see ya around.", "gg, good fight. heading back to camp.")),
                 Map.entry(BossRunLines.ALLY_NEXT_TIME, List.of("we'll get him next time. back to camp.",

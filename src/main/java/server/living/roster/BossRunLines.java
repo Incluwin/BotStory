@@ -56,6 +56,10 @@ final class BossRunLines {
     static final String ALLY_TURNED_BACK = "boss.ally.turnedback";
     static final String ALLY_NOT_LISTED = "boss.ally.notlisted";
     static final String ALLY_CALLED_OFF = "boss.ally.calledoff";
+    /**
+     * Back to camp after missing the start. Most often the Start took the ally in from the room while its owner stood
+     * elsewhere, and the run moved it back out; else the ally itself did not get in. So no wording says who went in.
+     */
     static final String ALLY_MISSED = "boss.ally.missed";
     static final String ALLY_GOOD_FIGHT = "boss.ally.goodfight";
     static final String ALLY_NEXT_TIME = "boss.ally.nexttime";
@@ -139,8 +143,8 @@ final class BossRunLines {
                     "guess we're not going. back to camp.",
                     "no fight today huh. back to camp then.")),
             Map.entry(ALLY_MISSED, List.of(
-                    "you went in without me. heading back to camp.",
-                    "missed the start. back to camp for me.")),
+                    "missed the start. back to camp for me.",
+                    "didn't make it in with you. heading back to camp.")),
             Map.entry(ALLY_GOOD_FIGHT, List.of(
                     "good fight! back to camp.",
                     "good fight. see ya around.",
