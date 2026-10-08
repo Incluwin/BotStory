@@ -67,6 +67,11 @@ final class AgentOpqCoordinator {
 
     private AgentOpqCoordinator() { }
 
+    /** How long a run may go without progress before it is ended; a human-led run waits this long for its entry. */
+    static long phaseTimeoutMs() {
+        return PHASE_TIMEOUT_MS;
+    }
+
     static void tickSession(AgentOpqSession session, long nowMs) {
         synchronized (session) {
             if (session.terminal()) return;
