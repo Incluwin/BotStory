@@ -1000,11 +1000,20 @@ final class AgentOpqCoordinator {
         }
     }
 
+    /**
+     * The claims are done when every Agent member has claimed (back at Wonky) or is out of the event; a human is never
+     * waited for (he may stay for the jail bonus or claim later). The completed run is released here, as LPQ and HPQ
+     * release theirs; nothing else in the tick would.
+     */
     private static void tickReward(AgentOpqSession session, long nowMs) {
-        boolean allOutside = session.members().stream().map(m -> character(m.characterId()))
-                .filter(java.util.Objects::nonNull).allMatch(c -> c.getMapId() == AgentOpqDefinition.RECRUIT_MAP);
-        // The completed run is released here, as LPQ and HPQ release theirs; nothing else in the tick would.
-        if (allOutside) AgentOpqTerminationService.complete(session, nowMs);
+        EventInstanceManager event = session.eventInstance();
+        boolean agentsOut = session.members().stream()
+                .filter(m -> m.memberType() == AgentOpqMemberState.MemberType.AGENT)
+                .map(m -> character(m.characterId()))
+                .filter(java.util.Objects::nonNull)
+                .allMatch(c -> c.getMapId() == AgentOpqDefinition.RECRUIT_MAP
+                        || event == null || c.getEventInstance() != event);
+        if (agentsOut) AgentOpqTerminationService.complete(session, nowMs);
     }
 
     private static void tickRewardMember(AgentOpqSession session, AgentRuntimeEntry entry,
