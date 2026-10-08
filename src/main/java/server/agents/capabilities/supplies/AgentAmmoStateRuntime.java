@@ -37,6 +37,15 @@ public final class AgentAmmoStateRuntime {
         entry.ammoSupplyState().setWarnSent(ammoWarnSent);
     }
 
+    /** True once the Agent said in a companion run that it ran out (until its count is back at AMMO_LOW_WARN). */
+    public static boolean dryLineSaid(AgentRuntimeEntry entry) {
+        return entry.ammoSupplyState().dryLineSaid();
+    }
+
+    public static void setDryLineSaid(AgentRuntimeEntry entry, boolean said) {
+        entry.ammoSupplyState().setDryLineSaid(said);
+    }
+
     public static void clearAmmoWarningState(AgentRuntimeEntry entry) {
         entry.ammoSupplyState().clearWarningState();
     }

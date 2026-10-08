@@ -3,6 +3,7 @@ package server.agents.capabilities.dialogue;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AgentDialogueCatalogTest {
@@ -141,4 +142,22 @@ class AgentDialogueCatalogTest {
         assertTrue(AgentDialogueCatalog.jobChangeReplyTemplates().contains("ok %s it is!"));
     }
 
+
+    @Test
+    void inRunAmmoOutLinesAreLowerCaseShortAndNameTheProjectile() {
+        assertFalse(AgentDialogueCatalog.inRunAmmoOutReplies().isEmpty());
+        for (String template : AgentDialogueCatalog.inRunAmmoOutReplies()) {
+            for (String word : java.util.List.of("stars", "arrows", "bolts", "bullets")) {
+                String line = String.format(template, word);
+                assertEquals(line.toLowerCase(java.util.Locale.ROOT), line, line);
+                assertTrue(line.length() <= 100, line);
+                assertTrue(line.contains(word), line);
+                assertFalse(line.chars().anyMatch(Character::isDigit), line);
+                assertFalse(line.contains("heading back") || line.contains("coming to you"),
+                        "it keeps its post in a run: " + line);
+            }
+        }
+        assertTrue(AgentDialogueCatalog.inRunAmmoOutReplies().stream().map(line -> String.format(line, "stars"))
+                .toList().contains(AgentDialogueCatalog.inRunAmmoOutLine("stars")));
+    }
 }
