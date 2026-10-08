@@ -1,5 +1,6 @@
 package server.life.autonomy.balrog;
 
+import client.BotClient;
 import net.server.services.task.channel.OverallService;
 import net.server.services.task.channel.ServerMobAutonomyService;
 import net.server.services.type.ChannelServices;
@@ -9,6 +10,7 @@ import server.life.LifeFactory;
 import server.life.Monster;
 import server.life.MonsterListener;
 import server.maps.MapleMap;
+import tools.PacketCreator;
 
 import java.awt.Point;
 import java.util.ArrayList;
@@ -287,9 +289,34 @@ public final class EasyBalrogEncounterService {
             }
             registerCombatActor(body);
             map.makeMonsterReal(body);
+            int controlStops = stopStaleBodyControl();
             phase = Phase.BODY;
-            log.info("Easy Balrog body activated map={} generation={}",
-                    map.getId(), generation);
+            log.info("Easy Balrog body activated map={} generation={} controlStops={}",
+                    map.getId(), generation, controlStops);
+        }
+
+        /**
+         * The fake body went out as SPAWN_MONSTER_CONTROL, which gives control to every client
+         * that received it, and makeMonsterReal sends only a plain spawn. While the server owns
+         * the body, each human client drops that control here. Agents (BotClient) have no game
+         * client, and a client that is changing maps must not get a STOP after SET_FIELD
+         * (Monster.aggroRemoveController).
+         */
+        private int stopStaleBodyControl() {
+            if (!(map.getChannelServer().getServiceAccess(ChannelServices.MOB_AUTONOMY)
+                    instanceof ServerMobAutonomyService autonomy) || !autonomy.isActive(body)) {
+                return 0;
+            }
+            int stops = 0;
+            for (client.Character player : map.getAllPlayers()) {
+                if (player == null || player.getClient() instanceof BotClient
+                        || player.isChangingMaps()) {
+                    continue;
+                }
+                player.sendPacket(PacketCreator.stopControllingMonster(body.getObjectId()));
+                stops++;
+            }
+            return stops;
         }
 
         private void clear() {
