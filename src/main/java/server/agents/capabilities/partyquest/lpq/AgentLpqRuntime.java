@@ -13,8 +13,9 @@ public final class AgentLpqRuntime {
     private AgentLpqRuntime() { }
 
     /**
-     * True while the member's companion LPQ run says itself that it ran dry on stage 7 (it held a ratz lane there),
-     * so its generic in-run line stays quiet (AgentPartyQuestSystem.ownsDryLine). Memory only.
+     * True while the member's companion LPQ run says itself that it ran dry on stage 7 (S7d, with the members'
+     * coordination chat on: it held a ratz lane there, or nobody loaded can reach the live ratz), so its generic in-run
+     * line stays quiet (AgentPartyQuestSystem.ownsDryLine); false again once its S7d could not be said. Memory only.
      */
     public static boolean ownsDryLine(int characterId, int mapId) {
         return AgentLpqCoordinator.ownsDryLine(characterId, mapId);
