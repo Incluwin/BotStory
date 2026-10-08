@@ -228,7 +228,7 @@ public final class AgentLmpqCoordinator {
             return;
         }
         session.rooms().heartbeat(currentRoom, agent.getId(), nowMs);
-        if (partyQuest().lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON))) {
+        if (vacuumCoupons(session, "farm-loot", agent)) {
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             session.markProgress(nowMs);
             return;
@@ -255,7 +255,7 @@ public final class AgentLmpqCoordinator {
             return;
         }
         if (couponDropPresent(agent)) {
-            partyQuest().lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON));
+            vacuumCoupons(session, "farm-sweep", agent);
             return;
         }
         session.rooms().depleted(currentRoom, agent.getId(), nowMs);
@@ -294,7 +294,7 @@ public final class AgentLmpqCoordinator {
             }
         }
         if (agent.getId() == session.eventLeaderId()) {
-            partyQuest().lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON));
+            vacuumCoupons(session, "leader-regroup", agent);
         }
         actions().stop(entry);
     }
@@ -373,6 +373,20 @@ public final class AgentLmpqCoordinator {
             session.markProgress(nowMs);
             member.deferUntil(nowMs + ACTION_RETRY_MS);
         }
+    }
+
+    /**
+     * The map-wide coupon pickup: the party-quest gateway picks up every coupon on the Agent's map, whatever its
+     * distance. It is a rescue, noted ('LMPQ rescue: kind=VACUUM') when it picked something up; Step 2 replaces it in
+     * companion runs with a walk-and-pick.
+     */
+    private static boolean vacuumCoupons(AgentLmpqSession session, String site, Character agent) {
+        boolean picked = partyQuest().lootNearby(agent, Set.of(AgentLmpqDefinition.COUPON));
+        if (picked) {
+            AgentLmpqRescue.note(session, AgentLmpqRescue.Kind.VACUUM, site, agent,
+                    "coupons=" + agent.getItemQuantity(AgentLmpqDefinition.COUPON, false));
+        }
+        return picked;
     }
 
     private static Reactor activeBox(Character agent, int objectId) {

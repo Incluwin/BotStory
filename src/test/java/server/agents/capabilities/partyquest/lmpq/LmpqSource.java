@@ -12,8 +12,8 @@ import java.util.regex.Pattern;
 
 /**
  * One LMPQ main source as a test reads it: comments blanked and string contents blanked (structure only), with its
- * methods' bodies located, so a pattern can be found by the method it occurs in. Copied in spirit from the LPQ rescue
- * site scan.
+ * methods' bodies located, so a pattern can be found by the method it occurs in; a second copy keeps the string
+ * literals for reading arguments. Copied in spirit from the LPQ rescue site scan.
  */
 final class LmpqSource {
     static final Path PACKAGE = Path.of("src/main/java/server/agents/capabilities/partyquest/lmpq");
@@ -22,7 +22,10 @@ final class LmpqSource {
             "(?m)^    (?![ \\t])(?:[\\w<>\\[\\],.?]+ )+?(\\w+)\\s*\\(");
 
     final String name;
+    /** Comments and string contents blanked, offsets kept. */
     final String code;
+    /** Comments blanked, string literals intact, offsets kept. */
+    final String text;
     private final List<Method> methods = new ArrayList<>();
 
     private record Method(String name, int bodyStart, int bodyEnd) {
@@ -30,7 +33,9 @@ final class LmpqSource {
 
     private LmpqSource(String name, String source) {
         this.name = name;
-        this.code = structure(source.replace("\r\n", "\n"));
+        String lf = source.replace("\r\n", "\n");
+        this.code = blank(lf, true);
+        this.text = blank(lf, false);
         Matcher header = METHOD.matcher(code);
         while (header.find()) {
             int open = code.indexOf('{', header.end());
@@ -86,6 +91,20 @@ final class LmpqSource {
         return callers;
     }
 
+    /**
+     * Each match of {@code regex} against the literal-keeping copy inside a method body, as "method group1" (group 1
+     * of the pattern, e.g. a site label), in source order.
+     */
+    List<String> labelledCalls(String regex) {
+        List<String> calls = new ArrayList<>();
+        Matcher matcher = Pattern.compile(regex).matcher(text);
+        while (matcher.find()) {
+            String owner = enclosing(matcher.start());
+            if (owner != null) calls.add(owner + " " + matcher.group(1));
+        }
+        return calls;
+    }
+
     /** How often {@code regex} matches anywhere in the source, outside comments and string contents. */
     int count(String regex) {
         Matcher matcher = Pattern.compile(regex).matcher(code);
@@ -102,7 +121,7 @@ final class LmpqSource {
         throw new AssertionError(name + " has no method " + method);
     }
 
-    private static String structure(String source) {
+    private static String blank(String source, boolean literals) {
         StringBuilder out = new StringBuilder(source.length());
         int i = 0;
         while (i < source.length()) {
@@ -120,11 +139,11 @@ final class LmpqSource {
                 i++;
                 while (source.charAt(i) != c) {
                     if (source.charAt(i) == '\\') {
-                        out.append("__");
+                        out.append(literals ? "__" : source.substring(i, i + 2));
                         i += 2;
                         continue;
                     }
-                    out.append(source.charAt(i) == '\n' ? '\n' : '_');
+                    out.append(literals && source.charAt(i) != '\n' ? '_' : source.charAt(i));
                     i++;
                 }
                 out.append(c);
