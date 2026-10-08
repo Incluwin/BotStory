@@ -1,8 +1,12 @@
 package server.agents.capabilities.partyquest.opq;
 
 import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentCompanionRunSession;
+import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
+import server.agents.capabilities.partyquest.pace.AgentPqPaceCalibration;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,7 +15,7 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 /** OPQ aggregate root. All mutable party/room/item ownership is session scoped. */
-public final class AgentOpqSession {
+public final class AgentOpqSession implements AgentCompanionRunSession {
     public enum Mode { TEST_OBSERVATION, AUTONOMOUS, HUMAN_ASSISTED }
     public enum Phase {
         PREPARING, ENTERING, ENTRANCE, SPLIT_ROOMS, RESTORING_STATUE,
@@ -21,6 +25,7 @@ public final class AgentOpqSession {
     private final Mode mode;
     private final long seed;
     private final int operatorId;
+    private final int requestedPartySize;
     private final long startedAtMs;
     private final Map<Integer, AgentOpqMemberState> members = new LinkedHashMap<>();
     private final AgentOpqRoomLedger rooms = new AgentOpqRoomLedger();
@@ -43,19 +48,35 @@ public final class AgentOpqSession {
     private final Set<Integer> completedLoungeSubrooms = new LinkedHashSet<>();
     private boolean papaPixieEngaged;
     private boolean papaPixieDefeated;
+    private boolean companionAdopted;
+    private boolean memberCoordinationChatEnabled;
+    private AgentPqPaceCalibration paceCalibration;
+    private String potionsAtEntry;
+    private long clearSeenAtMs;
+    private final Map<Phase, Long> firstEntries = new EnumMap<>(Phase.class);
 
+    /** A session of the stock six members (every Agent-run and fixture run). */
     public AgentOpqSession(Mode mode, long seed, int operatorId, long nowMs) {
-        if (mode == null || operatorId <= 0 || nowMs < 0L) throw new IllegalArgumentException("valid OPQ session required");
+        this(mode, seed, operatorId, AgentOpqDefinition.PARTY_SIZE, nowMs);
+    }
+
+    /** A session of {@code requestedPartySize} members, within the catalog's OPQ party sizes (five or six). */
+    public AgentOpqSession(Mode mode, long seed, int operatorId, int requestedPartySize, long nowMs) {
+        if (mode == null || operatorId <= 0 || nowMs < 0L
+                || !AgentPartyQuestCatalog.require("opq").acceptsPartySize(requestedPartySize)) {
+            throw new IllegalArgumentException("valid OPQ session required");
+        }
         this.mode = mode;
         this.seed = seed;
         this.operatorId = operatorId;
+        this.requestedPartySize = requestedPartySize;
         this.startedAtMs = nowMs;
         this.lastProgressAtMs = nowMs;
         this.phaseEnteredAtMs = nowMs;
     }
 
     public synchronized void addMember(int id, AgentOpqMemberState.MemberType type) {
-        if (members.size() >= AgentOpqDefinition.PARTY_SIZE || members.putIfAbsent(id, new AgentOpqMemberState(id, type)) != null) {
+        if (members.size() >= requestedPartySize || members.putIfAbsent(id, new AgentOpqMemberState(id, type)) != null) {
             throw new IllegalStateException("invalid or duplicate OPQ member");
         }
     }
@@ -75,21 +96,46 @@ public final class AgentOpqSession {
     }
     public synchronized void transition(Phase next, long nowMs) {
         if (next == null || terminal() || next.ordinal() < phase.ordinal()) return;
-        if (next != phase) { phase = next; phaseEnteredAtMs = nowMs; }
+        if (next != phase) {
+            firstEntries.putIfAbsent(next, nowMs);
+            phase = next;
+            phaseEnteredAtMs = nowMs;
+        }
         markProgress(nowMs);
     }
     public synchronized void markProgress(long nowMs) { lastProgressAtMs = Math.max(lastProgressAtMs, nowMs); }
     public synchronized boolean beginTermination() { if (terminating) return false; terminating = true; return true; }
-    public synchronized void fail(String reason, long nowMs) { failure = reason == null ? "OPQ failed" : reason; phase = Phase.FAILED; markProgress(nowMs); }
-    public synchronized void complete(long nowMs) { phase = Phase.COMPLETED; markProgress(nowMs); }
+
+    /** True once a release has begun (a companion run's tick reads it: a run on its way out is not ticked). */
+    public synchronized boolean terminationStarted() { return terminating; }
+    public synchronized void fail(String reason, long nowMs) {
+        failure = reason == null ? "OPQ failed" : reason;
+        firstEntries.putIfAbsent(Phase.FAILED, nowMs);
+        phase = Phase.FAILED;
+        markProgress(nowMs);
+    }
+    public synchronized void complete(long nowMs) {
+        firstEntries.putIfAbsent(Phase.COMPLETED, nowMs);
+        phase = Phase.COMPLETED;
+        markProgress(nowMs);
+    }
+
+    /** When the run first entered {@code phase} (a later entry keeps the first), or 0 when it never did. */
+    synchronized long firstEnteredAtMs(Phase phase) {
+        Long at = phase == null ? null : firstEntries.get(phase);
+        return at == null ? 0L : at;
+    }
     public synchronized boolean terminal() { return phase == Phase.COMPLETED || phase == Phase.FAILED; }
 
+    @Override
     public String sessionId() { return sessionId; }
     public Mode mode() { return mode; }
     public long seed() { return seed; }
     public int operatorId() { return operatorId; }
+    public int requestedPartySize() { return requestedPartySize; }
     public long startedAtMs() { return startedAtMs; }
     public synchronized Phase phase() { return phase; }
+    @Override
     public synchronized int eventLeaderId() { return eventLeaderId; }
     public synchronized int executionAgentId() { return executionAgentId; }
     public synchronized long lastProgressAtMs() { return lastProgressAtMs; }
@@ -131,4 +177,50 @@ public final class AgentOpqSession {
     }
     public synchronized boolean papaPixieEngaged() { return papaPixieEngaged; }
     public synchronized boolean papaPixieDefeated() { return papaPixieDefeated; }
+
+    /**
+     * A human-led run of owner-bound companions, admitted by AgentOpqAdmissionService.admit. Every companion-run
+     * behaviour is gated on it; stock, background and '!opqtest start' fixture runs leave it false.
+     */
+    @Override
+    public synchronized boolean companionAdopted() { return companionAdopted; }
+
+    /** Set only by the public admit, before the session is published. */
+    synchronized void setCompanionAdopted(boolean adopted) { companionAdopted = adopted; }
+
+    synchronized boolean memberCoordinationChatEnabled() { return memberCoordinationChatEnabled; }
+
+    @Override
+    public synchronized void setMemberCoordinationChatEnabled(boolean enabled) {
+        memberCoordinationChatEnabled = enabled;
+    }
+
+    /** The leader's clear-time calibration, kept for the run's pace; null until a host hands one. */
+    synchronized AgentPqPaceCalibration paceCalibration() { return paceCalibration; }
+
+    @Override
+    public synchronized void setPaceCalibration(AgentPqPaceCalibration calibration) {
+        paceCalibration = calibration;
+    }
+
+    /** The companions' potions as 'OPQ potions:' logged them at the entrance; null when that line was never logged. */
+    synchronized String potionsAtEntry() { return potionsAtEntry; }
+
+    synchronized void setPotionsAtEntry(String potions) { potionsAtEntry = potions; }
+
+    /** When the coordinator first saw the clear (Minerva freed or the event cleared), or 0 when it never did. */
+    synchronized long clearSeenAtMs() { return clearSeenAtMs; }
+
+    /** Records the first tick that saw the clear; a later one keeps the first. */
+    synchronized void markClearSeen(long nowMs) {
+        if (clearSeenAtMs == 0L && nowMs > 0L) clearSeenAtMs = nowMs;
+    }
+
+    /** Takes a member out of the run (a companion that tapped out); the event leader is never taken out. */
+    public synchronized void removeMember(int characterId) {
+        if (characterId == eventLeaderId) {
+            throw new IllegalArgumentException("the OPQ event leader cannot be removed from his run");
+        }
+        members.remove(characterId);
+    }
 }

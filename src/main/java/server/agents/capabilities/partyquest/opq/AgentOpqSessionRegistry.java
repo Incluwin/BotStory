@@ -15,9 +15,15 @@ public final class AgentOpqSessionRegistry {
     private static final Map<Integer, String> BY_OPERATOR = new ConcurrentHashMap<>();
     private AgentOpqSessionRegistry() { }
 
+    /**
+     * Publishes a session that holds every member it was opened for: six for every stock and fixture run, five or six
+     * for a companion run.
+     */
     public static synchronized void registerComplete(AgentOpqSession session) {
-        if (session == null || session.memberCount() != AgentOpqDefinition.PARTY_SIZE) {
-            throw new IllegalArgumentException("complete six-member OPQ session required");
+        if (session == null || session.memberCount() != session.requestedPartySize()) {
+            throw new IllegalArgumentException(session == null
+                    || session.requestedPartySize() == AgentOpqDefinition.PARTY_SIZE
+                    ? "complete six-member OPQ session required" : "complete OPQ session required");
         }
         if (BY_OPERATOR.containsKey(session.operatorId())) throw new IllegalStateException("operator already owns OPQ");
         for (AgentOpqMemberState member : session.members()) if (BY_MEMBER.containsKey(member.characterId())) {
@@ -26,6 +32,26 @@ public final class AgentOpqSessionRegistry {
         SESSIONS.put(session.sessionId(), session);
         BY_OPERATOR.put(session.operatorId(), session.sessionId());
         session.members().forEach(member -> BY_MEMBER.put(member.characterId(), session.sessionId()));
+    }
+
+    /**
+     * What already holds this operator or one of these characters in an OPQ session, in HPQ's codes:
+     * "operator-session", else "member-" and the id of the first held member, else "". A host checks a party with it
+     * before an admit.
+     */
+    public static synchronized String registrationBlocker(int operatorId, Collection<Integer> characterIds) {
+        if (BY_OPERATOR.containsKey(operatorId)) return "operator-session";
+        if (characterIds != null) {
+            for (int characterId : characterIds) {
+                if (BY_MEMBER.containsKey(characterId)) return "member-" + characterId;
+            }
+        }
+        return "";
+    }
+
+    /** Forgets one member's index only; the session and its other members stay as they are. */
+    public static synchronized void unindexMember(AgentOpqSession session, int characterId) {
+        if (session != null) BY_MEMBER.remove(characterId, session.sessionId());
     }
 
     public static AgentOpqSession forMember(int id) {

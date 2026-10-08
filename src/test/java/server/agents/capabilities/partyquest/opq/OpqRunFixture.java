@@ -89,7 +89,17 @@ final class OpqRunFixture implements AutoCloseable {
      * companion executes.
      */
     AgentOpqSession session(AgentOpqSession.Mode mode, AgentOpqSession.Phase phase, Character... members) {
-        AgentOpqSession session = new AgentOpqSession(mode, 7L, members[0].getId(), 1_000L);
+        return session(mode, false, phase, members);
+    }
+
+    /**
+     * As above, for a party of five or six; {@code companionRun} flags it adopted, as the public admit does before
+     * publishing it.
+     */
+    AgentOpqSession session(AgentOpqSession.Mode mode, boolean companionRun, AgentOpqSession.Phase phase,
+                            Character... members) {
+        AgentOpqSession session = new AgentOpqSession(mode, 7L, members[0].getId(), members.length, 1_000L);
+        if (companionRun) session.setCompanionAdopted(true);
         Integer execution = null;
         for (Character member : members) {
             boolean agent = entries.containsKey(member.getId());
