@@ -50,6 +50,17 @@ public final class ResidentShaper {
     }
 
     /**
+     * As {@link #shape}, at the level the character has (a GM kept it there: {@code !setlevel <name> keep}): its job
+     * advances as far as that level allows, then its AP, skills and loadout. A hired citizen is never reshaped.
+     */
+    public static void shapeKeepingLevel(Character agent, Persona persona, Loadout loadout) {
+        if (LivingContent.isHire(persona.id())) {
+            return;
+        }
+        shapeTo(agent, job(persona.job()), agent.getLevel(), loadout);
+    }
+
+    /**
      * Levels the character one step at a time to {@code level}, advancing along the legal job chain
      * toward {@code target}, repairs skipped growth, spends AP and applies the loadout. Used for
      * Residents and for generated citizens (population).
