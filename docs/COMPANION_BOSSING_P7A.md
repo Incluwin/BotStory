@@ -280,3 +280,23 @@ How to read the results:
    play. Change the default only after one clean full run.
 5. If Arm R passes but Arm E exits with `action`, a state that only the encounter has remains. Read the D2 lines, rerun
    Arm E with `none`, then capture the packets.
+
+## Client crash: what the evidence shows (2026-10-08)
+
+- The repro arms: Arm S (the counter status packet alone) and Arm R (a never-fake body casting 145 and 133 with the
+  skill action) did not crash. Arm E crashed in the claw phase, after Fix A and Fix B were live.
+- The two Windows crash dumps (Kaentake.dll+0x98b7) are NOT the fight crashes. They come from clients relaunched after
+  the disconnect, and the fault is a second crash at process exit: Kaentake's static item-effect map
+  (kaentake-questcolor itemeff.cpp:21) releases PCOM objects after PCOM.DLL is unloaded. A scratch fix exists
+  (exit-leak.patch); shipping a new Kaentake.dll to friends needs the user's approval and it does not stop the
+  mid-fight crash.
+- The only record of an in-game crash is the game's own crash log, %LOCALAPPDATA%\VirtualStore\Windows\SysWOW64\msexcr.ini
+  (14:00:23): a MOVE_MONSTER packet with an attack action reached CMob::OnMove, which started the mob's attack sound;
+  SOUND_DX8.DLL asked for a 134,788-byte buffer, got NULL and wrote to it. The 10:56 crash also came right after a
+  mob sound started (the body's skill sound).
+- Lead (unconfirmed): the 32-bit client (not large-address-aware, 2 GB of address space) runs out of memory, or its heap
+  is damaged, in a busy boss fight. Next step: log the client's memory every 5 s during a run (PowerShell
+  Get-Process loop) and compare with a field baseline.
+- Fix A (stop stale body control) fixes a real server defect and stays. The stale-control log also saw one MOVE_LIFE for
+  claw 8830009 at encounter start, so claws can briefly be client-controlled too. Fix B (body casts without the skill
+  action) has not been shown to matter; it stays on until the memory check, then the user decides.

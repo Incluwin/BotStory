@@ -130,6 +130,7 @@ Regression: set the two Part B switches back to "" and 1, restart, and check tha
 
 If a check fails: set `COMPANION_BOSS_ALLY_TYPES: ""` and `COMPANION_BOSS_OWNERS_MAX: 1`, then restart.
 
-Known limit (2026-10-08): live Easy Balrog fights are blocked by a client crash in the client mod Kaentake.dll
-(+0x98b7, diagnosis in progress; it also happened once outside boss content). Part B's call, arrival, sign-up,
-logout and two-owner checks before the fight can still be run.
+Known limit (2026-10-08): live Easy Balrog fights can close the human's client mid-fight. The game's own crash log
+shows the sound system failing to get memory when a Balrog part's attack or skill sound starts (see
+docs/COMPANION_BOSSING_P7A.md, "Client crash: what the evidence shows"). Part B's call, arrival, sign-up, logout and
+two-owner checks before the fight can still be run.
