@@ -19,6 +19,7 @@ public final class AgentLmpqMemberState {
     private int markedSourceRoom;
     private int markedPortalId;
     private long nextActionAtMs;
+    private int rewardAttempts;
     private final Set<String> announcements = new HashSet<>();
 
     AgentLmpqMemberState(int characterId, MemberType memberType) {
@@ -58,6 +59,9 @@ public final class AgentLmpqMemberState {
         lastObservedRoom = room;
         route.add(room);
     }
+    /** The claims this Agent made at the reward Rolly while it stayed on the reward map. */
+    public synchronized int rewardAttempts() { return rewardAttempts; }
+    public synchronized void noteRewardAttempt() { rewardAttempts++; }
     public synchronized int initialRoom() { return initialRoom; }
     public synchronized List<Integer> route() { return List.copyOf(route); }
     public synchronized List<Integer> assignments() { return List.copyOf(assignments); }

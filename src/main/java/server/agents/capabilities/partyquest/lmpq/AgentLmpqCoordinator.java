@@ -4,6 +4,8 @@ import client.Character;
 import client.inventory.InventoryType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scripting.event.EventInstanceManager;
+import server.agents.capabilities.partyquest.AgentPartyQuestCatalog;
 import server.agents.capabilities.partyquest.AgentPqRuntime;
 import server.agents.integration.AgentCharacterGatewayRuntime;
 import server.agents.integration.AgentPartyGatewayRuntime;
@@ -27,7 +29,10 @@ import java.util.Set;
 /** Natural-action LMPQ coordinator: distributed farming, handoff, and Room 9 barrier. */
 public final class AgentLmpqCoordinator {
     private static final Logger log = LoggerFactory.getLogger(AgentLmpqCoordinator.class);
-    private static final long EVENT_TIMEOUT_MS = 15L * 60_000L;
+    private static final long TIMEOUT_SLACK_MS = config.AgentTuning.longValue(
+            "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.TIMEOUT_SLACK_MS");
+    private static final int REWARD_REFUSALS_MAX = config.AgentTuning.intValue(
+            "server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_REFUSALS_MAX");
     private static final long ROOM_LEASE_MS = 20_000L;
     private static final long ACTION_RETRY_MS = 900L;
     private static final int PORTAL_RADIUS = 55;
@@ -48,7 +53,7 @@ public final class AgentLmpqCoordinator {
 
     public static void tickSession(AgentLmpqSession session, long nowMs) {
         if (session.terminal() || session.paused()) return;
-        if (nowMs - session.startedAtMs() >= EVENT_TIMEOUT_MS) {
+        if (eventTimerExpired(session, nowMs)) {
             fail(session, "LMPQ event timer expired", nowMs);
             return;
         }
@@ -146,6 +151,17 @@ public final class AgentLmpqCoordinator {
         if (nowMs - session.lastProgressAtMs() >= idleLimit(session)) {
             fail(session, "LMPQ stalled in " + session.phase(), nowMs);
         }
+    }
+
+    /**
+     * LMPQ base fix 1: the run's clock is the event's. LudiMazePQ.js starts its timer (the catalog's eventTimerMs) as
+     * the party enters the maze and stops it at the clear, so the run's own timer runs from its first FARMING entry,
+     * with TIMEOUT_SLACK_MS so the event's own timeout ends a slow run first, and never after the clear.
+     */
+    static boolean eventTimerExpired(AgentLmpqSession session, long nowMs) {
+        long enteredAt = session.firstEnteredAtMs(AgentLmpqSession.Phase.FARMING);
+        if (enteredAt == 0L || AgentLmpqTerminationService.pastTheClear(session)) return false;
+        return nowMs - enteredAt >= AgentPartyQuestCatalog.require("lmpq").eventTimerMs() + TIMEOUT_SLACK_MS;
     }
 
     public static void tickMember(
@@ -323,10 +339,39 @@ public final class AgentLmpqCoordinator {
             member.deferUntil(nowMs + ACTION_RETRY_MS);
             return;
         }
-        if (runNearbyNpc(entry, agent, AgentLmpqDefinition.REWARD_NPC, 1)) {
-            member.deferUntil(nowMs + ACTION_RETRY_MS);
-            session.markProgress(nowMs);
+        if (member.rewardAttempts() >= REWARD_REFUSALS_MAX) {
+            leaveUnrewarded(session, entry, agent, member, nowMs);
+            return;
         }
+        // A click is not progress (LMPQ base fix 1): Rolly answers a full bag with a refusal and the run would never
+        // stall. A claim warps the Agent out, and that map change is the progress.
+        if (runNearbyNpc(entry, agent, AgentLmpqDefinition.REWARD_NPC, 1)) {
+            member.noteRewardAttempt();
+            member.deferUntil(nowMs + ACTION_RETRY_MS);
+        }
+    }
+
+    /**
+     * LMPQ base fix 5: an Agent still on the reward map after REWARD_REFUSALS_MAX claims was refused (Rolly needs a
+     * free slot of the reward's type). It leaves through the event's own exit to 809050017, unrewarded, once, rather
+     * than clicking until the run times out; when it was the last player in the event, the event is disposed (its
+     * timer stopped at the clear, so nothing else would).
+     */
+    private static void leaveUnrewarded(AgentLmpqSession session, AgentRuntimeEntry entry, Character agent,
+                                        AgentLmpqMemberState member, long nowMs) {
+        actions().stop(entry);
+        member.deferUntil(nowMs + ACTION_RETRY_MS);
+        if (!member.claimAnnouncement("reward-refused")) return;
+        log.warn("LMPQ reward refused: session={} member={}({}) attempts={}", session.sessionId(), agent.getName(),
+                agent.getId(), member.rewardAttempts());
+        EventInstanceManager event = session.eventInstance();
+        if (event == null) return;
+        try {
+            event.exitPlayer(agent);
+        } catch (RuntimeException failure) {
+            log.warn("LMPQ reward exit failed: session={} member={}", session.sessionId(), agent.getId(), failure);
+        }
+        AgentLmpqTerminationService.disposeWhenEmpty(session, event);
     }
 
     private static int selectAndReserveRoom(AgentLmpqSession session, Character agent, long nowMs) {

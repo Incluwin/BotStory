@@ -1509,6 +1509,14 @@ tuning:
     # Purpose: Spaces GM-only LMPQ observation fixture launches to avoid simultaneous login and build pressure.
     # Technical: Read only by the GM-only LMPQ observation harness between fixture launches; production LMPQ admission and coordination never read this value.
     server.agents.capabilities.partyquest.lmpq.AgentLmpqTestService.SPAWN_STAGGER_MS: '500'
+    # Values: 0-30000 milliseconds. Recommended: 5000 so LudiMazePQ.js's own 15-minute timeout ends a slow run first and the run then reports the event as ended.
+    # Purpose: Pads the LMPQ run's own event timer, which runs from its first FARMING entry, past the event script's timer.
+    # Technical: AgentLmpqCoordinator adds it to the catalog eventTimerMs (900000, LudiMazePQ.js eventTime) and stops checking once the event reports its clear; it never ends a run before the event's own timeout.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.TIMEOUT_SLACK_MS: '5000'
+    # Values: 1-10 claims. Recommended: 3 so a slow claim is retried but an Agent with a full bag does not click Rolly until the run times out.
+    # Purpose: Bounds how often an LMPQ Agent claims at the reward Rolly while it stays on the reward map before it leaves unrewarded.
+    # Technical: AgentLmpqCoordinator counts claims per member on 809050016; past the limit the Agent leaves once through the event's own exit to 809050017, and the event is disposed when it was the last player.
+    server.agents.capabilities.partyquest.lmpq.AgentLmpqCoordinator.REWARD_REFUSALS_MAX: '3'
 
     # ---- PPQ companion-run and pace keys go below (PPQ branch only) ----
 
