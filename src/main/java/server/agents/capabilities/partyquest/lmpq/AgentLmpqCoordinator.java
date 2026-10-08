@@ -146,7 +146,7 @@ public final class AgentLmpqCoordinator {
                 }
             } else {
                 announceOnce(session, "human-clear", leader.getName()
-                        + ", everyone is together. Please talk to Pierre to finish the maze.");
+                        + ", everyone is together. Please talk to Pietri to finish the maze.");
             }
         }
         if (leader.getMapId() == AgentLmpqDefinition.REWARD_MAP) {
@@ -315,8 +315,8 @@ public final class AgentLmpqCoordinator {
                 session.markProgress(nowMs);
                 if (session.mode() == AgentLmpqSession.Mode.HUMAN_LEADER
                         && member.claimAnnouncement("human-handoff")) {
-                    AgentPartyGatewayRuntime.party().sendPartyChat(agent,
-                            "Coupons are beside you in Room 9. Please pick them up and confirm you have at least 30.");
+                    AgentPartyGatewayRuntime.party().sendPartyChat(agent, "Coupons are beside you in Room "
+                            + session.rendezvousRoom() + ". Please pick them up and confirm you have at least 30.");
                 }
                 return;
             }
@@ -331,7 +331,7 @@ public final class AgentLmpqCoordinator {
                                   AgentLmpqMemberState member, long nowMs) {
         int room = AgentLmpqDefinition.roomForMap(agent.getMapId());
         if (room == AgentLmpqDefinition.CLEAR_ROOM) {
-            // The coordinator guides the leader toward Pierre, so do not let the member tick
+            // The coordinator guides the leader toward Pietri, so do not let the member tick
             // immediately cancel that navigation. Followers should remain settled in place.
             if (agent.getId() != session.eventLeaderId()) actions().stop(entry);
             return;
