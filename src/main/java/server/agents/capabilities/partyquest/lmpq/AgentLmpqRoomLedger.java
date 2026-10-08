@@ -38,8 +38,13 @@ public final class AgentLmpqRoomLedger {
         }
     }
 
+    /**
+     * A human stands in {@code room}: it is taken out of the Agents' choice. A room already worked out stays DEPLETED
+     * (LMPQ base fix 6): marking it HUMAN_OCCUPIED let humanLeft reopen an empty room.
+     */
     public synchronized void humanOccupied(int room, long nowMs) {
-        if (room >= 1 && room <= 15) rooms.put(room, new Lease(room, 0, State.HUMAN_OCCUPIED, nowMs));
+        if (room < 1 || room > 15 || rooms.get(room).state() == State.DEPLETED) return;
+        rooms.put(room, new Lease(room, 0, State.HUMAN_OCCUPIED, nowMs));
     }
 
     public synchronized void humanLeft(int room, long nowMs) {
