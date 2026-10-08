@@ -24,8 +24,9 @@ import static org.mockito.Mockito.when;
 /**
  * P6h OPQ step 1 (C5), the release policy of a companion run: its party is its owner's and is always kept; a failure
  * after the clear (the event cleared, Minerva freed, or the run claiming) takes only the companions out and leaves the
- * event and the human to the jail and the reward; any other failure, and every stock run, is released as today. The
- * tick, a stop request and a force stop all route through it, and a run is released once.
+ * event and the human to the jail and the reward; any other failure is released as today. The tick, a stop request
+ * and a force stop all route through it, and a run is released once. (OB5 later gave stock runs the same after-clear
+ * rule.)
  */
 class AgentOpqTerminationPolicyTest {
     private final OpqRunFixture run = new OpqRunFixture();
@@ -120,15 +121,17 @@ class AgentOpqTerminationPolicyTest {
     }
 
     @Test
-    void aStockRunFailingAfterTheClearIsReleasedAsToday() {
+    void aStockRunFailingAfterTheClearLetsOnlyItsAgentsGoButLeavesTheParty() {
+        // OB5 (all modes): after the clear only the Agents leave the event; a stock run's Agents still leave the party.
         AgentOpqSession session = stockRun(AgentOpqSession.Phase.CLAIMING_REWARD);
         minervaFreed();
         when(run.event.isEventCleared()).thenReturn(true);
 
         AgentOpqTerminationService.fail(session, "No legal OPQ progress before timeout", 5_000L);
 
-        verifyEveryoneLeftAndDisposed();
+        verifyCompanionsOnlyLeft();
         verify(run.party).leaveCurrentParty(mira);
+        verify(run.party, never()).leaveCurrentParty(ben);
     }
 
     @Test

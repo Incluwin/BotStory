@@ -22,12 +22,12 @@ final class AgentOpqTerminationService {
     private AgentOpqTerminationService() { }
 
     /**
-     * Ends the run as a failure. A companion run past its clear (failAfterClear) lets only its companions go, so the
-     * human keeps the jail bonus and his reward; every other run is released as it always was: everyone out, the event
-     * disposed.
+     * Ends the run as a failure. Past the clear (failAfterClear) only the Agents go, in every mode, so a human keeps the
+     * jail bonus and his reward, and an event left with no player is disposed; before the clear the run is released as
+     * it always was: everyone out, the event disposed.
      */
     static void fail(AgentOpqSession session, String reason, long nowMs) {
-        if (session != null && session.companionAdopted() && pastTheClear(session)) {
+        if (session != null && pastTheClear(session)) {
             failAfterClear(session, reason, nowMs);
             return;
         }
