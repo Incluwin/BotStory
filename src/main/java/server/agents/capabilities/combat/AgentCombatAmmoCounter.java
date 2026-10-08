@@ -39,6 +39,7 @@ public final class AgentCombatAmmoCounter {
         return largest;
     }
 
+    /** The projectiles the fight can use: Integer.MAX_VALUE with Soul Arrow or Shadow Claw up, else the bag's count. */
     public static int countAmmo(Character agent, WeaponType weaponType) {
         if (weaponType == null || !isRangedAmmoWeapon(weaponType)) {
             return Integer.MAX_VALUE;
@@ -46,6 +47,17 @@ public final class AgentCombatAmmoCounter {
         boolean soulArrow = agent.getBuffedValue(BuffStat.SOULARROW) != null;
         boolean shadowClaw = agent.getBuffedValue(BuffStat.SHADOW_CLAW) != null;
         if (soulArrow || shadowClaw) {
+            return Integer.MAX_VALUE;
+        }
+        return countCarried(agent, weaponType);
+    }
+
+    /**
+     * The projectiles in the bag for the weapon, whatever buff is up (Soul Arrow and Shadow Claw end; a readiness
+     * check counts what the Agent carries); Integer.MAX_VALUE for a weapon that shoots nothing.
+     */
+    public static int countCarried(Character agent, WeaponType weaponType) {
+        if (weaponType == null || !isRangedAmmoWeapon(weaponType)) {
             return Integer.MAX_VALUE;
         }
         int total = 0;

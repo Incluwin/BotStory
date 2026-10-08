@@ -37,9 +37,10 @@ public final class AgentPotionSupplierCatalog {
     }
 
     /**
-     * Whether a shop visit on this map may also top up throwing stars, bullets and arrows. Projectiles keep the
-     * behaviour they had before potion shops outside Victoria Island were known (their own investigation decides
-     * more): only shops on Victoria, never the town shops of the other continents.
+     * Whether a shop visit on this map runs the old ammo top-up (a seed set of stars or bullets, the refills of the best
+     * stacks, arrows to the ammo target) before the potions: only shops on Victoria, never the town shops of the other
+     * continents, as before potion shops outside Victoria Island were known. A readiness trip's own ammo step
+     * (AgentShopService.buyReadinessAmmo) runs after the potions at any supplier.
      */
     public static boolean ammoTopUpAllowedAt(int mapId) {
         return !AgentVictoriaTrainingRouteCatalog.outsideVictoria(mapId);

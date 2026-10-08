@@ -28,6 +28,8 @@ class AgentSupplyReadinessTest {
     private static final String STANDARDS_KEY =
             "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_STANDARDS";
     private static final AgentSupplyReadiness.Activity PQ = AgentSupplyReadiness.Activity.PARTY_QUEST;
+    private static final String AMMO_STANDARDS_KEY =
+            "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_STANDARDS";
 
     @AfterEach
     void noRule() {
@@ -224,6 +226,49 @@ class AgentSupplyReadinessTest {
         Character assassin = withJob(Job.ASSASSIN);
         assertTrue(AgentSupplyReadiness.shortfall(20, 25, true, PQ).none(), "the restock duty only ever sees potions");
         assertEquals(0, AgentSupplyReadiness.ammoShortfall(assassin, PQ), "no claw equipped on this mock");
+    }
+
+    @Test
+    void ammoStandardsListLpqAndEpqAtSixteenHundredAndEveryOtherKeyKeepsPartyQuestAmmo() {
+        // live 2026-10-07: a claw companion used 800 stars in one EPQ golem fight; another reached LPQ stage 7 with none
+        assertEquals("lpq=1600,epq=1600", AgentYamlConfig.config.tuning.get(AMMO_STANDARDS_KEY));
+        int partyQuestAmmo = config.AgentTuning.intValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO");
+        assertEquals(1600, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("EPQ ")));
+        assertEquals(1600, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("lpq")));
+        assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("kpq")));
+        assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("hpq")));
+        assertEquals(partyQuestAmmo,
+                AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("easy_balrog")),
+                "no shop is reachable from Mu Young's room: no standard of its own");
+        assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(PQ));
+        assertEquals(0, AgentSupplyReadiness.ammoStandard(null), "no activity");
+
+        String configured = AgentYamlConfig.config.tuning.put(AMMO_STANDARDS_KEY, "epq=x,lpq");
+        try {
+            assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("epq")),
+                    "a malformed pair keeps the default");
+            assertEquals(partyQuestAmmo, AgentSupplyReadiness.ammoStandard(AgentSupplyReadiness.Activity.partyQuest("lpq")));
+        } finally {
+            AgentYamlConfig.config.tuning.put(AMMO_STANDARDS_KEY, configured);
+        }
+    }
+
+    @Test
+    void theAmmoTargetIsAboveTheLowAmmoWarning() {
+        // restocked to a standard at the low-ammo warning, its first throw would say "running low on ammo"
+        assertEquals(AgentSupplyConfig.cfg.AMMO_LOW_WARN, 500, "the warning these numbers assume");
+        assertEquals(501, AgentSupplyReadiness.ammoTarget(AgentSupplyReadiness.Activity.partyQuest("kpq")));
+        assertEquals(1600, AgentSupplyReadiness.ammoTarget(AgentSupplyReadiness.Activity.partyQuest("epq")));
+        assertEquals(0, AgentSupplyReadiness.ammoTarget(null));
+        String key = "server.agents.capabilities.supplies.AgentSupplyReadiness.PARTY_QUEST_AMMO";
+        String configured = AgentYamlConfig.config.tuning.put(key, "0");
+        try {
+            assertEquals(0, AgentSupplyReadiness.ammoTarget(AgentSupplyReadiness.Activity.partyQuest("kpq")),
+                    "a standard of 0 turns the check off");
+        } finally {
+            AgentYamlConfig.config.tuning.put(key, configured);
+        }
     }
 
     private static AgentSupplyReadiness.Standard standardFor(String key) {

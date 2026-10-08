@@ -257,6 +257,49 @@ public final class AgentSupplyReadiness {
         return (int) Math.max(0L, standard - Math.max(0, carriedAmmo));
     }
 
+    /**
+     * The projectiles a fighter with a claw, bow, crossbow or gun goes into {@code activity} with at least: the count
+     * AMMO_STANDARDS lists for its key ("lpq=1600,..."), else PARTY_QUEST_AMMO; 0 without an activity. Read from
+     * agent-engine.yaml at every call; never negative.
+     */
+    public static int ammoStandard(Activity activity) {
+        if (activity == null) {
+            return 0;
+        }
+        Integer own = listedCount(activity.partyQuestKey(), config.AgentTuning.stringValue(
+                "server.agents.capabilities.supplies.AgentSupplyReadiness.AMMO_STANDARDS"));
+        return Math.max(0, own != null ? own : tuningInt("PARTY_QUEST_AMMO"));
+    }
+
+    /**
+     * How many projectiles a readiness trip's counter buys toward for {@code activity}: its standard, and at least one
+     * above AMMO_LOW_WARN, so a companion restocked to a standard at the warning does not say it runs low at its first
+     * throw; 0 for a standard of 0 (no check).
+     */
+    public static int ammoTarget(Activity activity) {
+        int standard = ammoStandard(activity);
+        return standard <= 0 ? 0 : Math.max(standard, AgentSupplyConfig.cfg.AMMO_LOW_WARN + 1);
+    }
+
+    /** The count {@code standards} ("key=count,...") lists for {@code key}, or null: blank, unlisted or malformed. */
+    private static Integer listedCount(String key, String standards) {
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
+        for (String pair : standards == null ? new String[0] : standards.split(",")) {
+            int equals = pair.indexOf('=');
+            if (equals < 0 || !pair.substring(0, equals).trim().equalsIgnoreCase(key)) {
+                continue;
+            }
+            try {
+                return Integer.parseInt(pair.substring(equals + 1).trim());
+            } catch (NumberFormatException malformed) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     /** What the Agent's projectiles for its equipped weapon ({@link #carriedAmmo}) lack for {@code activity}. */
     public static int ammoShortfall(Character agent, Activity activity) {
         return agent == null ? 0 : ammoShortfall(carriedAmmo(agent), activity);
@@ -287,12 +330,24 @@ public final class AgentSupplyReadiness {
      * interaction target, and a shop map is no desk map. Null: neither.
      */
     public static Activity shoppingActivity(AgentRuntimeEntry entry, Character agent) {
-        AgentSupplyReadinessState state = entry == null ? null
-                : entry.capabilityStates().find(AgentSupplyReadinessState.STATE_KEY).orElse(null);
-        if (state != null && state.request() != null) {
-            return state.activity() == null ? Activity.PARTY_QUEST : state.activity();
+        Activity trip = tripActivity(entry);
+        if (trip != null) {
+            return trip;
         }
         return agent == null ? null : standing(agent.getId());
+    }
+
+    /**
+     * The activity of the readiness trip under way (the one its end is judged by); null when none is. A shop visit
+     * runs its readiness ammo step only then (AgentShopService.buyReadinessAmmo).
+     */
+    public static Activity tripActivity(AgentRuntimeEntry entry) {
+        AgentSupplyReadinessState state = entry == null ? null
+                : entry.capabilityStates().find(AgentSupplyReadinessState.STATE_KEY).orElse(null);
+        if (state == null || state.request() == null) {
+            return null;
+        }
+        return state.activity() == null ? Activity.PARTY_QUEST : state.activity();
     }
 
     /**

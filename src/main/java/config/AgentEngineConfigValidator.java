@@ -71,6 +71,15 @@ final class AgentEngineConfigValidator {
             if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
                 continue;
             }
+            if (key.endsWith("AgentSupplyReadiness.AMMO_STANDARDS")) {
+                // its own branch: a false from validNonNumericTuning would let a bare count pass the numeric check
+                long bound = ammoStandardsBound(tuning);
+                if (!validAmmoStandards(value, bound)) {
+                    throw new IllegalStateException(
+                            "Agent tuning key " + key + " must be key=count pairs with counts from 0 to " + bound);
+                }
+                continue;
+            }
             if (validNonNumericTuning(key, value)) {
                 continue;
             }
@@ -111,6 +120,38 @@ final class AgentEngineConfigValidator {
      */
     private static double maximumPercent(String key) {
         return key.endsWith("AgentSupplyReadiness.BUY_TO_PERCENT") ? 500.0d : 100.0d;
+    }
+
+    /**
+     * The most projectiles an AMMO_STANDARDS count may ask: what one Victoria visit buys (AgentSupplyConfig.AMMO_LOW_WARN
+     * x AgentShopService.AMMO_TARGET_THRESHOLD), read from the same tuning; 0 when either is missing or malformed.
+     */
+    private static long ammoStandardsBound(Map<String, String> tuning) {
+        try {
+            return Long.parseLong(tuning.get("server.agents.capabilities.supplies.AgentSupplyConfig.AMMO_LOW_WARN").trim())
+                    * Long.parseLong(tuning.get(
+                    "server.agents.capabilities.shop.AgentShopService.AMMO_TARGET_THRESHOLD").trim());
+        } catch (RuntimeException missing) {
+            return 0L;
+        }
+    }
+
+    /** True for "key=count[,key=count...]" with lower-case keys and every count from 0 to {@code bound}. */
+    static boolean validAmmoStandards(String value, long bound) {
+        if (value == null || !value.matches("[a-z0-9_]+=\\d+(,[a-z0-9_]+=\\d+)*")) {
+            return false;
+        }
+        for (String pair : value.split(",")) {
+            String count = pair.substring(pair.indexOf('=') + 1);
+            try {
+                if (count.length() > 18 || Long.parseLong(count) > bound) {
+                    return false;
+                }
+            } catch (NumberFormatException malformed) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean validNonNumericTuning(String key, String value) {
