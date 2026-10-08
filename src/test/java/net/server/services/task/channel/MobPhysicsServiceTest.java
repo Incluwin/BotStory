@@ -10,9 +10,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import net.packet.Packet;
+import scripting.event.EventInstanceManager;
 import server.agents.capabilities.combat.AgentCombatConfig;
 import server.agents.capabilities.combat.AgentMonsterControlService;
 import server.agents.capabilities.mobcontrol.AgentMobReactionMode;
+import server.expeditions.Expedition;
+import server.expeditions.ExpeditionType;
 import server.life.Monster;
 import server.life.MonsterStats;
 import server.integration.MobHitReactionContext;
@@ -229,6 +232,47 @@ class MobPhysicsServiceTest {
         assertSame(second, fixture.monster.getController());
         assertEquals(MobControlAuthority.AGENT_PHYSICS,
                 fixture.monster.getControlAuthority());
+    }
+
+    /**
+     * P8 G2: a Zakum arm belongs to the human who controls it. Before, an Agent's hit acquired the arm for Agent
+     * physics, sent STOP to the human (Monster.aggroAcquireAgentPhysics) and the arm stopped attacking.
+     */
+    @Test
+    void anAgentHitOnAZakumArmLeavesTheArmWithItsHumanController() {
+        Fixture fixture = fixture(true, 1);
+        Channel channel = mock(Channel.class);
+        when(fixture.map.getChannelServer()).thenReturn(channel);
+        when(channel.getServiceAccess(any())).thenReturn(mock(OverallService.class));
+        EventInstanceManager zakumEvent = mock(EventInstanceManager.class);
+        Expedition zakum = mock(Expedition.class);
+        when(zakum.getType()).thenReturn(ExpeditionType.ZAKUM);
+        when(zakumEvent.getExpedition()).thenReturn(zakum);
+        when(fixture.map.getEventInstance()).thenReturn(zakumEvent);
+        MonsterStats stats = new MonsterStats();
+        stats.setHp(100);
+        stats.setBoss(true);
+        stats.setPhysicsMobile(true);
+        Monster arm = new Monster(8_800_003, stats);
+        arm.setMap(fixture.map);
+        arm.setPosition(new Point(0, 100));
+        arm.setFh(1);
+        when(fixture.map.getMonsterByOid(arm.getObjectId())).thenReturn(arm);
+        Character bossfriend = mock(Character.class);
+        when(bossfriend.getClient()).thenReturn(mock(Client.class));
+        when(bossfriend.getMap()).thenReturn(fixture.map);
+        when(bossfriend.isLoggedinWorld()).thenReturn(true);
+        when(bossfriend.isAlive()).thenReturn(true);
+        arm.aggroSwitchController(bossfriend, true);
+        assertSame(bossfriend, arm.getController(), "fixture: the human controls the arm");
+
+        assertFalse(service.acceptedHit(fixture.agent, arm, 10, 0));
+
+        assertSame(bossfriend, arm.getController());
+        assertEquals(MobControlAuthority.CLIENT, arm.getControlAuthority());
+        verify(bossfriend, never()).sendPacket(any());
+        verify(bossfriend, never()).stopControllingMonster(arm);
+        assertEquals(0, service.activeSessionCountForTest());
     }
 
     @Test

@@ -5742,3 +5742,15 @@ tuning:
     # Purpose: How long a pirate is untouchable after Corkscrew Blow lands, as the client grants, so Corkscrew followed by quick attacks takes no touch or magic damage.
     # Technical: AgentClientSkillRules.invincible gates AgentCombatDamageRuntime.applyMobHit (touch damage) and ServerMobDamageService (server-driven mob attacks on Agents) for this long after a landed Corkscrew Blow.
     server.agents.capabilities.combat.AgentClientSkillRules.CORKSCREW_INVINCIBLE_MS: '2000'
+    # Values: true or false. Recommended: true; false only to compare a boss run with the old behaviour while diagnosing.
+    # Purpose: Keeps companions from taking a boss part away from the player whose client moves it, such as a Zakum arm, and from raising false distance alerts on it.
+    # Technical: AgentBossScope.guards covers the parts named by EXPEDITION_TYPES, BOSS_IDS and a GM trial map. ServerMobAutonomyService.blocksAgentPhysicsInstance then refuses Agent physics on an Agent's hit (no STOP to the human controller), and AbstractDealDamageHandler.checkAttackDistance raises no DISTANCE_HACK and no position resend for an Agent's far hit. Server-owned parts and parts an Agent already controls are never guarded.
+    server.agents.capabilities.mobcontrol.AgentBossScope.ENABLED: 'true'
+    # Values: ExpeditionType names separated by commas, such as ZAKUM or ZAKUM,HORNTAIL. Recommended: ZAKUM; add a type only after its live check.
+    # Purpose: Names the expedition bosses whose parts stay with a player's client while companions fight beside that player.
+    # Technical: AgentBossScope.guards covers a boss-flagged monster whose map's event belongs to an expedition of a listed type. Easy Balrog is server-owned while companions are registered, so it needs no entry. AgentEngineConfigValidator refuses a blank value, lower case and any name that is not an ExpeditionType.
+    server.agents.capabilities.mobcontrol.AgentBossScope.EXPEDITION_TYPES: 'ZAKUM'
+    # Values: none, or mob ids and ascending id ranges separated by commas, such as 8800003-8800010,8810002. Recommended: none until a field boss has its own live check.
+    # Purpose: Names boss mobs outside events, such as field bosses, whose control stays with a player's client while companions hit them.
+    # Technical: AgentBossScope.guards covers a listed mob id only on a map with no event; event bosses are scoped by EXPEDITION_TYPES. A blank value fails startup (AgentEngineConfigValidator), so the empty list is written as none.
+    server.agents.capabilities.mobcontrol.AgentBossScope.BOSS_IDS: 'none'

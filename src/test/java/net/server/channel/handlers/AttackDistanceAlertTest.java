@@ -3,6 +3,7 @@ package net.server.channel.handlers;
 import client.BotClient;
 import client.Character;
 import client.Client;
+import constants.skills.Magician;
 import constants.skills.Warrior;
 import net.server.Server;
 import net.server.services.task.channel.ServerMobAutonomyService;
@@ -10,7 +11,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import scripting.event.EventInstanceManager;
 import server.TimerManager;
+import server.expeditions.Expedition;
+import server.expeditions.ExpeditionType;
 import server.life.Monster;
 import server.life.autonomy.balrog.EasyBalrogInitialClawBehavior;
 import server.maps.MapleMap;
@@ -44,6 +48,9 @@ class AttackDistanceAlertTest {
     private static final Point THANE_AT_THE_RIGHT_CLAW = new Point(886, 258);
     private static final double THANE_DISTANCE_SQ = 224_677.0;
     private static final int ORDINARY_MOB_ID = 100_100; // Snail: no server behaviour, never server-owned
+    private static final int ZAKUM_ARM_ID = 8_800_003;
+    private static final Point ZAKUM_PART_ORIGIN = new Point(-10, -204); // every part spawns at the altar reactor
+    private static final double SEVEN_HUNDRED_PX_SQ = 490_000.0; // past the magic limit of 400,000
 
     private MockedStatic<TimerManager> timers;
     private MockedStatic<Server> servers;
@@ -115,6 +122,61 @@ class AttackDistanceAlertTest {
 
         assertEquals(List.of(), distanceAlertsSince(floor, AGENT_ID));
         verify(claw, never()).refreshMobPosition();
+    }
+
+    /**
+     * P8 G2: every Zakum part reports the altar reactor spot (-10,-204) as its origin, so a mage at the end of the
+     * altar floor hits an arm from 700 px. A headless Agent's hit on a guarded part raises no alert and no refresh,
+     * because each refresh takes the arm's controller away from the human (Monster.aggroRemoveController).
+     */
+    @Test
+    void anAgentsMagicHitOnAZakumArmFrom700PxRaisesNoAlertAndNoRefresh() {
+        Monster arm = zakumArm();
+        Character isolde = attacker("Isolde", AGENT_ID, new BotClient(0, 1));
+        isolde.setPosition(new Point(ZAKUM_PART_ORIGIN.x + 700, ZAKUM_PART_ORIGIN.y));
+        long floor = latestSequence();
+
+        AbstractDealDamageHandler.checkAttackDistance(energyBolt(), isolde, arm);
+
+        assertEquals(List.of(), distanceAlertsSince(floor, AGENT_ID), "no DISTANCE_HACK for the Agent");
+        verify(arm, never()).refreshMobPosition();
+    }
+
+    @Test
+    void aHumansMagicHitOnTheSameArmFrom700PxStillAlerts() {
+        Monster arm = zakumArm();
+        Character human = attacker("Bossfriend", HUMAN_ID, Client.createMock());
+        human.setPosition(new Point(ZAKUM_PART_ORIGIN.x + 700, ZAKUM_PART_ORIGIN.y));
+        long floor = latestSequence();
+
+        AbstractDealDamageHandler.checkAttackDistance(energyBolt(), human, arm);
+
+        assertEquals(List.of("Distance Sq to monster: " + SEVEN_HUNDRED_PX_SQ + " SID: " + Magician.ENERGY_BOLT
+                        + " MID: " + ZAKUM_ARM_ID),
+                distanceAlertsSince(floor, HUMAN_ID));
+        verify(arm).refreshMobPosition();
+    }
+
+    /** Arm 8800003 of a Zakum expedition's event, controlled by a human client (not a server-owned actor). */
+    private static Monster zakumArm() {
+        MapleMap altar = mock(MapleMap.class);
+        EventInstanceManager zakumEvent = mock(EventInstanceManager.class);
+        Expedition zakum = mock(Expedition.class);
+        when(zakum.getType()).thenReturn(ExpeditionType.ZAKUM);
+        when(zakumEvent.getExpedition()).thenReturn(zakum);
+        when(altar.getEventInstance()).thenReturn(zakumEvent);
+        Monster arm = monster(ZAKUM_ARM_ID, 703, altar);
+        when(arm.isBoss()).thenReturn(true);
+        when(arm.getPosition()).thenReturn(new Point(ZAKUM_PART_ORIGIN));
+        return arm;
+    }
+
+    private static AbstractDealDamageHandler.AttackInfo energyBolt() {
+        AbstractDealDamageHandler.AttackInfo attack = new AbstractDealDamageHandler.AttackInfo();
+        attack.skill = Magician.ENERGY_BOLT;
+        attack.ranged = false;
+        attack.magic = true;
+        return attack;
     }
 
     /** The initial claw of a fight with no native-capable client: the server owns it (SERVER_STICKY). */
